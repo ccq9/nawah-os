@@ -1,0 +1,33 @@
+{
+ "target": "pc-qemu-e0",
+ "purpose": "E0 decisive experiment (M0): toolchain -> UEFI PE -> OVMF on QEMU -> serial + exit code. Not the M1 kernel.",
+ "build": {
+  "test_id": "TST-M0-E0-BUILD",
+  "timeout_s": 1200,
+  "inputs": ["boot/e0/main.c", "boot/common/efi.h", "boot/common/serial.h", "platform/pc-qemu-e0/target.json"],
+  "artifact": "${OUT}/E0.EFI",
+  "steps": [
+   ["clang", "-target", "x86_64-unknown-windows", "-ffreestanding", "-fshort-wchar", "-mno-red-zone", "-fno-stack-protector",
+    "-fno-builtin", "-nostdlib", "-O2", "-Wall", "-Wextra", "-Werror", "-DBUILD_ID=${BUILD_ID}", "-c", "boot/e0/main.c", "-o", "${OUT}/e0.o"],
+   ["lld-link", "/subsystem:efi_application", "/entry:efi_main", "/nodefaultlib", "${OUT}/e0.o", "/out:${OUT}/E0.EFI"]
+  ]
+ },
+ "qemu": {
+  "binary": "qemu-system-x86_64",
+  "machine": "q35",
+  "cpu": "qemu64",
+  "memory": "512M",
+  "smp": 1,
+  "ovmf_code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
+  "ovmf_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
+  "boot_timeout_s": 180
+ },
+ "boot_oracle": {
+  "test_id": "TST-M0-E0-BOOT",
+  "oracle": "UEFI 2.11 image entry + QEMU isa-debug-exit ((v<<1)|1): app writes 0x10 -> QEMU exit 33; serial carries OSX|<build_id>|e0|start, conout ok=1, done",
+  "expected_exit_code": 33,
+  "required_markers": ["OSX|${BUILD_ID}|e0|start|arch=x86_64|boot=uefi", "OSX|${BUILD_ID}|e0|conout|ok=1", "OSX|${BUILD_ID}|e0|done|exit=0x10"],
+  "forbidden_markers": ["|e0|conout|ok=0"]
+ },
+ "suites": {}
+}
