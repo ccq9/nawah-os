@@ -1,0 +1,1 @@
+{"schema_version": "1.0.0", "project_id": "nawah-os", "run_id": null, "operation_id": "op-1792271257", "task_id": "WP-04", "seq": 1, "type": "checkpoint", "inputs_digest": null, "state": "saved", "result": "M0 gate passed; entering M1", "evidence_ref": null, "recorded_at": "2026-10-17T21:07:37+00:00", "fencing_token": 0}

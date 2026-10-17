@@ -4,8 +4,8 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "c049336ef9771f3f61fb9b63ed391247ad1f6d67",
- "dirty_state": true,
+ "source_revision": "bfaa66a0bbbb3721ed06a2f688b140ee221e4d68",
+ "dirty_state": false,
  "current_stage": "M1",
  "current_task": "WP-04",
  "completed_requirement_ids": [
@@ -24,8 +24,8 @@
   "DEC-001 remote repository URL (non-blocking for M1)"
  ],
  "runner_status": "running",
- "checkpoint_generation": 0,
- "event_sequence": 0,
+ "checkpoint_generation": 1,
+ "event_sequence": 1,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 4,
@@ -37,7 +37,7 @@
   "holder_id": "claude-session-0181Xwa63MqYc3ru5mo8VYkB",
   "acquired_at": "2026-10-17T20:55:00Z",
   "ttl_s": 900,
-  "fencing_token": 0
+  "fencing_token": 1
  },
  "host_fingerprint": "linux-6.18.44-fc-v139-x86_64-2vcpu",
  "errata_version": "1",
