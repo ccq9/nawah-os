@@ -1,0 +1,97 @@
+{
+ "schema_version": "1.0.0",
+ "mode": "interactive",
+ "verification_runner": {
+  "mode": "interactive",
+  "tool": "tools/project.py (build/boot/test/validate-records)",
+  "deterministic": true,
+  "evidence": [
+   "evidence/20261017T210133Z-c049336e-001",
+   "evidence/20261017T210133Z-c049336e-002"
+  ]
+ },
+ "development_worker": {
+  "mode": "interactive",
+  "identity": "Claude Fable 5.1 (claude.ai session)",
+  "invocation": "user message in session",
+  "resume_outside_session": false
+ },
+ "worker_command": null,
+ "worker_version": "claude-fable-5-1",
+ "supervisor": null,
+ "persistent_store": {
+  "type": "local-git",
+  "path": "/home/claude/nawah-os",
+  "durable_across_sessions": false,
+  "remote": null
+ },
+ "persistence_verified_by": null,
+ "lease_policy": {
+  "file": "state/lease.json",
+  "ttl_s": 900,
+  "heartbeat_s": 300,
+  "fencing_token": "checkpoint_generation",
+  "note": "planning assumptions (prompt 3.2 §2.4)"
+ },
+ "workspace_root": "/home/claude/nawah-os",
+ "allowed_targets": [
+  "pc-qemu-e0",
+  "pc-qemu",
+  "host"
+ ],
+ "permission_refs": [
+  "user message 2026-10-17: MODE: EXECUTE; create repository authorized (remote creation not possible here)"
+ ],
+ "retry_policy": {
+  "transient": {
+   "attempts_total": 3,
+   "backoff_s": [
+    5,
+    15
+   ],
+   "respect_retry_after": true
+  },
+  "reproducible_failure": {
+   "max_fix_hypotheses_per_round": 3,
+   "repeat_same_command_without_change": false
+  },
+  "same_fingerprint_twice": "stop automatic retry; isolate minimal repro"
+ },
+ "operation_timeouts": {
+  "tool_probe_s": 30,
+  "build_s": 1200,
+  "boot_s": 180,
+  "suite_s": 900,
+  "work_package": {
+   "minutes": 90,
+   "tool_calls": 120
+  }
+ },
+ "budgets": {
+  "source": "prompt 3.2 §2.3 planning assumptions",
+  "monetary": null,
+  "monetary_reason": "no paid calls; no budget API available",
+  "disk_reserve_mib": 1024
+ },
+ "concurrency_limit": 1,
+ "checkpoint_policy": {
+  "when": [
+   "after each work package",
+   "before/after impactful operation",
+   "before session end"
+  ],
+  "atomic": "write temp + os.replace",
+  "generation": "monotonic checkpoint_generation"
+ },
+ "cancellation_policy": {
+  "user_stop": "cancel pending reschedule, keep state, exit code 40"
+ },
+ "restart_policy": {
+  "worker_crash": "limited restarts: 3 per round",
+  "no_self_rescheduling_after_cancel": true
+ },
+ "context_policy": {
+  "near_limit": "write factual summary + refs to records; never drop acceptance criteria",
+  "context_pack_source": "docs/*.json (not conversation memory)"
+ }
+}

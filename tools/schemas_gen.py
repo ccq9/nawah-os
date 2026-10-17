@@ -65,7 +65,7 @@ schemas = {
     "status": {"enum": ["open","mitigated","accepted","closed"]}})),
  "sources": wrapper(obj(
    ["id","title","url","version","accessed","supports","limits","verified"],
-   {"id": ID, "title": STR, "url": STR, "version": STR, "accessed": {"type": ["string","null"]},
+   {"id": {"type": "string", "pattern": "^S[0-9]{2,3}$"}, "title": STR, "url": STR, "version": STR, "accessed": {"type": ["string","null"]},
     "supports": STRS, "limits": STR, "verified": {"type": "boolean"}})),
  "hardware": wrapper(obj(
    ["id","target","model","spec_source","driver","support_limits","test_ids","evidence_refs"],

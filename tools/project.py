@@ -398,9 +398,19 @@ def cmd_build(target_name) -> int:
         observed += f" artifact={art} sha256={sha256_file(safe_rel(art))}"
         (ROOT / "build" / target_name / "build-id.txt").write_text(build_id + "\n")
     verdict = "PASS" if rc == 0 and safe_rel(art).exists() else "FAIL"
+    if verdict == "PASS":
+        inputs[keep_artifact(d, rid, safe_rel(art))] = sha256_file(safe_rel(art))
     write_verdict(d, rid, t["build"]["test_id"], verdict, "all build steps exit 0 and artifact exists", "exit 0 + artifact", observed, inputs)
     print(f"build {target_name}: {verdict} run={rid} build_id={build_id}")
     return 0 if verdict == "PASS" else 1
+
+
+def keep_artifact(d, rid, art: Path) -> str:
+    """Copy the built artifact into the evidence dir so the verdict's inputs survive `build/` cleanup."""
+    import shutil
+    (d / "artifact").mkdir(exist_ok=True)
+    shutil.copy(art, d / "artifact" / art.name)
+    return f"evidence/{rid}/artifact/{art.name}"
 
 
 def qemu_cmd(t, target_name, esp_dir, serial_log, extra=()):
@@ -439,7 +449,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", t["qemu"]["boot_timeout_s"])
     write_run(d, rid, target_name, "boot" if not suite_case else f"test:{suite_case['id']}", [" ".join(cmd)], rc, started)
     text = serial.read_text(errors="replace") if serial.exists() else ""
-    inputs = digests_for(t["build"]["inputs"]) | {t["build"]["artifact"].replace("${OUT}", f"build/{target_name}"): sha256_file(art)}
+    inputs = digests_for(t["build"]["inputs"]) | {keep_artifact(d, rid, art): sha256_file(art)}
     case = suite_case or t["boot_oracle"]
     expected_rc = case["expected_exit_code"]
     required = [m.replace("${BUILD_ID}", build_id) for m in case["required_markers"]]
@@ -463,7 +473,41 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     return 0 if verdict == "PASS" else 1
 
 
+HOST_SUITES = {
+    "M0": [
+        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 10 cases incl. 6 required rejections",
+         "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
+        {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist",
+         "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md"], "input_globs": []},
+    ],
+}
+
+
+def cmd_test_host(suite) -> int:
+    if suite not in HOST_SUITES:
+        print(f"host suite {suite} is not implemented; implemented: {sorted(HOST_SUITES)}"); return E_INTERNAL
+    rc_all = 0
+    for case in HOST_SUITES[suite]:
+        started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+        rid, d = new_run_dir("host-test")
+        rc = run_logged(case["command"], ROOT, d / "stdout.log", d / "stderr.log", 900)
+        write_run(d, rid, "host", f"test:{case['id']}", [" ".join(case["command"])], rc, started)
+        paths = list(case["inputs"])
+        for g in case["input_globs"]:
+            paths += sorted(str(x.relative_to(ROOT)) for x in ROOT.glob(g))
+        inputs = digests_for(paths)
+        out = (d / "stdout.log").read_text(errors="replace") + (d / "stderr.log").read_text(errors="replace")
+        verdict = "PASS" if rc == 0 and "\nOK" in out else ("ERROR" if rc == 124 else "FAIL")
+        write_verdict(d, rid, case["id"], verdict, case["oracle"], "exit 0 + OK", f"exit={rc}; tail={out.strip().splitlines()[-1] if out.strip() else ''}", inputs)
+        print(f"{case['id']}: {verdict} run={rid}")
+        rc_all |= (0 if verdict == "PASS" else 1)
+    print(f"host suite {suite}: {'PASS' if rc_all == 0 else 'FAIL'}")
+    return rc_all
+
+
 def cmd_test(target_name, suite) -> int:
+    if target_name == "host":
+        return cmd_test_host(suite)
     t = load_target(target_name)
     suites = t.get("suites", {})
     if suite not in suites:
@@ -476,6 +520,41 @@ def cmd_test(target_name, suite) -> int:
     return 0 if rc_all == 0 else 1
 
 
+# ----------------------------------------------------------------------------- checkpoint / events
+def append_event(etype, state, task_id=None, run_id=None, result=None, evidence_ref=None, operation_id=None, inputs_digest=None):
+    ps = load_json(DOCS / "project-state.json")
+    ev = {"schema_version": SCHEMA_VERSION, "project_id": ps["project_id"], "run_id": run_id, "operation_id": operation_id or f"op-{int(time.time())}",
+          "task_id": task_id, "seq": ps["event_sequence"] + 1, "type": etype, "inputs_digest": inputs_digest, "state": state,
+          "result": result, "evidence_ref": evidence_ref, "recorded_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+          "fencing_token": (ps.get("lease") or {}).get("fencing_token", 0)}
+    p = EVIDENCE / "automation" / "events.jsonl"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, "a", encoding="utf-8") as f:
+        f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+    return ev["seq"]
+
+
+def cmd_checkpoint(note=None) -> int:
+    rc = validate_records(verbose=False)
+    if rc != 0:
+        print("checkpoint refused: records invalid (run validate-records)"); return E_VALIDATION
+    p = DOCS / "project-state.json"
+    ps = load_json(p)
+    rev, dirty = source_identity()
+    ps["source_revision"], ps["dirty_state"] = rev, dirty
+    ps["checkpoint_generation"] += 1
+    if ps.get("lease"):
+        ps["lease"]["fencing_token"] = ps["checkpoint_generation"]
+    seq = append_event("checkpoint", "saved", task_id=ps.get("current_task"), result=note)
+    ps["event_sequence"] = seq
+    tmp = p.with_suffix(".json.tmp")
+    data = json.dumps(ps, ensure_ascii=False, indent=1) + "\n"
+    tmp.write_text(data, encoding="utf-8")
+    os.replace(tmp, p)  # atomic on POSIX
+    print(f"checkpoint generation={ps['checkpoint_generation']} seq={seq} rev={rev[:8]} dirty={dirty}")
+    return E_OK
+
+
 # ----------------------------------------------------------------------------- main
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="project.py")
@@ -486,13 +565,14 @@ def main(argv=None):
         s = sub.add_parser(n); s.add_argument("--target", required=True)
     s = sub.add_parser("test"); s.add_argument("--target", required=True); s.add_argument("--suite", required=True)
     for n in ("next", "report", "checkpoint", "resume", "run"):
-        s = sub.add_parser(n); s.add_argument("--json", action="store_true"); s.add_argument("--result"); s.add_argument("--once", action="store_true"); s.add_argument("--until")
+        s = sub.add_parser(n); s.add_argument("--json", action="store_true"); s.add_argument("--result"); s.add_argument("--once", action="store_true"); s.add_argument("--until"); s.add_argument("--note")
     a = ap.parse_args(argv)
     if a.cmd == "validate-records": return validate_records()
     if a.cmd == "status": return cmd_status(a.json)
     if a.cmd == "build": return cmd_build(a.target)
     if a.cmd == "boot": return cmd_boot(a.target)
     if a.cmd == "test": return cmd_test(a.target, a.suite)
+    if a.cmd == "checkpoint": return cmd_checkpoint(a.note)
     print(f"{a.cmd}: not implemented yet in this work package (planned: M1); see docs/work-items.json")
     return E_INTERNAL
 

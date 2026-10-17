@@ -1,0 +1,282 @@
+{
+ "schema_version": "1.0.0",
+ "records": [
+  {
+   "id": "WP-00",
+   "stage": "M0",
+   "requirement_ids": [
+    "REQ-M0-001"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "workspace",
+    "host tools"
+   ],
+   "files": [
+    "docs/ENVIRONMENT.md",
+    ".gitattributes",
+    ".gitignore"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "probe tools",
+    "init local git",
+    "copy governing prompt"
+   ],
+   "acceptance": "ENVIRONMENT.md من نتائج فعلية ومستودع محلي",
+   "test_ids": [
+    "TST-M0-002"
+   ],
+   "commands": [
+    "git log --oneline"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261017T210643Z-c049336e-002"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-01",
+   "stage": "M0",
+   "requirement_ids": [
+    "REQ-M0-002"
+   ],
+   "depends_on": [
+    "WP-00"
+   ],
+   "inputs": [
+    "prompt §7.1"
+   ],
+   "files": [
+    "tools/schemas_gen.py",
+    "tools/project.py",
+    "tests/test_validate_records.py"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "schemas",
+    "validator",
+    "10 tests"
+   ],
+   "acceptance": "10/10 اختبارات ناجحة بدليل",
+   "test_ids": [
+    "TST-M0-001"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261017T210643Z-c049336e-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-02",
+   "stage": "M0",
+   "requirement_ids": [
+    "REQ-M0-003"
+   ],
+   "depends_on": [
+    "WP-00"
+   ],
+   "inputs": [
+    "prompt §5 E0",
+    "clang/lld-link/QEMU/OVMF"
+   ],
+   "files": [
+    "boot/common/efi.h",
+    "boot/common/serial.h",
+    "boot/e0/main.c",
+    "platform/pc-qemu-e0/target.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "write minimal UEFI app",
+    "build",
+    "boot in QEMU"
+   ],
+   "acceptance": "بناء PASS وإقلاع PASS بأثر build_id ورمز 33",
+   "test_ids": [
+    "TST-M0-E0-BUILD",
+    "TST-M0-E0-BOOT"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu-e0",
+    "python3 tools/project.py boot --target pc-qemu-e0"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261017T210133Z-c049336e-001",
+    "evidence/20261017T210133Z-c049336e-002"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-03",
+   "stage": "M0",
+   "requirement_ids": [
+    "REQ-M0-004",
+    "REQ-M0-005"
+   ],
+   "depends_on": [
+    "WP-01",
+    "WP-02"
+   ],
+   "inputs": [
+    "E0 evidence"
+   ],
+   "files": [
+    "docs/PROJECT.md",
+    "docs/adr/0001-bootstrap.md",
+    "docs/contracts/boot.md",
+    "docs/requirements.json",
+    "docs/stages.json",
+    "docs/work-items.json",
+    "docs/tests.json",
+    "docs/risks.json",
+    "docs/sources.json",
+    "docs/hardware.json",
+    "docs/automation.json",
+    "docs/project-state.json",
+    "docs/decisions-pending.json",
+    "docs/security/threat-model.md",
+    "docs/prompt-errata.md",
+    "docs/reference/windows10.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "write M0 records",
+    "validate",
+    "checkpoint"
+   ],
+   "acceptance": "validate-records يمر وTST-M0-002 PASS",
+   "test_ids": [
+    "TST-M0-002"
+   ],
+   "commands": [
+    "python3 tools/project.py validate-records",
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261017T210643Z-c049336e-002"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-04",
+   "stage": "M1",
+   "requirement_ids": [
+    "REQ-M1-001",
+    "REQ-M1-002",
+    "REQ-M1-003",
+    "REQ-M1-004"
+   ],
+   "depends_on": [
+    "WP-03"
+   ],
+   "inputs": [
+    "contracts/boot.md",
+    "E0 toolchain"
+   ],
+   "files": [
+    "boot/stub/main.c",
+    "boot/common/bootinfo.h",
+    "kernel/main.c",
+    "platform/pc-qemu/target.json",
+    "tests/test_m1_nobs.py"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "kernel stub with memory map + EBS",
+    "post_ebs trace",
+    "EBS failure injection variant",
+    "static NOBS test",
+    "M1 suite"
+   ],
+   "acceptance": "بوابة M1: build/boot/test PASS، NOBS PASS، NEG PASS",
+   "test_ids": [
+    "TST-M1-BUILD",
+    "TST-M1-BOOT",
+    "TST-M1-NOBS",
+    "TST-M1-NEG"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M1",
+    "python3 tools/project.py test --target host --suite M1"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-05",
+   "stage": "M0",
+   "requirement_ids": [
+    "REQ-M0-005"
+   ],
+   "depends_on": [
+    "WP-03"
+   ],
+   "inputs": [
+    "remote private repository URL from user"
+   ],
+   "files": [
+    "docs/automation.json",
+    "docs/ENVIRONMENT.md"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "attach remote",
+    "push",
+    "sentinel durability test",
+    "update automation.json"
+   ],
+   "acceptance": "persistence_verified_by يشير إلى دليل اختبار الشاهد",
+   "test_ids": [
+    "TST-M0-001"
+   ],
+   "commands": [
+    "git push"
+   ],
+   "status": "blocked",
+   "status_history": [
+    "planned",
+    "active",
+    "blocked"
+   ],
+   "evidence_refs": [],
+   "blocker": "لا مستودع بعيد: رمز GitHub في البيئة غير صالح ولا يوجد مستودع من المستخدم (DEC-001)"
+  }
+ ]
+}

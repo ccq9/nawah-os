@@ -1,0 +1,24 @@
+{
+ "schema_version": "1.0.0",
+ "reference": {
+  "edition": "Windows 10 Pro",
+  "version": "22H2",
+  "build_family": "19045",
+  "full_build": null,
+  "language": null,
+  "region": null,
+  "account_type": null,
+  "domain_join": null,
+  "policies": null,
+  "optional_features": null,
+  "hardware": null,
+  "display_settings": null,
+  "inspected_at": null,
+  "source": "Microsoft Windows 10 release information [S06] for the build family only",
+  "media_digest": null,
+  "status": "not_captured",
+  "note": "No licensed reference installation was inspected yet. Fields are null, not guessed. Capture protocol: prompt 3.2 section 4; pending decision DEC-002."
+ },
+ "screens": [],
+ "differences": []
+}

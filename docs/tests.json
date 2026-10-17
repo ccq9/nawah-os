@@ -1,0 +1,115 @@
+{
+ "schema_version": "1.0.0",
+ "records": [
+  {
+   "id": "TST-M0-001",
+   "requirement_ids": [
+    "REQ-M0-002",
+    "REQ-M0-005"
+   ],
+   "layer": "host_unit",
+   "oracle": "unittest: 10 cases (6 required rejections + acceptance) exit 0",
+   "command": "python3 tools/project.py test --target host --suite M0",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261017T210643Z-c049336e-001"
+   ]
+  },
+  {
+   "id": "TST-M0-002",
+   "requirement_ids": [
+    "REQ-M0-001",
+    "REQ-M0-004"
+   ],
+   "layer": "host_unit",
+   "oracle": "required M0 files exist; boot contract has 8 sections; ADR cites existing evidence",
+   "command": "python3 tools/project.py test --target host --suite M0",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261017T210643Z-c049336e-002"
+   ]
+  },
+  {
+   "id": "TST-M0-E0-BUILD",
+   "requirement_ids": [
+    "REQ-M0-003"
+   ],
+   "layer": "host_unit",
+   "oracle": "clang+lld-link steps exit 0 and PE32+ artifact exists",
+   "command": "python3 tools/project.py build --target pc-qemu-e0",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261017T210133Z-c049336e-001"
+   ]
+  },
+  {
+   "id": "TST-M0-E0-BOOT",
+   "requirement_ids": [
+    "REQ-M0-003"
+   ],
+   "layer": "guest",
+   "oracle": "QEMU exit 33 and serial markers with build_id (OVMF 2024.02, QEMU 8.2.2)",
+   "command": "python3 tools/project.py boot --target pc-qemu-e0",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261017T210133Z-c049336e-002"
+   ]
+  },
+  {
+   "id": "TST-M1-BUILD",
+   "requirement_ids": [
+    "REQ-M1-001"
+   ],
+   "layer": "host_unit",
+   "oracle": "build steps exit 0, artifact exists, build_id recorded",
+   "command": "python3 tools/project.py build --target pc-qemu",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M1-BOOT",
+   "requirement_ids": [
+    "REQ-M1-002"
+   ],
+   "layer": "guest",
+   "oracle": "serial: boot|start, boot|ebs|ok, kernel|post_ebs with map_key; QEMU exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M1",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M1-NOBS",
+   "requirement_ids": [
+    "REQ-M1-003"
+   ],
+   "layer": "host_unit",
+   "oracle": "static: kernel/ translation units contain no EFI_BOOT_SERVICES/SystemTable symbols; post_ebs entry takes boot_info only",
+   "command": "python3 tools/project.py test --target host --suite M1",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M1-NEG",
+   "requirement_ids": [
+    "REQ-M1-004"
+   ],
+   "layer": "negative",
+   "oracle": "inject EBS failure build variant: serial boot|error|code=BOOT_E_EBS_FAILED, QEMU exit 97, no reboot (single start line)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M1",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M1-INVALID-IMAGE",
+   "requirement_ids": [
+    "REQ-M1-005"
+   ],
+   "layer": "negative",
+   "oracle": "loader rejects corrupted kernel image",
+   "command": "n/a",
+   "verdict": "N/A",
+   "evidence_refs": [],
+   "verdict_reason": "single-image bootstrap: no separate kernel image to corrupt until loader split (ADR-0001)"
+  }
+ ]
+}

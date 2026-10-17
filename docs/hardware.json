@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "records": [
+  {
+   "id": "HW-PC-QEMU-01",
+   "target": "pc-qemu",
+   "model": "QEMU 8.2.2 q35, cpu qemu64, 1 vCPU, 512 MiB, OVMF 2024.02 (CODE sha256 ad23261d…cb083)",
+   "spec_source": "qemu-system-x86_64 --version; dpkg -s ovmf",
+   "driver": "none yet (COM1 16550 port I/O only)",
+   "support_limits": "lab only; proves nothing about physical hardware",
+   "test_ids": [
+    "TST-M0-E0-BOOT"
+   ],
+   "evidence_refs": [
+    "evidence/20261017T210133Z-c049336e-002"
+   ]
+  }
+ ]
+}

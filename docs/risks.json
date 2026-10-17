@@ -1,0 +1,89 @@
+{
+ "schema_version": "1.0.0",
+ "records": [
+  {
+   "id": "RSK-001",
+   "risk": "اتساع النطاق (جرد Windows الكامل + توافق + محمول) يبتلع الموارد قبل أول نواة فعلية",
+   "likelihood": "high",
+   "impact": "critical",
+   "evidence": "حجم البنود 9–16 مقابل حزم M0–M1",
+   "owner": "agent",
+   "warning_signal": "حزم M0 توثيقية فقط لأكثر من 3 حزم بلا بناء",
+   "mitigation": "E0 إلزامية مبكرًا؛ R1 معرَّف في PROJECT.md؛ تأجيل التفصيل لمراحله",
+   "response_plan": "إعادة تقدير المرحلة داخل الهدف دون استبدال النواة",
+   "status": "open"
+  },
+  {
+   "id": "RSK-002",
+   "risk": "تعذر الوصول إلى نسخة Windows 10 22H2 مرجعية مرخصة",
+   "likelihood": "medium",
+   "impact": "high",
+   "evidence": "docs/reference/windows10.json status=not_captured",
+   "owner": "user",
+   "warning_signal": "بلوغ M6 بلا captures",
+   "mitigation": "بروتوكول التقاط (البند 4)؛ DEC-002",
+   "response_plan": "مواصفات أولية مع فجوات إثبات معلنة؛ لا ادعاء مطابقة",
+   "status": "open"
+  },
+  {
+   "id": "RSK-003",
+   "risk": "الشبكة تحجب أدوات (Rust UEFI target)، وقد تحجب أخرى لاحقًا (aarch64 QEMU، مكتبات)",
+   "likelihood": "high",
+   "impact": "medium",
+   "evidence": "rustup: unsuccessful tunnel (ENVIRONMENT.md)",
+   "owner": "agent",
+   "warning_signal": "فشل تثبيت أداة لازمة لمرحلة",
+   "mitigation": "C/clang كبديل مثبت؛ تسجيل كل نقص بخطوته",
+   "response_plan": "طلب سماح شبكي محدد أو توفير الأداة من المستخدم",
+   "status": "mitigated"
+  },
+  {
+   "id": "RSK-004",
+   "risk": "لا مخزن دائم بين الجلسات: فقد العمل عند انتهاء مساحة الجلسة",
+   "likelihood": "high",
+   "impact": "critical",
+   "evidence": "gh token invalid; local git only",
+   "owner": "user",
+   "warning_signal": "انتهاء جلسة قبل push",
+   "mitigation": "تسليم الملفات للمستخدم عند كل حزمة؛ DEC-001",
+   "response_plan": "إعادة الاستيراد من الملفات المسلَّمة",
+   "status": "open"
+  },
+  {
+   "id": "RSK-005",
+   "risk": "الترخيص والعلامات التجارية عند مطابقة Windows (أصول، أسماء، ms-settings)",
+   "likelihood": "medium",
+   "impact": "high",
+   "evidence": "البند 3 والبند 4 (3.2)",
+   "owner": "user",
+   "warning_signal": "ظهور اسم علامة أو أصل مايكروسوفت في المنتج",
+   "mitigation": "مطابقة تنظيم وسلوك فقط؛ أصول أصلية؛ سجل تتبع",
+   "response_plan": "إزالة واستبدال وتسجيل الفرق",
+   "status": "open"
+  },
+  {
+   "id": "RSK-006",
+   "risk": "وكيل واحد بسياق محدود؛ لا مراجعة مستقلة ولا استئناف خارج الجلسة",
+   "likelihood": "high",
+   "impact": "high",
+   "evidence": "automation.json mode=interactive",
+   "owner": "agent",
+   "warning_signal": "قرب حد السياق أو ادعاء مراجعة مستقلة",
+   "mitigation": "سجلات آلية + checkpoint بعد كل حزمة؛ مراجعة ذاتية مسماة",
+   "response_plan": "جلسة وكيل مستقلة للمراجعة عند الإصدار",
+   "status": "open"
+  },
+  {
+   "id": "RSK-007",
+   "risk": "نجاح المحاكي لا يثبت العتاد الحقيقي (firmware مختلف، أجهزة مختلفة)",
+   "likelihood": "high",
+   "impact": "high",
+   "evidence": "البند 5 و8.5",
+   "owner": "agent",
+   "warning_signal": "تعميم حكم pc-qemu على جهاز",
+   "mitigation": "docs/hardware.json يفصل الأهداف؛ لا كتابة على عتاد حقيقي بلا تفويض",
+   "response_plan": "جهاز مرجعي واحد في Beta",
+   "status": "open"
+  }
+ ]
+}

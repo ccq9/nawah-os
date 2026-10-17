@@ -1,0 +1,380 @@
+{
+ "schema_version": "1.0.0",
+ "records": [
+  {
+   "id": "S01",
+   "title": "Microsoft: Overview of Windows Components",
+   "url": "https://learn.microsoft.com/windows-hardware/drivers/kernel/overview-of-windows-components",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "component separation user/kernel"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S02",
+   "title": "Microsoft: User Mode and Kernel Mode",
+   "url": "https://learn.microsoft.com/windows-hardware/drivers/gettingstarted/user-mode-and-kernel-mode",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "execution modes"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S03",
+   "title": "Microsoft: Windows Kernel-Mode Executive Support Library",
+   "url": "https://learn.microsoft.com/windows-hardware/drivers/kernel/windows-kernel-mode-executive-support-library",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "executive responsibilities"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S04",
+   "title": "Microsoft: Windows Kernel-Mode HAL Library",
+   "url": "https://learn.microsoft.com/windows-hardware/drivers/kernel/windows-kernel-mode-hal-library",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "HAL boundary"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S05",
+   "title": "Microsoft: Launch Windows Settings (ms-settings URIs)",
+   "url": "https://learn.microsoft.com/windows/apps/develop/launch/launch-settings",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "settings pages identification"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S06",
+   "title": "Microsoft: Windows 10 release information",
+   "url": "https://learn.microsoft.com/windows/release-health/release-information",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "22H2 build family 19045"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S07",
+   "title": "Microsoft: Windows 10 Home and Pro lifecycle",
+   "url": "https://learn.microsoft.com/lifecycle/products/windows-10-home-and-pro",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "EOL 2025-10-14"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S08",
+   "title": "Microsoft Support: Understand and explore Windows Settings",
+   "url": "https://support.microsoft.com/windows",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "settings organization"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S09",
+   "title": "NIST SP 800-218 SSDF 1.1",
+   "url": "https://csrc.nist.gov/pubs/sp/800/218/final",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "secure development practices"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S10",
+   "title": "The Update Framework: Security",
+   "url": "https://theupdateframework.io/security/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "update threat model"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S11",
+   "title": "UEFI Specification 2.11: Secure Boot and Driver Signing",
+   "url": "https://uefi.org/specifications",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "secure boot"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S12",
+   "title": "QEMU: System Emulation; GDB usage",
+   "url": "https://www.qemu.org/docs/master/system/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "full-system emulation",
+    "isa-debug-exit",
+    "pflash OVMF"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S13",
+   "title": "Microsoft: PE Format",
+   "url": "https://learn.microsoft.com/windows/win32/debug/pe-format",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "PE/COFF"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S14",
+   "title": "Microsoft: Manage connections from Windows components to Microsoft services",
+   "url": "https://learn.microsoft.com/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "service connections"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S15",
+   "title": "WineHQ: About Wine",
+   "url": "https://www.winehq.org/about",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "compatibility layer design"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S16",
+   "title": "Wayland: Overview",
+   "url": "https://wayland.freedesktop.org/docs/html/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "compositor separation"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S17",
+   "title": "ReactOS: Repository README",
+   "url": "https://github.com/reactos/reactos",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "NT compatibility reference"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S18",
+   "title": "UEFI 2.11 §7.4.6 Boot Services: ExitBootServices / GetMemoryMap",
+   "url": "https://uefi.org/specifications",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "map key retry semantics",
+    "no Boot Services after EBS"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S19",
+   "title": "Microsoft: Kernel DMA Protection",
+   "url": "https://learn.microsoft.com/windows/security/hardware-security/kernel-dma-protection-for-thunderbolt",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "IOMMU role"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S20",
+   "title": "Zephyr: Porting / Architecture / Board porting",
+   "url": "https://docs.zephyrproject.org/latest/hardware/porting/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "arch/SoC/board boundaries"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S21",
+   "title": "NASA: Technical Requirements Definition; Requirements Management",
+   "url": "https://www.nasa.gov/reference/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "requirements traceability"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S22",
+   "title": "Temporal: Retry Policies / Error Handling",
+   "url": "https://docs.temporal.io/encyclopedia/retry-policies",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "retry classification"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S23",
+   "title": "JSON Schema: Object",
+   "url": "https://json-schema.org/understanding-json-schema/reference/object",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "required/additionalProperties"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S24",
+   "title": "TianoCore EDK2 / OVMF",
+   "url": "https://github.com/tianocore/edk2",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "OVMF pflash usage"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S25",
+   "title": "Rust Platform Support: x86_64-unknown-uefi",
+   "url": "https://doc.rust-lang.org/rustc/platform-support/unknown-uefi.html",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "tier-2 uefi target"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S26",
+   "title": "Intel SDM / AMD APM",
+   "url": "https://www.intel.com/sdm",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "x86-64 paging, interrupts, APIC"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S27",
+   "title": "ACPI Specification",
+   "url": "https://uefi.org/specifications",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "hardware tables, AP startup"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S28",
+   "title": "Virtio Specification (OASIS)",
+   "url": "https://docs.oasis-open.org/virtio/virtio/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "virtio-blk/net/gpu/input"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S29",
+   "title": "PCI Express Base Specification",
+   "url": "https://pcisig.com/specifications",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "enumeration, BARs"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S30",
+   "title": "Unicode UAX #9 Bidirectional Algorithm; Arabic shaping; OpenType GSUB",
+   "url": "https://unicode.org/reports/tr9/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "bidi, shaping"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S31",
+   "title": "UEFI 2.11: GPT, ESP, EFI application subsystem",
+   "url": "https://uefi.org/specifications",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "image format, partitions"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  }
+ ]
+}

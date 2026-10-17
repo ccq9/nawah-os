@@ -1,0 +1,340 @@
+{
+ "schema_version": "1.0.0",
+ "records": [
+  {
+   "id": "REQ-M0-001",
+   "statement": "يسجل المشروع أدوات المضيف وإصداراتها ونواقصها وأثرها من نتائج تشغيل فعلية في docs/ENVIRONMENT.md",
+   "rationale": "لا قرار بناء بلا معرفة البيئة",
+   "source": "OS-EXEC-AR 3.2 §1.2",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M0",
+   "dependencies": [],
+   "contract_refs": [],
+   "failure_cases": [
+    "أداة مفقودة بلا خطوة معالجة"
+   ],
+   "acceptance": "الملف موجود ويحوي إصدارات مأخوذة من أوامر فعلية وقسم الناقص",
+   "test_ids": [
+    "TST-M0-002"
+   ],
+   "implementation_status": "verified_in_scope",
+   "evidence_refs": [
+    "evidence/20261017T210643Z-c049336e-002"
+   ]
+  },
+  {
+   "id": "REQ-M0-002",
+   "statement": "تكون سجلات المشروع قابلة للتحقق آليًا: مخططات JSON Schema مع تحقق دلالي (تفرد المعرفات، صحة المراجع، خلو الدورات، مشروعية الانتقالات، تطابق الأدلة)",
+   "rationale": "منع الادعاءات غير المدعومة",
+   "source": "OS-EXEC-AR 3.2 §7.1",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M0",
+   "dependencies": [],
+   "contract_refs": [],
+   "failure_cases": [
+    "قبول دليل تغيرت مدخلاته",
+    "قبول done بلا PASS"
+   ],
+   "acceptance": "validate-records يرفض الحالات الست المطلوبة ويقبل مجموعة صالحة",
+   "test_ids": [
+    "TST-M0-001"
+   ],
+   "implementation_status": "verified_in_scope",
+   "evidence_refs": [
+    "evidence/20261017T210643Z-c049336e-001"
+   ]
+  },
+  {
+   "id": "REQ-M0-003",
+   "statement": "يُحسم اختيار اللغة وسلسلة الأدوات وصيغة الصورة وfirmware المختبر بدليل تجربة E0 لا بالافتراض",
+   "rationale": "ADR-0001 يحتاج دليلًا",
+   "source": "OS-EXEC-AR 3.2 §1.5, §5 (E0)",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M0",
+   "dependencies": [
+    "REQ-M0-001"
+   ],
+   "contract_refs": [
+    "docs/adr/0001-bootstrap.md"
+   ],
+   "failure_cases": [
+    "لا يقلع في OVMF",
+    "لا أثر تسلسلي",
+    "رمز خروج غير متوقع"
+   ],
+   "acceptance": "بناء PE ناجح وإقلاع بأثر يحمل build_id ورمز خروج 33",
+   "test_ids": [
+    "TST-M0-E0-BUILD",
+    "TST-M0-E0-BOOT"
+   ],
+   "implementation_status": "verified_in_scope",
+   "evidence_refs": [
+    "evidence/20261017T210133Z-c049336e-001",
+    "evidence/20261017T210133Z-c049336e-002"
+   ]
+  },
+  {
+   "id": "REQ-M0-004",
+   "statement": "يُكتب عقد تسليم الإقلاع (boot_info، ملكية الذاكرة، EBS وإعادة المحاولة، الأخطاء، عقد الأثر) قبل تنفيذ M1",
+   "rationale": "البند 8.1 يشترط العقد قبل المكوّن",
+   "source": "OS-EXEC-AR 3.2 §8.1, §7",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M0",
+   "dependencies": [
+    "REQ-M0-003"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "failure_cases": [
+    "عقد بلا حالات فشل"
+   ],
+   "acceptance": "العقد يحوي الأقسام الثمانية المطلوبة وتُعرَّف اختبارات إنفاذه",
+   "test_ids": [
+    "TST-M0-002"
+   ],
+   "implementation_status": "verified_in_scope",
+   "evidence_refs": [
+    "evidence/20261017T210643Z-c049336e-002"
+   ]
+  },
+  {
+   "id": "REQ-M0-005",
+   "statement": "يُسجل نمط الأتمتة الفعلي (interactive/durable/text_only) لكل من مشغّل التحقق وعامل التطوير مع دليل، ولا يُدّعى durable بلا اختبار الشاهد",
+   "rationale": "منع ادعاء استئناف غير موجود",
+   "source": "OS-EXEC-AR 3.2 §1 (الأتمتة), §7.2",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M0",
+   "dependencies": [],
+   "contract_refs": [],
+   "failure_cases": [
+    "ادعاء durable بلا مخزن دائم"
+   ],
+   "acceptance": "docs/automation.json صالح؛ mode=interactive ما دام persistence_verified_by فارغًا",
+   "test_ids": [
+    "TST-M0-001"
+   ],
+   "implementation_status": "verified_in_scope",
+   "evidence_refs": [
+    "evidence/20261017T210643Z-c049336e-001"
+   ]
+  },
+  {
+   "id": "REQ-M1-001",
+   "statement": "يُبنى بناء نظيف لصورة نواة واحدة (PE32+ تطبيق EFI) بهوية مسجلة build_id مرتبطة بـsource_revision وبصمة الصورة",
+   "rationale": "هوية الصورة شرط كل حكم",
+   "source": "OS-EXEC-AR 3.2 §20 M1",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M1",
+   "dependencies": [
+    "REQ-M0-003"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "failure_cases": [
+    "فشل أداة بناء يعيد صفرًا"
+   ],
+   "acceptance": "build يعيد 0 فقط عند نجاح كل الخطوات ووجود الصورة؛ الدليل يحمل بصمتها",
+   "test_ids": [
+    "TST-M1-BUILD"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M1-002",
+   "statement": "تقلع الصورة عبر UEFI، تحصل على خريطة ذاكرة حديثة، تنفذ ExitBootServices بالمفتاح الصحيح مع إعادة محاولة واحدة عند تغير الخريطة، وتصدر النواة أثرًا بعدها",
+   "rationale": "اختبار التسليم الفعلي لا تشغيل تطبيق UEFI",
+   "source": "OS-EXEC-AR 3.2 §8.1, §20 M1",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M1",
+   "dependencies": [
+    "REQ-M1-001",
+    "REQ-M0-004"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "failure_cases": [
+    "EBS تفشل مرتين",
+    "خريطة أكبر من الحد",
+    "تعليق"
+   ],
+   "acceptance": "سطر kernel|post_ebs بعد EBS ورمز خروج 33",
+   "test_ids": [
+    "TST-M1-BOOT"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M1-003",
+   "statement": "لا تُستدعى Boot Services ولا بروتوكولات الأجهزة التابعة لها بعد نجاح ExitBootServices",
+   "rationale": "المواصفة تحظره؛ الإثبات بنيوي",
+   "source": "OS-EXEC-AR 3.2 §8.1; UEFI 2.11 §7.4.6 [S18]",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M1",
+   "dependencies": [
+    "REQ-M1-002"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "failure_cases": [
+    "مؤشر SystemTable يتسرب إلى kernel/"
+   ],
+   "acceptance": "وحدة kernel/ لا تضم تعريف Boot Services ولا تستقبل SystemTable؛ فحص ساكن",
+   "test_ids": [
+    "TST-M1-NOBS"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M1-004",
+   "statement": "مسار فشل تسليم مضبوط (حقن فشل EBS) يصدر تشخيصًا برمز خطأ ويتوقف دون حلقة إعادة تشغيل",
+   "rationale": "البند 8.1: لا حلقة بلا تشخيص",
+   "source": "OS-EXEC-AR 3.2 §8.1, §20 M1",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M1",
+   "dependencies": [
+    "REQ-M1-002"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "failure_cases": [
+    "إعادة تشغيل صامتة"
+   ],
+   "acceptance": "سطر boot|error|code=BOOT_E_EBS_FAILED ورمز خروج 97",
+   "test_ids": [
+    "TST-M1-NEG"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M1-005",
+   "statement": "مسار صورة غير صالحة يُرفض بتشخيص",
+   "rationale": "البند 20 M1",
+   "source": "OS-EXEC-AR 3.2 §20 M1",
+   "origin": "user_requirement",
+   "priority": "should",
+   "release": "R1",
+   "stage": "M1",
+   "dependencies": [
+    "REQ-M1-002"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "قبول صورة تالفة"
+   ],
+   "acceptance": "N/A بسبب موثق ما دامت الصورة واحدة بلا محمل منفصل؛ يُفعَّل عند فصل المحمل",
+   "test_ids": [
+    "TST-M1-INVALID-IMAGE"
+   ],
+   "implementation_status": "deferred",
+   "evidence_refs": [],
+   "detail_status": "deferred",
+   "detail_stage": "M3",
+   "defer_reason": "single-image bootstrap (ADR-0001); loader split decision pending"
+  },
+  {
+   "id": "REQ-SCOPE-001",
+   "statement": "نواة أصلية يملكها المشروع؛ لا توزيعة ولا نقل نواة قائمة",
+   "rationale": "هدف المستخدم الثابت",
+   "source": "OS-EXEC-AR 3.2 §3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "ALL",
+   "stage": "M0",
+   "dependencies": [],
+   "contract_refs": [],
+   "failure_cases": [],
+   "acceptance": "لا تُقبل أي حزمة تستبدل النواة",
+   "test_ids": [],
+   "implementation_status": "planned",
+   "evidence_refs": [],
+   "detail_status": "detailed"
+  },
+  {
+   "id": "REQ-SCOPE-002",
+   "statement": "إصدار حاسوب شخصي فعلي أولًا ثم توسع إلى جهاز محمول في M12–M15",
+   "rationale": "هدف المستخدم",
+   "source": "OS-EXEC-AR 3.2 §3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "ALL",
+   "stage": "M12",
+   "dependencies": [],
+   "contract_refs": [],
+   "failure_cases": [],
+   "acceptance": "يُفصَّل في M12",
+   "test_ids": [],
+   "implementation_status": "deferred",
+   "evidence_refs": [],
+   "detail_status": "deferred",
+   "detail_stage": "M12",
+   "defer_reason": "device/ISA decided in M12"
+  },
+  {
+   "id": "REQ-SCOPE-003",
+   "statement": "مطابقة منظمة للإعدادات والتبويب والسلوك لمرجع Windows 10 Pro 22H2 x64 (19045) بأبعاد مطابقة مستقلة",
+   "rationale": "هدف المستخدم",
+   "source": "OS-EXEC-AR 3.2 §3, §4, §11, §12",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1+",
+   "stage": "M6",
+   "dependencies": [],
+   "contract_refs": [],
+   "failure_cases": [],
+   "acceptance": "يُفصَّل مع الجرد في M6/M7",
+   "test_ids": [],
+   "implementation_status": "deferred",
+   "evidence_refs": [],
+   "detail_status": "deferred",
+   "detail_stage": "M6",
+   "defer_reason": "reference capture pending (DEC-002)"
+  },
+  {
+   "id": "REQ-SCOPE-004",
+   "statement": "العربية والإنجليزية ضمن النطاق (RTL/LTR، تشكيل، لوحات مفاتيح) من طبقة النص",
+   "rationale": "هدف المستخدم",
+   "source": "OS-EXEC-AR 3.2 §17",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M5",
+   "dependencies": [],
+   "contract_refs": [],
+   "failure_cases": [],
+   "acceptance": "يُفصَّل في M5",
+   "test_ids": [],
+   "implementation_status": "deferred",
+   "evidence_refs": [],
+   "detail_status": "deferred",
+   "detail_stage": "M5",
+   "defer_reason": "text layer not started"
+  }
+ ]
+}

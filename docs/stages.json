@@ -1,0 +1,239 @@
+{
+ "schema_version": "1.0.0",
+ "records": [
+  {
+   "id": "M0",
+   "name": "ثبّت قرارات أول بناء",
+   "depends_on": [],
+   "entry_conditions": [
+    "مساحة عمل معلومة ونطاق المستخدم ونتائج فحص الأدوات"
+   ],
+   "exit_conditions": [
+    "E0 ناجحة بدليل مسجل",
+    "سلسلة compiler/target/linker/image/firmware متسقة (ADR-0001)",
+    "اختبار تسليم النواة محدد وقابل للتنفيذ (contracts/boot.md)",
+    "validate-records يمر على سجلات M0"
+   ],
+   "gate_status": "passed",
+   "gate_evidence_refs": [
+    "evidence/20261017T210133Z-c049336e-002",
+    "evidence/20261017T210643Z-c049336e-002",
+    "evidence/20261017T210643Z-c049336e-001"
+   ]
+  },
+  {
+   "id": "M1",
+   "name": "أنشئ البناء وأقل نواة قابلة للإقلاع",
+   "depends_on": [
+    "M0"
+   ],
+   "entry_conditions": [
+    "بوابة M0 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "بناء نظيف",
+    "إقلاع صورة بهوية مسجلة",
+    "أثر تشخيص من النواة بعد نجاح ExitBootServices",
+    "لا Boot Services بعدها (إنفاذ بنيوي)",
+    "مسار فشل تسليم مضبوط يُشخَّص ويتوقف"
+   ],
+   "gate_status": "open"
+  },
+  {
+   "id": "M2",
+   "name": "نفّذ أساس النواة",
+   "depends_on": [
+    "M1"
+   ],
+   "entry_conditions": [
+    "بوابة M1 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M3",
+   "name": "العمليات والموارد والواجهات الداخلية",
+   "depends_on": [
+    "M2"
+   ],
+   "entry_conditions": [
+    "بوابة M2 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M4",
+   "name": "خدمات النظام وسلطتها",
+   "depends_on": [
+    "M3"
+   ],
+   "entry_conditions": [
+    "بوابة M3 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M5",
+   "name": "منصة الرسوم والإدخال",
+   "depends_on": [
+    "M4"
+   ],
+   "entry_conditions": [
+    "بوابة M4 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M6",
+   "name": "سطح المكتب وأدوات الاستخدام",
+   "depends_on": [
+    "M5"
+   ],
+   "entry_conditions": [
+    "بوابة M5 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M7",
+   "name": "الإعدادات صفحةً وعقدًا وخدمةً",
+   "depends_on": [
+    "M6"
+   ],
+   "entry_conditions": [
+    "بوابة M6 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M8",
+   "name": "التطبيقات والـSDK والتوافق والعتاد",
+   "depends_on": [
+    "M7"
+   ],
+   "entry_conditions": [
+    "بوابة M7 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M9",
+   "name": "التثبيت والتحديث والإنقاذ",
+   "depends_on": [
+    "M8"
+   ],
+   "entry_conditions": [
+    "بوابة M8 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M10",
+   "name": "مرشح الإصدار",
+   "depends_on": [
+    "M9"
+   ],
+   "entry_conditions": [
+    "بوابة M9 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M11",
+   "name": "تسليم إصدار الحاسوب وصيانته",
+   "depends_on": [
+    "M10"
+   ],
+   "entry_conditions": [
+    "بوابة M10 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M12",
+   "name": "اختيار منصة المحمول",
+   "depends_on": [
+    "M11"
+   ],
+   "entry_conditions": [
+    "بوابة M11 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M13",
+   "name": "نقل النواة والخدمات الأساسية",
+   "depends_on": [
+    "M12"
+   ],
+   "entry_conditions": [
+    "بوابة M12 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M14",
+   "name": "تجربة المحمول وقدراته",
+   "depends_on": [
+    "M13"
+   ],
+   "entry_conditions": [
+    "بوابة M13 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M15",
+   "name": "قبول إصدار المحمول",
+   "depends_on": [
+    "M14"
+   ],
+   "entry_conditions": [
+    "بوابة M14 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  }
+ ]
+}
