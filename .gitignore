@@ -1,0 +1,7 @@
+build/
+evidence/**/*.img
+*.o
+*.efi
+*.lib
+state/lease.json
+__pycache__/
