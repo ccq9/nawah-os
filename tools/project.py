@@ -400,7 +400,12 @@ def cmd_build(target_name) -> int:
     verdict = "PASS" if rc == 0 and safe_rel(art).exists() else "FAIL"
     if verdict == "PASS":
         inputs[keep_artifact(d, rid, safe_rel(art))] = sha256_file(safe_rel(art))
+        for extra in t["build"].get("extra_artifacts", []):
+            ep = safe_rel(extra.replace("${OUT}", f"build/{target_name}"))
+            if ep.exists():
+                inputs[keep_artifact(d, rid, ep)] = sha256_file(ep)
     write_verdict(d, rid, t["build"]["test_id"], verdict, "all build steps exit 0 and artifact exists", "exit 0 + artifact", observed, inputs)
+    attach_evidence(t["build"]["test_id"], rid, verdict)
     print(f"build {target_name}: {verdict} run={rid} build_id={build_id}")
     return 0 if verdict == "PASS" else 1
 
@@ -436,7 +441,8 @@ def prepare_esp(t, target_name, artifact):
 
 def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     t = load_target(target_name)
-    art = safe_rel(t["build"]["artifact"].replace("${OUT}", f"build/{target_name}"))
+    art_rel = (suite_case or {}).get("artifact") or t["build"]["artifact"]
+    art = safe_rel(art_rel.replace("${OUT}", f"build/{target_name}"))
     if not art.exists():
         print("no artifact; run build first"); return E_BLOCKED
     build_id = (ROOT / "build" / target_name / "build-id.txt").read_text().strip()
@@ -456,6 +462,8 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     forbidden = case.get("forbidden_markers", [])
     missing = [m for m in required if m not in text]
     present_forbidden = [m for m in forbidden if m in text]
+    over = [f"{m}x{text.count(m)}>{mx}" for m, mx in case.get("max_counts", {}).items() if text.count(m) > mx]
+    present_forbidden += over
     if rc == 124:
         verdict, reason = "FAIL", "timeout (hang)"
     elif rc != expected_rc:
@@ -467,6 +475,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     write_verdict(d, rid, case["test_id"], verdict, case["oracle"], f"exit={expected_rc}; markers={required}; forbidden={forbidden}",
                   f"exit={rc}; serial_lines={len(text.splitlines())}; missing={missing}; forbidden_present={present_forbidden}",
                   inputs, reason=reason)
+    attach_evidence(case["test_id"], rid, verdict)
     print(f"{'boot' if not suite_case else case['id']} {target_name}: {verdict} ({reason}) run={rid}")
     for line in text.splitlines()[:40]:
         print("  serial|", line)
@@ -483,11 +492,25 @@ HOST_SUITES = {
 }
 
 
+HOST_SUITES["M1"] = [
+    {"id": "TST-M1-NOBS", "command": ["python3", "-I", "tests/test_m1_nobs.py"],
+     "oracle": "static: kernel/*.c include no efi.h, name no Boot Services/System Table symbol; kernel_main takes boot_info only; bootinfo.h has no function tables",
+     "inputs": ["tests/test_m1_nobs.py", "kernel/main.c", "boot/common/bootinfo.h", "boot/stub/main.c"], "input_globs": []},
+]
+
+
 def cmd_test_host(suite) -> int:
     if suite not in HOST_SUITES:
         print(f"host suite {suite} is not implemented; implemented: {sorted(HOST_SUITES)}"); return E_INTERNAL
     rc_all = 0
     for case in HOST_SUITES[suite]:
+        rc_all |= cmd_test_host_case(case)
+    print(f"host suite {suite}: {'PASS' if rc_all == 0 else 'FAIL'}")
+    return rc_all
+
+
+def cmd_test_host_case(case) -> int:
+    if True:
         started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
         rid, d = new_run_dir("host-test")
         rc = run_logged(case["command"], ROOT, d / "stdout.log", d / "stderr.log", 900)
@@ -500,8 +523,54 @@ def cmd_test_host(suite) -> int:
         verdict = "PASS" if rc == 0 and "\nOK" in out else ("ERROR" if rc == 124 else "FAIL")
         write_verdict(d, rid, case["id"], verdict, case["oracle"], "exit 0 + OK", f"exit={rc}; tail={out.strip().splitlines()[-1] if out.strip() else ''}", inputs)
         print(f"{case['id']}: {verdict} run={rid}")
-        rc_all |= (0 if verdict == "PASS" else 1)
-    print(f"host suite {suite}: {'PASS' if rc_all == 0 else 'FAIL'}")
+        tests_p = DOCS / "tests.json"
+        if tests_p.exists():
+            old_refs = [t["evidence_refs"] for t in load_json(tests_p)["records"] if t["id"] == case["id"]]
+            old_ref = old_refs[0][0] if old_refs and old_refs[0] else None
+            replace_evidence_ref(old_ref, f"evidence/{rid}", case["id"], verdict)
+        return 0 if verdict == "PASS" else 1
+
+
+def replace_evidence_ref(old_ref, new_ref, test_id, verdict):
+    """Point every record that cited old_ref at new_ref, and set the test's verdict (records stay consistent)."""
+    for name in RECORD_FILES:
+        p = DOCS / f"{name}.json"
+        if not p.exists():
+            continue
+        data = load_json(p); changed = False
+        for r in data["records"]:
+            for key in ("evidence_refs", "gate_evidence_refs"):
+                if key in r and old_ref in r[key]:
+                    r[key] = [new_ref if x == old_ref else x for x in r[key]]; changed = True
+            if name == "tests" and r["id"] == test_id:
+                r["verdict"] = verdict
+                if new_ref not in r["evidence_refs"]:
+                    r["evidence_refs"] = [new_ref]
+                changed = True
+        if changed:
+            p.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+
+def attach_evidence(test_id, rid, verdict):
+    """Registry update: the test's previous evidence ref is replaced everywhere by the new run."""
+    tests_p = DOCS / "tests.json"
+    if not tests_p.exists():
+        return
+    old_refs = [t["evidence_refs"] for t in load_json(tests_p)["records"] if t["id"] == test_id]
+    if not old_refs:
+        return
+    old_ref = old_refs[0][0] if old_refs[0] else None
+    replace_evidence_ref(old_ref, f"evidence/{rid}", test_id, verdict)
+
+
+def cmd_reverify_host() -> int:
+    """Re-run every host suite case and re-attach fresh evidence (used after tool changes make verdicts stale)."""
+    tests = {t["id"]: t for t in load_json(DOCS / "tests.json")["records"]} if (DOCS / "tests.json").exists() else {}
+    rc_all = 0
+    for suite in HOST_SUITES:
+        for case in HOST_SUITES[suite]:
+            rc = cmd_test_host_case(case)
+            rc_all |= rc
     return rc_all
 
 
@@ -559,7 +628,7 @@ def cmd_checkpoint(note=None) -> int:
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="project.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("validate-records")
+    sub.add_parser("validate-records"); sub.add_parser("reverify-host")
     s = sub.add_parser("status"); s.add_argument("--json", action="store_true")
     for n in ("build", "boot"):
         s = sub.add_parser(n); s.add_argument("--target", required=True)
@@ -573,6 +642,7 @@ def main(argv=None):
     if a.cmd == "boot": return cmd_boot(a.target)
     if a.cmd == "test": return cmd_test(a.target, a.suite)
     if a.cmd == "checkpoint": return cmd_checkpoint(a.note)
+    if a.cmd == "reverify-host": return cmd_reverify_host()
     print(f"{a.cmd}: not implemented yet in this work package (planned: M1); see docs/work-items.json")
     return E_INTERNAL
 

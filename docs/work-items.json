@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261017T210737Z-7963b9fa-001"
+    "evidence/20261017T211058Z-9f580295-001"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261017T210736Z-7963b9fa-001"
+    "evidence/20261017T211057Z-9f580295-001"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261017T210133Z-c049336e-001",
-    "evidence/20261017T210133Z-c049336e-002"
+    "evidence/20261017T211054Z-9f580295-001",
+    "evidence/20261017T211054Z-9f580295-002"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261017T210737Z-7963b9fa-001"
+    "evidence/20261017T211058Z-9f580295-001"
    ],
    "blocker": null
   },
@@ -206,9 +206,11 @@
    "files": [
     "boot/stub/main.c",
     "boot/common/bootinfo.h",
+    "boot/common/types.h",
     "kernel/main.c",
     "platform/pc-qemu/target.json",
-    "tests/test_m1_nobs.py"
+    "tests/test_m1_nobs.py",
+    "tools/project.py"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
@@ -232,11 +234,18 @@
     "python3 tools/project.py test --target pc-qemu --suite M1",
     "python3 tools/project.py test --target host --suite M1"
    ],
-   "status": "planned",
+   "status": "done",
    "status_history": [
-    "planned"
+    "planned",
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261017T210941Z-9f580295-001",
+    "evidence/20261017T210942Z-9f580295-001",
+    "evidence/20261017T210945Z-9f580295-001",
+    "evidence/20261017T211058Z-9f580295-002"
+   ],
    "blocker": null
   },
   {

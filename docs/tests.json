@@ -12,7 +12,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261017T210736Z-7963b9fa-001"
+    "evidence/20261017T211057Z-9f580295-001"
    ]
   },
   {
@@ -26,7 +26,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261017T210737Z-7963b9fa-001"
+    "evidence/20261017T211058Z-9f580295-001"
    ]
   },
   {
@@ -39,7 +39,7 @@
    "command": "python3 tools/project.py build --target pc-qemu-e0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261017T210133Z-c049336e-001"
+    "evidence/20261017T211054Z-9f580295-001"
    ]
   },
   {
@@ -52,7 +52,7 @@
    "command": "python3 tools/project.py boot --target pc-qemu-e0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261017T210133Z-c049336e-002"
+    "evidence/20261017T211054Z-9f580295-002"
    ]
   },
   {
@@ -63,8 +63,10 @@
    "layer": "host_unit",
    "oracle": "build steps exit 0, artifact exists, build_id recorded",
    "command": "python3 tools/project.py build --target pc-qemu",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261017T210941Z-9f580295-001"
+   ]
   },
   {
    "id": "TST-M1-BOOT",
@@ -74,8 +76,10 @@
    "layer": "guest",
    "oracle": "serial: boot|start, boot|ebs|ok, kernel|post_ebs with map_key; QEMU exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261017T210942Z-9f580295-001"
+   ]
   },
   {
    "id": "TST-M1-NOBS",
@@ -85,8 +89,10 @@
    "layer": "host_unit",
    "oracle": "static: kernel/ translation units contain no EFI_BOOT_SERVICES/SystemTable symbols; post_ebs entry takes boot_info only",
    "command": "python3 tools/project.py test --target host --suite M1",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261017T211058Z-9f580295-002"
+   ]
   },
   {
    "id": "TST-M1-NEG",
@@ -96,8 +102,10 @@
    "layer": "negative",
    "oracle": "inject EBS failure build variant: serial boot|error|code=BOOT_E_EBS_FAILED, QEMU exit 97, no reboot (single start line)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261017T210945Z-9f580295-001"
+   ]
   },
   {
    "id": "TST-M1-INVALID-IMAGE",

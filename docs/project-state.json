@@ -6,20 +6,24 @@
  "project_root": "/home/claude/nawah-os",
  "source_revision": "bfaa66a0bbbb3721ed06a2f688b140ee221e4d68",
  "dirty_state": false,
- "current_stage": "M1",
- "current_task": "WP-04",
+ "current_stage": "M2",
+ "current_task": null,
  "completed_requirement_ids": [
   "REQ-M0-001",
   "REQ-M0-002",
   "REQ-M0-003",
   "REQ-M0-004",
-  "REQ-M0-005"
+  "REQ-M0-005",
+  "REQ-M1-001",
+  "REQ-M1-002",
+  "REQ-M1-003",
+  "REQ-M1-004"
  ],
- "last_run_id": "20261017T210133Z-c049336e-002",
+ "last_run_id": "20261017T211012Z-9f580295-001",
  "blockers": [
   "WP-05: no remote repository (DEC-001)"
  ],
- "next_action": "WP-04: kernel stub with memory map + ExitBootServices, post_ebs trace, EBS failure injection, NOBS static test, M1 suite",
+ "next_action": "M2 planning: detail REQ-M2-* (page allocator, virtual mapping, exceptions/interrupts/timers, panic policy) and WP-06+; WP-05 remains blocked on DEC-001",
  "required_inputs": [
   "DEC-001 remote repository URL (non-blocking for M1)"
  ],
@@ -28,7 +32,7 @@
  "event_sequence": 1,
  "pending_operations": [],
  "budget_counters": {
-  "work_packages_done": 4,
+  "work_packages_done": 5,
   "tool_calls_session": null
  },
  "next_retry_at": null,

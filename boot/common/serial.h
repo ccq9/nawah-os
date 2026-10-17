@@ -4,7 +4,7 @@
  * QEMU exits with ((value << 1) | 1). */
 #ifndef NAWAH_SERIAL_H
 #define NAWAH_SERIAL_H
-#include "efi.h"
+#include "types.h"
 
 static inline void outb(UINT16 port, UINT8 v) { __asm__ volatile("outb %0, %1" : : "a"(v), "Nd"(port)); }
 static inline void outl(UINT16 port, UINT32 v) { __asm__ volatile("outl %0, %1" : : "a"(v), "Nd"(port)); }
@@ -39,7 +39,7 @@ static inline void serial_putdec(UINT64 v) {
     serial_puts(buf + i);
 }
 /* Never returns under QEMU with isa-debug-exit; halts forever otherwise. */
-static inline void qemu_exit(UINT32 code) {
+static inline __attribute__((noreturn)) void qemu_exit(UINT32 code) {
     outl(QEMU_DEBUG_EXIT_PORT, code);
     for (;;) __asm__ volatile("cli; hlt");
 }
