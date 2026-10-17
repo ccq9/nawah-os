@@ -4,7 +4,7 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "bfaa66a0bbbb3721ed06a2f688b140ee221e4d68",
+ "source_revision": "8f97ca2cb4fa37d6efc4f34de44868cdf5d13abb",
  "dirty_state": false,
  "current_stage": "M2",
  "current_task": null,
@@ -28,8 +28,8 @@
   "DEC-001 remote repository URL (non-blocking for M1)"
  ],
  "runner_status": "running",
- "checkpoint_generation": 1,
- "event_sequence": 1,
+ "checkpoint_generation": 2,
+ "event_sequence": 2,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 5,
@@ -41,7 +41,7 @@
   "holder_id": "claude-session-0181Xwa63MqYc3ru5mo8VYkB",
   "acquired_at": "2026-10-17T20:55:00Z",
   "ttl_s": 900,
-  "fencing_token": 1
+  "fencing_token": 2
  },
  "host_fingerprint": "linux-6.18.44-fc-v139-x86_64-2vcpu",
  "errata_version": "1",
