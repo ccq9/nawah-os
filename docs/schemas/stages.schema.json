@@ -1,0 +1,78 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "records"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.0\\.0$"
+  },
+  "records": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "id",
+     "name",
+     "depends_on",
+     "entry_conditions",
+     "exit_conditions",
+     "gate_status"
+    ],
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^M[0-9]{1,2}$"
+     },
+     "name": {
+      "type": "string",
+      "minLength": 1
+     },
+     "depends_on": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^M[0-9]{1,2}$"
+      },
+      "uniqueItems": true
+     },
+     "entry_conditions": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "minLength": 1
+      }
+     },
+     "exit_conditions": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "minLength": 1
+      }
+     },
+     "gate_status": {
+      "enum": [
+       "not_started",
+       "open",
+       "passed",
+       "blocked"
+      ]
+     },
+     "gate_evidence_refs": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+      },
+      "uniqueItems": true
+     }
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,74 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "records"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.0\\.0$"
+  },
+  "records": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "id",
+     "target",
+     "model",
+     "spec_source",
+     "driver",
+     "support_limits",
+     "test_ids",
+     "evidence_refs"
+    ],
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+     },
+     "target": {
+      "type": "string",
+      "minLength": 1
+     },
+     "model": {
+      "type": "string",
+      "minLength": 1
+     },
+     "spec_source": {
+      "type": "string",
+      "minLength": 1
+     },
+     "driver": {
+      "type": "string",
+      "minLength": 1
+     },
+     "support_limits": {
+      "type": "string",
+      "minLength": 1
+     },
+     "test_ids": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+      },
+      "uniqueItems": true
+     },
+     "evidence_refs": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+      },
+      "uniqueItems": true
+     }
+    }
+   }
+  }
+ }
+}

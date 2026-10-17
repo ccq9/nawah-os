@@ -1,0 +1,78 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "run_id",
+  "test_id",
+  "verdict",
+  "oracle",
+  "expected",
+  "observed",
+  "inputs_digest",
+  "inputs",
+  "claim_tag"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.0\\.0$"
+  },
+  "run_id": {
+   "type": "string",
+   "minLength": 1
+  },
+  "test_id": {
+   "type": "string",
+   "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+  },
+  "verdict": {
+   "enum": [
+    "PASS",
+    "FAIL",
+    "ERROR",
+    "BLOCKED",
+    "NOT_RUN",
+    "N/A",
+    "NEEDS_REEVALUATION"
+   ]
+  },
+  "oracle": {
+   "type": "string",
+   "minLength": 1
+  },
+  "expected": {
+   "type": "string",
+   "minLength": 1
+  },
+  "observed": {
+   "type": "string",
+   "minLength": 1
+  },
+  "inputs_digest": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "inputs": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "string",
+    "pattern": "^[0-9a-f]{64}$"
+   }
+  },
+  "claim_tag": {
+   "enum": [
+    "source_backed_fact",
+    "logical_inference",
+    "probability",
+    "analytic_opinion",
+    "unverified_assumption"
+   ]
+  },
+  "reason": {
+   "type": "string",
+   "minLength": 1
+  }
+ }
+}

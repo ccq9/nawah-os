@@ -1,0 +1,83 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "project_id",
+  "run_id",
+  "operation_id",
+  "task_id",
+  "seq",
+  "type",
+  "inputs_digest",
+  "state",
+  "result",
+  "evidence_ref",
+  "recorded_at",
+  "fencing_token"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.0\\.0$"
+  },
+  "project_id": {
+   "type": "string",
+   "minLength": 1
+  },
+  "run_id": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "operation_id": {
+   "type": "string",
+   "minLength": 1
+  },
+  "task_id": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "seq": {
+   "type": "integer",
+   "minimum": 1
+  },
+  "type": {
+   "type": "string",
+   "minLength": 1
+  },
+  "inputs_digest": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "state": {
+   "type": "string",
+   "minLength": 1
+  },
+  "result": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "evidence_ref": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "recorded_at": {
+   "type": "string",
+   "minLength": 1
+  },
+  "fencing_token": {
+   "type": "integer"
+  }
+ }
+}

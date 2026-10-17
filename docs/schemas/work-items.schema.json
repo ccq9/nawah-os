@@ -1,0 +1,148 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "records"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.0\\.0$"
+  },
+  "records": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "id",
+     "stage",
+     "requirement_ids",
+     "depends_on",
+     "inputs",
+     "files",
+     "contract_refs",
+     "actions",
+     "acceptance",
+     "test_ids",
+     "commands",
+     "status",
+     "status_history",
+     "evidence_refs",
+     "blocker"
+    ],
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+     },
+     "stage": {
+      "type": "string",
+      "pattern": "^M[0-9]{1,2}$"
+     },
+     "requirement_ids": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+      },
+      "uniqueItems": true
+     },
+     "depends_on": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+      },
+      "uniqueItems": true
+     },
+     "inputs": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "minLength": 1
+      }
+     },
+     "files": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+      },
+      "uniqueItems": true
+     },
+     "contract_refs": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+      },
+      "uniqueItems": true
+     },
+     "actions": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "minLength": 1
+      }
+     },
+     "acceptance": {
+      "type": "string",
+      "minLength": 1
+     },
+     "test_ids": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+      },
+      "uniqueItems": true
+     },
+     "commands": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "minLength": 1
+      }
+     },
+     "status": {
+      "enum": [
+       "planned",
+       "active",
+       "blocked",
+       "done"
+      ]
+     },
+     "status_history": {
+      "type": "array",
+      "items": {
+       "enum": [
+        "planned",
+        "active",
+        "blocked",
+        "done"
+       ]
+      },
+      "minItems": 1
+     },
+     "evidence_refs": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+      },
+      "uniqueItems": true
+     },
+     "blocker": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    }
+   }
+  }
+ }
+}

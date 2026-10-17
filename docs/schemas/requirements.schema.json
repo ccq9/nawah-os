@@ -1,0 +1,148 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "records"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.0\\.0$"
+  },
+  "records": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "id",
+     "statement",
+     "rationale",
+     "source",
+     "origin",
+     "priority",
+     "release",
+     "stage",
+     "dependencies",
+     "contract_refs",
+     "failure_cases",
+     "acceptance",
+     "test_ids",
+     "implementation_status",
+     "evidence_refs"
+    ],
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+     },
+     "statement": {
+      "type": "string",
+      "minLength": 1
+     },
+     "rationale": {
+      "type": "string",
+      "minLength": 1
+     },
+     "source": {
+      "type": "string",
+      "minLength": 1
+     },
+     "origin": {
+      "enum": [
+       "user_requirement",
+       "derived",
+       "recommendation",
+       "assumption"
+      ]
+     },
+     "priority": {
+      "enum": [
+       "must",
+       "should",
+       "could"
+      ]
+     },
+     "release": {
+      "type": "string",
+      "minLength": 1
+     },
+     "stage": {
+      "type": "string",
+      "pattern": "^M[0-9]{1,2}$"
+     },
+     "dependencies": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+      },
+      "uniqueItems": true
+     },
+     "contract_refs": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+      },
+      "uniqueItems": true
+     },
+     "failure_cases": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "minLength": 1
+      }
+     },
+     "acceptance": {
+      "type": "string",
+      "minLength": 1
+     },
+     "test_ids": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+      },
+      "uniqueItems": true
+     },
+     "implementation_status": {
+      "enum": [
+       "planned",
+       "partial",
+       "implemented_untested",
+       "verified_in_scope",
+       "blocked",
+       "deferred",
+       "out_of_scope"
+      ]
+     },
+     "evidence_refs": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+      },
+      "uniqueItems": true
+     },
+     "detail_status": {
+      "enum": [
+       "detailed",
+       "deferred"
+      ]
+     },
+     "detail_stage": {
+      "type": "string",
+      "pattern": "^M[0-9]{1,2}$"
+     },
+     "defer_reason": {
+      "type": "string",
+      "minLength": 1
+     }
+    }
+   }
+  }
+ }
+}

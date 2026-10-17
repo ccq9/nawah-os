@@ -1,0 +1,167 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "project_id",
+  "prompt_version",
+  "prompt_digest",
+  "project_root",
+  "source_revision",
+  "dirty_state",
+  "current_stage",
+  "current_task",
+  "completed_requirement_ids",
+  "last_run_id",
+  "blockers",
+  "next_action",
+  "required_inputs",
+  "runner_status",
+  "checkpoint_generation",
+  "event_sequence",
+  "pending_operations",
+  "budget_counters",
+  "next_retry_at",
+  "cancellation_state",
+  "lease",
+  "host_fingerprint",
+  "errata_version",
+  "pending_decision_ids",
+  "unknown_fields"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.0\\.0$"
+  },
+  "project_id": {
+   "type": "string",
+   "minLength": 1
+  },
+  "prompt_version": {
+   "type": "string",
+   "minLength": 1
+  },
+  "prompt_digest": {
+   "type": "string",
+   "minLength": 1
+  },
+  "project_root": {
+   "type": "string",
+   "minLength": 1
+  },
+  "source_revision": {
+   "type": "string",
+   "minLength": 1
+  },
+  "dirty_state": {
+   "type": "boolean"
+  },
+  "current_stage": {
+   "type": "string",
+   "pattern": "^M[0-9]{1,2}$"
+  },
+  "current_task": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "completed_requirement_ids": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+   },
+   "uniqueItems": true
+  },
+  "last_run_id": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "blockers": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "minLength": 1
+   }
+  },
+  "next_action": {
+   "type": "string",
+   "minLength": 1
+  },
+  "required_inputs": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "minLength": 1
+   }
+  },
+  "runner_status": {
+   "enum": [
+    "idle",
+    "running",
+    "waiting_retry",
+    "blocked",
+    "cancelled",
+    "completed"
+   ]
+  },
+  "checkpoint_generation": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "event_sequence": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "pending_operations": {
+   "type": "array"
+  },
+  "budget_counters": {
+   "type": "object"
+  },
+  "next_retry_at": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "cancellation_state": {
+   "enum": [
+    "none",
+    "requested",
+    "cancelled"
+   ]
+  },
+  "lease": {
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "host_fingerprint": {
+   "type": "string",
+   "minLength": 1
+  },
+  "errata_version": {
+   "type": "string",
+   "minLength": 1
+  },
+  "pending_decision_ids": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+   },
+   "uniqueItems": true
+  },
+  "unknown_fields": {
+   "type": "object",
+   "description": "field -> reason it is unknown (no default values for unknowns)"
+  }
+ }
+}

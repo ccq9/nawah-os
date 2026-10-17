@@ -1,0 +1,87 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "records"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.0\\.0$"
+  },
+  "records": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "id",
+     "requirement_ids",
+     "layer",
+     "oracle",
+     "command",
+     "verdict",
+     "evidence_refs"
+    ],
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+     },
+     "requirement_ids": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+      },
+      "uniqueItems": true
+     },
+     "layer": {
+      "enum": [
+       "host_unit",
+       "guest",
+       "service_integration",
+       "user_e2e",
+       "negative",
+       "compat_hw",
+       "security_access_perf"
+      ]
+     },
+     "oracle": {
+      "type": "string",
+      "minLength": 1
+     },
+     "command": {
+      "type": "string",
+      "minLength": 1
+     },
+     "verdict": {
+      "enum": [
+       "PASS",
+       "FAIL",
+       "ERROR",
+       "BLOCKED",
+       "NOT_RUN",
+       "N/A",
+       "NEEDS_REEVALUATION"
+      ]
+     },
+     "evidence_refs": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+      },
+      "uniqueItems": true
+     },
+     "verdict_reason": {
+      "type": "string",
+      "minLength": 1
+     }
+    }
+   }
+  }
+ }
+}

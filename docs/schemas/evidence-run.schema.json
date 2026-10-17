@@ -1,0 +1,73 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "run_id",
+  "started_at",
+  "finished_at",
+  "source_revision",
+  "dirty_state",
+  "host",
+  "target",
+  "worker",
+  "purpose",
+  "commands",
+  "exit_code"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.0\\.0$"
+  },
+  "run_id": {
+   "type": "string",
+   "minLength": 1
+  },
+  "started_at": {
+   "type": "string",
+   "minLength": 1
+  },
+  "finished_at": {
+   "type": "string",
+   "minLength": 1
+  },
+  "source_revision": {
+   "type": "string",
+   "minLength": 1
+  },
+  "dirty_state": {
+   "type": "boolean"
+  },
+  "host": {
+   "type": "object"
+  },
+  "target": {
+   "type": "string",
+   "minLength": 1
+  },
+  "worker": {
+   "type": "string",
+   "minLength": 1
+  },
+  "purpose": {
+   "type": "string",
+   "minLength": 1
+  },
+  "commands": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "minLength": 1
+   }
+  },
+  "exit_code": {
+   "type": "integer"
+  },
+  "notes": {
+   "type": "string",
+   "minLength": 1
+  }
+ }
+}
