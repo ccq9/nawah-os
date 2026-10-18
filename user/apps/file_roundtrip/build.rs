@@ -7,4 +7,7 @@ fn main() {
     println!("cargo:rustc-link-arg-bins=-z");
     println!("cargo:rustc-link-arg-bins=separate-loadable-segments");
     println!("cargo:rustc-link-arg-bins=--no-dynamic-linker");
+    // No RELRO split: the GOT stays in the one read-write segment (user/link.ld).
+    println!("cargo:rustc-link-arg-bins=-z");
+    println!("cargo:rustc-link-arg-bins=norelro");
 }

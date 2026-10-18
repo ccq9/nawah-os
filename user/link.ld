@@ -17,6 +17,11 @@ SECTIONS
   .eh_frame : { *(.eh_frame) }
   . = ALIGN(4096);
   .data : { *(.data .data.* .ldata .ldata.*) *(.got .got.plt) }
+  /* The GOT (calls through it in the large code model) is RELRO to the linker, which splits it
+     into a PT_LOAD of its own; .bss must then start on a new page or the two RW segments share
+     one and the loader refuses the image (K_E_ELF_SEGMENT_OVERLAP, CI run 39127984288). The
+     applications are also linked with -z norelro so a single RW segment is the normal case. */
+  . = ALIGN(4096);
   .bss : { *(.bss .bss.* .lbss .lbss.*) *(COMMON) }
   /DISCARD/ : { *(.note.*) *(.comment) }
 }
