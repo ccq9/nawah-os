@@ -482,6 +482,11 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     present_forbidden = [m for m in forbidden if m in text]
     over = [f"{m}x{text.count(m)}>{mx}" for m, mx in case.get("max_counts", {}).items() if text.count(m) > mx]
     present_forbidden += over
+    missing += [f"{m}x{text.count(m)}<{mn}" for m, mn in case.get("min_counts", {}).items() if text.count(m) < mn]
+    for pat_a, pat_b in case.get("equal_values", []):
+        ma, mb = re.search(pat_a, text), re.search(pat_b, text)
+        if not ma or not mb or ma.group(1) != mb.group(1):
+            missing.append(f"equal_values({pat_a} vs {pat_b}): {ma and ma.group(1)} != {mb and mb.group(1)}")
     if rc == 124:
         verdict, reason = "FAIL", "timeout (hang)"
     elif rc != expected_rc:

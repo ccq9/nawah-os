@@ -21,7 +21,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-002"
+    "evidence/20261018T030133Z-10d5fd69-002"
    ]
   },
   {
@@ -45,7 +45,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-001"
+    "evidence/20261018T030133Z-10d5fd69-001"
    ]
   },
   {
@@ -103,7 +103,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-002"
+    "evidence/20261018T030133Z-10d5fd69-002"
    ]
   },
   {
@@ -126,7 +126,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-001"
+    "evidence/20261018T030133Z-10d5fd69-001"
    ]
   },
   {
@@ -210,7 +210,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-003"
+    "evidence/20261018T030133Z-10d5fd69-003"
    ]
   },
   {
@@ -343,6 +343,282 @@
    "detail_status": "deferred",
    "detail_stage": "M5",
    "defer_reason": "text layer not started"
+  },
+  {
+   "id": "REQ-M2-001",
+   "statement": "تحمّل النواة جداول معالج تملكها (GDT وTSS وIDT) قبل أي عمل آخر بعد الإقلاع، ولا تعتمد على جداول firmware",
+   "rationale": "firmware tables live in reclaimable memory",
+   "source": "OS-EXEC-AR 3.2 §8.2, §20 M2",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [
+    "REQ-M1-002"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "failure_cases": [
+    "IDT firmware مستعمل بعد الاسترداد"
+   ],
+   "acceptance": "idt_layout عبر sidt يطابق SDM؛ أثر cpu_tables في الإقلاع",
+   "test_ids": [
+    "TST-M2-IDT-LAYOUT",
+    "TST-M1-BOOT"
+   ],
+   "implementation_status": "implemented_untested",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M2-002",
+   "statement": "كل استثناء معالج (0–31) يصدر سطر تشخيص كاملًا (الرقم ورمز الخطأ وRIP وCR2 والمسجلات) ويكون قاتلًا في وضع النواة، إلا #BP الذي يُستأنف بحالة مسجلات وأعلام سليمة",
+   "rationale": "no silent reset; diagnosable faults",
+   "source": "OS-EXEC-AR 3.2 §8.2, §20 M2",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [
+    "REQ-M2-001"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "RIP خاطئ في الإطار",
+    "مسجل لا يُستعاد بعد #BP"
+   ],
+   "acceptance": "اختبارات حقن DE/UD/DB/GP/PF/BP بأرقام ورموز ومساواة RIP",
+   "test_ids": [
+    "TST-M2-EXC-DE",
+    "TST-M2-EXC-UD",
+    "TST-M2-EXC-DB",
+    "TST-M2-EXC-GP",
+    "TST-M2-EXC-PF",
+    "TST-M2-EXC-BP",
+    "TST-M2-EXC-BP-STATE"
+   ],
+   "implementation_status": "implemented_untested",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M2-003",
+   "statement": "يُعالَج الخطأ المزدوج على مكدس طوارئ مخصص عبر IST",
+   "rationale": "a corrupt stack must not become a triple fault",
+   "source": "OS-EXEC-AR 3.2 §8.2",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [
+    "REQ-M2-001"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "#DF على المكدس الفاسد"
+   ],
+   "acceptance": "إطار #DF يُطبع من المكدس df",
+   "test_ids": [
+    "TST-M2-EXC-DF"
+   ],
+   "implementation_status": "implemented_untested",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M2-004",
+   "statement": "تداخل الاستثناءات داخل المعالج محدود بعمق 3 وينتهي برسالة ثابتة وتوقف لا بحلقة",
+   "rationale": "bounded failure",
+   "source": "OS-EXEC-AR 3.2 §8.2 (panic policy)",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [
+    "REQ-M2-002"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "حلقة لا نهائية"
+   ],
+   "acceptance": "3 إطارات #UD ثم nesting_limit",
+   "test_ids": [
+    "TST-M2-EXC-NESTED"
+   ],
+   "implementation_status": "implemented_untested",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M2-005",
+   "statement": "تعمل النواة على مكدس تملكه بعد ExitBootServices لا على مكدس firmware",
+   "rationale": "firmware stack memory is reclaimable",
+   "source": "OS-EXEC-AR 3.2 §8.1, §8.2",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [
+    "REQ-M1-002"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "failure_cases": [
+    "RSP داخل ذاكرة firmware"
+   ],
+   "acceptance": "stack=kernel في الإقلاع وفي إطار استثناء",
+   "test_ids": [
+    "TST-M2-EXC-DE",
+    "TST-M1-BOOT"
+   ],
+   "implementation_status": "implemented_untested",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M2-006",
+   "statement": "يكشف مشغّل الاختبارات إعادة التشغيل الصامتة (triple fault) ويميزها عن النجاح",
+   "rationale": "the harness must not pass on a reset",
+   "source": "OS-EXEC-AR 3.2 §19",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [],
+   "contract_refs": [],
+   "failure_cases": [
+    "reset يُحتسب نجاحًا"
+   ],
+   "acceptance": "اختبار triple يخرج برمز 0 بلا سطر استثناء",
+   "test_ids": [
+    "TST-M2-EXC-TRIPLE"
+   ],
+   "implementation_status": "implemented_untested",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M2-010",
+   "statement": "مخصص إطارات فيزيائية من خريطة UEFI يحجز النواة وboot_info، ويعيد None عند النفاد، ويكشف التحرير المزدوج",
+   "rationale": "memory foundation",
+   "source": "OS-EXEC-AR 3.2 §8.3, §20 M2",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [
+    "REQ-M2-001"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "تخصيص الإطار نفسه مرتين",
+    "panic عند النفاد"
+   ],
+   "acceptance": "اختبارات العد والنفاد والتحرير المزدوج",
+   "test_ids": [
+    "TST-M2-PMM-COUNTS",
+    "TST-M2-PMM-EXHAUST",
+    "TST-M2-PMM-DOUBLE-FREE"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M2-011",
+   "statement": "جداول صفحات تملكها النواة: خريطة مباشرة في النصف الأعلى، أقسام النواة بأذونات RX/R/RW+NX، CR0.WP وEFER.NXE، صفحات حراسة للمكدسات",
+   "rationale": "W^X and isolation groundwork",
+   "source": "OS-EXEC-AR 3.2 §8.3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [
+    "REQ-M2-010"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "كتابة على .text تنجح",
+    "تنفيذ من .data ينجح",
+    "تجاوز المكدس يدوس البيانات"
+   ],
+   "acceptance": "اختبارات switch/wp/nx/guard",
+   "test_ids": [
+    "TST-M2-VMM-SWITCH",
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-NX",
+    "TST-M2-VMM-GUARD"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M2-012",
+   "statement": "مقاطعات ومؤقت: تقنيع PIC، LAPIC/IOAPIC من ACPI MADT، مؤقت دوري معاير، EOI، بلا إعادة دخول",
+   "rationale": "timers and interrupts for scheduling",
+   "source": "OS-EXEC-AR 3.2 §8.2, §20 M2",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [
+    "REQ-M2-011"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "لا نبضات",
+    "إعادة دخول المعالج"
+   ],
+   "acceptance": "اختبارات ticks/eoi/spurious",
+   "test_ids": [
+    "TST-M2-TIMER-TICKS",
+    "TST-M2-IRQ-EOI",
+    "TST-M2-SPURIOUS"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M2-013",
+   "statement": "تزامن أولي (irqsave spinlock) وسياسة panic ونفاد موارد موثقة",
+   "rationale": "single-CPU correctness before SMP",
+   "source": "OS-EXEC-AR 3.2 §8.2 (التزامن), §20 M2",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [
+    "REQ-M2-012"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "IF لا يُستعاد"
+   ],
+   "acceptance": "اختبارات lock/panic",
+   "test_ids": [
+    "TST-M2-LOCK-IRQSAVE",
+    "TST-M2-PANIC-CODE"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M2-014",
+   "statement": "اختبار طفرات على arch/ يكشف ≥95% من العيوب المزروعة قبل إغلاق M2",
+   "rationale": "tests must detect defects, not just pass",
+   "source": "OS-EXEC-AR 3.2 §19; Sol ADR-010 §15",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M2",
+   "dependencies": [
+    "REQ-M2-002"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "اختبار لا يكشف حذف تعليمة دفاعية"
+   ],
+   "acceptance": "تقرير mutants",
+   "test_ids": [
+    "TST-M2-MUTANTS"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
   }
  ]
 }

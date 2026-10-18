@@ -151,6 +151,14 @@ pub extern "efiapi" fn efi_main(image: Handle, st: *const SystemTable) -> ! {
     kprintln!("OSX|{}|boot|ebs|ok=1|attempts={}", BUILD_ID, attempts);
     // SAFETY: BOOT_INFO was fully written above and is never written again; the shared
     // reference lives for the rest of the kernel's life.
-    let info: &'static BootInfo = unsafe { &*BOOT_INFO.get() };
+    let info: *const BootInfo = BOOT_INFO.get();
+    // SAFETY: `kernel_entry` never returns; BOOT_INFO is a static that lives for the kernel's life.
+    unsafe { arch::jump_on_kernel_stack(kernel_entry, info.cast::<u8>()) }
+}
+
+/// First function on the kernel-owned stack (sysv64: `bi` arrives in rdi).
+extern "sysv64" fn kernel_entry(bi: *const u8) -> ! {
+    // SAFETY: `bi` is BOOT_INFO, fully written before the jump and never written again.
+    let info: &'static BootInfo = unsafe { &*bi.cast::<BootInfo>() };
     crate::kmain::kernel_main(info)
 }

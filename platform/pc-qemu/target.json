@@ -17,7 +17,8 @@
   ],
   "artifact": "${OUT}/NAWAH.EFI",
   "extra_artifacts": [
-   "${OUT}/NAWAH-NEG.EFI"
+   "${OUT}/NAWAH-NEG.EFI",
+   "${OUT}/NAWAH-KTEST.EFI"
   ],
   "toolchain": "rust-1.97.0 x86_64-unknown-uefi",
   "steps": [
@@ -56,6 +57,26 @@
     "cp",
     "${OUT}/cargo-neg/x86_64-unknown-uefi/release/nawah-kernel.efi",
     "${OUT}/NAWAH-NEG.EFI"
+   ],
+   [
+    "cargo",
+    "build",
+    "--profile",
+    "ktest",
+    "--offline",
+    "--manifest-path",
+    "kernel/Cargo.toml",
+    "--target",
+    "x86_64-unknown-uefi",
+    "--target-dir",
+    "${OUT}/cargo-ktest",
+    "--features",
+    "ktest"
+   ],
+   [
+    "cp",
+    "${OUT}/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.efi",
+    "${OUT}/NAWAH-KTEST.EFI"
    ]
   ]
  },
@@ -76,6 +97,7 @@
   "required_markers": [
    "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
    "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
+   "OSX|${BUILD_ID}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
    "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
    "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10"
   ],
@@ -97,6 +119,7 @@
     "required_markers": [
      "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
      "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
+     "OSX|${BUILD_ID}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
      "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
      "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10"
     ],
@@ -127,6 +150,264 @@
     "max_counts": {
      "|boot|start|": 1
     }
+   }
+  ],
+  "M2": [
+   {
+    "id": "TST-M2-EXC-DE",
+    "test_id": "TST-M2-EXC-DE",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=exc_de"
+    ],
+    "oracle": "SDM Table 7-1: #DE vector 0, no error code (fault: RIP at div); lab exit 145",
+    "expected_exit_code": 145,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=exc_de",
+     "|exc|vector=0|name=#DE|error=0x0|",
+     "|stack=kernel|"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_rip=(0x[0-9a-f]+)",
+      "\\|rip=(0x[0-9a-f]+)\\|"
+     ]
+    ]
+   },
+   {
+    "id": "TST-M2-EXC-UD",
+    "test_id": "TST-M2-EXC-UD",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=exc_ud"
+    ],
+    "oracle": "#UD vector 6, fault at ud2; exit 157",
+    "expected_exit_code": 157,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=exc_ud",
+     "|exc|vector=6|name=#UD|error=0x0|"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_rip=(0x[0-9a-f]+)",
+      "\\|rip=(0x[0-9a-f]+)\\|"
+     ]
+    ]
+   },
+   {
+    "id": "TST-M2-EXC-DB",
+    "test_id": "TST-M2-EXC-DB",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=exc_db"
+    ],
+    "oracle": "#DB single-step trap: saved RIP after the nop (SDM Event 1); exit 147",
+    "expected_exit_code": 147,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=exc_db",
+     "|exc|vector=1|name=#DB|"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_rip=(0x[0-9a-f]+)",
+      "\\|rip=(0x[0-9a-f]+)\\|"
+     ]
+    ]
+   },
+   {
+    "id": "TST-M2-EXC-GP",
+    "test_id": "TST-M2-EXC-GP",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=exc_gp"
+    ],
+    "oracle": "#GP on non-canonical address, error code 0 (SDM Event 13); exit 171",
+    "expected_exit_code": 171,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=exc_gp",
+     "|exc|vector=13|name=#GP|error=0x0|"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_rip=(0x[0-9a-f]+)",
+      "\\|rip=(0x[0-9a-f]+)\\|"
+     ]
+    ]
+   },
+   {
+    "id": "TST-M2-EXC-PF",
+    "test_id": "TST-M2-EXC-PF",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=exc_pf"
+    ],
+    "oracle": "#PF write to unmapped supervisor page: error code 2, CR2 = target (SDM Fig. 7-11); exit 173",
+    "expected_exit_code": 173,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=exc_pf",
+     "|exc|vector=14|name=#PF|error=0x2|",
+     "|cr2=0x600000001000|"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_rip=(0x[0-9a-f]+)",
+      "\\|rip=(0x[0-9a-f]+)\\|"
+     ]
+    ]
+   },
+   {
+    "id": "TST-M2-EXC-BP",
+    "test_id": "TST-M2-EXC-BP",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=exc_bp"
+    ],
+    "oracle": "#BP is a trap: handler prints and returns; saved RIP after int3 (SDM Event 3)",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=exc_bp",
+     "|exc|vector=3|name=#BP|",
+     "|ktest|pass|resumed after #BP"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_rip=(0x[0-9a-f]+)",
+      "\\|rip=(0x[0-9a-f]+)\\|"
+     ]
+    ]
+   },
+   {
+    "id": "TST-M2-EXC-BP-STATE",
+    "test_id": "TST-M2-EXC-BP-STATE",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=exc_bp_state"
+    ],
+    "oracle": "iretq path restores 15 GPRs and CF/DF",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=exc_bp_state",
+     "|ktest|pass|registers and flags preserved"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ]
+   },
+   {
+    "id": "TST-M2-EXC-DF",
+    "test_id": "TST-M2-EXC-DF",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=exc_df"
+    ],
+    "oracle": "corrupt RSP -> #PF undeliverable -> #DF (SDM Table 7-5) on IST1 stack, error code 0; exit 161",
+    "expected_exit_code": 161,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=exc_df",
+     "|exc|vector=8|name=#DF|error=0x0|",
+     "|stack=df|"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ]
+   },
+   {
+    "id": "TST-M2-EXC-NESTED",
+    "test_id": "TST-M2-EXC-NESTED",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=exc_nested"
+    ],
+    "oracle": "fault inside handler stops at nesting limit 3 with a fixed message; exit 157",
+    "expected_exit_code": 157,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=exc_nested",
+     "|exc|nesting_limit|stopping"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "max_counts": {
+     "|exc|vector=6|name=#UD|": 3
+    },
+    "min_counts": {
+     "|exc|vector=6|name=#UD|": 3
+    }
+   },
+   {
+    "id": "TST-M2-IDT-LAYOUT",
+    "test_id": "TST-M2-IDT-LAYOUT",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=idt_layout"
+    ],
+    "oracle": "sidt-walked IDT: 32 present gates push their own vector, dummy error code exactly per SDM Table 7-1, 224 empty gates",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=idt_layout",
+     "|ktest|pass|idt layout"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|idt_layout|vector="
+    ]
+   },
+   {
+    "id": "TST-M2-EXC-TRIPLE",
+    "test_id": "TST-M2-EXC-TRIPLE",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=exc_triple"
+    ],
+    "oracle": "empty IDT + fault = triple fault -> QEMU reset -> exit 0 under -no-reboot; proves the runner detects a reset (no exception line printed)",
+    "expected_exit_code": 0,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=exc_triple"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
+    ]
    }
   ]
  }

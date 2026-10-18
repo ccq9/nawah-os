@@ -7,7 +7,7 @@
  "source_revision": "13f4c78aad9d54df5de1f112fa6e35b87853115c",
  "dirty_state": false,
  "current_stage": "M2",
- "current_task": null,
+ "current_task": "WP-07",
  "completed_requirement_ids": [
   "REQ-M0-001",
   "REQ-M0-002",
@@ -21,7 +21,7 @@
  ],
  "last_run_id": "20261017T211012Z-9f580295-001",
  "blockers": [],
- "next_action": "WP-07 (M2): GDT/TSS/IDT, exception diagnostics, test kernel (ktest) ported from Sol OS; local Rust builds once rust-std arrives",
+ "next_action": "WP-07: run M2 exception suite (CI until local rust-std), then WP-08 PMM",
  "required_inputs": [
   "rust-std-1.97.0-x86_64-unknown-uefi.tar.xz upload from user (for local Rust builds; CI unaffected)"
  ],

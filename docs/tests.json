@@ -12,7 +12,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-001"
+    "evidence/20261018T030133Z-10d5fd69-001"
    ]
   },
   {
@@ -26,7 +26,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-002"
+    "evidence/20261018T030133Z-10d5fd69-002"
    ]
   },
   {
@@ -93,7 +93,7 @@
    "command": "python3 tools/project.py test --target host --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-003"
+    "evidence/20261018T030133Z-10d5fd69-003"
    ]
   },
   {
@@ -121,6 +121,271 @@
    "verdict": "N/A",
    "evidence_refs": [],
    "verdict_reason": "single-image bootstrap: no separate kernel image to corrupt until loader split (ADR-0001)"
+  },
+  {
+   "id": "TST-M2-EXC-DE",
+   "requirement_ids": [
+    "REQ-M2-002",
+    "REQ-M2-005"
+   ],
+   "layer": "guest",
+   "oracle": "SDM Table 7-1: #DE vector 0, no error code (fault: RIP at div); lab exit 145",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-EXC-UD",
+   "requirement_ids": [
+    "REQ-M2-002"
+   ],
+   "layer": "guest",
+   "oracle": "#UD vector 6, fault at ud2; exit 157",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-EXC-DB",
+   "requirement_ids": [
+    "REQ-M2-002"
+   ],
+   "layer": "guest",
+   "oracle": "#DB single-step trap: saved RIP after the nop (SDM Event 1); exit 147",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-EXC-GP",
+   "requirement_ids": [
+    "REQ-M2-002"
+   ],
+   "layer": "guest",
+   "oracle": "#GP on non-canonical address, error code 0 (SDM Event 13); exit 171",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-EXC-PF",
+   "requirement_ids": [
+    "REQ-M2-002"
+   ],
+   "layer": "guest",
+   "oracle": "#PF write to unmapped supervisor page: error code 2, CR2 = target (SDM Fig. 7-11); exit 173",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-EXC-BP",
+   "requirement_ids": [
+    "REQ-M2-002"
+   ],
+   "layer": "guest",
+   "oracle": "#BP is a trap: handler prints and returns; saved RIP after int3 (SDM Event 3)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-EXC-BP-STATE",
+   "requirement_ids": [
+    "REQ-M2-002"
+   ],
+   "layer": "guest",
+   "oracle": "iretq path restores 15 GPRs and CF/DF",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-EXC-DF",
+   "requirement_ids": [
+    "REQ-M2-003"
+   ],
+   "layer": "guest",
+   "oracle": "corrupt RSP -> #PF undeliverable -> #DF (SDM Table 7-5) on IST1 stack, error code 0; exit 161",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-EXC-NESTED",
+   "requirement_ids": [
+    "REQ-M2-004"
+   ],
+   "layer": "guest",
+   "oracle": "fault inside handler stops at nesting limit 3 with a fixed message; exit 157",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-IDT-LAYOUT",
+   "requirement_ids": [
+    "REQ-M2-001"
+   ],
+   "layer": "guest",
+   "oracle": "sidt-walked IDT: 32 present gates push their own vector, dummy error code exactly per SDM Table 7-1, 224 empty gates",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-EXC-TRIPLE",
+   "requirement_ids": [
+    "REQ-M2-006"
+   ],
+   "layer": "negative",
+   "oracle": "empty IDT + fault = triple fault -> QEMU reset -> exit 0 under -no-reboot; proves the runner detects a reset (no exception line printed)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-PMM-COUNTS",
+   "requirement_ids": [
+    "REQ-M2-010"
+   ],
+   "layer": "guest",
+   "oracle": "alloc/free N frames: counters and free list consistent; no frame handed out twice",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-PMM-EXHAUST",
+   "requirement_ids": [
+    "REQ-M2-010"
+   ],
+   "layer": "negative",
+   "oracle": "allocating beyond capacity returns None, no panic, state intact",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-PMM-DOUBLE-FREE",
+   "requirement_ids": [
+    "REQ-M2-010"
+   ],
+   "layer": "negative",
+   "oracle": "freeing a free frame is detected and reported, not silently accepted",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-VMM-SWITCH",
+   "requirement_ids": [
+    "REQ-M2-011"
+   ],
+   "layer": "guest",
+   "oracle": "after CR3 switch to kernel page tables, serial and data still work; kernel sections mapped",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-VMM-WP",
+   "requirement_ids": [
+    "REQ-M2-011"
+   ],
+   "layer": "negative",
+   "oracle": "write to .text -> #PF error code 3 (present, write, supervisor) with CR0.WP",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-VMM-NX",
+   "requirement_ids": [
+    "REQ-M2-011"
+   ],
+   "layer": "negative",
+   "oracle": "execute from .data -> #PF with instruction-fetch bit (error code bit 4) under EFER.NXE",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-VMM-GUARD",
+   "requirement_ids": [
+    "REQ-M2-011"
+   ],
+   "layer": "negative",
+   "oracle": "kernel stack overflow hits the guard page -> #DF on IST1",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-TIMER-TICKS",
+   "requirement_ids": [
+    "REQ-M2-012"
+   ],
+   "layer": "guest",
+   "oracle": "timer interrupt delivered: >= N ticks within the lab timeout, counts monotonic",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-IRQ-EOI",
+   "requirement_ids": [
+    "REQ-M2-012"
+   ],
+   "layer": "guest",
+   "oracle": "EOI acknowledged; next interrupt arrives; no re-entry while handling",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-SPURIOUS",
+   "requirement_ids": [
+    "REQ-M2-012"
+   ],
+   "layer": "negative",
+   "oracle": "spurious/masked vectors do not fault the kernel",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-LOCK-IRQSAVE",
+   "requirement_ids": [
+    "REQ-M2-013"
+   ],
+   "layer": "guest",
+   "oracle": "irqsave lock restores IF; nested acquire detected in test kernel",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-PANIC-CODE",
+   "requirement_ids": [
+    "REQ-M2-013"
+   ],
+   "layer": "negative",
+   "oracle": "panic prints build id and location and exits with code 0x11 (35)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-MUTANTS",
+   "requirement_ids": [
+    "REQ-M2-014"
+   ],
+   "layer": "host_unit",
+   "oracle": "seeded defects in arch/ are detected by the M2 suite (>= 95% killed)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   }
  ]
 }

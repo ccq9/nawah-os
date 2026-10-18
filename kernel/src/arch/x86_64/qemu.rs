@@ -12,9 +12,15 @@ pub const EXIT_OK: u8 = 0x10;
 pub const EXIT_PANIC: u8 = 0x11;
 /// Boot handoff failure (QEMU exit 97) — docs/contracts/boot.md.
 pub const EXIT_BOOT_FAIL: u8 = 0x30;
-// Reserved (added with the test kernel in M2): 0x12 test failed, 0x13 unknown test,
-// 0x48 + vector for a fatal exception (QEMU exit 145 + 2v, 145..207 — away from `timeout`
-// codes 124..127/137 and common signal codes).
+/// An in-kernel test reported failure (QEMU exit 37).
+#[cfg(feature = "ktest")]
+pub const EXIT_TEST_FAILED: u8 = 0x12;
+/// Unknown or missing test name (QEMU exit 39).
+#[cfg(feature = "ktest")]
+pub const EXIT_UNKNOWN_TEST: u8 = 0x13;
+/// Fatal exception vector v exits with 0x48 + v (QEMU exit 145 + 2v, 145..207), away from
+/// `timeout` codes (124..127, 137) and common signal codes.
+pub const EXIT_EXCEPTION_BASE: u8 = 0x48;
 
 /// Ends the emulation with `code`; halts if the device is absent.
 pub fn exit(code: u8) -> ! {

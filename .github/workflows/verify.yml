@@ -34,6 +34,7 @@ jobs:
           cargo fmt --manifest-path kernel/Cargo.toml --check
           cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings
           cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --features inject_ebs_fail -- -D warnings
+          cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --profile ktest --features ktest -- -D warnings
           sh tools/check-unsafe.sh
       - name: E0 (C toolchain experiment, M0 evidence)
         run: |
@@ -43,6 +44,8 @@ jobs:
         run: |
           python3 tools/project.py build --target pc-qemu
           python3 tools/project.py test --target pc-qemu --suite M1
+      - name: M2 guest suite (test kernel, exceptions)
+        run: python3 tools/project.py test --target pc-qemu --suite M2
       - name: Host suites
         run: |
           python3 tools/project.py test --target host --suite M0

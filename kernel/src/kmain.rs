@@ -7,6 +7,12 @@ use crate::bootinfo::{BootInfo, MEM_CONVENTIONAL};
 /// Stage M1: validate the handoff, account the memory map, emit the trace the oracle checks,
 /// then end the lab run. Later stages continue into M2 initialisation instead of exiting.
 pub fn kernel_main(bi: &BootInfo) -> ! {
+    // CPU tables first: from here on a fault is a diagnostic line, not a silent reset.
+    arch::init_cpu();
+    kprintln!(
+        "OSX|{}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
+        bi.build_id()
+    );
     if !bi.is_valid() {
         kprintln!("OSX|?|kernel|panic|code=K_E_BAD_BOOTINFO");
         arch::halt();
@@ -28,6 +34,11 @@ pub fn kernel_main(bi: &BootInfo) -> ! {
         conventional_pages,
         bi.ebs_attempts
     );
-    kprintln!("OSX|{}|kernel|m1_done|exit=0x10", build_id);
-    arch::qemu::exit(arch::qemu::EXIT_OK)
+    #[cfg(feature = "ktest")]
+    crate::ktest::run();
+    #[cfg(not(feature = "ktest"))]
+    {
+        kprintln!("OSX|{}|kernel|m1_done|exit=0x10", build_id);
+        arch::qemu::exit(arch::qemu::EXIT_OK)
+    }
 }

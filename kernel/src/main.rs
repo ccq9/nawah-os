@@ -28,6 +28,9 @@ mod cell;
 
 mod kmain;
 
+#[cfg(feature = "ktest")]
+mod ktest;
+
 /// Build identity from tools/project.py (ASCII, < 32 bytes; see kernel/build.rs).
 pub const BUILD_ID: &str = env!("NAWAH_BUILD_ID");
 

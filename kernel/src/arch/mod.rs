@@ -5,4 +5,7 @@
 mod x86_64;
 
 #[cfg(target_arch = "x86_64")]
-pub use x86_64::{halt, init_console, qemu, Serial};
+pub use x86_64::{halt, init_console, init_cpu, jump_on_kernel_stack, qemu, Serial};
+
+#[cfg(all(target_arch = "x86_64", feature = "ktest"))]
+pub use x86_64::{fwcfg, ktest};

@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-002"
+    "evidence/20261018T030133Z-10d5fd69-002"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-001"
+    "evidence/20261018T030133Z-10d5fd69-001"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T025054Z-4d867f9d-002"
+    "evidence/20261018T030133Z-10d5fd69-002"
    ],
    "blocker": null
   },
@@ -355,8 +355,285 @@
    ],
    "evidence_refs": [
     "evidence/ci/39091622750/jobs.json",
-    "evidence/20261018T025054Z-4d867f9d-003"
+    "evidence/20261018T030133Z-10d5fd69-003"
    ],
+   "blocker": null
+  },
+  {
+   "id": "WP-07",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-001",
+    "REQ-M2-002",
+    "REQ-M2-003",
+    "REQ-M2-004",
+    "REQ-M2-005",
+    "REQ-M2-006"
+   ],
+   "depends_on": [
+    "WP-06"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0003",
+    "Intel SDM Vol.3A (S26)"
+   ],
+   "files": [
+    "kernel/src/arch/x86_64/gdt.rs",
+    "kernel/src/arch/x86_64/idt.rs",
+    "kernel/src/arch/x86_64/trap.rs",
+    "kernel/src/arch/x86_64/ktest.rs",
+    "kernel/src/arch/x86_64/fwcfg.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/boot/stub.rs",
+    "platform/pc-qemu/target.json",
+    "docs/adr/0003-cpu-tables-exceptions-test-kernel.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "port GDT/TSS/IDT/trap from Sol OS",
+    "kernel stack switch",
+    "test kernel with fw_cfg test selection",
+    "M2 exception suite (11 cases)"
+   ],
+   "acceptance": "كل حالات جناح M2 للاستثناءات PASS محليًا أو على CI",
+   "test_ids": [
+    "TST-M2-EXC-DE",
+    "TST-M2-EXC-UD",
+    "TST-M2-EXC-DB",
+    "TST-M2-EXC-GP",
+    "TST-M2-EXC-PF",
+    "TST-M2-EXC-BP",
+    "TST-M2-EXC-BP-STATE",
+    "TST-M2-EXC-DF",
+    "TST-M2-EXC-NESTED",
+    "TST-M2-IDT-LAYOUT",
+    "TST-M2-EXC-TRIPLE"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "active",
+   "status_history": [
+    "planned",
+    "active"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-08",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-010"
+   ],
+   "depends_on": [
+    "WP-07"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0003",
+    "Intel SDM Vol.3A (S26)"
+   ],
+   "files": [
+    "kernel/src/mm/pmm.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "bitmap frame allocator from boot_info memmap",
+    "reserve kernel image/stacks/bootinfo",
+    "ktests"
+   ],
+   "acceptance": "pmm tests PASS",
+   "test_ids": [
+    "TST-M2-PMM-COUNTS",
+    "TST-M2-PMM-EXHAUST",
+    "TST-M2-PMM-DOUBLE-FREE"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-09",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-011"
+   ],
+   "depends_on": [
+    "WP-08"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0003",
+    "Intel SDM Vol.3A (S26)"
+   ],
+   "files": [
+    "kernel/src/arch/x86_64/paging.rs",
+    "kernel/src/mm/vmm.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "4-level tables, direct map, section permissions, WP/NXE, guard pages, CR3 switch",
+    "ktests"
+   ],
+   "acceptance": "vmm tests PASS",
+   "test_ids": [
+    "TST-M2-VMM-SWITCH",
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-NX",
+    "TST-M2-VMM-GUARD"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-10",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-012"
+   ],
+   "depends_on": [
+    "WP-09"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0003",
+    "Intel SDM Vol.3A (S26)"
+   ],
+   "files": [
+    "kernel/src/arch/x86_64/apic.rs",
+    "kernel/src/arch/x86_64/acpi.rs",
+    "kernel/src/arch/x86_64/pic.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "mask PIC, LAPIC, IOAPIC via MADT, timer calibration, IRQ gates 32+",
+    "ktests"
+   ],
+   "acceptance": "timer/irq tests PASS",
+   "test_ids": [
+    "TST-M2-TIMER-TICKS",
+    "TST-M2-IRQ-EOI",
+    "TST-M2-SPURIOUS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-11",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-013"
+   ],
+   "depends_on": [
+    "WP-10"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0003",
+    "Intel SDM Vol.3A (S26)"
+   ],
+   "files": [
+    "kernel/src/sync.rs",
+    "kernel/src/panic.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "irqsave spinlock, locked serial, panic policy doc",
+    "ktests"
+   ],
+   "acceptance": "lock/panic tests PASS",
+   "test_ids": [
+    "TST-M2-LOCK-IRQSAVE",
+    "TST-M2-PANIC-CODE"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-12",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-014"
+   ],
+   "depends_on": [
+    "WP-11"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0003",
+    "Intel SDM Vol.3A (S26)"
+   ],
+   "files": [
+    "tests/mutants.py",
+    "docs/operations/m2-review.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "mutation testing",
+    "named self-review",
+    "M2 gate"
+   ],
+   "acceptance": "M2 gate passed",
+   "test_ids": [
+    "TST-M2-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
    "blocker": null
   }
  ]
