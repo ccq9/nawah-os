@@ -2814,11 +2814,13 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=net_limits"
         ],
-        "oracle": "64 sends back to back: exactly queue_size (16) are queued and the rest refused with Busy (counted in tx_busy), never more slots in flight than the queue; after the device drains the ring every slot is reclaimed (in_flight 0) and 16 more sends succeed; a 13-byte and a 1515-byte frame are refused (Range); the DMA frame count stays 18 and no kernel frame leaks; exit 33",
+        "oracle": "64 sends back to back: every one is queued or refused with Busy (never dropped silently), never more than queue_size (16) slots in flight; after the device drains the ring every slot is reclaimed (in_flight 0); with every slot marked in flight the next send is refused with Busy and counted in tx_busy, and after release sends succeed again (16 more); a 13-byte and a 1515-byte frame are refused (Range); the DMA frame count stays 18 and no kernel frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=net_limits",
-          "|ktest|net_limits|queue_size=16|sent=16|busy=48|other=0|in_flight_peak=16|in_flight_after=0|sent2=16|busy2=0|short_refused=1|long_refused=1|received=",
+          "|ktest|net_limits|queue_size=16|sent=",
+          "|other=0|in_flight_peak=",
+          "|in_flight_after=0|forced_busy=1|busy_counted=1|after_release=1|sent2=16|busy2=0|short_refused=1|long_refused=1|received=",
           "|dma_frames=18|frames_delta=0",
           "|ktest|pass|the interface's fixed resources hold under pressure and come back"
         ],

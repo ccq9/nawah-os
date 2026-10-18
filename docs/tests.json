@@ -1186,7 +1186,7 @@
     "REQ-M4-006"
    ],
    "layer": "guest",
-   "oracle": "64 sends back to back: exactly queue_size (16) are queued and the rest refused with Busy (counted in tx_busy), never more slots in flight than the queue; after the device drains the ring every slot is reclaimed (in_flight 0) and 16 more sends succeed; a 13-byte and a 1515-byte frame are refused (Range); the DMA frame count stays 18 and no kernel frame leaks; exit 33",
+   "oracle": "64 sends back to back: every one is queued or refused with Busy (never dropped silently), never more than queue_size (16) slots in flight; after the device drains the ring every slot is reclaimed (in_flight 0); with every slot marked in flight the next send is refused with Busy and counted in tx_busy, and after release sends succeed again (16 more); a 13-byte and a 1515-byte frame are refused (Range); the DMA frame count stays 18 and no kernel frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []

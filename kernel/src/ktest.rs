@@ -3754,8 +3754,10 @@ fn run_with_object(name: &str, image: &[u8], entry: Entry) -> crate::user::Outco
     if image.is_empty() {
         fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
     }
-    let object = Arc::new(crate::object::process::ProcessObject::new());
+    // The baseline precedes every allocation of the spawn (the process object included):
+    // CI run 39133924555 counted the object's block as a frame freed by the process.
     let frames0 = pmm::stats().free_frames;
+    let object = Arc::new(crate::object::process::ProcessObject::new());
     let pid = match crate::user::spawn_elf_with(image, 1, alloc::vec![entry], object) {
         Ok(p) => p,
         Err(e) => {
@@ -3819,9 +3821,11 @@ fn net_link() -> ! {
     pass("the interface sends and receives from the kernel and from a process")
 }
 
-/// Fixed resources under pressure: 64 sends back to back fill the 16 transmit slots and are
-/// refused with Busy beyond them (never dropped silently, never more slots), every slot comes
-/// back, the DMA frames never change, oversized and undersized frames are refused.
+/// Fixed resources under pressure: 64 sends back to back never put more than the 16 slots in
+/// flight and are either queued or refused with Busy (never dropped silently, never more
+/// slots — the lab's device drains so fast that the refusal is also forced by marking every
+/// slot in flight); every slot comes back; the DMA frames never change; oversized and
+/// undersized frames are refused.
 fn net_limits() -> ! {
     use crate::drivers::virtio_net::{NetError, DMA_FRAMES, FRAME_MAX};
     let Some(info) = crate::net::info() else {
@@ -3833,19 +3837,27 @@ fn net_limits() -> ! {
         crate::net::LAB_GUEST_IP,
         crate::net::LAB_GATEWAY_IP,
     );
-    let (mut sent, mut busy, mut other) = (0u32, 0u32, 0u32);
+    let (mut sent, mut busy, mut other, mut peak) = (0u32, 0u32, 0u32, 0u32);
     for _ in 0..64 {
         match crate::net::send(&req) {
             Ok(()) => sent += 1,
             Err(NetError::Busy) => busy += 1,
             Err(_) => other += 1,
         }
+        peak = peak.max(crate::net::tx_in_flight_raw());
     }
-    let in_flight_peak = crate::net::tx_in_flight();
     // Wait for the device to drain the ring, then every slot is free again.
     let t = sched::ticks() + 200;
     sched::poll_until(t, || crate::net::tx_in_flight() == 0);
     let in_flight_after = crate::net::tx_in_flight();
+    // The refusal path, forced: every slot marked in flight (the device has nothing to
+    // return for them), so a send must answer Busy and count it; released, it sends again.
+    let busy0 = crate::net::stats().tx_busy;
+    crate::net::inject_tx_full(true);
+    let forced_busy = crate::net::send(&req) == Err(NetError::Busy);
+    let busy_counted = crate::net::stats().tx_busy == busy0 + 1;
+    crate::net::inject_tx_full(false);
+    let after_release = crate::net::send(&req).is_ok();
     let (mut sent2, mut busy2) = (0u32, 0u32);
     for _ in 0..16 {
         match crate::net::send(&req) {
@@ -3859,22 +3871,28 @@ fn net_limits() -> ! {
     // Drain whatever came back (ARP replies to the flood) and count.
     let t = sched::ticks() + 300;
     sched::poll_until(t, || false);
-    let mut buf = alloc::vec![0u8; FRAME_MAX];
-    let mut received = 0u32;
-    while crate::net::recv(&mut buf).is_some() {
-        received += 1;
-    }
+    let received = {
+        let mut buf = alloc::vec![0u8; FRAME_MAX];
+        let mut n = 0u32;
+        while crate::net::recv(&mut buf).is_some() {
+            n += 1;
+        }
+        n
+    };
     let st = crate::net::stats();
     let frames_delta = frames_before as i64 - pmm::stats().free_frames as i64;
     kprintln!(
-        "OSX|{}|ktest|net_limits|queue_size={}|sent={}|busy={}|other={}|in_flight_peak={}|in_flight_after={}|sent2={}|busy2={}|short_refused={}|long_refused={}|received={}|tx_busy_counted={}|rx_bad={}|dma_frames={}|frames_delta={}",
+        "OSX|{}|ktest|net_limits|queue_size={}|sent={}|busy={}|other={}|in_flight_peak={}|in_flight_after={}|forced_busy={}|busy_counted={}|after_release={}|sent2={}|busy2={}|short_refused={}|long_refused={}|received={}|tx_busy_counted={}|rx_bad={}|dma_frames={}|frames_delta={}",
         BUILD_ID,
         info.queue_size,
         sent,
         busy,
         other,
-        in_flight_peak,
+        peak,
         in_flight_after,
+        u8::from(forced_busy),
+        u8::from(busy_counted),
+        u8::from(after_release),
         sent2,
         busy2,
         u8::from(short),
@@ -3886,11 +3904,17 @@ fn net_limits() -> ! {
         frames_delta
     );
     let q = u32::from(info.queue_size);
-    if sent < q || sent + busy != 64 || other != 0 || in_flight_peak > q {
-        fail("the transmit ring did not refuse beyond its slots")
+    if sent + busy != 64 || other != 0 || peak > q {
+        fail("the transmit ring did not keep to its slots")
     }
-    if in_flight_after != 0 || sent2 != 16 || busy2 != 0 {
-        fail("transmit slots were not reclaimed")
+    if in_flight_after != 0
+        || !forced_busy
+        || !busy_counted
+        || !after_release
+        || sent2 + busy2 != 16
+        || busy2 > 0
+    {
+        fail("transmit slots were not reclaimed or the refusal path is wrong")
     }
     if !short || !long || crate::net::frames() != DMA_FRAMES || frames_delta != 0 {
         fail("length limits or resource accounting wrong")

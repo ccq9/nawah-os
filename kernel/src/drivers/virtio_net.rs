@@ -456,4 +456,16 @@ impl VirtioNet {
         self.reclaim_tx();
         self.tx_in_flight.count_ones()
     }
+
+    #[cfg(feature = "ktest")]
+    pub fn tx_in_flight_raw(&self) -> u32 {
+        self.tx_in_flight.count_ones()
+    }
+
+    /// Test hook: pretends every slot is in flight (nothing is posted to the device, so no
+    /// used entry will ever clear the marks until released).
+    #[cfg(feature = "ktest")]
+    pub fn inject_tx_full(&mut self, full: bool) {
+        self.tx_in_flight = if full { (1u32 << self.tx.size) - 1 } else { 0 };
+    }
 }

@@ -92,6 +92,21 @@ pub fn tx_in_flight() -> u32 {
     DEVICE.lock().as_mut().map_or(0, |d| d.tx_in_flight())
 }
 
+/// Slots in flight as the driver currently records them (no reclaim; diagnostics).
+#[cfg(feature = "ktest")]
+pub fn tx_in_flight_raw() -> u32 {
+    DEVICE.lock().as_ref().map_or(0, |d| d.tx_in_flight_raw())
+}
+
+/// Test hook: marks every transmit slot in flight (or releases them), so the refusal path is
+/// exercised whatever the device's speed (TST-M4-NET-LIMITS).
+#[cfg(feature = "ktest")]
+pub fn inject_tx_full(full: bool) {
+    if let Some(d) = DEVICE.lock().as_mut() {
+        d.inject_tx_full(full);
+    }
+}
+
 pub fn send(frame: &[u8]) -> Result<(), NetError> {
     DEVICE
         .lock()
