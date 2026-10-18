@@ -1,0 +1,9 @@
+$ python3 -I tools/fat32.py expect /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img /APP.TXT written by BYle_roundtrip: second part\n
+expect: /APP.TXT missing
+
+[exit 1]
+$ fsck.fat -n /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img
+fsck.fat 4.2 (2021-01-31)
+/home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img: 5 files, 44/128992 clusters
+
+[exit 0]
