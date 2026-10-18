@@ -18,7 +18,9 @@
 //! GDT/TSS bases, static buffers) recomputed. Consequence recorded in ADR-0004: the image's
 //! physical range is a supervisor-only hole in every later user address space.
 
-use crate::arch::paging::{self, AddressSpace, MapError, DIRECT_MAP_BASE, NX, PAGE_4K, WRITE};
+use crate::arch::paging::{
+    self, AddressSpace, MapError, DIRECT_MAP_BASE, NX, PAGE_4K, PCD, PWT, WRITE,
+};
 use crate::bootinfo::BootInfo;
 use crate::cell::BootCell;
 use crate::mm::pmm;
@@ -310,6 +312,29 @@ pub fn kernel_space() -> Option<KernelSpace> {
 /// Direct-map address of a physical address.
 pub const fn direct(phys: u64) -> u64 {
     DIRECT_MAP_BASE + phys
+}
+
+/// Maps `[phys, phys + len)` of device memory (MMIO) at its own address, uncacheable (PCD|PWT),
+/// RW + NX, in the active kernel space; returns the virtual address. Pages are 4 KiB; a range
+/// already covered by a RAM mapping is refused (`Conflict`) rather than remapped. New entries
+/// need no TLB flush: not-present translations are never cached (SDM Vol. 3A §4.10.2.3).
+pub fn map_mmio(phys: u64, len: u64) -> Result<u64, VmmError> {
+    if kernel_space().is_none() {
+        return Err(VmmError::Unmapped);
+    }
+    let space = AddressSpace::current();
+    let start = phys & !(PAGE_4K - 1);
+    let end = (phys + len).next_multiple_of(PAGE_4K);
+    let mut page = start;
+    while page < end {
+        match space.translate(page) {
+            Some((p, flags)) if p == page && flags & PCD != 0 => {} // already mapped as MMIO
+            Some(_) => return Err(VmmError::Map(MapError::Conflict)),
+            None => space.map_4k(page, page, WRITE | NX | PCD | PWT)?,
+        }
+        page += PAGE_4K;
+    }
+    Ok(phys)
 }
 
 /// Leaf flags of a virtual address in the active space, `None` when unmapped.

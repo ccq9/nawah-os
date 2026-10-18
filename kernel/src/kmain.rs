@@ -101,10 +101,65 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
             arch::halt()
         }
     }
+
+    // Interrupts (WP-10): ACPI MADT -> PIC remapped and masked, local APIC enabled with a
+    // calibrated timer, every I/O APIC masked. Interrupts are still off here.
+    let irq = match arch::irq::init(bi.rsdp) {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!("OSX|{}|kernel|panic|code={}", build_id, e.code());
+            arch::halt()
+        }
+    };
+    kprintln!(
+        "OSX|{}|kernel|irq|pic_masks={:#x},{:#x}|lapic_mode={:?}|lapic_id={}|lapic_version={:#x}|lapic_hz={}|svr={:#x}|cpus={}|ioapics={}|ioapic_entries={}|ioapic_masked={}|ioapic_version={:#x}|overrides={}|pcat_compat={}|timer_hz={}",
+        build_id,
+        irq.pic_masks.0,
+        irq.pic_masks.1,
+        irq.lapic.mode,
+        irq.lapic.id,
+        irq.lapic.version,
+        irq.lapic.timer_hz,
+        irq.svr,
+        irq.cpus,
+        irq.ioapics,
+        irq.ioapic_entries,
+        irq.ioapic_masked,
+        irq.ioapic_version,
+        irq.overrides,
+        u8::from(irq.pcat_compat),
+        irq.timer_hz
+    );
+    // Timer self-check in every build: interrupts on for a PIT-measured 50 ms window, then off
+    // again. At 1000 Hz the window holds ~50 ticks; the band below tolerates emulator jitter.
+    arch::interrupts::enable();
+    let pit_ok = arch::pit::wait_ms(50);
+    arch::interrupts::disable();
+    let c = arch::irq::counters();
+    let timer_ok = pit_ok
+        && (25..=100).contains(&c.ticks)
+        && c.total == c.ticks
+        && c.unexpected == 0
+        && c.max_depth == 1
+        && !arch::interrupts::enabled();
+    kprintln!(
+        "OSX|{}|kernel|timer|window_ms=50|pit_ok={}|ticks={}|total={}|unexpected={}|last_unexpected={:#x}|spurious={}|max_depth={}|selfcheck={}",
+        build_id,
+        u8::from(pit_ok),
+        c.ticks,
+        c.total,
+        c.unexpected,
+        c.last_unexpected_vector,
+        c.spurious,
+        c.max_depth,
+        u8::from(timer_ok)
+    );
     #[cfg(feature = "ktest")]
     crate::ktest::run();
     #[cfg(not(feature = "ktest"))]
     {
+        // Nothing waits on the timer yet; stop it so the shutdown is quiet.
+        arch::irq::timer_stop();
         kprintln!("OSX|{}|kernel|m1_done|exit=0x10", build_id);
         arch::qemu::exit(arch::qemu::EXIT_OK)
     }

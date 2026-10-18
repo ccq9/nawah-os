@@ -18,6 +18,10 @@ pub const PAGE_2M: u64 = 2 * 1024 * 1024;
 /// Page-table entry bits (SDM Vol. 3A Tables 4-15..4-20).
 pub const PRESENT: u64 = 1 << 0;
 pub const WRITE: u64 = 1 << 1;
+/// Page-level write-through and cache-disable; PCD|PWT selects PAT entry 3, which is UC with
+/// the power-on PAT (SDM Vol. 3A §13.12.2/Table 13-11): the right memory type for MMIO.
+pub const PWT: u64 = 1 << 3;
+pub const PCD: u64 = 1 << 4;
 /// Page size (PS) in a page-directory entry: the entry maps a 2 MiB page.
 pub const HUGE: u64 = 1 << 7;
 /// Execute-disable (XD); reserved unless IA32_EFER.NXE = 1.

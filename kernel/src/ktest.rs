@@ -5,7 +5,7 @@
 //! as the QEMU exit code plus serial markers (`platform/pc-qemu/target.json`, suite M2).
 //! A missing or unknown name is an explicit failure, so a lost name cannot pass by accident.
 
-use crate::arch::{fwcfg, ktest as inject, paging, qemu};
+use crate::arch::{apic, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu};
 use crate::mm::pmm::{self, Frame, PmmError};
 use crate::mm::vmm;
 use crate::BUILD_ID;
@@ -89,6 +89,9 @@ pub fn run() -> ! {
         "pmm_exhaust" => pmm_exhaust(),
         "pmm_double_free" => pmm_double_free(),
         "vmm_switch" => vmm_switch(),
+        "timer_ticks" => timer_ticks(),
+        "irq_eoi" => irq_eoi(),
+        "spurious" => spurious(),
         "vmm_wp" => {
             // Writing to .text: the target is the store instruction itself, so RIP, CR2 and the
             // expected address are all the same value.
@@ -137,6 +140,130 @@ pub fn run() -> ! {
             qemu::exit(qemu::EXIT_UNKNOWN_TEST)
         }
     }
+}
+
+/// Periodic timer: two consecutive PIT-measured 50 ms windows each deliver 25..=100 ticks, the
+/// count is monotonic across them, no unexpected vector arrives, and no handler re-enters.
+fn timer_ticks() -> ! {
+    let c0 = irq::counters();
+    interrupts::enable();
+    let ok1 = pit::wait_ms(50);
+    let c1 = irq::counters();
+    let ok2 = pit::wait_ms(50);
+    interrupts::disable();
+    let c2 = irq::counters();
+    let w1 = c1.ticks - c0.ticks;
+    let w2 = c2.ticks - c1.ticks;
+    kprintln!(
+        "OSX|{}|ktest|timer_ticks|window1={}|window2={}|unexpected={}|max_depth={}|if={}",
+        BUILD_ID,
+        w1,
+        w2,
+        c2.unexpected,
+        c2.max_depth,
+        u8::from(interrupts::enabled())
+    );
+    if !ok1 || !ok2 {
+        fail("PIT reference missing")
+    }
+    if !(25..=100).contains(&w1) || !(25..=100).contains(&w2) {
+        fail("tick count outside 25..=100 per 50 ms")
+    }
+    if c2.ticks < c1.ticks || c1.ticks < c0.ticks {
+        fail("tick count not monotonic")
+    }
+    if c2.unexpected != 0 || c2.max_depth != 1 {
+        fail("unexpected vector or handler re-entry")
+    }
+    if interrupts::enabled() {
+        fail("IF still set after disable")
+    }
+    pass("periodic timer ticks, monotonic, no re-entry")
+}
+
+/// Spins until `pred` holds or the PIT says `ms` elapsed; returns whether it held.
+fn wait_until(ms: u64, pred: impl Fn() -> bool) -> bool {
+    // Coarse: check between 1 ms PIT waits so the bound is real time, not iterations.
+    let mut elapsed = 0;
+    while elapsed < ms {
+        if pred() {
+            return true;
+        }
+        pit::wait_ms(1);
+        elapsed += 1;
+    }
+    pred()
+}
+
+/// EOI: a self-IPI is delivered and handled; after its EOI a second one on the same vector is
+/// delivered too (without EOI the ISR bit would block it); handlers never nest.
+fn irq_eoi() -> ! {
+    irq::timer_stop();
+    let before = irq::counters();
+    interrupts::enable();
+    apic::send_self_ipi(irq::TEST_IPI_VECTOR);
+    let first = wait_until(20, || irq::counters().test_ipis == before.test_ipis + 1);
+    apic::send_self_ipi(irq::TEST_IPI_VECTOR);
+    let second = wait_until(20, || irq::counters().test_ipis == before.test_ipis + 2);
+    interrupts::disable();
+    let c = irq::counters();
+    kprintln!(
+        "OSX|{}|ktest|irq_eoi|first={}|second={}|test_ipis={}|unexpected={}|max_depth={}",
+        BUILD_ID,
+        u8::from(first),
+        u8::from(second),
+        c.test_ipis,
+        c.unexpected,
+        c.max_depth
+    );
+    if !first {
+        fail("first self-IPI not delivered")
+    }
+    if !second {
+        fail("second self-IPI not delivered after EOI")
+    }
+    if c.unexpected != 0 || c.max_depth != 1 {
+        fail("unexpected vector or handler re-entry")
+    }
+    pass("EOI acknowledged, next interrupt delivered, no re-entry")
+}
+
+/// Spurious and masked vectors: software interrupts on the spurious vector (no EOI), a masked
+/// PIC vector and an unassigned vector are counted and return; with the timer stopped and
+/// interrupts enabled for 20 ms nothing else arrives.
+fn spurious() -> ! {
+    irq::timer_stop();
+    let before = irq::counters();
+    inject::software_interrupt::<{ irq::SPURIOUS_VECTOR }>();
+    inject::software_interrupt::<0x20>();
+    inject::software_interrupt::<0xF0>();
+    let mid = irq::counters();
+    interrupts::enable();
+    let ok = pit::wait_ms(20);
+    interrupts::disable();
+    let after = irq::counters();
+    kprintln!(
+        "OSX|{}|ktest|spurious|spurious={}|unexpected={}|last_unexpected={:#x}|total_after_window={}|svr={:#x}",
+        BUILD_ID,
+        mid.spurious - before.spurious,
+        mid.unexpected - before.unexpected,
+        mid.last_unexpected_vector,
+        after.total - mid.total,
+        apic::svr()
+    );
+    if mid.spurious - before.spurious != 1 {
+        fail("spurious vector not counted exactly once")
+    }
+    if mid.unexpected - before.unexpected != 2 || mid.last_unexpected_vector != 0xF0 {
+        fail("masked/unassigned vectors not counted as unexpected")
+    }
+    if !ok || after.total != mid.total {
+        fail("interrupts arrived while everything was masked")
+    }
+    if apic::svr() & 0x1FF != 0x1FF {
+        fail("spurious vector register not 0x1FF")
+    }
+    pass("spurious and masked vectors are counted, never fault")
 }
 
 /// Positive checks of the active kernel address space: CR3 is ours, WP/NXE are on, section

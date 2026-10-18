@@ -127,10 +127,16 @@
      "|kernel|vmm|",
      "|wp=1|nxe=1|text_rx=1|data_rw_nx=1|",
      "|direct_ok=1",
-     "|kernel|stack|guarded=1|"
+     "|kernel|stack|guarded=1|",
+     "OSX|${BUILD_ID}|boot|acpi|rsdp=0x",
+     "|kernel|irq|pic_masks=0xff,0xff|",
+     "|kernel|timer|window_ms=50|pit_ok=1|",
+     "|max_depth=1|selfcheck=1"
     ],
     "forbidden_markers": [
+     "|boot|acpi|rsdp=0x0|",
      "|boot|error|",
+     "|exc|vector",
      "|kernel|panic|"
     ],
     "max_counts": {
@@ -384,7 +390,7 @@
      "-fw_cfg",
      "name=opt/nawah/test,string=idt_layout"
     ],
-    "oracle": "sidt-walked IDT: 32 present gates push their own vector, dummy error code exactly per SDM Table 7-1, 224 empty gates",
+    "oracle": "sidt-based walk: 0..=31 present interrupt gates to stubs pushing the vector (dummy 0 where the CPU pushes no error code); 32..=255 present interrupt gates to the uniform interrupt entries (push 0, push imm32 vector); exit 33",
     "expected_exit_code": 33,
     "required_markers": [
      "OSX|${BUILD_ID}|ktest|start|name=idt_layout",
@@ -577,6 +583,69 @@
       "expect_cr2=(0x[0-9a-f]+)",
       "\\|cr2=(0x[0-9a-f]+)\\|"
      ]
+    ]
+   },
+   {
+    "id": "TST-M2-TIMER-TICKS",
+    "test_id": "TST-M2-TIMER-TICKS",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=timer_ticks"
+    ],
+    "oracle": "periodic LAPIC timer at 1000 Hz (PIT-calibrated): two PIT-measured 50 ms windows each deliver 25..=100 ticks, monotonic, no unexpected vector, max handler depth 1, IF clear after disable; exit 33",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=timer_ticks",
+     "|ktest|timer_ticks|window1=",
+     "|ktest|pass|periodic timer ticks, monotonic, no re-entry"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M2-IRQ-EOI",
+    "test_id": "TST-M2-IRQ-EOI",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=irq_eoi"
+    ],
+    "oracle": "self-IPI on vector 0x41 delivered and handled; after EOI a second IPI on the same vector is delivered (without EOI the ISR bit would hold it); no unexpected vector; max handler depth 1; exit 33",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=irq_eoi",
+     "|ktest|irq_eoi|first=1|second=1|",
+     "|ktest|pass|EOI acknowledged, next interrupt delivered, no re-entry"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M2-SPURIOUS",
+    "test_id": "TST-M2-SPURIOUS",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=spurious"
+    ],
+    "oracle": "software int 0xFF (spurious: counted, no EOI), int 0x20 (masked PIC vector) and int 0xF0 (unassigned) are counted as unexpected and return; with the timer stopped and interrupts enabled for 20 ms nothing arrives; SVR = 0x1FF; exit 33",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=spurious",
+     "|ktest|spurious|spurious=1|unexpected=2|last_unexpected=0xf0|total_after_window=0|svr=0x1ff",
+     "|ktest|pass|spurious and masked vectors are counted, never fault"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
     ]
    }
   ]

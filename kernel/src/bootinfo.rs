@@ -70,7 +70,8 @@ pub struct BootInfo {
     pub map_key: usize,
     /// Not populated in M1 (`present == 0`).
     pub fb: Framebuffer,
-    /// 0 in M1.
+    /// Physical address of the ACPI RSDP taken from the EFI configuration table before EBS
+    /// (ACPI 2.0+ GUID, else ACPI 1.0 GUID); 0 when the firmware offers none.
     pub rsdp: u64,
     /// EFI_RUNTIME_SERVICES*, opaque to the kernel in M1.
     pub runtime_services: *const u8,

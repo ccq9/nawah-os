@@ -246,7 +246,7 @@
     "REQ-M2-001"
    ],
    "layer": "guest",
-   "oracle": "sidt-walked IDT: 32 present gates push their own vector, dummy error code exactly per SDM Table 7-1, 224 empty gates",
+   "oracle": "sidt-based walk of all 256 gates: exception stubs 0..=31 (vector + dummy error code rule), interrupt entries 32..=255 (push 0, push imm32 vector), IST only on #DF",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
@@ -363,8 +363,8 @@
     "REQ-M2-012"
    ],
    "layer": "guest",
-   "oracle": "timer interrupt delivered: >= N ticks within the lab timeout, counts monotonic",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "oracle": "periodic LAPIC timer at 1000 Hz (PIT-calibrated): two PIT-measured 50 ms windows each deliver 25..=100 ticks, monotonic, no unexpected vector, max handler depth 1, IF clear after disable; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -374,8 +374,8 @@
     "REQ-M2-012"
    ],
    "layer": "guest",
-   "oracle": "EOI acknowledged; next interrupt arrives; no re-entry while handling",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "oracle": "self-IPI on vector 0x41 delivered and handled; after EOI a second IPI on the same vector is delivered (without EOI the ISR bit would hold it); no unexpected vector; max handler depth 1; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -385,8 +385,8 @@
     "REQ-M2-012"
    ],
    "layer": "negative",
-   "oracle": "spurious/masked vectors do not fault the kernel",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "oracle": "software int 0xFF (spurious: counted, no EOI), int 0x20 (masked PIC vector) and int 0xF0 (unassigned) are counted as unexpected and return; with the timer stopped and interrupts enabled for 20 ms nothing arrives; SVR = 0x1FF; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },

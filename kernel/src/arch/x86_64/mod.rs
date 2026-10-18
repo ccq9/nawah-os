@@ -5,9 +5,15 @@ use core::arch::x86_64::__cpuid;
 
 use crate::bootinfo::BootInfo;
 
+pub mod acpi;
+pub mod apic;
 mod gdt;
 mod idt;
+pub mod ioapic;
+pub mod irq;
 pub mod paging;
+mod pic;
+pub mod pit;
 mod port;
 pub mod qemu;
 mod serial;
@@ -112,6 +118,31 @@ pub fn continue_on_stack<'a>(
             in("rdi") bi as *const BootInfo,
             options(noreturn),
         );
+    }
+}
+
+/// Interrupt flag control. Enabling is safe once `irq::init` has run: every vector has a gate
+/// and a counting handler, so no interrupt can fault the kernel.
+pub mod interrupts {
+    use core::arch::asm;
+
+    pub fn enable() {
+        // SAFETY: sti; the IDT covers all 256 vectors (idt::init) and the dispatcher counts
+        // unexpected ones.
+        unsafe { asm!("sti", options(nomem, nostack)) };
+    }
+
+    pub fn disable() {
+        // SAFETY: cli only clears IF.
+        unsafe { asm!("cli", options(nomem, nostack)) };
+    }
+
+    /// RFLAGS.IF.
+    pub fn enabled() -> bool {
+        let flags: u64;
+        // SAFETY: pushfq/pop into a register; no memory beyond the stack slot is touched.
+        unsafe { asm!("pushfq", "pop {}", out(reg) flags, options(preserves_flags)) };
+        flags & (1 << 9) != 0
     }
 }
 

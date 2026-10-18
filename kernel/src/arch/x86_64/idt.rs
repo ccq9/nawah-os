@@ -75,20 +75,20 @@ const _: () = {
 
 static IDT: BootCell<[Gate; IDT_ENTRIES]> = BootCell::new([Gate::MISSING; IDT_ENTRIES]);
 
-/// Fills the 32 exception gates and loads the table. Gates 32..=255 stay absent until the
-/// interrupt work package (WP-10).
+/// Fills the 32 exception gates and the 224 interrupt gates (WP-10), then loads the table.
+/// Every vector is present: an unexpected interrupt is counted, never a #GP/#NP.
 pub fn init() {
     let idt = IDT.get().cast::<Gate>();
 
-    for vector in 0..trap::EXCEPTION_VECTORS {
+    for vector in 0..IDT_ENTRIES {
         let ist = if vector == DOUBLE_FAULT_VECTOR {
             DOUBLE_FAULT_IST
         } else {
             0
         };
         let gate = Gate::interrupt(trap::stub_address(vector), ist);
-        // SAFETY: boot path only (BootCell contract); index < 32 < IDT_ENTRIES; pointer to a
-        // valid, aligned static.
+        // SAFETY: boot path only (BootCell contract); index < IDT_ENTRIES; pointer to a valid,
+        // aligned static.
         unsafe { idt.add(vector).write(gate) };
     }
 

@@ -574,22 +574,52 @@
    ],
    "inputs": [
     "docs/PLAN.md §3",
-    "ADR-0003",
-    "Intel SDM Vol.3A (S26)"
+    "ADR-0005",
+    "Intel SDM Vol.3A ch.11 APIC (S26)",
+    "ACPI 6.5 §5.2 (S33)",
+    "ICH9 datasheet (S34)",
+    "QEMU device models (S35)",
+    "82093AA (S36)",
+    "UEFI 2.11 §4.6 configuration table (S18)"
    ],
    "files": [
-    "kernel/src/arch/x86_64/apic.rs",
+    "docs/adr/0005-interrupts.md",
+    "docs/contracts/boot.md",
+    "kernel/src/arch/mod.rs",
     "kernel/src/arch/x86_64/acpi.rs",
-    "kernel/src/arch/x86_64/pic.rs"
+    "kernel/src/arch/x86_64/apic.rs",
+    "kernel/src/arch/x86_64/idt.rs",
+    "kernel/src/arch/x86_64/ioapic.rs",
+    "kernel/src/arch/x86_64/irq.rs",
+    "kernel/src/arch/x86_64/ktest.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/arch/x86_64/paging.rs",
+    "kernel/src/arch/x86_64/pic.rs",
+    "kernel/src/arch/x86_64/pit.rs",
+    "kernel/src/arch/x86_64/trap.rs",
+    "kernel/src/boot/efi.rs",
+    "kernel/src/boot/stub.rs",
+    "kernel/src/bootinfo.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/mm/vmm.rs",
+    "platform/pc-qemu/target.json",
+    "tools/unsafe-baseline.txt"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
    ],
    "actions": [
-    "mask PIC, LAPIC, IOAPIC via MADT, timer calibration, IRQ gates 32+",
-    "ktests"
+    "RSDP from the EFI configuration table before EBS (BootInfo.rsdp)",
+    "MADT parser (checksums, XSDT/RSDT, LAPIC/IOAPIC/ISO/x2APIC entries)",
+    "8259 remapped to 0x20..0x2F and masked",
+    "LAPIC xAPIC/x2APIC, SVR 0x1FF, LVTs masked, error LVT 0xFE, PIT-calibrated timer",
+    "I/O APICs mapped UC and fully masked",
+    "256-entry IDT with uniform interrupt entries, counting dispatcher, EOI, depth counter",
+    "periodic timer 1000 Hz on 0x40; 50 ms self-check in every build",
+    "ktests timer_ticks/irq_eoi/spurious; idt_layout extended to 32..=255"
    ],
-   "acceptance": "timer/irq tests PASS",
+   "acceptance": "TST-M2-TIMER-TICKS/IRQ-EOI/SPURIOUS PASS on CI; TST-M1-BOOT PASS with the irq and timer self-check markers; TST-M2-IDT-LAYOUT still PASS",
    "test_ids": [
     "TST-M2-TIMER-TICKS",
     "TST-M2-IRQ-EOI",
@@ -599,9 +629,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M2"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null

@@ -191,16 +191,46 @@ exc_common:
     handler = sym exception_handler,
 );
 
+// Interrupt entries 32..=255 (WP-10): identical shape, generated with `.rept`; each entry is
+// 16-byte aligned so its address is IRQ_STUBS + (vector - 32) * 16. The encodings are fixed
+// (`push 0` = 6A 00, `push imm32` = 68 nn nn nn nn) so the IDT layout test can decode them.
+global_asm!(
+    r#"
+    .text
+    .balign 16
+    .global IRQ_STUBS
+IRQ_STUBS:
+    .set irq_vec, 32
+    .rept 224
+    .balign 16
+    .byte 0x6a, 0x00, 0x68
+    .long irq_vec
+    jmp exc_common
+    .set irq_vec, irq_vec + 1
+    .endr
+"#
+);
+
+pub const IRQ_STUB_STRIDE: usize = 16;
+
 extern "C" {
     /// Addresses of the 32 entries, defined by the assembly above (read-only data in .text).
     static EXC_STUB_TABLE: [u64; EXCEPTION_VECTORS];
+    /// First interrupt entry (vector 32); the others follow at IRQ_STUB_STRIDE.
+    static IRQ_STUBS: u8;
 }
 
-/// Address of the assembly entry for `vector`. Panics for vector >= 32.
+/// Address of the assembly entry for `vector` (0..=255). Panics beyond that.
 pub fn stub_address(vector: usize) -> u64 {
-    // SAFETY: the table is defined by this file's assembly with 32 8-byte entries, 8-aligned and
-    // never written; indexing is bounds-checked.
-    unsafe { EXC_STUB_TABLE[vector] }
+    assert!(vector < 256, "vector out of range");
+    if vector < EXCEPTION_VECTORS {
+        // SAFETY: the table is defined by this file's assembly with 32 8-byte entries, 8-aligned
+        // and never written; indexing is bounds-checked.
+        unsafe { EXC_STUB_TABLE[vector] }
+    } else {
+        // Taking the address of the extern static is safe; it is never dereferenced.
+        (&raw const IRQ_STUBS as u64) + ((vector - EXCEPTION_VECTORS) * IRQ_STUB_STRIDE) as u64
+    }
 }
 
 static NESTING: AtomicU32 = AtomicU32::new(0);
@@ -243,7 +273,12 @@ fn read_cr2() -> u64 {
 }
 
 /// Prints the diagnostic. Returns only for #BP; every other exception in the kernel is fatal.
+/// Vectors >= 32 are interrupts: dispatched to `irq`, never printed here.
 extern "sysv64" fn exception_handler(frame: &TrapFrame) {
+    if frame.vector >= EXCEPTION_VECTORS as u64 {
+        super::irq::dispatch((frame.vector & 0xFF) as u8);
+        return;
+    }
     let depth = NESTING.fetch_add(1, Ordering::Relaxed);
     if depth > MAX_NESTING {
         fatal(frame.vector);

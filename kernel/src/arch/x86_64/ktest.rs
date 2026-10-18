@@ -310,6 +310,13 @@ pub fn execute_from_data() {
     }
 }
 
+/// Software interrupt `int V` (vector >= 32): exercises a gate without any device.
+pub fn software_interrupt<const V: u8>() {
+    // SAFETY: every vector has a present gate (idt::init) and the dispatcher counts unknown
+    // ones; the handler returns with iretq, so this is an ordinary call from the CPU's view.
+    unsafe { asm!("int {v}", v = const V, options(nomem, nostack)) };
+}
+
 /// Overflows the current stack by pushing until the guard page stops it (vmm_guard).
 pub fn stack_overflow() -> ! {
     // SAFETY: overflowing the stack is the point; the #DF handler ends the run on IST1.
@@ -329,8 +336,9 @@ const ERROR_CODE_VECTORS: [usize; 10] = [8, 10, 11, 12, 13, 14, 17, 21, 29, 30];
 
 /// Walks the IDT the CPU actually has (via `sidt`, not the kernel's variables) gate by gate:
 /// 0..=31 are present interrupt gates whose code pushes the same vector number, with a dummy 0
-/// before it exactly when the CPU pushes no error code; 32..=255 are empty. Returns the number of
-/// mismatches (each printed).
+/// before it exactly when the CPU pushes no error code; 32..=255 are present interrupt gates to
+/// the uniform interrupt entries (push 0, push imm32 vector). Returns the number of mismatches
+/// (each printed).
 pub fn idt_layout_mismatches() -> u32 {
     let mut pointer = TablePointer { limit: 0, base: 0 };
     // SAFETY: sidt writes 10 bytes into the local struct; allowed at CPL 0.
@@ -360,13 +368,6 @@ pub fn idt_layout_mismatches() -> u32 {
         // read as a precaution.
         let gate = unsafe { (base as *const [u8; 16]).add(vector).read_unaligned() };
 
-        if vector >= EXCEPTION_VECTORS {
-            if gate != [0; 16] {
-                report(vector, "gate_above_31_not_empty");
-            }
-            continue;
-        }
-
         let selector = u16::from_le_bytes([gate[2], gate[3]]);
         let ist = gate[4];
         let type_attr = gate[5];
@@ -388,8 +389,16 @@ pub fn idt_layout_mismatches() -> u32 {
             report(vector, "reserved_not_zero");
         }
 
-        // SAFETY: the target of a present gate is mapped kernel code; we read its first 4 bytes.
-        let code = unsafe { (target as *const [u8; 4]).read_unaligned() };
+        // SAFETY: the target of a present gate is mapped kernel code; we read its first 7 bytes.
+        let code = unsafe { (target as *const [u8; 7]).read_unaligned() };
+        if vector >= EXCEPTION_VECTORS {
+            // Interrupt entry (WP-10): 6A 00 (push 0) 68 nn nn nn nn (push imm32 = vector).
+            let pushed = u32::from_le_bytes([code[3], code[4], code[5], code[6]]);
+            if code[0] != 0x6A || code[1] != 0 || code[2] != 0x68 || pushed as usize != vector {
+                report(vector, "irq_stub_shape");
+            }
+            continue;
+        }
         // `push imm8` encodes as 6A nn. No-error-code entry: 6A 00 6A nn. Error-code entry: 6A nn.
         let (pushes_dummy, pushed) = if code[0] == 0x6A && code[1] == 0 && code[2] == 0x6A {
             (true, usize::from(code[3]))

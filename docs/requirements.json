@@ -597,7 +597,7 @@
     "TST-M2-IRQ-EOI",
     "TST-M2-SPURIOUS"
    ],
-   "implementation_status": "planned",
+   "implementation_status": "implemented_untested",
    "evidence_refs": []
   },
   {

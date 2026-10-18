@@ -46,6 +46,17 @@ pub extern "efiapi" fn efi_main(image: Handle, st: *const SystemTable) -> ! {
         fail("BOOT_E_BAD_TABLE", efi::INVALID_PARAMETER);
     }
     let buf = MEMMAP.get().cast::<u8>();
+    // ACPI: the RSDP address comes from the EFI configuration table (UEFI 2.11 §4.6; ACPI 6.5
+    // §5.2.5.2), ACPI 2.0+ GUID first, ACPI 1.0 GUID as fallback; 0 when absent. Only the
+    // physical address leaves this block.
+    let rsdp: u64 = {
+        // SAFETY: as below — a live, non-null EFI_SYSTEM_TABLE, read only.
+        let st = unsafe { &*st };
+        efi::find_configuration_table(st, &efi::ACPI_20_TABLE_GUID)
+            .or_else(|| efi::find_configuration_table(st, &efi::ACPI_10_TABLE_GUID))
+            .unwrap_or(0)
+    };
+    kprintln!("OSX|{}|boot|acpi|rsdp={:#x}", BUILD_ID, rsdp);
     // Everything that can see firmware tables lives in this block; nothing from it reaches the
     // kernel except plain numbers and the kernel-owned map buffer (REQ-M1-003).
     let (final_size, accepted_key, desc_size, desc_ver, attempts, runtime_services) = {
@@ -142,7 +153,7 @@ pub extern "efiapi" fn efi_main(image: Handle, st: *const SystemTable) -> ! {
         descriptor_version: desc_ver,
         ebs_attempts: attempts,
         map_key: accepted_key,
-        rsdp: 0,
+        rsdp,
         runtime_services,
         ..BootInfo::empty()
     };

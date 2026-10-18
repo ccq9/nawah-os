@@ -399,6 +399,64 @@
    ],
    "limits": "its evidence is not ours; every ported file is re-tested here",
    "verified": true
+  },
+  {
+   "id": "S33",
+   "title": "ACPI Specification 6.5 §5.2 (RSDP, DESCRIPTION_HEADER, XSDT, MADT)",
+   "url": "https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html",
+   "version": "ACPI 6.5 HTML (uefi.org), read 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "§5.2.5.2: the RSDP pointer lives in the EFI configuration table (ACPI 2.0 GUID, else ACPI 1.0 GUID)",
+    "Table 5.3 RSDP: Revision at 15, RsdtAddress at 16, Length at 20, XsdtAddress at 24; bytes 0..20 sum to zero; extended checksum over the whole table",
+    "Table 5.4 DESCRIPTION_HEADER 36 bytes, Length at 4, whole table sums to zero; XSDT 8-byte entries from 36, must be used when present",
+    "§5.2.12 MADT: LAPIC address at 36, Flags at 40 (bit 0 PCAT_COMPAT: 8259 must be masked); Table 5.22 LAPIC (APIC ID at 3, Flags at 4: bit0 Enabled, bit1 Online Capable); Table 5.24 I/O APIC (ID 2, address 4, GSI base 8); Table 5.25 ISO (source 3, GSI 4, MPS INTI flags 8); Table 5.29 LAPIC address override (u64 at 4); Table 5.34 x2APIC (ID at 4, Flags at 8)"
+   ],
+   "limits": "",
+   "verified": true
+  },
+  {
+   "id": "S34",
+   "title": "Intel I/O Controller Hub 9 (ICH9) Family Datasheet (doc 316972): 8259 PIC, 8254 timer, NMI_SC (61h), I/O APIC",
+   "url": "https://www.intel.com/content/dam/doc/datasheet/io-controller-hub-9-datasheet.pdf",
+   "version": "ICH9 datasheet rev. 2008 (chipset QEMU q35 models)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "8259 master/slave at 20h/21h, A0h/A1h; ICW1..ICW4 init; OCW1 mask",
+    "8254 at 40h-43h, 1.193 MHz, mode 0",
+    "NMI_SC 61h: bit 0 TIM_CNT2_EN, bit 1 SPKR_DAT_EN, bit 5 TMR2_OUT_STS",
+    "I/O APIC indirect IOREGSEL/IOWIN, IOAPICVER max redirection entry, IOREDTBL mask bit 16"
+   ],
+   "limits": "register semantics cited from memory of the datasheet; the QEMU models (S35) are the executable reference the lab runs on",
+   "verified": false
+  },
+  {
+   "id": "S35",
+   "title": "QEMU 8.2.2 device models: hw/audio/pcspk.c (port 61h), hw/timer/i8254.c (PIT), hw/intc/apic.c and apic_common.c (local APIC timer)",
+   "url": "https://raw.githubusercontent.com/qemu/qemu/v8.2.2/hw/intc/apic_common.c",
+   "version": "v8.2.2 tag",
+   "accessed": "2026-10-18",
+   "supports": [
+    "pcspk_io_read: bit 0 = PIT ch2 gate, bit 1 = data, bit 4 refresh toggle, bit 5 = PIT ch2 OUT (verified from source 2026-10-18)",
+    "APIC timer: QEMU_CLOCK_VIRTUAL nanoseconds shifted by count_shift (divide config) -> 1 GHz input at divide-by-1 (apic_get_current_count, verified 2026-10-18)",
+    "apic_eoi: clears the highest ISR bit; SVR write keeps bits 0..8"
+   ],
+   "limits": "lab behaviour only; real hardware frequencies differ, hence PIT calibration",
+   "verified": true
+  },
+  {
+   "id": "S36",
+   "title": "Intel 82093AA I/O Advanced Programmable Interrupt Controller (IOAPIC) datasheet",
+   "url": "https://web.archive.org/web/2020/https://pdos.csail.mit.edu/6.828/2018/readings/ia32/ioapic.pdf",
+   "version": "1996 datasheet (archived copy)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "IOREGSEL at base+00h, IOWIN at base+10h",
+    "IOAPICVER bits 16-23 maximum redirection entry",
+    "IOREDTBL 10h+2n, bit 16 interrupt mask"
+   ],
+   "limits": "archived copy; same interface documented in S34",
+   "verified": false
   }
  ]
 }
