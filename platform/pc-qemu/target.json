@@ -2041,7 +2041,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=spawn_volume"
         ],
-        "oracle": "the launch application spawns /SYSTEM/ECHO.ELF from the lab volume (process_spawn, ABI v1.4) with a channel endpoint as its bootstrap handle (rdi at entry): the moved endpoint is gone from the caller (ERR_BAD_HANDLE), the echo round trip returns the 16-byte message, object_wait_many sees EXITED and process_status = 16, the caller's endpoint sees PEER_CLOSED; refusals: missing file ERR_NOT_FOUND, /HELLO.TXT (not an ELF) ERR_INVALID, a handle without TRANSFER ERR_ACCESS with the handle still usable; exit 0x70; the kernel logs one spawn line per started process (2 started, 1 refused before any move); no process record, process object, channel, handle, file or frame survives; exit 33",
+        "oracle": "the launch application spawns /SYSTEM/ECHO.ELF from the lab volume (process_spawn, ABI v1.4) with a channel endpoint as its bootstrap handle (rdi at entry): the moved endpoint is gone from the caller (ERR_BAD_HANDLE), the echo round trip returns the 16-byte message, object_wait_many sees EXITED and process_status = 16, the caller's endpoint sees PEER_CLOSED; refusals: missing file ERR_NOT_FOUND, /HELLO.TXT (not an ELF) ERR_INVALID, a handle without TRANSFER ERR_ACCESS with the handle still usable; exit 0x70; the kernel logs one spawn line per started process (exactly 1: the refused spawns never start anything); no process record, process object, channel, handle, file or frame survives; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=spawn_volume",
@@ -2071,10 +2071,10 @@
           ]
         ],
         "max_counts": {
-          "|kernel|spawn|pid=": 2
+          "|kernel|spawn|pid=": 1
         },
         "min_counts": {
-          "|kernel|spawn|pid=": 2
+          "|kernel|spawn|pid=": 1
         }
       },
       {

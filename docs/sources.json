@@ -574,6 +574,84 @@
       ],
       "limits": "the Microsoft .doc is not readable through the fetch tool; the ELM Chan page restates the same tables and the result is validated by dosfstools' fsck.fat and mtools on every lab image",
       "verified": true
+    },
+    {
+      "id": "S45",
+      "title": "FIPS PUB 180-4, Secure Hash Standard (SHS)",
+      "url": "https://csrc.nist.gov/pubs/fips/180-4/upd1/final",
+      "version": "August 2015 (final; NIST planning note 2023-03-07 announces a revision)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "SHA-256: 64 rounds with constants K[0..63], initial hash H0, message schedule W[t] with sigma functions, padding 0x80 + zeros + 64-bit big-endian bit length (§5.1.1, §6.2)",
+        "digest of \"abc\" = ba7816bf…f20015ad and of the 56-byte two-block message abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq = 248d6a61…19db06c1 (NIST SHS examples); the empty message = e3b0c442…7852b855"
+      ],
+      "limits": "landing page fetched (title, date, status); the PDF itself was not fetched in this session (provenance gate), so the algorithm text is cited by section number and the example digests are the NIST example values as reproduced by the implementation's known-answer tests (user/nawah-crypto)",
+      "verified": true
+    },
+    {
+      "id": "S46",
+      "title": "RFC 2104 — HMAC: Keyed-Hashing for Message Authentication",
+      "url": "https://rfc-editor.org/rfc/rfc2104",
+      "version": "February 1997 (Krawczyk, Bellare, Canetti)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "HMAC = H(K XOR opad, H(K XOR ipad, text)); ipad = 0x36 × B, opad = 0x5C × B, B = 64 for SHA-256-class block sizes; keys longer than B are hashed first (§2)",
+        "truncation keeps the leftmost t bits, t ≥ max(L/2, 80) (§5)"
+      ],
+      "limits": "B = 64 for SHA-256 follows FIPS 180-4's block size; RFC 4231 supplies the SHA-256 vectors",
+      "verified": true
+    },
+    {
+      "id": "S47",
+      "title": "RFC 4231 — Identifiers and Test Vectors for HMAC-SHA-224/256/384/512",
+      "url": "https://www.rfc-editor.org/rfc/rfc4231",
+      "version": "December 2005 (Nystrom)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "HMAC-SHA-256 test cases 1–7 (§4): TC1 key 0x0b×20 / \"Hi There\" → b0344c61…2e32cff7; TC2 \"Jefe\" / \"what do ya want for nothing?\" → 5bdcc146…64ec3843; TC6 key 0xaa×131 → 60e43159…0ee37f54; TC7 key 0xaa×131 long data → 9b09ffa7…5c3a35e2"
+      ],
+      "limits": "TC5 is a truncated (128-bit) output and is not used; TC3/TC4 (0xaa/0xdd and 0x01..0x19/0xcd patterns) are not in the self-test",
+      "verified": true
+    },
+    {
+      "id": "S48",
+      "title": "RFC 8018 — PKCS #5: Password-Based Cryptography Specification Version 2.1",
+      "url": "https://rfc-editor.org/rfc/rfc8018",
+      "version": "January 2017 (Moriarty, Kaliski, Rusch)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "PBKDF2 (§5.2): l = CEIL(dkLen/hLen), T_i = F(P,S,c,i) = U_1 XOR … XOR U_c, U_1 = PRF(P, S || INT(i)), U_j = PRF(P, U_{j-1}), INT(i) four-octet big-endian, DK = T_1 || … || T_l truncated to dkLen",
+        "salt at least 8 octets (§4.1); iteration count minimum 1000 following SP 800-132, as large as acceptable (§4.2); HMAC-SHA-256 as PRF (appendix B.1.2, id-hmacWithSHA256)"
+      ],
+      "limits": "the RFC carries no PBKDF2-HMAC-SHA-256 vectors; RFC 7914 §11 supplies them",
+      "verified": true
+    },
+    {
+      "id": "S49",
+      "title": "RFC 7914 — The scrypt Password-Based Key Derivation Function, §11 test vectors for PBKDF2-HMAC-SHA-256",
+      "url": "https://www.rfc-editor.org/rfc/rfc7914",
+      "version": "August 2016 (Percival, Josefsson)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "PBKDF2-HMAC-SHA-256(\"passwd\", \"salt\", c=1, dkLen=64) = 55ac046e…d3a19783",
+        "PBKDF2-HMAC-SHA-256(\"Password\", \"NaCl\", c=80000, dkLen=64) = 4ddcd8f6…97f33c8d"
+      ],
+      "limits": "only the two PBKDF2 vectors are used; scrypt itself is not implemented",
+      "verified": true
+    },
+    {
+      "id": "S50",
+      "title": "NIST SP 800-132 — Recommendation for Password-Based Key Derivation, Part 1: Storage Applications",
+      "url": "https://csrc.nist.gov/pubs/sp/800/132/final",
+      "version": "December 2010 (final; NIST planning note 2023-05-11 announces a revision)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "salt: the randomly generated portion shall be at least 128 bits, from an approved RBG (§5.1)",
+        "iteration count: a minimum of 1,000 is recommended; 10,000,000 may be appropriate for critical keys (§5.2)",
+        "PBKDF2 with HMAC and any approved hash function is the approved PBKDF (§5.3); kLen at least 112 bits (§5)"
+      ],
+      "limits": "PDF fetched for §5; the lab uses a smaller iteration count than the product default so that guest tests finish in seconds (policy value, services' config)",
+      "verified": true
     }
   ]
 }
