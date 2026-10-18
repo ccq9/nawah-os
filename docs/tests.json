@@ -63,9 +63,11 @@
    "layer": "host_unit",
    "oracle": "build steps exit 0, artifact exists, build_id recorded",
    "command": "python3 tools/project.py build --target pc-qemu",
-   "verdict": "NEEDS_REEVALUATION",
-   "evidence_refs": [],
-   "verdict_reason": "M1 re-implemented in Rust (ADR-0002); C evidence superseded, re-run pending"
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/ci/39091622750/jobs.json"
+   ],
+   "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
   {
    "id": "TST-M1-BOOT",
@@ -75,9 +77,11 @@
    "layer": "guest",
    "oracle": "serial: boot|start, boot|ebs|ok, kernel|post_ebs with map_key; QEMU exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
-   "verdict": "NEEDS_REEVALUATION",
-   "evidence_refs": [],
-   "verdict_reason": "M1 re-implemented in Rust (ADR-0002); C evidence superseded, re-run pending"
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/ci/39091622750/jobs.json"
+   ],
+   "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
   {
    "id": "TST-M1-NOBS",
@@ -100,9 +104,11 @@
    "layer": "negative",
    "oracle": "inject EBS failure build variant: serial boot|error|code=BOOT_E_EBS_FAILED, QEMU exit 97, no reboot (single start line)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
-   "verdict": "NEEDS_REEVALUATION",
-   "evidence_refs": [],
-   "verdict_reason": "M1 re-implemented in Rust (ADR-0002); C evidence superseded, re-run pending"
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/ci/39091622750/jobs.json"
+   ],
+   "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
   {
    "id": "TST-M1-INVALID-IMAGE",

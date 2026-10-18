@@ -347,12 +347,16 @@
     "python3 tools/project.py test --target pc-qemu --suite M1",
     "python3 tools/project.py test --target host --suite M1"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/ci/39091622750/jobs.json",
+    "evidence/20261018T025054Z-4d867f9d-003"
+   ],
    "blocker": null
   }
  ]

@@ -151,8 +151,10 @@
    "test_ids": [
     "TST-M1-BUILD"
    ],
-   "implementation_status": "implemented_untested",
-   "evidence_refs": []
+   "implementation_status": "verified_in_scope",
+   "evidence_refs": [
+    "evidence/ci/39091622750/jobs.json"
+   ]
   },
   {
    "id": "REQ-M1-002",
@@ -179,8 +181,10 @@
    "test_ids": [
     "TST-M1-BOOT"
    ],
-   "implementation_status": "implemented_untested",
-   "evidence_refs": []
+   "implementation_status": "verified_in_scope",
+   "evidence_refs": [
+    "evidence/ci/39091622750/jobs.json"
+   ]
   },
   {
    "id": "REQ-M1-003",
@@ -231,8 +235,10 @@
    "test_ids": [
     "TST-M1-NEG"
    ],
-   "implementation_status": "implemented_untested",
-   "evidence_refs": []
+   "implementation_status": "verified_in_scope",
+   "evidence_refs": [
+    "evidence/ci/39091622750/jobs.json"
+   ]
   },
   {
    "id": "REQ-M1-005",

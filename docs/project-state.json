@@ -6,19 +6,22 @@
  "project_root": "/home/claude/nawah-os",
  "source_revision": "03fe6868e3be038ac57d5d1e12f6c6d041ce2e37",
  "dirty_state": false,
- "current_stage": "M1",
- "current_task": "WP-06",
+ "current_stage": "M2",
+ "current_task": null,
  "completed_requirement_ids": [
   "REQ-M0-001",
   "REQ-M0-002",
   "REQ-M0-003",
   "REQ-M0-004",
   "REQ-M0-005",
-  "REQ-M1-003"
+  "REQ-M1-001",
+  "REQ-M1-002",
+  "REQ-M1-003",
+  "REQ-M1-004"
  ],
  "last_run_id": "20261017T211012Z-9f580295-001",
  "blockers": [],
- "next_action": "CI compiles the Rust kernel; local build once rust-std for x86_64-unknown-uefi arrives; then re-gate M1 and start WP-07 (M2)",
+ "next_action": "WP-07 (M2): GDT/TSS/IDT, exception diagnostics, test kernel (ktest) ported from Sol OS; local Rust builds once rust-std arrives",
  "required_inputs": [
   "rust-std-1.97.0-x86_64-unknown-uefi.tar.xz upload from user (for local Rust builds; CI unaffected)"
  ],
@@ -27,7 +30,7 @@
  "event_sequence": 3,
  "pending_operations": [],
  "budget_counters": {
-  "work_packages_done": 6,
+  "work_packages_done": 7,
   "tool_calls_session": null
  },
  "next_retry_at": null,
