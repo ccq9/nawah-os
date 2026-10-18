@@ -1,0 +1,18 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T095016Z-a09b77e7-001",
+ "test_id": "TST-M0-E0-BUILD",
+ "verdict": "PASS",
+ "oracle": "all build steps exit 0 and artifact exists",
+ "expected": "exit 0 + artifact",
+ "observed": "exit=0 artifact=build/pc-qemu-e0/E0.EFI sha256=2d6ce85ac00a7629f42924953cb8805e9df0a81b8dc85ad26e5e7b2879578b47",
+ "inputs_digest": "38a949fc18affeaaa3feb33ccb76884ecb9d9f14629632c783748d6d6a188af2",
+ "inputs": {
+  "boot/e0/main.c": "3c4fcd65b04f783de7322208667e59b84a8a2fb72c737394580d221f3195bea3",
+  "boot/common/efi.h": "3015acd6e82e7065b1ed8ad6daaa6b1a2451dd9d565e0db50db664f62f19fdad",
+  "boot/common/serial.h": "1b50bb95c63a40227ce3d821b080f0a04f4db9ca63d271c08e97b3954087ae10",
+  "platform/pc-qemu-e0/target.json": "4efc8957425bdc92eedcfecbecfbde8d536a7eee9e1f9209d019517af72f54ad",
+  "evidence/20261018T095016Z-a09b77e7-001/artifact/E0.EFI": "2d6ce85ac00a7629f42924953cb8805e9df0a81b8dc85ad26e5e7b2879578b47"
+ },
+ "claim_tag": "source_backed_fact"
+}
