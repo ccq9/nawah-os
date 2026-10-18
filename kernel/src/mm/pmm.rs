@@ -8,11 +8,12 @@
 //! region that fits. After the CR3 switch (WP-09) `reclaim_boot_services` releases the
 //! EfiBootServicesCode/Data frames.
 //!
-//! Single-CPU, interrupts disabled: no lock yet (WP-11 wraps the allocator in an irqsave lock).
+//! The state sits behind an irqsave spinlock (WP-11, ADR-0006): every public function takes it
+//! for the duration of one operation, so interrupt handlers and (later) other CPUs may allocate.
 //! Failure policy: exhaustion returns `None`; freeing a free frame returns an error — never a panic.
 
 use crate::bootinfo::{BootInfo, MEM_CONVENTIONAL};
-use crate::cell::BootCell;
+use crate::sync::{IrqGuard, IrqSpinLock};
 
 pub const FRAME_SIZE: u64 = 4096;
 const LOW_RESERVED: u64 = 1 << 20; // 1 MiB
@@ -49,23 +50,27 @@ struct Pmm {
     reclaimed: bool,
 }
 
-static PMM: BootCell<Pmm> = BootCell::new(Pmm {
-    bits: core::ptr::null_mut(),
-    words: 0,
-    frames: 0,
-    free: 0,
-    managed: 0,
-    bitmap_frames: 0,
-    hint: 0,
-    ready: false,
-    reclaimed: false,
-});
+// SAFETY: the raw bitmap pointer refers to memory the allocator owns exclusively; moving the
+// state between CPUs is sound because all access goes through the lock.
+unsafe impl Send for Pmm {}
 
-fn pmm() -> &'static mut Pmm {
-    // SAFETY: single CPU with interrupts disabled during M2 (ADR-0004); every access to the
-    // allocator state goes through this function and no reference escapes a call. WP-11 replaces
-    // this with a lock before interrupts are enabled.
-    unsafe { &mut *PMM.get() }
+static PMM: IrqSpinLock<Pmm> = IrqSpinLock::new(
+    "pmm",
+    Pmm {
+        bits: core::ptr::null_mut(),
+        words: 0,
+        frames: 0,
+        free: 0,
+        managed: 0,
+        bitmap_frames: 0,
+        hint: 0,
+        ready: false,
+        reclaimed: false,
+    },
+);
+
+fn pmm() -> IrqGuard<'static, Pmm> {
+    PMM.lock()
 }
 
 impl Pmm {
@@ -91,7 +96,7 @@ impl Pmm {
 
 /// Builds the allocator from the boot memory map. Must run once, before any allocation.
 pub fn init(bi: &BootInfo) {
-    let p = pmm();
+    let mut p = pmm();
     assert!(!p.ready, "pmm::init called twice");
 
     // Highest frame of any conventional region bounds the bitmap.
@@ -157,7 +162,7 @@ pub fn init(bi: &BootInfo) {
 
 /// Allocates one free frame, or `None` when exhausted (never panics).
 pub fn alloc_frame() -> Option<Frame> {
-    let p = pmm();
+    let mut p = pmm();
     if !p.ready || p.free == 0 {
         return None;
     }
@@ -183,7 +188,7 @@ pub fn alloc_frame() -> Option<Frame> {
 
 /// Returns a frame to the pool. Detects double frees and unmanaged frames.
 pub fn free_frame(frame: Frame) -> Result<(), PmmError> {
-    let p = pmm();
+    let mut p = pmm();
     if !p.ready || !frame.0.is_multiple_of(FRAME_SIZE) {
         return Err(PmmError::Unmanaged);
     }
@@ -223,7 +228,7 @@ pub fn stats() -> Stats {
 /// (`[start, end)`: the kernel image, whatever memory type the firmware chose for it) stay
 /// reserved. Returns the number of frames released; a second call releases nothing.
 pub fn reclaim_boot_services(bi: &BootInfo, keep: (u64, u64)) -> u64 {
-    let p = pmm();
+    let mut p = pmm();
     if !p.ready || p.reclaimed {
         return 0;
     }

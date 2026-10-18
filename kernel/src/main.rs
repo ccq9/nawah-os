@@ -12,8 +12,6 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![deny(clippy::missing_safety_doc)]
 
-use core::panic::PanicInfo;
-
 #[macro_use]
 mod console;
 
@@ -27,6 +25,10 @@ mod bootinfo;
 mod cell;
 #[allow(unsafe_code)]
 mod mm;
+#[allow(unsafe_code)]
+mod panic;
+#[allow(unsafe_code)]
+mod sync;
 
 mod kmain;
 
@@ -35,9 +37,3 @@ mod ktest;
 
 /// Build identity from tools/project.py (ASCII, < 32 bytes; see kernel/build.rs).
 pub const BUILD_ID: &str = env!("NAWAH_BUILD_ID");
-
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    kprintln!("OSX|{}|kernel|panic|{}", BUILD_ID, info);
-    arch::qemu::exit(arch::qemu::EXIT_PANIC)
-}

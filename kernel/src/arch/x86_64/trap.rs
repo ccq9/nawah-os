@@ -289,6 +289,11 @@ extern "sysv64" fn exception_handler(frame: &TrapFrame) {
         fatal(frame.vector);
     }
 
+    if frame.vector != BREAKPOINT {
+        // SAFETY: a fatal exception never returns to the interrupted code, which may hold the
+        // console lock (ADR-0006).
+        unsafe { crate::console::CONSOLE.force_unlock() };
+    }
     let marker = 0u8;
     let handler_stack = gdt::stack_name(&raw const marker as u64);
 

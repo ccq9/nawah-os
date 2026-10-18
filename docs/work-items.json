@@ -655,32 +655,52 @@
    ],
    "inputs": [
     "docs/PLAN.md §3",
-    "ADR-0003",
-    "Intel SDM Vol.3A (S26)"
+    "ADR-0006",
+    "ADR-0004 item 5",
+    "Intel SDM Vol.3A §11 (IF, interrupt shadow) (S26)"
    ],
    "files": [
     "kernel/src/sync.rs",
-    "kernel/src/panic.rs"
+    "kernel/src/panic.rs",
+    "kernel/src/console.rs",
+    "kernel/src/main.rs",
+    "kernel/src/mm/pmm.rs",
+    "kernel/src/arch/x86_64/trap.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "docs/policies/panic.md",
+    "docs/adr/0006-sync-and-panic.md",
+    "tools/check-unsafe.sh",
+    "tools/unsafe-baseline.txt",
+    "platform/pc-qemu/target.json"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
    ],
    "actions": [
-    "irqsave spinlock, locked serial, panic policy doc",
-    "ktests"
+    "IrqSpinLock with IF save/restore, re-entry detection, try_lock, force_unlock",
+    "locked console (one line per acquisition); fatal paths break the lock",
+    "PMM state behind the lock",
+    "panic module: line format, exit 0x11, nested-panic guard, fatal(code) for boot-critical failures",
+    "docs/policies/panic.md",
+    "ktests lock_irqsave, lock_reentry, panic_code"
    ],
-   "acceptance": "lock/panic tests PASS",
+   "acceptance": "TST-M2-LOCK-IRQSAVE/LOCK-REENTRY/PANIC-CODE PASS on CI; all earlier suites still PASS",
    "test_ids": [
     "TST-M2-LOCK-IRQSAVE",
-    "TST-M2-PANIC-CODE"
+    "TST-M2-PANIC-CODE",
+    "TST-M2-LOCK-REENTRY"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M2"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null

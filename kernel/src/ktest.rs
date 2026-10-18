@@ -8,7 +8,10 @@
 use crate::arch::{apic, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu};
 use crate::mm::pmm::{self, Frame, PmmError};
 use crate::mm::vmm;
+use crate::sync::IrqSpinLock;
 use crate::BUILD_ID;
+
+static TEST_LOCK: IrqSpinLock<u64> = IrqSpinLock::new("ktest_lock", 0);
 
 fn fail(what: &str) -> ! {
     kprintln!("OSX|{}|ktest|fail|{}", BUILD_ID, what);
@@ -92,6 +95,17 @@ pub fn run() -> ! {
         "timer_ticks" => timer_ticks(),
         "irq_eoi" => irq_eoi(),
         "spurious" => spurious(),
+        "lock_irqsave" => lock_irqsave(),
+        "lock_reentry" => {
+            let _held = TEST_LOCK.lock();
+            kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
+            let _again = TEST_LOCK.lock(); // must panic with K_E_LOCK_REENTRY
+            fail("re-entrant lock acquisition did not panic")
+        }
+        "panic_code" => {
+            kprintln!("OSX|{}|ktest|panic_code|about_to_panic=1", BUILD_ID);
+            panic!("K_T_PANIC deliberate test panic");
+        }
         "vmm_wp" => {
             // Writing to .text: the target is the store instruction itself, so RIP, CR2 and the
             // expected address are all the same value.
@@ -140,6 +154,73 @@ pub fn run() -> ! {
             qemu::exit(qemu::EXIT_UNKNOWN_TEST)
         }
     }
+}
+
+/// irqsave lock: IF is cleared while held and restored to its previous value (both from the
+/// enabled and the disabled state); a real interrupt source (the timer) is held off while the
+/// lock is held and resumes afterwards; try_lock fails while held; the data is reachable.
+fn lock_irqsave() -> ! {
+    interrupts::enable();
+    let (if_inside, if_after, if_inside_disabled, if_after_disabled);
+    {
+        let mut g = TEST_LOCK.lock();
+        if_inside = interrupts::enabled();
+        *g += 1;
+    }
+    if_after = interrupts::enabled();
+    interrupts::disable();
+    {
+        let mut g = TEST_LOCK.lock();
+        if_inside_disabled = interrupts::enabled();
+        *g += 1;
+    }
+    if_after_disabled = interrupts::enabled();
+    interrupts::enable();
+    // Timer held off while the lock is held, resumes after release.
+    let t0 = irq::counters().ticks;
+    let (ticks_while_held, try_while_held) = {
+        let g = TEST_LOCK.lock();
+        pit::wait_ms(20);
+        let t = irq::counters().ticks - t0;
+        let tried = TEST_LOCK.try_lock().is_some();
+        drop(g);
+        (t, tried)
+    };
+    let t1 = irq::counters().ticks;
+    pit::wait_ms(20);
+    let ticks_after = irq::counters().ticks - t1;
+    let try_when_free = TEST_LOCK.try_lock().is_some();
+    interrupts::disable();
+    let value = *TEST_LOCK.lock();
+    kprintln!(
+        "OSX|{}|ktest|lock_irqsave|if_inside={}|if_after={}|if_inside_disabled={}|if_after_disabled={}|ticks_while_held={}|ticks_after={}|try_while_held={}|try_when_free={}|value={}",
+        BUILD_ID,
+        u8::from(if_inside),
+        u8::from(if_after),
+        u8::from(if_inside_disabled),
+        u8::from(if_after_disabled),
+        ticks_while_held,
+        ticks_after,
+        u8::from(try_while_held),
+        u8::from(try_when_free),
+        value
+    );
+    if if_inside || !if_after {
+        fail("IF not cleared inside the lock or not restored after it")
+    }
+    if if_inside_disabled || if_after_disabled {
+        fail("IF changed by a lock taken with interrupts disabled")
+    }
+    if ticks_while_held != 0 || ticks_after < 10 {
+        fail("timer not held off while locked, or did not resume")
+    }
+    if try_while_held || !try_when_free {
+        fail("try_lock semantics wrong")
+    }
+    if value != 2 {
+        fail("protected data not updated")
+    }
+    pass("irqsave lock clears and restores IF, holds off interrupts, try_lock consistent")
 }
 
 /// Periodic timer: two consecutive PIT-measured 50 ms windows each deliver 25..=100 ticks, the

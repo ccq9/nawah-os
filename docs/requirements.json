@@ -623,9 +623,10 @@
    "acceptance": "اختبارات lock/panic",
    "test_ids": [
     "TST-M2-LOCK-IRQSAVE",
-    "TST-M2-PANIC-CODE"
+    "TST-M2-PANIC-CODE",
+    "TST-M2-LOCK-REENTRY"
    ],
-   "implementation_status": "planned",
+   "implementation_status": "implemented_untested",
    "evidence_refs": []
   },
   {

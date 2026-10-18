@@ -647,6 +647,74 @@
      "|kernel|panic|",
      "|exc|vector"
     ]
+   },
+   {
+    "id": "TST-M2-LOCK-IRQSAVE",
+    "test_id": "TST-M2-LOCK-IRQSAVE",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=lock_irqsave"
+    ],
+    "oracle": "irqsave lock: IF cleared inside and restored after (from enabled and from disabled); the periodic timer delivers no tick while the lock is held for 20 ms and resumes after release; try_lock fails while held and succeeds when free; protected value updated; exit 33",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=lock_irqsave",
+     "|ktest|lock_irqsave|if_inside=0|if_after=1|if_inside_disabled=0|if_after_disabled=0|ticks_while_held=0|",
+     "|try_while_held=0|try_when_free=1|value=2",
+     "|ktest|pass|irqsave lock clears and restores IF"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M2-LOCK-REENTRY",
+    "test_id": "TST-M2-LOCK-REENTRY",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=lock_reentry"
+    ],
+    "oracle": "re-acquiring a held IrqSpinLock on the same CPU panics with K_E_LOCK_REENTRY|lock=ktest_lock instead of hanging; exit 35",
+    "expected_exit_code": 35,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=lock_reentry",
+     "OSX|${BUILD_ID}|kernel|panic|loc=",
+     "|ktest|lock_reentry|held=1|reacquiring=1",
+     "src/sync.rs:",
+     "|msg=K_E_LOCK_REENTRY|lock=ktest_lock|cpu=0"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|exc|vector",
+     "|panic|nested|"
+    ]
+   },
+   {
+    "id": "TST-M2-PANIC-CODE",
+    "test_id": "TST-M2-PANIC-CODE",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=panic_code"
+    ],
+    "oracle": "explicit panic! prints OSX|<build>|kernel|panic|loc=kernel/src/ktest.rs:<line>:<col>|console_was_locked=0|msg=<message> and exits 0x11 (QEMU 35)",
+    "expected_exit_code": 35,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=panic_code",
+     "OSX|${BUILD_ID}|kernel|panic|loc=",
+     "|ktest|panic_code|about_to_panic=1",
+     "src/ktest.rs:",
+     "|console_was_locked=0|msg=K_T_PANIC deliberate test panic"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|exc|vector",
+     "|panic|nested|"
+    ]
    }
   ]
  }

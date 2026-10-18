@@ -154,6 +154,25 @@ pub mod interrupts {
         unsafe { asm!("pushfq", "pop {}", out(reg) flags, options(preserves_flags)) };
         flags & (1 << 9) != 0
     }
+
+    /// Disables interrupts and reports whether they were enabled (for `restore`).
+    pub fn save_and_disable() -> bool {
+        let was = enabled();
+        disable();
+        was
+    }
+
+    /// Re-enables interrupts only if `was_enabled`.
+    pub fn restore(was_enabled: bool) {
+        if was_enabled {
+            enable();
+        }
+    }
+}
+
+/// Index of the running CPU. M2 runs one CPU; M3 (SMP) derives it from the local APIC ID.
+pub fn cpu_id() -> u32 {
+    0
 }
 
 /// Stops the CPU for good.

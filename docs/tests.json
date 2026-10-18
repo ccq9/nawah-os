@@ -402,8 +402,8 @@
     "REQ-M2-013"
    ],
    "layer": "guest",
-   "oracle": "irqsave lock restores IF; nested acquire detected in test kernel",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "oracle": "irqsave lock: IF cleared inside and restored after (from enabled and from disabled); the periodic timer delivers no tick while the lock is held for 20 ms and resumes after release; try_lock fails while held and succeeds when free; protected value updated; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -413,8 +413,8 @@
     "REQ-M2-013"
    ],
    "layer": "negative",
-   "oracle": "panic prints build id and location and exits with code 0x11 (35)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "oracle": "explicit panic! prints OSX|<build>|kernel|panic|loc=kernel/src/ktest.rs:<line>:<col>|console_was_locked=0|msg=<message> and exits 0x11 (QEMU 35)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -426,6 +426,17 @@
    "layer": "host_unit",
    "oracle": "seeded defects in arch/ are detected by the M2 suite (>= 95% killed)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M2-LOCK-REENTRY",
+   "requirement_ids": [
+    "REQ-M2-013"
+   ],
+   "layer": "negative",
+   "oracle": "re-acquiring a held IrqSpinLock on the same CPU panics with K_E_LOCK_REENTRY|lock=ktest_lock instead of hanging; exit 35",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   }

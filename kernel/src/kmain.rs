@@ -15,8 +15,7 @@ pub fn kernel_main(bi: &BootInfo) -> ! {
         bi.build_id()
     );
     if !bi.is_valid() {
-        kprintln!("OSX|?|kernel|panic|code=K_E_BAD_BOOTINFO");
-        arch::halt();
+        crate::panic::fatal("K_E_BAD_BOOTINFO");
     }
     let build_id = bi.build_id();
     let mut descriptors: u64 = 0;
@@ -56,10 +55,7 @@ pub fn kernel_main(bi: &BootInfo) -> ! {
     // the only alternative and they are about to be reclaimed.
     let ks = match mm::vmm::init(bi) {
         Ok(ks) => ks,
-        Err(e) => {
-            kprintln!("OSX|{}|kernel|panic|code={}", build_id, e.code());
-            arch::halt()
-        }
+        Err(e) => crate::panic::fatal(e.code()),
     };
     kprintln!(
         "OSX|{}|kernel|vmm|cr3={:#x}|image={:#x}+{:#x}|wp={}|nxe={}|text_rx={}|data_rw_nx={}|sections_rx={}|sections_ro={}|sections_rw={}|ram_mib={}|reclaimed_frames={}|direct_ok={}",
@@ -96,20 +92,14 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
             ks.kernel_stack.guard,
             ks.df_stack.guard
         ),
-        None => {
-            kprintln!("OSX|{}|kernel|panic|code=K_E_VMM_NOT_ACTIVE", build_id);
-            arch::halt()
-        }
+        None => crate::panic::fatal("K_E_VMM_NOT_ACTIVE"),
     }
 
     // Interrupts (WP-10): ACPI MADT -> PIC remapped and masked, local APIC enabled with a
     // calibrated timer, every I/O APIC masked. Interrupts are still off here.
     let irq = match arch::irq::init(bi.rsdp) {
         Ok(i) => i,
-        Err(e) => {
-            kprintln!("OSX|{}|kernel|panic|code={}", build_id, e.code());
-            arch::halt()
-        }
+        Err(e) => crate::panic::fatal(e.code()),
     };
     kprintln!(
         "OSX|{}|kernel|irq|pic_masks={:#x},{:#x}|lapic_mode={:?}|lapic_id={}|lapic_version={:#x}|lapic_hz={}|svr={:#x}|cpus={}|ioapics={}|ioapic_entries={}|ioapic_masked={}|ioapic_version={:#x}|overrides={}|pcat_compat={}|timer_hz={}",
