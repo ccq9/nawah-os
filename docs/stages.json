@@ -223,7 +223,7 @@
    "exit_conditions": [
     "وفق البند 20 من OS-EXEC-AR 3.2"
    ],
-   "gate_status": "not_started"
+   "gate_status": "open"
   },
   {
    "id": "M6",

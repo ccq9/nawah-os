@@ -2587,6 +2587,128 @@
    "blocker": null
   },
   {
+   "id": "WP-39",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-008",
+    "REQ-M5-009"
+   ],
+   "depends_on": [
+    "WP-36",
+    "WP-37"
+   ],
+   "inputs": [
+    "docs/adr/0019-graphics-platform.md §10",
+    "docs/contracts/ui.md",
+    "docs/contracts/display.md",
+    "docs/contracts/input.md"
+   ],
+   "files": [],
+   "contract_refs": [],
+   "actions": [
+    "انتقالات النوافذ والوصول، والواجهة العربية (السيناريوهان 7 و11)",
+    "display.md v1.3: Alt+Tab over every shown window, a minimised one restored; Alt+F9 minimises the focused window; TITLE <wid> <text>; the layout event to the narrator",
+    "input.md v2.3: Alt+Shift (pressed together, released with no other key) toggles us/ar; the focus owner hears `LAYOUT <name>`",
+    "ui.md v1.2: the window's FOCUS re-announces the focused element; in a right-to-left dialog ←/→ follow its direction; ui.lang (en|ar) followed live; dialog strings in Arabic",
+    "tests: TST-M5-WINDOW-A11Y, TST-M5-ARABIC-UI (+ expected transcripts, region probes), TST-M5-UI-UNIT RTL cases"
+   ],
+   "acceptance": "TST-M5-WINDOW-A11Y and TST-M5-ARABIC-UI PASS on CI; UI-UNIT with the RTL cases PASS; the M5 suite green",
+   "test_ids": [
+    "TST-M5-WINDOW-A11Y",
+    "TST-M5-ARABIC-UI",
+    "TST-M5-UI-UNIT"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-40",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-010"
+   ],
+   "depends_on": [
+    "WP-37"
+   ],
+   "inputs": [
+    "docs/adr/0019-graphics-platform.md §10",
+    "docs/contracts/syscall.md",
+    "docs/contracts/services.md",
+    "docs/contracts/session.md"
+   ],
+   "files": [],
+   "contract_refs": [],
+   "actions": [
+    "الإنهاء القسري والحيوية والتعليق أثناء القفل (السيناريو 8، R-40)",
+    "ABI v1.11: process_kill(h) with WRITE on the process handle (spawn hands it out), EXIT_KILLED; the kill takes effect at safe points (syscall exit, blocking waits, the return to ring 3 from an interrupt) on any CPU",
+    "services.md v1.7: STOP grace then process_kill; watchdog=<ticks> in the manifest: PING/PONG on the boot channel, a missed period kills and the restart policy applies",
+    "session.md v1.1: requests to display/input carry a deadline — a hung component is treated as lost, never waited on forever; display/input/session answer PING",
+    "ktest fault: freeze a process by name (test kernel only); process names kept for diagnostics",
+    "tests: TST-M5-PROCESS-KILL, TST-M5-SVC-WATCHDOG, TST-M5-LOCK-HANG"
+   ],
+   "acceptance": "the three tests PASS on CI, every earlier suite green; R-40 closed in the review",
+   "test_ids": [
+    "TST-M5-PROCESS-KILL",
+    "TST-M5-SVC-WATCHDOG",
+    "TST-M5-LOCK-HANG"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-41",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-011"
+   ],
+   "depends_on": [
+    "WP-40"
+   ],
+   "inputs": [
+    "docs/adr/0019-graphics-platform.md §10",
+    "docs/adr/0016-services-and-authority.md",
+    "docs/contracts/session.md",
+    "docs/contracts/auth.md"
+   ],
+   "files": [],
+   "contract_refs": [],
+   "actions": [
+    "رفع الصلاحية على المسار الموثوق (§8.7، §9)",
+    "session.md v1.2: ELEVATE <service> <request…> from a client; the prompt on the session's surface with the screen held: the requester's manager-vouched name and the request in full; an administrator's name and password checked by auth; the session runs exactly that request with the token, revokes it, answers the reply; Cancel/Esc, refusals, one at a time",
+    "tests: TST-M5-ELEVATE (approve, wrong password, cancel, isolation of the keys, compositor killed and frozen during the prompt, refusals)"
+   ],
+   "acceptance": "TST-M5-ELEVATE PASS on CI; the M5 suite green",
+   "test_ids": [
+    "TST-M5-ELEVATE"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
    "id": "WP-38",
    "stage": "M5",
    "requirement_ids": [
@@ -2594,11 +2716,15 @@
    ],
    "depends_on": [
     "WP-35",
-    "WP-37"
+    "WP-37",
+    "WP-39",
+    "WP-40",
+    "WP-41"
    ],
    "inputs": [
     "docs/PLAN.md §6",
-    "docs/adr/0019-graphics-platform.md"
+    "docs/adr/0019-graphics-platform.md",
+    "docs/adr/0019-graphics-platform.md §10"
    ],
    "files": [],
    "contract_refs": [],

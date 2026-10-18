@@ -1533,7 +1533,11 @@
     "REQ-M5-003",
     "REQ-M5-004",
     "REQ-M5-005",
-    "REQ-M5-006"
+    "REQ-M5-006",
+    "REQ-M5-008",
+    "REQ-M5-009",
+    "REQ-M5-010",
+    "REQ-M5-011"
    ],
    "contract_refs": [],
    "failure_cases": [
@@ -1542,6 +1546,159 @@
    "acceptance": "scenario + mutants + review",
    "test_ids": [
     "TST-M5-MUTANTS"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M5-008",
+   "statement": "انتقال النافذة بين حالاتها (عادية/مصغَّرة) وأحجامها دون فقد التركيز أو الوصول: إدارة النوافذ كاملة بلوحة المفاتيح (Alt+Tab يشمل المصغَّرة ويستعيدها، اختصار للتصغير)، والتطبيق يعيد إعلان عنصره المركَّز حين تعود نافذته إلى التركيز",
+   "rationale": "OS-EXEC-AR §20 السيناريو الحرج 7؛ §17 (الوصول منذ الأساس)؛ تدقيق بوابة M5 (WP-38، ADR-0019 §10)",
+   "source": "OS-EXEC-AR 3.2 §20 (7)",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M5",
+   "dependencies": [
+    "REQ-M5-003",
+    "REQ-M5-005"
+   ],
+   "contract_refs": [
+    "docs/contracts/display.md",
+    "docs/contracts/ui.md"
+   ],
+   "failure_cases": [
+    "نافذة مصغَّرة لا تُستعاد بلوحة المفاتيح",
+    "مستخدم القارئ لا يعرف أين التركيز بعد عودة النافذة",
+    "تغيير الحجم يُفقد التركيز"
+   ],
+   "acceptance": "window_a11y",
+   "test_ids": [
+    "TST-M5-WINDOW-A11Y"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M5-009",
+   "statement": "واجهة عربية وإنجليزية: الحوار يتبع `ui.lang` من التكوين حيًّا (تسميات وعنوان عربيان، اتجاه RTL للحوار كله)، تبديل التخطيط بلوحة المفاتيح (Alt+Shift) بلا سلطة تطبيق، كتابة مسار مختلط (عربي/لاتيني/أرقام) وإعلانه حرفيًا، وتنقل كامل بلوحة المفاتيح في اللغتين",
+   "rationale": "OS-EXEC-AR §20 السيناريو الحرج 11؛ §17؛ ui.md v1 (الاتجاه RTL/LTR غير مختبَر)؛ تدقيق بوابة M5 (ADR-0019 §10)",
+   "source": "OS-EXEC-AR 3.2 §20 (11)",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M5",
+   "dependencies": [
+    "REQ-M5-002",
+    "REQ-M5-004",
+    "REQ-M5-005"
+   ],
+   "contract_refs": [
+    "docs/contracts/ui.md",
+    "docs/contracts/input.md",
+    "docs/contracts/display.md"
+   ],
+   "failure_cases": [
+    "حوار RTL يرسم كالـ LTR",
+    "مستخدم لا يستطيع كتابة نص مختلط بلوحة المفاتيح",
+    "تسمية عربية تُعكس حروفها"
+   ],
+   "acceptance": "arabic_ui + ui unit (RTL)",
+   "test_ids": [
+    "TST-M5-ARABIC-UI",
+    "TST-M5-UI-UNIT"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M5-010",
+   "statement": "الإنهاء القسري والحيوية: `process_kill` (ABI v1.11) بحق WRITE على مقبض العملية؛ المدير ينهي خدمة لا تخرج خلال مهلة الإيقاف وخدمة تفوّت نبضة الحياة (watchdog) ثم يطبّق سياسة إعادة تشغيلها؛ الجلسة لا تنتظر مكوّنًا معلَّقًا بلا حد؛ القفل يصمد أمام compositor وخدمة إدخال معلَّقين ويعود النظام إلى شاشة القفل",
+   "rationale": "OS-EXEC-AR §9 (اختبر القتل والتعليق وإعادة التشغيل أثناء القفل ورفع الصلاحية)، §8.7 (حد لمحاولات الخدمة المتعطلة)، §20 السيناريو 8؛ R-40 (لا process_kill)",
+   "source": "OS-EXEC-AR 3.2 §9",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M5",
+   "dependencies": [
+    "REQ-M5-006",
+    "REQ-M4-001",
+    "REQ-M4-002",
+    "REQ-M3-004"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md",
+    "docs/contracts/services.md",
+    "docs/contracts/session.md"
+   ],
+   "failure_cases": [
+    "خدمة معلَّقة تبقى للأبد",
+    "انتظار الجلسة لردّ compositor معلَّق يجمّدها",
+    "القفل يُرفع أو الشاشة تكشف التطبيقات أثناء التعليق"
+   ],
+   "acceptance": "process_kill + svc_watchdog + lock_hang",
+   "test_ids": [
+    "TST-M5-PROCESS-KILL",
+    "TST-M5-SVC-WATCHDOG",
+    "TST-M5-LOCK-HANG"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M5-011",
+   "statement": "رفع الصلاحية على المسار الموثوق لعملية محددة وطلب محدد وبهوية ظاهرة: التطبيق يطلب من الجلسة، الجلسة تعرض الطالب (هوية يشهد بها المدير) والطلب بنصه الكامل على سطحها المحجوب عن غيرها، ومصادقة مدير عبر auth، ثم تنفّذ الجلسة الطلب نفسه بالرمز وتبطله؛ لا قبول بلا مصادقة صحيحة ولا عند تعطل العرض",
+   "rationale": "OS-EXEC-AR §8.7 (رفع صلاحيات لعملية محددة ومدخلات محددة وبهوية ظاهرة، لا مربع UAC بلا حد أمني)، §9 (مسار إدخال موثوق لرفع الصلاحيات)؛ ADR-0016 (أُجِّل إلى M5)",
+   "source": "OS-EXEC-AR 3.2 §8.7",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M5",
+   "dependencies": [
+    "REQ-M5-006",
+    "REQ-M5-010",
+    "REQ-M4-003",
+    "REQ-M4-004"
+   ],
+   "contract_refs": [
+    "docs/contracts/session.md"
+   ],
+   "failure_cases": [
+    "تطبيق يرفع صلاحيته بنفسه",
+    "الطلب المنفَّذ غير المعروض",
+    "رمز المدير يبقى بيد التطبيق",
+    "كلمة المرور تصل تطبيقًا"
+   ],
+   "acceptance": "elevate",
+   "test_ids": [
+    "TST-M5-ELEVATE"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-001",
+   "statement": "أسماء ملفات يونيكود (VFAT LFN بـ UTF-16) بالعربية والمختلطة في نظام الملفات والمسارات قبل مستكشف الملفات؛ M5 يغطي عرض المسارات المختلطة وكتابتها في الواجهة فقط",
+   "rationale": "OS-EXEC-AR §20 السيناريو 11 (مسارات وأسماء ملفات مختلطة)؛ FAT32 الحالي بأسماء 8.3 (files.md)؛ تدقيق بوابة M5",
+   "source": "OS-EXEC-AR 3.2 §20 (11)",
+   "origin": "derived",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M3-007",
+    "REQ-M3-008",
+    "REQ-M5-004"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "failure_cases": [
+    "اسم عربي يُرفض أو يُحرَّف على القرص"
+   ],
+   "acceptance": "lfn",
+   "test_ids": [
+    "TST-M6-LFN"
    ],
    "implementation_status": "planned",
    "evidence_refs": []

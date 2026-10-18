@@ -1627,6 +1627,73 @@
    ]
   },
   {
+   "id": "TST-M5-WINDOW-A11Y",
+   "requirement_ids": [
+    "REQ-M5-008"
+   ],
+   "layer": "user_e2e",
+   "oracle": "scenario 7 (planned, WP-39): the sample dialog and winapp under the narrator; the lab manages the windows by keyboard alone — Alt+Tab between them, Alt+Shift+arrows resize winapp (it attaches a surface of the new size), Alt+F9 minimises the dialog, Alt+Tab restores it, Alt+arrows move it, then ui.scale=2 resizes it — and after every transition the focus is where display.md says and the dialog's focused element is the same one: the narrator's transcript (the window's focus, the dialog re-announcing its focused element whenever its window gets the focus back, the theme change, a list change proving the element still has the keyboard) equals the expected file exactly; geometry from LIST and the dialog's trace; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-ARABIC-UI",
+   "requirement_ids": [
+    "REQ-M5-009"
+   ],
+   "layer": "user_e2e",
+   "oracle": "scenario 11 (planned, WP-39): ui.lang=ar set in the config service turns the running dialog Arabic and right-to-left (title, labels, list items) while it keeps its focused element; the lab toggles the layout with Alt+Shift and types a mixed path (Arabic, Latin, digits, '/', '-', '.') into the field and navigates every element by keyboard; the narrator's transcript (Arabic as \\u{XXXX}, the field's value after every key) equals the expected file exactly; the screendump shows the right-to-left geometry (label ink at the right end of its row and none at the left, the checkbox square at the right) checked on the host by region; ui.lang=en brings the English dialog back; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-PROCESS-KILL",
+   "requirement_ids": [
+    "REQ-M5-010"
+   ],
+   "layer": "negative",
+   "oracle": "planned (WP-40): process_kill (ABI v1.11) ends a process blocked in channel_read, one waiting in object_wait_many with a timeout, one sleeping and one spinning in ring 3 (also on another CPU): each exits with EXIT_KILLED, its peers see PEER_CLOSED, its frames come back; a process handle without WRITE gets ERR_ACCESS, another object ERR_WRONG_TYPE, an exited process 0; no frame leaks; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-SVC-WATCHDOG",
+   "requirement_ids": [
+    "REQ-M5-010"
+   ],
+   "layer": "service_integration",
+   "oracle": "planned (WP-40): a service that ignores STOP is ended with process_kill after its stop grace and restarted when asked (RESTART); a service with watchdog=<ticks> that stops answering PING is killed within two periods and restarted by its on-failure policy (restarts counted, exit EXIT_KILLED in LIST); a service without a watchdog is never pinged; the manager keeps answering LIST throughout; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-LOCK-HANG",
+   "requirement_ids": [
+    "REQ-M5-010",
+    "REQ-M5-006"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "scenario 8 (planned, WP-40): with the session locked the test kernel freezes the compositor (a ktest fault: its threads stop running, it answers nothing): the session keeps answering STATE, a wrong password typed meanwhile is refused and no key reaches the spy; the manager's watchdog kills the frozen compositor and restarts it, the new one starts held and shows the lock screen (screendump), then the same for the input service; only the right password unlocks and a key reaches the spy afterwards; the password never appears in the serial log; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-ELEVATE",
+   "requirement_ids": [
+    "REQ-M5-011"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (WP-41): signed in as `user`, a client asks the session to elevate one config request; the prompt (session surface, the screen held) shows the requester's name as the manager vouches it and the request in full; a wrong administrator password is refused, Cancel answers ERR CANCELLED, the right one makes the session run exactly that request with an admin token it then revokes and answers its reply; no key reaches the requester while the prompt is up; a compositor killed or frozen during the prompt never approves it; requests to undeclared services, while locked, or too long to show are refused; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
    "id": "TST-M5-MUTANTS",
    "requirement_ids": [
     "REQ-M5-007"
@@ -1634,6 +1701,17 @@
    "layer": "host_unit",
    "oracle": "seeded defects in the M5 modules (display, input, compositor, text, ui, session) are killed by the M5 suite (>= 95%)",
    "command": "python3 tools/project.py test --target host --suite M5-GATE",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-LFN",
+   "requirement_ids": [
+    "REQ-M6-001"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6): a file with an Arabic and mixed long name is created, listed, read and renamed through the VFS; fsck.fat and the host tool read the same long name back",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   }
