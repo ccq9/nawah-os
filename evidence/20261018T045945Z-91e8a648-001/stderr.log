@@ -1,0 +1,9 @@
+info: syncing channel updates for 1.97.0-x86_64-unknown-linux-gnu
+info: latest update on 2026-07-09 for version 1.97.0 (2d8144b78 2026-07-07)
+info: downloading 2 components
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.80s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.73s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `ktest` profile [optimized + debuginfo] target(s) in 1.00s
