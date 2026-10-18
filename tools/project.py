@@ -1292,6 +1292,12 @@ def rust_src_state(src: Path, commit: str) -> str:
 
 
 def cmd_preflight(suite, only) -> int:
+    # CI's hygiene gate runs `cargo fmt --all --check` before anything builds, and a formatting
+    # miss there fails the whole run before the suites execute (CI run 39175302719). Catch it
+    # here first: it needs only rustfmt and finishes in under a second.
+    if subprocess.run(["cargo", "fmt", "--all", "--check"], cwd=ROOT).returncode != 0:
+        print("preflight: cargo fmt --all --check failed (run `cargo fmt --all` and retry)")
+        return E_INTERNAL
     release, commit = rustc_identity()
     sysroot = Path(subprocess.run(["rustc", "--print", "sysroot"], capture_output=True, text=True).stdout.strip())
     src = sysroot / "lib" / "rustlib" / "src" / "rust"
