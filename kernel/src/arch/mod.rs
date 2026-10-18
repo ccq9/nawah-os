@@ -18,6 +18,5 @@ mod aarch64;
 
 #[cfg(target_arch = "aarch64")]
 pub use aarch64::{
-    cpu_id, current_el, halt, init_console, init_cpu, interrupts, jump_on_kernel_stack, qemu,
-    Serial,
+    cpu_id, current_el, init_console, init_cpu, interrupts, jump_on_kernel_stack, qemu, Serial,
 };
