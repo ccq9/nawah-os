@@ -1,6 +1,6 @@
 # ADR-0006 — التزامن الأولي وسياسة panic (WP-11)
 
-الحالة: منفَّذ 2026-10-18؛ الإغلاق مرهون بدليل CI (TST-M2-LOCK-IRQSAVE / LOCK-REENTRY / PANIC-CODE وبقاء أجنحة M1/M2 خضراء).
+الحالة: مقبول — منفَّذ ومُغلق 2026-10-18 بدليل CI run 39098204104 (TST-M2-LOCK-IRQSAVE / LOCK-REENTRY / PANIC-CODE PASS؛ كل أجنحة M1/M2 خضراء).
 
 ## القرارات
 

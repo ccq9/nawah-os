@@ -1,0 +1,53 @@
+# Mutation testing of the kernel (TST-M2-MUTANTS, REQ-M2-014): seeded defects must be killed by
+# the M1/M2 guest suites. Manual/scheduled (each mutant rebuilds the kernel), evidence published
+# like the verify workflow so it can be imported with `project.py import-ci-evidence`.
+name: mutants
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+permissions:
+  contents: write
+jobs:
+  mutants:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-system-x86 ovmf mtools python3-jsonschema
+          rustup toolchain install 1.97.0 --profile minimal
+          rustup target add --toolchain 1.97.0 x86_64-unknown-uefi
+          rustup run 1.97.0 rustc --version; qemu-system-x86_64 --version | head -1
+      - name: validate-records (committed state)
+        run: python3 tools/project.py validate-records
+      - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
+        run: |
+          python3 tools/project.py build --target pc-qemu
+          python3 tools/project.py boot --target pc-qemu
+      - name: Mutation run (host suite M2 = TST-M2-MUTANTS)
+        run: python3 tools/project.py test --target host --suite M2
+      - name: Report
+        if: always()
+        run: cat build/mutants-report.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutants-${{ github.sha }}
+          path: |
+            evidence/
+            build/mutants-report.json
+          retention-days: 90
+      - name: Publish evidence on a ci-evidence branch
+        if: always()
+        run: |
+          set -e
+          git config user.name "nawah-ci"
+          git config user.email "ci@nawah-os.invalid"
+          git checkout --orphan "ci-evidence/mutants-${GITHUB_RUN_ID}"
+          git rm -rfq --cached . >/dev/null
+          git add -f evidence/ build/mutants-report.json 2>/dev/null || git add -f evidence/
+          git commit -qm "mutation evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
+          git push -q origin "ci-evidence/mutants-${GITHUB_RUN_ID}"

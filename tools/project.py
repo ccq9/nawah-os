@@ -12,6 +12,9 @@ ROOT = Path(os.environ.get("NAWAH_ROOT", Path(__file__).resolve().parents[1])).r
 DOCS = ROOT / "docs"
 SCHEMAS = DOCS / "schemas"
 EVIDENCE = ROOT / "evidence"
+# Scratch mode (mutation runs, experiments): run directories go to this directory instead of
+# evidence/ and verdicts are never attached to the records.
+SCRATCH = Path(os.environ["NAWAH_SCRATCH_EVIDENCE"]).resolve() if os.environ.get("NAWAH_SCRATCH_EVIDENCE") else None
 SCHEMA_VERSION = "1.0.0"
 RECORD_FILES = ["requirements", "stages", "work-items", "tests", "risks", "sources", "hardware", "decisions-pending"]
 SINGLE_FILES = ["project-state", "automation"]
@@ -356,7 +359,7 @@ def new_run_dir(purpose_slug):
     n = 1
     while True:
         rid = f"{ts}-{rev[:8]}-{n:03d}"
-        d = EVIDENCE / rid
+        d = (SCRATCH or EVIDENCE) / rid
         if not d.exists():
             d.mkdir(parents=True); return rid, d
         n += 1
@@ -491,7 +494,8 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     serial = d / "serial.log"
     extra = suite_case.get("qemu_extra", []) if suite_case else []
     cmd = qemu_cmd(t, target_name, esp, serial, extra)
-    rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", t["qemu"]["boot_timeout_s"])
+    timeout_s = int(os.environ.get("NAWAH_QEMU_TIMEOUT_S", t["qemu"]["boot_timeout_s"]))
+    rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s)
     write_run(d, rid, target_name, "boot" if not suite_case else f"test:{suite_case['id']}", [" ".join(cmd)], rc, started)
     text = serial.read_text(errors="replace") if serial.exists() else ""
     inputs = digests_for(t["build"]["inputs"], t["build"].get("input_globs", ())) | {keep_artifact(d, rid, art): sha256_file(art)}
@@ -536,6 +540,11 @@ HOST_SUITES = {
 }
 
 
+HOST_SUITES["M2"] = [
+    {"id": "TST-M2-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--report", "build/mutants-report.json"],
+     "oracle": "every seeded defect that compiles is killed by at least one M1/M2 case; kill ratio >= 0.95 (report in stdout and build/mutants-report.json)",
+     "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs"], "timeout_s": 6000},
+]
 HOST_SUITES["M1"] = [
     {"id": "TST-M1-NOBS", "command": ["python3", "-I", "tests/test_m1_nobs.py"],
      "oracle": "static: kmain.rs is safe-only (no unsafe allowed by main.rs), names no firmware table/efi symbol; boot::efi is private; BootInfo carries no function pointers; kernel_main takes &BootInfo only",
@@ -557,18 +566,14 @@ def cmd_test_host_case(case) -> int:
     if True:
         started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
         rid, d = new_run_dir("host-test")
-        rc = run_logged(case["command"], ROOT, d / "stdout.log", d / "stderr.log", 900)
+        rc = run_logged(case["command"], ROOT, d / "stdout.log", d / "stderr.log", case.get("timeout_s", 900))
         write_run(d, rid, "host", f"test:{case['id']}", [" ".join(case["command"])], rc, started)
         inputs = digests_for(case["inputs"], case.get("input_globs", ()))
         out = (d / "stdout.log").read_text(errors="replace") + (d / "stderr.log").read_text(errors="replace")
         verdict = "PASS" if rc == 0 and "\nOK" in out else ("ERROR" if rc == 124 else "FAIL")
         write_verdict(d, rid, case["id"], verdict, case["oracle"], "exit 0 + OK", f"exit={rc}; tail={out.strip().splitlines()[-1] if out.strip() else ''}", inputs)
         print(f"{case['id']}: {verdict} run={rid}")
-        tests_p = DOCS / "tests.json"
-        if tests_p.exists():
-            old_refs = [t["evidence_refs"] for t in load_json(tests_p)["records"] if t["id"] == case["id"]]
-            old_ref = old_refs[0][0] if old_refs and old_refs[0] else None
-            replace_evidence_ref(old_ref, f"evidence/{rid}", case["id"], verdict)
+        attach_evidence(case["id"], rid, verdict)
         return 0 if verdict == "PASS" else 1
 
 
@@ -606,6 +611,8 @@ def replace_evidence_ref(old_ref, new_ref, test_id, verdict):
 
 def attach_evidence(test_id, rid, verdict):
     """Registry update: the test's previous evidence ref is replaced everywhere by the new run."""
+    if SCRATCH:
+        return
     tests_p = DOCS / "tests.json"
     if not tests_p.exists():
         return
@@ -627,15 +634,22 @@ def cmd_reverify_host() -> int:
     return rc_all
 
 
-def cmd_test(target_name, suite) -> int:
+def cmd_test(target_name, suite, only=None) -> int:
     if target_name == "host":
         return cmd_test_host(suite)
     t = load_target(target_name)
     suites = t.get("suites", {})
     if suite not in suites:
         print(f"suite {suite} is not implemented for target {target_name}; implemented: {sorted(suites)}"); return E_INTERNAL
+    cases = suites[suite]
+    if only:
+        wanted = set(only)
+        cases = [c for c in cases if c["id"] in wanted]
+        missing = wanted - {c["id"] for c in cases}
+        if missing:
+            print(f"unknown case ids for suite {suite}: {sorted(missing)}"); return E_INTERNAL
     rc_all = 0
-    for case in suites[suite]:
+    for case in cases:
         rc = cmd_boot(target_name, suite_case=case)
         rc_all |= rc
     print(f"suite {suite}: {'PASS' if rc_all == 0 else 'FAIL'}")
@@ -720,6 +734,7 @@ def main(argv=None):
     for n in ("build", "boot"):
         s = sub.add_parser(n); s.add_argument("--target", required=True)
     s = sub.add_parser("test"); s.add_argument("--target", required=True); s.add_argument("--suite", required=True)
+    s.add_argument("--only", help="comma-separated case ids (guest suites)")
     for n in ("next", "report", "checkpoint", "resume", "run"):
         s = sub.add_parser(n); s.add_argument("--json", action="store_true"); s.add_argument("--result"); s.add_argument("--once", action="store_true"); s.add_argument("--until"); s.add_argument("--note")
     a = ap.parse_args(argv)
@@ -727,7 +742,7 @@ def main(argv=None):
     if a.cmd == "status": return cmd_status(a.json)
     if a.cmd == "build": return cmd_build(a.target)
     if a.cmd == "boot": return cmd_boot(a.target)
-    if a.cmd == "test": return cmd_test(a.target, a.suite)
+    if a.cmd == "test": return cmd_test(a.target, a.suite, a.only.split(",") if a.only else None)
     if a.cmd == "checkpoint": return cmd_checkpoint(a.note)
     if a.cmd == "reverify-host": return cmd_reverify_host()
     if a.cmd == "import-ci-evidence": return cmd_import_ci_evidence(a.run)
