@@ -48,3 +48,7 @@
 
 - development_worker: interactive (الوكيل في هذه الجلسة). لا مشغّل دائم متحقق.
 - verification_runner: غير مهيأ بعد؛ يتوقف على المستودع البعيد.
+
+## خطاف ما قبل الالتزام
+
+`cp tools/hooks/pre-commit .git/hooks/pre-commit` — يرفض أي commit لا تمر سجلاته بـ `validate-records` (0 أخطاء). أُضيف 2026-10-18 بعد أن أخفى أنبوب `| tail` حالة خروج المدقق مرتين.

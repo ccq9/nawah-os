@@ -1,0 +1,12 @@
+#!/bin/sh
+# Refuses a commit whose records do not validate (0 errors; stale verdicts are allowed here, CI
+# runs --strict after fresh evidence). Install: cp tools/hooks/pre-commit .git/hooks/pre-commit
+cd "$(git rev-parse --show-toplevel)" || exit 1
+python3 tools/project.py validate-records > /dev/null 2>&1
+rc=$?
+if [ $rc -ne 0 ]; then
+  python3 tools/project.py validate-records 2>&1 | grep -v '^WARN' | head -20
+  echo "pre-commit: validate-records failed (exit $rc); commit refused"
+  exit 1
+fi
+exit 0
