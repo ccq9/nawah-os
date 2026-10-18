@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T103901Z-afcf3fa4-001",
+ "started_at": "2026-10-18T10:39:01+00:00",
+ "finished_at": "2026-10-18T10:39:05+00:00",
+ "source_revision": "afcf3fa472a7edc4767696d4edc44f24a7f457ec",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "pc-qemu",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M2-PANIC-CODE",
+ "commands": [
+  "qemu-system-x86_64 -machine q35 -cpu qemu64 -m 512M -smp 4 -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd -drive if=pflash,format=raw,file=/tmp/nawah-mutants-lqk1me7g/wt/build/pc-qemu/OVMF_VARS.fd -drive format=raw,file=fat:rw:/tmp/nawah-mutants-lqk1me7g/wt/build/pc-qemu/esp -serial file:/tmp/nawah-mutants-lqk1me7g/scratch-evidence/20261018T103901Z-afcf3fa4-001/serial.log -display none -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04 -drive if=none,id=vd0,format=raw,file=/tmp/nawah-mutants-lqk1me7g/wt/build/pc-qemu/disk.img -device virtio-blk-pci,drive=vd0,disable-legacy=on,disable-modern=off -fw_cfg name=opt/nawah/test,string=panic_code"
+ ],
+ "exit_code": 35
+}

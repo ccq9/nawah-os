@@ -1,0 +1,9 @@
+$ fsck.fat -n /tmp/nawah-mutants-lqk1me7g/wt/build/pc-qemu/disk.img
+fsck.fat 4.2 (2021-01-31)
+/tmp/nawah-mutants-lqk1me7g/wt/build/pc-qemu/disk.img: 5 files, 44/128992 clusters
+
+[exit 0]
+$ python3 -I tools/fat32.py check /tmp/nawah-mutants-lqk1me7g/wt/build/pc-qemu/disk.img
+check: clusters=128992 used=44 free=128948 label='NAWAHLAB' fstype='FAT32   ' problems=[]
+
+[exit 0]
