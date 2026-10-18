@@ -20,11 +20,11 @@ jobs:
       - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq clang lld qemu-system-x86 ovmf mtools python3-jsonschema
+          sudo apt-get install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools python3-jsonschema
           rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
-          rustup target add --toolchain 1.97.0 x86_64-unknown-uefi
+          rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi
           rustup run 1.97.0 rustc --version; cargo --version
-          clang --version | head -1; qemu-system-x86_64 --version | head -1; dpkg -s ovmf | grep ^Version
+          clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
       - name: validate-records (committed state)
         run: python3 tools/project.py validate-records
       - name: Rust hygiene (fmt, clippy on both feature sets, unsafe policy)
@@ -35,6 +35,7 @@ jobs:
           cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings
           cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --features inject_ebs_fail -- -D warnings
           cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --profile ktest --features ktest -- -D warnings
+          cargo clippy --manifest-path kernel/Cargo.toml --target aarch64-unknown-uefi --offline -- -D warnings
           sh tools/check-unsafe.sh
       - name: E0 (C toolchain experiment, M0 evidence)
         run: |
@@ -48,6 +49,10 @@ jobs:
         run: python3 tools/project.py test --target pc-qemu --suite M2
       - name: M3 guest suite (test kernel)
         run: python3 tools/project.py test --target pc-qemu --suite M3
+      - name: A64 early port experiment (build + boot on QEMU virt, ADR-0008)
+        run: |
+          python3 tools/project.py build --target virt-qemu-aarch64
+          python3 tools/project.py boot --target virt-qemu-aarch64
       - name: Host suites
         run: |
           python3 tools/project.py test --target host --suite M0

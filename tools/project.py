@@ -466,12 +466,14 @@ def keep_artifact(d, rid, art: Path) -> str:
 
 def qemu_cmd(t, target_name, esp_dir, serial_log, extra=()):
     q = t["qemu"]
+    # Per-target exit device: isa-debug-exit on the PC, semihosting on the Arm virt board.
+    exit_args = q.get("extra_args", ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
     cmd = [q["binary"], "-machine", q["machine"], "-cpu", q["cpu"], "-m", q["memory"], "-smp", str(q["smp"]),
            "-drive", f"if=pflash,format=raw,readonly=on,file={q['ovmf_code']}",
            "-drive", f"if=pflash,format=raw,file={ROOT / 'build' / target_name / 'OVMF_VARS.fd'}",
            "-drive", f"format=raw,file=fat:rw:{esp_dir}",
            "-serial", f"file:{serial_log}", "-display", "none", "-no-reboot",
-           "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", *extra]
+           *exit_args, *extra]
     return cmd
 
 
@@ -480,7 +482,8 @@ def prepare_esp(t, target_name, artifact):
     esp = ROOT / "build" / target_name / "esp"
     if esp.exists(): shutil.rmtree(esp)
     (esp / "EFI" / "BOOT").mkdir(parents=True)
-    shutil.copy(artifact, esp / "EFI" / "BOOT" / "BOOTX64.EFI")
+    # Removable-media boot file name per UEFI 2.11 §3.5.1.1: BOOTX64.EFI / BOOTAA64.EFI.
+    shutil.copy(artifact, esp / "EFI" / "BOOT" / t["qemu"].get("esp_file", "BOOTX64.EFI"))
     shutil.copy(t["qemu"]["ovmf_vars"], ROOT / "build" / target_name / "OVMF_VARS.fd")
     return esp
 

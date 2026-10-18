@@ -38,11 +38,13 @@ pub fn init_console() {
 
 /// Loads the kernel's own CPU tables: GDT and TSS, then IDT, then enables #MC.
 /// After this, a CPU exception is a printed diagnostic instead of a silent reset.
-/// Called once, early in the kernel, with interrupts disabled. Prints nothing.
-pub fn init_cpu() {
+/// Called once, early in the kernel, with interrupts disabled. Prints nothing; returns the
+/// description the boot trace prints.
+pub fn init_cpu() -> &'static str {
     gdt::init();
     idt::init();
     enable_machine_check();
+    "gdt=1|tss=1|idt=1|stack=kernel"
 }
 
 /// Without CR4.MCE the CPU enters shutdown on a hardware error instead of raising #MC

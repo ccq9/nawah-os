@@ -1,23 +1,23 @@
 //! Post-ExitBootServices kernel entry. Receives `BootInfo` only (docs/contracts/boot.md);
 //! this module must never name firmware tables (TST-M1-NOBS). Safe Rust only.
 
+#[cfg(target_arch = "x86_64")]
 use alloc::boxed::Box;
+#[cfg(target_arch = "x86_64")]
 use alloc::vec::Vec;
 
 use crate::arch;
 use crate::bootinfo::{BootInfo, MEM_CONVENTIONAL};
 use crate::mm;
+#[cfg(target_arch = "x86_64")]
 use crate::mm::addrspace::{self, UserSpace, USER_BASE};
 
 /// M1/M2 boot path: own CPU tables, validate the handoff, account the memory map, bring up the
 /// frame allocator and the kernel address space, then continue on a guarded stack.
 pub fn kernel_main(bi: &BootInfo) -> ! {
     // CPU tables first: from here on a fault is a diagnostic line, not a silent reset.
-    arch::init_cpu();
-    kprintln!(
-        "OSX|{}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
-        bi.build_id()
-    );
+    let cpu = arch::init_cpu();
+    kprintln!("OSX|{}|kernel|cpu_tables|{}", bi.build_id(), cpu);
     if !bi.is_valid() {
         crate::panic::fatal("K_E_BAD_BOOTINFO");
     }
@@ -54,7 +54,14 @@ pub fn kernel_main(bi: &BootInfo) -> ! {
         st.bitmap_frames,
         u8::from(selfcheck)
     );
+    kernel_main_arch(bi)
+}
 
+/// x86_64 continuation: kernel page tables, heap and user spaces, interrupts and timer, then
+/// the guarded stack.
+#[cfg(target_arch = "x86_64")]
+fn kernel_main_arch(bi: &BootInfo) -> ! {
+    let build_id = bi.build_id();
     // Kernel-owned page tables (WP-09). Failure here is unrecoverable: the firmware tables are
     // the only alternative and they are about to be reclaimed.
     let ks = match mm::vmm::init(bi) {
@@ -85,7 +92,21 @@ pub fn kernel_main(bi: &BootInfo) -> ! {
     arch::continue_on_stack(ks.kernel_stack.top(), kernel_main_guarded, bi)
 }
 
+/// AArch64 experiment (WP-21): the shared path above is all that runs; paging, heap and
+/// interrupts are x86_64-only until the port grows (ADR-0008).
+#[cfg(target_arch = "aarch64")]
+fn kernel_main_arch(bi: &BootInfo) -> ! {
+    let build_id = bi.build_id();
+    kprintln!(
+        "OSX|{}|kernel|a64|el={}|paging=firmware|exit=0x10",
+        build_id,
+        arch::current_el()
+    );
+    arch::qemu::exit(arch::qemu::EXIT_OK)
+}
+
 /// Continues on the guarded kernel stack with IST1 on the guarded #DF stack.
+#[cfg(target_arch = "x86_64")]
 extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
     let build_id = bi.build_id();
     match mm::vmm::kernel_space() {

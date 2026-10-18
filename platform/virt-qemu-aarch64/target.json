@@ -1,0 +1,79 @@
+{
+ "name": "virt-qemu-aarch64",
+ "description": "Early port experiment (WP-21, ADR-0008): the same single UEFI image built for aarch64-unknown-uefi, booted on QEMU virt under AAVMF (EDK2 ArmVirtQemu). Lab only; proves architectural separation, not mobile support.",
+ "build": {
+  "test_id": "TST-M3-A64-BUILD",
+  "timeout_s": 1200,
+  "inputs": [
+   "Cargo.toml",
+   "kernel/Cargo.toml",
+   "kernel/build.rs",
+   ".cargo/config.toml",
+   "rust-toolchain.toml",
+   "platform/virt-qemu-aarch64/target.json"
+  ],
+  "input_globs": [
+   "kernel/src/**/*.rs"
+  ],
+  "artifact": "${OUT}/NAWAH-A64.EFI",
+  "extra_artifacts": [],
+  "toolchain": "rust-1.97.0 aarch64-unknown-uefi",
+  "steps": [
+   [
+    "cargo",
+    "build",
+    "--release",
+    "--offline",
+    "--manifest-path",
+    "kernel/Cargo.toml",
+    "--target",
+    "aarch64-unknown-uefi",
+    "--target-dir",
+    "${OUT}/cargo"
+   ],
+   [
+    "cp",
+    "${OUT}/cargo/aarch64-unknown-uefi/release/nawah-kernel.efi",
+    "${OUT}/NAWAH-A64.EFI"
+   ]
+  ]
+ },
+ "qemu": {
+  "binary": "qemu-system-aarch64",
+  "machine": "virt",
+  "cpu": "cortex-a57",
+  "memory": "512M",
+  "smp": 1,
+  "ovmf_code": "/usr/share/AAVMF/AAVMF_CODE.fd",
+  "ovmf_vars": "/usr/share/AAVMF/AAVMF_VARS.fd",
+  "esp_file": "BOOTAA64.EFI",
+  "extra_args": [
+   "-semihosting-config",
+   "enable=on,target=native"
+  ],
+  "boot_timeout_s": 300
+ },
+ "boot_oracle": {
+  "test_id": "TST-M3-A64-BOOT",
+  "oracle": "AArch64 lab: boot|start arch=aarch64, GetMemoryMap + ExitBootServices succeed (boot|ebs|ok=1), the kernel's post_ebs and pmm self-check lines are printed from kernel code, then semihosting exit 0x10 (QEMU exit status 16); no boot|error, no panic",
+  "expected_exit_code": 16,
+  "required_markers": [
+   "OSX|${BUILD_ID}|boot|start|arch=aarch64|boot=uefi|stage=pre_ebs",
+   "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
+   "OSX|${BUILD_ID}|kernel|cpu_tables|vbar=firmware|mmu=firmware|stack=kernel",
+   "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
+   "|kernel|pmm|managed_frames=",
+   "|selfcheck=1",
+   "OSX|${BUILD_ID}|kernel|a64|el=",
+   "|paging=firmware|exit=0x10"
+  ],
+  "forbidden_markers": [
+   "|boot|error|",
+   "|kernel|panic|"
+  ],
+  "max_counts": {
+   "|boot|start|": 1
+  }
+ },
+ "suites": {}
+}

@@ -12,6 +12,7 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![deny(clippy::missing_safety_doc)]
 
+#[cfg(target_arch = "x86_64")]
 extern crate alloc;
 
 #[macro_use]

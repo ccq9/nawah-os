@@ -494,8 +494,8 @@
     "REQ-M3-002"
    ],
    "layer": "host_unit",
-   "oracle": "aarch64-unknown-uefi image builds",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "cargo build for aarch64-unknown-uefi (release) exits 0 and NAWAH-A64.EFI exists",
+   "command": "python3 tools/project.py build --target virt-qemu-aarch64",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -505,8 +505,8 @@
     "REQ-M3-002"
    ],
    "layer": "guest",
-   "oracle": "QEMU virt + AAVMF: boot|start, boot|ebs|ok=1, kernel|post_ebs trace, clean exit",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "QEMU virt + AAVMF: boot|start arch=aarch64, boot|ebs|ok=1, kernel cpu_tables (firmware vbar/mmu), post_ebs, pmm selfcheck=1, kernel|a64|el=<n>|paging=firmware|exit=0x10; semihosting exit status 16; no boot|error, no panic",
+   "command": "python3 tools/project.py boot --target virt-qemu-aarch64",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },

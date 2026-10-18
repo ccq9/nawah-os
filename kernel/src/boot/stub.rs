@@ -22,6 +22,11 @@ struct MapBuffer([u8; MAX_MEMMAP_BYTES]);
 static MEMMAP: BootCell<MapBuffer> = BootCell::new(MapBuffer([0; MAX_MEMMAP_BYTES]));
 static BOOT_INFO: BootCell<BootInfo> = BootCell::new(BootInfo::empty());
 
+#[cfg(target_arch = "x86_64")]
+const ARCH: &str = "x86_64";
+#[cfg(target_arch = "aarch64")]
+const ARCH: &str = "aarch64";
+
 fn fail(code: &str, status: Status) -> ! {
     kprintln!(
         "OSX|{}|boot|error|code={}|status={:#x}",
@@ -38,8 +43,9 @@ fn fail(code: &str, status: Status) -> ! {
 pub extern "efiapi" fn efi_main(image: Handle, st: *const SystemTable) -> ! {
     arch::init_console();
     kprintln!(
-        "OSX|{}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
-        BUILD_ID
+        "OSX|{}|boot|start|arch={}|boot=uefi|stage=pre_ebs",
+        BUILD_ID,
+        ARCH
     );
 
     if st.is_null() {
@@ -167,8 +173,18 @@ pub extern "efiapi" fn efi_main(image: Handle, st: *const SystemTable) -> ! {
     unsafe { arch::jump_on_kernel_stack(kernel_entry, info.cast::<u8>()) }
 }
 
-/// First function on the kernel-owned stack (sysv64: `bi` arrives in rdi).
+/// First function on the kernel-owned stack (`bi` arrives in the first argument register).
+#[cfg(target_arch = "x86_64")]
 extern "sysv64" fn kernel_entry(bi: *const u8) -> ! {
+    kernel_entry_inner(bi)
+}
+
+#[cfg(target_arch = "aarch64")]
+extern "C" fn kernel_entry(bi: *const u8) -> ! {
+    kernel_entry_inner(bi)
+}
+
+fn kernel_entry_inner(bi: *const u8) -> ! {
     // SAFETY: `bi` is BOOT_INFO, fully written before the jump and never written again.
     let info: &'static BootInfo = unsafe { &*bi.cast::<BootInfo>() };
     crate::kmain::kernel_main(info)

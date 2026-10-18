@@ -841,9 +841,22 @@
     "UEFI 2.11 §2.3.6"
    ],
    "files": [
-    "kernel/src/arch/aarch64/",
+    "kernel/src/arch/aarch64/mod.rs",
+    "kernel/src/arch/aarch64/serial.rs",
+    "kernel/src/arch/aarch64/qemu.rs",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/boot/stub.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/main.rs",
+    "kernel/src/mm/mod.rs",
+    ".cargo/config.toml",
     "platform/virt-qemu-aarch64/target.json",
-    ".github/workflows/verify.yml"
+    "tools/project.py",
+    ".github/workflows/verify.yml",
+    "docs/adr/0008-early-port-aarch64.md",
+    "docs/hardware.json",
+    "tools/unsafe-baseline.txt"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
@@ -854,7 +867,7 @@
     "EBS + post_ebs trace",
     "report what was tested and what remains an assumption"
    ],
-   "acceptance": "A64 build + boot PASS; at most two work packages",
+   "acceptance": "TST-M3-A64-BUILD and TST-M3-A64-BOOT PASS on CI; x86_64 suites unchanged; ADR-0008 records what was tested and what remains an assumption",
    "test_ids": [
     "TST-M3-A64-BUILD",
     "TST-M3-A64-BOOT"
@@ -863,9 +876,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
