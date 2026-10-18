@@ -74,6 +74,10 @@ struct Input {
     extended: bool,
     /// Ctrl+Alt+Del was seen: the Delete break code that follows is swallowed.
     sak_pending: bool,
+    /// Shift+Alt are held together with nothing else pressed since: releasing either one then
+    /// toggles the layout (v2.3). Any other key press clears it, so a shortcut that carries
+    /// Shift+Alt+key never switches the layout.
+    combo_armed: bool,
     packet: [u8; 3],
     packet_len: usize,
     buttons: u8,
@@ -288,6 +292,24 @@ impl Input {
         }
     }
 
+    /// `LAYOUT us`/`LAYOUT ar` to the current focus owner (v2.3): the layout is not authority,
+    /// only news, so the owner learns the writing direction without a token.
+    fn announce_layout(&mut self) {
+        let msg: &[u8] = match self.layout {
+            Layout::Us => b"LAYOUT us",
+            Layout::Ar => b"LAYOUT ar",
+        };
+        self.deliver_to_focus(msg);
+    }
+
+    fn toggle_layout(&mut self) {
+        self.layout = match self.layout {
+            Layout::Us => Layout::Ar,
+            Layout::Ar => Layout::Us,
+        };
+        self.announce_layout();
+    }
+
     /// One scancode byte from the keyboard.
     fn on_scancode(&mut self, b: u8) {
         if b == 0xE0 {
@@ -308,9 +330,22 @@ impl Input {
         if bit != 0 {
             if down {
                 self.mods |= bit;
+                // Armed when exactly Shift+Alt are now held (the second of the pair arms it);
+                // a third modifier (Ctrl) makes the mask differ, so it disarms.
+                self.combo_armed = self.mods == (MOD_SHIFT | MOD_ALT);
             } else {
                 self.mods &= !bit;
+                // Releasing either half of an armed Shift+Alt toggles the layout (v2.3). The
+                // released modifier is still reported as a key below; the LAYOUT event precedes
+                // it to the focus owner.
+                if self.combo_armed && (bit == MOD_SHIFT || bit == MOD_ALT) {
+                    self.combo_armed = false;
+                    self.toggle_layout();
+                }
             }
+        } else if down {
+            // A real key press: not a clean Shift+Alt sequence.
+            self.combo_armed = false;
         }
         // Secure attention: Ctrl+Alt+Del (Delete is E0 53). Never reported as a key.
         if extended && base == 0x53 {
@@ -470,7 +505,10 @@ impl Input {
                     out.put(b"ERR ACCESS");
                     return;
                 }
-                self.layout = layout;
+                if self.layout != layout {
+                    self.layout = layout;
+                    self.announce_layout();
+                }
                 out.put(b"OK");
             }
             b"STATUS" => {
@@ -546,6 +584,7 @@ fn main() -> u64 {
         mods: 0,
         extended: false,
         sak_pending: false,
+        combo_armed: false,
         packet: [0; 3],
         packet_len: 0,
         buttons: 0,

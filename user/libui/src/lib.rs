@@ -399,6 +399,40 @@ impl Dialog {
         true
     }
 
+    /// Sets the dialog's reading direction (v1.2); the layout and the field arrows follow it.
+    pub fn set_rtl(&mut self, rtl: bool) {
+        self.rtl = rtl;
+    }
+
+    /// Replaces element `i`'s label (v1.2): an application switches language without rebuilding.
+    /// An empty or blank label is refused.
+    pub fn relabel(&mut self, i: usize, label: &'static str) -> bool {
+        if i >= self.n || label.trim().is_empty() {
+            return false;
+        }
+        self.elements[i].label = label;
+        true
+    }
+
+    /// Replaces list `i`'s items (v1.2); the selection is clamped into the new range. Only a
+    /// list, and only a non-empty set of non-blank items within `MAX_ITEMS`.
+    pub fn set_items(&mut self, i: usize, items: &'static [&'static str]) -> bool {
+        if i >= self.n
+            || self.elements[i].role != Role::List
+            || items.is_empty()
+            || items.len() > MAX_ITEMS
+            || items.iter().any(|t| t.trim().is_empty())
+        {
+            return false;
+        }
+        let e = &mut self.elements[i];
+        e.items = items;
+        if e.selected >= items.len() {
+            e.selected = items.len() - 1;
+        }
+        true
+    }
+
     /// Puts the focus on the first focusable element.
     pub fn start(&mut self) -> Event {
         let mut order = [0usize; MAX_ELEMENTS];
@@ -446,6 +480,7 @@ impl Dialog {
         let Some(i) = self.focus else {
             return Event::None;
         };
+        let rtl = self.rtl;
         let e = &mut self.elements[i];
         match (e.role, code) {
             (Role::Button, KEY_ENTER | KEY_SPACE) => Event::Activate(i),
@@ -471,12 +506,16 @@ impl Dialog {
                 e.text[e.text_len] = 0;
                 Event::Edit(i)
             }
-            (r, KEY_LEFT) if r.is_text() && e.cursor > 0 => {
-                e.cursor -= 1;
-                Event::None
-            }
-            (r, KEY_RIGHT) if r.is_text() && e.cursor < e.text_len => {
-                e.cursor += 1;
+            (r, KEY_LEFT | KEY_RIGHT) if r.is_text() => {
+                // Logical motion: Right is forward in LTR, Left is forward in RTL (v1.2).
+                let forward = (code == KEY_RIGHT) != rtl;
+                if forward {
+                    if e.cursor < e.text_len {
+                        e.cursor += 1;
+                    }
+                } else if e.cursor > 0 {
+                    e.cursor -= 1;
+                }
                 Event::None
             }
             (r, _) if r.is_text() => match ch {

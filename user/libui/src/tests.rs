@@ -355,3 +355,73 @@ fn password_is_drawn_as_bullets() {
     let bg = Theme::DEFAULT.palette().control;
     assert!(field(&a).iter().filter(|&&p| p != bg).count() > 20);
 }
+
+// ---- v1.2 (WP-39): reading direction and live relabelling --------------------------------
+
+/// In a left-to-right field Right is forward and Left is back; in a right-to-left field they
+/// swap, so the same keys put the inserted character on opposite sides (ui.md v1.2 §3.2).
+#[test]
+fn rtl_field_arrows_follow_reading_direction() {
+    let type_ab = |d: &mut Dialog| {
+        d.focus_on(1);
+        d.key(0x1e, true, 0, Some('a')); // "a", cursor 1
+        d.key(0x30, true, 0, Some('b')); // "ab", cursor 2
+    };
+    // Left to right: Left steps back, then an insert lands before 'b'.
+    let mut ltr = sample();
+    type_ab(&mut ltr);
+    assert_eq!(ltr.key(KEY_LEFT, true, 0, None), Event::None);
+    ltr.key(0x2e, true, 0, Some('x'));
+    assert_eq!(describe(&ltr, 1), "role=textfield label=\"Name\" state=focused value=\"axb\"");
+
+    // Right to left: Right is the one that steps back now.
+    let mut rtl = Dialog::new("دخول", true);
+    rtl.add(Role::Label, "دخول").unwrap();
+    rtl.add(Role::TextField, "الاسم").unwrap();
+    type_ab(&mut rtl);
+    // Left is forward at the end: it cannot move, so the insert stays at the end.
+    assert_eq!(rtl.key(KEY_LEFT, true, 0, None), Event::None);
+    rtl.key(0x2e, true, 0, Some('x'));
+    assert_eq!(describe(&rtl, 1), "role=textfield label=\"الاسم\" state=focused value=\"abx\"");
+    // Right steps back, so the next insert lands inside.
+    assert_eq!(rtl.key(KEY_RIGHT, true, 0, None), Event::None);
+    rtl.key(0x15, true, 0, Some('y'));
+    assert_eq!(describe(&rtl, 1), "role=textfield label=\"الاسم\" state=focused value=\"abyx\"");
+
+    // set_rtl flips an existing dialog's behaviour.
+    let mut d = sample();
+    d.set_rtl(true);
+    type_ab(&mut d);
+    assert_eq!(d.key(KEY_RIGHT, true, 0, None), Event::None);
+    d.key(0x2e, true, 0, Some('x'));
+    assert_eq!(describe(&d, 1), "role=textfield label=\"Name\" state=focused value=\"axb\"");
+}
+
+/// relabel and set_items change an element in place for a language switch, with the selection
+/// clamped and bad arguments refused (ui.md v1.2 §3.2).
+#[test]
+fn relabel_and_set_items_switch_language() {
+    const AR: &[&str] = &["الإنجليزية", "العربية"];
+    let mut d = sample();
+    // Move the list selection to the last item, then shrink the list under it.
+    d.focus_on(2);
+    d.key(KEY_DOWN, true, 0, None);
+    d.key(KEY_DOWN, true, 0, None); // Français (index 3/3)
+    assert!(d.relabel(0, "دخول"));
+    assert!(d.relabel(1, "الاسم"));
+    assert!(d.relabel(2, "اللغة"));
+    assert!(d.set_items(2, AR));
+    d.set_rtl(true);
+    assert_eq!(describe(&d, 0), "role=label label=\"دخول\" state=static");
+    assert_eq!(
+        describe(&d, 2),
+        "role=list label=\"اللغة\" state=focused item=\"العربية\" index=2/2"
+    );
+    // Refusals: empty label, a non-list, too many items, a blank item.
+    const SEVEN: &[&str] = &["1", "2", "3", "4", "5", "6", "7"];
+    assert!(!d.relabel(1, "   "));
+    assert!(!d.set_items(1, AR));
+    assert!(!d.set_items(2, SEVEN));
+    assert!(!d.set_items(2, &["x", "  "]));
+    assert!(!d.relabel(99, "x"));
+}

@@ -68,6 +68,7 @@ const MOD_SHIFT: u32 = 1;
 const MOD_ALT: u32 = 4;
 const KEY_TAB: u32 = 0x0f;
 const KEY_F4: u32 = 0x3e;
+const KEY_F9: u32 = 0x43;
 const KEY_UP: u32 = 0xc8;
 const KEY_DOWN: u32 = 0xd0;
 const KEY_LEFT: u32 = 0xcb;
@@ -630,6 +631,13 @@ impl Compositor {
         !w.minimized && (!self.locked || self.clients[w.owner].session)
     }
 
+    /// Reachable by Alt+Tab (v1.3): shown or minimised, but never a window held back by the
+    /// lock. A minimised one the caller restores before focusing it.
+    fn cyclable(&self, wi: usize) -> bool {
+        let w = &self.windows[wi];
+        w.used && (!self.locked || self.clients[w.owner].session)
+    }
+
     /// Composes `r` into the back buffer (background, then windows bottom-up) and copies it
     /// to the frame; the cursor is redrawn when it overlaps.
     fn compose(&mut self, r: Rect) {
@@ -1149,17 +1157,32 @@ impl Compositor {
         if down && mods & MOD_ALT != 0 {
             match code {
                 KEY_TAB => {
-                    if let Some(cur) = self.focus {
-                        let k = self.z_of(cur);
+                    // The next cyclable window in z-order after the focused one (or the top
+                    // when nothing is focused); a minimised one is restored first (v1.3).
+                    if self.n_order > 0 {
+                        let base = self
+                            .focus
+                            .map(|wi| self.z_of(wi))
+                            .unwrap_or(self.n_order - 1);
                         for step in 1..=self.n_order {
-                            let wi = self.order[(k + step) % self.n_order];
-                            if self.visible(wi) {
-                                self.focus_and_raise(wi, now);
+                            let wi = self.order[(base + step) % self.n_order];
+                            if self.cyclable(wi) {
+                                if self.windows[wi].minimized {
+                                    self.set_minimized(wi, false, now);
+                                } else {
+                                    self.focus_and_raise(wi, now);
+                                }
                                 break;
                             }
                         }
-                    } else if let Some(wi) = self.top_visible() {
-                        self.focus_and_raise(wi, now);
+                    }
+                    self.consumed_key = Some(code);
+                    return;
+                }
+                KEY_F9 => {
+                    // Minimise the focused window from the keyboard (v1.3); Alt+Tab restores it.
+                    if let Some(wi) = self.focus {
+                        self.set_minimized(wi, true, now);
                     }
                     self.consumed_key = Some(code);
                     return;
@@ -1210,6 +1233,13 @@ impl Compositor {
                 f.next().and_then(parse_u32),
             ) {
                 self.on_pointer(dx, dy, b, now);
+            }
+        } else if msg.starts_with(b"LAYOUT ") {
+            // The layout changed (input v2.3): pass it to the focused window's client — news,
+            // not a shortcut.
+            if let Some(wi) = self.focus {
+                let owner = self.windows[wi].owner;
+                self.send(owner, msg, now);
             }
         }
     }
@@ -1371,6 +1401,30 @@ impl Compositor {
                 let r1 = self.windows[wi].outer();
                 self.damage(r0);
                 self.damage(r1);
+                out.put(b"OK");
+            }
+            b"TITLE" => {
+                // The owner renames its window (v1.3): a client that switched language updates
+                // the title bar without a new window.
+                let Some(wi) = f
+                    .next()
+                    .and_then(parse_u32)
+                    .and_then(|id| self.window_by_id(id))
+                else {
+                    out.put(b"ERR UNKNOWN");
+                    return false;
+                };
+                if !owns(self, wi) {
+                    out.put(b"ERR UNKNOWN");
+                    return false;
+                }
+                let title = after_fields(req, 2);
+                let n = title.len().min(TITLE_MAX);
+                self.windows[wi].title[..n].copy_from_slice(&title[..n]);
+                self.windows[wi].title[n..].fill(0);
+                self.windows[wi].title_len = n;
+                let r = self.windows[wi].title_bar();
+                self.damage(r);
                 out.put(b"OK");
             }
             b"MOVE" | b"RESIZE" | b"RAISE" | b"MINIMIZE" | b"RESTORE" | b"CLOSE" => {

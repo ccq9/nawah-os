@@ -22,6 +22,11 @@ use nawah_text::layout::Fonts;
 libnawah::entry!(main);
 
 const LANGS: &[&str] = &["English", "العربية", "Français"];
+const LANGS_AR: &[&str] = &["الإنجليزية", "العربية", "الفرنسية"];
+// The dialog's two languages, element by element (ui.md v1.2 / WP-39): title, label, field,
+// list label, checkbox, two buttons. Switched live from `ui.lang` without rebuilding.
+const EN: [&str; 7] = ["Sign in", "Sign in", "Name", "Language", "Remember me", "OK", "Cancel"];
+const AR: [&str; 7] = ["دخول", "دخول", "الاسم", "اللغة", "تذكّرني", "موافق", "إلغاء"];
 const MSG_MAX: usize = 512;
 const PENDING: usize = 16;
 
@@ -222,6 +227,21 @@ fn read_theme(cfg: Handle) -> Theme {
     Theme::from_config(&s[..ns], &c[..nc])
 }
 
+/// Switches the dialog's strings and direction (ui.md v1.2); no I/O, no announcement. The
+/// six elements are: 0 label, 1 text field, 2 list, 3 checkbox, 4 OK, 5 Cancel.
+fn set_dialog_lang(d: &mut Dialog, ar: bool) {
+    let s = if ar { &AR } else { &EN };
+    d.title = s[0];
+    d.relabel(0, s[1]);
+    d.relabel(1, s[2]);
+    d.relabel(2, s[3]);
+    d.set_items(2, if ar { LANGS_AR } else { LANGS });
+    d.relabel(3, s[4]);
+    d.relabel(4, s[5]);
+    d.relabel(5, s[6]);
+    d.set_rtl(ar);
+}
+
 struct App {
     boot: Handle,
     display: Display,
@@ -233,6 +253,11 @@ struct App {
     wid: i64,
     rects: [Rect; MAX_ELEMENTS],
     painter: &'static mut Painter,
+    /// Whether this window currently holds the focus; a FOCUS after a loss re-announces the
+    /// focused element so the reader knows where it is (ui.md v1.2 / WP-39).
+    focused: bool,
+    /// The current language, so a repeated `ui.lang` change is a no-op.
+    lang_ar: bool,
 }
 
 impl App {
@@ -396,9 +421,39 @@ impl App {
         true
     }
 
+    /// Switches language live from `ui.lang` (ui.md v1.2): new strings and direction, a renamed
+    /// window, a repaint, and announcements of the switch and the focused element.
+    fn set_lang(&mut self, ar: bool) {
+        if self.lang_ar == ar {
+            return;
+        }
+        self.lang_ar = ar;
+        set_dialog_lang(&mut self.dialog, ar);
+        let mut req = Out::new();
+        req.put(b"TITLE ")
+            .num(self.wid)
+            .put(b" ")
+            .put(self.dialog.title.as_bytes());
+        let mut reply = [0u8; 64];
+        let _ = self.display.request(req.bytes(), &[], &mut reply);
+        self.repaint();
+        self.report();
+        self.announce(if ar { b"lang ar" } else { b"lang en" }, None);
+        let f = self.dialog.focused();
+        self.announce(b"focus", f);
+    }
+
     fn on_display(&mut self, msg: &[u8]) -> bool {
         if msg.starts_with(b"KEY ") {
             return self.on_key(msg);
+        }
+        if msg.starts_with(b"UNFOCUS ") {
+            self.focused = false;
+        } else if msg.starts_with(b"FOCUS ") && !self.focused {
+            // The window regained the focus: re-announce where the focus is (ui.md v1.2).
+            self.focused = true;
+            let f = self.dialog.focused();
+            self.announce(b"focus", f);
         }
         !msg.starts_with(b"CLOSE_REQUESTED")
     }
@@ -449,6 +504,14 @@ fn main() -> u64 {
         return 0xE5;
     }
     dialog.theme = read_theme(cfg);
+    // A saved `ui.lang=ar` makes the dialog start Arabic (silently: the tree below is then
+    // announced in Arabic). The tests leave it unset at boot, so they start English.
+    let mut lv = [0u8; 16];
+    let lk = config_get(cfg, b"ui.lang", &mut lv);
+    let lang_ar = &lv[..lk] == b"ar";
+    if lang_ar {
+        set_dialog_lang(&mut dialog, true);
+    }
     let mut display = Display {
         chan: dchan,
         pending: [[0; 128]; PENDING],
@@ -483,6 +546,8 @@ fn main() -> u64 {
         wid: 0,
         rects: [Rect::default(); MAX_ELEMENTS],
         painter,
+        focused: true,
+        lang_ar,
     };
     if !app.make_surface() {
         return 0xE7;
@@ -573,6 +638,10 @@ fn main() -> u64 {
                             let mut theme = app.dialog.theme;
                             let mut v = [0u8; 16];
                             let k = config_get(cfg, key, &mut v);
+                            if key == b"ui.lang" {
+                                app.set_lang(&v[..k] == b"ar");
+                                continue;
+                            }
                             match key {
                                 b"ui.scale" => theme.scale = Theme::from_config(&v[..k], b"").scale,
                                 b"ui.contrast" => theme.high_contrast = &v[..k] == b"high",
