@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use crate::arch::{
-    apic, context, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu, user_programs,
+    self, apic, context, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu, user_programs,
 };
 use crate::fs::fat32::FsError;
 use crate::loader::elf::{self, ElfError};
@@ -141,6 +141,9 @@ pub fn run() -> ! {
         "app_exit_code" => app_exit_code(),
         "elf_malformed" => elf_malformed(),
         "elf_wx" => elf_wx(),
+        "smp_online" => smp_online(),
+        "lock_contention" => lock_contention(),
+        "tlb_shootdown" => tlb_shootdown(),
         "blk_read_pattern" => blk_read_pattern(),
         "blk_user_cr3" => blk_user_cr3(),
         "blk_persist_write" => blk_persist(true),
@@ -1722,6 +1725,247 @@ fn blk_read_pattern() -> ! {
         fail("frames leaked by block reads")
     }
     pass("virtio-blk reads the harness pattern exactly and refuses bad requests")
+}
+
+// ---- SMP (WP-20, ADR-0015) --------------------------------------------------------------
+
+/// Per-CPU probe: records the CPU index (GS) and APIC ID it runs with, spins briefly so timer
+/// ticks accrue on that CPU, and returns both packed.
+extern "sysv64" fn smp_where(expected: u64) -> u64 {
+    let t0 = arch::irq::ticks_of(expected as usize);
+    // Hold the CPU for a few of its own timer ticks (the slice expires and it is picked
+    // again: round-robin against the idle thread proves the AP timer preempts).
+    while arch::irq::ticks_of(expected as usize) < t0 + 3 {
+        core::hint::spin_loop();
+    }
+    u64::from(arch::cpu_id()) | (u64::from(apic::my_id()) << 8)
+}
+
+/// Every CPU the MADT lists is online, answers to its index on its own stack, reports a
+/// distinct APIC ID, and takes its own timer ticks; nothing leaks after the threads are joined.
+fn smp_online() -> ! {
+    let online = arch::smp::online_mask();
+    let count = arch::smp::online_count();
+    let warm = spawn_or_fail(trivial, 1, 0);
+    let _ = sched::join(warm);
+    let frames0 = pmm::stats().free_frames;
+    let mut seen = alloc::vec::Vec::new();
+    let mut ids = alloc::vec::Vec::new();
+    let mut ok = true;
+    for cpu in 0..arch::smp::MAX_CPUS {
+        if online & (1 << cpu) == 0 {
+            continue;
+        }
+        let tid = match sched::spawn_on(cpu, smp_where, cpu as u64, 1) {
+            Ok(t) => t,
+            Err(_) => fail("spawn_on failed for an online CPU"),
+        };
+        let r = sched::join(tid).unwrap_or(u64::MAX);
+        let got_cpu = r & 0xFF;
+        let got_apic = r >> 8;
+        ok &= got_cpu == cpu as u64 && !ids.contains(&got_apic);
+        seen.push(got_cpu);
+        ids.push(got_apic);
+    }
+    let frames1 = pmm::stats().free_frames;
+    let mut ticks = alloc::string::String::new();
+    let mut all_tick = true;
+    for cpu in 0..arch::smp::MAX_CPUS {
+        if online & (1 << cpu) != 0 {
+            use core::fmt::Write as _;
+            let t = arch::irq::ticks_of(cpu);
+            let _ = write!(ticks, "{t},");
+            all_tick &= t > 0;
+        }
+    }
+    let st = sched::stats();
+    kprintln!(
+        "OSX|{}|ktest|smp_online|online_mask={:#x}|online={}|seen={:?}|apic_ids={:?}|ticks={}|all_tick={}|threads={}|frames_before={}|frames_after={}",
+        BUILD_ID,
+        online,
+        count,
+        seen,
+        ids,
+        ticks,
+        u8::from(all_tick),
+        st.threads,
+        frames0,
+        frames1
+    );
+    if count < 2 {
+        fail("fewer than two CPUs online (is the lab running -smp 4?)")
+    }
+    if !ok || seen.len() != count as usize {
+        fail("a CPU did not run its probe or reported a wrong index/APIC ID")
+    }
+    if !all_tick {
+        fail("a CPU took no timer ticks")
+    }
+    if frames0 != frames1 {
+        fail("frames leaked across cross-CPU spawn/join")
+    }
+    pass("every MADT CPU is online, runs placed threads and ticks")
+}
+
+static CONTENDED: IrqSpinLock<u64> = IrqSpinLock::new("ktest_contended", 0);
+static ATOMIC_SUM: AtomicU64 = AtomicU64::new(0);
+static GO: AtomicBool = AtomicBool::new(false);
+const CONTENTION_ROUNDS: u64 = 100_000;
+
+/// One contender: waits for the start flag, then increments the locked counter and the atomic
+/// counter CONTENTION_ROUNDS times each; returns the ticks it took on its CPU.
+extern "sysv64" fn contender(cpu: u64) -> u64 {
+    while !GO.load(Ordering::Acquire) {
+        core::hint::spin_loop();
+    }
+    let t0 = arch::irq::ticks_of(cpu as usize);
+    for _ in 0..CONTENTION_ROUNDS {
+        {
+            let mut g = CONTENDED.lock();
+            *g += 1;
+        }
+        ATOMIC_SUM.fetch_add(1, Ordering::Relaxed);
+    }
+    arch::irq::ticks_of(cpu as usize) - t0
+}
+
+/// One thread per online CPU hammers one `IrqSpinLock` and one atomic at the same time: both
+/// totals are exactly CPUs × ROUNDS (a lost update would show), the threads overlapped in time
+/// (parallel=1 when the whole run took fewer boot-CPU ticks than the sum of per-CPU ticks).
+fn lock_contention() -> ! {
+    let online = arch::smp::online_mask();
+    let count = arch::smp::online_count();
+    let mut tids = alloc::vec::Vec::new();
+    for cpu in 0..arch::smp::MAX_CPUS {
+        if online & (1 << cpu) != 0 {
+            match sched::spawn_on(cpu, contender, cpu as u64, 1) {
+                Ok(t) => tids.push(t),
+                Err(_) => fail("spawn_on failed"),
+            }
+        }
+    }
+    let start = sched::stats().ticks;
+    GO.store(true, Ordering::Release);
+    let mut cpu_ticks = 0u64;
+    for t in tids {
+        cpu_ticks += sched::join(t).unwrap_or(0);
+    }
+    let elapsed = sched::stats().ticks - start;
+    let locked = *CONTENDED.lock();
+    let atomic = ATOMIC_SUM.load(Ordering::Relaxed);
+    let expected = u64::from(count) * CONTENTION_ROUNDS;
+    let parallel = count >= 2 && cpu_ticks > elapsed + elapsed / 2;
+    kprintln!(
+        "OSX|{}|ktest|lock_contention|cpus={}|rounds={}|locked={}|atomic={}|expected={}|elapsed_ticks={}|cpu_ticks={}|parallel={}",
+        BUILD_ID,
+        count,
+        CONTENTION_ROUNDS,
+        locked,
+        atomic,
+        expected,
+        elapsed,
+        cpu_ticks,
+        u8::from(parallel)
+    );
+    if count < 2 {
+        fail("fewer than two CPUs online")
+    }
+    if locked != expected || atomic != expected {
+        fail("a counter lost updates under contention")
+    }
+    pass("the lock serialises every CPU: counters exact")
+}
+
+const SHOOT_PAGE: u64 = vmm::SCRATCH_BASE + 0x20_0000;
+static SHOOT_STEP: AtomicU64 = AtomicU64::new(0);
+static SHOOT_SEEN: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
+
+/// Reader on another CPU: reads the page (caching its translation), reports, waits for the
+/// remap, reads again, reports; the third read follows a protect-to-read-only round.
+extern "sysv64" fn shoot_reader(_: u64) -> u64 {
+    while SHOOT_STEP.load(Ordering::Acquire) < 1 {
+        core::hint::spin_loop();
+    }
+    SHOOT_SEEN[0].store(inject::read_qword(SHOOT_PAGE), Ordering::Release);
+    SHOOT_STEP.store(2, Ordering::Release);
+    while SHOOT_STEP.load(Ordering::Acquire) < 3 {
+        core::hint::spin_loop();
+    }
+    SHOOT_SEEN[1].store(inject::read_qword(SHOOT_PAGE), Ordering::Release);
+    SHOOT_STEP.store(4, Ordering::Release);
+    u64::from(arch::cpu_id())
+}
+
+/// TLB shootdown: a CPU that cached a scratch translation sees the new frame after the boot
+/// CPU unmaps (shootdown) and remaps the page; the served-request counter moved; frames balance.
+fn tlb_shootdown() -> ! {
+    if arch::smp::online_count() < 2 {
+        fail("fewer than two CPUs online")
+    }
+    let reader_cpu = (1..arch::smp::MAX_CPUS)
+        .find(|c| arch::smp::online_mask() & (1 << c) != 0)
+        .unwrap_or(1);
+    let (Some(a), Some(b)) = (pmm::alloc_frame(), pmm::alloc_frame()) else {
+        fail("no frame")
+    };
+    let frames0 = pmm::stats().free_frames;
+    inject::write_qword(vmm::direct(a.0), 0xAAAA_0000_0000_000A);
+    inject::write_qword(vmm::direct(b.0), 0xBBBB_0000_0000_000B);
+    if vmm::map_page(SHOOT_PAGE, a.0, paging::WRITE | paging::NX).is_err() {
+        fail("map_page failed")
+    }
+    let served0 = arch::tlb::counters().served;
+    let tid = match sched::spawn_on(reader_cpu, shoot_reader, 0, 1) {
+        Ok(t) => t,
+        Err(_) => fail("spawn_on failed"),
+    };
+    SHOOT_STEP.store(1, Ordering::Release);
+    while SHOOT_STEP.load(Ordering::Acquire) < 2 {
+        sched::yield_now();
+    }
+    // Remap: unmap (local invlpg + shootdown to the reader's CPU), then map frame B.
+    let unmapped = vmm::unmap_page(SHOOT_PAGE);
+    if vmm::map_page(SHOOT_PAGE, b.0, paging::WRITE | paging::NX).is_err() {
+        fail("remap failed")
+    }
+    SHOOT_STEP.store(3, Ordering::Release);
+    while SHOOT_STEP.load(Ordering::Acquire) < 4 {
+        sched::yield_now();
+    }
+    let reader = sched::join(tid);
+    let served1 = arch::tlb::counters().served;
+    let first = SHOOT_SEEN[0].load(Ordering::Acquire);
+    let second = SHOOT_SEEN[1].load(Ordering::Acquire);
+    let _ = vmm::unmap_page(SHOOT_PAGE);
+    let frames1 = pmm::stats().free_frames;
+    let _ = pmm::free_frame(a);
+    let _ = pmm::free_frame(b);
+    kprintln!(
+        "OSX|{}|ktest|tlb_shootdown|reader_cpu={}|reader={:?}|first={:#x}|second={:#x}|unmapped_ok={}|served_before={}|served_after={}|frames_before={}|frames_after={}",
+        BUILD_ID,
+        reader_cpu,
+        reader,
+        first,
+        second,
+        u8::from(matches!(unmapped, Ok(Some(p)) if p == a.0)),
+        served0,
+        served1,
+        frames0,
+        frames1
+    );
+    if reader != Some(reader_cpu as u64) {
+        fail("the reader did not run on the chosen CPU")
+    }
+    if first != 0xAAAA_0000_0000_000A || second != 0xBBBB_0000_0000_000B {
+        fail("the reader saw a stale translation after the remap")
+    }
+    if served1 <= served0 {
+        fail("no shootdown request was served")
+    }
+    if frames0 != frames1 {
+        fail("frames leaked")
+    }
+    pass("a remapped kernel page is seen fresh on another CPU")
 }
 
 /// Block I/O under a process address space, which is what every file syscall does: the device

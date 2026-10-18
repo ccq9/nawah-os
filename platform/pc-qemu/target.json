@@ -227,6 +227,8 @@
           "|kernel|mm|heap_ok=1|scratch_ok=1|as_ok=1|as_code=ok|",
           "|frames_delta=0|selfcheck=1",
           "|kernel|sched|boot_tid=0|probe_join=0x5eee|",
+          "|kernel|smp|madt_cpus=1|online=1|expected=1|",
+          "|failed=0|id_mismatch=0|online_mask=0x1|probes=|ap_ticks=|",
           "|threads=1|processes=0|quantum_ticks=10|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|object|channel_ok=1|vmo_size=8192|peer_closed=1|live_channels=0|live_endpoints=0|live_vmos=0|live_handles=0|frames_delta=0|selfcheck=1",
           "|kernel|pci|ecam=0xe0000000|segment=0|functions=",
@@ -1759,6 +1761,88 @@
             "${DISK}",
             "/DIR/LEAK3.TXT",
             "333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-SMP-ONLINE",
+        "test_id": "TST-M3-SMP-ONLINE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "smp": 4,
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=smp_online"
+        ],
+        "oracle": "with -smp 4 the boot CPU brings up the three application processors (INIT, SIPI, SIPI, trampoline below 1 MiB): the boot line reports madt_cpus=4 online=4, every CPU runs a thread pinned to it that sees its own index through GS and a distinct local APIC ID, each CPU has taken timer ticks of its own, and frames balance after the cross-CPU joins; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=smp_online",
+          "|kernel|smp|madt_cpus=4|online=4|expected=4|",
+          "|failed=0|id_mismatch=0|online_mask=0xf|",
+          "|code=ok|selfcheck=1",
+          "|ktest|smp_online|online_mask=0xf|online=4|seen=[0, 1, 2, 3]|",
+          "|all_tick=1|",
+          "|ktest|pass|every MADT CPU is online"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-LOCK-CONTENTION",
+        "test_id": "TST-M3-LOCK-CONTENTION",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "smp": 4,
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=lock_contention"
+        ],
+        "oracle": "with -smp 4 one thread per CPU increments a counter behind one IrqSpinLock and an atomic counter 100000 times each, concurrently: both totals are exactly 400000 (no lost update, the lock excludes across CPUs); parallel=1 is informational; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=lock_contention",
+          "|ktest|lock_contention|cpus=4|rounds=100000|locked=400000|atomic=400000|expected=400000|",
+          "|ktest|pass|the lock serialises every CPU"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M3-TLB-SHOOTDOWN",
+        "test_id": "TST-M3-TLB-SHOOTDOWN",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "smp": 4,
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=tlb_shootdown"
+        ],
+        "oracle": "with -smp 4 a thread on another CPU reads a scratch page (caching the translation), the boot CPU unmaps it (invlpg + shootdown IPI, waiting for the acknowledgement) and maps a different frame; the second read on the other CPU returns the new frame's content, the served-request counter advanced, frames balance; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=tlb_shootdown",
+          "|ktest|tlb_shootdown|reader_cpu=1|reader=Some(1)|first=0xaaaa000000000a|second=0xbbbb000000000b|unmapped_ok=1|",
+          "|ktest|pass|a remapped kernel page is seen fresh on another CPU"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
           ]
         ]
       }

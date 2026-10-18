@@ -55,6 +55,11 @@ pub fn cpu_id() -> u32 {
     0
 }
 
+/// Spin-loop body of a contended lock (one CPU in the experiment: nothing to serve).
+pub fn spin_hint() {
+    core::hint::spin_loop();
+}
+
 pub fn init_console() {
     Serial::init();
 }

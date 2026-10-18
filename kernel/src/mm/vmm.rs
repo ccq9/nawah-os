@@ -346,14 +346,29 @@ fn map_stack(space: &AddressSpace, slot: u64, size: u64) -> Result<StackInfo, Vm
 }
 
 /// Unmaps `[base, base + len)` page by page, flushing each entry, and frees the frames.
+/// Unmaps a stack's pages and frees their frames — after every CPU has dropped the
+/// translations (the slot is reused, and a stale entry on another CPU would alias the next
+/// occupant's frames; ADR-0015 §8).
 fn unmap_stack_pages(space: &AddressSpace, base: u64, len: u64) {
+    // At most 16 pages per stack (64 KiB) in this kernel; larger stacks are freed in rounds.
+    const BATCH: usize = 16;
     let mut va = base;
     while va < base + len {
-        if let Ok(Some(phys)) = space.unmap_4k(va) {
-            paging::invlpg(va);
-            let _ = pmm::free_frame(pmm::Frame(phys));
+        let mut frames = [0u64; BATCH];
+        let mut n = 0;
+        let round_base = va;
+        while va < base + len && n < BATCH {
+            if let Ok(Some(phys)) = space.unmap_4k(va) {
+                paging::invlpg(va);
+                frames[n] = phys;
+                n += 1;
+            }
+            va += PAGE_4K;
         }
-        va += PAGE_4K;
+        crate::arch::tlb::shootdown(round_base, va - round_base);
+        for phys in &frames[..n] {
+            let _ = pmm::free_frame(pmm::Frame(*phys));
+        }
     }
 }
 
@@ -559,20 +574,22 @@ pub fn map_page(virt: u64, phys: u64, flags: u64) -> Result<(), VmmError> {
     Ok(())
 }
 
-/// Removes the scratch mapping at `virt` and invalidates it on this CPU; returns the physical
+/// Removes the scratch mapping at `virt` and invalidates it on every CPU; returns the physical
 /// address that was mapped (the frame stays the caller's).
 pub fn unmap_page(virt: u64) -> Result<Option<u64>, VmmError> {
     in_scratch(virt)?;
     let phys = kernel_as()?.unmap_4k(virt)?;
     paging::invlpg(virt);
+    crate::arch::tlb::shootdown(virt, PAGE_4K);
     Ok(phys)
 }
 
-/// Changes the flags of the scratch mapping at `virt` and invalidates it on this CPU.
+/// Changes the flags of the scratch mapping at `virt` and invalidates it on every CPU.
 pub fn protect_page(virt: u64, flags: u64) -> Result<(), VmmError> {
     in_scratch(virt)?;
     kernel_as()?.protect_4k(virt, flags)?;
     paging::invlpg(virt);
+    crate::arch::tlb::shootdown(virt, PAGE_4K);
     Ok(())
 }
 

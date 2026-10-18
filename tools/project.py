@@ -465,14 +465,15 @@ def keep_artifact(d, rid, art: Path) -> str:
     return f"evidence/{rid}/artifact/{art.name}"
 
 
-def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None):
+def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None, smp=None):
     q = t["qemu"]
     # Per-target exit device: isa-debug-exit on the PC, semihosting on the Arm virt board.
     exit_args = q.get("extra_args", ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
     disk_args = []
     if disk is not None:
         disk_args = ["-drive", f"if=none,id=vd0,format=raw,file={disk}", "-device", q["disk"]["device"]]
-    cmd = [q["binary"], "-machine", q["machine"], "-cpu", q["cpu"], "-m", q["memory"], "-smp", str(q["smp"]),
+    # A case (or phase) may ask for its own CPU count (`smp`, WP-20); the target's is the default.
+    cmd = [q["binary"], "-machine", q["machine"], "-cpu", q["cpu"], "-m", q["memory"], "-smp", str(smp or q["smp"]),
            "-drive", f"if=pflash,format=raw,readonly=on,file={q['ovmf_code']}",
            "-drive", f"if=pflash,format=raw,file={ROOT / 'build' / target_name / 'OVMF_VARS.fd'}",
            "-drive", f"format=raw,file=fat:rw:{esp_dir}",
@@ -547,7 +548,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         serial = d / ("serial.log" if len(phases) == 1 else f"serial-{i + 1}.log")
         disk = prepare_disk(t, target_name, fresh=(i == 0))
         extra = ph.get("qemu_extra", case.get("qemu_extra", []))
-        cmd = qemu_cmd(t, target_name, esp, serial, extra, disk)
+        cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")))
         rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s)
         text = serial.read_text(errors="replace") if serial.exists() else ""
         cmds.append(" ".join(cmd)); texts.append(text); rcs.append(rc)

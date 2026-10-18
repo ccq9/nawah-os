@@ -16,6 +16,7 @@
 
 use core::arch::x86_64::__cpuid_count;
 use core::arch::{asm, global_asm};
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use super::gdt::{self, KERNEL_CODE_SELECTOR, SYSRET_SELECTOR_BASE};
 use crate::cell::BootCell;
@@ -46,11 +47,28 @@ pub struct PerCpu {
     pub cpu_id: u64,
 }
 
-static PERCPU: BootCell<PerCpu> = BootCell::new(PerCpu {
+const PERCPU_TEMPLATE: PerCpu = PerCpu {
     user_rsp: 0,
     kernel_rsp: 0,
     cpu_id: 0,
-});
+};
+
+/// One block per CPU (WP-20); GS.base of CPU `i` points at slot `i`.
+static PERCPU: BootCell<[PerCpu; gdt::MAX_CPUS]> = BootCell::new([PERCPU_TEMPLATE; gdt::MAX_CPUS]);
+
+/// Set once the boot CPU's GS points at its block; from then on `cpu_id` reads `gs:[16]`.
+/// Every application processor sets its GS before it runs anything that could ask.
+static PERCPU_READY: AtomicBool = AtomicBool::new(false);
+
+pub fn percpu_ready() -> bool {
+    PERCPU_READY.load(Ordering::Relaxed)
+}
+
+fn percpu_of(cpu: usize) -> *mut PerCpu {
+    assert!(cpu < gdt::MAX_CPUS, "cpu index out of range");
+    // SAFETY: pointer arithmetic inside the static array (index checked).
+    unsafe { PERCPU.get().cast::<PerCpu>().add(cpu) }
+}
 
 /// Registers as the entry stub leaves them on the trap stack (lowest address first).
 #[repr(C)]
@@ -167,17 +185,28 @@ fn rdmsr(msr: u32) -> u64 {
     (u64::from(hi) << 32) | u64::from(lo)
 }
 
-/// Programs SYSCALL/SYSRET, GS bases, TSS.RSP0 and (when the CPU has them) SMEP/SMAP.
-/// `trap_stack_top`: the initial trap stack (the scheduler points it at each thread's kernel
-/// stack on every switch).
+/// Programs SYSCALL/SYSRET, GS bases, TSS.RSP0 and (when the CPU has them) SMEP/SMAP on the
+/// boot CPU. `trap_stack_top`: the initial trap stack (the scheduler points it at each thread's
+/// kernel stack on every switch).
 pub fn init(trap_stack_top: u64) -> SyscallInfo {
-    let percpu = PERCPU.get();
-    // SAFETY: boot path, single CPU (BootCell contract); the block is read by the entry stub
-    // only after the MSRs below point at it.
+    let info = init_cpu(0, trap_stack_top);
+    PERCPU_READY.store(true, Ordering::Release);
+    info
+}
+
+/// The same for CPU `cpu` (an application processor, WP-20), run on that CPU right after its
+/// GDT/IDT: from the GS write on, `cpu_id()` answers `cpu` there.
+pub fn init_cpu(cpu: usize, trap_stack_top: u64) -> SyscallInfo {
+    let percpu = percpu_of(cpu);
+    // SAFETY: each CPU writes only its own slot before pointing GS at it (BootCell contract per
+    // slot); the block is read by the entry stub only after the MSRs below point at it.
     unsafe {
         (*percpu).kernel_rsp = trap_stack_top;
-        (*percpu).cpu_id = u64::from(super::cpu_id());
+        (*percpu).cpu_id = cpu as u64;
     }
+    // GS first: `set_rsp0` below asks `cpu_id()`, which reads gs:[16] once PERCPU_READY is set.
+    wrmsr(IA32_GS_BASE, percpu as u64);
+    wrmsr(IA32_KERNEL_GS_BASE, 0);
     gdt::set_rsp0(trap_stack_top);
     wrmsr(IA32_EFER, rdmsr(IA32_EFER) | EFER_SCE);
     let star = (u64::from(SYSRET_SELECTOR_BASE) << 48) | (u64::from(KERNEL_CODE_SELECTOR) << 32);
@@ -186,8 +215,6 @@ pub fn init(trap_stack_top: u64) -> SyscallInfo {
     let lstar = &raw const syscall_entry as u64;
     wrmsr(IA32_LSTAR, lstar);
     wrmsr(IA32_FMASK, FMASK);
-    wrmsr(IA32_GS_BASE, percpu as u64);
-    wrmsr(IA32_KERNEL_GS_BASE, 0);
     // `__cpuid_count` is a safe intrinsic; leaf 7 exists when the maximum basic leaf reaches it.
     let (smep, smap) = if core::arch::x86_64::__cpuid(0).eax >= 7 {
         let ebx = __cpuid_count(7, 0).ebx;
@@ -215,16 +242,20 @@ pub fn init(trap_stack_top: u64) -> SyscallInfo {
             );
         }
     }
-    // SAFETY: boot path write (BootCell contract).
-    unsafe { SMAP_ENABLED.get().write(smap) };
+    if cpu == 0 {
+        // SAFETY: boot path write (BootCell contract); every CPU has the same features in the
+        // lab and the flag only gates STAC/CLAC.
+        unsafe { SMAP_ENABLED.get().write(smap) };
+    }
     SyscallInfo { smep, smap, lstar }
 }
 
-/// Points SYSCALL entry and ring-3 interrupts at `top` (a kernel stack): per-CPU kernel_rsp
+/// Points SYSCALL entry and ring-3 interrupts at `top` (a kernel stack): this CPU's kernel_rsp
 /// and TSS.RSP0. Called on every switch to a thread (WP-15).
 pub fn set_trap_stack(top: u64) {
+    let percpu = percpu_of(super::cpu_id() as usize);
     // SAFETY: interrupts are disabled by the caller (scheduler); the block is this CPU's.
-    unsafe { (*PERCPU.get()).kernel_rsp = top };
+    unsafe { (*percpu).kernel_rsp = top };
     gdt::set_rsp0(top);
 }
 

@@ -24,7 +24,18 @@ pub const MAX_WAIT_MS: u64 = 54;
 /// absent), after a bounded number of polls.
 pub fn wait_ms(ms: u64) -> bool {
     let ms = ms.clamp(1, MAX_WAIT_MS);
-    let count = (PIT_HZ * ms / 1000) as u16;
+    wait_ticks((PIT_HZ * ms / 1000) as u16)
+}
+
+/// Busy-waits `us` microseconds (at least one PIT tick, at most 54 ms) the same way: the
+/// INIT-SIPI-SIPI sequence needs 200 µs pauses (WP-20, SDM Vol. 3A §9.4.4).
+pub fn wait_us(us: u64) -> bool {
+    let ticks = (PIT_HZ * us / 1_000_000).clamp(1, u64::from(u16::MAX));
+    wait_ticks(ticks as u16)
+}
+
+/// Busy-waits `count` ticks of the 1.193182 MHz input on channel 2.
+fn wait_ticks(count: u16) -> bool {
     // SAFETY: standard PIT/NMI_SC ports; only channel 2 and the gate/speaker bits are touched,
     // the speaker stays off (bit 1 = 0); interrupts need not be disabled for this to be correct.
     unsafe {

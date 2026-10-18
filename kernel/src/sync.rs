@@ -4,8 +4,8 @@
 //! through an interrupt. Re-acquiring a lock this CPU already holds is a programming error that
 //! would hang forever; it is detected and turned into a panic (`K_E_LOCK_REENTRY`).
 //!
-//! M2 runs one CPU; the holder is recorded as `cpu_id + 1` so that M3 (SMP) only has to make
-//! `arch::cpu_id` real.
+//! The holder is recorded as `cpu_id + 1`; since WP-20 `arch::cpu_id` is the real CPU index and
+//! the spin loop calls `arch::spin_hint` (ADR-0015 §8).
 
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
@@ -58,7 +58,9 @@ impl<T> IrqSpinLock<T> {
                 Err(holder) if holder == me => {
                     panic!("K_E_LOCK_REENTRY|lock={}|cpu={}", self.name, me - 1)
                 }
-                Err(_) => core::hint::spin_loop(),
+                // Another CPU holds it: wait, serving TLB-shootdown requests meanwhile so a
+                // holder that waits for this CPU's acknowledgement is not waited on in turn.
+                Err(_) => arch::spin_hint(),
             }
         }
         IrqGuard {

@@ -92,9 +92,15 @@ pub fn init() {
         unsafe { idt.add(vector).write(gate) };
     }
 
+    load();
+}
+
+/// Loads the (shared) table into this CPU's IDTR: the boot CPU at the end of `init`, every
+/// application processor on its way up (WP-20).
+pub fn load() {
     let pointer = TablePointer {
         limit: (size_of::<[Gate; IDT_ENTRIES]>() - 1) as u16,
-        base: idt as u64,
+        base: IDT.get() as u64,
     };
     // SAFETY: the static table is valid for the kernel's lifetime and its present gates point at
     // real assembly stubs in kernel code. `lidt` only reads the pointer.

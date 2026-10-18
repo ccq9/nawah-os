@@ -16,6 +16,7 @@
 //! Flags at 8).
 
 pub const MAX_IOAPICS: usize = 4;
+pub const MAX_LAPICS: usize = 16;
 pub const MAX_OVERRIDES: usize = 16;
 
 #[derive(Clone, Copy, Default, Debug)]
@@ -43,12 +44,26 @@ pub struct Madt {
     pub pcat_compat: bool,
     /// Local APICs flagged Enabled (or Online Capable), counting both type 0 and type 9 entries.
     pub cpus: u32,
+    /// Their APIC IDs in table order (the first `n_lapics`; the rest were dropped), WP-20.
+    pub lapic_ids: [u32; MAX_LAPICS],
+    pub n_lapics: usize,
     pub ioapics: [IoApic; MAX_IOAPICS],
     pub n_ioapics: usize,
     pub overrides: [Override; MAX_OVERRIDES],
     pub n_overrides: usize,
     /// Structures the parser skipped because the fixed arrays were full.
     pub dropped: u32,
+}
+
+impl Madt {
+    fn add_lapic(&mut self, id: u32) {
+        if self.n_lapics < MAX_LAPICS {
+            self.lapic_ids[self.n_lapics] = id;
+            self.n_lapics += 1;
+        } else {
+            self.dropped += 1;
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -216,6 +231,8 @@ pub fn parse_madt(rsdp: u64) -> Result<Madt, AcpiError> {
         lapic_address: u64::from(rd32(madt + 36)),
         pcat_compat: rd32(madt + 40) & 1 != 0,
         cpus: 0,
+        lapic_ids: [0; MAX_LAPICS],
+        n_lapics: 0,
         ioapics: [IoApic::default(); MAX_IOAPICS],
         n_ioapics: 0,
         overrides: [Override::default(); MAX_OVERRIDES],
@@ -231,7 +248,12 @@ pub fn parse_madt(rsdp: u64) -> Result<Madt, AcpiError> {
         }
         let s = madt + off;
         match typ {
-            0 if slen >= 8 && rd32(s + 4) & 0b11 != 0 => out.cpus += 1,
+            // Processor Local APIC: ACPI UID at 2, APIC ID at 3, flags at 4 (bit 0 Enabled,
+            // bit 1 Online Capable).
+            0 if slen >= 8 && rd32(s + 4) & 0b11 != 0 => {
+                out.cpus += 1;
+                out.add_lapic(u32::from(rd8(s + 3)));
+            }
             1 if slen >= 12 => {
                 if out.n_ioapics < MAX_IOAPICS {
                     out.ioapics[out.n_ioapics] = IoApic {
@@ -257,7 +279,11 @@ pub fn parse_madt(rsdp: u64) -> Result<Madt, AcpiError> {
                 }
             }
             5 if slen >= 12 => out.lapic_address = rd64(s + 4),
-            9 if slen >= 16 && rd32(s + 8) & 0b11 != 0 => out.cpus += 1,
+            // Processor Local x2APIC: x2APIC ID at 4, flags at 8.
+            9 if slen >= 16 && rd32(s + 8) & 0b11 != 0 => {
+                out.cpus += 1;
+                out.add_lapic(rd32(s + 4));
+            }
             _ => {}
         }
         off += slen;

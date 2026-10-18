@@ -1348,16 +1348,37 @@
         "WP-15"
       ],
       "inputs": [
-        "docs/PLAN.md §4",
+        "ACPI 6.5 §5.2.12 MADT (S33)",
+        "ACPI MADT (S33)",
+        "Intel SDM Vol. 3A §9.4.3-9.4.4 MP initialization, §10.8.5 IA-32e activation, §11.6.1 ICR, §4.10.5 TLB propagation (S26)",
         "SDM Vol.3A §8.4, §10.4 (S26)",
-        "ACPI MADT (S33)"
+        "docs/PLAN.md §4"
       ],
       "files": [
-        "kernel/src/arch/x86_64/smp.rs",
-        "kernel/src/arch/x86_64/trampoline.s",
+        "docs/adr/0015-smp.md",
+        "kernel/src/arch/aarch64/mod.rs",
+        "kernel/src/arch/mod.rs",
+        "kernel/src/arch/x86_64/acpi.rs",
+        "kernel/src/arch/x86_64/apic.rs",
+        "kernel/src/arch/x86_64/gdt.rs",
+        "kernel/src/arch/x86_64/idt.rs",
+        "kernel/src/arch/x86_64/irq.rs",
+        "kernel/src/arch/x86_64/mod.rs",
         "kernel/src/arch/x86_64/percpu.rs",
+        "kernel/src/arch/x86_64/pit.rs",
+        "kernel/src/arch/x86_64/smp.rs",
+        "kernel/src/arch/x86_64/syscall.rs",
+        "kernel/src/arch/x86_64/tlb.rs",
+        "kernel/src/arch/x86_64/trampoline.s",
+        "kernel/src/arch/x86_64/trap.rs",
+        "kernel/src/kmain.rs",
+        "kernel/src/ktest.rs",
+        "kernel/src/mm/vmm.rs",
         "kernel/src/sched/mod.rs",
-        "kernel/src/sync.rs"
+        "kernel/src/sync.rs",
+        "platform/pc-qemu/target.json",
+        "tools/project.py",
+        "tools/unsafe-baseline.txt"
       ],
       "contract_refs": [
         "docs/contracts/boot.md"
@@ -1379,9 +1400,10 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M3"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

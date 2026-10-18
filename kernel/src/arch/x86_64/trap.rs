@@ -297,7 +297,7 @@ extern "sysv64" fn exception_handler(frame: &TrapFrame) {
         // Taken in ring 3: the program is at fault, not the kernel. Diagnose and end the thread
         // (the common path already swapped GS to the kernel block).
         kprintln!(
-            "OSX|{}|kernel|user_fault|vector={}|name={}|error={:#x}|rip={:#x}|rsp={:#x}|cr2={:#x}",
+            "OSX|{}|kernel|user_fault|vector={}|name={}|error={:#x}|rip={:#x}|rsp={:#x}|cr2={:#x}|cpu={}",
             BUILD_ID,
             frame.vector,
             name(frame.vector),
@@ -305,6 +305,7 @@ extern "sysv64" fn exception_handler(frame: &TrapFrame) {
             frame.rip,
             frame.rsp,
             read_cr2(),
+            super::cpu_id(),
         );
         crate::sched::exit_current(USER_FAULT_EXIT_BASE | frame.vector);
     }
@@ -327,7 +328,7 @@ extern "sysv64" fn exception_handler(frame: &TrapFrame) {
     let handler_stack = gdt::stack_name(&raw const marker as u64);
 
     kprintln!(
-        "OSX|{}|exc|vector={}|name={}|error={:#x}|rip={:#x}|cs={:#x}|rflags={:#x}|rsp={:#x}|ss={:#x}|cr2={:#x}|stack={}",
+        "OSX|{}|exc|vector={}|name={}|error={:#x}|rip={:#x}|cs={:#x}|rflags={:#x}|rsp={:#x}|ss={:#x}|cr2={:#x}|stack={}|cpu={}",
         BUILD_ID,
         frame.vector,
         name(frame.vector),
@@ -339,6 +340,7 @@ extern "sysv64" fn exception_handler(frame: &TrapFrame) {
         frame.ss,
         read_cr2(),
         handler_stack,
+        super::cpu_id(),
     );
     kprintln!(
         "OSX|{}|exc|regs1|rax={:#x}|rbx={:#x}|rcx={:#x}|rdx={:#x}|rsi={:#x}|rdi={:#x}|rbp={:#x}",

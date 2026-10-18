@@ -20,7 +20,9 @@ pub mod pit;
 mod port;
 pub mod qemu;
 mod serial;
+pub mod smp;
 pub mod syscall;
+pub mod tlb;
 mod trap;
 pub mod user_programs;
 
@@ -50,6 +52,16 @@ pub fn init_cpu() -> &'static str {
     idt::init();
     enable_machine_check();
     "gdt=1|tss=1|idt=1|stack=kernel"
+}
+
+/// The same tables on an application processor (WP-20): its own GDT/TSS (IST1 on
+/// `df_stack_top`), the shared IDT, #MC, then SYSCALL/GS for CPU `cpu` with `trap_stack_top`.
+/// No lock and no print until this returns (GS is not set before it).
+pub fn init_ap_cpu(cpu: usize, df_stack_top: u64, trap_stack_top: u64) {
+    gdt::init_cpu(cpu, df_stack_top);
+    idt::load();
+    enable_machine_check();
+    syscall::init_cpu(cpu, trap_stack_top);
 }
 
 /// Without CR4.MCE the CPU enters shutdown on a hardware error instead of raising #MC
@@ -181,9 +193,25 @@ pub mod interrupts {
     }
 }
 
-/// Index of the running CPU. M2 runs one CPU; M3 (SMP) derives it from the local APIC ID.
+/// Index of the running CPU: `PerCpu.cpu_id` through GS (offset 16, syscall.rs) once the boot
+/// CPU's block is installed; 0 before that (one CPU runs then). Application processors point GS
+/// at their block before anything else (ADR-0015 §3), and every kernel entry from ring 3 swaps
+/// the kernel GS back in, so the read is always this CPU's own slot.
 pub fn cpu_id() -> u32 {
-    0
+    if !syscall::percpu_ready() {
+        return 0;
+    }
+    let id: u64;
+    // SAFETY: GS.base is this CPU's PerCpu block (see above); offset 16 is `cpu_id`.
+    unsafe { asm!("mov {}, gs:[16]", out(reg) id, options(nostack, readonly, preserves_flags)) };
+    id as u32
+}
+
+/// What a lock's spin loop does while waiting: service TLB-shootdown requests addressed to
+/// this CPU (ADR-0015 §8), then pause.
+pub fn spin_hint() {
+    tlb::service_pending();
+    core::hint::spin_loop();
 }
 
 /// Stops the CPU for good.

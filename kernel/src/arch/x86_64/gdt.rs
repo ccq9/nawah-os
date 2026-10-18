@@ -89,7 +89,7 @@ const _: () = assert!(SYSRET_SELECTOR_BASE + 16 == USER_CODE_SELECTOR & !3);
 
 /// Order: null, kernel code, kernel data, TSS (two slots, filled at run time), user data, user
 /// code.
-static GDT: BootCell<[u64; GDT_ENTRIES]> = BootCell::new([
+const GDT_TEMPLATE: [u64; GDT_ENTRIES] = [
     0,
     KERNEL_CODE_DESCRIPTOR,
     KERNEL_DATA_DESCRIPTOR,
@@ -97,10 +97,10 @@ static GDT: BootCell<[u64; GDT_ENTRIES]> = BootCell::new([
     0,
     USER_DATA_DESCRIPTOR,
     USER_CODE_DESCRIPTOR,
-]);
+];
 
 /// `iomap_base == TSS size` means no I/O permission bitmap.
-static TSS: BootCell<Tss> = BootCell::new(Tss {
+const TSS_TEMPLATE: Tss = Tss {
     reserved0: 0,
     rsp: [0; 3],
     reserved1: 0,
@@ -108,7 +108,21 @@ static TSS: BootCell<Tss> = BootCell::new(Tss {
     reserved2: 0,
     reserved3: 0,
     iomap_base: TSS_SIZE as u16,
-});
+};
+
+/// Most CPUs the kernel brings up (WP-20, ADR-0015): one GDT and one TSS each, since TR and
+/// the TSS fields (RSP0, IST1) are per-CPU state.
+pub const MAX_CPUS: usize = 8;
+
+static GDTS: BootCell<[[u64; GDT_ENTRIES]; MAX_CPUS]> = BootCell::new([GDT_TEMPLATE; MAX_CPUS]);
+static TSSS: BootCell<[Tss; MAX_CPUS]> = BootCell::new([TSS_TEMPLATE; MAX_CPUS]);
+
+/// This CPU's TSS (raw: the struct is packed).
+fn tss_of(cpu: usize) -> *mut Tss {
+    assert!(cpu < MAX_CPUS, "cpu index out of range");
+    // SAFETY: pointer arithmetic inside the static array (index checked above).
+    unsafe { TSSS.get().cast::<Tss>().add(cpu) }
+}
 
 /// Builds the two TSS descriptor slots (Fig. 10-4): low slot then high slot.
 const fn tss_descriptor(base: u64, limit: u64) -> (u64, u64) {
@@ -134,21 +148,32 @@ pub fn kernel_stack_top() -> u64 {
     KERNEL_STACK.get() as u64 + KERNEL_STACK_SIZE as u64
 }
 
-/// Fills the TSS and its descriptor, loads the GDT, reloads the segment registers and TR.
+/// Fills the boot CPU's TSS and its descriptor, loads the GDT, reloads the segment registers
+/// and TR.
 pub fn init() {
     let df_stack_top = DF_STACK.get() as u64 + DF_STACK_SIZE as u64;
-    let (tss_low, tss_high) = tss_descriptor(TSS.get() as u64, (TSS_SIZE - 1) as u64);
-    let gdt = GDT.get().cast::<u64>();
+    init_cpu(0, df_stack_top);
+}
+
+/// The same for CPU `cpu` (an application processor, WP-20): its own GDT copy and TSS with
+/// IST1 on `df_stack_top`. Runs on that CPU, before anything that needs GS or a lock.
+pub fn init_cpu(cpu: usize, df_stack_top: u64) {
+    assert!(cpu < MAX_CPUS, "cpu index out of range");
+    let tss = tss_of(cpu);
+    let (tss_low, tss_high) = tss_descriptor(tss as u64, (TSS_SIZE - 1) as u64);
+    // SAFETY: index checked; pointer arithmetic inside the static array.
+    let gdt = unsafe { GDTS.get().cast::<[u64; GDT_ENTRIES]>().add(cpu) }.cast::<u64>();
     let pointer = TablePointer {
         limit: (size_of::<[u64; GDT_ENTRIES]>() - 1) as u16,
         base: gdt as u64,
     };
 
-    // SAFETY: boot path only (BootCell contract). Pointers to statics are valid; indices 3 and 4
-    // are inside GDT_ENTRIES. `ist` is unaligned (packed) so it is written with write_unaligned
-    // through a raw pointer, never through a reference.
+    // SAFETY: each CPU writes only its own slot, once, before using it (BootCell contract per
+    // slot). Pointers to statics are valid; indices 3 and 4 are inside GDT_ENTRIES. `ist` is
+    // unaligned (packed) so it is written with write_unaligned through a raw pointer, never
+    // through a reference.
     unsafe {
-        (&raw mut (*TSS.get()).ist)
+        (&raw mut (*tss).ist)
             .cast::<u64>()
             .add(usize::from(DOUBLE_FAULT_IST) - 1)
             .write_unaligned(df_stack_top);
@@ -190,26 +215,28 @@ pub fn init() {
 /// Points IST1 at the adopted #DF stack and records both adopted stacks for `stack_name`.
 /// The CPU reads the TSS at exception time, so the new IST1 is in effect at once.
 pub fn adopt_stacks(kernel: (u64, u64), df: (u64, u64)) {
-    // SAFETY: boot path, single CPU (BootCell contract); `ist` is packed, hence write_unaligned
-    // through a raw pointer; slot DOUBLE_FAULT_IST - 1 is inside the 7-entry array.
+    // SAFETY: boot path, boot CPU only (BootCell contract); `ist` is packed, hence
+    // write_unaligned through a raw pointer; slot DOUBLE_FAULT_IST - 1 is inside the 7-entry
+    // array.
     unsafe {
         ADOPTED_STACKS.get().write([kernel, df]);
-        (&raw mut (*TSS.get()).ist)
+        (&raw mut (*tss_of(0)).ist)
             .cast::<u64>()
             .add(usize::from(DOUBLE_FAULT_IST) - 1)
             .write_unaligned(df.0 + df.1);
     }
 }
 
-/// Sets TSS.RSP0: the stack the CPU switches to for an interrupt or exception taken in ring 3
-/// (SDM Vol. 3A §7.14.2, §8.7). The CPU reads the TSS at the event, so it is in effect at once.
+/// Sets this CPU's TSS.RSP0: the stack the CPU switches to for an interrupt or exception taken
+/// in ring 3 (SDM Vol. 3A §7.14.2, §8.7). The CPU reads the TSS at the event, so it is in
+/// effect at once.
 pub fn set_rsp0(top: u64) {
-    // SAFETY: boot path/single CPU (BootCell contract); `rsp` is packed, hence write_unaligned
-    // through a raw pointer; slot 0 is inside the 3-entry array.
+    let tss = tss_of(super::cpu_id() as usize);
+    // SAFETY: the slot belongs to the running CPU and the caller runs with interrupts disabled
+    // (scheduler) or on the boot path; `rsp` is packed, hence write_unaligned through a raw
+    // pointer; slot 0 is inside the 3-entry array.
     unsafe {
-        (&raw mut (*TSS.get()).rsp)
-            .cast::<u64>()
-            .write_unaligned(top);
+        (&raw mut (*tss).rsp).cast::<u64>().write_unaligned(top);
     }
 }
 

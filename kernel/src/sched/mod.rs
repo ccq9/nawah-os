@@ -4,8 +4,15 @@
 //!
 //! State lives in one `IrqSpinLock`: every entry point takes it with interrupts disabled and
 //! releases it *before* the context switch, so no lock and no reference to the state is held
-//! across `switch_to` (the resumed thread takes the lock again to reap). One CPU; WP-20 adds the
-//! per-CPU queues SMP needs.
+//! across `switch_to` (the resumed thread takes the lock again to reap).
+//!
+//! SMP (WP-20, ADR-0015 §5-7): threads are pinned to the CPU that created them (`Thread::cpu`;
+//! `spawn_on` for tests); each CPU has its own current thread, reschedule flag and idle thread
+//! (CPU 0: thread 0; an AP: the context `adopt_ap` registers), all in the one table under the
+//! one lock. Time (ticks, sleeps) advances on CPU 0 only; AP timers expire slices. A thread that
+//! switched away is `on_cpu` until the next scheduling decision on its CPU proves its stack is
+//! free, and only then may it be reaped — from any CPU. A thread made runnable on another CPU
+//! gets that CPU a reschedule IPI.
 //!
 //! Blocking (WP-16): `block_current`/`wake` with a wake token per thread, so a wake-up that
 //! arrives between the decision to block and the switch is kept, not lost.
@@ -23,6 +30,7 @@ use alloc::vec::Vec;
 
 use crate::arch;
 use crate::arch::context::{self, Start};
+use crate::arch::smp::MAX_CPUS;
 use crate::mm::addrspace::UserSpace;
 use crate::mm::vmm::{self, StackInfo};
 use crate::object::HandleTable;
@@ -65,8 +73,13 @@ pub struct Thread {
     /// instead of blocking, so a wake-up that races the block is never lost.
     wake_tokens: u32,
     /// Whether the stack belongs to the thread (false for the boot thread, whose stack is the
-    /// kernel's own).
+    /// kernel's own, and for an AP's idle thread).
     owns_stack: bool,
+    /// The CPU this thread runs on (WP-20: never migrates).
+    pub cpu: u8,
+    /// True from the moment the thread is picked until a later scheduling decision on its CPU
+    /// shows its stack is no longer in use; an Exited thread is reaped only when false.
+    on_cpu: bool,
 }
 
 pub struct Process {
@@ -91,11 +104,15 @@ impl Process {
 struct Sched {
     threads: Vec<Thread>,
     processes: Vec<Process>,
-    current: u32,
+    /// Per CPU: the running thread, the thread that ran before it (still `on_cpu`), the idle
+    /// thread, and whether a switch is wanted at the next preemption point.
+    current: [u32; MAX_CPUS],
+    prev: [Option<u32>; MAX_CPUS],
+    idle: [u32; MAX_CPUS],
+    need_resched: [bool; MAX_CPUS],
     next_tid: u32,
     next_pid: u32,
     seq: u64,
-    need_resched: bool,
     ticks: u64,
     switches: u64,
     preemptions: u64,
@@ -131,6 +148,27 @@ fn with<R>(f: impl FnOnce(&mut Sched) -> R) -> R {
     f(g.as_mut().expect("scheduler not initialised"))
 }
 
+/// This CPU's index (stable while the scheduler lock is held: interrupts are off and threads
+/// never migrate).
+fn me() -> usize {
+    arch::cpu_id() as usize
+}
+
+/// Priority of the thread running on `cpu` (PRIORITIES when unknown).
+fn running_prio(s: &Sched, cpu: usize) -> u8 {
+    index_of(s, s.current[cpu])
+        .map(|i| s.threads[i].priority)
+        .unwrap_or(PRIORITIES)
+}
+
+/// Asks `cpu` to reschedule: the flag, plus an IPI when it is another CPU (it may be halted).
+fn request_resched(s: &mut Sched, cpu: usize) {
+    s.need_resched[cpu] = true;
+    if cpu != me() {
+        arch::apic::send_ipi(arch::smp::apic_id_of(cpu), arch::irq::RESCHED_VECTOR);
+    }
+}
+
 /// Adopts the boot context as thread 0 (priority 1; the idle fallback) and turns the timer's
 /// preemption on. `boot_stack` is the kernel stack kmain runs on.
 pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
@@ -145,6 +183,8 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         last_pick: 0,
         wake_tokens: 0,
         owns_stack: false,
+        cpu: 0,
+        on_cpu: true,
     };
     // Capacities up front, so the first few spawns do not grow the vectors (keeps the boot
     // self-check's frame balance exact).
@@ -155,17 +195,46 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
     *g = Some(Sched {
         threads,
         processes: Vec::with_capacity(4),
-        current: 0,
+        current: [0; MAX_CPUS],
+        prev: [None; MAX_CPUS],
+        idle: [0; MAX_CPUS],
+        need_resched: [false; MAX_CPUS],
         next_tid: 1,
         next_pid: 1,
         seq: 1,
-        need_resched: false,
         ticks: 0,
         switches: 0,
         preemptions: 0,
         finished_threads: Vec::with_capacity(16),
         finished_processes: Vec::with_capacity(16),
         kernel_cr3,
+    });
+}
+
+/// Registers the calling context of application processor `cpu` as that CPU's idle thread
+/// (priority 3, Running, never exits or blocks); `stack` is the boot stack it runs on (WP-20).
+pub fn adopt_ap(cpu: usize, stack: StackInfo) {
+    with(|s| {
+        let id = s.next_tid;
+        s.next_tid += 1;
+        s.threads.push(Thread {
+            id,
+            process: None,
+            state: State::Running,
+            priority: PRIORITIES - 1,
+            kstack: stack,
+            rsp: 0,
+            slice: QUANTUM_TICKS,
+            last_pick: 0,
+            wake_tokens: 0,
+            owns_stack: false,
+            cpu: cpu as u8,
+            on_cpu: true,
+        });
+        s.current[cpu] = id;
+        s.idle[cpu] = id;
+        s.prev[cpu] = None;
+        s.need_resched[cpu] = false;
     });
 }
 
@@ -176,7 +245,11 @@ fn new_thread(
     kind: Start,
     a: u64,
     b: u64,
+    cpu: usize,
 ) -> Result<u32, SpawnError> {
+    if cpu >= MAX_CPUS || arch::smp::online_mask() & (1 << cpu) == 0 {
+        return Err(SpawnError);
+    }
     let kstack = vmm::alloc_kernel_stack(THREAD_STACK_SIZE).map_err(|_| SpawnError)?;
     let rsp = context::prepare_stack(kstack.top(), kind, a, b);
     let id = s.next_tid;
@@ -193,24 +266,55 @@ fn new_thread(
         last_pick: 0,
         wake_tokens: 0,
         owns_stack: true,
+        cpu: cpu as u8,
+        on_cpu: false,
     });
-    // A new thread of better or equal priority runs at the next preemption point or yield.
-    let cur_prio = index_of(s, s.current)
-        .map(|i| s.threads[i].priority)
-        .unwrap_or(PRIORITIES);
-    if priority <= cur_prio {
-        s.need_resched = true;
+    // A new thread of better or equal priority runs at its CPU's next preemption point or yield.
+    if priority <= running_prio(s, cpu) {
+        request_resched(s, cpu);
     }
     Ok(id)
 }
 
-/// Spawns a kernel thread running `entry(arg)`; its return value is the thread's exit code.
+/// Spawns a kernel thread running `entry(arg)` on this CPU; its return value is the thread's
+/// exit code.
 pub fn spawn_kernel(
     entry: context::KernelEntry,
     arg: u64,
     priority: u8,
 ) -> Result<u32, SpawnError> {
-    with(|s| new_thread(s, None, priority, Start::Kernel, entry as usize as u64, arg))
+    with(|s| {
+        let cpu = me();
+        new_thread(
+            s,
+            None,
+            priority,
+            Start::Kernel,
+            entry as usize as u64,
+            arg,
+            cpu,
+        )
+    })
+}
+
+/// Spawns a kernel thread pinned to `cpu` (an online CPU), WP-20.
+pub fn spawn_on(
+    cpu: usize,
+    entry: context::KernelEntry,
+    arg: u64,
+    priority: u8,
+) -> Result<u32, SpawnError> {
+    with(|s| {
+        new_thread(
+            s,
+            None,
+            priority,
+            Start::Kernel,
+            entry as usize as u64,
+            arg,
+            cpu,
+        )
+    })
 }
 
 /// Creates a process around `space` with one thread starting in ring 3 at `rip` with stack
@@ -235,7 +339,8 @@ pub fn spawn_user(
             exit_code: None,
             handles: Arc::new(IrqSpinLock::new("handles", HandleTable::new())),
         });
-        match new_thread(s, Some(pid), priority, Start::User, rip, rsp) {
+        let cpu = me();
+        match new_thread(s, Some(pid), priority, Start::User, rip, rsp, cpu) {
             Ok(tid) => Ok((pid, tid)),
             Err(e) => {
                 if let Some(p) = s.processes.pop() {
@@ -253,12 +358,16 @@ fn index_of(s: &Sched, tid: u32) -> Option<usize> {
     s.threads.iter().position(|t| t.id == tid)
 }
 
-/// The thread to run next: Ready (or the Running current) with the smallest priority value,
-/// ties broken by the smallest `last_pick`, then by position.
-fn pick_next(s: &Sched) -> usize {
+/// The thread to run next on `cpu`: one of its threads, Ready (or the Running current), with
+/// the smallest priority value, ties broken by the smallest `last_pick`, then by position.
+fn pick_next(s: &Sched, cpu: usize) -> usize {
     let mut best: Option<usize> = None;
+    let current = s.current[cpu];
     for (i, t) in s.threads.iter().enumerate() {
-        let runnable = t.state == State::Ready || (t.id == s.current && t.state == State::Running);
+        if usize::from(t.cpu) != cpu {
+            continue;
+        }
+        let runnable = t.state == State::Ready || (t.id == current && t.state == State::Running);
         if !runnable {
             continue;
         }
@@ -276,7 +385,7 @@ fn pick_next(s: &Sched) -> usize {
             }
         };
     }
-    best.unwrap_or_else(|| index_of(s, 0).expect("thread 0 exists"))
+    best.unwrap_or_else(|| index_of(s, s.idle[cpu]).expect("the idle thread exists"))
 }
 
 /// Books the switch to the best runnable thread: the current thread goes to the back of its
@@ -284,11 +393,22 @@ fn pick_next(s: &Sched) -> usize {
 /// current. Returns `None` when the current thread keeps the CPU. The caller performs the
 /// returned switch immediately, after dropping the lock, with interrupts still disabled.
 fn prepare_switch(s: &mut Sched) -> Option<Switch> {
-    let cur_i = index_of(s, s.current).expect("current thread exists");
-    s.need_resched = false;
+    let cpu = me();
+    let cur = s.current[cpu];
+    // This code runs on `cur`'s stack, so whatever ran before `cur` on this CPU is off it now.
+    if let Some(p) = s.prev[cpu] {
+        if p != cur {
+            if let Some(i) = index_of(s, p) {
+                s.threads[i].on_cpu = false;
+            }
+        }
+        s.prev[cpu] = None;
+    }
+    let cur_i = index_of(s, cur).expect("current thread exists");
+    s.need_resched[cpu] = false;
     s.seq += 1;
     s.threads[cur_i].last_pick = s.seq;
-    let next_i = pick_next(s);
+    let next_i = pick_next(s, cpu);
     if next_i == cur_i {
         // Only a Running current thread can be picked again; it starts a fresh slice.
         s.threads[cur_i].slice = QUANTUM_TICKS;
@@ -304,6 +424,7 @@ fn prepare_switch(s: &mut Sched) -> Option<Switch> {
         n.state = State::Running;
         n.slice = QUANTUM_TICKS;
         n.last_pick = seq;
+        n.on_cpu = true;
         n.id
     };
     let target_cr3 = match s.threads[next_i].process {
@@ -319,7 +440,8 @@ fn prepare_switch(s: &mut Sched) -> Option<Switch> {
     if arch::paging::read_cr3() != target_cr3 {
         arch::paging::switch_cr3(target_cr3);
     }
-    s.current = next_tid;
+    s.prev[cpu] = Some(cur);
+    s.current[cpu] = next_tid;
     s.switches += 1;
     Some(Switch {
         prev_slot: &mut s.threads[cur_i].rsp,
@@ -328,40 +450,47 @@ fn prepare_switch(s: &mut Sched) -> Option<Switch> {
 }
 
 /// Performs a prepared switch (interrupts disabled, lock released) and, once this thread is
-/// resumed, reaps what exited meanwhile.
+/// resumed — or at once when there was nothing to switch to — reaps what exited meanwhile.
 fn perform(sw: Option<Switch>) -> bool {
-    let Some(sw) = sw else {
-        return false;
+    let switched = match sw {
+        Some(sw) => {
+            // SAFETY: both stacks are kernel stacks this module owns; `next_rsp` was saved by
+            // switch_to or built by prepare_stack; interrupts are disabled, so between
+            // `prepare_switch` and here nothing ran that could move the thread vector, and
+            // `prev_slot` is written by the switch before any other code runs; nothing borrows
+            // the scheduler state across the call (the lock was dropped).
+            unsafe { context::switch_to(sw.prev_slot, sw.next_rsp) };
+            true
+        }
+        None => false,
     };
-    // SAFETY: both stacks are kernel stacks this module owns; `next_rsp` was saved by switch_to
-    // or built by prepare_stack; interrupts are disabled, so between `prepare_switch` and here
-    // nothing ran that could move the thread vector, and `prev_slot` is written by the switch
-    // before any other code runs; nothing borrows the scheduler state across the call (the lock
-    // was dropped).
-    unsafe { context::switch_to(sw.prev_slot, sw.next_rsp) };
-    let doomed = with(reap);
-    // Outside the lock: releasing handles may close channels and wake their readers.
+    let (doomed, stacks) = with(reap);
+    // Outside the lock: unmapping a stack tells the other CPUs (TLB shootdown), and releasing
+    // handles may close channels and wake their readers.
+    for st in stacks {
+        vmm::free_kernel_stack(st);
+    }
     for p in doomed {
         p.finish();
     }
-    true
+    switched
 }
 
-/// Frees exited threads (not the current one) and detaches processes whose last thread exited
-/// and whose address space is not the active one; the caller finishes those after releasing
-/// the lock.
-fn reap(s: &mut Sched) -> Vec<Process> {
-    let current = s.current;
+/// Removes exited threads that are off their CPU and detaches processes whose last thread
+/// exited and whose address space is not the active one; the caller frees the stacks and
+/// finishes the processes after releasing the lock.
+fn reap(s: &mut Sched) -> (Vec<Process>, Vec<StackInfo>) {
+    let mut stacks = Vec::new();
     let mut i = 0;
     while i < s.threads.len() {
         let exited = match s.threads[i].state {
-            State::Exited { code } if s.threads[i].id != current => Some(code),
+            State::Exited { code } if !s.threads[i].on_cpu => Some(code),
             _ => None,
         };
         if let Some(code) = exited {
             let t = s.threads.swap_remove(i);
             if t.owns_stack {
-                vmm::free_kernel_stack(t.kstack);
+                stacks.push(t.kstack);
             }
             // Kernel threads are joined by id; a process's threads are accounted through the
             // process (wait_process), so no record is kept for them.
@@ -392,7 +521,7 @@ fn reap(s: &mut Sched) -> Vec<Process> {
             i += 1;
         }
     }
-    doomed
+    (doomed, stacks)
 }
 
 /// Timer hook (interrupt context): advances time, wakes sleepers, expires the slice. Before
@@ -402,28 +531,39 @@ pub fn tick() {
     let Some(s) = g.as_mut() else {
         return;
     };
-    s.ticks += 1;
-    let now = s.ticks;
-    let cur_prio = index_of(s, s.current)
-        .map(|i| s.threads[i].priority)
-        .unwrap_or(PRIORITIES);
-    let mut wake = false;
-    for t in s.threads.iter_mut() {
-        if let State::Sleeping { until } = t.state {
-            if until <= now {
-                t.state = State::Ready;
-                wake |= t.priority <= cur_prio;
+    let cpu = me();
+    if cpu == 0 {
+        // CPU 0 keeps the time: sleepers wake here, whichever CPU they belong to.
+        s.ticks += 1;
+        let now = s.ticks;
+        let mut wake = [false; MAX_CPUS];
+        for t in s.threads.iter_mut() {
+            if let State::Sleeping { until } = t.state {
+                if until <= now {
+                    t.state = State::Ready;
+                    wake[usize::from(t.cpu)] = true;
+                }
+            }
+        }
+        for (c, w) in wake.iter().enumerate() {
+            if *w {
+                let prio = running_prio(s, c);
+                let woke_better = s.threads.iter().any(|t| {
+                    usize::from(t.cpu) == c && t.state == State::Ready && t.priority <= prio
+                });
+                if woke_better {
+                    request_resched(s, c);
+                }
             }
         }
     }
-    if let Some(i) = index_of(s, s.current) {
+    if let Some(i) = index_of(s, s.current[cpu]) {
         let t = &mut s.threads[i];
         t.slice = t.slice.saturating_sub(1);
         if t.slice == 0 {
-            s.need_resched = true;
+            s.need_resched[cpu] = true;
         }
     }
-    s.need_resched |= wake;
 }
 
 /// Called by the interrupt dispatcher after EOI, with interrupts disabled: switches if the
@@ -435,7 +575,7 @@ pub fn preempt_point() {
         let Some(s) = g.as_mut() else {
             return;
         };
-        if !s.need_resched {
+        if !s.need_resched[me()] {
             return;
         }
         s.preemptions += 1;
@@ -454,18 +594,24 @@ pub fn yield_now() -> bool {
     switched
 }
 
-/// Sleeps for at least `ticks` timer ticks. The boot thread, which must stay runnable, waits
+/// Whether the running thread of this CPU is its idle thread (thread 0 on CPU 0).
+fn current_is_idle(s: &Sched) -> bool {
+    let cpu = me();
+    s.current[cpu] == s.idle[cpu]
+}
+
+/// Sleeps for at least `ticks` timer ticks. An idle thread, which must stay runnable, waits
 /// by halting instead of blocking.
 pub fn sleep_ticks(ticks: u64) {
     let was = arch::interrupts::save_and_disable();
-    let (until, boot) = with(|s| (s.ticks + ticks, s.current == 0));
-    if boot {
+    let (until, idle) = with(|s| (s.ticks + ticks, current_is_idle(s)));
+    if idle {
         while with(|s| s.ticks) < until {
             context::idle_wait();
         }
     } else {
         let sw = with(|s| {
-            let i = index_of(s, s.current).expect("current thread exists");
+            let i = index_of(s, s.current[me()]).expect("current thread exists");
             s.threads[i].state = State::Sleeping { until };
             prepare_switch(s)
         });
@@ -479,8 +625,8 @@ pub fn sleep_ticks(ticks: u64) {
 pub fn exit_current(code: u64) -> ! {
     arch::interrupts::disable();
     let sw = with(|s| {
-        assert!(s.current != 0, "the boot thread cannot exit");
-        let i = index_of(s, s.current).expect("current thread exists");
+        assert!(!current_is_idle(s), "an idle thread cannot exit");
+        let i = index_of(s, s.current[me()]).expect("current thread exists");
         s.threads[i].state = State::Exited { code };
         if let Some(pid) = s.threads[i].process {
             if let Some(p) = s.processes.iter_mut().find(|p| p.id == pid) {
@@ -547,8 +693,8 @@ pub fn wait_process(pid: u32) -> Option<u64> {
 pub fn block_current() {
     let was = arch::interrupts::save_and_disable();
     let sw = with(|s| {
-        assert!(s.current != 0, "the boot thread cannot block");
-        let i = index_of(s, s.current).expect("current thread exists");
+        assert!(!current_is_idle(s), "an idle thread cannot block");
+        let i = index_of(s, s.current[me()]).expect("current thread exists");
         if s.threads[i].wake_tokens > 0 {
             s.threads[i].wake_tokens -= 1;
             return None;
@@ -565,16 +711,15 @@ pub fn block_current() {
 /// preemption point or yield.
 pub fn wake(tid: u32) {
     with(|s| {
-        let cur_prio = index_of(s, s.current)
-            .map(|i| s.threads[i].priority)
-            .unwrap_or(PRIORITIES);
         if let Some(i) = index_of(s, tid) {
+            let cpu = usize::from(s.threads[i].cpu);
+            let prio = running_prio(s, cpu);
             let t = &mut s.threads[i];
             match t.state {
                 State::Blocked => {
                     t.state = State::Ready;
-                    if t.priority <= cur_prio {
-                        s.need_resched = true;
+                    if t.priority <= prio {
+                        request_resched(s, cpu);
                     }
                 }
                 State::Exited { .. } => {}
@@ -585,14 +730,14 @@ pub fn wake(tid: u32) {
 }
 
 pub fn current_tid() -> u32 {
-    with(|s| s.current)
+    with(|s| s.current[me()])
 }
 
 /// The current process's handle table (a shared reference; operate on it outside the
 /// scheduler lock). None for kernel threads.
 pub fn current_handles() -> Option<Arc<IrqSpinLock<HandleTable>>> {
     with(|s| {
-        let pid = index_of(s, s.current).and_then(|i| s.threads[i].process)?;
+        let pid = index_of(s, s.current[me()]).and_then(|i| s.threads[i].process)?;
         s.processes
             .iter()
             .find(|p| p.id == pid)
@@ -607,6 +752,6 @@ pub fn stats() -> Stats {
         switches: s.switches,
         preemptions: s.preemptions,
         ticks: s.ticks,
-        current: s.current,
+        current: s.current[me()],
     })
 }

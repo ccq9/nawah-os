@@ -31,9 +31,7 @@ const REG_TPR: u32 = 0x080;
 const REG_EOI: u32 = 0x0B0;
 const REG_SVR: u32 = 0x0F0;
 const REG_ESR: u32 = 0x280;
-#[cfg(feature = "ktest")]
 const REG_ICR_LOW: u32 = 0x300;
-#[cfg(feature = "ktest")]
 const REG_ICR_HIGH: u32 = 0x310;
 const REG_LVT_TIMER: u32 = 0x320;
 const REG_LVT_LINT0: u32 = 0x350;
@@ -48,8 +46,12 @@ const LVT_TIMER_PERIODIC: u32 = 1 << 17;
 const SVR_ENABLE: u32 = 1 << 8;
 #[cfg(feature = "ktest")]
 const ICR_SHORTHAND_SELF: u32 = 0b01 << 18;
-#[cfg(feature = "ktest")]
 const ICR_DELIVERY_PENDING: u32 = 1 << 12;
+/// ICR delivery modes (§11.6.1, bits 8-10) and the level bit (14, asserted).
+const ICR_FIXED: u32 = 0b000 << 8;
+const ICR_INIT: u32 = 0b101 << 8;
+const ICR_STARTUP: u32 = 0b110 << 8;
+const ICR_LEVEL_ASSERT: u32 = 1 << 14;
 const DIVIDE_BY_1: u32 = 0b1011;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -249,4 +251,70 @@ pub fn send_self_ipi(vector: u8) {
 /// Spurious-vector register read-back (test kernel diagnostics).
 pub fn svr() -> u32 {
     read(REG_SVR)
+}
+
+/// The mode the local APICs run in (the firmware's choice, read at `init`).
+pub fn mode() -> Mode {
+    current().mode
+}
+
+/// This CPU's local APIC ID as the hardware reports it (xAPIC: ID register bits 24-31; x2APIC:
+/// the whole register).
+pub fn my_id() -> u32 {
+    match current().mode {
+        Mode::XApic => read(REG_ID) >> 24,
+        Mode::X2Apic => read(REG_ID),
+    }
+}
+
+/// Writes the ICR for destination `apic_id` (physical mode) with `low` (vector, delivery mode,
+/// level) and waits for the delivery-status bit to clear in xAPIC mode (§11.6.1: a new IPI
+/// must not be written while the previous one is pending). Bounded wait.
+fn write_icr(apic_id: u32, low: u32) {
+    match current().mode {
+        Mode::XApic => {
+            let mut spins = 0u32;
+            while read(REG_ICR_LOW) & ICR_DELIVERY_PENDING != 0 && spins < 1_000_000 {
+                spins += 1;
+                core::hint::spin_loop();
+            }
+            write(REG_ICR_HIGH, apic_id << 24);
+            write(REG_ICR_LOW, low);
+            spins = 0;
+            while read(REG_ICR_LOW) & ICR_DELIVERY_PENDING != 0 && spins < 1_000_000 {
+                spins += 1;
+                core::hint::spin_loop();
+            }
+        }
+        Mode::X2Apic => wrmsr(0x830, (u64::from(apic_id) << 32) | u64::from(low)),
+    }
+}
+
+/// Fixed interrupt `vector` to the CPU whose local APIC ID is `apic_id` (WP-20).
+pub fn send_ipi(apic_id: u32, vector: u8) {
+    write_icr(apic_id, ICR_FIXED | ICR_LEVEL_ASSERT | u32::from(vector));
+}
+
+/// INIT IPI (level asserted) to `apic_id`: the AP enters the wait-for-SIPI state (§9.4.4).
+pub fn send_init(apic_id: u32) {
+    write_icr(apic_id, ICR_INIT | ICR_LEVEL_ASSERT);
+}
+
+/// Start-up IPI to `apic_id`: the AP starts in real mode at `page << 12` (`page` < 0x100).
+pub fn send_sipi(apic_id: u32, page: u8) {
+    write_icr(apic_id, ICR_STARTUP | ICR_LEVEL_ASSERT | u32::from(page));
+}
+
+/// Brings up the local APIC of an application processor (WP-20): same mode and register page
+/// as the boot CPU's (`init` recorded them), software enable with the same vectors, LINT0/1
+/// and timer masked, ESR cleared. Returns this CPU's APIC ID.
+pub fn init_ap(spurious_vector: u8, error_vector: u8) -> u32 {
+    write(REG_SVR, SVR_ENABLE | u32::from(spurious_vector));
+    write(REG_TPR, 0);
+    write(REG_LVT_TIMER, LVT_MASKED);
+    write(REG_LVT_LINT0, LVT_MASKED);
+    write(REG_LVT_LINT1, LVT_MASKED);
+    write(REG_LVT_ERROR, u32::from(error_vector));
+    write(REG_ESR, 0);
+    my_id()
 }

@@ -793,8 +793,8 @@
     "REQ-M3-009"
    ],
    "layer": "guest",
-   "oracle": "with -smp 4 every MADT CPU reports online with its own APIC id",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "with -smp 4 the boot CPU brings up the three application processors (INIT, SIPI, SIPI, trampoline below 1 MiB): the boot line reports madt_cpus=4 online=4, every CPU runs a thread pinned to it that sees its own index through GS and a distinct local APIC ID, each CPU has taken timer ticks of its own, and frames balance after the cross-CPU joins; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -804,8 +804,8 @@
     "REQ-M3-009"
    ],
    "layer": "guest",
-   "oracle": "N CPUs increment a counter under the lock: exact total",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "with -smp 4 one thread per CPU increments a counter behind one IrqSpinLock and an atomic counter 100000 times each, concurrently: both totals are exactly 400000 (no lost update, the lock excludes across CPUs); parallel=1 is informational; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -814,9 +814,9 @@
    "requirement_ids": [
     "REQ-M3-009"
    ],
-   "layer": "negative",
-   "oracle": "after unmap on CPU A, access on CPU B faults (shootdown IPI delivered)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "layer": "guest",
+   "oracle": "with -smp 4 a thread on another CPU reads a scratch page (caching the translation), the boot CPU unmaps it (invlpg + shootdown IPI, waiting for the acknowledgement) and maps a different frame; the second read on the other CPU returns the new frame's content, the served-request counter advanced, frames balance; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
