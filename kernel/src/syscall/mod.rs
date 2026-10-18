@@ -93,8 +93,13 @@ pub const TRACE_MAX: usize = 256;
 
 /// Checks that `[addr, addr + len)` lies in the user range and every page of it is present with
 /// the user bit (and, for `write`, the write bit) in the active address space, so a kernel copy
-/// cannot touch kernel, unmapped or read-only memory. `len` may be 0.
+/// cannot touch kernel, unmapped or read-only memory. A zero-length range is accepted at any
+/// address: nothing is copied, and an empty slice's pointer is a dangling non-null value (CI
+/// run 39128551931: `channel_write(h, msg, &[])` from libnawah answered `ERR_RANGE`).
 pub fn user_range_ok(addr: u64, len: u64, write: bool) -> Result<(), i64> {
+    if len == 0 {
+        return Ok(());
+    }
     let end = addr.checked_add(len).ok_or(ERR_RANGE)?;
     if addr < USER_BASE || end > USER_END {
         return Err(ERR_RANGE);

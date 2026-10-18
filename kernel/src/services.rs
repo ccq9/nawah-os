@@ -47,6 +47,12 @@ pub fn spawn_manager() -> Result<Manager, &'static str> {
     }];
     let pid =
         crate::user::spawn_elf_with(&image, 1, initial, object.clone()).map_err(|e| e.code())?;
+    kprintln!(
+        "OSX|{}|kernel|spawn|pid={}|path={}|handles=1|by=kernel",
+        crate::BUILD_ID,
+        pid,
+        core::str::from_utf8(MANAGER_IMAGE).unwrap_or("?")
+    );
     Ok(Manager {
         pid,
         object,
