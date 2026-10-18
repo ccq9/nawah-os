@@ -1,0 +1,37 @@
+    Checking libnawah v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/libnawah)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.11s
+   Compiling hello v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/hello)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.16s
+   Compiling file_roundtrip v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/file_roundtrip)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.14s
+   Compiling path_invalid v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/path_invalid)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.13s
+   Compiling fd_leak v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/fd_leak)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.13s
+   Compiling echo v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/echo)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.12s
+   Compiling launch v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/launch)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.12s
+   Compiling child v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/child)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.12s
+   Compiling waiter v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/waiter)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.13s
+   Compiling svcmgr v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/svcmgr)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.21s
+   Compiling svc v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/svc)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.12s
+    Checking nawah-crypto v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/nawah-crypto)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.07s
+   Compiling authd v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/authd)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.18s
+   Compiling configd v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/configd)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.24s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 1.24s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 1.22s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `ktest` profile [optimized + debuginfo] target(s) in 1.38s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.15s
+unsafe lines: 170 (baseline 170)
