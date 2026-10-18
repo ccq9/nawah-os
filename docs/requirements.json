@@ -741,7 +741,8 @@
         "TST-M3-USER-SYSCALL",
         "TST-M3-USER-BAD-PTR",
         "TST-M3-USER-KERNEL-ACCESS",
-        "TST-M3-SYSRET-CANONICAL"
+        "TST-M3-SYSRET-CANONICAL",
+        "TST-M3-ISOLATION"
       ],
       "implementation_status": "verified_in_scope",
       "evidence_refs": [
@@ -974,6 +975,7 @@
       ],
       "acceptance": "M3 suite + mutants",
       "test_ids": [
+        "TST-M3-ISOLATION",
         "TST-M3-MUTANTS"
       ],
       "implementation_status": "planned",

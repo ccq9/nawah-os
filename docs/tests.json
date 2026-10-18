@@ -554,6 +554,18 @@
    ]
   },
   {
+   "id": "TST-M3-ISOLATION",
+   "requirement_ids": [
+    "REQ-M3-003",
+    "REQ-M3-010"
+   ],
+   "layer": "guest",
+   "oracle": "two processes run the same program at the same virtual addresses concurrently: each reads 0 from its fresh data page, writes a pattern, sleeps 20 ticks while the other runs, and still finds its own pattern (exit code 1<<63 for both: first read 0, pattern kept); no process record and no frame remains; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
    "id": "TST-M3-SYSRET-CANONICAL",
    "requirement_ids": [
     "REQ-M3-003"

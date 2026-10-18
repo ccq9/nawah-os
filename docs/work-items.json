@@ -1438,6 +1438,7 @@
       ],
       "acceptance": "M3 gate passed",
       "test_ids": [
+        "TST-M3-ISOLATION",
         "TST-M3-MUTANTS"
       ],
       "commands": [

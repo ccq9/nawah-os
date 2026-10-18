@@ -539,6 +539,32 @@ user_prog_sleep:
     syscall
     ud2
 user_prog_sleep_end:
+
+    # Isolation (WP-22, TST-M3-ISOLATION): reads the qword at the data page, writes its own
+    # pattern there, sleeps 20 ticks (another process runs meanwhile, at the same virtual
+    # address), reads the page back, and exits with (first read) | (page still holds the
+    # pattern) << 63. A process must find a zeroed page and keep its own contents.
+    .balign 16
+    .global user_prog_isolation
+    .global user_prog_isolation_end
+user_prog_isolation:
+    movabs r14, 0x8000400000
+    mov r12, [r14]                 # first read: 0 for a fresh page
+    movabs r13, 0x5A5A5A5A5A5A5A5A
+    mov [r14], r13
+    mov eax, 5                     # SYS_SLEEP
+    mov edi, 20
+    syscall
+    mov rax, [r14]
+    cmp rax, r13
+    jne 1f
+    movabs rax, 0x8000000000000000
+    or r12, rax
+1:  mov rdi, r12
+    mov eax, 0                     # SYS_EXIT
+    syscall
+    ud2
+user_prog_isolation_end:
 "#
 );
 
@@ -559,6 +585,8 @@ extern "C" {
     static user_prog_trace_end: u8;
     static user_prog_sleep: u8;
     static user_prog_sleep_end: u8;
+    static user_prog_isolation: u8;
+    static user_prog_isolation_end: u8;
     static user_prog_ipc_roundtrip: u8;
     static user_prog_ipc_roundtrip_end: u8;
     static user_prog_rights_denied: u8;
@@ -620,6 +648,15 @@ pub fn trace() -> &'static [u8] {
 #[cfg(feature = "ktest")]
 pub fn sleep() -> &'static [u8] {
     bytes(&raw const user_prog_sleep, &raw const user_prog_sleep_end)
+}
+
+/// Two of these at once prove address-space isolation (WP-22).
+#[cfg(feature = "ktest")]
+pub fn isolation() -> &'static [u8] {
+    bytes(
+        &raw const user_prog_isolation,
+        &raw const user_prog_isolation_end,
+    )
 }
 
 /// Channel round trip with a VMO handle; exit code 0x1C (else the failing step).

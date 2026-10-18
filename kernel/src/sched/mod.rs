@@ -118,6 +118,11 @@ struct Sched {
     preemptions: u64,
     finished_threads: Vec<(u32, u64)>,
     finished_processes: Vec<(u32, u64)>,
+    /// Removed from the tables but not yet published as finished: their stacks and address
+    /// spaces are being released outside the lock (WP-20). `join`/`wait_process` keep waiting
+    /// for these, so a waiter never measures before the resources are back.
+    reaping_threads: Vec<u32>,
+    reaping_processes: Vec<u32>,
     kernel_cr3: u64,
 }
 
@@ -207,6 +212,8 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         preemptions: 0,
         finished_threads: Vec::with_capacity(16),
         finished_processes: Vec::with_capacity(16),
+        reaping_threads: Vec::with_capacity(8),
+        reaping_processes: Vec::with_capacity(8),
         kernel_cr3,
     });
 }
@@ -470,29 +477,71 @@ fn perform(sw: Option<Switch>) -> bool {
         }
         None => false,
     };
-    let (doomed, stacks) = with(|s| {
+    let reaped = with(|s| {
         if switched {
             // Back on this stack: the thread that switched to us has left the CPU.
             retire_prev(s, me());
         }
         reap(s)
     });
+    if reaped.is_empty() {
+        return switched;
+    }
     // Outside the lock: unmapping a stack tells the other CPUs (TLB shootdown), and releasing
-    // handles may close channels and wake their readers.
-    for st in stacks {
+    // handles may close channels and wake their readers (which takes this lock).
+    for st in reaped.stacks {
         vmm::free_kernel_stack(st);
     }
-    for p in doomed {
+    let mut processes = Vec::with_capacity(reaped.processes.len());
+    for (p, code) in reaped.processes {
+        processes.push((p.id, code));
         p.finish();
     }
+    // Only now may a waiter learn the outcome: every frame is back. The lists are consumed
+    // inside the lock so their own heap blocks are gone before the lock is released.
+    let threads = reaped.threads;
+    with(move |s| {
+        for (tid, code) in threads {
+            s.reaping_threads.retain(|t| *t != tid);
+            if s.finished_threads.len() >= FINISHED_KEEP {
+                s.finished_threads.remove(0);
+            }
+            s.finished_threads.push((tid, code));
+        }
+        for (pid, code) in processes {
+            s.reaping_processes.retain(|p| *p != pid);
+            if s.finished_processes.len() >= FINISHED_KEEP {
+                s.finished_processes.remove(0);
+            }
+            s.finished_processes.push((pid, code));
+        }
+    });
     switched
 }
 
+/// What `reap` took out of the tables: stacks to free, kernel threads to publish as finished
+/// (id, exit code) and processes to finish and publish.
+struct Reaped {
+    stacks: Vec<StackInfo>,
+    threads: Vec<(u32, u64)>,
+    processes: Vec<(Process, u64)>,
+}
+
+impl Reaped {
+    fn is_empty(&self) -> bool {
+        self.stacks.is_empty() && self.threads.is_empty() && self.processes.is_empty()
+    }
+}
+
 /// Removes exited threads that are off their CPU and detaches processes whose last thread
-/// exited and whose address space is not the active one; the caller frees the stacks and
-/// finishes the processes after releasing the lock.
-fn reap(s: &mut Sched) -> (Vec<Process>, Vec<StackInfo>) {
-    let mut stacks = Vec::new();
+/// exited and whose address space is not the active one; the caller frees the stacks,
+/// finishes the processes and then publishes them as finished.
+fn reap(s: &mut Sched) -> Reaped {
+    let mut r = Reaped {
+        stacks: Vec::new(),
+        threads: Vec::new(),
+        processes: Vec::new(),
+    };
     let mut i = 0;
     while i < s.threads.len() {
         let exited = match s.threads[i].state {
@@ -502,38 +551,32 @@ fn reap(s: &mut Sched) -> (Vec<Process>, Vec<StackInfo>) {
         if let Some(code) = exited {
             let t = s.threads.swap_remove(i);
             if t.owns_stack {
-                stacks.push(t.kstack);
+                r.stacks.push(t.kstack);
             }
             // Kernel threads are joined by id; a process's threads are accounted through the
             // process (wait_process), so no record is kept for them.
             if t.process.is_none() {
-                if s.finished_threads.len() >= FINISHED_KEEP {
-                    s.finished_threads.remove(0);
-                }
-                s.finished_threads.push((t.id, code));
+                s.reaping_threads.push(t.id);
+                r.threads.push((t.id, code));
             }
         } else {
             i += 1;
         }
     }
     let active_cr3 = arch::paging::read_cr3();
-    let mut doomed = Vec::new();
     let mut i = 0;
     while i < s.processes.len() {
         let p = &s.processes[i];
         if p.threads == 0 && p.exit_code.is_some() && p.space.cr3() != active_cr3 {
             let p = s.processes.swap_remove(i);
             let code = p.exit_code.unwrap_or(0);
-            if s.finished_processes.len() >= FINISHED_KEEP {
-                s.finished_processes.remove(0);
-            }
-            s.finished_processes.push((p.id, code));
-            doomed.push(p);
+            s.reaping_processes.push(p.id);
+            r.processes.push((p, code));
         } else {
             i += 1;
         }
     }
-    (doomed, stacks)
+    r
 }
 
 /// Timer hook (interrupt context): advances time, wakes sleepers, expires the slice. Before
@@ -665,7 +708,7 @@ pub fn join(tid: u32) -> Option<u64> {
             if let Some(pos) = s.finished_threads.iter().position(|(t, _)| *t == tid) {
                 return Some(Some(s.finished_threads.remove(pos).1));
             }
-            if index_of(s, tid).is_none() {
+            if index_of(s, tid).is_none() && !s.reaping_threads.contains(&tid) {
                 return Some(None);
             }
             None
@@ -686,7 +729,7 @@ pub fn wait_process(pid: u32) -> Option<u64> {
             if let Some(pos) = s.finished_processes.iter().position(|(p, _)| *p == pid) {
                 return Some(Some(s.finished_processes.remove(pos).1));
             }
-            if !s.processes.iter().any(|p| p.id == pid) {
+            if !s.processes.iter().any(|p| p.id == pid) && !s.reaping_processes.contains(&pid) {
                 return Some(None);
             }
             None

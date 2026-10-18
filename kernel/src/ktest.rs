@@ -141,6 +141,7 @@ pub fn run() -> ! {
         "app_exit_code" => app_exit_code(),
         "elf_malformed" => elf_malformed(),
         "elf_wx" => elf_wx(),
+        "isolation" => isolation(),
         "smp_online" => smp_online(),
         "lock_contention" => lock_contention(),
         "tlb_shootdown" => tlb_shootdown(),
@@ -1004,7 +1005,10 @@ fn threads_alternate() -> ! {
     if !matches!(rc, Some(t) if (5..=50).contains(&t)) {
         fail("sleep_ticks did not sleep at least 5 ticks (or far more)")
     }
-    if s1.switches - s0.switches < (2 * ALTERNATE_ROUNDS as u64) + 2 || s1.threads != 1 {
+    // Only the idle threads remain: one per online CPU (thread 0 and the APs', WP-20).
+    if s1.switches - s0.switches < (2 * ALTERNATE_ROUNDS as u64) + 2
+        || s1.threads != arch::smp::online_count() as usize
+    {
         fail("switch count or thread count wrong")
     }
     if frames_after != frames_before {
@@ -1121,7 +1125,8 @@ fn exit_cleanup() -> ! {
     if heap1.live_blocks != heap0.live_blocks || heap1.slab_pages != heap0.slab_pages {
         fail("heap blocks leaked by process or thread exit")
     }
-    if s1.threads != 1 || s0.threads != 1 || s1.processes != 0 {
+    let idle = arch::smp::online_count() as usize;
+    if s1.threads != idle || s0.threads != idle || s1.processes != 0 {
         fail("thread or process records not cleaned up")
     }
     pass("process and thread exit return every frame, heap block and record")
@@ -1725,6 +1730,55 @@ fn blk_read_pattern() -> ! {
         fail("frames leaked by block reads")
     }
     pass("virtio-blk reads the harness pattern exactly and refuses bad requests")
+}
+
+// ---- Isolation (WP-22) -----------------------------------------------------------------
+
+/// Two processes run the same program at the same virtual addresses at the same time: each
+/// finds its data page zeroed (first read 0), writes a pattern, sleeps while the other runs,
+/// and still finds its own pattern (bit 63 set in the exit code). Neither frame is shared,
+/// neither process sees the other's write, and both spaces go away without a frame left.
+fn isolation() -> ! {
+    let frames0 = pmm::stats().free_frames;
+    let code = user_programs::isolation();
+    let a = match crate::user::spawn(code, 1) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|isolation|error={}", BUILD_ID, e.code());
+            fail("first process did not spawn")
+        }
+    };
+    let b = match crate::user::spawn(code, 1) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|isolation|error={}", BUILD_ID, e.code());
+            fail("second process did not spawn")
+        }
+    };
+    let ra = sched::wait_process(a).unwrap_or(u64::MAX);
+    let rb = sched::wait_process(b).unwrap_or(u64::MAX);
+    let frames1 = pmm::stats().free_frames;
+    let st = sched::stats();
+    kprintln!(
+        "OSX|{}|ktest|isolation|pid_a={}|pid_b={}|exit_a={:#x}|exit_b={:#x}|processes_after={}|frames_before={}|frames_after={}",
+        BUILD_ID,
+        a,
+        b,
+        ra,
+        rb,
+        st.processes,
+        frames0,
+        frames1
+    );
+    // Exit code: first read in bits 0..62 (must be 0: a fresh, zeroed page), bit 63 = the own
+    // pattern survived the other process's run at the same address.
+    if ra != 1 << 63 || rb != 1 << 63 {
+        fail("a process saw another process's memory (or lost its own)")
+    }
+    if st.processes != 0 || frames0 != frames1 {
+        fail("process records or frames leaked")
+    }
+    pass("two processes at the same virtual addresses are isolated")
 }
 
 // ---- SMP (WP-20, ADR-0015) --------------------------------------------------------------

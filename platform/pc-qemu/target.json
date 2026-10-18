@@ -170,7 +170,7 @@
     "machine": "q35",
     "cpu": "qemu64",
     "memory": "512M",
-    "smp": 1,
+    "smp": 4,
     "ovmf_code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
     "ovmf_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
     "boot_timeout_s": 180,
@@ -223,12 +223,12 @@
           "|kernel|irq|pic_masks=0xff,0xff|",
           "|kernel|timer|window_ms=50|pit_ok=1|",
           "|max_depth=1|selfcheck=1",
-          "|cpus=1|ioapics=1|ioapic_entries=24|ioapic_masked=24|",
+          "|cpus=4|ioapics=1|ioapic_entries=24|ioapic_masked=24|",
           "|kernel|mm|heap_ok=1|scratch_ok=1|as_ok=1|as_code=ok|",
           "|frames_delta=0|selfcheck=1",
           "|kernel|sched|boot_tid=0|probe_join=0x5eee|",
-          "|kernel|smp|madt_cpus=1|online=1|expected=1|",
-          "|failed=0|id_mismatch=0|online_mask=0x1|probes=|ap_ticks=|",
+          "|kernel|smp|madt_cpus=4|online=4|expected=4|",
+          "|failed=0|id_mismatch=0|online_mask=0xf|probes=1:0x101,2:0x202,3:0x303,|",
           "|threads=1|processes=0|quantum_ticks=10|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|object|channel_ok=1|vmo_size=8192|peer_closed=1|live_channels=0|live_endpoints=0|live_vmos=0|live_handles=0|frames_delta=0|selfcheck=1",
           "|kernel|pci|ecam=0xe0000000|segment=0|functions=",
@@ -1015,6 +1015,35 @@
         ]
       },
       {
+        "id": "TST-M3-ISOLATION",
+        "test_id": "TST-M3-ISOLATION",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=isolation"
+        ],
+        "oracle": "two processes run the same program at the same virtual addresses concurrently: each reads 0 from its fresh data page, writes a pattern, sleeps 20 ticks while the other runs, and still finds its own pattern (exit code 1<<63 for both: first read 0, pattern kept); no process record and no frame remains; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=isolation",
+          "|ktest|isolation|pid_a=",
+          "|exit_a=0x8000000000000000|exit_b=0x8000000000000000|processes_after=0|",
+          "|ktest|pass|two processes at the same virtual addresses are isolated"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|kernel|user_fault|"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
         "id": "TST-M3-SYSRET-CANONICAL",
         "test_id": "TST-M3-SYSRET-CANONICAL",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",
@@ -1049,7 +1078,7 @@
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=threads_alternate",
           "|ktest|threads_alternate|log=ABABABABABABABAB|entries=16|join_a=0x41|join_b=0x42|slept_ticks=",
-          "|threads_after=1|",
+          "|threads_after=4|",
           "|ktest|pass|threads alternate"
         ],
         "forbidden_markers": [
@@ -1105,7 +1134,7 @@
           "OSX|${BUILD_ID}|ktest|start|name=exit_cleanup",
           "|kernel|user_fault|vector=14|name=#PF|error=0x5|",
           "|ktest|exit_cleanup|normal_exit=0x1235|fault_exit=0x1000e|thread_join=0x7|",
-          "|threads_before=1|threads_after=1|processes_after=0",
+          "|threads_before=4|threads_after=4|processes_after=0",
           "|ktest|pass|process and thread exit return every frame"
         ],
         "forbidden_markers": [
