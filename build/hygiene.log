@@ -1,0 +1,13 @@
+    Checking libnawah v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/libnawah)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.09s
+   Compiling hello v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/hello)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.11s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.71s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.73s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `ktest` profile [optimized + debuginfo] target(s) in 0.69s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.12s
+unsafe lines: 160 (baseline 160)
