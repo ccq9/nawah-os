@@ -644,11 +644,45 @@ def cmd_checkpoint(note=None) -> int:
     return E_OK
 
 
+# ----------------------------------------------------------------------------- CI evidence import
+def cmd_import_ci_evidence(run_id: str) -> int:
+    """Fetch the ci-evidence/<run> branch pushed by the verification runner and adopt its run
+    directories as evidence (their input digests must match the current tree, which
+    validate-records checks). Each imported verdict is attached to its test in docs/tests.json."""
+    import shutil, tempfile
+    ref = f"refs/heads/ci-evidence/{run_id}"
+    r = subprocess.run(["git", "fetch", "-q", "origin", f"{ref}:refs/remotes/ci/{run_id}"], cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"fetch failed: {r.stderr.strip()}"); return E_BLOCKED
+    tmp = Path(tempfile.mkdtemp(prefix="ci-ev-"))
+    subprocess.run(["git", f"--work-tree={tmp}", "checkout", "-q", f"ci/{run_id}", "--", "evidence"], cwd=ROOT, check=True)
+    imported = 0
+    for d in sorted((tmp / "evidence").iterdir()):
+        if not (d / "verdict.json").exists():
+            continue
+        dest = EVIDENCE / d.name
+        if dest.exists():
+            continue
+        shutil.copytree(d, dest)
+        v = load_json(dest / "verdict.json")
+        run = load_json(dest / "run.json")
+        run["notes"] = (run.get("notes", "") + f" imported from CI run {run_id} (verification runner)").strip()
+        (dest / "run.json").write_text(json.dumps(run, ensure_ascii=False, indent=1) + "\n")
+        attach_evidence(v["test_id"], d.name, v["verdict"])
+        imported += 1
+        print(f"imported {d.name} {v['test_id']} {v['verdict']}")
+    # the runner's `git checkout` may have left the index pointing at the evidence tree; restore
+    subprocess.run(["git", "reset", "-q"], cwd=ROOT)
+    print(f"imported {imported} run(s) from CI run {run_id}")
+    return E_OK
+
+
 # ----------------------------------------------------------------------------- main
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="project.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("validate-records"); sub.add_parser("reverify-host")
+    s = sub.add_parser("import-ci-evidence"); s.add_argument("--run", required=True)
     s = sub.add_parser("status"); s.add_argument("--json", action="store_true")
     for n in ("build", "boot"):
         s = sub.add_parser(n); s.add_argument("--target", required=True)
@@ -663,6 +697,7 @@ def main(argv=None):
     if a.cmd == "test": return cmd_test(a.target, a.suite)
     if a.cmd == "checkpoint": return cmd_checkpoint(a.note)
     if a.cmd == "reverify-host": return cmd_reverify_host()
+    if a.cmd == "import-ci-evidence": return cmd_import_ci_evidence(a.run)
     print(f"{a.cmd}: not implemented yet in this work package (planned: M1); see docs/work-items.json")
     return E_INTERNAL
 

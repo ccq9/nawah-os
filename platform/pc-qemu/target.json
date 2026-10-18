@@ -166,7 +166,7 @@
     "required_markers": [
      "OSX|${BUILD_ID}|ktest|start|name=exc_de",
      "|exc|vector=0|name=#DE|error=0x0|",
-     "|stack=kernel|"
+     "|stack=kernel"
     ],
     "forbidden_markers": [
      "|ktest|fail|",
@@ -338,7 +338,7 @@
     "required_markers": [
      "OSX|${BUILD_ID}|ktest|start|name=exc_df",
      "|exc|vector=8|name=#DF|error=0x0|",
-     "|stack=df|"
+     "|stack=df"
     ],
     "forbidden_markers": [
      "|ktest|fail|",

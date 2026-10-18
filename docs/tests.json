@@ -12,7 +12,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T030133Z-10d5fd69-001"
+    "evidence/20261018T030756Z-fbd99c0b-001"
    ]
   },
   {
@@ -26,7 +26,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T030133Z-10d5fd69-002"
+    "evidence/20261018T030757Z-fbd99c0b-001"
    ]
   },
   {
@@ -93,7 +93,7 @@
    "command": "python3 tools/project.py test --target host --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T030133Z-10d5fd69-003"
+    "evidence/20261018T030757Z-fbd99c0b-002"
    ]
   },
   {
