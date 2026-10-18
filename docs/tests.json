@@ -607,6 +607,18 @@
    ]
   },
   {
+   "id": "TST-M3-PRIORITY-ORDER",
+   "requirement_ids": [
+    "REQ-M3-004",
+    "REQ-M3-010"
+   ],
+   "layer": "guest",
+   "oracle": "fixed priorities are honoured across a quantum boundary: a priority-0 thread runs 15 ticks (> QUANTUM_TICKS 10) without yielding and a priority-3 spinner never advances meanwhile (spinner_advanced_during_high=0); once the driver sleeps the spinner runs (spinner_ran_after=1); frames balance; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
    "id": "TST-M3-EXIT-CLEANUP",
    "requirement_ids": [
     "REQ-M3-004"

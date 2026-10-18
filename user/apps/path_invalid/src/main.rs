@@ -8,6 +8,12 @@ use libnawah::*;
 
 libnawah::entry!(main);
 
+/// A readable handle for the read-only-buffer probe (opened once, leaked on purpose: the
+/// process exit must close it — fd_leak covers that path too).
+fn h_ro_probe() -> u32 {
+    open(b"/HELLO.TXT", O_READ).unwrap_or_default()
+}
+
 fn main() -> u64 {
     if open(b"/NOPE.TXT", O_READ) != Err(ERR_NOT_FOUND) {
         return 1;
@@ -27,7 +33,8 @@ fn main() -> u64 {
     if open(b"/HELLO.TXT", 0) != Err(ERR_INVALID) {
         return 6;
     }
-    if open(b"/HELLO.TXT", 0x40) != Err(ERR_INVALID) {
+    // An unknown flag bit is refused even next to a valid one (mutant M49 would accept it).
+    if open(b"/HELLO.TXT", O_READ | 0x40) != Err(ERR_INVALID) {
         return 7;
     }
     if open(b"/NODIR/X.TXT", O_READ | O_WRITE | O_CREATE) != Err(ERR_NOT_FOUND) {
@@ -67,6 +74,13 @@ fn main() -> u64 {
     };
     if read(c0, &mut b) != Err(ERR_WRONG_TYPE) {
         return 18;
+    }
+    // A buffer in a read-only user page (this function's code) is refused for a read: the
+    // kernel must never write where the process may not (mutant M37 would).
+    let entry: fn() -> u64 = main;
+    let code_page = entry as *const () as u64 & !0xFFF;
+    if syscall6(SYS_READ, u64::from(h_ro_probe()), code_page, 8, 0, 0, 0) != ERR_FAULT {
+        return 21;
     }
     // A valid file still works after all that.
     let Ok(h) = open(b"/hello.txt", O_READ) else {

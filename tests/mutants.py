@@ -135,7 +135,7 @@ MUTANTS = [
     ("M31", "kernel/src/sched/mod.rs",
      "                if t.priority < bt.priority\n                    || (t.priority == bt.priority && t.last_pick < bt.last_pick)",
      "                if t.last_pick < bt.last_pick",
-     ["TST-M3-PREEMPT", "TST-M3-THREADS-ALTERNATE"], "priorities ignored by pick_next"),
+     ["TST-M3-PRIORITY-ORDER"], "priorities ignored by pick_next (round-robin only)"),
     ("M32", "kernel/src/sched/mod.rs",
      "                p.threads -= 1;\n                if p.threads == 0 {",
      "                if p.threads == 0 {",
@@ -156,10 +156,14 @@ MUTANTS = [
      "    if len > MSG_MAX_BYTES as u64 || nh > MSG_MAX_HANDLES as u64 {",
      "    if nh > MSG_MAX_HANDLES as u64 {",
      ["TST-M3-IPC-OVERSIZE"], "oversize message accepted by channel_write"),
+    # The USER-bit half of this check is equivalent today (no supervisor page lies in the user
+    # range: the kernel image is below USER_BASE, everything else in the higher half — mutants
+    # run 39116036466 showed it), so the mutant drops the WRITE half, which a syscall writing
+    # into a read-only user page would expose as a kernel #PF.
     ("M37", "kernel/src/syscall/mod.rs",
      "            Some(f) if f & arch::paging::USER != 0 && (!write || f & arch::paging::WRITE != 0) => {}",
-     "            Some(f) if !write || f & arch::paging::WRITE != 0 => {}",
-     ["TST-M3-USER-KERNEL-ACCESS"], "user pointers may name kernel pages (USER bit not checked)"),
+     "            Some(f) if f & arch::paging::USER != 0 => {}",
+     ["TST-M3-PATH-INVALID"], "a syscall may write into a read-only user page (WRITE bit not checked)"),
     ("M38", "kernel/src/loader/elf.rs",
      "        if s.flags & 0x3 == 0x3 {\n            return Err(ElfError::WritableExecutable);\n        }",
      "",
@@ -258,14 +262,23 @@ def suite_of(target, test_id):
 
 
 def run_killers(wt: Path, env, target, killers):
-    """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED}). Every case runs through
-    its suite entry (the strong oracle); a missing artifact (exit 20) is SKIPPED, never a kill."""
+    """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED|ERROR}). Every case runs
+    through its suite entry (the strong oracle); a missing artifact (exit 20) is SKIPPED and a
+    lab failure (QEMU died, LAB_ERROR) is ERROR — neither is a kill."""
     results = {}
     pyproj = ["python3", str(wt / "tools" / "project.py")]
     for tid in killers:
         suite = suite_of(target, tid)
         r = sh(pyproj + ["test", "--target", target, "--suite", suite, "--only", tid], wt, env)
-        results[tid] = "PASS" if r.returncode == 0 else ("SKIPPED" if r.returncode == 20 or "no artifact" in r.stdout else "FAIL")
+        if r.returncode == 0:
+            results[tid] = "PASS"
+        elif r.returncode == 20 or "no artifact" in r.stdout:
+            results[tid] = "SKIPPED"
+        elif "LAB_ERROR" in r.stdout:
+            # The emulator died twice: no verdict on the mutant from this case (never a kill).
+            results[tid] = "ERROR"
+        else:
+            results[tid] = "FAIL"
     return [t for t, v in results.items() if v == "FAIL"], results
 
 

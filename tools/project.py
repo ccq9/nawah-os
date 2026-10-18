@@ -543,13 +543,21 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     # persistence test): each phase has its own qemu_extra and markers; the case's own markers
     # and equal_values are checked against the concatenated serial output of all phases.
     phases = case.get("phases") or [{}]
-    cmds, texts, rcs, phase_failures = [], [], [], []
+    cmds, texts, rcs, phase_failures, lab_errors = [], [], [], [], []
     for i, ph in enumerate(phases):
         serial = d / ("serial.log" if len(phases) == 1 else f"serial-{i + 1}.log")
         disk = prepare_disk(t, target_name, fresh=(i == 0))
         extra = ph.get("qemu_extra", case.get("qemu_extra", []))
         cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")))
         rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s)
+        if rc < 0:
+            # QEMU itself died (signal): a lab failure, not a verdict on the kernel. One retry on
+            # a fresh image; if it dies again the case fails and says why (LAB_ERROR), so a
+            # mutation run never counts it as a kill (mutants run 39116036466: 4 SIGSEGVs).
+            lab_errors.append(f"phase {i + 1}: qemu died with signal {-rc}, retried")
+            serial.unlink(missing_ok=True)
+            disk = prepare_disk(t, target_name, fresh=(i == 0))
+            rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s)
         text = serial.read_text(errors="replace") if serial.exists() else ""
         cmds.append(" ".join(cmd)); texts.append(text); rcs.append(rc)
         if len(phases) > 1:
@@ -590,7 +598,10 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
             hc.write(f"$ {' '.join(cmd)}\n{r.stdout}\n[exit {r.returncode}]\n")
             if r.returncode != 0:
                 missing.append(f"host_check failed: {' '.join(cmd)} -> {r.returncode}")
-    if rc == 124:
+    if rc < 0:
+        verdict, reason = "FAIL", f"LAB_ERROR: qemu died with signal {-rc} twice"
+        print(f"LAB_ERROR qemu died with signal {-rc} twice ({case['test_id']})")
+    elif rc == 124:
         verdict, reason = "FAIL", "timeout (hang)"
     elif rc != expected_rc:
         verdict, reason = "FAIL", f"exit {rc} != expected {expected_rc}"
@@ -598,6 +609,8 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         verdict, reason = "FAIL", f"missing markers {missing}; forbidden present {present_forbidden}"
     else:
         verdict, reason = "PASS", "exit code and serial markers match oracle"
+    if lab_errors:
+        reason += "; " + "; ".join(lab_errors)
     write_verdict(d, rid, case["test_id"], verdict, case["oracle"], f"exit={expected_rc}; markers={required}; forbidden={forbidden}; phases={len(phases)}",
                   f"exit={rc}; serial_lines={len(text.splitlines())}; missing={missing}; forbidden_present={present_forbidden}",
                   inputs, reason=reason)

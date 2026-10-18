@@ -1122,6 +1122,33 @@
         ]
       },
       {
+        "id": "TST-M3-PRIORITY-ORDER",
+        "test_id": "TST-M3-PRIORITY-ORDER",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=priority_order"
+        ],
+        "oracle": "fixed priorities are honoured across a quantum boundary: a priority-0 thread runs 15 ticks (> QUANTUM_TICKS 10) without yielding and a priority-3 spinner never advances meanwhile (spinner_advanced_during_high=0); once the driver sleeps the spinner runs (spinner_ran_after=1); frames balance; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=priority_order",
+          "|ktest|priority_order|high_run_ticks=15|quantum_ticks=10|spinner_advanced_during_high=0|spinner_ran_after=1|",
+          "|ktest|pass|priorities decide who runs"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
         "id": "TST-M3-EXIT-CLEANUP",
         "test_id": "TST-M3-EXIT-CLEANUP",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",
@@ -1620,7 +1647,8 @@
             "expected_exit_code": 33,
             "required_markers": [
               "OSX|${BUILD_ID}|ktest|start|name=fat32_persist_write",
-              "|ktest|fat32_persist_write|size=30|content_ok=1|written=1",
+              "|ktest|fat32_persist_write|size=",
+              "|content_ok=1|written=1",
               "|ktest|pass|persistence file written and synced"
             ],
             "forbidden_markers": [
@@ -1637,7 +1665,8 @@
             "expected_exit_code": 33,
             "required_markers": [
               "OSX|${BUILD_ID}|ktest|start|name=fat32_persist_read",
-              "|ktest|fat32_persist_read|size=30|content_ok=1|written=0",
+              "|ktest|fat32_persist_read|size=",
+              "|content_ok=1|written=0",
               "|ktest|pass|persistence file survived the QEMU restart"
             ],
             "forbidden_markers": [
@@ -1675,6 +1704,12 @@
             "fsck.fat",
             "-n",
             "${DISK}"
+          ]
+        ],
+        "equal_values": [
+          [
+            "fat32_persist_write\\|size=([0-9]+)",
+            "fat32_persist_read\\|size=([0-9]+)"
           ]
         ]
       },

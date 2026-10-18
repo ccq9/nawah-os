@@ -142,6 +142,7 @@ pub fn run() -> ! {
         "elf_malformed" => elf_malformed(),
         "elf_wx" => elf_wx(),
         "isolation" => isolation(),
+        "priority_order" => priority_order(),
         "smp_online" => smp_online(),
         "lock_contention" => lock_contention(),
         "tlb_shootdown" => tlb_shootdown(),
@@ -1730,6 +1731,83 @@ fn blk_read_pattern() -> ! {
         fail("frames leaked by block reads")
     }
     pass("virtio-blk reads the harness pattern exactly and refuses bad requests")
+}
+
+// ---- Priority order (WP-22, mutant M31) ------------------------------------------------
+
+static PRIO_SPINS: AtomicU64 = AtomicU64::new(0);
+static PRIO_STOP: AtomicBool = AtomicBool::new(false);
+const HIGH_RUN_TICKS: u64 = 15;
+
+/// Lowest priority: counts while it has the CPU.
+extern "sysv64" fn low_spinner(_: u64) -> u64 {
+    let mut n = 0u64;
+    while !PRIO_STOP.load(Ordering::Acquire) {
+        n += 1;
+        PRIO_SPINS.store(n, Ordering::Relaxed);
+    }
+    n
+}
+
+/// Highest priority: runs for longer than a quantum without yielding; a lower-priority thread
+/// must not get the CPU meanwhile. Returns 1 if the spinner advanced during the run.
+extern "sysv64" fn high_runner(_: u64) -> u64 {
+    let before = PRIO_SPINS.load(Ordering::Relaxed);
+    let t0 = sched::stats().ticks;
+    while sched::stats().ticks - t0 < HIGH_RUN_TICKS {
+        core::hint::spin_loop();
+    }
+    u64::from(PRIO_SPINS.load(Ordering::Relaxed) != before)
+}
+
+/// Middle priority: starts the spinner and the high runner, then sleeps so the spinner gets
+/// the CPU once the runner is done; returns (spinner advanced during the runner) | (spinner
+/// ran at all) << 1.
+extern "sysv64" fn prio_driver(_: u64) -> u64 {
+    let Ok(low) = sched::spawn_kernel(low_spinner, 0, 3) else {
+        return 0xFF;
+    };
+    let Ok(high) = sched::spawn_kernel(high_runner, 0, 0) else {
+        return 0xFE;
+    };
+    let during = sched::join(high).unwrap_or(0xFD);
+    sched::sleep_ticks(20);
+    PRIO_STOP.store(true, Ordering::Release);
+    let spins = sched::join(low).unwrap_or(0);
+    during | (u64::from(spins > 0) << 1)
+}
+
+/// Fixed priorities are honoured across a quantum boundary: while a priority-0 thread runs for
+/// 15 ticks (> QUANTUM_TICKS = 10) a priority-3 spinner never advances; afterwards it does.
+fn priority_order() -> ! {
+    let frames0 = pmm::stats().free_frames;
+    let drv = spawn_or_fail(prio_driver, 0, 1);
+    let r = sched::join(drv).unwrap_or(u64::MAX);
+    let frames1 = pmm::stats().free_frames;
+    kprintln!(
+        "OSX|{}|ktest|priority_order|high_run_ticks={}|quantum_ticks={}|spinner_advanced_during_high={}|spinner_ran_after={}|spins={}|frames_before={}|frames_after={}",
+        BUILD_ID,
+        HIGH_RUN_TICKS,
+        sched::QUANTUM_TICKS,
+        r & 1,
+        (r >> 1) & 1,
+        PRIO_SPINS.load(Ordering::Relaxed),
+        frames0,
+        frames1
+    );
+    if r >= 0xFD {
+        fail("threads did not spawn or join")
+    }
+    if r & 1 != 0 {
+        fail("a lower-priority thread ran while a higher-priority thread was runnable")
+    }
+    if (r >> 1) & 1 == 0 {
+        fail("the low-priority spinner never ran (test not meaningful)")
+    }
+    if frames0 != frames1 {
+        fail("frames leaked")
+    }
+    pass("priorities decide who runs, not the quantum")
 }
 
 // ---- Isolation (WP-22) -----------------------------------------------------------------

@@ -272,71 +272,6 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         sched_code,
         u8::from(sched_ok)
     );
-    // SMP (WP-20, ADR-0015): the other CPUs of the MADT join the scheduler, each with its own
-    // idle thread and timer; from here on threads may be placed on them.
-    let smp = match arch::acpi::parse_madt(bi.rsdp) {
-        Ok(m) => arch::smp::start_aps(&m, ks.cr3),
-        Err(e) => arch::smp::SmpInfo {
-            code: e.code(),
-            ..Default::default()
-        },
-    };
-    let expected = smp.madt_cpus.min(arch::smp::MAX_CPUS as u32);
-    // Every AP runs a probe thread (placed there, joined from here) and must have taken timer
-    // ticks of its own; the frame count returns to where it was.
-    // The diagnostic strings are allocated before the balance is taken (CI run 39115391817:
-    // their slab page read as a one-frame leak).
-    let mut probes = alloc::string::String::with_capacity(64);
-    let mut ap_ticks = alloc::string::String::with_capacity(64);
-    let smp_frames_before = mm::pmm::stats().free_frames;
-    let online_mask = arch::smp::online_mask();
-    let mut probes_ok = true;
-    for cpu in 1..arch::smp::MAX_CPUS {
-        if online_mask & (1 << cpu) == 0 {
-            continue;
-        }
-        use core::fmt::Write as _;
-        let got = crate::sched::spawn_on(cpu, smp_probe, cpu as u64, 1)
-            .ok()
-            .and_then(crate::sched::join);
-        let want = cpu as u64 | (u64::from(arch::smp::apic_id_of(cpu)) << 8);
-        probes_ok &= got == Some(want);
-        let _ = write!(probes, "{}:{:#x},", cpu, got.unwrap_or(u64::MAX));
-        let ticks = arch::irq::ticks_of(cpu);
-        probes_ok &= ticks > 0;
-        let _ = write!(ap_ticks, "{ticks},");
-    }
-    let smp_delta = smp_frames_before as i64 - mm::pmm::stats().free_frames as i64;
-    let tlb = arch::tlb::counters();
-    let smp_ok = smp.code == "ok"
-        && smp.online == expected
-        && smp.failed == 0
-        && smp.id_mismatch == 0
-        && arch::smp::online_count() == smp.online
-        && probes_ok
-        && smp_delta == 0;
-    kprintln!(
-        "OSX|{}|kernel|smp|madt_cpus={}|online={}|expected={}|bsp_apic={}|trampoline={:#x}|mode={:?}|skipped={}|failed={}|id_mismatch={}|online_mask={:#x}|probes={}|ap_ticks={}|tlb_sent={}|tlb_served={}|resched_ipis={}|frames_delta={}|code={}|smp_selfcheck={}",
-        build_id,
-        smp.madt_cpus,
-        smp.online,
-        expected,
-        smp.bsp_apic_id,
-        smp.trampoline,
-        arch::apic::mode(),
-        smp.skipped,
-        smp.failed,
-        smp.id_mismatch,
-        online_mask,
-        probes,
-        ap_ticks,
-        tlb.sent,
-        tlb.served,
-        arch::irq::counters().resched_ipis,
-        smp_delta,
-        smp.code,
-        u8::from(smp_ok)
-    );
     // Objects (WP-16) self-check in every build: a VMO travels through a channel inside the
     // kernel, the peer sees the close, and every object and frame is released.
     let obj_frames_before = mm::pmm::stats().free_frames;
@@ -466,6 +401,74 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         Err(e) => alloc::format!("code={}|selfcheck=0", e.code()),
     };
     kprintln!("OSX|{}|kernel|fat32|{}", build_id, fs_line);
+    // SMP (WP-20, ADR-0015): the other CPUs of the MADT join the scheduler, each with its own
+    // idle thread and timer; from here on threads may be placed on them. After the device
+    // bring-up on purpose: sizing PCI BARs (writing all-ones to them) while other vCPUs run
+    // made QEMU 8.2 itself die with SIGSEGV in 4 of ~400 mutation runs (mutants run
+    // 39116036466) — memory-region changes are done with one CPU running.
+    let smp = match arch::acpi::parse_madt(bi.rsdp) {
+        Ok(m) => arch::smp::start_aps(&m, ks.cr3),
+        Err(e) => arch::smp::SmpInfo {
+            code: e.code(),
+            ..Default::default()
+        },
+    };
+    let expected = smp.madt_cpus.min(arch::smp::MAX_CPUS as u32);
+    // Every AP runs a probe thread (placed there, joined from here) and must have taken timer
+    // ticks of its own; the frame count returns to where it was.
+    // The diagnostic strings are allocated before the balance is taken (CI run 39115391817:
+    // their slab page read as a one-frame leak).
+    let mut probes = alloc::string::String::with_capacity(64);
+    let mut ap_ticks = alloc::string::String::with_capacity(64);
+    let smp_frames_before = mm::pmm::stats().free_frames;
+    let online_mask = arch::smp::online_mask();
+    let mut probes_ok = true;
+    for cpu in 1..arch::smp::MAX_CPUS {
+        if online_mask & (1 << cpu) == 0 {
+            continue;
+        }
+        use core::fmt::Write as _;
+        let got = crate::sched::spawn_on(cpu, smp_probe, cpu as u64, 1)
+            .ok()
+            .and_then(crate::sched::join);
+        let want = cpu as u64 | (u64::from(arch::smp::apic_id_of(cpu)) << 8);
+        probes_ok &= got == Some(want);
+        let _ = write!(probes, "{}:{:#x},", cpu, got.unwrap_or(u64::MAX));
+        let ticks = arch::irq::ticks_of(cpu);
+        probes_ok &= ticks > 0;
+        let _ = write!(ap_ticks, "{ticks},");
+    }
+    let smp_delta = smp_frames_before as i64 - mm::pmm::stats().free_frames as i64;
+    let tlb = arch::tlb::counters();
+    let smp_ok = smp.code == "ok"
+        && smp.online == expected
+        && smp.failed == 0
+        && smp.id_mismatch == 0
+        && arch::smp::online_count() == smp.online
+        && probes_ok
+        && smp_delta == 0;
+    kprintln!(
+        "OSX|{}|kernel|smp|madt_cpus={}|online={}|expected={}|bsp_apic={}|trampoline={:#x}|mode={:?}|skipped={}|failed={}|id_mismatch={}|online_mask={:#x}|probes={}|ap_ticks={}|tlb_sent={}|tlb_served={}|resched_ipis={}|frames_delta={}|code={}|smp_selfcheck={}",
+        build_id,
+        smp.madt_cpus,
+        smp.online,
+        expected,
+        smp.bsp_apic_id,
+        smp.trampoline,
+        arch::apic::mode(),
+        smp.skipped,
+        smp.failed,
+        smp.id_mismatch,
+        online_mask,
+        probes,
+        ap_ticks,
+        tlb.sent,
+        tlb.served,
+        arch::irq::counters().resched_ipis,
+        smp_delta,
+        smp.code,
+        u8::from(smp_ok)
+    );
     // Ring-3 self-check in every build: a process runs the ping program and exits through the
     // ABI; the scheduler reaps it and no frame is left behind.
     let (user_pid, user_exit, user_delta, user_code) =

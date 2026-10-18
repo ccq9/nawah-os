@@ -775,7 +775,8 @@
         "TST-M3-THREADS-ALTERNATE",
         "TST-M3-PREEMPT",
         "TST-M3-EXIT-CLEANUP",
-        "TST-M3-USER-SLEEP"
+        "TST-M3-USER-SLEEP",
+        "TST-M3-PRIORITY-ORDER"
       ],
       "implementation_status": "verified_in_scope",
       "evidence_refs": [
@@ -980,7 +981,8 @@
       "acceptance": "M3 suite + mutants",
       "test_ids": [
         "TST-M3-ISOLATION",
-        "TST-M3-MUTANTS"
+        "TST-M3-MUTANTS",
+        "TST-M3-PRIORITY-ORDER"
       ],
       "implementation_status": "planned",
       "evidence_refs": []
