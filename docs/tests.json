@@ -251,7 +251,7 @@
    ],
    "layer": "guest",
    "oracle": "alloc/free N frames: counters and free list consistent; no frame handed out twice",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -262,7 +262,7 @@
    ],
    "layer": "negative",
    "oracle": "allocating beyond capacity returns None, no panic, state intact",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -273,7 +273,7 @@
    ],
    "layer": "negative",
    "oracle": "freeing a free frame is detected and reported, not silently accepted",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },

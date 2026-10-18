@@ -25,6 +25,8 @@ mod boot;
 mod bootinfo;
 #[allow(unsafe_code)]
 mod cell;
+#[allow(unsafe_code)]
+mod mm;
 
 mod kmain;
 

@@ -441,7 +441,12 @@
     "Intel SDM Vol.3A (S26)"
    ],
    "files": [
-    "kernel/src/mm/pmm.rs"
+    "kernel/src/mm/mod.rs",
+    "kernel/src/mm/pmm.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/kmain.rs",
+    "platform/pc-qemu/target.json",
+    "docs/adr/0004-memory.md"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
@@ -461,9 +466,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M2"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null

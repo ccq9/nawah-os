@@ -516,7 +516,7 @@
     "TST-M2-PMM-EXHAUST",
     "TST-M2-PMM-DOUBLE-FREE"
    ],
-   "implementation_status": "planned",
+   "implementation_status": "implemented_untested",
    "evidence_refs": []
   },
   {

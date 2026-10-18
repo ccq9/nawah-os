@@ -120,6 +120,8 @@
      "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
      "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
      "OSX|${BUILD_ID}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
+     "|kernel|pmm|managed_frames=",
+     "|selfcheck=1",
      "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
      "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10"
     ],
@@ -402,6 +404,66 @@
     "expected_exit_code": 0,
     "required_markers": [
      "OSX|${BUILD_ID}|ktest|start|name=exc_triple"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M2-PMM-COUNTS",
+    "test_id": "TST-M2-PMM-COUNTS",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=pmm_counts"
+    ],
+    "oracle": "1024 distinct, aligned, >=1 MiB, writable frames; counters move by N and return after free",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=pmm_counts",
+     "|ktest|pass|pmm counters consistent"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M2-PMM-EXHAUST",
+    "test_id": "TST-M2-PMM-EXHAUST",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=pmm_exhaust"
+    ],
+    "oracle": "alloc until None: count == free_frames, free_frames==0 after, no panic",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=pmm_exhaust",
+     "|ktest|pass|exhaustion returns None"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M2-PMM-DOUBLE-FREE",
+    "test_id": "TST-M2-PMM-DOUBLE-FREE",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=pmm_double_free"
+    ],
+    "oracle": "free twice -> NotAllocated; <1MiB, misaligned, bitmap storage -> Unmanaged",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=pmm_double_free",
+     "|ktest|pass|double/unmanaged/misaligned/bitmap frees rejected"
     ],
     "forbidden_markers": [
      "|ktest|fail|",
