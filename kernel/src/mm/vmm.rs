@@ -10,8 +10,12 @@
 //!   .data/.bss RW + NX, headers R + NX.
 //! - Kernel stacks in a dedicated area (`STACK_AREA_BASE`), each with an unmapped guard page
 //!   below it; the frames come from the allocator.
-//!
-//! MMIO is not mapped here; WP-10 maps the LAPIC/IOAPIC pages explicitly.
+//! - Device registers (MMIO) in their own window (`MMIO_BASE`, PML4 slot 336), mapped
+//!   uncacheable by `map_mmio` on demand (LAPIC/IOAPIC in WP-10, ECAM and virtio BARs in
+//!   WP-18). The window is a kernel slot, so every user space shares it: a BAR that lives in
+//!   the lower half (OVMF puts the 64-bit aperture at 0xC0_0000_0000, PML4 slot 1 = the user
+//!   range) must not be mapped at its own address — CI run 39110182649 faulted on the first
+//!   file syscall exactly that way.
 //!
 //! The image stays at the (low) address the firmware loaded it at: moving it to the higher half
 //! would need the base relocations re-applied and every runtime-computed address (IDT gates,
@@ -32,10 +36,16 @@ pub const STACK_AREA_BASE: u64 = 0xFFFF_9000_0000_0000;
 /// Kernel dynamic mappings (PML4 slot 320): page-granular `map_page`/`unmap_page` users.
 pub const SCRATCH_BASE: u64 = 0xFFFF_A000_0000_0000;
 pub const SCRATCH_END: u64 = 0xFFFF_A080_0000_0000;
+/// Device registers (PML4 slot 336): `map_mmio` hands out page-aligned ranges from here, in
+/// order, never reused (devices are not unmapped in this kernel).
+pub const MMIO_BASE: u64 = 0xFFFF_A800_0000_0000;
+pub const MMIO_END: u64 = 0xFFFF_A880_0000_0000;
+/// Distinct physical ranges `map_mmio` can hold (ECAM pages, LAPIC, IOAPIC, BARs).
+const MMIO_RANGES: usize = 64;
 /// PML4 slots whose tables exist in the kernel space from the start, so every space derived from
 /// it shares them by table and kernel mappings never create a PML4 entry later: 256 direct map,
-/// 288 stacks, 320 scratch (slot 0, the identity map, exists too).
-pub const KERNEL_PML4_SLOTS: [u64; 3] = [256, 288, 320];
+/// 288 stacks, 320 scratch, 336 MMIO (slot 0, the identity map, exists too).
+pub const KERNEL_PML4_SLOTS: [u64; 4] = [256, 288, 320, 336];
 pub const KERNEL_STACK_SIZE: u64 = 64 * 1024;
 pub const DF_STACK_SIZE: u64 = 16 * 1024;
 const STACK_SLOT: u64 = 128 * 1024;
@@ -87,6 +97,8 @@ pub enum VmmError {
     Unmapped,
     /// Every stack slot is in use.
     NoStackSlot,
+    /// The MMIO window's range table is full, or the window itself is exhausted.
+    NoMmioRange,
 }
 
 impl From<MapError> for VmmError {
@@ -105,6 +117,7 @@ impl VmmError {
             VmmError::BadImage => "K_E_VMM_BAD_IMAGE",
             VmmError::Unmapped => "K_E_VMM_UNMAPPED",
             VmmError::NoStackSlot => "K_E_VMM_NO_STACK_SLOT",
+            VmmError::NoMmioRange => "K_E_VMM_NO_MMIO_RANGE",
         }
     }
 }
@@ -145,6 +158,53 @@ impl StackSlots {
 /// Stack slots in use; taken from thread context and from the scheduler's reaper.
 static STACK_SLOTS_USED: IrqSpinLock<StackSlots> =
     IrqSpinLock::new("stack_slots", StackSlots::boot());
+
+/// One physical range mapped in the MMIO window (page-aligned ends).
+#[derive(Clone, Copy)]
+struct MmioRange {
+    phys: u64,
+    len: u64,
+    virt: u64,
+}
+
+/// The MMIO window: a bump pointer and the ranges handed out, so a second request for a range
+/// already mapped (the same BAR for several capabilities) yields the same address.
+struct MmioWindow {
+    next: u64,
+    n: usize,
+    ranges: [MmioRange; MMIO_RANGES],
+}
+
+impl MmioWindow {
+    const fn boot() -> Self {
+        Self {
+            next: MMIO_BASE,
+            n: 0,
+            ranges: [MmioRange {
+                phys: 0,
+                len: 0,
+                virt: 0,
+            }; MMIO_RANGES],
+        }
+    }
+
+    /// `Ok(Some(virt))` when `[start, end)` lies inside a mapped range, `Err` when it overlaps
+    /// one partially (never remapped), `Ok(None)` when it is new.
+    fn find(&self, start: u64, end: u64) -> Result<Option<u64>, VmmError> {
+        for r in &self.ranges[..self.n] {
+            let r_end = r.phys + r.len;
+            if start >= r.phys && end <= r_end {
+                return Ok(Some(r.virt + (start - r.phys)));
+            }
+            if start < r_end && end > r.phys {
+                return Err(VmmError::Map(MapError::Conflict));
+            }
+        }
+        Ok(None)
+    }
+}
+
+static MMIO_WINDOW: IrqSpinLock<MmioWindow> = IrqSpinLock::new("mmio", MmioWindow::boot());
 
 extern "C" {
     /// Absolute symbol the linker (lld-link) defines at the image base; the firmware loader
@@ -422,27 +482,55 @@ pub const fn direct(phys: u64) -> u64 {
     DIRECT_MAP_BASE + phys
 }
 
-/// Maps `[phys, phys + len)` of device memory (MMIO) at its own address, uncacheable (PCD|PWT),
-/// RW + NX, in the active kernel space; returns the virtual address. Pages are 4 KiB; a range
-/// already covered by a RAM mapping is refused (`Conflict`) rather than remapped. New entries
-/// need no TLB flush: not-present translations are never cached (SDM Vol. 3A §4.10.2.3).
+/// Maps `[phys, phys + len)` of device memory (MMIO) in the kernel's MMIO window, uncacheable
+/// (PCD|PWT), RW + NX, through the kernel space's tables (the window's PML4 slot is shared, so
+/// the mapping is visible under every CR3); returns the virtual address of `phys`. Pages are
+/// 4 KiB; a range already mapped is returned again, a range overlapping one partially is
+/// refused (`Conflict`) rather than remapped. New entries need no TLB flush: not-present
+/// translations are never cached (SDM Vol. 3A §4.10.2.3).
 pub fn map_mmio(phys: u64, len: u64) -> Result<u64, VmmError> {
-    if kernel_space().is_none() {
-        return Err(VmmError::Unmapped);
+    if len == 0 {
+        return Err(VmmError::Map(MapError::Unaligned));
     }
-    let space = AddressSpace::current();
+    let space = kernel_as()?;
     let start = phys & !(PAGE_4K - 1);
     let end = (phys + len).next_multiple_of(PAGE_4K);
+    let mut w = MMIO_WINDOW.lock();
+    if let Some(virt) = w.find(start, end)? {
+        return Ok(virt + (phys - start));
+    }
+    if w.n == MMIO_RANGES || w.next + (end - start) > MMIO_END {
+        return Err(VmmError::NoMmioRange);
+    }
+    let virt = w.next;
     let mut page = start;
     while page < end {
-        match space.translate(page) {
-            Some((p, flags)) if p == page && flags & PCD != 0 => {} // already mapped as MMIO
-            Some(_) => return Err(VmmError::Map(MapError::Conflict)),
-            None => space.map_4k(page, page, WRITE | NX | PCD | PWT)?,
+        if let Err(e) = space.map_4k(virt + (page - start), page, WRITE | NX | PCD | PWT) {
+            // Leave nothing behind: the pages mapped so far go away again.
+            let mut done = start;
+            while done < page {
+                let _ = space.unmap_4k(virt + (done - start));
+                done += PAGE_4K;
+            }
+            return Err(e.into());
         }
         page += PAGE_4K;
     }
-    Ok(phys)
+    let n = w.n;
+    w.ranges[n] = MmioRange {
+        phys: start,
+        len: end - start,
+        virt,
+    };
+    w.n = n + 1;
+    w.next += end - start;
+    Ok(virt + (phys - start))
+}
+
+/// Where the MMIO window stands: `(ranges, bytes)` handed out so far.
+pub fn mmio_usage() -> (usize, u64) {
+    let w = MMIO_WINDOW.lock();
+    (w.n, w.next - MMIO_BASE)
 }
 
 /// Leaf flags of a virtual address in the active space, `None` when unmapped.

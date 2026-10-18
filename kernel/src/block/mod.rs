@@ -49,6 +49,11 @@ pub fn present() -> bool {
     DEVICE.lock().is_some()
 }
 
+/// The device's description, `None` without a device.
+pub fn info() -> Option<BlkInfo> {
+    DEVICE.lock().as_ref().map(|d| d.info())
+}
+
 pub fn capacity_sectors() -> u64 {
     DEVICE
         .lock()

@@ -335,13 +335,19 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
                 ),
                 None => (0, 0, 0, 0, false, 0),
             };
+            // The registers must sit in the shared MMIO window, never at the BAR's own address
+            // (CI run 39110182649: a lower-half BAR vanished under the first process CR3).
+            let mmio = crate::block::info().map_or(0, |b| b.mmio);
+            let mmio_shared = (mm::vmm::MMIO_BASE..mm::vmm::MMIO_END).contains(&mmio);
+            let (mmio_ranges, mmio_bytes) = mm::vmm::mmio_usage();
             let ok = info.blk.is_some()
                 && read_ok
                 && flush_ok
+                && mmio_shared
                 && cap == crate::block::capacity_sectors()
                 && cap > 0;
             alloc::format!(
-                "device={:#x}|bdf={:#x}|capacity_sectors={}|queue_size={}|features={:#x}|flush={}|dma_frames={}|read_ok={}|flush_ok={}|code=ok|selfcheck={}",
+                "device={:#x}|bdf={:#x}|capacity_sectors={}|queue_size={}|features={:#x}|flush={}|dma_frames={}|mmio={:#x}|mmio_shared={}|mmio_ranges={}|mmio_bytes={}|read_ok={}|flush_ok={}|code=ok|selfcheck={}",
                 dev,
                 bdf,
                 cap,
@@ -349,6 +355,10 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
                 features,
                 u8::from(flush),
                 info.frames,
+                mmio,
+                u8::from(mmio_shared),
+                mmio_ranges,
+                mmio_bytes,
                 u8::from(read_ok),
                 u8::from(flush_ok),
                 u8::from(ok)

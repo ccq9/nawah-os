@@ -721,6 +721,17 @@
       "evidence_refs": []
     },
     {
+      "id": "TST-M3-BLK-USER-CR3",
+      "requirement_ids": [
+        "REQ-M3-007"
+      ],
+      "layer": "guest",
+      "oracle": "block I/O under a process address space (what every file syscall does): the virtio-blk registers are mapped in the kernel's shared MMIO window (0xffffa800_0000_0000.., PML4 slot 336), never at the BAR's own address; with a fresh user space's CR3 active a read of sector 0 and a flush succeed, the sector equals the one read under the kernel CR3 and carries the 55AA boot signature, the space is destroyed and frames balance; exit 33 (regression for CI run 39110182649: the BAR at 0xC0_0000_0000 lay in PML4 slot 1, the user range, and the first open faulted)",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
       "id": "TST-M3-BLK-PERSIST",
       "requirement_ids": [
         "REQ-M3-007"

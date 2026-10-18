@@ -142,6 +142,7 @@ pub fn run() -> ! {
         "elf_malformed" => elf_malformed(),
         "elf_wx" => elf_wx(),
         "blk_read_pattern" => blk_read_pattern(),
+        "blk_user_cr3" => blk_user_cr3(),
         "blk_persist_write" => blk_persist(true),
         "blk_persist_read" => blk_persist(false),
         "fat32_read" => fat32_read(),
@@ -1721,6 +1722,65 @@ fn blk_read_pattern() -> ! {
         fail("frames leaked by block reads")
     }
     pass("virtio-blk reads the harness pattern exactly and refuses bad requests")
+}
+
+/// Block I/O under a process address space, which is what every file syscall does: the device
+/// registers live in the kernel's MMIO window (`vmm::MMIO_BASE`, a PML4 slot every space
+/// shares) and the DMA frames in the direct map, so a sector read with a user CR3 active equals
+/// the kernel's and leaves no frame behind. CI run 39110182649: the BAR had been identity-mapped
+/// at 0xC0_0000_0000 (PML4 slot 1, the user range) and the first `open` faulted in the kernel.
+fn blk_user_cr3() -> ! {
+    let Some(info) = crate::block::info() else {
+        fail("no virtio-blk device")
+    };
+    let mut kernel_buf = alloc::vec![0u8; 512];
+    let mut user_buf = alloc::vec![0u8; 512];
+    let Ok(us) = UserSpace::new() else {
+        fail("UserSpace::new failed")
+    };
+    let frames0 = pmm::stats().free_frames;
+    let kernel_read = crate::block::read(0, &mut kernel_buf);
+    us.activate();
+    let user_active = paging::read_cr3() == us.cr3();
+    let user_read = crate::block::read(0, &mut user_buf);
+    let user_flush = crate::block::flush();
+    addrspace::activate_kernel();
+    let frames1 = pmm::stats().free_frames;
+    let destroy_ok = us.destroy().is_ok();
+    let in_window = (vmm::MMIO_BASE..vmm::MMIO_END).contains(&info.mmio);
+    let (ranges, bytes) = vmm::mmio_usage();
+    let equal = kernel_buf == user_buf;
+    let signature = kernel_buf[510] == 0x55 && kernel_buf[511] == 0xAA;
+    kprintln!(
+        "OSX|{}|ktest|blk_user_cr3|mmio={:#x}|in_window={}|mmio_ranges={}|mmio_bytes={}|user_active={}|kernel_read={}|user_read={}|user_flush={}|equal={}|signature={}|destroy_ok={}|frames_before={}|frames_after={}",
+        BUILD_ID,
+        info.mmio,
+        u8::from(in_window),
+        ranges,
+        bytes,
+        u8::from(user_active),
+        kernel_read.map_or_else(|e| e.code(), |_| "ok"),
+        user_read.map_or_else(|e| e.code(), |_| "ok"),
+        user_flush.map_or_else(|e| e.code(), |_| "ok"),
+        u8::from(equal),
+        u8::from(signature),
+        u8::from(destroy_ok),
+        frames0,
+        frames1
+    );
+    if !in_window {
+        fail("device registers are not in the shared MMIO window")
+    }
+    if !user_active || kernel_read.is_err() || user_read.is_err() || user_flush.is_err() {
+        fail("block I/O failed under the user address space")
+    }
+    if !equal || !signature {
+        fail("the sector read under the user CR3 differs from the kernel's")
+    }
+    if !destroy_ok || frames0 != frames1 {
+        fail("frames leaked")
+    }
+    pass("block I/O works under a process address space (shared MMIO window)")
 }
 
 /// Persistence across a QEMU restart on the same image: the write phase stores a tag with the

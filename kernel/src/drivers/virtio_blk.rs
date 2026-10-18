@@ -120,6 +120,9 @@ pub struct BlkInfo {
     pub queue_size: u16,
     pub features: u64,
     pub flush: bool,
+    /// Where the common configuration registers are reached: inside `vmm::MMIO_BASE..MMIO_END`
+    /// (shared by every address space), never at the BAR's physical address.
+    pub mmio: u64,
 }
 
 pub struct VirtioBlk {
@@ -173,7 +176,7 @@ fn find_caps(dev: &Device) -> Caps {
     caps
 }
 
-/// Maps BAR `bar` of `dev` (memory BAR) and returns its virtual (= physical) base.
+/// Maps BAR `bar` of `dev` (memory BAR) in the kernel's MMIO window and returns its address.
 fn map_bar(dev: &Device, bar: u8) -> Result<u64, BlkError> {
     match dev.bar(bar) {
         Bar::Memory { base, size, .. } if base != 0 && size != 0 => {
@@ -275,6 +278,7 @@ impl VirtioBlk {
             queue_size,
             features: accepted,
             flush: accepted & BLK_F_FLUSH != 0,
+            mmio: common,
         };
         Ok(VirtioBlk {
             common,

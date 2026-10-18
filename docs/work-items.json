@@ -1232,6 +1232,7 @@
       "acceptance": "TST-M3-BLK-READ/BLK-PERSIST/FAT32-READ/FAT32-WRITE/FAT32-PERSIST/FAT32-TOOL PASS on CI; TST-M1-BOOT PASS with the kernel|pci, kernel|blk and kernel|fat32 lines",
       "test_ids": [
         "TST-M3-BLK-READ",
+        "TST-M3-BLK-USER-CR3",
         "TST-M3-BLK-PERSIST",
         "TST-M3-FAT32-READ",
         "TST-M3-FAT32-WRITE",

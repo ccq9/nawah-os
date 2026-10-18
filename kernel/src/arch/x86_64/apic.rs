@@ -61,7 +61,7 @@ pub enum Mode {
 #[derive(Clone, Copy, Debug)]
 pub struct Lapic {
     pub mode: Mode,
-    /// Physical base of the xAPIC MMIO page (0 in x2APIC mode).
+    /// Address of the xAPIC register page in the kernel's MMIO window (0 in x2APIC mode).
     pub base: u64,
     pub id: u32,
     pub version: u32,
@@ -141,12 +141,13 @@ pub fn init(madt_base: u64, spurious_vector: u8, error_vector: u8) -> Result<Lap
     let (mode, base) = if msr & APIC_BASE_X2APIC != 0 {
         (Mode::X2Apic, 0)
     } else {
-        let base = if madt_base != 0 {
+        let phys = if madt_base != 0 {
             madt_base
         } else {
             msr & APIC_BASE_ADDR_MASK
         };
-        vmm::map_mmio(base, 4096).map_err(|_| ApicError::Mmio)?;
+        // The register page lives in the kernel's MMIO window from here on (never at `phys`).
+        let base = vmm::map_mmio(phys, 4096).map_err(|_| ApicError::Mmio)?;
         (Mode::XApic, base)
     };
     // SAFETY: boot path, single write (BootCell contract).

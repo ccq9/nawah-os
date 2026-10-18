@@ -231,6 +231,7 @@
           "|kernel|object|channel_ok=1|vmo_size=8192|peer_closed=1|live_channels=0|live_endpoints=0|live_vmos=0|live_handles=0|frames_delta=0|selfcheck=1",
           "|kernel|pci|ecam=0xe0000000|segment=0|functions=",
           "|kernel|blk|device=0x1042|",
+          "|mmio_shared=1|",
           "|capacity_sectors=131072|queue_size=16|",
           "|read_ok=1|flush_ok=1|code=ok|selfcheck=1",
           "|kernel|fat32|label=NAWAHLAB|sectors_per_cluster=1|reserved=32|fats=2|fat_sectors=1024|clusters=128992|root_cluster=2|free_clusters=128948|hello_size=24|hello_ok=1|code=ok|selfcheck=1",
@@ -1421,6 +1422,35 @@
           "OSX|${BUILD_ID}|ktest|start|name=blk_read_pattern",
           "|ktest|blk_read_pattern|present=1|capacity_sectors=131072|read=ok|mismatches=0|first_bytes=c8c9cacb|past_end=K_E_BLK_RANGE|unaligned=K_E_BLK_RANGE|",
           "|ktest|pass|virtio-blk reads the harness pattern"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-BLK-USER-CR3",
+        "test_id": "TST-M3-BLK-USER-CR3",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=blk_user_cr3"
+        ],
+        "oracle": "block I/O under a process address space (what every file syscall does): the virtio-blk registers are mapped in the kernel's shared MMIO window (0xffffa800_0000_0000.., PML4 slot 336), never at the BAR's own address; with a fresh user space's CR3 active a read of sector 0 and a flush succeed, the sector equals the one read under the kernel CR3 and carries the 55AA boot signature, the space is destroyed and frames balance; exit 33 (regression for CI run 39110182649: the BAR at 0xC0_0000_0000 lay in PML4 slot 1, the user range, and the first open faulted)",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=blk_user_cr3",
+          "|ktest|blk_user_cr3|mmio=0xffffa8",
+          "|in_window=1|",
+          "|user_active=1|kernel_read=ok|user_read=ok|user_flush=ok|equal=1|signature=1|destroy_ok=1|",
+          "|ktest|pass|block I/O works under a process address space"
         ],
         "forbidden_markers": [
           "|ktest|fail|",
