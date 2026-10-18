@@ -50,7 +50,7 @@ jobs:
         run: |
           python3 tools/project.py test --target host --suite M0
           python3 tools/project.py test --target host --suite M1
-      - name: validate-records --strict (after fresh evidence: nothing may be stale)
+      - name: "validate-records --strict (after fresh evidence, nothing may be stale)"
         run: python3 tools/project.py validate-records --strict
       - name: Status
         run: python3 tools/project.py status --json
