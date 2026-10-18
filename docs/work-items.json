@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T030757Z-fbd99c0b-001"
+    "evidence/20261018T030935Z-e8506c09-002"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T030756Z-fbd99c0b-001"
+    "evidence/20261018T030935Z-e8506c09-001"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261017T211054Z-9f580295-001",
-    "evidence/20261017T211054Z-9f580295-002"
+    "evidence/20261018T030847Z-e8506c09-001",
+    "evidence/20261018T030849Z-e8506c09-001"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T030757Z-fbd99c0b-001"
+    "evidence/20261018T030935Z-e8506c09-002"
    ],
    "blocker": null
   },
@@ -354,8 +354,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/ci/39091622750/jobs.json",
-    "evidence/20261018T030757Z-fbd99c0b-002"
+    "evidence/20261018T030853Z-e8506c09-001",
+    "evidence/20261018T030854Z-e8506c09-001",
+    "evidence/20261018T030857Z-e8506c09-001",
+    "evidence/20261018T030936Z-e8506c09-001"
    ],
    "blocker": null
   },
@@ -418,12 +420,25 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M2"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261018T030900Z-e8506c09-001",
+    "evidence/20261018T030903Z-e8506c09-001",
+    "evidence/20261018T030907Z-e8506c09-001",
+    "evidence/20261018T030910Z-e8506c09-001",
+    "evidence/20261018T030913Z-e8506c09-001",
+    "evidence/20261018T030916Z-e8506c09-001",
+    "evidence/20261018T030919Z-e8506c09-001",
+    "evidence/20261018T030922Z-e8506c09-001",
+    "evidence/20261018T030925Z-e8506c09-001",
+    "evidence/20261018T030928Z-e8506c09-001",
+    "evidence/20261018T030932Z-e8506c09-001"
+   ],
    "blocker": null
   },
   {

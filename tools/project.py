@@ -61,8 +61,9 @@ def source_identity():
 
 # ----------------------------------------------------------------------------- validation
 class Problems:
-    def __init__(self):
-        self.errors, self.warnings = [], []
+    def __init__(self, strict=False):
+        self.errors, self.warnings, self.stale = [], [], []
+        self.strict = strict
 
     def err(self, where, msg):
         self.errors.append(f"{where}: {msg}")
@@ -145,12 +146,20 @@ def check_evidence_dir(rel, pb: Problems, where, expect_test_id=None, current_di
     if combined != verdict["inputs_digest"]:
         pb.err(where, f"evidence {rel}: inputs_digest does not match inputs map")
     if stale and verdict["verdict"] not in ("NEEDS_REEVALUATION",):
-        pb.err(where, f"evidence {rel}: inputs changed since verdict ({', '.join(stale)}); verdict must be NEEDS_REEVALUATION or re-run")
+        msg = f"evidence {rel}: inputs changed since verdict ({', '.join(stale)}); needs re-evaluation (re-run or impact analysis)"
+        if pb.strict:
+            pb.err(where, msg)
+        else:
+            pb.warn(where, msg)
+            pb.stale.append(rel)
     return verdict
 
 
-def validate_records(stage_scope=None, verbose=True) -> int:
-    pb = Problems()
+def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
+    """Structural and semantic validation. Stale verdicts (inputs changed since the run) are
+    warnings — the verdict is suspended, 'needs re-evaluation' — unless strict=True (gates, CI
+    after fresh evidence), where they are errors."""
+    pb = Problems(strict=strict)
     recs = {}
     for name in RECORD_FILES:
         p = DOCS / f"{name}.json"
@@ -275,7 +284,7 @@ def report(pb: Problems, verbose) -> int:
     if verbose:
         for w in pb.warnings: print("WARN", w)
         for e in pb.errors: print("ERROR", e)
-        print(f"validate-records: {len(pb.errors)} error(s), {len(pb.warnings)} warning(s)")
+        print(f"validate-records: {len(pb.errors)} error(s), {len(pb.warnings)} warning(s), {len(pb.stale)} stale verdict(s){' [strict]' if pb.strict else ''}")
     return E_VALIDATION if pb.errors else E_OK
 
 
@@ -552,21 +561,33 @@ def cmd_test_host_case(case) -> int:
 
 
 def replace_evidence_ref(old_ref, new_ref, test_id, verdict):
-    """Point every record that cited old_ref at new_ref, and set the test's verdict (records stay consistent)."""
+    """Set the test's verdict and evidence, and re-point requirement/work-item/stage records that
+    cited the test's previous run directory. A previous ref is only re-pointed when it is a run
+    directory whose verdict belongs to this very test — several tests may share a plain-file ref
+    (e.g. a CI jobs.json) and that must never be rewritten on behalf of one of them."""
+    own_old = False
+    if old_ref:
+        try:
+            op = safe_rel(old_ref)
+            own_old = op.is_dir() and (op / "verdict.json").exists() and load_json(op / "verdict.json")["test_id"] == test_id
+        except (ValueError, json.JSONDecodeError, KeyError):
+            own_old = False
     for name in RECORD_FILES:
         p = DOCS / f"{name}.json"
         if not p.exists():
             continue
         data = load_json(p); changed = False
         for r in data["records"]:
-            for key in ("evidence_refs", "gate_evidence_refs"):
-                if key in r and old_ref in r[key]:
-                    r[key] = [new_ref if x == old_ref else x for x in r[key]]; changed = True
-            if name == "tests" and r["id"] == test_id:
-                r["verdict"] = verdict
-                if new_ref not in r["evidence_refs"]:
+            if name == "tests":
+                if r["id"] == test_id:
+                    r["verdict"] = verdict
                     r["evidence_refs"] = [new_ref]
-                changed = True
+                    changed = True
+                continue
+            if own_old:
+                for key in ("evidence_refs", "gate_evidence_refs"):
+                    if key in r and old_ref in r[key]:
+                        r[key] = [new_ref if x == old_ref else x for x in r[key]]; changed = True
         if changed:
             p.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
@@ -681,7 +702,7 @@ def cmd_import_ci_evidence(run_id: str) -> int:
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="project.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("validate-records"); sub.add_parser("reverify-host")
+    s = sub.add_parser("validate-records"); s.add_argument("--strict", action="store_true"); sub.add_parser("reverify-host")
     s = sub.add_parser("import-ci-evidence"); s.add_argument("--run", required=True)
     s = sub.add_parser("status"); s.add_argument("--json", action="store_true")
     for n in ("build", "boot"):
@@ -690,7 +711,7 @@ def main(argv=None):
     for n in ("next", "report", "checkpoint", "resume", "run"):
         s = sub.add_parser(n); s.add_argument("--json", action="store_true"); s.add_argument("--result"); s.add_argument("--once", action="store_true"); s.add_argument("--until"); s.add_argument("--note")
     a = ap.parse_args(argv)
-    if a.cmd == "validate-records": return validate_records()
+    if a.cmd == "validate-records": return validate_records(strict=a.strict)
     if a.cmd == "status": return cmd_status(a.json)
     if a.cmd == "build": return cmd_build(a.target)
     if a.cmd == "boot": return cmd_boot(a.target)

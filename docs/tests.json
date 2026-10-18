@@ -12,7 +12,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T030756Z-fbd99c0b-001"
+    "evidence/20261018T030935Z-e8506c09-001"
    ]
   },
   {
@@ -26,7 +26,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T030757Z-fbd99c0b-001"
+    "evidence/20261018T030935Z-e8506c09-002"
    ]
   },
   {
@@ -39,7 +39,7 @@
    "command": "python3 tools/project.py build --target pc-qemu-e0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261017T211054Z-9f580295-001"
+    "evidence/20261018T030847Z-e8506c09-001"
    ]
   },
   {
@@ -52,7 +52,7 @@
    "command": "python3 tools/project.py boot --target pc-qemu-e0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261017T211054Z-9f580295-002"
+    "evidence/20261018T030849Z-e8506c09-001"
    ]
   },
   {
@@ -65,7 +65,7 @@
    "command": "python3 tools/project.py build --target pc-qemu",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/ci/39091622750/jobs.json"
+    "evidence/20261018T030853Z-e8506c09-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -79,7 +79,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/ci/39091622750/jobs.json"
+    "evidence/20261018T030854Z-e8506c09-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -93,7 +93,7 @@
    "command": "python3 tools/project.py test --target host --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T030757Z-fbd99c0b-002"
+    "evidence/20261018T030936Z-e8506c09-001"
    ]
   },
   {
@@ -106,7 +106,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/ci/39091622750/jobs.json"
+    "evidence/20261018T030857Z-e8506c09-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -131,8 +131,10 @@
    "layer": "guest",
    "oracle": "SDM Table 7-1: #DE vector 0, no error code (fault: RIP at div); lab exit 145",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030900Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-EXC-UD",
@@ -142,8 +144,10 @@
    "layer": "guest",
    "oracle": "#UD vector 6, fault at ud2; exit 157",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030903Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-EXC-DB",
@@ -153,8 +157,10 @@
    "layer": "guest",
    "oracle": "#DB single-step trap: saved RIP after the nop (SDM Event 1); exit 147",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030907Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-EXC-GP",
@@ -164,8 +170,10 @@
    "layer": "guest",
    "oracle": "#GP on non-canonical address, error code 0 (SDM Event 13); exit 171",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030910Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-EXC-PF",
@@ -175,8 +183,10 @@
    "layer": "guest",
    "oracle": "#PF write to unmapped supervisor page: error code 2, CR2 = target (SDM Fig. 7-11); exit 173",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030913Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-EXC-BP",
@@ -186,8 +196,10 @@
    "layer": "guest",
    "oracle": "#BP is a trap: handler prints and returns; saved RIP after int3 (SDM Event 3)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030916Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-EXC-BP-STATE",
@@ -197,8 +209,10 @@
    "layer": "guest",
    "oracle": "iretq path restores 15 GPRs and CF/DF",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030919Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-EXC-DF",
@@ -208,8 +222,10 @@
    "layer": "guest",
    "oracle": "corrupt RSP -> #PF undeliverable -> #DF (SDM Table 7-5) on IST1 stack, error code 0; exit 161",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030922Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-EXC-NESTED",
@@ -219,8 +235,10 @@
    "layer": "guest",
    "oracle": "fault inside handler stops at nesting limit 3 with a fixed message; exit 157",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030925Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-IDT-LAYOUT",
@@ -230,8 +248,10 @@
    "layer": "guest",
    "oracle": "sidt-walked IDT: 32 present gates push their own vector, dummy error code exactly per SDM Table 7-1, 224 empty gates",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030928Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-EXC-TRIPLE",
@@ -241,8 +261,10 @@
    "layer": "negative",
    "oracle": "empty IDT + fault = triple fault -> QEMU reset -> exit 0 under -no-reboot; proves the runner detects a reset (no exception line printed)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T030932Z-e8506c09-001"
+   ]
   },
   {
    "id": "TST-M2-PMM-COUNTS",
