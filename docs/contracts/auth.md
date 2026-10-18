@@ -1,6 +1,6 @@
 # عقد المصادقة والجلسات — الإصدار 1 (WP-25، ADR-0016 §3 و§5؛ فوق syscall.md v1.5 وservices.md v1.1)
 
-يُجمَّد عند إغلاق WP-25 بدليل CI؛ ما لم يُنفَّذ منه لا يُعدّ مدعومًا. الكود: `user/nawah-crypto` (SHA-256/HMAC/PBKDF2)، `user/apps/authd` (الخدمة `auth`)، `kernel/src/object/token.rs` (الرمز والسلطة)، `kernel/src/syscall/mod.rs` (النداءات 24–26)، `tools/project.py` (قاعدة مستخدمي المختبر).
+مجمَّد (أُغلق WP-25 بدليل CI run 39133153681): أي تغيير في الكائنات أو النداءات أو الرسائل = إصدار جديد مع سجل قرار. الكود: `user/nawah-crypto` (SHA-256/HMAC/PBKDF2)، `user/apps/authd` (الخدمة `auth`)، `kernel/src/object/token.rs` (الرمز والسلطة)، `kernel/src/syscall/mod.rs` (النداءات 24–26)، `tools/project.py` (قاعدة مستخدمي المختبر).
 
 ## 1. الكائنات (النواة)
 
