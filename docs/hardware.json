@@ -12,13 +12,13 @@
     "TST-M0-E0-BOOT"
    ],
    "evidence_refs": [
-    "evidence/20261018T053305Z-8a21a494-001"
+    "evidence/20261018T054754Z-c3b02de2-001"
    ]
   },
   {
    "id": "HW-A64-QEMU-01",
    "target": "virt-qemu-aarch64",
-   "model": "QEMU 8.2.2 virt, cpu cortex-a57, 1 vCPU, 512 MiB, AAVMF (EDK2 ArmVirtQemu, Ubuntu qemu-efi-aarch64)",
+   "model": "QEMU 8.2.2 virt, cpu cortex-a57, 1 vCPU, 512 MiB, AAVMF (EDK2 ArmVirtQemu, Ubuntu qemu-efi-aarch64); kernel entered at EL1 (measured)",
    "spec_source": "qemu-system-aarch64 --version; dpkg -s qemu-efi-aarch64",
    "driver": "PL011 UART at the virt board's fixed address (lab assumption); semihosting exit",
    "support_limits": "early port experiment only (WP-21): no exception vectors, firmware MMU tables kept, no interrupt controller; proves architectural separation, not mobile support",
@@ -26,7 +26,9 @@
     "TST-M3-A64-BUILD",
     "TST-M3-A64-BOOT"
    ],
-   "evidence_refs": []
+   "evidence_refs": [
+    "evidence/20261018T054939Z-c3b02de2-001"
+   ]
   }
  ]
 }
