@@ -1860,7 +1860,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=tlb_shootdown",
-          "|ktest|tlb_shootdown|reader_cpu=1|reader=Some(1)|first=0xaaaa000000000a|second=0xbbbb000000000b|unmapped_ok=1|",
+          "|ktest|tlb_shootdown|reader_cpu=1|reader=Some(1)|first=0xaaaa00000000000a|second=0xbbbb00000000000b|unmapped_ok=1|",
           "|ktest|pass|a remapped kernel page is seen fresh on another CPU"
         ],
         "forbidden_markers": [
