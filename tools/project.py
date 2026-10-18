@@ -421,9 +421,10 @@ def cmd_build(target_name) -> int:
     rid, d = new_run_dir("build")
     rev, _ = source_identity()
     build_id = f"{rev[:12]}"
-    env = dict(os.environ, NAWAH_BUILD_ID=build_id, NAWAH_OUT=str(ROOT / "build" / target_name))
+    env = dict(os.environ, NAWAH_BUILD_ID=build_id, NAWAH_OUT=str(ROOT / "build" / target_name),
+               NAWAH_APPS_DIR=str(ROOT / "build" / target_name / "apps"))
     env.update(rust_env())
-    (ROOT / "build" / target_name).mkdir(parents=True, exist_ok=True)
+    (ROOT / "build" / target_name / "apps").mkdir(parents=True, exist_ok=True)
     cmds, rc = [], 0
     for step in t["build"]["steps"]:
         cmd = [x.replace("${OUT}", env["NAWAH_OUT"]).replace("${BUILD_ID}", build_id) for x in step]

@@ -1,0 +1,25 @@
+# ADR-0012 — محمّل ELF64 ووقت تشغيل المستخدم الأدنى (WP-17)
+
+الحالة: مقترح — قيد التنفيذ 2026-10-18؛ يُغلق بدليل CI (ثلاثة اختبارات + أثر الإقلاع `kernel|elf|app=hello|…|exit=0x7|…|selfcheck=1`).
+
+المراجع: System V gABI — ELF header (ch4: e_ident/EI_CLASS=ELFCLASS64/EI_DATA=ELFDATA2LSB، e_type ET_EXEC=2، e_machine EM_X86_64=62) وprogram header (ch5: Elf64_Phdr، PT_LOAD=1، PF_X/W/R=1/2/4، «file size may not be larger than memory size»، البايتات الزائدة أصفار) (S41)؛ System V AMD64 ABI §3.2.2 (محاذاة المكدس عند الدخول) (S37)؛ ADR-0009/0010/0011.
+
+## القرارات
+
+1. **تطبيقات Rust بنفس سلسلة الأدوات**: `user/libnawah` (no_std، بلا تخصيص: أغلفة النداءات 0–12 + `entry!` يعرّف `_start` ومعالج panic → خروج 0xDEAD) و`user/apps/hello`، تُبنى بـ `x86_64-unknown-none` (بلا SSE، soft-float كالنواة). تُربط **ET_EXEC ثابتة** عند `APP_BASE = 0x80_1000_0000` بـ `relocation-model=static` و**`code-model=large`** (العنوان فوق 4 GiB فلا تصلح النماذج small/kernel ذات الإزاحات 32 بت)، فلا إعادة توطين يعالجها المحمّل. `-z separate-loadable-segments` تجعل كل PT_LOAD يبدأ على صفحته، فيصير W^X خاصية صفحات كاملة.
+2. **التضمين في صورة النواة**: لا نظام ملفات بعد (WP-18/19)، فيبني `tools/project.py build` التطبيقات أولًا ويمرر مجلدها عبر `NAWAH_APPS_DIR` إلى `kernel/build.rs` الذي يولّد `apps.rs` بـ `include_bytes!`؛ بغياب المجلد (فحوص المضيف) الشرائح فارغة وتبلّغ النواة `K_E_APPS_MISSING` بدل الفشل في البناء. `tests/mutants.py` يبني التطبيقات في شجرة الطفرة أيضًا.
+3. **المحمّل يفحص كل حقل قبل استعماله** (`loader/elf.rs`): الطول ≥ 64، السحر، class 64، little-endian، ET_EXEC، x86-64، `e_phentsize = 56`، `1 ≤ e_phnum ≤ 64`، جدول الرؤوس داخل الملف؛ لكل PT_LOAD: `filesz ≤ memsz`، نطاق الملف داخل الصورة، النطاق الذاكري داخل نافذة التطبيق `[APP_BASE, APP_BASE+256 MiB)`، لا W+X، لا تداخل صفحات مع مقطع سابق، والمدخل داخل مقطع تنفيذي. كل خطأ رمز مستقر `K_E_ELF_*` ولا شيء يُرسم قبل اكتمال الفحص؛ وعند فشل الرسم يُدمَّر الفضاء كله.
+4. **الرسم صفحةً صفحة**: إطار جديد مصفَّر لكل صفحة، أذونات المقطع (W → WRITE، لا X → NX، USER دائمًا)، نسخ بايتات الملف الواقعة في الصفحة عبر الخريطة المباشرة (`write_frame_at`)، والباقي أصفار (bss). مكدس 16 صفحة RW+NX تحت `STACK_TOP = USER_BASE + 0x3000_0000` بصفحة حراسة غير مرسومة تحته؛ RSP الابتدائي `STACK_TOP − 8` كما بعد `call` (ABI §3.2.2) فتصح افتراضات المترجم في `_start`.
+5. **لا مقابض process بعد**: `run_elf` يعيد رمز خروج العملية عبر `wait_process` (كما في WP-15)؛ نداء إنشاء العملية ومقابضها يأتيان مع VFS (WP-19) حين تصبح الصور ملفات.
+6. **خط أساس unsafe 148 (كان 147)**: addrspace.rs +1 (`write_frame_at`، نسخ بإزاحة داخل إطار عبر الخريطة المباشرة مع تأكيد الحدود). المحمّل نفسه خالٍ من unsafe.
+
+## الاختبارات
+
+- TST-M3-APP-EXIT-CODE: `hello` يطبع `user|trace|len=14|text=hello from elf`، يستدعي ping(41)=42، ويخرج 7؛ مقطع تنفيذي واحد، ≥ 2 مقاطع، بلا تسريب.
+- TST-M3-ELF-MALFORMED: 13 تشويهًا لصورة hello (السحر، class، endian، ET_DYN، آلة أخرى، phnum=0، phoff خارج الملف، vaddr خارج النافذة، filesz>memsz، offset خارج الملف، مدخل خارج المقاطع، تداخل مقطعين، صورة مبتورة) كلٌّ مرفوض برمزه، والإطارات متساوية بعدها.
+- TST-M3-ELF-WX: مقطع RWX مرفوض (`K_E_ELF_WX`)؛ صفحات الصورة الصالحة تحمل أذونات مقطعها بالضبط (التنفيذي للقراءة فقط، القابل للكتابة NX)، صفحة الحراسة غير مرسومة.
+- أثر TST-M1-BOOT: `kernel|elf|app=hello|…|exit=0x7|frames_delta=0|code=ok|selfcheck=1`.
+
+## ما لم يُحسم
+
+- ET_DYN/PIE وإعادة التوطين (غير مطلوبة ما دامت التطبيقات تُبنى هنا)؛ تمرير وسائط/مقابض ابتدائية إلى `_start` (مع WP-19)؛ `MAP` لـ VMO كبديل عن النسخ.

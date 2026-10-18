@@ -1119,24 +1119,45 @@
       ],
       "inputs": [
         "docs/PLAN.md §4",
-        "ELF-64 gABI"
+        "System V gABI ELF header/program header (S41)",
+        "System V AMD64 ABI §3.2.2 (S37)"
       ],
       "files": [
+        "user/libnawah/Cargo.toml",
+        "user/libnawah/src/lib.rs",
+        "user/apps/hello/Cargo.toml",
+        "user/apps/hello/build.rs",
+        "user/apps/hello/src/main.rs",
+        "user/link.ld",
+        "Cargo.toml",
+        ".cargo/config.toml",
+        "kernel/build.rs",
+        "kernel/src/apps.rs",
+        "kernel/src/loader/mod.rs",
         "kernel/src/loader/elf.rs",
-        "user/libnawah/",
-        "user/apps/",
-        "platform/pc-qemu/target.json"
+        "kernel/src/user.rs",
+        "kernel/src/mm/addrspace.rs",
+        "kernel/src/kmain.rs",
+        "kernel/src/ktest.rs",
+        "kernel/src/main.rs",
+        "tools/project.py",
+        "tests/mutants.py",
+        "platform/pc-qemu/target.json",
+        ".github/workflows/verify.yml",
+        "docs/adr/0012-elf-loader-and-user-runtime.md",
+        "tools/unsafe-baseline.txt"
       ],
       "contract_refs": [
-        "docs/contracts/boot.md"
+        "docs/contracts/boot.md",
+        "docs/contracts/syscall.md"
       ],
       "actions": [
-        "ELF64 PT_LOAD loader with W^X",
-        "libnawah syscall wrappers",
-        "test apps built for x86_64-unknown-none",
-        "guest tests"
+        "ELF64 static-executable loader with every field checked, W^X per page, guarded stack",
+        "libnawah (no_std syscall wrappers, entry! macro) and the hello application built for x86_64-unknown-none (static ET_EXEC, large code model)",
+        "applications embedded through NAWAH_APPS_DIR (project.py build, kernel/build.rs, mutants.py)",
+        "boot self-check kernel|elf and ktests app_exit_code/elf_malformed/elf_wx"
       ],
-      "acceptance": "app_exit_code, malformed_elf, wx_rejected PASS",
+      "acceptance": "TST-M3-APP-EXIT-CODE/ELF-MALFORMED/ELF-WX PASS on CI; TST-M1-BOOT PASS with the kernel|elf self-check line",
       "test_ids": [
         "TST-M3-APP-EXIT-CODE",
         "TST-M3-ELF-MALFORMED",
@@ -1146,9 +1167,10 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M3"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

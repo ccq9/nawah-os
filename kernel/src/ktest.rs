@@ -11,6 +11,7 @@ use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use crate::arch::{
     apic, context, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu, user_programs,
 };
+use crate::loader::elf::{self, ElfError};
 use crate::mm::addrspace::{self, UserSpace, USER_BASE};
 use crate::mm::heap;
 use crate::mm::pmm::{self, Frame, PmmError};
@@ -136,6 +137,9 @@ pub fn run() -> ! {
         "ipc_no_leak" => ipc_no_leak(),
         "handle_table" => handle_table(),
         "block_wake" => block_wake(),
+        "app_exit_code" => app_exit_code(),
+        "elf_malformed" => elf_malformed(),
+        "elf_wx" => elf_wx(),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -1385,4 +1389,252 @@ fn block_wake() -> ! {
         fail("objects or frames leaked")
     }
     pass("blocking read: woken by write, by token, by peer close; nothing leaked")
+}
+
+// ---- WP-17: ELF loader -----------------------------------------------------------------------
+
+fn hello_image() -> &'static [u8] {
+    if crate::apps::HELLO.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    crate::apps::HELLO
+}
+
+/// Byte offsets of the PT_LOAD program headers of a (valid) image.
+fn pt_load_offsets(image: &[u8]) -> Vec<usize> {
+    let phoff = u64::from_le_bytes(image[32..40].try_into().unwrap_or([0; 8])) as usize;
+    let phnum = usize::from(u16::from_le_bytes([image[56], image[57]]));
+    (0..phnum)
+        .map(|i| phoff + i * 56)
+        .filter(|&ph| u32::from_le_bytes(image[ph..ph + 4].try_into().unwrap_or([0; 4])) == 1)
+        .collect()
+}
+
+fn put_u16(v: &mut [u8], off: usize, x: u16) {
+    v[off..off + 2].copy_from_slice(&x.to_le_bytes());
+}
+
+fn put_u32(v: &mut [u8], off: usize, x: u32) {
+    v[off..off + 4].copy_from_slice(&x.to_le_bytes());
+}
+
+fn put_u64(v: &mut [u8], off: usize, x: u64) {
+    v[off..off + 8].copy_from_slice(&x.to_le_bytes());
+}
+
+/// The embedded `hello` ELF runs as a process: trace line, ping, exit code 7, no frame left.
+fn app_exit_code() -> ! {
+    let image = hello_image();
+    let Ok((segs, n, entry)) = elf::parse(image) else {
+        fail("hello image does not parse")
+    };
+    let (o, l) = match crate::user::run_elf(image) {
+        Ok(r) => r,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|app_exit_code|error={}", BUILD_ID, e.code());
+            fail("hello did not load")
+        }
+    };
+    let exec_segments = segs
+        .iter()
+        .take(n)
+        .flatten()
+        .filter(|s| s.executable())
+        .count();
+    kprintln!(
+        "OSX|{}|ktest|app_exit_code|size={}|segments={}|exec_segments={}|entry={:#x}|pages={}|exit={:#x}|frames_delta={}",
+        BUILD_ID,
+        image.len(),
+        l.segments,
+        exec_segments,
+        entry,
+        l.pages,
+        o.exit_code,
+        o.frames_delta
+    );
+    if o.exit_code != 7 {
+        fail("hello did not exit 7")
+    }
+    if o.frames_delta != 0 {
+        fail("frames leaked by the application")
+    }
+    if exec_segments != 1 || l.segments < 2 || entry != l.entry {
+        fail("unexpected segment layout")
+    }
+    pass("ELF application loaded, ran and exited with its code")
+}
+
+/// Thirteen corruptions of the hello image, each refused with its own stable code before
+/// anything runs, and no frame left mapped after any of them.
+fn elf_malformed() -> ! {
+    let image = hello_image();
+    let loads = pt_load_offsets(image);
+    if loads.len() < 2 {
+        fail("hello has fewer than two PT_LOAD segments")
+    }
+    let frames0 = pmm::stats().free_frames;
+    let mut results: Vec<(&str, &str, bool)> = Vec::new();
+    let mut check = |name: &'static str, img: Vec<u8>, expected: ElfError| {
+        let got = match crate::user::spawn_elf(&img, 1) {
+            Ok((pid, _)) => {
+                // Must not happen: let the process finish so nothing dangles, then fail.
+                let _ = sched::wait_process(pid);
+                None
+            }
+            Err(e) => Some(e),
+        };
+        let ok = got == Some(expected);
+        results.push((name, got.map(|e| e.code()).unwrap_or("LOADED"), ok));
+    };
+    let fresh = || image.to_vec();
+    let (p0, p1) = (loads[0], loads[1]);
+    let mut v = fresh();
+    v[0] = 0;
+    check("magic", v, ElfError::BadMagic);
+    let mut v = fresh();
+    v[4] = 1;
+    check("class32", v, ElfError::NotElf64);
+    let mut v = fresh();
+    v[5] = 2;
+    check("bigendian", v, ElfError::NotLittleEndian);
+    let mut v = fresh();
+    put_u16(&mut v, 16, 3);
+    check("et_dyn", v, ElfError::NotExecutable);
+    let mut v = fresh();
+    put_u16(&mut v, 18, 0xB7);
+    check("aarch64", v, ElfError::WrongMachine);
+    let mut v = fresh();
+    put_u16(&mut v, 56, 0);
+    check("phnum0", v, ElfError::BadProgramHeaders);
+    let mut v = fresh();
+    put_u64(&mut v, 32, image.len() as u64);
+    check("phoff_out", v, ElfError::BadProgramHeaders);
+    let mut v = fresh();
+    put_u64(&mut v, p0 + 16, 0x1000);
+    check("vaddr_low", v, ElfError::SegmentOutsideWindow);
+    let mut v = fresh();
+    let memsz = u64::from_le_bytes(image[p0 + 40..p0 + 48].try_into().unwrap_or([0; 8]));
+    put_u64(&mut v, p0 + 32, memsz + 1);
+    check("filesz_gt_memsz", v, ElfError::MemSmallerThanFile);
+    let mut v = fresh();
+    put_u64(&mut v, p0 + 8, image.len() as u64);
+    check("offset_out", v, ElfError::FileRangeOutside);
+    let mut v = fresh();
+    put_u64(&mut v, 24, elf::APP_END - 8);
+    check("entry_out", v, ElfError::EntryOutsideSegments);
+    let mut v = fresh();
+    let vaddr0 = u64::from_le_bytes(image[p0 + 16..p0 + 24].try_into().unwrap_or([0; 8]));
+    put_u64(&mut v, p1 + 16, vaddr0);
+    check("overlap", v, ElfError::SegmentOverlap);
+    check("truncated", image[..32].to_vec(), ElfError::TooShort);
+    let frames1 = pmm::stats().free_frames;
+    let all_ok = results.iter().all(|r| r.2);
+    let mut line = alloc::string::String::new();
+    for (name, code, ok) in &results {
+        line.push_str(name);
+        line.push('=');
+        line.push_str(code);
+        line.push(if *ok { '+' } else { '!' });
+        line.push(',');
+    }
+    kprintln!(
+        "OSX|{}|ktest|elf_malformed|cases={}|all_refused_as_expected={}|frames_before={}|frames_after={}|detail={}",
+        BUILD_ID,
+        results.len(),
+        u8::from(all_ok),
+        frames0,
+        frames1,
+        line
+    );
+    if !all_ok {
+        fail("a malformed image was accepted or refused with the wrong code")
+    }
+    if frames1 != frames0 {
+        fail("frames leaked by refused images")
+    }
+    pass("malformed ELF images are refused with stable codes and leave nothing mapped")
+}
+
+/// W^X: a segment marked writable and executable is refused; the valid image's pages carry
+/// exactly the permissions of their segment (executable pages read-only, writable pages NX).
+fn elf_wx() -> ! {
+    let image = hello_image();
+    let loads = pt_load_offsets(image);
+    let frames0 = pmm::stats().free_frames;
+    let mut v = image.to_vec();
+    let flags = u32::from_le_bytes(v[loads[0] + 4..loads[0] + 8].try_into().unwrap_or([0; 4]));
+    put_u32(&mut v, loads[0] + 4, flags | 0x3);
+    let wx_refused = matches!(
+        crate::user::spawn_elf(&v, 1),
+        Err(ElfError::WritableExecutable)
+    );
+    let Ok((segs, n, _)) = elf::parse(image) else {
+        fail("hello image does not parse")
+    };
+    let Ok(mut us) = UserSpace::new() else {
+        fail("UserSpace::new failed")
+    };
+    let loaded = match elf::load(&mut us, image) {
+        Ok(l) => l,
+        Err(_) => fail("load of the valid image failed"),
+    };
+    let mut perms_ok = true;
+    let (mut x_pages, mut w_pages, mut r_pages) = (0, 0, 0);
+    for s in segs.iter().take(n).flatten() {
+        let mut page = s.vaddr & !0xFFF;
+        while page < s.vaddr + s.memsz {
+            let Some(f) = us.flags_of(page) else {
+                perms_ok = false;
+                break;
+            };
+            let w = f & paging::WRITE != 0;
+            let nx = f & paging::NX != 0;
+            match (s.executable(), s.writable()) {
+                (true, false) => {
+                    perms_ok &= !w && !nx;
+                    x_pages += 1;
+                }
+                (false, true) => {
+                    perms_ok &= w && nx;
+                    w_pages += 1;
+                }
+                (false, false) => {
+                    perms_ok &= !w && nx;
+                    r_pages += 1;
+                }
+                (true, true) => perms_ok = false,
+            }
+            page += 0x1000;
+        }
+    }
+    let stack_flags = us.flags_of(elf::STACK_TOP - 0x1000);
+    let stack_ok = stack_flags.is_some_and(|f| f & paging::WRITE != 0 && f & paging::NX != 0)
+        && us
+            .flags_of(elf::STACK_TOP - (elf::STACK_PAGES + 1) * 0x1000)
+            .is_none();
+    let destroyed = us.destroy().is_ok();
+    let frames1 = pmm::stats().free_frames;
+    kprintln!(
+        "OSX|{}|ktest|elf_wx|wx_refused={}|perms_ok={}|x_pages={}|w_pages={}|r_pages={}|stack_ok={}|pages={}|frames_before={}|frames_after={}",
+        BUILD_ID,
+        u8::from(wx_refused),
+        u8::from(perms_ok),
+        x_pages,
+        w_pages,
+        r_pages,
+        u8::from(stack_ok),
+        loaded.pages,
+        frames0,
+        frames1
+    );
+    if !wx_refused {
+        fail("a writable+executable segment was accepted")
+    }
+    if !perms_ok || x_pages == 0 || w_pages == 0 {
+        fail("segment pages do not carry W^X permissions")
+    }
+    if !stack_ok || !destroyed || frames1 != frames0 {
+        fail("stack layout or cleanup wrong")
+    }
+    pass("W^X enforced: RWX segment refused, pages carry their segment's permissions")
 }

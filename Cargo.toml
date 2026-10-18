@@ -1,6 +1,6 @@
 # nawah-os workspace. Profiles live here (cargo ignores profiles in member manifests).
 [workspace]
-members = ["kernel"]
+members = ["kernel", "user/libnawah", "user/apps/hello"]
 resolver = "2"
 
 [profile.dev]

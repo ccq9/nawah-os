@@ -847,7 +847,7 @@
         "TST-M3-ELF-MALFORMED",
         "TST-M3-ELF-WX"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "partial",
       "evidence_refs": []
     },
     {

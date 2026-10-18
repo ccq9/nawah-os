@@ -3,5 +3,16 @@
 version = 4
 
 [[package]]
+name = "hello"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
+name = "libnawah"
+version = "0.1.0"
+
+[[package]]
 name = "nawah-kernel"
 version = "0.1.0"

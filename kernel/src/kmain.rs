@@ -314,6 +314,29 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         user_code,
         u8::from(user_ok)
     );
+    // ELF loader (WP-17) self-check in every build: the embedded `hello` application runs as
+    // a process (trace, ping) and exits 7, leaving no frame behind.
+    let (elf_exit, elf_delta, elf_segments, elf_pages, elf_code) = if crate::apps::HELLO.is_empty()
+    {
+        (u64::MAX, 0, 0, 0, "K_E_APPS_MISSING")
+    } else {
+        match crate::user::run_elf(crate::apps::HELLO) {
+            Ok((o, l)) => (o.exit_code, o.frames_delta, l.segments, l.pages, "ok"),
+            Err(e) => (u64::MAX, 0, 0, 0, e.code()),
+        }
+    };
+    let elf_ok = elf_exit == 7 && elf_delta == 0;
+    kprintln!(
+        "OSX|{}|kernel|elf|app=hello|size={}|segments={}|pages={}|exit={:#x}|frames_delta={}|code={}|selfcheck={}",
+        build_id,
+        crate::apps::HELLO.len(),
+        elf_segments,
+        elf_pages,
+        elf_exit,
+        elf_delta,
+        elf_code,
+        u8::from(elf_ok)
+    );
     #[cfg(feature = "ktest")]
     crate::ktest::run();
     #[cfg(not(feature = "ktest"))]

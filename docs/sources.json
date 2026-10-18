@@ -512,6 +512,21 @@
       ],
       "limits": "Zircon discards sent handles on failure too; nawah's contract keeps the sender's table untouched on failure (two-phase write)",
       "verified": true
+    },
+    {
+      "id": "S41",
+      "title": "System V gABI — ELF header (ch4) and program header (ch5)",
+      "url": "https://www.sco.com/developers/gabi/latest/ch5.pheader.html",
+      "version": "gABI 'latest' edition (sco.com), read 2026-10-18; also ch4.eheader.html",
+      "accessed": "2026-10-18",
+      "supports": [
+        "Elf64_Ehdr field order: e_ident[16], e_type, e_machine, e_version, e_entry, e_phoff, e_shoff, e_flags, e_ehsize, e_phentsize, e_phnum, e_shentsize, e_shnum, e_shstrndx (offsets 16/18/24/32/54/56 used by the loader)",
+        "EI_MAG 0x7f 'E' 'L' 'F'; EI_CLASS ELFCLASS64 = 2; EI_DATA ELFDATA2LSB = 1; ET_EXEC = 2, ET_DYN = 3; EM_X86_64 = 62",
+        "Elf64_Phdr: p_type, p_flags, p_offset, p_vaddr, p_paddr, p_filesz, p_memsz, p_align; PT_LOAD = 1; PF_X = 1, PF_W = 2, PF_R = 4",
+        "PT_LOAD: file bytes mapped to the beginning of the segment, extra bytes zero, 'the file size may not be larger than the memory size'"
+      ],
+      "limits": "normative text fetched from the SCO mirror of the gABI; the Linux Foundation refspecs copy refused automated access",
+      "verified": true
     }
   ]
 }

@@ -7,4 +7,34 @@ fn main() {
         "NAWAH_BUILD_ID must be short ASCII"
     );
     println!("cargo:rustc-env=NAWAH_BUILD_ID={id}");
+    emit_apps();
+}
+
+/// Applications (WP-17): `NAWAH_APPS_DIR` names a directory with `<name>.elf` files built by
+/// tools/project.py from user/apps; each becomes a byte slice in `apps.rs`. Without the
+/// directory (plain `cargo check`), the slices are empty and the kernel reports the apps as
+/// missing instead of failing to build.
+const APPS: &[&str] = &["hello"];
+
+fn emit_apps() {
+    println!("cargo:rerun-if-env-changed=NAWAH_APPS_DIR");
+    let out = std::path::PathBuf::from(std::env::var("OUT_DIR").expect("OUT_DIR"));
+    let dir = std::env::var("NAWAH_APPS_DIR")
+        .ok()
+        .map(std::path::PathBuf::from);
+    let mut src = String::new();
+    for name in APPS {
+        let upper = name.to_uppercase();
+        match dir.as_ref().map(|d| d.join(format!("{name}.elf"))) {
+            Some(path) if path.is_file() => {
+                println!("cargo:rerun-if-changed={}", path.display());
+                src.push_str(&format!(
+                    "pub static {upper}: &[u8] = include_bytes!({:?});\n",
+                    path.canonicalize().expect("canonical app path")
+                ));
+            }
+            _ => src.push_str(&format!("pub static {upper}: &[u8] = &[];\n")),
+        }
+    }
+    std::fs::write(out.join("apps.rs"), src).expect("write apps.rs");
 }

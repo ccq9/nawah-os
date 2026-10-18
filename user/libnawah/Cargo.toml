@@ -1,0 +1,11 @@
+[package]
+name = "libnawah"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "User-side ABI of nawah-os: syscall wrappers and the program entry"
+
+[lib]
+path = "src/lib.rs"
+test = false
+bench = false

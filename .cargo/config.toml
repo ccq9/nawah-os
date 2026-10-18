@@ -11,3 +11,11 @@ rustflags = ["-C", "force-frame-pointers=yes"]
 # frame pointers are the AAPCS64 default. Early port experiment (WP-21, ADR-0008).
 [target.aarch64-unknown-uefi]
 rustflags = []
+
+# x86_64-unknown-none (rustc built-in spec): ELF via rust-lld, no SSE, soft-float, red zone
+# disabled, default code model "kernel" (top 2 GiB) and static-pie. Applications are linked as
+# static ET_EXEC at a fixed address far above 4 GiB (APP_BASE, PML4 slot 1), so the code model
+# is "large" (64-bit absolute addresses) and no relocation is processed by the loader (WP-17).
+# The link script and segment separation come from the application's build.rs.
+[target.x86_64-unknown-none]
+rustflags = ["-C", "relocation-model=static", "-C", "code-model=large", "-C", "force-frame-pointers=yes"]

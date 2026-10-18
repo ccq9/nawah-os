@@ -10,18 +10,41 @@
       "kernel/build.rs",
       ".cargo/config.toml",
       "rust-toolchain.toml",
-      "platform/pc-qemu/target.json"
+      "platform/pc-qemu/target.json",
+      "user/link.ld",
+      "user/libnawah/Cargo.toml",
+      "user/apps/hello/Cargo.toml",
+      "user/apps/hello/build.rs"
     ],
     "input_globs": [
-      "kernel/src/**/*.rs"
+      "kernel/src/**/*.rs",
+      "user/**/*.rs"
     ],
     "artifact": "${OUT}/NAWAH.EFI",
     "extra_artifacts": [
       "${OUT}/NAWAH-NEG.EFI",
-      "${OUT}/NAWAH-KTEST.EFI"
+      "${OUT}/NAWAH-KTEST.EFI",
+      "${OUT}/apps/hello.elf"
     ],
-    "toolchain": "rust-1.97.0 x86_64-unknown-uefi",
+    "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
+      [
+        "cargo",
+        "build",
+        "--release",
+        "--offline",
+        "--manifest-path",
+        "user/apps/hello/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/release/hello",
+        "${OUT}/apps/hello.elf"
+      ],
       [
         "cargo",
         "build",
@@ -114,7 +137,7 @@
       {
         "id": "TST-M1-BOOT",
         "test_id": "TST-M1-BOOT",
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left)",
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
@@ -139,7 +162,9 @@
           "|threads=1|processes=0|quantum_ticks=10|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|object|channel_ok=1|vmo_size=8192|peer_closed=1|live_channels=0|live_endpoints=0|live_vmos=0|live_handles=0|frames_delta=0|selfcheck=1",
           "|kernel|user|lstar=0x",
-          "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1"
+          "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
+          "|kernel|elf|app=hello|size=",
+          "|exit=0x7|frames_delta=0|code=ok|selfcheck=1"
         ],
         "forbidden_markers": [
           "|boot|acpi|rsdp=0x0|",
@@ -1212,6 +1237,89 @@
           "|ktest|block_wake|r1=0x42|loops1=1|",
           "|r2=0x43|loops2=2|r3=0xc105ed|channels_after=0|endpoints_after=0|",
           "|ktest|pass|blocking read: woken by write"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-APP-EXIT-CODE",
+        "test_id": "TST-M3-APP-EXIT-CODE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=app_exit_code"
+        ],
+        "oracle": "the embedded ELF64 application `hello` (user/apps, x86_64-unknown-none, libnawah) is loaded into a fresh space and run as a process: trace line user|trace|len=14|text=hello from elf, ping(41) = 42, exit code 7 observed through wait_process; one executable segment, >= 2 segments; no frame leaked; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=app_exit_code",
+          "|user|trace|len=14|text=hello from elf",
+          "|ktest|app_exit_code|size=",
+          "|exec_segments=1|",
+          "|exit=0x7|frames_delta=0",
+          "|ktest|pass|ELF application loaded, ran and exited"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M3-ELF-MALFORMED",
+        "test_id": "TST-M3-ELF-MALFORMED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=elf_malformed"
+        ],
+        "oracle": "13 corruptions of the hello image (bad magic, ELFCLASS32, big-endian, ET_DYN, AArch64 machine, phnum 0, phoff past the file, vaddr outside the window, filesz > memsz, offset past the file, entry outside segments, overlapping segments, truncated to 32 bytes) are each refused with their stable K_E_ELF_* code before anything runs; PMM free frames equal before/after; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=elf_malformed",
+          "|ktest|elf_malformed|cases=13|all_refused_as_expected=1|",
+          "|detail=magic=K_E_ELF_BAD_MAGIC+,class32=K_E_ELF_NOT_64+,bigendian=K_E_ELF_NOT_LE+,et_dyn=K_E_ELF_NOT_EXEC+,aarch64=K_E_ELF_MACHINE+,phnum0=K_E_ELF_PHDRS+,phoff_out=K_E_ELF_PHDRS+,vaddr_low=K_E_ELF_SEGMENT_RANGE+,filesz_gt_memsz=K_E_ELF_MEMSZ+,offset_out=K_E_ELF_FILE_RANGE+,entry_out=K_E_ELF_ENTRY+,overlap=K_E_ELF_SEGMENT_OVERLAP+,truncated=K_E_ELF_TOO_SHORT+,",
+          "|ktest|pass|malformed ELF images are refused"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-ELF-WX",
+        "test_id": "TST-M3-ELF-WX",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=elf_wx"
+        ],
+        "oracle": "a PT_LOAD marked W+X is refused (K_E_ELF_WX); the valid image's pages carry exactly their segment's permissions (executable pages not writable and not NX, writable pages NX, read-only pages NX and not writable), the stack is RW+NX with an unmapped guard page below, destroy returns every frame; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=elf_wx",
+          "|ktest|elf_wx|wx_refused=1|perms_ok=1|",
+          "|stack_ok=1|",
+          "|ktest|pass|W^X enforced"
         ],
         "forbidden_markers": [
           "|ktest|fail|",

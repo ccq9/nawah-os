@@ -125,6 +125,10 @@ MUTANTS = [
      ["TST-M2-EXC-BP"], "#BP made fatal"),
 ]
 
+# Applications first (WP-17): the kernel embeds them through NAWAH_APPS_DIR (kernel/build.rs).
+APPS_STEP = ["cargo", "build", "--release", "--offline", "--manifest-path", "user/apps/hello/Cargo.toml",
+             "--target", "x86_64-unknown-none", "--target-dir", "build/pc-qemu/cargo-user"]
+APPS_OUT = "build/pc-qemu/cargo-user/x86_64-unknown-none/release/hello"
 KTEST_STEP = ["cargo", "build", "--profile", "ktest", "--offline", "--manifest-path", "kernel/Cargo.toml",
               "--target", "x86_64-unknown-uefi", "--target-dir", "build/pc-qemu/cargo-ktest", "--features", "ktest"]
 KTEST_OUT = "build/pc-qemu/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.efi"
@@ -221,11 +225,12 @@ def main():
                 report["mutants"].append(entry)
                 print(f"{mid}: {'compiles' if ok else 'DOES NOT COMPILE'} ({note})")
                 continue
-            benv = dict(env, NAWAH_BUILD_ID=f"mut{mid.lower()}", NAWAH_OUT=str(wt / "build" / a.target))
-            (wt / "build" / a.target).mkdir(parents=True, exist_ok=True)
+            benv = dict(env, NAWAH_BUILD_ID=f"mut{mid.lower()}", NAWAH_OUT=str(wt / "build" / a.target),
+                        NAWAH_APPS_DIR=str(wt / "build" / a.target / "apps"))
+            (wt / "build" / a.target / "apps").mkdir(parents=True, exist_ok=True)
             need_release = "TST-M1-BOOT" in killers
             build_ok = True
-            steps = [(KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
+            steps = [(APPS_STEP, APPS_OUT, "apps/hello.elf"), (KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
             if need_release:
                 steps.append((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"))
             for step, out, name in steps:

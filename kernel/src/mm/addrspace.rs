@@ -16,7 +16,7 @@ pub const USER_BASE: u64 = 0x80_0000_0000;
 /// One past the highest user address: end of PML4 slot 255 (lower canonical half).
 pub const USER_END: u64 = 0x8000_0000_0000;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AsError {
     Map(MapError),
     /// Address outside `USER_BASE..USER_END` or not page-aligned.
@@ -140,6 +140,24 @@ pub fn write_frame(phys: u64, bytes: &[u8]) {
     // SAFETY: `phys` is a frame this kernel allocated and mapped in the direct map; at most one
     // page is written.
     unsafe { core::ptr::copy_nonoverlapping(bytes.as_ptr(), vmm::direct(phys) as *mut u8, n) };
+}
+
+/// Copies `bytes` into the frame `phys` starting at byte `offset` through the direct map; the
+/// range must end within the frame (loader segments are page-sliced by the caller).
+pub fn write_frame_at(phys: u64, offset: usize, bytes: &[u8]) {
+    assert!(
+        offset + bytes.len() <= PAGE_4K as usize,
+        "write past the frame"
+    );
+    // SAFETY: `phys` is a frame this kernel allocated and mapped in the direct map; the range
+    // stays inside it (asserted).
+    unsafe {
+        core::ptr::copy_nonoverlapping(
+            bytes.as_ptr(),
+            (vmm::direct(phys) as *mut u8).add(offset),
+            bytes.len(),
+        )
+    };
 }
 
 /// Switches back to the kernel's own space.

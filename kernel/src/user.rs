@@ -4,6 +4,7 @@
 //! WP-17 replaces the raw code page with the ELF loader.
 
 use crate::arch::paging::{NX, WRITE};
+use crate::loader::elf::{self, ElfError, Loaded};
 use crate::mm::addrspace::{self, AsError, UserSpace, USER_BASE};
 use crate::sched;
 
@@ -57,4 +58,37 @@ pub fn run(code: &[u8]) -> Result<Outcome, AsError> {
         exit_code,
         frames_delta: frames_before as i64 - frames_after as i64,
     })
+}
+
+/// Loads an ELF64 image into a fresh address space and starts it as a process (WP-17). On a
+/// loader error the space is destroyed and nothing is left behind.
+pub fn spawn_elf(image: &[u8], priority: u8) -> Result<(u32, Loaded), ElfError> {
+    let mut us = UserSpace::new().map_err(ElfError::Space)?;
+    let loaded = match elf::load(&mut us, image) {
+        Ok(l) => l,
+        Err(e) => {
+            let _ = us.destroy();
+            return Err(e);
+        }
+    };
+    let (pid, _tid) = sched::spawn_user(us, loaded.entry, loaded.rsp, priority)
+        .map_err(|_| ElfError::Space(AsError::Spawn))?;
+    Ok((pid, loaded))
+}
+
+/// Runs an ELF image to completion; reports the exit code, the frame balance and what was
+/// loaded.
+pub fn run_elf(image: &[u8]) -> Result<(Outcome, Loaded), ElfError> {
+    let frames_before = crate::mm::pmm::stats().free_frames;
+    let (pid, loaded) = spawn_elf(image, 1)?;
+    let exit_code = sched::wait_process(pid).unwrap_or(u64::MAX);
+    let frames_after = crate::mm::pmm::stats().free_frames;
+    Ok((
+        Outcome {
+            pid,
+            exit_code,
+            frames_delta: frames_before as i64 - frames_after as i64,
+        },
+        loaded,
+    ))
 }
