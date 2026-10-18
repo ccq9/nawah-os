@@ -140,6 +140,9 @@ pub fn run() -> ! {
         "app_exit_code" => app_exit_code(),
         "elf_malformed" => elf_malformed(),
         "elf_wx" => elf_wx(),
+        "blk_read_pattern" => blk_read_pattern(),
+        "blk_persist_write" => blk_persist(true),
+        "blk_persist_read" => blk_persist(false),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -1640,4 +1643,141 @@ fn elf_wx() -> ! {
         fail("stack layout or cleanup wrong")
     }
     pass("W^X enforced: RWX segment refused, pages carry their segment's permissions")
+}
+
+// ---- WP-18: block device ---------------------------------------------------------------------
+
+/// The lab's disk image carries `(sector * 7 + i) & 0xFF` in sectors 2..=9 (tools/project.py
+/// `prepare_disk`); the first test sector of the persistence pair is 100.
+const PATTERN_FIRST: u64 = 2;
+const PATTERN_SECTORS: usize = 8;
+const PERSIST_FIRST: u64 = 100;
+const PERSIST_SECTORS: usize = 8;
+const PERSIST_TAG: &[u8] = b"NAWAH-PERSIST|";
+
+fn pattern_byte(sector: u64, i: usize) -> u8 {
+    (sector.wrapping_mul(7).wrapping_add(i as u64) & 0xFF) as u8
+}
+
+/// virtio-blk read: the device is present with the lab's capacity, an 8-sector read returns
+/// the harness pattern exactly, a read past the end and an unaligned length are refused, and
+/// the DMA path leaves the frame count alone.
+fn blk_read_pattern() -> ! {
+    let frames0 = pmm::stats().free_frames;
+    let present = crate::block::present();
+    let capacity = crate::block::capacity_sectors();
+    let mut buf = alloc::vec![0u8; PATTERN_SECTORS * 512];
+    let read = crate::block::read(PATTERN_FIRST, &mut buf);
+    let mut mismatches = 0u32;
+    for (k, b) in buf.iter().enumerate() {
+        let sector = PATTERN_FIRST + (k / 512) as u64;
+        if *b != pattern_byte(sector, k % 512) {
+            mismatches += 1;
+        }
+    }
+    let mut one = [0u8; 512];
+    let past_end = crate::block::read(capacity, &mut one);
+    let mut odd = [0u8; 100];
+    let unaligned = crate::block::read(0, &mut odd);
+    let frames1 = pmm::stats().free_frames;
+    kprintln!(
+        "OSX|{}|ktest|blk_read_pattern|present={}|capacity_sectors={}|read={}|mismatches={}|first_bytes={:02x}{:02x}{:02x}{:02x}|past_end={}|unaligned={}|frames_before={}|frames_after={}",
+        BUILD_ID,
+        u8::from(present),
+        capacity,
+        read.map_or_else(|e| e.code(), |_| "ok"),
+        mismatches,
+        buf[0],
+        buf[1],
+        buf[2],
+        buf[3],
+        past_end.map_or_else(|e| e.code(), |_| "ok"),
+        unaligned.map_or_else(|e| e.code(), |_| "ok"),
+        frames0,
+        frames1
+    );
+    if !present || capacity == 0 {
+        fail("no virtio-blk device")
+    }
+    if read.is_err() || mismatches != 0 {
+        fail("pattern sectors not read back exactly")
+    }
+    if past_end.is_ok() || unaligned.is_ok() {
+        fail("out-of-range or unaligned request accepted")
+    }
+    if frames1 != frames0 {
+        fail("frames leaked by block reads")
+    }
+    pass("virtio-blk reads the harness pattern exactly and refuses bad requests")
+}
+
+/// Persistence across a QEMU restart on the same image: the write phase stores a tag with the
+/// build id and a pattern in sectors 100..=107, flushes, and reads them back; the read phase
+/// (a fresh boot) finds the same tag, build id and pattern.
+fn blk_persist(write: bool) -> ! {
+    let name = if write {
+        "blk_persist_write"
+    } else {
+        "blk_persist_read"
+    };
+    let mut buf = alloc::vec![0u8; PERSIST_SECTORS * 512];
+    if write {
+        for (k, b) in buf.iter_mut().enumerate() {
+            let sector = PERSIST_FIRST + (k / 512) as u64;
+            *b = pattern_byte(sector, k % 512) ^ 0xA5;
+        }
+        let tag_len = PERSIST_TAG.len() + BUILD_ID.len();
+        buf[..PERSIST_TAG.len()].copy_from_slice(PERSIST_TAG);
+        buf[PERSIST_TAG.len()..tag_len].copy_from_slice(BUILD_ID.as_bytes());
+        let written = crate::block::write(PERSIST_FIRST, &buf);
+        let flushed = crate::block::flush();
+        if written.is_err() || flushed.is_err() {
+            kprintln!(
+                "OSX|{}|ktest|{}|written={}|flushed={}",
+                BUILD_ID,
+                name,
+                written.map_or_else(|e| e.code(), |_| "ok"),
+                flushed.map_or_else(|e| e.code(), |_| "ok")
+            );
+            fail("write or flush failed")
+        }
+        buf.iter_mut().for_each(|b| *b = 0);
+    }
+    let read = crate::block::read(PERSIST_FIRST, &mut buf);
+    let tag_len = PERSIST_TAG.len() + BUILD_ID.len();
+    let tag_ok = buf.starts_with(PERSIST_TAG);
+    let build_id_match = &buf[PERSIST_TAG.len()..tag_len] == BUILD_ID.as_bytes();
+    let mut mismatches = 0u32;
+    for (k, b) in buf.iter().enumerate().skip(tag_len) {
+        let sector = PERSIST_FIRST + (k / 512) as u64;
+        if *b != pattern_byte(sector, k % 512) ^ 0xA5 {
+            mismatches += 1;
+        }
+    }
+    let found_id = core::str::from_utf8(&buf[PERSIST_TAG.len()..tag_len]).unwrap_or("?");
+    kprintln!(
+        "OSX|{}|ktest|{}|sectors={}..{}|read={}|tag_ok={}|build_id_found={}|build_id_match={}|mismatches={}|flushed={}",
+        BUILD_ID,
+        name,
+        PERSIST_FIRST,
+        PERSIST_FIRST + PERSIST_SECTORS as u64 - 1,
+        read.map_or_else(|e| e.code(), |_| "ok"),
+        u8::from(tag_ok),
+        found_id,
+        u8::from(build_id_match),
+        mismatches,
+        u8::from(write)
+    );
+    if read.is_err() || !tag_ok || !build_id_match || mismatches != 0 {
+        fail(if write {
+            "written sectors do not read back"
+        } else {
+            "data written before the restart is gone or changed"
+        })
+    }
+    pass(if write {
+        "sectors written, flushed and read back"
+    } else {
+        "sectors written before the QEMU restart are intact"
+    })
 }

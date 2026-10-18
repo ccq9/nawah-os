@@ -112,7 +112,16 @@
     "smp": 1,
     "ovmf_code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
     "ovmf_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
-    "boot_timeout_s": 180
+    "boot_timeout_s": 180,
+    "disk": {
+      "size_mib": 16,
+      "device": "virtio-blk-pci,drive=vd0,disable-legacy=on,disable-modern=off",
+      "pattern": {
+        "first": 2,
+        "count": 8
+      },
+      "note": "16 MiB raw image rebuilt per run (zero except the pattern sectors (sector*7+i)&0xFF); a multi-phase case keeps it between its phases"
+    }
   },
   "boot_oracle": {
     "test_id": "TST-M1-BOOT",
@@ -138,7 +147,7 @@
       {
         "id": "TST-M1-BOOT",
         "test_id": "TST-M1-BOOT",
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left)",
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
@@ -162,6 +171,10 @@
           "|kernel|sched|boot_tid=0|probe_join=0x5eee|",
           "|threads=1|processes=0|quantum_ticks=10|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|object|channel_ok=1|vmo_size=8192|peer_closed=1|live_channels=0|live_endpoints=0|live_vmos=0|live_handles=0|frames_delta=0|selfcheck=1",
+          "|kernel|pci|ecam=0xb0000000|segment=0|functions=",
+          "|kernel|blk|device=0x1042|",
+          "|capacity_sectors=32768|queue_size=16|",
+          "|read_ok=1|flush_ok=1|code=ok|selfcheck=1",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -1334,6 +1347,88 @@
             "frames_after=([0-9]+)"
           ]
         ]
+      },
+      {
+        "id": "TST-M3-BLK-READ",
+        "test_id": "TST-M3-BLK-READ",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=blk_read_pattern"
+        ],
+        "oracle": "virtio-blk (modern PCI, split virtqueue, polling) on the lab's 16 MiB image: device present with capacity 32768 sectors, an 8-sector read of sectors 2..=9 returns the harness pattern (sector*7+i)&0xFF with 0 mismatches, a read at the capacity and a 100-byte read are refused (K_E_BLK_RANGE), frames equal; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=blk_read_pattern",
+          "|ktest|blk_read_pattern|present=1|capacity_sectors=32768|read=ok|mismatches=0|first_bytes=0e0f1011|past_end=K_E_BLK_RANGE|unaligned=K_E_BLK_RANGE|",
+          "|ktest|pass|virtio-blk reads the harness pattern"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-BLK-PERSIST",
+        "test_id": "TST-M3-BLK-PERSIST",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "phases": [
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=blk_persist_write"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=blk_persist_write",
+              "|ktest|blk_persist_write|sectors=100..107|read=ok|tag_ok=1|build_id_found=${BUILD_ID}|build_id_match=1|mismatches=0|flushed=1",
+              "|ktest|pass|sectors written, flushed and read back"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=blk_persist_read"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=blk_persist_read",
+              "|ktest|blk_persist_read|sectors=100..107|read=ok|tag_ok=1|build_id_found=${BUILD_ID}|build_id_match=1|mismatches=0|flushed=0",
+              "|ktest|pass|sectors written before the QEMU restart are intact"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          }
+        ],
+        "oracle": "two QEMU runs on the same image: phase 1 (blk_persist_write) writes a tag NAWAH-PERSIST|<build id> plus a pattern to sectors 100..=107, flushes and reads them back; phase 2 (blk_persist_read, a fresh boot) finds tag, build id and pattern intact (mismatches=0); both phases exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "|ktest|pass|sectors written, flushed and read back",
+          "|ktest|pass|sectors written before the QEMU restart are intact"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "max_counts": {
+          "|boot|start|": 2
+        }
       }
     ]
   }

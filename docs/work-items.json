@@ -1192,27 +1192,40 @@
       ],
       "inputs": [
         "docs/PLAN.md §4",
-        "Virtio 1.3 §4.1/§5.2",
-        "PCI Firmware Spec (MCFG)",
-        "Microsoft FAT32 spec"
+        "Virtio 1.3 (S42): §4.1 PCI transport, §2.7 split virtqueue, §5.2 block device, §3.1.1 initialization",
+        "PCI Express ECAM / PCI 3.0 configuration header (S43)",
+        "ACPI 6.5 MCFG signature (S33)",
+        "Microsoft FAT32 spec (part 2)"
       ],
       "files": [
+        "kernel/src/arch/x86_64/acpi.rs",
         "kernel/src/arch/x86_64/pci.rs",
-        "kernel/src/drivers/virtio/",
+        "kernel/src/arch/x86_64/mmio.rs",
+        "kernel/src/mm/dma.rs",
+        "kernel/src/drivers/mod.rs",
+        "kernel/src/drivers/virtio_blk.rs",
         "kernel/src/block/mod.rs",
-        "kernel/src/fs/fat32.rs"
+        "kernel/src/fs/fat32.rs",
+        "kernel/src/kmain.rs",
+        "kernel/src/ktest.rs",
+        "kernel/src/main.rs",
+        "tools/project.py",
+        "platform/pc-qemu/target.json",
+        "docs/adr/0013-storage.md",
+        "tools/check-unsafe.sh",
+        "tools/unsafe-baseline.txt"
       ],
       "contract_refs": [
         "docs/contracts/boot.md"
       ],
       "actions": [
-        "PCI ECAM enumeration (MCFG)",
-        "virtio-blk 1.x",
-        "block layer with flush",
-        "FAT32 read/write on a second image",
-        "persistence test across QEMU restarts"
+        "MCFG parsing and PCI ECAM enumeration (root bus), BAR decode, capability walk",
+        "virtio-blk 1.x over modern virtio-pci: feature negotiation (VERSION_1, FLUSH), split virtqueue in a DMA frame, polling completion, 64 KiB bounce buffer",
+        "block layer (read/write/flush behind a lock) and boot self-check",
+        "lab runner: per-run virtio disk image with a known pattern, multi-phase cases for persistence across QEMU restarts",
+        "part 2: FAT32 read/write on the image"
       ],
-      "acceptance": "blk_read, blk_persist PASS",
+      "acceptance": "TST-M3-BLK-READ and TST-M3-BLK-PERSIST PASS on CI; TST-M1-BOOT PASS with the kernel|pci and kernel|blk lines; FAT32 in part 2",
       "test_ids": [
         "TST-M3-BLK-READ",
         "TST-M3-BLK-PERSIST"
@@ -1221,9 +1234,10 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M3"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

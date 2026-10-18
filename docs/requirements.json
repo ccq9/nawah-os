@@ -875,7 +875,7 @@
         "TST-M3-BLK-READ",
         "TST-M3-BLK-PERSIST"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "partial",
       "evidence_refs": []
     },
     {

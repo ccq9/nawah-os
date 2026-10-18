@@ -1,4 +1,5 @@
-//! ACPI table discovery for the interrupt controllers: RSDP -> XSDT (or RSDT) -> MADT.
+//! ACPI table discovery: RSDP -> XSDT (or RSDT) -> MADT (interrupt controllers) and MCFG (PCIe
+//! configuration space, WP-18).
 //! Read-only, no allocation; the tables live in ACPI-reclaim/NVS RAM, which the kernel address
 //! space identity-maps (WP-09), so physical addresses are used directly.
 //!
@@ -59,6 +60,8 @@ pub enum AcpiError {
     BadRootTable,
     NoMadt,
     BadMadt,
+    NoMcfg,
+    BadMcfg,
 }
 
 impl AcpiError {
@@ -71,6 +74,8 @@ impl AcpiError {
             AcpiError::BadRootTable => "K_E_ACPI_BAD_ROOT_TABLE",
             AcpiError::NoMadt => "K_E_ACPI_NO_MADT",
             AcpiError::BadMadt => "K_E_ACPI_BAD_MADT",
+            AcpiError::NoMcfg => "K_E_ACPI_NO_MCFG",
+            AcpiError::BadMcfg => "K_E_ACPI_BAD_MCFG",
         }
     }
 }
@@ -123,9 +128,14 @@ fn checked_table(addr: u64, sig: &[u8; 4]) -> Option<u64> {
     Some(len)
 }
 
-/// Finds the MADT starting from the RSDP physical address and extracts what the interrupt
-/// bring-up needs.
-pub fn parse_madt(rsdp: u64) -> Result<Madt, AcpiError> {
+/// Finds the table with `sig` through the RSDP: (address, length), both checked. `missing`
+/// is the error for a root table without it.
+fn find_table(
+    rsdp: u64,
+    wanted: &[u8; 4],
+    missing: AcpiError,
+    bad: AcpiError,
+) -> Result<(u64, u64), AcpiError> {
     if rsdp == 0 {
         return Err(AcpiError::NoRsdp);
     }
@@ -181,17 +191,24 @@ pub fn parse_madt(rsdp: u64) -> Result<Madt, AcpiError> {
         } else {
             u64::from(rd32(e))
         };
-        if table != 0 && signature(table) == *b"APIC" {
+        if table != 0 && signature(table) == *wanted {
             madt = table;
             break;
         }
     }
     if madt == 0 {
-        return Err(AcpiError::NoMadt);
+        return Err(missing);
     }
-    let Some(len) = checked_table(madt, b"APIC") else {
-        return Err(AcpiError::BadMadt);
+    let Some(len) = checked_table(madt, wanted) else {
+        return Err(bad);
     };
+    Ok((madt, len))
+}
+
+/// Finds the MADT starting from the RSDP physical address and extracts what the interrupt
+/// bring-up needs.
+pub fn parse_madt(rsdp: u64) -> Result<Madt, AcpiError> {
+    let (madt, len) = find_table(rsdp, b"APIC", AcpiError::NoMadt, AcpiError::BadMadt)?;
     if len < HEADER_LEN + 8 {
         return Err(AcpiError::BadMadt);
     }
@@ -244,6 +261,55 @@ pub fn parse_madt(rsdp: u64) -> Result<Madt, AcpiError> {
             _ => {}
         }
         off += slen;
+    }
+    Ok(out)
+}
+
+pub const MAX_MCFG: usize = 4;
+
+/// One PCI segment group's ECAM window (PCI Firmware Specification MCFG entry: base address
+/// at 0, segment at 8, start bus at 10, end bus at 11, 16 bytes each, after 8 reserved bytes
+/// following the 36-byte header).
+#[derive(Clone, Copy, Default, Debug)]
+pub struct McfgEntry {
+    pub base: u64,
+    pub segment: u16,
+    pub start_bus: u8,
+    pub end_bus: u8,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Mcfg {
+    pub entries: [McfgEntry; MAX_MCFG],
+    pub n: usize,
+}
+
+/// Finds the MCFG (PCIe memory-mapped configuration space, ACPI 6.5 Table 5-6 -> PCI Firmware
+/// Specification) and returns its ECAM windows.
+pub fn parse_mcfg(rsdp: u64) -> Result<Mcfg, AcpiError> {
+    let (mcfg, len) = find_table(rsdp, b"MCFG", AcpiError::NoMcfg, AcpiError::BadMcfg)?;
+    if len < HEADER_LEN + 8 + 16 {
+        return Err(AcpiError::BadMcfg);
+    }
+    let mut out = Mcfg {
+        entries: [McfgEntry::default(); MAX_MCFG],
+        n: 0,
+    };
+    let mut off = HEADER_LEN + 8;
+    while off + 16 <= len && out.n < MAX_MCFG {
+        let e = mcfg + off;
+        let entry = McfgEntry {
+            base: rd64(e),
+            segment: rd16(e + 8),
+            start_bus: rd8(e + 10),
+            end_bus: rd8(e + 11),
+        };
+        if entry.base == 0 || entry.end_bus < entry.start_bus {
+            return Err(AcpiError::BadMcfg);
+        }
+        out.entries[out.n] = entry;
+        out.n += 1;
+        off += 16;
     }
     Ok(out)
 }

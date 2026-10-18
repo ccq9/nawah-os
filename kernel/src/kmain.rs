@@ -292,6 +292,71 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         obj_delta,
         u8::from(obj_ok)
     );
+    // Storage (WP-18): PCI through ECAM, the first virtio-blk function, one sector read as a
+    // self-check in every build (the lab attaches a 16 MiB virtio disk).
+    let blk_line = match crate::block::init(bi.rsdp) {
+        Ok(info) => {
+            let mut list = alloc::string::String::new();
+            for f in info.functions.iter().take(12) {
+                use core::fmt::Write as _;
+                let _ = write!(
+                    list,
+                    "{:02x}:{:02x}.{}={:04x}:{:04x}/{:x}.{:x},",
+                    f.bdf.bus,
+                    f.bdf.device,
+                    f.bdf.function,
+                    f.vendor,
+                    f.device,
+                    f.class,
+                    f.subclass
+                );
+            }
+            kprintln!(
+                "OSX|{}|kernel|pci|ecam={:#x}|segment={}|functions={}|list={}",
+                build_id,
+                info.ecam_base,
+                info.segment,
+                info.functions.len(),
+                list
+            );
+            let mut sector = [0u8; 512];
+            let read_ok = crate::block::present() && crate::block::read(0, &mut sector).is_ok();
+            let flush_ok = crate::block::flush().is_ok();
+            let (dev, bdf, cap, qs, flush, features) = match info.blk {
+                Some(b) => (
+                    b.device_id,
+                    (u32::from(b.bdf.bus) << 16)
+                        | (u32::from(b.bdf.device) << 8)
+                        | u32::from(b.bdf.function),
+                    b.capacity_sectors,
+                    b.queue_size,
+                    b.flush,
+                    b.features,
+                ),
+                None => (0, 0, 0, 0, false, 0),
+            };
+            let ok = info.blk.is_some()
+                && read_ok
+                && flush_ok
+                && cap == crate::block::capacity_sectors()
+                && cap > 0;
+            alloc::format!(
+                "device={:#x}|bdf={:#x}|capacity_sectors={}|queue_size={}|features={:#x}|flush={}|dma_frames={}|read_ok={}|flush_ok={}|code=ok|selfcheck={}",
+                dev,
+                bdf,
+                cap,
+                qs,
+                features,
+                u8::from(flush),
+                info.frames,
+                u8::from(read_ok),
+                u8::from(flush_ok),
+                u8::from(ok)
+            )
+        }
+        Err(code) => alloc::format!("code={code}|selfcheck=0"),
+    };
+    kprintln!("OSX|{}|kernel|blk|{}", build_id, blk_line);
     // Ring-3 self-check in every build: a process runs the ping program and exits through the
     // ABI; the scheduler reaps it and no frame is left behind.
     let (user_pid, user_exit, user_delta, user_code) =

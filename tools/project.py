@@ -465,17 +465,41 @@ def keep_artifact(d, rid, art: Path) -> str:
     return f"evidence/{rid}/artifact/{art.name}"
 
 
-def qemu_cmd(t, target_name, esp_dir, serial_log, extra=()):
+def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None):
     q = t["qemu"]
     # Per-target exit device: isa-debug-exit on the PC, semihosting on the Arm virt board.
     exit_args = q.get("extra_args", ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
+    disk_args = []
+    if disk is not None:
+        disk_args = ["-drive", f"if=none,id=vd0,format=raw,file={disk}", "-device", q["disk"]["device"]]
     cmd = [q["binary"], "-machine", q["machine"], "-cpu", q["cpu"], "-m", q["memory"], "-smp", str(q["smp"]),
            "-drive", f"if=pflash,format=raw,readonly=on,file={q['ovmf_code']}",
            "-drive", f"if=pflash,format=raw,file={ROOT / 'build' / target_name / 'OVMF_VARS.fd'}",
            "-drive", f"format=raw,file=fat:rw:{esp_dir}",
            "-serial", f"file:{serial_log}", "-display", "none", "-no-reboot",
-           *exit_args, *extra]
+           *exit_args, *disk_args, *extra]
     return cmd
+
+
+def prepare_disk(t, target_name, fresh=True):
+    """The lab's virtio disk (WP-18): a raw image of `qemu.disk.size_mib` MiB, zero except the
+    pattern sectors `(sector * 7 + i) & 0xFF` over `qemu.disk.pattern` (first, count), rebuilt for
+    every run unless `fresh` is false (the persistence test's second phase keeps the image the
+    first phase wrote). Targets without `qemu.disk` get none."""
+    spec = t["qemu"].get("disk")
+    if not spec:
+        return None
+    img = ROOT / "build" / target_name / "disk.img"
+    if fresh or not img.exists():
+        size = int(spec["size_mib"]) * 1024 * 1024
+        with open(img, "wb") as f:
+            f.truncate(size)
+            pat = spec.get("pattern")
+            if pat:
+                for sector in range(int(pat["first"]), int(pat["first"]) + int(pat["count"])):
+                    f.seek(sector * 512)
+                    f.write(bytes(((sector * 7 + i) & 0xFF) for i in range(512)))
+    return img
 
 
 def prepare_esp(t, target_name, artifact):
@@ -507,16 +531,37 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     rid, d = new_run_dir("boot")
     esp = prepare_esp(t, target_name, art)
-    serial = d / "serial.log"
-    extra = suite_case.get("qemu_extra", []) if suite_case else []
-    cmd = qemu_cmd(t, target_name, esp, serial, extra)
     timeout_s = int(os.environ.get("NAWAH_QEMU_TIMEOUT_S", t["qemu"]["boot_timeout_s"]))
-    rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s)
     plain_boot = suite_case is None or suite_case.get("_plain_boot")
-    write_run(d, rid, target_name, "boot" if plain_boot else f"test:{suite_case['id']}", [" ".join(cmd)], rc, started)
-    text = serial.read_text(errors="replace") if serial.exists() else ""
-    inputs = digests_for(t["build"]["inputs"], t["build"].get("input_globs", ())) | {keep_artifact(d, rid, art): sha256_file(art)}
     case = suite_case or t["boot_oracle"]
+    # A case is one QEMU run, or several `phases` in sequence on the same disk image (the
+    # persistence test): each phase has its own qemu_extra and markers; the case's own markers
+    # and equal_values are checked against the concatenated serial output of all phases.
+    phases = case.get("phases") or [{}]
+    cmds, texts, rcs, phase_failures = [], [], [], []
+    for i, ph in enumerate(phases):
+        serial = d / ("serial.log" if len(phases) == 1 else f"serial-{i + 1}.log")
+        disk = prepare_disk(t, target_name, fresh=(i == 0))
+        extra = ph.get("qemu_extra", case.get("qemu_extra", []))
+        cmd = qemu_cmd(t, target_name, esp, serial, extra, disk)
+        rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s)
+        text = serial.read_text(errors="replace") if serial.exists() else ""
+        cmds.append(" ".join(cmd)); texts.append(text); rcs.append(rc)
+        if len(phases) > 1:
+            exp = ph.get("expected_exit_code", case["expected_exit_code"])
+            req = [m.replace("${BUILD_ID}", build_id) for m in ph.get("required_markers", [])]
+            fb = ph.get("forbidden_markers", [])
+            miss = [m for m in req if m not in text]
+            forb = [m for m in fb if m in text]
+            if rc != exp or miss or forb:
+                phase_failures.append(f"phase {i + 1}: exit {rc} (expected {exp}); missing {miss}; forbidden {forb}")
+                break
+    if len(phases) > 1:
+        (d / "serial.log").write_text("".join(f"=== phase {i + 1} ===\n{t_}" for i, t_ in enumerate(texts)))
+    text = "".join(texts)
+    rc = rcs[-1]
+    write_run(d, rid, target_name, "boot" if plain_boot else f"test:{suite_case['id']}", cmds, rc, started)
+    inputs = digests_for(t["build"]["inputs"], t["build"].get("input_globs", ())) | {keep_artifact(d, rid, art): sha256_file(art)}
     expected_rc = case["expected_exit_code"]
     required = [m.replace("${BUILD_ID}", build_id) for m in case["required_markers"]]
     forbidden = case.get("forbidden_markers", [])
@@ -529,6 +574,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         ma, mb = re.search(pat_a, text), re.search(pat_b, text)
         if not ma or not mb or ma.group(1) != mb.group(1):
             missing.append(f"equal_values({pat_a} vs {pat_b}): {ma and ma.group(1)} != {mb and mb.group(1)}")
+    missing += phase_failures
     if rc == 124:
         verdict, reason = "FAIL", "timeout (hang)"
     elif rc != expected_rc:
@@ -537,7 +583,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         verdict, reason = "FAIL", f"missing markers {missing}; forbidden present {present_forbidden}"
     else:
         verdict, reason = "PASS", "exit code and serial markers match oracle"
-    write_verdict(d, rid, case["test_id"], verdict, case["oracle"], f"exit={expected_rc}; markers={required}; forbidden={forbidden}",
+    write_verdict(d, rid, case["test_id"], verdict, case["oracle"], f"exit={expected_rc}; markers={required}; forbidden={forbidden}; phases={len(phases)}",
                   f"exit={rc}; serial_lines={len(text.splitlines())}; missing={missing}; forbidden_present={present_forbidden}",
                   inputs, reason=reason)
     attach_evidence(case["test_id"], rid, verdict)

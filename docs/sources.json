@@ -527,6 +527,38 @@
       ],
       "limits": "normative text fetched from the SCO mirror of the gABI; the Linux Foundation refspecs copy refused automated access",
       "verified": true
+    },
+    {
+      "id": "S42",
+      "title": "Virtio 1.3 specification sources (OASIS virtio-spec repository): transport-pci.tex, split-ring.tex, content.tex, device-types/blk/description.tex",
+      "url": "https://github.com/oasis-tcs/virtio-spec",
+      "version": "master LaTeX sources (the 1.3 release), read 2026-10-18 via raw.githubusercontent.com",
+      "accessed": "2026-10-18",
+      "supports": [
+        "PCI Vendor 0x1AF4; Device ID 0x1040 + Virtio Device ID (block = 2); transitional 0x1000..0x103F",
+        "struct virtio_pci_cap {u8 cap_vndr, cap_next, cap_len, cfg_type, bar, id, padding[2]; le32 offset, length}; cfg_type COMMON 1, NOTIFY 2 (+ le32 notify_off_multiplier), ISR 3, DEVICE 4, PCI_CFG 5",
+        "struct virtio_pci_common_cfg field order: device_feature_select, device_feature, driver_feature_select, driver_feature, config_msix_vector, num_queues, device_status, config_generation, queue_select, queue_size, queue_msix_vector, queue_enable, queue_notify_off, queue_desc, queue_driver, queue_device, ...; all fields little-endian, 64-bit fields written as two 32-bit halves",
+        "queue notification address = cap.offset + queue_notify_off * notify_off_multiplier",
+        "device status ACKNOWLEDGE 1, DRIVER 2, DRIVER_OK 4, FEATURES_OK 8, DEVICE_NEEDS_RESET 64, FAILED 128; initialization order reset/ACK/DRIVER/features/FEATURES_OK re-read/queues/DRIVER_OK; VIRTIO_F_VERSION_1 = 32",
+        "split virtqueue: virtq_desc {le64 addr, le32 len, le16 flags, le16 next}, NEXT 1, WRITE 2; virtq_avail {le16 flags, le16 idx, le16 ring[]}; virtq_used {le16 flags, le16 idx, {le32 id, le32 len} ring[]}; alignment 16/2/4; the driver writes descriptors, ring entry, barrier, idx, barrier, notify",
+        "block: device id 2, virtqueue 0 requestq; VIRTIO_BLK_F_FLUSH (9); virtio_blk_config.capacity le64 sectors of 512 bytes; virtio_blk_req {le32 type, le32 flags, le64 sector, data[], u8 status}; T_IN 0, T_OUT 1, T_FLUSH 4; status OK 0, IOERR 1, UNSUPP 2; a write becomes stable once a FLUSH sent after it completes"
+      ],
+      "limits": "the rendered OASIS HTML exceeds the fetch window; the LaTeX sources of the same text were read instead",
+      "verified": true
+    },
+    {
+      "id": "S43",
+      "title": "PCI Express ECAM address mapping and PCI 3.0 configuration header (type 0)",
+      "url": "https://wiki.osdev.org/PCI_Express",
+      "version": "secondary summary read 2026-10-18 (PCIe Base Specification §7.2.2 and PCI Local Bus 3.0 §6.1/§6.7 are PCI-SIG member documents)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "ECAM: configuration space of (bus, device, function) at MCFG base + (bus << 20 | device << 15 | function << 12), 4 KiB per function",
+        "header: Vendor ID 0, Device ID 2, Command 4 (bit 1 memory space, bit 2 bus master, bit 10 INTx disable), Status 6 (bit 4 capabilities list), Class Code 9..11, Header Type 0xE (bit 7 multi-function), BAR0..5 at 0x10 (bit 0 I/O; bits 2:1 = 10b 64-bit; bit 3 prefetchable; size by writing all ones), Capabilities Pointer 0x34; capability ID at +0, next at +1",
+        "MCFG entry layout (PCI Firmware Specification): base address u64, segment u16, start bus u8, end bus u8, reserved u32, 16 bytes each after the 36-byte header plus 8 reserved bytes"
+      ],
+      "limits": "primary specifications are not publicly fetchable; the layout is the one every OS (Linux acpi/actbl1.h, EDK2) implements and is confirmed by the lab (ECAM base 0xB0000000, devices enumerated and driven)",
+      "verified": false
     }
   ]
 }

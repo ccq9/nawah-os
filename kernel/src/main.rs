@@ -38,6 +38,10 @@ mod kmain;
 #[cfg(target_arch = "x86_64")]
 mod apps;
 #[cfg(target_arch = "x86_64")]
+mod block;
+#[cfg(target_arch = "x86_64")]
+mod drivers;
+#[cfg(target_arch = "x86_64")]
 mod loader;
 #[cfg(target_arch = "x86_64")]
 mod object;
