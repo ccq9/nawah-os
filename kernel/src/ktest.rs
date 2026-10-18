@@ -193,7 +193,9 @@ pub fn run() -> ! {
         "text_layer" => text_layer(),
         "keyboard_nav" => keyboard_nav("keyboard_nav"),
         "keyboard_nav2" => keyboard_nav("keyboard_nav2"),
+        "window_a11y" => keyboard_nav("window_a11y"),
         "a11y_tree" => a11y_tree(),
+        "arabic_ui" => arabic_ui(),
         "login_screen" => login_screen(),
         "auth_input_isolated" => auth_input_isolated(),
         "lock_survives" => lock_survives(),
@@ -5458,6 +5460,44 @@ fn a11y_tree() -> ! {
         "a11y_tree",
         h,
         "every element was announced with label, role and state, and the UI settings re-rendered the dialog",
+    )
+}
+
+/// TST-M5-ARABIC-UI (REQ-M5-009, §20 scenario 11): the dialog starts English, then `ui.lang=ar`
+/// in the config service turns it Arabic and right-to-left in place (the narrator hears `lang ar`
+/// and the focused element with its Arabic label); the lab toggles the keyboard layout with
+/// Alt+Shift and types two Arabic letters into the field, then navigates to the list and moves
+/// its selection — all announced in Arabic. The lab's screendump shows the Arabic dialog where
+/// it reported. Esc ends it with exit 0.
+fn arabic_ui() -> ! {
+    let (h, admin, clients, _format) = display_env(
+        "arabic_ui",
+        b"/SYSTEM/SVC-UI.TXT",
+        &["auth", "input", "config", "display", "narrator", "dialog"],
+        1,
+    );
+    let cfg = svc_connect(&h, "config");
+    let lang = cfg_request(&cfg, b"SET device ui.lang 0 211 ar", Some(token_entry(&admin)));
+    kprintln!("OSX|{}|ktest|arabic_ui|lang={}|ready=1", BUILD_ID, lang);
+    if lang != "OK 1" {
+        fail("the config service refused ui.lang")
+    }
+    let (state, exit, listing) = wait_dialog_stopped(&h, sched::ticks() + 120_000);
+    kprintln!(
+        "OSX|{}|ktest|arabic_ui|dialog_state={}|dialog_exit={}|listing={}",
+        BUILD_ID,
+        state,
+        exit,
+        listing
+    );
+    if state != "stopped" || exit != 0 {
+        fail("the dialog did not end with Esc")
+    }
+    drop((state, listing, lang, cfg, clients, admin));
+    display_finish(
+        "arabic_ui",
+        h,
+        "the dialog switched to Arabic and took Arabic input and keyboard navigation in right-to-left",
     )
 }
 
