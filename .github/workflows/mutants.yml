@@ -1,6 +1,7 @@
-# Mutation testing of the kernel (TST-M2-MUTANTS, REQ-M2-014): seeded defects must be killed by
-# the M1/M2 guest suites. Manual/scheduled (each mutant rebuilds the kernel), evidence published
-# like the verify workflow so it can be imported with `project.py import-ci-evidence`.
+# Mutation testing of the kernel: TST-M2-MUTANTS (REQ-M2-014, M01-M29 against the M1/M2 suites)
+# and TST-M3-MUTANTS (REQ-M3-010, M30 onwards against the M3 suite). Manual/scheduled (each
+# mutant rebuilds the kernel), evidence published like the verify workflow so it can be imported
+# with `project.py import-ci-evidence --run mutants-<run id>`.
 name: mutants
 on:
   workflow_dispatch:
@@ -27,9 +28,9 @@ jobs:
         run: |
           python3 tools/project.py build --target pc-qemu
           python3 tools/project.py boot --target pc-qemu
-      - name: Mutation run, M2 gate (TST-M2-MUTANTS: M01-M29)
+      - name: "Mutation run, M2 gate (TST-M2-MUTANTS, M01-M29)"
         run: python3 tools/project.py test --target host --suite M2
-      - name: Mutation run, M3 gate (TST-M3-MUTANTS: M30 onwards, WP-22)
+      - name: "Mutation run, M3 gate (TST-M3-MUTANTS, M30 onwards, WP-22)"
         if: always()
         run: python3 tools/project.py test --target host --suite M3-GATE
       - name: Report
