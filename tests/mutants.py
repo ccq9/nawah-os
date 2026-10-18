@@ -209,12 +209,14 @@ MUTANTS = [
      "    if path.is_empty() || path.len() > PATH_MAX || path[0] != b'/' || !path.is_ascii() {",
      "    if path.is_empty() || path.len() > PATH_MAX || !path.is_ascii() {",
      ["TST-M3-PATH-INVALID"], "relative paths accepted"),
-    # The vfs-level flag check is defence in depth behind sys_open's (mutating it alone is
-    # equivalent at the ABI: mutants run 39120514522), so the mutant hits the syscall layer.
+    # Unknown open flags are refused twice with the same ABI answer (sys_open and vfs::open
+    # both map to ERR_INVALID), so removing either check alone is an equivalent mutant (mutants
+    # runs 39120514522 and 39122407455); the defect seeded here is in the rights an open
+    # handle receives instead.
     ("M49", "kernel/src/syscall/mod.rs",
-     "    if flags & !vfs::O_VALID != 0 || flags & (vfs::O_READ | vfs::O_WRITE) == 0 {",
-     "    if flags & (vfs::O_READ | vfs::O_WRITE) == 0 {",
-     ["TST-M3-PATH-INVALID"], "unknown open flags accepted by sys_open"),
+     "    if flags & vfs::O_WRITE != 0 {\n        rights = Rights(rights.0 | Rights::WRITE.0);\n    }",
+     "    rights = Rights(rights.0 | Rights::WRITE.0);",
+     ["TST-M3-FILE-ROUNDTRIP"], "every open handle gets the WRITE right (read-only open can write)"),
 ]
 
 def stage_of(mid: str) -> str:
