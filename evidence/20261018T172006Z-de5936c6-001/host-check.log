@@ -1,0 +1,14 @@
+$ python3 -I tools/screen.py probe /home/runner/work/nawah-os/nawah-os/evidence/20261018T172006Z-de5936c6-001/screen.ppm --build-id de5936c638a9 --square 96,96,FF00FF --square 192,96,00FFFF
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tools/screen.py", line 100, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tools/screen.py", line 76, in main
+    img = read_ppm(a.image)
+          ^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tools/screen.py", line 21, in read_ppm
+    data = open(path, "rb").read()
+           ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/runner/work/nawah-os/nawah-os/evidence/20261018T172006Z-de5936c6-001/screen.ppm'
+
+[exit 1]
