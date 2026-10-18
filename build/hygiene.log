@@ -1,0 +1,11 @@
+Diff in /home/runner/work/nawah-os/nawah-os/kernel/src/main.rs:33:
+ #[allow(unsafe_code)]
+ mod sync;
+ 
+-mod kmain;
+ #[cfg(target_arch = "x86_64")]
+ mod apps;
++mod kmain;
+ #[cfg(target_arch = "x86_64")]
+ mod loader;
+ #[cfg(target_arch = "x86_64")]
