@@ -42,6 +42,8 @@ mod block;
 #[cfg(target_arch = "x86_64")]
 mod diag;
 #[cfg(target_arch = "x86_64")]
+mod display;
+#[cfg(target_arch = "x86_64")]
 mod drivers;
 #[cfg(target_arch = "x86_64")]
 mod fs;

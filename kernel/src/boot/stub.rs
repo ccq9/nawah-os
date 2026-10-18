@@ -11,7 +11,7 @@
 
 use super::efi::{self, BootServices, Handle, Status, SystemTable};
 use crate::arch;
-use crate::bootinfo::{BootInfo, BUILD_ID_LEN, MAGIC, MAX_MEMMAP_BYTES, VERSION};
+use crate::bootinfo::{BootInfo, Framebuffer, BUILD_ID_LEN, MAGIC, MAX_MEMMAP_BYTES, VERSION};
 use crate::cell::BootCell;
 use crate::BUILD_ID;
 
@@ -65,6 +65,7 @@ pub extern "efiapi" fn efi_main(image: Handle, st: *const SystemTable) -> ! {
     kprintln!("OSX|{}|boot|acpi|rsdp={:#x}", BUILD_ID, rsdp);
     // Everything that can see firmware tables lives in this block; nothing from it reaches the
     // kernel except plain numbers and the kernel-owned map buffer (REQ-M1-003).
+    let fb;
     let (final_size, accepted_key, desc_size, desc_ver, attempts, runtime_services) = {
         // SAFETY: firmware passes a pointer to a live EFI_SYSTEM_TABLE for the lifetime of the
         // image; we checked it is non-null and we only read it.
@@ -74,6 +75,46 @@ pub extern "efiapi" fn efi_main(image: Handle, st: *const SystemTable) -> ! {
         }
         // SAFETY: non-null Boot Services table owned by firmware, valid until EBS succeeds.
         let bs: &BootServices = unsafe { &*st.boot_services };
+
+        // Graphics (WP-32, ADR-0019 §1): the linear frame buffer as firmware set it up, 32-bit
+        // RGBX/BGRX only; anything else is reported absent. Numbers only (REQ-M1-003).
+        fb = match efi::graphics_mode(bs) {
+            Some((base, w, h, stride, format, size))
+                if format <= 1
+                    && base != 0
+                    && w > 0
+                    && h > 0
+                    && stride >= w
+                    && u64::from(stride) * u64::from(h) * 4 <= size =>
+            {
+                Framebuffer {
+                    base,
+                    width: w,
+                    height: h,
+                    pitch_px: stride,
+                    pixel_format: format,
+                    present: 1,
+                }
+            }
+            _ => Framebuffer {
+                base: 0,
+                width: 0,
+                height: 0,
+                pitch_px: 0,
+                pixel_format: 0,
+                present: 0,
+            },
+        };
+        kprintln!(
+            "OSX|{}|boot|gop|present={}|w={}|h={}|stride={}|format={}|base={:#x}",
+            BUILD_ID,
+            fb.present,
+            fb.width,
+            fb.height,
+            fb.pitch_px,
+            fb.pixel_format,
+            fb.base
+        );
 
         // Probe the size first (EFI_BUFFER_TOO_SMALL returns the needed size, §7.2.3).
         let mut map_size: usize = 0;
@@ -159,9 +200,9 @@ pub extern "efiapi" fn efi_main(image: Handle, st: *const SystemTable) -> ! {
         descriptor_version: desc_ver,
         ebs_attempts: attempts,
         map_key: accepted_key,
+        fb,
         rsdp,
         runtime_services,
-        ..BootInfo::empty()
     };
     // SAFETY: single write on the boot path before any reader exists (BootCell contract).
     unsafe { BOOT_INFO.get().write(info) };

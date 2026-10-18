@@ -19,7 +19,8 @@
       "user/apps/file_roundtrip/Cargo.toml",
       "user/apps/path_invalid/Cargo.toml",
       "user/apps/fd_leak/Cargo.toml",
-      "user/apps/sh/Cargo.toml"
+      "user/apps/sh/Cargo.toml",
+      "user/apps/fbprobe/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -45,7 +46,8 @@
       "${OUT}/apps/netprobe.elf",
       "${OUT}/apps/kbdprobe.elf",
       "${OUT}/apps/netd.elf",
-      "${OUT}/apps/sh.elf"
+      "${OUT}/apps/sh.elf",
+      "${OUT}/apps/fbprobe.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -392,6 +394,24 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/sh",
         "${OUT}/apps/sh.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/fbprobe/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/fbprobe",
+        "${OUT}/apps/fbprobe.elf"
       ]
     ]
   },
@@ -440,7 +460,7 @@
       {
         "id": "TST-M1-BOOT",
         "test_id": "TST-M1-BOOT",
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); WP-30: the second 16550 (COM2, the diagnostic console) answers its loopback probe (kernel|diag|port=0x2f8|present=1|…|selfcheck=1); the manager receives 5 initial handles (control, authority, interface, keyboard, console)",
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); WP-30: the second 16550 (COM2, the diagnostic console) answers its loopback probe (kernel|diag|port=0x2f8|present=1|…|selfcheck=1); WP-32: firmware's GOP frame buffer is captured before ExitBootServices (boot|gop|present=1), mapped by the kernel and carries the diagnostic pattern (kernel|display|present=1|…|selfcheck=1); the manager receives 6 initial handles (control, authority, interface, keyboard, console, display)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
@@ -479,11 +499,14 @@
           "|rx_bad=0|tx_in_flight=0|mmio=0xffffa8",
           "|kernel|kbd|drained=",
           "|kernel|diag|port=0x2f8|present=1|ring=256|code=ok|selfcheck=1",
+          "|boot|gop|present=1|w=",
+          "|kernel|display|present=1|w=",
+          "|corner=32|cell=16|code=ok|selfcheck=1",
           "|ring=64|pending=0|overflow=0|code=ok|selfcheck=1",
           "|kernel|svcmgr|pid=",
           "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
           "|kernel|spawn|pid=",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=5|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=6|by=kernel",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -2285,7 +2308,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_order",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=5|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=6|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_order|load=OK 3|list=A:ready:0:",
           "|all_ready=1|b_after_a=1|c_after_ab=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2331,7 +2354,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_timeout",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=5|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=6|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_timeout|load=OK 2|list=M:failed:0:",
           "|failed_after_timeout=1|dependent_blocked=1|list_after=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2377,7 +2400,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_restart",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=5|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=6|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_restart|load=OK 1|list=X:given_up:3:",
           "|state=given_up|restarts=3|exit=1|span=",
@@ -3407,6 +3430,58 @@
           "|user_fault|"
         ],
         "timeout_s": 600
+      }
+    ],
+    "M5": [
+      {
+        "id": "TST-M5-DISPLAY-BOOT",
+        "test_id": "TST-M5-DISPLAY-BOOT",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=display_boot"
+        ],
+        "oracle": "the boot stub captures the GOP mode into BootInfo (boot|gop|present=1 with the resolution, stride and 32-bit format), the kernel maps the frame and draws the diagnostic pattern (kernel|display|…|selfcheck=1); the test reads the four corners and decodes the build-id bar back from the frame; the fbprobe process maps the frame through the display object (display_info, display_map, vmo_map read-write and read-only), paints a magenta and a cyan 64×64 square, probes the refusals (write mapping of a read-only handle ERR_ACCESS, bad protection ERR_INVALID, a channel ERR_WRONG_TYPE, unmapping a non-mapping ERR_INVALID) and exits 0x75 with no frame leaked; the lab then takes a QEMU screendump and presses Enter, and tools/screen.py finds the corners, the build id and both squares in the picture; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=display_boot",
+          "|boot|gop|present=1|w=",
+          "|kernel|display|present=1|w=",
+          "|ktest|display_boot|w=",
+          "|corners_ok=1|bar=${BUILD_ID}|bar_ok=1|probe_exit=0x75|magenta=1|cyan=1|frames_delta=0|ready=1",
+          "|ktest|display_boot|lab_key=1|byte=0x1c",
+          "|ktest|pass|the frame carries the kernel's pattern and a process's paint through the display object"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "monitor": {
+          "after": "|ktest|display_boot|w=",
+          "commands": [
+            "screendump ${SCREEN}",
+            "sendkey ret"
+          ],
+          "gap_s": 1.5
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "probe",
+            "${SCREEN}",
+            "--build-id",
+            "${BUILD_ID}",
+            "--square",
+            "96,96,FF00FF",
+            "--square",
+            "192,96,00FFFF"
+          ]
+        ]
       }
     ]
   },

@@ -33,6 +33,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fbprobe"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "fd_leak"
 version = "0.1.0"
 dependencies = [

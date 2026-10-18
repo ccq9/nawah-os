@@ -59,6 +59,9 @@ impl Rights {
     /// Rights of the console handle (WP-30): READ receives bytes, WRITE sends them.
     pub const SERIAL_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::WRITE.0 | Self::WAIT.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of the display handle (WP-32): READ describes, MAP hands out the frame.
+    pub const DISPLAY_DEFAULT: Rights =
+        Rights(Self::READ.0 | Self::MAP.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
 
     pub const fn contains(self, other: Rights) -> bool {
         self.0 & other.0 == other.0
@@ -89,6 +92,9 @@ pub enum Object {
     Keyboard(Arc<bytes::ByteObject>),
     /// The diagnostic console (WP-30, shell.md): COM2 bytes in, user writes out.
     Serial(Arc<bytes::ByteObject>),
+    /// The display (WP-32, display.md): the frame buffer's description; its memory comes as a
+    /// physical VMO from `display_map`.
+    Display(Arc<crate::display::DisplayObject>),
 }
 
 impl Object {
@@ -104,6 +110,7 @@ impl Object {
             Object::Nic(_) => 7,
             Object::Keyboard(_) => 8,
             Object::Serial(_) => 9,
+            Object::Display(_) => 10,
         }
     }
 }
@@ -111,9 +118,11 @@ impl Object {
 /// Largest VMO (contract §3).
 pub const VMO_MAX_BYTES: u64 = 1024 * 1024;
 
-/// A memory object: whole frames owned until the last reference goes.
+/// A memory object: whole frames owned until the last reference goes — or (WP-32) a fixed
+/// physical range such as the frame buffer, which the object describes but never frees.
 pub struct Vmo {
     frames: Vec<Frame>,
+    owned: bool,
 }
 
 impl Vmo {
@@ -126,7 +135,10 @@ impl Vmo {
         let mut frames = Vec::with_capacity(n);
         for _ in 0..n {
             match pmm::alloc_frame() {
-                Some(f) => frames.push(f),
+                Some(f) => {
+                    crate::mm::addrspace::zero_frame(f.0);
+                    frames.push(f);
+                }
                 None => {
                     for f in frames {
                         let _ = pmm::free_frame(f);
@@ -136,18 +148,46 @@ impl Vmo {
             }
         }
         LIVE_VMOS.fetch_add(1, Ordering::Relaxed);
-        Some(Arc::new(Vmo { frames }))
+        Some(Arc::new(Vmo {
+            frames,
+            owned: true,
+        }))
+    }
+
+    /// A VMO over the physical range `[base, base + len)` (page aligned, device memory such as
+    /// the frame buffer): mappable like any VMO, its pages are nobody's to free.
+    pub fn physical(base: u64, len: u64) -> Option<Arc<Vmo>> {
+        if len == 0 || !base.is_multiple_of(4096) || !len.is_multiple_of(4096) {
+            return None;
+        }
+        let frames = (0..len / 4096).map(|i| Frame(base + i * 4096)).collect();
+        LIVE_VMOS.fetch_add(1, Ordering::Relaxed);
+        Some(Arc::new(Vmo {
+            frames,
+            owned: false,
+        }))
     }
 
     pub fn size(&self) -> u64 {
         self.frames.len() as u64 * 4096
     }
+
+    pub fn frames(&self) -> &[Frame] {
+        &self.frames
+    }
+
+    /// False for a physical (device) range: mapped uncacheable, never zeroed or freed.
+    pub fn is_ram(&self) -> bool {
+        self.owned
+    }
 }
 
 impl Drop for Vmo {
     fn drop(&mut self) {
-        for f in self.frames.drain(..) {
-            let _ = pmm::free_frame(f);
+        if self.owned {
+            for f in self.frames.drain(..) {
+                let _ = pmm::free_frame(f);
+            }
         }
         LIVE_VMOS.fetch_sub(1, Ordering::Relaxed);
     }

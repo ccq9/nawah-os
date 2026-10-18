@@ -184,6 +184,7 @@ pub fn run() -> ! {
         "net_tcp_retransmit" => net_tcp_retransmit(),
         "shell_svc" => shell_session("shell_svc"),
         "peer_loss" => peer_loss(),
+        "display_boot" => display_boot(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
@@ -4262,6 +4263,94 @@ fn peer_loss() -> ! {
         frames0,
         "a vanished client and a dead service are each contained: the others keep serving and the dead one is restarted",
     )
+}
+
+// ---- WP-32: the display -------------------------------------------------------------------
+
+/// TST-M5-DISPLAY-BOOT: the frame firmware left (GOP) carries the kernel's diagnostic pattern
+/// (read back through the kernel mapping: the four corners and the build-id bar), a process
+/// (fbprobe) maps the frame through the display object and paints two squares, then the lab
+/// takes a screendump and presses Enter; the host checks the picture against what was printed.
+fn display_boot() -> ! {
+    let Some(d) = crate::display::info() else {
+        fail("no display (firmware left no linear frame buffer)")
+    };
+    let at = |x: u32, y: u32| {
+        crate::arch::mmio::read32(
+            d.virt + (u64::from(y) * u64::from(d.pitch_px) + u64::from(x)) * 4,
+        )
+    };
+    let px = |rgb: u32| crate::display::pixel(d.pixel_format, rgb);
+    let corners = [
+        at(1, 1),
+        at(d.width - 2, 1),
+        at(1, d.height - 2),
+        at(d.width - 2, d.height - 2),
+    ];
+    let expected: Vec<u32> = crate::display::CORNER_COLOURS
+        .iter()
+        .map(|c| px(*c))
+        .collect();
+    let corners_ok = corners.iter().zip(expected.iter()).all(|(a, b)| a == b);
+    // The bar: one cell per hex digit of the build id, decoded back from the frame.
+    let mut decoded = String::new();
+    for i in 0..BUILD_ID.len() as u32 {
+        let v = at(2 * crate::display::CORNER + i * crate::display::CELL + 2, 2);
+        let digit = crate::display::DIGIT_COLOURS
+            .iter()
+            .position(|c| px(*c) == v)
+            .map_or('?', |k| char::from_digit(k as u32, 16).unwrap_or('?'));
+        decoded.push(digit);
+    }
+    let bar_ok = decoded == BUILD_ID;
+    let o = run_with_object(
+        "display_boot",
+        crate::apps::FBPROBE,
+        Entry {
+            object: Object::Display(
+                crate::display::display_object().unwrap_or_else(|| fail("no display object")),
+            ),
+            rights: Rights::DISPLAY_DEFAULT,
+        },
+    );
+    let magenta = at(96 + 32, 96 + 32) == px(0xFF00FF);
+    let cyan = at(192 + 32, 96 + 32) == px(0x00FFFF);
+    kprintln!(
+        "OSX|{}|ktest|display_boot|w={}|h={}|stride={}|format={}|corners_ok={}|bar={}|bar_ok={}|probe_exit={:#x}|magenta={}|cyan={}|frames_delta={}|ready=1",
+        BUILD_ID,
+        d.width,
+        d.height,
+        d.pitch_px,
+        d.pixel_format,
+        u8::from(corners_ok),
+        decoded,
+        u8::from(bar_ok),
+        o.exit_code,
+        u8::from(magenta),
+        u8::from(cyan),
+        o.frames_delta
+    );
+    if !corners_ok || !bar_ok {
+        fail("the diagnostic pattern is not on the frame")
+    }
+    if o.exit_code != 0x75 || !magenta || !cyan || o.frames_delta != 0 {
+        fail("the process could not map and paint the frame through the display object")
+    }
+    // The lab takes its screendump now and presses Enter when done.
+    let kbd = crate::net::keyboard_object();
+    let mut byte = [0u8; 1];
+    let pressed = sched::poll_until(sched::ticks() + 60_000, || kbd.read(&mut byte) > 0);
+    kprintln!(
+        "OSX|{}|ktest|display_boot|lab_key={}|byte={:#x}",
+        BUILD_ID,
+        u8::from(pressed),
+        byte[0]
+    );
+    if !pressed {
+        fail("the lab never pressed a key after its screendump")
+    }
+    drop((decoded, expected));
+    pass("the frame carries the kernel's pattern and a process's paint through the display object")
 }
 
 // ---- WP-27: the network interface and the keyboard ----------------------------------------

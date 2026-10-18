@@ -7,9 +7,27 @@
 
 use alloc::vec::Vec;
 
-use crate::arch::paging::{self, AddressSpace, MapError, PAGE_4K, USER};
+use alloc::sync::Arc;
+
+use crate::arch::paging::{self, AddressSpace, MapError, NX, PAGE_4K, PCD, PWT, USER, WRITE};
 use crate::mm::pmm::{self, Frame};
 use crate::mm::vmm;
+use crate::object::Vmo;
+
+/// User mappings of VMOs (WP-32, ipc.md v1.1 / syscall.md §7): the region above the
+/// application window and the stack, handed out upwards; at most `MAX_MAPPINGS` per process.
+pub const MAP_BASE: u64 = USER_BASE + 0x4000_0000;
+pub const MAP_END: u64 = USER_BASE + 0x8000_0000;
+pub const MAX_MAPPINGS: usize = 64;
+
+/// One mapped VMO: the object stays alive (its frames with it) as long as the mapping does —
+/// the `Arc` is held for that alone.
+struct Mapping {
+    virt: u64,
+    pages: u64,
+    #[allow(dead_code)]
+    vmo: Arc<Vmo>,
+}
 
 /// Lowest user address: PML4 slot 1.
 pub const USER_BASE: u64 = 0x80_0000_0000;
@@ -52,6 +70,9 @@ pub struct UserSpace {
     space: AddressSpace,
     /// Frames mapped as user pages, returned to the allocator on destroy.
     pages: Vec<Frame>,
+    /// VMO mappings (their frames belong to the objects, not to this space).
+    mappings: Vec<Mapping>,
+    next_map: u64,
 }
 
 impl UserSpace {
@@ -67,7 +88,59 @@ impl UserSpace {
         Ok(Self {
             space,
             pages: Vec::new(),
+            mappings: Vec::new(),
+            next_map: MAP_BASE,
         })
+    }
+
+    /// Maps every frame of `vmo` at the next free place of the mapping region, read-only or
+    /// writable, cached (RAM) or uncacheable (a physical VMO over device memory), never
+    /// executable; returns the address. The object is held until the mapping goes.
+    pub fn map_vmo(&mut self, vmo: Arc<Vmo>, writable: bool, cached: bool) -> Result<u64, AsError> {
+        let pages = vmo.size() / PAGE_4K;
+        if pages == 0 || self.mappings.len() >= MAX_MAPPINGS {
+            return Err(AsError::Range);
+        }
+        let virt = self.next_map;
+        if virt + pages * PAGE_4K > MAP_END {
+            return Err(AsError::Range);
+        }
+        let mut flags = USER | NX;
+        if writable {
+            flags |= WRITE;
+        }
+        if !cached {
+            flags |= PCD | PWT;
+        }
+        for (i, f) in vmo.frames().iter().enumerate() {
+            let page = virt + i as u64 * PAGE_4K;
+            if let Err(e) = self.space.map_4k(page, f.0, flags) {
+                // Nothing stays behind: the pages mapped so far go away again.
+                for j in 0..i {
+                    let _ = self.space.unmap_4k(virt + j as u64 * PAGE_4K);
+                }
+                return Err(e.into());
+            }
+        }
+        self.next_map = virt + pages * PAGE_4K;
+        self.mappings.push(Mapping { virt, pages, vmo });
+        Ok(virt)
+    }
+
+    /// Removes the mapping that starts at `virt` (its pages are invalidated on this CPU, the
+    /// one the process's thread runs on) and releases the object reference.
+    pub fn unmap_vmo(&mut self, virt: u64) -> Result<(), AsError> {
+        let Some(i) = self.mappings.iter().position(|m| m.virt == virt) else {
+            return Err(AsError::Range);
+        };
+        let m = self.mappings.swap_remove(i);
+        for j in 0..m.pages {
+            let page = m.virt + j * PAGE_4K;
+            let _ = self.space.unmap_4k(page);
+            paging::invlpg(page);
+        }
+        drop(m);
+        Ok(())
     }
 
     pub const fn cr3(&self) -> u64 {
@@ -111,7 +184,7 @@ impl UserSpace {
     }
 
     /// Frees every table and page the space owns. Refused while the space is active.
-    pub fn destroy(self) -> Result<u64, AsError> {
+    pub fn destroy(mut self) -> Result<u64, AsError> {
         if paging::read_cr3() == self.space.pml4 {
             return Err(AsError::Active);
         }
@@ -121,6 +194,9 @@ impl UserSpace {
             self.space.set_pml4_entry(i, 0);
         }
         let pages = self.pages.len() as u64;
+        // VMO mappings: their frames are the objects' (released with the last reference), so
+        // only the leaves go (teardown frees tables, never leaves).
+        self.mappings.clear();
         // Leaves were recorded in `pages`; teardown frees tables only, then the pages.
         let mut freed = self.space.teardown(1, 256, false);
         for f in self.pages {
@@ -167,4 +243,12 @@ pub fn activate_kernel() {
         // SAFETY: the kernel space maps everything the kernel needs by construction.
         unsafe { kernel.switch_to() };
     }
+}
+
+/// Zeroes the frame `phys` through the direct map (a VMO frame before it can be mapped by a
+/// user process: no stale contents ever reach user space).
+pub fn zero_frame(phys: u64) {
+    let p = vmm::direct(phys) as *mut u8;
+    // SAFETY: a frame the caller owns, reached through the direct map, not mapped anywhere yet.
+    unsafe { core::ptr::write_bytes(p, 0, PAGE_4K as usize) };
 }

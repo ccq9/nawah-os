@@ -1340,7 +1340,7 @@
         "TST-M5-DISPLAY-BOOT",
         "TST-M5-SCREEN"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "implemented_untested",
       "evidence_refs": []
     },
     {

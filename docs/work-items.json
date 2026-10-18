@@ -2120,7 +2120,37 @@
         "docs/PLAN.md §6",
         "docs/adr/0019-graphics-platform.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/adr/0019-graphics-platform.md",
+        "docs/contracts/boot.md",
+        "docs/contracts/display.md",
+        "docs/contracts/ipc.md",
+        "docs/contracts/services.md",
+        "docs/contracts/syscall.md",
+        "docs/sources.json",
+        "kernel/build.rs",
+        "kernel/src/boot/efi.rs",
+        "kernel/src/boot/stub.rs",
+        "kernel/src/display.rs",
+        "kernel/src/kmain.rs",
+        "kernel/src/ktest.rs",
+        "kernel/src/main.rs",
+        "kernel/src/mm/addrspace.rs",
+        "kernel/src/object/mod.rs",
+        "kernel/src/sched/mod.rs",
+        "kernel/src/services.rs",
+        "kernel/src/syscall/mod.rs",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tools/project.py",
+        "tools/screen.py",
+        "tools/unsafe-baseline.txt",
+        "user/apps/fbprobe/src/main.rs",
+        "user/apps/svcmgr/src/main.rs",
+        "user/libnawah/src/lib.rs"
+      ],
       "contract_refs": [
         "docs/contracts/display.md",
         "docs/contracts/syscall.md",
@@ -2140,9 +2170,10 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M5"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

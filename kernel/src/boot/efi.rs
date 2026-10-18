@@ -37,6 +37,96 @@ pub type GetMemoryMapFn = unsafe extern "efiapi" fn(
 pub type ExitBootServicesFn =
     unsafe extern "efiapi" fn(image_handle: Handle, map_key: usize) -> Status;
 
+/// EFI_BOOT_SERVICES.LocateProtocol (UEFI 2.11 §7.3.16): the first interface of `protocol`.
+pub type LocateProtocolFn = unsafe extern "efiapi" fn(
+    protocol: *const [u8; 16],
+    registration: *const c_void,
+    interface: *mut *const c_void,
+) -> Status;
+
+/// EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID {9042a9de-23dc-4a38-96fb-7aded080516a} (UEFI 2.11 §12.9),
+/// as its 16 in-memory bytes.
+pub const GRAPHICS_OUTPUT_PROTOCOL_GUID: [u8; 16] = [
+    0xde, 0xa9, 0x42, 0x90, 0xdc, 0x23, 0x38, 0x4a, 0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a,
+];
+
+/// EFI_GRAPHICS_OUTPUT_PROTOCOL (UEFI 2.11 §12.9.2): only `mode` is read.
+#[repr(C)]
+pub struct GraphicsOutputProtocol {
+    pub query_mode: *const c_void,
+    pub set_mode: *const c_void,
+    pub blt: *const c_void,
+    pub mode: *const GraphicsOutputMode,
+}
+
+/// EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE.
+#[repr(C)]
+pub struct GraphicsOutputMode {
+    pub max_mode: u32,
+    pub mode: u32,
+    pub info: *const GraphicsOutputModeInfo,
+    pub size_of_info: usize,
+    pub frame_buffer_base: u64,
+    pub frame_buffer_size: usize,
+}
+
+/// EFI_GRAPHICS_OUTPUT_MODE_INFORMATION. `pixel_format`: 0 RGBX, 1 BGRX (8 bits each, 32 per
+/// pixel), 2 bit mask, 3 BLT only (no linear frame buffer).
+#[repr(C)]
+pub struct GraphicsOutputModeInfo {
+    pub version: u32,
+    pub horizontal_resolution: u32,
+    pub vertical_resolution: u32,
+    pub pixel_format: u32,
+    pub pixel_information: [u32; 4],
+    pub pixels_per_scan_line: u32,
+}
+
+/// The current graphics mode as plain numbers (base, width, height, pixels per scan line,
+/// pixel format, frame buffer size), or `None` when the protocol is absent or its mode
+/// pointers are null. Nothing but numbers leaves this function.
+pub fn graphics_mode(bs: &BootServices) -> Option<(u64, u32, u32, u32, u32, u64)> {
+    if bs.locate_protocol.is_null() {
+        return None;
+    }
+    // SAFETY: the slot holds LocateProtocol in a live boot-services table (UEFI 2.11 §4.4 slot
+    // order); the function pointer type is the specification's signature.
+    let locate: LocateProtocolFn = unsafe { core::mem::transmute(bs.locate_protocol) };
+    let mut iface: *const c_void = core::ptr::null();
+    // SAFETY: a GUID and an out-pointer the function fills; no registration key.
+    let s = unsafe {
+        locate(
+            &GRAPHICS_OUTPUT_PROTOCOL_GUID,
+            core::ptr::null(),
+            &mut iface,
+        )
+    };
+    if is_error(s) || iface.is_null() {
+        return None;
+    }
+    // SAFETY: the interface is a live EFI_GRAPHICS_OUTPUT_PROTOCOL owned by firmware until EBS;
+    // read only.
+    let gop = unsafe { &*iface.cast::<GraphicsOutputProtocol>() };
+    if gop.mode.is_null() {
+        return None;
+    }
+    // SAFETY: as above, the mode structure and its info are firmware-owned and only read.
+    let mode = unsafe { &*gop.mode };
+    if mode.info.is_null() {
+        return None;
+    }
+    // SAFETY: as above.
+    let info = unsafe { &*mode.info };
+    Some((
+        mode.frame_buffer_base,
+        info.horizontal_resolution,
+        info.vertical_resolution,
+        info.pixels_per_scan_line,
+        info.pixel_format,
+        mode.frame_buffer_size as u64,
+    ))
+}
+
 /// EFI_BOOT_SERVICES (UEFI 2.11 §4.4). Slot order is the ABI; do not reorder.
 #[repr(C)]
 pub struct BootServices {

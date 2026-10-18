@@ -53,6 +53,7 @@ jobs:
             cargo clippy --manifest-path user/apps/kbdprobe/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/netd/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/sh/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/apps/fbprobe/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --features inject_ebs_fail -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --profile ktest --features ktest -- -D warnings
@@ -73,6 +74,8 @@ jobs:
         run: python3 tools/project.py test --target pc-qemu --suite M3
       - name: M4 guest suite (test kernel, processes from the volume)
         run: python3 tools/project.py test --target pc-qemu --suite M4
+      - name: M5 guest suite (test kernel, display and input)
+        run: python3 tools/project.py test --target pc-qemu --suite M5
       - name: A64 early port experiment (build + boot on QEMU virt, ADR-0008)
         run: |
           python3 tools/project.py build --target virt-qemu-aarch64

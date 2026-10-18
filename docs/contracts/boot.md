@@ -9,7 +9,7 @@ firmware (OVMF) → EFI/BOOT/BOOTX64.EFI (صورة النواة الواحدة،
 ## المدخلات والمخرجات
 
 - مدخل: ImageHandle، EFI_SYSTEM_TABLE صالح (Hdr.Signature = 0x5453595320494249).
-- مخرج pre_ebs → post_ebs: بنية `boot_info` مملوكة للنواة في ذاكرة EfiLoaderData محجوزة قبل EBS، تحتوي: magic، version، build_id (ASCII)، memory_map (مؤشر، size، descriptor_size، descriptor_version، map_key المستعمل في EBS الناجح)، framebuffer (اختياري في M1: غائب يُعلن غيابه)، rsdp (العنوان الفيزيائي لـ RSDP من جدول تهيئة EFI — GUID ACPI 2.0 ثم 1.0 — أو 0 إن غاب؛ يُملأ منذ WP-10)، runtime_services (مؤشر).
+- مخرج pre_ebs → post_ebs: بنية `boot_info` مملوكة للنواة في ذاكرة EfiLoaderData محجوزة قبل EBS، تحتوي: magic، version، build_id (ASCII)، memory_map (مؤشر، size، descriptor_size، descriptor_version، map_key المستعمل في EBS الناجح)، framebuffer (اختياري في M1: غائب يُعلن غيابه؛ منذ WP-32 يُملأ من GOP قبل EBS: القاعدة والعرض والارتفاع والبكسلات لكل سطر وصيغة البكسل 0/1، و`present` — display.md أ)، rsdp (العنوان الفيزيائي لـ RSDP من جدول تهيئة EFI — GUID ACPI 2.0 ثم 1.0 — أو 0 إن غاب؛ يُملأ منذ WP-10)، runtime_services (مؤشر).
 - وحدات وأحجام: خريطة الذاكرة تُطلب بحجم 0 أولًا لمعرفة الحجم، ويُخصص الحجم + 2×descriptor_size (المواصفة تحذر أن التخصيص نفسه قد يغير الخريطة). الحد الأقصى المقبول للخريطة في M1: 64 KiB؛ تجاوزه خطأ موثق BOOT_E_MAP_TOO_LARGE.
 
 ## الملكية والصلاحية بعد التسليم

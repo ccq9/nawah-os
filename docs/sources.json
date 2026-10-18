@@ -849,6 +849,33 @@
       ],
       "limits": "bytes the guest writes before a client connects are dropped; the lab connects as soon as QEMU listens and waits for the shell's prompt; the deprecated `server,nowait` spellings still work on 8.2.2 (the monitor uses them) but the console uses `server=on,wait=off`",
       "verified": true
+    },
+    {
+      "id": "S65",
+      "title": "UEFI Specification 2.11 — §12.9 Graphics Output Protocol (EFI_GRAPHICS_OUTPUT_PROTOCOL, _MODE, _MODE_INFORMATION, PixelFormat), §7.3.16 LocateProtocol",
+      "url": "https://uefi.org/specs/UEFI/2.11/12_Protocols_Console_Support.html#graphics-output-protocol",
+      "version": "UEFI 2.11 (2024)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "GUID 9042a9de-23dc-4a38-96fb-7aded080516a; the protocol's Mode pointer gives MaxMode, Mode, Info, SizeOfInfo, FrameBufferBase, FrameBufferSize",
+        "EFI_GRAPHICS_OUTPUT_MODE_INFORMATION: Version, HorizontalResolution, VerticalResolution, PixelFormat (PixelRedGreenBlueReserved8BitPerColor = 0, PixelBlueGreenRedReserved8BitPerColor = 1, PixelBitMask = 2, PixelBltOnly = 3), PixelInformation, PixelsPerScanLine",
+        "the linear frame buffer is usable after ExitBootServices as the firmware left it (no further GOP calls are needed to write pixels)"
+      ],
+      "limits": "structure layout cited from the specification text as remembered and matched against OVMF's behaviour in the lab (boot|gop line); PixelBitMask and BltOnly modes are reported absent by the kernel",
+      "verified": false
+    },
+    {
+      "id": "S66",
+      "title": "QEMU monitor — `screendump filename` (saves the screen of the current display as a PPM image)",
+      "url": "https://www.qemu.org/docs/master/system/monitor.html",
+      "version": "QEMU documentation (master; the lab runs 8.2.2)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "`screendump filename [device=…] [head=…] [format=png|ppm]`: writes the current screen; the default format is PPM (binary P6, 8-bit samples)",
+        "works with `-display none`: the VGA console still renders into guest-visible memory, which is what the dump reads"
+      ],
+      "limits": "the picture is the emulated VGA's view of the frame at the moment of the command; the kernel's own read-back and the dump are two independent witnesses",
+      "verified": false
     }
   ]
 }

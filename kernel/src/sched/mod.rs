@@ -937,6 +937,18 @@ pub fn ticks() -> u64 {
 
 /// The current process's handle table (a shared reference; operate on it outside the
 /// scheduler lock). None for kernel threads.
+/// Runs `f` on the current process's address space under the scheduler lock (WP-32: VMO
+/// mappings; short operations only — page-table edits, no waiting). `None` outside a process.
+pub fn with_current_space<R>(f: impl FnOnce(&mut UserSpace) -> R) -> Option<R> {
+    with(|s| {
+        let pid = index_of(s, s.current[me()]).and_then(|i| s.threads[i].process)?;
+        s.processes
+            .iter_mut()
+            .find(|p| p.id == pid)
+            .map(|p| f(&mut p.space))
+    })
+}
+
 pub fn current_handles() -> Option<Arc<IrqSpinLock<HandleTable>>> {
     with(|s| {
         let pid = index_of(s, s.current[me()]).and_then(|i| s.threads[i].process)?;

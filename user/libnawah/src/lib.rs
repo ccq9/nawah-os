@@ -49,6 +49,11 @@ pub const SYS_SERIAL_READ: u64 = 32;
 pub const SYS_SERIAL_WRITE: u64 = 33;
 pub const SYS_SYSTEM_INFO: u64 = 34;
 pub const SYS_DIR_LIST: u64 = 35;
+/// v1.8 (WP-32, display.md): the display and VMO mappings.
+pub const SYS_DISPLAY_INFO: u64 = 36;
+pub const SYS_DISPLAY_MAP: u64 = 37;
+pub const SYS_VMO_MAP: u64 = 38;
+pub const SYS_VMO_UNMAP: u64 = 39;
 
 pub const ERR_NOSYS: i64 = -1;
 pub const ERR_INVALID: i64 = -2;
@@ -347,6 +352,7 @@ pub mod object_type {
     pub const NIC: i64 = 7;
     pub const KEYBOARD: i64 = 8;
     pub const SERIAL: i64 = 9;
+    pub const DISPLAY: i64 = 10;
 }
 
 /// The type code of the object behind `h`, or an error.
@@ -693,4 +699,73 @@ pub fn dir_list(path: &[u8], out: &mut [u8]) -> Result<usize, i64> {
     } else {
         Ok(r as usize)
     }
+}
+
+/// The display's description (`display_info`, display.md أ).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DisplayInfo {
+    pub width: u32,
+    pub height: u32,
+    pub stride: u32,
+    pub pixel_format: u32,
+    pub bytes: u64,
+    pub base: u64,
+}
+
+pub fn display_info(h: Handle) -> Result<DisplayInfo, i64> {
+    let mut rec = [0u8; 32];
+    let r = syscall6(
+        SYS_DISPLAY_INFO,
+        u64::from(h),
+        rec.as_mut_ptr() as u64,
+        0,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        return Err(r);
+    }
+    let u32_at = |o: usize| u32::from_le_bytes([rec[o], rec[o + 1], rec[o + 2], rec[o + 3]]);
+    let u64_at = |o: usize| {
+        let mut b = [0u8; 8];
+        b.copy_from_slice(&rec[o..o + 8]);
+        u64::from_le_bytes(b)
+    };
+    Ok(DisplayInfo {
+        width: u32_at(0),
+        height: u32_at(4),
+        stride: u32_at(8),
+        pixel_format: u32_at(12),
+        bytes: u64_at(16),
+        base: u64_at(24),
+    })
+}
+
+/// `display_map` (v1.8): a VMO handle over the frame buffer.
+pub fn display_map(h: Handle) -> Result<Handle, i64> {
+    let r = syscall6(SYS_DISPLAY_MAP, u64::from(h), 0, 0, 0, 0, 0);
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as Handle)
+    }
+}
+
+/// Mapping protections for `vmo_map`.
+pub const PROT_READ: u64 = 1;
+pub const PROT_WRITE: u64 = 2;
+
+/// `vmo_map` (v1.8, ipc.md §3): the VMO mapped into this process; the address comes back.
+pub fn vmo_map(h: Handle, prot: u64) -> Result<u64, i64> {
+    let r = syscall6(SYS_VMO_MAP, u64::from(h), prot, 0, 0, 0, 0);
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as u64)
+    }
+}
+
+pub fn vmo_unmap(addr: u64) -> i64 {
+    syscall6(SYS_VMO_UNMAP, addr, 0, 0, 0, 0, 0)
 }

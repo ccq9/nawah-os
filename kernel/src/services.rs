@@ -73,6 +73,13 @@ pub fn spawn_manager() -> Result<Manager, &'static str> {
             rights: Rights::SERIAL_DEFAULT,
         });
     }
+    // The display (WP-32, display.md) when firmware left a frame buffer.
+    if let Some(d) = crate::display::display_object() {
+        initial.push(Entry {
+            object: Object::Display(d),
+            rights: Rights::DISPLAY_DEFAULT,
+        });
+    }
     let n_initial = initial.len();
     let pid =
         crate::user::spawn_elf_with(&image, 1, initial, object.clone()).map_err(|e| e.code())?;

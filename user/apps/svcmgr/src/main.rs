@@ -216,6 +216,7 @@ struct Manager {
     nic: Option<Handle>,
     keyboard: Option<Handle>,
     serial: Option<Handle>,
+    display: Option<Handle>,
 }
 
 enum LoadError {
@@ -413,6 +414,7 @@ impl Manager {
             b"net" => self.nic,
             b"input" => self.keyboard,
             b"sh" => self.serial,
+            b"display" => self.display,
             _ => None,
         };
         if let Some(r) = resource {
@@ -708,13 +710,15 @@ fn main() -> u64 {
     }
     // Initial handles are consecutive (syscall.md §5): the kernel's resources follow the
     // control channel, recognised by type (handle_type) whatever their order.
-    let (mut authority, mut nic, mut keyboard, mut serial) = (None, None, None, None);
+    let (mut authority, mut nic, mut keyboard, mut serial, mut display) =
+        (None, None, None, None, None);
     for h in ctl + 1..ctl + 8 {
         match libnawah::handle_type(h) {
             libnawah::object_type::AUTHORITY => authority = Some(h),
             libnawah::object_type::NIC => nic = Some(h),
             libnawah::object_type::KEYBOARD => keyboard = Some(h),
             libnawah::object_type::SERIAL => serial = Some(h),
+            libnawah::object_type::DISPLAY => display = Some(h),
             t if t < 0 => break,
             _ => {}
         }
@@ -728,6 +732,7 @@ fn main() -> u64 {
         nic,
         keyboard,
         serial,
+        display,
     };
     // Wait-set slots: 0 = control; then per service (boot channel, process).
     let mut entries = [WaitEntry {

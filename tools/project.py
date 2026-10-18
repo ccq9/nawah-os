@@ -602,6 +602,9 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
                         except OSError:
                             pass
                         for line in actions["commands"]:
+                            # `${SCREEN}`: the screendump file of this run (WP-32), kept as
+                            # evidence next to the serial log.
+                            line = line.replace("${SCREEN}", str(serial_path.parent / "screen.ppm"))
                             m.sendall((line + "\n").encode())
                             time.sleep(float(actions.get("gap_s", 0.2)))
                     o.write(f"# monitor: sent {len(actions['commands'])} command(s) after {actions['after']!r}\n".encode()); o.flush()
@@ -911,7 +914,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     disk_path = ROOT / "build" / target_name / "disk.img"
     with open(d / "host-check.log", "w") as hc:
         for check in case.get("host_checks", []):
-            cmd = [x.replace("${DISK}", str(disk_path)).replace("${BUILD_ID}", build_id) for x in check]
+            cmd = [x.replace("${DISK}", str(disk_path)).replace("${BUILD_ID}", build_id).replace("${SCREEN}", str(d / "screen.ppm")) for x in check]
             r = subprocess.run(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             hc.write(f"$ {' '.join(cmd)}\n{r.stdout}\n[exit {r.returncode}]\n")
             if r.returncode != 0:

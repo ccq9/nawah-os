@@ -353,7 +353,7 @@ def stage_of(mid: str) -> str:
     return "M2" if n < 30 else ("M3" if n < 50 else "M4")
 
 # Applications first (WP-17): the kernel embeds them through NAWAH_APPS_DIR (kernel/build.rs).
-APPS = ["hello", "file_roundtrip", "path_invalid", "fd_leak", "echo", "launch", "child", "waiter", "svcmgr", "svc", "authd", "configd", "netprobe", "kbdprobe", "netd", "sh"]
+APPS = ["hello", "file_roundtrip", "path_invalid", "fd_leak", "echo", "launch", "child", "waiter", "svcmgr", "svc", "authd", "configd", "netprobe", "kbdprobe", "netd", "sh", "fbprobe"]
 def app_step(name):
     return (["cargo", "build", "--profile", "app", "--offline", "--manifest-path", f"user/apps/{name}/Cargo.toml",
              "--target", "x86_64-unknown-none", "--target-dir", "build/pc-qemu/cargo-user"],

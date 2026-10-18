@@ -64,6 +64,11 @@ pub const SYS_SERIAL_READ: u64 = 32;
 pub const SYS_SERIAL_WRITE: u64 = 33;
 pub const SYS_SYSTEM_INFO: u64 = 34;
 pub const SYS_DIR_LIST: u64 = 35;
+/// v1.8 (WP-32, display.md): the display, and VMO mappings for user processes.
+pub const SYS_DISPLAY_INFO: u64 = 36;
+pub const SYS_DISPLAY_MAP: u64 = 37;
+pub const SYS_VMO_MAP: u64 = 38;
+pub const SYS_VMO_UNMAP: u64 = 39;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -551,6 +556,10 @@ pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
         SYS_SERIAL_WRITE => flat(sys_serial_write(args[0] as Handle, args[1], args[2])),
         SYS_SYSTEM_INFO => flat(sys_system_info(args[0], args[1])),
         SYS_DIR_LIST => flat(sys_dir_list(args[0], args[1], args[2], args[3])),
+        SYS_DISPLAY_INFO => flat(sys_display_info(args[0] as Handle, args[1])),
+        SYS_DISPLAY_MAP => flat(sys_display_map(args[0] as Handle)),
+        SYS_VMO_MAP => flat(sys_vmo_map(args[0] as Handle, args[1])),
+        SYS_VMO_UNMAP => flat(sys_vmo_unmap(args[0])),
         _ => ERR_NOSYS,
     }
 }
@@ -1003,4 +1012,97 @@ fn sys_dir_list(ptr: u64, len: u64, out: u64, cap: u64) -> Result<i64, i64> {
     })?;
     copy_to_user(out, &buf[..written])?;
     Ok(written as i64)
+}
+
+/// Size of the `display_info` record (v1.8).
+pub const DISPLAY_INFO_LEN: usize = 32;
+
+/// `display_info(h, out)` (v1.8, display.md أ): width, height, stride (pixels), pixel format
+/// (0 RGBX, 1 BGRX) as u32, then the frame's byte length and physical base as u64.
+fn sys_display_info(h: Handle, out: u64) -> Result<i64, i64> {
+    let d = {
+        let table = table()?;
+        let t = table.lock();
+        let e = t.get(h, Rights::READ).map_err(handle_err)?;
+        match &e.object {
+            Object::Display(d) => d.clone(),
+            _ => return Err(ERR_WRONG_TYPE),
+        }
+    };
+    user_range_ok(out, DISPLAY_INFO_LEN as u64, true)?;
+    let i = d.info;
+    let mut rec = [0u8; DISPLAY_INFO_LEN];
+    rec[0..4].copy_from_slice(&i.width.to_le_bytes());
+    rec[4..8].copy_from_slice(&i.height.to_le_bytes());
+    rec[8..12].copy_from_slice(&i.pitch_px.to_le_bytes());
+    rec[12..16].copy_from_slice(&i.pixel_format.to_le_bytes());
+    rec[16..24].copy_from_slice(&i.bytes.to_le_bytes());
+    rec[24..32].copy_from_slice(&i.base.to_le_bytes());
+    copy_to_user(out, &rec)?;
+    Ok(0)
+}
+
+/// `display_map(h)` (v1.8): a VMO over the frame buffer's physical range (MAP right on the
+/// display handle); the new handle has the VMO's default rights.
+fn sys_display_map(h: Handle) -> Result<i64, i64> {
+    let table = table()?;
+    let mut t = table.lock();
+    let d = {
+        let e = t.get(h, Rights::MAP).map_err(handle_err)?;
+        match &e.object {
+            Object::Display(d) => d.clone(),
+            _ => return Err(ERR_WRONG_TYPE),
+        }
+    };
+    let bytes = d.info.bytes.next_multiple_of(4096);
+    let vmo = Vmo::physical(d.info.base, bytes).ok_or(ERR_INVALID)?;
+    let handle = t
+        .insert(Entry {
+            object: Object::Vmo(vmo),
+            rights: Rights::VMO_DEFAULT,
+        })
+        .map_err(handle_err)?;
+    Ok(i64::from(handle))
+}
+
+/// `vmo_map(h, prot)` (v1.8, ipc.md §3): maps the VMO into the calling process at an address
+/// the kernel chooses; `prot` bit 0 read, bit 1 write, each needing the same right on the
+/// handle (plus MAP); never executable; a physical VMO is mapped uncacheable. Returns the
+/// address; `ERR_NO_RESOURCES` when the process's mapping budget or region is spent.
+fn sys_vmo_map(h: Handle, prot: u64) -> Result<i64, i64> {
+    if prot == 0 || prot & !3 != 0 {
+        return Err(ERR_INVALID);
+    }
+    let vmo = {
+        let table = table()?;
+        let t = table.lock();
+        let e = t.get(h, Rights::MAP).map_err(handle_err)?;
+        let mut need = Rights::MAP;
+        if prot & 1 != 0 {
+            need = Rights(need.0 | Rights::READ.0);
+        }
+        if prot & 2 != 0 {
+            need = Rights(need.0 | Rights::WRITE.0);
+        }
+        if !e.rights.contains(need) {
+            return Err(ERR_ACCESS);
+        }
+        match &e.object {
+            Object::Vmo(v) => v.clone(),
+            _ => return Err(ERR_WRONG_TYPE),
+        }
+    };
+    let cached = vmo.is_ram();
+    let r = sched::with_current_space(|space| space.map_vmo(vmo, prot & 2 != 0, cached))
+        .ok_or(ERR_INVALID)?;
+    match r {
+        Ok(addr) => Ok(addr as i64),
+        Err(_) => Err(ERR_NO_RESOURCES),
+    }
+}
+
+/// `vmo_unmap(addr)` (v1.8): removes the mapping that starts at `addr`.
+fn sys_vmo_unmap(addr: u64) -> Result<i64, i64> {
+    let r = sched::with_current_space(|space| space.unmap_vmo(addr)).ok_or(ERR_INVALID)?;
+    r.map(|_| 0).map_err(|_| ERR_INVALID)
 }
