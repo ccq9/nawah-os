@@ -1523,8 +1523,11 @@ fn elf_malformed() -> ! {
     if loads.len() < 2 {
         fail("hello has fewer than two PT_LOAD segments")
     }
+    // The results table is reserved before the baseline: its growth is heap memory from the
+    // frame allocator and would be counted against the refused images (CI run 39143549498:
+    // one frame, once the scheduler's reserved tables changed the slab layout).
+    let mut results: Vec<(&str, &str, bool)> = Vec::with_capacity(16);
     let frames0 = pmm::stats().free_frames;
-    let mut results: Vec<(&str, &str, bool)> = Vec::new();
     let mut check = |name: &'static str, img: Vec<u8>, expected: ElfError| {
         let got = match crate::user::spawn_elf(&img, 1) {
             Ok((pid, _)) => {
