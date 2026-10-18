@@ -16,9 +16,9 @@
    ],
    "gate_status": "passed",
    "gate_evidence_refs": [
-    "evidence/20261018T104627Z-be1d6600-001",
-    "evidence/20261018T105051Z-be1d6600-001",
-    "evidence/20261018T105051Z-be1d6600-002"
+    "evidence/20261018T113619Z-029e0e06-001",
+    "evidence/20261018T113857Z-029e0e06-001",
+    "evidence/20261018T113857Z-029e0e06-002"
    ]
   },
   {
@@ -39,10 +39,10 @@
    ],
    "gate_status": "passed",
    "gate_evidence_refs": [
-    "evidence/20261018T104630Z-be1d6600-001",
-    "evidence/20261018T104641Z-be1d6600-001",
-    "evidence/20261018T104645Z-be1d6600-001",
-    "evidence/20261018T105051Z-be1d6600-003"
+    "evidence/20261018T113643Z-029e0e06-001",
+    "evidence/20261018T113653Z-029e0e06-001",
+    "evidence/20261018T113630Z-029e0e06-001",
+    "evidence/20261018T113857Z-029e0e06-003"
    ]
   },
   {
@@ -64,31 +64,31 @@
    ],
    "gate_status": "passed",
    "gate_evidence_refs": [
-    "evidence/20261018T051719Z-13055739-001",
-    "evidence/20261018T104649Z-be1d6600-001",
-    "evidence/20261018T104652Z-be1d6600-001",
-    "evidence/20261018T104656Z-be1d6600-001",
-    "evidence/20261018T104700Z-be1d6600-001",
-    "evidence/20261018T104704Z-be1d6600-001",
-    "evidence/20261018T104708Z-be1d6600-001",
-    "evidence/20261018T104711Z-be1d6600-001",
-    "evidence/20261018T104715Z-be1d6600-001",
-    "evidence/20261018T104719Z-be1d6600-001",
-    "evidence/20261018T104723Z-be1d6600-001",
-    "evidence/20261018T104727Z-be1d6600-001",
-    "evidence/20261018T104730Z-be1d6600-001",
-    "evidence/20261018T104734Z-be1d6600-001",
-    "evidence/20261018T104738Z-be1d6600-001",
-    "evidence/20261018T104742Z-be1d6600-001",
-    "evidence/20261018T104746Z-be1d6600-001",
-    "evidence/20261018T104749Z-be1d6600-001",
-    "evidence/20261018T104753Z-be1d6600-001",
-    "evidence/20261018T104757Z-be1d6600-001",
-    "evidence/20261018T104801Z-be1d6600-001",
-    "evidence/20261018T104805Z-be1d6600-001",
-    "evidence/20261018T104808Z-be1d6600-001",
-    "evidence/20261018T104812Z-be1d6600-001",
-    "evidence/20261018T104816Z-be1d6600-001"
+    "evidence/20261018T113656Z-029e0e06-001",
+    "evidence/20261018T113633Z-029e0e06-001",
+    "evidence/20261018T113635Z-029e0e06-001",
+    "evidence/20261018T113637Z-029e0e06-001",
+    "evidence/20261018T113639Z-029e0e06-001",
+    "evidence/20261018T113641Z-029e0e06-001",
+    "evidence/20261018T113644Z-029e0e06-001",
+    "evidence/20261018T113646Z-029e0e06-001",
+    "evidence/20261018T113648Z-029e0e06-001",
+    "evidence/20261018T113650Z-029e0e06-001",
+    "evidence/20261018T113652Z-029e0e06-001",
+    "evidence/20261018T113655Z-029e0e06-001",
+    "evidence/20261018T113658Z-029e0e06-001",
+    "evidence/20261018T113701Z-029e0e06-001",
+    "evidence/20261018T113703Z-029e0e06-001",
+    "evidence/20261018T113705Z-029e0e06-001",
+    "evidence/20261018T113708Z-029e0e06-001",
+    "evidence/20261018T113710Z-029e0e06-001",
+    "evidence/20261018T113712Z-029e0e06-001",
+    "evidence/20261018T113714Z-029e0e06-001",
+    "evidence/20261018T113716Z-029e0e06-001",
+    "evidence/20261018T113719Z-029e0e06-001",
+    "evidence/20261018T113721Z-029e0e06-001",
+    "evidence/20261018T113723Z-029e0e06-001",
+    "evidence/20261018T113725Z-029e0e06-001"
    ]
   },
   {
@@ -101,9 +101,59 @@
     "بوابة M2 ناجحة ضمن التفويض"
    ],
    "exit_conditions": [
-    "وفق البند 20 من OS-EXEC-AR 3.2"
+    "عملية سليمة تعمل في حلقة 3 عبر SYSCALL/SYSRET ومحمّل ELF64 W^X وتطبيقات تُبنى بسلسلة الأدوات نفسها (USER-SYSCALL، APP-EXIT-CODE، ELF-MALFORMED، ELF-WX)",
+    "تُرفض المؤشرات والأطوال والحقوق غير الصالحة بخطأ لا panic (USER-BAD-PTR، USER-KERNEL-ACCESS، SYSRET-CANONICAL، RIGHTS-DENIED، IPC-OVERSIZE، CLOSED-HANDLE، PATH-INVALID)",
+    "لا تصل عملية إلى ذاكرة أخرى أو النواة (ISOLATION، USER-KERNEL-ACCESS، AS-SWITCH)",
+    "تنظيف موارد العملية بعد إنهائها (EXIT-CLEANUP، IPC-NO-LEAK، FD-LEAK، HANDLE-TABLE)",
+    "تبقى البيانات المقر حفظها بعد إعادة التشغيل مع قارئ مستقل على المضيف (BLK-PERSIST، FAT32-PERSIST، FAT32-TOOL، fsck.fat)",
+    "السباقات وSMP: المعالجات الأربعة تعمل، الأقفال دقيقة تحت التنازع، إبطال TLB عبر IPI، وكل الأجنحة تحت -smp 4 (SMP-ONLINE، LOCK-CONTENTION، TLB-SHOOTDOWN)",
+    "اختبار طفرات ≥95% على وحدات M3 (20/20 بعد تدقيق الطفرات المكافئة وأعطال المختبر)",
+    "مراجعة مسماة docs/operations/m3-review.md"
    ],
-   "gate_status": "open"
+   "gate_status": "passed",
+   "gate_evidence_refs": [
+    "evidence/20261018T113727Z-029e0e06-001",
+    "evidence/20261018T113730Z-029e0e06-001",
+    "evidence/20261018T113734Z-029e0e06-001",
+    "evidence/20261018T113851Z-029e0e06-001",
+    "evidence/20261018T113851Z-029e0e06-002",
+    "evidence/20261018T113736Z-029e0e06-001",
+    "evidence/20261018T113739Z-029e0e06-001",
+    "evidence/20261018T113741Z-029e0e06-001",
+    "evidence/20261018T113743Z-029e0e06-001",
+    "evidence/20261018T113745Z-029e0e06-001",
+    "evidence/20261018T113747Z-029e0e06-001",
+    "evidence/20261018T113750Z-029e0e06-001",
+    "evidence/20261018T113752Z-029e0e06-001",
+    "evidence/20261018T113754Z-029e0e06-001",
+    "evidence/20261018T113759Z-029e0e06-001",
+    "evidence/20261018T113801Z-029e0e06-001",
+    "evidence/20261018T113803Z-029e0e06-001",
+    "evidence/20261018T113805Z-029e0e06-001",
+    "evidence/20261018T113807Z-029e0e06-001",
+    "evidence/20261018T113814Z-029e0e06-001",
+    "evidence/20261018T113816Z-029e0e06-001",
+    "evidence/20261018T113818Z-029e0e06-001",
+    "evidence/20261018T113821Z-029e0e06-001",
+    "evidence/20261018T113823Z-029e0e06-001",
+    "evidence/20261018T113825Z-029e0e06-001",
+    "evidence/20261018T113837Z-029e0e06-001",
+    "evidence/20261018T113839Z-029e0e06-001",
+    "evidence/20261018T113842Z-029e0e06-001",
+    "evidence/20261018T113844Z-029e0e06-001",
+    "evidence/20261018T113846Z-029e0e06-001",
+    "evidence/20261018T113849Z-029e0e06-001",
+    "evidence/20261018T114630Z-029e0e06-001",
+    "evidence/20261018T113732Z-029e0e06-001",
+    "evidence/20261018T113756Z-029e0e06-001",
+    "evidence/20261018T113810Z-029e0e06-001",
+    "evidence/20261018T113812Z-029e0e06-001",
+    "evidence/20261018T113829Z-029e0e06-001",
+    "evidence/20261018T113831Z-029e0e06-001",
+    "evidence/20261018T113833Z-029e0e06-001",
+    "evidence/20261018T113857Z-029e0e06-004",
+    "evidence/20261018T113653Z-029e0e06-001"
+   ]
   },
   {
    "id": "M4",
@@ -117,7 +167,7 @@
    "exit_conditions": [
     "وفق البند 20 من OS-EXEC-AR 3.2"
    ],
-   "gate_status": "not_started"
+   "gate_status": "open"
   },
   {
    "id": "M5",
