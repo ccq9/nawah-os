@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T032135Z-1e20e326-002"
+    "evidence/20261018T035026Z-fad0bff5-002"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T032135Z-1e20e326-001"
+    "evidence/20261018T035026Z-fad0bff5-001"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T031547Z-1e20e326-001",
-    "evidence/20261018T031550Z-1e20e326-001"
+    "evidence/20261018T034026Z-fad0bff5-001",
+    "evidence/20261018T034028Z-fad0bff5-001"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T032135Z-1e20e326-002"
+    "evidence/20261018T035026Z-fad0bff5-002"
    ],
    "blocker": null
   },
@@ -354,10 +354,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T031553Z-1e20e326-001",
-    "evidence/20261018T031555Z-1e20e326-001",
-    "evidence/20261018T031558Z-1e20e326-001",
-    "evidence/20261018T032136Z-1e20e326-001"
+    "evidence/20261018T034031Z-fad0bff5-001",
+    "evidence/20261018T034034Z-fad0bff5-001",
+    "evidence/20261018T034037Z-fad0bff5-001",
+    "evidence/20261018T035026Z-fad0bff5-003"
    ],
    "blocker": null
   },
@@ -427,17 +427,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T031602Z-1e20e326-001",
-    "evidence/20261018T031605Z-1e20e326-001",
-    "evidence/20261018T031608Z-1e20e326-001",
-    "evidence/20261018T031611Z-1e20e326-001",
-    "evidence/20261018T031615Z-1e20e326-001",
-    "evidence/20261018T031618Z-1e20e326-001",
-    "evidence/20261018T031621Z-1e20e326-001",
-    "evidence/20261018T031624Z-1e20e326-001",
-    "evidence/20261018T031627Z-1e20e326-001",
-    "evidence/20261018T031630Z-1e20e326-001",
-    "evidence/20261018T031633Z-1e20e326-001"
+    "evidence/20261018T034040Z-fad0bff5-001",
+    "evidence/20261018T034043Z-fad0bff5-001",
+    "evidence/20261018T034046Z-fad0bff5-001",
+    "evidence/20261018T034050Z-fad0bff5-001",
+    "evidence/20261018T034053Z-fad0bff5-001",
+    "evidence/20261018T034056Z-fad0bff5-001",
+    "evidence/20261018T034059Z-fad0bff5-001",
+    "evidence/20261018T034103Z-fad0bff5-001",
+    "evidence/20261018T034106Z-fad0bff5-001",
+    "evidence/20261018T034109Z-fad0bff5-001",
+    "evidence/20261018T034112Z-fad0bff5-001"
    ],
    "blocker": null
   },
@@ -488,9 +488,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T031636Z-1e20e326-001",
-    "evidence/20261018T031639Z-1e20e326-001",
-    "evidence/20261018T031642Z-1e20e326-001"
+    "evidence/20261018T034115Z-fad0bff5-001",
+    "evidence/20261018T034118Z-fad0bff5-001",
+    "evidence/20261018T034122Z-fad0bff5-001"
    ],
    "blocker": null
   },
@@ -546,12 +546,19 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M2"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261018T034125Z-fad0bff5-001",
+    "evidence/20261018T034128Z-fad0bff5-001",
+    "evidence/20261018T034131Z-fad0bff5-001",
+    "evidence/20261018T034134Z-fad0bff5-001",
+    "evidence/20261018T034034Z-fad0bff5-001"
+   ],
    "blocker": null
   },
   {

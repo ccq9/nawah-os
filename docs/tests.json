@@ -12,7 +12,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T032135Z-1e20e326-001"
+    "evidence/20261018T035026Z-fad0bff5-001"
    ]
   },
   {
@@ -26,7 +26,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T032135Z-1e20e326-002"
+    "evidence/20261018T035026Z-fad0bff5-002"
    ]
   },
   {
@@ -39,7 +39,7 @@
    "command": "python3 tools/project.py build --target pc-qemu-e0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031547Z-1e20e326-001"
+    "evidence/20261018T034026Z-fad0bff5-001"
    ]
   },
   {
@@ -52,7 +52,7 @@
    "command": "python3 tools/project.py boot --target pc-qemu-e0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031550Z-1e20e326-001"
+    "evidence/20261018T034028Z-fad0bff5-001"
    ]
   },
   {
@@ -65,7 +65,7 @@
    "command": "python3 tools/project.py build --target pc-qemu",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031553Z-1e20e326-001"
+    "evidence/20261018T034031Z-fad0bff5-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -79,7 +79,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031555Z-1e20e326-001"
+    "evidence/20261018T034034Z-fad0bff5-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -93,7 +93,7 @@
    "command": "python3 tools/project.py test --target host --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T032136Z-1e20e326-001"
+    "evidence/20261018T035026Z-fad0bff5-003"
    ]
   },
   {
@@ -106,7 +106,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031558Z-1e20e326-001"
+    "evidence/20261018T034037Z-fad0bff5-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -133,7 +133,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031602Z-1e20e326-001"
+    "evidence/20261018T034040Z-fad0bff5-001"
    ]
   },
   {
@@ -146,7 +146,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031605Z-1e20e326-001"
+    "evidence/20261018T034043Z-fad0bff5-001"
    ]
   },
   {
@@ -159,7 +159,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031608Z-1e20e326-001"
+    "evidence/20261018T034046Z-fad0bff5-001"
    ]
   },
   {
@@ -172,7 +172,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031611Z-1e20e326-001"
+    "evidence/20261018T034050Z-fad0bff5-001"
    ]
   },
   {
@@ -185,7 +185,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031615Z-1e20e326-001"
+    "evidence/20261018T034053Z-fad0bff5-001"
    ]
   },
   {
@@ -198,7 +198,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031618Z-1e20e326-001"
+    "evidence/20261018T034056Z-fad0bff5-001"
    ]
   },
   {
@@ -211,7 +211,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031621Z-1e20e326-001"
+    "evidence/20261018T034059Z-fad0bff5-001"
    ]
   },
   {
@@ -224,7 +224,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031624Z-1e20e326-001"
+    "evidence/20261018T034103Z-fad0bff5-001"
    ]
   },
   {
@@ -237,7 +237,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031627Z-1e20e326-001"
+    "evidence/20261018T034106Z-fad0bff5-001"
    ]
   },
   {
@@ -250,7 +250,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031630Z-1e20e326-001"
+    "evidence/20261018T034109Z-fad0bff5-001"
    ]
   },
   {
@@ -263,7 +263,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031633Z-1e20e326-001"
+    "evidence/20261018T034112Z-fad0bff5-001"
    ]
   },
   {
@@ -276,7 +276,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031636Z-1e20e326-001"
+    "evidence/20261018T034115Z-fad0bff5-001"
    ]
   },
   {
@@ -289,7 +289,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031639Z-1e20e326-001"
+    "evidence/20261018T034118Z-fad0bff5-001"
    ]
   },
   {
@@ -302,7 +302,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T031642Z-1e20e326-001"
+    "evidence/20261018T034122Z-fad0bff5-001"
    ]
   },
   {
@@ -313,8 +313,10 @@
    "layer": "guest",
    "oracle": "after the CR3 switch: CR3 = kernel PML4, CR0.WP and EFER.NXE set, .text RX / .data RW+NX / headers R+NX, direct map aliases RAM, null page and stack guard pages unmapped, boot-services memory reclaimed, allocator still works; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T034125Z-fad0bff5-001"
+   ]
   },
   {
    "id": "TST-M2-VMM-WP",
@@ -324,8 +326,10 @@
    "layer": "negative",
    "oracle": "supervisor write to .text with CR0.WP -> #PF error code 3 (present, write, supervisor: SDM Fig. 7-11); CR2 = RIP = target; exit 173",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T034128Z-fad0bff5-001"
+   ]
   },
   {
    "id": "TST-M2-VMM-NX",
@@ -335,8 +339,10 @@
    "layer": "negative",
    "oracle": "instruction fetch from .data under EFER.NXE -> #PF error code 0x11 (present, instruction fetch: SDM Fig. 7-11 bit 4); CR2 = RIP = target; exit 173",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T034131Z-fad0bff5-001"
+   ]
   },
   {
    "id": "TST-M2-VMM-GUARD",
@@ -346,8 +352,10 @@
    "layer": "negative",
    "oracle": "push loop overflows the guarded kernel stack: #PF in the guard page cannot push its frame -> #DF (SDM Table 7-5) on the guarded IST1 stack, error code 0, CR2 = stack base - 8; exit 161",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261018T034134Z-fad0bff5-001"
+   ]
   },
   {
    "id": "TST-M2-TIMER-TICKS",
