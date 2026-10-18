@@ -412,7 +412,7 @@
     "Table 5.4 DESCRIPTION_HEADER 36 bytes, Length at 4, whole table sums to zero; XSDT 8-byte entries from 36, must be used when present",
     "§5.2.12 MADT: LAPIC address at 36, Flags at 40 (bit 0 PCAT_COMPAT: 8259 must be masked); Table 5.22 LAPIC (APIC ID at 3, Flags at 4: bit0 Enabled, bit1 Online Capable); Table 5.24 I/O APIC (ID 2, address 4, GSI base 8); Table 5.25 ISO (source 3, GSI 4, MPS INTI flags 8); Table 5.29 LAPIC address override (u64 at 4); Table 5.34 x2APIC (ID at 4, Flags at 8)"
    ],
-   "limits": "",
+   "limits": "HTML rendering of the specification; table numbers follow the 6.5 HTML edition",
    "verified": true
   },
   {
