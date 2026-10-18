@@ -1,0 +1,21 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T180923Z-11062395-001",
+ "started_at": "2026-10-18T18:09:23+00:00",
+ "finished_at": "2026-10-18T18:09:25+00:00",
+ "source_revision": "11062395ab8d23fb8d5ba7c7ec8347aba7d88f35",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "pc-qemu-e0",
+ "worker": "interactive-agent",
+ "purpose": "build",
+ "commands": [
+  "clang -target x86_64-unknown-windows -ffreestanding -fshort-wchar -mno-red-zone -fno-stack-protector -fno-builtin -nostdlib -O2 -Wall -Wextra -Werror -DBUILD_ID=11062395ab8d -c boot/e0/main.c -o /home/runner/work/nawah-os/nawah-os/build/pc-qemu-e0/e0.o",
+  "lld-link /subsystem:efi_application /entry:efi_main /nodefaultlib /home/runner/work/nawah-os/nawah-os/build/pc-qemu-e0/e0.o /out:/home/runner/work/nawah-os/nawah-os/build/pc-qemu-e0/E0.EFI"
+ ],
+ "exit_code": 0,
+ "notes": "imported from CI run 39152768170 (verification runner)"
+}
