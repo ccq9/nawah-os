@@ -3373,8 +3373,10 @@ fn token_entry(t: &Arc<crate::object::token::Token>) -> Entry {
     }
 }
 
-/// Ends a config test: the balance line after every allocation is gone.
-fn cfg_finish(env: CfgEnv, name: &str, pass_msg: &str) -> ! {
+/// Closes a config test's manager and services and checks the object balance; the frame
+/// baseline comes back for `cfg_balance`, which the test calls once its own strings are gone
+/// (the test body lives in a block so they drop before the frames are counted).
+fn cfg_close(env: CfgEnv, name: &str) -> u64 {
     let CfgEnv {
         h,
         cfg,
@@ -3394,6 +3396,10 @@ fn cfg_finish(env: CfgEnv, name: &str, pass_msg: &str) -> ! {
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
     }
+    frames0
+}
+
+fn cfg_balance(name: &str, frames0: u64, pass_msg: &str) -> ! {
     let delta = SvcHarness::frames_delta(frames0);
     kprintln!("OSX|{}|ktest|{}|frames_delta={}", BUILD_ID, name, delta);
     if delta != 0 {
@@ -3405,202 +3411,215 @@ fn cfg_finish(env: CfgEnv, name: &str, pass_msg: &str) -> ! {
 /// REQ-M4-004: the config service itself refuses a write whose token lacks the permission.
 fn authz_denied() -> ! {
     let env = cfg_env("authz_denied");
-    let ep = &env.cfg;
-    let denied = cfg_request(
-        ep,
-        b"SET device lab.key 0 101 user-tried",
-        Some(token_entry(&env.user)),
-    );
-    let unchanged = cfg_request(ep, b"GET device lab.key", None);
-    let no_handle = cfg_request(ep, b"SET device lab.key 0 102 nobody", None);
-    let allowed = cfg_request(
-        ep,
-        b"SET device lab.key 0 103 admin-set",
-        Some(token_entry(&env.admin)),
-    );
-    let now = cfg_request(ep, b"GET device lab.key", None);
-    // The user may write its own store but not another user's, nor the policy.
-    let own = cfg_request(
-        ep,
-        b"SET user/1001 theme 0 104 dark",
-        Some(token_entry(&env.user)),
-    );
-    let other = cfg_request(
-        ep,
-        b"SET user/1000 theme 0 105 dark",
-        Some(token_entry(&env.user)),
-    );
-    let policy_user = cfg_request(
-        ep,
-        b"SET policy lab.key 0 106 forced",
-        Some(token_entry(&env.user)),
-    );
-    // A revoked token is refused even with every permission.
-    env.admin.revoke();
-    let revoked = cfg_request(
-        ep,
-        b"SET device lab.key 1 107 after-revoke",
-        Some(token_entry(&env.admin)),
-    );
-    let still = cfg_request(ep, b"GET device lab.key", None);
-    kprintln!(
-        "OSX|{}|ktest|authz_denied|denied={}|unchanged={}|no_handle={}|allowed={}|now={}|own={}|other={}|policy_user={}|revoked={}|still={}",
-        BUILD_ID,
-        denied,
-        unchanged,
-        no_handle,
-        allowed,
-        now,
-        own,
-        other,
-        policy_user,
-        revoked,
-        still
-    );
-    if denied != "ERR ACCESS" || unchanged != "ERR NOT_FOUND" || no_handle != "ERR BAD_REQUEST" {
-        fail("a write without the permission was not refused at the authority layer")
-    }
-    if allowed != "OK 1"
-        || now != "OK 1 admin-set"
-        || own != "OK 1"
-        || other != "ERR ACCESS"
-        || policy_user != "ERR ACCESS"
-    {
-        fail("the permitted writes or the user-store rules are wrong")
-    }
-    if revoked != "ERR ACCESS" || still != "OK 1 admin-set" {
-        fail("a revoked token was accepted")
-    }
-    cfg_finish(
-        env,
+    let frames0 = {
+        let ep = &env.cfg;
+        let denied = cfg_request(
+            ep,
+            b"SET device lab.key 0 101 user-tried",
+            Some(token_entry(&env.user)),
+        );
+        let unchanged = cfg_request(ep, b"GET device lab.key", None);
+        let no_handle = cfg_request(ep, b"SET device lab.key 0 102 nobody", None);
+        let allowed = cfg_request(
+            ep,
+            b"SET device lab.key 0 103 admin-set",
+            Some(token_entry(&env.admin)),
+        );
+        let now = cfg_request(ep, b"GET device lab.key", None);
+        // The user may write its own store but not another user's, nor the policy.
+        let own = cfg_request(
+            ep,
+            b"SET user/1001 theme 0 104 dark",
+            Some(token_entry(&env.user)),
+        );
+        let other = cfg_request(
+            ep,
+            b"SET user/1000 theme 0 105 dark",
+            Some(token_entry(&env.user)),
+        );
+        let policy_user = cfg_request(
+            ep,
+            b"SET policy lab.key 0 106 forced",
+            Some(token_entry(&env.user)),
+        );
+        // A revoked token is refused even with every permission.
+        env.admin.revoke();
+        let revoked = cfg_request(
+            ep,
+            b"SET device lab.key 1 107 after-revoke",
+            Some(token_entry(&env.admin)),
+        );
+        let still = cfg_request(ep, b"GET device lab.key", None);
+        kprintln!(
+            "OSX|{}|ktest|authz_denied|denied={}|unchanged={}|no_handle={}|allowed={}|now={}|own={}|other={}|policy_user={}|revoked={}|still={}",
+            BUILD_ID,
+            denied,
+            unchanged,
+            no_handle,
+            allowed,
+            now,
+            own,
+            other,
+            policy_user,
+            revoked,
+            still
+        );
+        if denied != "ERR ACCESS" || unchanged != "ERR NOT_FOUND" || no_handle != "ERR BAD_REQUEST"
+        {
+            fail("a write without the permission was not refused at the authority layer")
+        }
+        if allowed != "OK 1"
+            || now != "OK 1 admin-set"
+            || own != "OK 1"
+            || other != "ERR ACCESS"
+            || policy_user != "ERR ACCESS"
+        {
+            fail("the permitted writes or the user-store rules are wrong")
+        }
+        if revoked != "ERR ACCESS" || still != "OK 1 admin-set" {
+            fail("a revoked token was accepted")
+        }
+        cfg_close(env, "authz_denied")
+    };
+    cfg_balance(
         "authz_denied",
+        frames0,
         "the config service refuses writes whose token lacks the permission",
     )
 }
 
 fn config_cas() -> ! {
     let env = cfg_env("config_cas");
-    let ep = &env.cfg;
-    let a = token_entry(&env.admin);
-    let first = cfg_request(ep, b"SET device cas.key 0 201 one", Some(a.clone()));
-    let read1 = cfg_request(ep, b"GET device cas.key", None);
-    // Two writers read version 1 and both try to replace it: the second loses.
-    let w1 = cfg_request(ep, b"SET device cas.key 1 202 two", Some(a.clone()));
-    let w2 = cfg_request(ep, b"SET device cas.key 1 203 three", Some(a.clone()));
-    let read2 = cfg_request(ep, b"GET device cas.key", None);
-    let create_existing = cfg_request(ep, b"SET device cas.key 0 204 four", Some(a.clone()));
-    let del_wrong = cfg_request(ep, b"DEL device cas.key 1 205", Some(a.clone()));
-    let del = cfg_request(ep, b"DEL device cas.key 2 206", Some(a.clone()));
-    let gone = cfg_request(ep, b"GET device cas.key", None);
-    let recreate = cfg_request(ep, b"SET device cas.key 0 207 five", Some(a.clone()));
-    let bad_key = cfg_request(ep, b"SET device Bad/Key 0 208 x", Some(a));
-    kprintln!(
-        "OSX|{}|ktest|config_cas|first={}|read1={}|w1={}|w2={}|read2={}|create_existing={}|del_wrong={}|del={}|gone={}|recreate={}|bad_key={}",
-        BUILD_ID, first, read1, w1, w2, read2, create_existing, del_wrong, del, gone, recreate, bad_key
-    );
-    if first != "OK 1"
-        || read1 != "OK 1 one"
-        || w1 != "OK 2"
-        || w2 != "ERR VERSION 2"
-        || read2 != "OK 2 two"
-    {
-        fail("compare-and-set did not refuse the stale writer")
-    }
-    if create_existing != "ERR VERSION 2"
-        || del_wrong != "ERR VERSION 2"
-        || del != "OK 2"
-        || gone != "ERR NOT_FOUND"
-        || recreate != "OK 1"
-        || bad_key != "ERR INVALID"
-    {
-        fail("create/delete versioning wrong")
-    }
-    cfg_finish(
-        env,
+    let frames0 = {
+        let ep = &env.cfg;
+        let a = token_entry(&env.admin);
+        let first = cfg_request(ep, b"SET device cas.key 0 201 one", Some(a.clone()));
+        let read1 = cfg_request(ep, b"GET device cas.key", None);
+        // Two writers read version 1 and both try to replace it: the second loses.
+        let w1 = cfg_request(ep, b"SET device cas.key 1 202 two", Some(a.clone()));
+        let w2 = cfg_request(ep, b"SET device cas.key 1 203 three", Some(a.clone()));
+        let read2 = cfg_request(ep, b"GET device cas.key", None);
+        let create_existing = cfg_request(ep, b"SET device cas.key 0 204 four", Some(a.clone()));
+        let del_wrong = cfg_request(ep, b"DEL device cas.key 1 205", Some(a.clone()));
+        let del = cfg_request(ep, b"DEL device cas.key 2 206", Some(a.clone()));
+        let gone = cfg_request(ep, b"GET device cas.key", None);
+        let recreate = cfg_request(ep, b"SET device cas.key 0 207 five", Some(a.clone()));
+        let bad_key = cfg_request(ep, b"SET device Bad/Key 0 208 x", Some(a));
+        kprintln!(
+            "OSX|{}|ktest|config_cas|first={}|read1={}|w1={}|w2={}|read2={}|create_existing={}|del_wrong={}|del={}|gone={}|recreate={}|bad_key={}",
+            BUILD_ID, first, read1, w1, w2, read2, create_existing, del_wrong, del, gone, recreate, bad_key
+        );
+        if first != "OK 1"
+            || read1 != "OK 1 one"
+            || w1 != "OK 2"
+            || w2 != "ERR VERSION 2"
+            || read2 != "OK 2 two"
+        {
+            fail("compare-and-set did not refuse the stale writer")
+        }
+        if create_existing != "ERR VERSION 2"
+            || del_wrong != "ERR VERSION 2"
+            || del != "OK 2"
+            || gone != "ERR NOT_FOUND"
+            || recreate != "OK 1"
+            || bad_key != "ERR INVALID"
+        {
+            fail("create/delete versioning wrong")
+        }
+        cfg_close(env, "config_cas")
+    };
+    cfg_balance(
         "config_cas",
+        frames0,
         "compare-and-set keeps the first writer's value and refuses the stale one",
     )
 }
 
 fn config_retry() -> ! {
     let env = cfg_env("config_retry");
-    let ep = &env.cfg;
-    let a = token_entry(&env.admin);
-    let r1 = cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone()));
-    let r1b = cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone()));
-    let read = cfg_request(ep, b"GET device retry.key", None);
-    // A refused request is replayed as refused too.
-    let bad = cfg_request(ep, b"SET device retry.key 0 302 v2", Some(a.clone()));
-    let bad_again = cfg_request(ep, b"SET device retry.key 1 302 v2", Some(a.clone()));
-    let read2 = cfg_request(ep, b"GET device retry.key", None);
-    // Id 0 is never cached: the second call is a real (now stale) attempt.
-    let z1 = cfg_request(ep, b"SET device retry.key 1 0 v3", Some(a.clone()));
-    let z2 = cfg_request(ep, b"SET device retry.key 1 0 v3", Some(a));
-    let read3 = cfg_request(ep, b"GET device retry.key", None);
-    kprintln!(
-        "OSX|{}|ktest|config_retry|r1={}|r1b={}|read={}|bad={}|bad_again={}|read2={}|z1={}|z2={}|read3={}",
-        BUILD_ID, r1, r1b, read, bad, bad_again, read2, z1, z2, read3
-    );
-    if r1 != "OK 1" || r1b != "OK 1" || read != "OK 1 v1" {
-        fail("a repeated request id was applied twice or answered differently")
-    }
-    if bad != "ERR VERSION 1" || bad_again != "ERR VERSION 1" || read2 != "OK 1 v1" {
-        fail("a refused request was not replayed as refused")
-    }
-    if z1 != "OK 2" || z2 != "ERR VERSION 2" || read3 != "OK 2 v3" {
-        fail("request id 0 was cached")
-    }
-    cfg_finish(
-        env,
+    let frames0 = {
+        let ep = &env.cfg;
+        let a = token_entry(&env.admin);
+        let r1 = cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone()));
+        let r1b = cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone()));
+        let read = cfg_request(ep, b"GET device retry.key", None);
+        // A refused request is replayed as refused too.
+        let bad = cfg_request(ep, b"SET device retry.key 0 302 v2", Some(a.clone()));
+        let bad_again = cfg_request(ep, b"SET device retry.key 1 302 v2", Some(a.clone()));
+        let read2 = cfg_request(ep, b"GET device retry.key", None);
+        // Id 0 is never cached: the second call is a real (now stale) attempt.
+        let z1 = cfg_request(ep, b"SET device retry.key 1 0 v3", Some(a.clone()));
+        let z2 = cfg_request(ep, b"SET device retry.key 1 0 v3", Some(a));
+        let read3 = cfg_request(ep, b"GET device retry.key", None);
+        kprintln!(
+            "OSX|{}|ktest|config_retry|r1={}|r1b={}|read={}|bad={}|bad_again={}|read2={}|z1={}|z2={}|read3={}",
+            BUILD_ID, r1, r1b, read, bad, bad_again, read2, z1, z2, read3
+        );
+        if r1 != "OK 1" || r1b != "OK 1" || read != "OK 1 v1" {
+            fail("a repeated request id was applied twice or answered differently")
+        }
+        if bad != "ERR VERSION 1" || bad_again != "ERR VERSION 1" || read2 != "OK 1 v1" {
+            fail("a refused request was not replayed as refused")
+        }
+        if z1 != "OK 2" || z2 != "ERR VERSION 2" || read3 != "OK 2 v3" {
+            fail("request id 0 was cached")
+        }
+        cfg_close(env, "config_retry")
+    };
+    cfg_balance(
         "config_retry",
+        frames0,
         "a repeated request id applies once and replays its stored reply",
     )
 }
 
 fn config_notify() -> ! {
     let env = cfg_env("config_notify");
-    let ep = &env.cfg;
-    let a = token_entry(&env.admin);
-    let (sub_k, sub_s) = channel::create();
-    let sub = cfg_request(
-        ep,
-        b"SUBSCRIBE device",
-        Some(Entry {
-            object: Object::Channel(sub_s),
-            rights: Rights::CHANNEL_DEFAULT,
-        }),
-    );
-    let set = cfg_request(ep, b"SET device note.key 0 401 first", Some(a.clone()));
-    let n1 = recv_text(&sub_k, 500);
-    let refused = cfg_request(ep, b"SET device note.key 0 402 second", Some(a.clone()));
-    let n2 = recv_text(&sub_k, 50);
-    let set2 = cfg_request(ep, b"SET device note.key 1 403 third", Some(a.clone()));
-    let n3 = recv_text(&sub_k, 500);
-    let other_store = cfg_request(ep, b"SET policy note.key 0 404 pol", Some(a.clone()));
-    let n4 = recv_text(&sub_k, 50);
-    let del = cfg_request(ep, b"DEL device note.key 2 405", Some(a));
-    let n5 = recv_text(&sub_k, 500);
-    kprintln!(
-        "OSX|{}|ktest|config_notify|sub={}|set={}|n1={}|refused={}|n2={}|set2={}|n3={}|other_store={}|n4={}|del={}|n5={}",
-        BUILD_ID, sub, set, n1, refused, n2, set2, n3, other_store, n4, del, n5
-    );
-    if sub != "OK" || set != "OK 1" || n1 != "CHANGED device note.key 1" {
-        fail("no notification for a successful write")
-    }
-    if refused != "ERR VERSION 1" || n2 != "-" || other_store != "OK 1" || n4 != "-" {
-        fail("a notification arrived for a refused write or another store")
-    }
-    if set2 != "OK 2"
-        || n3 != "CHANGED device note.key 2"
-        || del != "OK 2"
-        || n5 != "CHANGED device note.key 0"
-    {
-        fail("later notifications wrong")
-    }
-    drop(sub_k);
-    cfg_finish(
-        env,
+    let frames0 = {
+        let ep = &env.cfg;
+        let a = token_entry(&env.admin);
+        let (sub_k, sub_s) = channel::create();
+        let sub = cfg_request(
+            ep,
+            b"SUBSCRIBE device",
+            Some(Entry {
+                object: Object::Channel(sub_s),
+                rights: Rights::CHANNEL_DEFAULT,
+            }),
+        );
+        let set = cfg_request(ep, b"SET device note.key 0 401 first", Some(a.clone()));
+        let n1 = recv_text(&sub_k, 500);
+        let refused = cfg_request(ep, b"SET device note.key 0 402 second", Some(a.clone()));
+        let n2 = recv_text(&sub_k, 50);
+        let set2 = cfg_request(ep, b"SET device note.key 1 403 third", Some(a.clone()));
+        let n3 = recv_text(&sub_k, 500);
+        let other_store = cfg_request(ep, b"SET policy note.key 0 404 pol", Some(a.clone()));
+        let n4 = recv_text(&sub_k, 50);
+        let del = cfg_request(ep, b"DEL device note.key 2 405", Some(a));
+        let n5 = recv_text(&sub_k, 500);
+        kprintln!(
+            "OSX|{}|ktest|config_notify|sub={}|set={}|n1={}|refused={}|n2={}|set2={}|n3={}|other_store={}|n4={}|del={}|n5={}",
+            BUILD_ID, sub, set, n1, refused, n2, set2, n3, other_store, n4, del, n5
+        );
+        if sub != "OK" || set != "OK 1" || n1 != "CHANGED device note.key 1" {
+            fail("no notification for a successful write")
+        }
+        if refused != "ERR VERSION 1" || n2 != "-" || other_store != "OK 1" || n4 != "-" {
+            fail("a notification arrived for a refused write or another store")
+        }
+        if set2 != "OK 2"
+            || n3 != "CHANGED device note.key 2"
+            || del != "OK 2"
+            || n5 != "CHANGED device note.key 0"
+        {
+            fail("later notifications wrong")
+        }
+        drop(sub_k);
+        cfg_close(env, "config_notify")
+    };
+    cfg_balance(
         "config_notify",
+        frames0,
         "subscribers hear every successful change of their store and nothing else",
     )
 }
@@ -3621,63 +3640,66 @@ fn recv_text(ep: &Endpoint, ticks: u64) -> String {
 
 fn policy_precedence() -> ! {
     let env = cfg_env("policy_precedence");
-    let ep = &env.cfg;
-    let a = token_entry(&env.admin);
-    let u = token_entry(&env.user);
-    let none = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
-    let dev = cfg_request(ep, b"SET device ui.theme 0 501 light", Some(a.clone()));
-    let r_dev = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
-    let usr = cfg_request(ep, b"SET user/1001 ui.theme 0 502 dark", Some(u.clone()));
-    let r_usr = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
-    let r_admin = cfg_request(ep, b"RESOLVE ui.theme", Some(a.clone()));
-    let pol = cfg_request(ep, b"SET policy ui.theme 0 503 corporate", Some(a.clone()));
-    let r_pol = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
-    let del_pol = cfg_request(ep, b"DEL policy ui.theme 1 504", Some(a.clone()));
-    let r_back = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
-    let export = cfg_request(ep, b"EXPORT user/1001", None);
-    let import = cfg_request(
-        ep,
-        b"IMPORT user/1001 505
-ui.font mono
-ui.size 14",
-        Some(u.clone()),
-    );
-    let imported = cfg_request(ep, b"GET user/1001 ui.size", None);
-    let import_bad = cfg_request(
-        ep,
-        b"IMPORT user/1001 506
-ui.ok yes
-BAD KEY x",
-        Some(u),
-    );
-    let not_applied = cfg_request(ep, b"GET user/1001 ui.ok", None);
-    kprintln!(
-        "OSX|{}|ktest|policy_precedence|none={}|dev={}|r_dev={}|usr={}|r_usr={}|r_admin={}|pol={}|r_pol={}|del_pol={}|r_back={}|export={}|import={}|imported={}|import_bad={}|not_applied={}",
-        BUILD_ID, none, dev, r_dev, usr, r_usr, r_admin, pol, r_pol, del_pol, r_back,
-        export.replace('\n', ";"), import, imported, import_bad, not_applied
-    );
-    if none != "ERR NOT_FOUND" || dev != "OK 1" || r_dev != "OK device 1 light" {
-        fail("device default not resolved")
-    }
-    if usr != "OK 1" || r_usr != "OK user 1 dark" || r_admin != "OK device 1 light" {
-        fail("user value does not take precedence over the device default for its user only")
-    }
-    if pol != "OK 1"
-        || r_pol != "OK policy 1 corporate"
-        || del_pol != "OK 1"
-        || r_back != "OK user 1 dark"
-    {
-        fail("policy precedence or its removal wrong")
-    }
-    if export != "OK\nui.theme 1 dark"
-        || import != "OK 2"
-        || imported != "OK 1 14"
-        || import_bad != "ERR INVALID 2"
-        || not_applied != "ERR NOT_FOUND"
-    {
-        fail("export/import wrong")
-    }
-    cfg_finish(env, "policy_precedence", "policy beats the user value, which beats the device default; removing the policy restores the user value")
+    let frames0 = {
+        let ep = &env.cfg;
+        let a = token_entry(&env.admin);
+        let u = token_entry(&env.user);
+        let none = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
+        let dev = cfg_request(ep, b"SET device ui.theme 0 501 light", Some(a.clone()));
+        let r_dev = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
+        let usr = cfg_request(ep, b"SET user/1001 ui.theme 0 502 dark", Some(u.clone()));
+        let r_usr = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
+        let r_admin = cfg_request(ep, b"RESOLVE ui.theme", Some(a.clone()));
+        let pol = cfg_request(ep, b"SET policy ui.theme 0 503 corporate", Some(a.clone()));
+        let r_pol = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
+        let del_pol = cfg_request(ep, b"DEL policy ui.theme 1 504", Some(a.clone()));
+        let r_back = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
+        let export = cfg_request(ep, b"EXPORT user/1001", None);
+        let import = cfg_request(
+            ep,
+            b"IMPORT user/1001 505
+    ui.font mono
+    ui.size 14",
+            Some(u.clone()),
+        );
+        let imported = cfg_request(ep, b"GET user/1001 ui.size", None);
+        let import_bad = cfg_request(
+            ep,
+            b"IMPORT user/1001 506
+    ui.ok yes
+    BAD KEY x",
+            Some(u),
+        );
+        let not_applied = cfg_request(ep, b"GET user/1001 ui.ok", None);
+        kprintln!(
+            "OSX|{}|ktest|policy_precedence|none={}|dev={}|r_dev={}|usr={}|r_usr={}|r_admin={}|pol={}|r_pol={}|del_pol={}|r_back={}|export={}|import={}|imported={}|import_bad={}|not_applied={}",
+            BUILD_ID, none, dev, r_dev, usr, r_usr, r_admin, pol, r_pol, del_pol, r_back,
+            export.replace('\n', ";"), import, imported, import_bad, not_applied
+        );
+        if none != "ERR NOT_FOUND" || dev != "OK 1" || r_dev != "OK device 1 light" {
+            fail("device default not resolved")
+        }
+        if usr != "OK 1" || r_usr != "OK user 1 dark" || r_admin != "OK device 1 light" {
+            fail("user value does not take precedence over the device default for its user only")
+        }
+        if pol != "OK 1"
+            || r_pol != "OK policy 1 corporate"
+            || del_pol != "OK 1"
+            || r_back != "OK user 1 dark"
+        {
+            fail("policy precedence or its removal wrong")
+        }
+        if export != "OK\nui.theme 1 dark"
+            || import != "OK 2"
+            || imported != "OK 1 14"
+            || import_bad != "ERR INVALID 2"
+            || not_applied != "ERR NOT_FOUND"
+        {
+            fail("export/import wrong")
+        }
+        cfg_close(env, "policy_precedence")
+    };
+    cfg_balance("policy_precedence", frames0, "policy beats the user value, which beats the device default; removing the policy restores the user value")
 }
 
 /// Two phases on one image: phase 1 writes a device value through the service; phase 2 (a
@@ -3689,26 +3711,29 @@ fn config_persist(write: bool) -> ! {
         "config_persist_read"
     };
     let env = cfg_env(name);
-    let ep = &env.cfg;
-    let result = if write {
-        cfg_request(
-            ep,
-            b"SET device lab.persist 0 601 kept-across-reboot",
-            Some(token_entry(&env.admin)),
-        )
-    } else {
-        cfg_request(ep, b"GET device lab.persist", None)
+    let frames0 = {
+        let ep = &env.cfg;
+        let result = if write {
+            cfg_request(
+                ep,
+                b"SET device lab.persist 0 601 kept-across-reboot",
+                Some(token_entry(&env.admin)),
+            )
+        } else {
+            cfg_request(ep, b"GET device lab.persist", None)
+        };
+        kprintln!("OSX|{}|ktest|{}|result={}", BUILD_ID, name, result);
+        if write && result != "OK 1" {
+            fail("the value was not written")
+        }
+        if !write && result != "OK 1 kept-across-reboot" {
+            fail("the value did not survive the restart")
+        }
+        cfg_close(env, name)
     };
-    kprintln!("OSX|{}|ktest|{}|result={}", BUILD_ID, name, result);
-    if write && result != "OK 1" {
-        fail("the value was not written")
-    }
-    if !write && result != "OK 1 kept-across-reboot" {
-        fail("the value did not survive the restart")
-    }
-    cfg_finish(
-        env,
+    cfg_balance(
         name,
+        frames0,
         if write {
             "config value written and persisted"
         } else {

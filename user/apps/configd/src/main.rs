@@ -561,7 +561,12 @@ impl State {
     /// One request; `handle` is the handle it carried (token or subscriber channel). Returns
     /// whether the reply should be cached under the request id (modifying requests).
     fn request(&mut self, req: &[u8], handle: Option<Handle>, out: &mut Out) -> Option<u64> {
-        let mut f = Fields { s: req };
+        // The first line is the request; IMPORT carries its lines after it.
+        let head = match req.iter().position(|c| *c == b'\n') {
+            Some(p) => &req[..p],
+            None => req,
+        };
+        let mut f = Fields { s: head };
         let verb = f.next().unwrap_or(b"");
         let token = handle.and_then(|h| libnawah::token_info(h).ok());
         match verb {
@@ -880,7 +885,11 @@ fn main() -> u64 {
                 let handle = if nh == 1 { Some(hs[0]) } else { None };
                 // A repeated request id: the stored reply, nothing applied (config.md §3).
                 let rid_of = |req: &[u8]| -> Option<u64> {
-                    let mut f = Fields { s: req };
+                    let head = match req.iter().position(|c| *c == b'\n') {
+                        Some(p) => &req[..p],
+                        None => req,
+                    };
+                    let mut f = Fields { s: head };
                     match f.next()? {
                         b"SET" | b"DEL" => {
                             f.next()?;
