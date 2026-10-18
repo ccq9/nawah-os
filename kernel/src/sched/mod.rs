@@ -143,6 +143,11 @@ struct Sched {
 
 static SCHED: IrqSpinLock<Option<Sched>> = IrqSpinLock::new("sched", None);
 
+/// Table capacities reserved at init (the lab's population stays well inside them; beyond,
+/// the tables still grow — the reserve is about a stable frame count, not a limit).
+const THREAD_RESERVE: usize = 64;
+const PROCESS_RESERVE: usize = 16;
+
 /// A switch decided by `prepare_switch`, to be performed right away with interrupts disabled.
 struct Switch {
     prev_slot: *mut u64,
@@ -216,15 +221,16 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         waiting: false,
         on_cpu: true,
     };
-    // Capacities up front, so the first few spawns do not grow the vectors (keeps the boot
-    // self-check's frame balance exact).
-    let mut threads = Vec::with_capacity(8);
+    // Capacities up front, so spawns within the reserve never grow the tables: a growth keeps
+    // the larger buffer for the kernel's lifetime, and a test's frame balance counts it (CI
+    // run 39142666458: the fifth process of the shell cases grew `processes` past 4).
+    let mut threads = Vec::with_capacity(THREAD_RESERVE);
     threads.push(t0);
     let mut g = SCHED.lock();
     assert!(g.is_none(), "scheduler initialised twice");
     *g = Some(Sched {
         threads,
-        processes: Vec::with_capacity(4),
+        processes: Vec::with_capacity(PROCESS_RESERVE),
         current: [0; MAX_CPUS],
         prev: [None; MAX_CPUS],
         idle: [0; MAX_CPUS],
