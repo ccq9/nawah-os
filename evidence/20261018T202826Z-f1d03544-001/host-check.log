@@ -1,0 +1,31 @@
+$ python3 -I tools/transcript.py check /home/runner/work/nawah-os/nawah-os/evidence/20261018T202826Z-f1d03544-001 platform/pc-qemu/expect/a11y-tree.txt
+serial.log: transcript differs (8 lines, 11 expected)
+  line 9: got      <missing>
+          expected theme scale=8 contrast=normal
+  line 10: got      <missing>
+          expected theme scale=8 contrast=high
+  line 11: got      <missing>
+          expected cancel
+
+[exit 1]
+$ python3 -I tools/transcript.py dims 21,45,260,242 21,45,260,242 2
+before [21, 45, 260, 242] after [21, 45, 260, 242]: NOT scaled as expected
+
+[exit 1]
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261018T202826Z-f1d03544-001/screen.ppm --pixel 23,47,000000 --pixel 151,76,FFFF00
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tools/screen.py", line 145, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tools/screen.py", line 120, in main
+    return desktop(a)
+           ^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tools/screen.py", line 86, in desktop
+    img = read_ppm(a.image)
+          ^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tools/screen.py", line 27, in read_ppm
+    data = open(path, "rb").read()
+           ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/runner/work/nawah-os/nawah-os/evidence/20261018T202826Z-f1d03544-001/screen.ppm'
+
+[exit 1]
