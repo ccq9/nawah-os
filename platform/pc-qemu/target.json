@@ -39,7 +39,8 @@
       "${OUT}/apps/waiter.elf",
       "${OUT}/apps/svcmgr.elf",
       "${OUT}/apps/svc.elf",
-      "${OUT}/apps/authd.elf"
+      "${OUT}/apps/authd.elf",
+      "${OUT}/apps/configd.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -240,6 +241,24 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/authd",
         "${OUT}/apps/authd.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/configd/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/configd",
+        "${OUT}/apps/configd.elf"
       ],
       [
         "cargo",
@@ -2421,6 +2440,296 @@
           ]
         ],
         "timeout_s": 600
+      },
+      {
+        "id": "TST-M4-AUTHZ-DENIED",
+        "test_id": "TST-M4-AUTHZ-DENIED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=authz_denied"
+        ],
+        "oracle": "with auth and config running (manifest /SYSTEM/SVC-CFG.TXT) and real logins: SET device with the user token (SHELL only) answers ERR ACCESS and the key stays absent; SET without a handle ERR BAD_REQUEST; the same SET with the admin token OK 1 and GET shows it; the user may write user/1001 (OK 1) but not user/1000 nor policy (ERR ACCESS); a revoked admin token is refused (ERR ACCESS) and the value stays; clean exit, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=authz_denied",
+          "|ktest|authz_denied|denied=ERR ACCESS|unchanged=ERR NOT_FOUND|no_handle=ERR BAD_REQUEST|allowed=OK 1|now=OK 1 admin-set|own=OK 1|other=ERR ACCESS|policy_user=ERR ACCESS|revoked=ERR ACCESS|still=OK 1 admin-set",
+          "|ktest|authz_denied|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|authz_denied|frames_delta=0",
+          "|ktest|pass|the config service refuses writes whose token lacks the permission"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M4-CONFIG-CAS",
+        "test_id": "TST-M4-CONFIG-CAS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=config_cas"
+        ],
+        "oracle": "SET device cas.key expected 0 → OK 1; two writers with expected version 1: the first OK 2, the second ERR VERSION 2 and GET shows the first's value; create-if-absent on an existing key ERR VERSION 2; DEL with a stale version ERR VERSION 2, with the current one OK 2 then GET ERR NOT_FOUND; recreation starts at version 1; an invalid key ERR INVALID; clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=config_cas",
+          "|ktest|config_cas|first=OK 1|read1=OK 1 one|w1=OK 2|w2=ERR VERSION 2|read2=OK 2 two|create_existing=ERR VERSION 2|del_wrong=ERR VERSION 2|del=OK 2|gone=ERR NOT_FOUND|recreate=OK 1|bad_key=ERR INVALID",
+          "|ktest|config_cas|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|config_cas|frames_delta=0",
+          "|ktest|pass|compare-and-set keeps the first writer's value and refuses the stale one"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M4-CONFIG-RETRY",
+        "test_id": "TST-M4-CONFIG-RETRY",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=config_retry"
+        ],
+        "oracle": "the same SET (request id 301) sent twice: both answer OK 1 and the version stays 1; a refused SET (id 302, stale version) is replayed as the same refusal even when resent with the right version, and nothing is applied; request id 0 is never cached (the second attempt is a real stale write: ERR VERSION 2); clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=config_retry",
+          "|ktest|config_retry|r1=OK 1|r1b=OK 1|read=OK 1 v1|bad=ERR VERSION 1|bad_again=ERR VERSION 1|read2=OK 1 v1|z1=OK 2|z2=ERR VERSION 2|read3=OK 2 v3",
+          "|ktest|config_retry|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|config_retry|frames_delta=0",
+          "|ktest|pass|a repeated request id applies once and replays its stored reply"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M4-CONFIG-NOTIFY",
+        "test_id": "TST-M4-CONFIG-NOTIFY",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=config_notify"
+        ],
+        "oracle": "SUBSCRIBE device with a channel endpoint answers OK; a successful SET delivers CHANGED device note.key 1 on it; a refused SET (stale version) delivers nothing within 50 ticks; a write to the policy store delivers nothing to the device subscriber; the next SET delivers version 2 and DEL delivers version 0; clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=config_notify",
+          "|ktest|config_notify|sub=OK|set=OK 1|n1=CHANGED device note.key 1|refused=ERR VERSION 1|n2=-|set2=OK 2|n3=CHANGED device note.key 2|other_store=OK 1|n4=-|del=OK 2|n5=CHANGED device note.key 0",
+          "|ktest|config_notify|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|config_notify|frames_delta=0",
+          "|ktest|pass|subscribers hear every successful change of their store and nothing else"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M4-POLICY-PRECEDENCE",
+        "test_id": "TST-M4-POLICY-PRECEDENCE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=policy_precedence"
+        ],
+        "oracle": "RESOLVE ui.theme for the user: ERR NOT_FOUND; after SET device → OK device 1 light; after the user's own SET user/1001 → OK user 1 dark for the user and still the device value for admin; after SET policy → OK policy 1 corporate; after DEL policy → back to OK user 1 dark; EXPORT user/1001 lists the key with its version; IMPORT of two lines applies both (OK 2) and a malformed line rejects the whole import (ERR INVALID 2, nothing applied); clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=policy_precedence",
+          "|ktest|policy_precedence|none=ERR NOT_FOUND|dev=OK 1|r_dev=OK device 1 light|usr=OK 1|r_usr=OK user 1 dark|r_admin=OK device 1 light|pol=OK 1|r_pol=OK policy 1 corporate|del_pol=OK 1|r_back=OK user 1 dark|export=OK;ui.theme 1 dark|import=OK 2|imported=OK 1 14|import_bad=ERR INVALID 2|not_applied=ERR NOT_FOUND",
+          "|ktest|policy_precedence|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|policy_precedence|frames_delta=0",
+          "|ktest|pass|policy beats the user value, which beats the device default; removing the policy restores the user value"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M4-CONFIG-PERSIST",
+        "test_id": "TST-M4-CONFIG-PERSIST",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "timeout_s": 600,
+        "phases": [
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=config_persist_write"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=config_persist_write",
+              "|text=config|store|device_gen=0|device_bad=0|policy_gen=0|device_keys=0",
+              "|ktest|config_persist_write|result=OK 1",
+              "|ktest|config_persist_write|frames_delta=0",
+              "|ktest|pass|config value written and persisted"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector",
+              "|user_fault|"
+            ]
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=config_persist_read"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=config_persist_read",
+              "|text=config|store|device_gen=1|device_bad=0|policy_gen=0|device_keys=1",
+              "|ktest|config_persist_read|result=OK 1 kept-across-reboot",
+              "|ktest|config_persist_read|frames_delta=0",
+              "|ktest|pass|config value survived the QEMU restart"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector",
+              "|user_fault|"
+            ]
+          }
+        ],
+        "oracle": "two QEMU runs on the same image: phase 1 (fresh stores: device_gen=0) writes device lab.persist through the config service (OK 1, slot A generation 1, synced); phase 2 (fresh boot) adopts slot A (device_gen=1, device_keys=1) and GET answers OK 1 kept-across-reboot; the host tool finds the line in /SYSTEM/CFGDEV.A and fsck/fat32.py check accept the image; both phases exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "|ktest|pass|config value written and persisted",
+          "|ktest|pass|config value survived the QEMU restart"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "max_counts": {
+          "|boot|start|": 2
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "grep",
+            "${DISK}",
+            "/SYSTEM/CFGDEV.A",
+            "lab.persist 1 kept-across-reboot\\n"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "grep",
+            "${DISK}",
+            "/SYSTEM/CFGDEV.A",
+            "NAWAH-CFG 1 1 "
+          ],
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
       }
     ]
   },

@@ -1091,7 +1091,7 @@
     "REQ-M4-004"
    ],
    "layer": "guest",
-   "oracle": "a config write carrying a token without the ADMIN permission is refused with ERR_ACCESS by the config service itself, and the same request with an admin token succeeds",
+   "oracle": "with auth and config running (manifest /SYSTEM/SVC-CFG.TXT) and real logins: SET device with the user token (SHELL only) answers ERR ACCESS and the key stays absent; SET without a handle ERR BAD_REQUEST; the same SET with the admin token OK 1 and GET shows it; the user may write user/1001 (OK 1) but not user/1000 nor policy (ERR ACCESS); a revoked admin token is refused (ERR ACCESS) and the value stays; clean exit, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1102,7 +1102,7 @@
     "REQ-M4-005"
    ],
    "layer": "guest",
-   "oracle": "a value written through the config service is read back after a QEMU restart on the same image (phase 2) and the host tool sees the store file",
+   "oracle": "two QEMU runs on the same image: phase 1 (fresh stores: device_gen=0) writes device lab.persist through the config service (OK 1, slot A generation 1, synced); phase 2 (fresh boot) adopts slot A (device_gen=1, device_keys=1) and GET answers OK 1 kept-across-reboot; the host tool finds the line in /SYSTEM/CFGDEV.A and fsck/fat32.py check accept the image; both phases exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1113,7 +1113,7 @@
     "REQ-M4-005"
    ],
    "layer": "guest",
-   "oracle": "two writers with the same expected version: the second is refused with ERR_VERSION and the store holds the first value",
+   "oracle": "SET device cas.key expected 0 → OK 1; two writers with expected version 1: the first OK 2, the second ERR VERSION 2 and GET shows the first's value; create-if-absent on an existing key ERR VERSION 2; DEL with a stale version ERR VERSION 2, with the current one OK 2 then GET ERR NOT_FOUND; recreation starts at version 1; an invalid key ERR INVALID; clean exit; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1124,7 +1124,7 @@
     "REQ-M4-005"
    ],
    "layer": "guest",
-   "oracle": "the same request_id sent twice applies once (version advances once) and returns the stored result the second time",
+   "oracle": "the same SET (request id 301) sent twice: both answer OK 1 and the version stays 1; a refused SET (id 302, stale version) is replayed as the same refusal even when resent with the right version, and nothing is applied; request id 0 is never cached (the second attempt is a real stale write: ERR VERSION 2); clean exit; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1135,7 +1135,7 @@
     "REQ-M4-005"
    ],
    "layer": "guest",
-   "oracle": "a subscriber channel receives CHANGED(key, version) after a write, and nothing after a refused write",
+   "oracle": "SUBSCRIBE device with a channel endpoint answers OK; a successful SET delivers CHANGED device note.key 1 on it; a refused SET (stale version) delivers nothing within 50 ticks; a write to the policy store delivers nothing to the device subscriber; the next SET delivers version 2 and DEL delivers version 0; clean exit; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1146,7 +1146,7 @@
     "REQ-M4-005"
    ],
    "layer": "guest",
-   "oracle": "with a policy value set, reads return the policy value over the user value and the default; removing the policy restores the user value",
+   "oracle": "RESOLVE ui.theme for the user: ERR NOT_FOUND; after SET device → OK device 1 light; after the user's own SET user/1001 → OK user 1 dark for the user and still the device value for admin; after SET policy → OK policy 1 corporate; after DEL policy → back to OK user 1 dark; EXPORT user/1001 lists the key with its version; IMPORT of two lines applies both (OK 2) and a malformed line rejects the whole import (ERR INVALID 2, nothing applied); clean exit; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []

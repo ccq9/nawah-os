@@ -70,6 +70,11 @@ class Fat32Tool(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertIn("absent from all 131072 sectors", r.stdout)
 
+    def test_grep(self):
+        self.assertEqual(run("grep", self.img, "/HELLO.TXT", "from the lab").returncode, 0)
+        self.assertEqual(run("grep", self.img, "/HELLO.TXT", "nothing like this").returncode, 1)
+        self.assertEqual(run("grep", self.img, "/NOPE.TXT", "x").returncode, 2)
+
     def test_fsck(self):
         fsck = shutil.which("fsck.fat")
         if not fsck:

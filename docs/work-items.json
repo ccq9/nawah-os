@@ -1698,16 +1698,28 @@
         "docs/PLAN.md §5",
         "docs/adr/0016-services-and-authority.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/contracts/config.md",
+        "kernel/src/ktest.rs",
+        "platform/pc-qemu/manifests/svc-cfg.txt",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tests/test_fat32_tool.py",
+        "tools/fat32.py",
+        "user/apps/configd/src/main.rs"
+      ],
       "contract_refs": [
         "docs/contracts/config.md"
       ],
       "actions": [
         "خدمة التكوين والسياسات: مخازن منفصلة بإصدارات، CAS، request_id، إشعارات، أسبقية، حفظ آمن وثبات",
-        "config service with four stores on the volume (tmp file + sync + replace)",
-        "versioned keys, compare-and-set, idempotent request ids with stored results",
-        "subscriptions over channels",
-        "policy precedence; export/import with schema check"
+        "configd (config.md v1): stores device/policy/user/<uid> on the volume, session in memory; versioned keys, compare-and-set (expected version 0 = create), DEL, RESOLVE with policy > user > device, SUBSCRIBE channels (CHANGED store key version), EXPORT/IMPORT (all-or-nothing validation)",
+        "idempotent request ids: last 16 replies per client replayed verbatim",
+        "two-slot persistence (.A/.B) with a generation and a SHA-256 of the body: the newest intact slot is adopted, writes go to the other slot and sync (no rename in files.md v1)",
+        "authority at the service: every modifying request carries a token checked with token_info (REQ-M4-004: TST-M4-AUTHZ-DENIED)",
+        "kernel tests through CONNECT with real admin/user logins; fat32.py grep host check; TST-M4-CONFIG-PERSIST in two QEMU phases"
       ],
       "acceptance": "TST-M4-CONFIG-PERSIST/CAS/RETRY/NOTIFY/POLICY-PRECEDENCE PASS on CI; config.md v1; TST-M4-AUTHZ-DENIED (moved from WP-25: the config service is the authoritative side that checks the token)",
       "test_ids": [

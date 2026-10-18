@@ -18,6 +18,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "configd"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+ "nawah-crypto",
+]
+
+[[package]]
 name = "echo"
 version = "0.1.0"
 dependencies = [

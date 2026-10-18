@@ -310,6 +310,18 @@ def cmd_absent_raw(a):
     print(f"{a.image}: {a.text!r} absent from all {len(data) // SECTOR} sectors")
 
 
+def cmd_grep(a):
+    """Exit 0 when TEXT (with \\n escapes) occurs in the file at PATH: a substring check for
+    files whose other lines vary, such as a config store's hashed header (WP-26)."""
+    data = Image(a.image).read_file(a.path)
+    if data is None:
+        print(f"grep: {a.path} missing"); return 2
+    want = a.text.encode("utf-8").decode("unicode_escape").encode("latin-1")
+    if want in data:
+        print(f"grep: {a.path} contains {a.text!r}"); return 0
+    print(f"grep: {a.path} does not contain {a.text!r}"); return 1
+
+
 def cmd_ls(a):
     img = Image(a.image)
     d = img.root_cluster
@@ -411,9 +423,10 @@ def main(argv=None):
     s = sub.add_parser("check"); s.add_argument("image")
     s = sub.add_parser("expect"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
     s = sub.add_parser("absent-raw"); s.add_argument("image"); s.add_argument("text")
+    s = sub.add_parser("grep"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
     a = ap.parse_args(argv)
     return {"format": cmd_format, "ls": cmd_ls, "cat": cmd_cat, "verify": cmd_verify, "check": cmd_check, "expect": cmd_expect,
-            "absent-raw": cmd_absent_raw}[a.cmd](a) or 0
+            "absent-raw": cmd_absent_raw, "grep": cmd_grep}[a.cmd](a) or 0
 
 
 if __name__ == "__main__":
