@@ -1,0 +1,17 @@
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.58s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.46s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `ktest` profile [optimized + debuginfo] target(s) in 0.46s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+error: unused import: `halt`
+  --> kernel/src/arch/mod.rs:21:25
+   |
+21 |     cpu_id, current_el, halt, init_console, init_cpu, interrupts, jump_on_kernel_stack, qemu,
+   |                         ^^^^
+   |
+   = note: `-D unused-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: could not compile `nawah-kernel` (bin "nawah-kernel") due to 1 previous error
