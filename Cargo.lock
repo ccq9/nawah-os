@@ -101,6 +101,10 @@ name = "nawah-kernel"
 version = "0.1.0"
 
 [[package]]
+name = "nawah-text"
+version = "0.1.0"
+
+[[package]]
 name = "netd"
 version = "0.1.0"
 dependencies = [
@@ -140,6 +144,14 @@ name = "svcmgr"
 version = "0.1.0"
 dependencies = [
  "libnawah",
+]
+
+[[package]]
+name = "textprobe"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+ "nawah-text",
 ]
 
 [[package]]

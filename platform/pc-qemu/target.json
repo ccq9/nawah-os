@@ -23,12 +23,15 @@
       "user/apps/fbprobe/Cargo.toml",
       "user/apps/inputd/Cargo.toml",
       "user/apps/displayd/Cargo.toml",
-      "user/apps/winapp/Cargo.toml"
+      "user/apps/winapp/Cargo.toml",
+      "user/apps/textprobe/Cargo.toml",
+      "user/libnawah-text/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
       "platform/pc-qemu/manifests/*.txt",
-      "user/**/*.rs"
+      "user/**/*.rs",
+      "platform/assets/fonts/*"
     ],
     "artifact": "${OUT}/NAWAH.EFI",
     "extra_artifacts": [
@@ -53,7 +56,8 @@
       "${OUT}/apps/fbprobe.elf",
       "${OUT}/apps/inputd.elf",
       "${OUT}/apps/displayd.elf",
-      "${OUT}/apps/winapp.elf"
+      "${OUT}/apps/winapp.elf",
+      "${OUT}/apps/textprobe.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -416,6 +420,24 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/winapp",
         "${OUT}/apps/winapp.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/textprobe/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/textprobe",
+        "${OUT}/apps/textprobe.elf"
       ],
       [
         "cargo",
@@ -3786,6 +3808,60 @@
             "121,33,B03030",
             "--pixel",
             "100,100,4060D0"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M5-TEXT-GUEST",
+        "test_id": "TST-M5-TEXT-GUEST",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=text_layer"
+        ],
+        "oracle": "the textprobe process (initial handle: the display object) reads /SYSTEM/FONTS/NOTOSANS.TTF and NOTOARAB.TTF from the system volume into VMO mappings, and reproduces in the guest the host tests' sample: 101 UAX #9 lines of BidiCharacterTest-17.0.0 (paragraph level, levels, visual order), the glyph ids HarfBuzz gives for 40 Arabic words, and the host build's hashes of 8 glyph bitmaps; it renders the mixed line \"نواة Nawah 2026 — مرحبا بالعالم (لا إله)\" (39 glyphs, right-to-left paragraph) into a 640×56 box and copies it to the frame at (100,300), traces the rectangle and the FNV-1a hash of the box, and exits 0x7E with no frame leaked; the lab's screendump hashes to the same value over that rectangle (tools/screen.py desktop) and the host's rendering of the same line with the host build of nawah-text hashes to it too (tools/text_check.py); exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=text_layer",
+          "|user|trace|",
+          "|text=text|bidi=101/101|shape=40/40|raster=8/8|glyphs=39|text_rect=100,300,640,56|text_hash=",
+          "|ktest|text_layer|probe_exit=0x7e|frames_delta=0|ready=1",
+          "|ktest|text_layer|lab_key=1|byte=0x1c",
+          "|ktest|pass|the guest's text layer matches the host's on bidi, shaping, bitmaps and the drawn line"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "monitor": {
+          "after": "|ktest|text_layer|probe_exit=",
+          "commands": [
+            "screendump ${SCREEN}",
+            "sendkey ret"
+          ],
+          "gap_s": 1.5
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN}",
+            "--window",
+            "${SERIAL:text_rect=},${SERIAL:text_hash=}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/text_check.py",
+            "--rect",
+            "${SERIAL:text_rect=}",
+            "--hash",
+            "${SERIAL:text_hash=}"
           ]
         ]
       }

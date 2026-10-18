@@ -928,6 +928,73 @@
       ],
       "limits": "a non-cryptographic hash: it ties the lab's picture to the compositor's pixels, not to any adversary",
       "verified": true
+    },
+    {
+      "id": "S71",
+      "title": "OpenType specification 1.9.1 — tables 'head', 'hhea', 'hmtx', 'maxp', 'cmap' (formats 4, 12), 'loca', 'glyf' (simple and composite glyphs), 'GSUB' (lookup types 1, 4, 6 format 3, 7), 'GDEF' (GlyphClassDef), common table formats (Coverage, ClassDef, LookupFlag)",
+      "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/",
+      "version": "OpenType 1.9.1 (Microsoft Typography), read 2026-10-18",
+      "accessed": "2026-10-18",
+      "supports": [
+        "table directory, the required tables and their field offsets",
+        "cmap format 4 segment search with idDelta/idRangeOffset, format 12 groups",
+        "glyf flags (on-curve, x/y short, repeat), composite flags (ARGS_ARE_WORDS, ARGS_ARE_XY_VALUES, scales, MORE_COMPONENTS)",
+        "GSUB feature/lookup lists, lookup flag IgnoreMarks (0x0008), chaining context format 3 records"
+      ],
+      "limits": "hinting instructions, CFF outlines and GPOS are outside text.md v1",
+      "verified": true
+    },
+    {
+      "id": "S72",
+      "title": "Unicode Character Database 17.0.0 — DerivedBidiClass.txt, DerivedJoiningType.txt, BidiBrackets.txt, BidiCharacterTest.txt; UAX #9 Unicode Bidirectional Algorithm; Unicode Standard §9.2 Arabic (cursive joining)",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/",
+      "version": "Unicode 17.0.0 (files dated 2025-06..08), taken from github.com/unicode-org/unicodetools unicodetools/data/ucd/17.0.0 (unicode.org itself was unreachable from the lab)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "bidi classes with the @missing defaults for unassigned code points",
+        "joining types R, L, D, C, T",
+        "bracket pairs (bpb, bpt) for rule N0",
+        "the conformance data for rules P2–L2: 91707 lines"
+      ],
+      "limits": "the data files are under the Unicode License v3; P1, L3 and L4 are not covered by BidiCharacterTest",
+      "verified": true
+    },
+    {
+      "id": "S73",
+      "title": "Noto Sans and Noto Sans Arabic, Regular, unhinted TTF — googlefonts/noto-fonts at ffebf8c1ee449e544955a7e813c54f9b73848eac; SIL Open Font License 1.1",
+      "url": "https://github.com/googlefonts/noto-fonts",
+      "version": "commit ffebf8c1ee449e544955a7e813c54f9b73848eac (2023-01-25): unhinted/ttf/NotoSans/NotoSans-Regular.ttf (393200 bytes, 3748 glyphs), unhinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf (170196 bytes, 1661 glyphs), LICENSE",
+      "accessed": "2026-10-18",
+      "supports": [
+        "the fonts shipped under /SYSTEM/FONTS with their licence (OFL.txt)",
+        "TrueType outlines (glyf), cmap format 4, GSUB arab features isol/fina/medi/init/rlig/ccmp"
+      ],
+      "limits": "the repository is archived; the fonts are redistributed unmodified under the OFL",
+      "verified": true
+    },
+    {
+      "id": "S74",
+      "title": "fontTools (Python library) — independent OpenType reader used as the reference in TST-M5-GLYPHS",
+      "url": "https://github.com/fonttools/fonttools",
+      "version": "the Ubuntu 24.04 package python3-fonttools on the CI runner, 4.65.0 locally; tests/test_text.py prints the version it ran with into the evidence",
+      "accessed": "2026-10-18",
+      "supports": [
+        "getBestCmap, hmtx, glyf getCoordinates with composites resolved, DecomposingRecordingPen and decomposeQuadraticSegment for the reference rasteriser's contour walk"
+      ],
+      "limits": "a reference implementation, not a specification",
+      "verified": true
+    },
+    {
+      "id": "S75",
+      "title": "HarfBuzz text shaping engine (hb-shape) — the reference shaper in TST-M5-SHAPING and for the guest sample",
+      "url": "https://harfbuzz.github.io/",
+      "version": "the Ubuntu 24.04 package libharfbuzz-bin (8.3.0 locally, same distribution); tests/test_text.py prints the version it ran with into the evidence",
+      "accessed": "2026-10-18",
+      "supports": [
+        "Arabic shaping with the font's GSUB: feature stages isol, fina, medi, init (each its own stage), then rlig; output of glyph ids per run"
+      ],
+      "limits": "HarfBuzz shows default-ignorable characters (ZWJ/ZWNJ) as an invisible space glyph; the comparison skips those positions",
+      "verified": true
     }
   ]
 }

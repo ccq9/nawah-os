@@ -623,6 +623,10 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
         return p.returncode
 
 
+# The fonts on the system volume (8.3 names): text.md.
+FONT_FILES = {"NotoSans-Regular.ttf": "NOTOSANS.TTF", "NotoSansArabic-Regular.ttf": "NOTOARAB.TTF", "OFL.txt": "OFL.TXT"}
+
+
 def serial_value(text, key):
     """The value the guest printed after the last `key` in its serial output, up to the next
     `|` or end of line (WP-34: a hash or a rectangle the host must recompute); '' when absent."""
@@ -811,6 +815,10 @@ def prepare_disk(t, target_name, fresh=True):
         for elf in sorted((out / "apps").glob("*.elf")) if (out / "apps").is_dir() else []:
             if len(elf.stem) <= 8:
                 cmd += ["--add", f"SYSTEM/{elf.stem.upper()}.ELF={elf}"]
+        # Fonts (WP-35, text.md): the shipped OFL fonts and their licence in /SYSTEM/FONTS.
+        cmd += ["--mkdir", "SYSTEM/FONTS"]
+        for src, dst in FONT_FILES.items():
+            cmd += ["--add", f"SYSTEM/FONTS/{dst}={ROOT / 'platform' / 'assets' / 'fonts' / src}"]
         # Service manifests (WP-24): platform/<target>/manifests/*.txt as /SYSTEM/<NAME>.TXT.
         for man in sorted((ROOT / "platform" / target_name / "manifests").glob("*.txt")):
             cmd += ["--add", f"SYSTEM/{man.stem.upper()}.TXT={man}"]
@@ -1015,13 +1023,22 @@ HOST_SUITES["M5"] = [
     {"id": "TST-M5-LAB-TOOL", "command": ["python3", "-I", "tests/test_monitor_steps.py"],
      "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout (4 cases, OK)",
      "inputs": ["tests/test_monitor_steps.py", "tools/project.py"], "input_globs": []},
+    {"id": "TST-M5-BIDI", "command": ["python3", "-I", "tests/test_text.py", "Bidi"],
+     "oracle": "nawah-text's UAX #9 reproduces every line of the Unicode conformance file BidiCharacterTest-17.0.0 (91707 lines: paragraph level, resolved levels with X9-removed characters, visual order after L2), and tables.rs is what tools/unicode_tables.py generates from the UCD files (DerivedBidiClass, DerivedJoiningType, BidiBrackets 17.0.0)",
+     "inputs": ["tests/test_text.py", "tools/unicode_tables.py", "user/libnawah-text/ucd/BidiCharacterTest.txt.xz"], "input_globs": ["user/libnawah-text/src/*.rs", "user/libnawah-text/examples/*.rs", "user/libnawah-text/ucd/*.txt"]},
+    {"id": "TST-M5-SHAPING", "command": ["python3", "-I", "tests/test_text.py", "Shaping"],
+     "oracle": "Arabic shaping with the shipped NotoSansArabic-Regular.ttf gives the glyph ids HarfBuzz (hb-shape) gives for 4026 letter cases (every pair of 48 Arabic letters, 1500 random words, 200 phrases) and 300 cases with marks; around ZWJ/ZWNJ the forms equal HarfBuzz's; the joining forms follow DerivedJoiningType (dual, right-joining, non-joining, join-causing, transparent); the guest sample is current; the library's mixed-direction lines (digits in Arabic, Arabic in Latin, mirrored brackets, lam-alef) pass (6 unit tests)",
+     "inputs": ["tests/test_text.py", "tools/text_vectors.py", "user/apps/textprobe/src/vectors.rs", "platform/assets/fonts/NotoSansArabic-Regular.ttf"], "input_globs": ["user/libnawah-text/src/*.rs", "user/libnawah-text/examples/*.rs"]},
+    {"id": "TST-M5-GLYPHS", "command": ["python3", "-I", "tests/test_text.py", "Glyphs"],
+     "oracle": "the OpenType reader equals fontTools on both shipped fonts: every cmap entry (2840 + 1161 code points, absent ones .notdef), every glyph's advance and left side bearing (3748 + 1661), every glyph's outline points, on-curve flags and contour ends with composites resolved; the rasteriser against the reference in the test (same 4×4 non-zero sampling, independent contour walk and flattening) on 22 glyphs × 4 sizes: no pixel full in one and empty in the other, at most 4/16 apart on edge pixels, total ink within 1%",
+     "inputs": ["tests/test_text.py", "platform/assets/fonts/NotoSans-Regular.ttf", "platform/assets/fonts/NotoSansArabic-Regular.ttf"], "input_globs": ["user/libnawah-text/src/*.rs", "user/libnawah-text/examples/*.rs"]},
     {"id": "TST-M5-SCREEN-TOOL", "command": ["python3", "-I", "tests/test_screen_tool.py"],
      "oracle": "tools/screen.py desktop against a synthetic PPM: a pixel check passes on its colour and fails on another; a window hash equals the FNV-1a 64 of the rectangle's R,G,B bytes and fails when a pixel differs; a rectangle outside the image fails without crashing (2 cases, OK)",
      "inputs": ["tests/test_screen_tool.py", "tools/screen.py"], "input_globs": []},
 ]
 HOST_SUITES["M3"] = [
     {"id": "TST-M3-FAT32-TOOL", "command": ["python3", "-I", "tests/test_fat32_tool.py"],
-     "oracle": "the host FAT32 tool formats the lab volume (128992 clusters, 44 used), lists DIR/HELLO.TXT/PATTERN.BIN, reads files back exactly (cat/verify/expect), keeps the raw pattern tail, and fsck.fat -n accepts the image",
+     "oracle": "the host FAT32 tool formats the lab volume (128992 clusters, 44 used), lists DIR/HELLO.TXT/PATTERN.BIN, reads files back exactly (cat/verify/expect), keeps the raw pattern tail, makes nested directories in their parent (SYSTEM/FONTS, a missing parent refused), and fsck.fat -n accepts the images",
      "inputs": ["tests/test_fat32_tool.py", "tools/fat32.py"], "input_globs": []},
 ]
 HOST_SUITES["M1"] = [

@@ -190,6 +190,7 @@ pub fn run() -> ! {
         "screen" => screen(),
         "window_states" => window_states(),
         "app_hang" => app_hang(),
+        "text_layer" => text_layer(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
@@ -5312,6 +5313,50 @@ fn app_hang() -> ! {
         h,
         "a client that stops reading never blocks the compositor, is marked unresponsive and can be closed from its decoration",
     )
+}
+
+// ---- WP-35: the text layer ----------------------------------------------------------------
+
+/// TST-M5-TEXT-GUEST (REQ-M5-004): the textprobe process loads the fonts from /SYSTEM/FONTS,
+/// reproduces the host tests' sample (UAX #9 lines, HarfBuzz glyphs, bitmap hashes) and draws
+/// a mixed Arabic/Latin line on the frame; its trace carries the line's rectangle and hash,
+/// which the lab compares with its screendump and with the host's rendering of the line.
+fn text_layer() -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let display = crate::display::display_object().unwrap_or_else(|| fail("no display object"));
+    let o = run_with_object(
+        "text_layer",
+        crate::apps::TEXTPROBE,
+        Entry {
+            object: Object::Display(display),
+            rights: Rights::DISPLAY_DEFAULT,
+        },
+    );
+    kprintln!(
+        "OSX|{}|ktest|text_layer|probe_exit={:#x}|frames_delta={}|ready=1",
+        BUILD_ID,
+        o.exit_code,
+        o.frames_delta
+    );
+    if o.exit_code != 0x7E || o.frames_delta != 0 {
+        fail("the text probe did not reproduce the host's results")
+    }
+    // The lab takes its screendump now and presses Enter when done.
+    let kbd = crate::net::keyboard_object();
+    let mut byte = [0u8; 1];
+    let pressed = sched::poll_until(sched::ticks() + 60_000, || kbd.read(&mut byte) > 0);
+    kprintln!(
+        "OSX|{}|ktest|text_layer|lab_key={}|byte={:#x}",
+        BUILD_ID,
+        u8::from(pressed),
+        byte[0]
+    );
+    if !pressed {
+        fail("the lab never pressed a key after its screendump")
+    }
+    pass("the guest's text layer matches the host's on bidi, shaping, bitmaps and the drawn line")
 }
 
 // ---- WP-27: the network interface and the keyboard ----------------------------------------

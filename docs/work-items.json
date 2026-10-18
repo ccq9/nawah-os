@@ -2346,29 +2346,69 @@
         "docs/PLAN.md §6",
         "docs/adr/0019-graphics-platform.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/adr/0019-graphics-platform.md",
+        "docs/contracts/display.md",
+        "docs/contracts/text.md",
+        "docs/sources.json",
+        "kernel/build.rs",
+        "kernel/src/ktest.rs",
+        "platform/assets/fonts/NotoSans-Regular.ttf",
+        "platform/assets/fonts/NotoSansArabic-Regular.ttf",
+        "platform/assets/fonts/OFL.txt",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tests/test_fat32_tool.py",
+        "tests/test_text.py",
+        "tools/fat32.py",
+        "tools/project.py",
+        "tools/text_check.py",
+        "tools/text_vectors.py",
+        "tools/unicode_tables.py",
+        "user/apps/textprobe/src/main.rs",
+        "user/apps/textprobe/src/vectors.rs",
+        "user/libnawah-text/Cargo.toml",
+        "user/libnawah-text/examples/bidi_check.rs",
+        "user/libnawah-text/examples/textdump.rs",
+        "user/libnawah-text/src/bidi.rs",
+        "user/libnawah-text/src/font.rs",
+        "user/libnawah-text/src/layout.rs",
+        "user/libnawah-text/src/lib.rs",
+        "user/libnawah-text/src/raster.rs",
+        "user/libnawah-text/src/shape.rs",
+        "user/libnawah-text/src/tables.rs",
+        "user/libnawah-text/ucd/BidiBrackets.txt",
+        "user/libnawah-text/ucd/BidiCharacterTest.txt.xz",
+        "user/libnawah-text/ucd/DerivedBidiClass.txt",
+        "user/libnawah-text/ucd/DerivedJoiningType.txt"
+      ],
       "contract_refs": [
         "docs/contracts/text.md"
       ],
       "actions": [
         "طبقة النص: OpenType وتنقيط وbidi وتشكيل عربي وخطوط مرخصة",
-        "libnawah-text (no_std, no deps): OpenType reader (cmap, glyf/loca, hmtx), scanline rasteriser with 4× anti-aliasing, UAX #9 bidi (P/W/N/I rules, numbers, paths), Arabic shaping (forms, lam-alef) with GSUB when present and an internal table otherwise",
-        "fonts: Noto Sans / Noto Sans Arabic (OFL 1.1) with their licence under /SYSTEM/FONTS, registered as sources; host tool generates golden bitmaps from the same outlines",
-        "host tests bidi/shaping/glyphs with published vectors; guest sample set; text.md"
+        "nawah-text (user/libnawah-text: no_std, no allocation, no deps, no unsafe): OpenType reader (cmap 4/12, glyf/loca with composites, hmtx, GSUB types 1/4/6-format-3/7, GDEF classes), scanline rasteriser (4×4 samples, non-zero, 1/64 px flattening), UAX #9 complete through L2 (tables generated from UCD 17.0.0 by tools/unicode_tables.py), Arabic shaping (joining forms from DerivedJoiningType, GSUB isol/fina/medi/init then rlig), line layout (runs by level and font, mirrored brackets, visual order, advances) and a line renderer",
+        "fonts: Noto Sans / Noto Sans Arabic Regular (OFL 1.1, googlefonts/noto-fonts ffebf8c1) with OFL.txt under /SYSTEM/FONTS (tools/fat32.py nested directories); sources S71–S75",
+        "host tests against independent references (BidiCharacterTest, fontTools, HarfBuzz, a reference rasteriser) in tests/test_text.py; guest sample (tools/text_vectors.py → textprobe) with a drawn line checked against the screendump and the host's rendering (tools/text_check.py); text.md v1"
       ],
-      "acceptance": "TST-M5-BIDI/SHAPING/GLYPHS PASS; text.md v1",
+      "acceptance": "TST-M5-BIDI/SHAPING/GLYPHS/TEXT-GUEST PASS; text.md v1",
       "test_ids": [
         "TST-M5-BIDI",
         "TST-M5-SHAPING",
-        "TST-M5-GLYPHS"
+        "TST-M5-GLYPHS",
+        "TST-M5-TEXT-GUEST"
       ],
       "commands": [
         "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5"
+        "python3 tools/project.py test --target pc-qemu --suite M5",
+        "python3 tools/project.py test --target host --suite M5"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

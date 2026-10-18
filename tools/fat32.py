@@ -9,7 +9,7 @@ BkBootSec 6), FSInfo sector, two mirrored FATs, data area with the root director
 8.3 directory entries (no long names).
 
 Commands:
-  format IMG --sectors N [--spc 1] [--add NAME=PATH ...] [--mkdir NAME ...] [--pattern-tail K]
+  format IMG --sectors N [--spc 1] [--add NAME=PATH ...] [--mkdir NAME|PARENT/NAME ...] [--pattern-tail K]
   ls IMG [DIR]            list a directory (root by default)
   cat IMG PATH            print a file's bytes to stdout
   verify IMG PATH SHA256  exit 0 when the file exists and its sha256 matches
@@ -276,7 +276,15 @@ def finish(img):
 def cmd_format(a):
     img = format_image(a.image, a.sectors, a.spc)
     for spec in a.mkdir or []:
-        img.make_dir(img.root_cluster, spec)
+        # Nested directories (WP-35: SYSTEM/FONTS) are made inside an existing parent.
+        parent = img.root_cluster
+        if "/" in spec:
+            d, spec = spec.rsplit("/", 1)
+            r = img.resolve(d)
+            if r is None or r[1] is None:
+                raise SystemExit(f"mkdir: parent {d} missing")
+            parent = img.entry_cluster(r[1])
+        img.make_dir(parent, spec)
     for spec in a.add or []:
         name, src = spec.split("=", 1)
         with open(src, "rb") as f:

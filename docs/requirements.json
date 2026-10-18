@@ -1436,9 +1436,10 @@
       "test_ids": [
         "TST-M5-BIDI",
         "TST-M5-SHAPING",
-        "TST-M5-GLYPHS"
+        "TST-M5-GLYPHS",
+        "TST-M5-TEXT-GUEST"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "implemented_untested",
       "evidence_refs": []
     },
     {

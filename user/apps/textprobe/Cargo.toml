@@ -1,0 +1,16 @@
+[package]
+name = "textprobe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "textprobe"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+libnawah = { path = "../../libnawah" }
+nawah-text = { path = "../../libnawah-text" }

@@ -75,6 +75,23 @@ class Fat32Tool(unittest.TestCase):
         self.assertEqual(run("grep", self.img, "/HELLO.TXT", "nothing like this").returncode, 1)
         self.assertEqual(run("grep", self.img, "/NOPE.TXT", "x").returncode, 2)
 
+    def test_nested_directory(self):
+        # WP-35: /SYSTEM/FONTS holds the fonts; a nested directory is made in its parent and
+        # its files read back; a missing parent is refused.
+        img = os.path.join(self.dir, "nested.img")
+        r = run("format", img, "--sectors", "131072", "--mkdir", "SYSTEM", "--mkdir", "SYSTEM/FONTS",
+                "--add", f"SYSTEM/FONTS/A.TTF={self.big}")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        r = run("verify", img, "/SYSTEM/FONTS/A.TTF", hashlib.sha256(self.big_data).hexdigest(), "--size", "20480")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertEqual(run("check", img).returncode, 0)
+        fsck = shutil.which("fsck.fat")
+        if fsck:
+            r = subprocess.run([fsck, "-n", img], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        r = run("format", img, "--sectors", "131072", "--mkdir", "NOPE/FONTS")
+        self.assertNotEqual(r.returncode, 0)
+
     def test_fsck(self):
         fsck = shutil.which("fsck.fat")
         if not fsck:
