@@ -122,7 +122,8 @@
    ],
    "acceptance": "docs/automation.json صالح؛ mode=interactive ما دام persistence_verified_by فارغًا",
    "test_ids": [
-    "TST-M0-001"
+    "TST-M0-001",
+    "TST-M0-003"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [

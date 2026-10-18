@@ -8,6 +8,12 @@ on:
   workflow_dispatch:
 permissions:
   contents: write  # only for pushing evidence to ci-evidence/* branches (never main)
+# A newer push to the same ref cancels the run it supersedes: the newest commit is the one whose
+# evidence counts (42 of the 59 failed runs of 2026-10-18 had been superseded within ten minutes
+# and still ran to their end and mailed the account; tests/test_ci_workflows.py, TST-M0-003).
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-24.04
@@ -20,7 +26,7 @@ jobs:
       - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools libharfbuzz-bin
+          sudo apt-get install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
           rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
           rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; cargo --version

@@ -1001,6 +1001,9 @@ HOST_SUITES = {
          "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
         {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist",
          "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md"], "input_globs": []},
+        {"id": "TST-M0-003", "command": ["python3", "-I", "tests/test_ci_workflows.py"],
+         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch) (5 cases, OK)",
+         "inputs": ["tests/test_ci_workflows.py", "tools/project.py"], "input_globs": [".github/workflows/*.yml"]},
     ],
 }
 
@@ -1244,6 +1247,79 @@ def cmd_import_ci_evidence(run_id: str) -> int:
 
 
 # ----------------------------------------------------------------------------- main
+# Local pre-flight (after 59 red CI runs on 2026-10-18): the guest suites run in this workspace
+# before a push. The precompiled core/alloc of the UEFI and bare-metal targets cannot be fetched
+# here (static.rust-lang.org is unreachable), so cargo builds them from the standard library's own
+# source at the compiler's exact commit (build-std), cloned from GitHub. Evidence goes to a scratch
+# directory and is never attached: CI stays the only source of evidence.
+BUILD_STD_ENV = {"RUSTC_BOOTSTRAP": "1", "CARGO_UNSTABLE_BUILD_STD": "core,alloc,compiler_builtins",
+                 "CARGO_UNSTABLE_BUILD_STD_FEATURES": "compiler-builtins-mem"}
+RUST_REPO = "https://github.com/rust-lang/rust.git"
+
+
+def preflight_env(base, scratch, build_std):
+    """The environment of a pre-flight step: `base` plus scratch evidence, and build-std for the
+    build of the guest image only — a host tool that a test builds (tools/text_check.py's
+    examples, the host suites' cargo tests) links the host's own std, and build-std there gives
+    two `core`s (E0152: the first pre-flight's TST-M5-TEXT-GUEST)."""
+    env = dict(base)
+    if build_std:
+        env.update(BUILD_STD_ENV)
+    else:
+        for k in BUILD_STD_ENV:
+            env.pop(k, None)
+    env["NAWAH_SCRATCH_EVIDENCE"] = str(scratch)
+    return env
+
+
+def rustc_identity(env=None):
+    """(release, commit-hash) of the active rustc, from `rustc -vV`."""
+    out = subprocess.run(["rustc", "-vV"], capture_output=True, text=True, env=env).stdout
+    fields = dict(l.split(": ", 1) for l in out.splitlines() if ": " in l)
+    return fields.get("release", ""), fields.get("commit-hash", "")
+
+
+def rust_src_state(src: Path, commit: str) -> str:
+    """'ok' when `src` (<sysroot>/lib/rustlib/src/rust) holds the standard library at the
+    compiler's commit, 'missing' without it, 'mismatch:<head>' for another commit. A rust-src
+    installed by rustup carries no git metadata and is trusted as the same release."""
+    if not (src / "library" / "Cargo.lock").exists():
+        return "missing"
+    head = subprocess.run(["git", "-C", str(src), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    if not head or not (src / ".git").exists():
+        return "ok"
+    return "ok" if head == commit else f"mismatch:{head}"
+
+
+def cmd_preflight(suite, only) -> int:
+    release, commit = rustc_identity()
+    sysroot = Path(subprocess.run(["rustc", "--print", "sysroot"], capture_output=True, text=True).stdout.strip())
+    src = sysroot / "lib" / "rustlib" / "src" / "rust"
+    state = rust_src_state(src, commit)
+    if state == "missing":
+        cache = Path.home() / ".cache" / "nawah" / f"rust-src-{commit[:12]}"
+        if not (cache / "library" / "Cargo.lock").exists():
+            subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", release, "--filter=blob:none", "--sparse",
+                            RUST_REPO, str(cache)], check=True)
+            subprocess.run(["git", "-C", str(cache), "sparse-checkout", "set", "library"], check=True)
+        src.parent.mkdir(parents=True, exist_ok=True)
+        if src.is_symlink():
+            src.unlink()
+        src.symlink_to(cache)
+        state = rust_src_state(src, commit)
+    print(f"preflight: rustc {release} ({commit[:9]}), library source {state}")
+    if state != "ok":
+        return E_INTERNAL
+    scratch = ROOT / "build" / "preflight-evidence"
+    scratch.mkdir(parents=True, exist_ok=True)
+    me = [sys.executable, str(Path(__file__).resolve())]
+    rc = subprocess.run(me + ["build", "--target", "pc-qemu"], env=preflight_env(os.environ, scratch, True)).returncode
+    if rc != 0:
+        return rc
+    return subprocess.run(me + ["test", "--target", "pc-qemu", "--suite", suite] + (["--only", only] if only else []),
+                          env=preflight_env(os.environ, scratch, False)).returncode
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="project.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -1254,6 +1330,8 @@ def main(argv=None):
         s = sub.add_parser(n); s.add_argument("--target", required=True)
     s = sub.add_parser("test"); s.add_argument("--target", required=True); s.add_argument("--suite", required=True)
     s.add_argument("--only", help="comma-separated case ids (guest suites)")
+    s = sub.add_parser("preflight", help="build and run a guest suite here before a push (build-std, scratch evidence)")
+    s.add_argument("--suite", required=True); s.add_argument("--only", help="comma-separated case ids")
     for n in ("next", "report", "checkpoint", "resume", "run"):
         s = sub.add_parser(n); s.add_argument("--json", action="store_true"); s.add_argument("--result"); s.add_argument("--once", action="store_true"); s.add_argument("--until"); s.add_argument("--note")
     a = ap.parse_args(argv)
@@ -1265,6 +1343,7 @@ def main(argv=None):
     if a.cmd == "checkpoint": return cmd_checkpoint(a.note)
     if a.cmd == "reverify-host": return cmd_reverify_host()
     if a.cmd == "import-ci-evidence": return cmd_import_ci_evidence(a.run)
+    if a.cmd == "preflight": return cmd_preflight(a.suite, a.only)
     print(f"{a.cmd}: not implemented yet in this work package (planned: M1); see docs/work-items.json")
     return E_INTERNAL
 
