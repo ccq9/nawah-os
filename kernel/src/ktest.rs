@@ -232,6 +232,8 @@ fn irq_eoi() -> ! {
 /// PIC vector and an unassigned vector are counted and return; with the timer stopped and
 /// interrupts enabled for 20 ms nothing else arrives.
 fn spurious() -> ! {
+    // timer_stop also delivers a tick the APIC accepted while IF was clear (it stays pending
+    // after the LVT is masked), so the silent window below measures only new arrivals.
     irq::timer_stop();
     let before = irq::counters();
     inject::software_interrupt::<{ irq::SPURIOUS_VECTOR }>();

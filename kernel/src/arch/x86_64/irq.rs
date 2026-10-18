@@ -104,9 +104,12 @@ impl IrqError {
     }
 }
 
-/// Stops the periodic timer (the tick counter keeps its value).
+/// Stops the periodic timer and delivers a tick the APIC may already hold (masking the LVT
+/// does not retract an accepted interrupt); returns with interrupts disabled. The tick counter
+/// keeps its value.
 pub fn timer_stop() {
     apic::timer_stop();
+    super::interrupts::drain_pending();
 }
 
 /// WP-10 bring-up, with interrupts disabled: MADT, PIC remap+mask, LAPIC (spurious 0xFF, error

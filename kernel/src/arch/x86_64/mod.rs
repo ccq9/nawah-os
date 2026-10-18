@@ -137,6 +137,16 @@ pub mod interrupts {
         unsafe { asm!("cli", options(nomem, nostack)) };
     }
 
+    /// Delivers whatever is already pending in the local APIC (IRR) and returns with IF clear.
+    /// Masking an LVT does not retract an interrupt the APIC has already accepted, so a
+    /// measurement that expects silence must drain first.
+    pub fn drain_pending() {
+        // SAFETY: sti; the instruction after it completes before interrupts are recognised
+        // (interrupt shadow), so the pending ones are taken at the `nop` boundary and cli closes
+        // the window again; handlers return with iretq.
+        unsafe { asm!("sti", "nop", "nop", "cli", options(nomem, nostack)) };
+    }
+
     /// RFLAGS.IF.
     pub fn enabled() -> bool {
         let flags: u64;
