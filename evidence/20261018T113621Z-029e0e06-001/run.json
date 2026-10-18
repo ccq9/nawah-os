@@ -1,0 +1,32 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T113621Z-029e0e06-001",
+ "started_at": "2026-10-18T11:36:21+00:00",
+ "finished_at": "2026-10-18T11:36:28+00:00",
+ "source_revision": "029e0e0617fbc546e5b0070cecf47c80d51bceb4",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "pc-qemu",
+ "worker": "interactive-agent",
+ "purpose": "build",
+ "commands": [
+  "cargo build --profile app --offline --manifest-path user/apps/hello/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user",
+  "cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/hello /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/hello.elf",
+  "cargo build --profile app --offline --manifest-path user/apps/file_roundtrip/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user",
+  "cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/file_roundtrip /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/file_roundtrip.elf",
+  "cargo build --profile app --offline --manifest-path user/apps/path_invalid/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user",
+  "cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/path_invalid /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/path_invalid.elf",
+  "cargo build --profile app --offline --manifest-path user/apps/fd_leak/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user",
+  "cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/fd_leak /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/fd_leak.elf",
+  "cargo build --release --offline --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo",
+  "cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo/x86_64-unknown-uefi/release/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/pc-qemu/NAWAH.EFI",
+  "cargo build --release --offline --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-neg --features inject_ebs_fail",
+  "cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-neg/x86_64-unknown-uefi/release/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/pc-qemu/NAWAH-NEG.EFI",
+  "cargo build --profile ktest --offline --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-ktest --features ktest",
+  "cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/pc-qemu/NAWAH-KTEST.EFI"
+ ],
+ "exit_code": 0
+}
