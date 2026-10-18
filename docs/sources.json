@@ -788,6 +788,37 @@
       ],
       "limits": "only the options the client sends or reads are listed",
       "verified": true
+    },
+    {
+      "id": "S61",
+      "title": "RFC 9293 — Transmission Control Protocol (TCP)",
+      "url": "https://rfc-editor.org/rfc/rfc9293",
+      "version": "August 2022 (Internet Standard 7)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "header: source/destination port, sequence, acknowledgment, data offset, flags (FIN SYN RST PSH ACK), window, checksum over the pseudo-header, urgent pointer (§3.1); MSS option kind 2 length 4, a default send MSS of 536 assumed when none is received (§3.7.1)",
+        "three-way handshake (§3.5): SYN consumes one sequence number, SYN+ACK acknowledges ISN+1, the ACK completes; FIN consumes one sequence number and all segments up to it are retransmitted until acknowledged (§3.6)",
+        "states LISTEN, SYN-SENT, SYN-RECEIVED, ESTABLISHED, FIN-WAIT-1, FIN-WAIT-2, CLOSE-WAIT, CLOSING, LAST-ACK, TIME-WAIT and the fictional CLOSED (§3.3.2); segment processing per state (§3.10.7 SEGMENT ARRIVES)",
+        "reset generation (§3.5.2): when the connection does not exist, any incoming segment except a reset is answered with RST; a reset aborts the connection (a refused port yields RST)",
+        "retransmission timeout per RFC 6298 (§3.8.1); connection failures (§3.8.3): thresholds R1 and R2 per segment, R2 at least 100 s for data (SHLD-11), the application may set R2"
+      ],
+      "limits": "the service implements a stop-and-wait client (one segment in flight, in-order receive only, no listen, no urgent data, no window scaling or SACK); congestion control (RFC 5681) is moot with one segment in flight; R1 is not surfaced; R2 for data is six retransmissions (about 123 s with the doubling RTO); the connect timeout is the client's explicit parameter (default 5 s) rather than the 3-minute SYN R2 of MUST-23",
+      "verified": true
+    },
+    {
+      "id": "S62",
+      "title": "RFC 6298 — Computing TCP's Retransmission Timer",
+      "url": "https://rfc-editor.org/rfc/rfc6298",
+      "version": "June 2011 (Proposed Standard)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "(2.1) initial RTO 1 second; (2.2) first sample SRTT = R, RTTVAR = R/2, RTO = SRTT + max(G, K·RTTVAR) with K = 4; (2.3) later RTTVAR = (1−β)·RTTVAR + β·|SRTT−R'| and SRTT = (1−α)·SRTT + α·R' with α = 1/8, β = 1/4",
+        "(2.4) RTO rounded up to 1 second when smaller; (2.5) a maximum may be placed on RTO if at least 60 seconds",
+        "§3 Karn's algorithm: no RTT sample from a retransmitted segment",
+        "§5 timer management: (5.1) start when data is sent, (5.2) stop when all data is acknowledged, (5.4) on expiry retransmit the earliest unacknowledged segment, (5.5) RTO = RTO·2 (back-off), (5.6) restart the timer, (5.7) after a retransmitted SYN the RTO for data is re-initialised to 3 seconds when below it"
+      ],
+      "limits": "clock granularity G = 1 tick (1 ms); the backed-off RTO stays until a new RTT sample recomputes it",
+      "verified": true
     }
   ]
 }

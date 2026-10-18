@@ -2990,6 +2990,72 @@
           "|user_fault|"
         ],
         "timeout_s": 600
+      },
+      {
+        "id": "TST-M4-TCP-ECHO",
+        "test_id": "TST-M4-TCP-ECHO",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=net_tcp_echo"
+        ],
+        "oracle": "a TCP echo server on the host (127.0.0.1:17008, reached as 10.0.2.2 through SLIRP): TCP_CONNECT completes the three-way handshake (OK 1), two sends are acknowledged (OK 9 / OK 25) and their echoes come back through TCP_RECV, an empty receive times out, TCP_STATUS shows ESTABLISHED with no retransmission and rto=1000, TCP_CLOSE closes in order and the identifier is released (ERR CLOSED), a connect to a port nobody listens on is refused by RST (ERR REFUSED), a malformed request is ERR BAD_REQUEST; clean exit, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=net_tcp_echo",
+          "|ktest|net_tcp_echo|dhcp_ok=1|conn=OK 1|sent=OK 9|got=OK hello tcp|sent2=OK 25|got2=OK second round through tcp|empty=ERR TIMEOUT|status=OK state=ESTABLISHED retransmits=0 rto=1000 srtt=",
+          "|closed=OK|after=ERR CLOSED|refused=ERR REFUSED|bad=ERR BAD_REQUEST",
+          "|ktest|net_tcp_echo|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|net_tcp_echo|frames_delta=0",
+          "|ktest|pass|TCP connects to the host's echo server, exchanges data both ways and closes in order"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_services": [
+          {
+            "type": "tcp_echo",
+            "port": 17008
+          }
+        ]
+      },
+      {
+        "id": "TST-M4-TCP-RETRANSMIT",
+        "test_id": "TST-M4-TCP-RETRANSMIT",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=net_tcp_retransmit"
+        ],
+        "oracle": "with the host's TCP echo server: after TCP_INJECT drop_next=1 the service loses its next transmission, so TCP_SEND (OK 13) completes only after the retransmission timer fires (waited >= 1000 ticks, the initial RTO of RFC 6298); TCP_STATUS then shows retransmits=1 and rto=2000 (doubled, no RTT sample from the retransmitted segment per Karn), the echo arrives, and the next acknowledged send restores rto=1000 (new RTT sample, floor 1 s); orderly close; clean exit, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=net_tcp_retransmit",
+          "|ktest|net_tcp_retransmit|dhcp_ok=1|conn=OK 1|inject=OK|sent=OK 13|waited=",
+          "|status=OK state=ESTABLISHED retransmits=1 rto=2000 srtt=",
+          "|got=OK retransmit me|sent2=OK 5|status2=OK state=ESTABLISHED retransmits=1 rto=1000 srtt=",
+          "|got2=OK again|closed=OK",
+          "|ktest|net_tcp_retransmit|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|net_tcp_retransmit|frames_delta=0",
+          "|ktest|pass|a lost segment is retransmitted when the RTO expires, with exponential back-off and Karn's rule"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_services": [
+          {
+            "type": "tcp_echo",
+            "port": 17008
+          }
+        ]
       }
     ]
   },

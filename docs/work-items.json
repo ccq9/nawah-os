@@ -1917,17 +1917,25 @@
         "docs/PLAN.md §5",
         "docs/adr/0016-services-and-authority.md"
       ],
-      "files": [],
+      "files": [
+        "docs/contracts/net.md",
+        "docs/sources.json",
+        "kernel/src/ktest.rs",
+        "platform/pc-qemu/target.json",
+        "tools/project.py",
+        "user/apps/netd/src/main.rs"
+      ],
       "contract_refs": [
         "docs/contracts/net.md"
       ],
       "actions": [
         "TCP أساسي في netd مع إعادة الإرسال وواجهة مقابس",
-        "TCP state machine (RFC 9293): handshake, data, close, RTO retransmission",
-        "socket API over the netd channel",
-        "lab: host echo servers via hostfwd, a dropping proxy for the retransmit test"
+        "TCP client in netd (net.md part C, RFC 9293): active open with the three-way handshake and the MSS option, one segment in flight (stop-and-wait, PSH), in-order receive with an advertised window, orderly close through FIN-WAIT-1/2, CLOSE-WAIT/LAST-ACK, CLOSING and TIME-WAIT (2 s), RST handling (refused / reset) and RST for segments without a connection; connection identifiers never reused",
+        "retransmission timer per RFC 6298: RTO 1 s initial, SRTT/RTTVAR with K=4 and G=1 ms, floor 1 s, ceiling 60 s, back-off ×2 on expiry, Karn's rule, 3 s after a retransmitted SYN, abort after 6 retransmissions (R2 ≈ 123 s)",
+        "requests TCP_CONNECT/SEND/RECV/CLOSE/STATUS and the diagnostic TCP_INJECT drop_next=1 (one lost transmission) so the lab exercises the timer; the service's main loop waits only until the next timer is due",
+        "lab: a TCP echo peer on the host (tools/project.py host_services tcp_echo, 127.0.0.1:17008 through SLIRP's 10.0.2.2; 17009 unbound → RST); kernel tests net_tcp_echo, net_tcp_retransmit; sources S61 (RFC 9293), S62 (RFC 6298)"
       ],
-      "acceptance": "TST-M4-TCP-ECHO/TCP-RETRANSMIT PASS on CI",
+      "acceptance": "TST-M4-TCP-ECHO/TCP-RETRANSMIT PASS on CI; net.md part C v1",
       "test_ids": [
         "TST-M4-TCP-ECHO",
         "TST-M4-TCP-RETRANSMIT"
@@ -1936,9 +1944,10 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M4"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

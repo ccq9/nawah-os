@@ -358,8 +358,10 @@ def run_logged(cmd, cwd, log_out, log_err, timeout):
 
 
 class HostServices:
-    """Host-side peers a case needs while the guest runs (WP-28): a UDP echo server bound to
-    the loopback, reached from the guest through SLIRP's host address 10.0.2.2."""
+    """Host-side peers a case needs while the guest runs (WP-28/WP-29): UDP and TCP echo
+    servers bound to the loopback, reached from the guest through SLIRP's host address
+    10.0.2.2 (SLIRP connects to 127.0.0.1:<port>; a port with no listener is refused, which
+    the guest sees as RST)."""
 
     def __init__(self, specs):
         import socket
@@ -373,6 +375,17 @@ class HostServices:
                 self.socks.append(sock)
                 t = threading.Thread(target=self._echo, args=(sock,), daemon=True)
                 t.start(); self.threads.append(t)
+            elif spec["type"] == "tcp_echo":
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.bind(("127.0.0.1", int(spec["port"])))
+                sock.listen(4)
+                sock.settimeout(0.2)
+                self.socks.append(sock)
+                t = threading.Thread(target=self._tcp_accept, args=(sock,), daemon=True)
+                t.start(); self.threads.append(t)
+            else:
+                raise SystemExit(f"unknown host service type {spec['type']!r}")
 
     def _echo(self, sock):
         while not self.stop.is_set():
@@ -384,6 +397,35 @@ class HostServices:
                 sock.sendto(data, peer)
             except OSError:
                 pass
+
+    def _tcp_accept(self, sock):
+        import threading
+        while not self.stop.is_set():
+            try:
+                conn, _ = sock.accept()
+            except OSError:
+                continue
+            t = threading.Thread(target=self._tcp_echo, args=(conn,), daemon=True)
+            t.start(); self.threads.append(t)
+
+    def _tcp_echo(self, conn):
+        """Echoes every byte until the peer closes its side, then closes (FIN to the guest)."""
+        import socket
+        conn.settimeout(0.2)
+        with conn:
+            while not self.stop.is_set():
+                try:
+                    data = conn.recv(4096)
+                except socket.timeout:
+                    continue
+                except OSError:
+                    return
+                if not data:
+                    return
+                try:
+                    conn.sendall(data)
+                except OSError:
+                    return
 
     def close(self):
         self.stop.set()

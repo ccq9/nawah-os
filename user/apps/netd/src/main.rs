@@ -30,6 +30,33 @@ const ETHERTYPE_ARP: u16 = 0x0806;
 const ETHERTYPE_IPV4: u16 = 0x0800;
 const PROTO_ICMP: u8 = 1;
 const PROTO_UDP: u8 = 17;
+const PROTO_TCP: u8 = 6;
+const MAX_CONNS: usize = 8;
+/// One segment in flight at a time (stop-and-wait); its payload bound.
+const TCP_SEG_MAX: usize = 1024;
+const TCP_RX_MAX: usize = 2048;
+/// RFC 6298: initial RTO 1 s, minimum 1 s, maximum here 60 s. Six retransmissions with the
+/// doubling RTO put the abort at about 123 s after the first transmission: RFC 9293 §3.8.3
+/// asks R2 to be at least 100 s for data segments.
+const RTO_INITIAL: u64 = 1000;
+const RTO_MIN: u64 = 1000;
+const RTO_MAX: u64 = 60_000;
+const TCP_MAX_RETRIES: u32 = 6;
+/// RFC 6298 (5.7): after a retransmitted SYN the RTO for data starts at 3 s at least.
+const RTO_AFTER_SYN_LOSS: u64 = 3000;
+/// TIME-WAIT linger (2 × MSL with the lab's MSL of 1 s).
+const TIME_WAIT_TICKS: u64 = 2000;
+const TCP_DEFAULT_MSS: u16 = 536;
+const TCP_WINDOW: u16 = TCP_RX_MAX as u16;
+
+/// A connection slot nobody holds.
+const NO_OWNER: usize = usize::MAX;
+
+const TCP_FIN: u8 = 0x01;
+const TCP_SYN: u8 = 0x02;
+const TCP_RST: u8 = 0x04;
+const TCP_PSH: u8 = 0x08;
+const TCP_ACK: u8 = 0x10;
 
 type Ip = [u8; 4];
 type Mac = [u8; 6];
@@ -79,6 +106,115 @@ const NO_SOCKET: Socket = Socket {
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+enum TcpState {
+    Closed,
+    SynSent,
+    Established,
+    FinWait1,
+    FinWait2,
+    CloseWait,
+    LastAck,
+    Closing,
+    TimeWait,
+}
+
+impl TcpState {
+    fn name(self) -> &'static [u8] {
+        match self {
+            TcpState::Closed => b"CLOSED",
+            TcpState::SynSent => b"SYN-SENT",
+            TcpState::Established => b"ESTABLISHED",
+            TcpState::FinWait1 => b"FIN-WAIT-1",
+            TcpState::FinWait2 => b"FIN-WAIT-2",
+            TcpState::CloseWait => b"CLOSE-WAIT",
+            TcpState::LastAck => b"LAST-ACK",
+            TcpState::Closing => b"CLOSING",
+            TcpState::TimeWait => b"TIME-WAIT",
+        }
+    }
+}
+
+/// Why a connection ended without the client's close.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Fault {
+    None,
+    /// The peer answered with RST (a refused connection, or an abort).
+    Reset,
+    /// The retransmission limit was reached (RFC 9293 §3.8.3).
+    Timeout,
+}
+
+/// A TCP connection (RFC 9293) with one segment in flight: `unacked` holds the bytes between
+/// `snd_una` and `snd_nxt`; the retransmission timer follows RFC 6298 (SRTT/RTTVAR in ticks,
+/// Karn's rule: no sample from a retransmitted segment, back-off on expiry). `id` names the
+/// connection to its client and is never reused; a slot is free when nobody owns it and it
+/// is CLOSED (TIME-WAIT lingers unowned).
+#[derive(Clone, Copy)]
+struct TcpConn {
+    id: u32,
+    state: TcpState,
+    owner: usize,
+    local_port: u16,
+    remote_ip: Ip,
+    remote_port: u16,
+    remote_mac: Mac,
+    snd_una: u32,
+    snd_nxt: u32,
+    rcv_nxt: u32,
+    snd_wnd: u16,
+    mss: u16,
+    unacked: [u8; TCP_SEG_MAX],
+    unacked_len: usize,
+    /// The in-flight segment carries FIN (1) or SYN (1) sequence space beyond its data.
+    unacked_flags: u8,
+    sent_at: u64,
+    retransmitted: bool,
+    timer_due: Option<u64>,
+    rto: u64,
+    srtt: Option<u64>,
+    rttvar: u64,
+    retransmits: u32,
+    rx: [u8; TCP_RX_MAX],
+    rx_len: usize,
+    fin_received: bool,
+    fault: Fault,
+    /// Test hook (net.md ب): drop the next data transmission once, so the timer must act.
+    drop_next: bool,
+    time_wait_until: u64,
+}
+
+const NO_CONN: TcpConn = TcpConn {
+    id: 0,
+    state: TcpState::Closed,
+    owner: NO_OWNER,
+    local_port: 0,
+    remote_ip: UNSPECIFIED,
+    remote_port: 0,
+    remote_mac: [0; 6],
+    snd_una: 0,
+    snd_nxt: 0,
+    rcv_nxt: 0,
+    snd_wnd: 0,
+    mss: TCP_DEFAULT_MSS,
+    unacked: [0; TCP_SEG_MAX],
+    unacked_len: 0,
+    unacked_flags: 0,
+    sent_at: 0,
+    retransmitted: false,
+    timer_due: None,
+    rto: RTO_INITIAL,
+    srtt: None,
+    rttvar: 0,
+    retransmits: 0,
+    rx: [0; TCP_RX_MAX],
+    rx_len: 0,
+    fin_received: false,
+    fault: Fault::None,
+    drop_next: false,
+    time_wait_until: 0,
+};
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Internet {
     Unknown,
     None,
@@ -115,6 +251,10 @@ struct Net {
     stats_rx: u32,
     stats_rx_bad: u32,
     stats_tx: u32,
+    conns: [TcpConn; MAX_CONNS],
+    next_port: u16,
+    next_conn: u32,
+    isn: u32,
 }
 
 static mut NET: Net = Net {
@@ -149,6 +289,10 @@ static mut NET: Net = Net {
     stats_rx: 0,
     stats_rx_bad: 0,
     stats_tx: 0,
+    conns: [NO_CONN; MAX_CONNS],
+    next_port: 49152,
+    next_conn: 1,
+    isn: 0x1234_5678,
 };
 
 /// The single-threaded process's state (`main` takes it once and keeps it).
@@ -571,6 +715,7 @@ impl Net {
         match proto {
             PROTO_ICMP => self.handle_icmp(src, start, end),
             PROTO_UDP => self.handle_udp(src, dst, start, end),
+            PROTO_TCP => self.handle_tcp(src, dst, start, end),
             _ => {}
         }
     }
@@ -813,6 +958,562 @@ impl Net {
         self.echo_got.take().map(|t| t - t0).ok_or("TIMEOUT")
     }
 
+    // ---- TCP (RFC 9293, timer RFC 6298) ----------------------------------------------------
+
+    fn tcp_checksum(&self, src: Ip, dst: Ip, seg: &[u8]) -> u16 {
+        let mut pseudo = [0u8; 12];
+        pseudo[..4].copy_from_slice(&src);
+        pseudo[4..8].copy_from_slice(&dst);
+        pseudo[9] = PROTO_TCP;
+        pseudo[10..12].copy_from_slice(&(seg.len() as u16).to_be_bytes());
+        checksum(&[&pseudo, seg])
+    }
+
+    /// Sends one segment of connection `ci` with `flags`, `seq`, the current `rcv_nxt` as
+    /// the acknowledgment, `data`, and an MSS option on SYN.
+    fn tcp_send_segment(&mut self, ci: usize, flags: u8, seq: u32, data: &[u8]) -> bool {
+        let c = self.conns[ci];
+        let o = 34;
+        let with_mss = flags & TCP_SYN != 0;
+        let hlen = if with_mss { 24 } else { 20 };
+        let h = &mut self.tx_frame[o..o + hlen];
+        h.fill(0);
+        h[0..2].copy_from_slice(&c.local_port.to_be_bytes());
+        h[2..4].copy_from_slice(&c.remote_port.to_be_bytes());
+        h[4..8].copy_from_slice(&seq.to_be_bytes());
+        h[8..12].copy_from_slice(&c.rcv_nxt.to_be_bytes());
+        h[12] = ((hlen / 4) as u8) << 4;
+        h[13] = flags;
+        let window = TCP_WINDOW.saturating_sub(c.rx_len as u16);
+        h[14..16].copy_from_slice(&window.to_be_bytes());
+        if with_mss {
+            h[20..24].copy_from_slice(&[
+                2,
+                4,
+                (TCP_SEG_MAX >> 8) as u8,
+                (TCP_SEG_MAX & 0xFF) as u8,
+            ]);
+        }
+        self.tx_frame[o + hlen..o + hlen + data.len()].copy_from_slice(data);
+        let total = hlen + data.len();
+        let csum = self.tcp_checksum(self.ip, c.remote_ip, &self.tx_frame[o..o + total]);
+        self.tx_frame[o + 16..o + 18].copy_from_slice(&csum.to_be_bytes());
+        self.send_ipv4(c.remote_ip, PROTO_TCP, total, c.remote_mac)
+    }
+
+    /// Starts the retransmission timer for the in-flight segment (RFC 6298 §5.1).
+    fn tcp_arm(&mut self, ci: usize, now: u64) {
+        let c = &mut self.conns[ci];
+        c.sent_at = now;
+        c.timer_due = Some(now + c.rto);
+    }
+
+    /// Transmits (or re-transmits) the in-flight segment of `ci`.
+    fn tcp_transmit_unacked(&mut self, ci: usize, now: u64) {
+        let c = self.conns[ci];
+        if c.drop_next {
+            // The injected loss: the segment is not put on the wire; the timer runs anyway.
+            self.conns[ci].drop_next = false;
+            self.tcp_arm(ci, now);
+            return;
+        }
+        let mut flags = TCP_ACK | c.unacked_flags;
+        if c.unacked_flags & TCP_SYN != 0 {
+            flags = TCP_SYN; // the first SYN carries no ACK
+        }
+        if c.unacked_len > 0 {
+            flags |= TCP_PSH;
+        }
+        let mut data = [0u8; TCP_SEG_MAX];
+        data[..c.unacked_len].copy_from_slice(&c.unacked[..c.unacked_len]);
+        self.tcp_send_segment(ci, flags, c.snd_una, &data[..c.unacked_len]);
+        self.tcp_arm(ci, now);
+    }
+
+    /// Puts `data` (and/or control flags) in flight: `snd_nxt` advances by its sequence
+    /// space; the caller then waits for the acknowledgment.
+    fn tcp_queue(&mut self, ci: usize, flags: u8, data: &[u8], now: u64) {
+        let c = &mut self.conns[ci];
+        c.unacked[..data.len()].copy_from_slice(data);
+        c.unacked_len = data.len();
+        c.unacked_flags = flags;
+        c.retransmitted = false;
+        let space =
+            data.len() as u32 + u32::from(flags & TCP_SYN != 0) + u32::from(flags & TCP_FIN != 0);
+        c.snd_nxt = c.snd_una.wrapping_add(space);
+        self.tcp_transmit_unacked(ci, now);
+    }
+
+    /// Expired timers: retransmit the earliest unacknowledged segment with the RTO doubled
+    /// (RFC 6298 §5.5–5.6); after TCP_MAX_RETRIES the connection is reset locally.
+    fn tcp_timers(&mut self, now: u64) {
+        for ci in 0..MAX_CONNS {
+            let c = self.conns[ci];
+            if c.state == TcpState::TimeWait && now >= c.time_wait_until {
+                self.conns[ci] = NO_CONN;
+                continue;
+            }
+            let Some(due) = c.timer_due else {
+                continue;
+            };
+            if now < due || c.snd_una == c.snd_nxt {
+                continue;
+            }
+            if c.retransmits >= TCP_MAX_RETRIES {
+                self.conns[ci].fault = Fault::Timeout;
+                self.conns[ci].state = TcpState::Closed;
+                self.conns[ci].timer_due = None;
+                self.tcp_send_segment(ci, TCP_RST | TCP_ACK, c.snd_una, &[]);
+                continue;
+            }
+            self.conns[ci].retransmits += 1;
+            self.conns[ci].retransmitted = true;
+            self.conns[ci].rto = (c.rto * 2).min(RTO_MAX);
+            self.tcp_transmit_unacked(ci, now);
+        }
+    }
+
+    fn next_timer(&self) -> Option<u64> {
+        self.conns
+            .iter()
+            .filter_map(|c| match c.state {
+                TcpState::Closed => None,
+                TcpState::TimeWait => Some(c.time_wait_until),
+                _ => c.timer_due,
+            })
+            .min()
+    }
+
+    /// An RTT sample (RFC 6298 §2.2–2.4; granularity 1 tick, K = 4, bounds applied).
+    fn tcp_rtt_sample(&mut self, ci: usize, r: u64) {
+        let c = &mut self.conns[ci];
+        match c.srtt {
+            None => {
+                c.srtt = Some(r);
+                c.rttvar = r / 2;
+            }
+            Some(srtt) => {
+                let diff = srtt.abs_diff(r);
+                c.rttvar = (c.rttvar * 3 + diff) / 4;
+                c.srtt = Some((srtt * 7 + r) / 8);
+            }
+        }
+        let rto = c.srtt.unwrap_or(r) + (4 * c.rttvar).max(1);
+        c.rto = rto.clamp(RTO_MIN, RTO_MAX);
+    }
+
+    fn handle_tcp(&mut self, src: Ip, dst: Ip, start: usize, end: usize) {
+        let seg_len = end - start;
+        if seg_len < 20 {
+            self.stats_rx_bad += 1;
+            return;
+        }
+        let mut seg = [0u8; FRAME_MAX];
+        seg[..seg_len].copy_from_slice(&self.rx_frame[start..end]);
+        let seg = &seg[..seg_len];
+        if self.tcp_checksum(src, dst, seg) != 0 {
+            self.stats_rx_bad += 1;
+            return;
+        }
+        let (sport, dport) = (u16_at(seg, 0), u16_at(seg, 2));
+        let seq = u32::from_be_bytes([seg[4], seg[5], seg[6], seg[7]]);
+        let ack = u32::from_be_bytes([seg[8], seg[9], seg[10], seg[11]]);
+        let hlen = usize::from(seg[12] >> 4) * 4;
+        let flags = seg[13];
+        let window = u16_at(seg, 14);
+        if hlen < 20 || hlen > seg_len {
+            self.stats_rx_bad += 1;
+            return;
+        }
+        let Some(ci) = (0..MAX_CONNS).find(|&i| {
+            let c = &self.conns[i];
+            c.state != TcpState::Closed
+                && c.local_port == dport
+                && c.remote_port == sport
+                && c.remote_ip == src
+        }) else {
+            // No connection (CLOSED): a reset answers anything but a reset (RFC 9293 §3.10.7.1).
+            if flags & TCP_RST == 0 {
+                let mut smac = [0u8; 6];
+                smac.copy_from_slice(&self.rx_frame[6..12]);
+                self.tcp_send_reset(src, smac, dport, sport, seq, ack, flags, seg_len - hlen);
+            }
+            return;
+        };
+        let now = libnawah::clock_ticks();
+        let data = &seg[hlen..];
+        let c = self.conns[ci];
+        if flags & TCP_RST != 0 {
+            self.conns[ci].fault = Fault::Reset;
+            self.conns[ci].state = TcpState::Closed;
+            self.conns[ci].timer_due = None;
+            return;
+        }
+        // MSS option on SYN segments.
+        if flags & TCP_SYN != 0 {
+            let mut i = 20;
+            while i + 1 < hlen {
+                match seg[i] {
+                    0 => break,
+                    1 => i += 1,
+                    2 if i + 4 <= hlen => {
+                        let mss = u16_at(seg, i + 2);
+                        self.conns[ci].mss = mss.clamp(64, TCP_SEG_MAX as u16);
+                        i += 4;
+                    }
+                    _ => {
+                        let l = usize::from(seg[i + 1]).max(2);
+                        i += l;
+                    }
+                }
+            }
+        }
+        match c.state {
+            TcpState::SynSent => {
+                if flags & TCP_SYN != 0 && flags & TCP_ACK != 0 && ack == c.snd_nxt {
+                    let cc = &mut self.conns[ci];
+                    cc.rcv_nxt = seq.wrapping_add(1);
+                    cc.snd_una = ack;
+                    cc.snd_wnd = window;
+                    cc.timer_due = None;
+                    cc.unacked_len = 0;
+                    cc.unacked_flags = 0;
+                    cc.state = TcpState::Established;
+                    if c.retransmitted {
+                        cc.rto = cc.rto.max(RTO_AFTER_SYN_LOSS);
+                    } else {
+                        let r = now.saturating_sub(c.sent_at);
+                        self.tcp_rtt_sample(ci, r);
+                    }
+                    self.tcp_send_segment(ci, TCP_ACK, self.conns[ci].snd_nxt, &[]);
+                }
+                return;
+            }
+            TcpState::TimeWait => {
+                // The peer's FIN again (our last ACK was lost): acknowledge it once more.
+                if flags & TCP_FIN != 0 {
+                    let nxt = c.snd_nxt;
+                    self.tcp_send_segment(ci, TCP_ACK, nxt, &[]);
+                }
+                return;
+            }
+            TcpState::Closed => return,
+            _ => {}
+        }
+        // Acknowledgments of our in-flight data (RFC 9293 §3.10.7.4).
+        if flags & TCP_ACK != 0 && c.snd_una != c.snd_nxt {
+            let acked_all =
+                ack.wrapping_sub(c.snd_una) as i32 > 0 && ack.wrapping_sub(c.snd_nxt) as i32 >= 0;
+            if acked_all {
+                let cc = &mut self.conns[ci];
+                cc.snd_una = cc.snd_nxt;
+                cc.unacked_len = 0;
+                let had_fin = cc.unacked_flags & TCP_FIN != 0;
+                cc.unacked_flags = 0;
+                cc.timer_due = None;
+                cc.snd_wnd = window;
+                if !c.retransmitted {
+                    let r = now.saturating_sub(c.sent_at);
+                    self.tcp_rtt_sample(ci, r);
+                }
+                if had_fin {
+                    let cc = &mut self.conns[ci];
+                    cc.state = match cc.state {
+                        TcpState::FinWait1 => TcpState::FinWait2,
+                        TcpState::Closing => TcpState::TimeWait,
+                        TcpState::LastAck => TcpState::Closed,
+                        s => s,
+                    };
+                    if cc.state == TcpState::TimeWait {
+                        cc.time_wait_until = now + TIME_WAIT_TICKS;
+                    }
+                }
+            }
+        }
+        // In-order data and FIN; anything else is dropped and the current ACK repeated.
+        let mut advanced = false;
+        if seq == self.conns[ci].rcv_nxt {
+            let room = TCP_RX_MAX - self.conns[ci].rx_len;
+            let n = data.len().min(room);
+            if n == data.len() {
+                let cc = &mut self.conns[ci];
+                cc.rx[cc.rx_len..cc.rx_len + n].copy_from_slice(&data[..n]);
+                cc.rx_len += n;
+                cc.rcv_nxt = cc.rcv_nxt.wrapping_add(n as u32);
+                advanced = n > 0;
+                if flags & TCP_FIN != 0 && !cc.fin_received {
+                    cc.fin_received = true;
+                    cc.rcv_nxt = cc.rcv_nxt.wrapping_add(1);
+                    advanced = true;
+                    cc.state = match cc.state {
+                        TcpState::Established => TcpState::CloseWait,
+                        TcpState::FinWait1 => TcpState::Closing,
+                        TcpState::FinWait2 => TcpState::TimeWait,
+                        s => s,
+                    };
+                    if cc.state == TcpState::TimeWait {
+                        cc.time_wait_until = now + TIME_WAIT_TICKS;
+                    }
+                }
+            }
+        } else if !data.is_empty() || flags & TCP_FIN != 0 {
+            advanced = true; // out of order: acknowledge what we have
+        }
+        if advanced {
+            let nxt = self.conns[ci].snd_nxt;
+            self.tcp_send_segment(ci, TCP_ACK, nxt, &[]);
+        }
+    }
+
+    /// RST for a segment that reached no connection (RFC 9293 §3.10.7.1).
+    #[allow(clippy::too_many_arguments)]
+    fn tcp_send_reset(
+        &mut self,
+        dst: Ip,
+        dst_mac: Mac,
+        local_port: u16,
+        remote_port: u16,
+        seq: u32,
+        ack: u32,
+        flags: u8,
+        data_len: usize,
+    ) {
+        let o = 34;
+        let h = &mut self.tx_frame[o..o + 20];
+        h.fill(0);
+        h[0..2].copy_from_slice(&local_port.to_be_bytes());
+        h[2..4].copy_from_slice(&remote_port.to_be_bytes());
+        if flags & TCP_ACK != 0 {
+            h[4..8].copy_from_slice(&ack.to_be_bytes());
+            h[13] = TCP_RST;
+        } else {
+            let space =
+                data_len as u32 + u32::from(flags & TCP_SYN != 0) + u32::from(flags & TCP_FIN != 0);
+            h[8..12].copy_from_slice(&seq.wrapping_add(space).to_be_bytes());
+            h[13] = TCP_RST | TCP_ACK;
+        }
+        h[12] = 5 << 4;
+        let csum = self.tcp_checksum(self.ip, dst, &self.tx_frame[o..o + 20]);
+        self.tx_frame[o + 16..o + 18].copy_from_slice(&csum.to_be_bytes());
+        self.send_ipv4(dst, PROTO_TCP, 20, dst_mac);
+    }
+
+    /// Pumps frames and timers until `done` holds or `deadline` passes.
+    fn tcp_wait(&mut self, deadline: u64, done: impl Fn(&TcpConn) -> bool, ci: usize) -> bool {
+        loop {
+            let now = libnawah::clock_ticks();
+            self.tcp_timers(now);
+            if done(&self.conns[ci]) {
+                return true;
+            }
+            if now >= deadline {
+                return false;
+            }
+            let next = self.next_timer().map_or(deadline, |t| t.min(deadline));
+            self.pump(next.saturating_sub(now).clamp(1, 50));
+        }
+    }
+
+    /// Active open: SYN, SYN+ACK, ACK (RFC 9293 §3.5), with the policy and ARP first.
+    fn tcp_connect(&mut self, owner: usize, ip: Ip, port: u16, timeout: u64, out: &mut Out) {
+        if !self.policy_allows(ip) {
+            out.put(b"ERR POLICY");
+            return;
+        }
+        let Some(ci) = self
+            .conns
+            .iter()
+            .position(|c| c.owner == NO_OWNER && c.state == TcpState::Closed)
+        else {
+            out.put(b"ERR FULL");
+            return;
+        };
+        let Some(mac) = self.resolve(ip) else {
+            out.put(b"ERR ARP");
+            return;
+        };
+        let local_port = self.next_port;
+        self.next_port = if self.next_port == 65535 {
+            49152
+        } else {
+            self.next_port + 1
+        };
+        self.isn = self.isn.wrapping_mul(1_103_515_245).wrapping_add(12345)
+            ^ (libnawah::clock_ticks() as u32);
+        let mut c = NO_CONN;
+        c.id = self.next_conn;
+        self.next_conn = self.next_conn.wrapping_add(1).max(1);
+        c.state = TcpState::SynSent;
+        c.owner = owner;
+        c.local_port = local_port;
+        c.remote_ip = ip;
+        c.remote_port = port;
+        c.remote_mac = mac;
+        c.snd_una = self.isn;
+        c.snd_nxt = self.isn;
+        self.conns[ci] = c;
+        let now = libnawah::clock_ticks();
+        self.tcp_queue(ci, TCP_SYN, &[], now);
+        self.tcp_wait(
+            now + timeout,
+            |c| c.state == TcpState::Established || c.state == TcpState::Closed,
+            ci,
+        );
+        let c = self.conns[ci];
+        if c.state == TcpState::Established {
+            out.put(b"OK ");
+            out.num(u64::from(c.id));
+        } else {
+            // A SYN still in flight is abandoned: a late SYN+ACK meets no connection and
+            // is answered with RST.
+            self.conns[ci] = NO_CONN;
+            out.put(if c.fault == Fault::Reset {
+                b"ERR REFUSED"
+            } else {
+                b"ERR TIMEOUT"
+            });
+        }
+    }
+
+    /// Sends `data` in segments of at most MSS, each acknowledged before the next.
+    fn tcp_send(&mut self, ci: usize, data: &[u8], out: &mut Out) {
+        let mut sent = 0;
+        while sent < data.len() {
+            let c = self.conns[ci];
+            if c.state != TcpState::Established && c.state != TcpState::CloseWait {
+                out.put(b"ERR CLOSED");
+                return;
+            }
+            let n = (data.len() - sent).min(usize::from(c.mss)).min(TCP_SEG_MAX);
+            let now = libnawah::clock_ticks();
+            self.tcp_queue(ci, 0, &data[sent..sent + n], now);
+            // Bounded by the retransmission limit, not by a deadline of its own.
+            self.tcp_wait(
+                u64::MAX,
+                |c| c.snd_una == c.snd_nxt || c.state == TcpState::Closed,
+                ci,
+            );
+            let c = self.conns[ci];
+            if c.snd_una != c.snd_nxt || c.state == TcpState::Closed {
+                out.put(match c.fault {
+                    Fault::Reset => b"ERR RESET",
+                    Fault::Timeout => b"ERR TIMEOUT",
+                    Fault::None => b"ERR CLOSED",
+                });
+                return;
+            }
+            sent += n;
+        }
+        out.put(b"OK ");
+        out.num(sent as u64);
+    }
+
+    fn tcp_recv(&mut self, ci: usize, timeout: u64, out: &mut Out) {
+        let now = libnawah::clock_ticks();
+        self.tcp_wait(
+            now + timeout,
+            |c| c.rx_len > 0 || c.fin_received || c.state == TcpState::Closed,
+            ci,
+        );
+        let c = &mut self.conns[ci];
+        if c.rx_len > 0 {
+            out.put(b"OK ");
+            let n = c.rx_len.min(1500);
+            let mut data = [0u8; 1500];
+            data[..n].copy_from_slice(&c.rx[..n]);
+            c.rx.copy_within(n..c.rx_len, 0);
+            c.rx_len -= n;
+            out.put(&data[..n]);
+        } else if c.fault == Fault::Reset {
+            out.put(b"ERR RESET");
+        } else if c.fin_received || c.state == TcpState::Closed {
+            out.put(b"ERR CLOSED");
+        } else {
+            out.put(b"ERR TIMEOUT");
+        }
+    }
+
+    /// Active (or passive after the peer's FIN) close: FIN, then the handshake to TIME-WAIT
+    /// or CLOSED (RFC 9293 §3.6), bounded.
+    fn tcp_close(&mut self, ci: usize, out: &mut Out) {
+        let c = self.conns[ci];
+        let now = libnawah::clock_ticks();
+        match c.state {
+            TcpState::Established | TcpState::CloseWait => {
+                self.conns[ci].state = if c.state == TcpState::Established {
+                    TcpState::FinWait1
+                } else {
+                    TcpState::LastAck
+                };
+                self.tcp_queue(ci, TCP_FIN, &[], now);
+                self.tcp_wait(
+                    now + 5000,
+                    |c| matches!(c.state, TcpState::TimeWait | TcpState::Closed),
+                    ci,
+                );
+            }
+            TcpState::Closed => {}
+            _ => {
+                self.tcp_wait(
+                    now + 5000,
+                    |c| matches!(c.state, TcpState::TimeWait | TcpState::Closed),
+                    ci,
+                );
+            }
+        }
+        let c = self.conns[ci];
+        if c.state == TcpState::TimeWait {
+            self.conns[ci].owner = NO_OWNER; // lingers for 2 MSL, held by nobody
+        } else if c.state == TcpState::Closed {
+            self.conns[ci] = NO_CONN;
+        } else {
+            // The close handshake did not finish in time: abort (RST) rather than linger.
+            self.tcp_abort(ci);
+        }
+        out.put(b"OK");
+    }
+
+    fn tcp_status(&self, ci: usize, out: &mut Out) {
+        let c = &self.conns[ci];
+        out.put(b"OK state=");
+        out.put(c.state.name());
+        out.put(b" retransmits=");
+        out.num(u64::from(c.retransmits));
+        out.put(b" rto=");
+        out.num(c.rto);
+        out.put(b" srtt=");
+        out.num(c.srtt.unwrap_or(0));
+        out.put(b" mss=");
+        out.num(u64::from(c.mss));
+        out.put(b" unacked=");
+        out.num(c.snd_nxt.wrapping_sub(c.snd_una) as u64);
+        out.put(b" rx_pending=");
+        out.num(c.rx_len as u64);
+    }
+
+    /// Drops a connection with a reset to the peer.
+    fn tcp_abort(&mut self, ci: usize) {
+        let c = self.conns[ci];
+        if matches!(
+            c.state,
+            TcpState::SynSent
+                | TcpState::Established
+                | TcpState::FinWait1
+                | TcpState::FinWait2
+                | TcpState::CloseWait
+                | TcpState::Closing
+                | TcpState::LastAck
+        ) {
+            self.tcp_send_segment(ci, TCP_RST | TCP_ACK, c.snd_nxt, &[]);
+        }
+        self.conns[ci] = NO_CONN;
+    }
+
+    /// The slot of the connection `id` held by `owner`.
+    fn find_conn(&self, id: u64, owner: usize) -> Option<usize> {
+        (0..MAX_CONNS).find(|&i| self.conns[i].owner == owner && u64::from(self.conns[i].id) == id)
+    }
+
     fn status(&self, out: &mut Out) {
         out.put(b"OK link=");
         out.num(u64::from(self.link));
@@ -1021,6 +1722,59 @@ impl Net {
                 out.put(b" ");
                 out.put(&d.data[..usize::from(d.len)]);
             }
+            b"TCP_CONNECT" => {
+                let (Some(ip), Some(port)) = (
+                    f.next().and_then(parse_ip),
+                    f.next()
+                        .and_then(parse_u64)
+                        .filter(|p| *p > 0 && *p < 65536),
+                ) else {
+                    out.put(b"ERR BAD_REQUEST");
+                    return;
+                };
+                let timeout = f.next().and_then(parse_u64).unwrap_or(5000).min(60_000);
+                self.tcp_connect(ci, ip, port as u16, timeout, out);
+            }
+            b"TCP_SEND" | b"TCP_RECV" | b"TCP_CLOSE" | b"TCP_STATUS" | b"TCP_INJECT" => {
+                let Some(id) = f.next().and_then(parse_u64) else {
+                    out.put(b"ERR BAD_REQUEST");
+                    return;
+                };
+                let Some(conn) = self.find_conn(id, ci) else {
+                    // Released by TCP_CLOSE (identifiers are never reused) or never this
+                    // client's.
+                    out.put(b"ERR CLOSED");
+                    return;
+                };
+                match verb {
+                    b"TCP_SEND" => {
+                        let data = f.rest();
+                        if data.is_empty() || data.len() > 1500 {
+                            out.put(b"ERR BAD_REQUEST");
+                            return;
+                        }
+                        let mut copy = [0u8; 1500];
+                        copy[..data.len()].copy_from_slice(data);
+                        self.tcp_send(conn, &copy[..data.len()], out);
+                    }
+                    b"TCP_RECV" => {
+                        let timeout = f.next().and_then(parse_u64).unwrap_or(0).min(60_000);
+                        self.tcp_recv(conn, timeout, out);
+                    }
+                    b"TCP_CLOSE" => self.tcp_close(conn, out),
+                    b"TCP_STATUS" => self.tcp_status(conn, out),
+                    _ => {
+                        // Diagnostic (net.md ب): `drop_next=1` loses the connection's next
+                        // transmission once, so the retransmission timer is exercised in the lab.
+                        if f.next() != Some(b"drop_next=1") {
+                            out.put(b"ERR BAD_REQUEST");
+                            return;
+                        }
+                        self.conns[conn].drop_next = true;
+                        out.put(b"OK");
+                    }
+                }
+            }
             _ => out.put(b"ERR BAD_REQUEST"),
         }
     }
@@ -1079,8 +1833,16 @@ fn main() -> u64 {
                 k += 1;
             }
         }
-        let Ok((idx, _)) = libnawah::object_wait_many(&entries[..k], libnawah::TIMEOUT_FOREVER)
-        else {
+        let now = libnawah::clock_ticks();
+        st.tcp_timers(now);
+        let timeout = st
+            .next_timer()
+            .map_or(libnawah::TIMEOUT_FOREVER, |t| t.saturating_sub(now).max(1));
+        let wait = libnawah::object_wait_many(&entries[..k], timeout);
+        let Ok((idx, _)) = wait else {
+            if wait == Err(libnawah::ERR_TIMED_OUT) {
+                continue;
+            }
             return 0xE5;
         };
         if idx == 1 {
@@ -1136,6 +1898,12 @@ fn main() -> u64 {
                     .filter(|s| s.port != 0 && s.owner == ci)
                 {
                     *s = NO_SOCKET;
+                }
+                // The client's connections are reset (no graceful close for a vanished client).
+                for cn in 0..MAX_CONNS {
+                    if st.conns[cn].owner == ci {
+                        st.tcp_abort(cn);
+                    }
                 }
             }
             Err(_) => {}

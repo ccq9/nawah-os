@@ -180,6 +180,8 @@ pub fn run() -> ! {
         "net_icmp" => net_icmp(),
         "net_udp_echo" => net_udp_echo(),
         "net_no_internet" => net_no_internet(),
+        "net_tcp_echo" => net_tcp_echo(),
+        "net_tcp_retransmit" => net_tcp_retransmit(),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
         "lock_reentry" => {
@@ -3975,6 +3977,112 @@ fn net_no_internet() -> ! {
         "net_no_internet",
         frames0,
         "link, configured and internet are separate; off-link traffic needs an explicit policy",
+    )
+}
+
+// ---- WP-29: TCP in the network service ------------------------------------------------------
+
+/// A TCP connection to the host's echo server through SLIRP: the three-way handshake, data
+/// both ways with acknowledgments, the orderly close, a released identifier, and a refused
+/// connection (RST from a port nobody listens on).
+fn net_tcp_echo() -> ! {
+    let (env, dhcp) = net_env("net_tcp_echo");
+    let frames0 = {
+        let n = &env.net;
+        let conn = cfg_request(n, b"TCP_CONNECT 10.0.2.2 17008 5000", None);
+        let sent = cfg_request(n, b"TCP_SEND 1 hello tcp", None);
+        let got = cfg_request(n, b"TCP_RECV 1 3000", None);
+        let sent2 = cfg_request(n, b"TCP_SEND 1 second round through tcp", None);
+        let got2 = cfg_request(n, b"TCP_RECV 1 3000", None);
+        let empty = cfg_request(n, b"TCP_RECV 1 50", None);
+        let status = cfg_request(n, b"TCP_STATUS 1", None);
+        let closed = cfg_request(n, b"TCP_CLOSE 1", None);
+        let after = cfg_request(n, b"TCP_RECV 1 50", None);
+        let refused = cfg_request(n, b"TCP_CONNECT 10.0.2.2 17009 5000", None);
+        let bad = cfg_request(n, b"TCP_SEND x y", None);
+        kprintln!(
+            "OSX|{}|ktest|net_tcp_echo|dhcp_ok={}|conn={}|sent={}|got={}|sent2={}|got2={}|empty={}|status={}|closed={}|after={}|refused={}|bad={}",
+            BUILD_ID,
+            u8::from(dhcp == LAB_DHCP),
+            conn, sent, got, sent2, got2, empty, status, closed, after, refused, bad
+        );
+        if dhcp != LAB_DHCP || conn != "OK 1" || sent != "OK 9" || got != "OK hello tcp" {
+            fail("the handshake or the first exchange with the host's TCP echo failed")
+        }
+        if sent2 != "OK 25" || got2 != "OK second round through tcp" || empty != "ERR TIMEOUT" {
+            fail("the second exchange or the receive timeout went wrong")
+        }
+        if !status.starts_with("OK state=ESTABLISHED retransmits=0 rto=1000 srtt=") {
+            fail("the connection status is not the expected one")
+        }
+        if closed != "OK"
+            || after != "ERR CLOSED"
+            || refused != "ERR REFUSED"
+            || bad != "ERR BAD_REQUEST"
+        {
+            fail("close, the released identifier, or the refused port went wrong")
+        }
+        // The DHCP reply string lives outside the block: release it before the balance.
+        drop(dhcp);
+        net_close(env, "net_tcp_echo")
+    };
+    cfg_balance(
+        "net_tcp_echo",
+        frames0,
+        "TCP connects to the host's echo server, exchanges data both ways and closes in order",
+    )
+}
+
+/// The retransmission timer (RFC 6298): the service drops its next transmission on request,
+/// so the segment goes out only when the RTO (1000 ticks) expires, with the RTO doubled and
+/// no RTT sample taken from it (Karn); the next acknowledged send restores the RTO.
+fn net_tcp_retransmit() -> ! {
+    let (env, dhcp) = net_env("net_tcp_retransmit");
+    let frames0 = {
+        let n = &env.net;
+        let conn = cfg_request(n, b"TCP_CONNECT 10.0.2.2 17008 5000", None);
+        let inject = cfg_request(n, b"TCP_INJECT 1 drop_next=1", None);
+        let t0 = sched::ticks();
+        let sent = cfg_request(n, b"TCP_SEND 1 retransmit me", None);
+        let waited = sched::ticks() - t0;
+        let status = cfg_request(n, b"TCP_STATUS 1", None);
+        let got = cfg_request(n, b"TCP_RECV 1 3000", None);
+        let sent2 = cfg_request(n, b"TCP_SEND 1 again", None);
+        let status2 = cfg_request(n, b"TCP_STATUS 1", None);
+        let got2 = cfg_request(n, b"TCP_RECV 1 3000", None);
+        let closed = cfg_request(n, b"TCP_CLOSE 1", None);
+        kprintln!(
+            "OSX|{}|ktest|net_tcp_retransmit|dhcp_ok={}|conn={}|inject={}|sent={}|waited={}|status={}|got={}|sent2={}|status2={}|got2={}|closed={}",
+            BUILD_ID,
+            u8::from(dhcp == LAB_DHCP),
+            conn, inject, sent, waited, status, got, sent2, status2, got2, closed
+        );
+        if dhcp != LAB_DHCP || conn != "OK 1" || inject != "OK" {
+            fail("the connection or the injected loss was refused")
+        }
+        if sent != "OK 13" || waited < 1000 {
+            fail("the dropped segment was not delivered by the retransmission timer")
+        }
+        if !status.starts_with("OK state=ESTABLISHED retransmits=1 rto=2000 srtt=")
+            || got != "OK retransmit me"
+        {
+            fail("the retransmission did not double the RTO without an RTT sample")
+        }
+        if sent2 != "OK 5"
+            || !status2.starts_with("OK state=ESTABLISHED retransmits=1 rto=1000 srtt=")
+            || got2 != "OK again"
+            || closed != "OK"
+        {
+            fail("the next acknowledged send did not restore the RTO")
+        }
+        // The DHCP reply string lives outside the block: release it before the balance.
+        drop(dhcp);
+        net_close(env, "net_tcp_retransmit")
+    };
+    cfg_balance(
+        "net_tcp_retransmit",
+        frames0,
+        "a lost segment is retransmitted when the RTO expires, with exponential back-off and Karn's rule",
     )
 }
 

@@ -38,7 +38,32 @@
 | `UDP_SEND <sock> <ip> <port> <data…>` | `OK <len>`؛ `ERR POLICY`؛ `ERR ARP`؛ `ERR BUSY`؛ `ERR BAD_REQUEST` (مقبس ليس للعميل) |
 | `UDP_RECV <sock> <timeout_ticks>` | `OK <ip> <port> <data>`؛ `ERR TIMEOUT` |
 | `UDP_CLOSE <sock>` | `OK`؛ المقابس تُغلق أيضًا عند إغلاق قناة العميل |
-| `TCP_*` | WP-29 |
+| `TCP_*` | الجزء ج |
 
 - **المختبر**: خادم صدى UDP على المضيف (`tools/project.py`، `host_services`) يُوصَل عبر 10.0.2.2 (SLIRP يوجّهه إلى loopback المضيف)؛ الوجهة خارج الشبكة في الاختبارات 192.0.2.1 (TEST-NET-1، RFC 5737) فلا تُجاب أبدًا.
 - **الاختبارات الحاكمة**: TST-M4-DHCP، TST-M4-ICMP-ECHO، TST-M4-UDP-ECHO، TST-M4-NET-NO-INTERNET.
+
+## ج. TCP في الخدمة `net` (الإصدار 1، WP-29؛ RFC 9293 S61، RFC 6298 S62)
+
+مسودة حتى إغلاق WP-29 بدليل CI. عميل TCP (فتح نشط فقط؛ لا إصغاء في هذا الإصدار) بمقطع واحد قيد الإرسال (stop-and-wait). الكود: `user/apps/netd` (الطلبات `TCP_*`)، `kernel/src/ktest.rs` (`net_tcp_echo`، `net_tcp_retransmit`)، `tools/project.py` (`host_services` نوع `tcp_echo`).
+
+- **الاتصال**: مصافحة ثلاثية SYN / SYN+ACK / ACK (RFC 9293 §3.5)؛ ISN من مولّد خطي مخلوط بالنبضة؛ منفذ محلي دوّار 49152..65535؛ خيار MSS (النوع 2، الطول 4) يُرسَل بقيمة 1024 ويُقرأ من SYN+ACK (الافتراضي 536 عند غيابه، §3.7.1؛ يُحصر في 64..1024)؛ 8 اتصالات في آن؛ معرّف الاتصال `<conn>` (u32 يبدأ من 1) لا يُعاد استخدامه أبدًا.
+- **النقل**: مقطع واحد ≤ MSS قيد الإرسال (PSH على البيانات)؛ `TCP_SEND` يقسّم البيانات ويحجز حتى يصل إقرار كل مقطع؛ الاستقبال بالترتيب فقط (مخزن 2048 بايت لكل اتصال، النافذة المعلنة = المتبقي؛ مقطع خارج الترتيب يُسقط ويُعاد الإقرار الحالي)؛ FIN من النظير يُقَرّ ويُسجَّل (EOF).
+- **المؤقت (RFC 6298)**: RTO ابتدائي 1000 نبضة (1 ث)؛ أول عينة SRTT=R وRTTVAR=R/2، ثم RTTVAR=(3·RTTVAR+|SRTT−R|)/4 وSRTT=(7·SRTT+R)/8 وRTO=SRTT+max(1,4·RTTVAR) بحد أدنى 1000 وأقصى 60000؛ عند انقضاء المؤقت يُعاد إرسال المقطع غير المُقَرّ وRTO يتضاعف (حتى 60000) ويبقى حتى عينة جديدة؛ لا عينة من مقطع أُعيد إرساله (Karn، §3)؛ بعد SYN أُعيد إرساله يبدأ RTO البيانات من 3000 على الأقل (5.7)؛ بعد 6 إعادات (≈123 ث، RFC 9293 §3.8.3: R2 ≥ 100 ث) تُنهى الوصلة بـ RST للنظير وتصير `CLOSED` بعطل timeout.
+- **الإغلاق**: FIN نشط → FIN-WAIT-1 → FIN-WAIT-2 → TIME-WAIT (2000 نبضة ثم تُحرَّر الخانة)؛ بعد FIN النظير → CLOSE-WAIT ثم LAST-ACK → CLOSED؛ CLOSING عند التزامن؛ مهلة 5000 نبضة لمصافحة الإغلاق ثم إنهاء بـ RST. RST من النظير: قبل الاكتمال `ERR REFUSED`، بعده `ERR RESET`. مقطع لا يخص اتصالًا (ولا يحمل RST) يُجاب بـ RST (§3.5.2)؛ FIN مكرر في TIME-WAIT يُقَرّ ثانية.
+- **السياسة**: `TCP_CONNECT` إلى وجهة خارج الشبكة الفرعية بلا `allow_internet` → `ERR POLICY`.
+- **حقن تشخيصي**: `TCP_INJECT <conn> drop_next=1` يُسقط إرسال الاتصال التالي مرة واحدة (لا يُوضع على السلك والمؤقت يعمل) لاختبار إعادة الإرسال في المختبر.
+
+| الطلب | الردّ |
+|---|---|
+| `TCP_CONNECT <ip> <port> [timeout_ticks=5000]` | `OK <conn>`؛ `ERR REFUSED` (RST)؛ `ERR TIMEOUT`؛ `ERR POLICY`؛ `ERR ARP`؛ `ERR FULL`؛ `ERR BAD_REQUEST` |
+| `TCP_SEND <conn> <data…>` (1..1500 بايت) | `OK <len>` بعد إقرار كل المقاطع؛ `ERR RESET`؛ `ERR TIMEOUT` (حد إعادة الإرسال)؛ `ERR CLOSED` |
+| `TCP_RECV <conn> <timeout_ticks>` | `OK <data>` (≤ 1500 بايت مما وصل بالترتيب)؛ `ERR TIMEOUT`؛ `ERR CLOSED` (EOF أو منتهٍ)؛ `ERR RESET` |
+| `TCP_CLOSE <conn>` | `OK` ويُحرَّر المعرّف |
+| `TCP_STATUS <conn>` | `OK state=<CLOSED/SYN-SENT/ESTABLISHED/FIN-WAIT-1/FIN-WAIT-2/CLOSE-WAIT/LAST-ACK/CLOSING/TIME-WAIT> retransmits=<n> rto=<ticks> srtt=<ticks> mss=<n> unacked=<bytes> rx_pending=<bytes>` |
+| `TCP_INJECT <conn> drop_next=1` | `OK`؛ `ERR BAD_REQUEST` |
+| أيٌّ منها بمعرّف محرَّر أو ليس للعميل | `ERR CLOSED`؛ معرّف غير رقمي `ERR BAD_REQUEST` |
+
+- عند إغلاق قناة العميل تُنهى اتصالاته بـ RST وتُحرَّر خاناتها.
+- **المختبر**: خادم صدى TCP على المضيف (`host_services` نوع `tcp_echo`، 127.0.0.1:17008) عبر 10.0.2.2؛ المنفذ 17009 بلا مُصغٍ فيرفضه المضيف وSLIRP يحوّل الرفض إلى RST للضيف.
+- **الاختبارات الحاكمة**: TST-M4-TCP-ECHO، TST-M4-TCP-RETRANSMIT.

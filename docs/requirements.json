@@ -1246,7 +1246,7 @@
         "TST-M4-TCP-ECHO",
         "TST-M4-TCP-RETRANSMIT"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "implemented_untested",
       "evidence_refs": []
     },
     {
