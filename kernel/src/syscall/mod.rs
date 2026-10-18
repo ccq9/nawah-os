@@ -611,10 +611,14 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
             {
                 return Err(ERR_INVALID);
             }
-            let e = t.get(h, Rights::WAIT).map_err(handle_err)?;
+            // Handle, then type, then rights (ipc.md §1).
+            let e = t.get(h, Rights::NONE).map_err(handle_err)?;
             match &e.object {
                 Object::Channel(_) | Object::Process(_) => {}
                 _ => return Err(ERR_WRONG_TYPE),
+            }
+            if !e.rights.contains(Rights::WAIT) {
+                return Err(ERR_ACCESS);
             }
             targets.push((e.object.clone(), wanted));
         }

@@ -39,7 +39,7 @@ fn main() -> u64 {
     if wait_one(p, SIGNAL_EXITED, 30) != Err(ERR_TIMED_OUT) {
         return 0xE4;
     }
-    if libnawah::channel_write(a, MSG, &[]) != MSG.len() as i64 {
+    if libnawah::channel_write(a, MSG, &[]) != 0 {
         return 0xE5;
     }
     if wait_one(p2, SIGNAL_EXITED, TIMEOUT_FOREVER) != Ok((0, SIGNAL_EXITED)) {
@@ -78,7 +78,7 @@ fn main() -> u64 {
     if libnawah::handle_close(q) != 0 {
         return 0xEF;
     }
-    if libnawah::channel_write(c, b"bye", &[]) != 3 {
+    if libnawah::channel_write(c, b"bye", &[]) != 0 {
         return 0xF0;
     }
     match wait_one(c, SIGNAL_READABLE, TIMEOUT_FOREVER) {

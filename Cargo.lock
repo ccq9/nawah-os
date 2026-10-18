@@ -49,6 +49,10 @@ name = "libnawah"
 version = "0.1.0"
 
 [[package]]
+name = "nawah-crypto"
+version = "0.1.0"
+
+[[package]]
 name = "nawah-kernel"
 version = "0.1.0"
 

@@ -2728,8 +2728,10 @@ impl SvcHarness {
     }
 
     /// Closes the control channel (the manager exits 0, its services see their channels
-    /// close and exit) and waits until no process is left; the resource balance afterwards.
-    fn finish(self) -> (u64, usize, i64, bool) {
+    /// close and exit) and waits until no process is left; the object balance afterwards.
+    /// Frames are compared by `frames_delta` once the test has dropped its own strings
+    /// (heap pages come from the frame allocator: CI run 39128972130 counted them).
+    fn finish(self) -> (u64, usize, u64, bool) {
         let SvcHarness {
             m, obj0, frames0, ..
         } = self;
@@ -2740,13 +2742,34 @@ impl SvcHarness {
         let code = object.exit_code().unwrap_or(u64::MAX);
         drop(object);
         let obj1 = object::stats();
-        let frames1 = pmm::stats().free_frames;
         (
             code,
             sched::stats().processes,
-            frames0 as i64 - frames1 as i64,
+            frames0,
             gone && obj1 == obj0,
         )
+    }
+
+    fn frames_delta(frames0: u64) -> i64 {
+        frames0 as i64 - pmm::stats().free_frames as i64
+    }
+}
+
+/// The last line of a manager test: printed after every allocation of the test is gone.
+fn svc_balance(name: &str, frames0: u64) -> ! {
+    let delta = SvcHarness::frames_delta(frames0);
+    kprintln!("OSX|{}|ktest|{}|frames_delta={}", BUILD_ID, name, delta);
+    if delta != 0 {
+        fail("frames leaked by the manager or its services")
+    }
+    match name {
+        "svc_order" => {
+            pass("services start in dependency order, each after its dependencies are ready")
+        }
+        "svc_timeout" => pass(
+            "a silent service fails at its timeout, its dependent stays blocked, the manager answers",
+        ),
+        _ => pass("a crashing service is restarted with backoff up to its limit, then given up"),
     }
 }
 
@@ -2768,9 +2791,9 @@ fn svc_order() -> ! {
     let c_after_ab = c.first_start >= a.ready.max(b.ready) && b.ready.is_some();
     let text = SvcHarness::list_text(&lines);
     let load = h.load_reply.clone();
-    let (mgr_exit, procs, frames_delta, clean) = h.finish();
+    let (mgr_exit, procs, frames0, clean) = h.finish();
     kprintln!(
-        "OSX|{}|ktest|svc_order|load={}|list={}|all_ready={}|b_after_a={}|c_after_ab={}|mgr_exit={:#x}|processes_after={}|frames_delta={}|clean={}",
+        "OSX|{}|ktest|svc_order|load={}|list={}|all_ready={}|b_after_a={}|c_after_ab={}|mgr_exit={:#x}|processes_after={}|clean={}",
         BUILD_ID,
         load,
         text,
@@ -2779,7 +2802,6 @@ fn svc_order() -> ! {
         u8::from(c_after_ab),
         mgr_exit,
         procs,
-        frames_delta,
         u8::from(clean)
     );
     if load != "OK 3" || !all_ready {
@@ -2788,10 +2810,11 @@ fn svc_order() -> ! {
     if !b_after_a || !c_after_ab {
         fail("a dependent started before its dependency was ready")
     }
-    if mgr_exit != 0 || procs != 0 || frames_delta != 0 || !clean {
+    if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
     }
-    pass("services start in dependency order, each after its dependencies are ready")
+    drop((lines, a, b, c, text, load));
+    svc_balance("svc_order", frames0)
 }
 
 fn svc_timeout() -> ! {
@@ -2813,9 +2836,9 @@ fn svc_timeout() -> ! {
     let again = crate::services::request(&h.m.ctl, b"LIST", sched::ticks() + 200).is_ok();
     let text = SvcHarness::list_text(&lines);
     let load = h.load_reply.clone();
-    let (mgr_exit, procs, frames_delta, clean) = h.finish();
+    let (mgr_exit, procs, frames0, clean) = h.finish();
     kprintln!(
-        "OSX|{}|ktest|svc_timeout|load={}|list={}|failed_after_timeout={}|dependent_blocked={}|list_after={}|mgr_exit={:#x}|processes_after={}|frames_delta={}|clean={}",
+        "OSX|{}|ktest|svc_timeout|load={}|list={}|failed_after_timeout={}|dependent_blocked={}|list_after={}|mgr_exit={:#x}|processes_after={}|clean={}",
         BUILD_ID,
         load,
         text,
@@ -2824,16 +2847,16 @@ fn svc_timeout() -> ! {
         u8::from(again),
         mgr_exit,
         procs,
-        frames_delta,
         u8::from(clean)
     );
     if load != "OK 2" || !failed_after_timeout || !dependent_blocked || !again {
         fail("timeout handling wrong")
     }
-    if mgr_exit != 0 || procs != 0 || frames_delta != 0 || !clean {
+    if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
     }
-    pass("a silent service fails at its timeout, its dependent stays blocked, the manager answers")
+    drop((lines, m, d, text, load));
+    svc_balance("svc_timeout", frames0)
 }
 
 fn svc_restart() -> ! {
@@ -2857,9 +2880,9 @@ fn svc_restart() -> ! {
     let again = crate::services::request(&h.m.ctl, b"LIST", sched::ticks() + 200).is_ok();
     let text = SvcHarness::list_text(&lines);
     let load = h.load_reply.clone();
-    let (mgr_exit, procs, frames_delta, clean) = h.finish();
+    let (mgr_exit, procs, frames0, clean) = h.finish();
     kprintln!(
-        "OSX|{}|ktest|svc_restart|load={}|list={}|state={}|restarts={}|exit={}|span={}|backoff_ok={}|elapsed={}|list_after={}|mgr_exit={:#x}|processes_after={}|frames_delta={}|clean={}",
+        "OSX|{}|ktest|svc_restart|load={}|list={}|state={}|restarts={}|exit={}|span={}|backoff_ok={}|elapsed={}|list_after={}|mgr_exit={:#x}|processes_after={}|clean={}",
         BUILD_ID,
         load,
         text,
@@ -2872,7 +2895,6 @@ fn svc_restart() -> ! {
         u8::from(again),
         mgr_exit,
         procs,
-        frames_delta,
         u8::from(clean)
     );
     if load != "OK 1" || x.state != "given_up" || x.restarts != 3 || x.exit != Some(1) {
@@ -2881,10 +2903,11 @@ fn svc_restart() -> ! {
     if !backoff_ok || !again {
         fail("backoff too short or the manager stopped answering")
     }
-    if mgr_exit != 0 || procs != 0 || frames_delta != 0 || !clean {
+    if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
     }
-    pass("a crashing service is restarted with backoff up to its limit, then given up")
+    drop((lines, x, text, load));
+    svc_balance("svc_restart", frames0)
 }
 
 /// A process that exits with 44 file handles open (20 files + 20 duplicates, 4 created and

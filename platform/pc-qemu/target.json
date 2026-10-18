@@ -2159,7 +2159,8 @@
           "|path=/SYSTEM/SVCMGR.ELF|handles=1|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_order|load=OK 3|list=A:ready:0:",
-          "|all_ready=1|b_after_a=1|c_after_ab=1|mgr_exit=0x0|processes_after=0|frames_delta=0|clean=1",
+          "|all_ready=1|b_after_a=1|c_after_ab=1|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|svc_order|frames_delta=0",
           "|ktest|pass|services start in dependency order"
         ],
         "forbidden_markers": [
@@ -2204,7 +2205,8 @@
           "|path=/SYSTEM/SVCMGR.ELF|handles=1|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_timeout|load=OK 2|list=M:failed:0:",
-          "|failed_after_timeout=1|dependent_blocked=1|list_after=1|mgr_exit=0x0|processes_after=0|frames_delta=0|clean=1",
+          "|failed_after_timeout=1|dependent_blocked=1|list_after=1|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|svc_timeout|frames_delta=0",
           "|ktest|pass|a silent service fails at its timeout"
         ],
         "forbidden_markers": [
@@ -2251,7 +2253,8 @@
           "|ktest|svc_restart|load=OK 1|list=X:given_up:3:",
           "|state=given_up|restarts=3|exit=1|span=",
           "|backoff_ok=1|elapsed=",
-          "|list_after=1|mgr_exit=0x0|processes_after=0|frames_delta=0|clean=1",
+          "|list_after=1|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|svc_restart|frames_delta=0",
           "|ktest|pass|a crashing service is restarted with backoff up to its limit, then given up"
         ],
         "forbidden_markers": [

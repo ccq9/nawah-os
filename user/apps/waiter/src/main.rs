@@ -85,7 +85,7 @@ fn main() -> u64 {
         return 0xEE;
     }
     // A queued message answers at once, with the first entry that is asserted.
-    if libnawah::channel_write(b, b"x", &[]) != 1 {
+    if libnawah::channel_write(b, b"x", &[]) != 0 {
         return 0xEF;
     }
     if libnawah::object_wait_many(&[entry(a, SIGNAL_READABLE)], 0) != Ok((0, SIGNAL_READABLE)) {

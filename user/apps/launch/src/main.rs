@@ -26,7 +26,7 @@ fn main() -> u64 {
     if libnawah::channel_write(b, b"x", &[]) != ERR_BAD_HANDLE {
         return 0xE2;
     }
-    if libnawah::channel_write(a, MSG, &[]) != MSG.len() as i64 {
+    if libnawah::channel_write(a, MSG, &[]) != 0 {
         return 0xE3;
     }
     let want = [WaitEntry {
@@ -80,7 +80,7 @@ fn main() -> u64 {
         return 0xED;
     }
     // Nothing was moved: d2 still writes, c still reads.
-    if libnawah::channel_write(d2, b"still here", &[]) != 10 {
+    if libnawah::channel_write(d2, b"still here", &[]) != 0 {
         return 0xEE;
     }
     match libnawah::channel_read(c, &mut buf, &mut hs, false) {
