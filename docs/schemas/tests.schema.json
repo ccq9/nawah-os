@@ -79,6 +79,12 @@
      "verdict_reason": {
       "type": "string",
       "minLength": 1
+     },
+     "stale_policy": {
+      "enum": [
+       "error",
+       "warn"
+      ]
      }
     }
    }

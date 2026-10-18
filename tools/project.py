@@ -66,6 +66,9 @@ def source_identity():
 # ----------------------------------------------------------------------------- validation
 class Problems:
     def __init__(self, strict=False):
+        # Tests whose stale verdicts stay a warning even under --strict (stale_policy: warn in
+        # docs/tests.json): long gate-time runs such as mutation testing, re-run at gates.
+        self.warn_only_tests = set()
         self.errors, self.warnings, self.stale = [], [], []
         self.strict = strict
 
@@ -151,7 +154,7 @@ def check_evidence_dir(rel, pb: Problems, where, expect_test_id=None, current_di
         pb.err(where, f"evidence {rel}: inputs_digest does not match inputs map")
     if stale and verdict["verdict"] not in ("NEEDS_REEVALUATION",):
         msg = f"evidence {rel}: inputs changed since verdict ({', '.join(stale)}); needs re-evaluation (re-run or impact analysis)"
-        if pb.strict:
+        if pb.strict and verdict.get("test_id") not in pb.warn_only_tests:
             pb.err(where, msg)
         else:
             pb.warn(where, msg)
@@ -192,6 +195,7 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
             pb.err(n, f"duplicate ids: {dups}")
     idset = {n: set(v) for n, v in ids.items()}
     by_id = {n: {r["id"]: r for r in recs.get(n, [])} for n in RECORD_FILES}
+    pb.warn_only_tests = {t["id"] for t in recs.get("tests", []) if t.get("stale_policy") == "warn"}
 
     def ref(where, kind, value):
         if value not in idset.get(kind, set()):

@@ -1,6 +1,6 @@
 # ADR-0007 — كومة النواة وإلغاء التخطيط وفضاءات عناوين المستخدم (WP-13)
 
-الحالة: منفَّذ 2026-10-18؛ الإغلاق مرهون بدليل CI (TST-M3-HEAP-STRESS / VMM-UNMAP / VMM-PROTECT / AS-SWITCH + أثر TST-M1-BOOT).
+الحالة: مقبول — منفَّذ ومُغلق 2026-10-18 بدليل CI run 39100890228 (TST-M3-HEAP-STRESS / VMM-UNMAP / VMM-PROTECT / AS-SWITCH PASS، أثر TST-M1-BOOT بسطر mm selfcheck=1). درس من التشغيل الأول (39100755399): map/unmap في scratch ترك PD+PT (frames_delta=2) → جداول أول 2 MiB تُنشأ مسبقًا.
 
 المراجع: Intel SDM Vol.3A §4.6.1 (بت U/S في كل مستوى من المشي)، §4.10.4.1 (INVLPG) (S26)؛ Rust `core::alloc::GlobalAlloc` (عقد المخصص العام).
 

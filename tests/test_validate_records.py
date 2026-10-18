@@ -115,6 +115,14 @@ class ValidateRecords(unittest.TestCase):
         write_all(r)
         self.assertEqual(project.validate_records(verbose=False), 0)
 
+    def test_stale_policy_warn_survives_strict(self):
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]; r["tests"][0]["stale_policy"] = "warn"
+        write_all(r)
+        (TMP / "docs" / "ENVIRONMENT.md").write_text("changed")
+        self.assertEqual(project.validate_records(verbose=False, strict=True), 0)
+
     def test_stale_input_requires_reevaluation(self):
         r = base_records(); write_all(r)
         ev = make_evidence(r, "TST-M0-001")

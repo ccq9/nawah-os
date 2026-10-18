@@ -57,7 +57,8 @@ schemas = {
    ["id","requirement_ids","layer","oracle","command","verdict","evidence_refs"],
    {"id": ID, "requirement_ids": IDS,
     "layer": {"enum": ["host_unit","guest","service_integration","user_e2e","negative","compat_hw","security_access_perf"]},
-    "oracle": STR, "command": STR, "verdict": VERDICT, "evidence_refs": RELPATHS, "verdict_reason": STR})),
+    "oracle": STR, "command": STR, "verdict": VERDICT, "evidence_refs": RELPATHS, "verdict_reason": STR,
+    "stale_policy": {"enum": ["error", "warn"]}})),
  "risks": wrapper(obj(
    ["id","risk","likelihood","impact","evidence","owner","warning_signal","mitigation","response_plan","status"],
    {"id": ID, "risk": STR, "likelihood": {"enum": ["low","medium","high"]}, "impact": {"enum": ["low","medium","high","critical"]},

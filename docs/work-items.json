@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T052132Z-13055739-002"
+    "evidence/20261018T053617Z-8a21a494-002"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T052132Z-13055739-001"
+    "evidence/20261018T053617Z-8a21a494-001"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T051720Z-13055739-001",
-    "evidence/20261018T051723Z-13055739-001"
+    "evidence/20261018T053302Z-8a21a494-001",
+    "evidence/20261018T053305Z-8a21a494-001"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T052132Z-13055739-002"
+    "evidence/20261018T053617Z-8a21a494-002"
    ],
    "blocker": null
   },
@@ -356,10 +356,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T051714Z-13055739-001",
-    "evidence/20261018T051717Z-13055739-001",
-    "evidence/20261018T051731Z-13055739-001",
-    "evidence/20261018T052133Z-13055739-001"
+    "evidence/20261018T053308Z-8a21a494-001",
+    "evidence/20261018T053311Z-8a21a494-001",
+    "evidence/20261018T053315Z-8a21a494-001",
+    "evidence/20261018T053617Z-8a21a494-003"
    ],
    "blocker": null
   },
@@ -429,17 +429,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T051734Z-13055739-001",
-    "evidence/20261018T051736Z-13055739-001",
-    "evidence/20261018T051739Z-13055739-001",
-    "evidence/20261018T051741Z-13055739-001",
-    "evidence/20261018T051744Z-13055739-001",
-    "evidence/20261018T051746Z-13055739-001",
-    "evidence/20261018T051749Z-13055739-001",
-    "evidence/20261018T051751Z-13055739-001",
-    "evidence/20261018T051755Z-13055739-001",
-    "evidence/20261018T051758Z-13055739-001",
-    "evidence/20261018T051801Z-13055739-001"
+    "evidence/20261018T053318Z-8a21a494-001",
+    "evidence/20261018T053321Z-8a21a494-001",
+    "evidence/20261018T053325Z-8a21a494-001",
+    "evidence/20261018T053328Z-8a21a494-001",
+    "evidence/20261018T053331Z-8a21a494-001",
+    "evidence/20261018T053334Z-8a21a494-001",
+    "evidence/20261018T053337Z-8a21a494-001",
+    "evidence/20261018T053340Z-8a21a494-001",
+    "evidence/20261018T053344Z-8a21a494-001",
+    "evidence/20261018T053347Z-8a21a494-001",
+    "evidence/20261018T053350Z-8a21a494-001"
    ],
    "blocker": null
   },
@@ -490,9 +490,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T051803Z-13055739-001",
-    "evidence/20261018T051806Z-13055739-001",
-    "evidence/20261018T051809Z-13055739-001"
+    "evidence/20261018T053353Z-8a21a494-001",
+    "evidence/20261018T053356Z-8a21a494-001",
+    "evidence/20261018T053359Z-8a21a494-001"
    ],
    "blocker": null
   },
@@ -555,11 +555,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T051811Z-13055739-001",
-    "evidence/20261018T051814Z-13055739-001",
-    "evidence/20261018T051816Z-13055739-001",
-    "evidence/20261018T051819Z-13055739-001",
-    "evidence/20261018T051717Z-13055739-001"
+    "evidence/20261018T053403Z-8a21a494-001",
+    "evidence/20261018T053406Z-8a21a494-001",
+    "evidence/20261018T053409Z-8a21a494-001",
+    "evidence/20261018T053412Z-8a21a494-001",
+    "evidence/20261018T053311Z-8a21a494-001"
    ],
    "blocker": null
   },
@@ -636,11 +636,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T051821Z-13055739-001",
-    "evidence/20261018T051824Z-13055739-001",
-    "evidence/20261018T051826Z-13055739-001",
-    "evidence/20261018T051717Z-13055739-001",
-    "evidence/20261018T051758Z-13055739-001"
+    "evidence/20261018T053415Z-8a21a494-001",
+    "evidence/20261018T053419Z-8a21a494-001",
+    "evidence/20261018T053422Z-8a21a494-001",
+    "evidence/20261018T053311Z-8a21a494-001",
+    "evidence/20261018T053347Z-8a21a494-001"
    ],
    "blocker": null
   },
@@ -704,9 +704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T051829Z-13055739-001",
-    "evidence/20261018T051831Z-13055739-001",
-    "evidence/20261018T051834Z-13055739-001"
+    "evidence/20261018T053425Z-8a21a494-001",
+    "evidence/20261018T053428Z-8a21a494-001",
+    "evidence/20261018T053431Z-8a21a494-001"
    ],
    "blocker": null
   },
@@ -811,12 +811,19 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261018T053434Z-8a21a494-001",
+    "evidence/20261018T053438Z-8a21a494-001",
+    "evidence/20261018T053441Z-8a21a494-001",
+    "evidence/20261018T053444Z-8a21a494-001",
+    "evidence/20261018T053311Z-8a21a494-001"
+   ],
    "blocker": null
   },
   {
