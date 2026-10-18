@@ -20,3 +20,11 @@ debug = 1
 inherits = "release"
 debug-assertions = true
 overflow-checks = true
+
+# Applications (WP-17): release settings without LTO — the precompiled `core` for
+# x86_64-unknown-none carries the target's default "kernel" code model and LTO refuses to merge
+# its bitcode with the applications' "large" model (CI run 39107164955); plain linking is fine.
+[profile.app]
+inherits = "release"
+lto = false
+debug = 0

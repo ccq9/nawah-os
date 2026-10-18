@@ -126,9 +126,9 @@ MUTANTS = [
 ]
 
 # Applications first (WP-17): the kernel embeds them through NAWAH_APPS_DIR (kernel/build.rs).
-APPS_STEP = ["cargo", "build", "--release", "--offline", "--manifest-path", "user/apps/hello/Cargo.toml",
+APPS_STEP = ["cargo", "build", "--profile", "app", "--offline", "--manifest-path", "user/apps/hello/Cargo.toml",
              "--target", "x86_64-unknown-none", "--target-dir", "build/pc-qemu/cargo-user"]
-APPS_OUT = "build/pc-qemu/cargo-user/x86_64-unknown-none/release/hello"
+APPS_OUT = "build/pc-qemu/cargo-user/x86_64-unknown-none/app/hello"
 KTEST_STEP = ["cargo", "build", "--profile", "ktest", "--offline", "--manifest-path", "kernel/Cargo.toml",
               "--target", "x86_64-unknown-uefi", "--target-dir", "build/pc-qemu/cargo-ktest", "--features", "ktest"]
 KTEST_OUT = "build/pc-qemu/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.efi"

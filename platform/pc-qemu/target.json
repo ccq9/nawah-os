@@ -31,7 +31,8 @@
       [
         "cargo",
         "build",
-        "--release",
+        "--profile",
+        "app",
         "--offline",
         "--manifest-path",
         "user/apps/hello/Cargo.toml",
@@ -42,7 +43,7 @@
       ],
       [
         "cp",
-        "${OUT}/cargo-user/x86_64-unknown-none/release/hello",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/hello",
         "${OUT}/apps/hello.elf"
       ],
       [
