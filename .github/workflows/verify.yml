@@ -20,7 +20,7 @@ jobs:
       - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools python3-jsonschema
+          sudo apt-get install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema
           rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
           rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; cargo --version
@@ -63,6 +63,7 @@ jobs:
         run: |
           python3 tools/project.py test --target host --suite M0
           python3 tools/project.py test --target host --suite M1
+          python3 tools/project.py test --target host --suite M3
       - name: "validate-records --strict (after fresh evidence, nothing may be stale)"
         run: python3 tools/project.py validate-records --strict
       - name: Status

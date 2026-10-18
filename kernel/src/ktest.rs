@@ -11,6 +11,7 @@ use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use crate::arch::{
     apic, context, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu, user_programs,
 };
+use crate::fs::fat32::FsError;
 use crate::loader::elf::{self, ElfError};
 use crate::mm::addrspace::{self, UserSpace, USER_BASE};
 use crate::mm::heap;
@@ -143,6 +144,10 @@ pub fn run() -> ! {
         "blk_read_pattern" => blk_read_pattern(),
         "blk_persist_write" => blk_persist(true),
         "blk_persist_read" => blk_persist(false),
+        "fat32_read" => fat32_read(),
+        "fat32_write" => fat32_write(),
+        "fat32_persist_write" => fat32_persist(true),
+        "fat32_persist_read" => fat32_persist(false),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -1647,11 +1652,12 @@ fn elf_wx() -> ! {
 
 // ---- WP-18: block device ---------------------------------------------------------------------
 
-/// The lab's disk image carries `(sector * 7 + i) & 0xFF` in sectors 2..=9 (tools/project.py
-/// `prepare_disk`); the first test sector of the persistence pair is 100.
-const PATTERN_FIRST: u64 = 2;
+/// The lab's disk image (tools/fat32.py, driven by tools/project.py `prepare_disk`) carries
+/// `(sector * 7 + i) & 0xFF` in its last `PATTERN_TAIL` sectors, outside every FAT32 cluster
+/// the file system allocates; the raw persistence pair uses the 8 sectors before them.
+const PATTERN_TAIL: u64 = 8;
 const PATTERN_SECTORS: usize = 8;
-const PERSIST_FIRST: u64 = 100;
+const PERSIST_TAIL: u64 = 16;
 const PERSIST_SECTORS: usize = 8;
 const PERSIST_TAG: &[u8] = b"NAWAH-PERSIST|";
 
@@ -1663,14 +1669,17 @@ fn pattern_byte(sector: u64, i: usize) -> u8 {
 /// the harness pattern exactly, a read past the end and an unaligned length are refused, and
 /// the DMA path leaves the frame count alone.
 fn blk_read_pattern() -> ! {
-    let frames0 = pmm::stats().free_frames;
     let present = crate::block::present();
     let capacity = crate::block::capacity_sectors();
+    // The buffer is heap memory (a frame): take it before measuring the balance (CI run
+    // 39108867621 counted it as a leak).
     let mut buf = alloc::vec![0u8; PATTERN_SECTORS * 512];
-    let read = crate::block::read(PATTERN_FIRST, &mut buf);
+    let first = capacity.saturating_sub(PATTERN_TAIL);
+    let frames0 = pmm::stats().free_frames;
+    let read = crate::block::read(first, &mut buf);
     let mut mismatches = 0u32;
     for (k, b) in buf.iter().enumerate() {
-        let sector = PATTERN_FIRST + (k / 512) as u64;
+        let sector = first + (k / 512) as u64;
         if *b != pattern_byte(sector, k % 512) {
             mismatches += 1;
         }
@@ -1721,15 +1730,16 @@ fn blk_persist(write: bool) -> ! {
         "blk_persist_read"
     };
     let mut buf = alloc::vec![0u8; PERSIST_SECTORS * 512];
+    let first = crate::block::capacity_sectors().saturating_sub(PERSIST_TAIL);
     if write {
         for (k, b) in buf.iter_mut().enumerate() {
-            let sector = PERSIST_FIRST + (k / 512) as u64;
+            let sector = first + (k / 512) as u64;
             *b = pattern_byte(sector, k % 512) ^ 0xA5;
         }
         let tag_len = PERSIST_TAG.len() + BUILD_ID.len();
         buf[..PERSIST_TAG.len()].copy_from_slice(PERSIST_TAG);
         buf[PERSIST_TAG.len()..tag_len].copy_from_slice(BUILD_ID.as_bytes());
-        let written = crate::block::write(PERSIST_FIRST, &buf);
+        let written = crate::block::write(first, &buf);
         let flushed = crate::block::flush();
         if written.is_err() || flushed.is_err() {
             kprintln!(
@@ -1743,13 +1753,13 @@ fn blk_persist(write: bool) -> ! {
         }
         buf.iter_mut().for_each(|b| *b = 0);
     }
-    let read = crate::block::read(PERSIST_FIRST, &mut buf);
+    let read = crate::block::read(first, &mut buf);
     let tag_len = PERSIST_TAG.len() + BUILD_ID.len();
     let tag_ok = buf.starts_with(PERSIST_TAG);
     let build_id_match = &buf[PERSIST_TAG.len()..tag_len] == BUILD_ID.as_bytes();
     let mut mismatches = 0u32;
     for (k, b) in buf.iter().enumerate().skip(tag_len) {
-        let sector = PERSIST_FIRST + (k / 512) as u64;
+        let sector = first + (k / 512) as u64;
         if *b != pattern_byte(sector, k % 512) ^ 0xA5 {
             mismatches += 1;
         }
@@ -1759,8 +1769,8 @@ fn blk_persist(write: bool) -> ! {
         "OSX|{}|ktest|{}|sectors={}..{}|read={}|tag_ok={}|build_id_found={}|build_id_match={}|mismatches={}|flushed={}",
         BUILD_ID,
         name,
-        PERSIST_FIRST,
-        PERSIST_FIRST + PERSIST_SECTORS as u64 - 1,
+        first,
+        first + PERSIST_SECTORS as u64 - 1,
         read.map_or_else(|e| e.code(), |_| "ok"),
         u8::from(tag_ok),
         found_id,
@@ -1779,5 +1789,243 @@ fn blk_persist(write: bool) -> ! {
         "sectors written, flushed and read back"
     } else {
         "sectors written before the QEMU restart are intact"
+    })
+}
+
+// ---- WP-18 part 2: FAT32 --------------------------------------------------------------------
+
+/// The lab volume (tools/fat32.py): /HELLO.TXT (24 bytes), /PATTERN.BIN (20480 bytes of
+/// `(i*31 + (i>>8)) & 0xFF`), /DIR/INNER.TXT (= HELLO.TXT).
+const LAB_HELLO: &[u8] = b"hello from the lab disk\n";
+const LAB_PATTERN_LEN: usize = 20480;
+
+fn lab_pattern(i: usize) -> u8 {
+    ((i * 31 + (i >> 8)) & 0xFF) as u8
+}
+
+/// Reading what the host tool wrote: a small file, a multi-cluster file byte for byte (also
+/// from an offset), a file in a subdirectory, a listing, and the documented refusals.
+fn fat32_read() -> ! {
+    let v = match crate::fs::mount() {
+        Ok(v) => v,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|fat32_read|mount={}", BUILD_ID, e.code());
+            fail("volume did not mount")
+        }
+    };
+    let mut small = [0u8; 64];
+    let hello = crate::fs::with(|fs| {
+        let e = fs.lookup(b"/HELLO.TXT")?;
+        Ok((e.size, fs.read(&e, 0, &mut small)?))
+    });
+    let hello_ok = matches!(hello, Ok((24, 24))) && &small[..24] == LAB_HELLO;
+    let mut big = alloc::vec![0u8; LAB_PATTERN_LEN];
+    let pattern = crate::fs::with(|fs| {
+        let e = fs.lookup(b"/pattern.bin")?; // case-insensitive 8.3 lookup
+        let n = fs.read(&e, 0, &mut big)?;
+        let mut tail = [0u8; 600];
+        let m = fs.read(&e, 20000, &mut tail)?;
+        Ok((e.size, n, m, tail))
+    });
+    let (pattern_ok, tail_ok) = match &pattern {
+        Ok((size, n, m, tail)) => (
+            *size == LAB_PATTERN_LEN as u32
+                && *n == LAB_PATTERN_LEN
+                && big.iter().enumerate().all(|(i, b)| *b == lab_pattern(i)),
+            *m == 480
+                && tail[..480]
+                    .iter()
+                    .enumerate()
+                    .all(|(i, b)| *b == lab_pattern(20000 + i)),
+        ),
+        Err(_) => (false, false),
+    };
+    let mut inner = [0u8; 64];
+    let inner_ok = crate::fs::with(|fs| {
+        let e = fs.lookup(b"/DIR/INNER.TXT")?;
+        fs.read(&e, 0, &mut inner)
+    })
+    .is_ok_and(|n| n == 24 && &inner[..24] == LAB_HELLO);
+    let mut names = alloc::string::String::new();
+    let listed = crate::fs::with(|fs| {
+        fs.list(b"/", |e| {
+            names.push_str(core::str::from_utf8(&e.name).unwrap_or("?").trim_end());
+            names.push(if e.is_dir() { '/' } else { ',' });
+        })
+    })
+    .unwrap_or(0);
+    let missing = crate::fs::with(|fs| fs.lookup(b"/NOPE.TXT").map(|_| ())).err();
+    let through_file = crate::fs::with(|fs| fs.lookup(b"/HELLO.TXT/X.TXT").map(|_| ())).err();
+    let bad_name = crate::fs::with(|fs| fs.lookup(b"/toolongname.txt").map(|_| ())).err();
+    let dir_read = crate::fs::with(|fs| {
+        let d = fs.lookup(b"/DIR")?;
+        fs.read(&d, 0, &mut small)
+    })
+    .err();
+    kprintln!(
+        "OSX|{}|ktest|fat32_read|clusters={}|spc={}|hello_ok={}|pattern_ok={}|tail_ok={}|inner_ok={}|listed={}|names={}|missing={}|through_file={}|bad_name={}|dir_read={}",
+        BUILD_ID,
+        v.clusters,
+        v.sectors_per_cluster,
+        u8::from(hello_ok),
+        u8::from(pattern_ok),
+        u8::from(tail_ok),
+        u8::from(inner_ok),
+        listed,
+        names,
+        missing.map_or("ok", |e| e.code()),
+        through_file.map_or("ok", |e| e.code()),
+        bad_name.map_or("ok", |e| e.code()),
+        dir_read.map_or("ok", |e| e.code())
+    );
+    if !(hello_ok && pattern_ok && tail_ok && inner_ok) {
+        fail("file contents did not match what the host tool wrote")
+    }
+    if listed != 3 {
+        fail("root listing wrong")
+    }
+    if missing != Some(FsError::NotFound)
+        || through_file != Some(FsError::NotADirectory)
+        || bad_name != Some(FsError::BadName)
+        || dir_read != Some(FsError::IsADirectory)
+    {
+        fail("refusals do not carry the documented codes")
+    }
+    pass("FAT32 reads the host-written volume exactly and refuses bad paths")
+}
+
+/// Create, write across clusters, read back, append, refuse a duplicate, unlink: the free
+/// cluster count returns to its start and the host tool can verify the image afterwards.
+fn fat32_write() -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let free0 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    let data: Vec<u8> = (0..3000usize).map(|i| lab_pattern(i * 3)).collect();
+    let created = crate::fs::with(|fs| {
+        let mut e = fs.create(b"/NEW.TXT")?;
+        let n1 = fs.write(&mut e, 0, &data)?;
+        let n2 = fs.write(&mut e, 3000, b"-tail-")?;
+        fs.sync()?;
+        Ok((e.size, n1, n2))
+    });
+    let free1 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    let mut back = alloc::vec![0u8; 3100];
+    let read = crate::fs::with(|fs| {
+        let e = fs.lookup(b"/NEW.TXT")?;
+        Ok((e.size, fs.read(&e, 0, &mut back)?))
+    });
+    let read_ok = matches!(read, Ok((3006, 3006)))
+        && back[..3000] == data[..]
+        && &back[3000..3006] == b"-tail-";
+    let dup = crate::fs::with(|fs| fs.create(b"/NEW.TXT").map(|_| ())).err();
+    let in_dir = crate::fs::with(|fs| {
+        let mut e = fs.create(b"/DIR/SECOND.TXT")?;
+        fs.write(&mut e, 0, b"second")?;
+        let e2 = fs.lookup(b"/dir/second.txt")?;
+        let mut b = [0u8; 16];
+        let n = fs.read(&e2, 0, &mut b)?;
+        Ok(n == 6 && &b[..6] == b"second")
+    })
+    .unwrap_or(false);
+    let overwrite = crate::fs::with(|fs| {
+        let mut e = fs.lookup(b"/NEW.TXT")?;
+        fs.write(&mut e, 1000, b"XYZ")?;
+        let mut b = [0u8; 8];
+        let n = fs.read(&e, 998, &mut b)?;
+        Ok(n == 8
+            && &b[2..5] == b"XYZ"
+            && b[0] == data[998]
+            && b[5] == data[1003]
+            && e.size == 3006)
+    })
+    .unwrap_or(false);
+    let unlinked = crate::fs::with(|fs| {
+        let a = fs.unlink(b"/NEW.TXT")?;
+        let b = fs.unlink(b"/DIR/SECOND.TXT")?;
+        fs.sync()?;
+        Ok((a, b))
+    });
+    let gone = crate::fs::with(|fs| fs.lookup(b"/NEW.TXT").map(|_| ())).err();
+    let free2 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    kprintln!(
+        "OSX|{}|ktest|fat32_write|created={}|free_before={}|free_during={}|free_after={}|read_ok={}|dup={}|in_dir_ok={}|overwrite_ok={}|unlinked={}|gone={}",
+        BUILD_ID,
+        created.map_or_else(|e| e.code().into(), |(s, a, b)| alloc::format!("size{}+{}+{}", s, a, b)),
+        free0,
+        free1,
+        free2,
+        u8::from(read_ok),
+        dup.map_or("ok", |e| e.code()),
+        u8::from(in_dir),
+        u8::from(overwrite),
+        unlinked.map_or_else(|e| e.code().into(), |(a, b)| alloc::format!("{}+{}", a, b)),
+        gone.map_or("ok", |e| e.code())
+    );
+    if !matches!(created, Ok((3006, 3000, 6))) || !read_ok {
+        fail("create/write/read back failed")
+    }
+    if free0 - free1 != 6 || free2 != free0 {
+        fail("cluster accounting wrong (3006 bytes = 6 clusters of 512)")
+    }
+    if dup != Some(FsError::Exists) || !in_dir || !overwrite {
+        fail("duplicate refusal, subdirectory create or overwrite wrong")
+    }
+    if !matches!(unlinked, Ok((6, 1))) || gone != Some(FsError::NotFound) {
+        fail("unlink did not free the chain or the entry")
+    }
+    pass("FAT32 create/write/overwrite/unlink keep the volume consistent")
+}
+
+/// File-level persistence across a QEMU restart: the write phase creates /PERSIST.TXT with the
+/// build id (and syncs); the read phase finds it unchanged. The host tool verifies the image
+/// after each phase (independent implementation).
+fn fat32_persist(write: bool) -> ! {
+    let name = if write {
+        "fat32_persist_write"
+    } else {
+        "fat32_persist_read"
+    };
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let expected = alloc::format!("NAWAH-FS-PERSIST|{}\n", BUILD_ID);
+    if write {
+        let r = crate::fs::with(|fs| {
+            let mut e = fs.create(b"/PERSIST.TXT")?;
+            fs.write(&mut e, 0, expected.as_bytes())?;
+            fs.sync()
+        });
+        if let Err(e) = r {
+            kprintln!("OSX|{}|ktest|{}|create={}", BUILD_ID, name, e.code());
+            fail("could not create the persistence file")
+        }
+    }
+    let mut buf = [0u8; 64];
+    let read = crate::fs::with(|fs| {
+        let e = fs.lookup(b"/PERSIST.TXT")?;
+        Ok((e.size, fs.read(&e, 0, &mut buf)?))
+    });
+    let ok = matches!(read, Ok((s, n)) if s as usize == expected.len() && n == expected.len())
+        && &buf[..expected.len()] == expected.as_bytes();
+    kprintln!(
+        "OSX|{}|ktest|{}|size={}|content_ok={}|written={}",
+        BUILD_ID,
+        name,
+        read.map_or(0, |(s, _)| s),
+        u8::from(ok),
+        u8::from(write)
+    );
+    if !ok {
+        fail(if write {
+            "persistence file does not read back"
+        } else {
+            "persistence file written before the restart is gone or changed"
+        })
+    }
+    pass(if write {
+        "persistence file written and synced"
+    } else {
+        "persistence file survived the QEMU restart"
     })
 }

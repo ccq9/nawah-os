@@ -873,7 +873,11 @@
       "acceptance": "blk_read_pattern/blk_write_flush_reboot_read",
       "test_ids": [
         "TST-M3-BLK-READ",
-        "TST-M3-BLK-PERSIST"
+        "TST-M3-BLK-PERSIST",
+        "TST-M3-FAT32-READ",
+        "TST-M3-FAT32-WRITE",
+        "TST-M3-FAT32-PERSIST",
+        "TST-M3-FAT32-TOOL"
       ],
       "implementation_status": "partial",
       "evidence_refs": []

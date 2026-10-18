@@ -14,7 +14,8 @@
       "user/link.ld",
       "user/libnawah/Cargo.toml",
       "user/apps/hello/Cargo.toml",
-      "user/apps/hello/build.rs"
+      "user/apps/hello/build.rs",
+      "tools/fat32.py"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -114,13 +115,10 @@
     "ovmf_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
     "boot_timeout_s": 180,
     "disk": {
-      "size_mib": 16,
+      "size_mib": 64,
       "device": "virtio-blk-pci,drive=vd0,disable-legacy=on,disable-modern=off",
-      "pattern": {
-        "first": 2,
-        "count": 8
-      },
-      "note": "16 MiB raw image rebuilt per run (zero except the pattern sectors (sector*7+i)&0xFF); a multi-phase case keeps it between its phases"
+      "pattern_tail": 8,
+      "note": "64 MiB raw FAT32 image made by tools/fat32.py for every run (lab files + raw pattern in the last 8 sectors); a multi-phase case keeps it between its phases"
     }
   },
   "boot_oracle": {
@@ -147,7 +145,7 @@
       {
         "id": "TST-M1-BOOT",
         "test_id": "TST-M1-BOOT",
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush)",
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
@@ -173,8 +171,9 @@
           "|kernel|object|channel_ok=1|vmo_size=8192|peer_closed=1|live_channels=0|live_endpoints=0|live_vmos=0|live_handles=0|frames_delta=0|selfcheck=1",
           "|kernel|pci|ecam=0xe0000000|segment=0|functions=",
           "|kernel|blk|device=0x1042|",
-          "|capacity_sectors=32768|queue_size=16|",
+          "|capacity_sectors=131072|queue_size=16|",
           "|read_ok=1|flush_ok=1|code=ok|selfcheck=1",
+          "|kernel|fat32|label=NAWAHLAB|sectors_per_cluster=1|reserved=32|fats=2|fat_sectors=1024|clusters=128992|root_cluster=2|free_clusters=128948|hello_size=24|hello_ok=1|code=ok|selfcheck=1",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -1356,11 +1355,11 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=blk_read_pattern"
         ],
-        "oracle": "virtio-blk (modern PCI, split virtqueue, polling) on the lab's 16 MiB image: device present with capacity 32768 sectors, an 8-sector read of sectors 2..=9 returns the harness pattern (sector*7+i)&0xFF with 0 mismatches, a read at the capacity and a 100-byte read are refused (K_E_BLK_RANGE), frames equal; exit 33",
+        "oracle": "virtio-blk (modern PCI, split virtqueue, polling) on the lab's 64 MiB image: device present with capacity 131072 sectors, an 8-sector read of the last 8 sectors returns the harness pattern (sector*7+i)&0xFF with 0 mismatches, a read at the capacity and a 100-byte read are refused (K_E_BLK_RANGE), frames equal; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=blk_read_pattern",
-          "|ktest|blk_read_pattern|present=1|capacity_sectors=32768|read=ok|mismatches=0|first_bytes=0e0f1011|past_end=K_E_BLK_RANGE|unaligned=K_E_BLK_RANGE|",
+          "|ktest|blk_read_pattern|present=1|capacity_sectors=131072|read=ok|mismatches=0|first_bytes=c8c9cacb|past_end=K_E_BLK_RANGE|unaligned=K_E_BLK_RANGE|",
           "|ktest|pass|virtio-blk reads the harness pattern"
         ],
         "forbidden_markers": [
@@ -1388,7 +1387,7 @@
             "expected_exit_code": 33,
             "required_markers": [
               "OSX|${BUILD_ID}|ktest|start|name=blk_persist_write",
-              "|ktest|blk_persist_write|sectors=100..107|read=ok|tag_ok=1|build_id_found=${BUILD_ID}|build_id_match=1|mismatches=0|flushed=1",
+              "|ktest|blk_persist_write|sectors=131056..131063|read=ok|tag_ok=1|build_id_found=${BUILD_ID}|build_id_match=1|mismatches=0|flushed=1",
               "|ktest|pass|sectors written, flushed and read back"
             ],
             "forbidden_markers": [
@@ -1405,7 +1404,7 @@
             "expected_exit_code": 33,
             "required_markers": [
               "OSX|${BUILD_ID}|ktest|start|name=blk_persist_read",
-              "|ktest|blk_persist_read|sectors=100..107|read=ok|tag_ok=1|build_id_found=${BUILD_ID}|build_id_match=1|mismatches=0|flushed=0",
+              "|ktest|blk_persist_read|sectors=131056..131063|read=ok|tag_ok=1|build_id_found=${BUILD_ID}|build_id_match=1|mismatches=0|flushed=0",
               "|ktest|pass|sectors written before the QEMU restart are intact"
             ],
             "forbidden_markers": [
@@ -1415,7 +1414,7 @@
             ]
           }
         ],
-        "oracle": "two QEMU runs on the same image: phase 1 (blk_persist_write) writes a tag NAWAH-PERSIST|<build id> plus a pattern to sectors 100..=107, flushes and reads them back; phase 2 (blk_persist_read, a fresh boot) finds tag, build id and pattern intact (mismatches=0); both phases exit 33",
+        "oracle": "two QEMU runs on the same image: phase 1 (blk_persist_write) writes a tag NAWAH-PERSIST|<build id> plus a pattern to the 8 raw sectors before the pattern tail (131056..131063), flushes and reads them back; phase 2 (blk_persist_read, a fresh boot) finds tag, build id and pattern intact (mismatches=0); both phases exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "|ktest|pass|sectors written, flushed and read back",
@@ -1429,6 +1428,133 @@
         "max_counts": {
           "|boot|start|": 2
         }
+      },
+      {
+        "id": "TST-M3-FAT32-READ",
+        "test_id": "TST-M3-FAT32-READ",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=fat32_read"
+        ],
+        "oracle": "the kernel's FAT32 mounts the volume tools/fat32.py formatted (128992 clusters of 1 sector) and reads /HELLO.TXT (24 bytes), /PATTERN.BIN (20480 bytes, byte for byte, also from offset 20000) and /DIR/INNER.TXT exactly; the root listing has 3 entries (DIR/, HELLO.TXT, PATTERN.BIN); a missing file, a path through a file, a non-8.3 name and reading a directory are refused with K_E_FS_NOT_FOUND / NOT_A_DIRECTORY / BAD_NAME / IS_A_DIRECTORY; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=fat32_read",
+          "|ktest|fat32_read|clusters=128992|spc=1|hello_ok=1|pattern_ok=1|tail_ok=1|inner_ok=1|listed=3|names=DIR/HELLO.TXT,PATTERN.BIN,|missing=K_E_FS_NOT_FOUND|through_file=K_E_FS_NOT_A_DIRECTORY|bad_name=K_E_FS_BAD_NAME|dir_read=K_E_FS_IS_A_DIRECTORY",
+          "|ktest|pass|FAT32 reads the host-written volume"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M3-FAT32-WRITE",
+        "test_id": "TST-M3-FAT32-WRITE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=fat32_write"
+        ],
+        "oracle": "create /NEW.TXT, write 3000 bytes then append 6 (size 3006 = 6 clusters), read back exactly, a second create is refused (K_E_FS_EXISTS), a file is created and read in /DIR, an overwrite at offset 1000 keeps the size, unlink frees 6 and 1 clusters and the free count returns to its start; afterwards the host's fsck.fat -n and tools/fat32.py check find the image consistent; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=fat32_write",
+          "|ktest|fat32_write|created=size3006+3000+6|free_before=128948|free_during=128942|free_after=128948|read_ok=1|dup=K_E_FS_EXISTS|in_dir_ok=1|overwrite_ok=1|unlinked=6+1|gone=K_E_FS_NOT_FOUND",
+          "|ktest|pass|FAT32 create/write/overwrite/unlink"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-FAT32-PERSIST",
+        "test_id": "TST-M3-FAT32-PERSIST",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "phases": [
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=fat32_persist_write"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=fat32_persist_write",
+              "|ktest|fat32_persist_write|size=30|content_ok=1|written=1",
+              "|ktest|pass|persistence file written and synced"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=fat32_persist_read"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=fat32_persist_read",
+              "|ktest|fat32_persist_read|size=30|content_ok=1|written=0",
+              "|ktest|pass|persistence file survived the QEMU restart"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          }
+        ],
+        "oracle": "two QEMU runs on the same image: phase 1 creates /PERSIST.TXT with NAWAH-FS-PERSIST|<build id> and syncs; phase 2 (fresh boot) reads it back unchanged; after the runs the host's tools/fat32.py reads the same bytes from the image and fsck.fat -n reports it consistent; both phases exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "|ktest|pass|persistence file written and synced",
+          "|ktest|pass|persistence file survived the QEMU restart"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "max_counts": {
+          "|boot|start|": 2
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "expect",
+            "${DISK}",
+            "/PERSIST.TXT",
+            "NAWAH-FS-PERSIST|${BUILD_ID}\\n"
+          ],
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ]
+        ]
       }
     ]
   }

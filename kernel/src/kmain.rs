@@ -357,6 +357,38 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         Err(code) => alloc::format!("code={code}|selfcheck=0"),
     };
     kprintln!("OSX|{}|kernel|blk|{}", build_id, blk_line);
+    // FAT32 (WP-18 part 2): mount the lab volume and read its hello file in every build.
+    let fs_line = match crate::fs::mount() {
+        Ok(v) => {
+            let mut buf = [0u8; 64];
+            let hello = crate::fs::with(|fs| {
+                let e = fs.lookup(b"/HELLO.TXT")?;
+                let n = fs.read(&e, 0, &mut buf)?;
+                Ok((e.size, n))
+            });
+            let (size, n) = hello.unwrap_or((0, 0));
+            let hello_ok = n == 24 && size == 24 && &buf[..24] == b"hello from the lab disk\n";
+            let free = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+            let label = core::str::from_utf8(&v.label).unwrap_or("?").trim_end();
+            alloc::format!(
+                "label={}|sectors_per_cluster={}|reserved={}|fats={}|fat_sectors={}|clusters={}|root_cluster={}|free_clusters={}|hello_size={}|hello_ok={}|code={}|selfcheck={}",
+                label,
+                v.sectors_per_cluster,
+                v.reserved,
+                v.fats,
+                v.fat_sectors,
+                v.clusters,
+                v.root_cluster,
+                free,
+                size,
+                u8::from(hello_ok),
+                hello.map_or_else(|e| e.code(), |_| "ok"),
+                u8::from(hello_ok)
+            )
+        }
+        Err(e) => alloc::format!("code={}|selfcheck=0", e.code()),
+    };
+    kprintln!("OSX|{}|kernel|fat32|{}", build_id, fs_line);
     // Ring-3 self-check in every build: a process runs the ping program and exits through the
     // ABI; the scheduler reaps it and no frame is left behind.
     let (user_pid, user_exit, user_delta, user_code) =

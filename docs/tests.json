@@ -715,7 +715,7 @@
         "REQ-M3-007"
       ],
       "layer": "guest",
-      "oracle": "virtio-blk (modern PCI, split virtqueue, polling) on the lab's 16 MiB image: device present with capacity 32768 sectors, an 8-sector read of sectors 2..=9 returns the harness pattern (sector*7+i)&0xFF with 0 mismatches, a read at the capacity and a 100-byte read are refused (K_E_BLK_RANGE), frames equal; exit 33",
+      "oracle": "virtio-blk (modern PCI, split virtqueue, polling) on the lab's 64 MiB image: device present with capacity 131072 sectors, an 8-sector read of the last 8 sectors returns the harness pattern (sector*7+i)&0xFF with 0 mismatches, a read at the capacity and a 100-byte read are refused (K_E_BLK_RANGE), frames equal; exit 33",
       "command": "python3 tools/project.py test --target pc-qemu --suite M3",
       "verdict": "NOT_RUN",
       "evidence_refs": []
@@ -726,7 +726,7 @@
         "REQ-M3-007"
       ],
       "layer": "guest",
-      "oracle": "two QEMU runs on the same image: phase 1 (blk_persist_write) writes a tag NAWAH-PERSIST|<build id> plus a pattern to sectors 100..=107, flushes and reads them back; phase 2 (blk_persist_read, a fresh boot) finds tag, build id and pattern intact (mismatches=0); both phases exit 33",
+      "oracle": "two QEMU runs on the same image: phase 1 (blk_persist_write) writes a tag NAWAH-PERSIST|<build id> plus a pattern to the 8 raw sectors before the pattern tail (131056..131063), flushes and reads them back; phase 2 (blk_persist_read, a fresh boot) finds tag, build id and pattern intact (mismatches=0); both phases exit 33",
       "command": "python3 tools/project.py test --target pc-qemu --suite M3",
       "verdict": "NOT_RUN",
       "evidence_refs": []
@@ -862,6 +862,50 @@
       "evidence_refs": [
         "evidence/20261018T073323Z-0366aee5-001"
       ]
+    },
+    {
+      "id": "TST-M3-FAT32-READ",
+      "requirement_ids": [
+        "REQ-M3-007"
+      ],
+      "layer": "guest",
+      "oracle": "the kernel's FAT32 mounts the volume tools/fat32.py formatted (128992 clusters of 1 sector) and reads /HELLO.TXT (24 bytes), /PATTERN.BIN (20480 bytes, byte for byte, also from offset 20000) and /DIR/INNER.TXT exactly; the root listing has 3 entries (DIR/, HELLO.TXT, PATTERN.BIN); a missing file, a path through a file, a non-8.3 name and reading a directory are refused with K_E_FS_NOT_FOUND / NOT_A_DIRECTORY / BAD_NAME / IS_A_DIRECTORY; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-FAT32-WRITE",
+      "requirement_ids": [
+        "REQ-M3-007"
+      ],
+      "layer": "guest",
+      "oracle": "create /NEW.TXT, write 3000 bytes then append 6 (size 3006 = 6 clusters), read back exactly, a second create is refused (K_E_FS_EXISTS), a file is created and read in /DIR, an overwrite at offset 1000 keeps the size, unlink frees 6 and 1 clusters and the free count returns to its start; afterwards the host's fsck.fat -n and tools/fat32.py check find the image consistent; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-FAT32-PERSIST",
+      "requirement_ids": [
+        "REQ-M3-007"
+      ],
+      "layer": "guest",
+      "oracle": "two QEMU runs on the same image: phase 1 creates /PERSIST.TXT with NAWAH-FS-PERSIST|<build id> and syncs; phase 2 (fresh boot) reads it back unchanged; after the runs the host's tools/fat32.py reads the same bytes from the image and fsck.fat -n reports it consistent; both phases exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-FAT32-TOOL",
+      "requirement_ids": [
+        "REQ-M3-007"
+      ],
+      "layer": "host_unit",
+      "oracle": "the host FAT32 tool formats the lab volume (128992 clusters, 44 used), lists DIR/HELLO.TXT/PATTERN.BIN, reads files back exactly (cat/verify/expect), keeps the raw pattern tail, and fsck.fat -n accepts the image",
+      "command": "python3 tools/project.py test --target host --suite M3",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
     }
   ]
 }

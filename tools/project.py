@@ -482,23 +482,27 @@ def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None):
 
 
 def prepare_disk(t, target_name, fresh=True):
-    """The lab's virtio disk (WP-18): a raw image of `qemu.disk.size_mib` MiB, zero except the
-    pattern sectors `(sector * 7 + i) & 0xFF` over `qemu.disk.pattern` (first, count), rebuilt for
-    every run unless `fresh` is false (the persistence test's second phase keeps the image the
-    first phase wrote). Targets without `qemu.disk` get none."""
+    """The lab's virtio disk (WP-18): a raw FAT32 image of `qemu.disk.size_mib` MiB made by
+    tools/fat32.py (an implementation independent of the kernel's) with the lab files
+    (/HELLO.TXT, /PATTERN.BIN of 20480 bytes `(i*31 + (i>>8)) & 0xFF`, /DIR/INNER.TXT) and the
+    raw pattern `(sector*7+i)&0xFF` in its last `pattern_tail` sectors. Rebuilt for every run
+    unless `fresh` is false (a multi-phase case keeps what earlier phases wrote). Targets without
+    `qemu.disk` get none."""
     spec = t["qemu"].get("disk")
     if not spec:
         return None
-    img = ROOT / "build" / target_name / "disk.img"
+    out = ROOT / "build" / target_name
+    img = out / "disk.img"
     if fresh or not img.exists():
-        size = int(spec["size_mib"]) * 1024 * 1024
-        with open(img, "wb") as f:
-            f.truncate(size)
-            pat = spec.get("pattern")
-            if pat:
-                for sector in range(int(pat["first"]), int(pat["first"]) + int(pat["count"])):
-                    f.seek(sector * 512)
-                    f.write(bytes(((sector * 7 + i) & 0xFF) for i in range(512)))
+        sectors = int(spec["size_mib"]) * 2048
+        hello = out / "lab-hello.txt"
+        hello.write_bytes(b"hello from the lab disk\n")
+        pattern = out / "lab-pattern.bin"
+        pattern.write_bytes(bytes(((i * 31 + (i >> 8)) & 0xFF) for i in range(20480)))
+        cmd = ["python3", "-I", str(ROOT / "tools" / "fat32.py"), "format", str(img), "--sectors", str(sectors),
+               "--mkdir", "DIR", "--add", f"HELLO.TXT={hello}", "--add", f"PATTERN.BIN={pattern}",
+               "--add", f"DIR/INNER.TXT={hello}", "--pattern-tail", str(int(spec.get("pattern_tail", 8)))]
+        subprocess.run(cmd, cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
     return img
 
 
@@ -575,6 +579,16 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         if not ma or not mb or ma.group(1) != mb.group(1):
             missing.append(f"equal_values({pat_a} vs {pat_b}): {ma and ma.group(1)} != {mb and mb.group(1)}")
     missing += phase_failures
+    # Host checks (WP-18): commands run on the host against the disk image after the guest
+    # run(s) — independent readers (tools/fat32.py, fsck.fat) confirm what the kernel wrote.
+    disk_path = ROOT / "build" / target_name / "disk.img"
+    with open(d / "host-check.log", "w") as hc:
+        for check in case.get("host_checks", []):
+            cmd = [x.replace("${DISK}", str(disk_path)).replace("${BUILD_ID}", build_id) for x in check]
+            r = subprocess.run(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            hc.write(f"$ {' '.join(cmd)}\n{r.stdout}\n[exit {r.returncode}]\n")
+            if r.returncode != 0:
+                missing.append(f"host_check failed: {' '.join(cmd)} -> {r.returncode}")
     if rc == 124:
         verdict, reason = "FAIL", "timeout (hang)"
     elif rc != expected_rc:
@@ -607,6 +621,11 @@ HOST_SUITES["M2"] = [
     {"id": "TST-M2-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--report", "build/mutants-report.json"],
      "oracle": "every seeded defect that compiles is killed by at least one M1/M2 case; kill ratio >= 0.95 (report in stdout and build/mutants-report.json)",
      "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs"], "timeout_s": 6000},
+]
+HOST_SUITES["M3"] = [
+    {"id": "TST-M3-FAT32-TOOL", "command": ["python3", "-I", "tests/test_fat32_tool.py"],
+     "oracle": "the host FAT32 tool formats the lab volume (128992 clusters, 44 used), lists DIR/HELLO.TXT/PATTERN.BIN, reads files back exactly (cat/verify/expect), keeps the raw pattern tail, and fsck.fat -n accepts the image",
+     "inputs": ["tests/test_fat32_tool.py", "tools/fat32.py"], "input_globs": []},
 ]
 HOST_SUITES["M1"] = [
     {"id": "TST-M1-NOBS", "command": ["python3", "-I", "tests/test_m1_nobs.py"],

@@ -559,6 +559,21 @@
       ],
       "limits": "primary specifications are not publicly fetchable; the layout is the one every OS (Linux acpi/actbl1.h, EDK2) implements and is confirmed by the lab (ECAM base 0xB0000000, devices enumerated and driven)",
       "verified": false
+    },
+    {
+      "id": "S44",
+      "title": "Microsoft Extensible Firmware Initiative FAT32 File System Specification (fatgen103)",
+      "url": "https://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/fatgen103.doc",
+      "version": "version 1.03 (Microsoft .doc); field layout cross-read from the ELM Chan 'FAT Filesystem' page (elm-chan.org/docs/fat_e.html) on 2026-10-18",
+      "accessed": "2026-10-18",
+      "supports": [
+        "BPB offsets: BytsPerSec 11, SecPerClus 13, RsvdSecCnt 14, NumFATs 16, RootEntCnt 17 (0 on FAT32), TotSec16 19 (0), FATSz16 22 (0), TotSec32 32, FATSz32 36, ExtFlags 40, FSVer 42, RootClus 44, FSInfo 48, BkBootSec 50, BootSig 66 = 0x29, VolLab 71, FilSysType 82, signature 0x55AA at 510",
+        "FirstDataSector = RsvdSecCnt + NumFATs * FATSz32; FirstSectorOfCluster(N) = (N-2) * SecPerClus + FirstDataSector; FAT type by cluster count (FAT32 >= 65525)",
+        "FAT32 entries: low 28 bits (free 0, chain 2..0x0FFFFFF6, bad 0x0FFFFFF7, EOC >= 0x0FFFFFF8), high 4 bits preserved; FAT[0] low byte = media, FAT[1] EOC; FSInfo signatures 0x41615252 / 0x61417272 / 0xAA550000 with free count and next-free hints (0xFFFFFFFF = unknown)",
+        "directory entry: Name 0..11, Attr 11 (READ_ONLY 1, HIDDEN 2, SYSTEM 4, VOLUME_ID 8, DIRECTORY 0x10, ARCHIVE 0x20, LONG_NAME 0x0F), FstClusHI 20, FstClusLO 26, FileSize 28; 0xE5 free, 0x00 end, 0x05 for a real 0xE5"
+      ],
+      "limits": "the Microsoft .doc is not readable through the fetch tool; the ELM Chan page restates the same tables and the result is validated by dosfstools' fsck.fat and mtools on every lab image",
+      "verified": true
     }
   ]
 }
