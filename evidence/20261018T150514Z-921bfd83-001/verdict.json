@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T150514Z-921bfd83-001",
+ "test_id": "TST-M4-HASH-VECTORS",
+ "verdict": "PASS",
+ "oracle": "nawah-crypto's SHA-256 (FIPS 180-4 examples incl. the two-block message and the empty message, incremental = one-shot), HMAC-SHA-256 (RFC 4231 test cases 1, 2, 6, 7) and PBKDF2-HMAC-SHA-256 (RFC 7914 §11, 1 and 80000 iterations) known answers pass on the host (4 tests, 0 failed); the guest repeats them in the auth service (TST-M4-LOGIN)",
+ "expected": "exit 0 + 'test result: ok. 4 passed; 0 failed'",
+ "observed": "exit=0; tail=   Doc-tests nawah_crypto",
+ "inputs_digest": "c131480d6aa42f0cbd40d051b675acc6c077c704976d39cc38881680f4dfb4b6",
+ "inputs": {
+  "user/nawah-crypto/src/lib.rs": "3d5e62a39d671aee5aafd7f138b824baae16a5e80c3722a6bf02ea9fffa4ceb4",
+  "user/nawah-crypto/Cargo.toml": "7917ffc5e3ce43826ef2a5e81af1227f60fba6aba189c9584350fcee584c7717"
+ },
+ "claim_tag": "source_backed_fact"
+}
