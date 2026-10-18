@@ -1,0 +1,11 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+OSX|944ad4b280a9|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs
+OSX|944ad4b280a9|boot|memmap|bytes=6240|desc_size=48|key=0xaee
+OSX|944ad4b280a9|boot|ebs|ok=1|attempts=1
+OSX|944ad4b280a9|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel
+OSX|944ad4b280a9|kernel|post_ebs|map_key=0xaee|descriptors=130|conventional_pages=118261|ebs_attempts=1
+OSX|944ad4b280a9|kernel|pmm|managed_frames=118102|free_frames=118098|allocated_frames=4|bitmap_frames=4|selfcheck=1
+OSX|944ad4b280a9|ktest|start|name=pmm_counts
+OSX|944ad4b280a9|ktest|pmm_counts|managed=118102|free=118098
+OSX|944ad4b280a9|ktest|pass|pmm counters consistent across 1024 alloc/free
