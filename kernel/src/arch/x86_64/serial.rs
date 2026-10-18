@@ -29,6 +29,8 @@ const MCR_LOOPBACK: u8 = 0x1E;
 const PROBE_BYTE: u8 = 0xAE;
 /// Bounded wait before a byte is dropped: never spin forever on a dead device.
 const SPIN_LIMIT: u32 = 100_000;
+/// Loopback probes before COM1 is declared absent.
+const PROBE_ATTEMPTS: u32 = 3;
 
 /// Set once in `init` when the loopback probe succeeds.
 static PRESENT: AtomicBool = AtomicBool::new(false);
@@ -38,29 +40,45 @@ pub struct Serial;
 
 impl Serial {
     /// 115200 baud, 8N1; then a loopback probe decides whether the device exists.
+    ///
+    /// The probe runs before ExitBootServices, while firmware timer callbacks still poll the
+    /// UART for console input: one that reads the receive buffer between the probe's write
+    /// and its poll takes the echoed byte, and the kernel then believed COM1 absent and was
+    /// silent for a whole run (CI run 39157434763, TST-M5-MOUSE: exit 37 after the test's
+    /// 60 s wait, no kernel line in the log). So the probe runs with interrupts disabled (no
+    /// firmware callback can interleave) and is retried a few times before giving up.
     pub fn init() {
-        // SAFETY: ports COM1..COM1+5 belong to the 16550 alone; single execution path, no one
-        // else touches the device at this stage.
-        let echoed = unsafe {
-            outb(INTERRUPT_ENABLE, 0x00);
-            outb(LINE_CONTROL, 0x80); // DLAB on
-            outb(DATA, 0x01); // divisor 1 -> 115200
-            outb(INTERRUPT_ENABLE, 0x00);
-            outb(LINE_CONTROL, 0x03); // 8N1, DLAB off
-            outb(FIFO_CONTROL, 0xC7); // FIFO on, cleared
-            outb(MODEM_CONTROL, MCR_LOOPBACK);
-            outb(DATA, PROBE_BYTE);
-            let mut echoed = None;
-            for _ in 0..SPIN_LIMIT {
-                if inb(LINE_STATUS) & LSR_DATA_READY != 0 {
-                    echoed = Some(inb(DATA));
-                    break;
+        let was_enabled = super::interrupts::save_and_disable();
+        let mut present = false;
+        for _ in 0..PROBE_ATTEMPTS {
+            // SAFETY: ports COM1..COM1+5 belong to the 16550 alone; interrupts are off, so no
+            // firmware callback touches the device during the probe.
+            let echoed = unsafe {
+                outb(INTERRUPT_ENABLE, 0x00);
+                outb(LINE_CONTROL, 0x80); // DLAB on
+                outb(DATA, 0x01); // divisor 1 -> 115200
+                outb(INTERRUPT_ENABLE, 0x00);
+                outb(LINE_CONTROL, 0x03); // 8N1, DLAB off
+                outb(FIFO_CONTROL, 0xC7); // FIFO on, cleared
+                outb(MODEM_CONTROL, MCR_LOOPBACK);
+                outb(DATA, PROBE_BYTE);
+                let mut echoed = None;
+                for _ in 0..SPIN_LIMIT {
+                    if inb(LINE_STATUS) & LSR_DATA_READY != 0 {
+                        echoed = Some(inb(DATA));
+                        break;
+                    }
                 }
+                outb(MODEM_CONTROL, MCR_NORMAL);
+                echoed
+            };
+            if echoed == Some(PROBE_BYTE) {
+                present = true;
+                break;
             }
-            outb(MODEM_CONTROL, MCR_NORMAL);
-            echoed
-        };
-        PRESENT.store(echoed == Some(PROBE_BYTE), Ordering::Relaxed);
+        }
+        super::interrupts::restore(was_enabled);
+        PRESENT.store(present, Ordering::Relaxed);
     }
 
     fn write_byte(byte: u8) {
