@@ -655,6 +655,270 @@
    ],
    "implementation_status": "implemented_untested",
    "evidence_refs": []
+  },
+  {
+   "id": "REQ-M3-001",
+   "statement": "كومة نواة فوق مخصص الإطارات والخريطة المباشرة، وإلغاء تخطيط/تغيير حماية الصفحات مع إبطال TLB، وكائن فضاء عناوين مستخدم منفصل",
+   "rationale": "foundation for processes",
+   "source": "OS-EXEC-AR 3.2 §20 M3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M3",
+   "dependencies": [
+    "REQ-M2-011"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "تسريب إطارات بعد تحرير الكومة",
+    "وصول ناجح بعد unmap"
+   ],
+   "acceptance": "heap_stress بلا تسريب؛ unmap → #PF؛ تبديل فضاء",
+   "test_ids": [
+    "TST-M3-HEAP-STRESS",
+    "TST-M3-VMM-UNMAP",
+    "TST-M3-AS-SWITCH"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M3-002",
+   "statement": "تجربة نقل مبكرة: بناء وإقلاع وأثر تشخيص على AArch64 (QEMU virt) قبل تجميد عقود ABI، دون إعلان دعم المحمول",
+   "rationale": "architecture separation check",
+   "source": "OS-EXEC-AR 3.2 §8",
+   "origin": "user_requirement",
+   "priority": "should",
+   "release": "R1",
+   "stage": "M3",
+   "dependencies": [
+    "REQ-M1-001"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "شيفرة x86 في المسار المشترك"
+   ],
+   "acceptance": "بناء وإقلاع وأثر على virt-qemu-aarch64",
+   "test_ids": [
+    "TST-M3-A64-BUILD",
+    "TST-M3-A64-BOOT"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M3-003",
+   "statement": "وضع المستخدم ونداءات نظام بعقد ABI مجمَّد: تُرفض المؤشرات والأطوال غير الصالحة بخطأ لا panic، ووصول المستخدم إلى النواة يُنهي العملية بتشخيص",
+   "rationale": "isolation boundary",
+   "source": "OS-EXEC-AR 3.2 §20 M3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M3",
+   "dependencies": [
+    "REQ-M3-001"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "panic عند مؤشر مستخدم خاطئ",
+    "قراءة ذاكرة النواة من حلقة 3"
+   ],
+   "acceptance": "user_syscall/user_bad_ptr/user_kernel_access/sysret_canonical",
+   "test_ids": [
+    "TST-M3-USER-SYSCALL",
+    "TST-M3-USER-BAD-PTR",
+    "TST-M3-USER-KERNEL-ACCESS",
+    "TST-M3-SYSRET-CANONICAL"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M3-004",
+   "statement": "عمليات وخيوط وجدولة أولويات ثابتة مع استباق بالمؤقت؛ خروج العملية يحرر كل مواردها",
+   "rationale": "scheduling and cleanup",
+   "source": "OS-EXEC-AR 3.2 §20 M3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M3",
+   "dependencies": [
+    "REQ-M3-003",
+    "REQ-M2-012"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "تجويع",
+    "تسريب إطارات بعد الخروج"
+   ],
+   "acceptance": "threads_alternate/preempt/exit_cleanup",
+   "test_ids": [
+    "TST-M3-THREADS-ALTERNATE",
+    "TST-M3-PREEMPT",
+    "TST-M3-EXIT-CLEANUP"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M3-005",
+   "statement": "مقابض بحقوق وIPC رسائل بحدود أحجام وتمرير مقابض؛ الحقوق تُفحص في كل نداء",
+   "rationale": "capability model",
+   "source": "OS-EXEC-AR 3.2 §20 M3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M3",
+   "dependencies": [
+    "REQ-M3-004"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "رسالة فوق الحد تُقبل",
+    "مقبض مغلق يُستعمل"
+   ],
+   "acceptance": "ipc_roundtrip/rights_denied/closed_handle/oversize/no_leak",
+   "test_ids": [
+    "TST-M3-IPC-ROUNDTRIP",
+    "TST-M3-RIGHTS-DENIED",
+    "TST-M3-CLOSED-HANDLE",
+    "TST-M3-IPC-OVERSIZE",
+    "TST-M3-IPC-NO-LEAK"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M3-006",
+   "statement": "محمّل ELF64 بأذونات W^X ووقت تشغيل أدنى وتطبيقات اختبار تُبنى بسلسلة الأدوات نفسها",
+   "rationale": "native apps",
+   "source": "OS-EXEC-AR 3.2 §20 M3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M3",
+   "dependencies": [
+    "REQ-M3-003"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "مقطع RWX يُحمَّل",
+    "ELF مشوه يُسقط النواة"
+   ],
+   "acceptance": "app_exit_code/malformed_elf/wx_rejected",
+   "test_ids": [
+    "TST-M3-APP-EXIT-CODE",
+    "TST-M3-ELF-MALFORMED",
+    "TST-M3-ELF-WX"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M3-007",
+   "statement": "تخزين: PCI/virtio-blk وطبقة كتل مع flush ونظام ملفات أول؛ البيانات المقر حفظها تبقى بعد إعادة التشغيل",
+   "rationale": "persistence",
+   "source": "OS-EXEC-AR 3.2 §20 M3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M3",
+   "dependencies": [
+    "REQ-M3-001"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "بيانات مفقودة بعد إعادة التشغيل"
+   ],
+   "acceptance": "blk_read_pattern/blk_write_flush_reboot_read",
+   "test_ids": [
+    "TST-M3-BLK-READ",
+    "TST-M3-BLK-PERSIST"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M3-008",
+   "statement": "VFS ونداءات ملفات لكل عملية بحقوق وبلا تسريب واصفات",
+   "rationale": "files for apps",
+   "source": "OS-EXEC-AR 3.2 §20 M3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M3",
+   "dependencies": [
+    "REQ-M3-007",
+    "REQ-M3-005"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "تسريب واصفات"
+   ],
+   "acceptance": "file_roundtrip/path_invalid/fd_leak",
+   "test_ids": [
+    "TST-M3-FILE-ROUNDTRIP",
+    "TST-M3-PATH-INVALID",
+    "TST-M3-FD-LEAK"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M3-009",
+   "statement": "SMP: تشغيل كل المعالجات المذكورة في MADT، بنى per-CPU، إبطال TLB عبر IPI، أقفال صحيحة تحت التنازع",
+   "rationale": "multi-core correctness",
+   "source": "OS-EXEC-AR 3.2 §20 M3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M3",
+   "dependencies": [
+    "REQ-M3-004",
+    "REQ-M2-013"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "عدّاد غير دقيق تحت التنازع",
+    "ترجمة قديمة بعد unmap على معالج آخر"
+   ],
+   "acceptance": "all_cpus_online/lock_contention/tlb_shootdown",
+   "test_ids": [
+    "TST-M3-SMP-ONLINE",
+    "TST-M3-LOCK-CONTENTION",
+    "TST-M3-TLB-SHOOTDOWN"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M3-010",
+   "statement": "بوابة M3: أجنحة العزل والموارد والثبات، اختبار طفرات ≥95% على الوحدات الجديدة، مراجعة مسماة",
+   "rationale": "gate",
+   "source": "OS-EXEC-AR 3.2 §20 M3",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M3",
+   "dependencies": [
+    "REQ-M3-003",
+    "REQ-M3-004",
+    "REQ-M3-005",
+    "REQ-M3-006",
+    "REQ-M3-007",
+    "REQ-M3-008",
+    "REQ-M3-009"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "ادعاء عزل بلا اختبار"
+   ],
+   "acceptance": "M3 suite + mutants",
+   "test_ids": [
+    "TST-M3-MUTANTS"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
   }
  ]
 }

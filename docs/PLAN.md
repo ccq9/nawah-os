@@ -34,13 +34,27 @@
 | WP-11 التزامن الأولي وسياسة panic | IRQ-save spinlock لمعالج واحد، كاتب تسلسلي بقفل، panic يطبع ويتوقف برمز، سياسة نفاد الموارد | ktest: lock_irqsave, panic_code | Sol ADR-007 (مرجع)، SDM §9 (ترتيب الذاكرة) |
 | WP-12 بوابة M2 | جناح M2 كامل، اختبار طفرات، مراجعة ذاتية مسماة، تحديث ENVIRONMENT/PLAN | كل ما سبق + mutants ≥ 95% مكشوف | — |
 
-## 4. M3 — العمليات والموارد والواجهات (WP-13 … WP-19)
+## 4. M3 — العمليات والموارد والواجهات (WP-13 … WP-22)
 
-- وضع المستخدم (GDT user segments، TSS.RSP0، syscall/sysret مع IA32_LSTAR/STAR/FMASK، swapgs)؛ مساحات عناوين منفصلة؛ loader لصيغة تنفيذية بسيطة (ELF64 للتطبيقات الأصلية — تُحسم في ADR-0003)؛ عمليات وخيوط وجدولة أولويات ثابتة مع استباق بالمؤقت؛ مقابض وحقوق (نموذج القدرات من Sol ADR-006)؛ IPC رسائل بحدود أحجام؛ virtio-blk عبر PCI (virtio 1.3 §4.1، §5.2) + block layer + نظام ملفات أول بسيط (يُحسم في ADR-0004: FAT32 للـESP والتوافق + نظام داخلي بسيط للبيانات) مع flush وترتيب كتابات مختبر بعد إعادة التشغيل؛ SMP (ACPI MADT، INIT/SIPI، per-CPU، TLB shootdown) في حزمة أخيرة.
-- تجربة النقل المبكرة: AArch64 على QEMU virt (حزمتان كحد أقصى) قبل تجميد ABI.
-- القبول: البند 20 M3 في البرومبت.
+ترتيب الحزم مقصود: ما لا يجمّد عقدًا مشتركًا أولًا (الكومة وunmap)، ثم تجربة النقل المبكرة إلى AArch64 **قبل** تجميد ABI النداءات (البند 8 من البرومبت)، ثم وضع المستخدم وABI، ثم العمليات والجدولة، المقابض وIPC، المحمّل، التخزين، VFS، SMP، وأخيرًا بوابة M3. كل حزمة لها اختبار يحكمها قبل تفعيلها؛ ما يتجاوز الميزانية يُقسَّم.
 
-## 5. M4 — الخدمات (WP-20 …)
+| الحزمة | المحتوى | الاختبار الحاكم | المصادر |
+|---|---|---|---|
+| WP-13 كومة النواة وunmap | `GlobalAlloc` فوق PMM والخريطة المباشرة (مخصص كتل بسيط)، `unmap/protect` مع `invlpg`، كائن فضاء عناوين مستخدم (PML4 جديد يشارك النصف الأعلى)، إطار إبطال TLB لمعالج واحد | ktest: heap_stress (تخصيص/تحرير 10k كتل بأنماط، لا تسريب في عدّاد PMM)، vmm_unmap (الوصول بعد unmap → #PF)، as_switch (تبديل فضاء مستخدم فارغ والعودة) | SDM Vol.3A §4.10 (TLB، invlpg) (S26) |
+| WP-21 تجربة النقل المبكرة (AArch64، حزمتان كحد أقصى) | بناء `aarch64-unknown-uefi`، إقلاع على QEMU virt (EDK2 AAVMF)، ExitBootServices، أثر تسلسلي PL011، فصل arch/aarch64 عن المشترك؛ **لا** يُعلَن دعم المحمول | build + boot على هدف `virt-qemu-aarch64` بأوراكل مماثل لـ TST-M1-BOOT | UEFI 2.11 §2.3.6 (AArch64 calling convention/entry)، QEMU virt، Arm ARM (PL011) |
+| WP-14 وضع المستخدم وABI النداءات | مقاطع GDT للمستخدم (ترتيب sysret)، TSS.RSP0، `syscall/sysret` (EFER.SCE، STAR/LSTAR/FMASK)، swapgs ومنطقة per-CPU (GS)، جدول نداءات برقم ثابت ورموز أخطاء، التحقق من مؤشرات/أطوال المستخدم (copy_in/out)، SMEP/SMAP إن توفرا؛ عقد `docs/contracts/syscall.md` مجمَّد بإصدار | ktest: user_syscall (كود حلقة 3 مضمَّن يستدعي نداءً ويستلم قيمة)، user_bad_ptr (مؤشر غير صالح → خطأ لا panic)، user_kernel_access (قراءة عنوان النواة من حلقة 3 → إنهاء العملية بتشخيص)، sysret_canonical | SDM Vol.3A §5.8.8 (SYSCALL/SYSRET)، §2.5 (SMEP/SMAP)، Vol.4 (STAR/LSTAR/FMASK/KERNEL_GS_BASE) (S26) |
+| WP-15 الخيوط والعمليات والجدولة | TCB/PCB، تبديل سياق (sysv64 callee-saved)، طابور تشغيل بأولويات ثابتة + round-robin، استباق بالمؤقت، sleep/yield/exit، تحرير فضاء العناوين والإطارات عند الخروج | ktest: threads_alternate، preempt_no_starvation (خيط دوّار لا يجوّع آخر)، exit_cleanup (free_frames قبل = بعد) | SDM §6 (task state)، Sol ADR-007 (نموذج الجدولة) |
+| WP-16 المقابض والقدرات وIPC | جدول مقابض لكل عملية بحقوق، أنواع كائنات (process/thread/channel/vmo)، قنوات رسائل بحد حجم (4 KiB) وتمرير مقابض، فحص الحقوق في كل نداء | ktest: ipc_roundtrip، rights_denied، closed_handle، oversize_rejected، no_leak_after_exit | Sol ADR-006 (نموذج القدرات)، Fuchsia handle/rights model كمرجع تصميمي (لا شيفرة) |
+| WP-17 محمّل ELF64 ووقت تشغيل أدنى | PT_LOAD بأذونات W^X، مكدس المستخدم، نقطة الدخول؛ `libnawah` (أغلفة النداءات) وتطبيقات اختبار صغيرة تُبنى بنفس سلسلة الأدوات (x86_64-unknown-none) | ktest/guest: app_exit_code، malformed_elf_rejected، wx_rejected | ELF-64 (gABI/System V)، SDM NX |
+| WP-18 التخزين | تعداد PCI (ECAM من ACPI MCFG)، virtio-blk 1.x (PCI capabilities, split virtqueue)، طبقة كتل بطابور طلبات وflush، نظام ملفات أول (FAT32 على صورة قرص ثانية للتوافق مع ESP + نظام داخلي بسيط لاحقًا)، اختبار ثبات عبر إعادة تشغيل QEMU | guest: blk_read_pattern، blk_write_flush_reboot_read (تشغيلان متتاليان على الصورة نفسها) | Virtio 1.3 §4.1 PCI، §5.2 block device؛ PCI Firmware Spec (MCFG)؛ Microsoft FAT32 spec |
+| WP-19 VFS والملفات | open/read/write/close/stat عبر النداءات، حل المسارات، جدول ملفات لكل عملية، حقوق | guest apps: file_roundtrip، path_invalid، fd_leak_check | — |
+| WP-20 SMP | تشغيل APs (INIT-SIPI-SIPI، trampoline < 1 MiB)، بنى per-CPU (GS)، IDT/GDT لكل معالج، مؤقت LAPIC لكل معالج، طوابير تشغيل per-CPU، IPIs لإبطال TLB، `cpu_id` حقيقي، اختبار تنازع أقفال | ktest (-smp 4): all_cpus_online == MADT، lock_contention_counter_exact، tlb_shootdown | SDM Vol.3A §8.4 (MP initialization)، §10.4 (IPI)، ACPI MADT (S33) |
+| WP-22 بوابة M3 | أجنحة العزل والموارد والثبات كاملة، توسيع اختبار الطفرات إلى الوحدات الجديدة (≥95%)، مراجعة مسماة، تحديث PLAN/ENVIRONMENT | البند 20 M3 | — |
+
+- القبول: البند 20 M3 في البرومبت: عملية سليمة تعمل؛ تُرفض المؤشرات/الأطوال/الحقوق غير الصالحة؛ لا تصل عملية إلى ذاكرة أخرى أو النواة؛ تُنظَّف الموارد بعد الإنهاء؛ البيانات المقر حفظها تبقى بعد إعادة التشغيل؛ السباقات وSMP عند دخولهما النطاق.
+- قيود: البناء على CI فقط حتى توفر مكوّن rust-std المحلي؛ تطبيقات المستخدم تحتاج هدف `x86_64-unknown-none` (يُثبَّت على CI).
+
+## 5. M4 — الخدمات (WP-23 …)
 
 مدير خدمات بترتيب وتبعيات ومهلات؛ مستخدمون ومجموعات وجلسات ومصادقة (Argon2 أو PBKDF2 بمصدر، لا خوارزمية جديدة)؛ تكوين وسياسات بمخازن منفصلة وإصدارات؛ تعريفات المختبر: virtio-net، virtio-gpu، virtio-input، 16550، PS/2؛ شبكة أساسية (IPv4/ARP/UDP/DHCP ثم TCP) مع فصل الاتصال عن الإنترنت؛ DMA: الأجهزة الافتراضية موثوقة فقط (نموذج الثقة في threat-model).
 

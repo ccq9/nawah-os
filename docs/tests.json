@@ -445,6 +445,325 @@
    "evidence_refs": [
     "evidence/20261018T044751Z-b4259567-001"
    ]
+  },
+  {
+   "id": "TST-M3-HEAP-STRESS",
+   "requirement_ids": [
+    "REQ-M3-001"
+   ],
+   "layer": "guest",
+   "oracle": "10k allocations/frees with patterns and mixed sizes: contents intact, PMM free count equal before/after",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-VMM-UNMAP",
+   "requirement_ids": [
+    "REQ-M3-001"
+   ],
+   "layer": "negative",
+   "oracle": "access after unmap -> #PF with the unmapped address in CR2 (TLB entry invalidated)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-AS-SWITCH",
+   "requirement_ids": [
+    "REQ-M3-001"
+   ],
+   "layer": "guest",
+   "oracle": "create a user address space sharing the kernel half, switch to it and back; kernel data intact",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-A64-BUILD",
+   "requirement_ids": [
+    "REQ-M3-002"
+   ],
+   "layer": "host_unit",
+   "oracle": "aarch64-unknown-uefi image builds",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-A64-BOOT",
+   "requirement_ids": [
+    "REQ-M3-002"
+   ],
+   "layer": "guest",
+   "oracle": "QEMU virt + AAVMF: boot|start, boot|ebs|ok=1, kernel|post_ebs trace, clean exit",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-USER-SYSCALL",
+   "requirement_ids": [
+    "REQ-M3-003"
+   ],
+   "layer": "guest",
+   "oracle": "ring-3 code issues a syscall and receives the documented result",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-USER-BAD-PTR",
+   "requirement_ids": [
+    "REQ-M3-003"
+   ],
+   "layer": "negative",
+   "oracle": "syscall with an invalid user pointer/length returns the documented error; kernel continues",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-USER-KERNEL-ACCESS",
+   "requirement_ids": [
+    "REQ-M3-003"
+   ],
+   "layer": "negative",
+   "oracle": "ring-3 read of a kernel address -> #PF handled as process termination with a diagnostic, no panic",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-SYSRET-CANONICAL",
+   "requirement_ids": [
+    "REQ-M3-003"
+   ],
+   "layer": "negative",
+   "oracle": "return to a non-canonical user RIP is refused before sysret (no #GP in kernel mode)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-THREADS-ALTERNATE",
+   "requirement_ids": [
+    "REQ-M3-004"
+   ],
+   "layer": "guest",
+   "oracle": "two threads alternate with correct counters",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-PREEMPT",
+   "requirement_ids": [
+    "REQ-M3-004"
+   ],
+   "layer": "guest",
+   "oracle": "a spinning thread does not starve another: both make progress under the timer",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-EXIT-CLEANUP",
+   "requirement_ids": [
+    "REQ-M3-004"
+   ],
+   "layer": "guest",
+   "oracle": "PMM free frames and handle counts return to the pre-process values after exit",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-IPC-ROUNDTRIP",
+   "requirement_ids": [
+    "REQ-M3-005"
+   ],
+   "layer": "guest",
+   "oracle": "message and handle sent over a channel arrive intact",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-RIGHTS-DENIED",
+   "requirement_ids": [
+    "REQ-M3-005"
+   ],
+   "layer": "negative",
+   "oracle": "operation without the right is refused with the documented error",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-CLOSED-HANDLE",
+   "requirement_ids": [
+    "REQ-M3-005"
+   ],
+   "layer": "negative",
+   "oracle": "use of a closed handle is refused",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-IPC-OVERSIZE",
+   "requirement_ids": [
+    "REQ-M3-005"
+   ],
+   "layer": "negative",
+   "oracle": "message above the documented maximum is refused",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-IPC-NO-LEAK",
+   "requirement_ids": [
+    "REQ-M3-005"
+   ],
+   "layer": "guest",
+   "oracle": "objects referenced only by an exited process are released",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-APP-EXIT-CODE",
+   "requirement_ids": [
+    "REQ-M3-006"
+   ],
+   "layer": "guest",
+   "oracle": "an ELF64 test app runs and its exit code is observed by the parent",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-ELF-MALFORMED",
+   "requirement_ids": [
+    "REQ-M3-006"
+   ],
+   "layer": "negative",
+   "oracle": "malformed ELF (bad magic, overlapping segments, out-of-range offsets) is rejected without panic",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-ELF-WX",
+   "requirement_ids": [
+    "REQ-M3-006"
+   ],
+   "layer": "negative",
+   "oracle": "a segment both writable and executable is refused",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-BLK-READ",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "layer": "guest",
+   "oracle": "virtio-blk read of a known sector pattern",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-BLK-PERSIST",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "layer": "guest",
+   "oracle": "write + flush, QEMU restarted on the same image, data read back identical",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-FILE-ROUNDTRIP",
+   "requirement_ids": [
+    "REQ-M3-008"
+   ],
+   "layer": "guest",
+   "oracle": "open/write/close/open/read through syscalls returns the written bytes",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-PATH-INVALID",
+   "requirement_ids": [
+    "REQ-M3-008"
+   ],
+   "layer": "negative",
+   "oracle": "invalid paths are refused with the documented error",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-FD-LEAK",
+   "requirement_ids": [
+    "REQ-M3-008"
+   ],
+   "layer": "guest",
+   "oracle": "per-process file table empty after exit",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-SMP-ONLINE",
+   "requirement_ids": [
+    "REQ-M3-009"
+   ],
+   "layer": "guest",
+   "oracle": "with -smp 4 every MADT CPU reports online with its own APIC id",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-LOCK-CONTENTION",
+   "requirement_ids": [
+    "REQ-M3-009"
+   ],
+   "layer": "guest",
+   "oracle": "N CPUs increment a counter under the lock: exact total",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-TLB-SHOOTDOWN",
+   "requirement_ids": [
+    "REQ-M3-009"
+   ],
+   "layer": "negative",
+   "oracle": "after unmap on CPU A, access on CPU B faults (shootdown IPI delivered)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-MUTANTS",
+   "requirement_ids": [
+    "REQ-M3-010"
+   ],
+   "layer": "host_unit",
+   "oracle": "seeded defects in the M3 modules are killed by the M3 suite (>= 95%)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   }
  ]
 }
