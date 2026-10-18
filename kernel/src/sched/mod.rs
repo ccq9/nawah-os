@@ -367,32 +367,39 @@ fn index_of(s: &Sched, tid: u32) -> Option<usize> {
 
 /// The thread to run next on `cpu`: one of its threads, Ready (or the Running current), with
 /// the smallest priority value, ties broken by the smallest `last_pick`, then by position.
-fn pick_next(s: &Sched, cpu: usize) -> usize {
-    let mut best: Option<usize> = None;
+/// With `demote_current`, the running thread competes at the lowest priority: it is waiting
+/// (join/wait_process) and must not starve the lower-priority thread it may be waiting for.
+fn pick_next(s: &Sched, cpu: usize, demote_current: bool) -> usize {
+    let mut best: Option<(usize, u8)> = None;
     let current = s.current[cpu];
     for (i, t) in s.threads.iter().enumerate() {
         if usize::from(t.cpu) != cpu {
             continue;
         }
-        let runnable = t.state == State::Ready || (t.id == current && t.state == State::Running);
+        let is_current = t.id == current;
+        let runnable = t.state == State::Ready || (is_current && t.state == State::Running);
         if !runnable {
             continue;
         }
+        let prio = if is_current && demote_current {
+            PRIORITIES - 1
+        } else {
+            t.priority
+        };
         best = match best {
-            None => Some(i),
-            Some(b) => {
+            None => Some((i, prio)),
+            Some((b, bp)) => {
                 let bt = &s.threads[b];
-                if t.priority < bt.priority
-                    || (t.priority == bt.priority && t.last_pick < bt.last_pick)
-                {
-                    Some(i)
+                if prio < bp || (prio == bp && t.last_pick < bt.last_pick) {
+                    Some((i, prio))
                 } else {
-                    Some(b)
+                    Some((b, bp))
                 }
             }
         };
     }
-    best.unwrap_or_else(|| index_of(s, s.idle[cpu]).expect("the idle thread exists"))
+    best.map(|(i, _)| i)
+        .unwrap_or_else(|| index_of(s, s.idle[cpu]).expect("the idle thread exists"))
 }
 
 /// Books the switch to the best runnable thread: the current thread goes to the back of its
@@ -414,6 +421,11 @@ fn retire_prev(s: &mut Sched, cpu: usize) {
 }
 
 fn prepare_switch(s: &mut Sched) -> Option<Switch> {
+    prepare_switch_with(s, false)
+}
+
+/// `prepare_switch` for a thread that is waiting (`demote_current`, see `pick_next`).
+fn prepare_switch_with(s: &mut Sched, demote_current: bool) -> Option<Switch> {
     let cpu = me();
     let cur = s.current[cpu];
     retire_prev(s, cpu);
@@ -421,7 +433,7 @@ fn prepare_switch(s: &mut Sched) -> Option<Switch> {
     s.need_resched[cpu] = false;
     s.seq += 1;
     s.threads[cur_i].last_pick = s.seq;
-    let next_i = pick_next(s, cpu);
+    let next_i = pick_next(s, cpu, demote_current);
     if next_i == cur_i {
         // Only a Running current thread can be picked again; it starts a fresh slice.
         s.threads[cur_i].slice = QUANTUM_TICKS;
@@ -649,6 +661,17 @@ pub fn yield_now() -> bool {
     switched
 }
 
+/// Gives the CPU to any other Ready thread, whatever its priority: the caller is waiting
+/// (join/wait_process) and must not starve what it waits for (CI run 39118752606: a
+/// priority-1 waiter starved a priority-3 spinner forever). Returns whether a switch happened.
+fn yield_waiting() -> bool {
+    let was = arch::interrupts::save_and_disable();
+    let sw = with(|s| prepare_switch_with(s, true));
+    let switched = perform(sw);
+    arch::interrupts::restore(was);
+    switched
+}
+
 /// Whether the running thread of this CPU is its idle thread (thread 0 on CPU 0).
 fn current_is_idle(s: &Sched) -> bool {
     let cpu = me();
@@ -716,7 +739,7 @@ pub fn join(tid: u32) -> Option<u64> {
         if let Some(r) = found {
             return r;
         }
-        if !yield_now() {
+        if !yield_waiting() {
             context::idle_wait();
         }
     }
@@ -737,7 +760,7 @@ pub fn wait_process(pid: u32) -> Option<u64> {
         if let Some(r) = found {
             return r;
         }
-        if !yield_now() {
+        if !yield_waiting() {
             context::idle_wait();
         }
     }
