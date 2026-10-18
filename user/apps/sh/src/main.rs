@@ -158,8 +158,28 @@ impl Shell {
         }
     }
 
+    /// A copy of the session token to send with a request: a handle in a message is moved,
+    /// not copied (ipc.md §3), so the shell keeps its own and hands over a duplicate — the
+    /// service closes it when done. CI run 39141189538 caught the first version, which sent
+    /// the original and lost its session on the first protected request.
+    fn token_copy(&self, out: &mut Out) -> Option<u32> {
+        let t = self.token?;
+        let rights = libnawah::handle_rights(t);
+        match u32::try_from(rights)
+            .ok()
+            .and_then(|r| libnawah::handle_duplicate(t, r).ok())
+        {
+            Some(copy) => Some(copy),
+            None => {
+                out.put(b"ERR SESSION\n");
+                None
+            }
+        }
+    }
+
     /// One request/reply on a service channel; the reply text goes to `out` (with the
-    /// trailing newline) and the handle it carried comes back.
+    /// trailing newline) and the handle it carried comes back. Handles in `handles` are moved
+    /// into the message.
     fn ask(&self, chan: u32, req: &[u8], handles: &[u32], out: &mut Out) -> Option<u32> {
         if libnawah::channel_write(chan, req, handles) != 0 {
             out.put(b"ERR SERVICE\n");
@@ -243,12 +263,14 @@ impl Shell {
                         self.ask(chan, b"DHCP", &[], out);
                     }
                     Some(b"policy") => match (field(line, 2), self.token) {
-                        (Some(arg), Some(t)) => {
+                        (Some(arg), Some(_)) => {
                             let mut req = [0u8; 64];
                             req[..7].copy_from_slice(b"POLICY ");
                             let n = arg.len().min(57);
                             req[7..7 + n].copy_from_slice(&arg[..n]);
-                            self.ask(chan, &req[..7 + n], &[t], out);
+                            if let Some(t) = self.token_copy(out) {
+                                self.ask(chan, &req[..7 + n], &[t], out);
+                            }
                         }
                         (Some(_), None) => out.put(b"ERR NO_SESSION\n"),
                         (None, _) => out.put(b"usage: net policy internet=0|1\n"),
@@ -342,25 +364,30 @@ impl Shell {
             }
             b"whoami" => match self.token {
                 None => out.put(b"not logged in\n"),
-                Some(t) => {
+                Some(_) => {
                     let Some(auth) = self.connect(b"auth", out) else {
                         return true;
                     };
-                    out.put(&self.user[..self.user_len]);
-                    out.put(b" ");
-                    self.ask(auth, b"WHOAMI", &[t], out);
+                    if let Some(t) = self.token_copy(out) {
+                        out.put(&self.user[..self.user_len]);
+                        out.put(b" ");
+                        self.ask(auth, b"WHOAMI", &[t], out);
+                    }
                     libnawah::handle_close(auth);
                 }
             },
-            b"logout" => match self.token.take() {
+            b"logout" => match self.token {
                 None => out.put(b"not logged in\n"),
                 Some(t) => {
                     if let Some(auth) = self.connect(b"auth", out) {
                         let mark = out.len;
-                        self.ask(auth, b"LOGOUT", &[t], out);
+                        if let Some(copy) = self.token_copy(out) {
+                            self.ask(auth, b"LOGOUT", &[copy], out);
+                        }
                         out.len = mark;
                         libnawah::handle_close(auth);
                     }
+                    self.token = None;
                     libnawah::handle_close(t);
                     self.user_len = 0;
                     out.put(b"logged out\n");
