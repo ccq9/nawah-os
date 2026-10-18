@@ -1471,9 +1471,11 @@
       "acceptance": "keyboard_nav/a11y_tree",
       "test_ids": [
         "TST-M5-KEYBOARD-NAV",
-        "TST-M5-A11Y-TREE"
+        "TST-M5-A11Y-TREE",
+        "TST-M5-UI-UNIT",
+        "TST-M5-UI-TOOL"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "implemented_untested",
       "evidence_refs": []
     },
     {

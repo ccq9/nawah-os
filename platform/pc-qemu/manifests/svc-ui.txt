@@ -1,0 +1,8 @@
+# TST-M5-KEYBOARD-NAV / TST-M5-A11Y-TREE: the sample dialog with the compositor, the
+# narrator that hears the focused window, and the config service its UI settings come from
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+config /SYSTEM/CONFIGD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 never 0 0
+narrator /SYSTEM/NARRATOR.ELF display 5000 never 0 0
+dialog /SYSTEM/DIALOG.ELF display,config,narrator 5000 never 0 0

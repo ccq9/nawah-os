@@ -1424,7 +1424,7 @@
     "REQ-M5-002"
    ],
    "layer": "host_unit",
-   "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU: a single-step case sends its commands once its marker appears with ${SCREEN} resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout (4 cases, OK)",
+   "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value) and ${EVIDENCE} (the run's directory) (5 cases, OK)",
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1528,7 +1528,7 @@
     "REQ-M5-005"
    ],
    "layer": "guest",
-   "oracle": "a sample dialog (buttons, text field, list, checkbox): Tab/Shift+Tab/arrows/Enter/Esc traverse the focus tree in the declared order (printed), each focus change is announced with role, label and state on the a11y channel, and the order is identical across two runs",
+   "oracle": "the sample dialog (SVC-UI.TXT: auth, input, config, display, narrator, dialog; the compositor draws window titles with the shipped fonts) is driven only by the lab's keys a, b, tab, tab, shift-tab, down, tab, spc, tab, ret, esc: the narrator's transcript equals platform/pc-qemu/expect/keyboard-nav.txt line for line — the window's focus, the six elements' descriptions in declared order, the first focus on the text field, the two characters typed, the focus moving forward and back in the declared order (labels skipped), the list selection moved to العربية, the checkbox checked, the OK button activated, cancel — and Esc ends the dialog with exit 0; the case runs twice (two QEMU boots) and both transcripts are equal to the file, so the order does not change between runs; no frame leaks; exit 33 in both phases",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1539,8 +1539,30 @@
     "REQ-M5-005"
    ],
    "layer": "guest",
-   "oracle": "every element of the sample dialog has a label and role; the narrator's transcript on the diagnostic console lists them in focus order; text scale 2× and high contrast from config change the rendered sizes/colours (screendump)",
+   "oracle": "the sample dialog announces every element with a non-empty label, a role and a state in focus order and its first focus; the admin then sets ui.scale=2 and ui.contrast=high in the config service's device store (OK 1, OK 1): the dialog, subscribed to the store, re-renders at twice the size (the window keeps its origin, width and height doubled: tools/transcript.py dims on the first and last dialog| reports) and then with the high-contrast palette, announcing both themes; the lab's screendump shows the high-contrast background (000000) and the yellow focus ring (FFFF00) where the dialog reported them; Esc ends it with exit 0; the narrator's transcript equals platform/pc-qemu/expect/a11y-tree.txt; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-UI-UNIT",
+   "requirement_ids": [
+    "REQ-M5-005"
+   ],
+   "layer": "host_unit",
+   "oracle": "libui on the host (7 tests): an element without a label (or a list without items) is refused when built; the focus order is the declared order without labels; Tab/Shift+Tab cycle it, Esc cancels, presses only; the text field takes characters (Arabic too), Backspace and the cursor keys, the list moves its selection with the arrows within bounds, Space/Enter toggle the checkbox and activate buttons; the descriptions read role, label, state and value/item exactly; ui.scale/ui.contrast map to the theme; 2x doubles every rectangle and the largest dialog fits one surface VMO; painting uses the theme's background and focus colours",
+   "command": "python3 tools/project.py test --target host --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-UI-TOOL",
+   "requirement_ids": [
+    "REQ-M5-005"
+   ],
+   "layer": "host_unit",
+   "oracle": "tools/transcript.py takes the narrator lines from trace lines and requires them to equal the expected file exactly in every serial log (a missing, extra or reordered line, or one bad phase, fails); dims accepts only the same origin with the size times the factor (4 cases, OK)",
+   "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },

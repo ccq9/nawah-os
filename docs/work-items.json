@@ -2433,28 +2433,56 @@
         "docs/PLAN.md §6",
         "docs/adr/0019-graphics-platform.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/adr/0019-graphics-platform.md",
+        "docs/contracts/display.md",
+        "docs/contracts/ui.md",
+        "kernel/src/ktest.rs",
+        "platform/pc-qemu/expect/a11y-tree.txt",
+        "platform/pc-qemu/expect/keyboard-nav.txt",
+        "platform/pc-qemu/manifests/svc-ui.txt",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tests/test_monitor_steps.py",
+        "tests/test_transcript_tool.py",
+        "tools/project.py",
+        "tools/transcript.py",
+        "user/apps/dialog/src/main.rs",
+        "user/apps/displayd/src/main.rs",
+        "user/apps/narrator/src/main.rs",
+        "user/libui/Cargo.toml",
+        "user/libui/examples/dialog_ppm.rs",
+        "user/libui/src/lib.rs",
+        "user/libui/src/tests.rs"
+      ],
       "contract_refs": [
-        "docs/contracts/ui.md"
+        "docs/contracts/ui.md",
+        "docs/contracts/display.md"
       ],
       "actions": [
         "عناصر UI والوصول: شجرة تركيز، تنقل بلوحة المفاتيح، قارئ شاشة نصي، تكبير وتباين",
-        "libui (no_std): window, button, label, text field (bidi), list, checkbox, scroll; focus tree in declared order; Tab/Shift+Tab/arrows/Enter/Esc; every element with label, role and state",
-        "a11y channel from the compositor to the narrator service (announcements on the diagnostic console in M5); text scale and high contrast read from config; ui.md",
-        "kernel tests keyboard_nav, a11y_tree with a sample dialog app"
+        "libui (user/libui; no_std, no allocation, no unsafe, over nawah-text): label, button, text field (bidi, cursor, Arabic input), list, checkbox; fixed declared focus order; Tab/Shift+Tab/arrows/Enter/Space/Esc; every element with role, label (refused when empty) and state; descriptions for the narrator; drawing with 1x/1.5x/2x scale and a high-contrast palette (ScrollView left out of v1: lists stay within six items)",
+        "a11y path: the compositor relays A11Y announcements of the focused window only to the registered narrator (display.md v1.1: NARRATOR, A11Y, SAY, window focus announcements) and draws window titles as text; narrator service writes them to the diagnostic channel; the sample dialog reads ui.scale/ui.contrast from config and follows SUBSCRIBE; ui.md v1",
+        "kernel tests keyboard_nav (two boots, same transcript) and a11y_tree with manifest svc-ui.txt; host checks tools/transcript.py (exact transcript per boot, dims) and screen.py probes; host tests TST-M5-UI-UNIT (libui) and TST-M5-UI-TOOL"
       ],
-      "acceptance": "TST-M5-KEYBOARD-NAV/A11Y-TREE PASS; ui.md v1",
+      "acceptance": "TST-M5-KEYBOARD-NAV/A11Y-TREE/UI-UNIT/UI-TOOL PASS; ui.md v1, display.md v1.1",
       "test_ids": [
         "TST-M5-KEYBOARD-NAV",
-        "TST-M5-A11Y-TREE"
+        "TST-M5-A11Y-TREE",
+        "TST-M5-UI-UNIT",
+        "TST-M5-UI-TOOL"
       ],
       "commands": [
         "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5"
+        "python3 tools/project.py test --target pc-qemu --suite M5",
+        "python3 tools/project.py test --target host --suite M5"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

@@ -1,0 +1,21 @@
+# TST-M5-KEYBOARD-NAV: the narrator's transcript for the lab's keys
+# a, b, tab, tab, shift-tab, down, tab, spc, tab, ret, esc (ui.md §2–§3)
+window "Sign in" focused
+tree 1/6 role=label label="Sign in" state=static
+tree 2/6 role=textfield label="Name" state=enabled value=""
+tree 3/6 role=list label="Language" state=enabled item="English" index=1/3
+tree 4/6 role=checkbox label="Remember me" state=unchecked
+tree 5/6 role=button label="OK" state=enabled
+tree 6/6 role=button label="Cancel" state=enabled
+focus role=textfield label="Name" state=focused value=""
+change role=textfield label="Name" state=focused value="a"
+change role=textfield label="Name" state=focused value="ab"
+focus role=list label="Language" state=focused item="English" index=1/3
+focus role=checkbox label="Remember me" state=focused,unchecked
+focus role=list label="Language" state=focused item="English" index=1/3
+change role=list label="Language" state=focused item="\u{0627}\u{0644}\u{0639}\u{0631}\u{0628}\u{064A}\u{0629}" index=2/3
+focus role=checkbox label="Remember me" state=focused,unchecked
+change role=checkbox label="Remember me" state=focused,checked
+focus role=button label="OK" state=focused
+activate role=button label="OK" state=focused
+cancel

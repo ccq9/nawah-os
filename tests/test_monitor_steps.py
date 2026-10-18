@@ -95,6 +95,10 @@ class MonitorSteps(unittest.TestCase):
         arg = project.substitute_host_arg("${SERIAL:rect=},${SERIAL:hash=}", "/d", "bid", "/s.ppm", text)
         self.assertEqual(arg, "61,85,320,200,0123456789abcdef")
         self.assertEqual(project.substitute_host_arg("${SCREEN}", "/d", "bid", "/s.ppm", text), "/s.ppm")
+        two = "OSX|x|dialog|window=21,45,260,242|a=1\nOSX|x|dialog|window=21,45,520,484|a=2\n"
+        self.assertEqual(project.substitute_host_arg("${SERIAL_FIRST:window=} ${SERIAL:window=}", "/d", "b", "/s", two),
+                         "21,45,260,242 21,45,520,484")
+        self.assertEqual(project.substitute_host_arg("${EVIDENCE}/x", "/d", "b", "/s", two, "/ev/1"), "/ev/1/x")
 
     def test_timeout_kills_qemu(self):
         rc, got, _, err = self.drive({"after": "|never|", "commands": ["sendkey a"]}, [("boot", 5.0)], timeout=2)

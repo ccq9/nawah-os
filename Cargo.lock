@@ -26,10 +26,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dialog"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+ "libui",
+ "nawah-text",
+]
+
+[[package]]
 name = "displayd"
 version = "0.1.0"
 dependencies = [
  "libnawah",
+ "nawah-text",
 ]
 
 [[package]]
@@ -91,6 +101,20 @@ dependencies = [
 [[package]]
 name = "libnawah"
 version = "0.1.0"
+
+[[package]]
+name = "libui"
+version = "0.1.0"
+dependencies = [
+ "nawah-text",
+]
+
+[[package]]
+name = "narrator"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
 
 [[package]]
 name = "nawah-crypto"

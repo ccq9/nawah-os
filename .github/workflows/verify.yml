@@ -60,6 +60,9 @@ jobs:
             cargo clippy --manifest-path user/apps/winapp/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/libnawah-text/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/textprobe/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/libui/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/apps/narrator/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/apps/dialog/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --features inject_ebs_fail -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --profile ktest --features ktest -- -D warnings

@@ -627,10 +627,11 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
 FONT_FILES = {"NotoSans-Regular.ttf": "NOTOSANS.TTF", "NotoSansArabic-Regular.ttf": "NOTOARAB.TTF", "OFL.txt": "OFL.TXT"}
 
 
-def serial_value(text, key):
-    """The value the guest printed after the last `key` in its serial output, up to the next
-    `|` or end of line (WP-34: a hash or a rectangle the host must recompute); '' when absent."""
-    i = text.rfind(key)
+def serial_value(text, key, first=False):
+    """The value the guest printed after the last (or, with `first`, the first) `key` in its
+    serial output, up to the next `|` or end of line (WP-34: a hash or a rectangle the host
+    must recompute); '' when absent."""
+    i = text.find(key) if first else text.rfind(key)
     if i < 0:
         return ""
     rest = text[i + len(key):]
@@ -642,14 +643,18 @@ def serial_value(text, key):
     return rest[:end]
 
 
-def substitute_host_arg(arg, disk_path, build_id, screen_path, serial_text):
-    """`${DISK}`, `${BUILD_ID}`, `${SCREEN}` and `${SERIAL:key}` (the value after `key` in the
-    serial log, serial_value) in a host_checks argument."""
+def substitute_host_arg(arg, disk_path, build_id, screen_path, serial_text, evidence_dir=None):
+    """`${DISK}`, `${BUILD_ID}`, `${SCREEN}`, `${EVIDENCE}` (the run's evidence directory,
+    WP-36), `${SERIAL:key}` and `${SERIAL_FIRST:key}` (the value after the last / first `key`
+    in the serial log, serial_value) in a host_checks argument."""
     out = arg.replace("${DISK}", str(disk_path)).replace("${BUILD_ID}", build_id).replace("${SCREEN}", str(screen_path))
-    while "${SERIAL:" in out:
-        i = out.index("${SERIAL:")
-        j = out.index("}", i)
-        out = out[:i] + serial_value(serial_text, out[i + 9:j]) + out[j + 1:]
+    if evidence_dir is not None:
+        out = out.replace("${EVIDENCE}", str(evidence_dir))
+    for tag, first in (("${SERIAL_FIRST:", True), ("${SERIAL:", False)):
+        while tag in out:
+            i = out.index(tag)
+            j = out.index("}", i)
+            out = out[:i] + serial_value(serial_text, out[i + len(tag):j], first) + out[j + 1:]
     return out
 
 
@@ -953,7 +958,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     disk_path = ROOT / "build" / target_name / "disk.img"
     with open(d / "host-check.log", "w") as hc:
         for check in case.get("host_checks", []):
-            cmd = [substitute_host_arg(x, disk_path, build_id, d / "screen.ppm", text) for x in check]
+            cmd = [substitute_host_arg(x, disk_path, build_id, d / "screen.ppm", text, d) for x in check]
             r = subprocess.run(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             hc.write(f"$ {' '.join(cmd)}\n{r.stdout}\n[exit {r.returncode}]\n")
             if r.returncode != 0:
@@ -1021,7 +1026,7 @@ HOST_SUITES["M4"] = [
 ]
 HOST_SUITES["M5"] = [
     {"id": "TST-M5-LAB-TOOL", "command": ["python3", "-I", "tests/test_monitor_steps.py"],
-     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout (4 cases, OK)",
+     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value) and ${EVIDENCE} (the run's directory) (5 cases, OK)",
      "inputs": ["tests/test_monitor_steps.py", "tools/project.py"], "input_globs": []},
     {"id": "TST-M5-BIDI", "command": ["python3", "-I", "tests/test_text.py", "Bidi"],
      "oracle": "nawah-text's UAX #9 reproduces every line of the Unicode conformance file BidiCharacterTest-17.0.0 (91707 lines: paragraph level, resolved levels with X9-removed characters, visual order after L2), and tables.rs is what tools/unicode_tables.py generates from the UCD files (DerivedBidiClass, DerivedJoiningType, BidiBrackets 17.0.0)",
@@ -1032,6 +1037,13 @@ HOST_SUITES["M5"] = [
     {"id": "TST-M5-GLYPHS", "command": ["python3", "-I", "tests/test_text.py", "Glyphs"],
      "oracle": "the OpenType reader equals fontTools on both shipped fonts: every cmap entry (2840 + 1161 code points, absent ones .notdef), every glyph's advance and left side bearing (3748 + 1661), every glyph's outline points, on-curve flags and contour ends with composites resolved; the rasteriser against the reference in the test (same 4×4 non-zero sampling, independent contour walk and flattening) on 22 glyphs × 4 sizes: no pixel full in one and empty in the other, at most 4/16 apart on edge pixels, total ink within 1%",
      "inputs": ["tests/test_text.py", "platform/assets/fonts/NotoSans-Regular.ttf", "platform/assets/fonts/NotoSansArabic-Regular.ttf"], "input_globs": ["user/libnawah-text/src/*.rs", "user/libnawah-text/examples/*.rs"]},
+    {"id": "TST-M5-UI-UNIT", "command": ["cargo", "test", "--offline", "--release", "-p", "libui", "--target", "x86_64-unknown-linux-gnu"],
+     "oracle": "libui on the host (7 tests): an element without a label (or a list without items) is refused when built; the focus order is the declared order without labels; Tab/Shift+Tab cycle it, Esc cancels, presses only; the text field takes characters (Arabic too), Backspace and the cursor keys, the list moves its selection with the arrows within bounds, Space/Enter toggle the checkbox and activate buttons; the descriptions read role, label, state and value/item exactly; ui.scale/ui.contrast map to the theme; 2x doubles every rectangle and the largest dialog fits one surface VMO; painting uses the theme's background and focus colours",
+     "pass_marker": "test result: ok. 7 passed; 0 failed",
+     "inputs": ["user/libui/Cargo.toml"], "input_globs": ["user/libui/src/*.rs", "user/libnawah-text/src/*.rs"]},
+    {"id": "TST-M5-UI-TOOL", "command": ["python3", "-I", "tests/test_transcript_tool.py"],
+     "oracle": "tools/transcript.py takes the narrator lines from trace lines and requires them to equal the expected file exactly in every serial log (a missing, extra or reordered line, or one bad phase, fails); dims accepts only the same origin with the size times the factor (4 cases, OK)",
+     "inputs": ["tests/test_transcript_tool.py", "tools/transcript.py"], "input_globs": []},
     {"id": "TST-M5-SCREEN-TOOL", "command": ["python3", "-I", "tests/test_screen_tool.py"],
      "oracle": "tools/screen.py desktop against a synthetic PPM: a pixel check passes on its colour and fails on another; a window hash equals the FNV-1a 64 of the rectangle's R,G,B bytes and fails when a pixel differs; a rectangle outside the image fails without crashing (2 cases, OK)",
      "inputs": ["tests/test_screen_tool.py", "tools/screen.py"], "input_globs": []},

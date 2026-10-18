@@ -25,7 +25,10 @@
       "user/apps/displayd/Cargo.toml",
       "user/apps/winapp/Cargo.toml",
       "user/apps/textprobe/Cargo.toml",
-      "user/libnawah-text/Cargo.toml"
+      "user/libnawah-text/Cargo.toml",
+      "user/apps/narrator/Cargo.toml",
+      "user/apps/dialog/Cargo.toml",
+      "user/libui/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -57,7 +60,9 @@
       "${OUT}/apps/inputd.elf",
       "${OUT}/apps/displayd.elf",
       "${OUT}/apps/winapp.elf",
-      "${OUT}/apps/textprobe.elf"
+      "${OUT}/apps/textprobe.elf",
+      "${OUT}/apps/narrator.elf",
+      "${OUT}/apps/dialog.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -438,6 +443,42 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/textprobe",
         "${OUT}/apps/textprobe.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/narrator/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/narrator",
+        "${OUT}/apps/narrator.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/dialog/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/dialog",
+        "${OUT}/apps/dialog.elf"
       ],
       [
         "cargo",
@@ -3862,6 +3903,183 @@
             "${SERIAL:text_rect=}",
             "--hash",
             "${SERIAL:text_hash=}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M5-KEYBOARD-NAV",
+        "test_id": "TST-M5-KEYBOARD-NAV",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "oracle": "the sample dialog (SVC-UI.TXT: auth, input, config, display, narrator, dialog; the compositor draws window titles with the shipped fonts) is driven only by the lab's keys a, b, tab, tab, shift-tab, down, tab, spc, tab, ret, esc: the narrator's transcript equals platform/pc-qemu/expect/keyboard-nav.txt line for line — the window's focus, the six elements' descriptions in declared order, the first focus on the text field, the two characters typed, the focus moving forward and back in the declared order (labels skipped), the list selection moved to العربية, the checkbox checked, the OK button activated, cancel — and Esc ends the dialog with exit 0; the case runs twice (two QEMU boots) and both transcripts are equal to the file, so the order does not change between runs; no frame leaks; exit 33 in both phases",
+        "expected_exit_code": 33,
+        "required_markers": [],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 900,
+        "phases": [
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=keyboard_nav"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=keyboard_nav",
+              "|kernel|spawn|pid=",
+              "|path=/SYSTEM/DIALOG.ELF|handles=1",
+              "|text=display|fonts=1",
+              "|ktest|keyboard_nav|services=6|ready=1",
+              "|ktest|keyboard_nav|dialog_state=stopped|dialog_exit=0|",
+              "|ktest|keyboard_nav|mgr_exit=0x0|processes_after=0|clean=1",
+              "|ktest|keyboard_nav|frames_delta=0",
+              "|ktest|pass|the dialog was driven by the keyboard alone and announced every focus and change"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector",
+              "|user_fault|"
+            ],
+            "monitor": {
+              "after": "|ktest|keyboard_nav|services=6|ready=1",
+              "commands": [
+                "sendkey a",
+                "sendkey b",
+                "sendkey tab",
+                "sendkey tab",
+                "sendkey shift-tab",
+                "sendkey down",
+                "sendkey tab",
+                "sendkey spc",
+                "sendkey tab",
+                "sendkey ret",
+                "sendkey esc"
+              ],
+              "gap_s": 0.5
+            }
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=keyboard_nav2"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=keyboard_nav2",
+              "|kernel|spawn|pid=",
+              "|path=/SYSTEM/DIALOG.ELF|handles=1",
+              "|text=display|fonts=1",
+              "|ktest|keyboard_nav2|services=6|ready=1",
+              "|ktest|keyboard_nav2|dialog_state=stopped|dialog_exit=0|",
+              "|ktest|keyboard_nav2|mgr_exit=0x0|processes_after=0|clean=1",
+              "|ktest|keyboard_nav2|frames_delta=0",
+              "|ktest|pass|the dialog was driven by the keyboard alone and announced every focus and change"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector",
+              "|user_fault|"
+            ],
+            "monitor": {
+              "after": "|ktest|keyboard_nav2|services=6|ready=1",
+              "commands": [
+                "sendkey a",
+                "sendkey b",
+                "sendkey tab",
+                "sendkey tab",
+                "sendkey shift-tab",
+                "sendkey down",
+                "sendkey tab",
+                "sendkey spc",
+                "sendkey tab",
+                "sendkey ret",
+                "sendkey esc"
+              ],
+              "gap_s": 0.5
+            }
+          }
+        ],
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/transcript.py",
+            "check",
+            "${EVIDENCE}",
+            "platform/pc-qemu/expect/keyboard-nav.txt"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M5-A11Y-TREE",
+        "test_id": "TST-M5-A11Y-TREE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=a11y_tree"
+        ],
+        "oracle": "the sample dialog announces every element with a non-empty label, a role and a state in focus order and its first focus; the admin then sets ui.scale=2 and ui.contrast=high in the config service's device store (OK 1, OK 1): the dialog, subscribed to the store, re-renders at twice the size (the window keeps its origin, width and height doubled: tools/transcript.py dims on the first and last dialog| reports) and then with the high-contrast palette, announcing both themes; the lab's screendump shows the high-contrast background (000000) and the yellow focus ring (FFFF00) where the dialog reported them; Esc ends it with exit 0; the narrator's transcript equals platform/pc-qemu/expect/a11y-tree.txt; no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=a11y_tree",
+          "|text=display|fonts=1",
+          "|ktest|a11y_tree|scale=OK 1|contrast=OK 1|ready=1",
+          "|text=dialog|theme=4,normal|window=",
+          "|text=dialog|theme=8,normal|window=",
+          "|text=dialog|theme=8,high|window=",
+          "|ktest|a11y_tree|dialog_state=stopped|dialog_exit=0|",
+          "|ktest|a11y_tree|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|a11y_tree|frames_delta=0",
+          "|ktest|pass|every element was announced with label, role and state, and the UI settings re-rendered the dialog"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "monitor": {
+          "after": "|text=dialog|theme=8,high|",
+          "commands": [
+            "screendump ${SCREEN}",
+            "sendkey esc"
+          ],
+          "gap_s": 1.5
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/transcript.py",
+            "check",
+            "${EVIDENCE}",
+            "platform/pc-qemu/expect/a11y-tree.txt"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/transcript.py",
+            "dims",
+            "${SERIAL_FIRST:window=}",
+            "${SERIAL:window=}",
+            "2"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN}",
+            "--pixel",
+            "${SERIAL:probe_bg=},000000",
+            "--pixel",
+            "${SERIAL:probe_focus=},FFFF00"
           ]
         ]
       }

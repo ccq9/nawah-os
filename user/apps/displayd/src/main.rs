@@ -7,6 +7,8 @@
 //! service is whenever the session says so (input.md §3).
 //!
 //! Initial handles: the boot channel (rdi) and the display object. Dependency: `input`.
+//! Since WP-36 (display.md v1.1): titles drawn as text with the shipped fonts, and a narrator
+//! client that hears the focused window's accessibility announcements.
 
 #![no_std]
 #![no_main]
@@ -16,6 +18,9 @@ use libnawah::{
     Handle, WaitEntry, ERR_PEER_CLOSED, ERR_SHOULD_WAIT, ERR_TIMED_OUT, SIGNAL_PEER_CLOSED,
     SIGNAL_READABLE,
 };
+use nawah_text::bidi::{self, Base};
+use nawah_text::font::Font;
+use nawah_text::layout::{Canvas, Fonts, Glyph, Layout};
 
 libnawah::entry!(main);
 
@@ -64,6 +69,121 @@ const KEY_RIGHT: u32 = 0xcd;
 
 /// The back buffer: taken once by `main`, never aliased afterwards.
 static mut BACK: [u32; MAX_PIXELS] = [0; MAX_PIXELS];
+
+/// Window titles as text (WP-36, display.md v1.1): the layout state, taken once by `main`.
+struct TextState {
+    layout: Layout,
+    glyphs: [Glyph; TITLE_MAX],
+    chars: [u32; TITLE_MAX],
+}
+
+static mut TEXT: TextState = TextState {
+    layout: Layout::new(),
+    glyphs: [Glyph {
+        font: 0,
+        gid: 0,
+        x: 0,
+        advance: 0,
+        cluster: 0,
+    }; TITLE_MAX],
+    chars: [0; TITLE_MAX],
+};
+
+const TITLE_PX: u32 = 13;
+const TITLE_RGB: u32 = 0xFFFFFF;
+
+/// The frame's pixel back to `0xRRGGBB` (the inverse of `pixel`).
+fn unpixel(format: u32, p: u32) -> u32 {
+    let (a, g, b) = (p & 0xFF, (p >> 8) & 0xFF, (p >> 16) & 0xFF);
+    if format == libnawah::display::FORMAT_RGBX {
+        (a << 16) | (g << 8) | b
+    } else {
+        p & 0xFF_FFFF
+    }
+}
+
+/// Blends glyph coverage into the back buffer (frame format) inside `clip`.
+struct BackCanvas<'b> {
+    back: &'b mut [u32],
+    sw: usize,
+    clip: Rect,
+    format: u32,
+    fg: u32,
+}
+
+impl Canvas for BackCanvas<'_> {
+    fn blend(&mut self, x: i32, y: i32, coverage: u8) {
+        if !self.clip.contains(x, y) {
+            return;
+        }
+        let i = y as usize * self.sw + x as usize;
+        let old = unpixel(self.format, self.back[i]);
+        let c = u32::from(coverage.min(16));
+        let mut rgb = 0;
+        for shift in [16u32, 8, 0] {
+            let (o, f) = ((old >> shift) & 0xFF, (self.fg >> shift) & 0xFF);
+            rgb |= ((o * (16 - c) + f * c + 8) / 16) << shift;
+        }
+        self.back[i] = pixel(self.format, rgb);
+    }
+}
+
+/// Reads a font file into a fresh VMO mapping (kept for the life of the process).
+fn load_font(path: &[u8]) -> Option<&'static [u8]> {
+    let st = libnawah::stat(path).ok()?;
+    let size = st.size as usize;
+    let vmo = libnawah::vmo_create(st.size.max(1).next_multiple_of(4096)).ok()?;
+    let addr = libnawah::vmo_map(vmo, libnawah::PROT_READ | libnawah::PROT_WRITE).ok()?;
+    // SAFETY: the mapping is this process's, `size` bytes fit the VMO, never unmapped.
+    let buf: &'static mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr as *mut u8, size) };
+    let f = libnawah::open(path, libnawah::O_READ).ok()?;
+    let mut total = 0;
+    while total < size {
+        match libnawah::read(f, &mut buf[total..]) {
+            Ok(0) | Err(_) => break,
+            Ok(n) => total += n,
+        }
+    }
+    libnawah::handle_close(f);
+    (total == size).then_some(&*buf)
+}
+
+/// UTF-8 to code points (malformed bytes are skipped).
+fn decode_utf8(bytes: &[u8], out: &mut [u32]) -> usize {
+    let mut n = 0;
+    let mut i = 0;
+    while i < bytes.len() && n < out.len() {
+        let b = bytes[i];
+        let (len, init) = match b {
+            0x00..=0x7F => (1, u32::from(b)),
+            0xC0..=0xDF => (2, u32::from(b & 0x1F)),
+            0xE0..=0xEF => (3, u32::from(b & 0x0F)),
+            0xF0..=0xF7 => (4, u32::from(b & 0x07)),
+            _ => {
+                i += 1;
+                continue;
+            }
+        };
+        if i + len > bytes.len() {
+            break;
+        }
+        let mut cp = init;
+        let mut ok = true;
+        for &c in &bytes[i + 1..i + len] {
+            if c & 0xC0 != 0x80 {
+                ok = false;
+                break;
+            }
+            cp = (cp << 6) | u32::from(c & 0x3F);
+        }
+        i += if ok { len } else { 1 };
+        if ok {
+            out[n] = cp;
+            n += 1;
+        }
+    }
+    n
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct Rect {
@@ -350,6 +470,11 @@ struct Compositor {
     /// A key whose press was a shortcut: its release is swallowed too, so no client sees
     /// half of it.
     consumed_key: Option<u32>,
+    /// The narrator client (display.md v1.1 §ب-1): announcements of the focused window go
+    /// to it.
+    narrator: Option<usize>,
+    fonts: Option<Fonts<'static>>,
+    text: &'static mut TextState,
 }
 
 impl Compositor {
@@ -424,8 +549,60 @@ impl Compositor {
         self.fill_back(win.title_bar().intersect(clip), title);
         self.fill_back(win.close_btn().intersect(clip), BTN_CLOSE);
         self.fill_back(win.min_btn().intersect(clip), BTN_MIN);
+        self.draw_title(wi, clip);
         self.draw_surface(wi, clip);
         self.fill_back(win.grip().intersect(clip), GRIP_RGB);
+    }
+
+    /// The window's title as text in its title bar (left of the buttons; right-aligned when
+    /// the title's first strong character is right-to-left, UAX #9 P2).
+    fn draw_title(&mut self, wi: usize, clip: Rect) {
+        let Some(fonts) = self.fonts.as_ref() else {
+            return;
+        };
+        let win = self.windows[wi];
+        let bar = win.title_bar();
+        let area = Rect::new(bar.x + 4, bar.y, win.min_btn().x - 4 - (bar.x + 4), bar.h);
+        let area = area.intersect(clip).intersect(self.screen);
+        if area.is_empty() {
+            return;
+        }
+        let text = &mut *self.text;
+        let n = decode_utf8(&win.title[..win.title_len], &mut text.chars);
+        let rtl = text.chars[..n]
+            .iter()
+            .map(|&c| bidi::class_of(c))
+            .find(|&c| c == bidi::L || c == bidi::R || c == bidi::AL)
+            .is_some_and(|c| c != bidi::L);
+        let (count, width) = text.layout.line(
+            fonts,
+            &text.chars[..n],
+            Base::Auto,
+            TITLE_PX,
+            &mut text.glyphs,
+        );
+        let tw = (width + 32) / 64;
+        let x0 = if rtl {
+            win.min_btn().x - 6 - tw
+        } else {
+            bar.x + 6
+        };
+        let mut canvas = BackCanvas {
+            back: &mut *self.back,
+            sw: self.screen.w as usize,
+            clip: area,
+            format: self.format,
+            fg: TITLE_RGB,
+        };
+        let glyphs = text.glyphs;
+        text.layout.draw(
+            fonts,
+            &glyphs[..count],
+            TITLE_PX,
+            x0,
+            bar.y + 17,
+            &mut canvas,
+        );
     }
 
     /// Composes `r` into the back buffer (background, then windows bottom-up) and copies it
@@ -631,6 +808,27 @@ impl Compositor {
             self.event(new, b"FOCUS", &[], now);
             let r = self.windows[new].title_bar();
             self.damage(r);
+            // The narrator hears which window has the focus (display.md v1.1).
+            let w = self.windows[new];
+            let mut buf = [0u8; 64];
+            let len = {
+                let mut o = Out {
+                    buf: &mut buf,
+                    len: 0,
+                };
+                o.put(b"SAY window \"");
+                o.put(&w.title[..w.title_len]);
+                o.put(b"\" focused");
+                o.len
+            };
+            self.say(&buf[..len], now);
+        }
+    }
+
+    /// One message to the narrator, if one is registered.
+    fn say(&mut self, msg: &[u8], now: u64) {
+        if let Some(n) = self.narrator {
+            self.send(n, msg, now);
         }
     }
 
@@ -765,6 +963,9 @@ impl Compositor {
         }
         if self.clients[ci].unresponsive {
             self.unresponsive -= 1;
+        }
+        if self.narrator == Some(ci) {
+            self.narrator = None;
         }
         libnawah::handle_close(self.clients[ci].chan);
         self.clients[ci] = NO_CLIENT;
@@ -1209,6 +1410,47 @@ impl Compositor {
                     out.hex64(h);
                 }
             }
+            b"NARRATOR" => {
+                // The first client to ask becomes the narrator (display.md v1.1); the
+                // manifest decides who may connect at all.
+                if self.narrator.is_some_and(|n| n != ci) {
+                    out.put(b"ERR BUSY");
+                } else {
+                    self.narrator = Some(ci);
+                    out.put(b"OK");
+                }
+            }
+            b"A11Y" => {
+                // An announcement of the focused window's owner goes to the narrator as
+                // `SAY <text>`; other windows are refused (no client speaks over another).
+                let Some(wi) = f
+                    .next()
+                    .and_then(parse_u32)
+                    .and_then(|id| self.window_by_id(id))
+                else {
+                    out.put(b"ERR UNKNOWN");
+                    return false;
+                };
+                if !owns(self, wi) {
+                    out.put(b"ERR UNKNOWN");
+                    return false;
+                }
+                if self.focus != Some(wi) {
+                    out.put(b"ERR NOT_FOCUSED");
+                    return false;
+                }
+                let Some(n) = self.narrator else {
+                    out.put(b"ERR NO_NARRATOR");
+                    return false;
+                };
+                let text = after_fields(req, 2);
+                let mut buf = [0u8; MSG_MAX];
+                buf[..4].copy_from_slice(b"SAY ");
+                let len = 4 + text.len().min(MSG_MAX - 4);
+                buf[4..len].copy_from_slice(&text[..len - 4]);
+                self.send(n, &buf[..len], now);
+                out.put(b"OK");
+            }
             b"STATUS" => {
                 out.put(b"OK format=");
                 out.num(i64::from(self.format));
@@ -1353,6 +1595,21 @@ fn main() -> u64 {
     }
     // SAFETY: the back buffer is taken exactly once, here, for the life of the process.
     let back: &'static mut [u32] = unsafe { &mut *core::ptr::addr_of_mut!(BACK) };
+    // SAFETY: as above, the text state.
+    let text: &'static mut TextState = unsafe { &mut *core::ptr::addr_of_mut!(TEXT) };
+    // The fonts for the titles (text.md §1); without them the titles stay blank.
+    let fonts = match (
+        load_font(b"/SYSTEM/FONTS/NOTOSANS.TTF").and_then(Font::parse),
+        load_font(b"/SYSTEM/FONTS/NOTOARAB.TTF").and_then(Font::parse),
+    ) {
+        (Some(latin), Some(arabic)) => Some(Fonts { latin, arabic }),
+        _ => None,
+    };
+    libnawah::trace(if fonts.is_some() {
+        b"display|fonts=1"
+    } else {
+        b"display|fonts=0"
+    });
     let screen = Rect::new(0, 0, info.width as i32, info.height as i32);
     let mut c = Compositor {
         boot,
@@ -1380,6 +1637,9 @@ fn main() -> u64 {
         composed: 0,
         unresponsive: 0,
         consumed_key: None,
+        narrator: None,
+        fonts,
+        text,
     };
     c.compose(screen);
     c.draw_cursor();

@@ -191,6 +191,9 @@ pub fn run() -> ! {
         "window_states" => window_states(),
         "app_hang" => app_hang(),
         "text_layer" => text_layer(),
+        "keyboard_nav" => keyboard_nav("keyboard_nav"),
+        "keyboard_nav2" => keyboard_nav("keyboard_nav2"),
+        "a11y_tree" => a11y_tree(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
@@ -5357,6 +5360,101 @@ fn text_layer() -> ! {
         fail("the lab never pressed a key after its screendump")
     }
     pass("the guest's text layer matches the host's on bidi, shaping, bitmaps and the drawn line")
+}
+
+// ---- WP-36: elements and accessibility -------------------------------------------------------
+
+/// Waits until the dialog service has stopped; its exit code (or -1) and the listing text.
+fn wait_dialog_stopped(h: &SvcHarness, deadline: u64) -> (String, i64, String) {
+    let lines = h.poll_list(deadline, |l| {
+        l.iter().any(|x| x.name == "dialog" && x.state == "stopped")
+    });
+    let d = lines.iter().find(|l| l.name == "dialog");
+    let state = d.map_or(String::from("-"), |l| l.state.clone());
+    let exit = d.and_then(|l| l.exit).map_or(-1, |x| x as i64);
+    (state, exit, SvcHarness::list_text(&lines))
+}
+
+/// TST-M5-KEYBOARD-NAV (REQ-M5-005): the sample dialog (SVC-UI.TXT) driven only by the
+/// keyboard: the lab's keys after `ready=1` move the focus in the declared order and act on
+/// each element; the narrator's transcript (checked on the host against the expected file,
+/// identical in both runs of the case) is the oracle. Esc ends the dialog with exit 0.
+fn keyboard_nav(name: &'static str) -> ! {
+    let (h, admin, clients, _format) = display_env(
+        name,
+        b"/SYSTEM/SVC-UI.TXT",
+        &["auth", "input", "config", "display", "narrator", "dialog"],
+        1,
+    );
+    kprintln!("OSX|{}|ktest|{}|services=6|ready=1", BUILD_ID, name);
+    let (state, exit, listing) = wait_dialog_stopped(&h, sched::ticks() + 120_000);
+    kprintln!(
+        "OSX|{}|ktest|{}|dialog_state={}|dialog_exit={}|listing={}",
+        BUILD_ID,
+        name,
+        state,
+        exit,
+        listing
+    );
+    if state != "stopped" || exit != 0 {
+        fail("the dialog did not end with Esc")
+    }
+    drop((state, listing, clients, admin));
+    display_finish(
+        name,
+        h,
+        "the dialog was driven by the keyboard alone and announced every focus and change",
+    )
+}
+
+/// TST-M5-A11Y-TREE (REQ-M5-005): every element of the sample dialog is announced with a
+/// label, a role and a state in focus order; changing `ui.scale` to 2 and `ui.contrast` to
+/// high in the config service re-renders it twice the size with the high-contrast palette
+/// (the lab's screendump checks a background and a focus-ring pixel).
+fn a11y_tree() -> ! {
+    let (h, admin, clients, _format) = display_env(
+        "a11y_tree",
+        b"/SYSTEM/SVC-UI.TXT",
+        &["auth", "input", "config", "display", "narrator", "dialog"],
+        1,
+    );
+    let cfg = svc_connect(&h, "config");
+    let scale = cfg_request(
+        &cfg,
+        b"SET device ui.scale 0 a11y-1 2",
+        Some(token_entry(&admin)),
+    );
+    let contrast = cfg_request(
+        &cfg,
+        b"SET device ui.contrast 0 a11y-2 high",
+        Some(token_entry(&admin)),
+    );
+    kprintln!(
+        "OSX|{}|ktest|a11y_tree|scale={}|contrast={}|ready=1",
+        BUILD_ID,
+        scale,
+        contrast
+    );
+    if scale != "OK 1" || contrast != "OK 1" {
+        fail("the config service refused the UI settings")
+    }
+    let (state, exit, listing) = wait_dialog_stopped(&h, sched::ticks() + 120_000);
+    kprintln!(
+        "OSX|{}|ktest|a11y_tree|dialog_state={}|dialog_exit={}|listing={}",
+        BUILD_ID,
+        state,
+        exit,
+        listing
+    );
+    if state != "stopped" || exit != 0 {
+        fail("the dialog did not end with Esc")
+    }
+    drop((state, listing, scale, contrast, cfg, clients, admin));
+    display_finish(
+        "a11y_tree",
+        h,
+        "every element was announced with label, role and state, and the UI settings re-rendered the dialog",
+    )
 }
 
 // ---- WP-27: the network interface and the keyboard ----------------------------------------
