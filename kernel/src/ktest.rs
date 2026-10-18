@@ -3827,6 +3827,8 @@ fn net_dhcp() -> ! {
         if !status.starts_with("OK link=1 configured=1 ip=10.0.2.15 mask=255.255.255.0 gw=10.0.2.2 dns=10.0.2.3 internet=unknown allow_internet=0") {
             fail("STATUS does not show the configuration")
         }
+        // The DHCP reply string lives outside the block: release it before the balance.
+        drop(dhcp);
         net_close(env, "net_dhcp")
     };
     cfg_balance(
@@ -3857,6 +3859,8 @@ fn net_icmp() -> ! {
         if dhcp != LAB_DHCP || !rtt_ok || bad != "ERR BAD_REQUEST" {
             fail("ICMP echo to the gateway did not round-trip")
         }
+        // The DHCP reply string lives outside the block: release it before the balance.
+        drop(dhcp);
         net_close(env, "net_icmp")
     };
     cfg_balance(
@@ -3897,6 +3901,8 @@ fn net_udp_echo() -> ! {
         if empty != "ERR TIMEOUT" || closed != "OK" || after != "ERR BAD_REQUEST" {
             fail("receive timeout or close wrong")
         }
+        // The DHCP reply string lives outside the block: release it before the balance.
+        drop(dhcp);
         net_close(env, "net_udp_echo")
     };
     cfg_balance(
@@ -3961,6 +3967,8 @@ fn net_no_internet() -> ! {
         {
             fail("the allowed off-link attempt or the policy restore went wrong")
         }
+        // The DHCP reply string lives outside the block: release it before the balance.
+        drop(dhcp);
         net_close(env, "net_no_internet")
     };
     cfg_balance(
