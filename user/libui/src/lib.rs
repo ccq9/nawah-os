@@ -6,6 +6,10 @@
 //!
 //! Every element has a role and a non-empty label (an element without one is refused when it
 //! is added: the "build error" of ui.md); labels, values and list items are UTF-8.
+//!
+//! v1.1 (WP-37, ui.md §3.1): the `password` role — a text field drawn as bullets whose
+//! description never carries its value — and the application's access to a field's value
+//! (`value`, `clear_value`, `set_value`) and to the focus (`focus_on`).
 
 #![cfg_attr(not(test), no_std)]
 #![deny(unsafe_code)]
@@ -36,6 +40,8 @@ pub enum Role {
     TextField,
     List,
     Checkbox,
+    /// A text field whose characters are drawn as bullets and never described (v1.1).
+    Password,
 }
 
 impl Role {
@@ -46,12 +52,20 @@ impl Role {
             Role::TextField => "textfield",
             Role::List => "list",
             Role::Checkbox => "checkbox",
+            Role::Password => "password",
         }
     }
     pub fn focusable(self) -> bool {
         self != Role::Label
     }
+    /// Roles that hold editable text (the keys of ui.md §2 for fields).
+    pub fn is_text(self) -> bool {
+        matches!(self, Role::TextField | Role::Password)
+    }
 }
+
+/// U+2022 BULLET: how a password field shows each of its characters.
+pub const BULLET: u32 = 0x2022;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum UiError {
@@ -330,6 +344,61 @@ impl Dialog {
         self.focus
     }
 
+    /// Moves the focus to element `i` if it can take it (v1.1).
+    pub fn focus_on(&mut self, i: usize) -> Event {
+        if i >= self.n || !self.elements[i].role.focusable() {
+            return Event::None;
+        }
+        self.move_focus(i)
+    }
+
+    /// The text of field `i` (a text field or a password) as UTF-8 in `out`; its length
+    /// (0 for other roles or when `out` is too small for the next character).
+    pub fn value(&self, i: usize, out: &mut [u8]) -> usize {
+        if i >= self.n || !self.elements[i].role.is_text() {
+            return 0;
+        }
+        let e = &self.elements[i];
+        let mut n = 0;
+        let mut tmp = [0u8; 4];
+        for &cp in &e.text[..e.text_len] {
+            let Some(c) = char::from_u32(cp) else {
+                continue;
+            };
+            let b = c.encode_utf8(&mut tmp).as_bytes();
+            if n + b.len() > out.len() {
+                break;
+            }
+            out[n..n + b.len()].copy_from_slice(b);
+            n += b.len();
+        }
+        n
+    }
+
+    /// Wipes field `i`: every character slot to zero, empty, cursor at the start (v1.1).
+    pub fn clear_value(&mut self, i: usize) {
+        if i >= self.n || !self.elements[i].role.is_text() {
+            return;
+        }
+        let e = &mut self.elements[i];
+        e.text = [0; TEXT_MAX];
+        e.text_len = 0;
+        e.cursor = 0;
+    }
+
+    /// Puts `text` into text field `i` (not a password: an application never fills one);
+    /// `false` when refused. Characters beyond the field's capacity are dropped.
+    pub fn set_value(&mut self, i: usize, text: &str) -> bool {
+        if i >= self.n || self.elements[i].role != Role::TextField {
+            return false;
+        }
+        let e = &mut self.elements[i];
+        e.text = [0; TEXT_MAX];
+        e.text_len = utf8_chars(text, &mut e.text);
+        e.cursor = e.text_len;
+        true
+    }
+
     /// Puts the focus on the first focusable element.
     pub fn start(&mut self) -> Event {
         let mut order = [0usize; MAX_ELEMENTS];
@@ -393,22 +462,24 @@ impl Dialog {
                 Event::Select(i, e.selected)
             }
             (Role::List, KEY_ENTER) => Event::Activate(i),
-            (Role::TextField, KEY_ENTER) => Event::Activate(i),
-            (Role::TextField, KEY_BACKSPACE) if e.cursor > 0 => {
+            (r, KEY_ENTER) if r.is_text() => Event::Activate(i),
+            (r, KEY_BACKSPACE) if r.is_text() && e.cursor > 0 => {
                 e.text.copy_within(e.cursor..e.text_len, e.cursor - 1);
                 e.cursor -= 1;
                 e.text_len -= 1;
+                // The character that left is not kept behind the length.
+                e.text[e.text_len] = 0;
                 Event::Edit(i)
             }
-            (Role::TextField, KEY_LEFT) if e.cursor > 0 => {
+            (r, KEY_LEFT) if r.is_text() && e.cursor > 0 => {
                 e.cursor -= 1;
                 Event::None
             }
-            (Role::TextField, KEY_RIGHT) if e.cursor < e.text_len => {
+            (r, KEY_RIGHT) if r.is_text() && e.cursor < e.text_len => {
                 e.cursor += 1;
                 Event::None
             }
-            (Role::TextField, _) => match ch {
+            (r, _) if r.is_text() => match ch {
                 Some(c) if e.text_len < TEXT_MAX && !c.is_control() => {
                     e.text.copy_within(e.cursor..e.text_len, e.cursor + 1);
                     e.text[e.cursor] = c as u32;
@@ -461,6 +532,7 @@ impl Dialog {
                 out.put(b"/");
                 out.num(e.items.len());
             }
+            // A password field is described without its value (v1.1).
             Role::TextField => {
                 out.put(b" value=\"");
                 let mut tmp = [0u8; 4];
@@ -479,7 +551,7 @@ impl Dialog {
         let t = &self.theme;
         match e.role {
             Role::Label => t.u(20),
-            Role::Button | Role::TextField => t.u(26),
+            Role::Button | Role::TextField | Role::Password => t.u(26),
             Role::Checkbox => t.u(22),
             Role::List => t.u(20) * (1 + e.items.len() as i32),
         }
@@ -651,7 +723,7 @@ impl Painter {
                     let s = self.text;
                     self.string(fonts, &s[..n], px, r, d.rtl, true, p.fg, buf, w, h);
                 }
-                Role::TextField => {
+                Role::TextField | Role::Password => {
                     fill(buf, w, h, r, p.control);
                     frame(buf, w, h, r, 1, p.border);
                     if e.text_len == 0 {
@@ -670,7 +742,11 @@ impl Painter {
                             h,
                         );
                     } else {
-                        let s = e.text;
+                        // A password shows one bullet per character, never the characters.
+                        let mut s = e.text;
+                        if e.role == Role::Password {
+                            s[..e.text_len].fill(BULLET);
+                        }
                         self.string(
                             fonts,
                             &s[..e.text_len],

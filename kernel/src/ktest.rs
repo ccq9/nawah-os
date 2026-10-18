@@ -194,6 +194,9 @@ pub fn run() -> ! {
         "keyboard_nav" => keyboard_nav("keyboard_nav"),
         "keyboard_nav2" => keyboard_nav("keyboard_nav2"),
         "a11y_tree" => a11y_tree(),
+        "login_screen" => login_screen(),
+        "auth_input_isolated" => auth_input_isolated(),
+        "lock_survives" => lock_survives(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
@@ -4447,9 +4450,11 @@ fn input_route() -> ! {
         fail("registration or the authority checks did not answer as input.md says")
     }
     // Phase 1: the lab sends `a`, `shift-b` and `ctrl-alt-delete` (QEMU presses in order and
-    // releases in reverse order): ten key events to A, one SAK to S, nothing to B.
-    let ev_a = read_events(a, 10, sched::ticks() + 60_000);
-    let ev_s = read_events(s, 1, sched::ticks() + 5_000);
+    // releases in reverse order): eight key events to A up to the Alt press, then the focus
+    // moves to S with the SAK (input.md v2.2), so S gets the SAK and the two releases;
+    // nothing to B.
+    let ev_a = read_events(a, 8, sched::ticks() + 60_000);
+    let ev_s = read_events(s, 3, sched::ticks() + 5_000);
     let ev_b = read_events(b, 1, sched::ticks() + 200);
     kprintln!(
         "OSX|{}|ktest|input_route|a={}|s={}|b={}",
@@ -4467,10 +4472,9 @@ fn input_route() -> ! {
         "KEY 0x2a up 0 -",
         "KEY 0x1d down 2 -",
         "KEY 0x38 down 6 -",
-        "KEY 0x38 up 2 -",
-        "KEY 0x1d up 0 -",
     ];
-    if ev_a != expected_a || ev_s != ["SAK"] || !ev_b.is_empty() {
+    let expected_s = ["SAK", "KEY 0x38 up 2 -", "KEY 0x1d up 0 -"];
+    if ev_a != expected_a || ev_s != expected_s || !ev_b.is_empty() {
         fail("key events were decoded wrongly or reached the wrong client")
     }
     // Phase 2: the focus moves to B with the Arabic layout; the lab sends `a` again.
@@ -5454,6 +5458,358 @@ fn a11y_tree() -> ! {
         "a11y_tree",
         h,
         "every element was announced with label, role and state, and the UI settings re-rendered the dialog",
+    )
+}
+
+// ---- WP-37: the session and the lock --------------------------------------------------------
+
+/// The session tests' setting: a manager with `manifest`, every service in `services` ready,
+/// and a channel to the session service. The test kernel logs nobody in: the session does.
+fn session_env(
+    name: &'static str,
+    manifest: &'static [u8],
+    services: &[&str],
+) -> (SvcHarness, Arc<Endpoint>) {
+    let h = SvcHarness::start(name, manifest);
+    svc_wait_ready(&h, services, sched::ticks() + 120_000);
+    let session = svc_connect(&h, "session");
+    (h, session)
+}
+
+/// Asks `req` of a service every 20 ticks until `done(reply)` holds or `deadline`; the last
+/// reply (the session's `STATE`, the spy's `COUNT`).
+fn poll_reply(
+    ep: &Endpoint,
+    req: &[u8],
+    deadline: u64,
+    mut done: impl FnMut(&str) -> bool,
+) -> String {
+    loop {
+        let r = cfg_request(ep, req, None);
+        if done(&r) || sched::ticks() >= deadline {
+            return r;
+        }
+        let t = sched::ticks() + 20;
+        sched::poll_until(t, || false);
+    }
+}
+
+/// `STATE` says `state` after exactly `changes` transitions (session.md §6).
+fn state_is(reply: &str, state: &str, changes: u32) -> bool {
+    reply.starts_with(&alloc::format!("OK {} ", state))
+        && reply.contains(&alloc::format!(" changes={} ", changes))
+}
+
+/// The compositor's count of key events it received from the input service (display.md
+/// v1.2 `KEYS`), or -1.
+fn display_keys(ep: &Endpoint) -> i64 {
+    let mut ev = Vec::new();
+    let r = drequest(ep, b"KEYS", Vec::new(), &mut ev);
+    r.strip_prefix("OK ")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(-1)
+}
+
+/// One service's line in the manager's listing: (state, restarts, exit or -1).
+fn svc_state(lines: &[SvcLine], name: &str) -> (String, u64, i64) {
+    lines.iter().find(|l| l.name == name).map_or_else(
+        || (String::from("-"), 0, -1),
+        |l| (l.state.clone(), l.restarts, l.exit.map_or(-1, |x| x as i64)),
+    )
+}
+
+/// TST-M5-LOGIN-SCREEN (REQ-M5-006): from boot the sign-in screen is the only surface shown
+/// (the spy's window exists but the compositor holds it back); the lab's wrong password is
+/// refused with auth's answer and the right one opens the session; the secure attention
+/// sequence locks it and Sign out on the lock screen returns to a fresh sign-in screen while
+/// the spy's window and surface are gone (it hears `LOGGED_OUT`, finds no window left and
+/// exits 0). The session's and the spy's traces are checked on the host, the screen through
+/// three screendumps.
+fn login_screen() -> ! {
+    let name = "login_screen";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SS.TXT",
+        &["auth", "input", "display", "session", "spy"],
+    );
+    let display = svc_connect(&h, "display");
+    let mut ev = Vec::new();
+    let state0 = cfg_request(&session, b"STATE", None);
+    let status0 = drequest(&display, b"STATUS", Vec::new(), &mut ev);
+    let windows0 = String::from(status_field(&status0, "windows="));
+    kprintln!(
+        "OSX|{}|ktest|login_screen|state0={}|windows0={}|services=5|ready=1",
+        BUILD_ID,
+        state0,
+        windows0
+    );
+    if state0 != "OK no_session user=- changes=0 display=1 input=1 focus=session" || windows0 != "2"
+    {
+        fail("the session did not start at the sign-in screen holding the keyboard")
+    }
+    // The lab: a wrong password, the right one, a key for the spy, the secure attention
+    // sequence, then Sign out on the lock screen.
+    let back = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "no_session", 3)
+    });
+    let status1 = drequest(&display, b"STATUS", Vec::new(), &mut ev);
+    let windows1 = String::from(status_field(&status1, "windows="));
+    let lines = h.poll_list(sched::ticks() + 10_000, |l| {
+        l.iter().any(|x| x.name == "spy" && x.state == "stopped")
+    });
+    let (spy_state, _, spy_exit) = svc_state(&lines, "spy");
+    kprintln!(
+        "OSX|{}|ktest|login_screen|back={}|windows1={}|spy={}:{}",
+        BUILD_ID,
+        back,
+        windows1,
+        spy_state,
+        spy_exit
+    );
+    if back != "OK no_session user=- changes=3 display=1 input=1 focus=session" {
+        fail("signing in, locking and signing out did not take the session back to the sign-in screen")
+    }
+    if windows1 != "1" || spy_state != "stopped" || spy_exit != 0 {
+        fail("the previous client's windows survived the sign-out")
+    }
+    drop((
+        state0, status0, windows0, back, status1, windows1, lines, spy_state, ev, display, session,
+    ));
+    display_finish(
+        name,
+        h,
+        "the sign-in screen came first, refused a wrong password, opened the session, and signing out removed the user's windows",
+    )
+}
+
+/// TST-M5-AUTH-INPUT-ISOLATED (REQ-M5-006): with the spy's window focused, the secure
+/// attention sequence locks the session; the password typed on the lock screen reaches no
+/// client — the spy's key count does not move and the compositor's own count of key events
+/// (`KEYS`) stays the same from the lock to the unlock — and no announcement or trace carries
+/// it (the narrator hears the password field without a value; the host checks every stream and
+/// that the password text appears nowhere in the serial log). A key after the unlock reaches
+/// the spy again.
+fn auth_input_isolated() -> ! {
+    let name = "auth_input_isolated";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SA.TXT",
+        &["auth", "input", "display", "narrator", "session", "spy"],
+    );
+    let display = svc_connect(&h, "display");
+    let spy = svc_connect(&h, "spy");
+    kprintln!(
+        "OSX|{}|ktest|auth_input_isolated|services=6|ready=1",
+        BUILD_ID
+    );
+    // The lab signs in, types `a` and `b` for the spy, then Ctrl+Alt+Del.
+    let locked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "locked", 2)
+    });
+    let spy1 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r == "OK keys=6 focus=0 connections=1"
+    });
+    let keys1 = display_keys(&display);
+    kprintln!(
+        "OSX|{}|ktest|auth_input_isolated|locked={}|keys={}|spy={}|phase=2|ready=1",
+        BUILD_ID,
+        locked,
+        keys1,
+        spy1
+    );
+    if !locked.starts_with("OK locked user=admin changes=2 ")
+        || spy1 != "OK keys=6 focus=0 connections=1"
+        || keys1 != 6
+    {
+        fail("the secure attention sequence did not lock the session with the spy's keys counted")
+    }
+    // The lab types the password on the lock screen, then Enter.
+    let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "unlocked", 3) && r.ends_with(" focus=display")
+    });
+    let spy2 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r == "OK keys=6 focus=1 connections=1"
+    });
+    let keys2 = display_keys(&display);
+    kprintln!(
+        "OSX|{}|ktest|auth_input_isolated|unlocked={}|keys_while_locked={}|spy={}|phase=3|ready=1",
+        BUILD_ID,
+        unlocked,
+        keys2 - keys1,
+        spy2
+    );
+    if unlocked != "OK unlocked user=admin changes=3 display=1 input=1 focus=display"
+        || keys2 != keys1
+        || spy2 != "OK keys=6 focus=1 connections=1"
+    {
+        fail("a key typed on the lock screen reached the compositor or a client")
+    }
+    // The lab types `c`: the spy hears it again, through the compositor.
+    let spy3 = poll_reply(&spy, b"COUNT", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK keys=8 ")
+    });
+    let keys3 = display_keys(&display);
+    kprintln!(
+        "OSX|{}|ktest|auth_input_isolated|spy={}|keys={}",
+        BUILD_ID,
+        spy3,
+        keys3
+    );
+    if spy3 != "OK keys=8 focus=1 connections=1" || keys3 != keys2 + 2 {
+        fail("keys did not reach the spy after the unlock")
+    }
+    drop((locked, spy1, unlocked, spy2, spy3, spy, display, session));
+    display_finish(
+        name,
+        h,
+        "the password typed on the lock screen reached the session alone: no client, no compositor, no announcement",
+    )
+}
+
+/// TST-M5-LOCK-SURVIVES (REQ-M5-006): while locked the compositor is restarted (the
+/// manager's RESTART, which closes every channel of the old process as a crash would) and
+/// then the input service: the session stays locked and reconnects to both, the restarted
+/// compositor shows the lock screen (the lab's screendump) with the spy's new window held
+/// back, the spy — focused before the lock — gets no key, the restarted compositor sees no
+/// key while locked, a wrong password is refused, and only the right one unlocks; a key
+/// after the unlock reaches the spy through the new input service and compositor.
+fn lock_survives() -> ! {
+    let name = "lock_survives";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SS.TXT",
+        &["auth", "input", "display", "session", "spy"],
+    );
+    let spy = svc_connect(&h, "spy");
+    kprintln!("OSX|{}|ktest|lock_survives|services=5|ready=1", BUILD_ID);
+    // The lab signs in, then Ctrl+Alt+Del.
+    let locked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "locked", 2)
+    });
+    let spy1 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r == "OK keys=2 focus=0 connections=1"
+    });
+    if !locked.starts_with("OK locked user=admin changes=2 ")
+        || spy1 != "OK keys=2 focus=0 connections=1"
+    {
+        kprintln!(
+            "OSX|{}|ktest|lock_survives|locked={}|spy={}",
+            BUILD_ID,
+            locked,
+            spy1
+        );
+        fail("the secure attention sequence did not lock the session")
+    }
+    // The compositor goes while locked, then the input service.
+    let restart = |what: &[u8]| -> String {
+        match crate::services::request(&h.m.ctl, what, sched::ticks() + 500) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => e.into(),
+        }
+    };
+    let r_display = restart(b"RESTART display");
+    let after_display = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        r.contains(" display=2 ")
+    });
+    let r_input = restart(b"RESTART input");
+    let after_input = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        r.contains(" input=2 ") && r.ends_with(" focus=session")
+    });
+    let spy2 = poll_reply(&spy, b"COUNT", sched::ticks() + 60_000, |r| {
+        r == "OK keys=2 focus=0 connections=2"
+    });
+    let lines = h.poll_list(sched::ticks() + 10_000, |l| {
+        ["display", "input"].iter().all(|n| {
+            l.iter()
+                .any(|x| x.name == *n && x.state == "ready" && x.restarts == 1)
+        })
+    });
+    let (d_state, d_restarts, _) = svc_state(&lines, "display");
+    let (i_state, i_restarts, _) = svc_state(&lines, "input");
+    let display = svc_connect(&h, "display");
+    let mut ev = Vec::new();
+    let status = drequest(&display, b"STATUS", Vec::new(), &mut ev);
+    let windows = String::from(status_field(&status, "windows="));
+    kprintln!(
+        "OSX|{}|ktest|lock_survives|restarted=display:{}:{}:{},input:{}:{}:{}|state={}|spy={}|windows={}|phase=2|ready=1",
+        BUILD_ID,
+        r_display,
+        d_state,
+        d_restarts,
+        r_input,
+        i_state,
+        i_restarts,
+        after_input,
+        spy2,
+        windows
+    );
+    if r_display != "OK"
+        || r_input != "OK"
+        || !after_display.starts_with("OK locked ")
+        || after_input != "OK locked user=admin changes=2 display=2 input=2 focus=session"
+        || spy2 != "OK keys=2 focus=0 connections=2"
+        || d_state != "ready"
+        || i_state != "ready"
+        || d_restarts != 1
+        || i_restarts != 1
+        || windows != "2"
+    {
+        fail("the lock did not survive the restart of the compositor and of the input service")
+    }
+    // The lab: a screendump, a wrong password (refused: still locked), the right one.
+    let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "unlocked", 3) && r.ends_with(" focus=display")
+    });
+    let keys_locked = display_keys(&display);
+    let spy3 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r == "OK keys=2 focus=1 connections=2"
+    });
+    kprintln!(
+        "OSX|{}|ktest|lock_survives|unlocked={}|display_keys={}|spy={}|phase=3|ready=1",
+        BUILD_ID,
+        unlocked,
+        keys_locked,
+        spy3
+    );
+    if unlocked != "OK unlocked user=admin changes=3 display=2 input=2 focus=display"
+        || keys_locked != 0
+        || spy3 != "OK keys=2 focus=1 connections=2"
+    {
+        fail("the passwords typed on the lock screen reached the compositor or the spy")
+    }
+    // The lab types `z`: through the new input service and compositor to the spy.
+    let spy4 = poll_reply(&spy, b"COUNT", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK keys=4 ")
+    });
+    kprintln!("OSX|{}|ktest|lock_survives|spy={}", BUILD_ID, spy4);
+    if spy4 != "OK keys=4 focus=1 connections=2" {
+        fail("keys did not reach the spy after the unlock")
+    }
+    drop((
+        locked,
+        spy1,
+        r_display,
+        after_display,
+        r_input,
+        after_input,
+        spy2,
+        lines,
+        d_state,
+        i_state,
+        status,
+        windows,
+        ev,
+        unlocked,
+        spy3,
+        spy4,
+        display,
+        spy,
+        session,
+    ));
+    display_finish(
+        name,
+        h,
+        "the lock survived the restart of the compositor and of the input service, and only the right password opened it",
     )
 }
 

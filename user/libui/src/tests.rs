@@ -214,3 +214,144 @@ fn paint_uses_the_theme_and_marks_the_focus() {
         assert!(ink > 40 && full > 0, "label ink {} full {}", ink, full);
     }
 }
+
+// ---- v1.1 (WP-37): the password field and the application's access to values ----------
+
+fn login() -> Dialog {
+    let mut d = Dialog::new("Sign in", false);
+    d.add(Role::Label, "Nawah").unwrap();
+    d.add(Role::TextField, "User name").unwrap();
+    d.add(Role::Password, "Password").unwrap();
+    d.add(Role::Button, "Sign in").unwrap();
+    d
+}
+
+fn value(d: &Dialog, i: usize) -> String {
+    let mut buf = [0u8; 4 * TEXT_MAX];
+    let n = d.value(i, &mut buf);
+    String::from_utf8(buf[..n].to_vec()).unwrap()
+}
+
+#[test]
+fn password_is_edited_like_a_field_and_never_described() {
+    let mut d = login();
+    assert_eq!(d.start(), Event::Focus(None, 1));
+    assert_eq!(d.key(KEY_TAB, true, 0, None), Event::Focus(Some(1), 2));
+    for (code, c) in [(0x19, 'p'), (0x11, 'w'), (0x02, '1')] {
+        assert_eq!(d.key(code, true, 0, Some(c)), Event::Edit(2));
+    }
+    assert_eq!(value(&d, 2), "pw1");
+    // The description has the role, the label and the state, never the value or its length.
+    assert_eq!(
+        describe(&d, 2),
+        "role=password label=\"Password\" state=focused"
+    );
+    d.key(KEY_TAB, true, 0, None);
+    assert_eq!(
+        describe(&d, 2),
+        "role=password label=\"Password\" state=enabled"
+    );
+    d.key(KEY_TAB, true, MOD_SHIFT, None);
+    // Backspace deletes before the cursor and leaves no character behind the length.
+    assert_eq!(d.key(KEY_BACKSPACE, true, 0, None), Event::Edit(2));
+    assert_eq!(value(&d, 2), "pw");
+    assert_eq!(d.element(2).text[2], 0);
+    assert_eq!(d.key(KEY_LEFT, true, 0, None), Event::None);
+    assert_eq!(d.key(0x1e, true, 0, Some('a')), Event::Edit(2));
+    assert_eq!(value(&d, 2), "paw");
+    assert_eq!(d.key(KEY_ENTER, true, 0, None), Event::Activate(2));
+}
+
+#[test]
+fn clear_set_value_and_focus_on() {
+    let mut d = login();
+    d.start();
+    d.key(0x1e, true, 0, Some('a'));
+    d.focus_on(2);
+    d.key(0x1e, true, 0, Some('x'));
+    d.clear_value(2);
+    assert_eq!(value(&d, 2), "");
+    assert_eq!(d.element(2).text, [0; TEXT_MAX]);
+    assert_eq!((d.element(2).text_len, d.element(2).cursor), (0, 0));
+    // A text field takes a value from the application; a password never does.
+    assert!(d.set_value(1, "admin"));
+    assert_eq!(value(&d, 1), "admin");
+    assert_eq!(d.element(1).cursor, 5);
+    assert!(!d.set_value(2, "secret"));
+    assert_eq!(value(&d, 2), "");
+    assert!(!d.set_value(0, "label"));
+    // The focus goes only where it can.
+    assert_eq!(d.focus_on(2), Event::Focus(Some(2), 2));
+    assert_eq!(d.focus_on(3), Event::Focus(Some(2), 3));
+    assert_eq!(d.focus_on(0), Event::None);
+    assert_eq!(d.focus_on(9), Event::None);
+    assert_eq!(d.focused(), Some(3));
+    // Other roles have no value.
+    assert_eq!(value(&d, 0), "");
+    assert_eq!(value(&d, 3), "");
+}
+
+#[test]
+fn password_is_drawn_as_bullets() {
+    let fonts = Fonts {
+        latin: Font::parse(LATIN_TTF).unwrap(),
+        arabic: Font::parse(ARABIC_TTF).unwrap(),
+    };
+    let mut painter = Box::new(Painter::new());
+    let render = |d: &Dialog, painter: &mut Painter| {
+        let mut rects = [Rect::default(); MAX_ELEMENTS];
+        let (w, h) = d.layout(&mut rects);
+        let (w, h) = (w as usize, h as usize);
+        let mut buf = vec![0u32; w * h];
+        painter.paint(d, &fonts, &mut buf, w, h);
+        (buf, rects[2], w)
+    };
+    // The same dialog with a password "abc" and with a text field holding three bullets.
+    let mut secret = login();
+    secret.focus_on(2);
+    for (code, c) in [(0x1e, 'a'), (0x30, 'b'), (0x2e, 'c')] {
+        secret.key(code, true, 0, Some(c));
+    }
+    let mut shown = Dialog::new("Sign in", false);
+    shown.add(Role::Label, "Nawah").unwrap();
+    shown.add(Role::TextField, "User name").unwrap();
+    shown.add(Role::TextField, "Password").unwrap();
+    shown.add(Role::Button, "Sign in").unwrap();
+    shown.focus_on(2);
+    for _ in 0..3 {
+        shown.key(0x09, true, 0, Some('\u{2022}'));
+    }
+    let mut plain = Dialog::new("Sign in", false);
+    plain.add(Role::Label, "Nawah").unwrap();
+    plain.add(Role::TextField, "User name").unwrap();
+    plain.add(Role::TextField, "Password").unwrap();
+    plain.add(Role::Button, "Sign in").unwrap();
+    plain.focus_on(2);
+    for (code, c) in [(0x1e, 'a'), (0x30, 'b'), (0x2e, 'c')] {
+        plain.key(code, true, 0, Some(c));
+    }
+    let (a, r, w) = render(&secret, &mut painter);
+    let (b, _, _) = render(&shown, &mut painter);
+    let (c, _, _) = render(&plain, &mut painter);
+    let field = |buf: &[u32]| -> Vec<u32> {
+        let mut v = Vec::new();
+        for y in r.y..r.y + r.h {
+            for x in r.x..r.x + r.w {
+                v.push(buf[y as usize * w + x as usize]);
+            }
+        }
+        v
+    };
+    assert_eq!(
+        field(&a),
+        field(&b),
+        "a password field draws one bullet per character"
+    );
+    assert_ne!(
+        field(&a),
+        field(&c),
+        "the characters themselves are not drawn"
+    );
+    let bg = Theme::DEFAULT.palette().control;
+    assert!(field(&a).iter().filter(|&&p| p != bg).count() > 20);
+}

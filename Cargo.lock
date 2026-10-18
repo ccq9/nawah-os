@@ -150,7 +150,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "sessiond"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+ "libui",
+ "nawah-text",
+]
+
+[[package]]
 name = "sh"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
+name = "spy"
 version = "0.1.0"
 dependencies = [
  "libnawah",

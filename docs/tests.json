@@ -1398,7 +1398,7 @@
     "REQ-M5-002"
    ],
    "layer": "guest",
-   "oracle": "the input service (auth + input from SVC-IN.TXT) receives the keyboard and the mouse from the manager; clients a, b, session register (OK 1/2/3); FOCUS without a token, with a user's token, or for an unknown client is refused (ERR ACCESS/ERR ACCESS/ERR UNKNOWN) and LAYOUT with a user's token is refused; with the admin's token FOCUS 1 is OK; keys sent through the monitor (`a`, `shift-b`, `ctrl-alt-delete`) reach a as exactly ten KEY events with set-1 codes, modifiers and US characters, the session client receives exactly `SAK` (Delete never reported), b receives nothing; after FOCUS 2 + LAYOUT ar, `a` reaches b as `ش` and a receives nothing; STATUS counts 12 keys, 1 SAK, 0 dropped; clean exit, no frame leak",
+   "oracle": "the input service (auth + input from SVC-IN.TXT) receives the keyboard and the mouse from the manager; clients a, b, session register (OK 1/2/3); FOCUS without a token, with a user's token, or for an unknown client is refused (ERR ACCESS/ERR ACCESS/ERR UNKNOWN) and LAYOUT with a user's token is refused; with the admin's token FOCUS 1 is OK; keys sent through the monitor (`a`, `shift-b`, `ctrl-alt-delete`) reach a as exactly the eight KEY events up to the Alt press with set-1 codes, modifiers and US characters, then the sequence moves the focus to the session client (input.md v2.2), which receives exactly `SAK` and the releases of Alt and Ctrl (Delete never reported), b receives nothing; after FOCUS 2 + LAYOUT ar, `a` reaches b as `ش` and a receives nothing; STATUS counts 12 keys, 1 SAK, 0 dropped; clean exit, no frame leak",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1424,7 +1424,7 @@
     "REQ-M5-002"
    ],
    "layer": "host_unit",
-   "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value) and ${EVIDENCE} (the run's directory) (5 cases, OK)",
+   "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag} (5 cases, OK)",
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1554,7 +1554,7 @@
     "REQ-M5-005"
    ],
    "layer": "host_unit",
-   "oracle": "libui on the host (7 tests): an element without a label (or a list without items) is refused when built; the focus order is the declared order without labels; Tab/Shift+Tab cycle it, Esc cancels, presses only; the text field takes characters (Arabic too), Backspace and the cursor keys, the list moves its selection with the arrows within bounds, Space/Enter toggle the checkbox and activate buttons; the descriptions read role, label, state and value/item exactly; ui.scale/ui.contrast map to the theme; 2x doubles every rectangle and the largest dialog fits one surface VMO; painting uses the theme's background and focus colours",
+   "oracle": "libui on the host (10 tests): an element without a label (or a list without items) is refused when built; the focus order is the declared order without labels; Tab/Shift+Tab cycle it, Esc cancels, presses only; the text field takes characters (Arabic too), Backspace and the cursor keys, the list moves its selection with the arrows within bounds, Space/Enter toggle the checkbox and activate buttons; the descriptions read role, label, state and value/item exactly; ui.scale/ui.contrast map to the theme; 2x doubles every rectangle and the largest dialog fits one surface VMO; painting uses the theme's background and focus colours; v1.1 (WP-37): the password field edits like a text field, is described by role, label and state without its value, is drawn as one bullet per character (pixel-equal to a field of bullets, unlike the characters), and the application reads, wipes (zeroed slots) and sets values and moves the focus only where it can go",
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1567,7 +1567,7 @@
     "REQ-M5-005"
    ],
    "layer": "host_unit",
-   "oracle": "tools/transcript.py takes the narrator lines from trace lines and requires them to equal the expected file exactly in every serial log (a missing, extra or reordered line, or one bad phase, fails); dims accepts only the same origin with the size times the factor (4 cases, OK)",
+   "oracle": "tools/transcript.py takes the narrator lines from trace lines and requires them to equal the expected file exactly in every serial log (a missing, extra or reordered line, or one bad phase, fails); dims accepts only the same origin with the size times the factor; streams (WP-37) checks every stream the file names exactly and in order whatever the interleaving, ignores other streams and non-user lines, and checks every phase (7 cases, OK)",
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1580,7 +1580,7 @@
     "REQ-M5-006"
    ],
    "layer": "guest",
-   "oracle": "while locked, the display service is killed and restarted and the input service is killed and restarted: the lock screen is what the restarted compositor shows, the session stays locked, key input goes to the session only (a client that had focus before the lock receives nothing), and only a correct password unlocks",
+   "oracle": "SVC-SS.TXT: the lab signs in and presses Ctrl+Alt+Del with the spy focused (its count: the Ctrl and Alt presses, 2); while locked the test restarts the compositor (the manager's RESTART: its process ends and every channel of it closes, as in a crash) and then the input service: both come back ready with restarts=1, the session stays locked and reconnects to both (`session|display=reconnected|n=2|state=locked|window=510,336,260,128`, `session|input=reconnected|n=2|state=locked`, STATE `OK locked user=admin changes=2 display=2 input=2 focus=session`), the restarted compositor holds two windows — the lock screen and the spy's new one (the spy reconnected: connections=2) — and the lab's screendump shows the lock screen only (10141C at (2,2) and at the spy's place (150,150), the dialog's F0F0F0 at (512,338)); a wrong password is refused (`unlock=refused|answer=ERR ACCESS`, still locked), the right one unlocks (`OK unlocked user=admin changes=3 display=2 input=2 focus=display`) while the restarted compositor received no key at all (KEYS 0) and the spy still counts 2; `z` then reaches the spy (4) through the new input service and compositor; the session's and the spy's traces equal platform/pc-qemu/expect/lock-survives.txt stream by stream; the password never appears in the serial log; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1591,7 +1591,7 @@
     "REQ-M5-006"
    ],
    "layer": "guest",
-   "oracle": "with a client window focused, the session locks (secure attention); the password typed on the lock screen never appears in any client's input queue (the client prints every key it gets: none), and the compositor never sees the key events",
+   "oracle": "SVC-SA.TXT (SVC-SS.TXT with the narrator, before which the session starts): the lab signs in at the session's screen, then types `a` and `b`, which reach the focused spy, and Ctrl+Alt+Del: the Ctrl and Alt presses reach the spy, the sequence moves the keyboard to the session (input.md v2.2) and it locks (STATE `OK locked user=admin changes=2 …`); the spy has counted 6 keys and lost the focus, and the compositor has received 6 key events in all (KEYS); the lab types the password and Enter on the lock screen: the session unlocks (`OK unlocked user=admin changes=3 display=1 input=1 focus=display`) while the compositor's count stayed the same (keys_while_locked=0) and the spy's stayed 6 with the focus back; `c` then reaches the spy (8 keys) through the compositor (8); the session's, the spy's and the narrator's traces equal platform/pc-qemu/expect/auth-input-isolated.txt stream by stream — the narrator hears the password field's role, label and state and never a value; the password text appears nowhere in the serial log; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1602,7 +1602,7 @@
     "REQ-M5-006"
    ],
    "layer": "guest",
-   "oracle": "from boot: the login screen is the first surface; a wrong password is refused with the auth service's answer; the right one opens the session (token held by the session service); logout returns to the login screen and the previous client's surfaces are gone",
+   "oracle": "the session service (SVC-SS.TXT: auth, input, display, session, spy; session.md) starts at the sign-in screen holding the keyboard (STATE `OK no_session user=- changes=0 display=1 input=1 focus=session`) while the spy's window exists (STATUS windows=2) but is held back: the lab's first screendump shows the lock background 10141C at (2,2) and where the spy's window is (150,150) and the dialog's background F0F0F0 at (512,338) inside the centred window 510,336,260,128; the lab types the user name and a wrong password and auth's answer refuses it (`session|login=refused|answer=ERR ACCESS`), then the right password opens the session (`state=unlocked|user=admin|uid=1000|token=usable`) and the keyboard goes to the compositor (`focus=display|n=1`); the second screendump shows the spy's window (2E8B57 at (150,150)) on the desktop background 1E2A38; `x` reaches the spy; Ctrl+Alt+Del locks (`state=locked`, third screendump: the lock screen, the spy's window held back again); Tab, Tab, Enter on Sign out ends the session (`state=logged_out`): the spy hears LOGGED_OUT, finds no window left (`spy|logged_out|windows=0`) and exits 0, a fresh sign-in screen is the only window (STATUS windows=1) and STATE is `OK no_session user=- changes=3 display=1 input=1 focus=session`; the session's and the spy's traces equal platform/pc-qemu/expect/login-screen.txt stream by stream; the password never appears in the serial log; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []

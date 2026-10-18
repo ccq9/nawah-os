@@ -1,0 +1,17 @@
+# TST-M5-LOGIN-SCREEN (session.md §9): the session's and the spy's traces, each stream exact
+# and in order (tools/transcript.py streams); how the two interleave is not checked
+session|state=no_session|window=510,336,260,128
+session|login=refused|answer=ERR ACCESS
+session|state=unlocked|user=admin|uid=1000|token=usable
+session|focus=display|n=1
+session|state=locked|user=admin|window=510,336,260,128
+session|state=logged_out|user=admin
+session|state=no_session|window=510,336,260,128
+spy|window=created|at=100,100,200,120
+spy|focus=1
+spy|key=0x2d,down,x
+spy|key=0x2d,up,x
+spy|key=0x1d,down,-
+spy|key=0x38,down,-
+spy|focus=0
+spy|logged_out|windows=0

@@ -2508,15 +2508,60 @@
         "docs/PLAN.md §6",
         "docs/adr/0019-graphics-platform.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.lock",
+        "Cargo.toml",
+        "docs/PLAN.md",
+        "docs/adr/0019-graphics-platform.md",
+        "docs/contracts/display.md",
+        "docs/contracts/input.md",
+        "docs/contracts/services.md",
+        "docs/contracts/session.md",
+        "docs/contracts/ui.md",
+        "docs/security/threat-model.md",
+        "docs/sources.json",
+        "kernel/src/ktest.rs",
+        "platform/pc-qemu/expect/auth-input-isolated.txt",
+        "platform/pc-qemu/expect/lock-survives.txt",
+        "platform/pc-qemu/expect/login-screen.txt",
+        "platform/pc-qemu/manifests/svc-sa.txt",
+        "platform/pc-qemu/manifests/svc-ss.txt",
+        "platform/pc-qemu/target.json",
+        "tests/test_monitor_steps.py",
+        "tests/test_transcript_tool.py",
+        "tools/project.py",
+        "tools/transcript.py",
+        "user/apps/authd/src/main.rs",
+        "user/apps/configd/src/main.rs",
+        "user/apps/dialog/src/main.rs",
+        "user/apps/displayd/src/main.rs",
+        "user/apps/inputd/src/main.rs",
+        "user/apps/netd/src/main.rs",
+        "user/apps/sessiond/Cargo.toml",
+        "user/apps/sessiond/build.rs",
+        "user/apps/sessiond/src/main.rs",
+        "user/apps/spy/Cargo.toml",
+        "user/apps/spy/build.rs",
+        "user/apps/spy/src/main.rs",
+        "user/apps/svc/src/main.rs",
+        "user/apps/svcmgr/src/main.rs",
+        "user/libui/src/lib.rs",
+        "user/libui/src/tests.rs"
+      ],
       "contract_refs": [
-        "docs/contracts/session.md"
+        "docs/contracts/session.md",
+        "docs/contracts/input.md",
+        "docs/contracts/display.md",
+        "docs/contracts/services.md",
+        "docs/contracts/ui.md"
       ],
       "actions": [
         "الجلسة والقفل الموثوق: مالك القفل، شاشة الدخول، الانتباه الآمن، البقاء عند تعطل العرض",
-        "session service: owns the lock state and the session token (auth.md), the login/lock screen as its own surface, input routed directly from input (never through the compositor or a client) while locked/authenticating; secure attention; restarted compositor/input ask the session before showing or routing anything; session crash → authenticated rescue (login screen only)",
-        "session.md; manifest SERVICES.TXT for the real boot: auth, config, net, input, display, session, sh",
-        "kernel tests lock_survives, auth_input_isolated, login_screen (service kills through the manager's STOP and restart policies)"
+        "sessiond (user/apps/sessiond): the states no_session/unlocked/locked, the user's token from auth (LOGIN, LOCK, UNLOCK, LOGOUT), the sign-in and lock screens as libui dialogs in its own windows (password field: ui.md v1.1), keys straight from input; the keyboard to the display only after an unlock once no key is held; reconnects to auth, input and display through the manager and gives each its state again; STATE for tests; traces without secrets (session.md v1)",
+        "trusted path: input.md v2.2 (the manager's client identity, `session` reserved, the session's authority, the secure attention sequence moves the focus to the session, the session's loss clears the focus; TST-M5-INPUT-ROUTE re-based); display.md v1.2 (held from the start when the manifest names a session and on the session's loss, LOCKED/UNLOCKED/LOGOUT from the session only, no focus for a held window, LOGGED_OUT, KEYS, input reconnection); services.md v1.6 (CONNECT <name>, RESTART)",
+        "kernel tests login_screen, auth_input_isolated, lock_survives (SVC-SS.TXT, SVC-SA.TXT with the narrator; RESTART of display and input while locked); the spy client (user/apps/spy); lab: ${SCREEN:tag} screendumps and transcript.py streams (per-stream exact transcripts), with host tests",
+        "the real system manifest (SERVICES.TXT: auth, config, net, input, display, session, sh) and the interactive boot to the sign-in screen moved to the first WP of M6 (ADR-0019: the release image is still a self-check that exits; changing it changes M1's tests)"
       ],
       "acceptance": "TST-M5-LOCK-SURVIVES/AUTH-INPUT-ISOLATED/LOGIN-SCREEN PASS; session.md v1",
       "test_ids": [
@@ -2528,9 +2573,10 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M5"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

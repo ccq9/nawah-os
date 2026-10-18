@@ -1,0 +1,9 @@
+# TST-M5-AUTH-INPUT-ISOLATED: SVC-SS.TXT with the narrator, which hears every announcement of
+# the focused window (the password field's included); the session starts after it (declared
+# dependency) so its first announcements are heard
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 never 0 0
+narrator /SYSTEM/NARRATOR.ELF display 5000 never 0 0
+session /SYSTEM/SESSIOND.ELF auth,input,display,narrator 5000 never 0 0
+spy /SYSTEM/SPY.ELF display 5000 never 0 0

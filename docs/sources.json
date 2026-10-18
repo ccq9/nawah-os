@@ -995,6 +995,19 @@
       ],
       "limits": "HarfBuzz shows default-ignorable characters (ZWJ/ZWNJ) as an invisible space glyph; the comparison skips those positions",
       "verified": true
+    },
+    {
+      "id": "S76",
+      "title": "Microsoft Learn — Interactive logon: Do not require CTRL+ALT+DEL (Windows 10 security policy settings)",
+      "url": "https://learn.microsoft.com/fr-fr/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/interactive-logon-do-not-require-ctrl-alt-del",
+      "version": "page dated 2017-04-19 (applies to Windows 10 and Windows 11)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "Requiring CTRL+ALT+DELETE before users sign in ensures that users are communicating through a trusted path when entering their passwords",
+        "the threat it answers: malware that looks like the standard sign-in dialog box captures a user's password"
+      ],
+      "limits": "describes the reference's policy and its purpose, not its implementation; the session design (input moves the focus to the session with the sequence, session.md) is this project's own",
+      "verified": true
     }
   ]
 }

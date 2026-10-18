@@ -75,6 +75,8 @@ struct Service {
     process: Option<Handle>,
     /// `Starting`: the readiness deadline; `Failed` with restarts left: the next start.
     deadline: Option<u64>,
+    /// `RESTART` (services.md v1.6): started again as soon as the stopped process exits.
+    restart_after_stop: bool,
 }
 
 const EMPTY: Service = Service {
@@ -98,6 +100,7 @@ const EMPTY: Service = Service {
     chan: None,
     process: None,
     deadline: None,
+    restart_after_stop: false,
 };
 
 impl Service {
@@ -526,7 +529,12 @@ impl Manager {
             Some(j) if self.services[j].state == State::Ready => {
                 match (self.services[j].chan, libnawah::channel_create()) {
                     (Some(target), Ok((client, server))) => {
-                        if libnawah::channel_write(target, b"CONNECT", &[server]) == 0 {
+                        // The server learns who the client is (services.md v1.6): the
+                        // requesting service's name, which only the manager can vouch for.
+                        let mut msg = Out::new();
+                        msg.put(b"CONNECT ");
+                        msg.put(self.services[i].name());
+                        if libnawah::channel_write(target, msg.bytes(), &[server]) == 0 {
                             libnawah::channel_write(c, b"OK", &[client]);
                             return;
                         }
@@ -570,6 +578,10 @@ impl Manager {
             State::Stopping => {
                 s.state = State::Stopped;
                 s.deadline = None;
+                if core::mem::replace(&mut s.restart_after_stop, false) {
+                    s.restarts += 1;
+                    self.start(i, now);
+                }
             }
             _ => {} // a timed-out or abandoned service finally went away: nothing changes
         }
@@ -668,7 +680,8 @@ impl Manager {
                     let chan = self.services[i].chan;
                     match (chan, libnawah::channel_create()) {
                         (Some(c), Ok((client, server))) => {
-                            if libnawah::channel_write(c, b"CONNECT", &[server]) == 0 {
+                            // `-`: the controller (the kernel's own test or boot code).
+                            if libnawah::channel_write(c, b"CONNECT -", &[server]) == 0 {
                                 out.put(b"OK");
                                 libnawah::channel_write(self.ctl, out.bytes(), &[client]);
                                 return true;
@@ -679,6 +692,23 @@ impl Manager {
                         }
                         _ => out.put(b"ERR NOT_READY"),
                     }
+                }
+                Some(_) => out.put(b"ERR NOT_READY"),
+                None => out.put(b"ERR UNKNOWN"),
+            }
+        } else if let Some(name) = req.strip_prefix(b"RESTART ") {
+            // STOP, then a fresh start as soon as the process exits (services.md v1.6): how
+            // a test kills a service whose clients must survive it.
+            match self.find(name) {
+                Some(i) if matches!(self.services[i].state, State::Starting | State::Ready) => {
+                    if let Some(c) = self.services[i].chan {
+                        libnawah::channel_write(c, b"STOP", &[]);
+                    }
+                    self.close_chan(i);
+                    self.services[i].state = State::Stopping;
+                    self.services[i].deadline = None;
+                    self.services[i].restart_after_stop = true;
+                    out.put(b"OK");
                 }
                 Some(_) => out.put(b"ERR NOT_READY"),
                 None => out.put(b"ERR UNKNOWN"),

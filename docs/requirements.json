@@ -1510,7 +1510,7 @@
         "TST-M5-AUTH-INPUT-ISOLATED",
         "TST-M5-LOGIN-SCREEN"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "implemented_untested",
       "evidence_refs": []
     },
     {

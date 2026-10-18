@@ -28,6 +28,8 @@
       "user/libnawah-text/Cargo.toml",
       "user/apps/narrator/Cargo.toml",
       "user/apps/dialog/Cargo.toml",
+      "user/apps/sessiond/Cargo.toml",
+      "user/apps/spy/Cargo.toml",
       "user/libui/Cargo.toml"
     ],
     "input_globs": [
@@ -62,7 +64,9 @@
       "${OUT}/apps/winapp.elf",
       "${OUT}/apps/textprobe.elf",
       "${OUT}/apps/narrator.elf",
-      "${OUT}/apps/dialog.elf"
+      "${OUT}/apps/dialog.elf",
+      "${OUT}/apps/sessiond.elf",
+      "${OUT}/apps/spy.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -479,6 +483,42 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/dialog",
         "${OUT}/apps/dialog.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/sessiond/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/sessiond",
+        "${OUT}/apps/sessiond.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/spy/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/spy",
+        "${OUT}/apps/spy.elf"
       ],
       [
         "cargo",
@@ -3614,14 +3654,14 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=input_route"
         ],
-        "oracle": "the input service (SVC-IN.TXT: auth, input) receives the keyboard and the mouse from the manager; three clients register (a, b, session → OK 1/2/3); FOCUS without a token, with a user's token or for an unknown client is refused (ERR ACCESS / ERR ACCESS / ERR UNKNOWN), LAYOUT with a user's token is refused, FOCUS 1 with the admin's token is OK and STATUS reports it; the lab then presses `a`, `shift-b` and `ctrl-alt-delete` through the QEMU monitor: client a receives exactly the ten key events `KEY 0x1e down 0 a`, `KEY 0x1e up 0 a`, `KEY 0x2a down 1 -`, `KEY 0x30 down 1 B`, `KEY 0x30 up 1 B`, `KEY 0x2a up 0 -`, `KEY 0x1d down 2 -`, `KEY 0x38 down 6 -`, `KEY 0x38 up 2 -`, `KEY 0x1d up 0 -` (set-1 codes, modifiers, US layout; QEMU presses in order and releases in reverse), the session client receives exactly `SAK` (the Delete make and break codes are never reported), client b receives nothing; the admin moves the focus to b and selects the Arabic layout, the lab presses `a` again and b receives `KEY 0x1e down 0 ش` and `KEY 0x1e up 0 ش` while a receives nothing more; STATUS counts 12 keys, 1 SAK, 0 dropped; the manager and services exit cleanly, no frame leaks; exit 33",
+        "oracle": "the input service (SVC-IN.TXT: auth, input) receives the keyboard and the mouse from the manager; three clients register (a, b, session → OK 1/2/3); FOCUS without a token, with a user's token or for an unknown client is refused (ERR ACCESS / ERR ACCESS / ERR UNKNOWN), LAYOUT with a user's token is refused, FOCUS 1 with the admin's token is OK and STATUS reports it; the lab then presses `a`, `shift-b` and `ctrl-alt-delete` through the QEMU monitor: client a receives exactly the eight key events up to the Alt press `KEY 0x1e down 0 a`, `KEY 0x1e up 0 a`, `KEY 0x2a down 1 -`, `KEY 0x30 down 1 B`, `KEY 0x30 up 1 B`, `KEY 0x2a up 0 -`, `KEY 0x1d down 2 -`, `KEY 0x38 down 6 -` (set-1 codes, modifiers, US layout; QEMU presses in order and releases in reverse), then the focus moves to the session client with the sequence (input.md v2.2) and it receives exactly `SAK`, `KEY 0x38 up 2 -`, `KEY 0x1d up 0 -` (the Delete make and break codes are never reported), client b receives nothing; the admin moves the focus to b and selects the Arabic layout, the lab presses `a` again and b receives `KEY 0x1e down 0 ش` and `KEY 0x1e up 0 ش` while a receives nothing more; STATUS counts 12 keys, 1 SAK, 0 dropped; the manager and services exit cleanly, no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=input_route",
           "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
           "|path=/SYSTEM/INPUTD.ELF|handles=3",
           "|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0|phase=1|ready=1",
-          "|ktest|input_route|a=KEY 0x1e down 0 a;KEY 0x1e up 0 a;KEY 0x2a down 1 -;KEY 0x30 down 1 B;KEY 0x30 up 1 B;KEY 0x2a up 0 -;KEY 0x1d down 2 -;KEY 0x38 down 6 -;KEY 0x38 up 2 -;KEY 0x1d up 0 -|s=SAK|b=",
+          "|ktest|input_route|a=KEY 0x1e down 0 a;KEY 0x1e up 0 a;KEY 0x2a down 1 -;KEY 0x30 down 1 B;KEY 0x30 up 1 B;KEY 0x2a up 0 -;KEY 0x1d down 2 -;KEY 0x38 down 6 -|s=SAK;KEY 0x38 up 2 -;KEY 0x1d up 0 -|b=",
           "|ktest|input_route|focus_b=OK|layout_ar=OK|phase=2|ready=1",
           "|ktest|input_route|b2=KEY 0x1e down 0 ش;KEY 0x1e up 0 ش|a2=|status=OK focus=2 layout=ar keys=12 packets=0 saks=1 dropped=0 buttons=0",
           "|ktest|input_route|mgr_exit=0x0|processes_after=0|clean=1",
@@ -4080,6 +4120,385 @@
             "${SERIAL:probe_bg=},000000",
             "--pixel",
             "${SERIAL:probe_focus=},FFFF00"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M5-LOGIN-SCREEN",
+        "test_id": "TST-M5-LOGIN-SCREEN",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=login_screen"
+        ],
+        "oracle": "the session service (SVC-SS.TXT: auth, input, display, session, spy; session.md) starts at the sign-in screen holding the keyboard (STATE `OK no_session user=- changes=0 display=1 input=1 focus=session`) while the spy's window exists (STATUS windows=2) but is held back: the lab's first screendump shows the lock background 10141C at (2,2) and where the spy's window is (150,150) and the dialog's background F0F0F0 at (512,338) inside the centred window 510,336,260,128; the lab types the user name and a wrong password and auth's answer refuses it (`session|login=refused|answer=ERR ACCESS`), then the right password opens the session (`state=unlocked|user=admin|uid=1000|token=usable`) and the keyboard goes to the compositor (`focus=display|n=1`); the second screendump shows the spy's window (2E8B57 at (150,150)) on the desktop background 1E2A38; `x` reaches the spy; Ctrl+Alt+Del locks (`state=locked`, third screendump: the lock screen, the spy's window held back again); Tab, Tab, Enter on Sign out ends the session (`state=logged_out`): the spy hears LOGGED_OUT, finds no window left (`spy|logged_out|windows=0`) and exits 0, a fresh sign-in screen is the only window (STATUS windows=1) and STATE is `OK no_session user=- changes=3 display=1 input=1 focus=session`; the session's and the spy's traces equal platform/pc-qemu/expect/login-screen.txt stream by stream; the password never appears in the serial log; no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=login_screen",
+          "|path=/SYSTEM/SESSIOND.ELF|handles=1",
+          "|text=display|fonts=1",
+          "|ktest|login_screen|state0=OK no_session user=- changes=0 display=1 input=1 focus=session|windows0=2|services=5|ready=1",
+          "|text=session|login=refused|answer=ERR ACCESS",
+          "|text=session|state=unlocked|user=admin|uid=1000|token=usable",
+          "|text=session|state=logged_out|user=admin",
+          "|text=spy|logged_out|windows=0",
+          "|ktest|login_screen|back=OK no_session user=- changes=3 display=1 input=1 focus=session|windows1=1|spy=stopped:0",
+          "|ktest|login_screen|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|login_screen|frames_delta=0",
+          "|ktest|pass|the sign-in screen came first, refused a wrong password, opened the session, and signing out removed the user's windows"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1"
+        ],
+        "timeout_s": 900,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "screendump ${SCREEN:login}",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey w",
+                "sendkey r",
+                "sendkey o",
+                "sendkey n",
+                "sendkey g",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|login=refused|",
+              "commands": [
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|focus=display|n=1",
+              "commands": [
+                "screendump ${SCREEN:desktop}",
+                "sendkey x",
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|text=session|state=locked|",
+              "commands": [
+                "screendump ${SCREEN:locked}",
+                "sendkey tab",
+                "sendkey tab",
+                "sendkey ret"
+              ],
+              "gap_s": 1.0
+            }
+          ]
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/transcript.py",
+            "streams",
+            "${EVIDENCE}",
+            "platform/pc-qemu/expect/login-screen.txt"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:login}",
+            "--pixel",
+            "2,2,10141C",
+            "--pixel",
+            "150,150,10141C",
+            "--pixel",
+            "512,338,F0F0F0"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:desktop}",
+            "--pixel",
+            "150,150,2E8B57",
+            "--pixel",
+            "2,2,1E2A38",
+            "--pixel",
+            "700,600,1E2A38"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:locked}",
+            "--pixel",
+            "2,2,10141C",
+            "--pixel",
+            "150,150,10141C",
+            "--pixel",
+            "512,338,F0F0F0"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M5-AUTH-INPUT-ISOLATED",
+        "test_id": "TST-M5-AUTH-INPUT-ISOLATED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=auth_input_isolated"
+        ],
+        "oracle": "SVC-SA.TXT (SVC-SS.TXT with the narrator, before which the session starts): the lab signs in at the session's screen, then types `a` and `b`, which reach the focused spy, and Ctrl+Alt+Del: the Ctrl and Alt presses reach the spy, the sequence moves the keyboard to the session (input.md v2.2) and it locks (STATE `OK locked user=admin changes=2 …`); the spy has counted 6 keys and lost the focus, and the compositor has received 6 key events in all (KEYS); the lab types the password and Enter on the lock screen: the session unlocks (`OK unlocked user=admin changes=3 display=1 input=1 focus=display`) while the compositor's count stayed the same (keys_while_locked=0) and the spy's stayed 6 with the focus back; `c` then reaches the spy (8 keys) through the compositor (8); the session's, the spy's and the narrator's traces equal platform/pc-qemu/expect/auth-input-isolated.txt stream by stream — the narrator hears the password field's role, label and state and never a value; the password text appears nowhere in the serial log; no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=auth_input_isolated",
+          "|path=/SYSTEM/SESSIOND.ELF|handles=1",
+          "|text=display|fonts=1",
+          "|ktest|auth_input_isolated|services=6|ready=1",
+          "|ktest|auth_input_isolated|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|keys=6|spy=OK keys=6 focus=0 connections=1|phase=2|ready=1",
+          "|ktest|auth_input_isolated|unlocked=OK unlocked user=admin changes=3 display=1 input=1 focus=display|keys_while_locked=0|spy=OK keys=6 focus=1 connections=1|phase=3|ready=1",
+          "|ktest|auth_input_isolated|spy=OK keys=8 focus=1 connections=1|keys=8",
+          "|ktest|auth_input_isolated|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|auth_input_isolated|frames_delta=0",
+          "|ktest|pass|the password typed on the lock screen reached the session alone: no client, no compositor, no announcement"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1"
+        ],
+        "timeout_s": 900,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|focus=display|n=1",
+              "commands": [
+                "sendkey a",
+                "sendkey b",
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|auth_input_isolated|locked=",
+              "commands": [
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|auth_input_isolated|unlocked=",
+              "commands": [
+                "sendkey c"
+              ],
+              "gap_s": 1.0
+            }
+          ]
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/transcript.py",
+            "streams",
+            "${EVIDENCE}",
+            "platform/pc-qemu/expect/auth-input-isolated.txt"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M5-LOCK-SURVIVES",
+        "test_id": "TST-M5-LOCK-SURVIVES",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=lock_survives"
+        ],
+        "oracle": "SVC-SS.TXT: the lab signs in and presses Ctrl+Alt+Del with the spy focused (its count: the Ctrl and Alt presses, 2); while locked the test restarts the compositor (the manager's RESTART: its process ends and every channel of it closes, as in a crash) and then the input service: both come back ready with restarts=1, the session stays locked and reconnects to both (`session|display=reconnected|n=2|state=locked|window=510,336,260,128`, `session|input=reconnected|n=2|state=locked`, STATE `OK locked user=admin changes=2 display=2 input=2 focus=session`), the restarted compositor holds two windows — the lock screen and the spy's new one (the spy reconnected: connections=2) — and the lab's screendump shows the lock screen only (10141C at (2,2) and at the spy's place (150,150), the dialog's F0F0F0 at (512,338)); a wrong password is refused (`unlock=refused|answer=ERR ACCESS`, still locked), the right one unlocks (`OK unlocked user=admin changes=3 display=2 input=2 focus=display`) while the restarted compositor received no key at all (KEYS 0) and the spy still counts 2; `z` then reaches the spy (4) through the new input service and compositor; the session's and the spy's traces equal platform/pc-qemu/expect/lock-survives.txt stream by stream; the password never appears in the serial log; no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=lock_survives",
+          "|path=/SYSTEM/SESSIOND.ELF|handles=1",
+          "|ktest|lock_survives|services=5|ready=1",
+          "|text=session|display=reconnected|n=2|state=locked|window=510,336,260,128",
+          "|text=session|input=reconnected|n=2|state=locked",
+          "|ktest|lock_survives|restarted=display:OK:ready:1,input:OK:ready:1|state=OK locked user=admin changes=2 display=2 input=2 focus=session|spy=OK keys=2 focus=0 connections=2|windows=2|phase=2|ready=1",
+          "|text=session|unlock=refused|answer=ERR ACCESS",
+          "|ktest|lock_survives|unlocked=OK unlocked user=admin changes=3 display=2 input=2 focus=display|display_keys=0|spy=OK keys=2 focus=1 connections=2|phase=3|ready=1",
+          "|ktest|lock_survives|spy=OK keys=4 focus=1 connections=2",
+          "|ktest|lock_survives|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|lock_survives|frames_delta=0",
+          "|ktest|pass|the lock survived the restart of the compositor and of the input service, and only the right password opened it"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1"
+        ],
+        "min_counts": {
+          "|path=/SYSTEM/DISPLAYD.ELF|": 2,
+          "|path=/SYSTEM/INPUTD.ELF|": 2,
+          "|text=display|fonts=1": 2
+        },
+        "timeout_s": 900,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|focus=display|n=1",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|lock_survives|restarted=",
+              "commands": [
+                "screendump ${SCREEN:locked}",
+                "sendkey w",
+                "sendkey r",
+                "sendkey o",
+                "sendkey n",
+                "sendkey g",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|unlock=refused|",
+              "commands": [
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|focus=display|n=2",
+              "commands": [
+                "sendkey z"
+              ],
+              "gap_s": 1.0
+            }
+          ]
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/transcript.py",
+            "streams",
+            "${EVIDENCE}",
+            "platform/pc-qemu/expect/lock-survives.txt"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:locked}",
+            "--pixel",
+            "2,2,10141C",
+            "--pixel",
+            "150,150,10141C",
+            "--pixel",
+            "512,338,F0F0F0"
           ]
         ]
       }

@@ -1,0 +1,64 @@
+# TST-M5-AUTH-INPUT-ISOLATED (session.md §9): the session's, the spy's and the narrator's
+# traces, each stream exact and in order; the password field is announced without a value
+session|state=no_session|window=510,336,260,128
+session|state=unlocked|user=admin|uid=1000|token=usable
+session|focus=display|n=1
+session|state=locked|user=admin|window=510,336,260,128
+session|state=unlocked|user=admin|uid=1000|token=usable
+session|focus=display|n=2
+spy|window=created|at=100,100,200,120
+spy|focus=1
+spy|key=0x1e,down,a
+spy|key=0x1e,up,a
+spy|key=0x30,down,b
+spy|key=0x30,up,b
+spy|key=0x1d,down,-
+spy|key=0x38,down,-
+spy|focus=0
+spy|focus=1
+spy|key=0x2e,down,c
+spy|key=0x2e,up,c
+narrator|window "Sign in" focused
+narrator|tree 1/4 role=label label="Nawah" state=static
+narrator|tree 2/4 role=textfield label="User name" state=enabled value=""
+narrator|tree 3/4 role=password label="Password" state=enabled
+narrator|tree 4/4 role=button label="Sign in" state=enabled
+narrator|focus role=textfield label="User name" state=focused value=""
+narrator|change role=textfield label="User name" state=focused value="a"
+narrator|change role=textfield label="User name" state=focused value="ad"
+narrator|change role=textfield label="User name" state=focused value="adm"
+narrator|change role=textfield label="User name" state=focused value="admi"
+narrator|change role=textfield label="User name" state=focused value="admin"
+narrator|focus role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|activate role=password label="Password" state=focused
+narrator|window "Spy" focused
+narrator|window "Locked" focused
+narrator|tree 1/4 role=label label="This computer is locked." state=static
+narrator|tree 2/4 role=password label="Password" state=enabled
+narrator|tree 3/4 role=button label="Unlock" state=enabled
+narrator|tree 4/4 role=button label="Sign out" state=enabled
+narrator|focus role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|change role=password label="Password" state=focused
+narrator|activate role=password label="Password" state=focused
+narrator|window "Spy" focused

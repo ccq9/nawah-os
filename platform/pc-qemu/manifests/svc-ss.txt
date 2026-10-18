@@ -1,0 +1,8 @@
+# TST-M5-LOGIN-SCREEN / TST-M5-LOCK-SURVIVES: the session service (sign-in and lock screens,
+# session.md) with the input service, the compositor, and a spy client that prints every event
+# it gets from the compositor
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 never 0 0
+session /SYSTEM/SESSIOND.ELF auth,input,display 5000 never 0 0
+spy /SYSTEM/SPY.ELF display 5000 never 0 0

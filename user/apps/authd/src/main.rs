@@ -560,7 +560,7 @@ fn main() -> u64 {
         if idx == 0 {
             match libnawah::channel_read(boot, &mut buf, &mut hs, false) {
                 Ok((n, nh)) => {
-                    if &buf[..n] == b"CONNECT" && nh == 1 {
+                    if (buf[..n] == *b"CONNECT" || buf[..n].starts_with(b"CONNECT ")) && nh == 1 {
                         match clients.iter().position(|&c| c == 0) {
                             Some(slot) => clients[slot] = hs[0],
                             None => {

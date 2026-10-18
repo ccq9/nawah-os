@@ -857,7 +857,9 @@ fn main() -> u64 {
         if idx == 0 {
             match libnawah::channel_read(boot, &mut st.msg, &mut hs, false) {
                 Ok((n, nh)) => {
-                    if &st.msg[..n] == b"CONNECT" && nh == 1 {
+                    if (st.msg[..n] == *b"CONNECT" || st.msg[..n].starts_with(b"CONNECT "))
+                        && nh == 1
+                    {
                         match st.clients.iter().position(|c| c.chan == 0) {
                             Some(slot) => {
                                 st.clients[slot] = NO_CLIENT;

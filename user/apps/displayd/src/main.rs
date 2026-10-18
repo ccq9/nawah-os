@@ -8,7 +8,10 @@
 //!
 //! Initial handles: the boot channel (rdi) and the display object. Dependency: `input`.
 //! Since WP-36 (display.md v1.1): titles drawn as text with the shipped fonts, and a narrator
-//! client that hears the focused window's accessibility announcements.
+//! client that hears the focused window's accessibility announcements. Since WP-37 (v1.2,
+//! session.md): the screen is held — the lock background and the session's windows only —
+//! while the session says so, from the start when the manifest names a session, and when the
+//! session goes away; a lost input service is reconnected through the manager.
 
 #![no_std]
 #![no_main]
@@ -45,8 +48,11 @@ const CURSOR: i32 = 9;
 const BLIT_PERIOD: u64 = 16;
 const HANG_TICKS: u64 = 2000;
 const HANG_POLL: u64 = 100;
+/// Ticks between two `CONNECT input` attempts while the input service is away (v1.2).
+const RECONNECT: u64 = 50;
 
 const BG: u32 = 0x1E2A38;
+const LOCK_BG: u32 = 0x10141C;
 const EMPTY: u32 = 0x404850;
 const BORDER_RGB: u32 = 0x202020;
 const TITLE_FOCUS: u32 = 0x3A6EA5;
@@ -242,6 +248,8 @@ struct Client {
     full_since: Option<u64>,
     unresponsive: bool,
     dropped: u64,
+    /// The manager's word on who the client is (services.md v1.6); `session` may lock.
+    session: bool,
 }
 
 const NO_CLIENT: Client = Client {
@@ -249,6 +257,7 @@ const NO_CLIENT: Client = Client {
     full_since: None,
     unresponsive: false,
     dropped: 0,
+    session: false,
 };
 
 #[derive(Clone, Copy)]
@@ -475,6 +484,16 @@ struct Compositor {
     narrator: Option<usize>,
     fonts: Option<Fonts<'static>>,
     text: &'static mut TextState,
+    /// Held (display.md v1.2): only the session's windows are shown, on the lock
+    /// background — from the start when the manifest has a session, while the session says
+    /// locked, and whenever the session's channel is gone (rescue).
+    locked: bool,
+    /// `KEY` events received from the input service since the start (`KEYS`, v1.2).
+    keys: u64,
+    /// A `CONNECT input` sent to the manager and not answered yet (v1.2 reconnection).
+    input_asked: bool,
+    /// When the next `CONNECT input` may go out while the input channel is gone.
+    input_retry: u64,
 }
 
 impl Compositor {
@@ -605,6 +624,12 @@ impl Compositor {
         );
     }
 
+    /// Shown on the screen: not minimised, and while held only the session's.
+    fn visible(&self, wi: usize) -> bool {
+        let w = &self.windows[wi];
+        !w.minimized && (!self.locked || self.clients[w.owner].session)
+    }
+
     /// Composes `r` into the back buffer (background, then windows bottom-up) and copies it
     /// to the frame; the cursor is redrawn when it overlaps.
     fn compose(&mut self, r: Rect) {
@@ -612,10 +637,10 @@ impl Compositor {
         if r.is_empty() {
             return;
         }
-        self.fill_back(r, BG);
+        self.fill_back(r, if self.locked { LOCK_BG } else { BG });
         for k in (0..self.n_order).rev() {
             let wi = self.order[k];
-            if !self.windows[wi].minimized {
+            if self.visible(wi) {
                 self.draw_window(wi, r);
             }
         }
@@ -836,14 +861,27 @@ impl Compositor {
     fn top_visible(&self) -> Option<usize> {
         (0..self.n_order)
             .map(|k| self.order[k])
-            .find(|&wi| !self.windows[wi].minimized)
+            .find(|&wi| self.visible(wi))
     }
 
     fn focus_and_raise(&mut self, wi: usize, now: u64) {
         let r0 = self.windows[wi].outer();
         self.raise(wi);
         self.damage(r0);
-        self.set_focus(Some(wi), now);
+        // A window hidden by the hold is raised but not focused (v1.2).
+        if self.visible(wi) {
+            self.set_focus(Some(wi), now);
+        }
+    }
+
+    /// After the hold changed: the focus stays only on a shown window, else goes to the
+    /// top-most shown one (or nobody).
+    fn refocus(&mut self, now: u64) {
+        if self.focus.is_some_and(|wi| self.visible(wi)) {
+            return;
+        }
+        let next = self.top_visible();
+        self.set_focus(next, now);
     }
 
     fn create_window(&mut self, ci: usize, si: usize, title: &[u8], now: u64) -> Option<u32> {
@@ -872,7 +910,11 @@ impl Compositor {
         self.order[0] = wi;
         self.n_order += 1;
         self.damage(w.outer());
-        self.set_focus(Some(wi), now);
+        // A new window hidden by the hold takes no focus (v1.2): no app is focused, and no
+        // window is announced, while the session holds the screen.
+        if self.visible(wi) {
+            self.set_focus(Some(wi), now);
+        }
         Some(w.id)
     }
 
@@ -967,8 +1009,15 @@ impl Compositor {
         if self.narrator == Some(ci) {
             self.narrator = None;
         }
+        // The session is gone: hold the screen until a session says otherwise (rescue).
+        let rescue = self.clients[ci].session && !self.locked;
         libnawah::handle_close(self.clients[ci].chan);
         self.clients[ci] = NO_CLIENT;
+        if rescue {
+            self.locked = true;
+            self.damage(self.screen);
+            self.refocus(now);
+        }
     }
 
     fn destroy_surface(&mut self, si: usize) {
@@ -1012,7 +1061,7 @@ impl Compositor {
     fn window_at(&self, x: i32, y: i32) -> Option<usize> {
         (0..self.n_order)
             .map(|k| self.order[k])
-            .find(|&wi| !self.windows[wi].minimized && self.windows[wi].outer().contains(x, y))
+            .find(|&wi| self.visible(wi) && self.windows[wi].outer().contains(x, y))
     }
 
     fn on_pointer(&mut self, dx: i32, dy: i32, buttons: u32, now: u64) {
@@ -1104,7 +1153,7 @@ impl Compositor {
                         let k = self.z_of(cur);
                         for step in 1..=self.n_order {
                             let wi = self.order[(k + step) % self.n_order];
-                            if !self.windows[wi].minimized {
+                            if self.visible(wi) {
                                 self.focus_and_raise(wi, now);
                                 break;
                             }
@@ -1151,6 +1200,7 @@ impl Compositor {
 
     fn on_input(&mut self, msg: &[u8], now: u64) {
         if msg.starts_with(b"KEY ") {
+            self.keys += 1;
             self.on_key(msg, now);
         } else if let Some(rest) = msg.strip_prefix(b"PTR ") {
             let mut f = rest.split(|c| *c == b' ').filter(|f| !f.is_empty());
@@ -1410,6 +1460,50 @@ impl Compositor {
                     out.hex64(h);
                 }
             }
+            b"LOCKED" | b"UNLOCKED" | b"LOGOUT" => {
+                // The session alone decides (display.md v1.2).
+                if !self.clients[ci].session {
+                    out.put(b"ERR ACCESS");
+                    return false;
+                }
+                match verb {
+                    b"LOCKED" => self.locked = true,
+                    b"UNLOCKED" => self.locked = false,
+                    _ => {
+                        // Every other client's windows and surfaces go; each client that
+                        // had any is told (`LOGGED_OUT`, v1.2) — the hold comes first, so
+                        // no window of theirs is focused or announced on the way out.
+                        self.locked = true;
+                        let mut told = [false; MAX_CLIENTS];
+                        for wi in 0..MAX_WINDOWS {
+                            let owner = self.windows[wi].owner;
+                            if self.windows[wi].used && !self.clients[owner].session {
+                                told[owner] = true;
+                                self.destroy_window(wi, now);
+                            }
+                        }
+                        for si in 0..MAX_SURFACES {
+                            let owner = self.surfaces[si].owner;
+                            if self.surfaces[si].used && !self.clients[owner].session {
+                                told[owner] = true;
+                                self.destroy_surface(si);
+                            }
+                        }
+                        for (k, &t) in told.iter().enumerate() {
+                            if t && self.clients[k].chan != 0 {
+                                self.send(k, b"LOGGED_OUT", now);
+                            }
+                        }
+                    }
+                }
+                self.damage(self.screen);
+                self.refocus(now);
+                out.put(b"OK");
+            }
+            b"KEYS" => {
+                out.put(b"OK ");
+                out.num(self.keys as i64);
+            }
             b"NARRATOR" => {
                 // The first client to ask becomes the narrator (display.md v1.1); the
                 // manifest decides who may connect at all.
@@ -1529,8 +1623,49 @@ impl Compositor {
                     msg[..n].copy_from_slice(&buf[..n]);
                     self.on_input(&msg[..n], now);
                 }
+                Err(ERR_PEER_CLOSED) => {
+                    self.input_lost(now);
+                    return;
+                }
                 Err(_) => return,
             }
+        }
+    }
+
+    /// The input service went away (crash or restart): its channel is dropped and a new one
+    /// asked for (display.md v1.2); meanwhile no key or pointer event arrives.
+    fn input_lost(&mut self, now: u64) {
+        libnawah::handle_close(self.input);
+        self.input = 0;
+        self.input_retry = now;
+    }
+
+    /// Sends `CONNECT input` to the manager when the input channel is gone and it is time;
+    /// the answer arrives on the boot channel (`main`).
+    fn ask_input(&mut self, now: u64) {
+        if self.input != 0 || self.input_asked || now < self.input_retry {
+            return;
+        }
+        if libnawah::channel_write(self.boot, b"CONNECT input", &[]) == 0 {
+            self.input_asked = true;
+        } else {
+            self.input_retry = now + RECONNECT;
+        }
+    }
+
+    /// The manager's answer to `CONNECT input`: the new channel, registered as `display`;
+    /// a refusal (the service is restarting: `ERR NOT_READY`) is retried later.
+    fn input_answer(&mut self, ok: Option<Handle>, now: u64) {
+        self.input_asked = false;
+        match ok {
+            Some(h) => {
+                self.input = h;
+                if libnawah::channel_write(h, b"REGISTER display", &[]) != 0 {
+                    self.input_lost(now);
+                    self.input_retry = now + RECONNECT;
+                }
+            }
+            None => self.input_retry = now + RECONNECT,
         }
     }
 }
@@ -1554,6 +1689,18 @@ fn manager(boot: Handle, req: &[u8], reply: &mut [u8]) -> Result<(usize, Option<
             }],
             5000,
         );
+    }
+}
+
+/// Whether the manager's listing names a `session` service: then the screen starts held
+/// (display.md v1.2) until the session unlocks it.
+fn session_in_manifest(boot: Handle) -> bool {
+    let mut reply = [0u8; 1024];
+    match manager(boot, b"LIST", &mut reply) {
+        Ok((n, _)) => reply[..n]
+            .split(|&c| c == b'\n')
+            .any(|l| l.starts_with(b"session ")),
+        Err(_) => false,
     }
 }
 
@@ -1640,6 +1787,10 @@ fn main() -> u64 {
         narrator: None,
         fonts,
         text,
+        locked: session_in_manifest(boot),
+        keys: 0,
+        input_asked: false,
+        input_retry: 0,
     };
     c.compose(screen);
     c.draw_cursor();
@@ -1648,6 +1799,8 @@ fn main() -> u64 {
         return 0xE6;
     }
     loop {
+        let now = libnawah::clock_ticks();
+        c.ask_input(now);
         let mut entries = [WaitEntry {
             handle: 0,
             signals: 0,
@@ -1656,12 +1809,19 @@ fn main() -> u64 {
             handle: c.boot,
             signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
         };
-        entries[1] = WaitEntry {
-            handle: c.input,
-            signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
-        };
         let mut owner = [0usize; 2 + MAX_CLIENTS];
-        let mut k = 2;
+        let mut k = 1;
+        // The input channel, while there is one (v1.2: it may be away for a restart).
+        let input_slot = if c.input != 0 {
+            entries[1] = WaitEntry {
+                handle: c.input,
+                signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+            };
+            k = 2;
+            Some(1)
+        } else {
+            None
+        };
         for (i, cl) in c.clients.iter().enumerate() {
             if cl.chan != 0 {
                 entries[k] = WaitEntry {
@@ -1672,8 +1832,7 @@ fn main() -> u64 {
                 k += 1;
             }
         }
-        let now = libnawah::clock_ticks();
-        let timeout = if !c.dirty.is_empty() {
+        let mut timeout = if !c.dirty.is_empty() {
             BLIT_PERIOD
                 .saturating_sub(now.saturating_sub(c.last_blit))
                 .max(1)
@@ -1686,16 +1845,20 @@ fn main() -> u64 {
         } else {
             libnawah::TIMEOUT_FOREVER
         };
+        if c.input == 0 && !c.input_asked {
+            timeout = timeout.min(c.input_retry.saturating_sub(now).max(1));
+        }
         let r = libnawah::object_wait_many(&entries[..k], timeout);
         let now = libnawah::clock_ticks();
         match r {
             Ok((0, _)) => match libnawah::channel_read(c.boot, &mut buf, &mut hs, false) {
                 Ok((n, nh)) => {
-                    if &buf[..n] == b"CONNECT" && nh == 1 {
+                    if (buf[..n] == *b"CONNECT" || buf[..n].starts_with(b"CONNECT ")) && nh == 1 {
                         match c.clients.iter().position(|cl| cl.chan == 0) {
                             Some(slot) => {
                                 c.clients[slot] = NO_CLIENT;
                                 c.clients[slot].chan = hs[0];
+                                c.clients[slot].session = &buf[..n] == b"CONNECT session";
                             }
                             None => {
                                 libnawah::handle_close(hs[0]);
@@ -1703,6 +1866,13 @@ fn main() -> u64 {
                         }
                     } else if &buf[..n] == b"STOP" {
                         return 0;
+                    } else if c.input_asked && &buf[..n] == b"OK" && nh == 1 {
+                        c.input_answer(Some(hs[0]), now);
+                    } else if c.input_asked && buf[..n].starts_with(b"ERR") {
+                        if nh == 1 {
+                            libnawah::handle_close(hs[0]);
+                        }
+                        c.input_answer(None, now);
                     } else if nh == 1 {
                         libnawah::handle_close(hs[0]);
                     }
@@ -1710,7 +1880,7 @@ fn main() -> u64 {
                 Err(ERR_PEER_CLOSED) => return 0,
                 Err(_) => {}
             },
-            Ok((1, _)) => c.serve_input(now),
+            Ok((idx, _)) if Some(idx) == input_slot => c.serve_input(now),
             Ok((idx, _)) => {
                 let ci = owner[idx];
                 c.serve_client(ci, now);

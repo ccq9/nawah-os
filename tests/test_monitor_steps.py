@@ -2,7 +2,9 @@
 WP-27/WP-33) against a fake QEMU — a process that writes serial markers over time and serves
 a monitor socket the way QEMU does: every step's commands must be sent once its marker has
 appeared, in order, and a later step must not fire on an earlier marker; a single-step
-`{after, commands}` case still works; `${SCREEN}` names the run's screendump."""
+`{after, commands}` case still works; `${SCREEN}` names the run's screendump and
+`${SCREEN:tag}` (WP-37) one of several, `screen-<tag>.ppm` beside it, in commands and in
+host-check arguments alike."""
 
 import json
 import pathlib
@@ -61,12 +63,16 @@ class MonitorSteps(unittest.TestCase):
             return rc, got, (d / "out.log").read_text(), (d / "err.log").read_text()
 
     def test_single_step(self):
-        rc, got, out, err = self.drive({"after": "|ready=1", "commands": ["sendkey a", "screendump ${SCREEN}"]},
+        rc, got, out, err = self.drive({"after": "|ready=1", "commands": ["sendkey a", "screendump ${SCREEN}",
+                                                                          "screendump ${SCREEN:login}"]},
                                        [("boot", 0.1), ("OSX|x|ktest|t|ready=1", 0.3)])
         self.assertEqual(rc, 33)
         self.assertEqual(got[0], "sendkey a")
-        self.assertTrue(got[1].startswith("screendump ") and got[1].endswith("screen.ppm"), got)
-        self.assertIn("sent 2 command(s)", out)
+        self.assertTrue(got[1].startswith("screendump ") and got[1].endswith("/screen.ppm"), got)
+        # A tagged screendump lands beside the run's own, under its tag.
+        self.assertTrue(got[2].endswith("/screen-login.ppm"), got)
+        self.assertEqual(pathlib.Path(got[1].split(" ", 1)[1]).parent, pathlib.Path(got[2].split(" ", 1)[1]).parent)
+        self.assertIn("sent 3 command(s)", out)
         self.assertEqual(err.strip(), "")
 
     def test_steps_in_order(self):
@@ -95,6 +101,10 @@ class MonitorSteps(unittest.TestCase):
         arg = project.substitute_host_arg("${SERIAL:rect=},${SERIAL:hash=}", "/d", "bid", "/s.ppm", text)
         self.assertEqual(arg, "61,85,320,200,0123456789abcdef")
         self.assertEqual(project.substitute_host_arg("${SCREEN}", "/d", "bid", "/s.ppm", text), "/s.ppm")
+        self.assertEqual(project.substitute_host_arg("${SCREEN:locked}", "/d", "bid", "/ev/1/screen.ppm", text),
+                         "/ev/1/screen-locked.ppm")
+        self.assertEqual(project.substitute_host_arg("a=${SCREEN:x-1},b=${SCREEN}", "/d", "b", "/e/screen.ppm", text),
+                         "a=/e/screen-x-1.ppm,b=/e/screen.ppm")
         two = "OSX|x|dialog|window=21,45,260,242|a=1\nOSX|x|dialog|window=21,45,520,484|a=2\n"
         self.assertEqual(project.substitute_host_arg("${SERIAL_FIRST:window=} ${SERIAL:window=}", "/d", "b", "/s", two),
                          "21,45,260,242 21,45,520,484")

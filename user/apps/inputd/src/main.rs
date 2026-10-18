@@ -3,7 +3,11 @@
 //! mouse's packets into pointer events, and delivers them to one client only — the focus
 //! owner named by whoever holds an ADMIN token (the session service in WP-37) — never to the
 //! others. The secure attention sequence (Ctrl+Alt+Del) goes to the client registered as
-//! `session` and to nobody else; the keys that form it are never reported.
+//! `session` and to nobody else; the Delete that forms it is never reported, and (v2.2,
+//! WP-37) the focus moves to the session with it, so the keys that follow are the session's.
+//! The manager names every client (`CONNECT <service>`, services.md v1.6): only the service
+//! `session` (or the controller) may register as `session`, and that service may move the
+//! focus without a token.
 //!
 //! Initial handles: the boot channel (rdi), then the keyboard and the mouse objects (any
 //! order, recognised by `handle_type`). Clients arrive through the manager (`CONNECT` on the
@@ -38,6 +42,10 @@ struct Client {
     id: u32,
     name: [u8; NAME_MAX],
     name_len: usize,
+    /// Who the manager says the client is (services.md v1.6: the requesting service's
+    /// name, `-` for the controller); empty when the manager did not say.
+    ident: [u8; NAME_MAX],
+    ident_len: usize,
 }
 
 const NO_CLIENT: Client = Client {
@@ -45,7 +53,15 @@ const NO_CLIENT: Client = Client {
     id: 0,
     name: [0; NAME_MAX],
     name_len: 0,
+    ident: [0; NAME_MAX],
+    ident_len: 0,
 };
+
+impl Client {
+    fn ident(&self) -> &[u8] {
+        &self.ident[..self.ident_len]
+    }
+}
 
 struct Input {
     kbd: Handle,
@@ -256,6 +272,12 @@ impl Input {
         if self.focus == Some(c.id) {
             self.focus = None;
         }
+        // The session went away (crash or restart): nobody gets keys until it is back
+        // (input.md v2.2), so a client focused before cannot receive a password typed for
+        // the restarted session.
+        if &c.name[..c.name_len] == b"session" {
+            self.focus = None;
+        }
         self.clients[ci] = NO_CLIENT;
     }
 
@@ -296,6 +318,10 @@ impl Input {
                 self.sak_pending = true;
                 self.saks += 1;
                 if let Some(s) = self.session_client() {
+                    // v2.2: the session owns the keyboard from here (the releases of Ctrl
+                    // and Alt included) until it names another owner — a window that
+                    // imitates the sign-in screen never sees the sequence or what follows.
+                    self.focus = Some(self.clients[s].id);
                     self.deliver(s, b"SAK");
                 }
                 return;
@@ -325,6 +351,9 @@ impl Input {
             o.num(i64::from(self.mods));
             o.put(b" ");
             match ch {
+                // v2.2: `-` means "no character", so the minus character has a name of its
+                // own (WP-37: a password with a minus could not be typed).
+                Some('-') => o.put(b"minus"),
                 Some(c) if c != '\n' && c != '\t' && c != '\x08' && c != ' ' => {
                     let mut utf8 = [0u8; 4];
                     o.put(c.encode_utf8(&mut utf8).as_bytes());
@@ -385,12 +414,22 @@ impl Input {
         let admin = token.is_some_and(|t| {
             libnawah::token_info(t).is_ok_and(|i| i.usable() && i.perms & perm::ADMIN != 0)
         });
+        // The session service itself needs no token (input.md v2.2): the manager vouches
+        // for its identity.
+        let session = self.clients[ci].ident() == b"session";
+        let admin = admin || session;
         match verb {
             b"REGISTER" => {
                 let Some(name) = fields.next().filter(|n| n.len() <= NAME_MAX) else {
                     out.put(b"ERR BAD_REQUEST");
                     return;
                 };
+                // `session` is reserved (input.md v2.2): only the session service or the
+                // controller may take the name that receives the secure attention sequence.
+                if name == b"session" && !matches!(self.clients[ci].ident(), b"session" | b"-") {
+                    out.put(b"ERR ACCESS");
+                    return;
+                }
                 let c = &mut self.clients[ci];
                 c.name[..name.len()].copy_from_slice(name);
                 c.name_len = name.len();
@@ -554,14 +593,20 @@ fn main() -> u64 {
         match idx {
             0 => match libnawah::channel_read(boot, &mut buf, &mut hs, false) {
                 Ok((n, nh)) => {
-                    if &buf[..n] == b"CONNECT" && nh == 1 {
+                    if (buf[..n] == *b"CONNECT" || buf[..n].starts_with(b"CONNECT ")) && nh == 1 {
                         match st.clients.iter().position(|c| c.chan == 0) {
                             Some(slot) => {
+                                let who = buf[..n].strip_prefix(b"CONNECT ").unwrap_or(b"");
+                                let k = who.len().min(NAME_MAX);
+                                let mut ident = [0u8; NAME_MAX];
+                                ident[..k].copy_from_slice(&who[..k]);
                                 st.clients[slot] = Client {
                                     chan: hs[0],
                                     id: st.next_id,
                                     name: [0; NAME_MAX],
                                     name_len: 0,
+                                    ident,
+                                    ident_len: k,
                                 };
                                 st.next_id += 1;
                             }

@@ -371,6 +371,7 @@ impl App {
         let ch_tok = f.next().unwrap_or(b"-");
         let ch = match ch_tok {
             b"space" => Some(' '),
+            b"minus" => Some('-'),
             b"-" | b"enter" | b"tab" | b"backspace" => None,
             t => core::str::from_utf8(t).ok().and_then(|s| {
                 let mut it = s.chars();
