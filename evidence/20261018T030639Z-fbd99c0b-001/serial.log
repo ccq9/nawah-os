@@ -1,0 +1,8 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+OSX|fbd99c0ba143|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs
+OSX|fbd99c0ba143|boot|memmap|bytes=6048|desc_size=48|key=0xb0f
+OSX|fbd99c0ba143|boot|ebs|ok=1|attempts=1
+OSX|fbd99c0ba143|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel
+OSX|fbd99c0ba143|kernel|post_ebs|map_key=0xb0f|descriptors=126|conventional_pages=118251|ebs_attempts=1
+OSX|fbd99c0ba143|ktest|start|name=exc_triple
