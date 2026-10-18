@@ -721,22 +721,29 @@
    ],
    "inputs": [
     "docs/PLAN.md §3",
-    "ADR-0003",
-    "Intel SDM Vol.3A (S26)"
+    "OS-EXEC-AR 3.2 §20 (M2 exit)",
+    "ADR-0003..0006"
    ],
    "files": [
     "tests/mutants.py",
-    "docs/operations/m2-review.md"
+    ".github/workflows/mutants.yml",
+    "docs/operations/m2-review.md",
+    "tools/project.py",
+    "kernel/src/ktest.rs",
+    "kernel/src/mm/pmm.rs",
+    "platform/pc-qemu/target.json",
+    "docs/stages.json"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
    ],
    "actions": [
-    "mutation testing",
-    "named self-review",
-    "M2 gate"
+    "29 seeded defects (arch/, mm/, sync) run in an isolated worktree against their killer tests; kill ratio >= 0.95",
+    "named self-review docs/operations/m2-review.md (findings R-01..R-14)",
+    "exhaustion test extended with full recovery (stress/limit/recovery)",
+    "M2 gate on the stage record with evidence refs"
    ],
-   "acceptance": "M2 gate passed",
+   "acceptance": "TST-M2-MUTANTS PASS on the mutants workflow; all 24 other M2 tests PASS; review document present; stage M2 gate passed with evidence",
    "test_ids": [
     "TST-M2-MUTANTS"
    ],
@@ -744,9 +751,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M2"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null

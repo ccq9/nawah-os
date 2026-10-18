@@ -450,11 +450,13 @@
      "-fw_cfg",
      "name=opt/nawah/test,string=pmm_exhaust"
     ],
-    "oracle": "alloc until None: count == free_frames, free_frames==0 after, no panic",
+    "oracle": "stress/limit/recovery: alloc until None (count == free_frames, free_frames == 0 after, further alloc None, no panic); every frame given back through an intrusive list; counters back to the start and a new allocation succeeds",
     "expected_exit_code": 33,
     "required_markers": [
      "OSX|${BUILD_ID}|ktest|start|name=pmm_exhaust",
-     "|ktest|pass|exhaustion returns None"
+     "|ktest|pmm_exhaust|count=",
+     "|alloc_again=1",
+     "|ktest|pass|exhaustion returns None without panic and the allocator recovers fully"
     ],
     "forbidden_markers": [
      "|ktest|fail|",

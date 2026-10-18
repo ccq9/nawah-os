@@ -653,7 +653,7 @@
    "test_ids": [
     "TST-M2-MUTANTS"
    ],
-   "implementation_status": "planned",
+   "implementation_status": "implemented_untested",
    "evidence_refs": []
   }
  ]

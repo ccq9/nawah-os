@@ -275,6 +275,22 @@ pub fn bitmap_address() -> u64 {
     pmm().bits as u64
 }
 
+/// Stores `next` in the first word of `frame` (test kernel: intrusive list through allocated
+/// frames, so an exhaustion test can give every frame back without a side table).
+#[cfg(feature = "ktest")]
+pub fn link_frame(frame: Frame, next: u64) {
+    // SAFETY: the frame was handed out by alloc_frame (owned by the caller) and RAM is
+    // identity-mapped.
+    unsafe { (frame.0 as *mut u64).write_volatile(next) }
+}
+
+/// Reads the word `link_frame` stored.
+#[cfg(feature = "ktest")]
+pub fn read_link(frame: Frame) -> u64 {
+    // SAFETY: as in link_frame.
+    unsafe { (frame.0 as *const u64).read_volatile() }
+}
+
 /// First frame of the bitmap storage (test kernel: must be unfreeable).
 #[cfg(feature = "ktest")]
 pub fn bitmap_frame() -> Frame {

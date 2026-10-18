@@ -285,7 +285,7 @@
     "REQ-M2-010"
    ],
    "layer": "negative",
-   "oracle": "allocating beyond capacity returns None, no panic, state intact",
+   "oracle": "stress/limit/recovery: allocate until None (count == free_frames, no panic, further allocations None), free every frame back via an intrusive list, counters return to the initial values and allocation works again",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
@@ -428,8 +428,8 @@
     "REQ-M2-014"
    ],
    "layer": "host_unit",
-   "oracle": "seeded defects in arch/ are detected by the M2 suite (>= 95% killed)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "oracle": "tests/mutants.py: 29 seeded defects applied one at a time in a detached worktree, each built and run against its killer M1/M2 cases (full suite before declaring a survivor); PASS when >= 95% of the compiling mutants are killed; report build/mutants-report.json",
+   "command": "python3 tools/project.py test --target host --suite M2  (mutants workflow)",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },

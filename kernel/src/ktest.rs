@@ -466,12 +466,17 @@ fn pmm_counts() -> ! {
     pass("pmm counters consistent across 1024 alloc/free")
 }
 
-/// Allocates until None: the count equals the free count, no panic, and further allocations keep
-/// returning None.
+/// Stress, limit and recovery: allocates until None (the count equals the free count, further
+/// allocations keep returning None, no panic), then gives every frame back through an intrusive
+/// list stored in the frames themselves, and checks the allocator is whole again (counters back
+/// to the start, a new allocation succeeds).
 fn pmm_exhaust() -> ! {
     let before = pmm::stats();
     let mut count: u64 = 0;
-    while pmm::alloc_frame().is_some() {
+    let mut head: u64 = 0; // 0 = end of list (frame 0 is never handed out)
+    while let Some(f) = pmm::alloc_frame() {
+        pmm::link_frame(f, head);
+        head = f.0;
         count += 1;
     }
     let after = pmm::stats();
@@ -485,8 +490,32 @@ fn pmm_exhaust() -> ! {
         );
         fail("exhaustion accounting wrong")
     }
-    kprintln!("OSX|{}|ktest|pmm_exhaust|count={}", BUILD_ID, count);
-    pass("exhaustion returns None without panic")
+    let mut freed: u64 = 0;
+    while head != 0 {
+        let f = Frame(head);
+        head = pmm::read_link(f);
+        if pmm::free_frame(f).is_err() {
+            fail("free of an exhausted-run frame failed")
+        }
+        freed += 1;
+    }
+    let recovered = pmm::stats();
+    let again = pmm::alloc_frame();
+    if let Some(f) = again {
+        let _ = pmm::free_frame(f);
+    }
+    kprintln!(
+        "OSX|{}|ktest|pmm_exhaust|count={}|freed={}|free_recovered={}|alloc_again={}",
+        BUILD_ID,
+        count,
+        freed,
+        recovered.free_frames,
+        u8::from(again.is_some())
+    );
+    if freed != count || recovered.free_frames != before.free_frames || again.is_none() {
+        fail("allocator did not recover after exhaustion")
+    }
+    pass("exhaustion returns None without panic and the allocator recovers fully")
 }
 
 /// Double free, unmanaged, misaligned and bitmap-storage frees are all rejected.

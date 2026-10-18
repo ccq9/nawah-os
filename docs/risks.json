@@ -42,12 +42,12 @@
    "risk": "لا مخزن دائم بين الجلسات: فقد العمل عند انتهاء مساحة الجلسة",
    "likelihood": "high",
    "impact": "critical",
-   "evidence": "gh token invalid; local git only",
+   "evidence": "remote https://github.com/ccq9/nawah-os (DEC-001 answered); CI evidence branches ci-evidence/<run>; checkpoints in docs/project-state.json",
    "owner": "user",
    "warning_signal": "انتهاء جلسة قبل push",
-   "mitigation": "تسليم الملفات للمستخدم عند كل حزمة؛ DEC-001",
+   "mitigation": "push after every work package; CI publishes evidence on branches; import-ci-evidence re-attaches it",
    "response_plan": "إعادة الاستيراد من الملفات المسلَّمة",
-   "status": "open"
+   "status": "mitigated"
   },
   {
    "id": "RSK-005",
