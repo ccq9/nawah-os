@@ -1435,7 +1435,7 @@
     "REQ-M5-003"
    ],
    "layer": "guest",
-   "oracle": "two kernel-side clients a and b of the compositor (SVC-DP.TXT): surfaces 1/2, windows 3/4 at the cascade positions (21,45) and (61,85), the newer focused; RAISE by a gives a the focus and z 0 (events FOCUS/UNFOCUS to both as display.md lists them); the lab's Alt+Tab (QEMU sendkey) moves the focus to b (b gets FOCUS 4, a UNFOCUS 3, STATUS focus=4); the lab's pointer path to a's title bar and click (mouse_move -470 -368 from the centre, mouse_button 1/0) focuses a again with the pointer at (170,32); RESIZE 200 100 tells a `RESIZED 3 200 100`, a attaches a new 200×100 surface (5) and LIST shows it; MINIMIZE moves the focus to b and RESTORE back to a on top; CLOSE and DESTROY_SURFACE leave windows=0; clean exit, no frame leaks; exit 33",
+   "oracle": "two kernel-side clients a and b of the compositor (SVC-DP.TXT): surfaces 1/2, windows 3/4 at the cascade positions (21,45) and (61,85), the newer focused; RAISE by a gives a the focus and z 0 (events FOCUS/UNFOCUS to both as display.md lists them); the lab's Alt+Tab (QEMU sendkey) moves the focus to b (a sees the Alt press then UNFOCUS 3; b gets FOCUS 4 then the Alt release; the Tab press and release are swallowed; STATUS focus=4); the lab's pointer path to a's title bar and click (mouse_move -470 -368 from the centre, mouse_button 1/0) focuses a again with the pointer at (170,32); RESIZE 200 100 tells a `RESIZED 3 200 100`, a attaches a new 200×100 surface (5) and LIST shows it; MINIMIZE moves the focus to b and RESTORE back to a on top; CLOSE and DESTROY_SURFACE leave windows=0; clean exit, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []

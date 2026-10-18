@@ -4976,9 +4976,11 @@ fn window_states() -> ! {
     }
     ev_a.clear();
     ev_b.clear();
-    // 2. The lab presses Alt+Tab: the focus cycles to b.
-    let fb = read_events(b, 1, sched::ticks() + 60_000);
-    let ua = read_events(a, 1, sched::ticks() + 2_000);
+    // 2. The lab presses Alt+Tab: the Alt press reaches a (focused), the Tab is the
+    // shortcut (swallowed with its release), the focus moves to b, which then sees the Alt
+    // release.
+    let fb = read_events(b, 2, sched::ticks() + 60_000);
+    let ua = read_events(a, 2, sched::ticks() + 2_000);
     let status1 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
     kprintln!(
         "OSX|{}|ktest|window_states|alt_tab_b={}|alt_tab_a={}|status={}|phase=2|ready=1",
@@ -4987,8 +4989,16 @@ fn window_states() -> ! {
         ua.join(";"),
         status1
     );
-    if fb != [alloc::format!("FOCUS {}", wb_id)]
-        || ua != [alloc::format!("UNFOCUS {}", wa_id)]
+    if fb
+        != [
+            alloc::format!("FOCUS {}", wb_id),
+            String::from("KEY 0x38 up 0 -"),
+        ]
+        || ua
+            != [
+                String::from("KEY 0x38 down 4 -"),
+                alloc::format!("UNFOCUS {}", wa_id),
+            ]
         || status_field(&status1, "focus=") != wb_id
     {
         fail("Alt+Tab did not move the focus to the next window")
@@ -5192,14 +5202,18 @@ fn app_hang() -> ! {
     let wa_id: String = wa.strip_prefix("OK ").unwrap_or("0").into();
     // a stops reading and floods its own queue with requests: 64 replies fit, the rest of
     // the compositor's writes are dropped — and b is still served at once.
+    // The compositor's own queue holds 64: each write waits for room (CI run 39154824943
+    // wrote 64 of 70 in a burst and nothing was dropped).
     let mut written = 0;
     for _ in 0..70 {
-        if a.write(Message {
-            bytes: b"STATUS".to_vec(),
-            handles: Vec::new(),
-        })
-        .is_ok()
-        {
+        let ok = sched::poll_until(sched::ticks() + 2_000, || {
+            a.write(Message {
+                bytes: b"STATUS".to_vec(),
+                handles: Vec::new(),
+            })
+            .is_ok()
+        });
+        if ok {
             written += 1;
         }
     }

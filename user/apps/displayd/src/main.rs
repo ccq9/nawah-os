@@ -347,6 +347,9 @@ struct Compositor {
     last_blit: u64,
     composed: u64,
     unresponsive: u32,
+    /// A key whose press was a shortcut: its release is swallowed too, so no client sees
+    /// half of it.
+    consumed_key: Option<u32>,
 }
 
 impl Compositor {
@@ -888,6 +891,10 @@ impl Compositor {
             return;
         };
         let down = dir == b"down";
+        if !down && self.consumed_key == Some(code) {
+            self.consumed_key = None;
+            return;
+        }
         if down && mods & MOD_ALT != 0 {
             match code {
                 KEY_TAB => {
@@ -903,12 +910,14 @@ impl Compositor {
                     } else if let Some(wi) = self.top_visible() {
                         self.focus_and_raise(wi, now);
                     }
+                    self.consumed_key = Some(code);
                     return;
                 }
                 KEY_F4 => {
                     if let Some(wi) = self.focus {
                         self.close_requested(wi, now);
                     }
+                    self.consumed_key = Some(code);
                     return;
                 }
                 KEY_UP | KEY_DOWN | KEY_LEFT | KEY_RIGHT => {
@@ -926,6 +935,7 @@ impl Compositor {
                             self.move_window(wi, w.x + dx, w.y + dy);
                         }
                     }
+                    self.consumed_key = Some(code);
                     return;
                 }
                 _ => {}
@@ -1368,6 +1378,7 @@ fn main() -> u64 {
         last_blit: 0,
         composed: 0,
         unresponsive: 0,
+        consumed_key: None,
     };
     c.compose(screen);
     c.draw_cursor();

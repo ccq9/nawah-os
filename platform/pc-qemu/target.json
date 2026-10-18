@@ -3692,12 +3692,12 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=window_states"
         ],
-        "oracle": "two kernel-side clients a and b of the compositor (SVC-DP.TXT): surfaces 1/2, windows 3/4 at the cascade positions (21,45) and (61,85), the newer focused; RAISE by a gives a the focus and z 0 (events FOCUS/UNFOCUS to both as display.md lists them); the lab's Alt+Tab (QEMU sendkey) moves the focus to b (b gets FOCUS 4, a UNFOCUS 3, STATUS focus=4); the lab's pointer path to a's title bar and click (mouse_move -470 -368 from the centre, mouse_button 1/0) focuses a again with the pointer at (170,32); RESIZE 200 100 tells a `RESIZED 3 200 100`, a attaches a new 200×100 surface (5) and LIST shows it; MINIMIZE moves the focus to b and RESTORE back to a on top; CLOSE and DESTROY_SURFACE leave windows=0; clean exit, no frame leaks; exit 33",
+        "oracle": "two kernel-side clients a and b of the compositor (SVC-DP.TXT): surfaces 1/2, windows 3/4 at the cascade positions (21,45) and (61,85), the newer focused; RAISE by a gives a the focus and z 0 (events FOCUS/UNFOCUS to both as display.md lists them); the lab's Alt+Tab (QEMU sendkey) moves the focus to b (a sees the Alt press then UNFOCUS 3; b gets FOCUS 4 then the Alt release; the Tab press and release are swallowed; STATUS focus=4); the lab's pointer path to a's title bar and click (mouse_move -470 -368 from the centre, mouse_button 1/0) focuses a again with the pointer at (170,32); RESIZE 200 100 tells a `RESIZED 3 200 100`, a attaches a new 200×100 surface (5) and LIST shows it; MINIMIZE moves the focus to b and RESTORE back to a on top; CLOSE and DESTROY_SURFACE leave windows=0; clean exit, no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=window_states",
           "|ktest|window_states|surfaces=OK 1/OK 2|windows=OK 3/OK 4|raise=OK|ev_a=FOCUS 3;UNFOCUS 3;FOCUS 3|ev_b=FOCUS 4;UNFOCUS 4|a=21,45,300,200,0,1,0|b=61,85,300,200,1,0,0|phase=1|ready=1",
-          "|ktest|window_states|alt_tab_b=FOCUS 4|alt_tab_a=UNFOCUS 3|status=OK format=1 screen=1280x800 windows=2 focus=4 pointer=640,400 composed=",
+          "|ktest|window_states|alt_tab_b=FOCUS 4;KEY 0x38 up 0 -|alt_tab_a=KEY 0x38 down 4 -;UNFOCUS 3|status=OK format=1 screen=1280x800 windows=2 focus=4 pointer=640,400 composed=",
           "|phase=2|ready=1",
           "|ktest|window_states|click_a=FOCUS 3|click_b=UNFOCUS 4|status=OK format=1 screen=1280x800 windows=2 focus=3 pointer=170,32 composed=",
           "|ktest|window_states|resize=OK|resized=RESIZED 3 200 100|surface2=OK 5|attach=OK|destroy=OK|a2=21,45,200,100,Some(5),0|minimize=OK|min_a=UNFOCUS 3|min_b=FOCUS 4|a3=1,0,0|status_b=OK format=1 screen=1280x800 windows=2 focus=4 pointer=170,32 composed=",
