@@ -5477,7 +5477,11 @@ fn arabic_ui() -> ! {
         1,
     );
     let cfg = svc_connect(&h, "config");
-    let lang = cfg_request(&cfg, b"SET device ui.lang 0 211 ar", Some(token_entry(&admin)));
+    let lang = cfg_request(
+        &cfg,
+        b"SET device ui.lang 0 211 ar",
+        Some(token_entry(&admin)),
+    );
     kprintln!("OSX|{}|ktest|arabic_ui|lang={}|ready=1", BUILD_ID, lang);
     if lang != "OK 1" {
         fail("the config service refused ui.lang")

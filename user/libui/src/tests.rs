@@ -372,7 +372,10 @@ fn rtl_field_arrows_follow_reading_direction() {
     type_ab(&mut ltr);
     assert_eq!(ltr.key(KEY_LEFT, true, 0, None), Event::None);
     ltr.key(0x2e, true, 0, Some('x'));
-    assert_eq!(describe(&ltr, 1), "role=textfield label=\"Name\" state=focused value=\"axb\"");
+    assert_eq!(
+        describe(&ltr, 1),
+        "role=textfield label=\"Name\" state=focused value=\"axb\""
+    );
 
     // Right to left: Right is the one that steps back now.
     let mut rtl = Dialog::new("دخول", true);
@@ -382,11 +385,17 @@ fn rtl_field_arrows_follow_reading_direction() {
     // Left is forward at the end: it cannot move, so the insert stays at the end.
     assert_eq!(rtl.key(KEY_LEFT, true, 0, None), Event::None);
     rtl.key(0x2e, true, 0, Some('x'));
-    assert_eq!(describe(&rtl, 1), "role=textfield label=\"الاسم\" state=focused value=\"abx\"");
+    assert_eq!(
+        describe(&rtl, 1),
+        "role=textfield label=\"الاسم\" state=focused value=\"abx\""
+    );
     // Right steps back, so the next insert lands inside.
     assert_eq!(rtl.key(KEY_RIGHT, true, 0, None), Event::None);
     rtl.key(0x15, true, 0, Some('y'));
-    assert_eq!(describe(&rtl, 1), "role=textfield label=\"الاسم\" state=focused value=\"abyx\"");
+    assert_eq!(
+        describe(&rtl, 1),
+        "role=textfield label=\"الاسم\" state=focused value=\"abyx\""
+    );
 
     // set_rtl flips an existing dialog's behaviour.
     let mut d = sample();
@@ -394,7 +403,10 @@ fn rtl_field_arrows_follow_reading_direction() {
     type_ab(&mut d);
     assert_eq!(d.key(KEY_RIGHT, true, 0, None), Event::None);
     d.key(0x2e, true, 0, Some('x'));
-    assert_eq!(describe(&d, 1), "role=textfield label=\"Name\" state=focused value=\"axb\"");
+    assert_eq!(
+        describe(&d, 1),
+        "role=textfield label=\"Name\" state=focused value=\"axb\""
+    );
 }
 
 /// relabel and set_items change an element in place for a language switch, with the selection

@@ -25,7 +25,15 @@ const LANGS: &[&str] = &["English", "العربية", "Français"];
 const LANGS_AR: &[&str] = &["الإنجليزية", "العربية", "الفرنسية"];
 // The dialog's two languages, element by element (ui.md v1.2 / WP-39): title, label, field,
 // list label, checkbox, two buttons. Switched live from `ui.lang` without rebuilding.
-const EN: [&str; 7] = ["Sign in", "Sign in", "Name", "Language", "Remember me", "OK", "Cancel"];
+const EN: [&str; 7] = [
+    "Sign in",
+    "Sign in",
+    "Name",
+    "Language",
+    "Remember me",
+    "OK",
+    "Cancel",
+];
 const AR: [&str; 7] = ["دخول", "دخول", "الاسم", "اللغة", "تذكّرني", "موافق", "إلغاء"];
 const MSG_MAX: usize = 512;
 const PENDING: usize = 16;
