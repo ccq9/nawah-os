@@ -5,7 +5,11 @@
 //! as the QEMU exit code plus serial markers (`platform/pc-qemu/target.json`, suite M2).
 //! A missing or unknown name is an explicit failure, so a lost name cannot pass by accident.
 
+use alloc::vec::Vec;
+
 use crate::arch::{apic, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu};
+use crate::mm::addrspace::{self, UserSpace, USER_BASE};
+use crate::mm::heap;
 use crate::mm::pmm::{self, Frame, PmmError};
 use crate::mm::vmm;
 use crate::sync::IrqSpinLock;
@@ -96,6 +100,10 @@ pub fn run() -> ! {
         "irq_eoi" => irq_eoi(),
         "spurious" => spurious(),
         "lock_irqsave" => lock_irqsave(),
+        "heap_stress" => heap_stress(),
+        "vmm_unmap" => vmm_unmap(),
+        "vmm_protect" => vmm_protect(),
+        "as_switch" => as_switch(),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -176,6 +184,211 @@ pub fn run() -> ! {
             qemu::exit(qemu::EXIT_UNKNOWN_TEST)
         }
     }
+}
+
+/// Deterministic pseudo-random sequence for the stress tests (LCG, Numerical Recipes constants).
+struct Lcg(u64);
+impl Lcg {
+    fn next(&mut self) -> u64 {
+        self.0 = self
+            .0
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        self.0 >> 33
+    }
+}
+
+/// Heap stress: 10,000 mixed allocations and frees (small, medium, large) with content checks;
+/// afterwards no live block, no slab page, and the frame count back to the start.
+fn heap_stress() -> ! {
+    let frames_before = pmm::stats().free_frames;
+    let mut slots: Vec<Option<Vec<u8>>> = (0..256).map(|_| None).collect();
+    let mut rng = Lcg(0x9E37_79B9_7F4A_7C15);
+    let (mut allocs, mut frees, mut bytes) = (0u64, 0u64, 0u64);
+    for _ in 0..10_000 {
+        let i = (rng.next() % 256) as usize;
+        if let Some(v) = slots[i].take() {
+            let tag = (i as u8) ^ (v.len() as u8);
+            if !v.iter().all(|&b| b == tag) {
+                fail("heap block content corrupted")
+            }
+            frees += 1;
+            drop(v);
+        } else {
+            let r = rng.next() % 100;
+            let len = if r < 70 {
+                1 + (rng.next() % 2048) as usize
+            } else if r < 95 {
+                2049 + (rng.next() % 14336) as usize
+            } else {
+                16385 + (rng.next() % 180_000) as usize
+            };
+            let tag = (i as u8) ^ (len as u8);
+            slots[i] = Some(alloc::vec![tag; len]);
+            allocs += 1;
+            bytes += len as u64;
+        }
+    }
+    let live_mid = heap::stats().live_blocks;
+    for s in slots.iter_mut() {
+        if let Some(v) = s.take() {
+            frees += 1;
+            drop(v);
+        }
+    }
+    drop(slots);
+    let st = heap::stats();
+    let frames_after = pmm::stats().free_frames;
+    kprintln!(
+        "OSX|{}|ktest|heap_stress|allocs={}|frees={}|bytes={}|live_mid={}|live_after={}|slab_pages={}|large_frames={}|frames_before={}|frames_after={}",
+        BUILD_ID,
+        allocs,
+        frees,
+        bytes,
+        live_mid,
+        st.live_blocks,
+        st.slab_pages,
+        st.large_frames,
+        frames_before,
+        frames_after
+    );
+    if allocs != frees {
+        fail("alloc/free count mismatch")
+    }
+    if st.live_blocks != 0 || st.slab_pages != 0 || st.large_frames != 0 {
+        fail("heap not empty after freeing everything")
+    }
+    if frames_before != frames_after {
+        fail("frames leaked through the heap")
+    }
+    pass("heap: 10k mixed allocations, contents intact, no leak")
+}
+
+const SCRATCH_PAGE: u64 = vmm::SCRATCH_BASE + 0x10_0000;
+
+/// Maps a frame at the scratch page RW, writes through it, reads back through the direct map.
+fn scratch_map_rw() -> Frame {
+    let Some(f) = pmm::alloc_frame() else {
+        fail("no frame")
+    };
+    if vmm::map_page(SCRATCH_PAGE, f.0, paging::WRITE | paging::NX).is_err() {
+        fail("map_page failed")
+    }
+    inject::write_qword(SCRATCH_PAGE, 0xC0FF_EE00_0000_0001 ^ f.0);
+    if inject::read_qword(vmm::direct(f.0)) != 0xC0FF_EE00_0000_0001 ^ f.0 {
+        fail("write through scratch mapping not visible through the direct map")
+    }
+    f
+}
+
+/// After unmap (and invlpg) a write to the page faults: #PF error code 2, CR2 = the page.
+fn vmm_unmap() -> ! {
+    let f = scratch_map_rw();
+    match vmm::unmap_page(SCRATCH_PAGE) {
+        Ok(Some(p)) if p == f.0 => {}
+        other => {
+            kprintln!(
+                "OSX|{}|ktest|vmm_unmap|unmap_result={:?}",
+                BUILD_ID,
+                other.is_ok()
+            );
+            fail("unmap did not return the mapped frame")
+        }
+    }
+    if vmm::flags_of(SCRATCH_PAGE).is_some() {
+        fail("page still mapped after unmap")
+    }
+    kprintln!(
+        "OSX|{}|ktest|vmm_unmap|target={:#x}|unmapped=1",
+        BUILD_ID,
+        SCRATCH_PAGE
+    );
+    expect_rip("write");
+    inject::write_fault(SCRATCH_PAGE);
+    fail("write to an unmapped page did not fault (stale TLB entry?)")
+}
+
+/// After protect to read-only (and invlpg) a write faults: #PF error code 3, CR2 = the page.
+fn vmm_protect() -> ! {
+    let _f = scratch_map_rw();
+    if vmm::protect_page(SCRATCH_PAGE, paging::NX).is_err() {
+        fail("protect_page failed")
+    }
+    let ro = vmm::flags_of(SCRATCH_PAGE).is_some_and(|fl| !vmm::is_writable(fl));
+    if !ro {
+        fail("page not read-only after protect")
+    }
+    if inject::read_qword(SCRATCH_PAGE) == 0 {
+        fail("read-only page lost its content")
+    }
+    kprintln!(
+        "OSX|{}|ktest|vmm_protect|target={:#x}|readonly=1",
+        BUILD_ID,
+        SCRATCH_PAGE
+    );
+    expect_rip("write");
+    inject::write_fault(SCRATCH_PAGE);
+    fail("write to a read-only page did not fault (stale TLB entry?)")
+}
+
+/// User address space: pages mapped with USER, invisible from the kernel space, readable and
+/// writable from the kernel while the space is active, destroyed without leaking a frame.
+fn as_switch() -> ! {
+    let frames_before = pmm::stats().free_frames;
+    let Ok(mut us) = UserSpace::new() else {
+        fail("UserSpace::new failed")
+    };
+    let addrs = [USER_BASE, USER_BASE + 0x1000, USER_BASE + 0x10_0000];
+    let mut phys = [0u64; 3];
+    for (i, &va) in addrs.iter().enumerate() {
+        match us.map_new_page(va, paging::WRITE | paging::NX) {
+            Ok(p) => phys[i] = p,
+            Err(_) => fail("map_new_page failed"),
+        }
+    }
+    if us.map_new_page(0x1000, paging::WRITE).is_ok()
+        || us.map_new_page(vmm::SCRATCH_BASE, paging::WRITE).is_ok()
+    {
+        fail("mapping outside the user range was accepted")
+    }
+    if vmm::flags_of(USER_BASE).is_some() {
+        fail("user page visible in the kernel space")
+    }
+    let user_flag = us
+        .flags_of(USER_BASE)
+        .is_some_and(|fl| fl & paging::USER != 0);
+    inject::write_qword(vmm::direct(phys[0]), 0x1111_2222_3333_4444);
+    us.activate();
+    let seen = inject::read_qword(USER_BASE);
+    inject::write_qword(USER_BASE + 0x1000, 0xAAAA_BBBB_CCCC_DDDD);
+    let active_is_user = paging::read_cr3() == us.cr3();
+    addrspace::activate_kernel();
+    let back = inject::read_qword(vmm::direct(phys[1]));
+    let destroy_ok = us.destroy().is_ok();
+    let frames_after = pmm::stats().free_frames;
+    kprintln!(
+        "OSX|{}|ktest|as_switch|user_flag={}|seen_ok={}|back_ok={}|destroy_ok={}|frames_before={}|frames_after={}|cr3_kernel={}",
+        BUILD_ID,
+        u8::from(user_flag),
+        u8::from(seen == 0x1111_2222_3333_4444),
+        u8::from(back == 0xAAAA_BBBB_CCCC_DDDD),
+        u8::from(destroy_ok),
+        frames_before,
+        frames_after,
+        u8::from(vmm::kernel_space().is_some_and(|ks| ks.cr3 == paging::read_cr3()))
+    );
+    if !user_flag
+        || !active_is_user
+        || seen != 0x1111_2222_3333_4444
+        || back != 0xAAAA_BBBB_CCCC_DDDD
+        || !destroy_ok
+    {
+        fail("user space semantics wrong")
+    }
+    if frames_after != frames_before {
+        fail("frames leaked by the user space")
+    }
+    pass("user address space created, entered, left and destroyed without leaks")
 }
 
 /// irqsave lock: IF is cleared while held and restored to its previous value (both from the

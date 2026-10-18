@@ -132,7 +132,9 @@
      "|kernel|irq|pic_masks=0xff,0xff|",
      "|kernel|timer|window_ms=50|pit_ok=1|",
      "|max_depth=1|selfcheck=1",
-     "|cpus=1|ioapics=1|ioapic_entries=24|ioapic_masked=24|"
+     "|cpus=1|ioapics=1|ioapic_entries=24|ioapic_masked=24|",
+     "|kernel|mm|heap_ok=1|scratch_ok=1|as_ok=1|as_code=ok|",
+     "|frames_delta=0|selfcheck=1"
     ],
     "forbidden_markers": [
      "|boot|acpi|rsdp=0x0|",
@@ -718,6 +720,106 @@
      "|ktest|fail|",
      "|exc|vector",
      "|panic|nested|"
+    ]
+   }
+  ],
+  "M3": [
+   {
+    "id": "TST-M3-HEAP-STRESS",
+    "test_id": "TST-M3-HEAP-STRESS",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=heap_stress"
+    ],
+    "oracle": "10,000 mixed allocations/frees (70% <= 2 KiB, 25% <= 16 KiB, 5% <= 196 KiB) with content checks; afterwards live_blocks = slab_pages = large_frames = 0 and PMM free frames equal before/after; exit 33",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=heap_stress",
+     "|ktest|heap_stress|allocs=",
+     "|live_after=0|slab_pages=0|large_frames=0|",
+     "|ktest|pass|heap: 10k mixed allocations"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M3-VMM-UNMAP",
+    "test_id": "TST-M3-VMM-UNMAP",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=vmm_unmap"
+    ],
+    "oracle": "frame mapped at the scratch page, written through it and read back through the direct map; unmap returns the frame and flushes the TLB; a write then raises #PF error code 2 with CR2 = RIP target = the page; exit 173",
+    "expected_exit_code": 173,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=vmm_unmap",
+     "|ktest|vmm_unmap|target=0xffffa00000100000|unmapped=1",
+     "|exc|vector=14|name=#PF|error=0x2|",
+     "|cr2=0xffffa00000100000|"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_rip=(0x[0-9a-f]+)",
+      "\\|rip=(0x[0-9a-f]+)\\|"
+     ]
+    ]
+   },
+   {
+    "id": "TST-M3-VMM-PROTECT",
+    "test_id": "TST-M3-VMM-PROTECT",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=vmm_protect"
+    ],
+    "oracle": "scratch page made read-only (protect + invlpg): content readable, a write raises #PF error code 3 with CR2 = the page; exit 173",
+    "expected_exit_code": 173,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=vmm_protect",
+     "|ktest|vmm_protect|target=0xffffa00000100000|readonly=1",
+     "|exc|vector=14|name=#PF|error=0x3|",
+     "|cr2=0xffffa00000100000|"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_rip=(0x[0-9a-f]+)",
+      "\\|rip=(0x[0-9a-f]+)\\|"
+     ]
+    ]
+   },
+   {
+    "id": "TST-M3-AS-SWITCH",
+    "test_id": "TST-M3-AS-SWITCH",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=as_switch"
+    ],
+    "oracle": "user space with three USER pages (invisible from the kernel space); while active the kernel reads a value written through the direct map and writes one back; after return the write is visible; destroy frees everything (frame count equal); mappings outside USER_BASE..USER_END refused; exit 33",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=as_switch",
+     "|ktest|as_switch|user_flag=1|seen_ok=1|back_ok=1|destroy_ok=1|",
+     "|cr3_kernel=1",
+     "|ktest|pass|user address space created"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
     ]
    }
   ]

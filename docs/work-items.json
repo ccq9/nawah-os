@@ -773,13 +773,23 @@
    ],
    "inputs": [
     "docs/PLAN.md §4",
-    "SDM Vol.3A §4.10 (S26)"
+    "ADR-0007",
+    "SDM Vol.3A §4.6.1, §4.10.4.1 (S26)"
    ],
    "files": [
     "kernel/src/mm/heap.rs",
+    "kernel/src/mm/addrspace.rs",
     "kernel/src/mm/vmm.rs",
+    "kernel/src/mm/pmm.rs",
+    "kernel/src/mm/mod.rs",
     "kernel/src/arch/x86_64/paging.rs",
-    "kernel/src/mm/addrspace.rs"
+    "kernel/src/main.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    ".github/workflows/verify.yml",
+    "docs/adr/0007-heap-and-user-spaces.md",
+    "tools/unsafe-baseline.txt"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
@@ -790,19 +800,21 @@
     "user address space object sharing the kernel half",
     "ktests"
    ],
-   "acceptance": "heap_stress, vmm_unmap, as_switch PASS",
+   "acceptance": "heap_stress, vmm_unmap, vmm_protect, as_switch PASS on CI; TST-M1-BOOT PASS with the mm self-check line",
    "test_ids": [
     "TST-M3-HEAP-STRESS",
     "TST-M3-VMM-UNMAP",
-    "TST-M3-AS-SWITCH"
+    "TST-M3-AS-SWITCH",
+    "TST-M3-VMM-PROTECT"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null

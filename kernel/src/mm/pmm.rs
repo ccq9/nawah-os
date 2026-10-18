@@ -186,6 +186,49 @@ pub fn alloc_frame() -> Option<Frame> {
     None
 }
 
+/// Allocates `n` physically contiguous frames (first fit, linear scan), or `None`.
+pub fn alloc_frames(n: u64) -> Option<Frame> {
+    if n == 0 {
+        return None;
+    }
+    if n == 1 {
+        return alloc_frame();
+    }
+    let mut p = pmm();
+    if !p.ready || p.free < n {
+        return None;
+    }
+    let first_managed = LOW_RESERVED / FRAME_SIZE;
+    let mut run_start = first_managed;
+    let mut run = 0u64;
+    let mut f = first_managed;
+    while f < p.frames {
+        if p.get_bit(f) {
+            run = 0;
+            run_start = f + 1;
+        } else {
+            run += 1;
+            if run == n {
+                for g in run_start..run_start + n {
+                    p.set_bit(g, true);
+                }
+                p.free -= n;
+                return Some(Frame(run_start * FRAME_SIZE));
+            }
+        }
+        f += 1;
+    }
+    None
+}
+
+/// Frees `n` contiguous frames obtained from `alloc_frames`; stops at the first error.
+pub fn free_frames(first: Frame, n: u64) -> Result<(), PmmError> {
+    for i in 0..n {
+        free_frame(Frame(first.0 + i * FRAME_SIZE))?;
+    }
+    Ok(())
+}
+
 /// Returns a frame to the pool. Detects double frees and unmanaged frames.
 pub fn free_frame(frame: Frame) -> Result<(), PmmError> {
     let mut p = pmm();

@@ -1,9 +1,13 @@
 //! Post-ExitBootServices kernel entry. Receives `BootInfo` only (docs/contracts/boot.md);
 //! this module must never name firmware tables (TST-M1-NOBS). Safe Rust only.
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+
 use crate::arch;
 use crate::bootinfo::{BootInfo, MEM_CONVENTIONAL};
 use crate::mm;
+use crate::mm::addrspace::{self, UserSpace, USER_BASE};
 
 /// M1/M2 boot path: own CPU tables, validate the handoff, account the memory map, bring up the
 /// frame allocator and the kernel address space, then continue on a guarded stack.
@@ -94,6 +98,71 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         ),
         None => crate::panic::fatal("K_E_VMM_NOT_ACTIVE"),
     }
+
+    // Kernel heap and user address spaces (WP-13), each with a self-check in every build:
+    // allocations come and go without a frame leaking, and a user space can be created,
+    // entered, left and destroyed with the frame count back where it started.
+    mm::heap::init();
+    let frames_before = mm::pmm::stats().free_frames;
+    let heap_ok = {
+        let v: Vec<u64> = (0..1000).collect();
+        let b = Box::new(0xA5u8);
+        let big: Vec<u8> = alloc::vec![0x5A; 20_000];
+        let sum: u64 = v.iter().sum();
+        let ok = sum == 499_500 && *b == 0xA5 && big.iter().all(|&x| x == 0x5A);
+        drop(v);
+        drop(b);
+        drop(big);
+        ok
+    };
+    let heap_st = mm::heap::stats();
+    // Scratch mapping round trip: map a frame, make it read-only, unmap it (each step flushes
+    // the TLB entry), then give the frame back.
+    let scratch_ok = match mm::pmm::alloc_frame() {
+        Some(f) => {
+            let va = mm::vmm::SCRATCH_BASE;
+            let mapped = mm::vmm::map_page(va, f.0, arch::paging::WRITE | arch::paging::NX).is_ok();
+            let ro = mm::vmm::protect_page(va, arch::paging::NX).is_ok()
+                && mm::vmm::flags_of(va).is_some_and(|fl| !mm::vmm::is_writable(fl));
+            let unmapped = matches!(mm::vmm::unmap_page(va), Ok(Some(p)) if p == f.0)
+                && mm::vmm::flags_of(va).is_none();
+            mapped && ro && unmapped && mm::pmm::free_frame(f).is_ok()
+        }
+        None => false,
+    };
+    let (as_ok, as_code) = match UserSpace::new() {
+        Ok(mut us) => {
+            let mapped = us
+                .map_new_page(USER_BASE, arch::paging::WRITE | arch::paging::NX)
+                .is_ok();
+            us.activate();
+            let probe =
+                mapped && us.flags_of(USER_BASE).is_some() && arch::paging::read_cr3() == us.cr3();
+            addrspace::activate_kernel();
+            match us.destroy() {
+                Ok(_) => (probe, "ok"),
+                Err(e) => (false, e.code()),
+            }
+        }
+        Err(e) => (false, e.code()),
+    };
+    let frames_after = mm::pmm::stats().free_frames;
+    let mm_ok =
+        heap_ok && scratch_ok && as_ok && heap_st.live_blocks == 0 && frames_before == frames_after;
+    kprintln!(
+        "OSX|{}|kernel|mm|heap_ok={}|scratch_ok={}|as_ok={}|as_code={}|heap_live_blocks={}|heap_live_bytes={}|heap_pages={}|heap_large_frames={}|frames_delta={}|selfcheck={}",
+        build_id,
+        u8::from(heap_ok),
+        u8::from(scratch_ok),
+        u8::from(as_ok),
+        as_code,
+        heap_st.live_blocks,
+        heap_st.live_bytes,
+        heap_st.slab_pages,
+        heap_st.large_frames,
+        frames_before as i64 - frames_after as i64,
+        u8::from(mm_ok)
+    );
 
     // Interrupts (WP-10): ACPI MADT -> PIC remapped and masked, local APIC enabled with a
     // calibrated timer, every I/O APIC masked. Interrupts are still off here.

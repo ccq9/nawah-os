@@ -679,9 +679,10 @@
    "test_ids": [
     "TST-M3-HEAP-STRESS",
     "TST-M3-VMM-UNMAP",
-    "TST-M3-AS-SWITCH"
+    "TST-M3-AS-SWITCH",
+    "TST-M3-VMM-PROTECT"
    ],
-   "implementation_status": "planned",
+   "implementation_status": "implemented_untested",
    "evidence_refs": []
   },
   {

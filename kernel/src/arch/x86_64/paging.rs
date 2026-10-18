@@ -18,6 +18,8 @@ pub const PAGE_2M: u64 = 2 * 1024 * 1024;
 /// Page-table entry bits (SDM Vol. 3A Tables 4-15..4-20).
 pub const PRESENT: u64 = 1 << 0;
 pub const WRITE: u64 = 1 << 1;
+/// User-mode access allowed (needed on every level of the walk, SDM §4.6.1).
+pub const USER: u64 = 1 << 2;
 /// Page-level write-through and cache-disable; PCD|PWT selects PAT entry 3, which is UC with
 /// the power-on PAT (SDM Vol. 3A §13.12.2/Table 13-11): the right memory type for MMIO.
 pub const PWT: u64 = 1 << 3;
@@ -72,12 +74,17 @@ fn write_entry(table: u64, index: u64, value: u64) {
 }
 
 /// Returns the physical address of the next-level table for `index`, allocating a zeroed one
-/// when absent. Fails on a 2 MiB-page entry (there is no table behind it).
-fn next_table(table: u64, index: u64) -> Result<u64, MapError> {
+/// when absent. Fails on a 2 MiB-page entry (there is no table behind it). `user` adds the U/S
+/// bit to a table this call creates (and to an existing one), since user access needs it on
+/// every level; kernel-only tables never get it.
+fn next_table(table: u64, index: u64, user: bool) -> Result<u64, MapError> {
     let e = read_entry(table, index);
     if e & PRESENT != 0 {
         if e & HUGE != 0 {
             return Err(MapError::Conflict);
+        }
+        if user && e & USER == 0 {
+            write_entry(table, index, e | USER);
         }
         return Ok(e & ADDR_MASK);
     }
@@ -85,8 +92,15 @@ fn next_table(table: u64, index: u64) -> Result<u64, MapError> {
     zero_frame(f.0);
     // Intermediate entries are permissive (present, writable, executable): the effective
     // permission is the AND over the walk, so the leaf carries the real one (SDM §4.6.2).
-    write_entry(table, index, f.0 | PRESENT | WRITE);
+    let u = if user { USER } else { 0 };
+    write_entry(table, index, f.0 | PRESENT | WRITE | u);
     Ok(f.0)
+}
+
+/// Invalidates the TLB entry for `virt` on this CPU (SDM Vol. 3A §4.10.4.1, INVLPG).
+pub fn invlpg(virt: u64) {
+    // SAFETY: invlpg takes any linear address; it only drops cached translations.
+    unsafe { asm!("invlpg [{}]", in(reg) virt, options(nostack, preserves_flags)) };
 }
 
 const fn idx(virt: u64, level: u32) -> u64 {
@@ -104,6 +118,21 @@ pub fn nx_supported() -> bool {
 }
 
 impl AddressSpace {
+    /// Wraps an existing PML4 frame (e.g. one built by `new` and recorded elsewhere).
+    pub const fn from_pml4(pml4: u64, nx: bool) -> Self {
+        Self { pml4, nx }
+    }
+
+    /// Loads this space's PML4 into CR3 (flushes the TLB).
+    ///
+    /// # Safety
+    /// The kernel's code, stacks and data must be mapped in this space at their current
+    /// addresses (user spaces share the kernel entries).
+    pub unsafe fn switch_to(&self) {
+        // SAFETY: the caller guarantees the kernel half is present; loading CR3 is the point.
+        unsafe { asm!("mov cr3, {}", in(reg) self.pml4, options(nostack, preserves_flags)) };
+    }
+
     /// A fresh, empty address space.
     pub fn new() -> Result<Self, MapError> {
         let f = pmm::alloc_frame().ok_or(MapError::OutOfFrames)?;
@@ -127,16 +156,134 @@ impl AddressSpace {
         (phys & ADDR_MASK) | flags | PRESENT
     }
 
-    /// Maps one 4 KiB page. `flags` are the leaf flags; PRESENT is added.
+    /// Maps one 4 KiB page. `flags` are the leaf flags; PRESENT is added. A leaf with USER also
+    /// gets USER on the tables that lead to it.
     pub fn map_4k(&self, virt: u64, phys: u64, flags: u64) -> Result<(), MapError> {
         if !virt.is_multiple_of(PAGE_4K) || !phys.is_multiple_of(PAGE_4K) {
             return Err(MapError::Unaligned);
         }
-        let pdpt = next_table(self.pml4, idx(virt, 3))?;
-        let pd = next_table(pdpt, idx(virt, 2))?;
-        let pt = next_table(pd, idx(virt, 1))?;
+        let user = flags & USER != 0;
+        let pdpt = next_table(self.pml4, idx(virt, 3), user)?;
+        let pd = next_table(pdpt, idx(virt, 2), user)?;
+        let pt = next_table(pd, idx(virt, 1), user)?;
         write_entry(pt, idx(virt, 0), self.leaf(phys, flags));
         Ok(())
+    }
+
+    /// Removes the 4 KiB mapping at `virt` and returns its physical address, `None` when nothing
+    /// was mapped. A 2 MiB page covering `virt` is refused (no splitting yet). The caller
+    /// invalidates the TLB (`invlpg`) when this space is active.
+    pub fn unmap_4k(&self, virt: u64) -> Result<Option<u64>, MapError> {
+        if !virt.is_multiple_of(PAGE_4K) {
+            return Err(MapError::Unaligned);
+        }
+        let e3 = read_entry(self.pml4, idx(virt, 3));
+        if e3 & PRESENT == 0 {
+            return Ok(None);
+        }
+        let e2 = read_entry(e3 & ADDR_MASK, idx(virt, 2));
+        if e2 & PRESENT == 0 {
+            return Ok(None);
+        }
+        let e1 = read_entry(e2 & ADDR_MASK, idx(virt, 1));
+        if e1 & PRESENT == 0 {
+            return Ok(None);
+        }
+        if e1 & HUGE != 0 {
+            return Err(MapError::Conflict);
+        }
+        let pt = e1 & ADDR_MASK;
+        let e0 = read_entry(pt, idx(virt, 0));
+        if e0 & PRESENT == 0 {
+            return Ok(None);
+        }
+        write_entry(pt, idx(virt, 0), 0);
+        Ok(Some(e0 & ADDR_MASK))
+    }
+
+    /// Replaces the leaf flags of a mapped 4 KiB page (PRESENT is added). The caller invalidates
+    /// the TLB when this space is active.
+    pub fn protect_4k(&self, virt: u64, flags: u64) -> Result<(), MapError> {
+        match self.translate(virt) {
+            Some((phys, old)) if old & HUGE == 0 => {
+                let user = flags & USER != 0;
+                let pdpt = next_table(self.pml4, idx(virt, 3), user)?;
+                let pd = next_table(pdpt, idx(virt, 2), user)?;
+                let pt = next_table(pd, idx(virt, 1), user)?;
+                write_entry(pt, idx(virt, 0), self.leaf(phys & !(PAGE_4K - 1), flags));
+                Ok(())
+            }
+            Some(_) => Err(MapError::Conflict),
+            None => Err(MapError::Conflict),
+        }
+    }
+
+    /// Makes sure PML4 slot `index` has a page-directory-pointer table, so later mappings in
+    /// that slot never need a new PML4 entry (user spaces copy PML4 entries, so a kernel slot
+    /// must exist before any space is derived from the kernel space).
+    pub fn ensure_pdpt(&self, index: u64) -> Result<(), MapError> {
+        next_table(self.pml4, index & 0x1FF, false).map(|_| ())
+    }
+
+    /// Reads one PML4 entry (for sharing the kernel half with user spaces).
+    pub fn pml4_entry(&self, index: u64) -> u64 {
+        read_entry(self.pml4, index & 0x1FF)
+    }
+
+    /// Writes one PML4 entry (building a user space).
+    pub fn set_pml4_entry(&self, index: u64, value: u64) {
+        write_entry(self.pml4, index & 0x1FF, value);
+    }
+
+    /// Frees every page-table frame below PML4 slots `[first, last)` and the frames they map
+    /// when `free_leaves` is set; the PML4 frame itself is freed too. For spaces that are not
+    /// active and whose leaves this space exclusively owns (user spaces).
+    pub fn teardown(self, first: u64, last: u64, free_leaves: bool) -> u64 {
+        let mut freed = 0u64;
+        for i3 in first..last {
+            let e3 = read_entry(self.pml4, i3);
+            if e3 & PRESENT == 0 {
+                continue;
+            }
+            let pdpt = e3 & ADDR_MASK;
+            for i2 in 0..512 {
+                let e2 = read_entry(pdpt, i2);
+                if e2 & PRESENT == 0 || e2 & HUGE != 0 {
+                    continue;
+                }
+                let pd = e2 & ADDR_MASK;
+                for i1 in 0..512 {
+                    let e1 = read_entry(pd, i1);
+                    if e1 & PRESENT == 0 || e1 & HUGE != 0 {
+                        continue;
+                    }
+                    let pt = e1 & ADDR_MASK;
+                    if free_leaves {
+                        for i0 in 0..512 {
+                            let e0 = read_entry(pt, i0);
+                            if e0 & PRESENT != 0
+                                && pmm::free_frame(pmm::Frame(e0 & ADDR_MASK)).is_ok()
+                            {
+                                freed += 1;
+                            }
+                        }
+                    }
+                    if pmm::free_frame(pmm::Frame(pt)).is_ok() {
+                        freed += 1;
+                    }
+                }
+                if pmm::free_frame(pmm::Frame(pd)).is_ok() {
+                    freed += 1;
+                }
+            }
+            if pmm::free_frame(pmm::Frame(pdpt)).is_ok() {
+                freed += 1;
+            }
+        }
+        if pmm::free_frame(pmm::Frame(self.pml4)).is_ok() {
+            freed += 1;
+        }
+        freed
     }
 
     /// Maps one 2 MiB page (PD entry with PS). Fails if a page table already sits there.
@@ -144,8 +291,9 @@ impl AddressSpace {
         if !virt.is_multiple_of(PAGE_2M) || !phys.is_multiple_of(PAGE_2M) {
             return Err(MapError::Unaligned);
         }
-        let pdpt = next_table(self.pml4, idx(virt, 3))?;
-        let pd = next_table(pdpt, idx(virt, 2))?;
+        let user = flags & USER != 0;
+        let pdpt = next_table(self.pml4, idx(virt, 3), user)?;
+        let pd = next_table(pdpt, idx(virt, 2), user)?;
         let e = read_entry(pd, idx(virt, 1));
         if e & PRESENT != 0 && e & HUGE == 0 {
             return Err(MapError::Conflict);

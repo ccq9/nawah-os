@@ -46,6 +46,8 @@ jobs:
           python3 tools/project.py test --target pc-qemu --suite M1
       - name: M2 guest suite (test kernel, exceptions)
         run: python3 tools/project.py test --target pc-qemu --suite M2
+      - name: M3 guest suite (test kernel)
+        run: python3 tools/project.py test --target pc-qemu --suite M3
       - name: Host suites
         run: |
           python3 tools/project.py test --target host --suite M0

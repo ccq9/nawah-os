@@ -28,6 +28,13 @@ use crate::mm::pmm;
 /// Virtual area for kernel stacks (PML4 slot 288): each slot is `STACK_SLOT` bytes and starts
 /// with an unmapped guard page.
 pub const STACK_AREA_BASE: u64 = 0xFFFF_9000_0000_0000;
+/// Kernel dynamic mappings (PML4 slot 320): page-granular `map_page`/`unmap_page` users.
+pub const SCRATCH_BASE: u64 = 0xFFFF_A000_0000_0000;
+pub const SCRATCH_END: u64 = 0xFFFF_A080_0000_0000;
+/// PML4 slots whose tables exist in the kernel space from the start, so every space derived from
+/// it shares them by table and kernel mappings never create a PML4 entry later: 256 direct map,
+/// 288 stacks, 320 scratch (slot 0, the identity map, exists too).
+pub const KERNEL_PML4_SLOTS: [u64; 3] = [256, 288, 320];
 pub const KERNEL_STACK_SIZE: u64 = 64 * 1024;
 pub const DF_STACK_SIZE: u64 = 16 * 1024;
 const STACK_SLOT: u64 = 128 * 1024;
@@ -259,6 +266,9 @@ pub fn init(bi: &BootInfo) -> Result<KernelSpace, VmmError> {
     let ram = map_ram(&space, bi, (image_base, image_size))?;
     let kernel_stack = map_stack(&space, 0, KERNEL_STACK_SIZE)?;
     let df_stack = map_stack(&space, 1, DF_STACK_SIZE)?;
+    for slot in KERNEL_PML4_SLOTS {
+        space.ensure_pdpt(slot)?;
+    }
     // What the very next instructions need must be mapped: the code (this function), the boot
     // stack and data (inside the image), the memory map buffer, and the new stacks.
     let bitmap = pmm::bitmap_address();
@@ -340,6 +350,44 @@ pub fn map_mmio(phys: u64, len: u64) -> Result<u64, VmmError> {
 /// Leaf flags of a virtual address in the active space, `None` when unmapped.
 pub fn flags_of(virt: u64) -> Option<u64> {
     AddressSpace::current().translate(virt).map(|(_, f)| f)
+}
+
+fn kernel_as() -> Result<AddressSpace, VmmError> {
+    let ks = kernel_space().ok_or(VmmError::Unmapped)?;
+    Ok(AddressSpace::from_pml4(ks.cr3, paging::nx_supported()))
+}
+
+fn in_scratch(virt: u64) -> Result<(), VmmError> {
+    if (SCRATCH_BASE..SCRATCH_END).contains(&virt) && virt.is_multiple_of(PAGE_4K) {
+        Ok(())
+    } else {
+        Err(VmmError::Map(MapError::Unaligned))
+    }
+}
+
+/// Maps `phys` at the scratch address `virt` in the kernel space (shared by every address
+/// space through its PML4 slot). `flags`: WRITE/NX as wanted; PRESENT is added.
+pub fn map_page(virt: u64, phys: u64, flags: u64) -> Result<(), VmmError> {
+    in_scratch(virt)?;
+    kernel_as()?.map_4k(virt, phys, flags)?;
+    Ok(())
+}
+
+/// Removes the scratch mapping at `virt` and invalidates it on this CPU; returns the physical
+/// address that was mapped (the frame stays the caller's).
+pub fn unmap_page(virt: u64) -> Result<Option<u64>, VmmError> {
+    in_scratch(virt)?;
+    let phys = kernel_as()?.unmap_4k(virt)?;
+    paging::invlpg(virt);
+    Ok(phys)
+}
+
+/// Changes the flags of the scratch mapping at `virt` and invalidates it on this CPU.
+pub fn protect_page(virt: u64, flags: u64) -> Result<(), VmmError> {
+    in_scratch(virt)?;
+    kernel_as()?.protect_4k(virt, flags)?;
+    paging::invlpg(virt);
+    Ok(())
 }
 
 pub const fn is_writable(flags: u64) -> bool {

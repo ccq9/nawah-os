@@ -12,6 +12,8 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![deny(clippy::missing_safety_doc)]
 
+extern crate alloc;
+
 #[macro_use]
 mod console;
 

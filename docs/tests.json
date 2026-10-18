@@ -454,8 +454,8 @@
     "REQ-M3-001"
    ],
    "layer": "guest",
-   "oracle": "10k allocations/frees with patterns and mixed sizes: contents intact, PMM free count equal before/after",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "10,000 mixed allocations/frees (70% <= 2 KiB, 25% <= 16 KiB, 5% <= 196 KiB) with content checks; afterwards live_blocks = slab_pages = large_frames = 0 and PMM free frames equal before/after; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -465,8 +465,8 @@
     "REQ-M3-001"
    ],
    "layer": "negative",
-   "oracle": "access after unmap -> #PF with the unmapped address in CR2 (TLB entry invalidated)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "frame mapped at the scratch page, written through it and read back through the direct map; unmap returns the frame and flushes the TLB; a write then raises #PF error code 2 with CR2 = RIP target = the page; exit 173",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -476,8 +476,8 @@
     "REQ-M3-001"
    ],
    "layer": "guest",
-   "oracle": "create a user address space sharing the kernel half, switch to it and back; kernel data intact",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "user space with three USER pages (invisible from the kernel space); while active the kernel reads a value written through the direct map and writes one back; after return the write is visible; destroy frees everything (frame count equal); mappings outside USER_BASE..USER_END refused; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -764,6 +764,17 @@
    "layer": "host_unit",
    "oracle": "seeded defects in the M3 modules are killed by the M3 suite (>= 95%)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-VMM-PROTECT",
+   "requirement_ids": [
+    "REQ-M3-001"
+   ],
+   "layer": "negative",
+   "oracle": "scratch page made read-only (protect + invlpg): content readable, a write raises #PF error code 3 with CR2 = the page; exit 173",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   }
