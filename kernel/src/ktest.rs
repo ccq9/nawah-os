@@ -1876,7 +1876,9 @@ fn lock_contention() -> ! {
     pass("the lock serialises every CPU: counters exact")
 }
 
-const SHOOT_PAGE: u64 = vmm::SCRATCH_BASE + 0x20_0000;
+/// Inside the scratch area's first 2 MiB, whose tables exist from boot (a page elsewhere would
+/// keep a page-table frame and read as a leak).
+const SHOOT_PAGE: u64 = vmm::SCRATCH_BASE + 0x12_0000;
 static SHOOT_STEP: AtomicU64 = AtomicU64::new(0);
 static SHOOT_SEEN: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
 
