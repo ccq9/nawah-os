@@ -4494,7 +4494,9 @@ fn input_route() -> ! {
     {
         fail("the Arabic layout or the moved focus did not take effect")
     }
-    drop((ev_a, ev_s, ev_b, ev_b2, ev_a2, status, status0));
+    // Every allocation of the test goes before the balance (CI run 39151988275 counted the
+    // page of the user login's reply string, `ru`, as a leaked frame).
+    drop((ev_a, ev_s, ev_b, ev_b2, ev_a2, status, status0, ru));
     drop((
         reg_a, reg_b, reg_s, f_none, f_user, f_unknown, l_user, f_a, f_b, l_ar,
     ));
