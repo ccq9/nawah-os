@@ -37,7 +37,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060534Z-8041e35f-002"
+        "evidence/20261018T064231Z-9570ab04-002"
       ],
       "blocker": null
     },
@@ -78,7 +78,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060534Z-8041e35f-001"
+        "evidence/20261018T064231Z-9570ab04-001"
       ],
       "blocker": null
     },
@@ -123,8 +123,8 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060243Z-8041e35f-001",
-        "evidence/20261018T060244Z-8041e35f-001"
+        "evidence/20261018T064012Z-9570ab04-001",
+        "evidence/20261018T064014Z-9570ab04-001"
       ],
       "blocker": null
     },
@@ -183,7 +183,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060534Z-8041e35f-002"
+        "evidence/20261018T064231Z-9570ab04-002"
       ],
       "blocker": null
     },
@@ -356,10 +356,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060247Z-8041e35f-001",
-        "evidence/20261018T060251Z-8041e35f-001",
-        "evidence/20261018T060254Z-8041e35f-001",
-        "evidence/20261018T060534Z-8041e35f-003"
+        "evidence/20261018T064017Z-9570ab04-001",
+        "evidence/20261018T064022Z-9570ab04-001",
+        "evidence/20261018T064025Z-9570ab04-001",
+        "evidence/20261018T064231Z-9570ab04-003"
       ],
       "blocker": null
     },
@@ -429,17 +429,17 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060257Z-8041e35f-001",
-        "evidence/20261018T060301Z-8041e35f-001",
-        "evidence/20261018T060304Z-8041e35f-001",
-        "evidence/20261018T060307Z-8041e35f-001",
-        "evidence/20261018T060310Z-8041e35f-001",
-        "evidence/20261018T060313Z-8041e35f-001",
-        "evidence/20261018T060316Z-8041e35f-001",
-        "evidence/20261018T060320Z-8041e35f-001",
-        "evidence/20261018T060323Z-8041e35f-001",
-        "evidence/20261018T060326Z-8041e35f-001",
-        "evidence/20261018T060329Z-8041e35f-001"
+        "evidence/20261018T064028Z-9570ab04-001",
+        "evidence/20261018T064031Z-9570ab04-001",
+        "evidence/20261018T064036Z-9570ab04-001",
+        "evidence/20261018T064039Z-9570ab04-001",
+        "evidence/20261018T064042Z-9570ab04-001",
+        "evidence/20261018T064046Z-9570ab04-001",
+        "evidence/20261018T064049Z-9570ab04-001",
+        "evidence/20261018T064052Z-9570ab04-001",
+        "evidence/20261018T064055Z-9570ab04-001",
+        "evidence/20261018T064059Z-9570ab04-001",
+        "evidence/20261018T064102Z-9570ab04-001"
       ],
       "blocker": null
     },
@@ -490,9 +490,9 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060332Z-8041e35f-001",
-        "evidence/20261018T060336Z-8041e35f-001",
-        "evidence/20261018T060339Z-8041e35f-001"
+        "evidence/20261018T064105Z-9570ab04-001",
+        "evidence/20261018T064108Z-9570ab04-001",
+        "evidence/20261018T064111Z-9570ab04-001"
       ],
       "blocker": null
     },
@@ -555,11 +555,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060342Z-8041e35f-001",
-        "evidence/20261018T060345Z-8041e35f-001",
-        "evidence/20261018T060348Z-8041e35f-001",
-        "evidence/20261018T060351Z-8041e35f-001",
-        "evidence/20261018T060251Z-8041e35f-001"
+        "evidence/20261018T064114Z-9570ab04-001",
+        "evidence/20261018T064118Z-9570ab04-001",
+        "evidence/20261018T064121Z-9570ab04-001",
+        "evidence/20261018T064124Z-9570ab04-001",
+        "evidence/20261018T064022Z-9570ab04-001"
       ],
       "blocker": null
     },
@@ -636,11 +636,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060355Z-8041e35f-001",
-        "evidence/20261018T060358Z-8041e35f-001",
-        "evidence/20261018T060401Z-8041e35f-001",
-        "evidence/20261018T060251Z-8041e35f-001",
-        "evidence/20261018T060326Z-8041e35f-001"
+        "evidence/20261018T064127Z-9570ab04-001",
+        "evidence/20261018T064130Z-9570ab04-001",
+        "evidence/20261018T064133Z-9570ab04-001",
+        "evidence/20261018T064022Z-9570ab04-001",
+        "evidence/20261018T064059Z-9570ab04-001"
       ],
       "blocker": null
     },
@@ -704,9 +704,9 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060404Z-8041e35f-001",
-        "evidence/20261018T060407Z-8041e35f-001",
-        "evidence/20261018T060411Z-8041e35f-001"
+        "evidence/20261018T064137Z-9570ab04-001",
+        "evidence/20261018T064140Z-9570ab04-001",
+        "evidence/20261018T064143Z-9570ab04-001"
       ],
       "blocker": null
     },
@@ -818,11 +818,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060414Z-8041e35f-001",
-        "evidence/20261018T060417Z-8041e35f-001",
-        "evidence/20261018T060420Z-8041e35f-001",
-        "evidence/20261018T060423Z-8041e35f-001",
-        "evidence/20261018T060251Z-8041e35f-001"
+        "evidence/20261018T064146Z-9570ab04-001",
+        "evidence/20261018T064150Z-9570ab04-001",
+        "evidence/20261018T064153Z-9570ab04-001",
+        "evidence/20261018T064156Z-9570ab04-001",
+        "evidence/20261018T064022Z-9570ab04-001"
       ],
       "blocker": null
     },
@@ -883,8 +883,8 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060439Z-8041e35f-001",
-        "evidence/20261018T060440Z-8041e35f-001"
+        "evidence/20261018T064224Z-9570ab04-001",
+        "evidence/20261018T064225Z-9570ab04-001"
       ],
       "blocker": null
     },
@@ -950,11 +950,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T060427Z-8041e35f-001",
-        "evidence/20261018T060430Z-8041e35f-001",
-        "evidence/20261018T060433Z-8041e35f-001",
-        "evidence/20261018T060436Z-8041e35f-001",
-        "evidence/20261018T060251Z-8041e35f-001"
+        "evidence/20261018T064159Z-9570ab04-001",
+        "evidence/20261018T064202Z-9570ab04-001",
+        "evidence/20261018T064206Z-9570ab04-001",
+        "evidence/20261018T064209Z-9570ab04-001",
+        "evidence/20261018T064022Z-9570ab04-001"
       ],
       "blocker": null
     },
@@ -1017,12 +1017,19 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M3"
       ],
-      "status": "active",
+      "status": "done",
       "status_history": [
         "planned",
-        "active"
+        "active",
+        "done"
       ],
-      "evidence_refs": [],
+      "evidence_refs": [
+        "evidence/20261018T064212Z-9570ab04-001",
+        "evidence/20261018T064215Z-9570ab04-001",
+        "evidence/20261018T064218Z-9570ab04-001",
+        "evidence/20261018T064221Z-9570ab04-001",
+        "evidence/20261018T064022Z-9570ab04-001"
+      ],
       "blocker": null
     },
     {
