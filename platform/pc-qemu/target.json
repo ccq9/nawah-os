@@ -114,7 +114,7 @@
       {
         "id": "TST-M1-BOOT",
         "test_id": "TST-M1-BOOT",
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1",
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
@@ -137,6 +137,7 @@
           "|frames_delta=0|selfcheck=1",
           "|kernel|sched|boot_tid=0|probe_join=0x5eee|",
           "|threads=1|processes=0|quantum_ticks=10|frames_delta=0|code=ok|selfcheck=1",
+          "|kernel|object|channel_ok=1|vmo_size=8192|peer_closed=1|live_channels=0|live_endpoints=0|live_vmos=0|live_handles=0|frames_delta=0|selfcheck=1",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1"
         ],
@@ -1047,6 +1048,182 @@
           "|kernel|panic|",
           "|exc|vector",
           "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M3-IPC-ROUNDTRIP",
+        "test_id": "TST-M3-IPC-ROUNDTRIP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=ipc_roundtrip"
+        ],
+        "oracle": "ring-3 program: channel_create, vmo_create, channel_write of 16 bytes + the VMO handle, channel_read on the peer returns 0x10010 with the bytes intact; the sent handle value is consumed (ERR_BAD_HANDLE), the received one carries VMO rights 0x1f; empty queue ERR_SHOULD_WAIT; double close ERR_BAD_HANDLE; exit code 0x1C (else the failing step); no frame leaked; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=ipc_roundtrip",
+          "|ktest|ipc_roundtrip|exit=0x1c|expected=0x1c|frames_delta=0",
+          "|ktest|pass|ring-3 program behaved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M3-RIGHTS-DENIED",
+        "test_id": "TST-M3-RIGHTS-DENIED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=rights_denied"
+        ],
+        "oracle": "ring-3 program: a READ-only duplicate cannot write (ERR_ACCESS), rights cannot be escalated, a WRITE-only duplicate cannot read, a handle without TRANSFER cannot be sent and stays owned, undefined right bits and sending the channel's own ends are ERR_INVALID; exit 0x2D; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=rights_denied",
+          "|ktest|rights_denied|exit=0x2d|expected=0x2d|frames_delta=0",
+          "|ktest|pass|ring-3 program behaved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M3-CLOSED-HANDLE",
+        "test_id": "TST-M3-CLOSED-HANDLE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=closed_handle"
+        ],
+        "oracle": "ring-3 program: after handle_close every call on the value is ERR_BAD_HANDLE; a message queued before the close is still read by the peer, then ERR_PEER_CLOSED both ways; a reused slot carries a new generation (same index, different value); exit 0x3E; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=closed_handle",
+          "|ktest|closed_handle|exit=0x3e|expected=0x3e|frames_delta=0",
+          "|ktest|pass|ring-3 program behaved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M3-IPC-OVERSIZE",
+        "test_id": "TST-M3-IPC-OVERSIZE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=oversize_rejected"
+        ],
+        "oracle": "ring-3 program: 4097 bytes or 5 handles -> ERR_INVALID with nothing queued; exactly 4096 bytes delivered; a 4095-byte buffer -> ERR_BUFFER_TOO_SMALL with the message kept; handle capacity 0 refused the same way, 1 accepted (result 0x10000); exit 0x4F; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=oversize_rejected",
+          "|ktest|oversize_rejected|exit=0x4f|expected=0x4f|frames_delta=0",
+          "|ktest|pass|ring-3 program behaved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M3-IPC-NO-LEAK",
+        "test_id": "TST-M3-IPC-NO-LEAK",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=ipc_no_leak"
+        ],
+        "oracle": "a process exits with two channels, a 64 KiB VMO and messages in transit carrying a VMO handle and a channel end (whose queue carries the VMO's original handle): after exit, live channels/endpoints/vmos/handles are 0 and equal to the values before, PMM free frames and heap live blocks/slab pages equal (after a warm-up run); exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=ipc_no_leak",
+          "|ktest|ipc_no_leak|exit=0x5a|",
+          "|channels=0|endpoints=0|vmos=0|handles=0|processes_after=0",
+          "|ktest|pass|process exit releases channels"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ],
+          [
+            "live_before=([0-9]+)",
+            "live_after=([0-9]+)"
+          ],
+          [
+            "slab_before=([0-9]+)",
+            "slab_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-HANDLE-TABLE",
+        "test_id": "TST-M3-HANDLE-TABLE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=handle_table"
+        ],
+        "oracle": "handle table unit test in the test kernel: first values 0x10000/0x10001, a closed value refused (BadHandle), the reused slot yields 0x20000, duplicate with a subset works and the copy lacks the missing right, escalation/undefined bits/handle 0/wrong generation refused, 1024 entries then NoResources, live counts back to the start; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=handle_table",
+          "|ktest|handle_table|h1=0x10000|h2=0x10001|h3=0x20000|dup=0x10002|removed=1|stale_refused=1|reuse_ok=1|dup_rights_ok=1|escalation_refused=1|live_ok=1|added=1021|limit_ok=1|",
+          "|ktest|pass|handle table: generations"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M3-BLOCK-WAKE",
+        "test_id": "TST-M3-BLOCK-WAKE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=block_wake"
+        ],
+        "oracle": "kernel threads: a reader blocked on an empty channel (read + block_current) is woken by a write within 10 ticks and returns the byte (0x42, one block loop); a wake issued while the reader still sleeps is kept as a token so the reader loops once more instead of hanging (0x43, two loops); dropping the peer wakes a blocked reader with PeerClosed (0xC105ED); object counts and frames equal; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=block_wake",
+          "|ktest|block_wake|r1=0x42|loops1=1|",
+          "|r2=0x43|loops2=2|r3=0xc105ed|channels_after=0|endpoints_after=0|",
+          "|ktest|pass|blocking read: woken by write"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ]
         ]
       }
     ]

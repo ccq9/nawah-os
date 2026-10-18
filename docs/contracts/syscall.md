@@ -1,6 +1,6 @@
-# عقد نداءات النظام — الإصدار 1.1 (WP-14 v1، WP-15 v1.1؛ ADR-0009، ADR-0010)
+# عقد نداءات النظام — الإصدار 1.2 (WP-14 v1، WP-15 v1.1، WP-16 v1.2؛ ADR-0009، ADR-0010، ADR-0011)
 
-مجمَّد: أي تغيير في الأرقام أو الرموز أو تمرير الوسائط = إصدار جديد مع سجل قرار. الإصدار 1.1 **إضافي فقط**: النداءان 4 و5؛ كل ما في الإصدار 1 باقٍ بلا تغيير. الكود: `kernel/src/syscall/mod.rs` (المحايد)، `kernel/src/arch/x86_64/syscall.rs` (الدخول/الخروج)، `kernel/src/sched/` (exit/yield/sleep).
+مجمَّد: أي تغيير في الأرقام أو الرموز أو تمرير الوسائط = إصدار جديد مع سجل قرار. الإصداران 1.1 و1.2 **إضافيان فقط**: 4–5 (المجدول) ثم 6–12 (المقابض والقنوات وVMO، تفصيلها في `docs/contracts/ipc.md`)؛ كل ما في الإصدار 1 باقٍ بلا تغيير. الكود: `kernel/src/syscall/mod.rs` (المحايد)، `kernel/src/arch/x86_64/syscall.rs` (الدخول/الخروج/النسخ)، `kernel/src/sched/` (exit/yield/sleep/الحجب)، `kernel/src/object/` (الكائنات).
 
 ## 1. الاتفاق العام (كل المعماريات)
 
@@ -17,8 +17,17 @@
 | 3 | `check_rip` | addr | 0 إن كان عنوان تعليمات مستخدم صالحًا (canonical وداخل النطاق)، وإلا `ERR_RANGE` |
 | 4 | `yield` (v1.1) | — | 0؛ يتنازل عن المعالج لخيط جاهز بأولوية مساوية أو أعلى إن وُجد |
 | 5 | `sleep` (v1.1) | ticks | 0؛ يحجب الخيط `ticks` نبضة مؤقت على الأقل (1 kHz؛ الحد الأقصى المقبول 1,000,000 ويُقص إليه) |
+| 6 | `channel_create` (v1.2) | out_ptr | 0؛ مقبضان u32 في out_ptr — ipc.md §3 |
+| 7 | `channel_write` (v1.2) | h, ptr, len, hptr, nh | 0 — ipc.md §3 |
+| 8 | `channel_read` (v1.2) | h, ptr, cap, hptr, hcap, flags | `len \| (nhandles << 16)` — ipc.md §3 |
+| 9 | `handle_close` (v1.2) | h | 0 |
+| 10 | `handle_duplicate` (v1.2) | h, rights | المقبض الجديد |
+| 11 | `vmo_create` (v1.2) | size | المقبض |
+| 12 | `handle_rights` (v1.2) | h | حقوق المقبض |
 
-رموز الأخطاء: `ERR_NOSYS = -1`، `ERR_INVALID = -2`، `ERR_FAULT = -3`، `ERR_RANGE = -4`.
+رموز الأخطاء: `ERR_NOSYS = -1`، `ERR_INVALID = -2`، `ERR_FAULT = -3`، `ERR_RANGE = -4`؛ (v1.2) `ERR_BAD_HANDLE = -5`، `ERR_ACCESS = -6`، `ERR_PEER_CLOSED = -7`، `ERR_SHOULD_WAIT = -8`، `ERR_BUFFER_TOO_SMALL = -9`، `ERR_NO_RESOURCES = -10`، `ERR_WRONG_TYPE = -11`.
+
+المؤشرات التي تكتب فيها النواة (v1.2) تُفحص لعلم الكتابة أيضًا (`ERR_FAULT` إن كانت الصفحة للقراءة فقط).
 
 ## 2. x86_64
 

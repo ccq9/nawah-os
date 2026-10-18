@@ -484,6 +484,34 @@
       ],
       "limits": "normative for the language; the kernel's use is ADR-0010 item 10",
       "verified": true
+    },
+    {
+      "id": "S39",
+      "title": "Fuchsia / Zircon kernel concepts — Handles",
+      "url": "https://fuchsia.dev/fuchsia-src/concepts/kernel/handles",
+      "version": "fuchsia.dev, read 2026-10-18",
+      "accessed": "2026-10-18",
+      "supports": [
+        "a handle is a per-process 32-bit value naming a kernel object together with rights; 0 is ZX_HANDLE_INVALID",
+        "rights belong to the handle, not the object: two handles to one object may differ; duplication may reduce rights",
+        "kernel objects are reference counted, each handle holds a reference; the kernel may reuse the integer values of closed handles"
+      ],
+      "limits": "design reference only (no code reuse); nawah adds a generation to the value so stale handles are refused deterministically",
+      "verified": true
+    },
+    {
+      "id": "S40",
+      "title": "Fuchsia / Zircon syscall reference — zx_channel_write",
+      "url": "https://fuchsia.dev/reference/syscalls/channel_write",
+      "version": "fuchsia.dev, read 2026-10-18",
+      "accessed": "2026-10-18",
+      "supports": [
+        "channel handle needs ZX_RIGHT_WRITE; each transferred handle needs ZX_RIGHT_TRANSFER",
+        "limits ZX_CHANNEL_MAX_MSG_BYTES 65536 and ZX_CHANNEL_MAX_MSG_HANDLES 64 (nawah: 4096 and 4 per PLAN §4)",
+        "ZX_ERR_PEER_CLOSED when the other end is closed; ZX_ERR_NOT_SUPPORTED when the channel's own handle is in the handle array; duplicates in the array are ZX_ERR_BAD_HANDLE"
+      ],
+      "limits": "Zircon discards sent handles on failure too; nawah's contract keeps the sender's table untouched on failure (two-phase write)",
+      "verified": true
     }
   ]
 }

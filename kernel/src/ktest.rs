@@ -15,6 +15,9 @@ use crate::mm::addrspace::{self, UserSpace, USER_BASE};
 use crate::mm::heap;
 use crate::mm::pmm::{self, Frame, PmmError};
 use crate::mm::vmm;
+use crate::object::channel::{ChannelError, Message};
+use crate::object::handle::{Entry, HandleError};
+use crate::object::{self, channel, Endpoint, HandleTable, Object, Rights, Vmo, HANDLES_MAX};
 use crate::sched;
 use crate::sync::IrqSpinLock;
 use crate::BUILD_ID;
@@ -124,6 +127,15 @@ pub fn run() -> ! {
         "preempt" => preempt(),
         "exit_cleanup" => exit_cleanup(),
         "user_sleep" => user_sleep(),
+        "ipc_roundtrip" => user_program_case("ipc_roundtrip", user_programs::ipc_roundtrip(), 0x1C),
+        "rights_denied" => user_program_case("rights_denied", user_programs::rights_denied(), 0x2D),
+        "closed_handle" => user_program_case("closed_handle", user_programs::closed_handle(), 0x3E),
+        "oversize_rejected" => {
+            user_program_case("oversize_rejected", user_programs::oversize(), 0x4F)
+        }
+        "ipc_no_leak" => ipc_no_leak(),
+        "handle_table" => handle_table(),
+        "block_wake" => block_wake(),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -1125,4 +1137,252 @@ fn user_sleep() -> ! {
         fail("frames leaked by the sleeping process")
     }
     pass("ring-3 sleep and yield go through the scheduler")
+}
+
+// ---- WP-16: handles, channels, VMOs ------------------------------------------------------
+
+/// A process that exits with two channels, messages in transit (carrying a VMO handle and a
+/// channel end) and a 64 KiB VMO all still open: afterwards no object, handle, frame or heap
+/// block remains (after a warm-up run).
+fn ipc_no_leak() -> ! {
+    if crate::user::run(user_programs::ipc_no_leak()).is_err() {
+        fail("warm-up process did not run")
+    }
+    let frames0 = pmm::stats().free_frames;
+    let heap0 = heap::stats();
+    let obj0 = object::stats();
+    let o = match crate::user::run(user_programs::ipc_no_leak()) {
+        Ok(o) => o,
+        Err(_) => fail("process did not run"),
+    };
+    let frames1 = pmm::stats().free_frames;
+    let heap1 = heap::stats();
+    let obj1 = object::stats();
+    let st = sched::stats();
+    kprintln!(
+        "OSX|{}|ktest|ipc_no_leak|exit={:#x}|frames_before={}|frames_after={}|live_before={}|live_after={}|slab_before={}|slab_after={}|channels={}|endpoints={}|vmos={}|handles={}|processes_after={}",
+        BUILD_ID,
+        o.exit_code,
+        frames0,
+        frames1,
+        heap0.live_blocks,
+        heap1.live_blocks,
+        heap0.slab_pages,
+        heap1.slab_pages,
+        obj1.channels,
+        obj1.endpoints,
+        obj1.vmos,
+        obj1.handles,
+        st.processes
+    );
+    if o.exit_code != 0x5A {
+        fail("program did not reach its end (exit code = failing step)")
+    }
+    if obj1 != obj0 || obj1.channels != 0 || obj1.vmos != 0 || obj1.handles != 0 {
+        fail("objects or handles survived the process")
+    }
+    if frames1 != frames0 || o.frames_delta != 0 {
+        fail("frames leaked through objects left open at exit")
+    }
+    if heap1.live_blocks != heap0.live_blocks || heap1.slab_pages != heap0.slab_pages {
+        fail("heap blocks leaked through objects left open at exit")
+    }
+    if st.processes != 0 {
+        fail("process record not cleaned up")
+    }
+    pass("process exit releases channels, messages in transit, VMOs and handles")
+}
+
+/// Handle table semantics: generation-checked values, slot reuse with a new generation, rights
+/// subsets on duplicate, table limit, live counts.
+fn handle_table() -> ! {
+    let obj0 = object::stats();
+    let mut t = HandleTable::new();
+    let (a, b) = channel::create();
+    let ins = |t: &mut HandleTable, object: Object, rights: Rights| -> u32 {
+        match t.insert(Entry { object, rights }) {
+            Ok(h) => h,
+            Err(_) => fail("insert failed"),
+        }
+    };
+    let h1 = ins(&mut t, Object::Channel(a), Rights::CHANNEL_DEFAULT);
+    let h2 = ins(&mut t, Object::Channel(b), Rights::CHANNEL_DEFAULT);
+    let first_values_ok = h1 == 0x1_0000 && h2 == 0x1_0001;
+    let removed = t.remove(h1).is_ok();
+    let stale = matches!(t.remove(h1), Err(HandleError::BadHandle))
+        && matches!(t.get(h1, Rights::NONE), Err(HandleError::BadHandle));
+    let Some(vmo) = Vmo::new(4096) else {
+        fail("Vmo::new failed")
+    };
+    let h3 = ins(&mut t, Object::Vmo(vmo), Rights::VMO_DEFAULT);
+    let reuse_ok = h3 != h1 && (h3 & 0xffff) == (h1 & 0xffff) && h3 == 0x2_0000;
+    let dup = match t.duplicate(h3, Rights::READ) {
+        Ok(d) => d,
+        Err(_) => fail("duplicate with a subset failed"),
+    };
+    let dup_rights_ok = t.get(dup, Rights::READ).is_ok()
+        && matches!(t.get(dup, Rights::WRITE), Err(HandleError::Access));
+    let escalation_refused = t.duplicate(dup, Rights::VMO_DEFAULT) == Err(HandleError::Access)
+        && t.duplicate(h2, Rights(0x40)) == Err(HandleError::Access)
+        && t.get(0, Rights::NONE).is_err()
+        && t.get(h2 ^ 0x8_0000, Rights::NONE).is_err();
+    let live_ok = t.len() == 3 && object::stats().handles == obj0.handles + 3;
+    // Fill up to the limit: the next insert is refused with NoResources, and nothing breaks.
+    let mut added = 0;
+    while t.len() < HANDLES_MAX {
+        match t.duplicate(h2, Rights::READ) {
+            Ok(_) => added += 1,
+            Err(_) => break,
+        }
+    }
+    let limit_ok =
+        t.len() == HANDLES_MAX && t.duplicate(h2, Rights::READ) == Err(HandleError::NoResources);
+    drop(t);
+    let obj1 = object::stats();
+    kprintln!(
+        "OSX|{}|ktest|handle_table|h1={:#x}|h2={:#x}|h3={:#x}|dup={:#x}|removed={}|stale_refused={}|reuse_ok={}|dup_rights_ok={}|escalation_refused={}|live_ok={}|added={}|limit_ok={}|handles_after={}|channels_after={}|vmos_after={}",
+        BUILD_ID,
+        h1,
+        h2,
+        h3,
+        dup,
+        u8::from(removed),
+        u8::from(stale),
+        u8::from(reuse_ok),
+        u8::from(dup_rights_ok),
+        u8::from(escalation_refused),
+        u8::from(live_ok),
+        added,
+        u8::from(limit_ok),
+        obj1.handles,
+        obj1.channels,
+        obj1.vmos
+    );
+    if !(first_values_ok && removed && stale && reuse_ok) {
+        fail("handle values or generations wrong")
+    }
+    if !(dup_rights_ok && escalation_refused) {
+        fail("rights not enforced on duplicate/get")
+    }
+    if !(live_ok && limit_ok) {
+        fail("live count or table limit wrong")
+    }
+    if obj1 != obj0 {
+        fail("objects survived the table")
+    }
+    pass("handle table: generations, slot reuse, rights subsets, limit, counts")
+}
+
+/// Endpoint handed to `blocking_reader` (one reader at a time).
+static BLOCK_EP: IrqSpinLock<Option<alloc::sync::Arc<Endpoint>>> =
+    IrqSpinLock::new("ktest_block_ep", None);
+static BLOCK_LOOPS: AtomicU64 = AtomicU64::new(0);
+
+/// Sleeps `arg` ticks, then reads its endpoint, blocking until a message or the peer's close.
+/// Exit code: the first byte, or 0xC105ED on peer close. Counts the times it came back from
+/// `block_current` without a message (a wake token or a spurious wake-up).
+extern "sysv64" fn blocking_reader(arg: u64) -> u64 {
+    if arg > 0 {
+        sched::sleep_ticks(arg);
+    }
+    let Some(ep) = BLOCK_EP.lock().clone() else {
+        return 0xBAD0;
+    };
+    let tid = sched::current_tid();
+    loop {
+        match ep.read(16, 4, Some(tid)) {
+            Ok(m) => return u64::from(m.bytes.first().copied().unwrap_or(0)),
+            Err(ChannelError::ShouldWait) => {
+                sched::block_current();
+                BLOCK_LOOPS.fetch_add(1, Ordering::Relaxed);
+            }
+            Err(ChannelError::PeerClosed) => return 0xC105ED,
+            Err(ChannelError::BufferTooSmall { .. }) => return 0xBAD1,
+        }
+    }
+}
+
+fn msg(byte: u8) -> Message {
+    Message {
+        bytes: alloc::vec![byte],
+        handles: Vec::new(),
+    }
+}
+
+/// Blocking read and wake-ups: a reader blocked on an empty channel is woken by a write; a
+/// wake-up that arrives before the thread blocks is kept as a token (one extra loop, no hang);
+/// closing the peer wakes a blocked reader with PeerClosed. No object or frame survives.
+fn block_wake() -> ! {
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    // 1. Block, then a write wakes.
+    let (a, b) = channel::create();
+    *BLOCK_EP.lock() = Some(b);
+    BLOCK_LOOPS.store(0, Ordering::Relaxed);
+    let k1 = spawn_or_fail(blocking_reader, 0, 0);
+    sched::yield_now(); // k1 runs first (priority 0) until it blocks
+    sched::sleep_ticks(5);
+    let t_write = sched::stats().ticks;
+    if a.write(msg(0x42)).is_err() {
+        fail("write to the blocked reader's channel failed")
+    }
+    let r1 = sched::join(k1);
+    let loops1 = BLOCK_LOOPS.load(Ordering::Relaxed);
+    let t_done = sched::stats().ticks;
+    drop(a);
+    *BLOCK_EP.lock() = None;
+    // 2. Token: wake before the reader blocks (it sleeps 3 ticks first), then write later.
+    let (a2, b2) = channel::create();
+    *BLOCK_EP.lock() = Some(b2);
+    BLOCK_LOOPS.store(0, Ordering::Relaxed);
+    let k2 = spawn_or_fail(blocking_reader, 3, 0);
+    sched::yield_now(); // k2 runs until its 3-tick sleep
+    sched::wake(k2); // k2 is sleeping: the wake-up becomes a token
+    sched::sleep_ticks(8);
+    if a2.write(msg(0x43)).is_err() {
+        fail("second write failed")
+    }
+    let r2 = sched::join(k2);
+    let loops2 = BLOCK_LOOPS.load(Ordering::Relaxed);
+    drop(a2);
+    *BLOCK_EP.lock() = None;
+    // 3. Peer close wakes a blocked reader.
+    let (a3, b3) = channel::create();
+    *BLOCK_EP.lock() = Some(b3);
+    BLOCK_LOOPS.store(0, Ordering::Relaxed);
+    let k3 = spawn_or_fail(blocking_reader, 0, 0);
+    sched::yield_now(); // k3 blocks
+    sched::sleep_ticks(3);
+    drop(a3);
+    let r3 = sched::join(k3);
+    *BLOCK_EP.lock() = None;
+    let obj1 = object::stats();
+    let frames1 = pmm::stats().free_frames;
+    kprintln!(
+        "OSX|{}|ktest|block_wake|r1={:#x}|loops1={}|woken_within_ticks={}|r2={:#x}|loops2={}|r3={:#x}|channels_after={}|endpoints_after={}|frames_before={}|frames_after={}",
+        BUILD_ID,
+        r1.unwrap_or(u64::MAX),
+        loops1,
+        t_done - t_write,
+        r2.unwrap_or(u64::MAX),
+        loops2,
+        r3.unwrap_or(u64::MAX),
+        obj1.channels,
+        obj1.endpoints,
+        frames0,
+        frames1
+    );
+    if r1 != Some(0x42) || loops1 != 1 || t_done - t_write > 10 {
+        fail("blocked reader not woken by the write as expected")
+    }
+    if r2 != Some(0x43) || loops2 != 2 {
+        fail("wake token not kept across sleep/block")
+    }
+    if r3 != Some(0xC105ED) {
+        fail("peer close did not wake the blocked reader")
+    }
+    if obj1 != obj0 || frames1 != frames0 {
+        fail("objects or frames leaked")
+    }
+    pass("blocking read: woken by write, by token, by peer close; nothing leaked")
 }

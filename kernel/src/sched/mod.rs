@@ -7,6 +7,9 @@
 //! across `switch_to` (the resumed thread takes the lock again to reap). One CPU; WP-20 adds the
 //! per-CPU queues SMP needs.
 //!
+//! Blocking (WP-16): `block_current`/`wake` with a wake token per thread, so a wake-up that
+//! arrives between the decision to block and the switch is kept, not lost.
+//!
 //! Thread 0 is the boot context (kmain): it owns the guarded kernel stack and acts as the idle
 //! thread — it is always runnable and waits with `hlt` when nothing else is ready. Every other
 //! thread gets its own guarded kernel stack, which is also its trap stack (TSS.RSP0 and the
@@ -15,12 +18,14 @@
 //! process whose last thread exited is destroyed then too, once its address space is no longer
 //! the active one.
 
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use crate::arch;
 use crate::arch::context::{self, Start};
 use crate::mm::addrspace::UserSpace;
 use crate::mm::vmm::{self, StackInfo};
+use crate::object::HandleTable;
 use crate::sync::IrqSpinLock;
 
 pub const PRIORITIES: u8 = 4;
@@ -34,8 +39,14 @@ const FINISHED_KEEP: usize = 64;
 pub enum State {
     Ready,
     Running,
-    Sleeping { until: u64 },
-    Exited { code: u64 },
+    Sleeping {
+        until: u64,
+    },
+    /// Waiting for `wake` (channel read, WP-16).
+    Blocked,
+    Exited {
+        code: u64,
+    },
 }
 
 pub struct Thread {
@@ -50,6 +61,9 @@ pub struct Thread {
     /// Sequence number of the last time the thread was picked or gave the CPU up; the smallest
     /// wins a tie within a priority (round-robin).
     pub last_pick: u64,
+    /// Wake-ups that arrived while the thread was not blocked; `block_current` consumes one
+    /// instead of blocking, so a wake-up that races the block is never lost.
+    wake_tokens: u32,
     /// Whether the stack belongs to the thread (false for the boot thread, whose stack is the
     /// kernel's own).
     owns_stack: bool,
@@ -60,6 +74,18 @@ pub struct Process {
     pub space: UserSpace,
     pub threads: u32,
     pub exit_code: Option<u64>,
+    /// Handle table (WP-16), shared with the syscall layer so operations run outside the
+    /// scheduler lock.
+    pub handles: Arc<IrqSpinLock<HandleTable>>,
+}
+
+impl Process {
+    /// Releases everything the process owned: handles first (objects may hold frames and
+    /// wake other threads — so this must run outside the scheduler lock), then the space.
+    fn finish(self) {
+        drop(self.handles);
+        let _ = self.space.destroy();
+    }
 }
 
 struct Sched {
@@ -117,6 +143,7 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         rsp: 0,
         slice: QUANTUM_TICKS,
         last_pick: 0,
+        wake_tokens: 0,
         owns_stack: false,
     };
     // Capacities up front, so the first few spawns do not grow the vectors (keeps the boot
@@ -154,17 +181,26 @@ fn new_thread(
     let rsp = context::prepare_stack(kstack.top(), kind, a, b);
     let id = s.next_tid;
     s.next_tid += 1;
+    let priority = priority.min(PRIORITIES - 1);
     s.threads.push(Thread {
         id,
         process,
         state: State::Ready,
-        priority: priority.min(PRIORITIES - 1),
+        priority,
         kstack,
         rsp,
         slice: QUANTUM_TICKS,
         last_pick: 0,
+        wake_tokens: 0,
         owns_stack: true,
     });
+    // A new thread of better or equal priority runs at the next preemption point or yield.
+    let cur_prio = index_of(s, s.current)
+        .map(|i| s.threads[i].priority)
+        .unwrap_or(PRIORITIES);
+    if priority <= cur_prio {
+        s.need_resched = true;
+    }
     Ok(id)
 }
 
@@ -197,12 +233,15 @@ pub fn spawn_user(
             space,
             threads: 1,
             exit_code: None,
+            handles: Arc::new(IrqSpinLock::new("handles", HandleTable::new())),
         });
         match new_thread(s, Some(pid), priority, Start::User, rip, rsp) {
             Ok(tid) => Ok((pid, tid)),
             Err(e) => {
                 if let Some(p) = s.processes.pop() {
-                    let _ = p.space.destroy();
+                    // A fresh process holds no handles yet, so finishing it under the lock
+                    // wakes nobody.
+                    p.finish();
                 }
                 Err(e)
             }
@@ -300,13 +339,18 @@ fn perform(sw: Option<Switch>) -> bool {
     // before any other code runs; nothing borrows the scheduler state across the call (the lock
     // was dropped).
     unsafe { context::switch_to(sw.prev_slot, sw.next_rsp) };
-    with(reap);
+    let doomed = with(reap);
+    // Outside the lock: releasing handles may close channels and wake their readers.
+    for p in doomed {
+        p.finish();
+    }
     true
 }
 
-/// Frees exited threads (not the current one) and processes whose last thread exited and whose
-/// address space is not the active one.
-fn reap(s: &mut Sched) {
+/// Frees exited threads (not the current one) and detaches processes whose last thread exited
+/// and whose address space is not the active one; the caller finishes those after releasing
+/// the lock.
+fn reap(s: &mut Sched) -> Vec<Process> {
     let current = s.current;
     let mut i = 0;
     while i < s.threads.len() {
@@ -332,21 +376,23 @@ fn reap(s: &mut Sched) {
         }
     }
     let active_cr3 = arch::paging::read_cr3();
+    let mut doomed = Vec::new();
     let mut i = 0;
     while i < s.processes.len() {
         let p = &s.processes[i];
         if p.threads == 0 && p.exit_code.is_some() && p.space.cr3() != active_cr3 {
             let p = s.processes.swap_remove(i);
             let code = p.exit_code.unwrap_or(0);
-            let _ = p.space.destroy();
             if s.finished_processes.len() >= FINISHED_KEEP {
                 s.finished_processes.remove(0);
             }
             s.finished_processes.push((p.id, code));
+            doomed.push(p);
         } else {
             i += 1;
         }
     }
+    doomed
 }
 
 /// Timer hook (interrupt context): advances time, wakes sleepers, expires the slice. Before
@@ -496,8 +542,62 @@ pub fn wait_process(pid: u32) -> Option<u64> {
     }
 }
 
+/// Blocks the current thread until `wake` is called for it; returns at once when a wake-up
+/// already arrived (token). Not for the boot thread.
+pub fn block_current() {
+    let was = arch::interrupts::save_and_disable();
+    let sw = with(|s| {
+        assert!(s.current != 0, "the boot thread cannot block");
+        let i = index_of(s, s.current).expect("current thread exists");
+        if s.threads[i].wake_tokens > 0 {
+            s.threads[i].wake_tokens -= 1;
+            return None;
+        }
+        s.threads[i].state = State::Blocked;
+        prepare_switch(s)
+    });
+    perform(sw);
+    arch::interrupts::restore(was);
+}
+
+/// Makes a blocked thread Ready (or leaves it a token if it has not blocked yet). Unknown
+/// threads are ignored. A woken thread of better or equal priority is scheduled at the next
+/// preemption point or yield.
+pub fn wake(tid: u32) {
+    with(|s| {
+        let cur_prio = index_of(s, s.current)
+            .map(|i| s.threads[i].priority)
+            .unwrap_or(PRIORITIES);
+        if let Some(i) = index_of(s, tid) {
+            let t = &mut s.threads[i];
+            match t.state {
+                State::Blocked => {
+                    t.state = State::Ready;
+                    if t.priority <= cur_prio {
+                        s.need_resched = true;
+                    }
+                }
+                State::Exited { .. } => {}
+                _ => t.wake_tokens = t.wake_tokens.saturating_add(1),
+            }
+        }
+    });
+}
+
 pub fn current_tid() -> u32 {
     with(|s| s.current)
+}
+
+/// The current process's handle table (a shared reference; operate on it outside the
+/// scheduler lock). None for kernel threads.
+pub fn current_handles() -> Option<Arc<IrqSpinLock<HandleTable>>> {
+    with(|s| {
+        let pid = index_of(s, s.current).and_then(|i| s.threads[i].process)?;
+        s.processes
+            .iter()
+            .find(|p| p.id == pid)
+            .map(|p| p.handles.clone())
+    })
 }
 
 pub fn stats() -> Stats {

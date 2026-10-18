@@ -1,14 +1,17 @@
-//! Running a ring-3 program (WP-14/WP-15): one code page and one stack page in a fresh user
-//! address space, started as a process with one thread; the caller waits for the process exit.
+//! Running a ring-3 program (WP-14/WP-15/WP-16): one code page, one stack page and one data
+//! page in a fresh user address space, started as a process with one thread; the caller waits
+//! for the process exit.
 //! WP-17 replaces the raw code page with the ELF loader.
 
 use crate::arch::paging::{NX, WRITE};
 use crate::mm::addrspace::{self, AsError, UserSpace, USER_BASE};
 use crate::sched;
 
-/// Where a program is loaded and where its stack page sits.
+/// Where a program is loaded, where its stack page sits, and a writable data page (WP-16
+/// programs keep handles and message buffers there).
 pub const CODE_BASE: u64 = USER_BASE;
 pub const STACK_PAGE: u64 = USER_BASE + 0x20_0000;
+pub const DATA_PAGE: u64 = USER_BASE + 0x40_0000;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Outcome {
@@ -28,6 +31,7 @@ pub fn spawn(code: &[u8], priority: u8) -> Result<u32, AsError> {
     let code_phys = match us
         .map_new_page(CODE_BASE, 0)
         .and_then(|p| us.map_new_page(STACK_PAGE, WRITE | NX).map(|_| p))
+        .and_then(|p| us.map_new_page(DATA_PAGE, WRITE | NX).map(|_| p))
     {
         Ok(p) => p,
         Err(e) => {

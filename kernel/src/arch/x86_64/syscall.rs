@@ -251,3 +251,20 @@ pub fn copy_in(dst: &mut [u8], src: u64) {
         }
     }
 }
+
+/// Copies `src` to the user address `dst` (already range-, page- and write-checked by the
+/// caller), opening the SMAP window when SMAP is on.
+pub fn copy_out(src: &[u8], dst: u64) {
+    // SAFETY: the caller verified every page of [dst, dst+len) is present with USER and WRITE
+    // in the active space; STAC/CLAC are valid only with CR4.SMAP set, hence the flag.
+    unsafe {
+        let smap = *SMAP_ENABLED.get();
+        if smap {
+            asm!("stac", options(nomem, nostack));
+        }
+        core::ptr::copy_nonoverlapping(src.as_ptr(), dst as *mut u8, src.len());
+        if smap {
+            asm!("clac", options(nomem, nostack));
+        }
+    }
+}

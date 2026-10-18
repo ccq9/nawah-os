@@ -1,0 +1,120 @@
+//! Kernel objects, rights and the per-process handle table (WP-16, ADR-0011,
+//! docs/contracts/ipc.md). Authority is a handle: a per-process (index, generation) pair that
+//! names a reference-counted object together with the rights that handle carries. Nothing is
+//! reachable without a handle, every operation checks handle, type and rights first, and the
+//! last reference frees the object — so a process that exits with everything open leaks
+//! nothing.
+
+pub mod channel;
+pub mod handle;
+
+use alloc::sync::Arc;
+use alloc::vec::Vec;
+use core::sync::atomic::{AtomicU32, Ordering};
+
+use crate::mm::pmm::{self, Frame};
+
+pub use channel::Endpoint;
+pub use handle::{HandleTable, HANDLES_MAX};
+
+/// Rights carried by a handle (contract §1). A bit set means the operation is allowed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Rights(pub u32);
+
+impl Rights {
+    pub const READ: Rights = Rights(0x1);
+    pub const WRITE: Rights = Rights(0x2);
+    pub const DUPLICATE: Rights = Rights(0x4);
+    pub const TRANSFER: Rights = Rights(0x8);
+    pub const MAP: Rights = Rights(0x10);
+    pub const WAIT: Rights = Rights(0x20);
+    pub const NONE: Rights = Rights(0);
+    /// Every defined bit; anything else in a rights word is invalid.
+    pub const ALL: Rights = Rights(0x3F);
+    /// Rights of a fresh channel endpoint handle.
+    pub const CHANNEL_DEFAULT: Rights =
+        Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0 | Self::WAIT.0);
+    /// Rights of a fresh VMO handle.
+    pub const VMO_DEFAULT: Rights =
+        Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0 | Self::MAP.0);
+
+    pub const fn contains(self, other: Rights) -> bool {
+        self.0 & other.0 == other.0
+    }
+
+    pub const fn valid(self) -> bool {
+        self.0 & !Self::ALL.0 == 0
+    }
+}
+
+/// What a handle can name.
+#[derive(Clone)]
+pub enum Object {
+    Channel(Arc<Endpoint>),
+    Vmo(Arc<Vmo>),
+}
+
+/// Largest VMO (contract §3).
+pub const VMO_MAX_BYTES: u64 = 1024 * 1024;
+
+/// A memory object: whole frames owned until the last reference goes.
+pub struct Vmo {
+    frames: Vec<Frame>,
+}
+
+impl Vmo {
+    /// Allocates `size` bytes (a page multiple, at most `VMO_MAX_BYTES`) of zeroed frames.
+    pub fn new(size: u64) -> Option<Arc<Vmo>> {
+        if size == 0 || !size.is_multiple_of(4096) || size > VMO_MAX_BYTES {
+            return None;
+        }
+        let n = (size / 4096) as usize;
+        let mut frames = Vec::with_capacity(n);
+        for _ in 0..n {
+            match pmm::alloc_frame() {
+                Some(f) => frames.push(f),
+                None => {
+                    for f in frames {
+                        let _ = pmm::free_frame(f);
+                    }
+                    return None;
+                }
+            }
+        }
+        LIVE_VMOS.fetch_add(1, Ordering::Relaxed);
+        Some(Arc::new(Vmo { frames }))
+    }
+
+    pub fn size(&self) -> u64 {
+        self.frames.len() as u64 * 4096
+    }
+}
+
+impl Drop for Vmo {
+    fn drop(&mut self) {
+        for f in self.frames.drain(..) {
+            let _ = pmm::free_frame(f);
+        }
+        LIVE_VMOS.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
+static LIVE_VMOS: AtomicU32 = AtomicU32::new(0);
+
+/// Live object counts (leak checks in the test kernel and the boot self-check).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Stats {
+    pub channels: u32,
+    pub endpoints: u32,
+    pub vmos: u32,
+    pub handles: u32,
+}
+
+pub fn stats() -> Stats {
+    Stats {
+        channels: channel::live_channels(),
+        endpoints: channel::live_endpoints(),
+        vmos: LIVE_VMOS.load(Ordering::Relaxed),
+        handles: handle::live_handles(),
+    }
+}

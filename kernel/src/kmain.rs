@@ -270,6 +270,28 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         sched_code,
         u8::from(sched_ok)
     );
+    // Objects (WP-16) self-check in every build: a VMO travels through a channel inside the
+    // kernel, the peer sees the close, and every object and frame is released.
+    let obj_frames_before = mm::pmm::stats().free_frames;
+    let obj_before = crate::object::stats();
+    let (chan_ok, vmo_size, peer_closed) = object_selfcheck();
+    let obj_after = crate::object::stats();
+    let obj_delta = obj_frames_before as i64 - mm::pmm::stats().free_frames as i64;
+    let obj_ok =
+        chan_ok && vmo_size == 8192 && peer_closed && obj_after == obj_before && obj_delta == 0;
+    kprintln!(
+        "OSX|{}|kernel|object|channel_ok={}|vmo_size={}|peer_closed={}|live_channels={}|live_endpoints={}|live_vmos={}|live_handles={}|frames_delta={}|selfcheck={}",
+        build_id,
+        u8::from(chan_ok),
+        vmo_size,
+        u8::from(peer_closed),
+        obj_after.channels,
+        obj_after.endpoints,
+        obj_after.vmos,
+        obj_after.handles,
+        obj_delta,
+        u8::from(obj_ok)
+    );
     // Ring-3 self-check in every build: a process runs the ping program and exits through the
     // ABI; the scheduler reaps it and no frame is left behind.
     let (user_pid, user_exit, user_delta, user_code) =
@@ -311,4 +333,40 @@ extern "sysv64" fn sched_probe(arg: u64) -> u64 {
         return 0;
     }
     arg + 1
+}
+
+/// Kernel-side object round trip: (bytes and handle arrived intact, VMO size seen by the
+/// receiver, peer-closed observed after the sender's end is dropped).
+#[cfg(target_arch = "x86_64")]
+fn object_selfcheck() -> (bool, u64, bool) {
+    use crate::object::channel::{self, ChannelError, Message};
+    use crate::object::handle::Entry;
+    use crate::object::{Object, Rights, Vmo};
+    let Some(vmo) = Vmo::new(8192) else {
+        return (false, 0, false);
+    };
+    let (a, b) = channel::create();
+    let sent = a
+        .write(Message {
+            bytes: alloc::vec![1, 2, 3],
+            handles: alloc::vec![Entry {
+                object: Object::Vmo(vmo),
+                rights: Rights::VMO_DEFAULT,
+            }],
+        })
+        .is_ok();
+    let (bytes_ok, size) = match b.read(16, 4, None) {
+        Ok(m) => {
+            let size = match m.handles.first().map(|e| &e.object) {
+                Some(Object::Vmo(v)) => v.size(),
+                _ => 0,
+            };
+            (m.bytes == [1, 2, 3] && m.handles.len() == 1, size)
+        }
+        Err(_) => (false, 0),
+    };
+    drop(a);
+    let peer_closed = matches!(b.read(16, 4, None), Err(ChannelError::PeerClosed));
+    drop(b);
+    (sent && bytes_ok, size, peer_closed)
 }

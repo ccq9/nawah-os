@@ -1043,38 +1043,57 @@
       ],
       "inputs": [
         "docs/PLAN.md §4",
-        "Sol ADR-006"
+        "Sol ADR-006 (via ADR-0002 item 3)",
+        "Zircon handles/rights/channel_write (S39, S40)"
       ],
       "files": [
         "kernel/src/object/mod.rs",
         "kernel/src/object/handle.rs",
-        "kernel/src/ipc/channel.rs",
-        "docs/contracts/ipc.md"
+        "kernel/src/object/channel.rs",
+        "kernel/src/syscall/mod.rs",
+        "kernel/src/sched/mod.rs",
+        "kernel/src/arch/x86_64/syscall.rs",
+        "kernel/src/arch/x86_64/user_programs.rs",
+        "kernel/src/user.rs",
+        "kernel/src/kmain.rs",
+        "kernel/src/ktest.rs",
+        "kernel/src/main.rs",
+        "docs/contracts/ipc.md",
+        "docs/contracts/syscall.md",
+        "docs/adr/0011-handles-rights-and-channels.md",
+        "platform/pc-qemu/target.json",
+        "tools/unsafe-baseline.txt"
       ],
       "contract_refs": [
-        "docs/contracts/boot.md"
+        "docs/contracts/boot.md",
+        "docs/contracts/syscall.md",
+        "docs/contracts/ipc.md"
       ],
       "actions": [
-        "handle table with rights",
-        "object types process/thread/channel/vmo",
-        "channels with bounded messages and handle passing",
-        "ktests"
+        "handle table with generations and rights (per process, 1024 entries)",
+        "objects channel endpoint and VMO (Arc); process/thread handles deferred to WP-17",
+        "channels with bounded messages (4096 B, 4 handles, queue 64), two-phase write, handle passing, blocking read without lost wake-ups",
+        "syscalls 6-12 (ABI v1.2 additive), writable-pointer validation and copy_out",
+        "ring-3 test programs with step-coded exit, boot self-check, ktests"
       ],
-      "acceptance": "ipc tests PASS",
+      "acceptance": "TST-M3-IPC-ROUNDTRIP/RIGHTS-DENIED/CLOSED-HANDLE/IPC-OVERSIZE/IPC-NO-LEAK/HANDLE-TABLE/BLOCK-WAKE PASS on CI; TST-M1-BOOT PASS with the kernel|object self-check line; contract ipc.md v1 frozen",
       "test_ids": [
         "TST-M3-IPC-ROUNDTRIP",
         "TST-M3-RIGHTS-DENIED",
         "TST-M3-CLOSED-HANDLE",
         "TST-M3-IPC-OVERSIZE",
-        "TST-M3-IPC-NO-LEAK"
+        "TST-M3-IPC-NO-LEAK",
+        "TST-M3-HANDLE-TABLE",
+        "TST-M3-BLOCK-WAKE"
       ],
       "commands": [
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M3"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

@@ -796,7 +796,9 @@
       "dependencies": [
         "REQ-M3-004"
       ],
-      "contract_refs": [],
+      "contract_refs": [
+        "docs/contracts/ipc.md"
+      ],
       "failure_cases": [
         "رسالة فوق الحد تُقبل",
         "مقبض مغلق يُستعمل"
@@ -807,9 +809,11 @@
         "TST-M3-RIGHTS-DENIED",
         "TST-M3-CLOSED-HANDLE",
         "TST-M3-IPC-OVERSIZE",
-        "TST-M3-IPC-NO-LEAK"
+        "TST-M3-IPC-NO-LEAK",
+        "TST-M3-HANDLE-TABLE",
+        "TST-M3-BLOCK-WAKE"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "partial",
       "evidence_refs": []
     },
     {
