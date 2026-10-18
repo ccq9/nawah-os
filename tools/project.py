@@ -357,6 +357,43 @@ def run_logged(cmd, cwd, log_out, log_err, timeout):
             e.write(b"TIMEOUT\n"); return 124
 
 
+def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions):
+    """`run_logged` for a QEMU case that drives the guest through the monitor (WP-27): once
+    `actions["after"]` appears in the serial log, every line of `actions["commands"]` goes to
+    the monitor socket (`sendkey a`, …), then QEMU runs to its end as usual."""
+    import socket
+    import time
+    with open(log_out, "ab") as o, open(log_err, "ab") as e:
+        o.write(f"$ {' '.join(cmd)}\n".encode()); o.flush()
+        p = subprocess.Popen(cmd, cwd=cwd, stdout=o, stderr=e)
+        deadline = time.monotonic() + timeout
+        sent = False
+        marker = actions["after"].encode()
+        while p.poll() is None and time.monotonic() < deadline:
+            if not sent and serial_path.exists() and marker in serial_path.read_bytes():
+                try:
+                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as m:
+                        m.settimeout(5)
+                        m.connect(str(monitor_path))
+                        time.sleep(0.3)
+                        try:
+                            m.recv(4096)
+                        except OSError:
+                            pass
+                        for line in actions["commands"]:
+                            m.sendall((line + "\n").encode())
+                            time.sleep(float(actions.get("gap_s", 0.2)))
+                    o.write(f"# monitor: sent {len(actions['commands'])} command(s) after {actions['after']!r}\n".encode()); o.flush()
+                except OSError as ex:
+                    e.write(f"monitor: {ex}\n".encode()); e.flush()
+                sent = True
+            time.sleep(0.1)
+        if p.poll() is None:
+            p.kill(); p.wait()
+            e.write(b"TIMEOUT\n"); return 124
+        return p.returncode
+
+
 def new_run_dir(purpose_slug):
     rev, _ = source_identity()
     ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -465,13 +502,19 @@ def keep_artifact(d, rid, art: Path) -> str:
     return f"evidence/{rid}/artifact/{art.name}"
 
 
-def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None, smp=None):
+def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None, smp=None, monitor=None):
     q = t["qemu"]
     # Per-target exit device: isa-debug-exit on the PC, semihosting on the Arm virt board.
     exit_args = q.get("extra_args", ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
     disk_args = []
     if disk is not None:
         disk_args = ["-drive", f"if=none,id=vd0,format=raw,file={disk}", "-device", q["disk"]["device"]]
+    # The lab network (WP-27): QEMU user-mode networking (SLIRP) on a modern virtio-net function.
+    if q.get("net"):
+        disk_args += ["-netdev", q["net"]["netdev"], "-device", q["net"]["device"]]
+    # A monitor socket when a case drives the guest (keys through `sendkey`, WP-27).
+    if monitor is not None:
+        disk_args += ["-monitor", f"unix:{monitor},server,nowait"]
     # A case (or phase) may ask for its own CPU count (`smp`, WP-20); the target's is the default.
     cmd = [q["binary"], "-machine", q["machine"], "-cpu", q["cpu"], "-m", q["memory"], "-smp", str(smp or q["smp"]),
            "-drive", f"if=pflash,format=raw,readonly=on,file={q['ovmf_code']}",
@@ -574,8 +617,15 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         serial = d / ("serial.log" if len(phases) == 1 else f"serial-{i + 1}.log")
         disk = prepare_disk(t, target_name, fresh=(i == 0))
         extra = ph.get("qemu_extra", case.get("qemu_extra", []))
-        cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")))
-        rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s)
+        actions = ph.get("monitor", case.get("monitor"))
+        # A short socket path (AF_UNIX paths are limited to 107 bytes).
+        monitor = (ROOT / "build" / target_name / f"mon{i + 1}.sock") if actions else None
+        if monitor is not None:
+            monitor.unlink(missing_ok=True)
+        cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")), monitor)
+        run = (lambda: run_qemu_monitored(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s, serial, monitor, actions)) if actions \
+            else (lambda: run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s))
+        rc = run()
         if rc < 0:
             # QEMU itself died (signal): a lab failure, not a verdict on the kernel. One retry on
             # a fresh image; if it dies again the case fails and says why (LAB_ERROR), so a
@@ -583,7 +633,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
             lab_errors.append(f"phase {i + 1}: qemu died with signal {-rc}, retried")
             serial.unlink(missing_ok=True)
             disk = prepare_disk(t, target_name, fresh=(i == 0))
-            rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s)
+            rc = run()
         text = serial.read_text(errors="replace") if serial.exists() else ""
         cmds.append(" ".join(cmd)); texts.append(text); rcs.append(rc)
         if len(phases) > 1:

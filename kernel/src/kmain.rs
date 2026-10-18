@@ -296,8 +296,10 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
     );
     // Storage (WP-18): PCI through ECAM, the first virtio-blk function, one sector read as a
     // self-check in every build (the lab attaches a 16 MiB virtio disk).
+    let mut pci_functions: alloc::vec::Vec<crate::arch::pci::Device> = alloc::vec::Vec::new();
     let blk_line = match crate::block::init(bi.rsdp) {
         Ok(info) => {
+            pci_functions = info.functions.clone();
             let mut list = alloc::string::String::new();
             for f in info.functions.iter().take(12) {
                 use core::fmt::Write as _;
@@ -369,6 +371,24 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         Err(code) => alloc::format!("code={code}|selfcheck=0"),
     };
     kprintln!("OSX|{}|kernel|blk|{}", build_id, blk_line);
+    // Network (WP-27, ADR-0017): the first virtio-net function; the self-check sends an ARP
+    // request for the lab gateway and expects the reply within 500 ticks (QEMU user-mode
+    // networking answers ARP), proving both queues and the DMA buffers.
+    kprintln!(
+        "OSX|{}|kernel|net|{}",
+        build_id,
+        crate::net::boot_line(&pci_functions)
+    );
+    // Keyboard (WP-27): the i8042 is used as the firmware left it; bytes are polled per tick.
+    let kbd = crate::net::keyboard_object();
+    kprintln!(
+        "OSX|{}|kernel|kbd|drained={}|ring={}|pending={}|overflow={}|code=ok|selfcheck=1",
+        build_id,
+        arch::i8042::init(),
+        crate::object::kbd::RING,
+        kbd.pending(),
+        kbd.overflow()
+    );
     // FAT32 (WP-18 part 2): mount the lab volume and read its hello file in every build.
     let fs_line = match crate::fs::mount() {
         Ok(v) => {

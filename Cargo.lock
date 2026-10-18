@@ -54,6 +54,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "kbdprobe"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "launch"
 version = "0.1.0"
 dependencies = [
@@ -71,6 +78,13 @@ version = "0.1.0"
 [[package]]
 name = "nawah-kernel"
 version = "0.1.0"
+
+[[package]]
+name = "netprobe"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
 
 [[package]]
 name = "path_invalid"

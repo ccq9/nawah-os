@@ -43,7 +43,10 @@ pub fn spawn_manager() -> Result<Manager, &'static str> {
     let image = crate::loader::read_image(MANAGER_IMAGE).map_err(|e| e.code())?;
     let (ours, theirs) = channel::create();
     let object = Arc::new(ProcessObject::new());
-    let initial = alloc::vec![
+    // Kernel resources for the services (ADR-0017): the manager routes them by type
+    // (`handle_type`) to the `auth` (authority), `net` (interface) and `input` (keyboard)
+    // services; a missing device is simply not passed.
+    let mut initial = alloc::vec![
         Entry {
             object: Object::Channel(theirs),
             rights: Rights::CHANNEL_DEFAULT,
@@ -53,13 +56,25 @@ pub fn spawn_manager() -> Result<Manager, &'static str> {
             rights: Rights::AUTHORITY_DEFAULT,
         },
     ];
+    if crate::net::info().is_some() {
+        initial.push(Entry {
+            object: Object::Nic(crate::net::nic_object()),
+            rights: Rights::NIC_DEFAULT,
+        });
+    }
+    initial.push(Entry {
+        object: Object::Keyboard(crate::net::keyboard_object()),
+        rights: Rights::KBD_DEFAULT,
+    });
+    let n_initial = initial.len();
     let pid =
         crate::user::spawn_elf_with(&image, 1, initial, object.clone()).map_err(|e| e.code())?;
     kprintln!(
-        "OSX|{}|kernel|spawn|pid={}|path={}|handles=2|by=kernel",
+        "OSX|{}|kernel|spawn|pid={}|path={}|handles={}|by=kernel",
         crate::BUILD_ID,
         pid,
-        core::str::from_utf8(MANAGER_IMAGE).unwrap_or("?")
+        core::str::from_utf8(MANAGER_IMAGE).unwrap_or("?"),
+        n_initial
     );
     Ok(Manager {
         pid,

@@ -26,6 +26,8 @@ const APPS: &[&str] = &[
     "waiter",
     "svcmgr",
     "svc",
+    "netprobe",
+    "kbdprobe",
 ];
 
 fn emit_apps() {

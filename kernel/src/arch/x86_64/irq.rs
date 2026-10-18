@@ -44,7 +44,12 @@ fn this_cpu() -> usize {
 }
 
 fn timer_tick() {
-    TICKS[this_cpu()].fetch_add(1, Ordering::Relaxed);
+    let cpu = this_cpu();
+    TICKS[cpu].fetch_add(1, Ordering::Relaxed);
+    // Device polling (WP-27) happens on the time-base CPU only, before the scheduler's tick.
+    if cpu == 0 {
+        crate::net::tick_poll();
+    }
     crate::sched::tick();
 }
 

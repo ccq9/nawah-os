@@ -1,6 +1,6 @@
-# عقد نداءات النظام — الإصدار 1.5 (WP-14 v1، WP-15 v1.1، WP-16 v1.2، WP-19 v1.3، WP-23 v1.4، WP-25 v1.5؛ ADR-0009، ADR-0010، ADR-0011، ADR-0014، ADR-0016)
+# عقد نداءات النظام — الإصدار 1.6 (WP-14 v1، WP-15 v1.1، WP-16 v1.2، WP-19 v1.3، WP-23 v1.4، WP-25 v1.5، WP-27 v1.6؛ ADR-0009، ADR-0010، ADR-0011، ADR-0014، ADR-0016)
 
-مجمَّد (v1.4 أُغلق مع WP-23 بدليل CI run 39130028974؛ v1.5 مع WP-25 بدليل CI run 39133153681): أي تغيير في الأرقام أو الرموز أو تمرير الوسائط = إصدار جديد مع سجل قرار. الإصدارات 1.1 … 1.5 **إضافية فقط**: 4–5 (المجدول)، 6–12 (المقابض والقنوات وVMO، تفصيلها في `docs/contracts/ipc.md`)، 13–19 (الملفات، تفصيلها في `docs/contracts/files.md`)، 20–23 (العمليات من الحجم والانتظار والساعة، §5 أدناه)، 24–26 (الرموز والسلطة، v1.5 قيد WP-25، تفصيلها في `docs/contracts/auth.md`)؛ كل ما في الإصدار 1 باقٍ بلا تغيير. الكود: `kernel/src/syscall/mod.rs` (المحايد)، `kernel/src/arch/x86_64/syscall.rs` (الدخول/الخروج/النسخ)، `kernel/src/sched/` (exit/yield/sleep/الحجب)، `kernel/src/object/` (الكائنات).
+مجمَّد (v1.4 أُغلق مع WP-23 بدليل CI run 39130028974؛ v1.5 مع WP-25 بدليل CI run 39133153681؛ v1.6 قيد WP-27): أي تغيير في الأرقام أو الرموز أو تمرير الوسائط = إصدار جديد مع سجل قرار. الإصدارات 1.1 … 1.6 **إضافية فقط**: 4–5 (المجدول)، 6–12 (المقابض والقنوات وVMO، تفصيلها في `docs/contracts/ipc.md`)، 13–19 (الملفات، تفصيلها في `docs/contracts/files.md`)، 20–23 (العمليات من الحجم والانتظار والساعة، §5 أدناه)، 24–26 (الرموز والسلطة، v1.5 قيد WP-25، تفصيلها في `docs/contracts/auth.md`)، 27–31 (أنواع الكائنات وواجهة الشبكة ولوحة المفاتيح، v1.6 قيد WP-27، تفصيلها في `net.md` و`input.md`)؛ كل ما في الإصدار 1 باقٍ بلا تغيير. الكود: `kernel/src/syscall/mod.rs` (المحايد)، `kernel/src/arch/x86_64/syscall.rs` (الدخول/الخروج/النسخ)، `kernel/src/sched/` (exit/yield/sleep/الحجب)، `kernel/src/object/` (الكائنات).
 
 ## 1. الاتفاق العام (كل المعماريات)
 
@@ -32,6 +32,11 @@
 | 24 | `token_create` (v1.5) | authority_h, uid, gid, perms, expires | مقبض رمز — auth.md §2 |
 | 25 | `token_info` (v1.5) | h, out_ptr (32 بايت) | 0 — auth.md §2 |
 | 26 | `token_revoke` (v1.5) | h (بحق WRITE) | 0 — auth.md §2 |
+| 27 | `handle_type` (v1.6) | h | رمز نوع الكائن (ipc.md §1) |
+| 28 | `nic_info` (v1.6) | h, out_ptr (16 بايت) | 0 — net.md أ |
+| 29 | `nic_send` (v1.6) | h, ptr, len | 0 — net.md أ |
+| 30 | `nic_recv` (v1.6) | h, ptr, cap | طول الإطار — net.md أ |
+| 31 | `kbd_read` (v1.6) | h, ptr, cap | عدد البايتات — input.md |
 
 رموز الأخطاء: `ERR_NOSYS = -1`، `ERR_INVALID = -2`، `ERR_FAULT = -3`، `ERR_RANGE = -4`؛ (v1.2) `ERR_BAD_HANDLE = -5`، `ERR_ACCESS = -6`، `ERR_PEER_CLOSED = -7`، `ERR_SHOULD_WAIT = -8`، `ERR_BUFFER_TOO_SMALL = -9`، `ERR_NO_RESOURCES = -10`، `ERR_WRONG_TYPE = -11`؛ (v1.3) `ERR_NOT_FOUND = -12`، `ERR_EXISTS = -13`، `ERR_IS_DIR = -14`، `ERR_NOT_DIR = -15`، `ERR_BAD_PATH = -16`، `ERR_NO_SPACE = -17`، `ERR_IO = -18`؛ (v1.4) `ERR_TIMED_OUT = -19`.
 

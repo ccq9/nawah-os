@@ -1769,13 +1769,53 @@
         "docs/PLAN.md §5",
         "docs/adr/0016-services-and-authority.md"
       ],
-      "files": [],
-      "contract_refs": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/adr/0017-m4-drivers.md",
+        "docs/contracts/input.md",
+        "docs/contracts/ipc.md",
+        "docs/contracts/net.md",
+        "docs/contracts/services.md",
+        "docs/contracts/syscall.md",
+        "docs/sources.json",
+        "kernel/build.rs",
+        "kernel/src/arch/mod.rs",
+        "kernel/src/arch/x86_64/i8042.rs",
+        "kernel/src/arch/x86_64/irq.rs",
+        "kernel/src/arch/x86_64/mod.rs",
+        "kernel/src/drivers/mod.rs",
+        "kernel/src/drivers/virtio_net.rs",
+        "kernel/src/kmain.rs",
+        "kernel/src/ktest.rs",
+        "kernel/src/main.rs",
+        "kernel/src/net.rs",
+        "kernel/src/object/kbd.rs",
+        "kernel/src/object/mod.rs",
+        "kernel/src/object/nic.rs",
+        "kernel/src/services.rs",
+        "kernel/src/syscall/mod.rs",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tools/project.py",
+        "tools/unsafe-baseline.txt",
+        "user/apps/kbdprobe/src/main.rs",
+        "user/apps/netprobe/src/main.rs",
+        "user/apps/svcmgr/src/main.rs",
+        "user/libnawah/src/lib.rs"
+      ],
+      "contract_refs": [
+        "docs/contracts/input.md",
+        "docs/contracts/net.md",
+        "docs/contracts/syscall.md"
+      ],
       "actions": [
-        "تعريفات المختبر: virtio-net وPS/2 (i8042) بحدود موارد ثابتة؛ نموذج ثقة DMA في threat-model",
-        "virtio-net over the modern transport (receive/transmit queues from driver-owned frames, MAC from device config)",
-        "i8042 PS/2 keyboard driver with scancode set 1 decoding; QEMU monitor sendkey in the lab",
-        "resource limits and refusal tests; threat-model DMA section"
+        "virtio-net وPS/2 بحدود موارد ونموذج DMA",
+        "virtio-net driver (modern transport, VERSION_1|MAC|STATUS, two 16-entry split queues, 12-byte header, 18 fixed DMA frames, frames copied through driver slots); ARP self-check against the lab gateway at boot (kernel|net)",
+        "i8042 keyboard: auxiliary port disabled, set-1 scancodes polled from the timer tick into a 64-byte ring (kernel|kbd); +3 unsafe lines (baseline 173, ADR-0017)",
+        "Object::Nic and Object::Keyboard with READABLE wake-ups from the tick; syscalls 27 handle_type, 28 nic_info, 29 nic_send, 30 nic_recv, 31 kbd_read (ABI v1.6 additive)",
+        "svcmgr v1.2 routes kernel resources by type to auth/net/input; lab QEMU gets SLIRP user networking and a monitor socket for sendkey-driven cases (tools/project.py)",
+        "netprobe/kbdprobe user apps; ktests net_link, net_limits, kbd_scancodes"
       ],
       "acceptance": "TST-M4-NET-LINK/NET-LIMITS/KBD-SCANCODES PASS on CI",
       "test_ids": [
@@ -1787,9 +1827,10 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M4"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

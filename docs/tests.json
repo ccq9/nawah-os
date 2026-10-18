@@ -75,7 +75,7 @@
     "REQ-M1-002"
    ],
    "layer": "guest",
-   "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…)",
+   "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); the manager receives 4 initial handles",
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1175,7 +1175,7 @@
     "REQ-M4-006"
    ],
    "layer": "guest",
-   "oracle": "virtio-net initialises (modern transport, MAC read from device config, link up), receive queue filled from driver-owned frames; frames balance",
+   "oracle": "the kernel's ARP probe for 10.0.2.2 is answered by the lab gateway (52:55:0a:00:02:02) and the netprobe process, holding the NIC handle, reads the interface (MAC, link, frame_max 1514, queue 16), sends its own ARP request, waits for READABLE, receives frames until the reply, and sees the refusals: 13 and 1515-byte sends and a 100-byte receive buffer ERR_INVALID, a copy without WRITE cannot send and one without READ cannot receive (ERR_ACCESS), a wait without WAIT is refused; exit 0x73; the kernel counts the process's frames; no frame leaked; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1186,7 +1186,7 @@
     "REQ-M4-006"
    ],
    "layer": "guest",
-   "oracle": "a flood of transmit requests beyond the queue limit is refused with ERR_NO_RESOURCES without allocation growth; oversize frames are refused",
+   "oracle": "64 sends back to back: exactly queue_size (16) are queued and the rest refused with Busy (counted in tx_busy), never more slots in flight than the queue; after the device drains the ring every slot is reclaimed (in_flight 0) and 16 more sends succeed; a 13-byte and a 1515-byte frame are refused (Range); the DMA frame count stays 18 and no kernel frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1197,7 +1197,7 @@
     "REQ-M4-006"
    ],
    "layer": "guest",
-   "oracle": "keys injected through the QEMU monitor (sendkey) arrive as PS/2 scancodes through the i8042 driver and are decoded to the expected key codes",
+   "oracle": "the test reports ready, the lab sends `sendkey a`, `sendkey b`, `sendkey ret` through the QEMU monitor, and the kbdprobe process (holding the keyboard handle) waits for READABLE and reads the six set-1 bytes 1E 9E 30 B0 1C 9C, exiting with them packed little-endian (0x9c1cb0309e1e); no overflow, nothing left pending, no frame leaked; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []

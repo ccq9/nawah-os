@@ -38,6 +38,12 @@ pub const SYS_PROCESS_STATUS: u64 = 23;
 pub const SYS_TOKEN_CREATE: u64 = 24;
 pub const SYS_TOKEN_INFO: u64 = 25;
 pub const SYS_TOKEN_REVOKE: u64 = 26;
+/// v1.6 (WP-27): object types, the network interface, the keyboard.
+pub const SYS_HANDLE_TYPE: u64 = 27;
+pub const SYS_NIC_INFO: u64 = 28;
+pub const SYS_NIC_SEND: u64 = 29;
+pub const SYS_NIC_RECV: u64 = 30;
+pub const SYS_KBD_READ: u64 = 31;
 
 pub const ERR_NOSYS: i64 = -1;
 pub const ERR_INVALID: i64 = -2;
@@ -323,6 +329,105 @@ pub fn token_info(h: Handle) -> Result<TokenInfo, i64> {
 /// Revokes a token through a handle with WRITE (the minter's).
 pub fn token_revoke(h: Handle) -> i64 {
     syscall6(SYS_TOKEN_REVOKE, u64::from(h), 0, 0, 0, 0, 0)
+}
+
+/// Object type codes (`handle_type`, ipc.md §1).
+pub mod object_type {
+    pub const CHANNEL: i64 = 1;
+    pub const VMO: i64 = 2;
+    pub const FILE: i64 = 3;
+    pub const PROCESS: i64 = 4;
+    pub const TOKEN: i64 = 5;
+    pub const AUTHORITY: i64 = 6;
+    pub const NIC: i64 = 7;
+    pub const KEYBOARD: i64 = 8;
+}
+
+/// The type code of the object behind `h`, or an error.
+pub fn handle_type(h: Handle) -> i64 {
+    syscall6(SYS_HANDLE_TYPE, u64::from(h), 0, 0, 0, 0, 0)
+}
+
+/// What `nic_info` reports (net.md §2).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct NicInfo {
+    pub mac: [u8; 6],
+    pub link_up: bool,
+    pub frame_max: u16,
+    pub queue_size: u16,
+}
+
+pub fn nic_info(h: Handle) -> Result<NicInfo, i64> {
+    let mut buf = [0u8; 16];
+    let r = syscall6(
+        SYS_NIC_INFO,
+        u64::from(h),
+        buf.as_mut_ptr() as u64,
+        0,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        return Err(r);
+    }
+    let mut mac = [0u8; 6];
+    mac.copy_from_slice(&buf[..6]);
+    Ok(NicInfo {
+        mac,
+        link_up: buf[6] != 0,
+        frame_max: u16::from_le_bytes([buf[8], buf[9]]),
+        queue_size: u16::from_le_bytes([buf[10], buf[11]]),
+    })
+}
+
+/// Queues one Ethernet frame (14..=1514 bytes); `ERR_SHOULD_WAIT` while every slot is busy.
+pub fn nic_send(h: Handle, frame: &[u8]) -> i64 {
+    syscall6(
+        SYS_NIC_SEND,
+        u64::from(h),
+        frame.as_ptr() as u64,
+        frame.len() as u64,
+        0,
+        0,
+        0,
+    )
+}
+
+/// One received frame into `buf` (at least 1514 bytes); `Err(ERR_SHOULD_WAIT)` when none.
+pub fn nic_recv(h: Handle, buf: &mut [u8]) -> Result<usize, i64> {
+    let r = syscall6(
+        SYS_NIC_RECV,
+        u64::from(h),
+        buf.as_mut_ptr() as u64,
+        buf.len() as u64,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as usize)
+    }
+}
+
+/// Scancode bytes from the keyboard; `Err(ERR_SHOULD_WAIT)` when none waits.
+pub fn kbd_read(h: Handle, buf: &mut [u8]) -> Result<usize, i64> {
+    let r = syscall6(
+        SYS_KBD_READ,
+        u64::from(h),
+        buf.as_mut_ptr() as u64,
+        buf.len() as u64,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as usize)
+    }
 }
 
 #[doc(hidden)]

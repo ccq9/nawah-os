@@ -1,6 +1,6 @@
 # nawah-os workspace. Profiles live here (cargo ignores profiles in member manifests).
 [workspace]
-members = ["kernel", "user/libnawah", "user/apps/hello", "user/apps/file_roundtrip", "user/apps/path_invalid", "user/apps/fd_leak", "user/apps/echo", "user/apps/launch", "user/apps/child", "user/apps/waiter", "user/apps/svcmgr", "user/apps/svc", "user/nawah-crypto", "user/apps/authd", "user/apps/configd"]
+members = ["kernel", "user/libnawah", "user/apps/hello", "user/apps/file_roundtrip", "user/apps/path_invalid", "user/apps/fd_leak", "user/apps/echo", "user/apps/launch", "user/apps/child", "user/apps/waiter", "user/apps/svcmgr", "user/apps/svc", "user/nawah-crypto", "user/apps/authd", "user/apps/configd", "user/apps/netprobe", "user/apps/kbdprobe"]
 resolver = "2"
 
 [profile.dev]

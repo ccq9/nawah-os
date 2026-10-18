@@ -175,6 +175,9 @@ pub fn run() -> ! {
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
+        "net_link" => net_link(),
+        "net_limits" => net_limits(),
+        "kbd_scancodes" => kbd_scancodes(),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -3742,6 +3745,191 @@ fn config_persist(write: bool) -> ! {
             "config value survived the QEMU restart"
         },
     )
+}
+
+// ---- WP-27: the network interface and the keyboard ----------------------------------------
+
+/// Runs an embedded application with one kernel object as its bootstrap handle.
+fn run_with_object(name: &str, image: &[u8], entry: Entry) -> crate::user::Outcome {
+    if image.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let frames0 = pmm::stats().free_frames;
+    let pid = match crate::user::spawn_elf_with(image, 1, alloc::vec![entry], object) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|error={}", BUILD_ID, name, e.code());
+            fail("application did not load")
+        }
+    };
+    let exit_code = sched::wait_process(pid).unwrap_or(u64::MAX);
+    crate::user::Outcome {
+        pid,
+        exit_code,
+        frames_delta: frames0 as i64 - pmm::stats().free_frames as i64,
+    }
+}
+
+/// The interface from the kernel (ARP round trip with the lab gateway) and from a process
+/// (netprobe through the NIC handle: info, send, wait, receive, refusals).
+fn net_link() -> ! {
+    let Some(info) = crate::net::info() else {
+        fail("no network interface")
+    };
+    let probe = crate::net::arp_probe(500);
+    let (gw, waited, code) = match probe {
+        Ok((mac, t)) => (mac, t, "ok"),
+        Err(e) => ([0; 6], 0, e.code()),
+    };
+    let st0 = crate::net::stats();
+    let o = run_with_object(
+        "net_link",
+        crate::apps::NETPROBE,
+        Entry {
+            object: Object::Nic(crate::net::nic_object()),
+            rights: Rights::NIC_DEFAULT,
+        },
+    );
+    let st1 = crate::net::stats();
+    kprintln!(
+        "OSX|{}|ktest|net_link|mac={:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}|link={}|gateway={:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}|arp_ticks={}|kernel_code={}|user_exit={:#x}|user_tx={}|user_rx={}|rx_bad={}|frames_delta={}|dma_frames={}",
+        BUILD_ID,
+        info.mac[0], info.mac[1], info.mac[2], info.mac[3], info.mac[4], info.mac[5],
+        u8::from(crate::net::link_up()),
+        gw[0], gw[1], gw[2], gw[3], gw[4], gw[5],
+        waited,
+        code,
+        o.exit_code,
+        st1.tx_frames - st0.tx_frames,
+        st1.rx_frames - st0.rx_frames,
+        st1.rx_bad,
+        o.frames_delta,
+        crate::net::frames()
+    );
+    if code != "ok" || gw == [0; 6] {
+        fail("the kernel's ARP probe got no reply from the gateway")
+    }
+    if o.exit_code != 0x73 || o.frames_delta != 0 {
+        fail("netprobe did not reach its end (exit code = failing step)")
+    }
+    if st1.tx_frames - st0.tx_frames < 1 || st1.rx_frames - st0.rx_frames < 1 {
+        fail("the process's frames were not counted")
+    }
+    pass("the interface sends and receives from the kernel and from a process")
+}
+
+/// Fixed resources under pressure: 64 sends back to back fill the 16 transmit slots and are
+/// refused with Busy beyond them (never dropped silently, never more slots), every slot comes
+/// back, the DMA frames never change, oversized and undersized frames are refused.
+fn net_limits() -> ! {
+    use crate::drivers::virtio_net::{NetError, DMA_FRAMES, FRAME_MAX};
+    let Some(info) = crate::net::info() else {
+        fail("no network interface")
+    };
+    let frames_before = pmm::stats().free_frames;
+    let req = crate::net::arp_request(
+        info.mac,
+        crate::net::LAB_GUEST_IP,
+        crate::net::LAB_GATEWAY_IP,
+    );
+    let (mut sent, mut busy, mut other) = (0u32, 0u32, 0u32);
+    for _ in 0..64 {
+        match crate::net::send(&req) {
+            Ok(()) => sent += 1,
+            Err(NetError::Busy) => busy += 1,
+            Err(_) => other += 1,
+        }
+    }
+    let in_flight_peak = crate::net::tx_in_flight();
+    // Wait for the device to drain the ring, then every slot is free again.
+    let t = sched::ticks() + 200;
+    sched::poll_until(t, || crate::net::tx_in_flight() == 0);
+    let in_flight_after = crate::net::tx_in_flight();
+    let (mut sent2, mut busy2) = (0u32, 0u32);
+    for _ in 0..16 {
+        match crate::net::send(&req) {
+            Ok(()) => sent2 += 1,
+            Err(NetError::Busy) => busy2 += 1,
+            Err(_) => other += 1,
+        }
+    }
+    let short = crate::net::send(&req[..13]) == Err(NetError::Range);
+    let long = crate::net::send(&[0u8; FRAME_MAX + 1]) == Err(NetError::Range);
+    // Drain whatever came back (ARP replies to the flood) and count.
+    let t = sched::ticks() + 300;
+    sched::poll_until(t, || false);
+    let mut buf = alloc::vec![0u8; FRAME_MAX];
+    let mut received = 0u32;
+    while crate::net::recv(&mut buf).is_some() {
+        received += 1;
+    }
+    let st = crate::net::stats();
+    let frames_delta = frames_before as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|net_limits|queue_size={}|sent={}|busy={}|other={}|in_flight_peak={}|in_flight_after={}|sent2={}|busy2={}|short_refused={}|long_refused={}|received={}|tx_busy_counted={}|rx_bad={}|dma_frames={}|frames_delta={}",
+        BUILD_ID,
+        info.queue_size,
+        sent,
+        busy,
+        other,
+        in_flight_peak,
+        in_flight_after,
+        sent2,
+        busy2,
+        u8::from(short),
+        u8::from(long),
+        received,
+        st.tx_busy,
+        st.rx_bad,
+        crate::net::frames(),
+        frames_delta
+    );
+    let q = u32::from(info.queue_size);
+    if sent < q || sent + busy != 64 || other != 0 || in_flight_peak > q {
+        fail("the transmit ring did not refuse beyond its slots")
+    }
+    if in_flight_after != 0 || sent2 != 16 || busy2 != 0 {
+        fail("transmit slots were not reclaimed")
+    }
+    if !short || !long || crate::net::frames() != DMA_FRAMES || frames_delta != 0 {
+        fail("length limits or resource accounting wrong")
+    }
+    pass("the interface's fixed resources hold under pressure and come back")
+}
+
+/// Scancodes from the i8042 through the keyboard object and a process (kbdprobe): the test
+/// reports readiness, the lab injects a, b and Enter through the QEMU monitor, and the process
+/// exits with the six set-1 make/break bytes it collected.
+fn kbd_scancodes() -> ! {
+    let kbd = crate::net::keyboard_object();
+    kprintln!(
+        "OSX|{}|ktest|kbd_scancodes|ready=1|pending={}|overflow={}",
+        BUILD_ID,
+        kbd.pending(),
+        kbd.overflow()
+    );
+    let o = run_with_object(
+        "kbd_scancodes",
+        crate::apps::KBDPROBE,
+        Entry {
+            object: Object::Keyboard(kbd.clone()),
+            rights: Rights::KBD_DEFAULT,
+        },
+    );
+    kprintln!(
+        "OSX|{}|ktest|kbd_scancodes|exit={:#x}|overflow={}|pending_after={}|frames_delta={}",
+        BUILD_ID,
+        o.exit_code,
+        kbd.overflow(),
+        kbd.pending(),
+        o.frames_delta
+    );
+    // a: 1E/9E, b: 30/B0, Enter: 1C/9C, packed little-endian.
+    if o.exit_code != 0x9c1c_b030_9e1e || o.frames_delta != 0 {
+        fail("the injected keys did not arrive as set-1 scancodes")
+    }
+    pass("keyboard scancodes reach a process through the keyboard object")
 }
 
 /// A process that exits with 44 file handles open (20 files + 20 duplicates, 4 created and

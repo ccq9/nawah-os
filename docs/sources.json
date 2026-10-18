@@ -652,6 +652,77 @@
       ],
       "limits": "PDF fetched for §5; the lab uses a smaller iteration count than the product default so that guest tests finish in seconds (policy value, services' config)",
       "verified": true
+    },
+    {
+      "id": "S51",
+      "title": "Virtio 1.3 — network device (device-types/net/description.tex)",
+      "url": "https://raw.githubusercontent.com/oasis-tcs/virtio-spec/master/device-types/net/description.tex",
+      "version": "master LaTeX source (the 1.3 release), read 2026-10-18",
+      "accessed": "2026-10-18",
+      "supports": [
+        "Device ID 1; receiveq1 = 0, transmitq1 = 1, controlq only with VIRTIO_NET_F_CTRL_VQ",
+        "feature bits: CSUM 0, GUEST_CSUM 1, MTU 3, MAC 5, GSO 6, MRG_RXBUF 15, STATUS 16, CTRL_VQ 17",
+        "config: u8 mac[6] (valid with MAC), le16 status (with STATUS), le16 max_virtqueue_pairs, le16 mtu",
+        "struct virtio_net_hdr: flags, gso_type, hdr_len, gso_size, csum_start, csum_offset, num_buffers — 12 bytes without HASH_REPORT; the device MUST set num_buffers to 1 without MRG_RXBUF; a legacy driver without MRG_RXBUF used a 10-byte header",
+        "transmit without offloads: flags 0, gso_type NONE; receive buffers of at least 1526 bytes and a single descriptor per packet without MRG_RXBUF"
+      ],
+      "limits": "only the fields and rules the driver uses were extracted",
+      "verified": true
+    },
+    {
+      "id": "S52",
+      "title": "8042 PS/2 controller register model (ports 60h/64h, status bits, command A7h)",
+      "url": "https://wiki.osdev.org/%228042%22_PS/2_Controller",
+      "version": "secondary summary (OSDev wiki) read 2026-10-18; the original IBM PC/AT Technical Reference and Intel 8042 datasheet are not publicly fetchable",
+      "accessed": "2026-10-18",
+      "supports": [
+        "data port 60h (read: output buffer; write: input buffer), status/command port 64h",
+        "status bit 0 output buffer full (data readable), bit 1 input buffer full, bit 5 auxiliary (mouse) output on PS/2 controllers",
+        "command A7h disables the second (auxiliary) PS/2 port; QEMU's i8042 implements the same registers (hw/input/pckbd.c)",
+        "translation to scancode set 1 is the default on PC-compatible controllers (QEMU: `a` 1E/9E, `b` 30/B0, Enter 1C/9C)"
+      ],
+      "limits": "secondary source; confirmed by the lab (TST-M4-KBD-SCANCODES)",
+      "verified": false
+    },
+    {
+      "id": "S53",
+      "title": "RFC 826 — An Ethernet Address Resolution Protocol",
+      "url": "https://www.rfc-editor.org/rfc/rfc826",
+      "version": "November 1982 (Plummer)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "packet: ar$hrd u16, ar$pro u16, ar$hln u8, ar$pln u8, ar$op u16, ar$sha, ar$spa, ar$tha, ar$tpa with no padding; Ethernet hardware type 1 with 6-byte addresses; REQUEST 1, REPLY 2",
+        "the reply swaps sender/target fields and is sent unicast to the requester; EtherType 0x0806 for ARP and 0x0800 for IPv4 are the IANA IEEE 802 numbers"
+      ],
+      "limits": "the RFC names the EtherTypes symbolically; the numeric values are IANA's",
+      "verified": true
+    },
+    {
+      "id": "S54",
+      "title": "QEMU monitor — `sendkey` (human monitor command) and the unix-socket monitor",
+      "url": "https://qemu.googlesource.com/qemu/+/c0e705c6800a1f98c8cb3795ce66f5a48d4e33aa/docs/system/devices/net.rst",
+      "version": "QEMU documentation tree, read 2026-10-18 (sendkey semantics from the QEMU HMP: press then release after a hold time, default 100 ms)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "`-monitor unix:PATH,server,nowait` exposes the human monitor on a socket",
+        "`sendkey keys [hold-ms]` injects a key press and release (QEMU HMP)"
+      ],
+      "limits": "the sendkey page itself was not fetched (the net.rst page was); confirmed by the lab run",
+      "verified": false
+    },
+    {
+      "id": "S55",
+      "title": "QEMU — Using the user mode network stack (SLIRP)",
+      "url": "https://qemu.googlesource.com/qemu/+/c0e705c6800a1f98c8cb3795ce66f5a48d4e33aa/docs/system/devices/net.rst",
+      "version": "QEMU documentation tree, read 2026-10-18",
+      "accessed": "2026-10-18",
+      "supports": [
+        "router/gateway 10.0.2.2, DNS 10.0.2.3, SMB 10.0.2.4, DHCP from 10.0.2.15; the VM behaves as if behind a firewall blocking incoming connections",
+        "ping to the local router 10.0.2.2 works; ICMP to the Internet needs unprivileged ping sockets on the host",
+        "hostfwd redirects TCP/UDP connections from the host to the guest"
+      ],
+      "limits": "the gateway MAC 52:55:0a:00:02:02 is SLIRP's implementation choice (net/slirp.c special_ethaddr), confirmed by the lab",
+      "verified": true
     }
   ]
 }

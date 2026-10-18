@@ -9,7 +9,7 @@
 #![no_main]
 
 use libnawah::{
-    rights, Handle, WaitEntry, ERR_PEER_CLOSED, ERR_TIMED_OUT, SIGNAL_EXITED, SIGNAL_PEER_CLOSED,
+    Handle, WaitEntry, ERR_PEER_CLOSED, ERR_TIMED_OUT, SIGNAL_EXITED, SIGNAL_PEER_CLOSED,
     SIGNAL_READABLE, TIMEOUT_FOREVER,
 };
 
@@ -209,9 +209,12 @@ struct Manager {
     n: usize,
     loaded: bool,
     ctl: Handle,
-    /// The token authority the kernel handed over as the second initial handle (auth.md §1);
-    /// given to the service named `auth` alone.
+    /// Kernel resources handed over as initial handles after the control channel, routed by
+    /// type: the token authority to the service named `auth` (auth.md §1), the network
+    /// interface to `net`, the keyboard to `input` (services.md §4).
     authority: Option<Handle>,
+    nic: Option<Handle>,
+    keyboard: Option<Handle>,
 }
 
 enum LoadError {
@@ -399,14 +402,21 @@ impl Manager {
             s.deadline = None;
             return;
         };
-        // The `auth` service alone receives a copy of the token authority (auth.md §1).
+        // A kernel resource goes to the service named for it, as a copy (the manager keeps
+        // the original for restarts): the authority to `auth`, the interface to `net`, the
+        // keyboard to `input`.
         let mut initial = [theirs, 0];
         let mut n_initial = 1;
-        if s.name() == b"auth" {
-            if let Some(a) = self.authority {
-                if let Ok(copy) =
-                    libnawah::handle_duplicate(a, rights::DUPLICATE | rights::TRANSFER)
-                {
+        let resource = match s.name() {
+            b"auth" => self.authority,
+            b"net" => self.nic,
+            b"input" => self.keyboard,
+            _ => None,
+        };
+        if let Some(r) = resource {
+            let rights = libnawah::handle_rights(r);
+            if rights >= 0 {
+                if let Ok(copy) = libnawah::handle_duplicate(r, rights as u32) {
                     initial[1] = copy;
                     n_initial = 2;
                 }
@@ -652,19 +662,26 @@ fn main() -> u64 {
     if ctl == 0 {
         return 0xE0;
     }
-    // Initial handles are consecutive (syscall.md §5): the authority, when the kernel passed
-    // one, is the handle after the control channel.
-    let authority = if libnawah::handle_rights(ctl + 1) >= 0 {
-        Some(ctl + 1)
-    } else {
-        None
-    };
+    // Initial handles are consecutive (syscall.md §5): the kernel's resources follow the
+    // control channel, recognised by type (handle_type) whatever their order.
+    let (mut authority, mut nic, mut keyboard) = (None, None, None);
+    for h in ctl + 1..ctl + 8 {
+        match libnawah::handle_type(h) {
+            libnawah::object_type::AUTHORITY => authority = Some(h),
+            libnawah::object_type::NIC => nic = Some(h),
+            libnawah::object_type::KEYBOARD => keyboard = Some(h),
+            t if t < 0 => break,
+            _ => {}
+        }
+    }
     let mut m = Manager {
         services: [EMPTY; MAX_SERVICES],
         n: 0,
         loaded: false,
         ctl,
         authority,
+        nic,
+        keyboard,
     };
     // Wait-set slots: 0 = control; then per service (boot channel, process).
     let mut entries = [WaitEntry {

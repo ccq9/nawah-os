@@ -40,7 +40,9 @@
       "${OUT}/apps/svcmgr.elf",
       "${OUT}/apps/svc.elf",
       "${OUT}/apps/authd.elf",
-      "${OUT}/apps/configd.elf"
+      "${OUT}/apps/configd.elf",
+      "${OUT}/apps/netprobe.elf",
+      "${OUT}/apps/kbdprobe.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -263,6 +265,42 @@
       [
         "cargo",
         "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/netprobe/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/netprobe",
+        "${OUT}/apps/netprobe.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/kbdprobe/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/kbdprobe",
+        "${OUT}/apps/kbdprobe.elf"
+      ],
+      [
+        "cargo",
+        "build",
         "--release",
         "--offline",
         "--manifest-path",
@@ -332,6 +370,11 @@
       "device": "virtio-blk-pci,drive=vd0,disable-legacy=on,disable-modern=off",
       "pattern_tail": 8,
       "note": "64 MiB raw FAT32 image made by tools/fat32.py for every run (lab files + raw pattern in the last 8 sectors); a multi-phase case keeps it between its phases"
+    },
+    "net": {
+      "netdev": "user,id=n0,net=10.0.2.0/24,dhcpstart=10.0.2.15",
+      "device": "virtio-net-pci,netdev=n0,disable-legacy=on,disable-modern=off",
+      "note": "QEMU user-mode networking (SLIRP): guest 10.0.2.15, gateway 10.0.2.2, DNS 10.0.2.3; a modern virtio-net function (0x1041); no host access beyond SLIRP"
     }
   },
   "boot_oracle": {
@@ -358,7 +401,7 @@
       {
         "id": "TST-M1-BOOT",
         "test_id": "TST-M1-BOOT",
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…)",
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); the manager receives 4 initial handles",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
@@ -392,10 +435,15 @@
           "|read_ok=1|flush_ok=1|code=ok|selfcheck=1",
           "|kernel|fat32|label=NAWAHLAB|sectors_per_cluster=1|reserved=32|fats=2|fat_sectors=1024|clusters=128992|root_cluster=2|free_clusters=",
           "|hello_size=24|hello_ok=1|code=ok|selfcheck=1",
+          "|kernel|net|device=0x1041|",
+          "|link=1|features=0x100010020|queue_size=16|dma_frames=18|gateway=52:55:0a:00:02:02|arp_ticks=",
+          "|rx_bad=0|tx_in_flight=0|mmio=0xffffa8",
+          "|kernel|kbd|drained=",
+          "|ring=64|pending=0|overflow=0|code=ok|selfcheck=1",
           "|kernel|svcmgr|pid=",
           "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
           "|kernel|spawn|pid=",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=2|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=4|by=kernel",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -405,7 +453,9 @@
           "|boot|acpi|rsdp=0x0|",
           "|boot|error|",
           "|exc|vector",
-          "|kernel|panic|"
+          "|kernel|panic|",
+          "|code=K_E_NET_",
+          "|kernel|net|device=none"
         ],
         "max_counts": {
           "|boot|start|": 1
@@ -2195,7 +2245,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_order",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=2|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=4|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_order|load=OK 3|list=A:ready:0:",
           "|all_ready=1|b_after_a=1|c_after_ab=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2241,7 +2291,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_timeout",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=2|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=4|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_timeout|load=OK 2|list=M:failed:0:",
           "|failed_after_timeout=1|dependent_blocked=1|list_after=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2287,7 +2337,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_restart",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=2|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=4|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_restart|load=OK 1|list=X:given_up:3:",
           "|state=given_up|restarts=3|exit=1|span=",
@@ -2730,6 +2780,87 @@
             "${DISK}"
           ]
         ]
+      },
+      {
+        "id": "TST-M4-NET-LINK",
+        "test_id": "TST-M4-NET-LINK",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=net_link"
+        ],
+        "oracle": "the kernel's ARP probe for 10.0.2.2 is answered by the lab gateway (52:55:0a:00:02:02) and the netprobe process, holding the NIC handle, reads the interface (MAC, link, frame_max 1514, queue 16), sends its own ARP request, waits for READABLE, receives frames until the reply, and sees the refusals: 13 and 1515-byte sends and a 100-byte receive buffer ERR_INVALID, a copy without WRITE cannot send and one without READ cannot receive (ERR_ACCESS), a wait without WAIT is refused; exit 0x73; the kernel counts the process's frames; no frame leaked; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=net_link",
+          "|ktest|net_link|mac=",
+          "|link=1|gateway=52:55:0a:00:02:02|arp_ticks=",
+          "|kernel_code=ok|user_exit=0x73|user_tx=",
+          "|rx_bad=0|frames_delta=0|dma_frames=18",
+          "|ktest|pass|the interface sends and receives from the kernel and from a process"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M4-NET-LIMITS",
+        "test_id": "TST-M4-NET-LIMITS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=net_limits"
+        ],
+        "oracle": "64 sends back to back: exactly queue_size (16) are queued and the rest refused with Busy (counted in tx_busy), never more slots in flight than the queue; after the device drains the ring every slot is reclaimed (in_flight 0) and 16 more sends succeed; a 13-byte and a 1515-byte frame are refused (Range); the DMA frame count stays 18 and no kernel frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=net_limits",
+          "|ktest|net_limits|queue_size=16|sent=16|busy=48|other=0|in_flight_peak=16|in_flight_after=0|sent2=16|busy2=0|short_refused=1|long_refused=1|received=",
+          "|dma_frames=18|frames_delta=0",
+          "|ktest|pass|the interface's fixed resources hold under pressure and come back"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M4-KBD-SCANCODES",
+        "test_id": "TST-M4-KBD-SCANCODES",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=kbd_scancodes"
+        ],
+        "oracle": "the test reports ready, the lab sends `sendkey a`, `sendkey b`, `sendkey ret` through the QEMU monitor, and the kbdprobe process (holding the keyboard handle) waits for READABLE and reads the six set-1 bytes 1E 9E 30 B0 1C 9C, exiting with them packed little-endian (0x9c1cb0309e1e); no overflow, nothing left pending, no frame leaked; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=kbd_scancodes",
+          "|ktest|kbd_scancodes|ready=1|pending=0|overflow=0",
+          "|ktest|kbd_scancodes|exit=0x9c1cb0309e1e|overflow=0|pending_after=0|frames_delta=0",
+          "|ktest|pass|keyboard scancodes reach a process through the keyboard object"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "monitor": {
+          "after": "|ktest|kbd_scancodes|ready=1",
+          "commands": [
+            "sendkey a",
+            "sendkey b",
+            "sendkey ret"
+          ],
+          "gap_s": 0.3
+        },
+        "timeout_s": 240
       }
     ]
   },

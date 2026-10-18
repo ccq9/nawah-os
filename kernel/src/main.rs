@@ -46,6 +46,8 @@ mod fs;
 #[cfg(target_arch = "x86_64")]
 mod loader;
 #[cfg(target_arch = "x86_64")]
+mod net;
+#[cfg(target_arch = "x86_64")]
 mod object;
 #[cfg(target_arch = "x86_64")]
 #[allow(unsafe_code)]

@@ -53,6 +53,12 @@ pub const SYS_PROCESS_STATUS: u64 = 23;
 pub const SYS_TOKEN_CREATE: u64 = 24;
 pub const SYS_TOKEN_INFO: u64 = 25;
 pub const SYS_TOKEN_REVOKE: u64 = 26;
+/// v1.6 (WP-27, net.md §2 / input.md): object types, the network interface, the keyboard.
+pub const SYS_HANDLE_TYPE: u64 = 27;
+pub const SYS_NIC_INFO: u64 = 28;
+pub const SYS_NIC_SEND: u64 = 29;
+pub const SYS_NIC_RECV: u64 = 30;
+pub const SYS_KBD_READ: u64 = 31;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -531,6 +537,11 @@ pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
         )),
         SYS_TOKEN_INFO => flat(sys_token_info(args[0] as Handle, args[1])),
         SYS_TOKEN_REVOKE => flat(sys_token_revoke(args[0] as Handle)),
+        SYS_HANDLE_TYPE => flat(sys_handle_type(args[0] as Handle)),
+        SYS_NIC_INFO => flat(sys_nic_info(args[0] as Handle, args[1])),
+        SYS_NIC_SEND => flat(sys_nic_send(args[0] as Handle, args[1], args[2])),
+        SYS_NIC_RECV => flat(sys_nic_recv(args[0] as Handle, args[1], args[2])),
+        SYS_KBD_READ => flat(sys_kbd_read(args[0] as Handle, args[1], args[2])),
         _ => ERR_NOSYS,
     }
 }
@@ -627,7 +638,7 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
             // Handle, then type, then rights (ipc.md §1).
             let e = t.get(h, Rights::NONE).map_err(handle_err)?;
             match &e.object {
-                Object::Channel(_) | Object::Process(_) => {}
+                Object::Channel(_) | Object::Process(_) | Object::Nic(_) | Object::Keyboard(_) => {}
                 _ => return Err(ERR_WRONG_TYPE),
             }
             if !e.rights.contains(Rights::WAIT) {
@@ -649,6 +660,8 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
             let asserted = match obj {
                 Object::Channel(ep) => ep.poll(*wanted, Some(tid)),
                 Object::Process(p) if wanted & SIGNAL_EXITED != 0 && p.watch(tid) => SIGNAL_EXITED,
+                Object::Nic(n) => n.poll(*wanted, Some(tid)),
+                Object::Keyboard(k) => k.poll(*wanted, Some(tid)),
                 _ => 0,
             };
             if asserted != 0 && hit.is_none() {
@@ -668,6 +681,8 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
         match obj {
             Object::Channel(ep) => ep.forget_waiter(tid),
             Object::Process(p) => p.forget_waiter(tid),
+            Object::Nic(n) => n.forget_waiter(tid),
+            Object::Keyboard(k) => k.forget_waiter(tid),
             _ => {}
         }
     }
@@ -764,4 +779,108 @@ fn sys_token_revoke(h: Handle) -> Result<i64, i64> {
         }
         _ => Err(ERR_WRONG_TYPE),
     }
+}
+
+// ---- v1.6: object types, the network interface, the keyboard (WP-27) --------------------
+
+/// `handle_type(h)`: the object's type code (ipc.md §1: 1 channel, 2 VMO, 3 file, 4 process,
+/// 5 token, 6 authority, 7 network interface, 8 keyboard).
+fn sys_handle_type(h: Handle) -> Result<i64, i64> {
+    let table = table()?;
+    let t = table.lock();
+    let e = t.get(h, Rights::NONE).map_err(handle_err)?;
+    Ok(i64::from(e.object.type_code()))
+}
+
+fn nic_of(h: Handle, required: Rights) -> Result<Arc<crate::object::nic::NicObject>, i64> {
+    let table = table()?;
+    let t = table.lock();
+    let e = t.get(h, Rights::NONE).map_err(handle_err)?;
+    match &e.object {
+        Object::Nic(n) => {
+            if !e.rights.contains(required) {
+                return Err(ERR_ACCESS);
+            }
+            Ok(n.clone())
+        }
+        _ => Err(ERR_WRONG_TYPE),
+    }
+}
+
+/// `nic_info(h, out_ptr)`: 16 bytes — mac[6], link (u8: 1 up), reserved (u8), frame_max
+/// (u16), queue_size (u16), reserved (u32).
+fn sys_nic_info(h: Handle, out: u64) -> Result<i64, i64> {
+    user_range_ok(out, 16, true)?;
+    let _nic = nic_of(h, Rights::NONE)?;
+    let info = crate::net::info().ok_or(ERR_IO)?;
+    let mut buf = [0u8; 16];
+    buf[..6].copy_from_slice(&info.mac);
+    buf[6] = u8::from(crate::net::link_up());
+    buf[8..10].copy_from_slice(&(crate::drivers::virtio_net::FRAME_MAX as u16).to_le_bytes());
+    buf[10..12].copy_from_slice(&info.queue_size.to_le_bytes());
+    copy_to_user(out, &buf)?;
+    Ok(0)
+}
+
+/// `nic_send(h, ptr, len)`: queues one Ethernet frame (14..=1514 bytes, copied into a driver
+/// slot); `ERR_SHOULD_WAIT` when every transmit slot is in flight.
+fn sys_nic_send(h: Handle, ptr: u64, len: u64) -> Result<i64, i64> {
+    use crate::drivers::virtio_net::{NetError, FRAME_MAX, FRAME_MIN};
+    let len = len as usize;
+    if !(FRAME_MIN..=FRAME_MAX).contains(&len) {
+        return Err(ERR_INVALID);
+    }
+    let _nic = nic_of(h, Rights::WRITE)?;
+    let mut frame = alloc::vec![0u8; len];
+    copy_from_user(&mut frame, ptr)?;
+    match crate::net::send(&frame) {
+        Ok(()) => Ok(0),
+        Err(NetError::Busy) => Err(ERR_SHOULD_WAIT),
+        Err(NetError::Range) => Err(ERR_INVALID),
+        Err(_) => Err(ERR_IO),
+    }
+}
+
+/// `nic_recv(h, ptr, cap)`: one received frame (without the virtio header) into the buffer
+/// (`cap` ≥ 1514, else `ERR_INVALID`); its length, or `ERR_SHOULD_WAIT` when none waits.
+fn sys_nic_recv(h: Handle, ptr: u64, cap: u64) -> Result<i64, i64> {
+    use crate::drivers::virtio_net::FRAME_MAX;
+    if (cap as usize) < FRAME_MAX {
+        return Err(ERR_INVALID);
+    }
+    let _nic = nic_of(h, Rights::READ)?;
+    user_range_ok(ptr, FRAME_MAX as u64, true)?;
+    let mut frame = alloc::vec![0u8; FRAME_MAX];
+    match crate::net::recv(&mut frame) {
+        Some(n) => {
+            copy_to_user(ptr, &frame[..n])?;
+            Ok(n as i64)
+        }
+        None => Err(ERR_SHOULD_WAIT),
+    }
+}
+
+/// `kbd_read(h, ptr, cap)`: up to `cap` scancode bytes; `ERR_SHOULD_WAIT` when none waits.
+fn sys_kbd_read(h: Handle, ptr: u64, cap: u64) -> Result<i64, i64> {
+    let cap = (cap as usize).min(crate::object::kbd::RING);
+    if cap == 0 {
+        return Err(ERR_INVALID);
+    }
+    let kbd = {
+        let table = table()?;
+        let t = table.lock();
+        let e = t.get(h, Rights::READ).map_err(handle_err)?;
+        match &e.object {
+            Object::Keyboard(k) => k.clone(),
+            _ => return Err(ERR_WRONG_TYPE),
+        }
+    };
+    user_range_ok(ptr, cap as u64, true)?;
+    let mut buf = [0u8; crate::object::kbd::RING];
+    let n = kbd.read(&mut buf[..cap]);
+    if n == 0 {
+        return Err(ERR_SHOULD_WAIT);
+    }
+    copy_to_user(ptr, &buf[..n])?;
+    Ok(n as i64)
 }

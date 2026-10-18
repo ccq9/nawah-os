@@ -7,6 +7,8 @@
 
 pub mod channel;
 pub mod handle;
+pub mod kbd;
+pub mod nic;
 pub mod process;
 pub mod token;
 
@@ -48,6 +50,12 @@ impl Rights {
     pub const TOKEN_MINTER: Rights = Rights(Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
     /// Rights of the authority handle (WP-25).
     pub const AUTHORITY_DEFAULT: Rights = Rights(Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of the network interface handle (WP-27): READ receives, WRITE sends.
+    pub const NIC_DEFAULT: Rights =
+        Rights(Self::READ.0 | Self::WRITE.0 | Self::WAIT.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of the keyboard handle (WP-27).
+    pub const KBD_DEFAULT: Rights =
+        Rights(Self::READ.0 | Self::WAIT.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
 
     pub const fn contains(self, other: Rights) -> bool {
         self.0 & other.0 == other.0
@@ -72,6 +80,26 @@ pub enum Object {
     /// The capability to mint tokens (WP-25); the value only exists to be held (its drop
     /// keeps the live count), nothing reads it.
     Authority(#[allow(dead_code)] Arc<token::Authority>),
+    /// The network interface (WP-27): raw frames in and out.
+    Nic(Arc<nic::NicObject>),
+    /// The keyboard (WP-27): scancode bytes.
+    Keyboard(Arc<kbd::KeyboardObject>),
+}
+
+impl Object {
+    /// The type code `handle_type` reports (syscall.md §6).
+    pub fn type_code(&self) -> u32 {
+        match self {
+            Object::Channel(_) => 1,
+            Object::Vmo(_) => 2,
+            Object::File(_) => 3,
+            Object::Process(_) => 4,
+            Object::Token(_) => 5,
+            Object::Authority(_) => 6,
+            Object::Nic(_) => 7,
+            Object::Keyboard(_) => 8,
+        }
+    }
 }
 
 /// Largest VMO (contract §3).

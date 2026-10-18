@@ -2,3 +2,4 @@
 //! synchronous API to the layer above (block/).
 
 pub mod virtio_blk;
+pub mod virtio_net;
