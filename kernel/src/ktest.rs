@@ -2331,7 +2331,8 @@ fn fat32_read() -> ! {
     if !(hello_ok && pattern_ok && tail_ok && inner_ok) {
         fail("file contents did not match what the host tool wrote")
     }
-    if listed != 3 {
+    // The host tool writes DIR, SYSTEM (the built applications, WP-23), HELLO.TXT, PATTERN.BIN.
+    if listed != 4 {
         fail("root listing wrong")
     }
     if missing != Some(FsError::NotFound)
@@ -2399,12 +2400,14 @@ fn fat32_write() -> ! {
     let gone = crate::fs::with(|fs| fs.lookup(b"/NEW.TXT").map(|_| ())).err();
     let free2 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
     kprintln!(
-        "OSX|{}|ktest|fat32_write|created={}|free_before={}|free_during={}|free_after={}|read_ok={}|dup={}|in_dir_ok={}|overwrite_ok={}|unlinked={}|gone={}",
+        "OSX|{}|ktest|fat32_write|created={}|free_before={}|free_during={}|free_after={}|taken_during={}|restored={}|read_ok={}|dup={}|in_dir_ok={}|overwrite_ok={}|unlinked={}|gone={}",
         BUILD_ID,
         created.map_or_else(|e| e.code().into(), |(s, a, b)| alloc::format!("size{}+{}+{}", s, a, b)),
         free0,
         free1,
         free2,
+        free0 as i64 - free1 as i64,
+        u8::from(free2 == free0),
         u8::from(read_ok),
         dup.map_or("ok", |e| e.code()),
         u8::from(in_dir),

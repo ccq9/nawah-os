@@ -1,6 +1,6 @@
 //! waiter — `object_wait_many` and the clock (WP-23, TST-M4-WAIT-TIMEOUT): a wait with no
 //! signal times out after its ticks (measured with `clock_ticks`, never early), a zero
-//! timeout polls, invalid entries are refused (no signal, unknown signal, zero or too many
+//! timeout polls, invalid entries are refused (no signal, unknown signal, zero or 65
 //! entries, a VMO, a stale handle, a handle without WAIT, an unmapped pointer), a queued
 //! message answers at once with the first asserted index, and a closed peer asserts
 //! PEER_CLOSED. Exits `0x71 | measured_ticks << 8`; otherwise the failing step (0xE0..).
@@ -51,7 +51,7 @@ fn main() -> u64 {
     if libnawah::object_wait_many(&[], 0) != Err(ERR_INVALID) {
         return 0xE7;
     }
-    let many = [entry(a, SIGNAL_READABLE); 17];
+    let many = [entry(a, SIGNAL_READABLE); 65];
     if libnawah::object_wait_many(&many, 0) != Err(ERR_INVALID) {
         return 0xE8;
     }

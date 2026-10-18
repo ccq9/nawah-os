@@ -928,7 +928,7 @@
     "REQ-M3-007"
    ],
    "layer": "guest",
-   "oracle": "the kernel's FAT32 mounts the volume tools/fat32.py formatted (128992 clusters of 1 sector) and reads /HELLO.TXT (24 bytes), /PATTERN.BIN (20480 bytes, byte for byte, also from offset 20000) and /DIR/INNER.TXT exactly; the root listing has 3 entries (DIR/, HELLO.TXT, PATTERN.BIN); a missing file, a path through a file, a non-8.3 name and reading a directory are refused with K_E_FS_NOT_FOUND / NOT_A_DIRECTORY / BAD_NAME / IS_A_DIRECTORY; exit 33",
+   "oracle": "the kernel's FAT32 mounts the volume tools/fat32.py formatted (128992 clusters of 1 sector) and reads /HELLO.TXT (24 bytes), /PATTERN.BIN (20480 bytes, byte for byte, also from offset 20000) and /DIR/INNER.TXT exactly; the root listing has 4 entries (DIR/, SYSTEM/ with the built applications, HELLO.TXT, PATTERN.BIN); a missing file, a path through a file, a non-8.3 name and reading a directory are refused with K_E_FS_NOT_FOUND / NOT_A_DIRECTORY / BAD_NAME / IS_A_DIRECTORY; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
@@ -991,7 +991,7 @@
     "REQ-M4-001"
    ],
    "layer": "guest",
-   "oracle": "the waiter application: object_wait_many on an empty channel with a 25-tick timeout returns ERR_TIMED_OUT and clock_ticks shows >= 25 ticks passed (never early; the kernel's own clock agrees); a zero timeout polls (ERR_TIMED_OUT at once); refused: no signal, unknown signal, 0 or 17 entries (ERR_INVALID), a VMO (ERR_WRONG_TYPE), a stale handle (ERR_BAD_HANDLE), a handle without WAIT (ERR_ACCESS), entries at an unmapped address (ERR_FAULT); a queued message answers at once with the first asserted index (1 of [b,a]); a closed peer asserts PEER_CLOSED only; the clock is monotonic; exit 0x71 with the measured ticks in the upper bits; nothing leaked; exit 33",
+   "oracle": "the waiter application: object_wait_many on an empty channel with a 25-tick timeout returns ERR_TIMED_OUT and clock_ticks shows >= 25 ticks passed (never early; the kernel's own clock agrees); a zero timeout polls (ERR_TIMED_OUT at once); refused: no signal, unknown signal, 0 or 65 entries (ERR_INVALID; 64 is the limit), a VMO (ERR_WRONG_TYPE), a stale handle (ERR_BAD_HANDLE), a handle without WAIT (ERR_ACCESS), entries at an unmapped address (ERR_FAULT); a queued message answers at once with the first asserted index (1 of [b,a]); a closed peer asserts PEER_CLOSED only; the clock is monotonic; exit 0x71 with the measured ticks in the upper bits; nothing leaked; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []

@@ -80,7 +80,9 @@ pub const READ_BLOCK: u64 = 1;
 pub const SIGNAL_READABLE: u32 = channel::SIGNAL_READABLE;
 pub const SIGNAL_PEER_CLOSED: u32 = channel::SIGNAL_PEER_CLOSED;
 pub const SIGNAL_EXITED: u32 = 4;
-pub const WAIT_MANY_MAX: usize = 16;
+/// Entries one `object_wait_many` may carry (a service manager watches a channel and a process
+/// per service plus its control channel: 16 services need 33).
+pub const WAIT_MANY_MAX: usize = 64;
 /// Initial handles a spawn may pass (the bootstrap channel and a few more).
 pub const SPAWN_HANDLES_MAX: usize = 4;
 /// The longest timeout in ticks (about 27 hours at 1 kHz): anything above is "forever".
