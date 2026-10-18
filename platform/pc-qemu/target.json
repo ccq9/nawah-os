@@ -4564,7 +4564,7 @@
           "OSX|${BUILD_ID}|ktest|start|name=arabic_ui",
           "|text=display|fonts=1",
           "|ktest|arabic_ui|lang=OK 1|ready=1",
-          "|text=dialog|theme=1,normal|window=",
+          "|text=dialog|theme=4,normal|window=",
           "|ktest|arabic_ui|dialog_state=stopped|dialog_exit=0|",
           "|ktest|arabic_ui|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|arabic_ui|frames_delta=0",
