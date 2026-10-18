@@ -171,7 +171,7 @@
           "|kernel|sched|boot_tid=0|probe_join=0x5eee|",
           "|threads=1|processes=0|quantum_ticks=10|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|object|channel_ok=1|vmo_size=8192|peer_closed=1|live_channels=0|live_endpoints=0|live_vmos=0|live_handles=0|frames_delta=0|selfcheck=1",
-          "|kernel|pci|ecam=0xb0000000|segment=0|functions=",
+          "|kernel|pci|ecam=0xe0000000|segment=0|functions=",
           "|kernel|blk|device=0x1042|",
           "|capacity_sectors=32768|queue_size=16|",
           "|read_ok=1|flush_ok=1|code=ok|selfcheck=1",
