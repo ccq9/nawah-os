@@ -1048,11 +1048,15 @@ fn sys_display_map(h: Handle) -> Result<i64, i64> {
     let table = table()?;
     let mut t = table.lock();
     let d = {
-        let e = t.get(h, Rights::MAP).map_err(handle_err)?;
-        match &e.object {
-            Object::Display(d) => d.clone(),
-            _ => return Err(ERR_WRONG_TYPE),
+        // Type before rights (ipc.md §1), as in vmo_map.
+        let e = t.get(h, Rights(0)).map_err(handle_err)?;
+        let Object::Display(d) = &e.object else {
+            return Err(ERR_WRONG_TYPE);
+        };
+        if !e.rights.contains(Rights::MAP) {
+            return Err(ERR_ACCESS);
         }
+        d.clone()
     };
     let bytes = d.info.bytes.next_multiple_of(4096);
     let vmo = Vmo::physical(d.info.base, bytes).ok_or(ERR_INVALID)?;
@@ -1076,7 +1080,12 @@ fn sys_vmo_map(h: Handle, prot: u64) -> Result<i64, i64> {
     let vmo = {
         let table = table()?;
         let t = table.lock();
-        let e = t.get(h, Rights::MAP).map_err(handle_err)?;
+        // Handle, then type, then rights (ipc.md §1): a channel is ERR_WRONG_TYPE even though
+        // it lacks MAP (CI run 39149418223 answered ERR_ACCESS first).
+        let e = t.get(h, Rights(0)).map_err(handle_err)?;
+        let Object::Vmo(v) = &e.object else {
+            return Err(ERR_WRONG_TYPE);
+        };
         let mut need = Rights::MAP;
         if prot & 1 != 0 {
             need = Rights(need.0 | Rights::READ.0);
@@ -1087,10 +1096,7 @@ fn sys_vmo_map(h: Handle, prot: u64) -> Result<i64, i64> {
         if !e.rights.contains(need) {
             return Err(ERR_ACCESS);
         }
-        match &e.object {
-            Object::Vmo(v) => v.clone(),
-            _ => return Err(ERR_WRONG_TYPE),
-        }
+        v.clone()
     };
     let cached = vmo.is_ram();
     let r = sched::with_current_space(|space| space.map_vmo(vmo, prot & 2 != 0, cached))
