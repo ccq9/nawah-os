@@ -895,7 +895,9 @@
         "REQ-M3-007",
         "REQ-M3-005"
       ],
-      "contract_refs": [],
+      "contract_refs": [
+        "docs/contracts/files.md"
+      ],
       "failure_cases": [
         "تسريب واصفات"
       ],

@@ -1,5 +1,6 @@
 //! System call ABI (docs/contracts/syscall.md: v1 frozen in WP-14, v1.1 yield/sleep in WP-15,
-//! v1.2 handles/channels/VMOs in WP-16 — docs/contracts/ipc.md) — the architecture-neutral
+//! v1.2 handles/channels/VMOs in WP-16 — docs/contracts/ipc.md, v1.3 files in WP-19 —
+//! docs/contracts/files.md) — the architecture-neutral
 //! side: numbers, error codes, argument validation and dispatch. The register convention and
 //! the entry instruction live in `arch` (x86_64: SYSCALL with rax = number, rdi/rsi/rdx/r10/r8/r9
 //! arguments, rax result; AArch64 mapping reserved in the contract).
@@ -8,6 +9,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use crate::arch;
+use crate::fs::fat32::FsError;
+use crate::fs::vfs;
 use crate::mm::addrspace::{USER_BASE, USER_END};
 use crate::mm::vmm;
 use crate::object::channel::{self, ChannelError, Message, MSG_MAX_BYTES, MSG_MAX_HANDLES};
@@ -33,6 +36,14 @@ pub const SYS_HANDLE_CLOSE: u64 = 9;
 pub const SYS_HANDLE_DUPLICATE: u64 = 10;
 pub const SYS_VMO_CREATE: u64 = 11;
 pub const SYS_HANDLE_RIGHTS: u64 = 12;
+/// v1.3 (WP-19): files (docs/contracts/files.md).
+pub const SYS_OPEN: u64 = 13;
+pub const SYS_READ: u64 = 14;
+pub const SYS_WRITE: u64 = 15;
+pub const SYS_STAT: u64 = 16;
+pub const SYS_UNLINK: u64 = 17;
+pub const SYS_SEEK: u64 = 18;
+pub const SYS_SYNC: u64 = 19;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -46,6 +57,14 @@ pub const ERR_SHOULD_WAIT: i64 = -8;
 pub const ERR_BUFFER_TOO_SMALL: i64 = -9;
 pub const ERR_NO_RESOURCES: i64 = -10;
 pub const ERR_WRONG_TYPE: i64 = -11;
+/// v1.3 file errors.
+pub const ERR_NOT_FOUND: i64 = -12;
+pub const ERR_EXISTS: i64 = -13;
+pub const ERR_IS_DIR: i64 = -14;
+pub const ERR_NOT_DIR: i64 = -15;
+pub const ERR_BAD_PATH: i64 = -16;
+pub const ERR_NO_SPACE: i64 = -17;
+pub const ERR_IO: i64 = -18;
 
 /// `channel_read` flag: block until a message arrives or the peer closes.
 pub const READ_BLOCK: u64 = 1;
@@ -297,6 +316,111 @@ fn handle_rights(h: Handle) -> Result<i64, i64> {
     Ok(i64::from(r.0))
 }
 
+fn fs_err(e: FsError) -> i64 {
+    match e {
+        FsError::NotFound => ERR_NOT_FOUND,
+        FsError::Exists => ERR_EXISTS,
+        FsError::IsADirectory => ERR_IS_DIR,
+        FsError::NotADirectory => ERR_NOT_DIR,
+        FsError::BadName => ERR_BAD_PATH,
+        FsError::DiskFull => ERR_NO_SPACE,
+        FsError::Range => ERR_INVALID,
+        FsError::NotMounted | FsError::Io(_) | FsError::BadBpb | FsError::Corrupt => ERR_IO,
+    }
+}
+
+/// Copies a user path (at most PATH_MAX bytes) into a kernel buffer.
+fn user_path(ptr: u64, len: u64, buf: &mut [u8; vfs::PATH_MAX]) -> Result<usize, i64> {
+    if len == 0 || len > vfs::PATH_MAX as u64 {
+        return Err(ERR_BAD_PATH);
+    }
+    copy_from_user(&mut buf[..len as usize], ptr)?;
+    Ok(len as usize)
+}
+
+fn file_of(entry: &Entry) -> Result<vfs::FileRef, i64> {
+    match &entry.object {
+        Object::File(f) => Ok(f.clone()),
+        _ => Err(ERR_WRONG_TYPE),
+    }
+}
+
+fn sys_open(ptr: u64, len: u64, flags: u64) -> Result<i64, i64> {
+    let mut buf = [0u8; vfs::PATH_MAX];
+    let n = user_path(ptr, len, &mut buf)?;
+    if flags & !vfs::O_VALID != 0 || flags & (vfs::O_READ | vfs::O_WRITE) == 0 {
+        return Err(ERR_INVALID);
+    }
+    let table = table()?;
+    let file = vfs::open(&buf[..n], flags).map_err(fs_err)?;
+    let mut rights = Rights::FILE_BASE;
+    if flags & vfs::O_READ != 0 {
+        rights = Rights(rights.0 | Rights::READ.0);
+    }
+    if flags & vfs::O_WRITE != 0 {
+        rights = Rights(rights.0 | Rights::WRITE.0);
+    }
+    let h = table
+        .lock()
+        .insert(Entry {
+            object: Object::File(file),
+            rights,
+        })
+        .map_err(handle_err)?;
+    Ok(i64::from(h))
+}
+
+/// Bounded transfer per call (the kernel buffer lives on the heap).
+const FILE_IO_MAX: usize = 64 * 1024;
+
+fn sys_read(h: Handle, ptr: u64, len: u64) -> Result<i64, i64> {
+    let len = (len as usize).min(FILE_IO_MAX);
+    user_range_ok(ptr, len as u64, true)?;
+    let table = table()?;
+    let file = file_of(table.lock().get(h, Rights::READ).map_err(handle_err)?)?;
+    let mut buf = alloc::vec![0u8; len];
+    let n = vfs::read(&file, &mut buf).map_err(fs_err)?;
+    copy_to_user(ptr, &buf[..n])?;
+    Ok(n as i64)
+}
+
+fn sys_write(h: Handle, ptr: u64, len: u64) -> Result<i64, i64> {
+    let len = (len as usize).min(FILE_IO_MAX);
+    let mut buf = alloc::vec![0u8; len];
+    copy_from_user(&mut buf, ptr)?;
+    let table = table()?;
+    let file = file_of(table.lock().get(h, Rights::WRITE).map_err(handle_err)?)?;
+    let n = vfs::write(&file, &buf).map_err(fs_err)?;
+    Ok(n as i64)
+}
+
+fn sys_stat(ptr: u64, len: u64, out: u64) -> Result<i64, i64> {
+    let mut buf = [0u8; vfs::PATH_MAX];
+    let n = user_path(ptr, len, &mut buf)?;
+    user_range_ok(out, 16, true)?;
+    let st = vfs::stat(&buf[..n]).map_err(fs_err)?;
+    let mut rec = [0u8; 16];
+    rec[..8].copy_from_slice(&st.size.to_le_bytes());
+    rec[8..12].copy_from_slice(&u32::from(st.is_dir).to_le_bytes());
+    rec[12..16].copy_from_slice(&st.first_cluster.to_le_bytes());
+    copy_to_user(out, &rec)?;
+    Ok(0)
+}
+
+fn sys_unlink(ptr: u64, len: u64) -> Result<i64, i64> {
+    let mut buf = [0u8; vfs::PATH_MAX];
+    let n = user_path(ptr, len, &mut buf)?;
+    vfs::unlink(&buf[..n]).map_err(fs_err)?;
+    Ok(0)
+}
+
+fn sys_seek(h: Handle, pos: u64) -> Result<i64, i64> {
+    let table = table()?;
+    let file = file_of(table.lock().get(h, Rights::NONE).map_err(handle_err)?)?;
+    let p = vfs::seek(&file, pos).map_err(fs_err)?;
+    Ok(p as i64)
+}
+
 fn as_handle(v: u64) -> Result<Handle, i64> {
     u32::try_from(v).map_err(|_| ERR_BAD_HANDLE)
 }
@@ -359,6 +483,13 @@ pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
         SYS_HANDLE_DUPLICATE => flat(as_handle(args[0]).and_then(|h| handle_duplicate(h, args[1]))),
         SYS_VMO_CREATE => flat(vmo_create(args[0])),
         SYS_HANDLE_RIGHTS => flat(as_handle(args[0]).and_then(handle_rights)),
+        SYS_OPEN => flat(sys_open(args[0], args[1], args[2])),
+        SYS_READ => flat(as_handle(args[0]).and_then(|h| sys_read(h, args[1], args[2]))),
+        SYS_WRITE => flat(as_handle(args[0]).and_then(|h| sys_write(h, args[1], args[2]))),
+        SYS_STAT => flat(sys_stat(args[0], args[1], args[2])),
+        SYS_UNLINK => flat(sys_unlink(args[0], args[1])),
+        SYS_SEEK => flat(as_handle(args[0]).and_then(|h| sys_seek(h, args[1]))),
+        SYS_SYNC => flat(vfs::sync().map(|_| 0).map_err(fs_err)),
         _ => ERR_NOSYS,
     }
 }

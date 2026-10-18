@@ -13,8 +13,9 @@ fn main() {
 /// Applications (WP-17): `NAWAH_APPS_DIR` names a directory with `<name>.elf` files built by
 /// tools/project.py from user/apps; each becomes a byte slice in `apps.rs`. Without the
 /// directory (plain `cargo check`), the slices are empty and the kernel reports the apps as
-/// missing instead of failing to build.
-const APPS: &[&str] = &["hello"];
+/// missing instead of failing to build. Test applications are only referenced by the test
+/// kernel, hence `allow(dead_code)` on every slice.
+const APPS: &[&str] = &["hello", "file_roundtrip", "path_invalid", "fd_leak"];
 
 fn emit_apps() {
     println!("cargo:rerun-if-env-changed=NAWAH_APPS_DIR");
@@ -29,11 +30,13 @@ fn emit_apps() {
             Some(path) if path.is_file() => {
                 println!("cargo:rerun-if-changed={}", path.display());
                 src.push_str(&format!(
-                    "pub static {upper}: &[u8] = include_bytes!({:?});\n",
+                    "#[allow(dead_code)]\npub static {upper}: &[u8] = include_bytes!({:?});\n",
                     path.canonicalize().expect("canonical app path")
                 ));
             }
-            _ => src.push_str(&format!("pub static {upper}: &[u8] = &[];\n")),
+            _ => src.push_str(&format!(
+                "#[allow(dead_code)]\npub static {upper}: &[u8] = &[];\n"
+            )),
         }
     }
     std::fs::write(out.join("apps.rs"), src).expect("write apps.rs");

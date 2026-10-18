@@ -148,6 +148,9 @@ pub fn run() -> ! {
         "fat32_write" => fat32_write(),
         "fat32_persist_write" => fat32_persist(true),
         "fat32_persist_read" => fat32_persist(false),
+        "file_roundtrip" => file_app("file_roundtrip", crate::apps::FILE_ROUNDTRIP, 0x60),
+        "path_invalid" => file_app("path_invalid", crate::apps::PATH_INVALID, 0x61),
+        "fd_leak" => fd_leak(),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -1849,7 +1852,13 @@ fn fat32_read() -> ! {
     let mut names = alloc::string::String::new();
     let listed = crate::fs::with(|fs| {
         fs.list(b"/", |e| {
-            names.push_str(core::str::from_utf8(&e.name).unwrap_or("?").trim_end());
+            // 8.3 display form: base and extension trimmed, joined by a dot.
+            names.push_str(core::str::from_utf8(&e.name[..8]).unwrap_or("?").trim_end());
+            let ext = core::str::from_utf8(&e.name[8..]).unwrap_or("").trim_end();
+            if !ext.is_empty() {
+                names.push('.');
+                names.push_str(ext);
+            }
             names.push(if e.is_dir() { '/' } else { ',' });
         })
     })
@@ -2028,4 +2037,110 @@ fn fat32_persist(write: bool) -> ! {
     } else {
         "persistence file survived the QEMU restart"
     })
+}
+
+// ---- WP-19: files through system calls ---------------------------------------------------
+
+/// Runs an embedded file-test application and checks its exit code, that no object or handle
+/// outlived it and that the frame balance holds.
+fn file_app(name: &str, image: &[u8], expected: u64) -> ! {
+    if image.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let obj0 = object::stats();
+    let (o, _l) = match crate::user::run_elf(image) {
+        Ok(r) => r,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|error={}", BUILD_ID, name, e.code());
+            fail("application did not load")
+        }
+    };
+    let obj1 = object::stats();
+    kprintln!(
+        "OSX|{}|ktest|{}|exit={:#x}|expected={:#x}|frames_delta={}|files_after={}|handles_after={}|channels_after={}",
+        BUILD_ID,
+        name,
+        o.exit_code,
+        expected,
+        o.frames_delta,
+        obj1.files,
+        obj1.handles,
+        obj1.channels
+    );
+    if o.exit_code != expected {
+        fail("application did not reach its end (exit code = failing step)")
+    }
+    if o.frames_delta != 0 || obj1 != obj0 {
+        fail("frames, objects or handles leaked by the application")
+    }
+    pass("file application behaved as the files contract says")
+}
+
+/// A process that exits with 44 file handles open (20 files + 20 duplicates, 4 created and
+/// written): afterwards no file object or handle remains, the created files hold their 1500
+/// bytes (3 clusters each), frames balance; the host tool verifies the image.
+fn fd_leak() -> ! {
+    let image = crate::apps::FD_LEAK;
+    if image.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let obj0 = object::stats();
+    let free0 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    let (o, _l) = match crate::user::run_elf(image) {
+        Ok(r) => r,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|fd_leak|error={}", BUILD_ID, e.code());
+            fail("application did not load")
+        }
+    };
+    let obj1 = object::stats();
+    let free1 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    let mut sizes = [0u64; 4];
+    for (i, p) in [
+        &b"/LEAK0.TXT"[..],
+        b"/LEAK1.TXT",
+        b"/LEAK2.TXT",
+        b"/DIR/LEAK3.TXT",
+    ]
+    .iter()
+    .enumerate()
+    {
+        sizes[i] = crate::fs::vfs::stat(p).map_or(0, |st| st.size);
+    }
+    let st = sched::stats();
+    kprintln!(
+        "OSX|{}|ktest|fd_leak|exit={:#x}|files_before={}|files_after={}|handles_after={}|free_before={}|free_after={}|sizes={},{},{},{}|frames_delta={}|processes_after={}",
+        BUILD_ID,
+        o.exit_code,
+        obj0.files,
+        obj1.files,
+        obj1.handles,
+        free0,
+        free1,
+        sizes[0],
+        sizes[1],
+        sizes[2],
+        sizes[3],
+        o.frames_delta,
+        st.processes
+    );
+    if o.exit_code != 0x62 {
+        fail("application did not reach its end (exit code = failing step)")
+    }
+    if obj1.files != 0 || obj1.handles != 0 || obj1 != obj0 {
+        fail("file objects or handles survived the process")
+    }
+    if sizes != [1500; 4] || free0 - free1 != 12 {
+        fail("created files or cluster accounting wrong")
+    }
+    if o.frames_delta != 0 || st.processes != 0 {
+        fail("frames or process records leaked")
+    }
+    pass("a process exiting with 44 open file handles leaks nothing")
 }

@@ -34,6 +34,8 @@ impl Rights {
     /// Rights of a fresh channel endpoint handle.
     pub const CHANNEL_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0 | Self::WAIT.0);
+    /// Rights every open-file handle has besides READ/WRITE (which follow the open flags).
+    pub const FILE_BASE: Rights = Rights(Self::DUPLICATE.0 | Self::TRANSFER.0);
     /// Rights of a fresh VMO handle.
     pub const VMO_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0 | Self::MAP.0);
@@ -52,6 +54,8 @@ impl Rights {
 pub enum Object {
     Channel(Arc<Endpoint>),
     Vmo(Arc<Vmo>),
+    /// An open file (WP-19); READ/WRITE rights gate the calls.
+    File(crate::fs::vfs::FileRef),
 }
 
 /// Largest VMO (contract §3).
@@ -108,6 +112,7 @@ pub struct Stats {
     pub endpoints: u32,
     pub vmos: u32,
     pub handles: u32,
+    pub files: u32,
 }
 
 pub fn stats() -> Stats {
@@ -116,5 +121,6 @@ pub fn stats() -> Stats {
         endpoints: channel::live_endpoints(),
         vmos: LIVE_VMOS.load(Ordering::Relaxed),
         handles: handle::live_handles(),
+        files: crate::fs::vfs::live_files(),
     }
 }

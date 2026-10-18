@@ -22,6 +22,13 @@ pub const SYS_HANDLE_CLOSE: u64 = 9;
 pub const SYS_HANDLE_DUPLICATE: u64 = 10;
 pub const SYS_VMO_CREATE: u64 = 11;
 pub const SYS_HANDLE_RIGHTS: u64 = 12;
+pub const SYS_OPEN: u64 = 13;
+pub const SYS_READ: u64 = 14;
+pub const SYS_WRITE: u64 = 15;
+pub const SYS_STAT: u64 = 16;
+pub const SYS_UNLINK: u64 = 17;
+pub const SYS_SEEK: u64 = 18;
+pub const SYS_SYNC: u64 = 19;
 
 pub const ERR_NOSYS: i64 = -1;
 pub const ERR_INVALID: i64 = -2;
@@ -34,6 +41,19 @@ pub const ERR_SHOULD_WAIT: i64 = -8;
 pub const ERR_BUFFER_TOO_SMALL: i64 = -9;
 pub const ERR_NO_RESOURCES: i64 = -10;
 pub const ERR_WRONG_TYPE: i64 = -11;
+pub const ERR_NOT_FOUND: i64 = -12;
+pub const ERR_EXISTS: i64 = -13;
+pub const ERR_IS_DIR: i64 = -14;
+pub const ERR_NOT_DIR: i64 = -15;
+pub const ERR_BAD_PATH: i64 = -16;
+pub const ERR_NO_SPACE: i64 = -17;
+pub const ERR_IO: i64 = -18;
+
+/// `open` flags (docs/contracts/files.md).
+pub const O_READ: u64 = 1;
+pub const O_WRITE: u64 = 2;
+pub const O_CREATE: u64 = 4;
+pub const O_TRUNCATE: u64 = 8;
 
 pub const READ_BLOCK: u64 = 1;
 
@@ -174,6 +194,109 @@ pub fn vmo_create(size: u64) -> Result<Handle, i64> {
 
 pub fn handle_rights(h: Handle) -> i64 {
     syscall6(SYS_HANDLE_RIGHTS, u64::from(h), 0, 0, 0, 0, 0)
+}
+
+/// What `stat` returns.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Stat {
+    pub size: u64,
+    pub is_dir: bool,
+    pub first_cluster: u32,
+}
+
+pub fn open(path: &[u8], flags: u64) -> Result<Handle, i64> {
+    let r = syscall6(
+        SYS_OPEN,
+        path.as_ptr() as u64,
+        path.len() as u64,
+        flags,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as Handle)
+    }
+}
+
+/// Reads into `buf` at the file's position; Ok(0) at end of file.
+pub fn read(h: Handle, buf: &mut [u8]) -> Result<usize, i64> {
+    let r = syscall6(
+        SYS_READ,
+        u64::from(h),
+        buf.as_mut_ptr() as u64,
+        buf.len() as u64,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as usize)
+    }
+}
+
+pub fn write(h: Handle, data: &[u8]) -> Result<usize, i64> {
+    let r = syscall6(
+        SYS_WRITE,
+        u64::from(h),
+        data.as_ptr() as u64,
+        data.len() as u64,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as usize)
+    }
+}
+
+pub fn stat(path: &[u8]) -> Result<Stat, i64> {
+    let mut rec = [0u8; 16];
+    let r = syscall6(
+        SYS_STAT,
+        path.as_ptr() as u64,
+        path.len() as u64,
+        rec.as_mut_ptr() as u64,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        return Err(r);
+    }
+    Ok(Stat {
+        size: u64::from_le_bytes([
+            rec[0], rec[1], rec[2], rec[3], rec[4], rec[5], rec[6], rec[7],
+        ]),
+        is_dir: u32::from_le_bytes([rec[8], rec[9], rec[10], rec[11]]) != 0,
+        first_cluster: u32::from_le_bytes([rec[12], rec[13], rec[14], rec[15]]),
+    })
+}
+
+pub fn unlink(path: &[u8]) -> i64 {
+    syscall6(
+        SYS_UNLINK,
+        path.as_ptr() as u64,
+        path.len() as u64,
+        0,
+        0,
+        0,
+        0,
+    )
+}
+
+pub fn seek(h: Handle, pos: u64) -> i64 {
+    syscall6(SYS_SEEK, u64::from(h), pos, 0, 0, 0, 0)
+}
+
+pub fn sync() -> i64 {
+    syscall6(SYS_SYNC, 0, 0, 0, 0, 0, 0)
 }
 
 /// Declares the program entry for an application crate: `_start` (where the loader begins,

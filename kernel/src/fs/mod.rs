@@ -1,8 +1,9 @@
-//! File systems (WP-18 part 2). One FAT32 volume on the block device, mounted at boot and
-//! reached through `with` (the file-system lock nests the block lock inside it, never the
-//! reverse).
+//! File systems (WP-18 part 2, WP-19). One FAT32 volume on the block device, mounted at boot
+//! and reached through `with` (the file-system lock nests the block lock inside it, never the
+//! reverse); `vfs` is the handle-based interface processes use.
 
 pub mod fat32;
+pub mod vfs;
 
 use crate::sync::IrqSpinLock;
 use fat32::{Fat32, FsError};

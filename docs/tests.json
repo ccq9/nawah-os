@@ -737,8 +737,8 @@
         "REQ-M3-008"
       ],
       "layer": "guest",
-      "oracle": "open/write/close/open/read through syscalls returns the written bytes",
-      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "oracle": "the file_roundtrip application (libnawah, ABI v1.3) creates /APP.TXT with O_CREATE|O_TRUNCATE, writes two parts, closes, reopens read-only, reads the 39 bytes back, gets 0 at end of file, is refused a write through the read-only handle (ERR_ACCESS), stats the size, seeks to 11 and overwrites 'BY', re-reads, syncs: exit 0x60; no file object, handle or frame outlives the process; afterwards tools/fat32.py reads 'written by BYle_roundtrip: second part\\n' from the image and fsck.fat -n is clean; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
       "verdict": "NOT_RUN",
       "evidence_refs": []
     },
@@ -748,8 +748,8 @@
         "REQ-M3-008"
       ],
       "layer": "negative",
-      "oracle": "invalid paths are refused with the documented error",
-      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "oracle": "the path_invalid application gets the documented error for 20 refusals (missing file, relative path, non-8.3 name, directory, path through a file, empty/undefined flags, missing parent, stat/unlink of missing or directory, empty/NUL/overlong path, kernel pointer, bad handle, channel handle to read) and still reads /hello.txt afterwards: exit 0x61; nothing created; no leak; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
       "verdict": "NOT_RUN",
       "evidence_refs": []
     },
@@ -759,8 +759,8 @@
         "REQ-M3-008"
       ],
       "layer": "guest",
-      "oracle": "per-process file table empty after exit",
-      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "oracle": "the fd_leak application exits with 44 open file handles (20 opens of /HELLO.TXT + 20 duplicates, 4 created files of 1500 bytes incl. /DIR/LEAK3.TXT): afterwards live files = handles = 0 and all object counts equal their values before, the four files stat at 1500 bytes, free clusters are exactly 12 fewer, frames and process records balance; host checks fsck.fat -n and fat32.py check pass; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
       "verdict": "NOT_RUN",
       "evidence_refs": []
     },

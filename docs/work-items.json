@@ -1261,23 +1261,43 @@
         "WP-18"
       ],
       "inputs": [
-        "docs/PLAN.md §4"
+        "docs/PLAN.md §4",
+        "docs/contracts/ipc.md (handles)",
+        "docs/contracts/files.md"
       ],
       "files": [
         "kernel/src/fs/vfs.rs",
-        "kernel/src/syscall/files.rs",
-        "user/apps/"
+        "kernel/src/fs/fat32.rs",
+        "kernel/src/fs/mod.rs",
+        "kernel/src/object/mod.rs",
+        "kernel/src/syscall/mod.rs",
+        "kernel/src/ktest.rs",
+        "kernel/build.rs",
+        "user/libnawah/src/lib.rs",
+        "user/apps/file_roundtrip/",
+        "user/apps/path_invalid/",
+        "user/apps/fd_leak/",
+        "Cargo.toml",
+        "tools/project.py",
+        "tests/mutants.py",
+        "platform/pc-qemu/target.json",
+        ".github/workflows/verify.yml",
+        "docs/contracts/files.md",
+        "docs/adr/0014-files.md"
       ],
       "contract_refs": [
-        "docs/contracts/boot.md"
+        "docs/contracts/boot.md",
+        "docs/contracts/syscall.md",
+        "docs/contracts/ipc.md",
+        "docs/contracts/files.md"
       ],
       "actions": [
-        "VFS and path resolution",
-        "per-process file table",
-        "file syscalls",
-        "guest app tests"
+        "open files as handle objects with READ/WRITE rights (no separate descriptor table)",
+        "fs::vfs: path validation, open/read/write/seek/stat/unlink/sync over FAT32, shared position per object",
+        "syscalls 13-19 (ABI v1.3) with bounded copies",
+        "libnawah wrappers and three test applications; kernel checks of objects/handles/clusters/frames around each run; host-side image checks"
       ],
-      "acceptance": "file tests PASS",
+      "acceptance": "TST-M3-FILE-ROUNDTRIP/PATH-INVALID/FD-LEAK PASS on CI (guest checks + host checks); contract files.md v1 frozen",
       "test_ids": [
         "TST-M3-FILE-ROUNDTRIP",
         "TST-M3-PATH-INVALID",

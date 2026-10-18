@@ -1,6 +1,6 @@
-# عقد نداءات النظام — الإصدار 1.2 (WP-14 v1، WP-15 v1.1، WP-16 v1.2؛ ADR-0009، ADR-0010، ADR-0011)
+# عقد نداءات النظام — الإصدار 1.3 (WP-14 v1، WP-15 v1.1، WP-16 v1.2، WP-19 v1.3؛ ADR-0009، ADR-0010، ADR-0011، ADR-0014)
 
-مجمَّد: أي تغيير في الأرقام أو الرموز أو تمرير الوسائط = إصدار جديد مع سجل قرار. الإصداران 1.1 و1.2 **إضافيان فقط**: 4–5 (المجدول) ثم 6–12 (المقابض والقنوات وVMO، تفصيلها في `docs/contracts/ipc.md`)؛ كل ما في الإصدار 1 باقٍ بلا تغيير. الكود: `kernel/src/syscall/mod.rs` (المحايد)، `kernel/src/arch/x86_64/syscall.rs` (الدخول/الخروج/النسخ)، `kernel/src/sched/` (exit/yield/sleep/الحجب)، `kernel/src/object/` (الكائنات).
+مجمَّد: أي تغيير في الأرقام أو الرموز أو تمرير الوسائط = إصدار جديد مع سجل قرار. الإصدارات 1.1 و1.2 و1.3 **إضافية فقط**: 4–5 (المجدول)، 6–12 (المقابض والقنوات وVMO، تفصيلها في `docs/contracts/ipc.md`)، 13–19 (الملفات، تفصيلها في `docs/contracts/files.md`)؛ كل ما في الإصدار 1 باقٍ بلا تغيير. الكود: `kernel/src/syscall/mod.rs` (المحايد)، `kernel/src/arch/x86_64/syscall.rs` (الدخول/الخروج/النسخ)، `kernel/src/sched/` (exit/yield/sleep/الحجب)، `kernel/src/object/` (الكائنات).
 
 ## 1. الاتفاق العام (كل المعماريات)
 
@@ -24,8 +24,9 @@
 | 10 | `handle_duplicate` (v1.2) | h, rights | المقبض الجديد |
 | 11 | `vmo_create` (v1.2) | size | المقبض |
 | 12 | `handle_rights` (v1.2) | h | حقوق المقبض |
+| 13–19 | `open`, `read`, `write`, `stat`, `unlink`, `seek`, `sync` (v1.3) | — | files.md §2 |
 
-رموز الأخطاء: `ERR_NOSYS = -1`، `ERR_INVALID = -2`، `ERR_FAULT = -3`، `ERR_RANGE = -4`؛ (v1.2) `ERR_BAD_HANDLE = -5`، `ERR_ACCESS = -6`، `ERR_PEER_CLOSED = -7`، `ERR_SHOULD_WAIT = -8`، `ERR_BUFFER_TOO_SMALL = -9`، `ERR_NO_RESOURCES = -10`، `ERR_WRONG_TYPE = -11`.
+رموز الأخطاء: `ERR_NOSYS = -1`، `ERR_INVALID = -2`، `ERR_FAULT = -3`، `ERR_RANGE = -4`؛ (v1.2) `ERR_BAD_HANDLE = -5`، `ERR_ACCESS = -6`، `ERR_PEER_CLOSED = -7`، `ERR_SHOULD_WAIT = -8`، `ERR_BUFFER_TOO_SMALL = -9`، `ERR_NO_RESOURCES = -10`، `ERR_WRONG_TYPE = -11`؛ (v1.3) `ERR_NOT_FOUND = -12`، `ERR_EXISTS = -13`، `ERR_IS_DIR = -14`، `ERR_NOT_DIR = -15`، `ERR_BAD_PATH = -16`، `ERR_NO_SPACE = -17`، `ERR_IO = -18`.
 
 المؤشرات التي تكتب فيها النواة (v1.2) تُفحص لعلم الكتابة أيضًا (`ERR_FAULT` إن كانت الصفحة للقراءة فقط).
 

@@ -3,6 +3,20 @@
 version = 4
 
 [[package]]
+name = "fd_leak"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
+name = "file_roundtrip"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "hello"
 version = "0.1.0"
 dependencies = [
@@ -16,3 +30,10 @@ version = "0.1.0"
 [[package]]
 name = "nawah-kernel"
 version = "0.1.0"
+
+[[package]]
+name = "path_invalid"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]

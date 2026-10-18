@@ -126,9 +126,11 @@ MUTANTS = [
 ]
 
 # Applications first (WP-17): the kernel embeds them through NAWAH_APPS_DIR (kernel/build.rs).
-APPS_STEP = ["cargo", "build", "--profile", "app", "--offline", "--manifest-path", "user/apps/hello/Cargo.toml",
-             "--target", "x86_64-unknown-none", "--target-dir", "build/pc-qemu/cargo-user"]
-APPS_OUT = "build/pc-qemu/cargo-user/x86_64-unknown-none/app/hello"
+APPS = ["hello", "file_roundtrip", "path_invalid", "fd_leak"]
+def app_step(name):
+    return (["cargo", "build", "--profile", "app", "--offline", "--manifest-path", f"user/apps/{name}/Cargo.toml",
+             "--target", "x86_64-unknown-none", "--target-dir", "build/pc-qemu/cargo-user"],
+            f"build/pc-qemu/cargo-user/x86_64-unknown-none/app/{name}", f"apps/{name}.elf")
 KTEST_STEP = ["cargo", "build", "--profile", "ktest", "--offline", "--manifest-path", "kernel/Cargo.toml",
               "--target", "x86_64-unknown-uefi", "--target-dir", "build/pc-qemu/cargo-ktest", "--features", "ktest"]
 KTEST_OUT = "build/pc-qemu/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.efi"
@@ -230,7 +232,7 @@ def main():
             (wt / "build" / a.target / "apps").mkdir(parents=True, exist_ok=True)
             need_release = "TST-M1-BOOT" in killers
             build_ok = True
-            steps = [(APPS_STEP, APPS_OUT, "apps/hello.elf"), (KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
+            steps = [app_step(n) for n in APPS] + [(KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
             if need_release:
                 steps.append((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"))
             for step, out, name in steps:

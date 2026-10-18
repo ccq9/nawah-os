@@ -117,6 +117,9 @@ pub struct Fat32 {
     pub data_start: u32,
     pub clusters: u32,
     pub label: [u8; 11],
+    /// FSInfo sector, 0 when absent; its copy follows the backup boot sector (`bk_boot + 1`).
+    pub fsinfo: u32,
+    pub bk_boot: u32,
 }
 
 fn le16(b: &[u8], o: usize) -> u16 {
@@ -172,6 +175,8 @@ impl Fat32 {
         let total = le32(&b, 32);
         let fat_sectors = le32(&b, 36);
         let root_cluster = le32(&b, 44);
+        let fsinfo = u32::from(le16(&b, 48));
+        let bk_boot = u32::from(le16(&b, 50));
         let fat32_shape = bps as usize == SECTOR
             && spc.is_power_of_two()
             && (1..=128).contains(&spc)
@@ -208,7 +213,55 @@ impl Fat32 {
             data_start,
             clusters,
             label,
+            fsinfo: if fsinfo != 0 && fsinfo < reserved {
+                fsinfo
+            } else {
+                0
+            },
+            bk_boot: if bk_boot != 0 && bk_boot + 1 < reserved {
+                bk_boot
+            } else {
+                0
+            },
         })
+    }
+
+    /// Keeps the advisory FSInfo counters (free count, next-free hint; the specification's
+    /// FSI_Free_Count / FSI_Nxt_Free) in step with allocations, in the primary sector and its
+    /// backup copy, so repair tools see a consistent volume (dosfstools flagged a stale count in
+    /// CI run 39109529224). `delta` is the change in free clusters; `hint` the next-free hint.
+    fn fsinfo_adjust(&self, delta: i64, hint: u32) -> Result<(), FsError> {
+        if self.fsinfo == 0 {
+            return Ok(());
+        }
+        let mut s = [0u8; SECTOR];
+        let copies = [
+            u64::from(self.fsinfo),
+            if self.bk_boot != 0 {
+                u64::from(self.bk_boot) + 1
+            } else {
+                0
+            },
+        ];
+        for sector in copies.into_iter().filter(|&x| x != 0) {
+            block::read(sector, &mut s)?;
+            if le32(&s, 0) != 0x4161_5252
+                || le32(&s, 484) != 0x6141_7272
+                || le32(&s, 508) != 0xAA55_0000
+            {
+                continue;
+            }
+            let free = le32(&s, 488);
+            let new_free = if free == 0xFFFF_FFFF || free > self.clusters {
+                0xFFFF_FFFF
+            } else {
+                (i64::from(free) + delta).clamp(0, i64::from(self.clusters)) as u32
+            };
+            s[488..492].copy_from_slice(&new_free.to_le_bytes());
+            s[492..496].copy_from_slice(&hint.to_le_bytes());
+            block::write(sector, &s)?;
+        }
+        Ok(())
     }
 
     fn cluster_sector(&self, c: u32) -> Result<u64, FsError> {
@@ -277,6 +330,7 @@ impl Fat32 {
                     for i in 0..self.sectors_per_cluster {
                         block::write(base + u64::from(i), &zero)?;
                     }
+                    self.fsinfo_adjust(-1, k + 1)?;
                     return Ok(k);
                 }
                 k += 1;
@@ -289,14 +343,19 @@ impl Fat32 {
     fn free_chain(&self, first: u32) -> Result<u32, FsError> {
         let mut c = first;
         let mut n = 0;
+        let mut lowest = u32::MAX;
         while c >= 2 && n < CHAIN_MAX {
             let next = self.next_cluster(c)?;
             self.fat_set(c, 0)?;
+            lowest = lowest.min(c);
             n += 1;
             match next {
                 Some(x) => c = x,
                 None => break,
             }
+        }
+        if n > 0 {
+            self.fsinfo_adjust(i64::from(n), lowest)?;
         }
         Ok(n)
     }
@@ -644,6 +703,22 @@ impl Fat32 {
         }
         self.store_entry(file)?;
         Ok(done)
+    }
+
+    /// Empties a file: frees its chain, size 0, no first cluster; the entry stays.
+    pub fn truncate(&self, file: &mut Entry) -> Result<u32, FsError> {
+        if file.is_dir() {
+            return Err(FsError::IsADirectory);
+        }
+        let freed = if file.first >= 2 {
+            self.free_chain(file.first)?
+        } else {
+            0
+        };
+        file.first = 0;
+        file.size = 0;
+        self.store_entry(file)?;
+        Ok(freed)
     }
 
     /// Removes a file (not a directory): frees its chain and marks the entry free.

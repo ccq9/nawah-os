@@ -15,7 +15,10 @@
       "user/libnawah/Cargo.toml",
       "user/apps/hello/Cargo.toml",
       "user/apps/hello/build.rs",
-      "tools/fat32.py"
+      "tools/fat32.py",
+      "user/apps/file_roundtrip/Cargo.toml",
+      "user/apps/path_invalid/Cargo.toml",
+      "user/apps/fd_leak/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -25,7 +28,10 @@
     "extra_artifacts": [
       "${OUT}/NAWAH-NEG.EFI",
       "${OUT}/NAWAH-KTEST.EFI",
-      "${OUT}/apps/hello.elf"
+      "${OUT}/apps/hello.elf",
+      "${OUT}/apps/file_roundtrip.elf",
+      "${OUT}/apps/path_invalid.elf",
+      "${OUT}/apps/fd_leak.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -46,6 +52,60 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/hello",
         "${OUT}/apps/hello.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/file_roundtrip/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/file_roundtrip",
+        "${OUT}/apps/file_roundtrip.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/path_invalid/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/path_invalid",
+        "${OUT}/apps/path_invalid.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/fd_leak/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/fd_leak",
+        "${OUT}/apps/fd_leak.elf"
       ],
       [
         "cargo",
@@ -1553,6 +1613,122 @@
             "fsck.fat",
             "-n",
             "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-FILE-ROUNDTRIP",
+        "test_id": "TST-M3-FILE-ROUNDTRIP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=file_roundtrip"
+        ],
+        "oracle": "the file_roundtrip application (libnawah, ABI v1.3) creates /APP.TXT with O_CREATE|O_TRUNCATE, writes two parts, closes, reopens read-only, reads the 39 bytes back, gets 0 at end of file, is refused a write through the read-only handle (ERR_ACCESS), stats the size, seeks to 11 and overwrites 'BY', re-reads, syncs: exit 0x60; no file object, handle or frame outlives the process; afterwards tools/fat32.py reads 'written by BYle_roundtrip: second part\\n' from the image and fsck.fat -n is clean; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=file_roundtrip",
+          "|user|trace|len=17|text=file roundtrip ok",
+          "|ktest|file_roundtrip|exit=0x60|expected=0x60|frames_delta=0|files_after=0|handles_after=0|",
+          "|ktest|pass|file application behaved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "expect",
+            "${DISK}",
+            "/APP.TXT",
+            "written by BYle_roundtrip: second part\\n"
+          ],
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-PATH-INVALID",
+        "test_id": "TST-M3-PATH-INVALID",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=path_invalid"
+        ],
+        "oracle": "the path_invalid application gets the documented error for 20 refusals (missing file, relative path, non-8.3 name, directory, path through a file, empty/undefined flags, missing parent, stat/unlink of missing or directory, empty/NUL/overlong path, kernel pointer, bad handle, channel handle to read) and still reads /hello.txt afterwards: exit 0x61; nothing created; no leak; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=path_invalid",
+          "|ktest|path_invalid|exit=0x61|expected=0x61|frames_delta=0|files_after=0|handles_after=0|",
+          "|ktest|pass|file application behaved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-FD-LEAK",
+        "test_id": "TST-M3-FD-LEAK",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=fd_leak"
+        ],
+        "oracle": "the fd_leak application exits with 44 open file handles (20 opens of /HELLO.TXT + 20 duplicates, 4 created files of 1500 bytes incl. /DIR/LEAK3.TXT): afterwards live files = handles = 0 and all object counts equal their values before, the four files stat at 1500 bytes, free clusters are exactly 12 fewer, frames and process records balance; host checks fsck.fat -n and fat32.py check pass; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=fd_leak",
+          "|ktest|fd_leak|exit=0x62|files_before=0|files_after=0|handles_after=0|",
+          "|sizes=1500,1500,1500,1500|frames_delta=0|processes_after=0",
+          "|ktest|pass|a process exiting with 44 open file handles leaks nothing"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "expect",
+            "${DISK}",
+            "/DIR/LEAK3.TXT",
+            "333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333"
           ]
         ]
       }
