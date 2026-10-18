@@ -392,18 +392,24 @@ fn pick_next(s: &Sched, cpu: usize) -> usize {
 /// priority's round, the next one becomes Running, its trap stack and address space are made
 /// current. Returns `None` when the current thread keeps the CPU. The caller performs the
 /// returned switch immediately, after dropping the lock, with interrupts still disabled.
-fn prepare_switch(s: &mut Sched) -> Option<Switch> {
-    let cpu = me();
-    let cur = s.current[cpu];
-    // This code runs on `cur`'s stack, so whatever ran before `cur` on this CPU is off it now.
-    if let Some(p) = s.prev[cpu] {
-        if p != cur {
+/// Marks the thread that ran on `cpu` before its current one as off the CPU: called on that
+/// CPU while running the current thread, so the previous thread's stack is no longer in use
+/// (a resumed thread calls it right after the switch; a scheduling decision calls it too, for
+/// a thread whose first run started in a trampoline and never came back through `perform`).
+fn retire_prev(s: &mut Sched, cpu: usize) {
+    if let Some(p) = s.prev[cpu].take() {
+        if p != s.current[cpu] {
             if let Some(i) = index_of(s, p) {
                 s.threads[i].on_cpu = false;
             }
         }
-        s.prev[cpu] = None;
     }
+}
+
+fn prepare_switch(s: &mut Sched) -> Option<Switch> {
+    let cpu = me();
+    let cur = s.current[cpu];
+    retire_prev(s, cpu);
     let cur_i = index_of(s, cur).expect("current thread exists");
     s.need_resched[cpu] = false;
     s.seq += 1;
@@ -464,7 +470,13 @@ fn perform(sw: Option<Switch>) -> bool {
         }
         None => false,
     };
-    let (doomed, stacks) = with(reap);
+    let (doomed, stacks) = with(|s| {
+        if switched {
+            // Back on this stack: the thread that switched to us has left the CPU.
+            retire_prev(s, me());
+        }
+        reap(s)
+    });
     // Outside the lock: unmapping a stack tells the other CPUs (TLB shootdown), and releasing
     // handles may close channels and wake their readers.
     for st in stacks {
