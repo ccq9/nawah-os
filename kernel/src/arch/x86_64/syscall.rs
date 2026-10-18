@@ -5,7 +5,7 @@
 //! References (Intel SDM, docs/sources.json S26): Vol. 3A §5.8.8 SYSCALL/SYSRET (CS/SS from
 //! IA32_STAR, RIP from IA32_LSTAR, RFLAGS masked by IA32_FMASK, RCX/R11 carry RIP/RFLAGS);
 //! Vol. 4 Table 2-2 (IA32_EFER bit 0 SCE, IA32_STAR C0000081H, IA32_LSTAR C0000082H,
-//! IA32_FMASK C0000084H, IA32_GS_BASE C0000100H, IA32_KERNEL_GS_BASE C0000102H); Vol. 2B
+//! IA32_FMASK C0000084H, IA32_GS_BASE C0000101H, IA32_KERNEL_GS_BASE C0000102H); Vol. 2B
 //! SWAPGS; Vol. 3A §4.6 and §2.5 (CR4.SMEP bit 20, CR4.SMAP bit 21, STAC/CLAC); Vol. 2A CPUID
 //! leaf 7 EBX bit 7 SMEP, bit 20 SMAP; §7.14.2 (an interrupt taken in ring 3 loads RSP from
 //! TSS.RSP0).
@@ -25,7 +25,8 @@ const EFER_SCE: u64 = 1 << 0;
 const IA32_STAR: u32 = 0xC000_0081;
 const IA32_LSTAR: u32 = 0xC000_0082;
 const IA32_FMASK: u32 = 0xC000_0084;
-const IA32_GS_BASE: u32 = 0xC000_0100;
+/// C0000100H is IA32_FS_BASE; GS_BASE is the next one (SDM Vol. 4 Table 2-2).
+const IA32_GS_BASE: u32 = 0xC000_0101;
 const IA32_KERNEL_GS_BASE: u32 = 0xC000_0102;
 /// RFLAGS bits cleared on SYSCALL entry: CF(0) PF(2) AF(4) ZF(6) SF(7) TF(8) IF(9) DF(10)
 /// OF(11) AC(18).

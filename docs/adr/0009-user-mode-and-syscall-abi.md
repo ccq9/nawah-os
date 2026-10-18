@@ -22,3 +22,7 @@
 - TST-M3-USER-KERNEL-ACCESS: قراءة الخريطة المباشرة من حلقة 3 → `kernel|user_fault|vector=14|…|error=0x5` وخروج 0x1000e، النواة تكمل.
 - TST-M3-SYSRET-CANONICAL: check_rip بعنوان غير canonical → ERR_RANGE (خروج 0xfffffffffffffffc).
 - أثر TST-M1-BOOT: `kernel|user|…|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1`.
+
+## درس من CI run 39102441756
+
+أول تشغيل: #PF في مدخل SYSCALL عند `mov gs:[0], rsp` بـ CR2=0 — كُتب MSR C0000100H (وهو IA32_FS_BASE) بدل C0000101H (IA32_GS_BASE)، فبقي GS صفرًا بعد swapgs. أُصلح الرقم؛ التشخيص الكامل (سجلات الإطار: rax=1، rdi=0x1234، rcx=عنوان العودة، r11=0x202) هو ما كشف الموضع بدقة.
