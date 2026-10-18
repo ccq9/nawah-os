@@ -1,0 +1,4 @@
+$ python3 -I tools/fat32.py check /tmp/nawah-mutants-d7bhibg2/wt/build/pc-qemu/disk.img
+check: clusters=128992 used=923 free=128069 label='NAWAHLAB' fstype='FAT32   ' problems=[]
+
+[exit 0]

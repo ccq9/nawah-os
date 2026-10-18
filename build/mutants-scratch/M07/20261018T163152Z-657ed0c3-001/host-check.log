@@ -1,0 +1,17 @@
+$ fsck.fat -n /tmp/nawah-mutants-d7bhibg2/wt/build/pc-qemu/disk.img
+fsck.fat 4.2 (2021-01-31)
+/tmp/nawah-mutants-d7bhibg2/wt/build/pc-qemu/disk.img: 30 files, 923/128992 clusters
+
+[exit 0]
+$ python3 -I tools/fat32.py check /tmp/nawah-mutants-d7bhibg2/wt/build/pc-qemu/disk.img
+check: clusters=128992 used=923 free=128069 label='NAWAHLAB' fstype='FAT32   ' problems=[]
+
+[exit 0]
+$ python3 -I tools/fat32.py absent-raw /tmp/nawah-mutants-d7bhibg2/wt/build/pc-qemu/disk.img lab-admin-1
+/tmp/nawah-mutants-d7bhibg2/wt/build/pc-qemu/disk.img: 'lab-admin-1' absent from all 131072 sectors
+
+[exit 0]
+$ python3 -I tools/fat32.py absent-raw /tmp/nawah-mutants-d7bhibg2/wt/build/pc-qemu/disk.img lab-user-1
+/tmp/nawah-mutants-d7bhibg2/wt/build/pc-qemu/disk.img: 'lab-user-1' absent from all 131072 sectors
+
+[exit 0]

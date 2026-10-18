@@ -1,0 +1,13 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: failed to load Boot0001 "UEFI Non-Block Boot Device" from PciRoot(0x0)/Pci(0x2,0x0): Not Found
+BdsDxe: loading Boot0002 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0002 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+OSX|mutm07|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs
+OSX|mutm07|boot|acpi|rsdp=0x1f77e014
+OSX|mutm07|boot|memmap|bytes=6048|desc_size=48|key=0xa80
+OSX|mutm07|boot|ebs|ok=1|attempts=1
+OSX|mutm07|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel
+OSX|mutm07|kernel|post_ebs|map_key=0xa80|descriptors=126|conventional_pages=116951|ebs_attempts=1
+OSX|mutm07|kernel|pmm|managed_frames=116951|free_frames=116947|allocated_frames=4|bitmap_frames=4|selfcheck=1
+OSX|mutm07|exc|vector=14|name=#PF|error=0x0|rip=0x1d876299|cs=0x8|rflags=0x86|rsp=0x1d8a6d90|ss=0x10|cr2=0x0|stack=kernel|cpu=0
+OSX|mutm07|exc|regs1|rax=0xd1ec7a1100000000|rbx=0x1fe47|rcx=0xffff800000000000|rdx=0x0|rsi=0x0|rdi=0x7fa|rbp=0x1d8a6db0
+OSX|mutm07|exc|regs2|r8=0x0|r9=0x1|r10=0x1701|r11=0x1000|r12=0x2fee|r13=0xffff900000001000|r14=0x7fa|r15=0x5000
