@@ -1,0 +1,13 @@
+$ python3 -I tools/fat32.py expect /tmp/nawah-mutants-ehfqs0b9/wt/build/pc-qemu/disk.img /PERSIST.TXT NAWAH-FS-PERSIST|mutm46\n
+expect: /PERSIST.TXT size=24 OK
+
+[exit 0]
+$ fsck.fat -n /tmp/nawah-mutants-ehfqs0b9/wt/build/pc-qemu/disk.img
+fsck.fat 4.2 (2021-01-31)
+FATs differ but appear to be intact.
+  Using first FAT.
+
+Leaving filesystem unchanged.
+/tmp/nawah-mutants-ehfqs0b9/wt/build/pc-qemu/disk.img: 6 files, 45/128992 clusters
+
+[exit 1]

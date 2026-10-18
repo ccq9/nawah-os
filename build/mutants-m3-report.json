@@ -1,0 +1,601 @@
+{
+ "threshold": 0.95,
+ "target": "pc-qemu",
+ "mutants": [
+  {
+   "id": "M30",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "time slice never expires (no preemption)",
+   "killers": [
+    "TST-M3-PREEMPT",
+    "TST-M3-LOCK-CONTENTION"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-PREEMPT"
+   ],
+   "results": {
+    "TST-M3-PREEMPT": "FAIL",
+    "TST-M3-LOCK-CONTENTION": "PASS"
+   },
+   "seconds": 100.2
+  },
+  {
+   "id": "M31",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "priorities ignored by pick_next",
+   "killers": [
+    "TST-M3-PREEMPT",
+    "TST-M3-THREADS-ALTERNATE"
+   ],
+   "declared_killers_missed": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-DF",
+    "TST-M3-VMM-UNMAP",
+    "TST-M3-FAT32-PERSIST"
+   ],
+   "results": {
+    "TST-M3-PREEMPT": "PASS",
+    "TST-M3-THREADS-ALTERNATE": "PASS",
+    "TST-M1-BOOT": "PASS",
+    "TST-M1-NEG": "PASS",
+    "TST-M2-EXC-DE": "PASS",
+    "TST-M2-EXC-UD": "PASS",
+    "TST-M2-EXC-DB": "PASS",
+    "TST-M2-EXC-GP": "PASS",
+    "TST-M2-EXC-PF": "PASS",
+    "TST-M2-EXC-BP": "PASS",
+    "TST-M2-EXC-BP-STATE": "PASS",
+    "TST-M2-EXC-DF": "FAIL",
+    "TST-M2-EXC-NESTED": "PASS",
+    "TST-M2-IDT-LAYOUT": "PASS",
+    "TST-M2-EXC-TRIPLE": "PASS",
+    "TST-M2-PMM-COUNTS": "PASS",
+    "TST-M2-PMM-EXHAUST": "PASS",
+    "TST-M2-PMM-DOUBLE-FREE": "PASS",
+    "TST-M2-VMM-SWITCH": "PASS",
+    "TST-M2-VMM-WP": "PASS",
+    "TST-M2-VMM-NX": "PASS",
+    "TST-M2-VMM-GUARD": "PASS",
+    "TST-M2-TIMER-TICKS": "PASS",
+    "TST-M2-IRQ-EOI": "PASS",
+    "TST-M2-SPURIOUS": "PASS",
+    "TST-M2-LOCK-IRQSAVE": "PASS",
+    "TST-M2-LOCK-REENTRY": "PASS",
+    "TST-M2-PANIC-CODE": "PASS",
+    "TST-M3-HEAP-STRESS": "PASS",
+    "TST-M3-VMM-UNMAP": "FAIL",
+    "TST-M3-VMM-PROTECT": "PASS",
+    "TST-M3-AS-SWITCH": "PASS",
+    "TST-M3-USER-SYSCALL": "PASS",
+    "TST-M3-USER-BAD-PTR": "PASS",
+    "TST-M3-USER-KERNEL-ACCESS": "PASS",
+    "TST-M3-ISOLATION": "PASS",
+    "TST-M3-SYSRET-CANONICAL": "PASS",
+    "TST-M3-EXIT-CLEANUP": "PASS",
+    "TST-M3-USER-SLEEP": "PASS",
+    "TST-M3-IPC-ROUNDTRIP": "PASS",
+    "TST-M3-RIGHTS-DENIED": "PASS",
+    "TST-M3-CLOSED-HANDLE": "PASS",
+    "TST-M3-IPC-OVERSIZE": "PASS",
+    "TST-M3-IPC-NO-LEAK": "PASS",
+    "TST-M3-HANDLE-TABLE": "PASS",
+    "TST-M3-BLOCK-WAKE": "PASS",
+    "TST-M3-APP-EXIT-CODE": "PASS",
+    "TST-M3-ELF-MALFORMED": "PASS",
+    "TST-M3-ELF-WX": "PASS",
+    "TST-M3-BLK-READ": "PASS",
+    "TST-M3-BLK-USER-CR3": "PASS",
+    "TST-M3-BLK-PERSIST": "PASS",
+    "TST-M3-FAT32-READ": "PASS",
+    "TST-M3-FAT32-WRITE": "PASS",
+    "TST-M3-FAT32-PERSIST": "FAIL",
+    "TST-M3-FILE-ROUNDTRIP": "PASS",
+    "TST-M3-PATH-INVALID": "PASS",
+    "TST-M3-FD-LEAK": "PASS",
+    "TST-M3-SMP-ONLINE": "PASS",
+    "TST-M3-LOCK-CONTENTION": "PASS",
+    "TST-M3-TLB-SHOOTDOWN": "PASS"
+   },
+   "seconds": 256.6
+  },
+  {
+   "id": "M32",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "a process never finishes (thread count not decremented)",
+   "killers": [
+    "TST-M1-BOOT",
+    "TST-M3-USER-SYSCALL"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT",
+    "TST-M3-USER-SYSCALL"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL",
+    "TST-M3-USER-SYSCALL": "FAIL"
+   },
+   "seconds": 187.1
+  },
+  {
+   "id": "M33",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "a wake-up before the block is lost (no token)",
+   "killers": [
+    "TST-M3-BLOCK-WAKE"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-BLOCK-WAKE"
+   ],
+   "results": {
+    "TST-M3-BLOCK-WAKE": "FAIL"
+   },
+   "seconds": 7.9
+  },
+  {
+   "id": "M34",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "channel_write ignores the WRITE right",
+   "killers": [
+    "TST-M3-RIGHTS-DENIED"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-RIGHTS-DENIED"
+   ],
+   "results": {
+    "TST-M3-RIGHTS-DENIED": "FAIL"
+   },
+   "seconds": 7.8
+  },
+  {
+   "id": "M35",
+   "file": "kernel/src/object/handle.rs",
+   "note": "a closed handle's slot keeps its generation (stale handle accepted)",
+   "killers": [
+    "TST-M3-CLOSED-HANDLE"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-CLOSED-HANDLE"
+   ],
+   "results": {
+    "TST-M3-CLOSED-HANDLE": "FAIL"
+   },
+   "seconds": 7.9
+  },
+  {
+   "id": "M36",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "oversize message accepted by channel_write",
+   "killers": [
+    "TST-M3-IPC-OVERSIZE"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-IPC-OVERSIZE"
+   ],
+   "results": {
+    "TST-M3-IPC-OVERSIZE": "FAIL"
+   },
+   "seconds": 7.9
+  },
+  {
+   "id": "M37",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "user pointers may name kernel pages (USER bit not checked)",
+   "killers": [
+    "TST-M3-USER-KERNEL-ACCESS"
+   ],
+   "declared_killers_missed": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-BLK-PERSIST",
+    "TST-M3-FAT32-PERSIST"
+   ],
+   "results": {
+    "TST-M3-USER-KERNEL-ACCESS": "PASS",
+    "TST-M1-BOOT": "PASS",
+    "TST-M1-NEG": "PASS",
+    "TST-M2-EXC-DE": "PASS",
+    "TST-M2-EXC-UD": "PASS",
+    "TST-M2-EXC-DB": "PASS",
+    "TST-M2-EXC-GP": "PASS",
+    "TST-M2-EXC-PF": "PASS",
+    "TST-M2-EXC-BP": "PASS",
+    "TST-M2-EXC-BP-STATE": "PASS",
+    "TST-M2-EXC-DF": "PASS",
+    "TST-M2-EXC-NESTED": "PASS",
+    "TST-M2-IDT-LAYOUT": "PASS",
+    "TST-M2-EXC-TRIPLE": "PASS",
+    "TST-M2-PMM-COUNTS": "PASS",
+    "TST-M2-PMM-EXHAUST": "PASS",
+    "TST-M2-PMM-DOUBLE-FREE": "PASS",
+    "TST-M2-VMM-SWITCH": "PASS",
+    "TST-M2-VMM-WP": "PASS",
+    "TST-M2-VMM-NX": "PASS",
+    "TST-M2-VMM-GUARD": "PASS",
+    "TST-M2-TIMER-TICKS": "PASS",
+    "TST-M2-IRQ-EOI": "PASS",
+    "TST-M2-SPURIOUS": "PASS",
+    "TST-M2-LOCK-IRQSAVE": "PASS",
+    "TST-M2-LOCK-REENTRY": "PASS",
+    "TST-M2-PANIC-CODE": "PASS",
+    "TST-M3-HEAP-STRESS": "PASS",
+    "TST-M3-VMM-UNMAP": "PASS",
+    "TST-M3-VMM-PROTECT": "PASS",
+    "TST-M3-AS-SWITCH": "PASS",
+    "TST-M3-USER-SYSCALL": "PASS",
+    "TST-M3-USER-BAD-PTR": "PASS",
+    "TST-M3-ISOLATION": "PASS",
+    "TST-M3-SYSRET-CANONICAL": "PASS",
+    "TST-M3-THREADS-ALTERNATE": "PASS",
+    "TST-M3-PREEMPT": "PASS",
+    "TST-M3-EXIT-CLEANUP": "PASS",
+    "TST-M3-USER-SLEEP": "PASS",
+    "TST-M3-IPC-ROUNDTRIP": "PASS",
+    "TST-M3-RIGHTS-DENIED": "PASS",
+    "TST-M3-CLOSED-HANDLE": "PASS",
+    "TST-M3-IPC-OVERSIZE": "PASS",
+    "TST-M3-IPC-NO-LEAK": "PASS",
+    "TST-M3-HANDLE-TABLE": "PASS",
+    "TST-M3-BLOCK-WAKE": "PASS",
+    "TST-M3-APP-EXIT-CODE": "PASS",
+    "TST-M3-ELF-MALFORMED": "PASS",
+    "TST-M3-ELF-WX": "PASS",
+    "TST-M3-BLK-READ": "PASS",
+    "TST-M3-BLK-USER-CR3": "PASS",
+    "TST-M3-BLK-PERSIST": "FAIL",
+    "TST-M3-FAT32-READ": "PASS",
+    "TST-M3-FAT32-WRITE": "PASS",
+    "TST-M3-FAT32-PERSIST": "FAIL",
+    "TST-M3-FILE-ROUNDTRIP": "PASS",
+    "TST-M3-PATH-INVALID": "PASS",
+    "TST-M3-FD-LEAK": "PASS",
+    "TST-M3-SMP-ONLINE": "PASS",
+    "TST-M3-LOCK-CONTENTION": "PASS",
+    "TST-M3-TLB-SHOOTDOWN": "PASS"
+   },
+   "seconds": 247.7
+  },
+  {
+   "id": "M38",
+   "file": "kernel/src/loader/elf.rs",
+   "note": "W^X not enforced on PT_LOAD segments",
+   "killers": [
+    "TST-M3-ELF-WX"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-ELF-WX"
+   ],
+   "results": {
+    "TST-M3-ELF-WX": "FAIL"
+   },
+   "seconds": 7.8
+  },
+  {
+   "id": "M39",
+   "file": "kernel/src/loader/elf.rs",
+   "note": "overlapping segments accepted",
+   "killers": [
+    "TST-M3-ELF-MALFORMED"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-ELF-MALFORMED"
+   ],
+   "results": {
+    "TST-M3-ELF-MALFORMED": "FAIL"
+   },
+   "seconds": 7.9
+  },
+  {
+   "id": "M40",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "MMIO mapped at its physical address again (CI run 39110182649 regression)",
+   "killers": [
+    "TST-M1-BOOT",
+    "TST-M3-BLK-USER-CR3"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT",
+    "TST-M3-BLK-USER-CR3"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL",
+    "TST-M3-BLK-USER-CR3": "FAIL"
+   },
+   "seconds": 14.4
+  },
+  {
+   "id": "M41",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "unmap_page does not tell the other CPUs",
+   "killers": [
+    "TST-M3-TLB-SHOOTDOWN"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-TLB-SHOOTDOWN"
+   ],
+   "results": {
+    "TST-M3-TLB-SHOOTDOWN": "FAIL"
+   },
+   "seconds": 7.9
+  },
+  {
+   "id": "M42",
+   "file": "kernel/src/arch/x86_64/tlb.rs",
+   "note": "a served shootdown request flushes nothing",
+   "killers": [
+    "TST-M3-TLB-SHOOTDOWN"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-TLB-SHOOTDOWN"
+   ],
+   "results": {
+    "TST-M3-TLB-SHOOTDOWN": "FAIL"
+   },
+   "seconds": 7.9
+  },
+  {
+   "id": "M43",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "spawn_on places the thread on the caller's CPU",
+   "killers": [
+    "TST-M3-SMP-ONLINE"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-SMP-ONLINE"
+   ],
+   "results": {
+    "TST-M3-SMP-ONLINE": "FAIL"
+   },
+   "seconds": 8.1
+  },
+  {
+   "id": "M44",
+   "file": "kernel/src/arch/x86_64/mod.rs",
+   "note": "every CPU believes it is CPU 0",
+   "killers": [
+    "TST-M3-SMP-ONLINE",
+    "TST-M3-LOCK-CONTENTION"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-SMP-ONLINE",
+    "TST-M3-LOCK-CONTENTION"
+   ],
+   "results": {
+    "TST-M3-SMP-ONLINE": "FAIL",
+    "TST-M3-LOCK-CONTENTION": "FAIL"
+   },
+   "seconds": 11.2
+  },
+  {
+   "id": "M45",
+   "file": "kernel/src/drivers/virtio_blk.rs",
+   "note": "reads past the capacity accepted",
+   "killers": [
+    "TST-M3-BLK-READ"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-BLK-READ"
+   ],
+   "results": {
+    "TST-M3-BLK-READ": "FAIL"
+   },
+   "seconds": 8.0
+  },
+  {
+   "id": "M46",
+   "file": "kernel/src/fs/fat32.rs",
+   "note": "only the first FAT is updated (fsck: FATs differ)",
+   "killers": [
+    "TST-M3-FAT32-WRITE"
+   ],
+   "declared_killers_missed": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FAT32-PERSIST",
+    "TST-M3-FILE-ROUNDTRIP",
+    "TST-M3-FD-LEAK"
+   ],
+   "results": {
+    "TST-M3-FAT32-WRITE": "PASS",
+    "TST-M1-BOOT": "PASS",
+    "TST-M1-NEG": "PASS",
+    "TST-M2-EXC-DE": "PASS",
+    "TST-M2-EXC-UD": "PASS",
+    "TST-M2-EXC-DB": "PASS",
+    "TST-M2-EXC-GP": "PASS",
+    "TST-M2-EXC-PF": "PASS",
+    "TST-M2-EXC-BP": "PASS",
+    "TST-M2-EXC-BP-STATE": "PASS",
+    "TST-M2-EXC-DF": "PASS",
+    "TST-M2-EXC-NESTED": "PASS",
+    "TST-M2-IDT-LAYOUT": "PASS",
+    "TST-M2-EXC-TRIPLE": "PASS",
+    "TST-M2-PMM-COUNTS": "PASS",
+    "TST-M2-PMM-EXHAUST": "PASS",
+    "TST-M2-PMM-DOUBLE-FREE": "PASS",
+    "TST-M2-VMM-SWITCH": "PASS",
+    "TST-M2-VMM-WP": "PASS",
+    "TST-M2-VMM-NX": "PASS",
+    "TST-M2-VMM-GUARD": "PASS",
+    "TST-M2-TIMER-TICKS": "PASS",
+    "TST-M2-IRQ-EOI": "PASS",
+    "TST-M2-SPURIOUS": "PASS",
+    "TST-M2-LOCK-IRQSAVE": "PASS",
+    "TST-M2-LOCK-REENTRY": "PASS",
+    "TST-M2-PANIC-CODE": "PASS",
+    "TST-M3-HEAP-STRESS": "PASS",
+    "TST-M3-VMM-UNMAP": "PASS",
+    "TST-M3-VMM-PROTECT": "PASS",
+    "TST-M3-AS-SWITCH": "PASS",
+    "TST-M3-USER-SYSCALL": "PASS",
+    "TST-M3-USER-BAD-PTR": "PASS",
+    "TST-M3-USER-KERNEL-ACCESS": "PASS",
+    "TST-M3-ISOLATION": "PASS",
+    "TST-M3-SYSRET-CANONICAL": "PASS",
+    "TST-M3-THREADS-ALTERNATE": "PASS",
+    "TST-M3-PREEMPT": "PASS",
+    "TST-M3-EXIT-CLEANUP": "PASS",
+    "TST-M3-USER-SLEEP": "PASS",
+    "TST-M3-IPC-ROUNDTRIP": "PASS",
+    "TST-M3-RIGHTS-DENIED": "PASS",
+    "TST-M3-CLOSED-HANDLE": "PASS",
+    "TST-M3-IPC-OVERSIZE": "PASS",
+    "TST-M3-IPC-NO-LEAK": "PASS",
+    "TST-M3-HANDLE-TABLE": "PASS",
+    "TST-M3-BLOCK-WAKE": "PASS",
+    "TST-M3-APP-EXIT-CODE": "PASS",
+    "TST-M3-ELF-MALFORMED": "PASS",
+    "TST-M3-ELF-WX": "PASS",
+    "TST-M3-BLK-READ": "PASS",
+    "TST-M3-BLK-USER-CR3": "PASS",
+    "TST-M3-BLK-PERSIST": "PASS",
+    "TST-M3-FAT32-READ": "PASS",
+    "TST-M3-FAT32-PERSIST": "FAIL",
+    "TST-M3-FILE-ROUNDTRIP": "FAIL",
+    "TST-M3-PATH-INVALID": "PASS",
+    "TST-M3-FD-LEAK": "FAIL",
+    "TST-M3-SMP-ONLINE": "PASS",
+    "TST-M3-LOCK-CONTENTION": "PASS",
+    "TST-M3-TLB-SHOOTDOWN": "PASS"
+   },
+   "seconds": 248.3
+  },
+  {
+   "id": "M47",
+   "file": "kernel/src/fs/fat32.rs",
+   "note": "unlink leaks the cluster chain",
+   "killers": [
+    "TST-M3-FAT32-WRITE"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FAT32-WRITE"
+   ],
+   "results": {
+    "TST-M3-FAT32-WRITE": "FAIL"
+   },
+   "seconds": 8.6
+  },
+  {
+   "id": "M48",
+   "file": "kernel/src/fs/vfs.rs",
+   "note": "relative paths accepted",
+   "killers": [
+    "TST-M3-PATH-INVALID"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-PATH-INVALID"
+   ],
+   "results": {
+    "TST-M3-PATH-INVALID": "FAIL"
+   },
+   "seconds": 7.8
+  },
+  {
+   "id": "M49",
+   "file": "kernel/src/fs/vfs.rs",
+   "note": "unknown open flags accepted",
+   "killers": [
+    "TST-M3-PATH-INVALID"
+   ],
+   "declared_killers_missed": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-BLK-READ",
+    "TST-M3-FAT32-PERSIST"
+   ],
+   "results": {
+    "TST-M3-PATH-INVALID": "PASS",
+    "TST-M1-BOOT": "PASS",
+    "TST-M1-NEG": "PASS",
+    "TST-M2-EXC-DE": "PASS",
+    "TST-M2-EXC-UD": "PASS",
+    "TST-M2-EXC-DB": "PASS",
+    "TST-M2-EXC-GP": "PASS",
+    "TST-M2-EXC-PF": "PASS",
+    "TST-M2-EXC-BP": "PASS",
+    "TST-M2-EXC-BP-STATE": "PASS",
+    "TST-M2-EXC-DF": "PASS",
+    "TST-M2-EXC-NESTED": "PASS",
+    "TST-M2-IDT-LAYOUT": "PASS",
+    "TST-M2-EXC-TRIPLE": "PASS",
+    "TST-M2-PMM-COUNTS": "PASS",
+    "TST-M2-PMM-EXHAUST": "PASS",
+    "TST-M2-PMM-DOUBLE-FREE": "PASS",
+    "TST-M2-VMM-SWITCH": "PASS",
+    "TST-M2-VMM-WP": "PASS",
+    "TST-M2-VMM-NX": "PASS",
+    "TST-M2-VMM-GUARD": "PASS",
+    "TST-M2-TIMER-TICKS": "PASS",
+    "TST-M2-IRQ-EOI": "PASS",
+    "TST-M2-SPURIOUS": "PASS",
+    "TST-M2-LOCK-IRQSAVE": "PASS",
+    "TST-M2-LOCK-REENTRY": "PASS",
+    "TST-M2-PANIC-CODE": "PASS",
+    "TST-M3-HEAP-STRESS": "PASS",
+    "TST-M3-VMM-UNMAP": "PASS",
+    "TST-M3-VMM-PROTECT": "PASS",
+    "TST-M3-AS-SWITCH": "PASS",
+    "TST-M3-USER-SYSCALL": "PASS",
+    "TST-M3-USER-BAD-PTR": "PASS",
+    "TST-M3-USER-KERNEL-ACCESS": "PASS",
+    "TST-M3-ISOLATION": "PASS",
+    "TST-M3-SYSRET-CANONICAL": "PASS",
+    "TST-M3-THREADS-ALTERNATE": "PASS",
+    "TST-M3-PREEMPT": "PASS",
+    "TST-M3-EXIT-CLEANUP": "PASS",
+    "TST-M3-USER-SLEEP": "PASS",
+    "TST-M3-IPC-ROUNDTRIP": "PASS",
+    "TST-M3-RIGHTS-DENIED": "PASS",
+    "TST-M3-CLOSED-HANDLE": "PASS",
+    "TST-M3-IPC-OVERSIZE": "PASS",
+    "TST-M3-IPC-NO-LEAK": "PASS",
+    "TST-M3-HANDLE-TABLE": "PASS",
+    "TST-M3-BLOCK-WAKE": "PASS",
+    "TST-M3-APP-EXIT-CODE": "PASS",
+    "TST-M3-ELF-MALFORMED": "PASS",
+    "TST-M3-ELF-WX": "PASS",
+    "TST-M3-BLK-READ": "FAIL",
+    "TST-M3-BLK-USER-CR3": "PASS",
+    "TST-M3-BLK-PERSIST": "PASS",
+    "TST-M3-FAT32-READ": "PASS",
+    "TST-M3-FAT32-WRITE": "PASS",
+    "TST-M3-FAT32-PERSIST": "FAIL",
+    "TST-M3-FILE-ROUNDTRIP": "PASS",
+    "TST-M3-FD-LEAK": "PASS",
+    "TST-M3-SMP-ONLINE": "PASS",
+    "TST-M3-LOCK-CONTENTION": "PASS",
+    "TST-M3-TLB-SHOOTDOWN": "PASS"
+   },
+   "seconds": 248.6
+  }
+ ],
+ "started": "2026-10-18T09:48:31Z",
+ "valid": 20,
+ "killed": 20,
+ "survived": [],
+ "declared_killers_missed": [
+  "M31",
+  "M37",
+  "M46",
+  "M49"
+ ],
+ "invalid": [],
+ "ratio": 1.0,
+ "finished": "2026-10-18T10:12:01Z"
+}

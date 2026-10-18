@@ -1,0 +1,23 @@
+$ python3 -I tests/mutants.py --target pc-qemu --stage M3 --report build/mutants-m3-report.json
+M30: killed by TST-M3-PREEMPT [100.2s] (time slice never expires (no preemption))
+M31: killed by TST-M2-EXC-DF,TST-M3-VMM-UNMAP,TST-M3-FAT32-PERSIST [256.6s] (priorities ignored by pick_next)
+M32: killed by TST-M1-BOOT,TST-M3-USER-SYSCALL [187.1s] (a process never finishes (thread count not decremented))
+M33: killed by TST-M3-BLOCK-WAKE [7.9s] (a wake-up before the block is lost (no token))
+M34: killed by TST-M3-RIGHTS-DENIED [7.8s] (channel_write ignores the WRITE right)
+M35: killed by TST-M3-CLOSED-HANDLE [7.9s] (a closed handle's slot keeps its generation (stale handle accepted))
+M36: killed by TST-M3-IPC-OVERSIZE [7.9s] (oversize message accepted by channel_write)
+M37: killed by TST-M3-BLK-PERSIST,TST-M3-FAT32-PERSIST [247.7s] (user pointers may name kernel pages (USER bit not checked))
+M38: killed by TST-M3-ELF-WX [7.8s] (W^X not enforced on PT_LOAD segments)
+M39: killed by TST-M3-ELF-MALFORMED [7.9s] (overlapping segments accepted)
+M40: killed by TST-M1-BOOT,TST-M3-BLK-USER-CR3 [14.4s] (MMIO mapped at its physical address again (CI run 39110182649 regression))
+M41: killed by TST-M3-TLB-SHOOTDOWN [7.9s] (unmap_page does not tell the other CPUs)
+M42: killed by TST-M3-TLB-SHOOTDOWN [7.9s] (a served shootdown request flushes nothing)
+M43: killed by TST-M3-SMP-ONLINE [8.1s] (spawn_on places the thread on the caller's CPU)
+M44: killed by TST-M3-SMP-ONLINE,TST-M3-LOCK-CONTENTION [11.2s] (every CPU believes it is CPU 0)
+M45: killed by TST-M3-BLK-READ [8.0s] (reads past the capacity accepted)
+M46: killed by TST-M3-FAT32-PERSIST,TST-M3-FILE-ROUNDTRIP,TST-M3-FD-LEAK [248.3s] (only the first FAT is updated (fsck: FATs differ))
+M47: killed by TST-M3-FAT32-WRITE [8.6s] (unlink leaks the cluster chain)
+M48: killed by TST-M3-PATH-INVALID [7.8s] (relative paths accepted)
+M49: killed by TST-M3-BLK-READ,TST-M3-FAT32-PERSIST [248.6s] (unknown open flags accepted)
+
+OK: 20/20 valid mutants killed (100.0%, threshold 95%); survived=[]; invalid=[]; declared_killers_missed=['M31', 'M37', 'M46', 'M49']; report=build/mutants-m3-report.json
