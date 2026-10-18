@@ -826,8 +826,8 @@
     "REQ-M3-010"
    ],
    "layer": "host_unit",
-   "oracle": "seeded defects in the M3 modules are killed by the M3 suite (>= 95%)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "seeded defects in the M3 modules (M30 onwards in tests/mutants.py: scheduler, objects, syscalls, ELF loader, MMIO window, TLB shootdown, SMP placement, virtio-blk, FAT32, VFS) are killed by the M3 suite incl. host checks: kill ratio >= 0.95",
+   "command": "python3 tools/project.py test --target host --suite M3-GATE",
    "verdict": "NOT_RUN",
    "evidence_refs": [],
    "stale_policy": "warn"

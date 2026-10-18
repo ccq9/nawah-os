@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-"""TST-M2-MUTANTS (REQ-M2-014): seeded-defect mutation testing of the kernel's arch/, mm/ and
-sync code against the M1/M2 guest suites.
+"""TST-M2-MUTANTS (REQ-M2-014) and TST-M3-MUTANTS (REQ-M3-010, WP-22): seeded-defect mutation
+testing of the kernel against the guest suites — M01..M29 cover arch/, mm/ and sync (M1/M2
+suites); M30 onwards cover the M3 modules (scheduler, objects, syscalls, ELF loader, MMIO window,
+TLB shootdown, SMP placement, virtio-blk, FAT32, VFS) and are killed by M3 cases, including the
+host checks a case runs on the disk image (`--stage` selects one group).
 
 Each mutant is one deliberate defect (a textual patch that must match exactly once). The runner
 works in a detached git worktree of HEAD so the real checkout, its build/ directory and the
@@ -124,7 +127,92 @@ MUTANTS = [
     ("M29", "kernel/src/arch/x86_64/trap.rs",
      "    if frame.vector == BREAKPOINT {\n        NESTING.fetch_sub(1, Ordering::Relaxed);\n        return;\n    }", "",
      ["TST-M2-EXC-BP"], "#BP made fatal"),
+    # ---- M3 (WP-22): scheduler, objects, syscalls, loader, memory, SMP, storage, files ----
+    ("M30", "kernel/src/sched/mod.rs",
+     "        t.slice = t.slice.saturating_sub(1);\n        if t.slice == 0 {",
+     "        if t.slice == 0 {",
+     ["TST-M3-PREEMPT", "TST-M3-LOCK-CONTENTION"], "time slice never expires (no preemption)"),
+    ("M31", "kernel/src/sched/mod.rs",
+     "                if t.priority < bt.priority\n                    || (t.priority == bt.priority && t.last_pick < bt.last_pick)",
+     "                if t.last_pick < bt.last_pick",
+     ["TST-M3-PREEMPT", "TST-M3-THREADS-ALTERNATE"], "priorities ignored by pick_next"),
+    ("M32", "kernel/src/sched/mod.rs",
+     "                p.threads -= 1;\n                if p.threads == 0 {",
+     "                if p.threads == 0 {",
+     ["TST-M1-BOOT", "TST-M3-USER-SYSCALL"], "a process never finishes (thread count not decremented)"),
+    ("M33", "kernel/src/sched/mod.rs",
+     "                _ => t.wake_tokens = t.wake_tokens.saturating_add(1),",
+     "                _ => {}",
+     ["TST-M3-BLOCK-WAKE"], "a wake-up before the block is lost (no token)"),
+    ("M34", "kernel/src/syscall/mod.rs",
+     "        let ep = endpoint_of(t.get(h, Rights::WRITE).map_err(handle_err)?)?;",
+     "        let ep = endpoint_of(t.get(h, Rights(0)).map_err(handle_err)?)?;",
+     ["TST-M3-RIGHTS-DENIED"], "channel_write ignores the WRITE right"),
+    ("M35", "kernel/src/object/handle.rs",
+     "        s.generation = match s.generation.wrapping_add(1) {\n            0 => 1,\n            g => g,\n        };\n        self.live -= 1;",
+     "        self.live -= 1;",
+     ["TST-M3-CLOSED-HANDLE"], "a closed handle's slot keeps its generation (stale handle accepted)"),
+    ("M36", "kernel/src/syscall/mod.rs",
+     "    if len > MSG_MAX_BYTES as u64 || nh > MSG_MAX_HANDLES as u64 {",
+     "    if nh > MSG_MAX_HANDLES as u64 {",
+     ["TST-M3-IPC-OVERSIZE"], "oversize message accepted by channel_write"),
+    ("M37", "kernel/src/syscall/mod.rs",
+     "            Some(f) if f & arch::paging::USER != 0 && (!write || f & arch::paging::WRITE != 0) => {}",
+     "            Some(f) if !write || f & arch::paging::WRITE != 0 => {}",
+     ["TST-M3-USER-KERNEL-ACCESS"], "user pointers may name kernel pages (USER bit not checked)"),
+    ("M38", "kernel/src/loader/elf.rs",
+     "        if s.flags & 0x3 == 0x3 {\n            return Err(ElfError::WritableExecutable);\n        }",
+     "",
+     ["TST-M3-ELF-WX"], "W^X not enforced on PT_LOAD segments"),
+    ("M39", "kernel/src/loader/elf.rs",
+     "            if lo < ohi && olo < hi {\n                return Err(ElfError::SegmentOverlap);\n            }",
+     "",
+     ["TST-M3-ELF-MALFORMED"], "overlapping segments accepted"),
+    ("M40", "kernel/src/mm/vmm.rs",
+     "    let virt = w.next;\n    let mut page = start;",
+     "    let virt = start;\n    let mut page = start;",
+     ["TST-M1-BOOT", "TST-M3-BLK-USER-CR3"], "MMIO mapped at its physical address again (CI run 39110182649 regression)"),
+    ("M41", "kernel/src/mm/vmm.rs",
+     "    paging::invlpg(virt);\n    crate::arch::tlb::shootdown(virt, PAGE_4K);\n    Ok(phys)",
+     "    paging::invlpg(virt);\n    Ok(phys)",
+     ["TST-M3-TLB-SHOOTDOWN"], "unmap_page does not tell the other CPUs"),
+    ("M42", "kernel/src/arch/x86_64/tlb.rs",
+     "            flush_range(addr, len);\n            SERVED.fetch_add(1, Ordering::Relaxed);",
+     "            SERVED.fetch_add(1, Ordering::Relaxed);",
+     ["TST-M3-TLB-SHOOTDOWN"], "a served shootdown request flushes nothing"),
+    ("M43", "kernel/src/sched/mod.rs",
+     "        owns_stack: true,\n        cpu: cpu as u8,",
+     "        owns_stack: true,\n        cpu: me() as u8,",
+     ["TST-M3-SMP-ONLINE"], "spawn_on places the thread on the caller's CPU"),
+    ("M44", "kernel/src/arch/x86_64/mod.rs",
+     "    unsafe { asm!(\"mov {}, gs:[16]\", out(reg) id, options(nostack, readonly, preserves_flags)) };\n    id as u32",
+     "    unsafe { asm!(\"mov {}, gs:[16]\", out(reg) id, options(nostack, readonly, preserves_flags)) };\n    (id & 0) as u32",
+     ["TST-M3-SMP-ONLINE", "TST-M3-LOCK-CONTENTION"], "every CPU believes it is CPU 0"),
+    ("M45", "kernel/src/drivers/virtio_blk.rs",
+     "            .is_none_or(|e| e > self.info.capacity_sectors)",
+     "            .is_none_or(|e| e > self.info.capacity_sectors + 8)",
+     ["TST-M3-BLK-READ"], "reads past the capacity accepted"),
+    ("M46", "kernel/src/fs/fat32.rs",
+     "        for k in 0..self.fats {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
+     "        for k in 0..1 {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
+     ["TST-M3-FAT32-WRITE"], "only the first FAT is updated (fsck: FATs differ)"),
+    ("M47", "kernel/src/fs/fat32.rs",
+     "        let freed = if e.first >= 2 {\n            self.free_chain(e.first)?\n        } else {\n            0\n        };",
+     "        let freed = 0;",
+     ["TST-M3-FAT32-WRITE"], "unlink leaks the cluster chain"),
+    ("M48", "kernel/src/fs/vfs.rs",
+     "    if path.is_empty() || path.len() > PATH_MAX || path[0] != b'/' || !path.is_ascii() {",
+     "    if path.is_empty() || path.len() > PATH_MAX || !path.is_ascii() {",
+     ["TST-M3-PATH-INVALID"], "relative paths accepted"),
+    ("M49", "kernel/src/fs/vfs.rs",
+     "    if flags & !O_VALID != 0 || flags & (O_READ | O_WRITE) == 0 {",
+     "    if flags & (O_READ | O_WRITE) == 0 {",
+     ["TST-M3-PATH-INVALID"], "unknown open flags accepted"),
 ]
+
+def stage_of(mid: str) -> str:
+    """M01..M29 belong to the M2 gate (TST-M2-MUTANTS), M30.. to the M3 gate (TST-M3-MUTANTS)."""
+    return "M2" if int(mid[1:]) < 30 else "M3"
 
 # Applications first (WP-17): the kernel embeds them through NAWAH_APPS_DIR (kernel/build.rs).
 APPS = ["hello", "file_roundtrip", "path_invalid", "fd_leak"]
@@ -194,9 +282,10 @@ def main():
     ap.add_argument("--target", default="pc-qemu")
     ap.add_argument("--report", default="build/mutants-report.json")
     ap.add_argument("--only", help="comma-separated mutant ids")
+    ap.add_argument("--stage", choices=["M2", "M3"], help="run only the mutants of one gate (M01-M29 = M2, M30.. = M3)")
     ap.add_argument("--check", action="store_true", help="apply/revert each patch and cargo check on the host target only")
     a = ap.parse_args()
-    mutants = [m for m in MUTANTS if not a.only or m[0] in a.only.split(",")]
+    mutants = [m for m in MUTANTS if (not a.only or m[0] in a.only.split(",")) and (not a.stage or stage_of(m[0]) == a.stage)]
     tmp = Path(tempfile.mkdtemp(prefix="nawah-mutants-"))
     wt = tmp / "wt"
     scratch = tmp / "scratch-evidence"

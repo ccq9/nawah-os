@@ -619,9 +619,16 @@ HOST_SUITES = {
 
 
 HOST_SUITES["M2"] = [
-    {"id": "TST-M2-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--report", "build/mutants-report.json"],
+    {"id": "TST-M2-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--stage", "M2", "--report", "build/mutants-report.json"],
      "oracle": "every seeded defect that compiles is killed by at least one M1/M2 case; kill ratio >= 0.95 (report in stdout and build/mutants-report.json)",
      "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs"], "timeout_s": 6000},
+]
+# The M3 gate's mutation run (WP-22) is its own suite so the verify workflow's quick host suite
+# M3 stays quick; the mutants workflow runs it.
+HOST_SUITES["M3-GATE"] = [
+    {"id": "TST-M3-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--stage", "M3", "--report", "build/mutants-m3-report.json"],
+     "oracle": "every seeded M3 defect that compiles (scheduler, objects, syscalls, loader, MMIO window, TLB shootdown, SMP placement, virtio-blk, FAT32, VFS) is killed by at least one M3 case, host checks included; kill ratio >= 0.95",
+     "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json", "tools/fat32.py"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"], "timeout_s": 7200},
 ]
 HOST_SUITES["M3"] = [
     {"id": "TST-M3-FAT32-TOOL", "command": ["python3", "-I", "tests/test_fat32_tool.py"],

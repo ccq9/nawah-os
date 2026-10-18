@@ -29,9 +29,12 @@ const TRAMP_PAGE_FIRST: u8 = 0x08;
 const TRAMP_PAGE_LAST: u8 = 0x8F;
 /// Layout of the trampoline page (the assembly below uses the same numbers).
 const OFF_GDT: u64 = 0x100;
-const OFF_GDTR: u64 = 0x120;
-const OFF_FARPTR32: u64 = 0x128;
-const OFF_PARAMS: u64 = 0x130;
+/// 6-byte GDT pointer after the 32-byte GDT: limit at 0x126, base at 0x128 (the 32-bit base
+/// write is aligned — the test kernel's debug assertions reject a misaligned `write_volatile`,
+/// CI run 39114106948).
+const OFF_GDTR: u64 = 0x126;
+const OFF_FARPTR32: u64 = 0x130;
+const OFF_PARAMS: u64 = 0x140;
 const PARAM_CR3: u64 = 0;
 const PARAM_STACK: u64 = 8;
 const PARAM_ENTRY: u64 = 16;
@@ -46,6 +49,17 @@ const TRAMP_GDT: [u64; 4] = [
     0x00CF_9200_0000_FFFF,
     0x00AF_9A00_0000_FFFF,
 ];
+// Every field the boot CPU writes through a typed pointer is naturally aligned, and the data
+// items do not overlap.
+const _: () = assert!(OFF_GDTR.is_multiple_of(2) && (OFF_GDTR + 2).is_multiple_of(4));
+const _: () = assert!(
+    OFF_FARPTR32.is_multiple_of(4)
+        && OFF_PARAMS.is_multiple_of(8)
+        && (OFF_PARAMS + PARAM_FARPTR64).is_multiple_of(4)
+);
+const _: () =
+    assert!(OFF_GDT + 8 * TRAMP_GDT.len() as u64 <= OFF_GDTR && OFF_GDTR + 6 <= OFF_FARPTR32);
+const _: () = assert!(OFF_FARPTR32 + 6 <= OFF_PARAMS && OFF_PARAMS + PARAM_FARPTR64 + 6 <= 0x1000);
 const SEL_CODE32: u16 = 0x08;
 const SEL_CODE64: u16 = 0x18;
 /// How long the boot CPU waits for one AP to report in.
@@ -66,12 +80,12 @@ ap_tramp_start:
     xorl %esi, %esi
     movw %cs, %si
     shll $4, %esi
-    addl $0x130, %esi
-    lgdtl 0x120
+    addl $0x140, %esi
+    lgdtl 0x126
     movl %cr0, %eax
     orl $1, %eax
     movl %eax, %cr0
-    ljmpl *0x128
+    ljmpl *0x130
     .global ap_tramp_end
 ap_tramp_end:
 
