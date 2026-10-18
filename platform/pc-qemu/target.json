@@ -901,7 +901,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=user_bad_ptr"
         ],
-        "oracle": "SYS_TRACE with an unmapped user pointer returns ERR_FAULT and with a kernel pointer ERR_RANGE; the program exits 0xfdfc and the kernel continues; exit 33",
+        "oracle": "SYS_TRACE with an unmapped user pointer returns ERR_FAULT and with a kernel pointer ERR_RANGE; the program exits 0xfdfc and the kernel continues; exit 33 (the boot self-check's hello app traces len=14 earlier in the log; only a len=8 trace would betray a bad-pointer copy)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=user_bad_ptr",
@@ -913,7 +913,7 @@
           "|kernel|panic|",
           "|exc|vector",
           "|user_fault|",
-          "|user|trace|"
+          "|user|trace|len=8|"
         ]
       },
       {

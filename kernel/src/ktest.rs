@@ -1568,6 +1568,9 @@ fn elf_wx() -> ! {
         crate::user::spawn_elf(&v, 1),
         Err(ElfError::WritableExecutable)
     );
+    // The copy is heap memory taken from the frame allocator: give it back before the balance
+    // is measured (CI run 39107509833: four frames "leaked" were this vector).
+    drop(v);
     let Ok((segs, n, _)) = elf::parse(image) else {
         fail("hello image does not parse")
     };
