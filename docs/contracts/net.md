@@ -1,6 +1,6 @@
 # عقد الشبكة — الإصدار 1 جزء أ: الواجهة (WP-27، ADR-0017)؛ وجزء ب: الخدمة (مسودة WP-28/29)
 
-الجزء أ يُجمَّد عند إغلاق WP-27 بدليل CI؛ الجزء ب مسودة تخطيط تُجمَّد مع حزمتها. ما لم يُنفَّذ لا يُعدّ مدعومًا. الكود: `kernel/src/drivers/virtio_net.rs` (التعريف)، `kernel/src/net.rs` (الطبقة والاستطلاع)، `kernel/src/object/nic.rs` (الكائن)، `kernel/src/syscall/mod.rs` (النداءات 27–31)، `user/apps/netprobe` (الاختبار من حلقة 3).
+الجزء أ مجمَّد (أُغلق WP-27 بدليل CI run 39134727743)؛ الجزء ب مسودة تخطيط تُجمَّد مع حزمتها. ما لم يُنفَّذ لا يُعدّ مدعومًا. الكود: `kernel/src/drivers/virtio_net.rs` (التعريف)، `kernel/src/net.rs` (الطبقة والاستطلاع)، `kernel/src/object/nic.rs` (الكائن)، `kernel/src/syscall/mod.rs` (النداءات 27–31)، `user/apps/netprobe` (الاختبار من حلقة 3).
 
 ## أ. الواجهة (الإصدار 1، syscall.md v1.6)
 

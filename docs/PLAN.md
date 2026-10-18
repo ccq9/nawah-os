@@ -64,7 +64,7 @@
 | WP-24 svcmgr | البيان، الترتيب الطوبولوجي، مهلة الجاهزية، إعادة تشغيل بحد وتراجع، قناة تحكم؛ النواة تبدؤه أول عملية (`kernel|svcmgr|…|reply=OK 0`) — **أُغلق 2026-10-18** (CI run 39130028974) | TST-M4-SVC-ORDER، SVC-TIMEOUT، SVC-RESTART، TST-M1-BOOT | §8.7 |
 | WP-25 المصادقة | SHA-256/HMAC/PBKDF2 بمتجهات (FIPS 180-4، RFC 4231، RFC 6070)، كائنا Token/Authority، خدمة auth، حد محاولات، قفل/خروج — **أُغلق 2026-10-18** (CI run 39133153681: متجهات FIPS/RFC على المضيف وفي الضيف، رموز بهوية، دخول/قفل/خروج، حد محاولات) | TST-M4-HASH-VECTORS، LOGIN، SESSION-LOCK، AUTHZ-DENIED | FIPS 180-4، RFC 2104، RFC 8018، NIST SP 800-132 |
 | WP-26 التكوين | مخازن device/user/session/policy بإصدارات، CAS، request_id، إشعارات، أسبقية، حفظ آمن — **أُغلق 2026-10-18** (CI run 39133153681: CAS وتكرار وإشعارات وأسبقية وثبات بخانتين، السلطة في الخدمة) | TST-M4-CONFIG-PERSIST، CAS، RETRY، NOTIFY، POLICY-PRECEDENCE | §12–13 |
-| WP-27 التعريفات | virtio-net، PS/2 (i8042)، حدود موارد، نموذج ثقة DMA | TST-M4-NET-LINK، NET-LIMITS، KBD-SCANCODES | Virtio 1.3 §5.1 (S42)، i8042/PS2 |
+| WP-27 التعريفات | virtio-net، PS/2 (i8042)، حدود موارد، نموذج ثقة DMA — **أُغلق 2026-10-18** (CI run 39134727743: virtio-net بحدود ثابتة ونموذج DMA، ARP للبوابة، i8042 بالاستطلاع، كائنا Nic/Keyboard، ABI v1.6) | TST-M4-NET-LINK، NET-LIMITS، KBD-SCANCODES | Virtio 1.3 §5.1 (S42)، i8042/PS2 |
 | WP-28 الشبكة | ARP/IPv4/ICMP/UDP/DHCP، فصل الإنترنت، سياسة لا إنترنت | TST-M4-DHCP، ICMP-ECHO، UDP-ECHO، NET-NO-INTERNET | RFC 826/791/792/768/2131 |
 | WP-29 TCP | مصافحة، بيانات، إغلاق، RTO، مقابس | TST-M4-TCP-ECHO، TCP-RETRANSMIT | RFC 9293، RFC 6298 |
 | WP-30 الـ shell | shell تشخيصي على COM2 بمقبس مختبر | TST-M4-SHELL-SVC، SHELL-LOGIN | §20 M4 |

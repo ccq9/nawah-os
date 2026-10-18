@@ -37,7 +37,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135430Z-c0733e8f-002"
+        "evidence/20261018T141642Z-5f941fb1-002"
       ],
       "blocker": null
     },
@@ -78,7 +78,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135430Z-c0733e8f-001"
+        "evidence/20261018T141642Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -123,8 +123,8 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T134950Z-c0733e8f-001",
-        "evidence/20261018T134953Z-c0733e8f-001"
+        "evidence/20261018T141040Z-5f941fb1-001",
+        "evidence/20261018T141045Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -183,7 +183,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135430Z-c0733e8f-002"
+        "evidence/20261018T141642Z-5f941fb1-002"
       ],
       "blocker": null
     },
@@ -356,10 +356,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T134955Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001",
-        "evidence/20261018T135011Z-c0733e8f-001",
-        "evidence/20261018T135431Z-c0733e8f-001"
+        "evidence/20261018T141049Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001",
+        "evidence/20261018T141109Z-5f941fb1-001",
+        "evidence/20261018T141642Z-5f941fb1-003"
       ],
       "blocker": null
     },
@@ -429,17 +429,17 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135013Z-c0733e8f-001",
-        "evidence/20261018T135017Z-c0733e8f-001",
-        "evidence/20261018T135021Z-c0733e8f-001",
-        "evidence/20261018T135024Z-c0733e8f-001",
-        "evidence/20261018T135027Z-c0733e8f-001",
-        "evidence/20261018T135030Z-c0733e8f-001",
-        "evidence/20261018T135033Z-c0733e8f-001",
-        "evidence/20261018T135036Z-c0733e8f-001",
-        "evidence/20261018T135039Z-c0733e8f-001",
-        "evidence/20261018T135042Z-c0733e8f-001",
-        "evidence/20261018T135045Z-c0733e8f-001"
+        "evidence/20261018T141112Z-5f941fb1-001",
+        "evidence/20261018T141116Z-5f941fb1-001",
+        "evidence/20261018T141120Z-5f941fb1-001",
+        "evidence/20261018T141124Z-5f941fb1-001",
+        "evidence/20261018T141128Z-5f941fb1-001",
+        "evidence/20261018T141132Z-5f941fb1-001",
+        "evidence/20261018T141136Z-5f941fb1-001",
+        "evidence/20261018T141139Z-5f941fb1-001",
+        "evidence/20261018T141143Z-5f941fb1-001",
+        "evidence/20261018T141147Z-5f941fb1-001",
+        "evidence/20261018T141151Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -490,9 +490,9 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135048Z-c0733e8f-001",
-        "evidence/20261018T135051Z-c0733e8f-001",
-        "evidence/20261018T135054Z-c0733e8f-001"
+        "evidence/20261018T141155Z-5f941fb1-001",
+        "evidence/20261018T141158Z-5f941fb1-001",
+        "evidence/20261018T141202Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -555,11 +555,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135058Z-c0733e8f-001",
-        "evidence/20261018T135101Z-c0733e8f-001",
-        "evidence/20261018T135104Z-c0733e8f-001",
-        "evidence/20261018T135107Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001"
+        "evidence/20261018T141206Z-5f941fb1-001",
+        "evidence/20261018T141210Z-5f941fb1-001",
+        "evidence/20261018T141214Z-5f941fb1-001",
+        "evidence/20261018T141218Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -636,11 +636,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135110Z-c0733e8f-001",
-        "evidence/20261018T135113Z-c0733e8f-001",
-        "evidence/20261018T135116Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001",
-        "evidence/20261018T135042Z-c0733e8f-001"
+        "evidence/20261018T141221Z-5f941fb1-001",
+        "evidence/20261018T141225Z-5f941fb1-001",
+        "evidence/20261018T141229Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001",
+        "evidence/20261018T141147Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -704,9 +704,9 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135119Z-c0733e8f-001",
-        "evidence/20261018T135122Z-c0733e8f-001",
-        "evidence/20261018T135125Z-c0733e8f-001"
+        "evidence/20261018T141233Z-5f941fb1-001",
+        "evidence/20261018T141237Z-5f941fb1-001",
+        "evidence/20261018T141240Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -818,11 +818,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135129Z-c0733e8f-001",
-        "evidence/20261018T135132Z-c0733e8f-001",
-        "evidence/20261018T135135Z-c0733e8f-001",
-        "evidence/20261018T135138Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001"
+        "evidence/20261018T141244Z-5f941fb1-001",
+        "evidence/20261018T141248Z-5f941fb1-001",
+        "evidence/20261018T141252Z-5f941fb1-001",
+        "evidence/20261018T141256Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -883,8 +883,8 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135424Z-c0733e8f-001",
-        "evidence/20261018T135424Z-c0733e8f-002"
+        "evidence/20261018T141635Z-5f941fb1-001",
+        "evidence/20261018T141636Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -950,11 +950,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135141Z-c0733e8f-001",
-        "evidence/20261018T135145Z-c0733e8f-001",
-        "evidence/20261018T135148Z-c0733e8f-001",
-        "evidence/20261018T135154Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001"
+        "evidence/20261018T141300Z-5f941fb1-001",
+        "evidence/20261018T141304Z-5f941fb1-001",
+        "evidence/20261018T141308Z-5f941fb1-001",
+        "evidence/20261018T141315Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1024,11 +1024,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135157Z-c0733e8f-001",
-        "evidence/20261018T135200Z-c0733e8f-001",
-        "evidence/20261018T135206Z-c0733e8f-001",
-        "evidence/20261018T135209Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001"
+        "evidence/20261018T141319Z-5f941fb1-001",
+        "evidence/20261018T141323Z-5f941fb1-001",
+        "evidence/20261018T141331Z-5f941fb1-001",
+        "evidence/20261018T141334Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1097,14 +1097,14 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135213Z-c0733e8f-001",
-        "evidence/20261018T135216Z-c0733e8f-001",
-        "evidence/20261018T135219Z-c0733e8f-001",
-        "evidence/20261018T135222Z-c0733e8f-001",
-        "evidence/20261018T135225Z-c0733e8f-001",
-        "evidence/20261018T135228Z-c0733e8f-001",
-        "evidence/20261018T135231Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001"
+        "evidence/20261018T141338Z-5f941fb1-001",
+        "evidence/20261018T141342Z-5f941fb1-001",
+        "evidence/20261018T141346Z-5f941fb1-001",
+        "evidence/20261018T141350Z-5f941fb1-001",
+        "evidence/20261018T141354Z-5f941fb1-001",
+        "evidence/20261018T141357Z-5f941fb1-001",
+        "evidence/20261018T141401Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1174,10 +1174,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135234Z-c0733e8f-001",
-        "evidence/20261018T135237Z-c0733e8f-001",
-        "evidence/20261018T135240Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001"
+        "evidence/20261018T141405Z-5f941fb1-001",
+        "evidence/20261018T141409Z-5f941fb1-001",
+        "evidence/20261018T141413Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1256,14 +1256,14 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135243Z-c0733e8f-001",
-        "evidence/20261018T135246Z-c0733e8f-001",
-        "evidence/20261018T135249Z-c0733e8f-001",
-        "evidence/20261018T135255Z-c0733e8f-001",
-        "evidence/20261018T135258Z-c0733e8f-001",
-        "evidence/20261018T135301Z-c0733e8f-001",
-        "evidence/20261018T135431Z-c0733e8f-002",
-        "evidence/20261018T135008Z-c0733e8f-001"
+        "evidence/20261018T141416Z-5f941fb1-001",
+        "evidence/20261018T141420Z-5f941fb1-001",
+        "evidence/20261018T141424Z-5f941fb1-001",
+        "evidence/20261018T141431Z-5f941fb1-001",
+        "evidence/20261018T141435Z-5f941fb1-001",
+        "evidence/20261018T141439Z-5f941fb1-001",
+        "evidence/20261018T141643Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1331,10 +1331,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135306Z-c0733e8f-001",
-        "evidence/20261018T135309Z-c0733e8f-001",
-        "evidence/20261018T135313Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001"
+        "evidence/20261018T141446Z-5f941fb1-001",
+        "evidence/20261018T141450Z-5f941fb1-001",
+        "evidence/20261018T141453Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1407,12 +1407,12 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135316Z-c0733e8f-001",
-        "evidence/20261018T135319Z-c0733e8f-001",
-        "evidence/20261018T135322Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001",
-        "evidence/20261018T135157Z-c0733e8f-001",
-        "evidence/20261018T135206Z-c0733e8f-001"
+        "evidence/20261018T141458Z-5f941fb1-001",
+        "evidence/20261018T141502Z-5f941fb1-001",
+        "evidence/20261018T141506Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001",
+        "evidence/20261018T141319Z-5f941fb1-001",
+        "evidence/20261018T141331Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1469,10 +1469,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135151Z-c0733e8f-001",
+        "evidence/20261018T141311Z-5f941fb1-001",
         "evidence/20261018T114630Z-029e0e06-001",
-        "evidence/20261018T135203Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001"
+        "evidence/20261018T141327Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1542,9 +1542,9 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135325Z-c0733e8f-001",
-        "evidence/20261018T135328Z-c0733e8f-001",
-        "evidence/20261018T135331Z-c0733e8f-001"
+        "evidence/20261018T141510Z-5f941fb1-001",
+        "evidence/20261018T141514Z-5f941fb1-001",
+        "evidence/20261018T141517Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1608,10 +1608,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135334Z-c0733e8f-001",
-        "evidence/20261018T135337Z-c0733e8f-001",
-        "evidence/20261018T135340Z-c0733e8f-001",
-        "evidence/20261018T135008Z-c0733e8f-001"
+        "evidence/20261018T141522Z-5f941fb1-001",
+        "evidence/20261018T141526Z-5f941fb1-001",
+        "evidence/20261018T141530Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1684,10 +1684,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135432Z-c0733e8f-001",
-        "evidence/20261018T135344Z-c0733e8f-001",
-        "evidence/20261018T135347Z-c0733e8f-001",
-        "evidence/20261018T135353Z-c0733e8f-001"
+        "evidence/20261018T141644Z-5f941fb1-001",
+        "evidence/20261018T141534Z-5f941fb1-001",
+        "evidence/20261018T141538Z-5f941fb1-001",
+        "evidence/20261018T141545Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1747,12 +1747,12 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T135356Z-c0733e8f-001",
-        "evidence/20261018T135417Z-c0733e8f-001",
-        "evidence/20261018T135400Z-c0733e8f-001",
-        "evidence/20261018T135404Z-c0733e8f-001",
-        "evidence/20261018T135408Z-c0733e8f-001",
-        "evidence/20261018T135412Z-c0733e8f-001"
+        "evidence/20261018T141550Z-5f941fb1-001",
+        "evidence/20261018T141614Z-5f941fb1-001",
+        "evidence/20261018T141554Z-5f941fb1-001",
+        "evidence/20261018T141559Z-5f941fb1-001",
+        "evidence/20261018T141604Z-5f941fb1-001",
+        "evidence/20261018T141609Z-5f941fb1-001"
       ],
       "blocker": null
     },
@@ -1817,7 +1817,7 @@
         "svcmgr v1.2 routes kernel resources by type to auth/net/input; lab QEMU gets SLIRP user networking and a monitor socket for sendkey-driven cases (tools/project.py)",
         "netprobe/kbdprobe user apps; ktests net_link, net_limits, kbd_scancodes"
       ],
-      "acceptance": "TST-M4-NET-LINK/NET-LIMITS/KBD-SCANCODES PASS on CI",
+      "acceptance": "TST-M4-NET-LINK/NET-LIMITS/KBD-SCANCODES PASS and TST-M1-BOOT shows the interface and keyboard (kernel|net … selfcheck=1, kernel|kbd … selfcheck=1) on CI run 39134727743; net.md part A, input.md v1, syscall.md v1.6 frozen",
       "test_ids": [
         "TST-M4-NET-LINK",
         "TST-M4-NET-LIMITS",
@@ -1827,12 +1827,18 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M4"
       ],
-      "status": "active",
+      "status": "done",
       "status_history": [
         "planned",
-        "active"
+        "active",
+        "done"
       ],
-      "evidence_refs": [],
+      "evidence_refs": [
+        "evidence/20261018T141622Z-5f941fb1-001",
+        "evidence/20261018T141626Z-5f941fb1-001",
+        "evidence/20261018T141630Z-5f941fb1-001",
+        "evidence/20261018T141105Z-5f941fb1-001"
+      ],
       "blocker": null
     },
     {
