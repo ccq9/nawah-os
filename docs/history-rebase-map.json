@@ -1,0 +1,47 @@
+{
+ "schema_version": "1.0.0",
+ "reason": "one-time rebase of the local history onto the remote root commit 77282f0 (GitHub 'Initial commit') when the private remote was attached on 2026-10-18; content is identical, hashes changed",
+ "note": "evidence/*/run.json files written before this point carry the pre-rebase source_revision; map it here. Content digests in verdict.json are unaffected.",
+ "map": [
+  {
+   "old": "8f1dcce",
+   "new": "bae58cb4e861e87700c15fd5a240a93af05d4684",
+   "subject": "WP-00: environment probe, project skeleton, governing prompt v3.2"
+  },
+  {
+   "old": "9ebc974",
+   "new": "2b77792a282ddbdfb7e8a46ef0e21531188e78d1",
+   "subject": "WP-01: record schemas (draft 2020-12), validate-records with semantic checks, 10 acceptance tests"
+  },
+  {
+   "old": "c049336",
+   "new": "9aa90ebf304417ec7f72005f7cbf116a0e0cad5c",
+   "subject": "WP-02: E0 decisive experiment — minimal UEFI app (clang+lld-link) boots on QEMU/OVMF, serial trace + isa-debug-exit; build/boot/test CLI"
+  },
+  {
+   "old": "7963b9f",
+   "new": "8bf24f390874279cf7fe1cc4fd4bbe83c7065e7a",
+   "subject": "WP-03: M0 records — PROJECT, ADR-0001, boot contract, requirements/stages/work-items/tests/risks/sources/hardware/automation/state, threat model, errata; host suite M0 PASS"
+  },
+  {
+   "old": "bfaa66a",
+   "new": "538dcafd918c88847aeee74f39d437ad691e106f",
+   "subject": "M0: re-run host suite after CLI change (staleness rule), attach fresh evidence"
+  },
+  {
+   "old": "9f58029",
+   "new": "f1ef6bdd94be00ea0d72c49c352d479da3c153ee",
+   "subject": "checkpoint: M0 gate passed"
+  },
+  {
+   "old": "8f97ca2",
+   "new": "a45153bb31a991bd001e7716509539f4c9b9002d",
+   "subject": "WP-04 (M1): single-image kernel — memory map, ExitBootServices with retry, boot_info handoff, post-EBS kernel trace; EBS-failure injection; NOBS static proof; M1 suite PASS; evidence auto-attach + reverify-host"
+  },
+  {
+   "old": "6ebc59d",
+   "new": "e6092f409f4bc7f3a4a0bfae74d5dba3f2c4b53b",
+   "subject": "checkpoint: M1 gate passed"
+  }
+ ]
+}

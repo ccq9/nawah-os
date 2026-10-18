@@ -1,0 +1,48 @@
+# Deterministic verification runner (OS-EXEC-AR 3.2 §1: verification_runner, no AI).
+# Re-runs the same commands tools/project.py runs locally, on a fresh runner, and keeps the evidence as an artifact.
+name: verify
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Durability sentinel (persistent-store test, §7.2)
+        run: |
+          echo "sentinel seen by fresh runner ${GITHUB_RUN_ID}:"; cat state/durability-sentinel.json
+      - name: Toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang lld qemu-system-x86 ovmf mtools python3-jsonschema
+          clang --version | head -1; lld-link --version; qemu-system-x86_64 --version | head -1; dpkg -s ovmf | grep ^Version
+      - name: validate-records (committed state)
+        run: python3 tools/project.py validate-records
+      - name: E0 build + boot
+        run: |
+          python3 tools/project.py build --target pc-qemu-e0
+          python3 tools/project.py boot --target pc-qemu-e0
+      - name: M1 build + guest suite
+        run: |
+          python3 tools/project.py build --target pc-qemu
+          python3 tools/project.py test --target pc-qemu --suite M1
+      - name: Host suites
+        run: |
+          python3 tools/project.py test --target host --suite M0
+          python3 tools/project.py test --target host --suite M1
+      - name: validate-records (after fresh evidence)
+        run: python3 tools/project.py validate-records
+      - name: Status
+        run: python3 tools/project.py status --json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidence-${{ github.sha }}
+          path: evidence/
+          retention-days: 90
