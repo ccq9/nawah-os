@@ -1,2621 +1,2626 @@
 {
-  "schema_version": "1.0.0",
-  "records": [
-    {
-      "id": "WP-00",
-      "stage": "M0",
-      "requirement_ids": [
-        "REQ-M0-001"
-      ],
-      "depends_on": [],
-      "inputs": [
-        "workspace",
-        "host tools"
-      ],
-      "files": [
-        "docs/ENVIRONMENT.md",
-        ".gitattributes",
-        ".gitignore"
-      ],
-      "contract_refs": [],
-      "actions": [
-        "probe tools",
-        "init local git",
-        "copy governing prompt"
-      ],
-      "acceptance": "ENVIRONMENT.md من نتائج فعلية ومستودع محلي",
-      "test_ids": [
-        "TST-M0-002"
-      ],
-      "commands": [
-        "git log --oneline"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204208Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-01",
-      "stage": "M0",
-      "requirement_ids": [
-        "REQ-M0-002"
-      ],
-      "depends_on": [
-        "WP-00"
-      ],
-      "inputs": [
-        "prompt §7.1"
-      ],
-      "files": [
-        "tools/schemas_gen.py",
-        "tools/project.py",
-        "tests/test_validate_records.py"
-      ],
-      "contract_refs": [],
-      "actions": [
-        "schemas",
-        "validator",
-        "10 tests"
-      ],
-      "acceptance": "10/10 اختبارات ناجحة بدليل",
-      "test_ids": [
-        "TST-M0-001"
-      ],
-      "commands": [
-        "python3 tools/project.py test --target host --suite M0"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204207Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-02",
-      "stage": "M0",
-      "requirement_ids": [
-        "REQ-M0-003"
-      ],
-      "depends_on": [
-        "WP-00"
-      ],
-      "inputs": [
-        "prompt §5 E0",
-        "clang/lld-link/QEMU/OVMF"
-      ],
-      "files": [
-        "boot/common/efi.h",
-        "boot/common/serial.h",
-        "boot/e0/main.c",
-        "platform/pc-qemu-e0/target.json"
-      ],
-      "contract_refs": [],
-      "actions": [
-        "write minimal UEFI app",
-        "build",
-        "boot in QEMU"
-      ],
-      "acceptance": "بناء PASS وإقلاع PASS بأثر build_id ورمز 33",
-      "test_ids": [
-        "TST-M0-E0-BUILD",
-        "TST-M0-E0-BOOT"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu-e0",
-        "python3 tools/project.py boot --target pc-qemu-e0"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203241Z-62d4b9d9-001",
-        "evidence/20261018T203247Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-03",
-      "stage": "M0",
-      "requirement_ids": [
-        "REQ-M0-004",
-        "REQ-M0-005"
-      ],
-      "depends_on": [
-        "WP-01",
-        "WP-02"
-      ],
-      "inputs": [
-        "E0 evidence"
-      ],
-      "files": [
-        "docs/PROJECT.md",
-        "docs/adr/0001-bootstrap.md",
-        "docs/contracts/boot.md",
-        "docs/requirements.json",
-        "docs/stages.json",
-        "docs/work-items.json",
-        "docs/tests.json",
-        "docs/risks.json",
-        "docs/sources.json",
-        "docs/hardware.json",
-        "docs/automation.json",
-        "docs/project-state.json",
-        "docs/decisions-pending.json",
-        "docs/security/threat-model.md",
-        "docs/prompt-errata.md",
-        "docs/reference/windows10.json"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "write M0 records",
-        "validate",
-        "checkpoint"
-      ],
-      "acceptance": "validate-records يمر وTST-M0-002 PASS",
-      "test_ids": [
-        "TST-M0-002"
-      ],
-      "commands": [
-        "python3 tools/project.py validate-records",
-        "python3 tools/project.py test --target host --suite M0"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204208Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-04",
-      "stage": "M1",
-      "requirement_ids": [
-        "REQ-M1-001",
-        "REQ-M1-002",
-        "REQ-M1-003",
-        "REQ-M1-004"
-      ],
-      "depends_on": [
-        "WP-03"
-      ],
-      "inputs": [
-        "contracts/boot.md",
-        "E0 toolchain"
-      ],
-      "files": [
-        "boot/stub/main.c",
-        "boot/common/bootinfo.h",
-        "boot/common/types.h",
-        "kernel/main.c",
-        "platform/pc-qemu/target.json",
-        "tests/test_m1_nobs.py",
-        "tools/project.py"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "kernel stub with memory map + EBS",
-        "post_ebs trace",
-        "EBS failure injection variant",
-        "static NOBS test",
-        "M1 suite",
-        "superseded by WP-06 (language changed to Rust, ADR-0002); the C implementation remains in history as the E0/M1 evidence of 2026-10-17"
-      ],
-      "acceptance": "بوابة M1: build/boot/test PASS، NOBS PASS، NEG PASS",
-      "test_ids": [
-        "TST-M1-BUILD",
-        "TST-M1-BOOT",
-        "TST-M1-NOBS",
-        "TST-M1-NEG"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M1",
-        "python3 tools/project.py test --target host --suite M1"
-      ],
-      "status": "superseded",
-      "status_history": [
-        "planned",
-        "active",
-        "done",
-        "planned",
-        "superseded"
-      ],
-      "evidence_refs": [],
-      "blocker": null,
-      "superseded_by": "WP-06"
-    },
-    {
-      "id": "WP-05",
-      "stage": "M0",
-      "requirement_ids": [
-        "REQ-M0-005"
-      ],
-      "depends_on": [
-        "WP-03"
-      ],
-      "inputs": [
-        "remote private repository URL from user (received 2026-10-18)"
-      ],
-      "files": [
-        "docs/automation.json",
-        ".github/workflows/verify.yml",
-        "state/durability-sentinel.json",
-        "docs/history-rebase-map.json"
-      ],
-      "contract_refs": [],
-      "actions": [
-        "rebase onto remote root",
-        "push",
-        "CI verification runner",
-        "durability sentinel read by fresh runner"
-      ],
-      "acceptance": "persistence_verified_by يشير إلى دليل اختبار الشاهد",
-      "test_ids": [],
-      "commands": [
-        "git push"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "blocked",
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/ci/39090532071/jobs.json"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-06",
-      "stage": "M1",
-      "requirement_ids": [
-        "REQ-M1-001",
-        "REQ-M1-002",
-        "REQ-M1-003",
-        "REQ-M1-004"
-      ],
-      "depends_on": [
-        "WP-03"
-      ],
-      "inputs": [
-        "ADR-0002",
-        "Sol OS archive (S32)",
-        "UEFI 2.11 §7.4.6 (S18)",
-        "rust-std x86_64-unknown-uefi (CI: rustup; local: user upload pending)"
-      ],
-      "files": [
-        "Cargo.toml",
-        "kernel/Cargo.toml",
-        "kernel/build.rs",
-        "kernel/src/main.rs",
-        "kernel/src/boot/efi.rs",
-        "kernel/src/boot/stub.rs",
-        "kernel/src/bootinfo.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/arch/x86_64/serial.rs",
-        "kernel/src/arch/x86_64/port.rs",
-        "kernel/src/arch/x86_64/qemu.rs",
-        "kernel/src/cell.rs",
-        "platform/pc-qemu/target.json",
-        "tests/test_m1_nobs.py",
-        "tools/check-unsafe.sh",
-        ".github/workflows/verify.yml"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "port stub + kernel to Rust (x86_64-unknown-uefi)",
-        "unsafe policy + checker",
-        "NOBS static test for Rust",
-        "CI builds with rustup target",
-        "re-run M1 suite"
-      ],
-      "acceptance": "بوابة M1 بأدلة جديدة: TST-M1-BUILD/BOOT/NEG/NOBS PASS محليًا (أو CI حتى وصول rust-std)",
-      "test_ids": [
-        "TST-M1-BUILD",
-        "TST-M1-BOOT",
-        "TST-M1-NEG",
-        "TST-M1-NOBS"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M1",
-        "python3 tools/project.py test --target host --suite M1"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203249Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001",
-        "evidence/20261018T203318Z-62d4b9d9-001",
-        "evidence/20261018T204208Z-62d4b9d9-002"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-07",
-      "stage": "M2",
-      "requirement_ids": [
-        "REQ-M2-001",
-        "REQ-M2-002",
-        "REQ-M2-003",
-        "REQ-M2-004",
-        "REQ-M2-005",
-        "REQ-M2-006"
-      ],
-      "depends_on": [
-        "WP-06"
-      ],
-      "inputs": [
-        "docs/PLAN.md §3",
-        "ADR-0003",
-        "Intel SDM Vol.3A (S26)"
-      ],
-      "files": [
-        "kernel/src/arch/x86_64/gdt.rs",
-        "kernel/src/arch/x86_64/idt.rs",
-        "kernel/src/arch/x86_64/trap.rs",
-        "kernel/src/arch/x86_64/ktest.rs",
-        "kernel/src/arch/x86_64/fwcfg.rs",
-        "kernel/src/arch/x86_64/mod.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/boot/stub.rs",
-        "platform/pc-qemu/target.json",
-        "docs/adr/0003-cpu-tables-exceptions-test-kernel.md"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "port GDT/TSS/IDT/trap from Sol OS",
-        "kernel stack switch",
-        "test kernel with fw_cfg test selection",
-        "M2 exception suite (11 cases)"
-      ],
-      "acceptance": "كل حالات جناح M2 للاستثناءات PASS محليًا أو على CI",
-      "test_ids": [
-        "TST-M2-EXC-DE",
-        "TST-M2-EXC-UD",
-        "TST-M2-EXC-DB",
-        "TST-M2-EXC-GP",
-        "TST-M2-EXC-PF",
-        "TST-M2-EXC-BP",
-        "TST-M2-EXC-BP-STATE",
-        "TST-M2-EXC-DF",
-        "TST-M2-EXC-NESTED",
-        "TST-M2-IDT-LAYOUT",
-        "TST-M2-EXC-TRIPLE"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M2"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203322Z-62d4b9d9-001",
-        "evidence/20261018T203327Z-62d4b9d9-001",
-        "evidence/20261018T203331Z-62d4b9d9-001",
-        "evidence/20261018T203336Z-62d4b9d9-001",
-        "evidence/20261018T203340Z-62d4b9d9-001",
-        "evidence/20261018T203345Z-62d4b9d9-001",
-        "evidence/20261018T203349Z-62d4b9d9-001",
-        "evidence/20261018T203354Z-62d4b9d9-001",
-        "evidence/20261018T203358Z-62d4b9d9-001",
-        "evidence/20261018T203403Z-62d4b9d9-001",
-        "evidence/20261018T203407Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-08",
-      "stage": "M2",
-      "requirement_ids": [
-        "REQ-M2-010"
-      ],
-      "depends_on": [
-        "WP-07"
-      ],
-      "inputs": [
-        "docs/PLAN.md §3",
-        "ADR-0003",
-        "Intel SDM Vol.3A (S26)"
-      ],
-      "files": [
-        "docs/adr/0004-memory.md",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/mm/mod.rs",
-        "kernel/src/mm/pmm.rs",
-        "platform/pc-qemu/target.json"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "bitmap frame allocator from boot_info memmap",
-        "reserve kernel image/stacks/bootinfo",
-        "ktests"
-      ],
-      "acceptance": "pmm tests PASS",
-      "test_ids": [
-        "TST-M2-PMM-COUNTS",
-        "TST-M2-PMM-EXHAUST",
-        "TST-M2-PMM-DOUBLE-FREE"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M2"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203412Z-62d4b9d9-001",
-        "evidence/20261018T203416Z-62d4b9d9-001",
-        "evidence/20261018T203421Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-09",
-      "stage": "M2",
-      "requirement_ids": [
-        "REQ-M2-011"
-      ],
-      "depends_on": [
-        "WP-08"
-      ],
-      "inputs": [
-        "docs/PLAN.md §3",
-        "ADR-0004 §WP-09",
-        "Intel SDM Vol.3A §4.5/§4.6/§2.5, Vol.4 IA32_EFER (S26)",
-        "UEFI 2.11 §7.2.3 memory type usage after ExitBootServices",
-        "PE/COFF section table"
-      ],
-      "files": [
-        "docs/adr/0004-memory.md",
-        "kernel/src/arch/x86_64/gdt.rs",
-        "kernel/src/arch/x86_64/ktest.rs",
-        "kernel/src/arch/x86_64/mod.rs",
-        "kernel/src/arch/x86_64/paging.rs",
-        "kernel/src/bootinfo.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/mm/mod.rs",
-        "kernel/src/mm/pmm.rs",
-        "kernel/src/mm/vmm.rs",
-        "platform/pc-qemu/target.json",
-        "tools/unsafe-baseline.txt"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "4-level tables: identity (minus frame 0 and image) + direct map at 0xffff_8000_0000_0000, 2 MiB pages where aligned",
-        "image sections from PE headers: .text RX, .rdata/headers R+NX, .data/.bss RW+NX",
-        "EFER.NXE (CPUID-checked) and CR0.WP, CR3 switch, boot-services memory reclaimed",
-        "guarded kernel stack (64 KiB) and #DF stack (16 KiB) from the allocator; IST1 and RSP moved",
-        "ktests vmm_switch/vmm_wp/vmm_nx/vmm_guard; self-check line in every build"
-      ],
-      "acceptance": "TST-M2-VMM-SWITCH/WP/NX/GUARD PASS on CI; TST-M1-BOOT still PASS with the vmm and guarded-stack markers",
-      "test_ids": [
-        "TST-M2-VMM-SWITCH",
-        "TST-M2-VMM-WP",
-        "TST-M2-VMM-NX",
-        "TST-M2-VMM-GUARD"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M2"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203425Z-62d4b9d9-001",
-        "evidence/20261018T203430Z-62d4b9d9-001",
-        "evidence/20261018T203434Z-62d4b9d9-001",
-        "evidence/20261018T203439Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-10",
-      "stage": "M2",
-      "requirement_ids": [
-        "REQ-M2-012"
-      ],
-      "depends_on": [
-        "WP-09"
-      ],
-      "inputs": [
-        "docs/PLAN.md §3",
-        "ADR-0005",
-        "Intel SDM Vol.3A ch.11 APIC (S26)",
-        "ACPI 6.5 §5.2 (S33)",
-        "ICH9 datasheet (S34)",
-        "QEMU device models (S35)",
-        "82093AA (S36)",
-        "UEFI 2.11 §4.6 configuration table (S18)"
-      ],
-      "files": [
-        "docs/adr/0005-interrupts.md",
-        "docs/contracts/boot.md",
-        "kernel/src/arch/mod.rs",
-        "kernel/src/arch/x86_64/acpi.rs",
-        "kernel/src/arch/x86_64/apic.rs",
-        "kernel/src/arch/x86_64/idt.rs",
-        "kernel/src/arch/x86_64/ioapic.rs",
-        "kernel/src/arch/x86_64/irq.rs",
-        "kernel/src/arch/x86_64/ktest.rs",
-        "kernel/src/arch/x86_64/mod.rs",
-        "kernel/src/arch/x86_64/paging.rs",
-        "kernel/src/arch/x86_64/pic.rs",
-        "kernel/src/arch/x86_64/pit.rs",
-        "kernel/src/arch/x86_64/trap.rs",
-        "kernel/src/boot/efi.rs",
-        "kernel/src/boot/stub.rs",
-        "kernel/src/bootinfo.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/mm/vmm.rs",
-        "platform/pc-qemu/target.json",
-        "tools/unsafe-baseline.txt"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "RSDP from the EFI configuration table before EBS (BootInfo.rsdp)",
-        "MADT parser (checksums, XSDT/RSDT, LAPIC/IOAPIC/ISO/x2APIC entries)",
-        "8259 remapped to 0x20..0x2F and masked",
-        "LAPIC xAPIC/x2APIC, SVR 0x1FF, LVTs masked, error LVT 0xFE, PIT-calibrated timer",
-        "I/O APICs mapped UC and fully masked",
-        "256-entry IDT with uniform interrupt entries, counting dispatcher, EOI, depth counter",
-        "periodic timer 1000 Hz on 0x40; 50 ms self-check in every build",
-        "ktests timer_ticks/irq_eoi/spurious; idt_layout extended to 32..=255"
-      ],
-      "acceptance": "TST-M2-TIMER-TICKS/IRQ-EOI/SPURIOUS PASS on CI; TST-M1-BOOT PASS with the irq and timer self-check markers; TST-M2-IDT-LAYOUT still PASS",
-      "test_ids": [
-        "TST-M2-TIMER-TICKS",
-        "TST-M2-IRQ-EOI",
-        "TST-M2-SPURIOUS"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M2"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203443Z-62d4b9d9-001",
-        "evidence/20261018T203448Z-62d4b9d9-001",
-        "evidence/20261018T203452Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001",
-        "evidence/20261018T203403Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-11",
-      "stage": "M2",
-      "requirement_ids": [
-        "REQ-M2-013"
-      ],
-      "depends_on": [
-        "WP-10"
-      ],
-      "inputs": [
-        "docs/PLAN.md §3",
-        "ADR-0006",
-        "ADR-0004 item 5",
-        "Intel SDM Vol.3A §11 (IF, interrupt shadow) (S26)"
-      ],
-      "files": [
-        "kernel/src/sync.rs",
-        "kernel/src/panic.rs",
-        "kernel/src/console.rs",
-        "kernel/src/main.rs",
-        "kernel/src/mm/pmm.rs",
-        "kernel/src/arch/x86_64/trap.rs",
-        "kernel/src/arch/x86_64/mod.rs",
-        "kernel/src/arch/mod.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "docs/policies/panic.md",
-        "docs/adr/0006-sync-and-panic.md",
-        "tools/check-unsafe.sh",
-        "tools/unsafe-baseline.txt",
-        "platform/pc-qemu/target.json"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "IrqSpinLock with IF save/restore, re-entry detection, try_lock, force_unlock",
-        "locked console (one line per acquisition); fatal paths break the lock",
-        "PMM state behind the lock",
-        "panic module: line format, exit 0x11, nested-panic guard, fatal(code) for boot-critical failures",
-        "docs/policies/panic.md",
-        "ktests lock_irqsave, lock_reentry, panic_code"
-      ],
-      "acceptance": "TST-M2-LOCK-IRQSAVE/LOCK-REENTRY/PANIC-CODE PASS on CI; all earlier suites still PASS",
-      "test_ids": [
-        "TST-M2-LOCK-IRQSAVE",
-        "TST-M2-PANIC-CODE",
-        "TST-M2-LOCK-REENTRY"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M2"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203457Z-62d4b9d9-001",
-        "evidence/20261018T203501Z-62d4b9d9-001",
-        "evidence/20261018T203506Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-12",
-      "stage": "M2",
-      "requirement_ids": [
-        "REQ-M2-014"
-      ],
-      "depends_on": [
-        "WP-11"
-      ],
-      "inputs": [
-        "docs/PLAN.md §3",
-        "OS-EXEC-AR 3.2 §20 (M2 exit)",
-        "ADR-0003..0006"
-      ],
-      "files": [
-        "tests/mutants.py",
-        ".github/workflows/mutants.yml",
-        "docs/operations/m2-review.md",
-        "tools/project.py",
-        "kernel/src/ktest.rs",
-        "kernel/src/mm/pmm.rs",
-        "platform/pc-qemu/target.json",
-        "docs/stages.json"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "29 seeded defects (arch/, mm/, sync) run in an isolated worktree against their killer tests; kill ratio >= 0.95",
-        "named self-review docs/operations/m2-review.md (findings R-01..R-14)",
-        "exhaustion test extended with full recovery (stress/limit/recovery)",
-        "M2 gate on the stage record with evidence refs"
-      ],
-      "acceptance": "TST-M2-MUTANTS PASS on the mutants workflow; all 24 other M2 tests PASS; review document present; stage M2 gate passed with evidence",
-      "test_ids": [
-        "TST-M2-MUTANTS"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M2"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T162631Z-657ed0c3-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-13",
-      "stage": "M3",
-      "requirement_ids": [
-        "REQ-M3-001"
-      ],
-      "depends_on": [
-        "WP-12"
-      ],
-      "inputs": [
-        "docs/PLAN.md §4",
-        "ADR-0007",
-        "SDM Vol.3A §4.6.1, §4.10.4.1 (S26)"
-      ],
-      "files": [
-        "kernel/src/mm/heap.rs",
-        "kernel/src/mm/addrspace.rs",
-        "kernel/src/mm/vmm.rs",
-        "kernel/src/mm/pmm.rs",
-        "kernel/src/mm/mod.rs",
-        "kernel/src/arch/x86_64/paging.rs",
-        "kernel/src/main.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "platform/pc-qemu/target.json",
-        ".github/workflows/verify.yml",
-        "docs/adr/0007-heap-and-user-spaces.md",
-        "tools/unsafe-baseline.txt"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "kernel heap (GlobalAlloc over PMM + direct map)",
-        "unmap/protect with invlpg",
-        "user address space object sharing the kernel half",
-        "ktests"
-      ],
-      "acceptance": "heap_stress, vmm_unmap, vmm_protect, as_switch PASS on CI; TST-M1-BOOT PASS with the mm self-check line",
-      "test_ids": [
-        "TST-M3-HEAP-STRESS",
-        "TST-M3-VMM-UNMAP",
-        "TST-M3-AS-SWITCH",
-        "TST-M3-VMM-PROTECT"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M3"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203511Z-62d4b9d9-001",
-        "evidence/20261018T203515Z-62d4b9d9-001",
-        "evidence/20261018T203520Z-62d4b9d9-001",
-        "evidence/20261018T203524Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-21",
-      "stage": "M3",
-      "requirement_ids": [
-        "REQ-M3-002"
-      ],
-      "depends_on": [
-        "WP-12"
-      ],
-      "inputs": [
-        "docs/PLAN.md §4",
-        "OS-EXEC-AR 3.2 §8",
-        "UEFI 2.11 §2.3.6"
-      ],
-      "files": [
-        "kernel/src/arch/aarch64/mod.rs",
-        "kernel/src/arch/aarch64/serial.rs",
-        "kernel/src/arch/aarch64/qemu.rs",
-        "kernel/src/arch/mod.rs",
-        "kernel/src/arch/x86_64/mod.rs",
-        "kernel/src/boot/stub.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/main.rs",
-        "kernel/src/mm/mod.rs",
-        ".cargo/config.toml",
-        "platform/virt-qemu-aarch64/target.json",
-        "tools/project.py",
-        ".github/workflows/verify.yml",
-        "docs/adr/0008-early-port-aarch64.md",
-        "docs/hardware.json",
-        "tools/unsafe-baseline.txt"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "aarch64-unknown-uefi build",
-        "QEMU virt + AAVMF boot with PL011 trace",
-        "EBS + post_ebs trace",
-        "report what was tested and what remains an assumption"
-      ],
-      "acceptance": "TST-M3-A64-BUILD and TST-M3-A64-BOOT PASS on CI; x86_64 suites unchanged; ADR-0008 records what was tested and what remains an assumption",
-      "test_ids": [
-        "TST-M3-A64-BUILD",
-        "TST-M3-A64-BOOT"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M3"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204201Z-62d4b9d9-001",
-        "evidence/20261018T204201Z-62d4b9d9-002"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-14",
-      "stage": "M3",
-      "requirement_ids": [
-        "REQ-M3-003"
-      ],
-      "depends_on": [
-        "WP-13",
-        "WP-21"
-      ],
-      "inputs": [
-        "docs/PLAN.md §4",
-        "SDM Vol.3A §5.8.8, §2.5; Vol.4 (S26)"
-      ],
-      "files": [
-        "kernel/src/arch/x86_64/syscall.rs",
-        "kernel/src/arch/x86_64/user_programs.rs",
-        "kernel/src/arch/x86_64/gdt.rs",
-        "kernel/src/arch/x86_64/trap.rs",
-        "kernel/src/arch/x86_64/mod.rs",
-        "kernel/src/arch/mod.rs",
-        "kernel/src/syscall/mod.rs",
-        "kernel/src/user.rs",
-        "kernel/src/mm/addrspace.rs",
-        "kernel/src/mm/vmm.rs",
-        "kernel/src/main.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "docs/contracts/syscall.md",
-        "docs/adr/0009-user-mode-and-syscall-abi.md",
-        "platform/pc-qemu/target.json",
-        "tools/unsafe-baseline.txt"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md",
-        "docs/contracts/syscall.md"
-      ],
-      "actions": [
-        "user segments and TSS.RSP0",
-        "syscall/sysret with STAR/LSTAR/FMASK, swapgs, per-CPU area",
-        "syscall table and frozen ABI contract",
-        "user pointer validation, SMEP/SMAP when available",
-        "ktests with embedded ring-3 code"
-      ],
-      "acceptance": "TST-M3-USER-SYSCALL/USER-BAD-PTR/USER-KERNEL-ACCESS/SYSRET-CANONICAL PASS on CI; TST-M1-BOOT PASS with the ring-3 self-check line; contract v1 frozen",
-      "test_ids": [
-        "TST-M3-USER-SYSCALL",
-        "TST-M3-USER-BAD-PTR",
-        "TST-M3-USER-KERNEL-ACCESS",
-        "TST-M3-SYSRET-CANONICAL"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M3"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203529Z-62d4b9d9-001",
-        "evidence/20261018T203533Z-62d4b9d9-001",
-        "evidence/20261018T203538Z-62d4b9d9-001",
-        "evidence/20261018T203547Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-15",
-      "stage": "M3",
-      "requirement_ids": [
-        "REQ-M3-004"
-      ],
-      "depends_on": [
-        "WP-14"
-      ],
-      "inputs": [
-        "docs/PLAN.md §4",
-        "Sol ADR-007",
-        "System V AMD64 ABI §3.2 (S37)",
-        "SDM Vol.3A §6.14, §5.8.8 (S26)",
-        "Rust Reference inline-assembly options (S38)"
-      ],
-      "files": [
-        "kernel/src/sched/mod.rs",
-        "kernel/src/arch/x86_64/context.rs",
-        "kernel/src/arch/x86_64/syscall.rs",
-        "kernel/src/arch/x86_64/trap.rs",
-        "kernel/src/arch/x86_64/irq.rs",
-        "kernel/src/arch/x86_64/paging.rs",
-        "kernel/src/arch/x86_64/mod.rs",
-        "kernel/src/arch/x86_64/user_programs.rs",
-        "kernel/src/arch/mod.rs",
-        "kernel/src/mm/vmm.rs",
-        "kernel/src/syscall/mod.rs",
-        "kernel/src/user.rs",
-        "kernel/src/main.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "docs/contracts/syscall.md",
-        "docs/adr/0010-threads-and-scheduler.md",
-        "platform/pc-qemu/target.json",
-        "tools/check-unsafe.sh",
-        "tools/unsafe-baseline.txt"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "TCB/PCB, context switch (callee-saved + RSP), per-thread kernel/trap stacks",
-        "fixed-priority round-robin with timer preemption from the interrupt return path",
-        "sleep/yield/exit (+ ABI v1.1 yield/sleep) and resource teardown by a deferred reaper",
-        "swapgs on every ring-3 entry/exit path; sti/cli without nomem",
-        "ktests threads_alternate/preempt/exit_cleanup/user_sleep; heap_stress made relative"
-      ],
-      "acceptance": "TST-M3-THREADS-ALTERNATE/PREEMPT/EXIT-CLEANUP/USER-SLEEP PASS on CI; TST-M1-BOOT PASS with the kernel|sched self-check line; M2/M3 suites still green",
-      "test_ids": [
-        "TST-M3-THREADS-ALTERNATE",
-        "TST-M3-PREEMPT",
-        "TST-M3-EXIT-CLEANUP",
-        "TST-M3-USER-SLEEP"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M3"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203551Z-62d4b9d9-001",
-        "evidence/20261018T203556Z-62d4b9d9-001",
-        "evidence/20261018T203605Z-62d4b9d9-001",
-        "evidence/20261018T203609Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-16",
-      "stage": "M3",
-      "requirement_ids": [
-        "REQ-M3-005"
-      ],
-      "depends_on": [
-        "WP-15"
-      ],
-      "inputs": [
-        "docs/PLAN.md §4",
-        "Sol ADR-006 (via ADR-0002 item 3)",
-        "Zircon handles/rights/channel_write (S39, S40)"
-      ],
-      "files": [
-        "kernel/src/object/mod.rs",
-        "kernel/src/object/handle.rs",
-        "kernel/src/object/channel.rs",
-        "kernel/src/syscall/mod.rs",
-        "kernel/src/sched/mod.rs",
-        "kernel/src/arch/x86_64/syscall.rs",
-        "kernel/src/arch/x86_64/user_programs.rs",
-        "kernel/src/user.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/main.rs",
-        "docs/contracts/ipc.md",
-        "docs/contracts/syscall.md",
-        "docs/adr/0011-handles-rights-and-channels.md",
-        "platform/pc-qemu/target.json",
-        "tools/unsafe-baseline.txt"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md",
-        "docs/contracts/syscall.md",
-        "docs/contracts/ipc.md"
-      ],
-      "actions": [
-        "handle table with generations and rights (per process, 1024 entries)",
-        "objects channel endpoint and VMO (Arc); process/thread handles deferred to WP-17",
-        "channels with bounded messages (4096 B, 4 handles, queue 64), two-phase write, handle passing, blocking read without lost wake-ups",
-        "syscalls 6-12 (ABI v1.2 additive), writable-pointer validation and copy_out",
-        "ring-3 test programs with step-coded exit, boot self-check, ktests"
-      ],
-      "acceptance": "TST-M3-IPC-ROUNDTRIP/RIGHTS-DENIED/CLOSED-HANDLE/IPC-OVERSIZE/IPC-NO-LEAK/HANDLE-TABLE/BLOCK-WAKE PASS on CI; TST-M1-BOOT PASS with the kernel|object self-check line; contract ipc.md v1 frozen",
-      "test_ids": [
-        "TST-M3-IPC-ROUNDTRIP",
-        "TST-M3-RIGHTS-DENIED",
-        "TST-M3-CLOSED-HANDLE",
-        "TST-M3-IPC-OVERSIZE",
-        "TST-M3-IPC-NO-LEAK",
-        "TST-M3-HANDLE-TABLE",
-        "TST-M3-BLOCK-WAKE"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M3"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203614Z-62d4b9d9-001",
-        "evidence/20261018T203618Z-62d4b9d9-001",
-        "evidence/20261018T203623Z-62d4b9d9-001",
-        "evidence/20261018T203627Z-62d4b9d9-001",
-        "evidence/20261018T203632Z-62d4b9d9-001",
-        "evidence/20261018T203636Z-62d4b9d9-001",
-        "evidence/20261018T203641Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-17",
-      "stage": "M3",
-      "requirement_ids": [
-        "REQ-M3-006"
-      ],
-      "depends_on": [
-        "WP-16"
-      ],
-      "inputs": [
-        "docs/PLAN.md §4",
-        "System V gABI ELF header/program header (S41)",
-        "System V AMD64 ABI §3.2.2 (S37)"
-      ],
-      "files": [
-        "user/libnawah/Cargo.toml",
-        "user/libnawah/src/lib.rs",
-        "user/apps/hello/Cargo.toml",
-        "user/apps/hello/build.rs",
-        "user/apps/hello/src/main.rs",
-        "user/link.ld",
-        "Cargo.toml",
-        ".cargo/config.toml",
-        "kernel/build.rs",
-        "kernel/src/apps.rs",
-        "kernel/src/loader/mod.rs",
-        "kernel/src/loader/elf.rs",
-        "kernel/src/user.rs",
-        "kernel/src/mm/addrspace.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/main.rs",
-        "tools/project.py",
-        "tests/mutants.py",
-        "platform/pc-qemu/target.json",
-        ".github/workflows/verify.yml",
-        "docs/adr/0012-elf-loader-and-user-runtime.md",
-        "tools/unsafe-baseline.txt"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md",
-        "docs/contracts/syscall.md"
-      ],
-      "actions": [
-        "ELF64 static-executable loader with every field checked, W^X per page, guarded stack",
-        "libnawah (no_std syscall wrappers, entry! macro) and the hello application built for x86_64-unknown-none (static ET_EXEC, large code model)",
-        "applications embedded through NAWAH_APPS_DIR (project.py build, kernel/build.rs, mutants.py)",
-        "boot self-check kernel|elf and ktests app_exit_code/elf_malformed/elf_wx"
-      ],
-      "acceptance": "TST-M3-APP-EXIT-CODE/ELF-MALFORMED/ELF-WX PASS on CI; TST-M1-BOOT PASS with the kernel|elf self-check line",
-      "test_ids": [
-        "TST-M3-APP-EXIT-CODE",
-        "TST-M3-ELF-MALFORMED",
-        "TST-M3-ELF-WX"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M3"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203645Z-62d4b9d9-001",
-        "evidence/20261018T203650Z-62d4b9d9-001",
-        "evidence/20261018T203654Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-18",
-      "stage": "M3",
-      "requirement_ids": [
-        "REQ-M3-007"
-      ],
-      "depends_on": [
-        "WP-13"
-      ],
-      "inputs": [
-        "docs/PLAN.md §4",
-        "Virtio 1.3 (S42): §4.1 PCI transport, §2.7 split virtqueue, §5.2 block device, §3.1.1 initialization",
-        "PCI Express ECAM / PCI 3.0 configuration header (S43)",
-        "ACPI 6.5 MCFG signature (S33)",
-        "Microsoft FAT32 File System Specification (S44)"
-      ],
-      "files": [
-        "kernel/src/arch/x86_64/acpi.rs",
-        "kernel/src/arch/x86_64/pci.rs",
-        "kernel/src/arch/x86_64/mmio.rs",
-        "kernel/src/mm/dma.rs",
-        "kernel/src/drivers/mod.rs",
-        "kernel/src/drivers/virtio_blk.rs",
-        "kernel/src/block/mod.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/main.rs",
-        "tools/project.py",
-        "platform/pc-qemu/target.json",
-        "docs/adr/0013-storage.md",
-        "tools/check-unsafe.sh",
-        "tools/unsafe-baseline.txt",
-        "kernel/src/fs/mod.rs",
-        "tools/fat32.py",
-        "tests/test_fat32_tool.py",
-        ".github/workflows/verify.yml",
-        "kernel/src/fs/fat32.rs",
-        "kernel/src/mm/vmm.rs",
-        "kernel/src/arch/x86_64/apic.rs",
-        "docs/adr/0004-memory.md",
-        "docs/adr/0007-heap-and-user-spaces.md",
-        "docs/tests.json"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "MCFG parsing and PCI ECAM enumeration (root bus), BAR decode, capability walk",
-        "virtio-blk 1.x over modern virtio-pci: feature negotiation (VERSION_1, FLUSH), split virtqueue in a DMA frame, polling completion, 64 KiB bounce buffer",
-        "block layer (read/write/flush behind a lock) and boot self-check",
-        "lab runner: per-run virtio disk image with a known pattern, multi-phase cases for persistence across QEMU restarts",
-        "part 2: FAT32 (mount, lookup, read, create, write, unlink, listing; both FATs mirrored) on the image formatted by the independent host tool, with host-side verification (fsck.fat, tools/fat32.py) after guest runs",
-        "shared higher-half MMIO window (vmm::MMIO_BASE, PML4 slot 336) after CI run 39110182649: device registers are never mapped at their physical address"
-      ],
-      "acceptance": "TST-M3-BLK-READ/BLK-PERSIST/FAT32-READ/FAT32-WRITE/FAT32-PERSIST/FAT32-TOOL PASS on CI; TST-M1-BOOT PASS with the kernel|pci, kernel|blk and kernel|fat32 lines",
-      "test_ids": [
-        "TST-M3-BLK-READ",
-        "TST-M3-BLK-USER-CR3",
-        "TST-M3-BLK-PERSIST",
-        "TST-M3-FAT32-READ",
-        "TST-M3-FAT32-WRITE",
-        "TST-M3-FAT32-PERSIST",
-        "TST-M3-FAT32-TOOL"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M3"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203659Z-62d4b9d9-001",
-        "evidence/20261018T203703Z-62d4b9d9-001",
-        "evidence/20261018T203707Z-62d4b9d9-001",
-        "evidence/20261018T203714Z-62d4b9d9-001",
-        "evidence/20261018T203719Z-62d4b9d9-001",
-        "evidence/20261018T203724Z-62d4b9d9-001",
-        "evidence/20261018T204208Z-62d4b9d9-003",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-19",
-      "stage": "M3",
-      "requirement_ids": [
-        "REQ-M3-008"
-      ],
-      "depends_on": [
-        "WP-17",
-        "WP-18"
-      ],
-      "inputs": [
-        "docs/PLAN.md §4",
-        "docs/contracts/ipc.md (handles)",
-        "docs/contracts/files.md"
-      ],
-      "files": [
-        "kernel/src/fs/vfs.rs",
-        "kernel/src/fs/fat32.rs",
-        "kernel/src/fs/mod.rs",
-        "kernel/src/object/mod.rs",
-        "kernel/src/syscall/mod.rs",
-        "kernel/src/ktest.rs",
-        "kernel/build.rs",
-        "user/libnawah/src/lib.rs",
-        "user/apps/file_roundtrip/",
-        "user/apps/path_invalid/",
-        "user/apps/fd_leak/",
-        "Cargo.toml",
-        "tools/project.py",
-        "tests/mutants.py",
-        "platform/pc-qemu/target.json",
-        ".github/workflows/verify.yml",
-        "docs/contracts/files.md",
-        "docs/adr/0014-files.md"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md",
-        "docs/contracts/syscall.md",
-        "docs/contracts/ipc.md",
-        "docs/contracts/files.md"
-      ],
-      "actions": [
-        "open files as handle objects with READ/WRITE rights (no separate descriptor table)",
-        "fs::vfs: path validation, open/read/write/seek/stat/unlink/sync over FAT32, shared position per object",
-        "syscalls 13-19 (ABI v1.3) with bounded copies",
-        "libnawah wrappers and three test applications; kernel checks of objects/handles/clusters/frames around each run; host-side image checks"
-      ],
-      "acceptance": "TST-M3-FILE-ROUNDTRIP/PATH-INVALID/FD-LEAK PASS on CI (guest checks + host checks); contract files.md v1 frozen",
-      "test_ids": [
-        "TST-M3-FILE-ROUNDTRIP",
-        "TST-M3-PATH-INVALID",
-        "TST-M3-FD-LEAK"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M3"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203730Z-62d4b9d9-001",
-        "evidence/20261018T203735Z-62d4b9d9-001",
-        "evidence/20261018T203740Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-20",
-      "stage": "M3",
-      "requirement_ids": [
-        "REQ-M3-009"
-      ],
-      "depends_on": [
-        "WP-15"
-      ],
-      "inputs": [
-        "ACPI 6.5 §5.2.12 MADT (S33)",
-        "ACPI MADT (S33)",
-        "Intel SDM Vol. 3A §9.4.3-9.4.4 MP initialization, §10.8.5 IA-32e activation, §11.6.1 ICR, §4.10.5 TLB propagation (S26)",
-        "SDM Vol.3A §8.4, §10.4 (S26)",
-        "docs/PLAN.md §4"
-      ],
-      "files": [
-        "docs/adr/0015-smp.md",
-        "kernel/src/arch/aarch64/mod.rs",
-        "kernel/src/arch/mod.rs",
-        "kernel/src/arch/x86_64/acpi.rs",
-        "kernel/src/arch/x86_64/apic.rs",
-        "kernel/src/arch/x86_64/gdt.rs",
-        "kernel/src/arch/x86_64/idt.rs",
-        "kernel/src/arch/x86_64/irq.rs",
-        "kernel/src/arch/x86_64/mod.rs",
-        "kernel/src/arch/x86_64/percpu.rs",
-        "kernel/src/arch/x86_64/pit.rs",
-        "kernel/src/arch/x86_64/smp.rs",
-        "kernel/src/arch/x86_64/syscall.rs",
-        "kernel/src/arch/x86_64/tlb.rs",
-        "kernel/src/arch/x86_64/trampoline.s",
-        "kernel/src/arch/x86_64/trap.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/mm/vmm.rs",
-        "kernel/src/sched/mod.rs",
-        "kernel/src/sync.rs",
-        "platform/pc-qemu/target.json",
-        "tools/project.py",
-        "tools/unsafe-baseline.txt"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "INIT-SIPI-SIPI AP bring-up",
-        "per-CPU structures and real cpu_id",
-        "per-CPU LAPIC timers and run queues",
-        "TLB shootdown IPIs",
-        "contention tests with -smp 4"
-      ],
-      "acceptance": "TST-M3-SMP-ONLINE/LOCK-CONTENTION/TLB-SHOOTDOWN PASS on CI with -smp 4, then every suite PASS with -smp 4 as the lab default; kernel|smp|...|smp_selfcheck=1 in every boot",
-      "test_ids": [
-        "TST-M3-SMP-ONLINE",
-        "TST-M3-LOCK-CONTENTION",
-        "TST-M3-TLB-SHOOTDOWN"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M3"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203744Z-62d4b9d9-001",
-        "evidence/20261018T203749Z-62d4b9d9-001",
-        "evidence/20261018T203753Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001",
-        "evidence/20261018T203551Z-62d4b9d9-001",
-        "evidence/20261018T203605Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-22",
-      "stage": "M3",
-      "requirement_ids": [
-        "REQ-M3-010"
-      ],
-      "depends_on": [
-        "WP-19",
-        "WP-20"
-      ],
-      "inputs": [
-        "docs/PLAN.md §4",
-        "OS-EXEC-AR 3.2 §20 M3"
-      ],
-      "files": [
-        ".github/workflows/mutants.yml",
-        "docs/ENVIRONMENT.md",
-        "docs/PLAN.md",
-        "docs/operations/m3-review.md",
-        "docs/stages.json",
-        "kernel/src/arch/x86_64/user_programs.rs",
-        "kernel/src/ktest.rs",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tools/project.py",
-        "user/apps/path_invalid/src/main.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/boot.md"
-      ],
-      "actions": [
-        "isolation/resource/persistence suites complete",
-        "mutation testing extended to M3 modules",
-        "named review",
-        "M3 gate"
-      ],
-      "acceptance": "M3 gate passed: every M3 case PASS on CI under -smp 4 (run 39123846027), TST-M3-MUTANTS 20/20 (run mutants-39123845703), named review docs/operations/m3-review.md",
-      "test_ids": [
-        "TST-M3-ISOLATION",
-        "TST-M3-MUTANTS",
-        "TST-M3-PRIORITY-ORDER"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M3"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203542Z-62d4b9d9-001",
-        "evidence/20261018T164330Z-657ed0c3-001",
-        "evidence/20261018T203600Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-23",
-      "stage": "M4",
-      "requirement_ids": [
-        "REQ-M4-001"
-      ],
-      "depends_on": [
-        "WP-22"
-      ],
-      "inputs": [
-        "docs/PLAN.md §5",
-        "docs/adr/0016-services-and-authority.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/contracts/ipc.md",
-        "docs/contracts/syscall.md",
-        "kernel/build.rs",
-        "kernel/src/arch/x86_64/context.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/loader/mod.rs",
-        "kernel/src/object/channel.rs",
-        "kernel/src/object/mod.rs",
-        "kernel/src/object/process.rs",
-        "kernel/src/sched/mod.rs",
-        "kernel/src/syscall/mod.rs",
-        "kernel/src/user.rs",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tools/project.py",
-        "user/apps/child/src/main.rs",
-        "user/apps/echo/src/main.rs",
-        "user/apps/launch/src/main.rs",
-        "user/apps/waiter/src/main.rs",
-        "user/libnawah/src/lib.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/syscall.md",
-        "docs/contracts/ipc.md",
-        "docs/contracts/files.md"
-      ],
-      "actions": [
-        "ABI v1.4: process_spawn من الحجم بمقابض أولية، كائن العملية، object_wait_many بمهلة، clock_ticks، process_status",
-        "syscalls 20 process_spawn, 21 object_wait_many, 22 clock_ticks, 23 process_status (ABI v1.4 additive; ERR_TIMED_OUT=-19)",
-        "Object::Process with exit code and EXITED signal; initial handles at spawn; rdi bootstrap handle (ctx_user_thread_start)",
-        "loader::read_image over vfs (4 MiB bound); the image is validated before any handle moves",
-        "libnawah wrappers + bootstrap_handle(); apps echo/launch/child/waiter; project.py copies 8.3-named apps into /SYSTEM on the lab image"
-      ],
-      "acceptance": "TST-M4-SPAWN-VOLUME/WAIT-TIMEOUT/CHILD-EXIT PASS on CI run 39130028974 (ABI v1.4 frozen: syscall.md §5, ipc.md signals); M1–M3 suites green with the volume carrying /SYSTEM",
-      "test_ids": [
-        "TST-M4-SPAWN-VOLUME",
-        "TST-M4-WAIT-TIMEOUT",
-        "TST-M4-CHILD-EXIT"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M4"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203758Z-62d4b9d9-001",
-        "evidence/20261018T203803Z-62d4b9d9-001",
-        "evidence/20261018T203807Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-24",
-      "stage": "M4",
-      "requirement_ids": [
-        "REQ-M4-002"
-      ],
-      "depends_on": [
-        "WP-23"
-      ],
-      "inputs": [
-        "docs/PLAN.md §5",
-        "docs/adr/0016-services-and-authority.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/contracts/services.md",
-        "kernel/build.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/main.rs",
-        "kernel/src/sched/mod.rs",
-        "kernel/src/services.rs",
-        "platform/pc-qemu/manifests/services.txt",
-        "platform/pc-qemu/manifests/svc-ord.txt",
-        "platform/pc-qemu/manifests/svc-rst.txt",
-        "platform/pc-qemu/manifests/svc-tmo.txt",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tools/project.py",
-        "user/apps/svc/src/main.rs",
-        "user/apps/svcmgr/src/main.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/services.md"
-      ],
-      "actions": [
-        "مدير الخدمات svcmgr: البيان، الترتيب الطوبولوجي، مهلة الجاهزية، إعادة التشغيل بحد وتراجع، قناة تحكم",
-        "svcmgr app (no_std, no alloc, 16 services) started by the release kernel as the first process (kernel|svcmgr boot line, TST-M1-BOOT)",
-        "manifest parser with duplicate/unknown-dependency/cycle detection (Kahn)",
-        "START/READY handshake on the boot channel, readiness timeouts (final), on-failure restarts with exponential backoff up to max_restarts, dependents of dead services blocked",
-        "control channel LOAD/LIST/STOP; kernel::services (spawn_manager/request/poll_until) drives it in TST-M4-SVC-ORDER/TIMEOUT/RESTART with lab manifests under /SYSTEM"
-      ],
-      "acceptance": "TST-M4-SVC-ORDER/TIMEOUT/RESTART PASS and TST-M1-BOOT shows the manager as the first process (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1) on CI run 39130028974; services.md v1 frozen",
-      "test_ids": [
-        "TST-M4-SVC-ORDER",
-        "TST-M4-SVC-TIMEOUT",
-        "TST-M4-SVC-RESTART"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M4"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203812Z-62d4b9d9-001",
-        "evidence/20261018T203817Z-62d4b9d9-001",
-        "evidence/20261018T203821Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-25",
-      "stage": "M4",
-      "requirement_ids": [
-        "REQ-M4-003",
-        "REQ-M4-004"
-      ],
-      "depends_on": [
-        "WP-24"
-      ],
-      "inputs": [
-        "docs/PLAN.md §5",
-        "docs/adr/0016-services-and-authority.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/contracts/auth.md",
-        "docs/contracts/ipc.md",
-        "docs/contracts/services.md",
-        "docs/contracts/syscall.md",
-        "docs/sources.json",
-        "kernel/src/ktest.rs",
-        "kernel/src/object/mod.rs",
-        "kernel/src/object/token.rs",
-        "kernel/src/services.rs",
-        "kernel/src/syscall/mod.rs",
-        "platform/pc-qemu/manifests/svc-auth.txt",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tests/test_fat32_tool.py",
-        "tools/fat32.py",
-        "tools/project.py",
-        "user/apps/authd/src/main.rs",
-        "user/apps/svcmgr/src/main.rs",
-        "user/libnawah/src/lib.rs",
-        "user/nawah-crypto/src/lib.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/auth.md",
-        "docs/contracts/services.md",
-        "docs/contracts/syscall.md"
-      ],
-      "actions": [
-        "المصادقة والرموز والجلسات: nawah-crypto (SHA-256/HMAC/PBKDF2 بمتجهات)، خدمة auth، كائنا Token/Authority، حد محاولات، قفل/خروج",
-        "no_std crypto crate with host tests against FIPS 180-4 / RFC 4231 / RFC 7914 vectors (sources S45–S50)",
-        "kernel: Object::Token (identity, expiry, revocation) and Object::Authority; syscalls 24 token_create, 25 token_info, 26 token_revoke (ABI v1.5 additive)",
-        "svcmgr v1.1: the authority handed to the service named auth only; CONNECT brokering of client channels",
-        "authd: users db on the volume (PBKDF2, constant-time compare), LOGIN/WHOAMI/LOCK/UNLOCK/LOGOUT, 5-failure limit with a 2000-tick delay; lab users generated by hashlib; raw-image absence check for the passwords",
-        "in-system user creation / password change (needs a kernel entropy source for salts) deferred to M5 (ADR-0016)"
-      ],
-      "acceptance": "TST-M4-HASH-VECTORS (host) and TST-M4-TOKEN-OBJECTS/LOGIN/SESSION-LOCK (guest) PASS on CI run 39133153681; auth.md v1 frozen; TST-M4-AUTHZ-DENIED moved to WP-26",
-      "test_ids": [
-        "TST-M4-HASH-VECTORS",
-        "TST-M4-TOKEN-OBJECTS",
-        "TST-M4-LOGIN",
-        "TST-M4-SESSION-LOCK"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M4"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204210Z-62d4b9d9-001",
-        "evidence/20261018T203826Z-62d4b9d9-001",
-        "evidence/20261018T203830Z-62d4b9d9-001",
-        "evidence/20261018T203838Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-26",
-      "stage": "M4",
-      "requirement_ids": [
-        "REQ-M4-005"
-      ],
-      "depends_on": [
-        "WP-25"
-      ],
-      "inputs": [
-        "docs/PLAN.md §5",
-        "docs/adr/0016-services-and-authority.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/contracts/config.md",
-        "kernel/src/ktest.rs",
-        "platform/pc-qemu/manifests/svc-cfg.txt",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tests/test_fat32_tool.py",
-        "tools/fat32.py",
-        "user/apps/configd/src/main.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/config.md"
-      ],
-      "actions": [
-        "خدمة التكوين والسياسات: مخازن منفصلة بإصدارات، CAS، request_id، إشعارات، أسبقية، حفظ آمن وثبات",
-        "configd (config.md v1): stores device/policy/user/<uid> on the volume, session in memory; versioned keys, compare-and-set (expected version 0 = create), DEL, RESOLVE with policy > user > device, SUBSCRIBE channels (CHANGED store key version), EXPORT/IMPORT (all-or-nothing validation)",
-        "idempotent request ids: last 16 replies per client replayed verbatim",
-        "two-slot persistence (.A/.B) with a generation and a SHA-256 of the body: the newest intact slot is adopted, writes go to the other slot and sync (no rename in files.md v1)",
-        "authority at the service: every modifying request carries a token checked with token_info (REQ-M4-004: TST-M4-AUTHZ-DENIED)",
-        "kernel tests through CONNECT with real admin/user logins; fat32.py grep host check; TST-M4-CONFIG-PERSIST in two QEMU phases"
-      ],
-      "acceptance": "TST-M4-AUTHZ-DENIED, CONFIG-PERSIST (two phases), CONFIG-CAS, CONFIG-RETRY, CONFIG-NOTIFY, POLICY-PRECEDENCE PASS on CI run 39133153681; config.md v1 frozen",
-      "test_ids": [
-        "TST-M4-CONFIG-PERSIST",
-        "TST-M4-CONFIG-CAS",
-        "TST-M4-CONFIG-RETRY",
-        "TST-M4-CONFIG-NOTIFY",
-        "TST-M4-POLICY-PRECEDENCE",
-        "TST-M4-AUTHZ-DENIED"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M4"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203843Z-62d4b9d9-001",
-        "evidence/20261018T203910Z-62d4b9d9-001",
-        "evidence/20261018T203849Z-62d4b9d9-001",
-        "evidence/20261018T203854Z-62d4b9d9-001",
-        "evidence/20261018T203859Z-62d4b9d9-001",
-        "evidence/20261018T203904Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-27",
-      "stage": "M4",
-      "requirement_ids": [
-        "REQ-M4-006"
-      ],
-      "depends_on": [
-        "WP-23"
-      ],
-      "inputs": [
-        "docs/PLAN.md §5",
-        "docs/adr/0016-services-and-authority.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/adr/0017-m4-drivers.md",
-        "docs/contracts/input.md",
-        "docs/contracts/ipc.md",
-        "docs/contracts/net.md",
-        "docs/contracts/services.md",
-        "docs/contracts/syscall.md",
-        "docs/sources.json",
-        "kernel/build.rs",
-        "kernel/src/arch/mod.rs",
-        "kernel/src/arch/x86_64/i8042.rs",
-        "kernel/src/arch/x86_64/irq.rs",
-        "kernel/src/arch/x86_64/mod.rs",
-        "kernel/src/drivers/mod.rs",
-        "kernel/src/drivers/virtio_net.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/main.rs",
-        "kernel/src/net.rs",
-        "kernel/src/object/kbd.rs",
-        "kernel/src/object/mod.rs",
-        "kernel/src/object/nic.rs",
-        "kernel/src/services.rs",
-        "kernel/src/syscall/mod.rs",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tools/project.py",
-        "tools/unsafe-baseline.txt",
-        "user/apps/kbdprobe/src/main.rs",
-        "user/apps/netprobe/src/main.rs",
-        "user/apps/svcmgr/src/main.rs",
-        "user/libnawah/src/lib.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/input.md",
-        "docs/contracts/net.md",
-        "docs/contracts/syscall.md"
-      ],
-      "actions": [
-        "virtio-net وPS/2 بحدود موارد ونموذج DMA",
-        "virtio-net driver (modern transport, VERSION_1|MAC|STATUS, two 16-entry split queues, 12-byte header, 18 fixed DMA frames, frames copied through driver slots); ARP self-check against the lab gateway at boot (kernel|net)",
-        "i8042 keyboard: auxiliary port disabled, set-1 scancodes polled from the timer tick into a 64-byte ring (kernel|kbd); +3 unsafe lines (baseline 173, ADR-0017)",
-        "Object::Nic and Object::Keyboard with READABLE wake-ups from the tick; syscalls 27 handle_type, 28 nic_info, 29 nic_send, 30 nic_recv, 31 kbd_read (ABI v1.6 additive)",
-        "svcmgr v1.2 routes kernel resources by type to auth/net/input; lab QEMU gets SLIRP user networking and a monitor socket for sendkey-driven cases (tools/project.py)",
-        "netprobe/kbdprobe user apps; ktests net_link, net_limits, kbd_scancodes"
-      ],
-      "acceptance": "TST-M4-NET-LINK/NET-LIMITS/KBD-SCANCODES PASS and TST-M1-BOOT shows the interface and keyboard (kernel|net … selfcheck=1, kernel|kbd … selfcheck=1) on CI run 39134727743; net.md part A, input.md v1, syscall.md v1.6 frozen",
-      "test_ids": [
-        "TST-M4-NET-LINK",
-        "TST-M4-NET-LIMITS",
-        "TST-M4-KBD-SCANCODES"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M4"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203918Z-62d4b9d9-001",
-        "evidence/20261018T203922Z-62d4b9d9-001",
-        "evidence/20261018T203927Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-28",
-      "stage": "M4",
-      "requirement_ids": [
-        "REQ-M4-007"
-      ],
-      "depends_on": [
-        "WP-27",
-        "WP-24"
-      ],
-      "inputs": [
-        "docs/PLAN.md §5",
-        "docs/adr/0016-services-and-authority.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/contracts/net.md",
-        "docs/sources.json",
-        "kernel/src/ktest.rs",
-        "kernel/src/object/kbd.rs",
-        "kernel/src/object/nic.rs",
-        "platform/pc-qemu/manifests/svc-net.txt",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tools/project.py",
-        "user/apps/netd/src/main.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/net.md"
-      ],
-      "actions": [
-        "ARP/IPv4/ICMP/UDP/DHCP وفصل الإنترنت",
-        "netd (net.md part B): Ethernet framing, ARP table with bounded resolution, IPv4 without fragments (header checksum verified, fragments dropped and counted), ICMP echo reply and PING with RTT, UDP sockets (16, 4-datagram queues) with RFC 768 checksums, DHCP client with retries (RFC 2131/2132: DISCOVER/OFFER/REQUEST/ACK, options 1/3/6/51/53/54/55)",
-        "three separate states link/configured/internet (internet only settled by an explicit PROBE); the no-internet policy applied in the service (off-link traffic ERR POLICY), changed only with an admin token",
-        "lab: a UDP echo peer on the host (tools/project.py host_services) reached through SLIRP's 10.0.2.2; kernel tests net_dhcp, net_icmp, net_udp_echo, net_no_internet; manifest SVC-NET.TXT",
-        "closing: kernel-lifetime objects (Nic, Keyboard) release their waiter storage when empty, so a service's last wait leaves no heap page behind (CI run 39136539144 counted one)"
-      ],
-      "acceptance": "TST-M4-DHCP/ICMP-ECHO/UDP-ECHO/NET-NO-INTERNET PASS on CI run 39137446701 (DHCP from SLIRP, ICMP echo timed, UDP echo through the host peer, policy separation of link/configured/internet); net.md part B v1 frozen",
-      "test_ids": [
-        "TST-M4-DHCP",
-        "TST-M4-ICMP-ECHO",
-        "TST-M4-UDP-ECHO",
-        "TST-M4-NET-NO-INTERNET"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M4"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203933Z-62d4b9d9-001",
-        "evidence/20261018T203938Z-62d4b9d9-001",
-        "evidence/20261018T203943Z-62d4b9d9-001",
-        "evidence/20261018T203949Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-29",
-      "stage": "M4",
-      "requirement_ids": [
-        "REQ-M4-008"
-      ],
-      "depends_on": [
-        "WP-28"
-      ],
-      "inputs": [
-        "docs/PLAN.md §5",
-        "docs/adr/0016-services-and-authority.md"
-      ],
-      "files": [
-        "docs/contracts/net.md",
-        "docs/sources.json",
-        "kernel/src/ktest.rs",
-        "platform/pc-qemu/target.json",
-        "tools/project.py",
-        "user/apps/netd/src/main.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/net.md"
-      ],
-      "actions": [
-        "TCP أساسي في netd مع إعادة الإرسال وواجهة مقابس",
-        "TCP client in netd (net.md part C, RFC 9293): active open with the three-way handshake and the MSS option, one segment in flight (stop-and-wait, PSH), in-order receive with an advertised window, orderly close through FIN-WAIT-1/2, CLOSE-WAIT/LAST-ACK, CLOSING and TIME-WAIT (2 s), RST handling (refused / reset) and RST for segments without a connection; connection identifiers never reused",
-        "retransmission timer per RFC 6298: RTO 1 s initial, SRTT/RTTVAR with K=4 and G=1 ms, floor 1 s, ceiling 60 s, back-off ×2 on expiry, Karn's rule, 3 s after a retransmitted SYN, abort after 6 retransmissions (R2 ≈ 123 s)",
-        "requests TCP_CONNECT/SEND/RECV/CLOSE/STATUS and the diagnostic TCP_INJECT drop_next=1 (one lost transmission) so the lab exercises the timer; the service's main loop waits only until the next timer is due",
-        "lab: a TCP echo peer on the host (tools/project.py host_services tcp_echo, 127.0.0.1:17008 through SLIRP's 10.0.2.2; 17009 unbound → RST); kernel tests net_tcp_echo, net_tcp_retransmit; sources S61 (RFC 9293), S62 (RFC 6298)"
-      ],
-      "acceptance": "TST-M4-TCP-ECHO/TCP-RETRANSMIT PASS on CI run 39139475715 (handshake, data both ways, status, orderly close, released identifier, refused port by RST; one injected loss delivered by the RTO with back-off and Karn's rule); net.md part C v1 frozen",
-      "test_ids": [
-        "TST-M4-TCP-ECHO",
-        "TST-M4-TCP-RETRANSMIT"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M4"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T203954Z-62d4b9d9-001",
-        "evidence/20261018T204000Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-30",
-      "stage": "M4",
-      "requirement_ids": [
-        "REQ-M4-009"
-      ],
-      "depends_on": [
-        "WP-25",
-        "WP-24"
-      ],
-      "inputs": [
-        "docs/PLAN.md §5",
-        "docs/adr/0016-services-and-authority.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/adr/0018-diagnostic-shell.md",
-        "docs/contracts/files.md",
-        "docs/contracts/input.md",
-        "docs/contracts/ipc.md",
-        "docs/contracts/services.md",
-        "docs/contracts/shell.md",
-        "docs/contracts/syscall.md",
-        "docs/sources.json",
-        "kernel/src/arch/mod.rs",
-        "kernel/src/arch/x86_64/com2.rs",
-        "kernel/src/arch/x86_64/irq.rs",
-        "kernel/src/arch/x86_64/mod.rs",
-        "kernel/src/diag.rs",
-        "kernel/src/fs/vfs.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/main.rs",
-        "kernel/src/net.rs",
-        "kernel/src/object/bytes.rs",
-        "kernel/src/object/mod.rs",
-        "kernel/src/services.rs",
-        "kernel/src/syscall/mod.rs",
-        "platform/pc-qemu/manifests/svc-sh.txt",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tests/test_console_session.py",
-        "tools/project.py",
-        "tools/unsafe-baseline.txt",
-        "user/apps/sh/src/main.rs",
-        "user/apps/svcmgr/src/main.rs",
-        "user/libnawah/src/lib.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/shell.md",
-        "docs/contracts/syscall.md",
-        "docs/contracts/services.md",
-        "docs/contracts/files.md"
-      ],
-      "actions": [
-        "shell تشخيصي تفاعلي على قناة تسلسلية ثانية وقناة مختبر TCP",
-        "COM2 (16550 at 0x2F8) probed by loopback at boot and polled from the timer tick (ADR-0018); Object::Serial (type 9) generalising the keyboard ring (object/bytes.rs); ABI v1.7: serial_read, serial_write, system_info (64-byte record of the kernel's counters), dir_list (text listing; files.md v1.1); +3 unsafe lines (baseline 176)",
-        "svcmgr v1.3: the console routed to the service `sh`; boot-channel requests LIST and CONNECT <declared dependency> (no ambient authority between services)",
-        "sh service (shell.md v1): help/svc/cpu/mem/net [dhcp|policy]/ls/cat/login/whoami/logout/exit — every command answers from the owner of the state (manager, net, kernel, volume); protected commands carry the session token to the service that checks it",
-        "lab: COM2 as `-serial null` in every run and `-serial tcp:127.0.0.1:<port>,server=on,wait=off` for console cases; ConsoleSession drives a script and judges expect/absent/prompt/expect_serial after the guest exits (transcript console.log); host test tests/test_console_session.py against a fake shell; kernel tests shell_svc, shell_login; manifest SVC-SH.TXT"
-      ],
-      "acceptance": "TST-M4-SHELL-SVC/SHELL-LOGIN/SHELL-TOOL PASS and TST-M1-BOOT (kernel|diag selfcheck=1, 5 initial handles) on CI run 39141804574; shell.md v1, syscall.md v1.7, services.md v1.3, files.md v1.1 frozen; ADR-0018 accepted",
-      "test_ids": [
-        "TST-M4-SHELL-SVC",
-        "TST-M4-SHELL-LOGIN",
-        "TST-M4-SHELL-TOOL"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M4"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204007Z-62d4b9d9-001",
-        "evidence/20261018T204013Z-62d4b9d9-001",
-        "evidence/20261018T204217Z-62d4b9d9-001",
-        "evidence/20261018T203313Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-31",
-      "stage": "M4",
-      "requirement_ids": [
-        "REQ-M4-010"
-      ],
-      "depends_on": [
-        "WP-26",
-        "WP-29",
-        "WP-30"
-      ],
-      "inputs": [
-        "docs/PLAN.md §5",
-        "docs/adr/0016-services-and-authority.md"
-      ],
-      "files": [
-        ".github/workflows/mutants.yml",
-        "docs/ENVIRONMENT.md",
-        "docs/PLAN.md",
-        "docs/contracts/shell.md",
-        "docs/operations/m4-review.md",
-        "docs/security/threat-model.md",
-        "docs/stages.json",
-        "kernel/src/ktest.rs",
-        "platform/pc-qemu/manifests/svc-pl.txt",
-        "platform/pc-qemu/manifests/svc-sh.txt",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tools/project.py",
-        "user/apps/sh/src/main.rs",
-        "user/apps/svc/src/main.rs",
-        "user/apps/waiter/src/main.rs"
-      ],
-      "contract_refs": [],
-      "actions": [
-        "بوابة M4: التعافي من انقطاع الطرف، طفرات M4، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
-        "TST-M4-PEER-LOSS: svc roles serve/crash_once (dies without replying on its first request, marks the volume, serves after the restart); manifest SVC-PL.TXT; kernel test peer_loss — a vanished client, a dead service restarted after its backoff, the other service undisturbed, no leak",
-        "authority between services: sh gets `cfg get/resolve` (shell.md v1.1) and SVC-SH.TXT carries config undeclared, so the manager's ERR ACCESS is observed (TST-M4-SHELL-SVC); the waiter app probes token_create without the authority (TST-M4-WAIT-TIMEOUT); session_lock checks the token's REVOKED flag after LOGOUT (TST-M4-SESSION-LOCK)",
-        "TST-M4-MUTANTS: M50–M81 over the M4 kernel modules and the services svcmgr/authd/configd/netd/sh (tests/mutants.py --stage M4, resets user/ too, --check builds the mutated crate on the host); HOST_SUITES M4-GATE; mutants workflow step and 300-minute budget",
-        "docs: ENVIRONMENT (lab network, host peers, monitor, COM2), threat-model (no ambient authority between services, peer loss, the console on real hardware), docs/operations/m4-review.md, stages.json M4 gate"
-      ],
-      "acceptance": "TST-M4-PEER-LOSS PASS and the whole suite green on CI run 39144177809 (100/100); TST-M4-MUTANTS 32/32 (100%) on mutants run 39144910448 with no survivor and no mis-declared killer; docs/operations/m4-review.md; stages.json M4 passed",
-      "test_ids": [
-        "TST-M4-PEER-LOSS",
-        "TST-M4-MUTANTS"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M4"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204020Z-62d4b9d9-001",
-        "evidence/20261018T165144Z-657ed0c3-001",
-        "evidence/20261018T204007Z-62d4b9d9-001",
-        "evidence/20261018T203838Z-62d4b9d9-001",
-        "evidence/20261018T203803Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-32",
-      "stage": "M5",
-      "requirement_ids": [
-        "REQ-M5-001"
-      ],
-      "depends_on": [
-        "WP-31"
-      ],
-      "inputs": [
-        "docs/PLAN.md §6",
-        "docs/adr/0019-graphics-platform.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/adr/0019-graphics-platform.md",
-        "docs/contracts/boot.md",
-        "docs/contracts/display.md",
-        "docs/contracts/ipc.md",
-        "docs/contracts/services.md",
-        "docs/contracts/syscall.md",
-        "docs/sources.json",
-        "kernel/build.rs",
-        "kernel/src/boot/efi.rs",
-        "kernel/src/boot/stub.rs",
-        "kernel/src/display.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/main.rs",
-        "kernel/src/mm/addrspace.rs",
-        "kernel/src/object/mod.rs",
-        "kernel/src/sched/mod.rs",
-        "kernel/src/services.rs",
-        "kernel/src/syscall/mod.rs",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tools/project.py",
-        "tools/screen.py",
-        "tools/unsafe-baseline.txt",
-        "user/apps/fbprobe/src/main.rs",
-        "user/apps/svcmgr/src/main.rs",
-        "user/libnawah/src/lib.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/display.md",
-        "docs/contracts/syscall.md",
-        "docs/contracts/ipc.md"
-      ],
-      "actions": [
-        "العرض: إطار GOP وكائن العرض ومسار الرسم التشخيصي ومجس الشاشة في المختبر",
-        "boot stub: EFI_GRAPHICS_OUTPUT_PROTOCOL located before EBS, BootInfo.fb filled (base, size, resolution, stride, pixel format), unsupported formats reported absent",
-        "kernel: the frame mapped in the private MMIO window (WC when PAT allows), kernel|display boot line with the diagnostic pattern (build id corner marks), Object::Display (type 10) with display_info and display_map (a physical VMO over the frame), and user mappings vmo_map/vmo_unmap (ABI v1.8 additive: a mapping region above the image, protection from the handle's rights, never executable, 64 per process, gone with the process)",
-        "lab: tools/screen.py reads a QEMU screendump (PPM) and checks named regions; project.py `screendump` action through the monitor; display.md part A"
-      ],
-      "acceptance": "TST-M5-DISPLAY-BOOT PASS; display.md part A v1; ADR-0019 §1–2",
-      "test_ids": [
-        "TST-M5-DISPLAY-BOOT"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204024Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-33",
-      "stage": "M5",
-      "requirement_ids": [
-        "REQ-M5-002"
-      ],
-      "depends_on": [
-        "WP-32"
-      ],
-      "inputs": [
-        "docs/PLAN.md §6",
-        "docs/adr/0019-graphics-platform.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/adr/0019-graphics-platform.md",
-        "docs/contracts/input.md",
-        "docs/contracts/ipc.md",
-        "docs/contracts/services.md",
-        "docs/contracts/syscall.md",
-        "docs/sources.json",
-        "kernel/src/arch/x86_64/i8042.rs",
-        "kernel/src/kmain.rs",
-        "kernel/src/ktest.rs",
-        "kernel/src/net.rs",
-        "kernel/src/object/bytes.rs",
-        "kernel/src/object/mod.rs",
-        "kernel/src/services.rs",
-        "kernel/src/syscall/mod.rs",
-        "platform/pc-qemu/manifests/svc-in.txt",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tests/test_monitor_steps.py",
-        "tools/project.py",
-        "tools/unsafe-baseline.txt",
-        "user/apps/inputd/src/main.rs",
-        "user/apps/svcmgr/src/main.rs",
-        "user/libnawah/src/lib.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/input.md",
-        "docs/contracts/services.md",
-        "docs/contracts/syscall.md",
-        "docs/contracts/ipc.md"
-      ],
-      "actions": [
-        "الإدخال الموثوق: فك الرموز والتخطيطات والفأرة والتوجيه والانتباه الآمن",
-        "i8042 auxiliary port enabled for the PS/2 mouse (3-byte packets polled per tick into Object::Mouse, type 11; input.md v2 additive)",
-        "input service (user/apps/inputd): set-1 scancodes to fixed keycodes, US and Arabic 101 layouts, KEY/PTR event records, routing to the focus owner named with an ADMIN token, secure attention (Ctrl+Alt+Del) reserved for the `session` client; services.md v1.5 routes keyboard + mouse to input; syscall.md v1.9 adds mouse_read (40); ipc.md type 11",
-        "lab: monitor sendkey/mouse_move/mouse_button in ordered steps (run_qemu_monitored steps, host test TST-M5-LAB-TOOL); kernel tests input_route, mouse"
-      ],
-      "acceptance": "TST-M5-INPUT-ROUTE/MOUSE/LAB-TOOL PASS; input.md v2, services.md v1.5, syscall.md v1.9",
-      "test_ids": [
-        "TST-M5-INPUT-ROUTE",
-        "TST-M5-MOUSE",
-        "TST-M5-LAB-TOOL"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5",
-        "python3 tools/project.py test --target host --suite M5"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204033Z-62d4b9d9-001",
-        "evidence/20261018T204040Z-62d4b9d9-001",
-        "evidence/20261018T204221Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-34",
-      "stage": "M5",
-      "requirement_ids": [
-        "REQ-M5-003"
-      ],
-      "depends_on": [
-        "WP-32",
-        "WP-33"
-      ],
-      "inputs": [
-        "docs/PLAN.md §6",
-        "docs/adr/0019-graphics-platform.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/adr/0019-graphics-platform.md",
-        "docs/contracts/display.md",
-        "docs/contracts/input.md",
-        "docs/contracts/ipc.md",
-        "docs/contracts/syscall.md",
-        "docs/sources.json",
-        "kernel/src/ktest.rs",
-        "kernel/src/syscall/mod.rs",
-        "platform/pc-qemu/manifests/svc-da.txt",
-        "platform/pc-qemu/manifests/svc-dp.txt",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tests/test_monitor_steps.py",
-        "tests/test_screen_tool.py",
-        "tools/project.py",
-        "tools/screen.py",
-        "user/apps/displayd/src/main.rs",
-        "user/apps/inputd/src/main.rs",
-        "user/apps/winapp/src/main.rs",
-        "user/libnawah/src/lib.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/display.md",
-        "docs/contracts/input.md",
-        "docs/contracts/syscall.md",
-        "docs/contracts/ipc.md"
-      ],
-      "actions": [
-        "compositor ومدير النوافذ: أسطح VMO، تغييرات معلنة، ترتيب وتركيز وحجم، تطبيق لا يستجيب",
-        "display service (user/apps/displayd, compositor): CREATE_SURFACE + VMO (checked with vmo_size, ABI v1.10), COMMIT damage, back buffer in the service's memory, blit every 16 ticks; windows with decorations, cascade placement, z-order, focus by request/click/Alt+Tab, move/resize (RESIZED → client attaches a new surface), minimise/restore, close; unresponsive clients detected after 2000 ticks of a full queue and never waited on; the keyboard focus at input is taken by name (input.md v2.1 FOCUS <name>)",
-        "client side in libnawah (display::Surface, pixel) and the demo app winapp; display.md part B",
-        "kernel tests screen, window_states, app_hang; screendump oracle recomputing the window hash (tools/screen.py desktop, ${SERIAL:key} host-check substitution); host tests TST-M5-LAB-TOOL (extended), TST-M5-SCREEN-TOOL"
-      ],
-      "acceptance": "TST-M5-WINDOW-STATES/APP-HANG/SCREEN/SCREEN-TOOL PASS; display.md part B v1, syscall.md v1.10",
-      "test_ids": [
-        "TST-M5-WINDOW-STATES",
-        "TST-M5-APP-HANG",
-        "TST-M5-SCREEN",
-        "TST-M5-SCREEN-TOOL"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5",
-        "python3 tools/project.py test --target host --suite M5"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204047Z-62d4b9d9-001",
-        "evidence/20261018T204056Z-62d4b9d9-001",
-        "evidence/20261018T204104Z-62d4b9d9-001",
-        "evidence/20261018T204254Z-62d4b9d9-002"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-35",
-      "stage": "M5",
-      "requirement_ids": [
-        "REQ-M5-004"
-      ],
-      "depends_on": [
-        "WP-32"
-      ],
-      "inputs": [
-        "docs/PLAN.md §6",
-        "docs/adr/0019-graphics-platform.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/adr/0019-graphics-platform.md",
-        "docs/contracts/display.md",
-        "docs/contracts/text.md",
-        "docs/sources.json",
-        "kernel/build.rs",
-        "kernel/src/ktest.rs",
-        "platform/assets/fonts/NotoSans-Regular.ttf",
-        "platform/assets/fonts/NotoSansArabic-Regular.ttf",
-        "platform/assets/fonts/OFL.txt",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tests/test_fat32_tool.py",
-        "tests/test_text.py",
-        "tools/fat32.py",
-        "tools/project.py",
-        "tools/text_check.py",
-        "tools/text_vectors.py",
-        "tools/unicode_tables.py",
-        "user/apps/textprobe/src/main.rs",
-        "user/apps/textprobe/src/vectors.rs",
-        "user/libnawah-text/Cargo.toml",
-        "user/libnawah-text/examples/bidi_check.rs",
-        "user/libnawah-text/examples/textdump.rs",
-        "user/libnawah-text/src/bidi.rs",
-        "user/libnawah-text/src/font.rs",
-        "user/libnawah-text/src/layout.rs",
-        "user/libnawah-text/src/lib.rs",
-        "user/libnawah-text/src/raster.rs",
-        "user/libnawah-text/src/shape.rs",
-        "user/libnawah-text/src/tables.rs",
-        "user/libnawah-text/ucd/BidiBrackets.txt",
-        "user/libnawah-text/ucd/BidiCharacterTest.txt.xz",
-        "user/libnawah-text/ucd/DerivedBidiClass.txt",
-        "user/libnawah-text/ucd/DerivedJoiningType.txt"
-      ],
-      "contract_refs": [
-        "docs/contracts/text.md"
-      ],
-      "actions": [
-        "طبقة النص: OpenType وتنقيط وbidi وتشكيل عربي وخطوط مرخصة",
-        "nawah-text (user/libnawah-text: no_std, no allocation, no deps, no unsafe): OpenType reader (cmap 4/12, glyf/loca with composites, hmtx, GSUB types 1/4/6-format-3/7, GDEF classes), scanline rasteriser (4×4 samples, non-zero, 1/64 px flattening), UAX #9 complete through L2 (tables generated from UCD 17.0.0 by tools/unicode_tables.py), Arabic shaping (joining forms from DerivedJoiningType, GSUB isol/fina/medi/init then rlig), line layout (runs by level and font, mirrored brackets, visual order, advances) and a line renderer",
-        "fonts: Noto Sans / Noto Sans Arabic Regular (OFL 1.1, googlefonts/noto-fonts ffebf8c1) with OFL.txt under /SYSTEM/FONTS (tools/fat32.py nested directories); sources S71–S75",
-        "host tests against independent references (BidiCharacterTest, fontTools, HarfBuzz, a reference rasteriser) in tests/test_text.py; guest sample (tools/text_vectors.py → textprobe) with a drawn line checked against the screendump and the host's rendering (tools/text_check.py); text.md v1"
-      ],
-      "acceptance": "TST-M5-BIDI/SHAPING/GLYPHS/TEXT-GUEST PASS; text.md v1",
-      "test_ids": [
-        "TST-M5-BIDI",
-        "TST-M5-SHAPING",
-        "TST-M5-GLYPHS",
-        "TST-M5-TEXT-GUEST"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5",
-        "python3 tools/project.py test --target host --suite M5"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204230Z-62d4b9d9-001",
-        "evidence/20261018T204230Z-62d4b9d9-002",
-        "evidence/20261018T204242Z-62d4b9d9-001",
-        "evidence/20261018T204116Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-36",
-      "stage": "M5",
-      "requirement_ids": [
-        "REQ-M5-005"
-      ],
-      "depends_on": [
-        "WP-34",
-        "WP-35"
-      ],
-      "inputs": [
-        "docs/PLAN.md §6",
-        "docs/adr/0019-graphics-platform.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.toml",
-        "docs/adr/0019-graphics-platform.md",
-        "docs/contracts/display.md",
-        "docs/contracts/ui.md",
-        "kernel/src/ktest.rs",
-        "platform/pc-qemu/expect/a11y-tree.txt",
-        "platform/pc-qemu/expect/keyboard-nav.txt",
-        "platform/pc-qemu/manifests/svc-ui.txt",
-        "platform/pc-qemu/target.json",
-        "tests/mutants.py",
-        "tests/test_monitor_steps.py",
-        "tests/test_transcript_tool.py",
-        "tools/project.py",
-        "tools/transcript.py",
-        "user/apps/dialog/src/main.rs",
-        "user/apps/displayd/src/main.rs",
-        "user/apps/narrator/src/main.rs",
-        "user/libui/Cargo.toml",
-        "user/libui/examples/dialog_ppm.rs",
-        "user/libui/src/lib.rs",
-        "user/libui/src/tests.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/ui.md",
-        "docs/contracts/display.md"
-      ],
-      "actions": [
-        "عناصر UI والوصول: شجرة تركيز، تنقل بلوحة المفاتيح، قارئ شاشة نصي، تكبير وتباين",
-        "libui (user/libui; no_std, no allocation, no unsafe, over nawah-text): label, button, text field (bidi, cursor, Arabic input), list, checkbox; fixed declared focus order; Tab/Shift+Tab/arrows/Enter/Space/Esc; every element with role, label (refused when empty) and state; descriptions for the narrator; drawing with 1x/1.5x/2x scale and a high-contrast palette (ScrollView left out of v1: lists stay within six items)",
-        "a11y path: the compositor relays A11Y announcements of the focused window only to the registered narrator (display.md v1.1: NARRATOR, A11Y, SAY, window focus announcements) and draws window titles as text; narrator service writes them to the diagnostic channel; the sample dialog reads ui.scale/ui.contrast from config and follows SUBSCRIBE; ui.md v1",
-        "kernel tests keyboard_nav (two boots, same transcript) and a11y_tree with manifest svc-ui.txt; host checks tools/transcript.py (exact transcript per boot, dims) and screen.py probes; host tests TST-M5-UI-UNIT (libui) and TST-M5-UI-TOOL"
-      ],
-      "acceptance": "TST-M5-KEYBOARD-NAV/A11Y-TREE/UI-UNIT/UI-TOOL PASS; ui.md v1, display.md v1.1",
-      "test_ids": [
-        "TST-M5-KEYBOARD-NAV",
-        "TST-M5-A11Y-TREE",
-        "TST-M5-UI-UNIT",
-        "TST-M5-UI-TOOL"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5",
-        "python3 tools/project.py test --target host --suite M5"
-      ],
-      "status": "done",
-      "status_history": [
-        "planned",
-        "active",
-        "done"
-      ],
-      "evidence_refs": [
-        "evidence/20261018T204130Z-62d4b9d9-001",
-        "evidence/20261018T204151Z-62d4b9d9-001",
-        "evidence/20261018T204245Z-62d4b9d9-001",
-        "evidence/20261018T204254Z-62d4b9d9-001"
-      ],
-      "blocker": null
-    },
-    {
-      "id": "WP-37",
-      "stage": "M5",
-      "requirement_ids": [
-        "REQ-M5-006"
-      ],
-      "depends_on": [
-        "WP-33",
-        "WP-34",
-        "WP-36"
-      ],
-      "inputs": [
-        "docs/PLAN.md §6",
-        "docs/adr/0019-graphics-platform.md"
-      ],
-      "files": [
-        ".github/workflows/verify.yml",
-        "Cargo.lock",
-        "Cargo.toml",
-        "docs/PLAN.md",
-        "docs/adr/0019-graphics-platform.md",
-        "docs/contracts/display.md",
-        "docs/contracts/input.md",
-        "docs/contracts/services.md",
-        "docs/contracts/session.md",
-        "docs/contracts/ui.md",
-        "docs/security/threat-model.md",
-        "docs/sources.json",
-        "kernel/src/ktest.rs",
-        "platform/pc-qemu/expect/auth-input-isolated.txt",
-        "platform/pc-qemu/expect/lock-survives.txt",
-        "platform/pc-qemu/expect/login-screen.txt",
-        "platform/pc-qemu/manifests/svc-sa.txt",
-        "platform/pc-qemu/manifests/svc-ss.txt",
-        "platform/pc-qemu/target.json",
-        "tests/test_monitor_steps.py",
-        "tests/test_transcript_tool.py",
-        "tools/project.py",
-        "tools/transcript.py",
-        "user/apps/authd/src/main.rs",
-        "user/apps/configd/src/main.rs",
-        "user/apps/dialog/src/main.rs",
-        "user/apps/displayd/src/main.rs",
-        "user/apps/inputd/src/main.rs",
-        "user/apps/netd/src/main.rs",
-        "user/apps/sessiond/Cargo.toml",
-        "user/apps/sessiond/build.rs",
-        "user/apps/sessiond/src/main.rs",
-        "user/apps/spy/Cargo.toml",
-        "user/apps/spy/build.rs",
-        "user/apps/spy/src/main.rs",
-        "user/apps/svc/src/main.rs",
-        "user/apps/svcmgr/src/main.rs",
-        "user/libui/src/lib.rs",
-        "user/libui/src/tests.rs"
-      ],
-      "contract_refs": [
-        "docs/contracts/session.md",
-        "docs/contracts/input.md",
-        "docs/contracts/display.md",
-        "docs/contracts/services.md",
-        "docs/contracts/ui.md"
-      ],
-      "actions": [
-        "الجلسة والقفل الموثوق: مالك القفل، شاشة الدخول، الانتباه الآمن، البقاء عند تعطل العرض",
-        "sessiond (user/apps/sessiond): the states no_session/unlocked/locked, the user's token from auth (LOGIN, LOCK, UNLOCK, LOGOUT), the sign-in and lock screens as libui dialogs in its own windows (password field: ui.md v1.1), keys straight from input; the keyboard to the display only after an unlock once no key is held; reconnects to auth, input and display through the manager and gives each its state again; STATE for tests; traces without secrets (session.md v1)",
-        "trusted path: input.md v2.2 (the manager's client identity, `session` reserved, the session's authority, the secure attention sequence moves the focus to the session, the session's loss clears the focus; TST-M5-INPUT-ROUTE re-based); display.md v1.2 (held from the start when the manifest names a session and on the session's loss, LOCKED/UNLOCKED/LOGOUT from the session only, no focus for a held window, LOGGED_OUT, KEYS, input reconnection); services.md v1.6 (CONNECT <name>, RESTART)",
-        "kernel tests login_screen, auth_input_isolated, lock_survives (SVC-SS.TXT, SVC-SA.TXT with the narrator; RESTART of display and input while locked); the spy client (user/apps/spy); lab: ${SCREEN:tag} screendumps and transcript.py streams (per-stream exact transcripts), with host tests",
-        "the real system manifest (SERVICES.TXT: auth, config, net, input, display, session, sh) and the interactive boot to the sign-in screen moved to the first WP of M6 (ADR-0019: the release image is still a self-check that exits; changing it changes M1's tests)"
-      ],
-      "acceptance": "TST-M5-LOCK-SURVIVES/AUTH-INPUT-ISOLATED/LOGIN-SCREEN PASS; session.md v1",
-      "test_ids": [
-        "TST-M5-LOCK-SURVIVES",
-        "TST-M5-AUTH-INPUT-ISOLATED",
-        "TST-M5-LOGIN-SCREEN"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5"
-      ],
-      "status": "active",
-      "status_history": [
-        "planned",
-        "active"
-      ],
-      "evidence_refs": [],
-      "blocker": null
-    },
-    {
-      "id": "WP-38",
-      "stage": "M5",
-      "requirement_ids": [
-        "REQ-M5-007"
-      ],
-      "depends_on": [
-        "WP-35",
-        "WP-37"
-      ],
-      "inputs": [
-        "docs/PLAN.md §6",
-        "docs/adr/0019-graphics-platform.md"
-      ],
-      "files": [],
-      "contract_refs": [],
-      "actions": [
-        "بوابة M5: سيناريوهات الخروج، طفرات M5، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
-        "scenario cases 7, 8 and 11 of OS-EXEC-AR §20 across the M5 suite; mutants M82+ for display/input/compositor/text/ui/session (>= 95%)",
-        "docs/operations/m5-review.md; stages.json M5 gate; threat-model (display/input/session trust boundaries)"
-      ],
-      "acceptance": "M5 gate passed",
-      "test_ids": [
-        "TST-M5-MUTANTS"
-      ],
-      "commands": [
-        "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5"
-      ],
-      "status": "planned",
-      "status_history": [
-        "planned"
-      ],
-      "evidence_refs": [],
-      "blocker": null
-    }
-  ]
+ "schema_version": "1.0.0",
+ "records": [
+  {
+   "id": "WP-00",
+   "stage": "M0",
+   "requirement_ids": [
+    "REQ-M0-001"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "workspace",
+    "host tools"
+   ],
+   "files": [
+    "docs/ENVIRONMENT.md",
+    ".gitattributes",
+    ".gitignore"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "probe tools",
+    "init local git",
+    "copy governing prompt"
+   ],
+   "acceptance": "ENVIRONMENT.md من نتائج فعلية ومستودع محلي",
+   "test_ids": [
+    "TST-M0-002"
+   ],
+   "commands": [
+    "git log --oneline"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T215302Z-5b309c08-002"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-01",
+   "stage": "M0",
+   "requirement_ids": [
+    "REQ-M0-002"
+   ],
+   "depends_on": [
+    "WP-00"
+   ],
+   "inputs": [
+    "prompt §7.1"
+   ],
+   "files": [
+    "tools/schemas_gen.py",
+    "tools/project.py",
+    "tests/test_validate_records.py"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "schemas",
+    "validator",
+    "10 tests"
+   ],
+   "acceptance": "10/10 اختبارات ناجحة بدليل",
+   "test_ids": [
+    "TST-M0-001"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T215302Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-02",
+   "stage": "M0",
+   "requirement_ids": [
+    "REQ-M0-003"
+   ],
+   "depends_on": [
+    "WP-00"
+   ],
+   "inputs": [
+    "prompt §5 E0",
+    "clang/lld-link/QEMU/OVMF"
+   ],
+   "files": [
+    "boot/common/efi.h",
+    "boot/common/serial.h",
+    "boot/e0/main.c",
+    "platform/pc-qemu-e0/target.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "write minimal UEFI app",
+    "build",
+    "boot in QEMU"
+   ],
+   "acceptance": "بناء PASS وإقلاع PASS بأثر build_id ورمز 33",
+   "test_ids": [
+    "TST-M0-E0-BUILD",
+    "TST-M0-E0-BOOT"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu-e0",
+    "python3 tools/project.py boot --target pc-qemu-e0"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T213855Z-5b309c08-001",
+    "evidence/20261018T213858Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-03",
+   "stage": "M0",
+   "requirement_ids": [
+    "REQ-M0-004",
+    "REQ-M0-005"
+   ],
+   "depends_on": [
+    "WP-01",
+    "WP-02"
+   ],
+   "inputs": [
+    "E0 evidence"
+   ],
+   "files": [
+    "docs/PROJECT.md",
+    "docs/adr/0001-bootstrap.md",
+    "docs/contracts/boot.md",
+    "docs/requirements.json",
+    "docs/stages.json",
+    "docs/work-items.json",
+    "docs/tests.json",
+    "docs/risks.json",
+    "docs/sources.json",
+    "docs/hardware.json",
+    "docs/automation.json",
+    "docs/project-state.json",
+    "docs/decisions-pending.json",
+    "docs/security/threat-model.md",
+    "docs/prompt-errata.md",
+    "docs/reference/windows10.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "write M0 records",
+    "validate",
+    "checkpoint"
+   ],
+   "acceptance": "validate-records يمر وTST-M0-002 PASS",
+   "test_ids": [
+    "TST-M0-002"
+   ],
+   "commands": [
+    "python3 tools/project.py validate-records",
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T215302Z-5b309c08-002"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-04",
+   "stage": "M1",
+   "requirement_ids": [
+    "REQ-M1-001",
+    "REQ-M1-002",
+    "REQ-M1-003",
+    "REQ-M1-004"
+   ],
+   "depends_on": [
+    "WP-03"
+   ],
+   "inputs": [
+    "contracts/boot.md",
+    "E0 toolchain"
+   ],
+   "files": [
+    "boot/stub/main.c",
+    "boot/common/bootinfo.h",
+    "boot/common/types.h",
+    "kernel/main.c",
+    "platform/pc-qemu/target.json",
+    "tests/test_m1_nobs.py",
+    "tools/project.py"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "kernel stub with memory map + EBS",
+    "post_ebs trace",
+    "EBS failure injection variant",
+    "static NOBS test",
+    "M1 suite",
+    "superseded by WP-06 (language changed to Rust, ADR-0002); the C implementation remains in history as the E0/M1 evidence of 2026-10-17"
+   ],
+   "acceptance": "بوابة M1: build/boot/test PASS، NOBS PASS، NEG PASS",
+   "test_ids": [
+    "TST-M1-BUILD",
+    "TST-M1-BOOT",
+    "TST-M1-NOBS",
+    "TST-M1-NEG"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M1",
+    "python3 tools/project.py test --target host --suite M1"
+   ],
+   "status": "superseded",
+   "status_history": [
+    "planned",
+    "active",
+    "done",
+    "planned",
+    "superseded"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "superseded_by": "WP-06"
+  },
+  {
+   "id": "WP-05",
+   "stage": "M0",
+   "requirement_ids": [
+    "REQ-M0-005"
+   ],
+   "depends_on": [
+    "WP-03"
+   ],
+   "inputs": [
+    "remote private repository URL from user (received 2026-10-18)"
+   ],
+   "files": [
+    "docs/automation.json",
+    ".github/workflows/verify.yml",
+    "state/durability-sentinel.json",
+    "docs/history-rebase-map.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "rebase onto remote root",
+    "push",
+    "CI verification runner",
+    "durability sentinel read by fresh runner"
+   ],
+   "acceptance": "persistence_verified_by يشير إلى دليل اختبار الشاهد",
+   "test_ids": [],
+   "commands": [
+    "git push"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "blocked",
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/ci/39090532071/jobs.json"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-06",
+   "stage": "M1",
+   "requirement_ids": [
+    "REQ-M1-001",
+    "REQ-M1-002",
+    "REQ-M1-003",
+    "REQ-M1-004"
+   ],
+   "depends_on": [
+    "WP-03"
+   ],
+   "inputs": [
+    "ADR-0002",
+    "Sol OS archive (S32)",
+    "UEFI 2.11 §7.4.6 (S18)",
+    "rust-std x86_64-unknown-uefi (CI: rustup; local: user upload pending)"
+   ],
+   "files": [
+    "Cargo.toml",
+    "kernel/Cargo.toml",
+    "kernel/build.rs",
+    "kernel/src/main.rs",
+    "kernel/src/boot/efi.rs",
+    "kernel/src/boot/stub.rs",
+    "kernel/src/bootinfo.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/arch/x86_64/serial.rs",
+    "kernel/src/arch/x86_64/port.rs",
+    "kernel/src/arch/x86_64/qemu.rs",
+    "kernel/src/cell.rs",
+    "platform/pc-qemu/target.json",
+    "tests/test_m1_nobs.py",
+    "tools/check-unsafe.sh",
+    ".github/workflows/verify.yml"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "port stub + kernel to Rust (x86_64-unknown-uefi)",
+    "unsafe policy + checker",
+    "NOBS static test for Rust",
+    "CI builds with rustup target",
+    "re-run M1 suite"
+   ],
+   "acceptance": "بوابة M1 بأدلة جديدة: TST-M1-BUILD/BOOT/NEG/NOBS PASS محليًا (أو CI حتى وصول rust-std)",
+   "test_ids": [
+    "TST-M1-BUILD",
+    "TST-M1-BOOT",
+    "TST-M1-NEG",
+    "TST-M1-NOBS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M1",
+    "python3 tools/project.py test --target host --suite M1"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T213902Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001",
+    "evidence/20261018T213932Z-5b309c08-001",
+    "evidence/20261018T215303Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-07",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-001",
+    "REQ-M2-002",
+    "REQ-M2-003",
+    "REQ-M2-004",
+    "REQ-M2-005",
+    "REQ-M2-006"
+   ],
+   "depends_on": [
+    "WP-06"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0003",
+    "Intel SDM Vol.3A (S26)"
+   ],
+   "files": [
+    "kernel/src/arch/x86_64/gdt.rs",
+    "kernel/src/arch/x86_64/idt.rs",
+    "kernel/src/arch/x86_64/trap.rs",
+    "kernel/src/arch/x86_64/ktest.rs",
+    "kernel/src/arch/x86_64/fwcfg.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/boot/stub.rs",
+    "platform/pc-qemu/target.json",
+    "docs/adr/0003-cpu-tables-exceptions-test-kernel.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "port GDT/TSS/IDT/trap from Sol OS",
+    "kernel stack switch",
+    "test kernel with fw_cfg test selection",
+    "M2 exception suite (11 cases)"
+   ],
+   "acceptance": "كل حالات جناح M2 للاستثناءات PASS محليًا أو على CI",
+   "test_ids": [
+    "TST-M2-EXC-DE",
+    "TST-M2-EXC-UD",
+    "TST-M2-EXC-DB",
+    "TST-M2-EXC-GP",
+    "TST-M2-EXC-PF",
+    "TST-M2-EXC-BP",
+    "TST-M2-EXC-BP-STATE",
+    "TST-M2-EXC-DF",
+    "TST-M2-EXC-NESTED",
+    "TST-M2-IDT-LAYOUT",
+    "TST-M2-EXC-TRIPLE"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T213938Z-5b309c08-001",
+    "evidence/20261018T213944Z-5b309c08-001",
+    "evidence/20261018T213950Z-5b309c08-001",
+    "evidence/20261018T213956Z-5b309c08-001",
+    "evidence/20261018T214002Z-5b309c08-001",
+    "evidence/20261018T214009Z-5b309c08-001",
+    "evidence/20261018T214015Z-5b309c08-001",
+    "evidence/20261018T214021Z-5b309c08-001",
+    "evidence/20261018T214027Z-5b309c08-001",
+    "evidence/20261018T214033Z-5b309c08-001",
+    "evidence/20261018T214040Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-08",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-010"
+   ],
+   "depends_on": [
+    "WP-07"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0003",
+    "Intel SDM Vol.3A (S26)"
+   ],
+   "files": [
+    "docs/adr/0004-memory.md",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/mm/mod.rs",
+    "kernel/src/mm/pmm.rs",
+    "platform/pc-qemu/target.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "bitmap frame allocator from boot_info memmap",
+    "reserve kernel image/stacks/bootinfo",
+    "ktests"
+   ],
+   "acceptance": "pmm tests PASS",
+   "test_ids": [
+    "TST-M2-PMM-COUNTS",
+    "TST-M2-PMM-EXHAUST",
+    "TST-M2-PMM-DOUBLE-FREE"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214046Z-5b309c08-001",
+    "evidence/20261018T214052Z-5b309c08-001",
+    "evidence/20261018T214058Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-09",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-011"
+   ],
+   "depends_on": [
+    "WP-08"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0004 §WP-09",
+    "Intel SDM Vol.3A §4.5/§4.6/§2.5, Vol.4 IA32_EFER (S26)",
+    "UEFI 2.11 §7.2.3 memory type usage after ExitBootServices",
+    "PE/COFF section table"
+   ],
+   "files": [
+    "docs/adr/0004-memory.md",
+    "kernel/src/arch/x86_64/gdt.rs",
+    "kernel/src/arch/x86_64/ktest.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/arch/x86_64/paging.rs",
+    "kernel/src/bootinfo.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/mm/mod.rs",
+    "kernel/src/mm/pmm.rs",
+    "kernel/src/mm/vmm.rs",
+    "platform/pc-qemu/target.json",
+    "tools/unsafe-baseline.txt"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "4-level tables: identity (minus frame 0 and image) + direct map at 0xffff_8000_0000_0000, 2 MiB pages where aligned",
+    "image sections from PE headers: .text RX, .rdata/headers R+NX, .data/.bss RW+NX",
+    "EFER.NXE (CPUID-checked) and CR0.WP, CR3 switch, boot-services memory reclaimed",
+    "guarded kernel stack (64 KiB) and #DF stack (16 KiB) from the allocator; IST1 and RSP moved",
+    "ktests vmm_switch/vmm_wp/vmm_nx/vmm_guard; self-check line in every build"
+   ],
+   "acceptance": "TST-M2-VMM-SWITCH/WP/NX/GUARD PASS on CI; TST-M1-BOOT still PASS with the vmm and guarded-stack markers",
+   "test_ids": [
+    "TST-M2-VMM-SWITCH",
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-NX",
+    "TST-M2-VMM-GUARD"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214105Z-5b309c08-001",
+    "evidence/20261018T214111Z-5b309c08-001",
+    "evidence/20261018T214117Z-5b309c08-001",
+    "evidence/20261018T214123Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-10",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-012"
+   ],
+   "depends_on": [
+    "WP-09"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0005",
+    "Intel SDM Vol.3A ch.11 APIC (S26)",
+    "ACPI 6.5 §5.2 (S33)",
+    "ICH9 datasheet (S34)",
+    "QEMU device models (S35)",
+    "82093AA (S36)",
+    "UEFI 2.11 §4.6 configuration table (S18)"
+   ],
+   "files": [
+    "docs/adr/0005-interrupts.md",
+    "docs/contracts/boot.md",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/arch/x86_64/acpi.rs",
+    "kernel/src/arch/x86_64/apic.rs",
+    "kernel/src/arch/x86_64/idt.rs",
+    "kernel/src/arch/x86_64/ioapic.rs",
+    "kernel/src/arch/x86_64/irq.rs",
+    "kernel/src/arch/x86_64/ktest.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/arch/x86_64/paging.rs",
+    "kernel/src/arch/x86_64/pic.rs",
+    "kernel/src/arch/x86_64/pit.rs",
+    "kernel/src/arch/x86_64/trap.rs",
+    "kernel/src/boot/efi.rs",
+    "kernel/src/boot/stub.rs",
+    "kernel/src/bootinfo.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/mm/vmm.rs",
+    "platform/pc-qemu/target.json",
+    "tools/unsafe-baseline.txt"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "RSDP from the EFI configuration table before EBS (BootInfo.rsdp)",
+    "MADT parser (checksums, XSDT/RSDT, LAPIC/IOAPIC/ISO/x2APIC entries)",
+    "8259 remapped to 0x20..0x2F and masked",
+    "LAPIC xAPIC/x2APIC, SVR 0x1FF, LVTs masked, error LVT 0xFE, PIT-calibrated timer",
+    "I/O APICs mapped UC and fully masked",
+    "256-entry IDT with uniform interrupt entries, counting dispatcher, EOI, depth counter",
+    "periodic timer 1000 Hz on 0x40; 50 ms self-check in every build",
+    "ktests timer_ticks/irq_eoi/spurious; idt_layout extended to 32..=255"
+   ],
+   "acceptance": "TST-M2-TIMER-TICKS/IRQ-EOI/SPURIOUS PASS on CI; TST-M1-BOOT PASS with the irq and timer self-check markers; TST-M2-IDT-LAYOUT still PASS",
+   "test_ids": [
+    "TST-M2-TIMER-TICKS",
+    "TST-M2-IRQ-EOI",
+    "TST-M2-SPURIOUS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214130Z-5b309c08-001",
+    "evidence/20261018T214136Z-5b309c08-001",
+    "evidence/20261018T214142Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001",
+    "evidence/20261018T214033Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-11",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-013"
+   ],
+   "depends_on": [
+    "WP-10"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "ADR-0006",
+    "ADR-0004 item 5",
+    "Intel SDM Vol.3A §11 (IF, interrupt shadow) (S26)"
+   ],
+   "files": [
+    "kernel/src/sync.rs",
+    "kernel/src/panic.rs",
+    "kernel/src/console.rs",
+    "kernel/src/main.rs",
+    "kernel/src/mm/pmm.rs",
+    "kernel/src/arch/x86_64/trap.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "docs/policies/panic.md",
+    "docs/adr/0006-sync-and-panic.md",
+    "tools/check-unsafe.sh",
+    "tools/unsafe-baseline.txt",
+    "platform/pc-qemu/target.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "IrqSpinLock with IF save/restore, re-entry detection, try_lock, force_unlock",
+    "locked console (one line per acquisition); fatal paths break the lock",
+    "PMM state behind the lock",
+    "panic module: line format, exit 0x11, nested-panic guard, fatal(code) for boot-critical failures",
+    "docs/policies/panic.md",
+    "ktests lock_irqsave, lock_reentry, panic_code"
+   ],
+   "acceptance": "TST-M2-LOCK-IRQSAVE/LOCK-REENTRY/PANIC-CODE PASS on CI; all earlier suites still PASS",
+   "test_ids": [
+    "TST-M2-LOCK-IRQSAVE",
+    "TST-M2-PANIC-CODE",
+    "TST-M2-LOCK-REENTRY"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214148Z-5b309c08-001",
+    "evidence/20261018T214155Z-5b309c08-001",
+    "evidence/20261018T214201Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-12",
+   "stage": "M2",
+   "requirement_ids": [
+    "REQ-M2-014"
+   ],
+   "depends_on": [
+    "WP-11"
+   ],
+   "inputs": [
+    "docs/PLAN.md §3",
+    "OS-EXEC-AR 3.2 §20 (M2 exit)",
+    "ADR-0003..0006"
+   ],
+   "files": [
+    "tests/mutants.py",
+    ".github/workflows/mutants.yml",
+    "docs/operations/m2-review.md",
+    "tools/project.py",
+    "kernel/src/ktest.rs",
+    "kernel/src/mm/pmm.rs",
+    "platform/pc-qemu/target.json",
+    "docs/stages.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "29 seeded defects (arch/, mm/, sync) run in an isolated worktree against their killer tests; kill ratio >= 0.95",
+    "named self-review docs/operations/m2-review.md (findings R-01..R-14)",
+    "exhaustion test extended with full recovery (stress/limit/recovery)",
+    "M2 gate on the stage record with evidence refs"
+   ],
+   "acceptance": "TST-M2-MUTANTS PASS on the mutants workflow; all 24 other M2 tests PASS; review document present; stage M2 gate passed with evidence",
+   "test_ids": [
+    "TST-M2-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M2"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T162631Z-657ed0c3-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-13",
+   "stage": "M3",
+   "requirement_ids": [
+    "REQ-M3-001"
+   ],
+   "depends_on": [
+    "WP-12"
+   ],
+   "inputs": [
+    "docs/PLAN.md §4",
+    "ADR-0007",
+    "SDM Vol.3A §4.6.1, §4.10.4.1 (S26)"
+   ],
+   "files": [
+    "kernel/src/mm/heap.rs",
+    "kernel/src/mm/addrspace.rs",
+    "kernel/src/mm/vmm.rs",
+    "kernel/src/mm/pmm.rs",
+    "kernel/src/mm/mod.rs",
+    "kernel/src/arch/x86_64/paging.rs",
+    "kernel/src/main.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    ".github/workflows/verify.yml",
+    "docs/adr/0007-heap-and-user-spaces.md",
+    "tools/unsafe-baseline.txt"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "kernel heap (GlobalAlloc over PMM + direct map)",
+    "unmap/protect with invlpg",
+    "user address space object sharing the kernel half",
+    "ktests"
+   ],
+   "acceptance": "heap_stress, vmm_unmap, vmm_protect, as_switch PASS on CI; TST-M1-BOOT PASS with the mm self-check line",
+   "test_ids": [
+    "TST-M3-HEAP-STRESS",
+    "TST-M3-VMM-UNMAP",
+    "TST-M3-AS-SWITCH",
+    "TST-M3-VMM-PROTECT"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214207Z-5b309c08-001",
+    "evidence/20261018T214214Z-5b309c08-001",
+    "evidence/20261018T214220Z-5b309c08-001",
+    "evidence/20261018T214226Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-21",
+   "stage": "M3",
+   "requirement_ids": [
+    "REQ-M3-002"
+   ],
+   "depends_on": [
+    "WP-12"
+   ],
+   "inputs": [
+    "docs/PLAN.md §4",
+    "OS-EXEC-AR 3.2 §8",
+    "UEFI 2.11 §2.3.6"
+   ],
+   "files": [
+    "kernel/src/arch/aarch64/mod.rs",
+    "kernel/src/arch/aarch64/serial.rs",
+    "kernel/src/arch/aarch64/qemu.rs",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/boot/stub.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/main.rs",
+    "kernel/src/mm/mod.rs",
+    ".cargo/config.toml",
+    "platform/virt-qemu-aarch64/target.json",
+    "tools/project.py",
+    ".github/workflows/verify.yml",
+    "docs/adr/0008-early-port-aarch64.md",
+    "docs/hardware.json",
+    "tools/unsafe-baseline.txt"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "aarch64-unknown-uefi build",
+    "QEMU virt + AAVMF boot with PL011 trace",
+    "EBS + post_ebs trace",
+    "report what was tested and what remains an assumption"
+   ],
+   "acceptance": "TST-M3-A64-BUILD and TST-M3-A64-BOOT PASS on CI; x86_64 suites unchanged; ADR-0008 records what was tested and what remains an assumption",
+   "test_ids": [
+    "TST-M3-A64-BUILD",
+    "TST-M3-A64-BOOT"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T215255Z-5b309c08-001",
+    "evidence/20261018T215256Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-14",
+   "stage": "M3",
+   "requirement_ids": [
+    "REQ-M3-003"
+   ],
+   "depends_on": [
+    "WP-13",
+    "WP-21"
+   ],
+   "inputs": [
+    "docs/PLAN.md §4",
+    "SDM Vol.3A §5.8.8, §2.5; Vol.4 (S26)"
+   ],
+   "files": [
+    "kernel/src/arch/x86_64/syscall.rs",
+    "kernel/src/arch/x86_64/user_programs.rs",
+    "kernel/src/arch/x86_64/gdt.rs",
+    "kernel/src/arch/x86_64/trap.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/user.rs",
+    "kernel/src/mm/addrspace.rs",
+    "kernel/src/mm/vmm.rs",
+    "kernel/src/main.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "docs/contracts/syscall.md",
+    "docs/adr/0009-user-mode-and-syscall-abi.md",
+    "platform/pc-qemu/target.json",
+    "tools/unsafe-baseline.txt"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md",
+    "docs/contracts/syscall.md"
+   ],
+   "actions": [
+    "user segments and TSS.RSP0",
+    "syscall/sysret with STAR/LSTAR/FMASK, swapgs, per-CPU area",
+    "syscall table and frozen ABI contract",
+    "user pointer validation, SMEP/SMAP when available",
+    "ktests with embedded ring-3 code"
+   ],
+   "acceptance": "TST-M3-USER-SYSCALL/USER-BAD-PTR/USER-KERNEL-ACCESS/SYSRET-CANONICAL PASS on CI; TST-M1-BOOT PASS with the ring-3 self-check line; contract v1 frozen",
+   "test_ids": [
+    "TST-M3-USER-SYSCALL",
+    "TST-M3-USER-BAD-PTR",
+    "TST-M3-USER-KERNEL-ACCESS",
+    "TST-M3-SYSRET-CANONICAL"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214233Z-5b309c08-001",
+    "evidence/20261018T214239Z-5b309c08-001",
+    "evidence/20261018T214245Z-5b309c08-001",
+    "evidence/20261018T214257Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-15",
+   "stage": "M3",
+   "requirement_ids": [
+    "REQ-M3-004"
+   ],
+   "depends_on": [
+    "WP-14"
+   ],
+   "inputs": [
+    "docs/PLAN.md §4",
+    "Sol ADR-007",
+    "System V AMD64 ABI §3.2 (S37)",
+    "SDM Vol.3A §6.14, §5.8.8 (S26)",
+    "Rust Reference inline-assembly options (S38)"
+   ],
+   "files": [
+    "kernel/src/sched/mod.rs",
+    "kernel/src/arch/x86_64/context.rs",
+    "kernel/src/arch/x86_64/syscall.rs",
+    "kernel/src/arch/x86_64/trap.rs",
+    "kernel/src/arch/x86_64/irq.rs",
+    "kernel/src/arch/x86_64/paging.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/arch/x86_64/user_programs.rs",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/mm/vmm.rs",
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/user.rs",
+    "kernel/src/main.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "docs/contracts/syscall.md",
+    "docs/adr/0010-threads-and-scheduler.md",
+    "platform/pc-qemu/target.json",
+    "tools/check-unsafe.sh",
+    "tools/unsafe-baseline.txt"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "TCB/PCB, context switch (callee-saved + RSP), per-thread kernel/trap stacks",
+    "fixed-priority round-robin with timer preemption from the interrupt return path",
+    "sleep/yield/exit (+ ABI v1.1 yield/sleep) and resource teardown by a deferred reaper",
+    "swapgs on every ring-3 entry/exit path; sti/cli without nomem",
+    "ktests threads_alternate/preempt/exit_cleanup/user_sleep; heap_stress made relative"
+   ],
+   "acceptance": "TST-M3-THREADS-ALTERNATE/PREEMPT/EXIT-CLEANUP/USER-SLEEP PASS on CI; TST-M1-BOOT PASS with the kernel|sched self-check line; M2/M3 suites still green",
+   "test_ids": [
+    "TST-M3-THREADS-ALTERNATE",
+    "TST-M3-PREEMPT",
+    "TST-M3-EXIT-CLEANUP",
+    "TST-M3-USER-SLEEP"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214303Z-5b309c08-001",
+    "evidence/20261018T214310Z-5b309c08-001",
+    "evidence/20261018T214322Z-5b309c08-001",
+    "evidence/20261018T214329Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-16",
+   "stage": "M3",
+   "requirement_ids": [
+    "REQ-M3-005"
+   ],
+   "depends_on": [
+    "WP-15"
+   ],
+   "inputs": [
+    "docs/PLAN.md §4",
+    "Sol ADR-006 (via ADR-0002 item 3)",
+    "Zircon handles/rights/channel_write (S39, S40)"
+   ],
+   "files": [
+    "kernel/src/object/mod.rs",
+    "kernel/src/object/handle.rs",
+    "kernel/src/object/channel.rs",
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/sched/mod.rs",
+    "kernel/src/arch/x86_64/syscall.rs",
+    "kernel/src/arch/x86_64/user_programs.rs",
+    "kernel/src/user.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/main.rs",
+    "docs/contracts/ipc.md",
+    "docs/contracts/syscall.md",
+    "docs/adr/0011-handles-rights-and-channels.md",
+    "platform/pc-qemu/target.json",
+    "tools/unsafe-baseline.txt"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md",
+    "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md"
+   ],
+   "actions": [
+    "handle table with generations and rights (per process, 1024 entries)",
+    "objects channel endpoint and VMO (Arc); process/thread handles deferred to WP-17",
+    "channels with bounded messages (4096 B, 4 handles, queue 64), two-phase write, handle passing, blocking read without lost wake-ups",
+    "syscalls 6-12 (ABI v1.2 additive), writable-pointer validation and copy_out",
+    "ring-3 test programs with step-coded exit, boot self-check, ktests"
+   ],
+   "acceptance": "TST-M3-IPC-ROUNDTRIP/RIGHTS-DENIED/CLOSED-HANDLE/IPC-OVERSIZE/IPC-NO-LEAK/HANDLE-TABLE/BLOCK-WAKE PASS on CI; TST-M1-BOOT PASS with the kernel|object self-check line; contract ipc.md v1 frozen",
+   "test_ids": [
+    "TST-M3-IPC-ROUNDTRIP",
+    "TST-M3-RIGHTS-DENIED",
+    "TST-M3-CLOSED-HANDLE",
+    "TST-M3-IPC-OVERSIZE",
+    "TST-M3-IPC-NO-LEAK",
+    "TST-M3-HANDLE-TABLE",
+    "TST-M3-BLOCK-WAKE"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214335Z-5b309c08-001",
+    "evidence/20261018T214341Z-5b309c08-001",
+    "evidence/20261018T214347Z-5b309c08-001",
+    "evidence/20261018T214354Z-5b309c08-001",
+    "evidence/20261018T214400Z-5b309c08-001",
+    "evidence/20261018T214406Z-5b309c08-001",
+    "evidence/20261018T214412Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-17",
+   "stage": "M3",
+   "requirement_ids": [
+    "REQ-M3-006"
+   ],
+   "depends_on": [
+    "WP-16"
+   ],
+   "inputs": [
+    "docs/PLAN.md §4",
+    "System V gABI ELF header/program header (S41)",
+    "System V AMD64 ABI §3.2.2 (S37)"
+   ],
+   "files": [
+    "user/libnawah/Cargo.toml",
+    "user/libnawah/src/lib.rs",
+    "user/apps/hello/Cargo.toml",
+    "user/apps/hello/build.rs",
+    "user/apps/hello/src/main.rs",
+    "user/link.ld",
+    "Cargo.toml",
+    ".cargo/config.toml",
+    "kernel/build.rs",
+    "kernel/src/apps.rs",
+    "kernel/src/loader/mod.rs",
+    "kernel/src/loader/elf.rs",
+    "kernel/src/user.rs",
+    "kernel/src/mm/addrspace.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/main.rs",
+    "tools/project.py",
+    "tests/mutants.py",
+    "platform/pc-qemu/target.json",
+    ".github/workflows/verify.yml",
+    "docs/adr/0012-elf-loader-and-user-runtime.md",
+    "tools/unsafe-baseline.txt"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md",
+    "docs/contracts/syscall.md"
+   ],
+   "actions": [
+    "ELF64 static-executable loader with every field checked, W^X per page, guarded stack",
+    "libnawah (no_std syscall wrappers, entry! macro) and the hello application built for x86_64-unknown-none (static ET_EXEC, large code model)",
+    "applications embedded through NAWAH_APPS_DIR (project.py build, kernel/build.rs, mutants.py)",
+    "boot self-check kernel|elf and ktests app_exit_code/elf_malformed/elf_wx"
+   ],
+   "acceptance": "TST-M3-APP-EXIT-CODE/ELF-MALFORMED/ELF-WX PASS on CI; TST-M1-BOOT PASS with the kernel|elf self-check line",
+   "test_ids": [
+    "TST-M3-APP-EXIT-CODE",
+    "TST-M3-ELF-MALFORMED",
+    "TST-M3-ELF-WX"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214418Z-5b309c08-001",
+    "evidence/20261018T214425Z-5b309c08-001",
+    "evidence/20261018T214431Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-18",
+   "stage": "M3",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-13"
+   ],
+   "inputs": [
+    "docs/PLAN.md §4",
+    "Virtio 1.3 (S42): §4.1 PCI transport, §2.7 split virtqueue, §5.2 block device, §3.1.1 initialization",
+    "PCI Express ECAM / PCI 3.0 configuration header (S43)",
+    "ACPI 6.5 MCFG signature (S33)",
+    "Microsoft FAT32 File System Specification (S44)"
+   ],
+   "files": [
+    "kernel/src/arch/x86_64/acpi.rs",
+    "kernel/src/arch/x86_64/pci.rs",
+    "kernel/src/arch/x86_64/mmio.rs",
+    "kernel/src/mm/dma.rs",
+    "kernel/src/drivers/mod.rs",
+    "kernel/src/drivers/virtio_blk.rs",
+    "kernel/src/block/mod.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/main.rs",
+    "tools/project.py",
+    "platform/pc-qemu/target.json",
+    "docs/adr/0013-storage.md",
+    "tools/check-unsafe.sh",
+    "tools/unsafe-baseline.txt",
+    "kernel/src/fs/mod.rs",
+    "tools/fat32.py",
+    "tests/test_fat32_tool.py",
+    ".github/workflows/verify.yml",
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/mm/vmm.rs",
+    "kernel/src/arch/x86_64/apic.rs",
+    "docs/adr/0004-memory.md",
+    "docs/adr/0007-heap-and-user-spaces.md",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "MCFG parsing and PCI ECAM enumeration (root bus), BAR decode, capability walk",
+    "virtio-blk 1.x over modern virtio-pci: feature negotiation (VERSION_1, FLUSH), split virtqueue in a DMA frame, polling completion, 64 KiB bounce buffer",
+    "block layer (read/write/flush behind a lock) and boot self-check",
+    "lab runner: per-run virtio disk image with a known pattern, multi-phase cases for persistence across QEMU restarts",
+    "part 2: FAT32 (mount, lookup, read, create, write, unlink, listing; both FATs mirrored) on the image formatted by the independent host tool, with host-side verification (fsck.fat, tools/fat32.py) after guest runs",
+    "shared higher-half MMIO window (vmm::MMIO_BASE, PML4 slot 336) after CI run 39110182649: device registers are never mapped at their physical address"
+   ],
+   "acceptance": "TST-M3-BLK-READ/BLK-PERSIST/FAT32-READ/FAT32-WRITE/FAT32-PERSIST/FAT32-TOOL PASS on CI; TST-M1-BOOT PASS with the kernel|pci, kernel|blk and kernel|fat32 lines",
+   "test_ids": [
+    "TST-M3-BLK-READ",
+    "TST-M3-BLK-USER-CR3",
+    "TST-M3-BLK-PERSIST",
+    "TST-M3-FAT32-READ",
+    "TST-M3-FAT32-WRITE",
+    "TST-M3-FAT32-PERSIST",
+    "TST-M3-FAT32-TOOL"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214437Z-5b309c08-001",
+    "evidence/20261018T214443Z-5b309c08-001",
+    "evidence/20261018T214449Z-5b309c08-001",
+    "evidence/20261018T214458Z-5b309c08-001",
+    "evidence/20261018T214505Z-5b309c08-001",
+    "evidence/20261018T214512Z-5b309c08-001",
+    "evidence/20261018T215303Z-5b309c08-002",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-19",
+   "stage": "M3",
+   "requirement_ids": [
+    "REQ-M3-008"
+   ],
+   "depends_on": [
+    "WP-17",
+    "WP-18"
+   ],
+   "inputs": [
+    "docs/PLAN.md §4",
+    "docs/contracts/ipc.md (handles)",
+    "docs/contracts/files.md"
+   ],
+   "files": [
+    "kernel/src/fs/vfs.rs",
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/fs/mod.rs",
+    "kernel/src/object/mod.rs",
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/ktest.rs",
+    "kernel/build.rs",
+    "user/libnawah/src/lib.rs",
+    "user/apps/file_roundtrip/",
+    "user/apps/path_invalid/",
+    "user/apps/fd_leak/",
+    "Cargo.toml",
+    "tools/project.py",
+    "tests/mutants.py",
+    "platform/pc-qemu/target.json",
+    ".github/workflows/verify.yml",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md",
+    "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "open files as handle objects with READ/WRITE rights (no separate descriptor table)",
+    "fs::vfs: path validation, open/read/write/seek/stat/unlink/sync over FAT32, shared position per object",
+    "syscalls 13-19 (ABI v1.3) with bounded copies",
+    "libnawah wrappers and three test applications; kernel checks of objects/handles/clusters/frames around each run; host-side image checks"
+   ],
+   "acceptance": "TST-M3-FILE-ROUNDTRIP/PATH-INVALID/FD-LEAK PASS on CI (guest checks + host checks); contract files.md v1 frozen",
+   "test_ids": [
+    "TST-M3-FILE-ROUNDTRIP",
+    "TST-M3-PATH-INVALID",
+    "TST-M3-FD-LEAK"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214521Z-5b309c08-001",
+    "evidence/20261018T214528Z-5b309c08-001",
+    "evidence/20261018T214534Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-20",
+   "stage": "M3",
+   "requirement_ids": [
+    "REQ-M3-009"
+   ],
+   "depends_on": [
+    "WP-15"
+   ],
+   "inputs": [
+    "ACPI 6.5 §5.2.12 MADT (S33)",
+    "ACPI MADT (S33)",
+    "Intel SDM Vol. 3A §9.4.3-9.4.4 MP initialization, §10.8.5 IA-32e activation, §11.6.1 ICR, §4.10.5 TLB propagation (S26)",
+    "SDM Vol.3A §8.4, §10.4 (S26)",
+    "docs/PLAN.md §4"
+   ],
+   "files": [
+    "docs/adr/0015-smp.md",
+    "kernel/src/arch/aarch64/mod.rs",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/arch/x86_64/acpi.rs",
+    "kernel/src/arch/x86_64/apic.rs",
+    "kernel/src/arch/x86_64/gdt.rs",
+    "kernel/src/arch/x86_64/idt.rs",
+    "kernel/src/arch/x86_64/irq.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/arch/x86_64/percpu.rs",
+    "kernel/src/arch/x86_64/pit.rs",
+    "kernel/src/arch/x86_64/smp.rs",
+    "kernel/src/arch/x86_64/syscall.rs",
+    "kernel/src/arch/x86_64/tlb.rs",
+    "kernel/src/arch/x86_64/trampoline.s",
+    "kernel/src/arch/x86_64/trap.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/mm/vmm.rs",
+    "kernel/src/sched/mod.rs",
+    "kernel/src/sync.rs",
+    "platform/pc-qemu/target.json",
+    "tools/project.py",
+    "tools/unsafe-baseline.txt"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "INIT-SIPI-SIPI AP bring-up",
+    "per-CPU structures and real cpu_id",
+    "per-CPU LAPIC timers and run queues",
+    "TLB shootdown IPIs",
+    "contention tests with -smp 4"
+   ],
+   "acceptance": "TST-M3-SMP-ONLINE/LOCK-CONTENTION/TLB-SHOOTDOWN PASS on CI with -smp 4, then every suite PASS with -smp 4 as the lab default; kernel|smp|...|smp_selfcheck=1 in every boot",
+   "test_ids": [
+    "TST-M3-SMP-ONLINE",
+    "TST-M3-LOCK-CONTENTION",
+    "TST-M3-TLB-SHOOTDOWN"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214541Z-5b309c08-001",
+    "evidence/20261018T214547Z-5b309c08-001",
+    "evidence/20261018T214554Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001",
+    "evidence/20261018T214303Z-5b309c08-001",
+    "evidence/20261018T214322Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-22",
+   "stage": "M3",
+   "requirement_ids": [
+    "REQ-M3-010"
+   ],
+   "depends_on": [
+    "WP-19",
+    "WP-20"
+   ],
+   "inputs": [
+    "docs/PLAN.md §4",
+    "OS-EXEC-AR 3.2 §20 M3"
+   ],
+   "files": [
+    ".github/workflows/mutants.yml",
+    "docs/ENVIRONMENT.md",
+    "docs/PLAN.md",
+    "docs/operations/m3-review.md",
+    "docs/stages.json",
+    "kernel/src/arch/x86_64/user_programs.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "user/apps/path_invalid/src/main.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "isolation/resource/persistence suites complete",
+    "mutation testing extended to M3 modules",
+    "named review",
+    "M3 gate"
+   ],
+   "acceptance": "M3 gate passed: every M3 case PASS on CI under -smp 4 (run 39123846027), TST-M3-MUTANTS 20/20 (run mutants-39123845703), named review docs/operations/m3-review.md",
+   "test_ids": [
+    "TST-M3-ISOLATION",
+    "TST-M3-MUTANTS",
+    "TST-M3-PRIORITY-ORDER"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214251Z-5b309c08-001",
+    "evidence/20261018T164330Z-657ed0c3-001",
+    "evidence/20261018T214316Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-23",
+   "stage": "M4",
+   "requirement_ids": [
+    "REQ-M4-001"
+   ],
+   "depends_on": [
+    "WP-22"
+   ],
+   "inputs": [
+    "docs/PLAN.md §5",
+    "docs/adr/0016-services-and-authority.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/contracts/ipc.md",
+    "docs/contracts/syscall.md",
+    "kernel/build.rs",
+    "kernel/src/arch/x86_64/context.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/loader/mod.rs",
+    "kernel/src/object/channel.rs",
+    "kernel/src/object/mod.rs",
+    "kernel/src/object/process.rs",
+    "kernel/src/sched/mod.rs",
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/user.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "user/apps/child/src/main.rs",
+    "user/apps/echo/src/main.rs",
+    "user/apps/launch/src/main.rs",
+    "user/apps/waiter/src/main.rs",
+    "user/libnawah/src/lib.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "ABI v1.4: process_spawn من الحجم بمقابض أولية، كائن العملية، object_wait_many بمهلة، clock_ticks، process_status",
+    "syscalls 20 process_spawn, 21 object_wait_many, 22 clock_ticks, 23 process_status (ABI v1.4 additive; ERR_TIMED_OUT=-19)",
+    "Object::Process with exit code and EXITED signal; initial handles at spawn; rdi bootstrap handle (ctx_user_thread_start)",
+    "loader::read_image over vfs (4 MiB bound); the image is validated before any handle moves",
+    "libnawah wrappers + bootstrap_handle(); apps echo/launch/child/waiter; project.py copies 8.3-named apps into /SYSTEM on the lab image"
+   ],
+   "acceptance": "TST-M4-SPAWN-VOLUME/WAIT-TIMEOUT/CHILD-EXIT PASS on CI run 39130028974 (ABI v1.4 frozen: syscall.md §5, ipc.md signals); M1–M3 suites green with the volume carrying /SYSTEM",
+   "test_ids": [
+    "TST-M4-SPAWN-VOLUME",
+    "TST-M4-WAIT-TIMEOUT",
+    "TST-M4-CHILD-EXIT"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214600Z-5b309c08-001",
+    "evidence/20261018T214607Z-5b309c08-001",
+    "evidence/20261018T214614Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-24",
+   "stage": "M4",
+   "requirement_ids": [
+    "REQ-M4-002"
+   ],
+   "depends_on": [
+    "WP-23"
+   ],
+   "inputs": [
+    "docs/PLAN.md §5",
+    "docs/adr/0016-services-and-authority.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/contracts/services.md",
+    "kernel/build.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/main.rs",
+    "kernel/src/sched/mod.rs",
+    "kernel/src/services.rs",
+    "platform/pc-qemu/manifests/services.txt",
+    "platform/pc-qemu/manifests/svc-ord.txt",
+    "platform/pc-qemu/manifests/svc-rst.txt",
+    "platform/pc-qemu/manifests/svc-tmo.txt",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "user/apps/svc/src/main.rs",
+    "user/apps/svcmgr/src/main.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md"
+   ],
+   "actions": [
+    "مدير الخدمات svcmgr: البيان، الترتيب الطوبولوجي، مهلة الجاهزية، إعادة التشغيل بحد وتراجع، قناة تحكم",
+    "svcmgr app (no_std, no alloc, 16 services) started by the release kernel as the first process (kernel|svcmgr boot line, TST-M1-BOOT)",
+    "manifest parser with duplicate/unknown-dependency/cycle detection (Kahn)",
+    "START/READY handshake on the boot channel, readiness timeouts (final), on-failure restarts with exponential backoff up to max_restarts, dependents of dead services blocked",
+    "control channel LOAD/LIST/STOP; kernel::services (spawn_manager/request/poll_until) drives it in TST-M4-SVC-ORDER/TIMEOUT/RESTART with lab manifests under /SYSTEM"
+   ],
+   "acceptance": "TST-M4-SVC-ORDER/TIMEOUT/RESTART PASS and TST-M1-BOOT shows the manager as the first process (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1) on CI run 39130028974; services.md v1 frozen",
+   "test_ids": [
+    "TST-M4-SVC-ORDER",
+    "TST-M4-SVC-TIMEOUT",
+    "TST-M4-SVC-RESTART"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214620Z-5b309c08-001",
+    "evidence/20261018T214627Z-5b309c08-001",
+    "evidence/20261018T214633Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-25",
+   "stage": "M4",
+   "requirement_ids": [
+    "REQ-M4-003",
+    "REQ-M4-004"
+   ],
+   "depends_on": [
+    "WP-24"
+   ],
+   "inputs": [
+    "docs/PLAN.md §5",
+    "docs/adr/0016-services-and-authority.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/contracts/auth.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/services.md",
+    "docs/contracts/syscall.md",
+    "docs/sources.json",
+    "kernel/src/ktest.rs",
+    "kernel/src/object/mod.rs",
+    "kernel/src/object/token.rs",
+    "kernel/src/services.rs",
+    "kernel/src/syscall/mod.rs",
+    "platform/pc-qemu/manifests/svc-auth.txt",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_fat32_tool.py",
+    "tools/fat32.py",
+    "tools/project.py",
+    "user/apps/authd/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "user/libnawah/src/lib.rs",
+    "user/nawah-crypto/src/lib.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/auth.md",
+    "docs/contracts/services.md",
+    "docs/contracts/syscall.md"
+   ],
+   "actions": [
+    "المصادقة والرموز والجلسات: nawah-crypto (SHA-256/HMAC/PBKDF2 بمتجهات)، خدمة auth، كائنا Token/Authority، حد محاولات، قفل/خروج",
+    "no_std crypto crate with host tests against FIPS 180-4 / RFC 4231 / RFC 7914 vectors (sources S45–S50)",
+    "kernel: Object::Token (identity, expiry, revocation) and Object::Authority; syscalls 24 token_create, 25 token_info, 26 token_revoke (ABI v1.5 additive)",
+    "svcmgr v1.1: the authority handed to the service named auth only; CONNECT brokering of client channels",
+    "authd: users db on the volume (PBKDF2, constant-time compare), LOGIN/WHOAMI/LOCK/UNLOCK/LOGOUT, 5-failure limit with a 2000-tick delay; lab users generated by hashlib; raw-image absence check for the passwords",
+    "in-system user creation / password change (needs a kernel entropy source for salts) deferred to M5 (ADR-0016)"
+   ],
+   "acceptance": "TST-M4-HASH-VECTORS (host) and TST-M4-TOKEN-OBJECTS/LOGIN/SESSION-LOCK (guest) PASS on CI run 39133153681; auth.md v1 frozen; TST-M4-AUTHZ-DENIED moved to WP-26",
+   "test_ids": [
+    "TST-M4-HASH-VECTORS",
+    "TST-M4-TOKEN-OBJECTS",
+    "TST-M4-LOGIN",
+    "TST-M4-SESSION-LOCK"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T215305Z-5b309c08-001",
+    "evidence/20261018T214640Z-5b309c08-001",
+    "evidence/20261018T214646Z-5b309c08-001",
+    "evidence/20261018T214656Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-26",
+   "stage": "M4",
+   "requirement_ids": [
+    "REQ-M4-005"
+   ],
+   "depends_on": [
+    "WP-25"
+   ],
+   "inputs": [
+    "docs/PLAN.md §5",
+    "docs/adr/0016-services-and-authority.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/contracts/config.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/manifests/svc-cfg.txt",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_fat32_tool.py",
+    "tools/fat32.py",
+    "user/apps/configd/src/main.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/config.md"
+   ],
+   "actions": [
+    "خدمة التكوين والسياسات: مخازن منفصلة بإصدارات، CAS، request_id، إشعارات، أسبقية، حفظ آمن وثبات",
+    "configd (config.md v1): stores device/policy/user/<uid> on the volume, session in memory; versioned keys, compare-and-set (expected version 0 = create), DEL, RESOLVE with policy > user > device, SUBSCRIBE channels (CHANGED store key version), EXPORT/IMPORT (all-or-nothing validation)",
+    "idempotent request ids: last 16 replies per client replayed verbatim",
+    "two-slot persistence (.A/.B) with a generation and a SHA-256 of the body: the newest intact slot is adopted, writes go to the other slot and sync (no rename in files.md v1)",
+    "authority at the service: every modifying request carries a token checked with token_info (REQ-M4-004: TST-M4-AUTHZ-DENIED)",
+    "kernel tests through CONNECT with real admin/user logins; fat32.py grep host check; TST-M4-CONFIG-PERSIST in two QEMU phases"
+   ],
+   "acceptance": "TST-M4-AUTHZ-DENIED, CONFIG-PERSIST (two phases), CONFIG-CAS, CONFIG-RETRY, CONFIG-NOTIFY, POLICY-PRECEDENCE PASS on CI run 39133153681; config.md v1 frozen",
+   "test_ids": [
+    "TST-M4-CONFIG-PERSIST",
+    "TST-M4-CONFIG-CAS",
+    "TST-M4-CONFIG-RETRY",
+    "TST-M4-CONFIG-NOTIFY",
+    "TST-M4-POLICY-PRECEDENCE",
+    "TST-M4-AUTHZ-DENIED"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214703Z-5b309c08-001",
+    "evidence/20261018T214740Z-5b309c08-001",
+    "evidence/20261018T214711Z-5b309c08-001",
+    "evidence/20261018T214718Z-5b309c08-001",
+    "evidence/20261018T214725Z-5b309c08-001",
+    "evidence/20261018T214732Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-27",
+   "stage": "M4",
+   "requirement_ids": [
+    "REQ-M4-006"
+   ],
+   "depends_on": [
+    "WP-23"
+   ],
+   "inputs": [
+    "docs/PLAN.md §5",
+    "docs/adr/0016-services-and-authority.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/adr/0017-m4-drivers.md",
+    "docs/contracts/input.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/net.md",
+    "docs/contracts/services.md",
+    "docs/contracts/syscall.md",
+    "docs/sources.json",
+    "kernel/build.rs",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/arch/x86_64/i8042.rs",
+    "kernel/src/arch/x86_64/irq.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/drivers/mod.rs",
+    "kernel/src/drivers/virtio_net.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/main.rs",
+    "kernel/src/net.rs",
+    "kernel/src/object/kbd.rs",
+    "kernel/src/object/mod.rs",
+    "kernel/src/object/nic.rs",
+    "kernel/src/services.rs",
+    "kernel/src/syscall/mod.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "tools/unsafe-baseline.txt",
+    "user/apps/kbdprobe/src/main.rs",
+    "user/apps/netprobe/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "user/libnawah/src/lib.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/input.md",
+    "docs/contracts/net.md",
+    "docs/contracts/syscall.md"
+   ],
+   "actions": [
+    "virtio-net وPS/2 بحدود موارد ونموذج DMA",
+    "virtio-net driver (modern transport, VERSION_1|MAC|STATUS, two 16-entry split queues, 12-byte header, 18 fixed DMA frames, frames copied through driver slots); ARP self-check against the lab gateway at boot (kernel|net)",
+    "i8042 keyboard: auxiliary port disabled, set-1 scancodes polled from the timer tick into a 64-byte ring (kernel|kbd); +3 unsafe lines (baseline 173, ADR-0017)",
+    "Object::Nic and Object::Keyboard with READABLE wake-ups from the tick; syscalls 27 handle_type, 28 nic_info, 29 nic_send, 30 nic_recv, 31 kbd_read (ABI v1.6 additive)",
+    "svcmgr v1.2 routes kernel resources by type to auth/net/input; lab QEMU gets SLIRP user networking and a monitor socket for sendkey-driven cases (tools/project.py)",
+    "netprobe/kbdprobe user apps; ktests net_link, net_limits, kbd_scancodes"
+   ],
+   "acceptance": "TST-M4-NET-LINK/NET-LIMITS/KBD-SCANCODES PASS and TST-M1-BOOT shows the interface and keyboard (kernel|net … selfcheck=1, kernel|kbd … selfcheck=1) on CI run 39134727743; net.md part A, input.md v1, syscall.md v1.6 frozen",
+   "test_ids": [
+    "TST-M4-NET-LINK",
+    "TST-M4-NET-LIMITS",
+    "TST-M4-KBD-SCANCODES"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214751Z-5b309c08-001",
+    "evidence/20261018T214757Z-5b309c08-001",
+    "evidence/20261018T214804Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-28",
+   "stage": "M4",
+   "requirement_ids": [
+    "REQ-M4-007"
+   ],
+   "depends_on": [
+    "WP-27",
+    "WP-24"
+   ],
+   "inputs": [
+    "docs/PLAN.md §5",
+    "docs/adr/0016-services-and-authority.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/contracts/net.md",
+    "docs/sources.json",
+    "kernel/src/ktest.rs",
+    "kernel/src/object/kbd.rs",
+    "kernel/src/object/nic.rs",
+    "platform/pc-qemu/manifests/svc-net.txt",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "user/apps/netd/src/main.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/net.md"
+   ],
+   "actions": [
+    "ARP/IPv4/ICMP/UDP/DHCP وفصل الإنترنت",
+    "netd (net.md part B): Ethernet framing, ARP table with bounded resolution, IPv4 without fragments (header checksum verified, fragments dropped and counted), ICMP echo reply and PING with RTT, UDP sockets (16, 4-datagram queues) with RFC 768 checksums, DHCP client with retries (RFC 2131/2132: DISCOVER/OFFER/REQUEST/ACK, options 1/3/6/51/53/54/55)",
+    "three separate states link/configured/internet (internet only settled by an explicit PROBE); the no-internet policy applied in the service (off-link traffic ERR POLICY), changed only with an admin token",
+    "lab: a UDP echo peer on the host (tools/project.py host_services) reached through SLIRP's 10.0.2.2; kernel tests net_dhcp, net_icmp, net_udp_echo, net_no_internet; manifest SVC-NET.TXT",
+    "closing: kernel-lifetime objects (Nic, Keyboard) release their waiter storage when empty, so a service's last wait leaves no heap page behind (CI run 39136539144 counted one)"
+   ],
+   "acceptance": "TST-M4-DHCP/ICMP-ECHO/UDP-ECHO/NET-NO-INTERNET PASS on CI run 39137446701 (DHCP from SLIRP, ICMP echo timed, UDP echo through the host peer, policy separation of link/configured/internet); net.md part B v1 frozen",
+   "test_ids": [
+    "TST-M4-DHCP",
+    "TST-M4-ICMP-ECHO",
+    "TST-M4-UDP-ECHO",
+    "TST-M4-NET-NO-INTERNET"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214811Z-5b309c08-001",
+    "evidence/20261018T214819Z-5b309c08-001",
+    "evidence/20261018T214826Z-5b309c08-001",
+    "evidence/20261018T214833Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-29",
+   "stage": "M4",
+   "requirement_ids": [
+    "REQ-M4-008"
+   ],
+   "depends_on": [
+    "WP-28"
+   ],
+   "inputs": [
+    "docs/PLAN.md §5",
+    "docs/adr/0016-services-and-authority.md"
+   ],
+   "files": [
+    "docs/contracts/net.md",
+    "docs/sources.json",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tools/project.py",
+    "user/apps/netd/src/main.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/net.md"
+   ],
+   "actions": [
+    "TCP أساسي في netd مع إعادة الإرسال وواجهة مقابس",
+    "TCP client in netd (net.md part C, RFC 9293): active open with the three-way handshake and the MSS option, one segment in flight (stop-and-wait, PSH), in-order receive with an advertised window, orderly close through FIN-WAIT-1/2, CLOSE-WAIT/LAST-ACK, CLOSING and TIME-WAIT (2 s), RST handling (refused / reset) and RST for segments without a connection; connection identifiers never reused",
+    "retransmission timer per RFC 6298: RTO 1 s initial, SRTT/RTTVAR with K=4 and G=1 ms, floor 1 s, ceiling 60 s, back-off ×2 on expiry, Karn's rule, 3 s after a retransmitted SYN, abort after 6 retransmissions (R2 ≈ 123 s)",
+    "requests TCP_CONNECT/SEND/RECV/CLOSE/STATUS and the diagnostic TCP_INJECT drop_next=1 (one lost transmission) so the lab exercises the timer; the service's main loop waits only until the next timer is due",
+    "lab: a TCP echo peer on the host (tools/project.py host_services tcp_echo, 127.0.0.1:17008 through SLIRP's 10.0.2.2; 17009 unbound → RST); kernel tests net_tcp_echo, net_tcp_retransmit; sources S61 (RFC 9293), S62 (RFC 6298)"
+   ],
+   "acceptance": "TST-M4-TCP-ECHO/TCP-RETRANSMIT PASS on CI run 39139475715 (handshake, data both ways, status, orderly close, released identifier, refused port by RST; one injected loss delivered by the RTO with back-off and Karn's rule); net.md part C v1 frozen",
+   "test_ids": [
+    "TST-M4-TCP-ECHO",
+    "TST-M4-TCP-RETRANSMIT"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214841Z-5b309c08-001",
+    "evidence/20261018T214849Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-30",
+   "stage": "M4",
+   "requirement_ids": [
+    "REQ-M4-009"
+   ],
+   "depends_on": [
+    "WP-25",
+    "WP-24"
+   ],
+   "inputs": [
+    "docs/PLAN.md §5",
+    "docs/adr/0016-services-and-authority.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/adr/0018-diagnostic-shell.md",
+    "docs/contracts/files.md",
+    "docs/contracts/input.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/services.md",
+    "docs/contracts/shell.md",
+    "docs/contracts/syscall.md",
+    "docs/sources.json",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/arch/x86_64/com2.rs",
+    "kernel/src/arch/x86_64/irq.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/diag.rs",
+    "kernel/src/fs/vfs.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/main.rs",
+    "kernel/src/net.rs",
+    "kernel/src/object/bytes.rs",
+    "kernel/src/object/mod.rs",
+    "kernel/src/services.rs",
+    "kernel/src/syscall/mod.rs",
+    "platform/pc-qemu/manifests/svc-sh.txt",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_console_session.py",
+    "tools/project.py",
+    "tools/unsafe-baseline.txt",
+    "user/apps/sh/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "user/libnawah/src/lib.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/shell.md",
+    "docs/contracts/syscall.md",
+    "docs/contracts/services.md",
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "shell تشخيصي تفاعلي على قناة تسلسلية ثانية وقناة مختبر TCP",
+    "COM2 (16550 at 0x2F8) probed by loopback at boot and polled from the timer tick (ADR-0018); Object::Serial (type 9) generalising the keyboard ring (object/bytes.rs); ABI v1.7: serial_read, serial_write, system_info (64-byte record of the kernel's counters), dir_list (text listing; files.md v1.1); +3 unsafe lines (baseline 176)",
+    "svcmgr v1.3: the console routed to the service `sh`; boot-channel requests LIST and CONNECT <declared dependency> (no ambient authority between services)",
+    "sh service (shell.md v1): help/svc/cpu/mem/net [dhcp|policy]/ls/cat/login/whoami/logout/exit — every command answers from the owner of the state (manager, net, kernel, volume); protected commands carry the session token to the service that checks it",
+    "lab: COM2 as `-serial null` in every run and `-serial tcp:127.0.0.1:<port>,server=on,wait=off` for console cases; ConsoleSession drives a script and judges expect/absent/prompt/expect_serial after the guest exits (transcript console.log); host test tests/test_console_session.py against a fake shell; kernel tests shell_svc, shell_login; manifest SVC-SH.TXT"
+   ],
+   "acceptance": "TST-M4-SHELL-SVC/SHELL-LOGIN/SHELL-TOOL PASS and TST-M1-BOOT (kernel|diag selfcheck=1, 5 initial handles) on CI run 39141804574; shell.md v1, syscall.md v1.7, services.md v1.3, files.md v1.1 frozen; ADR-0018 accepted",
+   "test_ids": [
+    "TST-M4-SHELL-SVC",
+    "TST-M4-SHELL-LOGIN",
+    "TST-M4-SHELL-TOOL"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214857Z-5b309c08-001",
+    "evidence/20261018T214906Z-5b309c08-001",
+    "evidence/20261018T215311Z-5b309c08-001",
+    "evidence/20261018T213926Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-31",
+   "stage": "M4",
+   "requirement_ids": [
+    "REQ-M4-010"
+   ],
+   "depends_on": [
+    "WP-26",
+    "WP-29",
+    "WP-30"
+   ],
+   "inputs": [
+    "docs/PLAN.md §5",
+    "docs/adr/0016-services-and-authority.md"
+   ],
+   "files": [
+    ".github/workflows/mutants.yml",
+    "docs/ENVIRONMENT.md",
+    "docs/PLAN.md",
+    "docs/contracts/shell.md",
+    "docs/operations/m4-review.md",
+    "docs/security/threat-model.md",
+    "docs/stages.json",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/manifests/svc-pl.txt",
+    "platform/pc-qemu/manifests/svc-sh.txt",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "user/apps/sh/src/main.rs",
+    "user/apps/svc/src/main.rs",
+    "user/apps/waiter/src/main.rs"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "بوابة M4: التعافي من انقطاع الطرف، طفرات M4، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
+    "TST-M4-PEER-LOSS: svc roles serve/crash_once (dies without replying on its first request, marks the volume, serves after the restart); manifest SVC-PL.TXT; kernel test peer_loss — a vanished client, a dead service restarted after its backoff, the other service undisturbed, no leak",
+    "authority between services: sh gets `cfg get/resolve` (shell.md v1.1) and SVC-SH.TXT carries config undeclared, so the manager's ERR ACCESS is observed (TST-M4-SHELL-SVC); the waiter app probes token_create without the authority (TST-M4-WAIT-TIMEOUT); session_lock checks the token's REVOKED flag after LOGOUT (TST-M4-SESSION-LOCK)",
+    "TST-M4-MUTANTS: M50–M81 over the M4 kernel modules and the services svcmgr/authd/configd/netd/sh (tests/mutants.py --stage M4, resets user/ too, --check builds the mutated crate on the host); HOST_SUITES M4-GATE; mutants workflow step and 300-minute budget",
+    "docs: ENVIRONMENT (lab network, host peers, monitor, COM2), threat-model (no ambient authority between services, peer loss, the console on real hardware), docs/operations/m4-review.md, stages.json M4 gate"
+   ],
+   "acceptance": "TST-M4-PEER-LOSS PASS and the whole suite green on CI run 39144177809 (100/100); TST-M4-MUTANTS 32/32 (100%) on mutants run 39144910448 with no survivor and no mis-declared killer; docs/operations/m4-review.md; stages.json M4 passed",
+   "test_ids": [
+    "TST-M4-PEER-LOSS",
+    "TST-M4-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214914Z-5b309c08-001",
+    "evidence/20261018T165144Z-657ed0c3-001",
+    "evidence/20261018T214857Z-5b309c08-001",
+    "evidence/20261018T214656Z-5b309c08-001",
+    "evidence/20261018T214607Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-32",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-001"
+   ],
+   "depends_on": [
+    "WP-31"
+   ],
+   "inputs": [
+    "docs/PLAN.md §6",
+    "docs/adr/0019-graphics-platform.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/adr/0019-graphics-platform.md",
+    "docs/contracts/boot.md",
+    "docs/contracts/display.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/services.md",
+    "docs/contracts/syscall.md",
+    "docs/sources.json",
+    "kernel/build.rs",
+    "kernel/src/boot/efi.rs",
+    "kernel/src/boot/stub.rs",
+    "kernel/src/display.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/main.rs",
+    "kernel/src/mm/addrspace.rs",
+    "kernel/src/object/mod.rs",
+    "kernel/src/sched/mod.rs",
+    "kernel/src/services.rs",
+    "kernel/src/syscall/mod.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "tools/screen.py",
+    "tools/unsafe-baseline.txt",
+    "user/apps/fbprobe/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "user/libnawah/src/lib.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/display.md",
+    "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md"
+   ],
+   "actions": [
+    "العرض: إطار GOP وكائن العرض ومسار الرسم التشخيصي ومجس الشاشة في المختبر",
+    "boot stub: EFI_GRAPHICS_OUTPUT_PROTOCOL located before EBS, BootInfo.fb filled (base, size, resolution, stride, pixel format), unsupported formats reported absent",
+    "kernel: the frame mapped in the private MMIO window (WC when PAT allows), kernel|display boot line with the diagnostic pattern (build id corner marks), Object::Display (type 10) with display_info and display_map (a physical VMO over the frame), and user mappings vmo_map/vmo_unmap (ABI v1.8 additive: a mapping region above the image, protection from the handle's rights, never executable, 64 per process, gone with the process)",
+    "lab: tools/screen.py reads a QEMU screendump (PPM) and checks named regions; project.py `screendump` action through the monitor; display.md part A"
+   ],
+   "acceptance": "TST-M5-DISPLAY-BOOT PASS; display.md part A v1; ADR-0019 §1–2",
+   "test_ids": [
+    "TST-M5-DISPLAY-BOOT"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214921Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-33",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-002"
+   ],
+   "depends_on": [
+    "WP-32"
+   ],
+   "inputs": [
+    "docs/PLAN.md §6",
+    "docs/adr/0019-graphics-platform.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/adr/0019-graphics-platform.md",
+    "docs/contracts/input.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/services.md",
+    "docs/contracts/syscall.md",
+    "docs/sources.json",
+    "kernel/src/arch/x86_64/i8042.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/net.rs",
+    "kernel/src/object/bytes.rs",
+    "kernel/src/object/mod.rs",
+    "kernel/src/services.rs",
+    "kernel/src/syscall/mod.rs",
+    "platform/pc-qemu/manifests/svc-in.txt",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_monitor_steps.py",
+    "tools/project.py",
+    "tools/unsafe-baseline.txt",
+    "user/apps/inputd/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "user/libnawah/src/lib.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/input.md",
+    "docs/contracts/services.md",
+    "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md"
+   ],
+   "actions": [
+    "الإدخال الموثوق: فك الرموز والتخطيطات والفأرة والتوجيه والانتباه الآمن",
+    "i8042 auxiliary port enabled for the PS/2 mouse (3-byte packets polled per tick into Object::Mouse, type 11; input.md v2 additive)",
+    "input service (user/apps/inputd): set-1 scancodes to fixed keycodes, US and Arabic 101 layouts, KEY/PTR event records, routing to the focus owner named with an ADMIN token, secure attention (Ctrl+Alt+Del) reserved for the `session` client; services.md v1.5 routes keyboard + mouse to input; syscall.md v1.9 adds mouse_read (40); ipc.md type 11",
+    "lab: monitor sendkey/mouse_move/mouse_button in ordered steps (run_qemu_monitored steps, host test TST-M5-LAB-TOOL); kernel tests input_route, mouse"
+   ],
+   "acceptance": "TST-M5-INPUT-ROUTE/MOUSE/LAB-TOOL PASS; input.md v2, services.md v1.5, syscall.md v1.9",
+   "test_ids": [
+    "TST-M5-INPUT-ROUTE",
+    "TST-M5-MOUSE",
+    "TST-M5-LAB-TOOL"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5",
+    "python3 tools/project.py test --target host --suite M5"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214931Z-5b309c08-001",
+    "evidence/20261018T214940Z-5b309c08-001",
+    "evidence/20261018T215316Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-34",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-003"
+   ],
+   "depends_on": [
+    "WP-32",
+    "WP-33"
+   ],
+   "inputs": [
+    "docs/PLAN.md §6",
+    "docs/adr/0019-graphics-platform.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/adr/0019-graphics-platform.md",
+    "docs/contracts/display.md",
+    "docs/contracts/input.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/syscall.md",
+    "docs/sources.json",
+    "kernel/src/ktest.rs",
+    "kernel/src/syscall/mod.rs",
+    "platform/pc-qemu/manifests/svc-da.txt",
+    "platform/pc-qemu/manifests/svc-dp.txt",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_monitor_steps.py",
+    "tests/test_screen_tool.py",
+    "tools/project.py",
+    "tools/screen.py",
+    "user/apps/displayd/src/main.rs",
+    "user/apps/inputd/src/main.rs",
+    "user/apps/winapp/src/main.rs",
+    "user/libnawah/src/lib.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/display.md",
+    "docs/contracts/input.md",
+    "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md"
+   ],
+   "actions": [
+    "compositor ومدير النوافذ: أسطح VMO، تغييرات معلنة، ترتيب وتركيز وحجم، تطبيق لا يستجيب",
+    "display service (user/apps/displayd, compositor): CREATE_SURFACE + VMO (checked with vmo_size, ABI v1.10), COMMIT damage, back buffer in the service's memory, blit every 16 ticks; windows with decorations, cascade placement, z-order, focus by request/click/Alt+Tab, move/resize (RESIZED → client attaches a new surface), minimise/restore, close; unresponsive clients detected after 2000 ticks of a full queue and never waited on; the keyboard focus at input is taken by name (input.md v2.1 FOCUS <name>)",
+    "client side in libnawah (display::Surface, pixel) and the demo app winapp; display.md part B",
+    "kernel tests screen, window_states, app_hang; screendump oracle recomputing the window hash (tools/screen.py desktop, ${SERIAL:key} host-check substitution); host tests TST-M5-LAB-TOOL (extended), TST-M5-SCREEN-TOOL"
+   ],
+   "acceptance": "TST-M5-WINDOW-STATES/APP-HANG/SCREEN/SCREEN-TOOL PASS; display.md part B v1, syscall.md v1.10",
+   "test_ids": [
+    "TST-M5-WINDOW-STATES",
+    "TST-M5-APP-HANG",
+    "TST-M5-SCREEN",
+    "TST-M5-SCREEN-TOOL"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5",
+    "python3 tools/project.py test --target host --suite M5"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T214949Z-5b309c08-001",
+    "evidence/20261018T215001Z-5b309c08-001",
+    "evidence/20261018T215011Z-5b309c08-001",
+    "evidence/20261018T215349Z-5b309c08-002"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-35",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-004"
+   ],
+   "depends_on": [
+    "WP-32"
+   ],
+   "inputs": [
+    "docs/PLAN.md §6",
+    "docs/adr/0019-graphics-platform.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/adr/0019-graphics-platform.md",
+    "docs/contracts/display.md",
+    "docs/contracts/text.md",
+    "docs/sources.json",
+    "kernel/build.rs",
+    "kernel/src/ktest.rs",
+    "platform/assets/fonts/NotoSans-Regular.ttf",
+    "platform/assets/fonts/NotoSansArabic-Regular.ttf",
+    "platform/assets/fonts/OFL.txt",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_fat32_tool.py",
+    "tests/test_text.py",
+    "tools/fat32.py",
+    "tools/project.py",
+    "tools/text_check.py",
+    "tools/text_vectors.py",
+    "tools/unicode_tables.py",
+    "user/apps/textprobe/src/main.rs",
+    "user/apps/textprobe/src/vectors.rs",
+    "user/libnawah-text/Cargo.toml",
+    "user/libnawah-text/examples/bidi_check.rs",
+    "user/libnawah-text/examples/textdump.rs",
+    "user/libnawah-text/src/bidi.rs",
+    "user/libnawah-text/src/font.rs",
+    "user/libnawah-text/src/layout.rs",
+    "user/libnawah-text/src/lib.rs",
+    "user/libnawah-text/src/raster.rs",
+    "user/libnawah-text/src/shape.rs",
+    "user/libnawah-text/src/tables.rs",
+    "user/libnawah-text/ucd/BidiBrackets.txt",
+    "user/libnawah-text/ucd/BidiCharacterTest.txt.xz",
+    "user/libnawah-text/ucd/DerivedBidiClass.txt",
+    "user/libnawah-text/ucd/DerivedJoiningType.txt"
+   ],
+   "contract_refs": [
+    "docs/contracts/text.md"
+   ],
+   "actions": [
+    "طبقة النص: OpenType وتنقيط وbidi وتشكيل عربي وخطوط مرخصة",
+    "nawah-text (user/libnawah-text: no_std, no allocation, no deps, no unsafe): OpenType reader (cmap 4/12, glyf/loca with composites, hmtx, GSUB types 1/4/6-format-3/7, GDEF classes), scanline rasteriser (4×4 samples, non-zero, 1/64 px flattening), UAX #9 complete through L2 (tables generated from UCD 17.0.0 by tools/unicode_tables.py), Arabic shaping (joining forms from DerivedJoiningType, GSUB isol/fina/medi/init then rlig), line layout (runs by level and font, mirrored brackets, visual order, advances) and a line renderer",
+    "fonts: Noto Sans / Noto Sans Arabic Regular (OFL 1.1, googlefonts/noto-fonts ffebf8c1) with OFL.txt under /SYSTEM/FONTS (tools/fat32.py nested directories); sources S71–S75",
+    "host tests against independent references (BidiCharacterTest, fontTools, HarfBuzz, a reference rasteriser) in tests/test_text.py; guest sample (tools/text_vectors.py → textprobe) with a drawn line checked against the screendump and the host's rendering (tools/text_check.py); text.md v1"
+   ],
+   "acceptance": "TST-M5-BIDI/SHAPING/GLYPHS/TEXT-GUEST PASS; text.md v1",
+   "test_ids": [
+    "TST-M5-BIDI",
+    "TST-M5-SHAPING",
+    "TST-M5-GLYPHS",
+    "TST-M5-TEXT-GUEST"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5",
+    "python3 tools/project.py test --target host --suite M5"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T215325Z-5b309c08-001",
+    "evidence/20261018T215325Z-5b309c08-002",
+    "evidence/20261018T215336Z-5b309c08-001",
+    "evidence/20261018T215026Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-36",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-005"
+   ],
+   "depends_on": [
+    "WP-34",
+    "WP-35"
+   ],
+   "inputs": [
+    "docs/PLAN.md §6",
+    "docs/adr/0019-graphics-platform.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.toml",
+    "docs/adr/0019-graphics-platform.md",
+    "docs/contracts/display.md",
+    "docs/contracts/ui.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/expect/a11y-tree.txt",
+    "platform/pc-qemu/expect/keyboard-nav.txt",
+    "platform/pc-qemu/manifests/svc-ui.txt",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_monitor_steps.py",
+    "tests/test_transcript_tool.py",
+    "tools/project.py",
+    "tools/transcript.py",
+    "user/apps/dialog/src/main.rs",
+    "user/apps/displayd/src/main.rs",
+    "user/apps/narrator/src/main.rs",
+    "user/libui/Cargo.toml",
+    "user/libui/examples/dialog_ppm.rs",
+    "user/libui/src/lib.rs",
+    "user/libui/src/tests.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/ui.md",
+    "docs/contracts/display.md"
+   ],
+   "actions": [
+    "عناصر UI والوصول: شجرة تركيز، تنقل بلوحة المفاتيح، قارئ شاشة نصي، تكبير وتباين",
+    "libui (user/libui; no_std, no allocation, no unsafe, over nawah-text): label, button, text field (bidi, cursor, Arabic input), list, checkbox; fixed declared focus order; Tab/Shift+Tab/arrows/Enter/Space/Esc; every element with role, label (refused when empty) and state; descriptions for the narrator; drawing with 1x/1.5x/2x scale and a high-contrast palette (ScrollView left out of v1: lists stay within six items)",
+    "a11y path: the compositor relays A11Y announcements of the focused window only to the registered narrator (display.md v1.1: NARRATOR, A11Y, SAY, window focus announcements) and draws window titles as text; narrator service writes them to the diagnostic channel; the sample dialog reads ui.scale/ui.contrast from config and follows SUBSCRIBE; ui.md v1",
+    "kernel tests keyboard_nav (two boots, same transcript) and a11y_tree with manifest svc-ui.txt; host checks tools/transcript.py (exact transcript per boot, dims) and screen.py probes; host tests TST-M5-UI-UNIT (libui) and TST-M5-UI-TOOL"
+   ],
+   "acceptance": "TST-M5-KEYBOARD-NAV/A11Y-TREE/UI-UNIT/UI-TOOL PASS; ui.md v1, display.md v1.1",
+   "test_ids": [
+    "TST-M5-KEYBOARD-NAV",
+    "TST-M5-A11Y-TREE",
+    "TST-M5-UI-UNIT",
+    "TST-M5-UI-TOOL"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5",
+    "python3 tools/project.py test --target host --suite M5"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T215043Z-5b309c08-001",
+    "evidence/20261018T215110Z-5b309c08-001",
+    "evidence/20261018T215340Z-5b309c08-001",
+    "evidence/20261018T215349Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-37",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-006"
+   ],
+   "depends_on": [
+    "WP-33",
+    "WP-34",
+    "WP-36"
+   ],
+   "inputs": [
+    "docs/PLAN.md §6",
+    "docs/adr/0019-graphics-platform.md"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "Cargo.lock",
+    "Cargo.toml",
+    "docs/PLAN.md",
+    "docs/adr/0019-graphics-platform.md",
+    "docs/contracts/display.md",
+    "docs/contracts/input.md",
+    "docs/contracts/services.md",
+    "docs/contracts/session.md",
+    "docs/contracts/ui.md",
+    "docs/security/threat-model.md",
+    "docs/sources.json",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/expect/auth-input-isolated.txt",
+    "platform/pc-qemu/expect/lock-survives.txt",
+    "platform/pc-qemu/expect/login-screen.txt",
+    "platform/pc-qemu/manifests/svc-sa.txt",
+    "platform/pc-qemu/manifests/svc-ss.txt",
+    "platform/pc-qemu/target.json",
+    "tests/test_monitor_steps.py",
+    "tests/test_transcript_tool.py",
+    "tools/project.py",
+    "tools/transcript.py",
+    "user/apps/authd/src/main.rs",
+    "user/apps/configd/src/main.rs",
+    "user/apps/dialog/src/main.rs",
+    "user/apps/displayd/src/main.rs",
+    "user/apps/inputd/src/main.rs",
+    "user/apps/netd/src/main.rs",
+    "user/apps/sessiond/Cargo.toml",
+    "user/apps/sessiond/build.rs",
+    "user/apps/sessiond/src/main.rs",
+    "user/apps/spy/Cargo.toml",
+    "user/apps/spy/build.rs",
+    "user/apps/spy/src/main.rs",
+    "user/apps/svc/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "user/libui/src/lib.rs",
+    "user/libui/src/tests.rs"
+   ],
+   "contract_refs": [
+    "docs/contracts/session.md",
+    "docs/contracts/input.md",
+    "docs/contracts/display.md",
+    "docs/contracts/services.md",
+    "docs/contracts/ui.md"
+   ],
+   "actions": [
+    "الجلسة والقفل الموثوق: مالك القفل، شاشة الدخول، الانتباه الآمن، البقاء عند تعطل العرض",
+    "sessiond (user/apps/sessiond): the states no_session/unlocked/locked, the user's token from auth (LOGIN, LOCK, UNLOCK, LOGOUT), the sign-in and lock screens as libui dialogs in its own windows (password field: ui.md v1.1), keys straight from input; the keyboard to the display only after an unlock once no key is held; reconnects to auth, input and display through the manager and gives each its state again; STATE for tests; traces without secrets (session.md v1)",
+    "trusted path: input.md v2.2 (the manager's client identity, `session` reserved, the session's authority, the secure attention sequence moves the focus to the session, the session's loss clears the focus; TST-M5-INPUT-ROUTE re-based); display.md v1.2 (held from the start when the manifest names a session and on the session's loss, LOCKED/UNLOCKED/LOGOUT from the session only, no focus for a held window, LOGGED_OUT, KEYS, input reconnection); services.md v1.6 (CONNECT <name>, RESTART)",
+    "kernel tests login_screen, auth_input_isolated, lock_survives (SVC-SS.TXT, SVC-SA.TXT with the narrator; RESTART of display and input while locked); the spy client (user/apps/spy); lab: ${SCREEN:tag} screendumps and transcript.py streams (per-stream exact transcripts), with host tests",
+    "the real system manifest (SERVICES.TXT: auth, config, net, input, display, session, sh) and the interactive boot to the sign-in screen moved to the first WP of M6 (ADR-0019: the release image is still a self-check that exits; changing it changes M1's tests)"
+   ],
+   "acceptance": "TST-M5-LOCK-SURVIVES/AUTH-INPUT-ISOLATED/LOGIN-SCREEN PASS on CI run 39168643209 (119/119, first run); session.md v1, input.md v2.2, display.md v1.2, services.md v1.6, ui.md v1.1",
+   "test_ids": [
+    "TST-M5-LOCK-SURVIVES",
+    "TST-M5-AUTH-INPUT-ISOLATED",
+    "TST-M5-LOGIN-SCREEN"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "done",
+   "status_history": [
+    "planned",
+    "active",
+    "done"
+   ],
+   "evidence_refs": [
+    "evidence/20261018T215222Z-5b309c08-001",
+    "evidence/20261018T215153Z-5b309c08-001",
+    "evidence/20261018T215123Z-5b309c08-001"
+   ],
+   "blocker": null
+  },
+  {
+   "id": "WP-38",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-007"
+   ],
+   "depends_on": [
+    "WP-35",
+    "WP-37"
+   ],
+   "inputs": [
+    "docs/PLAN.md §6",
+    "docs/adr/0019-graphics-platform.md"
+   ],
+   "files": [],
+   "contract_refs": [],
+   "actions": [
+    "بوابة M5: سيناريوهات الخروج، طفرات M5، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
+    "scenario cases 7, 8 and 11 of OS-EXEC-AR §20 across the M5 suite; mutants M82+ for display/input/compositor/text/ui/session (>= 95%)",
+    "docs/operations/m5-review.md; stages.json M5 gate; threat-model (display/input/session trust boundaries)"
+   ],
+   "acceptance": "M5 gate passed",
+   "test_ids": [
+    "TST-M5-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  }
+ ]
 }

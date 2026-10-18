@@ -29,7 +29,7 @@
 | `LIST` | سطر لكل خدمة بترتيب البيان: `name state restarts start_tick ready_tick exit` مفصولة بـ `\n` (`-` لما لم يحدث؛ `exit` رمز آخر خروج بالعشري) |
 | `STOP <name>` | `OK` (أُغلقت قناة إقلاعها وحالتها `stopping` حتى تخرج ثم `stopped`) أو `ERR UNKNOWN` |
 | `CONNECT <name>` (v1.1، WP-25) | `OK` + **مقبض** طرف قناة عميل جديدة إلى الخدمة (طرفها الآخر وصل الخدمة على قناة إقلاعها برسالة `CONNECT` + مقبض؛ منذ v1.6 `CONNECT -`)؛ `ERR UNKNOWN`؛ `ERR NOT_READY` إن لم تكن `ready` |
-| `RESTART <name>` (v1.6، WP-37) | `OK` (كـ `STOP` ثم بدء جديد فور خروج العملية، يُعدّ في `restarts`؛ تابعاتها العاملة تبقى ولا تُعاد) أو `ERR NOT_READY` إن لم تكن `starting`/`ready` أو `ERR UNKNOWN`؛ به تُختبر خدمة يجب أن يبقى عملاؤها بعد فقدها |
+| `RESTART <name>` (v1.6، WP-37، مجمَّد مع إغلاقه، CI run 39168643209) | `OK` (كـ `STOP` ثم بدء جديد فور خروج العملية، يُعدّ في `restarts`؛ تابعاتها العاملة تبقى ولا تُعاد) أو `ERR NOT_READY` إن لم تكن `starting`/`ready` أو `ERR UNKNOWN`؛ به تُختبر خدمة يجب أن يبقى عملاؤها بعد فقدها |
 | غير ذلك | `ERR BAD_REQUEST` |
 
 الحالات: `pending` (تنتظر تبعية)، `starting` (بدأت ولم تُعلن الجاهزية)، `ready`، `failed` (مهلة أو خروج غير صفري/بخطأ)، `given_up` (استُنفدت إعادات التشغيل)، `stopping`، `stopped` (خروج بصفر أو بعد `STOP`)، `blocked` (تبعيتها فشلت فلن تبدأ).
