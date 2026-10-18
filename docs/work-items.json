@@ -37,7 +37,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T155204Z-8b430593-002"
+        "evidence/20261018T162338Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -78,7 +78,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T155204Z-8b430593-001"
+        "evidence/20261018T162337Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -123,8 +123,8 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154503Z-8b430593-001",
-        "evidence/20261018T154506Z-8b430593-001"
+        "evidence/20261018T161632Z-657ed0c3-001",
+        "evidence/20261018T161635Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -183,7 +183,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T155204Z-8b430593-002"
+        "evidence/20261018T162338Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -356,10 +356,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154509Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001",
-        "evidence/20261018T154531Z-8b430593-001",
-        "evidence/20261018T155205Z-8b430593-001"
+        "evidence/20261018T162608Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001",
+        "evidence/20261018T161701Z-657ed0c3-001",
+        "evidence/20261018T162338Z-657ed0c3-002"
       ],
       "blocker": null
     },
@@ -429,17 +429,17 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154535Z-8b430593-001",
-        "evidence/20261018T154539Z-8b430593-001",
-        "evidence/20261018T154543Z-8b430593-001",
-        "evidence/20261018T154547Z-8b430593-001",
-        "evidence/20261018T154551Z-8b430593-001",
-        "evidence/20261018T154555Z-8b430593-001",
-        "evidence/20261018T154600Z-8b430593-001",
-        "evidence/20261018T154604Z-8b430593-001",
-        "evidence/20261018T154608Z-8b430593-001",
-        "evidence/20261018T154612Z-8b430593-001",
-        "evidence/20261018T154616Z-8b430593-001"
+        "evidence/20261018T161705Z-657ed0c3-001",
+        "evidence/20261018T161709Z-657ed0c3-001",
+        "evidence/20261018T161713Z-657ed0c3-001",
+        "evidence/20261018T161717Z-657ed0c3-001",
+        "evidence/20261018T161721Z-657ed0c3-001",
+        "evidence/20261018T161725Z-657ed0c3-001",
+        "evidence/20261018T161729Z-657ed0c3-001",
+        "evidence/20261018T161733Z-657ed0c3-001",
+        "evidence/20261018T161737Z-657ed0c3-001",
+        "evidence/20261018T161741Z-657ed0c3-001",
+        "evidence/20261018T161745Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -490,9 +490,9 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154620Z-8b430593-001",
-        "evidence/20261018T154624Z-8b430593-001",
-        "evidence/20261018T154628Z-8b430593-001"
+        "evidence/20261018T161749Z-657ed0c3-001",
+        "evidence/20261018T161753Z-657ed0c3-001",
+        "evidence/20261018T161757Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -555,11 +555,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154632Z-8b430593-001",
-        "evidence/20261018T154636Z-8b430593-001",
-        "evidence/20261018T154640Z-8b430593-001",
-        "evidence/20261018T154644Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T161801Z-657ed0c3-001",
+        "evidence/20261018T161805Z-657ed0c3-001",
+        "evidence/20261018T161809Z-657ed0c3-001",
+        "evidence/20261018T161813Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -636,11 +636,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154648Z-8b430593-001",
-        "evidence/20261018T154652Z-8b430593-001",
-        "evidence/20261018T154656Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001",
-        "evidence/20261018T154612Z-8b430593-001"
+        "evidence/20261018T161817Z-657ed0c3-001",
+        "evidence/20261018T161821Z-657ed0c3-001",
+        "evidence/20261018T161825Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001",
+        "evidence/20261018T161741Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -704,9 +704,9 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154700Z-8b430593-001",
-        "evidence/20261018T154704Z-8b430593-001",
-        "evidence/20261018T154708Z-8b430593-001"
+        "evidence/20261018T161829Z-657ed0c3-001",
+        "evidence/20261018T161833Z-657ed0c3-001",
+        "evidence/20261018T161837Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -758,7 +758,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T113656Z-029e0e06-001"
+        "evidence/20261018T162631Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -818,11 +818,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154712Z-8b430593-001",
-        "evidence/20261018T154716Z-8b430593-001",
-        "evidence/20261018T154720Z-8b430593-001",
-        "evidence/20261018T154724Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T161842Z-657ed0c3-001",
+        "evidence/20261018T161846Z-657ed0c3-001",
+        "evidence/20261018T161850Z-657ed0c3-001",
+        "evidence/20261018T161854Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -883,8 +883,8 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T155157Z-8b430593-001",
-        "evidence/20261018T155158Z-8b430593-001"
+        "evidence/20261018T162330Z-657ed0c3-001",
+        "evidence/20261018T162331Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -950,11 +950,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154728Z-8b430593-001",
-        "evidence/20261018T154732Z-8b430593-001",
-        "evidence/20261018T154736Z-8b430593-001",
-        "evidence/20261018T154744Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T161858Z-657ed0c3-001",
+        "evidence/20261018T161902Z-657ed0c3-001",
+        "evidence/20261018T161906Z-657ed0c3-001",
+        "evidence/20261018T161914Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1024,11 +1024,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154748Z-8b430593-001",
-        "evidence/20261018T154752Z-8b430593-001",
-        "evidence/20261018T154800Z-8b430593-001",
-        "evidence/20261018T154804Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T161918Z-657ed0c3-001",
+        "evidence/20261018T161922Z-657ed0c3-001",
+        "evidence/20261018T161930Z-657ed0c3-001",
+        "evidence/20261018T161934Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1097,14 +1097,14 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154808Z-8b430593-001",
-        "evidence/20261018T154812Z-8b430593-001",
-        "evidence/20261018T154816Z-8b430593-001",
-        "evidence/20261018T154820Z-8b430593-001",
-        "evidence/20261018T154824Z-8b430593-001",
-        "evidence/20261018T154828Z-8b430593-001",
-        "evidence/20261018T154832Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T161938Z-657ed0c3-001",
+        "evidence/20261018T161942Z-657ed0c3-001",
+        "evidence/20261018T161946Z-657ed0c3-001",
+        "evidence/20261018T161950Z-657ed0c3-001",
+        "evidence/20261018T161954Z-657ed0c3-001",
+        "evidence/20261018T161958Z-657ed0c3-001",
+        "evidence/20261018T162002Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1174,10 +1174,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154836Z-8b430593-001",
-        "evidence/20261018T154840Z-8b430593-001",
-        "evidence/20261018T154845Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T162006Z-657ed0c3-001",
+        "evidence/20261018T162010Z-657ed0c3-001",
+        "evidence/20261018T162014Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1256,14 +1256,14 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154849Z-8b430593-001",
-        "evidence/20261018T154853Z-8b430593-001",
-        "evidence/20261018T154857Z-8b430593-001",
-        "evidence/20261018T154903Z-8b430593-001",
-        "evidence/20261018T154907Z-8b430593-001",
-        "evidence/20261018T154912Z-8b430593-001",
-        "evidence/20261018T155205Z-8b430593-002",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T162018Z-657ed0c3-001",
+        "evidence/20261018T162023Z-657ed0c3-001",
+        "evidence/20261018T162027Z-657ed0c3-001",
+        "evidence/20261018T162033Z-657ed0c3-001",
+        "evidence/20261018T162037Z-657ed0c3-001",
+        "evidence/20261018T162042Z-657ed0c3-001",
+        "evidence/20261018T162338Z-657ed0c3-003",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1331,10 +1331,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154919Z-8b430593-001",
-        "evidence/20261018T154923Z-8b430593-001",
-        "evidence/20261018T154927Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T162049Z-657ed0c3-001",
+        "evidence/20261018T162053Z-657ed0c3-001",
+        "evidence/20261018T162057Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1407,12 +1407,12 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154932Z-8b430593-001",
-        "evidence/20261018T154936Z-8b430593-001",
-        "evidence/20261018T154940Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001",
-        "evidence/20261018T154748Z-8b430593-001",
-        "evidence/20261018T154800Z-8b430593-001"
+        "evidence/20261018T162102Z-657ed0c3-001",
+        "evidence/20261018T162106Z-657ed0c3-001",
+        "evidence/20261018T162110Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001",
+        "evidence/20261018T161918Z-657ed0c3-001",
+        "evidence/20261018T161930Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1469,10 +1469,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154740Z-8b430593-001",
-        "evidence/20261018T114630Z-029e0e06-001",
-        "evidence/20261018T154756Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T161910Z-657ed0c3-001",
+        "evidence/20261018T164330Z-657ed0c3-001",
+        "evidence/20261018T161926Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1542,9 +1542,9 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154944Z-8b430593-001",
-        "evidence/20261018T154948Z-8b430593-001",
-        "evidence/20261018T154952Z-8b430593-001"
+        "evidence/20261018T162114Z-657ed0c3-001",
+        "evidence/20261018T162118Z-657ed0c3-001",
+        "evidence/20261018T162122Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1608,10 +1608,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T154956Z-8b430593-001",
-        "evidence/20261018T155000Z-8b430593-001",
-        "evidence/20261018T155005Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T162126Z-657ed0c3-001",
+        "evidence/20261018T162130Z-657ed0c3-001",
+        "evidence/20261018T162135Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1684,10 +1684,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T155206Z-8b430593-001",
-        "evidence/20261018T155009Z-8b430593-001",
-        "evidence/20261018T155013Z-8b430593-001",
-        "evidence/20261018T155021Z-8b430593-001"
+        "evidence/20261018T162340Z-657ed0c3-001",
+        "evidence/20261018T162139Z-657ed0c3-001",
+        "evidence/20261018T162143Z-657ed0c3-001",
+        "evidence/20261018T162150Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1747,12 +1747,12 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T155026Z-8b430593-001",
-        "evidence/20261018T155050Z-8b430593-001",
-        "evidence/20261018T155031Z-8b430593-001",
-        "evidence/20261018T155035Z-8b430593-001",
-        "evidence/20261018T155040Z-8b430593-001",
-        "evidence/20261018T155045Z-8b430593-001"
+        "evidence/20261018T162155Z-657ed0c3-001",
+        "evidence/20261018T162220Z-657ed0c3-001",
+        "evidence/20261018T162200Z-657ed0c3-001",
+        "evidence/20261018T162205Z-657ed0c3-001",
+        "evidence/20261018T162210Z-657ed0c3-001",
+        "evidence/20261018T162215Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1834,10 +1834,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T155059Z-8b430593-001",
-        "evidence/20261018T155103Z-8b430593-001",
-        "evidence/20261018T155107Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T162228Z-657ed0c3-001",
+        "evidence/20261018T162232Z-657ed0c3-001",
+        "evidence/20261018T162236Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1897,10 +1897,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T155112Z-8b430593-001",
-        "evidence/20261018T155117Z-8b430593-001",
-        "evidence/20261018T155123Z-8b430593-001",
-        "evidence/20261018T155128Z-8b430593-001"
+        "evidence/20261018T162242Z-657ed0c3-001",
+        "evidence/20261018T162246Z-657ed0c3-001",
+        "evidence/20261018T162251Z-657ed0c3-001",
+        "evidence/20261018T162257Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -1951,8 +1951,8 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T155133Z-8b430593-001",
-        "evidence/20261018T155138Z-8b430593-001"
+        "evidence/20261018T162302Z-657ed0c3-001",
+        "evidence/20261018T162308Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -2035,10 +2035,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T155145Z-8b430593-001",
-        "evidence/20261018T155151Z-8b430593-001",
-        "evidence/20261018T155213Z-8b430593-001",
-        "evidence/20261018T154527Z-8b430593-001"
+        "evidence/20261018T162314Z-657ed0c3-001",
+        "evidence/20261018T162320Z-657ed0c3-001",
+        "evidence/20261018T162346Z-657ed0c3-001",
+        "evidence/20261018T162627Z-657ed0c3-001"
       ],
       "blocker": null
     },
@@ -2083,7 +2083,7 @@
         "TST-M4-MUTANTS: M50–M81 over the M4 kernel modules and the services svcmgr/authd/configd/netd/sh (tests/mutants.py --stage M4, resets user/ too, --check builds the mutated crate on the host); HOST_SUITES M4-GATE; mutants workflow step and 300-minute budget",
         "docs: ENVIRONMENT (lab network, host peers, monitor, COM2), threat-model (no ambient authority between services, peer loss, the console on real hardware), docs/operations/m4-review.md, stages.json M4 gate"
       ],
-      "acceptance": "TST-M4-PEER-LOSS PASS and the whole M4 suite green on CI; TST-M4-MUTANTS >= 95% on the mutants workflow with equivalent mutants audited; docs/operations/m4-review.md; stages.json M4 passed with evidence",
+      "acceptance": "TST-M4-PEER-LOSS PASS and the whole suite green on CI run 39144177809 (100/100); TST-M4-MUTANTS 32/32 (100%) on mutants run 39144910448 with no survivor and no mis-declared killer; docs/operations/m4-review.md; stages.json M4 passed",
       "test_ids": [
         "TST-M4-PEER-LOSS",
         "TST-M4-MUTANTS"
@@ -2092,12 +2092,19 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M4"
       ],
-      "status": "active",
+      "status": "done",
       "status_history": [
         "planned",
-        "active"
+        "active",
+        "done"
       ],
-      "evidence_refs": [],
+      "evidence_refs": [
+        "evidence/20261018T162326Z-657ed0c3-001",
+        "evidence/20261018T165144Z-657ed0c3-001",
+        "evidence/20261018T162314Z-657ed0c3-001",
+        "evidence/20261018T162150Z-657ed0c3-001",
+        "evidence/20261018T162118Z-657ed0c3-001"
+      ],
       "blocker": null
     }
   ]

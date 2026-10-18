@@ -51,9 +51,14 @@ MUTANTS = [
     ("M06", "kernel/src/mm/pmm.rs",
      "    if !p.get_bit(f) {\n        return Err(PmmError::NotAllocated);\n    }", "",
      ["TST-M2-PMM-DOUBLE-FREE"], "double-free detection removed"),
+    # PMM-COUNTS caught this while the boot left the first MiB's frames unallocated; since the
+    # scheduler reserves its tables at init (WP-31) the boot itself consumes those frames under
+    # the mutant and the test's 1024 frames all come from above 1 MiB (mutants run
+    # 39144910448: killed by TST-M1-BOOT and PMM-EXHAUST instead). The declaration follows the
+    # cases that see the defect now.
     ("M07", "kernel/src/mm/pmm.rs",
      "const LOW_RESERVED: u64 = 1 << 20; // 1 MiB", "const LOW_RESERVED: u64 = 0; // 1 MiB",
-     ["TST-M2-PMM-COUNTS", "TST-M2-PMM-DOUBLE-FREE"], "first MiB handed out"),
+     ["TST-M1-BOOT", "TST-M2-PMM-EXHAUST"], "first MiB handed out"),
     # Removing enable_wp()/enable_nxe() was equivalent on this firmware: OVMF enters the kernel
     # with CR0.WP = 1 and IA32_EFER.NXE = 1 already (mutation run 39098959577). vmm_wp now clears
     # WP before relying on the kernel's enable_wp, so M08 is detectable; for NX the detectable
