@@ -1234,13 +1234,6 @@ impl Compositor {
             ) {
                 self.on_pointer(dx, dy, b, now);
             }
-        } else if msg.starts_with(b"LAYOUT ") {
-            // The layout changed (input v2.3): pass it to the focused window's client — news,
-            // not a shortcut.
-            if let Some(wi) = self.focus {
-                let owner = self.windows[wi].owner;
-                self.send(owner, msg, now);
-            }
         }
     }
 

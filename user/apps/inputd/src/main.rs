@@ -292,22 +292,14 @@ impl Input {
         }
     }
 
-    /// `LAYOUT us`/`LAYOUT ar` to the current focus owner (v2.3): the layout is not authority,
-    /// only news, so the owner learns the writing direction without a token.
-    fn announce_layout(&mut self) {
-        let msg: &[u8] = match self.layout {
-            Layout::Us => b"LAYOUT us",
-            Layout::Ar => b"LAYOUT ar",
-        };
-        self.deliver_to_focus(msg);
-    }
-
+    /// Flips the keyboard layout (v2.3, Alt+Shift). No event is sent: the service already
+    /// decodes each key with the current layout, so the change shows in the characters that
+    /// follow (and in `STATUS`), and the `LAYOUT` request's behaviour is unchanged (v2).
     fn toggle_layout(&mut self) {
         self.layout = match self.layout {
             Layout::Us => Layout::Ar,
             Layout::Ar => Layout::Us,
         };
-        self.announce_layout();
     }
 
     /// One scancode byte from the keyboard.
@@ -505,10 +497,7 @@ impl Input {
                     out.put(b"ERR ACCESS");
                     return;
                 }
-                if self.layout != layout {
-                    self.layout = layout;
-                    self.announce_layout();
-                }
+                self.layout = layout;
                 out.put(b"OK");
             }
             b"STATUS" => {
