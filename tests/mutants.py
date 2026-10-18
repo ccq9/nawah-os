@@ -199,7 +199,8 @@ MUTANTS = [
     ("M46", "kernel/src/fs/fat32.rs",
      "        for k in 0..self.fats {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
      "        for k in 0..1 {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
-     ["TST-M3-FAT32-WRITE"], "only the first FAT is updated (fsck: FATs differ)"),
+     ["TST-M3-FILE-ROUNDTRIP", "TST-M3-FD-LEAK", "TST-M3-FAT32-PERSIST"],
+     "only the first FAT is updated (fsck on an image with files left: FATs differ)"),
     ("M47", "kernel/src/fs/fat32.rs",
      "        let freed = if e.first >= 2 {\n            self.free_chain(e.first)?\n        } else {\n            0\n        };",
      "        let freed = 0;",
@@ -208,10 +209,12 @@ MUTANTS = [
      "    if path.is_empty() || path.len() > PATH_MAX || path[0] != b'/' || !path.is_ascii() {",
      "    if path.is_empty() || path.len() > PATH_MAX || !path.is_ascii() {",
      ["TST-M3-PATH-INVALID"], "relative paths accepted"),
-    ("M49", "kernel/src/fs/vfs.rs",
-     "    if flags & !O_VALID != 0 || flags & (O_READ | O_WRITE) == 0 {",
-     "    if flags & (O_READ | O_WRITE) == 0 {",
-     ["TST-M3-PATH-INVALID"], "unknown open flags accepted"),
+    # The vfs-level flag check is defence in depth behind sys_open's (mutating it alone is
+    # equivalent at the ABI: mutants run 39120514522), so the mutant hits the syscall layer.
+    ("M49", "kernel/src/syscall/mod.rs",
+     "    if flags & !vfs::O_VALID != 0 || flags & (vfs::O_READ | vfs::O_WRITE) == 0 {",
+     "    if flags & (vfs::O_READ | vfs::O_WRITE) == 0 {",
+     ["TST-M3-PATH-INVALID"], "unknown open flags accepted by sys_open"),
 ]
 
 def stage_of(mid: str) -> str:
