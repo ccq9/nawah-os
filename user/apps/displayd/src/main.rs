@@ -706,7 +706,8 @@ impl Compositor {
         self.damage(r);
         if minimized {
             if self.focus == Some(wi) {
-                self.focus = None;
+                // The minimised window is told UNFOCUS, the next visible one FOCUS (CI run
+                // 39156535478 cleared the focus first and sent no UNFOCUS).
                 let next = self.top_visible();
                 self.set_focus(next, now);
             }
