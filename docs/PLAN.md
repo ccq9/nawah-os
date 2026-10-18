@@ -78,7 +78,7 @@
 
 | الحزمة | المحتوى | الاختبار الحاكم | المصادر |
 |---|---|---|---|
-| WP-32 العرض | إطار GOP قبل EBS في BootInfo، رسم الإطار في النواة (WC) ونمط تشخيصي بالإقلاع، `Object::Display` وABI v1.8 (`display_info`، `display_map`، وخرائط المستخدم `vmo_map`/`vmo_unmap`)، مجس الشاشة في المختبر (`screendump` + `tools/screen.py`) | TST-M5-DISPLAY-BOOT | UEFI 2.11 §12.9، QEMU monitor screendump |
+| WP-32 العرض | إطار GOP قبل EBS في BootInfo، رسم الإطار في النواة (WC) ونمط تشخيصي بالإقلاع، `Object::Display` وABI v1.8 (`display_info`، `display_map`، وخرائط المستخدم `vmo_map`/`vmo_unmap`)، مجس الشاشة في المختبر (`screendump` + `tools/screen.py`) — **أُغلق 2026-10-18** (CI run 39151090992؛ ثلاث جولات: ترتيب خطوات البناء، ثم النوع قبل الحقوق في `vmo_map`) | TST-M5-DISPLAY-BOOT | UEFI 2.11 §12.9، QEMU monitor screendump |
 | WP-33 الإدخال | منفذ i8042 المساعد وفأرة PS/2 (`Object::Mouse`)، خدمة `input`: رموز مفاتيح وتخطيطان (US، عربي)، توجيه إلى مالك التركيز الذي تسميه الجلسة، الانتباه الآمن | TST-M5-INPUT-ROUTE، MOUSE | i8042/PS2 (S54)، QEMU sendkey/mouse |
 | WP-34 الـ compositor | خدمة `display`: أسطح VMO يملكها العميل، COMMIT بمناطق التغيير، مخزن خلفي بإيقاع النبضة، نوافذ بزخرفة وترتيب وتركيز وحجم، تطبيق لا يستجيب، `libnawah-display` وتطبيق `winapp` | TST-M5-WINDOW-STATES، APP-HANG، SCREEN | §9 |
 | WP-35 النص | `libnawah-text`: OpenType (cmap/glyf/hmtx/GSUB)، تنقيط بمسح الخطوط، UAX #9، تشكيل عربي، خطا Noto (OFL) تحت `/SYSTEM/FONTS` | TST-M5-BIDI، SHAPING، GLYPHS (مضيف + ضيف) | UAX #9، ArabicShaping.txt، OpenType spec، OFL 1.1 |

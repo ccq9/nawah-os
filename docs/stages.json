@@ -1,369 +1,369 @@
 {
-  "schema_version": "1.0.0",
-  "records": [
-    {
-      "id": "M0",
-      "name": "ثبّت قرارات أول بناء",
-      "depends_on": [],
-      "entry_conditions": [
-        "مساحة عمل معلومة ونطاق المستخدم ونتائج فحص الأدوات"
-      ],
-      "exit_conditions": [
-        "E0 ناجحة بدليل مسجل",
-        "سلسلة compiler/target/linker/image/firmware متسقة (ADR-0001)",
-        "اختبار تسليم النواة محدد وقابل للتنفيذ (contracts/boot.md)",
-        "validate-records يمر على سجلات M0"
-      ],
-      "gate_status": "passed",
-      "gate_evidence_refs": [
-        "evidence/20261018T161635Z-657ed0c3-001",
-        "evidence/20261018T162337Z-657ed0c3-001",
-        "evidence/20261018T162338Z-657ed0c3-001"
-      ]
-    },
-    {
-      "id": "M1",
-      "name": "أنشئ البناء وأقل نواة قابلة للإقلاع",
-      "depends_on": [
-        "M0"
-      ],
-      "entry_conditions": [
-        "بوابة M0 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "بناء نظيف",
-        "إقلاع صورة بهوية مسجلة",
-        "أثر تشخيص من النواة بعد نجاح ExitBootServices",
-        "لا Boot Services بعدها (إنفاذ بنيوي)",
-        "مسار فشل تسليم مضبوط يُشخَّص ويتوقف"
-      ],
-      "gate_status": "passed",
-      "gate_evidence_refs": [
-        "evidence/20261018T162608Z-657ed0c3-001",
-        "evidence/20261018T162627Z-657ed0c3-001",
-        "evidence/20261018T161701Z-657ed0c3-001",
-        "evidence/20261018T162338Z-657ed0c3-002"
-      ]
-    },
-    {
-      "id": "M2",
-      "name": "نفّذ أساس النواة",
-      "depends_on": [
-        "M1"
-      ],
-      "entry_conditions": [
-        "بوابة M1 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "تخصيصات الذاكرة وتحريرها وحماياتها تعمل (PMM: عدّ/نفاد وتعافٍ/تحرير مزدوج؛ VMM: WP/NX/حراسة/الخريطة المباشرة)",
-        "أخطاء الوصول والاستثناءات تُشخَّص (11 حالة + تخطيط IDT)",
-        "المقاطعات والمؤقتات تعمل بلا نجاح زائف (نبضات معدودة، EOI، لا إعادة دخول، المتجهات الشاردة)",
-        "تزامن أولي وسياسة panic (قفل irqsave، كشف إعادة الدخول، panic بالموقع)",
-        "اختبار طفرات ≥95% على arch/mm/sync (29/29 بعد تدقيق الطفرات المكافئة)",
-        "مراجعة مسماة docs/operations/m2-review.md"
-      ],
-      "gate_status": "passed",
-      "gate_evidence_refs": [
-        "evidence/20261018T162631Z-657ed0c3-001",
-        "evidence/20261018T161705Z-657ed0c3-001",
-        "evidence/20261018T161709Z-657ed0c3-001",
-        "evidence/20261018T161713Z-657ed0c3-001",
-        "evidence/20261018T161717Z-657ed0c3-001",
-        "evidence/20261018T161721Z-657ed0c3-001",
-        "evidence/20261018T161725Z-657ed0c3-001",
-        "evidence/20261018T161729Z-657ed0c3-001",
-        "evidence/20261018T161733Z-657ed0c3-001",
-        "evidence/20261018T161737Z-657ed0c3-001",
-        "evidence/20261018T161741Z-657ed0c3-001",
-        "evidence/20261018T161745Z-657ed0c3-001",
-        "evidence/20261018T161749Z-657ed0c3-001",
-        "evidence/20261018T161753Z-657ed0c3-001",
-        "evidence/20261018T161757Z-657ed0c3-001",
-        "evidence/20261018T161801Z-657ed0c3-001",
-        "evidence/20261018T161805Z-657ed0c3-001",
-        "evidence/20261018T161809Z-657ed0c3-001",
-        "evidence/20261018T161813Z-657ed0c3-001",
-        "evidence/20261018T161817Z-657ed0c3-001",
-        "evidence/20261018T161821Z-657ed0c3-001",
-        "evidence/20261018T161825Z-657ed0c3-001",
-        "evidence/20261018T161829Z-657ed0c3-001",
-        "evidence/20261018T161833Z-657ed0c3-001",
-        "evidence/20261018T161837Z-657ed0c3-001"
-      ]
-    },
-    {
-      "id": "M3",
-      "name": "العمليات والموارد والواجهات الداخلية",
-      "depends_on": [
-        "M2"
-      ],
-      "entry_conditions": [
-        "بوابة M2 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "عملية سليمة تعمل في حلقة 3 عبر SYSCALL/SYSRET ومحمّل ELF64 W^X وتطبيقات تُبنى بسلسلة الأدوات نفسها (USER-SYSCALL، APP-EXIT-CODE، ELF-MALFORMED، ELF-WX)",
-        "تُرفض المؤشرات والأطوال والحقوق غير الصالحة بخطأ لا panic (USER-BAD-PTR، USER-KERNEL-ACCESS، SYSRET-CANONICAL، RIGHTS-DENIED، IPC-OVERSIZE، CLOSED-HANDLE، PATH-INVALID)",
-        "لا تصل عملية إلى ذاكرة أخرى أو النواة (ISOLATION، USER-KERNEL-ACCESS، AS-SWITCH)",
-        "تنظيف موارد العملية بعد إنهائها (EXIT-CLEANUP، IPC-NO-LEAK، FD-LEAK، HANDLE-TABLE)",
-        "تبقى البيانات المقر حفظها بعد إعادة التشغيل مع قارئ مستقل على المضيف (BLK-PERSIST، FAT32-PERSIST، FAT32-TOOL، fsck.fat)",
-        "السباقات وSMP: المعالجات الأربعة تعمل، الأقفال دقيقة تحت التنازع، إبطال TLB عبر IPI، وكل الأجنحة تحت -smp 4 (SMP-ONLINE، LOCK-CONTENTION، TLB-SHOOTDOWN)",
-        "اختبار طفرات ≥95% على وحدات M3 (20/20 بعد تدقيق الطفرات المكافئة وأعطال المختبر)",
-        "مراجعة مسماة docs/operations/m3-review.md"
-      ],
-      "gate_status": "passed",
-      "gate_evidence_refs": [
-        "evidence/20261018T161842Z-657ed0c3-001",
-        "evidence/20261018T161846Z-657ed0c3-001",
-        "evidence/20261018T161854Z-657ed0c3-001",
-        "evidence/20261018T162330Z-657ed0c3-001",
-        "evidence/20261018T162331Z-657ed0c3-001",
-        "evidence/20261018T161858Z-657ed0c3-001",
-        "evidence/20261018T161902Z-657ed0c3-001",
-        "evidence/20261018T161906Z-657ed0c3-001",
-        "evidence/20261018T161910Z-657ed0c3-001",
-        "evidence/20261018T161914Z-657ed0c3-001",
-        "evidence/20261018T161918Z-657ed0c3-001",
-        "evidence/20261018T161922Z-657ed0c3-001",
-        "evidence/20261018T161926Z-657ed0c3-001",
-        "evidence/20261018T161930Z-657ed0c3-001",
-        "evidence/20261018T161938Z-657ed0c3-001",
-        "evidence/20261018T161942Z-657ed0c3-001",
-        "evidence/20261018T161946Z-657ed0c3-001",
-        "evidence/20261018T161950Z-657ed0c3-001",
-        "evidence/20261018T161954Z-657ed0c3-001",
-        "evidence/20261018T162006Z-657ed0c3-001",
-        "evidence/20261018T162010Z-657ed0c3-001",
-        "evidence/20261018T162014Z-657ed0c3-001",
-        "evidence/20261018T162018Z-657ed0c3-001",
-        "evidence/20261018T162023Z-657ed0c3-001",
-        "evidence/20261018T162027Z-657ed0c3-001",
-        "evidence/20261018T162049Z-657ed0c3-001",
-        "evidence/20261018T162053Z-657ed0c3-001",
-        "evidence/20261018T162057Z-657ed0c3-001",
-        "evidence/20261018T162102Z-657ed0c3-001",
-        "evidence/20261018T162106Z-657ed0c3-001",
-        "evidence/20261018T162110Z-657ed0c3-001",
-        "evidence/20261018T164330Z-657ed0c3-001",
-        "evidence/20261018T161850Z-657ed0c3-001",
-        "evidence/20261018T161934Z-657ed0c3-001",
-        "evidence/20261018T161958Z-657ed0c3-001",
-        "evidence/20261018T162002Z-657ed0c3-001",
-        "evidence/20261018T162033Z-657ed0c3-001",
-        "evidence/20261018T162037Z-657ed0c3-001",
-        "evidence/20261018T162042Z-657ed0c3-001",
-        "evidence/20261018T162338Z-657ed0c3-003",
-        "evidence/20261018T162627Z-657ed0c3-001"
-      ]
-    },
-    {
-      "id": "M4",
-      "name": "خدمات النظام وسلطتها",
-      "depends_on": [
-        "M3"
-      ],
-      "entry_conditions": [
-        "بوابة M3 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "ترفض الخدمة الطلب غير المخول عند طبقة السلطة لا عند الواجهة (AUTHZ-DENIED، TOKEN-OBJECTS، WAIT-TIMEOUT: السكّ بالسلطة وحدها، LOGIN، SESSION-LOCK، NET-NO-INTERNET، SHELL-LOGIN، SHELL-SVC: CONNECT لغير التبعيات المعلنة)",
-        "تحفظ الحالة كما وعدت عبر إعادة التشغيل وبقارئ مستقل (CONFIG-PERSIST، CONFIG-CAS، POLICY-PRECEDENCE)",
-        "تتعافى من انقطاع طرف أو فشل خدمة وفق العقد (PEER-LOSS، SVC-RESTART، SVC-TIMEOUT)",
-        "ترتيب بدء الخدمات والمهلات (SVC-ORDER، SVC-TIMEOUT، TST-M1-BOOT: المدير أول عملية)",
-        "تكرار الطلب والتحديث المتزامن والإشعارات (CONFIG-RETRY، CONFIG-CAS، CONFIG-NOTIFY)",
-        "حدود موارد التعريفات وشرط DMA قبل التمكين (NET-LIMITS، NET-LINK، KBD-SCANCODES؛ ADR-0016 §7، ADR-0017 §2)",
-        "الشبكة على دفعات بعقود: ARP/IPv4/ICMP/UDP/DHCP/TCP مع فصل الإنترنت (DHCP، ICMP-ECHO، UDP-ECHO، NET-NO-INTERNET، TCP-ECHO، TCP-RETRANSMIT)",
-        "أدوات تشخيص داخل النظام قابلة للاختبار من المختبر (SHELL-SVC، SHELL-LOGIN، SHELL-TOOL)",
-        "اختبار طفرات ≥95% على وحدات M4 (32/32 M50–M81 بعد تدقيق فجوات الاختبار قبل الجولة)",
-        "مراجعة مسماة docs/operations/m4-review.md"
-      ],
-      "gate_status": "passed",
-      "gate_evidence_refs": [
-        "evidence/20261018T162627Z-657ed0c3-001",
-        "evidence/20261018T162155Z-657ed0c3-001",
-        "evidence/20261018T162122Z-657ed0c3-001",
-        "evidence/20261018T162200Z-657ed0c3-001",
-        "evidence/20261018T162210Z-657ed0c3-001",
-        "evidence/20261018T162220Z-657ed0c3-001",
-        "evidence/20261018T162205Z-657ed0c3-001",
-        "evidence/20261018T162242Z-657ed0c3-001",
-        "evidence/20261018T162340Z-657ed0c3-001",
-        "evidence/20261018T162246Z-657ed0c3-001",
-        "evidence/20261018T162236Z-657ed0c3-001",
-        "evidence/20261018T162143Z-657ed0c3-001",
-        "evidence/20261018T165144Z-657ed0c3-001",
-        "evidence/20261018T162232Z-657ed0c3-001",
-        "evidence/20261018T162228Z-657ed0c3-001",
-        "evidence/20261018T162257Z-657ed0c3-001",
-        "evidence/20261018T162326Z-657ed0c3-001",
-        "evidence/20261018T162215Z-657ed0c3-001",
-        "evidence/20261018T162150Z-657ed0c3-001",
-        "evidence/20261018T162320Z-657ed0c3-001",
-        "evidence/20261018T162314Z-657ed0c3-001",
-        "evidence/20261018T162346Z-657ed0c3-001",
-        "evidence/20261018T162114Z-657ed0c3-001",
-        "evidence/20261018T162126Z-657ed0c3-001",
-        "evidence/20261018T162135Z-657ed0c3-001",
-        "evidence/20261018T162130Z-657ed0c3-001",
-        "evidence/20261018T162302Z-657ed0c3-001",
-        "evidence/20261018T162308Z-657ed0c3-001",
-        "evidence/20261018T162139Z-657ed0c3-001",
-        "evidence/20261018T162251Z-657ed0c3-001",
-        "evidence/20261018T162118Z-657ed0c3-001"
-      ]
-    },
-    {
-      "id": "M5",
-      "name": "منصة الرسوم والإدخال",
-      "depends_on": [
-        "M4"
-      ],
-      "entry_conditions": [
-        "بوابة M4 ناجحة ضمن التفويض (2026-10-18)"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    },
-    {
-      "id": "M6",
-      "name": "سطح المكتب وأدوات الاستخدام",
-      "depends_on": [
-        "M5"
-      ],
-      "entry_conditions": [
-        "بوابة M5 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    },
-    {
-      "id": "M7",
-      "name": "الإعدادات صفحةً وعقدًا وخدمةً",
-      "depends_on": [
-        "M6"
-      ],
-      "entry_conditions": [
-        "بوابة M6 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    },
-    {
-      "id": "M8",
-      "name": "التطبيقات والـSDK والتوافق والعتاد",
-      "depends_on": [
-        "M7"
-      ],
-      "entry_conditions": [
-        "بوابة M7 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    },
-    {
-      "id": "M9",
-      "name": "التثبيت والتحديث والإنقاذ",
-      "depends_on": [
-        "M8"
-      ],
-      "entry_conditions": [
-        "بوابة M8 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    },
-    {
-      "id": "M10",
-      "name": "مرشح الإصدار",
-      "depends_on": [
-        "M9"
-      ],
-      "entry_conditions": [
-        "بوابة M9 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    },
-    {
-      "id": "M11",
-      "name": "تسليم إصدار الحاسوب وصيانته",
-      "depends_on": [
-        "M10"
-      ],
-      "entry_conditions": [
-        "بوابة M10 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    },
-    {
-      "id": "M12",
-      "name": "اختيار منصة المحمول",
-      "depends_on": [
-        "M11"
-      ],
-      "entry_conditions": [
-        "بوابة M11 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    },
-    {
-      "id": "M13",
-      "name": "نقل النواة والخدمات الأساسية",
-      "depends_on": [
-        "M12"
-      ],
-      "entry_conditions": [
-        "بوابة M12 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    },
-    {
-      "id": "M14",
-      "name": "تجربة المحمول وقدراته",
-      "depends_on": [
-        "M13"
-      ],
-      "entry_conditions": [
-        "بوابة M13 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    },
-    {
-      "id": "M15",
-      "name": "قبول إصدار المحمول",
-      "depends_on": [
-        "M14"
-      ],
-      "entry_conditions": [
-        "بوابة M14 ناجحة ضمن التفويض"
-      ],
-      "exit_conditions": [
-        "وفق البند 20 من OS-EXEC-AR 3.2"
-      ],
-      "gate_status": "not_started"
-    }
-  ]
+ "schema_version": "1.0.0",
+ "records": [
+  {
+   "id": "M0",
+   "name": "ثبّت قرارات أول بناء",
+   "depends_on": [],
+   "entry_conditions": [
+    "مساحة عمل معلومة ونطاق المستخدم ونتائج فحص الأدوات"
+   ],
+   "exit_conditions": [
+    "E0 ناجحة بدليل مسجل",
+    "سلسلة compiler/target/linker/image/firmware متسقة (ADR-0001)",
+    "اختبار تسليم النواة محدد وقابل للتنفيذ (contracts/boot.md)",
+    "validate-records يمر على سجلات M0"
+   ],
+   "gate_status": "passed",
+   "gate_evidence_refs": [
+    "evidence/20261018T174722Z-faed35d3-001",
+    "evidence/20261018T175255Z-faed35d3-001",
+    "evidence/20261018T175256Z-faed35d3-001"
+   ]
+  },
+  {
+   "id": "M1",
+   "name": "أنشئ البناء وأقل نواة قابلة للإقلاع",
+   "depends_on": [
+    "M0"
+   ],
+   "entry_conditions": [
+    "بوابة M0 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "بناء نظيف",
+    "إقلاع صورة بهوية مسجلة",
+    "أثر تشخيص من النواة بعد نجاح ExitBootServices",
+    "لا Boot Services بعدها (إنفاذ بنيوي)",
+    "مسار فشل تسليم مضبوط يُشخَّص ويتوقف"
+   ],
+   "gate_status": "passed",
+   "gate_evidence_refs": [
+    "evidence/20261018T174725Z-faed35d3-001",
+    "evidence/20261018T174744Z-faed35d3-001",
+    "evidence/20261018T174747Z-faed35d3-001",
+    "evidence/20261018T175256Z-faed35d3-002"
+   ]
+  },
+  {
+   "id": "M2",
+   "name": "نفّذ أساس النواة",
+   "depends_on": [
+    "M1"
+   ],
+   "entry_conditions": [
+    "بوابة M1 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "تخصيصات الذاكرة وتحريرها وحماياتها تعمل (PMM: عدّ/نفاد وتعافٍ/تحرير مزدوج؛ VMM: WP/NX/حراسة/الخريطة المباشرة)",
+    "أخطاء الوصول والاستثناءات تُشخَّص (11 حالة + تخطيط IDT)",
+    "المقاطعات والمؤقتات تعمل بلا نجاح زائف (نبضات معدودة، EOI، لا إعادة دخول، المتجهات الشاردة)",
+    "تزامن أولي وسياسة panic (قفل irqsave، كشف إعادة الدخول، panic بالموقع)",
+    "اختبار طفرات ≥95% على arch/mm/sync (29/29 بعد تدقيق الطفرات المكافئة)",
+    "مراجعة مسماة docs/operations/m2-review.md"
+   ],
+   "gate_status": "passed",
+   "gate_evidence_refs": [
+    "evidence/20261018T162631Z-657ed0c3-001",
+    "evidence/20261018T174750Z-faed35d3-001",
+    "evidence/20261018T174753Z-faed35d3-001",
+    "evidence/20261018T174757Z-faed35d3-001",
+    "evidence/20261018T174801Z-faed35d3-001",
+    "evidence/20261018T174805Z-faed35d3-001",
+    "evidence/20261018T174808Z-faed35d3-001",
+    "evidence/20261018T174811Z-faed35d3-001",
+    "evidence/20261018T174814Z-faed35d3-001",
+    "evidence/20261018T174817Z-faed35d3-001",
+    "evidence/20261018T174820Z-faed35d3-001",
+    "evidence/20261018T174824Z-faed35d3-001",
+    "evidence/20261018T174827Z-faed35d3-001",
+    "evidence/20261018T174830Z-faed35d3-001",
+    "evidence/20261018T174833Z-faed35d3-001",
+    "evidence/20261018T174836Z-faed35d3-001",
+    "evidence/20261018T174839Z-faed35d3-001",
+    "evidence/20261018T174842Z-faed35d3-001",
+    "evidence/20261018T174845Z-faed35d3-001",
+    "evidence/20261018T174848Z-faed35d3-001",
+    "evidence/20261018T174851Z-faed35d3-001",
+    "evidence/20261018T174854Z-faed35d3-001",
+    "evidence/20261018T174857Z-faed35d3-001",
+    "evidence/20261018T174900Z-faed35d3-001",
+    "evidence/20261018T174903Z-faed35d3-001"
+   ]
+  },
+  {
+   "id": "M3",
+   "name": "العمليات والموارد والواجهات الداخلية",
+   "depends_on": [
+    "M2"
+   ],
+   "entry_conditions": [
+    "بوابة M2 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "عملية سليمة تعمل في حلقة 3 عبر SYSCALL/SYSRET ومحمّل ELF64 W^X وتطبيقات تُبنى بسلسلة الأدوات نفسها (USER-SYSCALL، APP-EXIT-CODE، ELF-MALFORMED، ELF-WX)",
+    "تُرفض المؤشرات والأطوال والحقوق غير الصالحة بخطأ لا panic (USER-BAD-PTR، USER-KERNEL-ACCESS، SYSRET-CANONICAL، RIGHTS-DENIED، IPC-OVERSIZE، CLOSED-HANDLE، PATH-INVALID)",
+    "لا تصل عملية إلى ذاكرة أخرى أو النواة (ISOLATION، USER-KERNEL-ACCESS، AS-SWITCH)",
+    "تنظيف موارد العملية بعد إنهائها (EXIT-CLEANUP، IPC-NO-LEAK، FD-LEAK، HANDLE-TABLE)",
+    "تبقى البيانات المقر حفظها بعد إعادة التشغيل مع قارئ مستقل على المضيف (BLK-PERSIST، FAT32-PERSIST، FAT32-TOOL، fsck.fat)",
+    "السباقات وSMP: المعالجات الأربعة تعمل، الأقفال دقيقة تحت التنازع، إبطال TLB عبر IPI، وكل الأجنحة تحت -smp 4 (SMP-ONLINE، LOCK-CONTENTION، TLB-SHOOTDOWN)",
+    "اختبار طفرات ≥95% على وحدات M3 (20/20 بعد تدقيق الطفرات المكافئة وأعطال المختبر)",
+    "مراجعة مسماة docs/operations/m3-review.md"
+   ],
+   "gate_status": "passed",
+   "gate_evidence_refs": [
+    "evidence/20261018T174907Z-faed35d3-001",
+    "evidence/20261018T174910Z-faed35d3-001",
+    "evidence/20261018T174916Z-faed35d3-001",
+    "evidence/20261018T175249Z-faed35d3-001",
+    "evidence/20261018T175249Z-faed35d3-002",
+    "evidence/20261018T174919Z-faed35d3-001",
+    "evidence/20261018T174922Z-faed35d3-001",
+    "evidence/20261018T174925Z-faed35d3-001",
+    "evidence/20261018T174928Z-faed35d3-001",
+    "evidence/20261018T174931Z-faed35d3-001",
+    "evidence/20261018T174934Z-faed35d3-001",
+    "evidence/20261018T174937Z-faed35d3-001",
+    "evidence/20261018T174940Z-faed35d3-001",
+    "evidence/20261018T174943Z-faed35d3-001",
+    "evidence/20261018T174949Z-faed35d3-001",
+    "evidence/20261018T174952Z-faed35d3-001",
+    "evidence/20261018T174955Z-faed35d3-001",
+    "evidence/20261018T174958Z-faed35d3-001",
+    "evidence/20261018T175001Z-faed35d3-001",
+    "evidence/20261018T175010Z-faed35d3-001",
+    "evidence/20261018T175013Z-faed35d3-001",
+    "evidence/20261018T175016Z-faed35d3-001",
+    "evidence/20261018T175019Z-faed35d3-001",
+    "evidence/20261018T175022Z-faed35d3-001",
+    "evidence/20261018T175025Z-faed35d3-001",
+    "evidence/20261018T175041Z-faed35d3-001",
+    "evidence/20261018T175044Z-faed35d3-001",
+    "evidence/20261018T175047Z-faed35d3-001",
+    "evidence/20261018T175050Z-faed35d3-001",
+    "evidence/20261018T175053Z-faed35d3-001",
+    "evidence/20261018T175056Z-faed35d3-001",
+    "evidence/20261018T164330Z-657ed0c3-001",
+    "evidence/20261018T174913Z-faed35d3-001",
+    "evidence/20261018T174946Z-faed35d3-001",
+    "evidence/20261018T175004Z-faed35d3-001",
+    "evidence/20261018T175007Z-faed35d3-001",
+    "evidence/20261018T175030Z-faed35d3-001",
+    "evidence/20261018T175033Z-faed35d3-001",
+    "evidence/20261018T175036Z-faed35d3-001",
+    "evidence/20261018T175256Z-faed35d3-003",
+    "evidence/20261018T174744Z-faed35d3-001"
+   ]
+  },
+  {
+   "id": "M4",
+   "name": "خدمات النظام وسلطتها",
+   "depends_on": [
+    "M3"
+   ],
+   "entry_conditions": [
+    "بوابة M3 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "ترفض الخدمة الطلب غير المخول عند طبقة السلطة لا عند الواجهة (AUTHZ-DENIED، TOKEN-OBJECTS، WAIT-TIMEOUT: السكّ بالسلطة وحدها، LOGIN، SESSION-LOCK، NET-NO-INTERNET، SHELL-LOGIN، SHELL-SVC: CONNECT لغير التبعيات المعلنة)",
+    "تحفظ الحالة كما وعدت عبر إعادة التشغيل وبقارئ مستقل (CONFIG-PERSIST، CONFIG-CAS، POLICY-PRECEDENCE)",
+    "تتعافى من انقطاع طرف أو فشل خدمة وفق العقد (PEER-LOSS، SVC-RESTART، SVC-TIMEOUT)",
+    "ترتيب بدء الخدمات والمهلات (SVC-ORDER، SVC-TIMEOUT، TST-M1-BOOT: المدير أول عملية)",
+    "تكرار الطلب والتحديث المتزامن والإشعارات (CONFIG-RETRY، CONFIG-CAS، CONFIG-NOTIFY)",
+    "حدود موارد التعريفات وشرط DMA قبل التمكين (NET-LIMITS، NET-LINK، KBD-SCANCODES؛ ADR-0016 §7، ADR-0017 §2)",
+    "الشبكة على دفعات بعقود: ARP/IPv4/ICMP/UDP/DHCP/TCP مع فصل الإنترنت (DHCP، ICMP-ECHO، UDP-ECHO، NET-NO-INTERNET، TCP-ECHO، TCP-RETRANSMIT)",
+    "أدوات تشخيص داخل النظام قابلة للاختبار من المختبر (SHELL-SVC، SHELL-LOGIN، SHELL-TOOL)",
+    "اختبار طفرات ≥95% على وحدات M4 (32/32 M50–M81 بعد تدقيق فجوات الاختبار قبل الجولة)",
+    "مراجعة مسماة docs/operations/m4-review.md"
+   ],
+   "gate_status": "passed",
+   "gate_evidence_refs": [
+    "evidence/20261018T174744Z-faed35d3-001",
+    "evidence/20261018T175131Z-faed35d3-001",
+    "evidence/20261018T175106Z-faed35d3-001",
+    "evidence/20261018T175134Z-faed35d3-001",
+    "evidence/20261018T175141Z-faed35d3-001",
+    "evidence/20261018T175149Z-faed35d3-001",
+    "evidence/20261018T175138Z-faed35d3-001",
+    "evidence/20261018T175205Z-faed35d3-001",
+    "evidence/20261018T175257Z-faed35d3-001",
+    "evidence/20261018T175209Z-faed35d3-001",
+    "evidence/20261018T175201Z-faed35d3-001",
+    "evidence/20261018T175121Z-faed35d3-001",
+    "evidence/20261018T165144Z-657ed0c3-001",
+    "evidence/20261018T175158Z-faed35d3-001",
+    "evidence/20261018T175155Z-faed35d3-001",
+    "evidence/20261018T175216Z-faed35d3-001",
+    "evidence/20261018T175239Z-faed35d3-001",
+    "evidence/20261018T175145Z-faed35d3-001",
+    "evidence/20261018T175127Z-faed35d3-001",
+    "evidence/20261018T175234Z-faed35d3-001",
+    "evidence/20261018T175229Z-faed35d3-001",
+    "evidence/20261018T175303Z-faed35d3-001",
+    "evidence/20261018T175100Z-faed35d3-001",
+    "evidence/20261018T175109Z-faed35d3-001",
+    "evidence/20261018T175115Z-faed35d3-001",
+    "evidence/20261018T175112Z-faed35d3-001",
+    "evidence/20261018T175220Z-faed35d3-001",
+    "evidence/20261018T175224Z-faed35d3-001",
+    "evidence/20261018T175118Z-faed35d3-001",
+    "evidence/20261018T175212Z-faed35d3-001",
+    "evidence/20261018T175103Z-faed35d3-001"
+   ]
+  },
+  {
+   "id": "M5",
+   "name": "منصة الرسوم والإدخال",
+   "depends_on": [
+    "M4"
+   ],
+   "entry_conditions": [
+    "بوابة M4 ناجحة ضمن التفويض (2026-10-18)"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M6",
+   "name": "سطح المكتب وأدوات الاستخدام",
+   "depends_on": [
+    "M5"
+   ],
+   "entry_conditions": [
+    "بوابة M5 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M7",
+   "name": "الإعدادات صفحةً وعقدًا وخدمةً",
+   "depends_on": [
+    "M6"
+   ],
+   "entry_conditions": [
+    "بوابة M6 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M8",
+   "name": "التطبيقات والـSDK والتوافق والعتاد",
+   "depends_on": [
+    "M7"
+   ],
+   "entry_conditions": [
+    "بوابة M7 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M9",
+   "name": "التثبيت والتحديث والإنقاذ",
+   "depends_on": [
+    "M8"
+   ],
+   "entry_conditions": [
+    "بوابة M8 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M10",
+   "name": "مرشح الإصدار",
+   "depends_on": [
+    "M9"
+   ],
+   "entry_conditions": [
+    "بوابة M9 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M11",
+   "name": "تسليم إصدار الحاسوب وصيانته",
+   "depends_on": [
+    "M10"
+   ],
+   "entry_conditions": [
+    "بوابة M10 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M12",
+   "name": "اختيار منصة المحمول",
+   "depends_on": [
+    "M11"
+   ],
+   "entry_conditions": [
+    "بوابة M11 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M13",
+   "name": "نقل النواة والخدمات الأساسية",
+   "depends_on": [
+    "M12"
+   ],
+   "entry_conditions": [
+    "بوابة M12 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M14",
+   "name": "تجربة المحمول وقدراته",
+   "depends_on": [
+    "M13"
+   ],
+   "entry_conditions": [
+    "بوابة M13 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  },
+  {
+   "id": "M15",
+   "name": "قبول إصدار المحمول",
+   "depends_on": [
+    "M14"
+   ],
+   "entry_conditions": [
+    "بوابة M14 ناجحة ضمن التفويض"
+   ],
+   "exit_conditions": [
+    "وفق البند 20 من OS-EXEC-AR 3.2"
+   ],
+   "gate_status": "not_started"
+  }
+ ]
 }

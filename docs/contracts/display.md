@@ -1,6 +1,6 @@
 # عقد العرض — الإصدار 0 (مسودة M5، ADR-0019)
 
-الجزء أ منفَّذ في WP-32 (يُجمَّد عند إغلاقه بدليل CI)؛ الجزء ب مسودة حتى WP-34؛ ما لم يُنفَّذ منها لا يُعدّ مدعومًا. الكود: `kernel/src/boot/efi.rs` (GOP)، `kernel/src/display.rs`، `kernel/src/mm/addrspace.rs` (الخرائط)، `user/apps/fbprobe`، `tools/screen.py`.
+الجزء أ **مجمَّد** (أُغلق WP-32 بدليل CI run 39151090992: أي تغيير فيه = إصدار جديد مع سجل قرار)؛ الجزء ب مسودة حتى WP-34؛ ما لم يُنفَّذ منها لا يُعدّ مدعومًا. الكود: `kernel/src/boot/efi.rs` (GOP)، `kernel/src/display.rs`، `kernel/src/mm/addrspace.rs` (الخرائط)، `user/apps/fbprobe`، `tools/screen.py`.
 
 ## أ. الإطار وكائن العرض (WP-32)
 
