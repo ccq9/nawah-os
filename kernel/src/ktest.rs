@@ -5421,12 +5421,12 @@ fn a11y_tree() -> ! {
     let cfg = svc_connect(&h, "config");
     let scale = cfg_request(
         &cfg,
-        b"SET device ui.scale 0 a11y-1 2",
+        b"SET device ui.scale 0 201 2",
         Some(token_entry(&admin)),
     );
     let contrast = cfg_request(
         &cfg,
-        b"SET device ui.contrast 0 a11y-2 high",
+        b"SET device ui.contrast 0 202 high",
         Some(token_entry(&admin)),
     );
     kprintln!(

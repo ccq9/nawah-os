@@ -18,7 +18,9 @@ def narrator_lines(text):
 
 def check(evidence, expected_file):
     expected = [l for l in pathlib.Path(expected_file).read_text(encoding="utf-8").splitlines() if l and not l.startswith("#")]
-    logs = sorted(pathlib.Path(evidence).glob("serial*.log"))
+    # A multi-phase case keeps one log per boot (serial-N.log) besides their concatenation
+    # (serial.log): each boot is checked on its own.
+    logs = sorted(pathlib.Path(evidence).glob("serial-*.log")) or sorted(pathlib.Path(evidence).glob("serial.log"))
     if not logs:
         print("no serial log"); return 1
     ok = True

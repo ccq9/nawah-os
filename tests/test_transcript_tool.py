@@ -52,6 +52,8 @@ class Transcript(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("serial-2.log: transcript differs", r.stdout)
         self.log("serial-2.log", good)
+        # The concatenation of both boots (serial.log) is not a transcript of its own.
+        self.log("serial.log", good + good)
         self.assertEqual(run("check", str(self.d), str(self.d / "expect.txt")).returncode, 0)
 
     def test_dims(self):
