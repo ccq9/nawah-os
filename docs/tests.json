@@ -63,10 +63,9 @@
    "layer": "host_unit",
    "oracle": "build steps exit 0, artifact exists, build_id recorded",
    "command": "python3 tools/project.py build --target pc-qemu",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261017T210941Z-9f580295-001"
-   ]
+   "verdict": "NEEDS_REEVALUATION",
+   "evidence_refs": [],
+   "verdict_reason": "M1 re-implemented in Rust (ADR-0002); C evidence superseded, re-run pending"
   },
   {
    "id": "TST-M1-BOOT",
@@ -76,10 +75,9 @@
    "layer": "guest",
    "oracle": "serial: boot|start, boot|ebs|ok, kernel|post_ebs with map_key; QEMU exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261017T210942Z-9f580295-001"
-   ]
+   "verdict": "NEEDS_REEVALUATION",
+   "evidence_refs": [],
+   "verdict_reason": "M1 re-implemented in Rust (ADR-0002); C evidence superseded, re-run pending"
   },
   {
    "id": "TST-M1-NOBS",
@@ -87,7 +85,7 @@
     "REQ-M1-003"
    ],
    "layer": "host_unit",
-   "oracle": "static: kernel/ translation units contain no EFI_BOOT_SERVICES/SystemTable symbols; post_ebs entry takes boot_info only",
+   "oracle": "static: kmain.rs safe-only and names no firmware symbol; boot::efi private; BootInfo without fn pointers; kernel_main(&BootInfo)",
    "command": "python3 tools/project.py test --target host --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
@@ -102,10 +100,9 @@
    "layer": "negative",
    "oracle": "inject EBS failure build variant: serial boot|error|code=BOOT_E_EBS_FAILED, QEMU exit 97, no reboot (single start line)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261017T210945Z-9f580295-001"
-   ]
+   "verdict": "NEEDS_REEVALUATION",
+   "evidence_refs": [],
+   "verdict_reason": "M1 re-implemented in Rust (ADR-0002); C evidence superseded, re-run pending"
   },
   {
    "id": "TST-M1-INVALID-IMAGE",

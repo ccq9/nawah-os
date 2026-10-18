@@ -37,13 +37,8 @@
     "لا Boot Services بعدها (إنفاذ بنيوي)",
     "مسار فشل تسليم مضبوط يُشخَّص ويتوقف"
    ],
-   "gate_status": "passed",
-   "gate_evidence_refs": [
-    "evidence/20261017T210941Z-9f580295-001",
-    "evidence/20261017T210942Z-9f580295-001",
-    "evidence/20261017T210945Z-9f580295-001",
-    "evidence/20261018T025054Z-4d867f9d-003"
-   ]
+   "gate_status": "open",
+   "gate_evidence_refs": []
   },
   {
    "id": "M2",
@@ -57,7 +52,7 @@
    "exit_conditions": [
     "وفق البند 20 من OS-EXEC-AR 3.2"
    ],
-   "gate_status": "open"
+   "gate_status": "not_started"
   },
   {
    "id": "M3",

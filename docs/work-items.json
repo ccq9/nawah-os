@@ -220,7 +220,8 @@
     "post_ebs trace",
     "EBS failure injection variant",
     "static NOBS test",
-    "M1 suite"
+    "M1 suite",
+    "reopened: language changed to Rust (ADR-0002); superseded by WP-06"
    ],
    "acceptance": "بوابة M1: build/boot/test PASS، NOBS PASS، NEG PASS",
    "test_ids": [
@@ -234,18 +235,14 @@
     "python3 tools/project.py test --target pc-qemu --suite M1",
     "python3 tools/project.py test --target host --suite M1"
    ],
-   "status": "done",
+   "status": "planned",
    "status_history": [
     "planned",
     "active",
-    "done"
+    "done",
+    "planned"
    ],
-   "evidence_refs": [
-    "evidence/20261017T210941Z-9f580295-001",
-    "evidence/20261017T210942Z-9f580295-001",
-    "evidence/20261017T210945Z-9f580295-001",
-    "evidence/20261018T025054Z-4d867f9d-003"
-   ],
+   "evidence_refs": [],
    "blocker": null
   },
   {
@@ -290,6 +287,72 @@
    "evidence_refs": [
     "evidence/ci/39090532071/jobs.json"
    ],
+   "blocker": null
+  },
+  {
+   "id": "WP-06",
+   "stage": "M1",
+   "requirement_ids": [
+    "REQ-M1-001",
+    "REQ-M1-002",
+    "REQ-M1-003",
+    "REQ-M1-004"
+   ],
+   "depends_on": [
+    "WP-03"
+   ],
+   "inputs": [
+    "ADR-0002",
+    "Sol OS archive (S32)",
+    "UEFI 2.11 §7.4.6 (S18)",
+    "rust-std x86_64-unknown-uefi (CI: rustup; local: user upload pending)"
+   ],
+   "files": [
+    "Cargo.toml",
+    "kernel/Cargo.toml",
+    "kernel/build.rs",
+    "kernel/src/main.rs",
+    "kernel/src/boot/efi.rs",
+    "kernel/src/boot/stub.rs",
+    "kernel/src/bootinfo.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/arch/x86_64/serial.rs",
+    "kernel/src/arch/x86_64/port.rs",
+    "kernel/src/arch/x86_64/qemu.rs",
+    "kernel/src/cell.rs",
+    "platform/pc-qemu/target.json",
+    "tests/test_m1_nobs.py",
+    "tools/check-unsafe.sh",
+    ".github/workflows/verify.yml"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "port stub + kernel to Rust (x86_64-unknown-uefi)",
+    "unsafe policy + checker",
+    "NOBS static test for Rust",
+    "CI builds with rustup target",
+    "re-run M1 suite"
+   ],
+   "acceptance": "بوابة M1 بأدلة جديدة: TST-M1-BUILD/BOOT/NEG/NOBS PASS محليًا (أو CI حتى وصول rust-std)",
+   "test_ids": [
+    "TST-M1-BUILD",
+    "TST-M1-BOOT",
+    "TST-M1-NEG",
+    "TST-M1-NOBS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M1",
+    "python3 tools/project.py test --target host --suite M1"
+   ],
+   "status": "active",
+   "status_history": [
+    "planned",
+    "active"
+   ],
+   "evidence_refs": [],
    "blocker": null
   }
  ]

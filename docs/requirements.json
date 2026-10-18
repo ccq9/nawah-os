@@ -151,10 +151,8 @@
    "test_ids": [
     "TST-M1-BUILD"
    ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261017T210941Z-9f580295-001"
-   ]
+   "implementation_status": "implemented_untested",
+   "evidence_refs": []
   },
   {
    "id": "REQ-M1-002",
@@ -181,10 +179,8 @@
    "test_ids": [
     "TST-M1-BOOT"
    ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261017T210942Z-9f580295-001"
-   ]
+   "implementation_status": "implemented_untested",
+   "evidence_refs": []
   },
   {
    "id": "REQ-M1-003",
@@ -235,10 +231,8 @@
    "test_ids": [
     "TST-M1-NEG"
    ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261017T210945Z-9f580295-001"
-   ]
+   "implementation_status": "implemented_untested",
+   "evidence_refs": []
   },
   {
    "id": "REQ-M1-005",
