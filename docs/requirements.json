@@ -1,985 +1,989 @@
 {
- "schema_version": "1.0.0",
- "records": [
-  {
-   "id": "REQ-M0-001",
-   "statement": "يسجل المشروع أدوات المضيف وإصداراتها ونواقصها وأثرها من نتائج تشغيل فعلية في docs/ENVIRONMENT.md",
-   "rationale": "لا قرار بناء بلا معرفة البيئة",
-   "source": "OS-EXEC-AR 3.2 §1.2",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M0",
-   "dependencies": [],
-   "contract_refs": [],
-   "failure_cases": [
-    "أداة مفقودة بلا خطوة معالجة"
-   ],
-   "acceptance": "الملف موجود ويحوي إصدارات مأخوذة من أوامر فعلية وقسم الناقص",
-   "test_ids": [
-    "TST-M0-002"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093244Z-507dd3f3-002"
-   ]
-  },
-  {
-   "id": "REQ-M0-002",
-   "statement": "تكون سجلات المشروع قابلة للتحقق آليًا: مخططات JSON Schema مع تحقق دلالي (تفرد المعرفات، صحة المراجع، خلو الدورات، مشروعية الانتقالات، تطابق الأدلة)",
-   "rationale": "منع الادعاءات غير المدعومة",
-   "source": "OS-EXEC-AR 3.2 §7.1",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M0",
-   "dependencies": [],
-   "contract_refs": [],
-   "failure_cases": [
-    "قبول دليل تغيرت مدخلاته",
-    "قبول done بلا PASS"
-   ],
-   "acceptance": "validate-records يرفض الحالات الست المطلوبة ويقبل مجموعة صالحة",
-   "test_ids": [
-    "TST-M0-001"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093244Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M0-003",
-   "statement": "يُحسم اختيار اللغة وسلسلة الأدوات وصيغة الصورة وfirmware المختبر بدليل تجربة E0 لا بالافتراض",
-   "rationale": "ADR-0001 يحتاج دليلًا",
-   "source": "OS-EXEC-AR 3.2 §1.5, §5 (E0)",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M0",
-   "dependencies": [
-    "REQ-M0-001"
-   ],
-   "contract_refs": [
-    "docs/adr/0001-bootstrap.md"
-   ],
-   "failure_cases": [
-    "لا يقلع في OVMF",
-    "لا أثر تسلسلي",
-    "رمز خروج غير متوقع"
-   ],
-   "acceptance": "بناء PE ناجح وإقلاع بأثر يحمل build_id ورمز خروج 33",
-   "test_ids": [
-    "TST-M0-E0-BUILD",
-    "TST-M0-E0-BOOT"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092818Z-507dd3f3-001",
-    "evidence/20261018T092820Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M0-004",
-   "statement": "يُكتب عقد تسليم الإقلاع (boot_info، ملكية الذاكرة، EBS وإعادة المحاولة، الأخطاء، عقد الأثر) قبل تنفيذ M1",
-   "rationale": "البند 8.1 يشترط العقد قبل المكوّن",
-   "source": "OS-EXEC-AR 3.2 §8.1, §7",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M0",
-   "dependencies": [
-    "REQ-M0-003"
-   ],
-   "contract_refs": [
-    "docs/contracts/boot.md"
-   ],
-   "failure_cases": [
-    "عقد بلا حالات فشل"
-   ],
-   "acceptance": "العقد يحوي الأقسام الثمانية المطلوبة وتُعرَّف اختبارات إنفاذه",
-   "test_ids": [
-    "TST-M0-002"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093244Z-507dd3f3-002"
-   ]
-  },
-  {
-   "id": "REQ-M0-005",
-   "statement": "يُسجل نمط الأتمتة الفعلي (interactive/durable/text_only) لكل من مشغّل التحقق وعامل التطوير مع دليل، ولا يُدّعى durable بلا اختبار الشاهد",
-   "rationale": "منع ادعاء استئناف غير موجود",
-   "source": "OS-EXEC-AR 3.2 §1 (الأتمتة), §7.2",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M0",
-   "dependencies": [],
-   "contract_refs": [],
-   "failure_cases": [
-    "ادعاء durable بلا مخزن دائم"
-   ],
-   "acceptance": "docs/automation.json صالح؛ mode=interactive ما دام persistence_verified_by فارغًا",
-   "test_ids": [
-    "TST-M0-001"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093244Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M1-001",
-   "statement": "يُبنى بناء نظيف لصورة نواة واحدة (PE32+ تطبيق EFI) بهوية مسجلة build_id مرتبطة بـsource_revision وبصمة الصورة",
-   "rationale": "هوية الصورة شرط كل حكم",
-   "source": "OS-EXEC-AR 3.2 §20 M1",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M1",
-   "dependencies": [
-    "REQ-M0-003"
-   ],
-   "contract_refs": [
-    "docs/contracts/boot.md"
-   ],
-   "failure_cases": [
-    "فشل أداة بناء يعيد صفرًا"
-   ],
-   "acceptance": "build يعيد 0 فقط عند نجاح كل الخطوات ووجود الصورة؛ الدليل يحمل بصمتها",
-   "test_ids": [
-    "TST-M1-BUILD"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092823Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M1-002",
-   "statement": "تقلع الصورة عبر UEFI، تحصل على خريطة ذاكرة حديثة، تنفذ ExitBootServices بالمفتاح الصحيح مع إعادة محاولة واحدة عند تغير الخريطة، وتصدر النواة أثرًا بعدها",
-   "rationale": "اختبار التسليم الفعلي لا تشغيل تطبيق UEFI",
-   "source": "OS-EXEC-AR 3.2 §8.1, §20 M1",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M1",
-   "dependencies": [
-    "REQ-M1-001",
-    "REQ-M0-004"
-   ],
-   "contract_refs": [
-    "docs/contracts/boot.md"
-   ],
-   "failure_cases": [
-    "EBS تفشل مرتين",
-    "خريطة أكبر من الحد",
-    "تعليق"
-   ],
-   "acceptance": "سطر kernel|post_ebs بعد EBS ورمز خروج 33",
-   "test_ids": [
-    "TST-M1-BOOT"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092834Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M1-003",
-   "statement": "لا تُستدعى Boot Services ولا بروتوكولات الأجهزة التابعة لها بعد نجاح ExitBootServices",
-   "rationale": "المواصفة تحظره؛ الإثبات بنيوي",
-   "source": "OS-EXEC-AR 3.2 §8.1; UEFI 2.11 §7.4.6 [S18]",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M1",
-   "dependencies": [
-    "REQ-M1-002"
-   ],
-   "contract_refs": [
-    "docs/contracts/boot.md"
-   ],
-   "failure_cases": [
-    "مؤشر SystemTable يتسرب إلى kernel/"
-   ],
-   "acceptance": "وحدة kernel/ لا تضم تعريف Boot Services ولا تستقبل SystemTable؛ فحص ساكن",
-   "test_ids": [
-    "TST-M1-NOBS"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093244Z-507dd3f3-003"
-   ]
-  },
-  {
-   "id": "REQ-M1-004",
-   "statement": "مسار فشل تسليم مضبوط (حقن فشل EBS) يصدر تشخيصًا برمز خطأ ويتوقف دون حلقة إعادة تشغيل",
-   "rationale": "البند 8.1: لا حلقة بلا تشخيص",
-   "source": "OS-EXEC-AR 3.2 §8.1, §20 M1",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M1",
-   "dependencies": [
-    "REQ-M1-002"
-   ],
-   "contract_refs": [
-    "docs/contracts/boot.md"
-   ],
-   "failure_cases": [
-    "إعادة تشغيل صامتة"
-   ],
-   "acceptance": "سطر boot|error|code=BOOT_E_EBS_FAILED ورمز خروج 97",
-   "test_ids": [
-    "TST-M1-NEG"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092838Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M1-005",
-   "statement": "مسار صورة غير صالحة يُرفض بتشخيص",
-   "rationale": "البند 20 M1",
-   "source": "OS-EXEC-AR 3.2 §20 M1",
-   "origin": "user_requirement",
-   "priority": "should",
-   "release": "R1",
-   "stage": "M1",
-   "dependencies": [
-    "REQ-M1-002"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "قبول صورة تالفة"
-   ],
-   "acceptance": "N/A بسبب موثق ما دامت الصورة واحدة بلا محمل منفصل؛ يُفعَّل عند فصل المحمل",
-   "test_ids": [
-    "TST-M1-INVALID-IMAGE"
-   ],
-   "implementation_status": "deferred",
-   "evidence_refs": [],
-   "detail_status": "deferred",
-   "detail_stage": "M3",
-   "defer_reason": "single-image bootstrap (ADR-0001); loader split decision pending"
-  },
-  {
-   "id": "REQ-SCOPE-001",
-   "statement": "نواة أصلية يملكها المشروع؛ لا توزيعة ولا نقل نواة قائمة",
-   "rationale": "هدف المستخدم الثابت",
-   "source": "OS-EXEC-AR 3.2 §3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "ALL",
-   "stage": "M0",
-   "dependencies": [],
-   "contract_refs": [],
-   "failure_cases": [],
-   "acceptance": "لا تُقبل أي حزمة تستبدل النواة",
-   "test_ids": [],
-   "implementation_status": "planned",
-   "evidence_refs": [],
-   "detail_status": "detailed"
-  },
-  {
-   "id": "REQ-SCOPE-002",
-   "statement": "إصدار حاسوب شخصي فعلي أولًا ثم توسع إلى جهاز محمول في M12–M15",
-   "rationale": "هدف المستخدم",
-   "source": "OS-EXEC-AR 3.2 §3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "ALL",
-   "stage": "M12",
-   "dependencies": [],
-   "contract_refs": [],
-   "failure_cases": [],
-   "acceptance": "يُفصَّل في M12",
-   "test_ids": [],
-   "implementation_status": "deferred",
-   "evidence_refs": [],
-   "detail_status": "deferred",
-   "detail_stage": "M12",
-   "defer_reason": "device/ISA decided in M12"
-  },
-  {
-   "id": "REQ-SCOPE-003",
-   "statement": "مطابقة منظمة للإعدادات والتبويب والسلوك لمرجع Windows 10 Pro 22H2 x64 (19045) بأبعاد مطابقة مستقلة",
-   "rationale": "هدف المستخدم",
-   "source": "OS-EXEC-AR 3.2 §3, §4, §11, §12",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1+",
-   "stage": "M6",
-   "dependencies": [],
-   "contract_refs": [],
-   "failure_cases": [],
-   "acceptance": "يُفصَّل مع الجرد في M6/M7",
-   "test_ids": [],
-   "implementation_status": "deferred",
-   "evidence_refs": [],
-   "detail_status": "deferred",
-   "detail_stage": "M6",
-   "defer_reason": "reference capture pending (DEC-002)"
-  },
-  {
-   "id": "REQ-SCOPE-004",
-   "statement": "العربية والإنجليزية ضمن النطاق (RTL/LTR، تشكيل، لوحات مفاتيح) من طبقة النص",
-   "rationale": "هدف المستخدم",
-   "source": "OS-EXEC-AR 3.2 §17",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M5",
-   "dependencies": [],
-   "contract_refs": [],
-   "failure_cases": [],
-   "acceptance": "يُفصَّل في M5",
-   "test_ids": [],
-   "implementation_status": "deferred",
-   "evidence_refs": [],
-   "detail_status": "deferred",
-   "detail_stage": "M5",
-   "defer_reason": "text layer not started"
-  },
-  {
-   "id": "REQ-M2-001",
-   "statement": "تحمّل النواة جداول معالج تملكها (GDT وTSS وIDT) قبل أي عمل آخر بعد الإقلاع، ولا تعتمد على جداول firmware",
-   "rationale": "firmware tables live in reclaimable memory",
-   "source": "OS-EXEC-AR 3.2 §8.2, §20 M2",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [
-    "REQ-M1-002"
-   ],
-   "contract_refs": [
-    "docs/contracts/boot.md"
-   ],
-   "failure_cases": [
-    "IDT firmware مستعمل بعد الاسترداد"
-   ],
-   "acceptance": "idt_layout عبر sidt يطابق SDM؛ أثر cpu_tables في الإقلاع",
-   "test_ids": [
-    "TST-M2-IDT-LAYOUT",
-    "TST-M1-BOOT"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092916Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M2-002",
-   "statement": "كل استثناء معالج (0–31) يصدر سطر تشخيص كاملًا (الرقم ورمز الخطأ وRIP وCR2 والمسجلات) ويكون قاتلًا في وضع النواة، إلا #BP الذي يُستأنف بحالة مسجلات وأعلام سليمة",
-   "rationale": "no silent reset; diagnosable faults",
-   "source": "OS-EXEC-AR 3.2 §8.2, §20 M2",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [
-    "REQ-M2-001"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "RIP خاطئ في الإطار",
-    "مسجل لا يُستعاد بعد #BP"
-   ],
-   "acceptance": "اختبارات حقن DE/UD/DB/GP/PF/BP بأرقام ورموز ومساواة RIP",
-   "test_ids": [
-    "TST-M2-EXC-DE",
-    "TST-M2-EXC-UD",
-    "TST-M2-EXC-DB",
-    "TST-M2-EXC-GP",
-    "TST-M2-EXC-PF",
-    "TST-M2-EXC-BP",
-    "TST-M2-EXC-BP-STATE"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092842Z-507dd3f3-001",
-    "evidence/20261018T092846Z-507dd3f3-001",
-    "evidence/20261018T092850Z-507dd3f3-001",
-    "evidence/20261018T092853Z-507dd3f3-001",
-    "evidence/20261018T092857Z-507dd3f3-001",
-    "evidence/20261018T092901Z-507dd3f3-001",
-    "evidence/20261018T092905Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M2-003",
-   "statement": "يُعالَج الخطأ المزدوج على مكدس طوارئ مخصص عبر IST",
-   "rationale": "a corrupt stack must not become a triple fault",
-   "source": "OS-EXEC-AR 3.2 §8.2",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [
-    "REQ-M2-001"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "#DF على المكدس الفاسد"
-   ],
-   "acceptance": "إطار #DF يُطبع من المكدس df",
-   "test_ids": [
-    "TST-M2-EXC-DF"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092909Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M2-004",
-   "statement": "تداخل الاستثناءات داخل المعالج محدود بعمق 3 وينتهي برسالة ثابتة وتوقف لا بحلقة",
-   "rationale": "bounded failure",
-   "source": "OS-EXEC-AR 3.2 §8.2 (panic policy)",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [
-    "REQ-M2-002"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "حلقة لا نهائية"
-   ],
-   "acceptance": "3 إطارات #UD ثم nesting_limit",
-   "test_ids": [
-    "TST-M2-EXC-NESTED"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092912Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M2-005",
-   "statement": "تعمل النواة على مكدس تملكه بعد ExitBootServices لا على مكدس firmware",
-   "rationale": "firmware stack memory is reclaimable",
-   "source": "OS-EXEC-AR 3.2 §8.1, §8.2",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [
-    "REQ-M1-002"
-   ],
-   "contract_refs": [
-    "docs/contracts/boot.md"
-   ],
-   "failure_cases": [
-    "RSP داخل ذاكرة firmware"
-   ],
-   "acceptance": "stack=kernel في الإقلاع وفي إطار استثناء",
-   "test_ids": [
-    "TST-M2-EXC-DE",
-    "TST-M1-BOOT"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092842Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M2-006",
-   "statement": "يكشف مشغّل الاختبارات إعادة التشغيل الصامتة (triple fault) ويميزها عن النجاح",
-   "rationale": "the harness must not pass on a reset",
-   "source": "OS-EXEC-AR 3.2 §19",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [],
-   "contract_refs": [],
-   "failure_cases": [
-    "reset يُحتسب نجاحًا"
-   ],
-   "acceptance": "اختبار triple يخرج برمز 0 بلا سطر استثناء",
-   "test_ids": [
-    "TST-M2-EXC-TRIPLE"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092920Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M2-010",
-   "statement": "مخصص إطارات فيزيائية من خريطة UEFI يحجز النواة وboot_info، ويعيد None عند النفاد، ويكشف التحرير المزدوج",
-   "rationale": "memory foundation",
-   "source": "OS-EXEC-AR 3.2 §8.3, §20 M2",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [
-    "REQ-M2-001"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "تخصيص الإطار نفسه مرتين",
-    "panic عند النفاد"
-   ],
-   "acceptance": "اختبارات العد والنفاد والتحرير المزدوج",
-   "test_ids": [
-    "TST-M2-PMM-COUNTS",
-    "TST-M2-PMM-EXHAUST",
-    "TST-M2-PMM-DOUBLE-FREE"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092924Z-507dd3f3-001",
-    "evidence/20261018T092928Z-507dd3f3-001",
-    "evidence/20261018T092932Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M2-011",
-   "statement": "جداول صفحات تملكها النواة: خريطة مباشرة في النصف الأعلى، أقسام النواة بأذونات RX/R/RW+NX، CR0.WP وEFER.NXE، صفحات حراسة للمكدسات",
-   "rationale": "W^X and isolation groundwork",
-   "source": "OS-EXEC-AR 3.2 §8.3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [
-    "REQ-M2-010"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "كتابة على .text تنجح",
-    "تنفيذ من .data ينجح",
-    "تجاوز المكدس يدوس البيانات"
-   ],
-   "acceptance": "اختبارات switch/wp/nx/guard",
-   "test_ids": [
-    "TST-M2-VMM-SWITCH",
-    "TST-M2-VMM-WP",
-    "TST-M2-VMM-NX",
-    "TST-M2-VMM-GUARD"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092935Z-507dd3f3-001",
-    "evidence/20261018T092939Z-507dd3f3-001",
-    "evidence/20261018T092943Z-507dd3f3-001",
-    "evidence/20261018T092947Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M2-012",
-   "statement": "مقاطعات ومؤقت: تقنيع PIC، LAPIC/IOAPIC من ACPI MADT، مؤقت دوري معاير، EOI، بلا إعادة دخول",
-   "rationale": "timers and interrupts for scheduling",
-   "source": "OS-EXEC-AR 3.2 §8.2, §20 M2",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [
-    "REQ-M2-011"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "لا نبضات",
-    "إعادة دخول المعالج"
-   ],
-   "acceptance": "اختبارات ticks/eoi/spurious",
-   "test_ids": [
-    "TST-M2-TIMER-TICKS",
-    "TST-M2-IRQ-EOI",
-    "TST-M2-SPURIOUS"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T092950Z-507dd3f3-001",
-    "evidence/20261018T092954Z-507dd3f3-001",
-    "evidence/20261018T092958Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M2-013",
-   "statement": "تزامن أولي (irqsave spinlock) وسياسة panic ونفاد موارد موثقة",
-   "rationale": "single-CPU correctness before SMP",
-   "source": "OS-EXEC-AR 3.2 §8.2 (التزامن), §20 M2",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [
-    "REQ-M2-012"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "IF لا يُستعاد"
-   ],
-   "acceptance": "اختبارات lock/panic",
-   "test_ids": [
-    "TST-M2-LOCK-IRQSAVE",
-    "TST-M2-PANIC-CODE",
-    "TST-M2-LOCK-REENTRY"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093002Z-507dd3f3-001",
-    "evidence/20261018T093006Z-507dd3f3-001",
-    "evidence/20261018T093010Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M2-014",
-   "statement": "اختبار طفرات على arch/ يكشف ≥95% من العيوب المزروعة قبل إغلاق M2",
-   "rationale": "tests must detect defects, not just pass",
-   "source": "OS-EXEC-AR 3.2 §19; Sol ADR-010 §15",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M2",
-   "dependencies": [
-    "REQ-M2-002"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "اختبار لا يكشف حذف تعليمة دفاعية"
-   ],
-   "acceptance": "تقرير mutants",
-   "test_ids": [
-    "TST-M2-MUTANTS"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T051719Z-13055739-001"
-   ]
-  },
-  {
-   "id": "REQ-M3-001",
-   "statement": "كومة نواة فوق مخصص الإطارات والخريطة المباشرة، وإلغاء تخطيط/تغيير حماية الصفحات مع إبطال TLB، وكائن فضاء عناوين مستخدم منفصل",
-   "rationale": "foundation for processes",
-   "source": "OS-EXEC-AR 3.2 §20 M3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M3",
-   "dependencies": [
-    "REQ-M2-011"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "تسريب إطارات بعد تحرير الكومة",
-    "وصول ناجح بعد unmap"
-   ],
-   "acceptance": "heap_stress بلا تسريب؛ unmap → #PF؛ تبديل فضاء",
-   "test_ids": [
-    "TST-M3-HEAP-STRESS",
-    "TST-M3-VMM-UNMAP",
-    "TST-M3-AS-SWITCH",
-    "TST-M3-VMM-PROTECT"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093014Z-507dd3f3-001",
-    "evidence/20261018T093018Z-507dd3f3-001",
-    "evidence/20261018T093022Z-507dd3f3-001",
-    "evidence/20261018T093025Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M3-002",
-   "statement": "تجربة نقل مبكرة: بناء وإقلاع وأثر تشخيص على AArch64 (QEMU virt) قبل تجميد عقود ABI، دون إعلان دعم المحمول",
-   "rationale": "architecture separation check",
-   "source": "OS-EXEC-AR 3.2 §8",
-   "origin": "user_requirement",
-   "priority": "should",
-   "release": "R1",
-   "stage": "M3",
-   "dependencies": [
-    "REQ-M1-001"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "شيفرة x86 في المسار المشترك"
-   ],
-   "acceptance": "بناء وإقلاع وأثر على virt-qemu-aarch64",
-   "test_ids": [
-    "TST-M3-A64-BUILD",
-    "TST-M3-A64-BOOT"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093237Z-507dd3f3-001",
-    "evidence/20261018T093238Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M3-003",
-   "statement": "وضع المستخدم ونداءات نظام بعقد ABI مجمَّد: تُرفض المؤشرات والأطوال غير الصالحة بخطأ لا panic، ووصول المستخدم إلى النواة يُنهي العملية بتشخيص",
-   "rationale": "isolation boundary",
-   "source": "OS-EXEC-AR 3.2 §20 M3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M3",
-   "dependencies": [
-    "REQ-M3-001"
-   ],
-   "contract_refs": [
-    "docs/contracts/syscall.md"
-   ],
-   "failure_cases": [
-    "panic عند مؤشر مستخدم خاطئ",
-    "قراءة ذاكرة النواة من حلقة 3"
-   ],
-   "acceptance": "user_syscall/user_bad_ptr/user_kernel_access/sysret_canonical",
-   "test_ids": [
-    "TST-M3-USER-SYSCALL",
-    "TST-M3-USER-BAD-PTR",
-    "TST-M3-USER-KERNEL-ACCESS",
-    "TST-M3-SYSRET-CANONICAL",
-    "TST-M3-ISOLATION"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093029Z-507dd3f3-001",
-    "evidence/20261018T093033Z-507dd3f3-001",
-    "evidence/20261018T093037Z-507dd3f3-001",
-    "evidence/20261018T093045Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M3-004",
-   "statement": "عمليات وخيوط وجدولة أولويات ثابتة مع استباق بالمؤقت؛ خروج العملية يحرر كل مواردها",
-   "rationale": "scheduling and cleanup",
-   "source": "OS-EXEC-AR 3.2 §20 M3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M3",
-   "dependencies": [
-    "REQ-M3-003",
-    "REQ-M2-012"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "تجويع",
-    "تسريب إطارات بعد الخروج"
-   ],
-   "acceptance": "threads_alternate/preempt/exit_cleanup/user_sleep",
-   "test_ids": [
-    "TST-M3-THREADS-ALTERNATE",
-    "TST-M3-PREEMPT",
-    "TST-M3-EXIT-CLEANUP",
-    "TST-M3-USER-SLEEP"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093049Z-507dd3f3-001",
-    "evidence/20261018T093052Z-507dd3f3-001",
-    "evidence/20261018T093056Z-507dd3f3-001",
-    "evidence/20261018T093100Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M3-005",
-   "statement": "مقابض بحقوق وIPC رسائل بحدود أحجام وتمرير مقابض؛ الحقوق تُفحص في كل نداء",
-   "rationale": "capability model",
-   "source": "OS-EXEC-AR 3.2 §20 M3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M3",
-   "dependencies": [
-    "REQ-M3-004"
-   ],
-   "contract_refs": [
-    "docs/contracts/ipc.md"
-   ],
-   "failure_cases": [
-    "رسالة فوق الحد تُقبل",
-    "مقبض مغلق يُستعمل"
-   ],
-   "acceptance": "ipc_roundtrip/rights_denied/closed_handle/oversize/no_leak",
-   "test_ids": [
-    "TST-M3-IPC-ROUNDTRIP",
-    "TST-M3-RIGHTS-DENIED",
-    "TST-M3-CLOSED-HANDLE",
-    "TST-M3-IPC-OVERSIZE",
-    "TST-M3-IPC-NO-LEAK",
-    "TST-M3-HANDLE-TABLE",
-    "TST-M3-BLOCK-WAKE"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093104Z-507dd3f3-001",
-    "evidence/20261018T093108Z-507dd3f3-001",
-    "evidence/20261018T093112Z-507dd3f3-001",
-    "evidence/20261018T093116Z-507dd3f3-001",
-    "evidence/20261018T093120Z-507dd3f3-001",
-    "evidence/20261018T093123Z-507dd3f3-001",
-    "evidence/20261018T093127Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M3-006",
-   "statement": "محمّل ELF64 بأذونات W^X ووقت تشغيل أدنى وتطبيقات اختبار تُبنى بسلسلة الأدوات نفسها",
-   "rationale": "native apps",
-   "source": "OS-EXEC-AR 3.2 §20 M3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M3",
-   "dependencies": [
-    "REQ-M3-003"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "مقطع RWX يُحمَّل",
-    "ELF مشوه يُسقط النواة"
-   ],
-   "acceptance": "app_exit_code/malformed_elf/wx_rejected",
-   "test_ids": [
-    "TST-M3-APP-EXIT-CODE",
-    "TST-M3-ELF-MALFORMED",
-    "TST-M3-ELF-WX"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093131Z-507dd3f3-001",
-    "evidence/20261018T093135Z-507dd3f3-001",
-    "evidence/20261018T093139Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M3-007",
-   "statement": "تخزين: PCI/virtio-blk وطبقة كتل مع flush ونظام ملفات أول؛ البيانات المقر حفظها تبقى بعد إعادة التشغيل",
-   "rationale": "persistence",
-   "source": "OS-EXEC-AR 3.2 §20 M3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M3",
-   "dependencies": [
-    "REQ-M3-001"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "بيانات مفقودة بعد إعادة التشغيل"
-   ],
-   "acceptance": "blk_read_pattern/blk_write_flush_reboot_read",
-   "test_ids": [
-    "TST-M3-BLK-READ",
-    "TST-M3-BLK-USER-CR3",
-    "TST-M3-BLK-PERSIST",
-    "TST-M3-FAT32-READ",
-    "TST-M3-FAT32-WRITE",
-    "TST-M3-FAT32-PERSIST",
-    "TST-M3-FAT32-TOOL"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093143Z-507dd3f3-001",
-    "evidence/20261018T093147Z-507dd3f3-001",
-    "evidence/20261018T093150Z-507dd3f3-001",
-    "evidence/20261018T093157Z-507dd3f3-001",
-    "evidence/20261018T093201Z-507dd3f3-001",
-    "evidence/20261018T093206Z-507dd3f3-001",
-    "evidence/20261018T093244Z-507dd3f3-004"
-   ]
-  },
-  {
-   "id": "REQ-M3-008",
-   "statement": "VFS ونداءات ملفات لكل عملية بحقوق وبلا تسريب واصفات",
-   "rationale": "files for apps",
-   "source": "OS-EXEC-AR 3.2 §20 M3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M3",
-   "dependencies": [
-    "REQ-M3-007",
-    "REQ-M3-005"
-   ],
-   "contract_refs": [
-    "docs/contracts/files.md"
-   ],
-   "failure_cases": [
-    "تسريب واصفات"
-   ],
-   "acceptance": "file_roundtrip/path_invalid/fd_leak",
-   "test_ids": [
-    "TST-M3-FILE-ROUNDTRIP",
-    "TST-M3-PATH-INVALID",
-    "TST-M3-FD-LEAK"
-   ],
-   "implementation_status": "verified_in_scope",
-   "evidence_refs": [
-    "evidence/20261018T093213Z-507dd3f3-001",
-    "evidence/20261018T093217Z-507dd3f3-001",
-    "evidence/20261018T093221Z-507dd3f3-001"
-   ]
-  },
-  {
-   "id": "REQ-M3-009",
-   "statement": "SMP: تشغيل كل المعالجات المذكورة في MADT، بنى per-CPU، إبطال TLB عبر IPI، أقفال صحيحة تحت التنازع",
-   "rationale": "multi-core correctness",
-   "source": "OS-EXEC-AR 3.2 §20 M3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M3",
-   "dependencies": [
-    "REQ-M3-004",
-    "REQ-M2-013"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "عدّاد غير دقيق تحت التنازع",
-    "ترجمة قديمة بعد unmap على معالج آخر"
-   ],
-   "acceptance": "all_cpus_online/lock_contention/tlb_shootdown",
-   "test_ids": [
-    "TST-M3-SMP-ONLINE",
-    "TST-M3-LOCK-CONTENTION",
-    "TST-M3-TLB-SHOOTDOWN"
-   ],
-   "implementation_status": "planned",
-   "evidence_refs": []
-  },
-  {
-   "id": "REQ-M3-010",
-   "statement": "بوابة M3: أجنحة العزل والموارد والثبات، اختبار طفرات ≥95% على الوحدات الجديدة، مراجعة مسماة",
-   "rationale": "gate",
-   "source": "OS-EXEC-AR 3.2 §20 M3",
-   "origin": "user_requirement",
-   "priority": "must",
-   "release": "R1",
-   "stage": "M3",
-   "dependencies": [
-    "REQ-M3-003",
-    "REQ-M3-004",
-    "REQ-M3-005",
-    "REQ-M3-006",
-    "REQ-M3-007",
-    "REQ-M3-008",
-    "REQ-M3-009"
-   ],
-   "contract_refs": [],
-   "failure_cases": [
-    "ادعاء عزل بلا اختبار"
-   ],
-   "acceptance": "M3 suite + mutants",
-   "test_ids": [
-    "TST-M3-ISOLATION",
-    "TST-M3-MUTANTS"
-   ],
-   "implementation_status": "planned",
-   "evidence_refs": []
-  }
- ]
+  "schema_version": "1.0.0",
+  "records": [
+    {
+      "id": "REQ-M0-001",
+      "statement": "يسجل المشروع أدوات المضيف وإصداراتها ونواقصها وأثرها من نتائج تشغيل فعلية في docs/ENVIRONMENT.md",
+      "rationale": "لا قرار بناء بلا معرفة البيئة",
+      "source": "OS-EXEC-AR 3.2 §1.2",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M0",
+      "dependencies": [],
+      "contract_refs": [],
+      "failure_cases": [
+        "أداة مفقودة بلا خطوة معالجة"
+      ],
+      "acceptance": "الملف موجود ويحوي إصدارات مأخوذة من أوامر فعلية وقسم الناقص",
+      "test_ids": [
+        "TST-M0-002"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T094038Z-f24bdda2-002"
+      ]
+    },
+    {
+      "id": "REQ-M0-002",
+      "statement": "تكون سجلات المشروع قابلة للتحقق آليًا: مخططات JSON Schema مع تحقق دلالي (تفرد المعرفات، صحة المراجع، خلو الدورات، مشروعية الانتقالات، تطابق الأدلة)",
+      "rationale": "منع الادعاءات غير المدعومة",
+      "source": "OS-EXEC-AR 3.2 §7.1",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M0",
+      "dependencies": [],
+      "contract_refs": [],
+      "failure_cases": [
+        "قبول دليل تغيرت مدخلاته",
+        "قبول done بلا PASS"
+      ],
+      "acceptance": "validate-records يرفض الحالات الست المطلوبة ويقبل مجموعة صالحة",
+      "test_ids": [
+        "TST-M0-001"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T094038Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M0-003",
+      "statement": "يُحسم اختيار اللغة وسلسلة الأدوات وصيغة الصورة وfirmware المختبر بدليل تجربة E0 لا بالافتراض",
+      "rationale": "ADR-0001 يحتاج دليلًا",
+      "source": "OS-EXEC-AR 3.2 §1.5, §5 (E0)",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M0",
+      "dependencies": [
+        "REQ-M0-001"
+      ],
+      "contract_refs": [
+        "docs/adr/0001-bootstrap.md"
+      ],
+      "failure_cases": [
+        "لا يقلع في OVMF",
+        "لا أثر تسلسلي",
+        "رمز خروج غير متوقع"
+      ],
+      "acceptance": "بناء PE ناجح وإقلاع بأثر يحمل build_id ورمز خروج 33",
+      "test_ids": [
+        "TST-M0-E0-BUILD",
+        "TST-M0-E0-BOOT"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093749Z-f24bdda2-001",
+        "evidence/20261018T093751Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M0-004",
+      "statement": "يُكتب عقد تسليم الإقلاع (boot_info، ملكية الذاكرة، EBS وإعادة المحاولة، الأخطاء، عقد الأثر) قبل تنفيذ M1",
+      "rationale": "البند 8.1 يشترط العقد قبل المكوّن",
+      "source": "OS-EXEC-AR 3.2 §8.1, §7",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M0",
+      "dependencies": [
+        "REQ-M0-003"
+      ],
+      "contract_refs": [
+        "docs/contracts/boot.md"
+      ],
+      "failure_cases": [
+        "عقد بلا حالات فشل"
+      ],
+      "acceptance": "العقد يحوي الأقسام الثمانية المطلوبة وتُعرَّف اختبارات إنفاذه",
+      "test_ids": [
+        "TST-M0-002"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T094038Z-f24bdda2-002"
+      ]
+    },
+    {
+      "id": "REQ-M0-005",
+      "statement": "يُسجل نمط الأتمتة الفعلي (interactive/durable/text_only) لكل من مشغّل التحقق وعامل التطوير مع دليل، ولا يُدّعى durable بلا اختبار الشاهد",
+      "rationale": "منع ادعاء استئناف غير موجود",
+      "source": "OS-EXEC-AR 3.2 §1 (الأتمتة), §7.2",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M0",
+      "dependencies": [],
+      "contract_refs": [],
+      "failure_cases": [
+        "ادعاء durable بلا مخزن دائم"
+      ],
+      "acceptance": "docs/automation.json صالح؛ mode=interactive ما دام persistence_verified_by فارغًا",
+      "test_ids": [
+        "TST-M0-001"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T094038Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M1-001",
+      "statement": "يُبنى بناء نظيف لصورة نواة واحدة (PE32+ تطبيق EFI) بهوية مسجلة build_id مرتبطة بـsource_revision وبصمة الصورة",
+      "rationale": "هوية الصورة شرط كل حكم",
+      "source": "OS-EXEC-AR 3.2 §20 M1",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M1",
+      "dependencies": [
+        "REQ-M0-003"
+      ],
+      "contract_refs": [
+        "docs/contracts/boot.md"
+      ],
+      "failure_cases": [
+        "فشل أداة بناء يعيد صفرًا"
+      ],
+      "acceptance": "build يعيد 0 فقط عند نجاح كل الخطوات ووجود الصورة؛ الدليل يحمل بصمتها",
+      "test_ids": [
+        "TST-M1-BUILD"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093753Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M1-002",
+      "statement": "تقلع الصورة عبر UEFI، تحصل على خريطة ذاكرة حديثة، تنفذ ExitBootServices بالمفتاح الصحيح مع إعادة محاولة واحدة عند تغير الخريطة، وتصدر النواة أثرًا بعدها",
+      "rationale": "اختبار التسليم الفعلي لا تشغيل تطبيق UEFI",
+      "source": "OS-EXEC-AR 3.2 §8.1, §20 M1",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M1",
+      "dependencies": [
+        "REQ-M1-001",
+        "REQ-M0-004"
+      ],
+      "contract_refs": [
+        "docs/contracts/boot.md"
+      ],
+      "failure_cases": [
+        "EBS تفشل مرتين",
+        "خريطة أكبر من الحد",
+        "تعليق"
+      ],
+      "acceptance": "سطر kernel|post_ebs بعد EBS ورمز خروج 33",
+      "test_ids": [
+        "TST-M1-BOOT"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093801Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M1-003",
+      "statement": "لا تُستدعى Boot Services ولا بروتوكولات الأجهزة التابعة لها بعد نجاح ExitBootServices",
+      "rationale": "المواصفة تحظره؛ الإثبات بنيوي",
+      "source": "OS-EXEC-AR 3.2 §8.1; UEFI 2.11 §7.4.6 [S18]",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M1",
+      "dependencies": [
+        "REQ-M1-002"
+      ],
+      "contract_refs": [
+        "docs/contracts/boot.md"
+      ],
+      "failure_cases": [
+        "مؤشر SystemTable يتسرب إلى kernel/"
+      ],
+      "acceptance": "وحدة kernel/ لا تضم تعريف Boot Services ولا تستقبل SystemTable؛ فحص ساكن",
+      "test_ids": [
+        "TST-M1-NOBS"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T094038Z-f24bdda2-003"
+      ]
+    },
+    {
+      "id": "REQ-M1-004",
+      "statement": "مسار فشل تسليم مضبوط (حقن فشل EBS) يصدر تشخيصًا برمز خطأ ويتوقف دون حلقة إعادة تشغيل",
+      "rationale": "البند 8.1: لا حلقة بلا تشخيص",
+      "source": "OS-EXEC-AR 3.2 §8.1, §20 M1",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M1",
+      "dependencies": [
+        "REQ-M1-002"
+      ],
+      "contract_refs": [
+        "docs/contracts/boot.md"
+      ],
+      "failure_cases": [
+        "إعادة تشغيل صامتة"
+      ],
+      "acceptance": "سطر boot|error|code=BOOT_E_EBS_FAILED ورمز خروج 97",
+      "test_ids": [
+        "TST-M1-NEG"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093803Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M1-005",
+      "statement": "مسار صورة غير صالحة يُرفض بتشخيص",
+      "rationale": "البند 20 M1",
+      "source": "OS-EXEC-AR 3.2 §20 M1",
+      "origin": "user_requirement",
+      "priority": "should",
+      "release": "R1",
+      "stage": "M1",
+      "dependencies": [
+        "REQ-M1-002"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "قبول صورة تالفة"
+      ],
+      "acceptance": "N/A بسبب موثق ما دامت الصورة واحدة بلا محمل منفصل؛ يُفعَّل عند فصل المحمل",
+      "test_ids": [
+        "TST-M1-INVALID-IMAGE"
+      ],
+      "implementation_status": "deferred",
+      "evidence_refs": [],
+      "detail_status": "deferred",
+      "detail_stage": "M3",
+      "defer_reason": "single-image bootstrap (ADR-0001); loader split decision pending"
+    },
+    {
+      "id": "REQ-SCOPE-001",
+      "statement": "نواة أصلية يملكها المشروع؛ لا توزيعة ولا نقل نواة قائمة",
+      "rationale": "هدف المستخدم الثابت",
+      "source": "OS-EXEC-AR 3.2 §3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "ALL",
+      "stage": "M0",
+      "dependencies": [],
+      "contract_refs": [],
+      "failure_cases": [],
+      "acceptance": "لا تُقبل أي حزمة تستبدل النواة",
+      "test_ids": [],
+      "implementation_status": "planned",
+      "evidence_refs": [],
+      "detail_status": "detailed"
+    },
+    {
+      "id": "REQ-SCOPE-002",
+      "statement": "إصدار حاسوب شخصي فعلي أولًا ثم توسع إلى جهاز محمول في M12–M15",
+      "rationale": "هدف المستخدم",
+      "source": "OS-EXEC-AR 3.2 §3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "ALL",
+      "stage": "M12",
+      "dependencies": [],
+      "contract_refs": [],
+      "failure_cases": [],
+      "acceptance": "يُفصَّل في M12",
+      "test_ids": [],
+      "implementation_status": "deferred",
+      "evidence_refs": [],
+      "detail_status": "deferred",
+      "detail_stage": "M12",
+      "defer_reason": "device/ISA decided in M12"
+    },
+    {
+      "id": "REQ-SCOPE-003",
+      "statement": "مطابقة منظمة للإعدادات والتبويب والسلوك لمرجع Windows 10 Pro 22H2 x64 (19045) بأبعاد مطابقة مستقلة",
+      "rationale": "هدف المستخدم",
+      "source": "OS-EXEC-AR 3.2 §3, §4, §11, §12",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1+",
+      "stage": "M6",
+      "dependencies": [],
+      "contract_refs": [],
+      "failure_cases": [],
+      "acceptance": "يُفصَّل مع الجرد في M6/M7",
+      "test_ids": [],
+      "implementation_status": "deferred",
+      "evidence_refs": [],
+      "detail_status": "deferred",
+      "detail_stage": "M6",
+      "defer_reason": "reference capture pending (DEC-002)"
+    },
+    {
+      "id": "REQ-SCOPE-004",
+      "statement": "العربية والإنجليزية ضمن النطاق (RTL/LTR، تشكيل، لوحات مفاتيح) من طبقة النص",
+      "rationale": "هدف المستخدم",
+      "source": "OS-EXEC-AR 3.2 §17",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M5",
+      "dependencies": [],
+      "contract_refs": [],
+      "failure_cases": [],
+      "acceptance": "يُفصَّل في M5",
+      "test_ids": [],
+      "implementation_status": "deferred",
+      "evidence_refs": [],
+      "detail_status": "deferred",
+      "detail_stage": "M5",
+      "defer_reason": "text layer not started"
+    },
+    {
+      "id": "REQ-M2-001",
+      "statement": "تحمّل النواة جداول معالج تملكها (GDT وTSS وIDT) قبل أي عمل آخر بعد الإقلاع، ولا تعتمد على جداول firmware",
+      "rationale": "firmware tables live in reclaimable memory",
+      "source": "OS-EXEC-AR 3.2 §8.2, §20 M2",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [
+        "REQ-M1-002"
+      ],
+      "contract_refs": [
+        "docs/contracts/boot.md"
+      ],
+      "failure_cases": [
+        "IDT firmware مستعمل بعد الاسترداد"
+      ],
+      "acceptance": "idt_layout عبر sidt يطابق SDM؛ أثر cpu_tables في الإقلاع",
+      "test_ids": [
+        "TST-M2-IDT-LAYOUT",
+        "TST-M1-BOOT"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093829Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M2-002",
+      "statement": "كل استثناء معالج (0–31) يصدر سطر تشخيص كاملًا (الرقم ورمز الخطأ وRIP وCR2 والمسجلات) ويكون قاتلًا في وضع النواة، إلا #BP الذي يُستأنف بحالة مسجلات وأعلام سليمة",
+      "rationale": "no silent reset; diagnosable faults",
+      "source": "OS-EXEC-AR 3.2 §8.2, §20 M2",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [
+        "REQ-M2-001"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "RIP خاطئ في الإطار",
+        "مسجل لا يُستعاد بعد #BP"
+      ],
+      "acceptance": "اختبارات حقن DE/UD/DB/GP/PF/BP بأرقام ورموز ومساواة RIP",
+      "test_ids": [
+        "TST-M2-EXC-DE",
+        "TST-M2-EXC-UD",
+        "TST-M2-EXC-DB",
+        "TST-M2-EXC-GP",
+        "TST-M2-EXC-PF",
+        "TST-M2-EXC-BP",
+        "TST-M2-EXC-BP-STATE"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093805Z-f24bdda2-001",
+        "evidence/20261018T093808Z-f24bdda2-001",
+        "evidence/20261018T093811Z-f24bdda2-001",
+        "evidence/20261018T093813Z-f24bdda2-001",
+        "evidence/20261018T093816Z-f24bdda2-001",
+        "evidence/20261018T093819Z-f24bdda2-001",
+        "evidence/20261018T093822Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M2-003",
+      "statement": "يُعالَج الخطأ المزدوج على مكدس طوارئ مخصص عبر IST",
+      "rationale": "a corrupt stack must not become a triple fault",
+      "source": "OS-EXEC-AR 3.2 §8.2",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [
+        "REQ-M2-001"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "#DF على المكدس الفاسد"
+      ],
+      "acceptance": "إطار #DF يُطبع من المكدس df",
+      "test_ids": [
+        "TST-M2-EXC-DF"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093824Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M2-004",
+      "statement": "تداخل الاستثناءات داخل المعالج محدود بعمق 3 وينتهي برسالة ثابتة وتوقف لا بحلقة",
+      "rationale": "bounded failure",
+      "source": "OS-EXEC-AR 3.2 §8.2 (panic policy)",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [
+        "REQ-M2-002"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "حلقة لا نهائية"
+      ],
+      "acceptance": "3 إطارات #UD ثم nesting_limit",
+      "test_ids": [
+        "TST-M2-EXC-NESTED"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093826Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M2-005",
+      "statement": "تعمل النواة على مكدس تملكه بعد ExitBootServices لا على مكدس firmware",
+      "rationale": "firmware stack memory is reclaimable",
+      "source": "OS-EXEC-AR 3.2 §8.1, §8.2",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [
+        "REQ-M1-002"
+      ],
+      "contract_refs": [
+        "docs/contracts/boot.md"
+      ],
+      "failure_cases": [
+        "RSP داخل ذاكرة firmware"
+      ],
+      "acceptance": "stack=kernel في الإقلاع وفي إطار استثناء",
+      "test_ids": [
+        "TST-M2-EXC-DE",
+        "TST-M1-BOOT"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093805Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M2-006",
+      "statement": "يكشف مشغّل الاختبارات إعادة التشغيل الصامتة (triple fault) ويميزها عن النجاح",
+      "rationale": "the harness must not pass on a reset",
+      "source": "OS-EXEC-AR 3.2 §19",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [],
+      "contract_refs": [],
+      "failure_cases": [
+        "reset يُحتسب نجاحًا"
+      ],
+      "acceptance": "اختبار triple يخرج برمز 0 بلا سطر استثناء",
+      "test_ids": [
+        "TST-M2-EXC-TRIPLE"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093831Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M2-010",
+      "statement": "مخصص إطارات فيزيائية من خريطة UEFI يحجز النواة وboot_info، ويعيد None عند النفاد، ويكشف التحرير المزدوج",
+      "rationale": "memory foundation",
+      "source": "OS-EXEC-AR 3.2 §8.3, §20 M2",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [
+        "REQ-M2-001"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "تخصيص الإطار نفسه مرتين",
+        "panic عند النفاد"
+      ],
+      "acceptance": "اختبارات العد والنفاد والتحرير المزدوج",
+      "test_ids": [
+        "TST-M2-PMM-COUNTS",
+        "TST-M2-PMM-EXHAUST",
+        "TST-M2-PMM-DOUBLE-FREE"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093834Z-f24bdda2-001",
+        "evidence/20261018T093836Z-f24bdda2-001",
+        "evidence/20261018T093838Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M2-011",
+      "statement": "جداول صفحات تملكها النواة: خريطة مباشرة في النصف الأعلى، أقسام النواة بأذونات RX/R/RW+NX، CR0.WP وEFER.NXE، صفحات حراسة للمكدسات",
+      "rationale": "W^X and isolation groundwork",
+      "source": "OS-EXEC-AR 3.2 §8.3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [
+        "REQ-M2-010"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "كتابة على .text تنجح",
+        "تنفيذ من .data ينجح",
+        "تجاوز المكدس يدوس البيانات"
+      ],
+      "acceptance": "اختبارات switch/wp/nx/guard",
+      "test_ids": [
+        "TST-M2-VMM-SWITCH",
+        "TST-M2-VMM-WP",
+        "TST-M2-VMM-NX",
+        "TST-M2-VMM-GUARD"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093841Z-f24bdda2-001",
+        "evidence/20261018T093843Z-f24bdda2-001",
+        "evidence/20261018T093845Z-f24bdda2-001",
+        "evidence/20261018T093848Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M2-012",
+      "statement": "مقاطعات ومؤقت: تقنيع PIC، LAPIC/IOAPIC من ACPI MADT، مؤقت دوري معاير، EOI، بلا إعادة دخول",
+      "rationale": "timers and interrupts for scheduling",
+      "source": "OS-EXEC-AR 3.2 §8.2, §20 M2",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [
+        "REQ-M2-011"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "لا نبضات",
+        "إعادة دخول المعالج"
+      ],
+      "acceptance": "اختبارات ticks/eoi/spurious",
+      "test_ids": [
+        "TST-M2-TIMER-TICKS",
+        "TST-M2-IRQ-EOI",
+        "TST-M2-SPURIOUS"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093850Z-f24bdda2-001",
+        "evidence/20261018T093853Z-f24bdda2-001",
+        "evidence/20261018T093855Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M2-013",
+      "statement": "تزامن أولي (irqsave spinlock) وسياسة panic ونفاد موارد موثقة",
+      "rationale": "single-CPU correctness before SMP",
+      "source": "OS-EXEC-AR 3.2 §8.2 (التزامن), §20 M2",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [
+        "REQ-M2-012"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "IF لا يُستعاد"
+      ],
+      "acceptance": "اختبارات lock/panic",
+      "test_ids": [
+        "TST-M2-LOCK-IRQSAVE",
+        "TST-M2-PANIC-CODE",
+        "TST-M2-LOCK-REENTRY"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093857Z-f24bdda2-001",
+        "evidence/20261018T093900Z-f24bdda2-001",
+        "evidence/20261018T093902Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M2-014",
+      "statement": "اختبار طفرات على arch/ يكشف ≥95% من العيوب المزروعة قبل إغلاق M2",
+      "rationale": "tests must detect defects, not just pass",
+      "source": "OS-EXEC-AR 3.2 §19; Sol ADR-010 §15",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M2",
+      "dependencies": [
+        "REQ-M2-002"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "اختبار لا يكشف حذف تعليمة دفاعية"
+      ],
+      "acceptance": "تقرير mutants",
+      "test_ids": [
+        "TST-M2-MUTANTS"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T051719Z-13055739-001"
+      ]
+    },
+    {
+      "id": "REQ-M3-001",
+      "statement": "كومة نواة فوق مخصص الإطارات والخريطة المباشرة، وإلغاء تخطيط/تغيير حماية الصفحات مع إبطال TLB، وكائن فضاء عناوين مستخدم منفصل",
+      "rationale": "foundation for processes",
+      "source": "OS-EXEC-AR 3.2 §20 M3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M3",
+      "dependencies": [
+        "REQ-M2-011"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "تسريب إطارات بعد تحرير الكومة",
+        "وصول ناجح بعد unmap"
+      ],
+      "acceptance": "heap_stress بلا تسريب؛ unmap → #PF؛ تبديل فضاء",
+      "test_ids": [
+        "TST-M3-HEAP-STRESS",
+        "TST-M3-VMM-UNMAP",
+        "TST-M3-AS-SWITCH",
+        "TST-M3-VMM-PROTECT"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093905Z-f24bdda2-001",
+        "evidence/20261018T093907Z-f24bdda2-001",
+        "evidence/20261018T093909Z-f24bdda2-001",
+        "evidence/20261018T093912Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M3-002",
+      "statement": "تجربة نقل مبكرة: بناء وإقلاع وأثر تشخيص على AArch64 (QEMU virt) قبل تجميد عقود ABI، دون إعلان دعم المحمول",
+      "rationale": "architecture separation check",
+      "source": "OS-EXEC-AR 3.2 §8",
+      "origin": "user_requirement",
+      "priority": "should",
+      "release": "R1",
+      "stage": "M3",
+      "dependencies": [
+        "REQ-M1-001"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "شيفرة x86 في المسار المشترك"
+      ],
+      "acceptance": "بناء وإقلاع وأثر على virt-qemu-aarch64",
+      "test_ids": [
+        "TST-M3-A64-BUILD",
+        "TST-M3-A64-BOOT"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T094032Z-f24bdda2-001",
+        "evidence/20261018T094032Z-f24bdda2-002"
+      ]
+    },
+    {
+      "id": "REQ-M3-003",
+      "statement": "وضع المستخدم ونداءات نظام بعقد ABI مجمَّد: تُرفض المؤشرات والأطوال غير الصالحة بخطأ لا panic، ووصول المستخدم إلى النواة يُنهي العملية بتشخيص",
+      "rationale": "isolation boundary",
+      "source": "OS-EXEC-AR 3.2 §20 M3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M3",
+      "dependencies": [
+        "REQ-M3-001"
+      ],
+      "contract_refs": [
+        "docs/contracts/syscall.md"
+      ],
+      "failure_cases": [
+        "panic عند مؤشر مستخدم خاطئ",
+        "قراءة ذاكرة النواة من حلقة 3"
+      ],
+      "acceptance": "user_syscall/user_bad_ptr/user_kernel_access/sysret_canonical",
+      "test_ids": [
+        "TST-M3-USER-SYSCALL",
+        "TST-M3-USER-BAD-PTR",
+        "TST-M3-USER-KERNEL-ACCESS",
+        "TST-M3-SYSRET-CANONICAL",
+        "TST-M3-ISOLATION"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093914Z-f24bdda2-001",
+        "evidence/20261018T093917Z-f24bdda2-001",
+        "evidence/20261018T093919Z-f24bdda2-001",
+        "evidence/20261018T093924Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M3-004",
+      "statement": "عمليات وخيوط وجدولة أولويات ثابتة مع استباق بالمؤقت؛ خروج العملية يحرر كل مواردها",
+      "rationale": "scheduling and cleanup",
+      "source": "OS-EXEC-AR 3.2 §20 M3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M3",
+      "dependencies": [
+        "REQ-M3-003",
+        "REQ-M2-012"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "تجويع",
+        "تسريب إطارات بعد الخروج"
+      ],
+      "acceptance": "threads_alternate/preempt/exit_cleanup/user_sleep",
+      "test_ids": [
+        "TST-M3-THREADS-ALTERNATE",
+        "TST-M3-PREEMPT",
+        "TST-M3-EXIT-CLEANUP",
+        "TST-M3-USER-SLEEP"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093926Z-f24bdda2-001",
+        "evidence/20261018T093928Z-f24bdda2-001",
+        "evidence/20261018T093931Z-f24bdda2-001",
+        "evidence/20261018T093933Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M3-005",
+      "statement": "مقابض بحقوق وIPC رسائل بحدود أحجام وتمرير مقابض؛ الحقوق تُفحص في كل نداء",
+      "rationale": "capability model",
+      "source": "OS-EXEC-AR 3.2 §20 M3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M3",
+      "dependencies": [
+        "REQ-M3-004"
+      ],
+      "contract_refs": [
+        "docs/contracts/ipc.md"
+      ],
+      "failure_cases": [
+        "رسالة فوق الحد تُقبل",
+        "مقبض مغلق يُستعمل"
+      ],
+      "acceptance": "ipc_roundtrip/rights_denied/closed_handle/oversize/no_leak",
+      "test_ids": [
+        "TST-M3-IPC-ROUNDTRIP",
+        "TST-M3-RIGHTS-DENIED",
+        "TST-M3-CLOSED-HANDLE",
+        "TST-M3-IPC-OVERSIZE",
+        "TST-M3-IPC-NO-LEAK",
+        "TST-M3-HANDLE-TABLE",
+        "TST-M3-BLOCK-WAKE"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093935Z-f24bdda2-001",
+        "evidence/20261018T093938Z-f24bdda2-001",
+        "evidence/20261018T093940Z-f24bdda2-001",
+        "evidence/20261018T093942Z-f24bdda2-001",
+        "evidence/20261018T093945Z-f24bdda2-001",
+        "evidence/20261018T093947Z-f24bdda2-001",
+        "evidence/20261018T093949Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M3-006",
+      "statement": "محمّل ELF64 بأذونات W^X ووقت تشغيل أدنى وتطبيقات اختبار تُبنى بسلسلة الأدوات نفسها",
+      "rationale": "native apps",
+      "source": "OS-EXEC-AR 3.2 §20 M3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M3",
+      "dependencies": [
+        "REQ-M3-003"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "مقطع RWX يُحمَّل",
+        "ELF مشوه يُسقط النواة"
+      ],
+      "acceptance": "app_exit_code/malformed_elf/wx_rejected",
+      "test_ids": [
+        "TST-M3-APP-EXIT-CODE",
+        "TST-M3-ELF-MALFORMED",
+        "TST-M3-ELF-WX"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093952Z-f24bdda2-001",
+        "evidence/20261018T093954Z-f24bdda2-001",
+        "evidence/20261018T093956Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M3-007",
+      "statement": "تخزين: PCI/virtio-blk وطبقة كتل مع flush ونظام ملفات أول؛ البيانات المقر حفظها تبقى بعد إعادة التشغيل",
+      "rationale": "persistence",
+      "source": "OS-EXEC-AR 3.2 §20 M3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M3",
+      "dependencies": [
+        "REQ-M3-001"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "بيانات مفقودة بعد إعادة التشغيل"
+      ],
+      "acceptance": "blk_read_pattern/blk_write_flush_reboot_read",
+      "test_ids": [
+        "TST-M3-BLK-READ",
+        "TST-M3-BLK-USER-CR3",
+        "TST-M3-BLK-PERSIST",
+        "TST-M3-FAT32-READ",
+        "TST-M3-FAT32-WRITE",
+        "TST-M3-FAT32-PERSIST",
+        "TST-M3-FAT32-TOOL"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T093959Z-f24bdda2-001",
+        "evidence/20261018T094001Z-f24bdda2-001",
+        "evidence/20261018T094003Z-f24bdda2-001",
+        "evidence/20261018T094008Z-f24bdda2-001",
+        "evidence/20261018T094010Z-f24bdda2-001",
+        "evidence/20261018T094013Z-f24bdda2-001",
+        "evidence/20261018T094038Z-f24bdda2-004"
+      ]
+    },
+    {
+      "id": "REQ-M3-008",
+      "statement": "VFS ونداءات ملفات لكل عملية بحقوق وبلا تسريب واصفات",
+      "rationale": "files for apps",
+      "source": "OS-EXEC-AR 3.2 §20 M3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M3",
+      "dependencies": [
+        "REQ-M3-007",
+        "REQ-M3-005"
+      ],
+      "contract_refs": [
+        "docs/contracts/files.md"
+      ],
+      "failure_cases": [
+        "تسريب واصفات"
+      ],
+      "acceptance": "file_roundtrip/path_invalid/fd_leak",
+      "test_ids": [
+        "TST-M3-FILE-ROUNDTRIP",
+        "TST-M3-PATH-INVALID",
+        "TST-M3-FD-LEAK"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T094017Z-f24bdda2-001",
+        "evidence/20261018T094019Z-f24bdda2-001",
+        "evidence/20261018T094022Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M3-009",
+      "statement": "SMP: تشغيل كل المعالجات المذكورة في MADT، بنى per-CPU، إبطال TLB عبر IPI، أقفال صحيحة تحت التنازع",
+      "rationale": "multi-core correctness",
+      "source": "OS-EXEC-AR 3.2 §20 M3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M3",
+      "dependencies": [
+        "REQ-M3-004",
+        "REQ-M2-013"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "عدّاد غير دقيق تحت التنازع",
+        "ترجمة قديمة بعد unmap على معالج آخر"
+      ],
+      "acceptance": "all_cpus_online/lock_contention/tlb_shootdown",
+      "test_ids": [
+        "TST-M3-SMP-ONLINE",
+        "TST-M3-LOCK-CONTENTION",
+        "TST-M3-TLB-SHOOTDOWN"
+      ],
+      "implementation_status": "verified_in_scope",
+      "evidence_refs": [
+        "evidence/20261018T094024Z-f24bdda2-001",
+        "evidence/20261018T094027Z-f24bdda2-001",
+        "evidence/20261018T094029Z-f24bdda2-001"
+      ]
+    },
+    {
+      "id": "REQ-M3-010",
+      "statement": "بوابة M3: أجنحة العزل والموارد والثبات، اختبار طفرات ≥95% على الوحدات الجديدة، مراجعة مسماة",
+      "rationale": "gate",
+      "source": "OS-EXEC-AR 3.2 §20 M3",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M3",
+      "dependencies": [
+        "REQ-M3-003",
+        "REQ-M3-004",
+        "REQ-M3-005",
+        "REQ-M3-006",
+        "REQ-M3-007",
+        "REQ-M3-008",
+        "REQ-M3-009"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "ادعاء عزل بلا اختبار"
+      ],
+      "acceptance": "M3 suite + mutants",
+      "test_ids": [
+        "TST-M3-ISOLATION",
+        "TST-M3-MUTANTS"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    }
+  ]
 }
