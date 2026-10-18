@@ -1,0 +1,75 @@
+Diff in /home/runner/work/nawah-os/nawah-os/kernel/src/ktest.rs:5477:
+         1,
+     );
+     let cfg = svc_connect(&h, "config");
+-    let lang = cfg_request(&cfg, b"SET device ui.lang 0 211 ar", Some(token_entry(&admin)));
++    let lang = cfg_request(
++        &cfg,
++        b"SET device ui.lang 0 211 ar",
++        Some(token_entry(&admin)),
++    );
+     kprintln!("OSX|{}|ktest|arabic_ui|lang={}|ready=1", BUILD_ID, lang);
+     if lang != "OK 1" {
+         fail("the config service refused ui.lang")
+Diff in /home/runner/work/nawah-os/nawah-os/user/apps/dialog/src/main.rs:25:
+ const LANGS_AR: &[&str] = &["الإنجليزية", "العربية", "الفرنسية"];
+ // The dialog's two languages, element by element (ui.md v1.2 / WP-39): title, label, field,
+ // list label, checkbox, two buttons. Switched live from `ui.lang` without rebuilding.
+-const EN: [&str; 7] = ["Sign in", "Sign in", "Name", "Language", "Remember me", "OK", "Cancel"];
++const EN: [&str; 7] = [
++    "Sign in",
++    "Sign in",
++    "Name",
++    "Language",
++    "Remember me",
++    "OK",
++    "Cancel",
++];
+ const AR: [&str; 7] = ["دخول", "دخول", "الاسم", "اللغة", "تذكّرني", "موافق", "إلغاء"];
+ const MSG_MAX: usize = 512;
+ const PENDING: usize = 16;
+Diff in /home/runner/work/nawah-os/nawah-os/user/libui/src/tests.rs:372:
+     type_ab(&mut ltr);
+     assert_eq!(ltr.key(KEY_LEFT, true, 0, None), Event::None);
+     ltr.key(0x2e, true, 0, Some('x'));
+-    assert_eq!(describe(&ltr, 1), "role=textfield label=\"Name\" state=focused value=\"axb\"");
++    assert_eq!(
++        describe(&ltr, 1),
++        "role=textfield label=\"Name\" state=focused value=\"axb\""
++    );
+ 
+     // Right to left: Right is the one that steps back now.
+     let mut rtl = Dialog::new("دخول", true);
+Diff in /home/runner/work/nawah-os/nawah-os/user/libui/src/tests.rs:382:
+     // Left is forward at the end: it cannot move, so the insert stays at the end.
+     assert_eq!(rtl.key(KEY_LEFT, true, 0, None), Event::None);
+     rtl.key(0x2e, true, 0, Some('x'));
+-    assert_eq!(describe(&rtl, 1), "role=textfield label=\"الاسم\" state=focused value=\"abx\"");
++    assert_eq!(
++        describe(&rtl, 1),
++        "role=textfield label=\"الاسم\" state=focused value=\"abx\""
++    );
+     // Right steps back, so the next insert lands inside.
+     assert_eq!(rtl.key(KEY_RIGHT, true, 0, None), Event::None);
+     rtl.key(0x15, true, 0, Some('y'));
+Diff in /home/runner/work/nawah-os/nawah-os/user/libui/src/tests.rs:389:
+-    assert_eq!(describe(&rtl, 1), "role=textfield label=\"الاسم\" state=focused value=\"abyx\"");
++    assert_eq!(
++        describe(&rtl, 1),
++        "role=textfield label=\"الاسم\" state=focused value=\"abyx\""
++    );
+ 
+     // set_rtl flips an existing dialog's behaviour.
+     let mut d = sample();
+Diff in /home/runner/work/nawah-os/nawah-os/user/libui/src/tests.rs:394:
+     type_ab(&mut d);
+     assert_eq!(d.key(KEY_RIGHT, true, 0, None), Event::None);
+     d.key(0x2e, true, 0, Some('x'));
+-    assert_eq!(describe(&d, 1), "role=textfield label=\"Name\" state=focused value=\"axb\"");
++    assert_eq!(
++        describe(&d, 1),
++        "role=textfield label=\"Name\" state=focused value=\"axb\""
++    );
+ }
+ 
+ /// relabel and set_items change an element in place for a language switch, with the selection
