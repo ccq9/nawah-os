@@ -15,7 +15,8 @@ EVIDENCE = ROOT / "evidence"
 SCHEMA_VERSION = "1.0.0"
 RECORD_FILES = ["requirements", "stages", "work-items", "tests", "risks", "sources", "hardware", "decisions-pending"]
 SINGLE_FILES = ["project-state", "automation"]
-LEGAL_TRANSITIONS = {("planned", "active"), ("active", "blocked"), ("active", "done"), ("blocked", "planned"), ("done", "planned"), ("active", "planned")}
+LEGAL_TRANSITIONS = {("planned", "active"), ("active", "blocked"), ("active", "done"), ("blocked", "planned"), ("done", "planned"), ("active", "planned"),
+                     ("planned", "superseded"), ("blocked", "superseded")}
 EVIDENCE_REQUIRED = ["run.json", "command.txt", "stdout.log", "stderr.log", "exit_code", "digests.json", "verdict.json"]
 
 E_OK, E_NO_WORK, E_BLOCKED, E_BUDGET, E_CANCELLED, E_VALIDATION, E_INTERNAL, E_NO_WORKER = 0, 10, 20, 30, 40, 50, 60, 70
@@ -252,6 +253,17 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
                 check_evidence_dir(e, pb, w)
         if wi["status"] == "blocked" and not wi["blocker"]:
             pb.err(w, "blocked without blocker text")
+        if wi["status"] == "superseded":
+            sb = wi.get("superseded_by")
+            if not sb:
+                pb.err(w, "superseded without superseded_by")
+            elif sb not in idset["work-items"] or sb == wi["id"]:
+                pb.err(w, f"superseded_by {sb} is not another work item")
+        elif wi.get("superseded_by"):
+            pb.err(w, "superseded_by set on a work item that is not superseded")
+        for d in wi["depends_on"]:
+            if by_id["work-items"].get(d, {}).get("status") == "superseded":
+                pb.err(w, f"depends on superseded {d}; depend on {by_id['work-items'][d].get('superseded_by')} instead")
         if wi["status"] == "active":
             for d in wi["depends_on"]:
                 if by_id["work-items"].get(d, {}).get("status") != "done":

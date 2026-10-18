@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T035026Z-fad0bff5-002"
+    "evidence/20261018T035128Z-106f4960-002"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T035026Z-fad0bff5-001"
+    "evidence/20261018T035128Z-106f4960-001"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T035026Z-fad0bff5-002"
+    "evidence/20261018T035128Z-106f4960-002"
    ],
    "blocker": null
   },
@@ -221,7 +221,7 @@
     "EBS failure injection variant",
     "static NOBS test",
     "M1 suite",
-    "reopened: language changed to Rust (ADR-0002); superseded by WP-06"
+    "superseded by WP-06 (language changed to Rust, ADR-0002); the C implementation remains in history as the E0/M1 evidence of 2026-10-17"
    ],
    "acceptance": "بوابة M1: build/boot/test PASS، NOBS PASS، NEG PASS",
    "test_ids": [
@@ -235,15 +235,17 @@
     "python3 tools/project.py test --target pc-qemu --suite M1",
     "python3 tools/project.py test --target host --suite M1"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
     "planned",
     "active",
     "done",
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": null,
+   "superseded_by": "WP-06"
   },
   {
    "id": "WP-05",
@@ -357,7 +359,7 @@
     "evidence/20261018T034031Z-fad0bff5-001",
     "evidence/20261018T034034Z-fad0bff5-001",
     "evidence/20261018T034037Z-fad0bff5-001",
-    "evidence/20261018T035026Z-fad0bff5-003"
+    "evidence/20261018T035128Z-106f4960-003"
    ],
    "blocker": null
   },

@@ -82,6 +82,17 @@ class ValidateRecords(unittest.TestCase):
         r = base_records(); r["work-items"][0]["status"] = "done"; r["work-items"][0]["status_history"] = ["planned", "done"]
         self.assertEqual(self.run_validate(r), 50)
 
+    def test_superseded_requires_superseder_and_blocks_dependants(self):
+        r = base_records()
+        w2 = copy.deepcopy(r["work-items"][0]); w2["id"] = "WP-01"; w2["depends_on"] = []
+        r["work-items"][0]["status"] = "superseded"; r["work-items"][0]["status_history"] = ["planned", "superseded"]
+        r["work-items"].append(w2)
+        self.assertEqual(self.run_validate(r), 50)  # no superseded_by
+        r["work-items"][0]["superseded_by"] = "WP-01"
+        self.assertEqual(self.run_validate(r), 0)
+        w2["depends_on"] = ["WP-00"]
+        self.assertEqual(self.run_validate(r), 50)  # depending on a superseded item
+
     def test_done_requires_passing_tests_and_evidence(self):
         r = base_records(); r["work-items"][0]["status"] = "done"; r["work-items"][0]["status_history"] = ["planned", "active", "done"]
         self.assertEqual(self.run_validate(r), 50)

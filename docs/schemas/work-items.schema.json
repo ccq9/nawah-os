@@ -112,7 +112,8 @@
        "planned",
        "active",
        "blocked",
-       "done"
+       "done",
+       "superseded"
       ]
      },
      "status_history": {
@@ -122,7 +123,8 @@
         "planned",
         "active",
         "blocked",
-        "done"
+        "done",
+        "superseded"
        ]
       },
       "minItems": 1
@@ -140,6 +142,10 @@
        "string",
        "null"
       ]
+     },
+     "superseded_by": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
      }
     }
    }

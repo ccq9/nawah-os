@@ -27,7 +27,7 @@ def wrapper(item_schema, extra_required=()):
 def obj(required, props):
     return {"type": "object", "additionalProperties": False, "required": required, "properties": props}
 
-WI_STATUS = {"enum": ["planned", "active", "blocked", "done"]}
+WI_STATUS = {"enum": ["planned", "active", "blocked", "done", "superseded"]}
 VERDICT = {"enum": ["PASS", "FAIL", "ERROR", "BLOCKED", "NOT_RUN", "N/A", "NEEDS_REEVALUATION"]}
 CLAIM = {"enum": ["source_backed_fact", "logical_inference", "probability", "analytic_opinion", "unverified_assumption"]}
 
@@ -52,7 +52,7 @@ schemas = {
    {"id": ID, "stage": STAGE, "requirement_ids": IDS, "depends_on": IDS, "inputs": STRS, "files": RELPATHS,
     "contract_refs": RELPATHS, "actions": STRS, "acceptance": STR, "test_ids": IDS, "commands": STRS,
     "status": WI_STATUS, "status_history": {"type": "array", "items": WI_STATUS, "minItems": 1},
-    "evidence_refs": RELPATHS, "blocker": {"type": ["string","null"]}})),
+    "evidence_refs": RELPATHS, "blocker": {"type": ["string","null"]}, "superseded_by": ID})),
  "tests": wrapper(obj(
    ["id","requirement_ids","layer","oracle","command","verdict","evidence_refs"],
    {"id": ID, "requirement_ids": IDS,
