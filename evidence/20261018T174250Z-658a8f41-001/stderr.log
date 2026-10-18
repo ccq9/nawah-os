@@ -1,0 +1,15 @@
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+error: failed to run custom build command for `nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)`
+
+Caused by:
+  process didn't exit successfully: `/home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/cargo/release/build/nawah-kernel-6cc76501a1d4f54a/build-script-build` (exit status: 101)
+  --- stdout
+  cargo:rerun-if-env-changed=NAWAH_BUILD_ID
+  cargo:rustc-env=NAWAH_BUILD_ID=658a8f4100ad
+  cargo:rerun-if-env-changed=NAWAH_APPS_DIR
+
+  --- stderr
+
+  thread 'main' (11278) panicked at kernel/build.rs:53:27:
+  NAWAH_APPS_DIR is set but /home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/apps/hello.elf is missing: build user/apps/hello before the kernel
+  note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
