@@ -1,6 +1,6 @@
 # ADR-0013 — التخزين: PCI/ECAM، virtio-blk، طبقة الكتل (WP-18 الجزء 1)
 
-الحالة: مقترح — قيد التنفيذ 2026-10-18؛ يُغلق بدليل CI (اختبارات BLK وFAT32 وأثر الإقلاع `kernel|pci|…`، `kernel|blk|…|selfcheck=1`، `kernel|fat32|…|selfcheck=1`). الجزء 1 (الجهاز) أثبته CI run 39108867621 (التعداد، القراءة، الثبات عبر إعادة التشغيل).
+الحالة: مقبول — منفَّذ ومُغلق 2026-10-18 بدليل CI run 39111422991 (TST-M3-BLK-READ / BLK-USER-CR3 / BLK-PERSIST / FAT32-READ / FAT32-WRITE / FAT32-PERSIST / FAT32-TOOL PASS؛ أثر TST-M1-BOOT بسطور `kernel|pci|…`، `kernel|blk|…|mmio_shared=1|…|selfcheck=1`، `kernel|fat32|…|selfcheck=1`). الجزء 1 (الجهاز) أثبته CI run 39108867621؛ دروس التشغيلات: 39108491755 (ECAM 0xE0000000)، 39108867621 (مخزن الاختبار إطار)، 39109529224 (عدّادات FSInfo)، 39110182649 (نافذة MMIO المشتركة §8).
 
 المراجع: Virtio 1.3 (S42): §4.1 النقل عبر PCI (المعرّفات، `virtio_pci_cap`، `virtio_pci_common_cfg`، عنوان الإشعار)، §3.1.1 ترتيب التهيئة، §2.7 الطابور المنقسم، §5.2 جهاز الكتل؛ ECAM ورأس تهيئة PCI (S43)؛ ACPI 6.5 جدول 5-6 للتوقيع MCFG (S33)؛ ADR-0004 (الخريطة المباشرة و`map_mmio`)، ADR-0007 §4 (فتحات PML4 المشتركة)، ADR-0005 (I/O APIC مقنَّع).
 
