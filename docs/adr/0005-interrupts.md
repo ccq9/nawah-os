@@ -1,6 +1,6 @@
 # ADR-0005 — المقاطعات والمؤقت في M2 (WP-10)
 
-الحالة: منفَّذ 2026-10-18؛ الإغلاق مرهون بدليل CI (TST-M2-TIMER-TICKS / IRQ-EOI / SPURIOUS + أثر TST-M1-BOOT).
+الحالة: مقبول — منفَّذ ومُغلق 2026-10-18 بدليل CI run 39097111551 (TST-M2-TIMER-TICKS / IRQ-EOI / SPURIOUS PASS، أثر TST-M1-BOOT: 50 نبضة في 50 ms، lapic_hz≈1.009 GHz).
 
 المراجع: Intel SDM Vol.3A الفصل 11 APIC (S26)؛ ACPI 6.5 §5.2 (S33، نصوص الجداول مُتحقَّق منها 2026-10-18)؛ UEFI 2.11 §4.6 جدول التهيئة (S18)؛ ICH9 datasheet (S34)؛ نماذج أجهزة QEMU 8.2.2 (S35، مُتحقَّق من المصدر)؛ 82093AA (S36).
 
