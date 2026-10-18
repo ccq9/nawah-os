@@ -3116,7 +3116,10 @@ fn login() -> ! {
     };
     let bad = auth_request(&ep, b"WHATEVER", None).0;
     let load = h.load_reply.clone();
-    drop(ep);
+    // Tokens are objects: release them before the balance is taken.
+    let no_token = t2.is_none() && t3.is_none();
+    let other_ok = t_other.is_some();
+    drop((ep, t1, t_user, t2, t3, t_delayed, t_other, t_after));
     let (mgr_exit, procs, frames0, clean) = h.finish();
     kprintln!(
         "OSX|{}|ktest|login|load={}|login={}|token_ok={}|user={}|user_ok={}|wrong={}|unknown={}|no_token={}|refused={}|delayed={}|other={}|after_delay={}|whoami={}|bad={}|mgr_exit={:#x}|processes_after={}|clean={}",
@@ -3128,7 +3131,7 @@ fn login() -> ! {
         u8::from(user_ok),
         r2,
         r3,
-        u8::from(t2.is_none() && t3.is_none()),
+        u8::from(no_token),
         refused,
         delayed,
         r_other,
@@ -3142,18 +3145,17 @@ fn login() -> ! {
     if r1 != "OK 1000 1000 15" || !token_ok || r_user != "OK 1001 1001 8" || !user_ok {
         fail("login with the right password did not give the user's token")
     }
-    if r2 != "ERR ACCESS" || r3 != "ERR ACCESS" || t2.is_some() || t3.is_some() || refused != 4 {
+    if r2 != "ERR ACCESS" || r3 != "ERR ACCESS" || !no_token || refused != 4 {
         fail("wrong credentials were not refused the documented way")
     }
-    if !delayed || r_other != "OK 1001 1001 8" || t_other.is_none() {
+    if !delayed || r_other != "OK 1001 1001 8" || !other_ok {
         fail("the attempt limit did not delay the right name only")
     }
     if r_after != "OK 1000 1000 15" || whoami != "OK 1000 1000 15" || bad != "ERR BAD_REQUEST" {
         fail("login after the delay, WHOAMI or the bad request answer wrong")
     }
     drop((
-        t1, t_user, t2, t3, t_delayed, t_other, t_after, r1, r_user, r2, r3, r_delayed, r_other,
-        r_after, whoami, bad, load,
+        r1, r_user, r2, r3, r_delayed, r_other, r_after, whoami, bad, load,
     ));
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
@@ -3199,7 +3201,8 @@ fn session_lock() -> ! {
     };
     let (no_handle, _) = auth_request(&ep, b"WHOAMI", None);
     let load = h.load_reply.clone();
-    drop(ep);
+    let no_third = t3.is_none();
+    drop((ep, t1, t2, t3));
     let (mgr_exit, procs, frames0, clean) = h.finish();
     kprintln!(
         "OSX|{}|ktest|session_lock|load={}|login={}|lock={}|locked_token_revoked={}|whoami_locked={}|unlock_wrong={}|unlock={}|new_token={}|whoami_new={}|old_after_unlock={}|logout={}|whoami_out={}|unlock_out={}|no_handle={}|mgr_exit={:#x}|processes_after={}|clean={}",
@@ -3240,15 +3243,12 @@ fn session_lock() -> ! {
     if logout != "OK"
         || whoami_out != "ERR ACCESS"
         || unlock_out != "ERR ACCESS"
-        || t3.is_some()
+        || !no_third
         || no_handle != "ERR BAD_REQUEST"
     {
         fail("logout did not end the session")
     }
     drop((
-        t1,
-        t2,
-        t3,
         r1,
         lock,
         whoami_locked,
