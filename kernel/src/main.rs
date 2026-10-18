@@ -34,6 +34,7 @@ mod panic;
 mod sync;
 
 mod kmain;
+
 #[cfg(target_arch = "x86_64")]
 mod apps;
 #[cfg(target_arch = "x86_64")]
