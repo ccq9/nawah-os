@@ -5,9 +5,9 @@
 //! last reference frees the object — so a process that exits with everything open leaks
 //! nothing.
 
+pub mod bytes;
 pub mod channel;
 pub mod handle;
-pub mod kbd;
 pub mod nic;
 pub mod process;
 pub mod token;
@@ -56,6 +56,9 @@ impl Rights {
     /// Rights of the keyboard handle (WP-27).
     pub const KBD_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::WAIT.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of the console handle (WP-30): READ receives bytes, WRITE sends them.
+    pub const SERIAL_DEFAULT: Rights =
+        Rights(Self::READ.0 | Self::WRITE.0 | Self::WAIT.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
 
     pub const fn contains(self, other: Rights) -> bool {
         self.0 & other.0 == other.0
@@ -83,7 +86,9 @@ pub enum Object {
     /// The network interface (WP-27): raw frames in and out.
     Nic(Arc<nic::NicObject>),
     /// The keyboard (WP-27): scancode bytes.
-    Keyboard(Arc<kbd::KeyboardObject>),
+    Keyboard(Arc<bytes::ByteObject>),
+    /// The diagnostic console (WP-30, shell.md): COM2 bytes in, user writes out.
+    Serial(Arc<bytes::ByteObject>),
 }
 
 impl Object {
@@ -98,6 +103,7 @@ impl Object {
             Object::Authority(_) => 6,
             Object::Nic(_) => 7,
             Object::Keyboard(_) => 8,
+            Object::Serial(_) => 9,
         }
     }
 }

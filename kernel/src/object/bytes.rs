@@ -1,49 +1,55 @@
-//! The keyboard object (WP-27, input.md): a ring of scancode bytes the timer tick fills from
-//! the i8042 output buffer, read by one user process (the `input` service, or the console of
-//! M5). READABLE while bytes wait; overflow drops the newest byte and counts it.
+//! Byte-stream objects (WP-27 input.md, WP-30 shell.md): a ring of bytes the timer tick fills
+//! from a device (the i8042 output buffer for `Object::Keyboard`, COM2 for `Object::Serial`),
+//! read by one user process. READABLE while bytes wait; overflow drops the newest byte and
+//! counts it. The variant of `Object` says which device the ring belongs to.
 
 use alloc::vec::Vec;
 
 use crate::sync::IrqSpinLock;
 
-pub const RING: usize = 64;
+/// The largest ring (the console's); the keyboard uses the first `KBD_RING` bytes.
+pub const MAX: usize = 256;
+pub const KBD_RING: usize = 64;
+pub const CONSOLE_RING: usize = 256;
 
 struct Ring {
-    buf: [u8; RING],
+    buf: [u8; MAX],
     head: usize,
     len: usize,
     overflow: u32,
     waiters: Vec<u32>,
 }
 
-pub struct KeyboardObject {
+pub struct ByteObject {
     ring: IrqSpinLock<Ring>,
+    cap: usize,
 }
 
-impl KeyboardObject {
-    pub fn new() -> Self {
-        KeyboardObject {
+impl ByteObject {
+    pub fn new(name: &'static str, cap: usize) -> Self {
+        ByteObject {
             ring: IrqSpinLock::new(
-                "kbd",
+                name,
                 Ring {
-                    buf: [0; RING],
+                    buf: [0; MAX],
                     head: 0,
                     len: 0,
                     overflow: 0,
                     waiters: Vec::new(),
                 },
             ),
+            cap: cap.min(MAX),
         }
     }
 
     /// Pushes a byte (interrupt context); returns the waiters to wake when the ring was empty.
     pub fn push(&self, byte: u8) -> Vec<u32> {
         let mut r = self.ring.lock();
-        if r.len == RING {
+        if r.len == self.cap {
             r.overflow = r.overflow.saturating_add(1);
             return Vec::new();
         }
-        let i = (r.head + r.len) % RING;
+        let i = (r.head + r.len) % self.cap;
         r.buf[i] = byte;
         r.len += 1;
         if r.len == 1 {
@@ -59,7 +65,7 @@ impl KeyboardObject {
         let n = out.len().min(r.len);
         for o in out.iter_mut().take(n) {
             *o = r.buf[r.head];
-            r.head = (r.head + 1) % RING;
+            r.head = (r.head + 1) % self.cap;
             r.len -= 1;
         }
         n
@@ -99,11 +105,5 @@ impl KeyboardObject {
         if r.waiters.is_empty() {
             r.waiters = Vec::new();
         }
-    }
-}
-
-impl Default for KeyboardObject {
-    fn default() -> Self {
-        Self::new()
     }
 }

@@ -385,9 +385,19 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         "OSX|{}|kernel|kbd|drained={}|ring={}|pending={}|overflow={}|code=ok|selfcheck=1",
         build_id,
         arch::i8042::init(),
-        crate::object::kbd::RING,
+        crate::object::bytes::KBD_RING,
         kbd.pending(),
         kbd.overflow()
+    );
+    // Diagnostic console (WP-30, ADR-0018): COM2 probed by loopback; its bytes are polled per
+    // tick into the console object the service manager routes to `sh`.
+    let console_present = crate::diag::init();
+    kprintln!(
+        "OSX|{}|kernel|diag|port=0x2f8|present={}|ring={}|code=ok|selfcheck={}",
+        build_id,
+        u8::from(console_present),
+        crate::object::bytes::CONSOLE_RING,
+        u8::from(console_present)
     );
     // FAT32 (WP-18 part 2): mount the lab volume and read its hello file in every build.
     let fs_line = match crate::fs::mount() {

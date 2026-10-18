@@ -1292,7 +1292,7 @@
     "REQ-M4-009"
    ],
    "layer": "guest",
-   "oracle": "over the lab console socket, `svc list` prints every manifest service with its state; `cpu`/`mem` print values matching the kernel's own trace lines",
+   "oracle": "over the lab's console socket (COM2) the shell answers: `svc` lists every service of SVC-SH.TXT with its state from the manager (auth ready, net ready, sh ready); `cpu` and `mem` print the kernel's own counters (cpus and frames_total equal to the values the kernel test printed from the kernel); `net dhcp` configures the service and `net` then shows configured=1 ip=10.0.2.15 from the net service; `ls /SYSTEM` lists the images and `cat /DIR/INNER.TXT` prints the lab file; an unknown command is ERR UNKNOWN_COMMAND; `exit` ends the session — the manager sees sh stopped with exit 0, nothing is left behind, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1303,7 +1303,7 @@
     "REQ-M4-009"
    ],
    "layer": "guest",
-   "oracle": "`login` with a wrong password is refused; with the right one the prompt shows the user and an admin command succeeds",
+   "oracle": "over the console socket: `whoami` says not logged in and the protected `net policy internet=1` is refused without a session (ERR NO_SESSION); `login admin` with a wrong password fails (the auth service's ERR ACCESS) and the prompt stays nawah>; `login user lab-user-1` succeeds (prompt user@nawah>) but the admin command is refused by the net service (ERR ACCESS, the token lacks ADMIN); after `logout` and `login admin lab-admin-1` (prompt admin@nawah>) the command succeeds (OK), `whoami` shows uid 1000 with perms 15, `logout` restores the plain prompt; `exit` ends the session cleanly; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1343,6 +1343,17 @@
    "evidence_refs": [
     "evidence/20261018T151705Z-09971550-001"
    ]
+  },
+  {
+   "id": "TST-M4-SHELL-TOOL",
+   "requirement_ids": [
+    "REQ-M4-009"
+   ],
+   "layer": "host_unit",
+   "oracle": "tools/project.py ConsoleSession against a fake shell over TCP (the shell.md line protocol): waits for the serial marker before the first command, splits each command's output at the prompt, judges expect/absent/prompt/expect_serial, reports every miss by step, and a missing marker ends the session with no command sent (3 unittest cases, OK)",
+   "command": "python3 tools/project.py test --target host --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   }
  ]
 }

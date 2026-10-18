@@ -6,9 +6,9 @@ mod x86_64;
 
 #[cfg(target_arch = "x86_64")]
 pub use x86_64::{
-    acpi, adopt_stacks, apic, context, continue_on_stack, cpu_id, i8042, init_console, init_cpu,
-    interrupts, irq, jump_on_kernel_stack, mmio, paging, pci, pit, qemu, smp, spin_hint, syscall,
-    tlb, user_programs, Serial,
+    acpi, adopt_stacks, apic, com2, context, continue_on_stack, cpu_id, i8042, init_console,
+    init_cpu, interrupts, irq, jump_on_kernel_stack, mmio, paging, pci, pit, qemu, smp, spin_hint,
+    syscall, tlb, user_programs, Serial,
 };
 
 #[cfg(all(target_arch = "x86_64", feature = "ktest"))]

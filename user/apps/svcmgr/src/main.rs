@@ -211,10 +211,11 @@ struct Manager {
     ctl: Handle,
     /// Kernel resources handed over as initial handles after the control channel, routed by
     /// type: the token authority to the service named `auth` (auth.md §1), the network
-    /// interface to `net`, the keyboard to `input` (services.md §4).
+    /// interface to `net`, the keyboard to `input`, the console to `sh` (services.md §4).
     authority: Option<Handle>,
     nic: Option<Handle>,
     keyboard: Option<Handle>,
+    serial: Option<Handle>,
 }
 
 enum LoadError {
@@ -404,13 +405,14 @@ impl Manager {
         };
         // A kernel resource goes to the service named for it, as a copy (the manager keeps
         // the original for restarts): the authority to `auth`, the interface to `net`, the
-        // keyboard to `input`.
+        // keyboard to `input`, the console to `sh`.
         let mut initial = [theirs, 0];
         let mut n_initial = 1;
         let resource = match s.name() {
             b"auth" => self.authority,
             b"net" => self.nic,
             b"input" => self.keyboard,
+            b"sh" => self.serial,
             _ => None,
         };
         if let Some(r) = resource {
@@ -473,7 +475,9 @@ impl Manager {
         }
     }
 
-    /// A message (or the close) on service `i`'s boot channel.
+    /// A message (or the close) on service `i`'s boot channel: `READY`, or (services.md §4,
+    /// v1.3) a request of the service's own — `LIST`, or `CONNECT <name>` for a service it
+    /// declared as a dependency — answered on the same channel.
     fn on_boot_channel(&mut self, i: usize, now: u64) {
         let Some(c) = self.services[i].chan else {
             return;
@@ -481,17 +485,57 @@ impl Manager {
         let mut buf = [0u8; 64];
         let mut hs = [0u32; 1];
         match libnawah::channel_read(c, &mut buf, &mut hs, false) {
-            Ok((n, _)) => {
-                if &buf[..n] == b"READY" && self.services[i].state == State::Starting {
+            Ok((n, nh)) => {
+                if nh == 1 {
+                    libnawah::handle_close(hs[0]);
+                }
+                let req = &buf[..n];
+                if req == b"READY" && self.services[i].state == State::Starting {
                     let s = &mut self.services[i];
                     s.state = State::Ready;
                     s.ready_tick = Some(now);
                     s.deadline = None;
+                } else if req == b"LIST" {
+                    let mut out = Out::new();
+                    self.list(&mut out);
+                    libnawah::channel_write(c, out.bytes(), &[]);
+                } else if let Some(name) = req.strip_prefix(b"CONNECT ") {
+                    self.connect_for(i, name);
                 }
             }
             Err(ERR_PEER_CLOSED) => self.close_chan(i),
             Err(_) => {}
         }
+    }
+
+    /// `CONNECT <name>` asked by service `i` on its boot channel: only a declared dependency
+    /// (no ambient authority: the manifest says whom a service may talk to); the client end
+    /// goes back on the boot channel with `OK`.
+    fn connect_for(&mut self, i: usize, name: &[u8]) {
+        let Some(c) = self.services[i].chan else {
+            return;
+        };
+        let mut out = Out::new();
+        match self.find(name) {
+            Some(j) if self.services[i].deps & (1 << j) == 0 => out.put(b"ERR ACCESS"),
+            Some(j) if self.services[j].state == State::Ready => {
+                match (self.services[j].chan, libnawah::channel_create()) {
+                    (Some(target), Ok((client, server))) => {
+                        if libnawah::channel_write(target, b"CONNECT", &[server]) == 0 {
+                            libnawah::channel_write(c, b"OK", &[client]);
+                            return;
+                        }
+                        libnawah::handle_close(client);
+                        libnawah::handle_close(server);
+                        out.put(b"ERR NOT_READY");
+                    }
+                    _ => out.put(b"ERR NOT_READY"),
+                }
+            }
+            Some(_) => out.put(b"ERR NOT_READY"),
+            None => out.put(b"ERR UNKNOWN"),
+        }
+        libnawah::channel_write(c, out.bytes(), &[]);
     }
 
     /// Service `i`'s process exited.
@@ -664,12 +708,13 @@ fn main() -> u64 {
     }
     // Initial handles are consecutive (syscall.md §5): the kernel's resources follow the
     // control channel, recognised by type (handle_type) whatever their order.
-    let (mut authority, mut nic, mut keyboard) = (None, None, None);
+    let (mut authority, mut nic, mut keyboard, mut serial) = (None, None, None, None);
     for h in ctl + 1..ctl + 8 {
         match libnawah::handle_type(h) {
             libnawah::object_type::AUTHORITY => authority = Some(h),
             libnawah::object_type::NIC => nic = Some(h),
             libnawah::object_type::KEYBOARD => keyboard = Some(h),
+            libnawah::object_type::SERIAL => serial = Some(h),
             t if t < 0 => break,
             _ => {}
         }
@@ -682,6 +727,7 @@ fn main() -> u64 {
         authority,
         nic,
         keyboard,
+        serial,
     };
     // Wait-set slots: 0 = control; then per service (boot channel, process).
     let mut entries = [WaitEntry {

@@ -59,6 +59,11 @@ pub const SYS_NIC_INFO: u64 = 28;
 pub const SYS_NIC_SEND: u64 = 29;
 pub const SYS_NIC_RECV: u64 = 30;
 pub const SYS_KBD_READ: u64 = 31;
+/// v1.7 (WP-30, shell.md): the diagnostic console, system statistics, directory listing.
+pub const SYS_SERIAL_READ: u64 = 32;
+pub const SYS_SERIAL_WRITE: u64 = 33;
+pub const SYS_SYSTEM_INFO: u64 = 34;
+pub const SYS_DIR_LIST: u64 = 35;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -542,6 +547,10 @@ pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
         SYS_NIC_SEND => flat(sys_nic_send(args[0] as Handle, args[1], args[2])),
         SYS_NIC_RECV => flat(sys_nic_recv(args[0] as Handle, args[1], args[2])),
         SYS_KBD_READ => flat(sys_kbd_read(args[0] as Handle, args[1], args[2])),
+        SYS_SERIAL_READ => flat(sys_serial_read(args[0] as Handle, args[1], args[2])),
+        SYS_SERIAL_WRITE => flat(sys_serial_write(args[0] as Handle, args[1], args[2])),
+        SYS_SYSTEM_INFO => flat(sys_system_info(args[0], args[1])),
+        SYS_DIR_LIST => flat(sys_dir_list(args[0], args[1], args[2], args[3])),
         _ => ERR_NOSYS,
     }
 }
@@ -638,7 +647,11 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
             // Handle, then type, then rights (ipc.md §1).
             let e = t.get(h, Rights::NONE).map_err(handle_err)?;
             match &e.object {
-                Object::Channel(_) | Object::Process(_) | Object::Nic(_) | Object::Keyboard(_) => {}
+                Object::Channel(_)
+                | Object::Process(_)
+                | Object::Nic(_)
+                | Object::Keyboard(_)
+                | Object::Serial(_) => {}
                 _ => return Err(ERR_WRONG_TYPE),
             }
             if !e.rights.contains(Rights::WAIT) {
@@ -661,7 +674,7 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
                 Object::Channel(ep) => ep.poll(*wanted, Some(tid)),
                 Object::Process(p) if wanted & SIGNAL_EXITED != 0 && p.watch(tid) => SIGNAL_EXITED,
                 Object::Nic(n) => n.poll(*wanted, Some(tid)),
-                Object::Keyboard(k) => k.poll(*wanted, Some(tid)),
+                Object::Keyboard(k) | Object::Serial(k) => k.poll(*wanted, Some(tid)),
                 _ => 0,
             };
             if asserted != 0 && hit.is_none() {
@@ -682,7 +695,7 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
             Object::Channel(ep) => ep.forget_waiter(tid),
             Object::Process(p) => p.forget_waiter(tid),
             Object::Nic(n) => n.forget_waiter(tid),
-            Object::Keyboard(k) => k.forget_waiter(tid),
+            Object::Keyboard(k) | Object::Serial(k) => k.forget_waiter(tid),
             _ => {}
         }
     }
@@ -862,7 +875,7 @@ fn sys_nic_recv(h: Handle, ptr: u64, cap: u64) -> Result<i64, i64> {
 
 /// `kbd_read(h, ptr, cap)`: up to `cap` scancode bytes; `ERR_SHOULD_WAIT` when none waits.
 fn sys_kbd_read(h: Handle, ptr: u64, cap: u64) -> Result<i64, i64> {
-    let cap = (cap as usize).min(crate::object::kbd::RING);
+    let cap = (cap as usize).min(crate::object::bytes::KBD_RING);
     if cap == 0 {
         return Err(ERR_INVALID);
     }
@@ -876,11 +889,118 @@ fn sys_kbd_read(h: Handle, ptr: u64, cap: u64) -> Result<i64, i64> {
         }
     };
     user_range_ok(ptr, cap as u64, true)?;
-    let mut buf = [0u8; crate::object::kbd::RING];
+    let mut buf = [0u8; crate::object::bytes::KBD_RING];
     let n = kbd.read(&mut buf[..cap]);
     if n == 0 {
         return Err(ERR_SHOULD_WAIT);
     }
     copy_to_user(ptr, &buf[..n])?;
     Ok(n as i64)
+}
+
+/// `serial_read(h, ptr, cap)` (v1.7): bytes waiting on the console, `ERR_SHOULD_WAIT` when
+/// none (READABLE wakes a waiter).
+fn sys_serial_read(h: Handle, ptr: u64, cap: u64) -> Result<i64, i64> {
+    let cap = (cap as usize).min(crate::object::bytes::CONSOLE_RING);
+    if cap == 0 {
+        return Err(ERR_INVALID);
+    }
+    let dev = {
+        let table = table()?;
+        let t = table.lock();
+        let e = t.get(h, Rights::READ).map_err(handle_err)?;
+        match &e.object {
+            Object::Serial(s) => s.clone(),
+            _ => return Err(ERR_WRONG_TYPE),
+        }
+    };
+    user_range_ok(ptr, cap as u64, true)?;
+    let mut buf = [0u8; crate::object::bytes::CONSOLE_RING];
+    let n = dev.read(&mut buf[..cap]);
+    if n == 0 {
+        return Err(ERR_SHOULD_WAIT);
+    }
+    copy_to_user(ptr, &buf[..n])?;
+    Ok(n as i64)
+}
+
+/// Largest `serial_write` (shell.md): one reply at a time, never a stream.
+pub const SERIAL_WRITE_MAX: usize = 4096;
+
+/// `serial_write(h, ptr, len)` (v1.7): the bytes go to the console UART in order; the count
+/// actually written comes back (all of them on a healthy line), `ERR_IO` when the device is
+/// absent.
+fn sys_serial_write(h: Handle, ptr: u64, len: u64) -> Result<i64, i64> {
+    if len > SERIAL_WRITE_MAX as u64 {
+        return Err(ERR_RANGE);
+    }
+    {
+        let table = table()?;
+        let t = table.lock();
+        let e = t.get(h, Rights::WRITE).map_err(handle_err)?;
+        if !matches!(&e.object, Object::Serial(_)) {
+            return Err(ERR_WRONG_TYPE);
+        }
+    }
+    if !crate::diag::present() {
+        return Err(ERR_IO);
+    }
+    user_range_ok(ptr, len, false)?;
+    let mut buf = alloc::vec![0u8; len as usize];
+    copy_from_user(&mut buf, ptr)?;
+    Ok(crate::diag::write(&buf) as i64)
+}
+
+/// Size of the `system_info` record (v1.7).
+pub const SYSTEM_INFO_LEN: usize = 64;
+
+/// `system_info(ptr, len)` (v1.7): the kernel's own counters as one 64-byte record (little
+/// endian): version u32 (1), cpus_online u32, ticks u64, processes u32, threads u32,
+/// frames_total u64, frames_free u64, heap_live_bytes u64, heap_pages u64, handles u32,
+/// channels u32. `len` must be at least the record size.
+fn sys_system_info(ptr: u64, len: u64) -> Result<i64, i64> {
+    if len < SYSTEM_INFO_LEN as u64 {
+        return Err(ERR_RANGE);
+    }
+    user_range_ok(ptr, SYSTEM_INFO_LEN as u64, true)?;
+    let sched = sched::stats();
+    let pmm = crate::mm::pmm::stats();
+    let heap = crate::mm::heap::stats();
+    let obj = crate::object::stats();
+    let mut rec = [0u8; SYSTEM_INFO_LEN];
+    rec[0..4].copy_from_slice(&1u32.to_le_bytes());
+    rec[4..8].copy_from_slice(&crate::arch::smp::online_count().to_le_bytes());
+    rec[8..16].copy_from_slice(&sched.ticks.to_le_bytes());
+    rec[16..20].copy_from_slice(&(sched.processes as u32).to_le_bytes());
+    rec[20..24].copy_from_slice(&(sched.threads as u32).to_le_bytes());
+    rec[24..32].copy_from_slice(&pmm.managed_frames.to_le_bytes());
+    rec[32..40].copy_from_slice(&pmm.free_frames.to_le_bytes());
+    rec[40..48].copy_from_slice(&heap.live_bytes.to_le_bytes());
+    rec[48..56].copy_from_slice(&(heap.slab_pages + heap.large_frames).to_le_bytes());
+    rec[56..60].copy_from_slice(&obj.handles.to_le_bytes());
+    rec[60..64].copy_from_slice(&obj.channels.to_le_bytes());
+    copy_to_user(ptr, &rec)?;
+    Ok(0)
+}
+
+/// Largest `dir_list` output (files.md §2).
+pub const DIR_LIST_MAX: usize = 4096;
+
+/// `dir_list(path_ptr, len, out_ptr, cap)` (v1.7, files.md §2): the directory's entries as
+/// text lines; the byte count comes back, `ERR_RANGE` when they do not fit `cap`.
+fn sys_dir_list(ptr: u64, len: u64, out: u64, cap: u64) -> Result<i64, i64> {
+    let mut path = [0u8; vfs::PATH_MAX];
+    let n = user_path(ptr, len, &mut path)?;
+    let cap = (cap as usize).min(DIR_LIST_MAX);
+    if cap == 0 {
+        return Err(ERR_INVALID);
+    }
+    user_range_ok(out, cap as u64, true)?;
+    let mut buf = alloc::vec![0u8; cap];
+    let written = vfs::dir_list(&path[..n], &mut buf).map_err(|e| match e {
+        FsError::Range => ERR_RANGE,
+        other => fs_err(other),
+    })?;
+    copy_to_user(out, &buf[..written])?;
+    Ok(written as i64)
 }

@@ -1970,27 +1970,68 @@
         "docs/PLAN.md §5",
         "docs/adr/0016-services-and-authority.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/adr/0018-diagnostic-shell.md",
+        "docs/contracts/files.md",
+        "docs/contracts/input.md",
+        "docs/contracts/ipc.md",
+        "docs/contracts/services.md",
+        "docs/contracts/shell.md",
+        "docs/contracts/syscall.md",
+        "docs/sources.json",
+        "kernel/src/arch/mod.rs",
+        "kernel/src/arch/x86_64/com2.rs",
+        "kernel/src/arch/x86_64/irq.rs",
+        "kernel/src/arch/x86_64/mod.rs",
+        "kernel/src/diag.rs",
+        "kernel/src/fs/vfs.rs",
+        "kernel/src/kmain.rs",
+        "kernel/src/ktest.rs",
+        "kernel/src/main.rs",
+        "kernel/src/net.rs",
+        "kernel/src/object/bytes.rs",
+        "kernel/src/object/mod.rs",
+        "kernel/src/services.rs",
+        "kernel/src/syscall/mod.rs",
+        "platform/pc-qemu/manifests/svc-sh.txt",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tests/test_console_session.py",
+        "tools/project.py",
+        "tools/unsafe-baseline.txt",
+        "user/apps/sh/src/main.rs",
+        "user/apps/svcmgr/src/main.rs",
+        "user/libnawah/src/lib.rs"
+      ],
       "contract_refs": [
-        "docs/contracts/shell.md"
+        "docs/contracts/shell.md",
+        "docs/contracts/syscall.md",
+        "docs/contracts/services.md",
+        "docs/contracts/files.md"
       ],
       "actions": [
         "shell تشخيصي تفاعلي على قناة تسلسلية ثانية وقناة مختبر TCP",
-        "sh service: svc/cpu/mem/net/ls/cat/login over a second 16550 channel",
-        "project.py console socket: send commands, read output, oracles on transcripts"
+        "COM2 (16550 at 0x2F8) probed by loopback at boot and polled from the timer tick (ADR-0018); Object::Serial (type 9) generalising the keyboard ring (object/bytes.rs); ABI v1.7: serial_read, serial_write, system_info (64-byte record of the kernel's counters), dir_list (text listing; files.md v1.1); +3 unsafe lines (baseline 176)",
+        "svcmgr v1.3: the console routed to the service `sh`; boot-channel requests LIST and CONNECT <declared dependency> (no ambient authority between services)",
+        "sh service (shell.md v1): help/svc/cpu/mem/net [dhcp|policy]/ls/cat/login/whoami/logout/exit — every command answers from the owner of the state (manager, net, kernel, volume); protected commands carry the session token to the service that checks it",
+        "lab: COM2 as `-serial null` in every run and `-serial tcp:127.0.0.1:<port>,server=on,wait=off` for console cases; ConsoleSession drives a script and judges expect/absent/prompt/expect_serial after the guest exits (transcript console.log); host test tests/test_console_session.py against a fake shell; kernel tests shell_svc, shell_login; manifest SVC-SH.TXT"
       ],
-      "acceptance": "TST-M4-SHELL-SVC/SHELL-LOGIN PASS on CI; shell.md v1",
+      "acceptance": "TST-M4-SHELL-SVC/SHELL-LOGIN/SHELL-TOOL PASS on CI and TST-M1-BOOT shows kernel|diag … selfcheck=1 and 5 initial handles; shell.md v1, syscall.md v1.7, services.md v1.3, files.md v1.1",
       "test_ids": [
         "TST-M4-SHELL-SVC",
-        "TST-M4-SHELL-LOGIN"
+        "TST-M4-SHELL-LOGIN",
+        "TST-M4-SHELL-TOOL"
       ],
       "commands": [
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M4"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

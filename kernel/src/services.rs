@@ -66,6 +66,13 @@ pub fn spawn_manager() -> Result<Manager, &'static str> {
         object: Object::Keyboard(crate::net::keyboard_object()),
         rights: Rights::KBD_DEFAULT,
     });
+    // The diagnostic console (WP-30, shell.md) when COM2 answered the boot probe.
+    if crate::diag::present() {
+        initial.push(Entry {
+            object: Object::Serial(crate::diag::serial_object()),
+            rights: Rights::SERIAL_DEFAULT,
+        });
+    }
     let n_initial = initial.len();
     let pid =
         crate::user::spawn_elf_with(&image, 1, initial, object.clone()).map_err(|e| e.code())?;

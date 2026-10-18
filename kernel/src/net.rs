@@ -6,7 +6,7 @@ use alloc::sync::Arc;
 
 use crate::arch::pci::Device;
 use crate::drivers::virtio_net::{NetError, NetInfo, NetStats, VirtioNet};
-use crate::object::kbd::KeyboardObject;
+use crate::object::bytes::{ByteObject, KBD_RING};
 use crate::object::nic::NicObject;
 use crate::sync::IrqSpinLock;
 
@@ -14,16 +14,16 @@ static DEVICE: IrqSpinLock<Option<VirtioNet>> = IrqSpinLock::new("net", None);
 /// The objects the timer tick feeds: created once, handed to the service manager at boot
 /// (and to the test kernel's cases).
 static NIC_OBJECT: IrqSpinLock<Option<Arc<NicObject>>> = IrqSpinLock::new("nic-object", None);
-static KBD_OBJECT: IrqSpinLock<Option<Arc<KeyboardObject>>> = IrqSpinLock::new("kbd-object", None);
+static KBD_OBJECT: IrqSpinLock<Option<Arc<ByteObject>>> = IrqSpinLock::new("kbd-object", None);
 
 pub fn nic_object() -> Arc<NicObject> {
     let mut g = NIC_OBJECT.lock();
     g.get_or_insert_with(|| Arc::new(NicObject::new())).clone()
 }
 
-pub fn keyboard_object() -> Arc<KeyboardObject> {
+pub fn keyboard_object() -> Arc<ByteObject> {
     let mut g = KBD_OBJECT.lock();
-    g.get_or_insert_with(|| Arc::new(KeyboardObject::new()))
+    g.get_or_insert_with(|| Arc::new(ByteObject::new("kbd", KBD_RING)))
         .clone()
 }
 

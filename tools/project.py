@@ -435,6 +435,149 @@ class HostServices:
             s.close()
 
 
+class ConsoleSession:
+    """The lab's side of the diagnostic console (WP-30, shell.md §4): a TCP client of QEMU's
+    second serial port (COM2, `-serial tcp:127.0.0.1:<port>,server=on,wait=off`) that drives the
+    `sh` service with a script of commands. It connects as soon as QEMU listens, waits for the
+    first prompt (and, when `after` is given, for that serial marker, so the services are all
+    ready before the first command), then sends each step's `send` line and collects the
+    output up to the next prompt. Expectations are judged after the guest exits, with the
+    complete serial log at hand (`expect_serial` compares the shell's values with the
+    kernel's own lines); the transcript is evidence (console.log)."""
+
+    PROMPT = re.compile(rb"(?:^|\n)(?:[A-Za-z0-9_]+@)?nawah> $")
+
+    def __init__(self, spec, transcript_path, serial_path, timeout):
+        import threading
+        self.spec, self.transcript_path, self.serial_path, self.timeout = spec, transcript_path, serial_path, timeout
+        self.steps = []          # (step, output bytes, prompt bytes)
+        self.errors = []
+        self.transcript = bytearray()
+        self.thread = threading.Thread(target=self._run, daemon=True)
+
+    def start(self):
+        self.thread.start()
+
+    def _connect(self, deadline):
+        import socket
+        import time
+        while time.monotonic() < deadline:
+            try:
+                sock = socket.create_connection(("127.0.0.1", int(self.spec["port"])), timeout=2)
+                sock.settimeout(0.5)
+                return sock
+            except OSError:
+                time.sleep(0.2)
+        return None
+
+    def _read_until_prompt(self, sock, deadline):
+        """Bytes up to and including the next prompt; None at the deadline or when the peer
+        closed."""
+        import socket
+        import time
+        buf = bytearray()
+        while time.monotonic() < deadline:
+            try:
+                chunk = sock.recv(4096)
+            except socket.timeout:
+                continue
+            except OSError:
+                return None
+            if not chunk:
+                return None
+            buf += chunk
+            self.transcript += chunk
+            if self.PROMPT.search(bytes(buf)):
+                return bytes(buf)
+        return None
+
+    def _run(self):
+        import time
+        deadline = time.monotonic() + self.timeout
+        sock = self._connect(min(deadline, time.monotonic() + 30))
+        if sock is None:
+            self.errors.append("console: could not connect to the guest's second serial port")
+            return
+        try:
+            first = self._read_until_prompt(sock, deadline)
+            if first is None:
+                self.errors.append("console: no prompt from the shell")
+                return
+            after = self.spec.get("after")
+            if after:
+                marker = after.encode()
+                while time.monotonic() < deadline:
+                    if self.serial_path.exists() and marker in self.serial_path.read_bytes():
+                        break
+                    time.sleep(0.2)
+                else:
+                    self.errors.append(f"console: serial marker {after!r} never appeared")
+                    return
+            for step in self.spec["script"]:
+                line = step["send"].encode()
+                self.transcript += b">>> " + line + b"\n"
+                try:
+                    sock.sendall(line + b"\n")
+                except OSError as ex:
+                    self.errors.append(f"console: send failed at {step['send']!r}: {ex}")
+                    return
+                if step.get("final"):
+                    # The session ends here (`exit`): the shell prints its farewell and leaves.
+                    time.sleep(0.5)
+                    try:
+                        tail = sock.recv(4096)
+                    except OSError:
+                        tail = b""
+                    self.transcript += tail
+                    self.steps.append((step, tail, b""))
+                    return
+                out = self._read_until_prompt(sock, min(deadline, time.monotonic() + float(step.get("timeout_s", 60))))
+                if out is None:
+                    self.errors.append(f"console: no prompt after {step['send']!r}")
+                    return
+                m = self.PROMPT.search(out)
+                # The match starts at the newline before the prompt (part of the output) or
+                # at the very start when the command printed nothing.
+                cut = m.start() + (1 if out[m.start():m.start() + 1] == b"\n" else 0)
+                self.steps.append((step, out[:cut], out[cut:]))
+        finally:
+            try:
+                sock.close()
+            except OSError:
+                pass
+
+    def finish(self):
+        """Joins the session and judges every step; the failures (strings) come back."""
+        self.thread.join(timeout=5)
+        self.transcript_path.write_bytes(bytes(self.transcript))
+        failures = list(self.errors)
+        serial = self.serial_path.read_bytes() if self.serial_path.exists() else b""
+        done = {id(st) for st, _, _ in self.steps}
+        for st in self.spec["script"]:
+            if id(st) not in done:
+                failures.append(f"console step {st['send']!r} never ran")
+        for st, out, prompt in self.steps:
+            tag = f"console step {st['send']!r}"
+            for exp in st.get("expect", []):
+                if exp.encode() not in out:
+                    failures.append(f"{tag}: expected {exp!r} in output {out[:200]!r}")
+            for exp in st.get("absent", []):
+                if exp.encode() in out:
+                    failures.append(f"{tag}: forbidden {exp!r} in output")
+            for prefix, marker, terminator in st.get("expect_serial", []):
+                i = serial.find(marker.encode())
+                if i < 0:
+                    failures.append(f"{tag}: serial marker {marker!r} absent")
+                    continue
+                v = serial[i + len(marker):]
+                v = v[:v.find(terminator.encode())] if terminator and terminator.encode() in v else v.split(b"\n")[0]
+                if prefix.encode() + v not in out:
+                    failures.append(f"{tag}: expected {prefix + v.decode(errors='replace')!r} (from the serial log) in output {out[:200]!r}")
+            if "prompt" in st and prompt != st["prompt"].encode():
+                failures.append(f"{tag}: prompt {prompt!r} != {st['prompt']!r}")
+        return failures
+
+
 def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions):
     """`run_logged` for a QEMU case that drives the guest through the monitor (WP-27): once
     `actions["after"]` appears in the serial log, every line of `actions["commands"]` goes to
@@ -580,7 +723,7 @@ def keep_artifact(d, rid, art: Path) -> str:
     return f"evidence/{rid}/artifact/{art.name}"
 
 
-def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None, smp=None, monitor=None):
+def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None, smp=None, monitor=None, console_port=None):
     q = t["qemu"]
     # Per-target exit device: isa-debug-exit on the PC, semihosting on the Arm virt board.
     exit_args = q.get("extra_args", ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04"])
@@ -593,12 +736,16 @@ def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None, smp=None,
     # A monitor socket when a case drives the guest (keys through `sendkey`, WP-27).
     if monitor is not None:
         disk_args += ["-monitor", f"unix:{monitor},server,nowait"]
+    # The second serial port (COM2) is the diagnostic console (WP-30): a TCP server the lab
+    # connects to when the case has a `console` script, otherwise a null sink so the port
+    # exists in every run (the kernel probes it at boot: kernel|diag).
+    console_args = ["-serial", f"tcp:127.0.0.1:{console_port},server=on,wait=off" if console_port else "null"]
     # A case (or phase) may ask for its own CPU count (`smp`, WP-20); the target's is the default.
     cmd = [q["binary"], "-machine", q["machine"], "-cpu", q["cpu"], "-m", q["memory"], "-smp", str(smp or q["smp"]),
            "-drive", f"if=pflash,format=raw,readonly=on,file={q['ovmf_code']}",
            "-drive", f"if=pflash,format=raw,file={ROOT / 'build' / target_name / 'OVMF_VARS.fd'}",
            "-drive", f"format=raw,file=fat:rw:{esp_dir}",
-           "-serial", f"file:{serial_log}", "-display", "none", "-no-reboot",
+           "-serial", f"file:{serial_log}", *console_args, "-display", "none", "-no-reboot",
            *exit_args, *disk_args, *extra]
     return cmd
 
@@ -691,6 +838,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     # and equal_values are checked against the concatenated serial output of all phases.
     phases = case.get("phases") or [{}]
     cmds, texts, rcs, phase_failures, lab_errors = [], [], [], [], []
+    console_failures = []
     for i, ph in enumerate(phases):
         serial = d / ("serial.log" if len(phases) == 1 else f"serial-{i + 1}.log")
         disk = prepare_disk(t, target_name, fresh=(i == 0))
@@ -701,13 +849,20 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         monitor = (ROOT / "build" / target_name / f"mon{i + 1}.sock") if actions else None
         if monitor is not None:
             monitor.unlink(missing_ok=True)
-        cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")), monitor)
+        console_spec = ph.get("console", case.get("console"))
+        cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")), monitor,
+                       console_spec and console_spec["port"])
         run = (lambda: run_qemu_monitored(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s, serial, monitor, actions)) if actions \
             else (lambda: run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s))
+        console = ConsoleSession(console_spec, d / "console.log", serial, timeout_s) if console_spec else None
+        if console:
+            console.start()
         try:
             rc = run()
         finally:
             peers.close()
+            if console:
+                console_failures = console.finish()
         if rc < 0:
             # QEMU itself died (signal): a lab failure, not a verdict on the kernel. One retry on
             # a fresh image; if it dies again the case fails and says why (LAB_ERROR), so a
@@ -750,6 +905,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         if not ma or not mb or ma.group(1) != mb.group(1):
             missing.append(f"equal_values({pat_a} vs {pat_b}): {ma and ma.group(1)} != {mb and mb.group(1)}")
     missing += phase_failures
+    missing += console_failures
     # Host checks (WP-18): commands run on the host against the disk image after the guest
     # run(s) — independent readers (tools/fat32.py, fsck.fat) confirm what the kernel wrote.
     disk_path = ROOT / "build" / target_name / "disk.img"
@@ -810,6 +966,9 @@ HOST_SUITES["M4"] = [
      "oracle": "nawah-crypto's SHA-256 (FIPS 180-4 examples incl. the two-block message and the empty message, incremental = one-shot), HMAC-SHA-256 (RFC 4231 test cases 1, 2, 6, 7) and PBKDF2-HMAC-SHA-256 (RFC 7914 §11, 1 and 80000 iterations) known answers pass on the host (4 tests, 0 failed); the guest repeats them in the auth service (TST-M4-LOGIN)",
      "pass_marker": "test result: ok. 4 passed; 0 failed",
      "inputs": ["user/nawah-crypto/src/lib.rs", "user/nawah-crypto/Cargo.toml"], "input_globs": []},
+    {"id": "TST-M4-SHELL-TOOL", "command": ["python3", "-I", "tests/test_console_session.py"],
+     "oracle": "the lab's console session (ConsoleSession) against a fake shell over TCP: waits for the serial marker, splits output at the prompt, judges expect/absent/prompt/expect_serial, reports misses by step, a missing marker sends nothing (3 cases, OK)",
+     "inputs": ["tests/test_console_session.py", "tools/project.py"], "input_globs": []},
 ]
 HOST_SUITES["M3"] = [
     {"id": "TST-M3-FAT32-TOOL", "command": ["python3", "-I", "tests/test_fat32_tool.py"],

@@ -6,7 +6,7 @@
 
 ## 1. الكائنات والمقابض
 
-- **الكائن** (`Object`) مرجعي العدّ (`Arc`): `Channel` (طرف قناة) أو `Vmo` (كائن ذاكرة: n إطارات)؛ ومنذ v1.3 `File` (files.md) ومنذ v1.4 `Process` (كائن عملية، syscall.md §5: حقوقه `WAIT|DUPLICATE|TRANSFER`، يُنتظر عليه بـ `object_wait_many` بإشارة `EXITED`)؛ ومنذ v1.5 `Token` و`Authority` (auth.md §1)؛ ومنذ v1.6 `Nic` و`Keyboard` (net.md أ، input.md). **رموز الأنواع** (`handle_type`، v1.6): 1 قناة، 2 VMO، 3 ملف، 4 عملية، 5 رمز، 6 سلطة، 7 واجهة شبكة، 8 لوحة مفاتيح.
+- **الكائن** (`Object`) مرجعي العدّ (`Arc`): `Channel` (طرف قناة) أو `Vmo` (كائن ذاكرة: n إطارات)؛ ومنذ v1.3 `File` (files.md) ومنذ v1.4 `Process` (كائن عملية، syscall.md §5: حقوقه `WAIT|DUPLICATE|TRANSFER`، يُنتظر عليه بـ `object_wait_many` بإشارة `EXITED`)؛ ومنذ v1.5 `Token` و`Authority` (auth.md §1)؛ ومنذ v1.6 `Nic` و`Keyboard` (net.md أ، input.md)؛ ومنذ v1.7 `Serial` (قناة التشخيص، syscall.md §6، shell.md). **رموز الأنواع** (`handle_type`، v1.6/v1.7): 1 قناة، 2 VMO، 3 ملف، 4 عملية، 5 رمز، 6 سلطة، 7 واجهة شبكة، 8 لوحة مفاتيح، 9 قناة تشخيص.
 - **المقبض** عدد 32 بت خاص بالعملية: `(generation << 16) | index`؛ `index < 1024`، `generation ≥ 1` فلا يساوي المقبض 0 أبدًا (0 = غير صالح). إغلاق المقبض يرفع جيل الخانة؛ القيمة القديمة تُرفض بـ `ERR_BAD_HANDLE` حتى لو أُعيد استعمال الخانة (الجيل يلتف بعد 65535 إغلاقًا للخانة نفسها — مقبول ومُسجَّل).
 - **الحقوق** صفة المقبض لا الكائن (مقبضان للكائن نفسه قد يختلفان): `READ=0x1`، `WRITE=0x2`، `DUPLICATE=0x4`، `TRANSFER=0x8`، `MAP=0x10` (VMO، يُفعَّل مع WP-17)، `WAIT=0x20` (الحجب). كل نداء يفحص المقبض (الجيل) ثم النوع ثم الحقوق المطلوبة **قبل** أي عمل.
 - حقوق المقابض الجديدة: طرف القناة `READ|WRITE|DUPLICATE|TRANSFER|WAIT`؛ VMO `READ|WRITE|DUPLICATE|TRANSFER|MAP`.

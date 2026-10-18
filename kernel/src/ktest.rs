@@ -182,6 +182,8 @@ pub fn run() -> ! {
         "net_no_internet" => net_no_internet(),
         "net_tcp_echo" => net_tcp_echo(),
         "net_tcp_retransmit" => net_tcp_retransmit(),
+        "shell_svc" => shell_session("shell_svc"),
+        "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
         "lock_reentry" => {
@@ -4083,6 +4085,64 @@ fn net_tcp_retransmit() -> ! {
         "net_tcp_retransmit",
         frames0,
         "a lost segment is retransmitted when the RTO expires, with exponential back-off and Karn's rule",
+    )
+}
+
+// ---- WP-30: the diagnostic shell --------------------------------------------------------
+
+/// The shell cases (shell.md §4): the manager starts auth, net and sh from SVC-SH.TXT; the
+/// lab drives the shell over the console socket (tools/project.py `console`) and ends the
+/// session with `exit`, which the manager sees as the service stopping; the kernel then checks
+/// what the services left behind. The kernel's own counters go to the serial log so the lab
+/// can compare them with what `cpu` and `mem` printed.
+fn shell_session(name: &'static str) -> ! {
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-SH.TXT");
+    svc_wait_ready(&h, &["auth", "net", "sh"], sched::ticks() + 60_000);
+    kprintln!(
+        "OSX|{}|ktest|{}|cpus={}|frames_total={}|console_present={}|ready=1",
+        BUILD_ID,
+        name,
+        crate::arch::smp::online_count(),
+        pmm::stats().managed_frames,
+        u8::from(crate::diag::present())
+    );
+    if !crate::diag::present() {
+        fail("the diagnostic console is absent")
+    }
+    // The lab's session; `exit` stops the shell (state `stopped`, exit code 0).
+    let lines = h.poll_list(sched::ticks() + 180_000, |l| {
+        l.iter().any(|x| x.name == "sh" && x.state == "stopped")
+    });
+    let sh = lines.iter().find(|l| l.name == "sh");
+    let (state, exit) = sh.map_or(("-".into(), None), |l| (l.state.clone(), l.exit));
+    kprintln!(
+        "OSX|{}|ktest|{}|sh_state={}|sh_exit={}|listing={}",
+        BUILD_ID,
+        name,
+        state,
+        exit.map_or(-1, |x| x as i64),
+        SvcHarness::list_text(&lines)
+    );
+    if state != "stopped" || exit != Some(0) {
+        fail("the shell did not end its session with exit 0")
+    }
+    drop((lines, state));
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|{}|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        name,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    cfg_balance(
+        name,
+        frames0,
+        "the shell served the lab's session from the owners of each state and ended cleanly",
     )
 }
 

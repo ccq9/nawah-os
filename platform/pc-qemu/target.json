@@ -18,7 +18,8 @@
       "tools/fat32.py",
       "user/apps/file_roundtrip/Cargo.toml",
       "user/apps/path_invalid/Cargo.toml",
-      "user/apps/fd_leak/Cargo.toml"
+      "user/apps/fd_leak/Cargo.toml",
+      "user/apps/sh/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -43,7 +44,8 @@
       "${OUT}/apps/configd.elf",
       "${OUT}/apps/netprobe.elf",
       "${OUT}/apps/kbdprobe.elf",
-      "${OUT}/apps/netd.elf"
+      "${OUT}/apps/netd.elf",
+      "${OUT}/apps/sh.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -372,6 +374,24 @@
         "cp",
         "${OUT}/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.efi",
         "${OUT}/NAWAH-KTEST.EFI"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/sh/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/sh",
+        "${OUT}/apps/sh.elf"
       ]
     ]
   },
@@ -420,7 +440,7 @@
       {
         "id": "TST-M1-BOOT",
         "test_id": "TST-M1-BOOT",
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); the manager receives 4 initial handles",
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); WP-30: the second 16550 (COM2, the diagnostic console) answers its loopback probe (kernel|diag|port=0x2f8|present=1|…|selfcheck=1); the manager receives 5 initial handles (control, authority, interface, keyboard, console)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
@@ -458,11 +478,12 @@
           "|link=1|features=0x100010020|queue_size=16|dma_frames=18|gateway=52:55:0a:00:02:02|arp_ticks=",
           "|rx_bad=0|tx_in_flight=0|mmio=0xffffa8",
           "|kernel|kbd|drained=",
+          "|kernel|diag|port=0x2f8|present=1|ring=256|code=ok|selfcheck=1",
           "|ring=64|pending=0|overflow=0|code=ok|selfcheck=1",
           "|kernel|svcmgr|pid=",
           "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
           "|kernel|spawn|pid=",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=4|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=5|by=kernel",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -2264,7 +2285,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_order",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=4|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=5|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_order|load=OK 3|list=A:ready:0:",
           "|all_ready=1|b_after_a=1|c_after_ab=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2310,7 +2331,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_timeout",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=4|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=5|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_timeout|load=OK 2|list=M:failed:0:",
           "|failed_after_timeout=1|dependent_blocked=1|list_after=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2356,7 +2377,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_restart",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=4|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=5|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_restart|load=OK 1|list=X:given_up:3:",
           "|state=given_up|restarts=3|exit=1|span=",
@@ -3056,6 +3077,297 @@
             "port": 17008
           }
         ]
+      },
+      {
+        "id": "TST-M4-SHELL-SVC",
+        "test_id": "TST-M4-SHELL-SVC",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=shell_svc"
+        ],
+        "oracle": "over the lab's console socket (COM2) the shell answers: `svc` lists every service of SVC-SH.TXT with its state from the manager (auth ready, net ready, sh ready); `cpu` and `mem` print the kernel's own counters (cpus and frames_total equal to the values the kernel test printed from the kernel); `net dhcp` configures the service and `net` then shows configured=1 ip=10.0.2.15 from the net service; `ls /SYSTEM` lists the images and `cat /DIR/INNER.TXT` prints the lab file; an unknown command is ERR UNKNOWN_COMMAND; `exit` ends the session — the manager sees sh stopped with exit 0, nothing is left behind, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=shell_svc",
+          "|kernel|spawn|pid=6|path=/SYSTEM/SH.ELF|handles=2",
+          "|ktest|shell_svc|cpus=4|frames_total=",
+          "|console_present=1|ready=1",
+          "|ktest|shell_svc|sh_state=stopped|sh_exit=0|listing=auth:ready:0:",
+          "|ktest|shell_svc|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|shell_svc|frames_delta=0",
+          "|ktest|pass|the shell served the lab's session from the owners of each state and ended cleanly"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "console": {
+          "port": 17010,
+          "after": "|ktest|shell_svc|cpus=",
+          "script": [
+            {
+              "send": "help",
+              "expect": [
+                "commands: help svc cpu mem net"
+              ]
+            },
+            {
+              "send": "svc",
+              "expect": [
+                "auth ready 0 ",
+                "net ready 0 ",
+                "sh ready 0 "
+              ]
+            },
+            {
+              "send": "cpu",
+              "expect": [
+                "cpus=",
+                " ticks=",
+                " processes=4 threads="
+              ],
+              "expect_serial": [
+                [
+                  "cpus=",
+                  "|ktest|shell_svc|cpus=",
+                  "|"
+                ]
+              ]
+            },
+            {
+              "send": "mem",
+              "expect": [
+                "frames_total=",
+                " frames_free=",
+                " heap_live_bytes=",
+                " handles="
+              ],
+              "expect_serial": [
+                [
+                  "frames_total=",
+                  "|ktest|shell_svc|cpus=4|frames_total=",
+                  "|"
+                ]
+              ]
+            },
+            {
+              "send": "net",
+              "expect": [
+                "OK link=1 configured=0 "
+              ]
+            },
+            {
+              "send": "net dhcp",
+              "expect": [
+                "OK ip=10.0.2.15 mask=255.255.255.0 gw=10.0.2.2 dns=10.0.2.3"
+              ]
+            },
+            {
+              "send": "net",
+              "expect": [
+                "OK link=1 configured=1 ip=10.0.2.15 "
+              ]
+            },
+            {
+              "send": "ls /SYSTEM",
+              "expect": [
+                "F ",
+                " SVCMGR.ELF\n",
+                " AUTHD.ELF\n",
+                " NETD.ELF\n",
+                " SH.ELF\n",
+                " SVC-SH.TXT\n",
+                " USERS.DB\n"
+              ]
+            },
+            {
+              "send": "ls /",
+              "expect": [
+                "D DIR\n",
+                "D SYSTEM\n",
+                "F 24 HELLO.TXT\n",
+                "F 20480 PATTERN.BIN\n"
+              ]
+            },
+            {
+              "send": "cat /DIR/INNER.TXT",
+              "expect": [
+                "hello from the lab disk\n"
+              ]
+            },
+            {
+              "send": "cat /NOSUCH.TXT",
+              "expect": [
+                "ERR NOT_FOUND"
+              ]
+            },
+            {
+              "send": "ls /HELLO.TXT",
+              "expect": [
+                "ERR NOT_DIR"
+              ]
+            },
+            {
+              "send": "nosuch",
+              "expect": [
+                "ERR UNKNOWN_COMMAND"
+              ],
+              "prompt": "nawah> "
+            },
+            {
+              "send": "exit",
+              "final": true
+            }
+          ]
+        }
+      },
+      {
+        "id": "TST-M4-SHELL-LOGIN",
+        "test_id": "TST-M4-SHELL-LOGIN",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=shell_login"
+        ],
+        "oracle": "over the console socket: `whoami` says not logged in and the protected `net policy internet=1` is refused without a session (ERR NO_SESSION); `login admin` with a wrong password fails (the auth service's ERR ACCESS) and the prompt stays nawah>; `login user lab-user-1` succeeds (prompt user@nawah>) but the admin command is refused by the net service (ERR ACCESS, the token lacks ADMIN); after `logout` and `login admin lab-admin-1` (prompt admin@nawah>) the command succeeds (OK), `whoami` shows uid 1000 with perms 15, `logout` restores the plain prompt; `exit` ends the session cleanly; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=shell_login",
+          "|ktest|shell_login|cpus=4|frames_total=",
+          "|ktest|shell_login|sh_state=stopped|sh_exit=0|",
+          "|ktest|shell_login|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|shell_login|frames_delta=0",
+          "|ktest|pass|the shell served the lab's session from the owners of each state and ended cleanly"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "console": {
+          "port": 17011,
+          "after": "|ktest|shell_login|cpus=",
+          "script": [
+            {
+              "send": "whoami",
+              "expect": [
+                "not logged in"
+              ]
+            },
+            {
+              "send": "net policy internet=1",
+              "expect": [
+                "ERR NO_SESSION"
+              ]
+            },
+            {
+              "send": "login admin wrong-password",
+              "expect": [
+                "login failed: ERR ACCESS"
+              ],
+              "prompt": "nawah> "
+            },
+            {
+              "send": "login user lab-user-1",
+              "expect": [
+                "logged in as user"
+              ],
+              "prompt": "user@nawah> "
+            },
+            {
+              "send": "whoami",
+              "expect": [
+                "user OK 1001 1001 8"
+              ]
+            },
+            {
+              "send": "net policy internet=1",
+              "expect": [
+                "ERR ACCESS"
+              ]
+            },
+            {
+              "send": "login admin lab-admin-1",
+              "expect": [
+                "ERR SESSION_OPEN"
+              ],
+              "prompt": "user@nawah> "
+            },
+            {
+              "send": "logout",
+              "expect": [
+                "logged out"
+              ],
+              "prompt": "nawah> "
+            },
+            {
+              "send": "whoami",
+              "expect": [
+                "not logged in"
+              ]
+            },
+            {
+              "send": "login admin lab-admin-1",
+              "expect": [
+                "logged in as admin"
+              ],
+              "prompt": "admin@nawah> "
+            },
+            {
+              "send": "whoami",
+              "expect": [
+                "admin OK 1000 1000 15"
+              ]
+            },
+            {
+              "send": "net policy internet=1",
+              "expect": [
+                "OK"
+              ],
+              "absent": [
+                "ERR"
+              ]
+            },
+            {
+              "send": "net",
+              "expect": [
+                "allow_internet=1"
+              ]
+            },
+            {
+              "send": "net policy internet=0",
+              "expect": [
+                "OK"
+              ],
+              "absent": [
+                "ERR"
+              ]
+            },
+            {
+              "send": "logout",
+              "expect": [
+                "logged out"
+              ],
+              "prompt": "nawah> "
+            },
+            {
+              "send": "net policy internet=1",
+              "expect": [
+                "ERR NO_SESSION"
+              ]
+            },
+            {
+              "send": "exit",
+              "final": true
+            }
+          ]
+        }
       }
     ]
   },

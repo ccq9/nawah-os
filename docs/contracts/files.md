@@ -16,6 +16,7 @@
 | 15 | `write` | h, ptr, len | عدد البايتات؛ عند الموضع (≤ الحجم: إلحاق أو استبدال)؛ يتطلب WRITE؛ ≤ 64 KiB |
 | 16 | `stat` | path_ptr, len, out_ptr (16 بايت قابلة للكتابة) | 0؛ `{size u64, is_dir u32, first_cluster u32}` |
 | 17 | `unlink` | path_ptr, len | 0؛ ملفات فقط (`ERR_IS_DIR` للمجلد) |
+| 35 | `dir_list` (v1.7، WP-30) | path_ptr, len, out_ptr, cap (1..=4096) | طول النص: سطر لكل مدخل `D <NAME>` للمجلد أو `F <size> <NAME>` للملف (اسم 8.3 بصيغة `NAME.EXT`، بلا `.` و`..` ولا ملصق الحجم)؛ `ERR_RANGE` إن لم يتسع السرد في `cap`؛ `ERR_NOT_DIR` للملف؛ أخطاء المسار كما في `stat` |
 | 18 | `seek` | h, pos | الموضع الجديد (مطلق، ≤ الحجم وإلا `ERR_INVALID`) |
 | 19 | `sync` | — | 0 بعد استقرار الكتابات على الجهاز |
 

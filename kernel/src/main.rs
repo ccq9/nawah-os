@@ -40,6 +40,7 @@ mod apps;
 #[cfg(target_arch = "x86_64")]
 mod block;
 #[cfg(target_arch = "x86_64")]
+mod diag;
 mod drivers;
 #[cfg(target_arch = "x86_64")]
 mod fs;

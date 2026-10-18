@@ -140,6 +140,66 @@ pub fn stat(path: &[u8]) -> Result<Stat, FsError> {
     })
 }
 
+/// Lists the directory at `path` (files.md §2, `dir_list`): one line per entry, `D <NAME>` for
+/// a directory and `F <size> <NAME>` for a file, 8.3 names as `NAME.EXT`; `Err(Range)` when
+/// the listing does not fit `out`. Returns the number of bytes written.
+pub fn dir_list(path: &[u8], out: &mut [u8]) -> Result<usize, FsError> {
+    check_path(path)?;
+    super::with(|fs| {
+        let mut n = 0;
+        let mut overflow = false;
+        fs.list(path, |e| {
+            if overflow {
+                return;
+            }
+            let mut line = [0u8; 32];
+            let mut k = 0;
+            let mut put = |b: &[u8]| {
+                line[k..k + b.len()].copy_from_slice(b);
+                k += b.len();
+            };
+            if e.is_dir() {
+                put(b"D ");
+            } else {
+                put(b"F ");
+                let mut num = [0u8; 10];
+                let mut i = num.len();
+                let mut v = e.size;
+                loop {
+                    i -= 1;
+                    num[i] = b'0' + (v % 10) as u8;
+                    v /= 10;
+                    if v == 0 {
+                        break;
+                    }
+                }
+                put(&num[i..]);
+                put(b" ");
+            }
+            let base = &e.name[..8];
+            let ext = &e.name[8..];
+            let base_len = base.iter().rposition(|c| *c != b' ').map_or(0, |p| p + 1);
+            let ext_len = ext.iter().rposition(|c| *c != b' ').map_or(0, |p| p + 1);
+            put(&base[..base_len]);
+            if ext_len > 0 {
+                put(b".");
+                put(&ext[..ext_len]);
+            }
+            put(b"\n");
+            if n + k > out.len() {
+                overflow = true;
+                return;
+            }
+            out[n..n + k].copy_from_slice(&line[..k]);
+            n += k;
+        })?;
+        if overflow {
+            return Err(FsError::Range);
+        }
+        Ok(n)
+    })
+}
+
 pub fn unlink(path: &[u8]) -> Result<(), FsError> {
     check_path(path)?;
     super::with(|fs| fs.unlink(path).map(|_| ()))

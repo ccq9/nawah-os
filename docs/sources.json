@@ -819,6 +819,36 @@
       ],
       "limits": "clock granularity G = 1 tick (1 ms); the backed-off RTO stays until a new RTT sample recomputes it",
       "verified": true
+    },
+    {
+      "id": "S63",
+      "title": "PC16550D Universal Asynchronous Receiver/Transmitter with FIFOs (datasheet) — register map at COM2 0x2F8",
+      "url": "https://www.ti.com/lit/ds/symlink/pc16550d.pdf",
+      "version": "Texas Instruments SNLS378B (1995, rev. 2015)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "register offsets: RBR/THR 0 (DLL with DLAB), IER 1 (DLM with DLAB), FCR 2, LCR 3 (bit 7 DLAB; 0x03 = 8 data bits, 1 stop, no parity), MCR 4 (bit 4 loopback), LSR 5 (bit 0 data ready, bit 5 THR empty)",
+        "FIFO mode: FCR bit 0 enables, bits 1–2 clear the receiver/transmitter FIFOs; 16-byte receiver FIFO",
+        "loopback (MCR bit 4): the transmitter output is looped to the receiver input, used here as the presence probe at boot",
+        "PC convention: COM1 at 0x3F8, COM2 at 0x2F8 (QEMU isa-serial index 1)"
+      ],
+      "limits": "the kernel polls LSR (no interrupts, no modem status); baud divisor 1 (115200) is nominal — QEMU's chardev ignores the line speed",
+      "verified": false
+    },
+    {
+      "id": "S64",
+      "title": "QEMU: Invocation — `-serial dev` character devices (`tcp:[host]:port,server=on,wait=off`, `null`)",
+      "url": "https://www.qemu.org/docs/master/system/invocation.html",
+      "version": "QEMU documentation (master; the lab runs 8.2.2)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "`tcp:[host]:port[,server=on|off][,wait=on|off][,nodelay=on|off][,reconnect-ms=…]`: the TCP net console either sends the serial I/O to a location or waits for a connection; example `-serial tcp:192.168.0.100:4444,server=on,wait=off` to listen and not wait",
+        "`-chardev socket`: `server=on|off` makes a listening socket; `wait=on|off` says whether QEMU blocks for a client before starting",
+        "`null`: the guest sees the UART as present, all output is discarded and there is no input (so COM2 exists in every lab run and the boot probe sees it)",
+        "the PC machines attach successive `-serial` backends to COM1, COM2, … (the second `-serial` is COM2 at 0x2F8: confirmed by the kernel's loopback probe on CI)"
+      ],
+      "limits": "bytes the guest writes before a client connects are dropped; the lab connects as soon as QEMU listens and waits for the shell's prompt; the deprecated `server,nowait` spellings still work on 8.2.2 (the monitor uses them) but the console uses `server=on,wait=off`",
+      "verified": true
     }
   ]
 }

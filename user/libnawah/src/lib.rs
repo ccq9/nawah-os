@@ -44,6 +44,11 @@ pub const SYS_NIC_INFO: u64 = 28;
 pub const SYS_NIC_SEND: u64 = 29;
 pub const SYS_NIC_RECV: u64 = 30;
 pub const SYS_KBD_READ: u64 = 31;
+/// v1.7 (WP-30, shell.md): the diagnostic console, system statistics, directory listing.
+pub const SYS_SERIAL_READ: u64 = 32;
+pub const SYS_SERIAL_WRITE: u64 = 33;
+pub const SYS_SYSTEM_INFO: u64 = 34;
+pub const SYS_DIR_LIST: u64 = 35;
 
 pub const ERR_NOSYS: i64 = -1;
 pub const ERR_INVALID: i64 = -2;
@@ -341,6 +346,7 @@ pub mod object_type {
     pub const AUTHORITY: i64 = 6;
     pub const NIC: i64 = 7;
     pub const KEYBOARD: i64 = 8;
+    pub const SERIAL: i64 = 9;
 }
 
 /// The type code of the object behind `h`, or an error.
@@ -589,4 +595,102 @@ macro_rules! entry {
             $crate::exit(0xDEAD)
         }
     };
+}
+
+/// `serial_read` (v1.7): bytes waiting on the diagnostic console; `ERR_SHOULD_WAIT` when none.
+pub fn serial_read(h: Handle, buf: &mut [u8]) -> Result<usize, i64> {
+    let r = syscall6(
+        SYS_SERIAL_READ,
+        u64::from(h),
+        buf.as_mut_ptr() as u64,
+        buf.len() as u64,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as usize)
+    }
+}
+
+/// `serial_write` (v1.7): `data` (≤ 4096 bytes) to the console; the count written comes back.
+pub fn serial_write(h: Handle, data: &[u8]) -> Result<usize, i64> {
+    let r = syscall6(
+        SYS_SERIAL_WRITE,
+        u64::from(h),
+        data.as_ptr() as u64,
+        data.len() as u64,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as usize)
+    }
+}
+
+/// The kernel's counters (`system_info`, syscall.md §6).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SystemInfo {
+    pub version: u32,
+    pub cpus: u32,
+    pub ticks: u64,
+    pub processes: u32,
+    pub threads: u32,
+    pub frames_total: u64,
+    pub frames_free: u64,
+    pub heap_live_bytes: u64,
+    pub heap_pages: u64,
+    pub handles: u32,
+    pub channels: u32,
+}
+
+pub fn system_info() -> Result<SystemInfo, i64> {
+    let mut rec = [0u8; 64];
+    let r = syscall6(SYS_SYSTEM_INFO, rec.as_mut_ptr() as u64, 64, 0, 0, 0, 0);
+    if r < 0 {
+        return Err(r);
+    }
+    let u32_at = |o: usize| u32::from_le_bytes([rec[o], rec[o + 1], rec[o + 2], rec[o + 3]]);
+    let u64_at = |o: usize| {
+        let mut b = [0u8; 8];
+        b.copy_from_slice(&rec[o..o + 8]);
+        u64::from_le_bytes(b)
+    };
+    Ok(SystemInfo {
+        version: u32_at(0),
+        cpus: u32_at(4),
+        ticks: u64_at(8),
+        processes: u32_at(16),
+        threads: u32_at(20),
+        frames_total: u64_at(24),
+        frames_free: u64_at(32),
+        heap_live_bytes: u64_at(40),
+        heap_pages: u64_at(48),
+        handles: u32_at(56),
+        channels: u32_at(60),
+    })
+}
+
+/// `dir_list` (v1.7, files.md §2): the directory's entries as text lines in `out`; the byte
+/// count comes back, `ERR_RANGE` when they do not fit.
+pub fn dir_list(path: &[u8], out: &mut [u8]) -> Result<usize, i64> {
+    let r = syscall6(
+        SYS_DIR_LIST,
+        path.as_ptr() as u64,
+        path.len() as u64,
+        out.as_mut_ptr() as u64,
+        out.len() as u64,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as usize)
+    }
 }

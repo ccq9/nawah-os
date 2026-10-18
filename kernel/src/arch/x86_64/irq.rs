@@ -49,6 +49,7 @@ fn timer_tick() {
     // Device polling (WP-27) happens on the time-base CPU only, before the scheduler's tick.
     if cpu == 0 {
         crate::net::tick_poll();
+        crate::diag::tick_poll();
     }
     crate::sched::tick();
 }

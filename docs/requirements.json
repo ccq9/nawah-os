@@ -1274,9 +1274,10 @@
       "acceptance": "shell_svc/shell_login",
       "test_ids": [
         "TST-M4-SHELL-SVC",
-        "TST-M4-SHELL-LOGIN"
+        "TST-M4-SHELL-LOGIN",
+        "TST-M4-SHELL-TOOL"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "implemented_untested",
       "evidence_refs": []
     },
     {
