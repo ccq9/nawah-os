@@ -5,7 +5,7 @@
 # Comment lines (// and //!) are ignored; the lint names unsafe_code/unsafe_op_in_unsafe_fn do not match \bunsafe\b.
 set -eu
 cd "$(dirname "$0")/.."
-ALLOWED='kernel/src/arch/|kernel/src/boot/|kernel/src/mm/|kernel/src/cell.rs|kernel/src/bootinfo.rs|kernel/src/sync.rs|kernel/src/panic.rs'
+ALLOWED='kernel/src/arch/|kernel/src/boot/|kernel/src/mm/|kernel/src/sched/|kernel/src/cell.rs|kernel/src/bootinfo.rs|kernel/src/sync.rs|kernel/src/panic.rs'
 status=0
 total=0
 for f in $(find kernel/src -name '*.rs' | sort); do

@@ -1,920 +1,1054 @@
 {
- "target": "pc-qemu",
- "purpose": "PC lab target: x86-64, UEFI (OVMF), QEMU q35, single vCPU. Single-image Rust kernel (kernel/, x86_64-unknown-uefi) per ADR-0001/ADR-0002.",
- "build": {
-  "test_id": "TST-M1-BUILD",
-  "timeout_s": 1200,
-  "inputs": [
-   "Cargo.toml",
-   "kernel/Cargo.toml",
-   "kernel/build.rs",
-   ".cargo/config.toml",
-   "rust-toolchain.toml",
-   "platform/pc-qemu/target.json"
-  ],
-  "input_globs": [
-   "kernel/src/**/*.rs"
-  ],
-  "artifact": "${OUT}/NAWAH.EFI",
-  "extra_artifacts": [
-   "${OUT}/NAWAH-NEG.EFI",
-   "${OUT}/NAWAH-KTEST.EFI"
-  ],
-  "toolchain": "rust-1.97.0 x86_64-unknown-uefi",
-  "steps": [
-   [
-    "cargo",
-    "build",
-    "--release",
-    "--offline",
-    "--manifest-path",
-    "kernel/Cargo.toml",
-    "--target",
-    "x86_64-unknown-uefi",
-    "--target-dir",
-    "${OUT}/cargo"
-   ],
-   [
-    "cp",
-    "${OUT}/cargo/x86_64-unknown-uefi/release/nawah-kernel.efi",
-    "${OUT}/NAWAH.EFI"
-   ],
-   [
-    "cargo",
-    "build",
-    "--release",
-    "--offline",
-    "--manifest-path",
-    "kernel/Cargo.toml",
-    "--target",
-    "x86_64-unknown-uefi",
-    "--target-dir",
-    "${OUT}/cargo-neg",
-    "--features",
-    "inject_ebs_fail"
-   ],
-   [
-    "cp",
-    "${OUT}/cargo-neg/x86_64-unknown-uefi/release/nawah-kernel.efi",
-    "${OUT}/NAWAH-NEG.EFI"
-   ],
-   [
-    "cargo",
-    "build",
-    "--profile",
-    "ktest",
-    "--offline",
-    "--manifest-path",
-    "kernel/Cargo.toml",
-    "--target",
-    "x86_64-unknown-uefi",
-    "--target-dir",
-    "${OUT}/cargo-ktest",
-    "--features",
-    "ktest"
-   ],
-   [
-    "cp",
-    "${OUT}/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.efi",
-    "${OUT}/NAWAH-KTEST.EFI"
-   ]
-  ]
- },
- "qemu": {
-  "binary": "qemu-system-x86_64",
-  "machine": "q35",
-  "cpu": "qemu64",
-  "memory": "512M",
-  "smp": 1,
-  "ovmf_code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
-  "ovmf_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
-  "boot_timeout_s": 180
- },
- "boot_oracle": {
-  "test_id": "TST-M1-BOOT",
-  "oracle": "contracts/boot.md v1: boot|start, boot|ebs|ok=1, then kernel|post_ebs with map_key and descriptors emitted from kernel/ after ExitBootServices; QEMU exit 33 (0x10 via isa-debug-exit); no boot|error",
-  "expected_exit_code": 33,
-  "required_markers": [
-   "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
-   "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
-   "OSX|${BUILD_ID}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
-   "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
-   "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10"
-  ],
-  "forbidden_markers": [
-   "|boot|error|",
-   "|kernel|panic|"
-  ],
-  "max_counts": {
-   "|boot|start|": 1
-  }
- },
- "suites": {
-  "M1": [
-   {
-    "id": "TST-M1-BOOT",
+  "target": "pc-qemu",
+  "purpose": "PC lab target: x86-64, UEFI (OVMF), QEMU q35, single vCPU. Single-image Rust kernel (kernel/, x86_64-unknown-uefi) per ADR-0001/ADR-0002.",
+  "build": {
+    "test_id": "TST-M1-BUILD",
+    "timeout_s": 1200,
+    "inputs": [
+      "Cargo.toml",
+      "kernel/Cargo.toml",
+      "kernel/build.rs",
+      ".cargo/config.toml",
+      "rust-toolchain.toml",
+      "platform/pc-qemu/target.json"
+    ],
+    "input_globs": [
+      "kernel/src/**/*.rs"
+    ],
+    "artifact": "${OUT}/NAWAH.EFI",
+    "extra_artifacts": [
+      "${OUT}/NAWAH-NEG.EFI",
+      "${OUT}/NAWAH-KTEST.EFI"
+    ],
+    "toolchain": "rust-1.97.0 x86_64-unknown-uefi",
+    "steps": [
+      [
+        "cargo",
+        "build",
+        "--release",
+        "--offline",
+        "--manifest-path",
+        "kernel/Cargo.toml",
+        "--target",
+        "x86_64-unknown-uefi",
+        "--target-dir",
+        "${OUT}/cargo"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo/x86_64-unknown-uefi/release/nawah-kernel.efi",
+        "${OUT}/NAWAH.EFI"
+      ],
+      [
+        "cargo",
+        "build",
+        "--release",
+        "--offline",
+        "--manifest-path",
+        "kernel/Cargo.toml",
+        "--target",
+        "x86_64-unknown-uefi",
+        "--target-dir",
+        "${OUT}/cargo-neg",
+        "--features",
+        "inject_ebs_fail"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-neg/x86_64-unknown-uefi/release/nawah-kernel.efi",
+        "${OUT}/NAWAH-NEG.EFI"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "ktest",
+        "--offline",
+        "--manifest-path",
+        "kernel/Cargo.toml",
+        "--target",
+        "x86_64-unknown-uefi",
+        "--target-dir",
+        "${OUT}/cargo-ktest",
+        "--features",
+        "ktest"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.efi",
+        "${OUT}/NAWAH-KTEST.EFI"
+      ]
+    ]
+  },
+  "qemu": {
+    "binary": "qemu-system-x86_64",
+    "machine": "q35",
+    "cpu": "qemu64",
+    "memory": "512M",
+    "smp": 1,
+    "ovmf_code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
+    "ovmf_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
+    "boot_timeout_s": 180
+  },
+  "boot_oracle": {
     "test_id": "TST-M1-BOOT",
-    "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted",
+    "oracle": "contracts/boot.md v1: boot|start, boot|ebs|ok=1, then kernel|post_ebs with map_key and descriptors emitted from kernel/ after ExitBootServices; QEMU exit 33 (0x10 via isa-debug-exit); no boot|error",
     "expected_exit_code": 33,
     "required_markers": [
-     "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
-     "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
-     "OSX|${BUILD_ID}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
-     "|kernel|pmm|managed_frames=",
-     "|selfcheck=1",
-     "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
-     "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10",
-     "|kernel|vmm|",
-     "|wp=1|nxe=1|text_rx=1|data_rw_nx=1|",
-     "|direct_ok=1",
-     "|kernel|stack|guarded=1|",
-     "OSX|${BUILD_ID}|boot|acpi|rsdp=0x",
-     "|kernel|irq|pic_masks=0xff,0xff|",
-     "|kernel|timer|window_ms=50|pit_ok=1|",
-     "|max_depth=1|selfcheck=1",
-     "|cpus=1|ioapics=1|ioapic_entries=24|ioapic_masked=24|",
-     "|kernel|mm|heap_ok=1|scratch_ok=1|as_ok=1|as_code=ok|",
-     "|frames_delta=0|selfcheck=1",
-     "|kernel|user|lstar=0x",
-     "|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1"
+      "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
+      "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
+      "OSX|${BUILD_ID}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
+      "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
+      "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10"
     ],
     "forbidden_markers": [
-     "|boot|acpi|rsdp=0x0|",
-     "|boot|error|",
-     "|exc|vector",
-     "|kernel|panic|"
+      "|boot|error|",
+      "|kernel|panic|"
     ],
     "max_counts": {
-     "|boot|start|": 1
+      "|boot|start|": 1
     }
-   },
-   {
-    "id": "TST-M1-NEG",
-    "test_id": "TST-M1-NEG",
-    "artifact": "${OUT}/NAWAH-NEG.EFI",
-    "oracle": "contracts/boot.md v1 failure path: stale map key injected -> firmware rejects EBS twice -> boot|error|code=BOOT_E_EBS_FAILED, boot|halt|reboot=0, QEMU exit 97 (0x30); exactly one boot|start (no reboot loop); kernel never entered",
-    "expected_exit_code": 97,
-    "required_markers": [
-     "OSX|${BUILD_ID}|boot|start|",
-     "OSX|${BUILD_ID}|boot|ebs|retry=1|",
-     "OSX|${BUILD_ID}|boot|error|code=BOOT_E_EBS_FAILED|",
-     "OSX|${BUILD_ID}|boot|halt|reboot=0"
+  },
+  "suites": {
+    "M1": [
+      {
+        "id": "TST-M1-BOOT",
+        "test_id": "TST-M1-BOOT",
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
+          "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
+          "OSX|${BUILD_ID}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
+          "|kernel|pmm|managed_frames=",
+          "|selfcheck=1",
+          "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
+          "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10",
+          "|kernel|vmm|",
+          "|wp=1|nxe=1|text_rx=1|data_rw_nx=1|",
+          "|direct_ok=1",
+          "|kernel|stack|guarded=1|",
+          "OSX|${BUILD_ID}|boot|acpi|rsdp=0x",
+          "|kernel|irq|pic_masks=0xff,0xff|",
+          "|kernel|timer|window_ms=50|pit_ok=1|",
+          "|max_depth=1|selfcheck=1",
+          "|cpus=1|ioapics=1|ioapic_entries=24|ioapic_masked=24|",
+          "|kernel|mm|heap_ok=1|scratch_ok=1|as_ok=1|as_code=ok|",
+          "|frames_delta=0|selfcheck=1",
+          "|kernel|sched|boot_tid=0|probe_join=0x5eee|",
+          "|threads=1|processes=0|quantum_ticks=10|frames_delta=0|code=ok|selfcheck=1",
+          "|kernel|user|lstar=0x",
+          "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1"
+        ],
+        "forbidden_markers": [
+          "|boot|acpi|rsdp=0x0|",
+          "|boot|error|",
+          "|exc|vector",
+          "|kernel|panic|"
+        ],
+        "max_counts": {
+          "|boot|start|": 1
+        }
+      },
+      {
+        "id": "TST-M1-NEG",
+        "test_id": "TST-M1-NEG",
+        "artifact": "${OUT}/NAWAH-NEG.EFI",
+        "oracle": "contracts/boot.md v1 failure path: stale map key injected -> firmware rejects EBS twice -> boot|error|code=BOOT_E_EBS_FAILED, boot|halt|reboot=0, QEMU exit 97 (0x30); exactly one boot|start (no reboot loop); kernel never entered",
+        "expected_exit_code": 97,
+        "required_markers": [
+          "OSX|${BUILD_ID}|boot|start|",
+          "OSX|${BUILD_ID}|boot|ebs|retry=1|",
+          "OSX|${BUILD_ID}|boot|error|code=BOOT_E_EBS_FAILED|",
+          "OSX|${BUILD_ID}|boot|halt|reboot=0"
+        ],
+        "forbidden_markers": [
+          "|kernel|post_ebs|",
+          "|boot|ebs|ok=1|"
+        ],
+        "max_counts": {
+          "|boot|start|": 1
+        }
+      }
     ],
-    "forbidden_markers": [
-     "|kernel|post_ebs|",
-     "|boot|ebs|ok=1|"
+    "M2": [
+      {
+        "id": "TST-M2-EXC-DE",
+        "test_id": "TST-M2-EXC-DE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exc_de"
+        ],
+        "oracle": "SDM Table 7-1: #DE vector 0, no error code (fault: RIP at div); lab exit 145",
+        "expected_exit_code": 145,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exc_de",
+          "|exc|vector=0|name=#DE|error=0x0|",
+          "|stack=kernel"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_rip=(0x[0-9a-f]+)",
+            "\\|rip=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M2-EXC-UD",
+        "test_id": "TST-M2-EXC-UD",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exc_ud"
+        ],
+        "oracle": "#UD vector 6, fault at ud2; exit 157",
+        "expected_exit_code": 157,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exc_ud",
+          "|exc|vector=6|name=#UD|error=0x0|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_rip=(0x[0-9a-f]+)",
+            "\\|rip=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M2-EXC-DB",
+        "test_id": "TST-M2-EXC-DB",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exc_db"
+        ],
+        "oracle": "#DB single-step trap: saved RIP after the nop (SDM Event 1); exit 147",
+        "expected_exit_code": 147,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exc_db",
+          "|exc|vector=1|name=#DB|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_rip=(0x[0-9a-f]+)",
+            "\\|rip=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M2-EXC-GP",
+        "test_id": "TST-M2-EXC-GP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exc_gp"
+        ],
+        "oracle": "#GP on non-canonical address, error code 0 (SDM Event 13); exit 171",
+        "expected_exit_code": 171,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exc_gp",
+          "|exc|vector=13|name=#GP|error=0x0|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_rip=(0x[0-9a-f]+)",
+            "\\|rip=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M2-EXC-PF",
+        "test_id": "TST-M2-EXC-PF",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exc_pf"
+        ],
+        "oracle": "#PF write to unmapped supervisor page: error code 2, CR2 = target (SDM Fig. 7-11); exit 173",
+        "expected_exit_code": 173,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exc_pf",
+          "|exc|vector=14|name=#PF|error=0x2|",
+          "|cr2=0x600000001000|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_rip=(0x[0-9a-f]+)",
+            "\\|rip=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M2-EXC-BP",
+        "test_id": "TST-M2-EXC-BP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exc_bp"
+        ],
+        "oracle": "#BP is a trap: handler prints and returns; saved RIP after int3 (SDM Event 3)",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exc_bp",
+          "|exc|vector=3|name=#BP|",
+          "|ktest|pass|resumed after #BP"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_rip=(0x[0-9a-f]+)",
+            "\\|rip=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M2-EXC-BP-STATE",
+        "test_id": "TST-M2-EXC-BP-STATE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exc_bp_state"
+        ],
+        "oracle": "iretq path restores 15 GPRs and CF/DF",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exc_bp_state",
+          "|ktest|pass|registers and flags preserved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ]
+      },
+      {
+        "id": "TST-M2-EXC-DF",
+        "test_id": "TST-M2-EXC-DF",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exc_df"
+        ],
+        "oracle": "corrupt RSP -> #PF undeliverable -> #DF (SDM Table 7-5) on IST1 stack, error code 0; exit 161",
+        "expected_exit_code": 161,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exc_df",
+          "|exc|vector=8|name=#DF|error=0x0|",
+          "|stack=df"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ]
+      },
+      {
+        "id": "TST-M2-EXC-NESTED",
+        "test_id": "TST-M2-EXC-NESTED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exc_nested"
+        ],
+        "oracle": "fault inside handler stops at nesting limit 3 with a fixed message; exit 157",
+        "expected_exit_code": 157,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exc_nested",
+          "|exc|nesting_limit|stopping"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "max_counts": {
+          "|exc|vector=6|name=#UD|": 3
+        },
+        "min_counts": {
+          "|exc|vector=6|name=#UD|": 3
+        }
+      },
+      {
+        "id": "TST-M2-IDT-LAYOUT",
+        "test_id": "TST-M2-IDT-LAYOUT",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=idt_layout"
+        ],
+        "oracle": "sidt-based walk: 0..=31 present interrupt gates to stubs pushing the vector (dummy 0 where the CPU pushes no error code); 32..=255 present interrupt gates to the uniform interrupt entries (push 0, push imm32 vector); exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=idt_layout",
+          "|ktest|pass|idt layout"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|idt_layout|vector="
+        ]
+      },
+      {
+        "id": "TST-M2-EXC-TRIPLE",
+        "test_id": "TST-M2-EXC-TRIPLE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exc_triple"
+        ],
+        "oracle": "empty IDT + fault = triple fault -> QEMU reset -> exit 0 under -no-reboot; proves the runner detects a reset (no exception line printed)",
+        "expected_exit_code": 0,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exc_triple"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M2-PMM-COUNTS",
+        "test_id": "TST-M2-PMM-COUNTS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=pmm_counts"
+        ],
+        "oracle": "1024 distinct, aligned, >=1 MiB, writable frames; counters move by N and return after free",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=pmm_counts",
+          "|ktest|pass|pmm counters consistent"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M2-PMM-EXHAUST",
+        "test_id": "TST-M2-PMM-EXHAUST",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=pmm_exhaust"
+        ],
+        "oracle": "stress/limit/recovery: alloc until None (count == free_frames, free_frames == 0 after, further alloc None, no panic); every frame given back through an intrusive list; counters back to the start and a new allocation succeeds",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=pmm_exhaust",
+          "|ktest|pmm_exhaust|count=",
+          "|alloc_again=1",
+          "|ktest|pass|exhaustion returns None without panic and the allocator recovers fully"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M2-PMM-DOUBLE-FREE",
+        "test_id": "TST-M2-PMM-DOUBLE-FREE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=pmm_double_free"
+        ],
+        "oracle": "free twice -> NotAllocated; <1MiB, misaligned, bitmap storage -> Unmanaged",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=pmm_double_free",
+          "|ktest|pass|double/unmanaged/misaligned/bitmap frees rejected"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M2-VMM-SWITCH",
+        "test_id": "TST-M2-VMM-SWITCH",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=vmm_switch"
+        ],
+        "oracle": "after the CR3 switch: CR3 = kernel PML4, CR0.WP and EFER.NXE set, .text RX / .data RW+NX / headers R+NX, direct map aliases RAM, null page and stack guard pages unmapped, boot-services memory reclaimed, allocator still works; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=vmm_switch",
+          "|ktest|pass|kernel address space active"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M2-VMM-WP",
+        "test_id": "TST-M2-VMM-WP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=vmm_wp"
+        ],
+        "oracle": "firmware-independent: WP cleared -> supervisor write to the read-only header page goes through (restored); kernel's enable_wp -> write to .text raises #PF error code 3 (present, write, supervisor: SDM Fig. 7-11), CR2 = RIP = target; exit 173",
+        "expected_exit_code": 173,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=vmm_wp",
+          "|exc|vector=14|name=#PF|error=0x3|",
+          "|ktest|vmm_wp|wp_off_write_ok=1|wp_now=1|target=0x"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_rip=(0x[0-9a-f]+)",
+            "\\|rip=(0x[0-9a-f]+)\\|"
+          ],
+          [
+            "vmm_wp\\|wp_off_write_ok=1\\|wp_now=1\\|target=(0x[0-9a-f]+)",
+            "\\|cr2=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M2-VMM-NX",
+        "test_id": "TST-M2-VMM-NX",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=vmm_nx"
+        ],
+        "oracle": "instruction fetch from .data under EFER.NXE -> #PF error code 0x11 (present, instruction fetch: SDM Fig. 7-11 bit 4); CR2 = RIP = target; exit 173",
+        "expected_exit_code": 173,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=vmm_nx",
+          "|exc|vector=14|name=#PF|error=0x11|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_rip=(0x[0-9a-f]+)",
+            "\\|rip=(0x[0-9a-f]+)\\|"
+          ],
+          [
+            "vmm_nx\\|target=(0x[0-9a-f]+)",
+            "\\|cr2=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M2-VMM-GUARD",
+        "test_id": "TST-M2-VMM-GUARD",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=vmm_guard"
+        ],
+        "oracle": "push loop overflows the guarded kernel stack: #PF in the guard page cannot push its frame -> #DF (SDM Table 7-5) on the guarded IST1 stack, error code 0, CR2 = stack base - 8; exit 161",
+        "expected_exit_code": 161,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=vmm_guard",
+          "|exc|vector=8|name=#DF|error=0x0|",
+          "|stack=df"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_cr2=(0x[0-9a-f]+)",
+            "\\|cr2=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M2-TIMER-TICKS",
+        "test_id": "TST-M2-TIMER-TICKS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=timer_ticks"
+        ],
+        "oracle": "periodic LAPIC timer at 1000 Hz (PIT-calibrated): two PIT-measured 50 ms windows each deliver 25..=100 ticks, monotonic, no unexpected vector, max handler depth 1, IF clear after disable; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=timer_ticks",
+          "|ktest|timer_ticks|window1=",
+          "|ktest|pass|periodic timer ticks, monotonic, no re-entry"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M2-IRQ-EOI",
+        "test_id": "TST-M2-IRQ-EOI",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=irq_eoi"
+        ],
+        "oracle": "self-IPI on vector 0x41 delivered and handled; after EOI a second IPI on the same vector is delivered (without EOI the ISR bit would hold it); no unexpected vector; max handler depth 1; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=irq_eoi",
+          "|ktest|irq_eoi|first=1|second=1|",
+          "|ktest|pass|EOI acknowledged, next interrupt delivered, no re-entry"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M2-SPURIOUS",
+        "test_id": "TST-M2-SPURIOUS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=spurious"
+        ],
+        "oracle": "software int 0xFF (spurious: counted, no EOI), int 0x20 (masked PIC vector) and int 0xF0 (unassigned) are counted as unexpected and return; with the timer stopped and interrupts enabled for 20 ms nothing arrives; SVR = 0x1FF; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=spurious",
+          "|ktest|spurious|spurious=1|unexpected=2|last_unexpected=0xf0|total_after_window=0|svr=0x1ff",
+          "|ktest|pass|spurious and masked vectors are counted, never fault"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M2-LOCK-IRQSAVE",
+        "test_id": "TST-M2-LOCK-IRQSAVE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=lock_irqsave"
+        ],
+        "oracle": "irqsave lock: IF cleared inside and restored after (from enabled and from disabled); the periodic timer delivers no tick while the lock is held for 20 ms and resumes after release; try_lock fails while held and succeeds when free; protected value updated; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=lock_irqsave",
+          "|ktest|lock_irqsave|if_inside=0|if_after=1|if_inside_disabled=0|if_after_disabled=0|ticks_while_held=0|",
+          "|try_while_held=0|try_when_free=1|value=2",
+          "|ktest|pass|irqsave lock clears and restores IF"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M2-LOCK-REENTRY",
+        "test_id": "TST-M2-LOCK-REENTRY",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=lock_reentry"
+        ],
+        "oracle": "re-acquiring a held IrqSpinLock on the same CPU panics with K_E_LOCK_REENTRY|lock=ktest_lock instead of hanging; exit 35",
+        "expected_exit_code": 35,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=lock_reentry",
+          "OSX|${BUILD_ID}|kernel|panic|loc=",
+          "|ktest|lock_reentry|held=1|reacquiring=1",
+          "src/sync.rs:",
+          "|msg=K_E_LOCK_REENTRY|lock=ktest_lock|cpu=0"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|exc|vector",
+          "|panic|nested|"
+        ]
+      },
+      {
+        "id": "TST-M2-PANIC-CODE",
+        "test_id": "TST-M2-PANIC-CODE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=panic_code"
+        ],
+        "oracle": "explicit panic! prints OSX|<build>|kernel|panic|loc=kernel/src/ktest.rs:<line>:<col>|console_was_locked=0|msg=<message> and exits 0x11 (QEMU 35)",
+        "expected_exit_code": 35,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=panic_code",
+          "OSX|${BUILD_ID}|kernel|panic|loc=",
+          "|ktest|panic_code|about_to_panic=1",
+          "src/ktest.rs:",
+          "|console_was_locked=0|msg=K_T_PANIC deliberate test panic"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|exc|vector",
+          "|panic|nested|"
+        ]
+      }
     ],
-    "max_counts": {
-     "|boot|start|": 1
-    }
-   }
-  ],
-  "M2": [
-   {
-    "id": "TST-M2-EXC-DE",
-    "test_id": "TST-M2-EXC-DE",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=exc_de"
-    ],
-    "oracle": "SDM Table 7-1: #DE vector 0, no error code (fault: RIP at div); lab exit 145",
-    "expected_exit_code": 145,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=exc_de",
-     "|exc|vector=0|name=#DE|error=0x0|",
-     "|stack=kernel"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_rip=(0x[0-9a-f]+)",
-      "\\|rip=(0x[0-9a-f]+)\\|"
-     ]
+    "M3": [
+      {
+        "id": "TST-M3-HEAP-STRESS",
+        "test_id": "TST-M3-HEAP-STRESS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=heap_stress"
+        ],
+        "oracle": "10,000 mixed allocations/frees (70% <= 2 KiB, 25% <= 16 KiB, 5% <= 196 KiB) with content checks; afterwards live_blocks, slab_pages, large_frames and PMM free frames equal their values before the stress (the scheduler owns live blocks since WP-15); exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=heap_stress",
+          "|ktest|heap_stress|allocs=",
+          "|ktest|pass|heap: 10k mixed allocations"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "equal_values": [
+          [
+            "live_before=([0-9]+)",
+            "live_after=([0-9]+)"
+          ],
+          [
+            "slab_before=([0-9]+)",
+            "slab_after=([0-9]+)"
+          ],
+          [
+            "large_before=([0-9]+)",
+            "large_after=([0-9]+)"
+          ],
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-VMM-UNMAP",
+        "test_id": "TST-M3-VMM-UNMAP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=vmm_unmap"
+        ],
+        "oracle": "frame mapped at the scratch page, written through it and read back through the direct map; unmap returns the frame and flushes the TLB; a write then raises #PF error code 2 with CR2 = RIP target = the page; exit 173",
+        "expected_exit_code": 173,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=vmm_unmap",
+          "|ktest|vmm_unmap|target=0xffffa00000100000|unmapped=1",
+          "|exc|vector=14|name=#PF|error=0x2|",
+          "|cr2=0xffffa00000100000|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_rip=(0x[0-9a-f]+)",
+            "\\|rip=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-VMM-PROTECT",
+        "test_id": "TST-M3-VMM-PROTECT",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=vmm_protect"
+        ],
+        "oracle": "scratch page made read-only (protect + invlpg): content readable, a write raises #PF error code 3 with CR2 = the page; exit 173",
+        "expected_exit_code": 173,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=vmm_protect",
+          "|ktest|vmm_protect|target=0xffffa00000100000|readonly=1",
+          "|exc|vector=14|name=#PF|error=0x3|",
+          "|cr2=0xffffa00000100000|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|"
+        ],
+        "equal_values": [
+          [
+            "expect_rip=(0x[0-9a-f]+)",
+            "\\|rip=(0x[0-9a-f]+)\\|"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-AS-SWITCH",
+        "test_id": "TST-M3-AS-SWITCH",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=as_switch"
+        ],
+        "oracle": "user space with three USER pages (invisible from the kernel space); while active the kernel reads a value written through the direct map and writes one back; after return the write is visible; destroy frees everything (frame count equal); mappings outside USER_BASE..USER_END refused; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=as_switch",
+          "|ktest|as_switch|user_flag=1|seen_ok=1|back_ok=1|destroy_ok=1|",
+          "|cr3_kernel=1",
+          "|ktest|pass|user address space created"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M3-USER-SYSCALL",
+        "test_id": "TST-M3-USER-SYSCALL",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=user_syscall"
+        ],
+        "oracle": "ring-3 ping program exits 0x1235 through SYS_EXIT; ring-3 trace program copies 'hello from r3' through validated user memory (user|trace line) and exits 13; no frame leaked; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=user_syscall",
+          "|user|trace|len=13|text=hello from r3",
+          "|ktest|user_syscall|ping_exit=0x1235|trace_exit=13|frames_delta=0",
+          "|ktest|pass|ring-3 programs call the kernel"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M3-USER-BAD-PTR",
+        "test_id": "TST-M3-USER-BAD-PTR",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=user_bad_ptr"
+        ],
+        "oracle": "SYS_TRACE with an unmapped user pointer returns ERR_FAULT and with a kernel pointer ERR_RANGE; the program exits 0xfdfc and the kernel continues; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=user_bad_ptr",
+          "|ktest|user_bad_ptr|exit=0xfdfc|expected=0xfdfc|frames_delta=0",
+          "|ktest|pass|ring-3 program behaved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|user|trace|"
+        ]
+      },
+      {
+        "id": "TST-M3-USER-KERNEL-ACCESS",
+        "test_id": "TST-M3-USER-KERNEL-ACCESS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=user_kernel_access"
+        ],
+        "oracle": "ring-3 read of the kernel direct map -> #PF taken in ring 3 (error code 0x5: present, user), diagnosed as kernel|user_fault|vector=14 and the run ends with exit code 0x1000e; the kernel continues (test exit 33)",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=user_kernel_access",
+          "|kernel|user_fault|vector=14|name=#PF|error=0x5|",
+          "|cr2=0xffff800000000000",
+          "|ktest|user_kernel_access|exit=0x1000e|expected=0x1000e|frames_delta=0",
+          "|ktest|pass|ring-3 program behaved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
+        "id": "TST-M3-SYSRET-CANONICAL",
+        "test_id": "TST-M3-SYSRET-CANONICAL",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=sysret_canonical"
+        ],
+        "oracle": "SYS_CHECK_RIP with a non-canonical address is refused with ERR_RANGE (program exits 0xfffffffffffffffc); no #GP in ring 0; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=sysret_canonical",
+          "|ktest|sysret_canonical|exit=0xfffffffffffffffc|expected=0xfffffffffffffffc|frames_delta=0",
+          "|ktest|pass|ring-3 program behaved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M3-THREADS-ALTERNATE",
+        "test_id": "TST-M3-THREADS-ALTERNATE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=threads_alternate"
+        ],
+        "oracle": "two kernel threads of priority 0 yield to each other: log ABABABABABABABAB (16 entries), join returns 'A'/'B', a third thread sleeps 5 ticks and measures 5..=50, switches >= 18, free frames equal before/after (after a warm-up thread); exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=threads_alternate",
+          "|ktest|threads_alternate|log=ABABABABABABABAB|entries=16|join_a=0x41|join_b=0x42|slept_ticks=",
+          "|threads_after=1|",
+          "|ktest|pass|threads alternate"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-PREEMPT",
+        "test_id": "TST-M3-PREEMPT",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=preempt"
+        ],
+        "oracle": "a spinning kernel thread (priority 1, never yields) and the boot thread (never yields, halts between ticks) alternate under the timer: >= 3 handovers observed, preemptions >= 2 x handovers, spinner exits with its count, max handler depth 1, no unexpected vector; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=preempt",
+          "|ktest|preempt|handovers=",
+          "|max_depth=1|unexpected=0",
+          "|ktest|pass|timer preemption shares the CPU"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|handovers=0|",
+          "|handovers=1|",
+          "|handovers=2|"
+        ]
+      },
+      {
+        "id": "TST-M3-EXIT-CLEANUP",
+        "test_id": "TST-M3-EXIT-CLEANUP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=exit_cleanup"
+        ],
+        "oracle": "after a warm-up process and thread: a process exiting through SYS_EXIT (0x1235), one ended by a ring-3 #PF (0x1000e) and a kernel thread (join 7) leave PMM free frames, heap live blocks, slab pages, thread count (1) and process count (0) exactly as before; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=exit_cleanup",
+          "|kernel|user_fault|vector=14|name=#PF|error=0x5|",
+          "|ktest|exit_cleanup|normal_exit=0x1235|fault_exit=0x1000e|thread_join=0x7|",
+          "|threads_before=1|threads_after=1|processes_after=0",
+          "|ktest|pass|process and thread exit return every frame"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "equal_values": [
+          [
+            "frames_before=([0-9]+)",
+            "frames_after=([0-9]+)"
+          ],
+          [
+            "live_before=([0-9]+)",
+            "live_after=([0-9]+)"
+          ],
+          [
+            "slab_before=([0-9]+)",
+            "slab_after=([0-9]+)"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-USER-SLEEP",
+        "test_id": "TST-M3-USER-SLEEP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=user_sleep"
+        ],
+        "oracle": "ring-3 program calls SYS_SLEEP(3) then SYS_YIELD (ABI v1.1), both return 0, exits 0x51; 3..=100 scheduler ticks elapse around the run; no frame leaked; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=user_sleep",
+          "|ktest|user_sleep|exit=0x51|elapsed_ticks=",
+          "|frames_delta=0",
+          "|ktest|pass|ring-3 sleep and yield go through the scheduler"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      }
     ]
-   },
-   {
-    "id": "TST-M2-EXC-UD",
-    "test_id": "TST-M2-EXC-UD",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=exc_ud"
-    ],
-    "oracle": "#UD vector 6, fault at ud2; exit 157",
-    "expected_exit_code": 157,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=exc_ud",
-     "|exc|vector=6|name=#UD|error=0x0|"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_rip=(0x[0-9a-f]+)",
-      "\\|rip=(0x[0-9a-f]+)\\|"
-     ]
-    ]
-   },
-   {
-    "id": "TST-M2-EXC-DB",
-    "test_id": "TST-M2-EXC-DB",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=exc_db"
-    ],
-    "oracle": "#DB single-step trap: saved RIP after the nop (SDM Event 1); exit 147",
-    "expected_exit_code": 147,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=exc_db",
-     "|exc|vector=1|name=#DB|"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_rip=(0x[0-9a-f]+)",
-      "\\|rip=(0x[0-9a-f]+)\\|"
-     ]
-    ]
-   },
-   {
-    "id": "TST-M2-EXC-GP",
-    "test_id": "TST-M2-EXC-GP",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=exc_gp"
-    ],
-    "oracle": "#GP on non-canonical address, error code 0 (SDM Event 13); exit 171",
-    "expected_exit_code": 171,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=exc_gp",
-     "|exc|vector=13|name=#GP|error=0x0|"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_rip=(0x[0-9a-f]+)",
-      "\\|rip=(0x[0-9a-f]+)\\|"
-     ]
-    ]
-   },
-   {
-    "id": "TST-M2-EXC-PF",
-    "test_id": "TST-M2-EXC-PF",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=exc_pf"
-    ],
-    "oracle": "#PF write to unmapped supervisor page: error code 2, CR2 = target (SDM Fig. 7-11); exit 173",
-    "expected_exit_code": 173,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=exc_pf",
-     "|exc|vector=14|name=#PF|error=0x2|",
-     "|cr2=0x600000001000|"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_rip=(0x[0-9a-f]+)",
-      "\\|rip=(0x[0-9a-f]+)\\|"
-     ]
-    ]
-   },
-   {
-    "id": "TST-M2-EXC-BP",
-    "test_id": "TST-M2-EXC-BP",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=exc_bp"
-    ],
-    "oracle": "#BP is a trap: handler prints and returns; saved RIP after int3 (SDM Event 3)",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=exc_bp",
-     "|exc|vector=3|name=#BP|",
-     "|ktest|pass|resumed after #BP"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_rip=(0x[0-9a-f]+)",
-      "\\|rip=(0x[0-9a-f]+)\\|"
-     ]
-    ]
-   },
-   {
-    "id": "TST-M2-EXC-BP-STATE",
-    "test_id": "TST-M2-EXC-BP-STATE",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=exc_bp_state"
-    ],
-    "oracle": "iretq path restores 15 GPRs and CF/DF",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=exc_bp_state",
-     "|ktest|pass|registers and flags preserved"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ]
-   },
-   {
-    "id": "TST-M2-EXC-DF",
-    "test_id": "TST-M2-EXC-DF",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=exc_df"
-    ],
-    "oracle": "corrupt RSP -> #PF undeliverable -> #DF (SDM Table 7-5) on IST1 stack, error code 0; exit 161",
-    "expected_exit_code": 161,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=exc_df",
-     "|exc|vector=8|name=#DF|error=0x0|",
-     "|stack=df"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ]
-   },
-   {
-    "id": "TST-M2-EXC-NESTED",
-    "test_id": "TST-M2-EXC-NESTED",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=exc_nested"
-    ],
-    "oracle": "fault inside handler stops at nesting limit 3 with a fixed message; exit 157",
-    "expected_exit_code": 157,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=exc_nested",
-     "|exc|nesting_limit|stopping"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "max_counts": {
-     "|exc|vector=6|name=#UD|": 3
-    },
-    "min_counts": {
-     "|exc|vector=6|name=#UD|": 3
-    }
-   },
-   {
-    "id": "TST-M2-IDT-LAYOUT",
-    "test_id": "TST-M2-IDT-LAYOUT",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=idt_layout"
-    ],
-    "oracle": "sidt-based walk: 0..=31 present interrupt gates to stubs pushing the vector (dummy 0 where the CPU pushes no error code); 32..=255 present interrupt gates to the uniform interrupt entries (push 0, push imm32 vector); exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=idt_layout",
-     "|ktest|pass|idt layout"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|idt_layout|vector="
-    ]
-   },
-   {
-    "id": "TST-M2-EXC-TRIPLE",
-    "test_id": "TST-M2-EXC-TRIPLE",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=exc_triple"
-    ],
-    "oracle": "empty IDT + fault = triple fault -> QEMU reset -> exit 0 under -no-reboot; proves the runner detects a reset (no exception line printed)",
-    "expected_exit_code": 0,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=exc_triple"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M2-PMM-COUNTS",
-    "test_id": "TST-M2-PMM-COUNTS",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=pmm_counts"
-    ],
-    "oracle": "1024 distinct, aligned, >=1 MiB, writable frames; counters move by N and return after free",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=pmm_counts",
-     "|ktest|pass|pmm counters consistent"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M2-PMM-EXHAUST",
-    "test_id": "TST-M2-PMM-EXHAUST",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=pmm_exhaust"
-    ],
-    "oracle": "stress/limit/recovery: alloc until None (count == free_frames, free_frames == 0 after, further alloc None, no panic); every frame given back through an intrusive list; counters back to the start and a new allocation succeeds",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=pmm_exhaust",
-     "|ktest|pmm_exhaust|count=",
-     "|alloc_again=1",
-     "|ktest|pass|exhaustion returns None without panic and the allocator recovers fully"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M2-PMM-DOUBLE-FREE",
-    "test_id": "TST-M2-PMM-DOUBLE-FREE",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=pmm_double_free"
-    ],
-    "oracle": "free twice -> NotAllocated; <1MiB, misaligned, bitmap storage -> Unmanaged",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=pmm_double_free",
-     "|ktest|pass|double/unmanaged/misaligned/bitmap frees rejected"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M2-VMM-SWITCH",
-    "test_id": "TST-M2-VMM-SWITCH",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=vmm_switch"
-    ],
-    "oracle": "after the CR3 switch: CR3 = kernel PML4, CR0.WP and EFER.NXE set, .text RX / .data RW+NX / headers R+NX, direct map aliases RAM, null page and stack guard pages unmapped, boot-services memory reclaimed, allocator still works; exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=vmm_switch",
-     "|ktest|pass|kernel address space active"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M2-VMM-WP",
-    "test_id": "TST-M2-VMM-WP",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=vmm_wp"
-    ],
-    "oracle": "firmware-independent: WP cleared -> supervisor write to the read-only header page goes through (restored); kernel's enable_wp -> write to .text raises #PF error code 3 (present, write, supervisor: SDM Fig. 7-11), CR2 = RIP = target; exit 173",
-    "expected_exit_code": 173,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=vmm_wp",
-     "|exc|vector=14|name=#PF|error=0x3|",
-     "|ktest|vmm_wp|wp_off_write_ok=1|wp_now=1|target=0x"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_rip=(0x[0-9a-f]+)",
-      "\\|rip=(0x[0-9a-f]+)\\|"
-     ],
-     [
-      "vmm_wp\\|wp_off_write_ok=1\\|wp_now=1\\|target=(0x[0-9a-f]+)",
-      "\\|cr2=(0x[0-9a-f]+)\\|"
-     ]
-    ]
-   },
-   {
-    "id": "TST-M2-VMM-NX",
-    "test_id": "TST-M2-VMM-NX",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=vmm_nx"
-    ],
-    "oracle": "instruction fetch from .data under EFER.NXE -> #PF error code 0x11 (present, instruction fetch: SDM Fig. 7-11 bit 4); CR2 = RIP = target; exit 173",
-    "expected_exit_code": 173,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=vmm_nx",
-     "|exc|vector=14|name=#PF|error=0x11|"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_rip=(0x[0-9a-f]+)",
-      "\\|rip=(0x[0-9a-f]+)\\|"
-     ],
-     [
-      "vmm_nx\\|target=(0x[0-9a-f]+)",
-      "\\|cr2=(0x[0-9a-f]+)\\|"
-     ]
-    ]
-   },
-   {
-    "id": "TST-M2-VMM-GUARD",
-    "test_id": "TST-M2-VMM-GUARD",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=vmm_guard"
-    ],
-    "oracle": "push loop overflows the guarded kernel stack: #PF in the guard page cannot push its frame -> #DF (SDM Table 7-5) on the guarded IST1 stack, error code 0, CR2 = stack base - 8; exit 161",
-    "expected_exit_code": 161,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=vmm_guard",
-     "|exc|vector=8|name=#DF|error=0x0|",
-     "|stack=df"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_cr2=(0x[0-9a-f]+)",
-      "\\|cr2=(0x[0-9a-f]+)\\|"
-     ]
-    ]
-   },
-   {
-    "id": "TST-M2-TIMER-TICKS",
-    "test_id": "TST-M2-TIMER-TICKS",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=timer_ticks"
-    ],
-    "oracle": "periodic LAPIC timer at 1000 Hz (PIT-calibrated): two PIT-measured 50 ms windows each deliver 25..=100 ticks, monotonic, no unexpected vector, max handler depth 1, IF clear after disable; exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=timer_ticks",
-     "|ktest|timer_ticks|window1=",
-     "|ktest|pass|periodic timer ticks, monotonic, no re-entry"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M2-IRQ-EOI",
-    "test_id": "TST-M2-IRQ-EOI",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=irq_eoi"
-    ],
-    "oracle": "self-IPI on vector 0x41 delivered and handled; after EOI a second IPI on the same vector is delivered (without EOI the ISR bit would hold it); no unexpected vector; max handler depth 1; exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=irq_eoi",
-     "|ktest|irq_eoi|first=1|second=1|",
-     "|ktest|pass|EOI acknowledged, next interrupt delivered, no re-entry"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M2-SPURIOUS",
-    "test_id": "TST-M2-SPURIOUS",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=spurious"
-    ],
-    "oracle": "software int 0xFF (spurious: counted, no EOI), int 0x20 (masked PIC vector) and int 0xF0 (unassigned) are counted as unexpected and return; with the timer stopped and interrupts enabled for 20 ms nothing arrives; SVR = 0x1FF; exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=spurious",
-     "|ktest|spurious|spurious=1|unexpected=2|last_unexpected=0xf0|total_after_window=0|svr=0x1ff",
-     "|ktest|pass|spurious and masked vectors are counted, never fault"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M2-LOCK-IRQSAVE",
-    "test_id": "TST-M2-LOCK-IRQSAVE",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=lock_irqsave"
-    ],
-    "oracle": "irqsave lock: IF cleared inside and restored after (from enabled and from disabled); the periodic timer delivers no tick while the lock is held for 20 ms and resumes after release; try_lock fails while held and succeeds when free; protected value updated; exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=lock_irqsave",
-     "|ktest|lock_irqsave|if_inside=0|if_after=1|if_inside_disabled=0|if_after_disabled=0|ticks_while_held=0|",
-     "|try_while_held=0|try_when_free=1|value=2",
-     "|ktest|pass|irqsave lock clears and restores IF"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M2-LOCK-REENTRY",
-    "test_id": "TST-M2-LOCK-REENTRY",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=lock_reentry"
-    ],
-    "oracle": "re-acquiring a held IrqSpinLock on the same CPU panics with K_E_LOCK_REENTRY|lock=ktest_lock instead of hanging; exit 35",
-    "expected_exit_code": 35,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=lock_reentry",
-     "OSX|${BUILD_ID}|kernel|panic|loc=",
-     "|ktest|lock_reentry|held=1|reacquiring=1",
-     "src/sync.rs:",
-     "|msg=K_E_LOCK_REENTRY|lock=ktest_lock|cpu=0"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|exc|vector",
-     "|panic|nested|"
-    ]
-   },
-   {
-    "id": "TST-M2-PANIC-CODE",
-    "test_id": "TST-M2-PANIC-CODE",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=panic_code"
-    ],
-    "oracle": "explicit panic! prints OSX|<build>|kernel|panic|loc=kernel/src/ktest.rs:<line>:<col>|console_was_locked=0|msg=<message> and exits 0x11 (QEMU 35)",
-    "expected_exit_code": 35,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=panic_code",
-     "OSX|${BUILD_ID}|kernel|panic|loc=",
-     "|ktest|panic_code|about_to_panic=1",
-     "src/ktest.rs:",
-     "|console_was_locked=0|msg=K_T_PANIC deliberate test panic"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|exc|vector",
-     "|panic|nested|"
-    ]
-   }
-  ],
-  "M3": [
-   {
-    "id": "TST-M3-HEAP-STRESS",
-    "test_id": "TST-M3-HEAP-STRESS",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=heap_stress"
-    ],
-    "oracle": "10,000 mixed allocations/frees (70% <= 2 KiB, 25% <= 16 KiB, 5% <= 196 KiB) with content checks; afterwards live_blocks = slab_pages = large_frames = 0 and PMM free frames equal before/after; exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=heap_stress",
-     "|ktest|heap_stress|allocs=",
-     "|live_after=0|slab_pages=0|large_frames=0|",
-     "|ktest|pass|heap: 10k mixed allocations"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M3-VMM-UNMAP",
-    "test_id": "TST-M3-VMM-UNMAP",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=vmm_unmap"
-    ],
-    "oracle": "frame mapped at the scratch page, written through it and read back through the direct map; unmap returns the frame and flushes the TLB; a write then raises #PF error code 2 with CR2 = RIP target = the page; exit 173",
-    "expected_exit_code": 173,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=vmm_unmap",
-     "|ktest|vmm_unmap|target=0xffffa00000100000|unmapped=1",
-     "|exc|vector=14|name=#PF|error=0x2|",
-     "|cr2=0xffffa00000100000|"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_rip=(0x[0-9a-f]+)",
-      "\\|rip=(0x[0-9a-f]+)\\|"
-     ]
-    ]
-   },
-   {
-    "id": "TST-M3-VMM-PROTECT",
-    "test_id": "TST-M3-VMM-PROTECT",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=vmm_protect"
-    ],
-    "oracle": "scratch page made read-only (protect + invlpg): content readable, a write raises #PF error code 3 with CR2 = the page; exit 173",
-    "expected_exit_code": 173,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=vmm_protect",
-     "|ktest|vmm_protect|target=0xffffa00000100000|readonly=1",
-     "|exc|vector=14|name=#PF|error=0x3|",
-     "|cr2=0xffffa00000100000|"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|"
-    ],
-    "equal_values": [
-     [
-      "expect_rip=(0x[0-9a-f]+)",
-      "\\|rip=(0x[0-9a-f]+)\\|"
-     ]
-    ]
-   },
-   {
-    "id": "TST-M3-AS-SWITCH",
-    "test_id": "TST-M3-AS-SWITCH",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=as_switch"
-    ],
-    "oracle": "user space with three USER pages (invisible from the kernel space); while active the kernel reads a value written through the direct map and writes one back; after return the write is visible; destroy frees everything (frame count equal); mappings outside USER_BASE..USER_END refused; exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=as_switch",
-     "|ktest|as_switch|user_flag=1|seen_ok=1|back_ok=1|destroy_ok=1|",
-     "|cr3_kernel=1",
-     "|ktest|pass|user address space created"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M3-USER-SYSCALL",
-    "test_id": "TST-M3-USER-SYSCALL",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=user_syscall"
-    ],
-    "oracle": "ring-3 ping program exits 0x1235 through SYS_EXIT; ring-3 trace program copies 'hello from r3' through validated user memory (user|trace line) and exits 13; no frame leaked; exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=user_syscall",
-     "|user|trace|len=13|text=hello from r3",
-     "|ktest|user_syscall|ping_exit=0x1235|trace_exit=13|frames_delta=0",
-     "|ktest|pass|ring-3 programs call the kernel"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector",
-     "|user_fault|"
-    ]
-   },
-   {
-    "id": "TST-M3-USER-BAD-PTR",
-    "test_id": "TST-M3-USER-BAD-PTR",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=user_bad_ptr"
-    ],
-    "oracle": "SYS_TRACE with an unmapped user pointer returns ERR_FAULT and with a kernel pointer ERR_RANGE; the program exits 0xfdfc and the kernel continues; exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=user_bad_ptr",
-     "|ktest|user_bad_ptr|exit=0xfdfc|expected=0xfdfc|frames_delta=0",
-     "|ktest|pass|ring-3 program behaved"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector",
-     "|user_fault|",
-     "|user|trace|"
-    ]
-   },
-   {
-    "id": "TST-M3-USER-KERNEL-ACCESS",
-    "test_id": "TST-M3-USER-KERNEL-ACCESS",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=user_kernel_access"
-    ],
-    "oracle": "ring-3 read of the kernel direct map -> #PF taken in ring 3 (error code 0x5: present, user), diagnosed as kernel|user_fault|vector=14 and the run ends with exit code 0x1000e; the kernel continues (test exit 33)",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=user_kernel_access",
-     "|kernel|user_fault|vector=14|name=#PF|error=0x5|",
-     "|cr2=0xffff800000000000",
-     "|ktest|user_kernel_access|exit=0x1000e|expected=0x1000e|frames_delta=0",
-     "|ktest|pass|ring-3 program behaved"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector"
-    ]
-   },
-   {
-    "id": "TST-M3-SYSRET-CANONICAL",
-    "test_id": "TST-M3-SYSRET-CANONICAL",
-    "artifact": "${OUT}/NAWAH-KTEST.EFI",
-    "qemu_extra": [
-     "-fw_cfg",
-     "name=opt/nawah/test,string=sysret_canonical"
-    ],
-    "oracle": "SYS_CHECK_RIP with a non-canonical address is refused with ERR_RANGE (program exits 0xfffffffffffffffc); no #GP in ring 0; exit 33",
-    "expected_exit_code": 33,
-    "required_markers": [
-     "OSX|${BUILD_ID}|ktest|start|name=sysret_canonical",
-     "|ktest|sysret_canonical|exit=0xfffffffffffffffc|expected=0xfffffffffffffffc|frames_delta=0",
-     "|ktest|pass|ring-3 program behaved"
-    ],
-    "forbidden_markers": [
-     "|ktest|fail|",
-     "|kernel|panic|",
-     "|exc|vector",
-     "|user_fault|"
-    ]
-   }
-  ]
- }
+  }
 }

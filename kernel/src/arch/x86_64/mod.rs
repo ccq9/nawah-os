@@ -7,6 +7,7 @@ use crate::bootinfo::BootInfo;
 
 pub mod acpi;
 pub mod apic;
+pub mod context;
 mod gdt;
 mod idt;
 pub mod ioapic;
@@ -127,18 +128,22 @@ pub fn continue_on_stack<'a>(
 
 /// Interrupt flag control. Enabling is safe once `irq::init` has run: every vector has a gate
 /// and a counting handler, so no interrupt can fault the kernel.
+///
+/// None of these blocks carries `nomem`: they open and close windows in which interrupt
+/// handlers (and, through preemption, other threads) change memory, so the compiler must not
+/// cache memory across them (Rust Reference, inline assembly options; ADR-0010).
 pub mod interrupts {
     use core::arch::asm;
 
     pub fn enable() {
         // SAFETY: sti; the IDT covers all 256 vectors (idt::init) and the dispatcher counts
         // unexpected ones.
-        unsafe { asm!("sti", options(nomem, nostack)) };
+        unsafe { asm!("sti", options(nostack)) };
     }
 
     pub fn disable() {
         // SAFETY: cli only clears IF.
-        unsafe { asm!("cli", options(nomem, nostack)) };
+        unsafe { asm!("cli", options(nostack)) };
     }
 
     /// Delivers whatever is already pending in the local APIC (IRR) and returns with IF clear.
@@ -148,7 +153,7 @@ pub mod interrupts {
         // SAFETY: sti; the instruction after it completes before interrupts are recognised
         // (interrupt shadow), so the pending ones are taken at the `nop` boundary and cli closes
         // the window again; handlers return with iretq.
-        unsafe { asm!("sti", "nop", "nop", "cli", options(nomem, nostack)) };
+        unsafe { asm!("sti", "nop", "nop", "cli", options(nostack)) };
     }
 
     /// RFLAGS.IF.

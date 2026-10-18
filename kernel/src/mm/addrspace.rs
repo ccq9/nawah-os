@@ -24,6 +24,8 @@ pub enum AsError {
     KernelSpaceNotActive,
     /// The space is the active one; it cannot be destroyed.
     Active,
+    /// No thread could be created for the space (kernel stack or scheduler refusal).
+    Spawn,
 }
 
 impl From<MapError> for AsError {
@@ -41,6 +43,7 @@ impl AsError {
             AsError::Range => "K_E_AS_RANGE",
             AsError::KernelSpaceNotActive => "K_E_AS_NO_KERNEL_SPACE",
             AsError::Active => "K_E_AS_ACTIVE",
+            AsError::Spawn => "K_E_SPAWN_FAILED",
         }
     }
 }

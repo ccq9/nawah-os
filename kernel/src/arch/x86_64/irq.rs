@@ -31,6 +31,7 @@ static TEST_IPIS: AtomicU32 = AtomicU32::new(0);
 
 fn timer_tick() {
     TICKS.fetch_add(1, Ordering::Relaxed);
+    crate::sched::tick();
 }
 
 fn test_ipi() {
@@ -67,6 +68,11 @@ pub fn dispatch(vector: u8) {
     }
     apic::eoi();
     DEPTH.fetch_sub(1, Ordering::Relaxed);
+    // Preemption point: the handler is over (EOI sent, depth back), the frame of the
+    // interrupted thread sits on its own kernel stack, so the scheduler may switch here.
+    if vector == TIMER_VECTOR {
+        crate::sched::preempt_point();
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

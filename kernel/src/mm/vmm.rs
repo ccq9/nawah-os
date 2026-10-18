@@ -24,6 +24,7 @@ use crate::arch::paging::{
 use crate::bootinfo::BootInfo;
 use crate::cell::BootCell;
 use crate::mm::pmm;
+use crate::sync::IrqSpinLock;
 
 /// Virtual area for kernel stacks (PML4 slot 288): each slot is `STACK_SLOT` bytes and starts
 /// with an unmapped guard page.
@@ -38,6 +39,9 @@ pub const KERNEL_PML4_SLOTS: [u64; 3] = [256, 288, 320];
 pub const KERNEL_STACK_SIZE: u64 = 64 * 1024;
 pub const DF_STACK_SIZE: u64 = 16 * 1024;
 const STACK_SLOT: u64 = 128 * 1024;
+/// Stack slots handed out (a bitmap: slot i = word i/64, bit i%64); freed slots are reused so
+/// a thread that comes and goes leaves the page tables as they were (WP-15).
+const STACK_SLOTS: usize = 1024;
 
 #[derive(Clone, Copy, Debug)]
 pub struct StackInfo {
@@ -81,6 +85,8 @@ pub enum VmmError {
     BadImage,
     /// A translation that must hold before the switch does not.
     Unmapped,
+    /// Every stack slot is in use.
+    NoStackSlot,
 }
 
 impl From<MapError> for VmmError {
@@ -98,13 +104,47 @@ impl VmmError {
             VmmError::Map(MapError::Unaligned) => "K_E_VMM_UNALIGNED",
             VmmError::BadImage => "K_E_VMM_BAD_IMAGE",
             VmmError::Unmapped => "K_E_VMM_UNMAPPED",
+            VmmError::NoStackSlot => "K_E_VMM_NO_STACK_SLOT",
         }
     }
 }
 
 static KERNEL_SPACE: BootCell<Option<KernelSpace>> = BootCell::new(None);
-/// Next free slot in the stack area (0 and 1 are the kernel and #DF stacks).
-static NEXT_STACK_SLOT: BootCell<u64> = BootCell::new(2);
+
+struct StackSlots {
+    used: [u64; STACK_SLOTS / 64],
+}
+
+impl StackSlots {
+    /// Slots 0 and 1 are the kernel and #DF stacks (mapped by `init`).
+    const fn boot() -> Self {
+        let mut used = [0u64; STACK_SLOTS / 64];
+        used[0] = 0b11;
+        Self { used }
+    }
+
+    fn alloc(&mut self) -> Option<u64> {
+        for (w, word) in self.used.iter_mut().enumerate() {
+            if *word != u64::MAX {
+                let bit = word.trailing_ones();
+                *word |= 1 << bit;
+                return Some(w as u64 * 64 + u64::from(bit));
+            }
+        }
+        None
+    }
+
+    fn free(&mut self, slot: u64) {
+        let (w, bit) = ((slot / 64) as usize, slot % 64);
+        if w < self.used.len() {
+            self.used[w] &= !(1 << bit);
+        }
+    }
+}
+
+/// Stack slots in use; taken from thread context and from the scheduler's reaper.
+static STACK_SLOTS_USED: IrqSpinLock<StackSlots> =
+    IrqSpinLock::new("stack_slots", StackSlots::boot());
 
 extern "C" {
     /// Absolute symbol the linker (lld-link) defines at the image base; the firmware loader
@@ -225,17 +265,36 @@ fn map_ram(space: &AddressSpace, bi: &BootInfo, image: (u64, u64)) -> Result<u64
 }
 
 /// Allocates a stack of `size` bytes in stack slot `slot`, mapped page by page below the slot's
-/// unmapped guard page.
+/// unmapped guard page. On failure the pages mapped so far are unmapped and freed again.
 fn map_stack(space: &AddressSpace, slot: u64, size: u64) -> Result<StackInfo, VmmError> {
     let guard = STACK_AREA_BASE + slot * STACK_SLOT;
     let base = guard + PAGE_4K;
     let mut off = 0;
     while off < size {
-        let f = pmm::alloc_frame().ok_or(MapError::OutOfFrames)?;
-        space.map_4k(base + off, f.0, WRITE | NX)?;
+        let Some(f) = pmm::alloc_frame() else {
+            unmap_stack_pages(space, base, off);
+            return Err(MapError::OutOfFrames.into());
+        };
+        if let Err(e) = space.map_4k(base + off, f.0, WRITE | NX) {
+            let _ = pmm::free_frame(f);
+            unmap_stack_pages(space, base, off);
+            return Err(e.into());
+        }
         off += PAGE_4K;
     }
     Ok(StackInfo { base, size, guard })
+}
+
+/// Unmaps `[base, base + len)` page by page, flushing each entry, and frees the frames.
+fn unmap_stack_pages(space: &AddressSpace, base: u64, len: u64) {
+    let mut va = base;
+    while va < base + len {
+        if let Ok(Some(phys)) = space.unmap_4k(va) {
+            paging::invlpg(va);
+            let _ = pmm::free_frame(pmm::Frame(phys));
+        }
+        va += PAGE_4K;
+    }
 }
 
 /// Writes a pattern to a fresh frame through the direct map and reads it back through the
@@ -325,22 +384,37 @@ pub fn kernel_space() -> Option<KernelSpace> {
     unsafe { (*KERNEL_SPACE.get()).as_ref().copied() }
 }
 
-/// Maps another guarded kernel stack of `size` bytes (page multiple) in the next stack slot;
+/// Maps another guarded kernel stack of `size` bytes (page multiple) in a free stack slot;
 /// visible in every address space because the stack area's PML4 slot is shared.
 pub fn alloc_kernel_stack(size: u64) -> Result<StackInfo, VmmError> {
     if size == 0 || !size.is_multiple_of(PAGE_4K) || size + PAGE_4K > STACK_SLOT {
         return Err(VmmError::Map(MapError::Unaligned));
     }
     let space = kernel_as()?;
-    // SAFETY: boot-path counter (BootCell contract): stacks are created before interrupts and
-    // on one CPU.
-    let slot = unsafe {
-        let p = NEXT_STACK_SLOT.get();
-        let s = *p;
-        *p = s + 1;
-        s
+    let slot = STACK_SLOTS_USED
+        .lock()
+        .alloc()
+        .ok_or(VmmError::NoStackSlot)?;
+    match map_stack(&space, slot, size) {
+        Ok(info) => Ok(info),
+        Err(e) => {
+            STACK_SLOTS_USED.lock().free(slot);
+            Err(e)
+        }
+    }
+}
+
+/// Unmaps a kernel stack made by `alloc_kernel_stack`, frees its frames and returns its slot
+/// for reuse. The stack must not be in use (not the caller's, not a live thread's).
+pub fn free_kernel_stack(stack: StackInfo) {
+    let Ok(space) = kernel_as() else {
+        return;
     };
-    map_stack(&space, slot, size)
+    unmap_stack_pages(&space, stack.base, stack.size);
+    let slot = (stack.guard - STACK_AREA_BASE) / STACK_SLOT;
+    if slot >= 2 {
+        STACK_SLOTS_USED.lock().free(slot);
+    }
 }
 
 /// Direct-map address of a physical address.

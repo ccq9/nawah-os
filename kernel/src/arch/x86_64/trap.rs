@@ -167,6 +167,13 @@ exc_common:
     push rcx
     push rbx
     push rax
+    # From ring 3: GS still holds the user's base; swap to the per-CPU block so that kernel
+    # mode always runs with the kernel GS, whichever thread a preemption resumes (WP-15,
+    # ADR-0010 item 4). CS is at +144.
+    test byte ptr [rsp + 144], 3
+    jz 2f
+    swapgs
+2:
     mov rdi, rsp
     mov rbx, rsp
     and rsp, -16
@@ -187,6 +194,11 @@ exc_common:
     pop r13
     pop r14
     pop r15
+    # Back to ring 3: give the user its GS base again.
+    test byte ptr [rsp + 24], 3
+    jz 3f
+    swapgs
+3:
     add rsp, 16
     iretq
 "#,
@@ -282,8 +294,8 @@ extern "sysv64" fn exception_handler(frame: &TrapFrame) {
         return;
     }
     if frame.cs & 3 == 3 {
-        // Taken in ring 3: the program is at fault, not the kernel. Diagnose and end its run
-        // (WP-15 turns this into process termination).
+        // Taken in ring 3: the program is at fault, not the kernel. Diagnose and end the thread
+        // (the common path already swapped GS to the kernel block).
         kprintln!(
             "OSX|{}|kernel|user_fault|vector={}|name={}|error={:#x}|rip={:#x}|rsp={:#x}|cr2={:#x}",
             BUILD_ID,
@@ -294,7 +306,7 @@ extern "sysv64" fn exception_handler(frame: &TrapFrame) {
             frame.rsp,
             read_cr2(),
         );
-        super::syscall::exit_user_from_fault(USER_FAULT_EXIT_BASE | frame.vector);
+        crate::sched::exit_current(USER_FAULT_EXIT_BASE | frame.vector);
     }
     let depth = NESTING.fetch_add(1, Ordering::Relaxed);
     if depth > MAX_NESTING {

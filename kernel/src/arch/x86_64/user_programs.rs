@@ -1,7 +1,7 @@
 //! Ring-3 programs assembled into the kernel image and copied into a user code page by
-//! `user::run` (WP-14). Position-independent, no data references, ABI v1 (SYSCALL: rax number,
-//! rdi/rsi/rdx arguments, rax result). The boot self-check uses `PING`; the others are test
-//! kernel programs. Each ends with SYS_EXIT (0) carrying its result in rdi.
+//! `user::spawn` (WP-14/WP-15). Position-independent, no data references, ABI v1.x (SYSCALL:
+//! rax number, rdi/rsi/rdx arguments, rax result). The boot self-check uses `PING`; the others
+//! are test kernel programs. Each ends with SYS_EXIT (0) carrying its result in rdi.
 
 use core::arch::global_asm;
 
@@ -89,6 +89,27 @@ user_prog_trace:
     ud2
 1:  .ascii "hello from r3"
 user_prog_trace_end:
+
+    # ABI v1.1: SYS_SLEEP(3 ticks) then SYS_YIELD; exit 0x51 when both returned 0, else 0x50.
+    .balign 16
+    .global user_prog_sleep
+    .global user_prog_sleep_end
+user_prog_sleep:
+    mov eax, 5              # SYS_SLEEP
+    mov edi, 3
+    syscall
+    mov r12, rax
+    mov eax, 4              # SYS_YIELD
+    syscall
+    or r12, rax
+    mov edi, 0x51
+    test r12, r12
+    jz 1f
+    mov edi, 0x50
+1:  mov eax, 0              # SYS_EXIT
+    syscall
+    ud2
+user_prog_sleep_end:
 "#
 );
 
@@ -107,6 +128,8 @@ extern "C" {
     static user_prog_bad_rip_end: u8;
     static user_prog_trace: u8;
     static user_prog_trace_end: u8;
+    static user_prog_sleep: u8;
+    static user_prog_sleep_end: u8;
 }
 
 fn bytes(start: *const u8, end: *const u8) -> &'static [u8] {
@@ -152,4 +175,10 @@ pub fn bad_rip() -> &'static [u8] {
 #[cfg(feature = "ktest")]
 pub fn trace() -> &'static [u8] {
     bytes(&raw const user_prog_trace, &raw const user_prog_trace_end)
+}
+
+/// Sleep then yield through the ABI v1.1 calls; exit code 0x51.
+#[cfg(feature = "ktest")]
+pub fn sleep() -> &'static [u8] {
+    bytes(&raw const user_prog_sleep, &raw const user_prog_sleep_end)
 }

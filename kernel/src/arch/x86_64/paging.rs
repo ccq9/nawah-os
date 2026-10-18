@@ -426,6 +426,13 @@ pub fn disable_wp() {
     }
 }
 
+/// Loads `pml4` into CR3. Safe to call for any address space this kernel built: all of them
+/// share the kernel half (vmm/addrspace construction), so the running code stays mapped.
+pub fn switch_cr3(pml4: u64) {
+    // SAFETY: see above — every PML4 the kernel hands out carries the kernel entries.
+    unsafe { asm!("mov cr3, {}", in(reg) pml4, options(nostack, preserves_flags)) };
+}
+
 /// Physical address of the active PML4.
 pub fn read_cr3() -> u64 {
     let v: u64;

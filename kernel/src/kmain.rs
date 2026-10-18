@@ -234,26 +234,59 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         c.max_depth,
         u8::from(timer_ok)
     );
-    // Ring 3 (WP-14): SYSCALL/SYSRET on a dedicated trap stack, then a self-check in every
-    // build — a ring-3 program makes a call and exits through another, leaving no frame behind.
+    // Ring 3 (WP-14): SYSCALL/SYSRET; the initial trap stack is replaced by each thread's own
+    // kernel stack on every switch (WP-15).
     let trap = match mm::vmm::alloc_kernel_stack(32 * 1024) {
         Ok(s) => s,
         Err(e) => crate::panic::fatal(e.code()),
     };
     let sc = arch::syscall::init(trap.top());
-    let (user_exit, user_delta, user_code) = match crate::user::run(arch::user_programs::ping()) {
-        Ok(o) => (o.exit_code, o.frames_delta, "ok"),
-        Err(e) => (u64::MAX, 0, e.code()),
+    // Threads and the scheduler (WP-15): this context becomes thread 0; a kernel thread is
+    // spawned, runs on its own stack and is joined, with no frame left behind.
+    let Some(ks) = mm::vmm::kernel_space() else {
+        crate::panic::fatal("K_E_VMM_NOT_ACTIVE")
     };
+    crate::sched::init(ks.kernel_stack, ks.cr3);
+    let sched_frames_before = mm::pmm::stats().free_frames;
+    let (probe, sched_code) = match crate::sched::spawn_kernel(sched_probe, 0x5EED, 1) {
+        Ok(tid) => (crate::sched::join(tid), "ok"),
+        Err(_) => (None, "K_E_SCHED_SPAWN"),
+    };
+    let st = crate::sched::stats();
+    let sched_delta = sched_frames_before as i64 - mm::pmm::stats().free_frames as i64;
+    let sched_ok = probe == Some(0x5EEE) && st.threads == 1 && st.switches >= 2 && sched_delta == 0;
+    kprintln!(
+        "OSX|{}|kernel|sched|boot_tid={}|probe_join={:#x}|switches={}|preemptions={}|ticks={}|threads={}|processes={}|quantum_ticks={}|frames_delta={}|code={}|selfcheck={}",
+        build_id,
+        st.current,
+        probe.unwrap_or(u64::MAX),
+        st.switches,
+        st.preemptions,
+        st.ticks,
+        st.threads,
+        st.processes,
+        crate::sched::QUANTUM_TICKS,
+        sched_delta,
+        sched_code,
+        u8::from(sched_ok)
+    );
+    // Ring-3 self-check in every build: a process runs the ping program and exits through the
+    // ABI; the scheduler reaps it and no frame is left behind.
+    let (user_pid, user_exit, user_delta, user_code) =
+        match crate::user::run(arch::user_programs::ping()) {
+            Ok(o) => (o.pid, o.exit_code, o.frames_delta, "ok"),
+            Err(e) => (0, u64::MAX, 0, e.code()),
+        };
     let user_ok =
         user_exit == 0x1235 && user_delta == 0 && user_exit < arch::syscall::USER_FAULT_EXIT_BASE;
     kprintln!(
-        "OSX|{}|kernel|user|lstar={:#x}|smep={}|smap={}|trap_stack_guard={:#x}|ping_exit={:#x}|frames_delta={}|code={}|selfcheck={}",
+        "OSX|{}|kernel|user|lstar={:#x}|smep={}|smap={}|trap_stack_guard={:#x}|pid={}|ping_exit={:#x}|frames_delta={}|code={}|selfcheck={}",
         build_id,
         sc.lstar,
         u8::from(sc.smep),
         u8::from(sc.smap),
         trap.guard,
+        user_pid,
         user_exit,
         user_delta,
         user_code,
@@ -268,4 +301,14 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         kprintln!("OSX|{}|kernel|m1_done|exit=0x10", build_id);
         arch::qemu::exit(arch::qemu::EXIT_OK)
     }
+}
+
+/// Boot self-check thread: proves it runs as its own thread and hands a value back through
+/// the exit code.
+#[cfg(target_arch = "x86_64")]
+extern "sysv64" fn sched_probe(arg: u64) -> u64 {
+    if crate::sched::current_tid() == 0 {
+        return 0;
+    }
+    arg + 1
 }

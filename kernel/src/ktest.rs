@@ -6,14 +6,16 @@
 //! A missing or unknown name is an explicit failure, so a lost name cannot pass by accident.
 
 use alloc::vec::Vec;
+use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use crate::arch::{
-    apic, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu, user_programs,
+    apic, context, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu, user_programs,
 };
 use crate::mm::addrspace::{self, UserSpace, USER_BASE};
 use crate::mm::heap;
 use crate::mm::pmm::{self, Frame, PmmError};
 use crate::mm::vmm;
+use crate::sched;
 use crate::sync::IrqSpinLock;
 use crate::BUILD_ID;
 
@@ -118,6 +120,10 @@ pub fn run() -> ! {
         "vmm_unmap" => vmm_unmap(),
         "vmm_protect" => vmm_protect(),
         "as_switch" => as_switch(),
+        "threads_alternate" => threads_alternate(),
+        "preempt" => preempt(),
+        "exit_cleanup" => exit_cleanup(),
+        "user_sleep" => user_sleep(),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -274,9 +280,12 @@ impl Lcg {
 }
 
 /// Heap stress: 10,000 mixed allocations and frees (small, medium, large) with content checks;
-/// afterwards no live block, no slab page, and the frame count back to the start.
+/// afterwards the heap is back where it started — live blocks, slab pages and large frames
+/// equal to the counts before (the scheduler owns a few live blocks since WP-15) — and the
+/// frame count too.
 fn heap_stress() -> ! {
     let frames_before = pmm::stats().free_frames;
+    let before = heap::stats();
     let mut slots: Vec<Option<Vec<u8>>> = (0..256).map(|_| None).collect();
     let mut rng = Lcg(0x9E37_79B9_7F4A_7C15);
     let (mut allocs, mut frees, mut bytes) = (0u64, 0u64, 0u64);
@@ -315,14 +324,17 @@ fn heap_stress() -> ! {
     let st = heap::stats();
     let frames_after = pmm::stats().free_frames;
     kprintln!(
-        "OSX|{}|ktest|heap_stress|allocs={}|frees={}|bytes={}|live_mid={}|live_after={}|slab_pages={}|large_frames={}|frames_before={}|frames_after={}",
+        "OSX|{}|ktest|heap_stress|allocs={}|frees={}|bytes={}|live_mid={}|live_before={}|live_after={}|slab_before={}|slab_after={}|large_before={}|large_after={}|frames_before={}|frames_after={}",
         BUILD_ID,
         allocs,
         frees,
         bytes,
         live_mid,
+        before.live_blocks,
         st.live_blocks,
+        before.slab_pages,
         st.slab_pages,
+        before.large_frames,
         st.large_frames,
         frames_before,
         frames_after
@@ -330,8 +342,11 @@ fn heap_stress() -> ! {
     if allocs != frees {
         fail("alloc/free count mismatch")
     }
-    if st.live_blocks != 0 || st.slab_pages != 0 || st.large_frames != 0 {
-        fail("heap not empty after freeing everything")
+    if st.live_blocks != before.live_blocks
+        || st.slab_pages != before.slab_pages
+        || st.large_frames != before.large_frames
+    {
+        fail("heap not back to its state before the stress")
     }
     if frames_before != frames_after {
         fail("frames leaked through the heap")
@@ -850,4 +865,264 @@ fn pmm_double_free() -> ! {
         fail("bitmap storage free accepted")
     }
     pass("double/unmanaged/misaligned/bitmap frees rejected")
+}
+
+// ---- WP-15: threads, preemption, cleanup -------------------------------------------------
+
+/// Order in which the alternating threads logged (ids), filled under a lock.
+static LOG: IrqSpinLock<([u8; 64], usize)> = IrqSpinLock::new("ktest_log", ([0; 64], 0));
+static STOP: AtomicBool = AtomicBool::new(false);
+static SPINS: AtomicU64 = AtomicU64::new(0);
+
+const ALTERNATE_ROUNDS: usize = 8;
+
+/// Logs its id then yields, `ALTERNATE_ROUNDS` times; exit code = id.
+extern "sysv64" fn alternator(id: u64) -> u64 {
+    for _ in 0..ALTERNATE_ROUNDS {
+        {
+            let mut g = LOG.lock();
+            let n = g.1;
+            if n < g.0.len() {
+                g.0[n] = id as u8;
+                g.1 = n + 1;
+            }
+        }
+        sched::yield_now();
+    }
+    id
+}
+
+/// Sleeps `ticks`; exit code = ticks actually elapsed.
+extern "sysv64" fn sleeper(ticks: u64) -> u64 {
+    let t0 = sched::stats().ticks;
+    sched::sleep_ticks(ticks);
+    sched::stats().ticks - t0
+}
+
+/// Never yields, never sleeps: only the timer can take the CPU away. Exit code = iterations.
+extern "sysv64" fn spinner(_: u64) -> u64 {
+    let mut n = 0u64;
+    while !STOP.load(Ordering::Acquire) {
+        n += 1;
+        SPINS.store(n, Ordering::Relaxed);
+    }
+    n
+}
+
+/// Returns its argument (a thread that comes and goes).
+extern "sysv64" fn trivial(arg: u64) -> u64 {
+    arg
+}
+
+fn spawn_or_fail(entry: context::KernelEntry, arg: u64, prio: u8) -> u32 {
+    match sched::spawn_kernel(entry, arg, prio) {
+        Ok(t) => t,
+        Err(_) => fail("spawn_kernel failed"),
+    }
+}
+
+/// Two kernel threads of the same (higher) priority yield to each other: the log alternates
+/// strictly A,B,A,B for 2 × ALTERNATE_ROUNDS entries, each exit code is handed back by join,
+/// a third thread sleeps 5 ticks and measures at least 5, and the stacks go back to the
+/// allocator (frame count equal after a warm-up thread).
+fn threads_alternate() -> ! {
+    let warm = spawn_or_fail(trivial, 1, 0);
+    if sched::join(warm) != Some(1) {
+        fail("warm-up thread did not return its code")
+    }
+    let frames_before = pmm::stats().free_frames;
+    let s0 = sched::stats();
+    let a = spawn_or_fail(alternator, u64::from(b'A'), 0);
+    let b = spawn_or_fail(alternator, u64::from(b'B'), 0);
+    let ra = sched::join(a);
+    let rb = sched::join(b);
+    let c = spawn_or_fail(sleeper, 5, 0);
+    let rc = sched::join(c);
+    let s1 = sched::stats();
+    let frames_after = pmm::stats().free_frames;
+    let (log, n) = {
+        let g = LOG.lock();
+        (g.0, g.1)
+    };
+    let expected_n = 2 * ALTERNATE_ROUNDS;
+    let alternates = n == expected_n
+        && log[..n]
+            .iter()
+            .enumerate()
+            .all(|(i, &id)| id == if i % 2 == 0 { b'A' } else { b'B' });
+    let text = core::str::from_utf8(&log[..n]).unwrap_or("?");
+    kprintln!(
+        "OSX|{}|ktest|threads_alternate|log={}|entries={}|join_a={:#x}|join_b={:#x}|slept_ticks={}|switches={}|threads_after={}|frames_before={}|frames_after={}",
+        BUILD_ID,
+        text,
+        n,
+        ra.unwrap_or(u64::MAX),
+        rb.unwrap_or(u64::MAX),
+        rc.unwrap_or(u64::MAX),
+        s1.switches - s0.switches,
+        s1.threads,
+        frames_before,
+        frames_after
+    );
+    if !alternates {
+        fail("threads did not alternate strictly")
+    }
+    if ra != Some(u64::from(b'A')) || rb != Some(u64::from(b'B')) {
+        fail("join did not return the thread exit codes")
+    }
+    if !matches!(rc, Some(t) if (5..=50).contains(&t)) {
+        fail("sleep_ticks did not sleep at least 5 ticks (or far more)")
+    }
+    if s1.switches - s0.switches < (2 * ALTERNATE_ROUNDS as u64) + 2 || s1.threads != 1 {
+        fail("switch count or thread count wrong")
+    }
+    if frames_after != frames_before {
+        fail("thread stacks leaked")
+    }
+    pass("threads alternate, join returns codes, sleep waits, stacks return")
+}
+
+/// A spinning thread of the boot thread's priority never yields; the boot thread never yields
+/// either (it halts between ticks). Both still make progress: the timer preempts each in turn,
+/// seen as the spin counter moving between the boot thread's observations.
+fn preempt() -> ! {
+    let c0 = irq::counters();
+    let s0 = sched::stats();
+    let tid = spawn_or_fail(spinner, 0, 1);
+    let start = sched::stats().ticks;
+    let mut handovers = 0u32;
+    let mut last = SPINS.load(Ordering::Relaxed);
+    let mut observations = 0u64;
+    while handovers < 3 && sched::stats().ticks - start < 400 {
+        context::idle_wait();
+        observations += 1;
+        let now = SPINS.load(Ordering::Relaxed);
+        if now != last {
+            handovers += 1;
+            last = now;
+        }
+    }
+    let elapsed = sched::stats().ticks - start;
+    STOP.store(true, Ordering::Release);
+    let spins = sched::join(tid);
+    let s1 = sched::stats();
+    let c1 = irq::counters();
+    kprintln!(
+        "OSX|{}|ktest|preempt|handovers={}|observations={}|elapsed_ticks={}|spins={}|preemptions={}|switches={}|max_depth={}|unexpected={}",
+        BUILD_ID,
+        handovers,
+        observations,
+        elapsed,
+        spins.unwrap_or(0),
+        s1.preemptions - s0.preemptions,
+        s1.switches - s0.switches,
+        c1.max_depth,
+        c1.unexpected - c0.unexpected
+    );
+    if handovers < 3 {
+        fail("spinner and boot thread did not alternate under the timer")
+    }
+    if !matches!(spins, Some(n) if n > 0) {
+        fail("spinner did not run or did not exit with its count")
+    }
+    if s1.preemptions - s0.preemptions < 2 * u64::from(handovers) {
+        fail("fewer preemptions than handovers imply")
+    }
+    if c1.max_depth != 1 || c1.unexpected != c0.unexpected {
+        fail("handler re-entry or unexpected vector during preemption")
+    }
+    pass("timer preemption shares the CPU between a spinner and a non-yielding thread")
+}
+
+/// After a warm-up, processes that exit normally and by a ring-3 fault, and a kernel thread,
+/// leave the frame count, the heap's live blocks and slab pages, and the thread/process counts
+/// exactly as they were.
+fn exit_cleanup() -> ! {
+    // Warm-up: containers reach their steady capacity, page tables for the stack area exist.
+    if crate::user::run(user_programs::ping()).is_err() {
+        fail("warm-up process did not run")
+    }
+    let w = spawn_or_fail(trivial, 2, 1);
+    if sched::join(w) != Some(2) {
+        fail("warm-up thread did not return its code")
+    }
+    let frames0 = pmm::stats().free_frames;
+    let heap0 = heap::stats();
+    let s0 = sched::stats();
+    let normal = match crate::user::run(user_programs::ping()) {
+        Ok(o) => o,
+        Err(_) => fail("ping process did not run"),
+    };
+    let faulting = match crate::user::run(user_programs::kernel_access()) {
+        Ok(o) => o,
+        Err(_) => fail("faulting process did not run"),
+    };
+    let t = spawn_or_fail(trivial, 7, 1);
+    let rt = sched::join(t);
+    let frames1 = pmm::stats().free_frames;
+    let heap1 = heap::stats();
+    let s1 = sched::stats();
+    kprintln!(
+        "OSX|{}|ktest|exit_cleanup|normal_exit={:#x}|fault_exit={:#x}|thread_join={:#x}|frames_before={}|frames_after={}|live_before={}|live_after={}|slab_before={}|slab_after={}|threads_before={}|threads_after={}|processes_after={}",
+        BUILD_ID,
+        normal.exit_code,
+        faulting.exit_code,
+        rt.unwrap_or(u64::MAX),
+        frames0,
+        frames1,
+        heap0.live_blocks,
+        heap1.live_blocks,
+        heap0.slab_pages,
+        heap1.slab_pages,
+        s0.threads,
+        s1.threads,
+        s1.processes
+    );
+    if normal.exit_code != 0x1235
+        || faulting.exit_code != (crate::arch::syscall::USER_FAULT_EXIT_BASE | 14)
+        || rt != Some(7)
+    {
+        fail("exit codes wrong")
+    }
+    if frames1 != frames0 || normal.frames_delta != 0 || faulting.frames_delta != 0 {
+        fail("frames leaked by process or thread exit")
+    }
+    if heap1.live_blocks != heap0.live_blocks || heap1.slab_pages != heap0.slab_pages {
+        fail("heap blocks leaked by process or thread exit")
+    }
+    if s1.threads != 1 || s0.threads != 1 || s1.processes != 0 {
+        fail("thread or process records not cleaned up")
+    }
+    pass("process and thread exit return every frame, heap block and record")
+}
+
+/// ABI v1.1 from ring 3: SYS_SLEEP(3) blocks the thread for at least 3 ticks, SYS_YIELD returns
+/// 0, the program exits 0x51; no frame leaked.
+fn user_sleep() -> ! {
+    let t0 = sched::stats().ticks;
+    let o = match crate::user::run(user_programs::sleep()) {
+        Ok(o) => o,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|user_sleep|error={}", BUILD_ID, e.code());
+            fail("sleep program did not run")
+        }
+    };
+    let elapsed = sched::stats().ticks - t0;
+    kprintln!(
+        "OSX|{}|ktest|user_sleep|exit={:#x}|elapsed_ticks={}|frames_delta={}",
+        BUILD_ID,
+        o.exit_code,
+        elapsed,
+        o.frames_delta
+    );
+    if o.exit_code != 0x51 {
+        fail("sleep/yield did not return 0 to the program")
+    }
+    if !(3..=100).contains(&elapsed) {
+        fail("SYS_SLEEP did not block for the asked ticks")
+    }
+    if o.frames_delta != 0 {
+        fail("frames leaked by the sleeping process")
+    }
+    pass("ring-3 sleep and yield go through the scheduler")
 }

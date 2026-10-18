@@ -35,6 +35,9 @@ mod sync;
 
 mod kmain;
 #[cfg(target_arch = "x86_64")]
+#[allow(unsafe_code)]
+mod sched;
+#[cfg(target_arch = "x86_64")]
 mod syscall;
 #[cfg(target_arch = "x86_64")]
 mod user;

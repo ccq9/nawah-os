@@ -1,6 +1,6 @@
-//! Ring 3 entry and exit on x86_64 (WP-14, ADR-0009): SYSCALL/SYSRET, the per-CPU block
-//! reached through GS, the trap stack, user-memory access windows, and the executive's
-//! "enter user / come back" pair that WP-15's scheduler generalises.
+//! Ring 3 entry and exit on x86_64 (WP-14/WP-15, ADR-0009/0010): SYSCALL/SYSRET, the per-CPU
+//! block reached through GS, the per-thread trap stack and user-memory access windows. The
+//! first entry into ring 3 is the scheduler's user-thread trampoline (arch::context).
 //!
 //! References (Intel SDM, docs/sources.json S26): Vol. 3A §5.8.8 SYSCALL/SYSRET (CS/SS from
 //! IA32_STAR, RIP from IA32_LSTAR, RFLAGS masked by IA32_FMASK, RCX/R11 carry RIP/RFLAGS);
@@ -11,8 +11,8 @@
 //! TSS.RSP0).
 //!
 //! GS convention (as Linux): in kernel mode GS.base = this CPU's `PerCpu`; on the way to ring 3
-//! `swapgs` parks it in IA32_KERNEL_GS_BASE and gives the user a zero base; the SYSCALL entry
-//! swaps it back. Exception handlers never use GS, so they need no swap.
+//! `swapgs` parks it in IA32_KERNEL_GS_BASE and gives the user a zero base; every kernel entry
+//! from ring 3 (SYSCALL, and the common trap path when the saved CS has RPL 3) swaps it back.
 
 use core::arch::x86_64::__cpuid_count;
 use core::arch::{asm, global_asm};
@@ -33,26 +33,22 @@ const IA32_KERNEL_GS_BASE: u32 = 0xC000_0102;
 const FMASK: u64 = 0x4_0FD5;
 const CR4_SMEP: u64 = 1 << 20;
 const CR4_SMAP: u64 = 1 << 21;
-/// RFLAGS handed to ring 3 by `enter_user`: IF set, reserved bit 1 set.
-const USER_RFLAGS: u64 = 0x202;
 
 /// Per-CPU block, reached as GS:[offset] by the entry stub. Offsets are fixed by the assembly.
 #[repr(C)]
 pub struct PerCpu {
     /// +0: user RSP saved by the SYSCALL entry.
     pub user_rsp: u64,
-    /// +8: top of the trap stack (SYSCALL entry; also TSS.RSP0 for ring-3 interrupts).
+    /// +8: top of the current thread's kernel stack (SYSCALL entry; also TSS.RSP0 for ring-3
+    /// interrupts), set by the scheduler on every switch.
     pub kernel_rsp: u64,
-    /// +16: the kernel's own RSP parked by `enter_user`, restored by `exit_to_kernel`.
-    pub saved_kernel_rsp: u64,
-    /// +24: CPU index.
+    /// +16: CPU index.
     pub cpu_id: u64,
 }
 
 static PERCPU: BootCell<PerCpu> = BootCell::new(PerCpu {
     user_rsp: 0,
     kernel_rsp: 0,
-    saved_kernel_rsp: 0,
     cpu_id: 0,
 });
 
@@ -129,45 +125,11 @@ syscall_entry:
     mov rsp, [rsp]
     swapgs
     sysretq
-
-    # enter_user(rip = rdi, rsp = rsi) -> u64: parks the callee-saved registers and RSP, then
-    # drops to ring 3 with SYSRET. Returns (through exit_to_kernel) with the exit code in rax.
-    .global enter_user
-enter_user:
-    push rbx
-    push rbp
-    push r12
-    push r13
-    push r14
-    push r15
-    mov [rip + {percpu} + 16], rsp
-    mov rcx, rdi
-    mov r11, {user_rflags}
-    mov rsp, rsi
-    swapgs
-    sysretq
-
-    # exit_to_kernel(code = rdi) -> !: back to enter_user's caller with rax = code.
-    .global exit_to_kernel
-exit_to_kernel:
-    mov rsp, [rip + {percpu} + 16]
-    mov rax, rdi
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop rbp
-    pop rbx
-    ret
 "#,
     dispatch = sym dispatch_entry,
-    percpu = sym PERCPU,
-    user_rflags = const USER_RFLAGS,
 );
 
 extern "sysv64" {
-    fn enter_user(rip: u64, rsp: u64) -> u64;
-    fn exit_to_kernel(code: u64) -> !;
     static syscall_entry: u8;
 }
 
@@ -206,8 +168,8 @@ fn rdmsr(msr: u32) -> u64 {
 }
 
 /// Programs SYSCALL/SYSRET, GS bases, TSS.RSP0 and (when the CPU has them) SMEP/SMAP.
-/// `trap_stack_top`: a mapped kernel stack used by SYSCALL entry and by interrupts taken in
-/// ring 3; it must not be the stack the caller is running on.
+/// `trap_stack_top`: the initial trap stack (the scheduler points it at each thread's kernel
+/// stack on every switch).
 pub fn init(trap_stack_top: u64) -> SyscallInfo {
     let percpu = PERCPU.get();
     // SAFETY: boot path, single CPU (BootCell contract); the block is read by the entry stub
@@ -258,33 +220,12 @@ pub fn init(trap_stack_top: u64) -> SyscallInfo {
     SyscallInfo { smep, smap, lstar }
 }
 
-/// Runs ring-3 code at `rip` with stack `rsp` in the active address space; returns the exit
-/// code the program (or a fault on its behalf) ends with. Interrupts are enabled in ring 3 and
-/// disabled again by the time this returns.
-pub fn run_user(rip: u64, rsp: u64) -> u64 {
-    // SAFETY: the caller mapped `rip`/`rsp` with USER in the active space and `init` ran; the
-    // assembly parks this stack and comes back through exit_to_kernel.
-    let code = unsafe { enter_user(rip, rsp) };
-    super::interrupts::disable();
-    code
-}
-
-/// Ends the current ring-3 run from a syscall handler (kernel mode, GS = PerCpu).
-pub fn exit_user(code: u64) -> ! {
-    // SAFETY: a ring-3 run is in progress (only syscall handlers call this), so enter_user's
-    // frame is parked in PERCPU.
-    unsafe { exit_to_kernel(code) }
-}
-
-/// Ends the current ring-3 run from an exception taken in ring 3 (GS still the user's: swap it
-/// back first so the kernel convention holds again).
-pub fn exit_user_from_fault(code: u64) -> ! {
-    // SAFETY: called only for an exception whose saved CS has RPL 3, i.e. GS was not swapped
-    // by the entry path; after swapgs the kernel block is current again.
-    unsafe {
-        asm!("swapgs", options(nomem, nostack));
-        exit_to_kernel(code)
-    }
+/// Points SYSCALL entry and ring-3 interrupts at `top` (a kernel stack): per-CPU kernel_rsp
+/// and TSS.RSP0. Called on every switch to a thread (WP-15).
+pub fn set_trap_stack(top: u64) {
+    // SAFETY: interrupts are disabled by the caller (scheduler); the block is this CPU's.
+    unsafe { (*PERCPU.get()).kernel_rsp = top };
+    gdt::set_rsp0(top);
 }
 
 /// Whether a value may be used as a ring-3 instruction pointer: canonical, inside the user

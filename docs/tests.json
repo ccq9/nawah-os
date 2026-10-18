@@ -1,804 +1,816 @@
 {
- "schema_version": "1.0.0",
- "records": [
-  {
-   "id": "TST-M0-001",
-   "requirement_ids": [
-    "REQ-M0-002",
-    "REQ-M0-005"
-   ],
-   "layer": "host_unit",
-   "oracle": "unittest: 10 cases (6 required rejections + acceptance) exit 0",
-   "command": "python3 tools/project.py test --target host --suite M0",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060534Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M0-002",
-   "requirement_ids": [
-    "REQ-M0-001",
-    "REQ-M0-004"
-   ],
-   "layer": "host_unit",
-   "oracle": "required M0 files exist; boot contract has 8 sections; ADR cites existing evidence",
-   "command": "python3 tools/project.py test --target host --suite M0",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060534Z-8041e35f-002"
-   ]
-  },
-  {
-   "id": "TST-M0-E0-BUILD",
-   "requirement_ids": [
-    "REQ-M0-003"
-   ],
-   "layer": "host_unit",
-   "oracle": "clang+lld-link steps exit 0 and PE32+ artifact exists",
-   "command": "python3 tools/project.py build --target pc-qemu-e0",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060243Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M0-E0-BOOT",
-   "requirement_ids": [
-    "REQ-M0-003"
-   ],
-   "layer": "guest",
-   "oracle": "QEMU exit 33 and serial markers with build_id (OVMF 2024.02, QEMU 8.2.2)",
-   "command": "python3 tools/project.py boot --target pc-qemu-e0",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060244Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M1-BUILD",
-   "requirement_ids": [
-    "REQ-M1-001"
-   ],
-   "layer": "host_unit",
-   "oracle": "build steps exit 0, artifact exists, build_id recorded",
-   "command": "python3 tools/project.py build --target pc-qemu",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060247Z-8041e35f-001"
-   ],
-   "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
-  },
-  {
-   "id": "TST-M1-BOOT",
-   "requirement_ids": [
-    "REQ-M1-002"
-   ],
-   "layer": "guest",
-   "oracle": "serial: boot|start, boot|ebs|ok, kernel|post_ebs with map_key; QEMU exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M1",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060251Z-8041e35f-001"
-   ],
-   "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
-  },
-  {
-   "id": "TST-M1-NOBS",
-   "requirement_ids": [
-    "REQ-M1-003"
-   ],
-   "layer": "host_unit",
-   "oracle": "static: kmain.rs safe-only and names no firmware symbol; boot::efi private; BootInfo without fn pointers; kernel_main(&BootInfo)",
-   "command": "python3 tools/project.py test --target host --suite M1",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060534Z-8041e35f-003"
-   ]
-  },
-  {
-   "id": "TST-M1-NEG",
-   "requirement_ids": [
-    "REQ-M1-004"
-   ],
-   "layer": "negative",
-   "oracle": "inject EBS failure build variant: serial boot|error|code=BOOT_E_EBS_FAILED, QEMU exit 97, no reboot (single start line)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M1",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060254Z-8041e35f-001"
-   ],
-   "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
-  },
-  {
-   "id": "TST-M1-INVALID-IMAGE",
-   "requirement_ids": [
-    "REQ-M1-005"
-   ],
-   "layer": "negative",
-   "oracle": "loader rejects corrupted kernel image",
-   "command": "n/a",
-   "verdict": "N/A",
-   "evidence_refs": [],
-   "verdict_reason": "single-image bootstrap: no separate kernel image to corrupt until loader split (ADR-0001)"
-  },
-  {
-   "id": "TST-M2-EXC-DE",
-   "requirement_ids": [
-    "REQ-M2-002",
-    "REQ-M2-005"
-   ],
-   "layer": "guest",
-   "oracle": "SDM Table 7-1: #DE vector 0, no error code (fault: RIP at div); lab exit 145",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060257Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-EXC-UD",
-   "requirement_ids": [
-    "REQ-M2-002"
-   ],
-   "layer": "guest",
-   "oracle": "#UD vector 6, fault at ud2; exit 157",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060301Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-EXC-DB",
-   "requirement_ids": [
-    "REQ-M2-002"
-   ],
-   "layer": "guest",
-   "oracle": "#DB single-step trap: saved RIP after the nop (SDM Event 1); exit 147",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060304Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-EXC-GP",
-   "requirement_ids": [
-    "REQ-M2-002"
-   ],
-   "layer": "guest",
-   "oracle": "#GP on non-canonical address, error code 0 (SDM Event 13); exit 171",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060307Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-EXC-PF",
-   "requirement_ids": [
-    "REQ-M2-002"
-   ],
-   "layer": "guest",
-   "oracle": "#PF write to unmapped supervisor page: error code 2, CR2 = target (SDM Fig. 7-11); exit 173",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060310Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-EXC-BP",
-   "requirement_ids": [
-    "REQ-M2-002"
-   ],
-   "layer": "guest",
-   "oracle": "#BP is a trap: handler prints and returns; saved RIP after int3 (SDM Event 3)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060313Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-EXC-BP-STATE",
-   "requirement_ids": [
-    "REQ-M2-002"
-   ],
-   "layer": "guest",
-   "oracle": "iretq path restores 15 GPRs and CF/DF",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060316Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-EXC-DF",
-   "requirement_ids": [
-    "REQ-M2-003"
-   ],
-   "layer": "guest",
-   "oracle": "corrupt RSP -> #PF undeliverable -> #DF (SDM Table 7-5) on IST1 stack, error code 0; exit 161",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060320Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-EXC-NESTED",
-   "requirement_ids": [
-    "REQ-M2-004"
-   ],
-   "layer": "guest",
-   "oracle": "fault inside handler stops at nesting limit 3 with a fixed message; exit 157",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060323Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-IDT-LAYOUT",
-   "requirement_ids": [
-    "REQ-M2-001"
-   ],
-   "layer": "guest",
-   "oracle": "sidt-based walk of all 256 gates: exception stubs 0..=31 (vector + dummy error code rule), interrupt entries 32..=255 (push 0, push imm32 vector), IST only on #DF",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060326Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-EXC-TRIPLE",
-   "requirement_ids": [
-    "REQ-M2-006"
-   ],
-   "layer": "negative",
-   "oracle": "empty IDT + fault = triple fault -> QEMU reset -> exit 0 under -no-reboot; proves the runner detects a reset (no exception line printed)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060329Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-PMM-COUNTS",
-   "requirement_ids": [
-    "REQ-M2-010"
-   ],
-   "layer": "guest",
-   "oracle": "alloc/free N frames: counters and free list consistent; no frame handed out twice",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060332Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-PMM-EXHAUST",
-   "requirement_ids": [
-    "REQ-M2-010"
-   ],
-   "layer": "negative",
-   "oracle": "stress/limit/recovery: allocate until None (count == free_frames, no panic, further allocations None), free every frame back via an intrusive list, counters return to the initial values and allocation works again",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060336Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-PMM-DOUBLE-FREE",
-   "requirement_ids": [
-    "REQ-M2-010"
-   ],
-   "layer": "negative",
-   "oracle": "freeing a free frame is detected and reported, not silently accepted",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060339Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-VMM-SWITCH",
-   "requirement_ids": [
-    "REQ-M2-011"
-   ],
-   "layer": "guest",
-   "oracle": "after the CR3 switch: CR3 = kernel PML4, CR0.WP and EFER.NXE set, .text RX / .data RW+NX / headers R+NX, direct map aliases RAM, null page and stack guard pages unmapped, boot-services memory reclaimed, allocator still works; exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060342Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-VMM-WP",
-   "requirement_ids": [
-    "REQ-M2-011"
-   ],
-   "layer": "negative",
-   "oracle": "WP cleared first (firmware may have set it): a supervisor write to a read-only page goes through; after the kernel's own enable_wp a write to .text -> #PF error code 3 with CR2 = RIP = target",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060345Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-VMM-NX",
-   "requirement_ids": [
-    "REQ-M2-011"
-   ],
-   "layer": "negative",
-   "oracle": "instruction fetch from .data under EFER.NXE -> #PF error code 0x11 (present, instruction fetch: SDM Fig. 7-11 bit 4); CR2 = RIP = target; exit 173",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060348Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-VMM-GUARD",
-   "requirement_ids": [
-    "REQ-M2-011"
-   ],
-   "layer": "negative",
-   "oracle": "push loop overflows the guarded kernel stack: #PF in the guard page cannot push its frame -> #DF (SDM Table 7-5) on the guarded IST1 stack, error code 0, CR2 = stack base - 8; exit 161",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060351Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-TIMER-TICKS",
-   "requirement_ids": [
-    "REQ-M2-012"
-   ],
-   "layer": "guest",
-   "oracle": "periodic LAPIC timer at 1000 Hz (PIT-calibrated): two PIT-measured 50 ms windows each deliver 25..=100 ticks, monotonic, no unexpected vector, max handler depth 1, IF clear after disable; exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060355Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-IRQ-EOI",
-   "requirement_ids": [
-    "REQ-M2-012"
-   ],
-   "layer": "guest",
-   "oracle": "self-IPI on vector 0x41 delivered and handled; after EOI a second IPI on the same vector is delivered (without EOI the ISR bit would hold it); no unexpected vector; max handler depth 1; exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060358Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-SPURIOUS",
-   "requirement_ids": [
-    "REQ-M2-012"
-   ],
-   "layer": "negative",
-   "oracle": "software int 0xFF (spurious: counted, no EOI), int 0x20 (masked PIC vector) and int 0xF0 (unassigned) are counted as unexpected and return; with the timer stopped and interrupts enabled for 20 ms nothing arrives; SVR = 0x1FF; exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060401Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-LOCK-IRQSAVE",
-   "requirement_ids": [
-    "REQ-M2-013"
-   ],
-   "layer": "guest",
-   "oracle": "irqsave lock: IF cleared inside and restored after (from enabled and from disabled); the periodic timer delivers no tick while the lock is held for 20 ms and resumes after release; try_lock fails while held and succeeds when free; protected value updated; exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060404Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-PANIC-CODE",
-   "requirement_ids": [
-    "REQ-M2-013"
-   ],
-   "layer": "negative",
-   "oracle": "explicit panic! prints OSX|<build>|kernel|panic|loc=kernel/src/ktest.rs:<line>:<col>|console_was_locked=0|msg=<message> and exits 0x11 (QEMU 35)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060411Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M2-MUTANTS",
-   "requirement_ids": [
-    "REQ-M2-014"
-   ],
-   "layer": "host_unit",
-   "oracle": "tests/mutants.py: 29 seeded defects applied one at a time in a detached worktree, each built and run against its killer M1/M2 cases (full suite before declaring a survivor); PASS when >= 95% of the compiling mutants are killed; report build/mutants-report.json",
-   "command": "python3 tools/project.py test --target host --suite M2  (mutants workflow)",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T051719Z-13055739-001"
-   ],
-   "stale_policy": "warn"
-  },
-  {
-   "id": "TST-M2-LOCK-REENTRY",
-   "requirement_ids": [
-    "REQ-M2-013"
-   ],
-   "layer": "negative",
-   "oracle": "re-acquiring a held IrqSpinLock on the same CPU panics with K_E_LOCK_REENTRY|lock=ktest_lock instead of hanging; exit 35",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060407Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M3-HEAP-STRESS",
-   "requirement_ids": [
-    "REQ-M3-001"
-   ],
-   "layer": "guest",
-   "oracle": "10,000 mixed allocations/frees (70% <= 2 KiB, 25% <= 16 KiB, 5% <= 196 KiB) with content checks; afterwards live_blocks = slab_pages = large_frames = 0 and PMM free frames equal before/after; exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060414Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M3-VMM-UNMAP",
-   "requirement_ids": [
-    "REQ-M3-001"
-   ],
-   "layer": "negative",
-   "oracle": "frame mapped at the scratch page, written through it and read back through the direct map; unmap returns the frame and flushes the TLB; a write then raises #PF error code 2 with CR2 = RIP target = the page; exit 173",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060417Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M3-AS-SWITCH",
-   "requirement_ids": [
-    "REQ-M3-001"
-   ],
-   "layer": "guest",
-   "oracle": "user space with three USER pages (invisible from the kernel space); while active the kernel reads a value written through the direct map and writes one back; after return the write is visible; destroy frees everything (frame count equal); mappings outside USER_BASE..USER_END refused; exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060423Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M3-A64-BUILD",
-   "requirement_ids": [
-    "REQ-M3-002"
-   ],
-   "layer": "host_unit",
-   "oracle": "cargo build for aarch64-unknown-uefi (release) exits 0 and NAWAH-A64.EFI exists",
-   "command": "python3 tools/project.py build --target virt-qemu-aarch64",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060439Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M3-A64-BOOT",
-   "requirement_ids": [
-    "REQ-M3-002"
-   ],
-   "layer": "guest",
-   "oracle": "QEMU virt + AAVMF: boot|start arch=aarch64, boot|ebs|ok=1, kernel cpu_tables (firmware vbar/mmu), post_ebs, pmm selfcheck=1, kernel|a64|el=<n>|paging=firmware|exit=0x10; semihosting exit status 16; no boot|error, no panic",
-   "command": "python3 tools/project.py boot --target virt-qemu-aarch64",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060440Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M3-USER-SYSCALL",
-   "requirement_ids": [
-    "REQ-M3-003"
-   ],
-   "layer": "guest",
-   "oracle": "ring-3 ping program exits 0x1235 through SYS_EXIT; ring-3 trace program copies 'hello from r3' through validated user memory (user|trace line) and exits 13; no frame leaked; exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060427Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M3-USER-BAD-PTR",
-   "requirement_ids": [
-    "REQ-M3-003"
-   ],
-   "layer": "negative",
-   "oracle": "SYS_TRACE with an unmapped user pointer returns ERR_FAULT and with a kernel pointer ERR_RANGE; the program exits 0xfdfc and the kernel continues; exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060430Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M3-USER-KERNEL-ACCESS",
-   "requirement_ids": [
-    "REQ-M3-003"
-   ],
-   "layer": "negative",
-   "oracle": "ring-3 read of the kernel direct map -> #PF taken in ring 3 (error code 0x5: present, user), diagnosed as kernel|user_fault|vector=14 and the run ends with exit code 0x1000e; the kernel continues (test exit 33)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060433Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M3-SYSRET-CANONICAL",
-   "requirement_ids": [
-    "REQ-M3-003"
-   ],
-   "layer": "negative",
-   "oracle": "SYS_CHECK_RIP with a non-canonical address is refused with ERR_RANGE (program exits 0xfffffffffffffffc); no #GP in ring 0; exit 33",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060436Z-8041e35f-001"
-   ]
-  },
-  {
-   "id": "TST-M3-THREADS-ALTERNATE",
-   "requirement_ids": [
-    "REQ-M3-004"
-   ],
-   "layer": "guest",
-   "oracle": "two threads alternate with correct counters",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-PREEMPT",
-   "requirement_ids": [
-    "REQ-M3-004"
-   ],
-   "layer": "guest",
-   "oracle": "a spinning thread does not starve another: both make progress under the timer",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-EXIT-CLEANUP",
-   "requirement_ids": [
-    "REQ-M3-004"
-   ],
-   "layer": "guest",
-   "oracle": "PMM free frames and handle counts return to the pre-process values after exit",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-IPC-ROUNDTRIP",
-   "requirement_ids": [
-    "REQ-M3-005"
-   ],
-   "layer": "guest",
-   "oracle": "message and handle sent over a channel arrive intact",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-RIGHTS-DENIED",
-   "requirement_ids": [
-    "REQ-M3-005"
-   ],
-   "layer": "negative",
-   "oracle": "operation without the right is refused with the documented error",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-CLOSED-HANDLE",
-   "requirement_ids": [
-    "REQ-M3-005"
-   ],
-   "layer": "negative",
-   "oracle": "use of a closed handle is refused",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-IPC-OVERSIZE",
-   "requirement_ids": [
-    "REQ-M3-005"
-   ],
-   "layer": "negative",
-   "oracle": "message above the documented maximum is refused",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-IPC-NO-LEAK",
-   "requirement_ids": [
-    "REQ-M3-005"
-   ],
-   "layer": "guest",
-   "oracle": "objects referenced only by an exited process are released",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-APP-EXIT-CODE",
-   "requirement_ids": [
-    "REQ-M3-006"
-   ],
-   "layer": "guest",
-   "oracle": "an ELF64 test app runs and its exit code is observed by the parent",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-ELF-MALFORMED",
-   "requirement_ids": [
-    "REQ-M3-006"
-   ],
-   "layer": "negative",
-   "oracle": "malformed ELF (bad magic, overlapping segments, out-of-range offsets) is rejected without panic",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-ELF-WX",
-   "requirement_ids": [
-    "REQ-M3-006"
-   ],
-   "layer": "negative",
-   "oracle": "a segment both writable and executable is refused",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-BLK-READ",
-   "requirement_ids": [
-    "REQ-M3-007"
-   ],
-   "layer": "guest",
-   "oracle": "virtio-blk read of a known sector pattern",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-BLK-PERSIST",
-   "requirement_ids": [
-    "REQ-M3-007"
-   ],
-   "layer": "guest",
-   "oracle": "write + flush, QEMU restarted on the same image, data read back identical",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-FILE-ROUNDTRIP",
-   "requirement_ids": [
-    "REQ-M3-008"
-   ],
-   "layer": "guest",
-   "oracle": "open/write/close/open/read through syscalls returns the written bytes",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-PATH-INVALID",
-   "requirement_ids": [
-    "REQ-M3-008"
-   ],
-   "layer": "negative",
-   "oracle": "invalid paths are refused with the documented error",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-FD-LEAK",
-   "requirement_ids": [
-    "REQ-M3-008"
-   ],
-   "layer": "guest",
-   "oracle": "per-process file table empty after exit",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-SMP-ONLINE",
-   "requirement_ids": [
-    "REQ-M3-009"
-   ],
-   "layer": "guest",
-   "oracle": "with -smp 4 every MADT CPU reports online with its own APIC id",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-LOCK-CONTENTION",
-   "requirement_ids": [
-    "REQ-M3-009"
-   ],
-   "layer": "guest",
-   "oracle": "N CPUs increment a counter under the lock: exact total",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-TLB-SHOOTDOWN",
-   "requirement_ids": [
-    "REQ-M3-009"
-   ],
-   "layer": "negative",
-   "oracle": "after unmap on CPU A, access on CPU B faults (shootdown IPI delivered)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
-  },
-  {
-   "id": "TST-M3-MUTANTS",
-   "requirement_ids": [
-    "REQ-M3-010"
-   ],
-   "layer": "host_unit",
-   "oracle": "seeded defects in the M3 modules are killed by the M3 suite (>= 95%)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
-   "verdict": "NOT_RUN",
-   "evidence_refs": [],
-   "stale_policy": "warn"
-  },
-  {
-   "id": "TST-M3-VMM-PROTECT",
-   "requirement_ids": [
-    "REQ-M3-001"
-   ],
-   "layer": "negative",
-   "oracle": "scratch page made read-only (protect + invlpg): content readable, a write raises #PF error code 3 with CR2 = the page; exit 173",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261018T060420Z-8041e35f-001"
-   ]
-  }
- ]
+  "schema_version": "1.0.0",
+  "records": [
+    {
+      "id": "TST-M0-001",
+      "requirement_ids": [
+        "REQ-M0-002",
+        "REQ-M0-005"
+      ],
+      "layer": "host_unit",
+      "oracle": "unittest: 10 cases (6 required rejections + acceptance) exit 0",
+      "command": "python3 tools/project.py test --target host --suite M0",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060534Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M0-002",
+      "requirement_ids": [
+        "REQ-M0-001",
+        "REQ-M0-004"
+      ],
+      "layer": "host_unit",
+      "oracle": "required M0 files exist; boot contract has 8 sections; ADR cites existing evidence",
+      "command": "python3 tools/project.py test --target host --suite M0",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060534Z-8041e35f-002"
+      ]
+    },
+    {
+      "id": "TST-M0-E0-BUILD",
+      "requirement_ids": [
+        "REQ-M0-003"
+      ],
+      "layer": "host_unit",
+      "oracle": "clang+lld-link steps exit 0 and PE32+ artifact exists",
+      "command": "python3 tools/project.py build --target pc-qemu-e0",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060243Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M0-E0-BOOT",
+      "requirement_ids": [
+        "REQ-M0-003"
+      ],
+      "layer": "guest",
+      "oracle": "QEMU exit 33 and serial markers with build_id (OVMF 2024.02, QEMU 8.2.2)",
+      "command": "python3 tools/project.py boot --target pc-qemu-e0",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060244Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M1-BUILD",
+      "requirement_ids": [
+        "REQ-M1-001"
+      ],
+      "layer": "host_unit",
+      "oracle": "build steps exit 0, artifact exists, build_id recorded",
+      "command": "python3 tools/project.py build --target pc-qemu",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060247Z-8041e35f-001"
+      ],
+      "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
+    },
+    {
+      "id": "TST-M1-BOOT",
+      "requirement_ids": [
+        "REQ-M1-002"
+      ],
+      "layer": "guest",
+      "oracle": "serial: boot|start, boot|ebs|ok, kernel|post_ebs with map_key; QEMU exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M1",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060251Z-8041e35f-001"
+      ],
+      "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
+    },
+    {
+      "id": "TST-M1-NOBS",
+      "requirement_ids": [
+        "REQ-M1-003"
+      ],
+      "layer": "host_unit",
+      "oracle": "static: kmain.rs safe-only and names no firmware symbol; boot::efi private; BootInfo without fn pointers; kernel_main(&BootInfo)",
+      "command": "python3 tools/project.py test --target host --suite M1",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060534Z-8041e35f-003"
+      ]
+    },
+    {
+      "id": "TST-M1-NEG",
+      "requirement_ids": [
+        "REQ-M1-004"
+      ],
+      "layer": "negative",
+      "oracle": "inject EBS failure build variant: serial boot|error|code=BOOT_E_EBS_FAILED, QEMU exit 97, no reboot (single start line)",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M1",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060254Z-8041e35f-001"
+      ],
+      "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
+    },
+    {
+      "id": "TST-M1-INVALID-IMAGE",
+      "requirement_ids": [
+        "REQ-M1-005"
+      ],
+      "layer": "negative",
+      "oracle": "loader rejects corrupted kernel image",
+      "command": "n/a",
+      "verdict": "N/A",
+      "evidence_refs": [],
+      "verdict_reason": "single-image bootstrap: no separate kernel image to corrupt until loader split (ADR-0001)"
+    },
+    {
+      "id": "TST-M2-EXC-DE",
+      "requirement_ids": [
+        "REQ-M2-002",
+        "REQ-M2-005"
+      ],
+      "layer": "guest",
+      "oracle": "SDM Table 7-1: #DE vector 0, no error code (fault: RIP at div); lab exit 145",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060257Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-EXC-UD",
+      "requirement_ids": [
+        "REQ-M2-002"
+      ],
+      "layer": "guest",
+      "oracle": "#UD vector 6, fault at ud2; exit 157",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060301Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-EXC-DB",
+      "requirement_ids": [
+        "REQ-M2-002"
+      ],
+      "layer": "guest",
+      "oracle": "#DB single-step trap: saved RIP after the nop (SDM Event 1); exit 147",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060304Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-EXC-GP",
+      "requirement_ids": [
+        "REQ-M2-002"
+      ],
+      "layer": "guest",
+      "oracle": "#GP on non-canonical address, error code 0 (SDM Event 13); exit 171",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060307Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-EXC-PF",
+      "requirement_ids": [
+        "REQ-M2-002"
+      ],
+      "layer": "guest",
+      "oracle": "#PF write to unmapped supervisor page: error code 2, CR2 = target (SDM Fig. 7-11); exit 173",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060310Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-EXC-BP",
+      "requirement_ids": [
+        "REQ-M2-002"
+      ],
+      "layer": "guest",
+      "oracle": "#BP is a trap: handler prints and returns; saved RIP after int3 (SDM Event 3)",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060313Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-EXC-BP-STATE",
+      "requirement_ids": [
+        "REQ-M2-002"
+      ],
+      "layer": "guest",
+      "oracle": "iretq path restores 15 GPRs and CF/DF",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060316Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-EXC-DF",
+      "requirement_ids": [
+        "REQ-M2-003"
+      ],
+      "layer": "guest",
+      "oracle": "corrupt RSP -> #PF undeliverable -> #DF (SDM Table 7-5) on IST1 stack, error code 0; exit 161",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060320Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-EXC-NESTED",
+      "requirement_ids": [
+        "REQ-M2-004"
+      ],
+      "layer": "guest",
+      "oracle": "fault inside handler stops at nesting limit 3 with a fixed message; exit 157",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060323Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-IDT-LAYOUT",
+      "requirement_ids": [
+        "REQ-M2-001"
+      ],
+      "layer": "guest",
+      "oracle": "sidt-based walk of all 256 gates: exception stubs 0..=31 (vector + dummy error code rule), interrupt entries 32..=255 (push 0, push imm32 vector), IST only on #DF",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060326Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-EXC-TRIPLE",
+      "requirement_ids": [
+        "REQ-M2-006"
+      ],
+      "layer": "negative",
+      "oracle": "empty IDT + fault = triple fault -> QEMU reset -> exit 0 under -no-reboot; proves the runner detects a reset (no exception line printed)",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060329Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-PMM-COUNTS",
+      "requirement_ids": [
+        "REQ-M2-010"
+      ],
+      "layer": "guest",
+      "oracle": "alloc/free N frames: counters and free list consistent; no frame handed out twice",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060332Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-PMM-EXHAUST",
+      "requirement_ids": [
+        "REQ-M2-010"
+      ],
+      "layer": "negative",
+      "oracle": "stress/limit/recovery: allocate until None (count == free_frames, no panic, further allocations None), free every frame back via an intrusive list, counters return to the initial values and allocation works again",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060336Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-PMM-DOUBLE-FREE",
+      "requirement_ids": [
+        "REQ-M2-010"
+      ],
+      "layer": "negative",
+      "oracle": "freeing a free frame is detected and reported, not silently accepted",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060339Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-VMM-SWITCH",
+      "requirement_ids": [
+        "REQ-M2-011"
+      ],
+      "layer": "guest",
+      "oracle": "after the CR3 switch: CR3 = kernel PML4, CR0.WP and EFER.NXE set, .text RX / .data RW+NX / headers R+NX, direct map aliases RAM, null page and stack guard pages unmapped, boot-services memory reclaimed, allocator still works; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060342Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-VMM-WP",
+      "requirement_ids": [
+        "REQ-M2-011"
+      ],
+      "layer": "negative",
+      "oracle": "WP cleared first (firmware may have set it): a supervisor write to a read-only page goes through; after the kernel's own enable_wp a write to .text -> #PF error code 3 with CR2 = RIP = target",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060345Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-VMM-NX",
+      "requirement_ids": [
+        "REQ-M2-011"
+      ],
+      "layer": "negative",
+      "oracle": "instruction fetch from .data under EFER.NXE -> #PF error code 0x11 (present, instruction fetch: SDM Fig. 7-11 bit 4); CR2 = RIP = target; exit 173",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060348Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-VMM-GUARD",
+      "requirement_ids": [
+        "REQ-M2-011"
+      ],
+      "layer": "negative",
+      "oracle": "push loop overflows the guarded kernel stack: #PF in the guard page cannot push its frame -> #DF (SDM Table 7-5) on the guarded IST1 stack, error code 0, CR2 = stack base - 8; exit 161",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060351Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-TIMER-TICKS",
+      "requirement_ids": [
+        "REQ-M2-012"
+      ],
+      "layer": "guest",
+      "oracle": "periodic LAPIC timer at 1000 Hz (PIT-calibrated): two PIT-measured 50 ms windows each deliver 25..=100 ticks, monotonic, no unexpected vector, max handler depth 1, IF clear after disable; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060355Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-IRQ-EOI",
+      "requirement_ids": [
+        "REQ-M2-012"
+      ],
+      "layer": "guest",
+      "oracle": "self-IPI on vector 0x41 delivered and handled; after EOI a second IPI on the same vector is delivered (without EOI the ISR bit would hold it); no unexpected vector; max handler depth 1; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060358Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-SPURIOUS",
+      "requirement_ids": [
+        "REQ-M2-012"
+      ],
+      "layer": "negative",
+      "oracle": "software int 0xFF (spurious: counted, no EOI), int 0x20 (masked PIC vector) and int 0xF0 (unassigned) are counted as unexpected and return; with the timer stopped and interrupts enabled for 20 ms nothing arrives; SVR = 0x1FF; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060401Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-LOCK-IRQSAVE",
+      "requirement_ids": [
+        "REQ-M2-013"
+      ],
+      "layer": "guest",
+      "oracle": "irqsave lock: IF cleared inside and restored after (from enabled and from disabled); the periodic timer delivers no tick while the lock is held for 20 ms and resumes after release; try_lock fails while held and succeeds when free; protected value updated; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060404Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-PANIC-CODE",
+      "requirement_ids": [
+        "REQ-M2-013"
+      ],
+      "layer": "negative",
+      "oracle": "explicit panic! prints OSX|<build>|kernel|panic|loc=kernel/src/ktest.rs:<line>:<col>|console_was_locked=0|msg=<message> and exits 0x11 (QEMU 35)",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060411Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M2-MUTANTS",
+      "requirement_ids": [
+        "REQ-M2-014"
+      ],
+      "layer": "host_unit",
+      "oracle": "tests/mutants.py: 29 seeded defects applied one at a time in a detached worktree, each built and run against its killer M1/M2 cases (full suite before declaring a survivor); PASS when >= 95% of the compiling mutants are killed; report build/mutants-report.json",
+      "command": "python3 tools/project.py test --target host --suite M2  (mutants workflow)",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T051719Z-13055739-001"
+      ],
+      "stale_policy": "warn"
+    },
+    {
+      "id": "TST-M2-LOCK-REENTRY",
+      "requirement_ids": [
+        "REQ-M2-013"
+      ],
+      "layer": "negative",
+      "oracle": "re-acquiring a held IrqSpinLock on the same CPU panics with K_E_LOCK_REENTRY|lock=ktest_lock instead of hanging; exit 35",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M2",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060407Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-HEAP-STRESS",
+      "requirement_ids": [
+        "REQ-M3-001"
+      ],
+      "layer": "guest",
+      "oracle": "10,000 mixed allocations/frees (70% <= 2 KiB, 25% <= 16 KiB, 5% <= 196 KiB) with content checks; afterwards live_blocks, slab_pages, large_frames and PMM free frames equal their values before the stress (the scheduler owns live blocks since WP-15); exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060414Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-VMM-UNMAP",
+      "requirement_ids": [
+        "REQ-M3-001"
+      ],
+      "layer": "negative",
+      "oracle": "frame mapped at the scratch page, written through it and read back through the direct map; unmap returns the frame and flushes the TLB; a write then raises #PF error code 2 with CR2 = RIP target = the page; exit 173",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060417Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-AS-SWITCH",
+      "requirement_ids": [
+        "REQ-M3-001"
+      ],
+      "layer": "guest",
+      "oracle": "user space with three USER pages (invisible from the kernel space); while active the kernel reads a value written through the direct map and writes one back; after return the write is visible; destroy frees everything (frame count equal); mappings outside USER_BASE..USER_END refused; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060423Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-A64-BUILD",
+      "requirement_ids": [
+        "REQ-M3-002"
+      ],
+      "layer": "host_unit",
+      "oracle": "cargo build for aarch64-unknown-uefi (release) exits 0 and NAWAH-A64.EFI exists",
+      "command": "python3 tools/project.py build --target virt-qemu-aarch64",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060439Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-A64-BOOT",
+      "requirement_ids": [
+        "REQ-M3-002"
+      ],
+      "layer": "guest",
+      "oracle": "QEMU virt + AAVMF: boot|start arch=aarch64, boot|ebs|ok=1, kernel cpu_tables (firmware vbar/mmu), post_ebs, pmm selfcheck=1, kernel|a64|el=<n>|paging=firmware|exit=0x10; semihosting exit status 16; no boot|error, no panic",
+      "command": "python3 tools/project.py boot --target virt-qemu-aarch64",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060440Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-USER-SYSCALL",
+      "requirement_ids": [
+        "REQ-M3-003"
+      ],
+      "layer": "guest",
+      "oracle": "ring-3 ping program exits 0x1235 through SYS_EXIT; ring-3 trace program copies 'hello from r3' through validated user memory (user|trace line) and exits 13; no frame leaked; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060427Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-USER-BAD-PTR",
+      "requirement_ids": [
+        "REQ-M3-003"
+      ],
+      "layer": "negative",
+      "oracle": "SYS_TRACE with an unmapped user pointer returns ERR_FAULT and with a kernel pointer ERR_RANGE; the program exits 0xfdfc and the kernel continues; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060430Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-USER-KERNEL-ACCESS",
+      "requirement_ids": [
+        "REQ-M3-003"
+      ],
+      "layer": "negative",
+      "oracle": "ring-3 read of the kernel direct map -> #PF taken in ring 3 (error code 0x5: present, user), diagnosed as kernel|user_fault|vector=14 and the run ends with exit code 0x1000e; the kernel continues (test exit 33)",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060433Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-SYSRET-CANONICAL",
+      "requirement_ids": [
+        "REQ-M3-003"
+      ],
+      "layer": "negative",
+      "oracle": "SYS_CHECK_RIP with a non-canonical address is refused with ERR_RANGE (program exits 0xfffffffffffffffc); no #GP in ring 0; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060436Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-THREADS-ALTERNATE",
+      "requirement_ids": [
+        "REQ-M3-004"
+      ],
+      "layer": "guest",
+      "oracle": "two kernel threads of priority 0 yield to each other: log ABABABABABABABAB (16 entries), join returns 'A'/'B', a third thread sleeps 5 ticks and measures 5..=50, switches >= 18, free frames equal before/after (after a warm-up thread); exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-PREEMPT",
+      "requirement_ids": [
+        "REQ-M3-004"
+      ],
+      "layer": "guest",
+      "oracle": "a spinning kernel thread (priority 1, never yields) and the boot thread (never yields, halts between ticks) alternate under the timer: >= 3 handovers observed, preemptions >= 2 x handovers, spinner exits with its count, max handler depth 1, no unexpected vector; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-EXIT-CLEANUP",
+      "requirement_ids": [
+        "REQ-M3-004"
+      ],
+      "layer": "guest",
+      "oracle": "after a warm-up process and thread: a process exiting through SYS_EXIT (0x1235), one ended by a ring-3 #PF (0x1000e) and a kernel thread (join 7) leave PMM free frames, heap live blocks, slab pages, thread count (1) and process count (0) exactly as before; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-IPC-ROUNDTRIP",
+      "requirement_ids": [
+        "REQ-M3-005"
+      ],
+      "layer": "guest",
+      "oracle": "message and handle sent over a channel arrive intact",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-RIGHTS-DENIED",
+      "requirement_ids": [
+        "REQ-M3-005"
+      ],
+      "layer": "negative",
+      "oracle": "operation without the right is refused with the documented error",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-CLOSED-HANDLE",
+      "requirement_ids": [
+        "REQ-M3-005"
+      ],
+      "layer": "negative",
+      "oracle": "use of a closed handle is refused",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-IPC-OVERSIZE",
+      "requirement_ids": [
+        "REQ-M3-005"
+      ],
+      "layer": "negative",
+      "oracle": "message above the documented maximum is refused",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-IPC-NO-LEAK",
+      "requirement_ids": [
+        "REQ-M3-005"
+      ],
+      "layer": "guest",
+      "oracle": "objects referenced only by an exited process are released",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-APP-EXIT-CODE",
+      "requirement_ids": [
+        "REQ-M3-006"
+      ],
+      "layer": "guest",
+      "oracle": "an ELF64 test app runs and its exit code is observed by the parent",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-ELF-MALFORMED",
+      "requirement_ids": [
+        "REQ-M3-006"
+      ],
+      "layer": "negative",
+      "oracle": "malformed ELF (bad magic, overlapping segments, out-of-range offsets) is rejected without panic",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-ELF-WX",
+      "requirement_ids": [
+        "REQ-M3-006"
+      ],
+      "layer": "negative",
+      "oracle": "a segment both writable and executable is refused",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-BLK-READ",
+      "requirement_ids": [
+        "REQ-M3-007"
+      ],
+      "layer": "guest",
+      "oracle": "virtio-blk read of a known sector pattern",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-BLK-PERSIST",
+      "requirement_ids": [
+        "REQ-M3-007"
+      ],
+      "layer": "guest",
+      "oracle": "write + flush, QEMU restarted on the same image, data read back identical",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-FILE-ROUNDTRIP",
+      "requirement_ids": [
+        "REQ-M3-008"
+      ],
+      "layer": "guest",
+      "oracle": "open/write/close/open/read through syscalls returns the written bytes",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-PATH-INVALID",
+      "requirement_ids": [
+        "REQ-M3-008"
+      ],
+      "layer": "negative",
+      "oracle": "invalid paths are refused with the documented error",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-FD-LEAK",
+      "requirement_ids": [
+        "REQ-M3-008"
+      ],
+      "layer": "guest",
+      "oracle": "per-process file table empty after exit",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-SMP-ONLINE",
+      "requirement_ids": [
+        "REQ-M3-009"
+      ],
+      "layer": "guest",
+      "oracle": "with -smp 4 every MADT CPU reports online with its own APIC id",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-LOCK-CONTENTION",
+      "requirement_ids": [
+        "REQ-M3-009"
+      ],
+      "layer": "guest",
+      "oracle": "N CPUs increment a counter under the lock: exact total",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-TLB-SHOOTDOWN",
+      "requirement_ids": [
+        "REQ-M3-009"
+      ],
+      "layer": "negative",
+      "oracle": "after unmap on CPU A, access on CPU B faults (shootdown IPI delivered)",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    },
+    {
+      "id": "TST-M3-MUTANTS",
+      "requirement_ids": [
+        "REQ-M3-010"
+      ],
+      "layer": "host_unit",
+      "oracle": "seeded defects in the M3 modules are killed by the M3 suite (>= 95%)",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+      "verdict": "NOT_RUN",
+      "evidence_refs": [],
+      "stale_policy": "warn"
+    },
+    {
+      "id": "TST-M3-VMM-PROTECT",
+      "requirement_ids": [
+        "REQ-M3-001"
+      ],
+      "layer": "negative",
+      "oracle": "scratch page made read-only (protect + invlpg): content readable, a write raises #PF error code 3 with CR2 = the page; exit 173",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "evidence/20261018T060420Z-8041e35f-001"
+      ]
+    },
+    {
+      "id": "TST-M3-USER-SLEEP",
+      "requirement_ids": [
+        "REQ-M3-004",
+        "REQ-M3-003"
+      ],
+      "layer": "guest",
+      "oracle": "ring-3 program calls SYS_SLEEP(3) then SYS_YIELD (ABI v1.1), both return 0, exits 0x51; 3..=100 scheduler ticks elapse around the run; no frame leaked; exit 33",
+      "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+      "verdict": "NOT_RUN",
+      "evidence_refs": []
+    }
+  ]
 }
