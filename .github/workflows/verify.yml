@@ -40,6 +40,10 @@ jobs:
             cargo clippy --manifest-path user/apps/file_roundtrip/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/path_invalid/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/fd_leak/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/apps/echo/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/apps/launch/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/apps/child/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/apps/waiter/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --features inject_ebs_fail -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --profile ktest --features ktest -- -D warnings
@@ -58,6 +62,8 @@ jobs:
         run: python3 tools/project.py test --target pc-qemu --suite M2
       - name: M3 guest suite (test kernel)
         run: python3 tools/project.py test --target pc-qemu --suite M3
+      - name: M4 guest suite (test kernel, processes from the volume)
+        run: python3 tools/project.py test --target pc-qemu --suite M4
       - name: A64 early port experiment (build + boot on QEMU virt, ADR-0008)
         run: |
           python3 tools/project.py build --target virt-qemu-aarch64

@@ -1,6 +1,6 @@
-# عقد نداءات النظام — الإصدار 1.3 (WP-14 v1، WP-15 v1.1، WP-16 v1.2، WP-19 v1.3؛ ADR-0009، ADR-0010، ADR-0011، ADR-0014)
+# عقد نداءات النظام — الإصدار 1.4 (WP-14 v1، WP-15 v1.1، WP-16 v1.2، WP-19 v1.3، WP-23 v1.4؛ ADR-0009، ADR-0010، ADR-0011، ADR-0014، ADR-0016)
 
-مجمَّد: أي تغيير في الأرقام أو الرموز أو تمرير الوسائط = إصدار جديد مع سجل قرار. الإصدارات 1.1 و1.2 و1.3 **إضافية فقط**: 4–5 (المجدول)، 6–12 (المقابض والقنوات وVMO، تفصيلها في `docs/contracts/ipc.md`)، 13–19 (الملفات، تفصيلها في `docs/contracts/files.md`)؛ كل ما في الإصدار 1 باقٍ بلا تغيير. الكود: `kernel/src/syscall/mod.rs` (المحايد)، `kernel/src/arch/x86_64/syscall.rs` (الدخول/الخروج/النسخ)، `kernel/src/sched/` (exit/yield/sleep/الحجب)، `kernel/src/object/` (الكائنات).
+مجمَّد: أي تغيير في الأرقام أو الرموز أو تمرير الوسائط = إصدار جديد مع سجل قرار. الإصدارات 1.1 و1.2 و1.3 و1.4 **إضافية فقط**: 4–5 (المجدول)، 6–12 (المقابض والقنوات وVMO، تفصيلها في `docs/contracts/ipc.md`)، 13–19 (الملفات، تفصيلها في `docs/contracts/files.md`)، 20–23 (العمليات من الحجم والانتظار والساعة، §5 أدناه)؛ كل ما في الإصدار 1 باقٍ بلا تغيير. الكود: `kernel/src/syscall/mod.rs` (المحايد)، `kernel/src/arch/x86_64/syscall.rs` (الدخول/الخروج/النسخ)، `kernel/src/sched/` (exit/yield/sleep/الحجب)، `kernel/src/object/` (الكائنات).
 
 ## 1. الاتفاق العام (كل المعماريات)
 
@@ -25,8 +25,12 @@
 | 11 | `vmo_create` (v1.2) | size | المقبض |
 | 12 | `handle_rights` (v1.2) | h | حقوق المقبض |
 | 13–19 | `open`, `read`, `write`, `stat`, `unlink`, `seek`, `sync` (v1.3) | — | files.md §2 |
+| 20 | `process_spawn` (v1.4) | path_ptr, len, hptr, nh ≤ 4 | مقبض عملية — §5 |
+| 21 | `object_wait_many` (v1.4) | entries_ptr, n (1..=16), timeout_ticks | `index \| (asserted << 8)` — §5 |
+| 22 | `clock_ticks` (v1.4) | — | النبضات منذ الإقلاع (1 kHz؛ أحادي الاتجاه) |
+| 23 | `process_status` (v1.4) | h | رمز خروج العملية (63 بتًا الدنيا) أو `ERR_SHOULD_WAIT` — §5 |
 
-رموز الأخطاء: `ERR_NOSYS = -1`، `ERR_INVALID = -2`، `ERR_FAULT = -3`، `ERR_RANGE = -4`؛ (v1.2) `ERR_BAD_HANDLE = -5`، `ERR_ACCESS = -6`، `ERR_PEER_CLOSED = -7`، `ERR_SHOULD_WAIT = -8`، `ERR_BUFFER_TOO_SMALL = -9`، `ERR_NO_RESOURCES = -10`، `ERR_WRONG_TYPE = -11`؛ (v1.3) `ERR_NOT_FOUND = -12`، `ERR_EXISTS = -13`، `ERR_IS_DIR = -14`، `ERR_NOT_DIR = -15`، `ERR_BAD_PATH = -16`، `ERR_NO_SPACE = -17`، `ERR_IO = -18`.
+رموز الأخطاء: `ERR_NOSYS = -1`، `ERR_INVALID = -2`، `ERR_FAULT = -3`، `ERR_RANGE = -4`؛ (v1.2) `ERR_BAD_HANDLE = -5`، `ERR_ACCESS = -6`، `ERR_PEER_CLOSED = -7`، `ERR_SHOULD_WAIT = -8`، `ERR_BUFFER_TOO_SMALL = -9`، `ERR_NO_RESOURCES = -10`، `ERR_WRONG_TYPE = -11`؛ (v1.3) `ERR_NOT_FOUND = -12`، `ERR_EXISTS = -13`، `ERR_IS_DIR = -14`، `ERR_NOT_DIR = -15`، `ERR_BAD_PATH = -16`، `ERR_NO_SPACE = -17`، `ERR_IO = -18`؛ (v1.4) `ERR_TIMED_OUT = -19`.
 
 المؤشرات التي تكتب فيها النواة (v1.2) تُفحص لعلم الكتابة أيضًا (`ERR_FAULT` إن كانت الصفحة للقراءة فقط).
 
@@ -42,4 +46,13 @@
 
 ## 4. الاختبارات الحاكمة
 
-TST-M3-USER-SYSCALL (ping/trace)، TST-M3-USER-BAD-PTR (مؤشر غير مخطط → ERR_FAULT، مؤشر نواة → ERR_RANGE)، TST-M3-USER-KERNEL-ACCESS (قراءة ذاكرة النواة من حلقة 3 → user_fault 14)، TST-M3-SYSRET-CANONICAL (RIP غير canonical يُرفض)، TST-M3-USER-SLEEP (v1.1: sleep(3) ثم yield → خروج 0x51 بعد ≥ 3 نبضات)، TST-M3-EXIT-CLEANUP (الخروج الطبيعي وبالخطأ يحرر كل شيء)، وفحص `kernel|user|…|selfcheck=1` في كل إقلاع.
+TST-M4-SPAWN-VOLUME (v1.4: `/SYSTEM/ECHO.ELF` من الحجم بمقبض إقلاع، الرفض الثلاثي)، TST-M4-WAIT-TIMEOUT (v1.4: المهلة لا تعود مبكرًا، الاستطلاع، الرفض السبعة، أول مدخل متحقق، PEER_CLOSED)، TST-M4-CHILD-EXIT (v1.4: `ERR_SHOULD_WAIT` ثم `EXITED` والرمز على مقبضين، عملية بلا مقبض تكمل)، TST-M3-USER-SYSCALL (ping/trace)، TST-M3-USER-BAD-PTR (مؤشر غير مخطط → ERR_FAULT، مؤشر نواة → ERR_RANGE)، TST-M3-USER-KERNEL-ACCESS (قراءة ذاكرة النواة من حلقة 3 → user_fault 14)، TST-M3-SYSRET-CANONICAL (RIP غير canonical يُرفض)، TST-M3-USER-SLEEP (v1.1: sleep(3) ثم yield → خروج 0x51 بعد ≥ 3 نبضات)، TST-M3-EXIT-CLEANUP (الخروج الطبيعي وبالخطأ يحرر كل شيء)، وفحص `kernel|user|…|selfcheck=1` في كل إقلاع.
+
+## 5. العمليات من الحجم والانتظار والساعة (v1.4، WP-23، ADR-0016 §2)
+
+- **كائن العملية** (`Object::Process`): المقبض الذي يعيده `process_spawn`، بحقوق `WAIT|DUPLICATE|TRANSFER`، يُشعر بالخروج (إشارة `EXITED`) ويحمل رمزه. لا يملك المقبض سلطةً على العملية (لا إنهاء ولا إشارات في هذا الإصدار). إغلاق آخر مقبض له لا يؤثر في العملية: تواصل عملها إلى نهايتها.
+- `process_spawn(path, len, hptr, nh)`: يقرأ الصورة من المسار (قواعد files.md: مطلق، 8.3؛ أخطاء الملفات كما هي: `ERR_NOT_FOUND`، `ERR_BAD_PATH`، `ERR_IS_DIR`…؛ أكبر من 4 MiB → `ERR_RANGE`) ويتحقق منها كاملةً (قواعد ELF في ADR-0012: غير ذلك `ERR_INVALID`) **قبل** لمس المقابض؛ ثم ينقل `nh ≤ 4` مقابض (كل منها بحق `TRANSFER` وإلا `ERR_ACCESS` ولا شيء يُنقل) إلى جدول العملية الجديدة بالترتيب، ويبدأ خيطها الأول بأولوية 1 وقيمة **المقبض الأول في `rdi`** عند الدخول (0 إن لم يُمرَّر شيء). بعد التحقق لا يفشل النداء إلا بنفاد الموارد (`ERR_NO_RESOURCES`)، وعندها تُغلق المقابض المنقولة كأن العملية بدأت وخرجت. سطر تشخيص لكل عملية تبدأ: `kernel|spawn|pid=…|path=…|handles=…`.
+- `object_wait_many(entries, n, timeout)`: `entries` مصفوفة من `n` (1..=16) مدخلًا بـ 8 بايت `{handle: u32, signals: u32}`؛ الإشارات: `READABLE=1` (رسالة في طابور طرف القناة)، `PEER_CLOSED=2` (الطرف الآخر مغلق)، `EXITED=4` (العملية خرجت). كل مقبض يحتاج `WAIT` (`ERR_ACCESS`)، ونوعه قناة أو عملية (`ERR_WRONG_TYPE`)، وإشاراته غير صفرية ومن المعرَّفة فقط (`ERR_INVALID`). النتيجة `index | (asserted << 8)` لأول مدخل (بترتيب المصفوفة) تتحقق فيه إشارة مطلوبة؛ `timeout` بالنبضات: 0 = استطلاع بلا حجب، `u64::MAX` = بلا مهلة؛ انقضاؤها → `ERR_TIMED_OUT`، ولا يعود النداء قبل مرور `timeout` نبضة فعلًا. التسجيل قبل الفحص فلا يضيع إيقاظ (الآلية نفسها في ipc.md §2). الإشارات مستوى لا نبضة: `READABLE` يبقى ما بقيت رسالة، و`EXITED` و`PEER_CLOSED` دائمان.
+- `clock_ticks()`: نبضات المؤقت منذ الإقلاع (1 kHz في المختبر؛ المعالج 0 هو مرجع الزمن)، لا تنقص أبدًا.
+- `process_status(h)`: رمز خروج العملية مقنَّعًا إلى 63 بتًا (البت الأعلى لا يُبلَّغ: النتيجة غير سالبة) أو `ERR_SHOULD_WAIT` ما دامت تعمل؛ لا حق مطلوب غير مقبض صالح من النوع الصحيح (`ERR_BAD_HANDLE`، `ERR_WRONG_TYPE`).
+- `rdi` عند الدخول: مقبض الإقلاع (النواة تضعه في `rdi` وتصفّر بقية السجلات العامة قبل `sysretq` الأول)؛ `libnawah` يحفظه (`bootstrap_handle()`) قبل الانتقال إلى `main`. خروج العملية يُسقط جدولها كما في ipc.md §1، ثم يحرر فضاءها، **ثم** يُعلن الخروج لكائنها: من يرى `EXITED` يرى أيضًا إطاراتها عائدة وأطراف قنواتها مغلقة.

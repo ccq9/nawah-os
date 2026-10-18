@@ -31,7 +31,11 @@
       "${OUT}/apps/hello.elf",
       "${OUT}/apps/file_roundtrip.elf",
       "${OUT}/apps/path_invalid.elf",
-      "${OUT}/apps/fd_leak.elf"
+      "${OUT}/apps/fd_leak.elf",
+      "${OUT}/apps/echo.elf",
+      "${OUT}/apps/launch.elf",
+      "${OUT}/apps/child.elf",
+      "${OUT}/apps/waiter.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -106,6 +110,78 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/fd_leak",
         "${OUT}/apps/fd_leak.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/echo/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/echo",
+        "${OUT}/apps/echo.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/launch/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/launch",
+        "${OUT}/apps/launch.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/child/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/child",
+        "${OUT}/apps/child.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/waiter/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/waiter",
+        "${OUT}/apps/waiter.elf"
       ],
       [
         "cargo",
@@ -237,7 +313,8 @@
           "|mmio_shared=1|",
           "|capacity_sectors=131072|queue_size=16|",
           "|read_ok=1|flush_ok=1|code=ok|selfcheck=1",
-          "|kernel|fat32|label=NAWAHLAB|sectors_per_cluster=1|reserved=32|fats=2|fat_sectors=1024|clusters=128992|root_cluster=2|free_clusters=128948|hello_size=24|hello_ok=1|code=ok|selfcheck=1",
+          "|kernel|fat32|label=NAWAHLAB|sectors_per_cluster=1|reserved=32|fats=2|fat_sectors=1024|clusters=128992|root_cluster=2|free_clusters=",
+          "|hello_size=24|hello_ok=1|code=ok|selfcheck=1",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -1910,6 +1987,119 @@
             "frames_after=([0-9]+)"
           ]
         ]
+      }
+    ],
+    "M4": [
+      {
+        "id": "TST-M4-SPAWN-VOLUME",
+        "test_id": "TST-M4-SPAWN-VOLUME",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=spawn_volume"
+        ],
+        "oracle": "the launch application spawns /SYSTEM/ECHO.ELF from the lab volume (process_spawn, ABI v1.4) with a channel endpoint as its bootstrap handle (rdi at entry): the moved endpoint is gone from the caller (ERR_BAD_HANDLE), the echo round trip returns the 16-byte message, object_wait_many sees EXITED and process_status = 16, the caller's endpoint sees PEER_CLOSED; refusals: missing file ERR_NOT_FOUND, /HELLO.TXT (not an ELF) ERR_INVALID, a handle without TRANSFER ERR_ACCESS with the handle still usable; exit 0x70; the kernel logs one spawn line per started process (2 started, 1 refused before any move); no process record, process object, channel, handle, file or frame survives; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=spawn_volume",
+          "|kernel|spawn|pid=",
+          "|path=/SYSTEM/ECHO.ELF|handles=1",
+          "|ktest|spawn_volume|exit=0x70|expected=0x70|frames_delta=0|processes_after=0|process_objects_after=0|channels_after=0|handles_after=0|files_after=0",
+          "|ktest|pass|processes from the volume behaved as the syscall contract v1.4 says"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ],
+        "max_counts": {
+          "|kernel|spawn|pid=": 2
+        },
+        "min_counts": {
+          "|kernel|spawn|pid=": 2
+        }
+      },
+      {
+        "id": "TST-M4-WAIT-TIMEOUT",
+        "test_id": "TST-M4-WAIT-TIMEOUT",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=wait_timeout"
+        ],
+        "oracle": "the waiter application: object_wait_many on an empty channel with a 25-tick timeout returns ERR_TIMED_OUT and clock_ticks shows >= 25 ticks passed (never early; the kernel's own clock agrees); a zero timeout polls (ERR_TIMED_OUT at once); refused: no signal, unknown signal, 0 or 17 entries (ERR_INVALID), a VMO (ERR_WRONG_TYPE), a stale handle (ERR_BAD_HANDLE), a handle without WAIT (ERR_ACCESS), entries at an unmapped address (ERR_FAULT); a queued message answers at once with the first asserted index (1 of [b,a]); a closed peer asserts PEER_CLOSED only; the clock is monotonic; exit 0x71 with the measured ticks in the upper bits; nothing leaked; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=wait_timeout",
+          "|ktest|wait_timeout|exit=0x71|expected=0x71|measured_ticks=",
+          "|frames_delta=0|channels_after=0|handles_after=0",
+          "|ktest|pass|object_wait_many times out, polls, refuses bad entries; the clock is monotonic"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M4-CHILD-EXIT",
+        "test_id": "TST-M4-CHILD-EXIT",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=child_exit"
+        ],
+        "oracle": "the child application: process_status of a running child (blocked in its read) is ERR_SHOULD_WAIT; a 30-tick wait for EXITED times out while it is blocked; after the message, a duplicate of the process handle (WAIT only) sees EXITED, process_status on both handles = 11 (the child's exit code), a zero-timeout wait on the exited process answers at once, the reply is read, the endpoint shows PEER_CLOSED, closed handles answer ERR_BAD_HANDLE; a second child whose process handle is closed right after the spawn still answers and exits (PEER_CLOSED within 500 ticks); exit 0x72; two spawn lines; no process record, process object, channel, handle or frame survives; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=child_exit",
+          "|kernel|spawn|pid=",
+          "|path=/SYSTEM/ECHO.ELF|handles=1",
+          "|ktest|child_exit|exit=0x72|expected=0x72|frames_delta=0|processes_after=0|process_objects_after=0|channels_after=0|handles_after=0|files_after=0",
+          "|ktest|pass|processes from the volume behaved as the syscall contract v1.4 says"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ],
+        "max_counts": {
+          "|kernel|spawn|pid=": 2
+        },
+        "min_counts": {
+          "|kernel|spawn|pid=": 2
+        }
       }
     ]
   }

@@ -76,6 +76,34 @@ pub fn spawn_elf(image: &[u8], priority: u8) -> Result<(u32, Loaded), ElfError> 
     Ok((pid, loaded))
 }
 
+/// Spawns an ELF image with initial handles and a process object (WP-23): the first handle's
+/// value is the program's `rdi`. On failure the space, the handles and the object are gone.
+pub fn spawn_elf_with(
+    image: &[u8],
+    priority: u8,
+    initial: alloc::vec::Vec<crate::object::handle::Entry>,
+    object: alloc::sync::Arc<crate::object::process::ProcessObject>,
+) -> Result<u32, ElfError> {
+    let mut us = UserSpace::new().map_err(ElfError::Space)?;
+    let loaded = match elf::load(&mut us, image) {
+        Ok(l) => l,
+        Err(e) => {
+            let _ = us.destroy();
+            return Err(e);
+        }
+    };
+    let (pid, _tid, _first) = sched::spawn_user_with(
+        us,
+        loaded.entry,
+        loaded.rsp,
+        priority,
+        initial,
+        Some(object),
+    )
+    .map_err(|_| ElfError::Space(AsError::Spawn))?;
+    Ok(pid)
+}
+
 /// Runs an ELF image to completion; reports the exit code, the frame balance and what was
 /// loaded.
 pub fn run_elf(image: &[u8]) -> Result<(Outcome, Loaded), ElfError> {

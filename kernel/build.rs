@@ -15,7 +15,16 @@ fn main() {
 /// directory (plain `cargo check`), the slices are empty and the kernel reports the apps as
 /// missing instead of failing to build. Test applications are only referenced by the test
 /// kernel, hence `allow(dead_code)` on every slice.
-const APPS: &[&str] = &["hello", "file_roundtrip", "path_invalid", "fd_leak"];
+const APPS: &[&str] = &[
+    "hello",
+    "file_roundtrip",
+    "path_invalid",
+    "fd_leak",
+    "echo",
+    "launch",
+    "child",
+    "waiter",
+];
 
 fn emit_apps() {
     println!("cargo:rerun-if-env-changed=NAWAH_APPS_DIR");

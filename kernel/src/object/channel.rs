@@ -156,6 +156,43 @@ impl Endpoint {
     }
 }
 
+/// Signals `poll` reports (contract §5, WP-23): a message is waiting / the peer closed.
+pub const SIGNAL_READABLE: u32 = 1;
+pub const SIGNAL_PEER_CLOSED: u32 = 2;
+
+impl Endpoint {
+    /// The signals currently asserted among `wanted`; when none is, `waiter` is registered for
+    /// a wake-up atomically with the check (as in `read`), so a message or close that arrives
+    /// afterwards wakes it.
+    pub fn poll(&self, wanted: u32, waiter: Option<u32>) -> u32 {
+        let mut sides = self.shared.sides.lock();
+        let peer_open = sides[1 - self.side].open;
+        let me = &mut sides[self.side];
+        let mut asserted = 0;
+        if !me.queue.is_empty() {
+            asserted |= SIGNAL_READABLE;
+        }
+        if !peer_open {
+            asserted |= SIGNAL_PEER_CLOSED;
+        }
+        let hit = asserted & wanted;
+        if hit == 0 {
+            if let Some(tid) = waiter {
+                if !me.waiters.contains(&tid) {
+                    me.waiters.push(tid);
+                }
+            }
+        }
+        hit
+    }
+
+    /// Drops a registration left by `poll`/`read` (a waiter that gave up: timeout).
+    pub fn forget_waiter(&self, tid: u32) {
+        let mut sides = self.shared.sides.lock();
+        sides[self.side].waiters.retain(|t| *t != tid);
+    }
+}
+
 /// A reserved place in the peer's queue (the channel lock is held until `commit` or drop).
 pub struct WriteSlot<'a> {
     sides: IrqGuard<'a, [Side; 2]>,

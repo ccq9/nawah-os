@@ -1489,18 +1489,41 @@
         "docs/PLAN.md §5",
         "docs/adr/0016-services-and-authority.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/contracts/ipc.md",
+        "docs/contracts/syscall.md",
+        "kernel/build.rs",
+        "kernel/src/arch/x86_64/context.rs",
+        "kernel/src/ktest.rs",
+        "kernel/src/loader/mod.rs",
+        "kernel/src/object/channel.rs",
+        "kernel/src/object/mod.rs",
+        "kernel/src/object/process.rs",
+        "kernel/src/sched/mod.rs",
+        "kernel/src/syscall/mod.rs",
+        "kernel/src/user.rs",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tools/project.py",
+        "user/apps/child/src/main.rs",
+        "user/apps/echo/src/main.rs",
+        "user/apps/launch/src/main.rs",
+        "user/apps/waiter/src/main.rs",
+        "user/libnawah/src/lib.rs"
+      ],
       "contract_refs": [
         "docs/contracts/syscall.md",
         "docs/contracts/ipc.md",
         "docs/contracts/files.md"
       ],
       "actions": [
-        "ABI v1.4: process_spawn من الحجم بمقابض أولية، كائن العملية، object_wait_many بمهلة، clock_ticks",
-        "syscalls 20 process_spawn, 21 object_wait_many, 22 clock_ticks (ABI v1.4 additive)",
-        "Object::Process with exit code and EXITED signal; initial handles at spawn; rdi bootstrap handle",
-        "loader::load_from_path over vfs",
-        "libnawah wrappers; echo app for the lab volume; project.py copies apps into /SYSTEM"
+        "ABI v1.4: process_spawn من الحجم بمقابض أولية، كائن العملية، object_wait_many بمهلة، clock_ticks، process_status",
+        "syscalls 20 process_spawn, 21 object_wait_many, 22 clock_ticks, 23 process_status (ABI v1.4 additive; ERR_TIMED_OUT=-19)",
+        "Object::Process with exit code and EXITED signal; initial handles at spawn; rdi bootstrap handle (ctx_user_thread_start)",
+        "loader::read_image over vfs (4 MiB bound); the image is validated before any handle moves",
+        "libnawah wrappers + bootstrap_handle(); apps echo/launch/child/waiter; project.py copies 8.3-named apps into /SYSTEM on the lab image"
       ],
       "acceptance": "TST-M4-SPAWN-VOLUME/WAIT-TIMEOUT/CHILD-EXIT PASS on CI; syscall.md v1.4 frozen",
       "test_ids": [

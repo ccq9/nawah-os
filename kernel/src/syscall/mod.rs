@@ -44,6 +44,11 @@ pub const SYS_STAT: u64 = 16;
 pub const SYS_UNLINK: u64 = 17;
 pub const SYS_SEEK: u64 = 18;
 pub const SYS_SYNC: u64 = 19;
+/// v1.4 (WP-23, ADR-0016 §2): processes from the volume, waiting with timeouts, the clock.
+pub const SYS_PROCESS_SPAWN: u64 = 20;
+pub const SYS_OBJECT_WAIT_MANY: u64 = 21;
+pub const SYS_CLOCK_TICKS: u64 = 22;
+pub const SYS_PROCESS_STATUS: u64 = 23;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -65,9 +70,21 @@ pub const ERR_NOT_DIR: i64 = -15;
 pub const ERR_BAD_PATH: i64 = -16;
 pub const ERR_NO_SPACE: i64 = -17;
 pub const ERR_IO: i64 = -18;
+/// v1.4: `object_wait_many` timed out.
+pub const ERR_TIMED_OUT: i64 = -19;
 
 /// `channel_read` flag: block until a message arrives or the peer closes.
 pub const READ_BLOCK: u64 = 1;
+/// Signals for `object_wait_many` (contract §5): a channel has a message / its peer closed /
+/// a process exited.
+pub const SIGNAL_READABLE: u32 = channel::SIGNAL_READABLE;
+pub const SIGNAL_PEER_CLOSED: u32 = channel::SIGNAL_PEER_CLOSED;
+pub const SIGNAL_EXITED: u32 = 4;
+pub const WAIT_MANY_MAX: usize = 16;
+/// Initial handles a spawn may pass (the bootstrap channel and a few more).
+pub const SPAWN_HANDLES_MAX: usize = 4;
+/// The longest timeout in ticks (about 27 hours at 1 kHz): anything above is "forever".
+pub const TIMEOUT_FOREVER: u64 = u64::MAX;
 
 /// Largest trace message.
 pub const TRACE_MAX: usize = 256;
@@ -490,6 +507,163 @@ pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
         SYS_UNLINK => flat(sys_unlink(args[0], args[1])),
         SYS_SEEK => flat(as_handle(args[0]).and_then(|h| sys_seek(h, args[1]))),
         SYS_SYNC => flat(vfs::sync().map(|_| 0).map_err(fs_err)),
+        SYS_PROCESS_SPAWN => flat(sys_process_spawn(args[0], args[1], args[2], args[3])),
+        SYS_OBJECT_WAIT_MANY => flat(sys_object_wait_many(args[0], args[1], args[2])),
+        SYS_CLOCK_TICKS => sched::ticks() as i64,
+        SYS_PROCESS_STATUS => flat(sys_process_status(args[0] as Handle)),
         _ => ERR_NOSYS,
+    }
+}
+
+// ---- v1.4: processes and waiting (WP-23) ----------------------------------------------------
+
+fn elf_err(e: crate::loader::elf::ElfError) -> i64 {
+    match e {
+        crate::loader::elf::ElfError::Space(_) => ERR_NO_RESOURCES,
+        _ => ERR_INVALID,
+    }
+}
+
+/// `process_spawn(path, len, handles_ptr, nhandles)`: loads the ELF at `path` from the volume,
+/// moves the named handles (TRANSFER right) into the new process's table in order — the first
+/// one's value is the program's `rdi` — and returns a process handle (WAIT|DUPLICATE|TRANSFER).
+/// Nothing is moved when the file is missing, unreadable, too large or not a valid image.
+fn sys_process_spawn(ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64> {
+    let mut buf = [0u8; vfs::PATH_MAX];
+    let n = user_path(ptr, len, &mut buf)?;
+    let nh = nh as usize;
+    if nh > SPAWN_HANDLES_MAX {
+        return Err(ERR_INVALID);
+    }
+    let mut values = alloc::vec![0u8; nh * 4];
+    copy_from_user(&mut values, hptr)?;
+    let handles: Vec<Handle> = values
+        .chunks_exact(4)
+        .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect();
+    let image = crate::loader::read_image(&buf[..n]).map_err(fs_err)?;
+    // Validate the image before touching the caller's handles: a rejected file moves nothing.
+    crate::loader::elf::parse(&image).map_err(elf_err)?;
+    let table = table()?;
+    // Take the handles out of the caller's table (all or nothing), then spawn; after this
+    // point only resource exhaustion can fail, and then the moved handles are closed.
+    let mut moved: Vec<Entry> = Vec::with_capacity(nh);
+    {
+        let mut t = table.lock();
+        for &h in &handles {
+            t.get(h, Rights::TRANSFER).map_err(handle_err)?;
+        }
+        for &h in &handles {
+            moved.push(t.remove(h).map_err(handle_err)?);
+        }
+    }
+    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let pid = crate::user::spawn_elf_with(&image, 1, moved, object.clone()).map_err(elf_err)?;
+    kprintln!(
+        "OSX|{}|kernel|spawn|pid={}|path={}|handles={}",
+        BUILD_ID,
+        pid,
+        core::str::from_utf8(&buf[..n]).unwrap_or("?"),
+        nh
+    );
+    let h = table
+        .lock()
+        .insert(Entry {
+            object: Object::Process(object),
+            rights: Rights::PROCESS_DEFAULT,
+        })
+        .map_err(handle_err)?;
+    Ok(i64::from(h))
+}
+
+/// One entry of `object_wait_many`: a handle and the signals waited for (8 bytes).
+fn wait_entry(bytes: &[u8]) -> (Handle, u32) {
+    (
+        u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
+        u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]),
+    )
+}
+
+/// `object_wait_many(entries, n, timeout_ticks)`: blocks until one entry's signals are
+/// asserted (returns `index | asserted << 8`) or the timeout passes (`ERR_TIMED_OUT`). Every
+/// handle needs the WAIT right; channels answer READABLE/PEER_CLOSED, processes EXITED.
+fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
+    let n = n as usize;
+    if n == 0 || n > WAIT_MANY_MAX {
+        return Err(ERR_INVALID);
+    }
+    let mut raw = alloc::vec![0u8; n * 8];
+    copy_from_user(&mut raw, ptr)?;
+    let table = table()?;
+    let mut targets: Vec<(Object, u32)> = Vec::with_capacity(n);
+    {
+        let t = table.lock();
+        for chunk in raw.chunks_exact(8) {
+            let (h, wanted) = wait_entry(chunk);
+            if wanted == 0 || wanted & !(SIGNAL_READABLE | SIGNAL_PEER_CLOSED | SIGNAL_EXITED) != 0
+            {
+                return Err(ERR_INVALID);
+            }
+            let e = t.get(h, Rights::WAIT).map_err(handle_err)?;
+            match &e.object {
+                Object::Channel(_) | Object::Process(_) => {}
+                _ => return Err(ERR_WRONG_TYPE),
+            }
+            targets.push((e.object.clone(), wanted));
+        }
+    }
+    let tid = sched::current_tid();
+    let deadline = if timeout == TIMEOUT_FOREVER {
+        None
+    } else {
+        Some(sched::ticks().saturating_add(timeout))
+    };
+    let result = loop {
+        // Register first, then check: a signal that arrives in between wakes us (tokens).
+        let mut hit: Option<(usize, u32)> = None;
+        for (i, (obj, wanted)) in targets.iter().enumerate() {
+            let asserted = match obj {
+                Object::Channel(ep) => ep.poll(*wanted, Some(tid)),
+                Object::Process(p) if wanted & SIGNAL_EXITED != 0 && p.watch(tid) => SIGNAL_EXITED,
+                _ => 0,
+            };
+            if asserted != 0 && hit.is_none() {
+                hit = Some((i, asserted));
+            }
+        }
+        if let Some((i, asserted)) = hit {
+            break Ok((i as i64) | (i64::from(asserted) << 8));
+        }
+        match deadline {
+            Some(d) if sched::ticks() >= d => break Err(ERR_TIMED_OUT),
+            Some(d) => sched::block_current_until(d),
+            None => sched::block_current(),
+        }
+    };
+    for (obj, _) in &targets {
+        match obj {
+            Object::Channel(ep) => ep.forget_waiter(tid),
+            Object::Process(p) => p.forget_waiter(tid),
+            _ => {}
+        }
+    }
+    result
+}
+
+/// `process_status(h)`: the exit code once the process exited, else `ERR_SHOULD_WAIT`.
+fn sys_process_status(h: Handle) -> Result<i64, i64> {
+    let table = table()?;
+    let obj = {
+        let t = table.lock();
+        let e = t.get(h, Rights::NONE).map_err(handle_err)?;
+        match &e.object {
+            Object::Process(p) => p.clone(),
+            _ => return Err(ERR_WRONG_TYPE),
+        }
+    };
+    match obj.exit_code() {
+        // The result is non-negative: the top bit of a 64-bit exit code is not reported.
+        Some(code) => Ok((code & (i64::MAX as u64)) as i64),
+        None => Err(ERR_SHOULD_WAIT),
     }
 }

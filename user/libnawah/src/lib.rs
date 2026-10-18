@@ -29,6 +29,11 @@ pub const SYS_STAT: u64 = 16;
 pub const SYS_UNLINK: u64 = 17;
 pub const SYS_SEEK: u64 = 18;
 pub const SYS_SYNC: u64 = 19;
+/// v1.4 (WP-23): processes from the volume, waiting with timeouts, the clock.
+pub const SYS_PROCESS_SPAWN: u64 = 20;
+pub const SYS_OBJECT_WAIT_MANY: u64 = 21;
+pub const SYS_CLOCK_TICKS: u64 = 22;
+pub const SYS_PROCESS_STATUS: u64 = 23;
 
 pub const ERR_NOSYS: i64 = -1;
 pub const ERR_INVALID: i64 = -2;
@@ -48,6 +53,13 @@ pub const ERR_NOT_DIR: i64 = -15;
 pub const ERR_BAD_PATH: i64 = -16;
 pub const ERR_NO_SPACE: i64 = -17;
 pub const ERR_IO: i64 = -18;
+pub const ERR_TIMED_OUT: i64 = -19;
+
+/// Signals for `object_wait_many`.
+pub const SIGNAL_READABLE: u32 = 1;
+pub const SIGNAL_PEER_CLOSED: u32 = 2;
+pub const SIGNAL_EXITED: u32 = 4;
+pub const TIMEOUT_FOREVER: u64 = u64::MAX;
 
 /// `open` flags (docs/contracts/files.md).
 pub const O_READ: u64 = 1;
@@ -161,6 +173,75 @@ pub fn channel_read(
     }
     Ok(((r & 0xFFFF) as usize, ((r >> 16) & 0xFFFF) as usize))
 }
+
+/// One `object_wait_many` entry: a handle and the signals waited for.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct WaitEntry {
+    pub handle: Handle,
+    pub signals: u32,
+}
+
+/// Spawns the ELF at `path` on the volume with `handles` moved into it (the first one is its
+/// bootstrap handle, `bootstrap_handle()` there); returns a process handle.
+pub fn process_spawn(path: &[u8], handles: &[Handle]) -> Result<Handle, i64> {
+    let r = syscall6(
+        SYS_PROCESS_SPAWN,
+        path.as_ptr() as u64,
+        path.len() as u64,
+        handles.as_ptr() as u64,
+        handles.len() as u64,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as Handle)
+    }
+}
+
+/// Waits until one entry's signals are asserted: `Ok((index, asserted))`, or `Err(ERR_TIMED_OUT)`
+/// after `timeout_ticks` (TIMEOUT_FOREVER = never).
+pub fn object_wait_many(entries: &[WaitEntry], timeout_ticks: u64) -> Result<(usize, u32), i64> {
+    let r = syscall6(
+        SYS_OBJECT_WAIT_MANY,
+        entries.as_ptr() as u64,
+        entries.len() as u64,
+        timeout_ticks,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(((r & 0xFF) as usize, (r >> 8) as u32))
+    }
+}
+
+/// Monotonic time in timer ticks (1 kHz in the lab).
+pub fn clock_ticks() -> u64 {
+    syscall6(SYS_CLOCK_TICKS, 0, 0, 0, 0, 0, 0) as u64
+}
+
+/// Exit code of a spawned process, `Err(ERR_SHOULD_WAIT)` while it runs.
+pub fn process_status(h: Handle) -> Result<u64, i64> {
+    let r = syscall6(SYS_PROCESS_STATUS, u64::from(h), 0, 0, 0, 0, 0);
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as u64)
+    }
+}
+
+/// The handle the process received at start (0 when it was started with none).
+pub fn bootstrap_handle() -> Handle {
+    BOOTSTRAP.load(core::sync::atomic::Ordering::Relaxed)
+}
+
+#[doc(hidden)]
+pub static BOOTSTRAP: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
 
 pub fn handle_close(h: Handle) -> i64 {
     syscall6(SYS_HANDLE_CLOSE, u64::from(h), 0, 0, 0, 0, 0)
@@ -305,8 +386,10 @@ pub fn sync() -> i64 {
 #[macro_export]
 macro_rules! entry {
     ($main:path) => {
+        /// The kernel enters here with the bootstrap handle in `rdi` (WP-23).
         #[no_mangle]
-        pub extern "C" fn _start() -> ! {
+        pub extern "C" fn _start(bootstrap: u64) -> ! {
+            $crate::BOOTSTRAP.store(bootstrap as u32, core::sync::atomic::Ordering::Relaxed);
             let code: u64 = $main();
             $crate::exit(code)
         }

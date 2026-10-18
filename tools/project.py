@@ -485,8 +485,9 @@ def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None, smp=None)
 def prepare_disk(t, target_name, fresh=True):
     """The lab's virtio disk (WP-18): a raw FAT32 image of `qemu.disk.size_mib` MiB made by
     tools/fat32.py (an implementation independent of the kernel's) with the lab files
-    (/HELLO.TXT, /PATTERN.BIN of 20480 bytes `(i*31 + (i>>8)) & 0xFF`, /DIR/INNER.TXT) and the
-    raw pattern `(sector*7+i)&0xFF` in its last `pattern_tail` sectors. Rebuilt for every run
+    (/HELLO.TXT, /PATTERN.BIN of 20480 bytes `(i*31 + (i>>8)) & 0xFF`, /DIR/INNER.TXT), the
+    built applications under /SYSTEM (WP-23) and the raw pattern `(sector*7+i)&0xFF` in its
+    last `pattern_tail` sectors. Rebuilt for every run
     unless `fresh` is false (a multi-phase case keeps what earlier phases wrote). Targets without
     `qemu.disk` get none."""
     spec = t["qemu"].get("disk")
@@ -501,8 +502,13 @@ def prepare_disk(t, target_name, fresh=True):
         pattern = out / "lab-pattern.bin"
         pattern.write_bytes(bytes(((i * 31 + (i >> 8)) & 0xFF) for i in range(20480)))
         cmd = ["python3", "-I", str(ROOT / "tools" / "fat32.py"), "format", str(img), "--sectors", str(sectors),
-               "--mkdir", "DIR", "--add", f"HELLO.TXT={hello}", "--add", f"PATTERN.BIN={pattern}",
+               "--mkdir", "DIR", "--mkdir", "SYSTEM", "--add", f"HELLO.TXT={hello}", "--add", f"PATTERN.BIN={pattern}",
                "--add", f"DIR/INNER.TXT={hello}", "--pattern-tail", str(int(spec.get("pattern_tail", 8)))]
+        # System volume (WP-23, ADR-0016 §1): every built application with an 8.3-compatible
+        # name as /SYSTEM/<NAME>.ELF, where `process_spawn` finds the images of M4's services.
+        for elf in sorted((out / "apps").glob("*.elf")) if (out / "apps").is_dir() else []:
+            if len(elf.stem) <= 8:
+                cmd += ["--add", f"SYSTEM/{elf.stem.upper()}.ELF={elf}"]
         subprocess.run(cmd, cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
     return img
 

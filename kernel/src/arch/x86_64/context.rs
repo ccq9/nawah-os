@@ -48,14 +48,29 @@ ctx_kernel_thread_start:
     call {exit}
     ud2
 
-    # First code of a user thread: r12 = user rip, r13 = user rsp. The scheduler already pointed
-    # the trap stack at this thread's kernel stack and made its address space current. RFLAGS
-    # for ring 3: IF set (0x202); swapgs hands GS over to the user convention (ADR-0009).
+    # First code of a user thread: r12 = user rip, r13 = user rsp, r14 = the argument the
+    # program receives in rdi (its bootstrap handle, WP-23). The scheduler already pointed the
+    # trap stack at this thread's kernel stack and made its address space current. RFLAGS for
+    # ring 3: IF set (0x202); swapgs hands GS over to the user convention (ADR-0009). Every
+    # other register starts as zero so nothing of the kernel leaks into ring 3.
     .global ctx_user_thread_start
 ctx_user_thread_start:
     mov rcx, r12
     mov rsp, r13
+    mov rdi, r14
     mov r11, 0x202
+    xor eax, eax
+    xor ebx, ebx
+    xor edx, edx
+    xor esi, esi
+    xor ebp, ebp
+    xor r8d, r8d
+    xor r9d, r9d
+    xor r10d, r10d
+    xor r12d, r12d
+    xor r13d, r13d
+    xor r14d, r14d
+    xor r15d, r15d
     swapgs
     sysretq
 "#,
@@ -87,15 +102,16 @@ pub unsafe fn switch_to(prev_rsp_slot: *mut u64, next_rsp: u64) {
 }
 
 /// Builds the initial frame on a fresh kernel stack ending at `top` (16-byte aligned) so that
-/// `switch_to` into the returned stack pointer starts `kind` with `r12 = a`, `r13 = b`.
-pub fn prepare_stack(top: u64, kind: Start, a: u64, b: u64) -> u64 {
+/// `switch_to` into the returned stack pointer starts `kind` with `r12 = a`, `r13 = b`,
+/// `r14 = c` (the user program's first argument).
+pub fn prepare_stack(top: u64, kind: Start, a: u64, b: u64, c: u64) -> u64 {
     let tramp = match kind {
         // Taking the address of an extern static is safe; it is never dereferenced.
         Start::Kernel => &raw const ctx_kernel_thread_start as u64,
         Start::User => &raw const ctx_user_thread_start as u64,
     };
     // Frame (low to high): r15, r14, r13, r12, rbx, rbp, return address.
-    let regs: [u64; 7] = [0, 0, b, a, 0, 0, tramp];
+    let regs: [u64; 7] = [0, c, b, a, 0, 0, tramp];
     let rsp = top - 8 * regs.len() as u64;
     // SAFETY: `top` is the end of a mapped kernel stack owned by the caller; the seven words
     // lie inside it.

@@ -3,6 +3,20 @@
 version = 4
 
 [[package]]
+name = "child"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
+name = "echo"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "fd_leak"
 version = "0.1.0"
 dependencies = [
@@ -24,6 +38,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "launch"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "libnawah"
 version = "0.1.0"
 
@@ -33,6 +54,13 @@ version = "0.1.0"
 
 [[package]]
 name = "path_invalid"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
+name = "waiter"
 version = "0.1.0"
 dependencies = [
  "libnawah",

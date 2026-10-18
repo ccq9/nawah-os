@@ -157,6 +157,9 @@ pub fn run() -> ! {
         "file_roundtrip" => file_app("file_roundtrip", crate::apps::FILE_ROUNDTRIP, 0x60),
         "path_invalid" => file_app("path_invalid", crate::apps::PATH_INVALID, 0x61),
         "fd_leak" => fd_leak(),
+        "spawn_volume" => volume_app("spawn_volume", crate::apps::LAUNCH, 0x70),
+        "wait_timeout" => wait_timeout(),
+        "child_exit" => volume_app("child_exit", crate::apps::CHILD, 0x72),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -2515,6 +2518,91 @@ fn file_app(name: &str, image: &[u8], expected: u64) -> ! {
         fail("frames, objects or handles leaked by the application")
     }
     pass("file application behaved as the files contract says")
+}
+
+// ---- WP-23: processes from the volume, waiting, the clock ------------------------------------
+
+/// Runs an embedded application that starts `/SYSTEM/ECHO.ELF` from the volume (the lab image
+/// carries every built application there) and checks its exit code and that nothing it or its
+/// children created survives: processes, process objects, channels, handles, frames.
+fn volume_app(name: &str, image: &[u8], expected: u64) -> ! {
+    if image.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let obj0 = object::stats();
+    let (o, _l) = match crate::user::run_elf(image) {
+        Ok(r) => r,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|error={}", BUILD_ID, name, e.code());
+            fail("application did not load")
+        }
+    };
+    let obj1 = object::stats();
+    let st = sched::stats();
+    kprintln!(
+        "OSX|{}|ktest|{}|exit={:#x}|expected={:#x}|frames_delta={}|processes_after={}|process_objects_after={}|channels_after={}|handles_after={}|files_after={}",
+        BUILD_ID,
+        name,
+        o.exit_code,
+        expected,
+        o.frames_delta,
+        st.processes,
+        obj1.processes,
+        obj1.channels,
+        obj1.handles,
+        obj1.files
+    );
+    if o.exit_code != expected {
+        fail("application did not reach its end (exit code = failing step)")
+    }
+    if o.frames_delta != 0 || obj1 != obj0 || st.processes != 0 {
+        fail("frames, objects, handles or process records leaked")
+    }
+    pass("processes from the volume behaved as the syscall contract v1.4 says")
+}
+
+/// The `waiter` application: `object_wait_many` timeouts, polling, refusals and the clock; the
+/// exit code carries the measured ticks of a 25-tick wait in its upper bits.
+fn wait_timeout() -> ! {
+    let image = crate::apps::WAITER;
+    if image.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    let obj0 = object::stats();
+    let t0 = sched::ticks();
+    let (o, _l) = match crate::user::run_elf(image) {
+        Ok(r) => r,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|wait_timeout|error={}", BUILD_ID, e.code());
+            fail("application did not load")
+        }
+    };
+    let elapsed = sched::ticks() - t0;
+    let obj1 = object::stats();
+    let measured = o.exit_code >> 8;
+    kprintln!(
+        "OSX|{}|ktest|wait_timeout|exit={:#x}|expected=0x71|measured_ticks={}|elapsed_ticks={}|frames_delta={}|channels_after={}|handles_after={}",
+        BUILD_ID,
+        o.exit_code & 0xFF,
+        measured,
+        elapsed,
+        o.frames_delta,
+        obj1.channels,
+        obj1.handles
+    );
+    if o.exit_code & 0xFF != 0x71 {
+        fail("application did not reach its end (exit code = failing step)")
+    }
+    if measured < 25 || elapsed < measured {
+        fail("the wait returned before its timeout")
+    }
+    if o.frames_delta != 0 || obj1 != obj0 {
+        fail("frames, objects or handles leaked by the application")
+    }
+    pass("object_wait_many times out, polls, refuses bad entries; the clock is monotonic")
 }
 
 /// A process that exits with 44 file handles open (20 files + 20 duplicates, 4 created and

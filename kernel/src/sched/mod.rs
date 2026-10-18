@@ -33,6 +33,8 @@ use crate::arch::context::{self, Start};
 use crate::arch::smp::MAX_CPUS;
 use crate::mm::addrspace::UserSpace;
 use crate::mm::vmm::{self, StackInfo};
+use crate::object::handle::Entry;
+use crate::object::process::ProcessObject;
 use crate::object::HandleTable;
 use crate::sync::IrqSpinLock;
 
@@ -50,8 +52,12 @@ pub enum State {
     Sleeping {
         until: u64,
     },
-    /// Waiting for `wake` (channel read, WP-16).
+    /// Waiting for `wake` (channel read, WP-16); with a deadline (object_wait_many timeout,
+    /// WP-23) the timer makes it Ready again at `until` as it does for sleepers.
     Blocked,
+    BlockedUntil {
+        until: u64,
+    },
     Exited {
         code: u64,
     },
@@ -93,14 +99,20 @@ pub struct Process {
     /// Handle table (WP-16), shared with the syscall layer so operations run outside the
     /// scheduler lock.
     pub handles: Arc<IrqSpinLock<HandleTable>>,
+    /// The waitable view a parent holds (WP-23); told the exit code once the process is gone.
+    pub object: Option<Arc<ProcessObject>>,
 }
 
 impl Process {
     /// Releases everything the process owned: handles first (objects may hold frames and
-    /// wake other threads — so this must run outside the scheduler lock), then the space.
-    fn finish(self) {
+    /// wake other threads — so this must run outside the scheduler lock), then the space;
+    /// finally the parent's process object learns the exit (it wakes waiters: no lock held).
+    fn finish(self, code: u64) {
         drop(self.handles);
         let _ = self.space.destroy();
+        if let Some(o) = self.object {
+            o.finish(code);
+        }
     }
 }
 
@@ -259,6 +271,7 @@ pub fn adopt_ap(cpu: usize, stack: StackInfo) {
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn new_thread(
     s: &mut Sched,
     process: Option<u32>,
@@ -267,12 +280,13 @@ fn new_thread(
     a: u64,
     b: u64,
     cpu: usize,
+    c: u64,
 ) -> Result<u32, SpawnError> {
     if cpu >= MAX_CPUS || arch::smp::online_mask() & (1 << cpu) == 0 {
         return Err(SpawnError);
     }
     let kstack = vmm::alloc_kernel_stack(THREAD_STACK_SIZE).map_err(|_| SpawnError)?;
-    let rsp = context::prepare_stack(kstack.top(), kind, a, b);
+    let rsp = context::prepare_stack(kstack.top(), kind, a, b, c);
     let id = s.next_tid;
     s.next_tid += 1;
     let priority = priority.min(PRIORITIES - 1);
@@ -315,6 +329,7 @@ pub fn spawn_kernel(
             entry as usize as u64,
             arg,
             cpu,
+            0,
         )
     })
 }
@@ -335,6 +350,7 @@ pub fn spawn_on(
             entry as usize as u64,
             arg,
             cpu,
+            0,
         )
     })
 }
@@ -347,33 +363,71 @@ pub fn spawn_user(
     rsp: u64,
     priority: u8,
 ) -> Result<(u32, u32), SpawnError> {
+    spawn_user_with(space, rip, rsp, priority, Vec::new(), None).map(|(pid, tid, _)| (pid, tid))
+}
+
+/// `spawn_user` with initial handles (WP-23): `initial` goes into the new table in order and
+/// the first one's handle value reaches the thread in `rdi`; `object` is the parent's waitable
+/// view (created for pid 0, bound here). Returns (pid, tid, first handle value).
+pub fn spawn_user_with(
+    space: UserSpace,
+    rip: u64,
+    rsp: u64,
+    priority: u8,
+    initial: Vec<Entry>,
+    object: Option<Arc<ProcessObject>>,
+) -> Result<(u32, u32, u32), SpawnError> {
     if !arch::syscall::user_rip_ok(rip) {
         let _ = space.destroy();
         return Err(SpawnError);
     }
-    with(|s| {
+    let mut table = HandleTable::new();
+    let mut first = 0u32;
+    for (i, e) in initial.into_iter().enumerate() {
+        match table.insert(e) {
+            Ok(h) if i == 0 => first = h,
+            Ok(_) => {}
+            Err(_) => {
+                let _ = space.destroy();
+                return Err(SpawnError);
+            }
+        }
+    }
+    let (result, failed) = with(|s| {
         let pid = s.next_pid;
         s.next_pid += 1;
+        if let Some(o) = &object {
+            o.bind(pid);
+        }
         s.processes.push(Process {
             id: pid,
             space,
             threads: 1,
             exit_code: None,
-            handles: Arc::new(IrqSpinLock::new("handles", HandleTable::new())),
+            handles: Arc::new(IrqSpinLock::new("handles", table)),
+            object,
         });
         let cpu = me();
-        match new_thread(s, Some(pid), priority, Start::User, rip, rsp, cpu) {
-            Ok(tid) => Ok((pid, tid)),
-            Err(e) => {
-                if let Some(p) = s.processes.pop() {
-                    // A fresh process holds no handles yet, so finishing it under the lock
-                    // wakes nobody.
-                    p.finish();
-                }
-                Err(e)
-            }
+        match new_thread(
+            s,
+            Some(pid),
+            priority,
+            Start::User,
+            rip,
+            rsp,
+            cpu,
+            u64::from(first),
+        ) {
+            Ok(tid) => (Ok((pid, tid, first)), None),
+            Err(e) => (Err(e), s.processes.pop()),
         }
-    })
+    });
+    // Finishing the stillborn process closes its initial handles, which may wake a peer's
+    // reader (that takes the scheduler lock), so it happens outside the lock.
+    if let Some(p) = failed {
+        p.finish(u64::MAX);
+    }
+    result
 }
 
 fn index_of(s: &Sched, tid: u32) -> Option<usize> {
@@ -512,7 +566,7 @@ fn perform(sw: Option<Switch>) -> bool {
     let mut processes = Vec::with_capacity(reaped.processes.len());
     for (p, code) in reaped.processes {
         processes.push((p.id, code));
-        p.finish();
+        p.finish(code);
     }
     // Only now may a waiter learn the outcome: every frame is back. The lists are consumed
     // inside the lock so their own heap blocks are gone before the lock is released.
@@ -610,7 +664,7 @@ pub fn tick() {
         let now = s.ticks;
         let mut wake = [false; MAX_CPUS];
         for t in s.threads.iter_mut() {
-            if let State::Sleeping { until } = t.state {
+            if let State::Sleeping { until } | State::BlockedUntil { until } = t.state {
                 if until <= now {
                     t.state = State::Ready;
                     wake[usize::from(t.cpu)] = true;
@@ -790,6 +844,17 @@ fn wait_process_loop(pid: u32) -> Option<u64> {
 /// Blocks the current thread until `wake` is called for it; returns at once when a wake-up
 /// already arrived (token). Not for the boot thread.
 pub fn block_current() {
+    block_current_with(None);
+}
+
+/// `block_current` with a deadline in ticks (absolute, the time base of `stats().ticks`): the
+/// timer makes the thread Ready at `deadline` if nobody woke it (WP-23 timeouts). The caller
+/// tells a timeout from a wake-up by re-checking its condition and the clock.
+pub fn block_current_until(deadline: u64) {
+    block_current_with(Some(deadline));
+}
+
+fn block_current_with(deadline: Option<u64>) {
     let was = arch::interrupts::save_and_disable();
     let sw = with(|s| {
         assert!(!current_is_idle(s), "an idle thread cannot block");
@@ -798,7 +863,14 @@ pub fn block_current() {
             s.threads[i].wake_tokens -= 1;
             return None;
         }
-        s.threads[i].state = State::Blocked;
+        if let Some(until) = deadline {
+            if until <= s.ticks {
+                return None;
+            }
+            s.threads[i].state = State::BlockedUntil { until };
+        } else {
+            s.threads[i].state = State::Blocked;
+        }
         prepare_switch(s)
     });
     perform(sw);
@@ -815,7 +887,7 @@ pub fn wake(tid: u32) {
             let prio = running_prio(s, cpu);
             let t = &mut s.threads[i];
             match t.state {
-                State::Blocked => {
+                State::Blocked | State::BlockedUntil { .. } => {
                     t.state = State::Ready;
                     if t.priority <= prio {
                         request_resched(s, cpu);
@@ -830,6 +902,11 @@ pub fn wake(tid: u32) {
 
 pub fn current_tid() -> u32 {
     with(|s| s.current[me()])
+}
+
+/// The time base (CPU 0's timer ticks since the scheduler started).
+pub fn ticks() -> u64 {
+    with(|s| s.ticks)
 }
 
 /// The current process's handle table (a shared reference; operate on it outside the

@@ -980,7 +980,7 @@
     "REQ-M4-001"
    ],
    "layer": "guest",
-   "oracle": "a kernel test spawns /SYSTEM/ECHO.ELF from the lab volume with a channel as initial handle; the child receives it in rdi, echoes a message back, exits 0; frames/objects balance",
+   "oracle": "the launch application spawns /SYSTEM/ECHO.ELF from the lab volume (process_spawn, ABI v1.4) with a channel endpoint as its bootstrap handle (rdi at entry): the moved endpoint is gone from the caller (ERR_BAD_HANDLE), the echo round trip returns the 16-byte message, object_wait_many sees EXITED and process_status = 16, the caller's endpoint sees PEER_CLOSED; refusals: missing file ERR_NOT_FOUND, /HELLO.TXT (not an ELF) ERR_INVALID, a handle without TRANSFER ERR_ACCESS with the handle still usable; exit 0x70; the kernel logs one spawn line per started process (2 started, 1 refused before any move); no process record, process object, channel, handle, file or frame survives; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -991,7 +991,7 @@
     "REQ-M4-001"
    ],
    "layer": "guest",
-   "oracle": "object_wait_many on an idle channel with timeout 20 ticks returns ERR_TIMED_OUT after 20..=40 ticks; with a message queued it returns the index at once",
+   "oracle": "the waiter application: object_wait_many on an empty channel with a 25-tick timeout returns ERR_TIMED_OUT and clock_ticks shows >= 25 ticks passed (never early; the kernel's own clock agrees); a zero timeout polls (ERR_TIMED_OUT at once); refused: no signal, unknown signal, 0 or 17 entries (ERR_INVALID), a VMO (ERR_WRONG_TYPE), a stale handle (ERR_BAD_HANDLE), a handle without WAIT (ERR_ACCESS), entries at an unmapped address (ERR_FAULT); a queued message answers at once with the first asserted index (1 of [b,a]); a closed peer asserts PEER_CLOSED only; the clock is monotonic; exit 0x71 with the measured ticks in the upper bits; nothing leaked; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1002,7 +1002,7 @@
     "REQ-M4-001"
    ],
    "layer": "guest",
-   "oracle": "object_wait_many on a process handle wakes when the child exits (EXITED signal) and the exit code is readable; a closed process handle leaves no object",
+   "oracle": "the child application: process_status of a running child (blocked in its read) is ERR_SHOULD_WAIT; a 30-tick wait for EXITED times out while it is blocked; after the message, a duplicate of the process handle (WAIT only) sees EXITED, process_status on both handles = 11 (the child's exit code), a zero-timeout wait on the exited process answers at once, the reply is read, the endpoint shows PEER_CLOSED, closed handles answer ERR_BAD_HANDLE; a second child whose process handle is closed right after the spawn still answers and exits (PEER_CLOSED within 500 ticks); exit 0x72; two spawn lines; no process record, process object, channel, handle or frame survives; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []

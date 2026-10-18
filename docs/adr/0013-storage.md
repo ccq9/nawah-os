@@ -26,7 +26,7 @@
 - TST-M3-FAT32-WRITE: إنشاء وكتابة 3006 بايت (6 عناقيد) وقراءة واستبدال في المنتصف وحذف؛ العناقيد الحرة تعود 128948؛ ثم `fsck.fat -n` و`fat32.py check` على الصورة.
 - TST-M3-FAT32-PERSIST: مرحلتان: إنشاء `/PERSIST.TXT` بمعرّف البناء ثم sync، وإقلاع جديد يقرأه؛ ثم الأداة المضيفة تقرأ البايتات نفسها من الصورة.
 - TST-M3-FAT32-TOOL (مضيف): الأداة ذاتها.
-- أثر TST-M1-BOOT: `kernel|pci|ecam=0xe0000000|segment=0|functions=7|list=…1af4:1042…`، `kernel|blk|device=0x1042|…|capacity_sectors=131072|queue_size=16|…|mmio=0xffffa8…|mmio_shared=1|…|read_ok=1|flush_ok=1|code=ok|selfcheck=1`، و`kernel|fat32|label=NAWAHLAB|…|clusters=128992|…|free_clusters=128948|hello_size=24|hello_ok=1|code=ok|selfcheck=1`.
+- أثر TST-M1-BOOT: `kernel|pci|ecam=0xe0000000|segment=0|functions=7|list=…1af4:1042…`، `kernel|blk|device=0x1042|…|capacity_sectors=131072|queue_size=16|…|mmio=0xffffa8…|mmio_shared=1|…|read_ok=1|flush_ok=1|code=ok|selfcheck=1`، و`kernel|fat32|label=NAWAHLAB|…|clusters=128992|…|free_clusters=…|hello_size=24|hello_ok=1|code=ok|selfcheck=1` (كان `free_clusters=128948` حتى WP-22؛ منذ WP-23 تحمل الصورة التطبيقات المبنية تحت `/SYSTEM` فيتغير العدد مع حجمها، والمطابقة الدقيقة لعدّاد الحرية تبقى على المضيف بـ `fsck.fat -n` و`fat32.py check` بعد كل كتابة).
 
 ## ما لم يُحسم
 

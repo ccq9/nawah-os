@@ -7,6 +7,7 @@
 
 pub mod channel;
 pub mod handle;
+pub mod process;
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -39,6 +40,8 @@ impl Rights {
     /// Rights of a fresh VMO handle.
     pub const VMO_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0 | Self::MAP.0);
+    /// Rights of the handle `process_spawn` returns (WP-23).
+    pub const PROCESS_DEFAULT: Rights = Rights(Self::WAIT.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
 
     pub const fn contains(self, other: Rights) -> bool {
         self.0 & other.0 == other.0
@@ -56,6 +59,8 @@ pub enum Object {
     Vmo(Arc<Vmo>),
     /// An open file (WP-19); READ/WRITE rights gate the calls.
     File(crate::fs::vfs::FileRef),
+    /// A process the holder spawned (WP-23); WAIT gates waiting for its exit.
+    Process(Arc<process::ProcessObject>),
 }
 
 /// Largest VMO (contract §3).
@@ -113,6 +118,7 @@ pub struct Stats {
     pub vmos: u32,
     pub handles: u32,
     pub files: u32,
+    pub processes: u32,
 }
 
 pub fn stats() -> Stats {
@@ -122,5 +128,6 @@ pub fn stats() -> Stats {
         vmos: LIVE_VMOS.load(Ordering::Relaxed),
         handles: handle::live_handles(),
         files: crate::fs::vfs::live_files(),
+        processes: process::live(),
     }
 }
