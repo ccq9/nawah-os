@@ -66,7 +66,7 @@
 | WP-26 التكوين | مخازن device/user/session/policy بإصدارات، CAS، request_id، إشعارات، أسبقية، حفظ آمن — **أُغلق 2026-10-18** (CI run 39133153681: CAS وتكرار وإشعارات وأسبقية وثبات بخانتين، السلطة في الخدمة) | TST-M4-CONFIG-PERSIST، CAS، RETRY، NOTIFY، POLICY-PRECEDENCE | §12–13 |
 | WP-27 التعريفات | virtio-net، PS/2 (i8042)، حدود موارد، نموذج ثقة DMA — **أُغلق 2026-10-18** (CI run 39134727743: virtio-net بحدود ثابتة ونموذج DMA، ARP للبوابة، i8042 بالاستطلاع، كائنا Nic/Keyboard، ABI v1.6) | TST-M4-NET-LINK، NET-LIMITS، KBD-SCANCODES | Virtio 1.3 §5.1 (S42)، i8042/PS2 |
 | WP-28 الشبكة | ARP/IPv4/ICMP/UDP/DHCP، فصل الإنترنت، سياسة لا إنترنت — **أُغلق 2026-10-18** (CI run 39137446701: DHCP من SLIRP، صدى ICMP موقوت، صدى UDP عبر نظير المضيف، فصل link/configured/internet بسياسة لا إنترنت؛ جولتان كشفتا سعة متجه المنتظرين في كائنات النواة الدائمة) | TST-M4-DHCP، ICMP-ECHO، UDP-ECHO، NET-NO-INTERNET | RFC 826/791/792/768/2131/2132 (S53–S60) |
-| WP-29 TCP | مصافحة، بيانات، إغلاق، RTO، مقابس | TST-M4-TCP-ECHO، TCP-RETRANSMIT | RFC 9293، RFC 6298 |
+| WP-29 TCP | مصافحة، بيانات، إغلاق، RTO، مقابس — **أُغلق 2026-10-18** (CI run 39139475715: عميل stop-and-wait بمصافحة وإغلاق منظم وRST، مؤقت RFC 6298 بتراجع أسي وKarn مُثبَت بحقن إسقاط مقطع؛ جولتان: الثانية صحّحت عدّ بايتات في الوحي فقط) | TST-M4-TCP-ECHO، TCP-RETRANSMIT | RFC 9293 (S61)، RFC 6298 (S62) |
 | WP-30 الـ shell | shell تشخيصي على COM2 بمقبس مختبر | TST-M4-SHELL-SVC، SHELL-LOGIN | §20 M4 |
 | WP-31 البوابة | انقطاع الطرف، طفرات M4، مراجعة مسماة | TST-M4-PEER-LOSS، TST-M4-MUTANTS | البند 20 M4 |
 
