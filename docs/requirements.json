@@ -729,7 +729,9 @@
    "dependencies": [
     "REQ-M3-001"
    ],
-   "contract_refs": [],
+   "contract_refs": [
+    "docs/contracts/syscall.md"
+   ],
    "failure_cases": [
     "panic عند مؤشر مستخدم خاطئ",
     "قراءة ذاكرة النواة من حلقة 3"
@@ -741,7 +743,7 @@
     "TST-M3-USER-KERNEL-ACCESS",
     "TST-M3-SYSRET-CANONICAL"
    ],
-   "implementation_status": "planned",
+   "implementation_status": "implemented_untested",
    "evidence_refs": []
   },
   {

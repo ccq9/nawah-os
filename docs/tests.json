@@ -520,8 +520,8 @@
     "REQ-M3-003"
    ],
    "layer": "guest",
-   "oracle": "ring-3 code issues a syscall and receives the documented result",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "ring-3 ping program exits 0x1235 through SYS_EXIT; ring-3 trace program copies 'hello from r3' through validated user memory (user|trace line) and exits 13; no frame leaked; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -531,8 +531,8 @@
     "REQ-M3-003"
    ],
    "layer": "negative",
-   "oracle": "syscall with an invalid user pointer/length returns the documented error; kernel continues",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "SYS_TRACE with an unmapped user pointer returns ERR_FAULT and with a kernel pointer ERR_RANGE; the program exits 0xfdfc and the kernel continues; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -542,8 +542,8 @@
     "REQ-M3-003"
    ],
    "layer": "negative",
-   "oracle": "ring-3 read of a kernel address -> #PF handled as process termination with a diagnostic, no panic",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "ring-3 read of the kernel direct map -> #PF taken in ring 3 (error code 0x5: present, user), diagnosed as kernel|user_fault|vector=14 and the run ends with exit code 0x1000e; the kernel continues (test exit 33)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -553,8 +553,8 @@
     "REQ-M3-003"
    ],
    "layer": "negative",
-   "oracle": "return to a non-canonical user RIP is refused before sysret (no #GP in kernel mode)",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M3 (planned)",
+   "oracle": "SYS_CHECK_RIP with a non-canonical address is refused with ERR_RANGE (program exits 0xfffffffffffffffc); no #GP in ring 0; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },

@@ -234,6 +234,31 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         c.max_depth,
         u8::from(timer_ok)
     );
+    // Ring 3 (WP-14): SYSCALL/SYSRET on a dedicated trap stack, then a self-check in every
+    // build — a ring-3 program makes a call and exits through another, leaving no frame behind.
+    let trap = match mm::vmm::alloc_kernel_stack(32 * 1024) {
+        Ok(s) => s,
+        Err(e) => crate::panic::fatal(e.code()),
+    };
+    let sc = arch::syscall::init(trap.top());
+    let (user_exit, user_delta, user_code) = match crate::user::run(arch::user_programs::ping()) {
+        Ok(o) => (o.exit_code, o.frames_delta, "ok"),
+        Err(e) => (u64::MAX, 0, e.code()),
+    };
+    let user_ok =
+        user_exit == 0x1235 && user_delta == 0 && user_exit < arch::syscall::USER_FAULT_EXIT_BASE;
+    kprintln!(
+        "OSX|{}|kernel|user|lstar={:#x}|smep={}|smap={}|trap_stack_guard={:#x}|ping_exit={:#x}|frames_delta={}|code={}|selfcheck={}",
+        build_id,
+        sc.lstar,
+        u8::from(sc.smep),
+        u8::from(sc.smap),
+        trap.guard,
+        user_exit,
+        user_delta,
+        user_code,
+        u8::from(user_ok)
+    );
     #[cfg(feature = "ktest")]
     crate::ktest::run();
     #[cfg(not(feature = "ktest"))]

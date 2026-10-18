@@ -24,6 +24,8 @@ use crate::BUILD_ID;
 
 pub const EXCEPTION_VECTORS: usize = 32;
 const BREAKPOINT: u64 = 3;
+/// Exit code of a ring-3 run ended by an exception: this base plus the vector.
+pub const USER_FAULT_EXIT_BASE: u64 = 0x1_0000;
 
 /// Maximum nesting of exceptions inside the handler. At the limit a fixed message is written
 /// without the formatting machinery, then the CPU stops; beyond it, no output at all.
@@ -278,6 +280,21 @@ extern "sysv64" fn exception_handler(frame: &TrapFrame) {
     if frame.vector >= EXCEPTION_VECTORS as u64 {
         super::irq::dispatch((frame.vector & 0xFF) as u8);
         return;
+    }
+    if frame.cs & 3 == 3 {
+        // Taken in ring 3: the program is at fault, not the kernel. Diagnose and end its run
+        // (WP-15 turns this into process termination).
+        kprintln!(
+            "OSX|{}|kernel|user_fault|vector={}|name={}|error={:#x}|rip={:#x}|rsp={:#x}|cr2={:#x}",
+            BUILD_ID,
+            frame.vector,
+            name(frame.vector),
+            frame.error_code,
+            frame.rip,
+            frame.rsp,
+            read_cr2(),
+        );
+        super::syscall::exit_user_from_fault(USER_FAULT_EXIT_BASE | frame.vector);
     }
     let depth = NESTING.fetch_add(1, Ordering::Relaxed);
     if depth > MAX_NESTING {

@@ -17,7 +17,9 @@ pub mod pit;
 mod port;
 pub mod qemu;
 mod serial;
+pub mod syscall;
 mod trap;
+pub mod user_programs;
 
 #[cfg(feature = "ktest")]
 pub mod fwcfg;

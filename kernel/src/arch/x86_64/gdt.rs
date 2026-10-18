@@ -17,6 +17,12 @@ use crate::cell::BootCell;
 pub const KERNEL_CODE_SELECTOR: u16 = 0x08;
 pub const KERNEL_DATA_SELECTOR: u16 = 0x10;
 const TSS_SELECTOR: u16 = 0x18;
+/// User segments (WP-14), ordered for SYSRET (SDM Vol. 3A §5.8.8): SYSRET loads SS from
+/// IA32_STAR[63:48] + 8 and CS from IA32_STAR[63:48] + 16, so with STAR[63:48] = 0x20 the user
+/// data selector is 0x28 and the user code selector 0x30 (RPL 3: 0x2B and 0x33).
+pub const SYSRET_SELECTOR_BASE: u16 = 0x20;
+pub const USER_DATA_SELECTOR: u16 = 0x28 | 3;
+pub const USER_CODE_SELECTOR: u16 = 0x30 | 3;
 
 /// IST slot (1..=7) used by the double-fault gate.
 pub const DOUBLE_FAULT_IST: u8 = 1;
@@ -43,6 +49,10 @@ static ADOPTED_STACKS: BootCell<[(u64, u64); 2]> = BootCell::new([(0, 0); 2]);
 const KERNEL_CODE_DESCRIPTOR: u64 = 0x00AF_9B00_0000_FFFF;
 /// Kernel data segment: present, DPL=0, writable.
 const KERNEL_DATA_DESCRIPTOR: u64 = 0x00CF_9300_0000_FFFF;
+/// User data segment: present, DPL=3, writable (SYSRET's SS; base/limit ignored in 64-bit mode).
+const USER_DATA_DESCRIPTOR: u64 = 0x00CF_F300_0000_FFFF;
+/// User code segment: present, DPL=3, execute/read, L=1, D=0.
+const USER_CODE_DESCRIPTOR: u64 = 0x00AF_FB00_0000_FFFF;
 /// TSS descriptor access byte: present (P=1), DPL=0, type 9.
 const TSS_ACCESS: u64 = 0x89;
 
@@ -68,12 +78,26 @@ pub struct TablePointer {
     pub base: u64,
 }
 
-const GDT_ENTRIES: usize = 5;
+const GDT_ENTRIES: usize = 7;
 const GDT_TSS_INDEX: usize = 3;
+const GDT_USER_DATA_INDEX: usize = 5;
+const GDT_USER_CODE_INDEX: usize = 6;
+const _: () = assert!(GDT_USER_DATA_INDEX * 8 == (USER_DATA_SELECTOR & !3) as usize);
+const _: () = assert!(GDT_USER_CODE_INDEX * 8 == (USER_CODE_SELECTOR & !3) as usize);
+const _: () = assert!(SYSRET_SELECTOR_BASE + 8 == USER_DATA_SELECTOR & !3);
+const _: () = assert!(SYSRET_SELECTOR_BASE + 16 == USER_CODE_SELECTOR & !3);
 
-/// Order: null, kernel code, kernel data, then the TSS descriptor in two slots (filled at run time).
-static GDT: BootCell<[u64; GDT_ENTRIES]> =
-    BootCell::new([0, KERNEL_CODE_DESCRIPTOR, KERNEL_DATA_DESCRIPTOR, 0, 0]);
+/// Order: null, kernel code, kernel data, TSS (two slots, filled at run time), user data, user
+/// code.
+static GDT: BootCell<[u64; GDT_ENTRIES]> = BootCell::new([
+    0,
+    KERNEL_CODE_DESCRIPTOR,
+    KERNEL_DATA_DESCRIPTOR,
+    0,
+    0,
+    USER_DATA_DESCRIPTOR,
+    USER_CODE_DESCRIPTOR,
+]);
 
 /// `iomap_base == TSS size` means no I/O permission bitmap.
 static TSS: BootCell<Tss> = BootCell::new(Tss {
@@ -174,6 +198,18 @@ pub fn adopt_stacks(kernel: (u64, u64), df: (u64, u64)) {
             .cast::<u64>()
             .add(usize::from(DOUBLE_FAULT_IST) - 1)
             .write_unaligned(df.0 + df.1);
+    }
+}
+
+/// Sets TSS.RSP0: the stack the CPU switches to for an interrupt or exception taken in ring 3
+/// (SDM Vol. 3A §7.14.2, §8.7). The CPU reads the TSS at the event, so it is in effect at once.
+pub fn set_rsp0(top: u64) {
+    // SAFETY: boot path/single CPU (BootCell contract); `rsp` is packed, hence write_unaligned
+    // through a raw pointer; slot 0 is inside the 3-entry array.
+    unsafe {
+        (&raw mut (*TSS.get()).rsp)
+            .cast::<u64>()
+            .write_unaligned(top);
     }
 }
 

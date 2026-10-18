@@ -134,7 +134,9 @@
      "|max_depth=1|selfcheck=1",
      "|cpus=1|ioapics=1|ioapic_entries=24|ioapic_masked=24|",
      "|kernel|mm|heap_ok=1|scratch_ok=1|as_ok=1|as_code=ok|",
-     "|frames_delta=0|selfcheck=1"
+     "|frames_delta=0|selfcheck=1",
+     "|kernel|user|lstar=0x",
+     "|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1"
     ],
     "forbidden_markers": [
      "|boot|acpi|rsdp=0x0|",
@@ -820,6 +822,97 @@
      "|ktest|fail|",
      "|kernel|panic|",
      "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M3-USER-SYSCALL",
+    "test_id": "TST-M3-USER-SYSCALL",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=user_syscall"
+    ],
+    "oracle": "ring-3 ping program exits 0x1235 through SYS_EXIT; ring-3 trace program copies 'hello from r3' through validated user memory (user|trace line) and exits 13; no frame leaked; exit 33",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=user_syscall",
+     "|user|trace|len=13|text=hello from r3",
+     "|ktest|user_syscall|ping_exit=0x1235|trace_exit=13|frames_delta=0",
+     "|ktest|pass|ring-3 programs call the kernel"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector",
+     "|user_fault|"
+    ]
+   },
+   {
+    "id": "TST-M3-USER-BAD-PTR",
+    "test_id": "TST-M3-USER-BAD-PTR",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=user_bad_ptr"
+    ],
+    "oracle": "SYS_TRACE with an unmapped user pointer returns ERR_FAULT and with a kernel pointer ERR_RANGE; the program exits 0xfdfc and the kernel continues; exit 33",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=user_bad_ptr",
+     "|ktest|user_bad_ptr|exit=0xfdfc|expected=0xfdfc|frames_delta=0",
+     "|ktest|pass|ring-3 program behaved"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector",
+     "|user_fault|",
+     "|user|trace|"
+    ]
+   },
+   {
+    "id": "TST-M3-USER-KERNEL-ACCESS",
+    "test_id": "TST-M3-USER-KERNEL-ACCESS",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=user_kernel_access"
+    ],
+    "oracle": "ring-3 read of the kernel direct map -> #PF taken in ring 3 (error code 0x5: present, user), diagnosed as kernel|user_fault|vector=14 and the run ends with exit code 0x1000e; the kernel continues (test exit 33)",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=user_kernel_access",
+     "|kernel|user_fault|vector=14|name=#PF|error=0x5|",
+     "|cr2=0xffff800000000000",
+     "|ktest|user_kernel_access|exit=0x1000e|expected=0x1000e|frames_delta=0",
+     "|ktest|pass|ring-3 program behaved"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M3-SYSRET-CANONICAL",
+    "test_id": "TST-M3-SYSRET-CANONICAL",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=sysret_canonical"
+    ],
+    "oracle": "SYS_CHECK_RIP with a non-canonical address is refused with ERR_RANGE (program exits 0xfffffffffffffffc); no #GP in ring 0; exit 33",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=sysret_canonical",
+     "|ktest|sysret_canonical|exit=0xfffffffffffffffc|expected=0xfffffffffffffffc|frames_delta=0",
+     "|ktest|pass|ring-3 program behaved"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector",
+     "|user_fault|"
     ]
    }
   ]

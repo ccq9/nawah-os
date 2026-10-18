@@ -903,14 +903,27 @@
     "SDM Vol.3A §5.8.8, §2.5; Vol.4 (S26)"
    ],
    "files": [
-    "kernel/src/arch/x86_64/gdt.rs",
     "kernel/src/arch/x86_64/syscall.rs",
-    "kernel/src/arch/x86_64/percpu.rs",
+    "kernel/src/arch/x86_64/user_programs.rs",
+    "kernel/src/arch/x86_64/gdt.rs",
+    "kernel/src/arch/x86_64/trap.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/arch/mod.rs",
     "kernel/src/syscall/mod.rs",
-    "docs/contracts/syscall.md"
+    "kernel/src/user.rs",
+    "kernel/src/mm/addrspace.rs",
+    "kernel/src/mm/vmm.rs",
+    "kernel/src/main.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "docs/contracts/syscall.md",
+    "docs/adr/0009-user-mode-and-syscall-abi.md",
+    "platform/pc-qemu/target.json",
+    "tools/unsafe-baseline.txt"
    ],
    "contract_refs": [
-    "docs/contracts/boot.md"
+    "docs/contracts/boot.md",
+    "docs/contracts/syscall.md"
    ],
    "actions": [
     "user segments and TSS.RSP0",
@@ -919,7 +932,7 @@
     "user pointer validation, SMEP/SMAP when available",
     "ktests with embedded ring-3 code"
    ],
-   "acceptance": "user_syscall, user_bad_ptr, user_kernel_access, sysret_canonical PASS",
+   "acceptance": "TST-M3-USER-SYSCALL/USER-BAD-PTR/USER-KERNEL-ACCESS/SYSRET-CANONICAL PASS on CI; TST-M1-BOOT PASS with the ring-3 self-check line; contract v1 frozen",
    "test_ids": [
     "TST-M3-USER-SYSCALL",
     "TST-M3-USER-BAD-PTR",
@@ -930,9 +943,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null

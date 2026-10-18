@@ -103,6 +103,8 @@ impl VmmError {
 }
 
 static KERNEL_SPACE: BootCell<Option<KernelSpace>> = BootCell::new(None);
+/// Next free slot in the stack area (0 and 1 are the kernel and #DF stacks).
+static NEXT_STACK_SLOT: BootCell<u64> = BootCell::new(2);
 
 extern "C" {
     /// Absolute symbol the linker (lld-link) defines at the image base; the firmware loader
@@ -321,6 +323,24 @@ pub fn init(bi: &BootInfo) -> Result<KernelSpace, VmmError> {
 pub fn kernel_space() -> Option<KernelSpace> {
     // SAFETY: read after the single boot-path write (BootCell contract); the value is Copy.
     unsafe { (*KERNEL_SPACE.get()).as_ref().copied() }
+}
+
+/// Maps another guarded kernel stack of `size` bytes (page multiple) in the next stack slot;
+/// visible in every address space because the stack area's PML4 slot is shared.
+pub fn alloc_kernel_stack(size: u64) -> Result<StackInfo, VmmError> {
+    if size == 0 || !size.is_multiple_of(PAGE_4K) || size + PAGE_4K > STACK_SLOT {
+        return Err(VmmError::Map(MapError::Unaligned));
+    }
+    let space = kernel_as()?;
+    // SAFETY: boot-path counter (BootCell contract): stacks are created before interrupts and
+    // on one CPU.
+    let slot = unsafe {
+        let p = NEXT_STACK_SLOT.get();
+        let s = *p;
+        *p = s + 1;
+        s
+    };
+    map_stack(&space, slot, size)
 }
 
 /// Direct-map address of a physical address.

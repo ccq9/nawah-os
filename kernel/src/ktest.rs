@@ -7,7 +7,9 @@
 
 use alloc::vec::Vec;
 
-use crate::arch::{apic, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu};
+use crate::arch::{
+    apic, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu, user_programs,
+};
 use crate::mm::addrspace::{self, UserSpace, USER_BASE};
 use crate::mm::heap;
 use crate::mm::pmm::{self, Frame, PmmError};
@@ -101,6 +103,18 @@ pub fn run() -> ! {
         "spurious" => spurious(),
         "lock_irqsave" => lock_irqsave(),
         "heap_stress" => heap_stress(),
+        "user_syscall" => user_syscall(),
+        "user_bad_ptr" => user_program_case("user_bad_ptr", user_programs::bad_ptr(), 0xfdfc),
+        "user_kernel_access" => user_program_case(
+            "user_kernel_access",
+            user_programs::kernel_access(),
+            crate::arch::syscall::USER_FAULT_EXIT_BASE | 14,
+        ),
+        "sysret_canonical" => user_program_case(
+            "sysret_canonical",
+            user_programs::bad_rip(),
+            crate::syscall::ERR_RANGE as u64,
+        ),
         "vmm_unmap" => vmm_unmap(),
         "vmm_protect" => vmm_protect(),
         "as_switch" => as_switch(),
@@ -184,6 +198,67 @@ pub fn run() -> ! {
             qemu::exit(qemu::EXIT_UNKNOWN_TEST)
         }
     }
+}
+
+/// Runs a ring-3 program and checks its exit code and that no frame leaked.
+fn user_program_case(name: &str, program: &[u8], expected_exit: u64) -> ! {
+    match crate::user::run(program) {
+        Ok(o) => {
+            kprintln!(
+                "OSX|{}|ktest|{}|exit={:#x}|expected={:#x}|frames_delta={}",
+                BUILD_ID,
+                name,
+                o.exit_code,
+                expected_exit,
+                o.frames_delta
+            );
+            if o.exit_code != expected_exit {
+                fail("ring-3 program ended with an unexpected exit code")
+            }
+            if o.frames_delta != 0 {
+                fail("frames leaked by the ring-3 run")
+            }
+            pass("ring-3 program behaved as the ABI contract says")
+        }
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|error={}", BUILD_ID, name, e.code());
+            fail("could not run the ring-3 program")
+        }
+    }
+}
+
+/// Two ring-3 programs: ping (result handed back through SYS_EXIT) and a trace message copied
+/// from user memory after validation.
+fn user_syscall() -> ! {
+    let ping = match crate::user::run(user_programs::ping()) {
+        Ok(o) => o,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|user_syscall|error={}", BUILD_ID, e.code());
+            fail("ping program did not run")
+        }
+    };
+    let trace = match crate::user::run(user_programs::trace()) {
+        Ok(o) => o,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|user_syscall|error={}", BUILD_ID, e.code());
+            fail("trace program did not run")
+        }
+    };
+    kprintln!(
+        "OSX|{}|ktest|user_syscall|ping_exit={:#x}|trace_exit={}|frames_delta={}",
+        BUILD_ID,
+        ping.exit_code,
+        trace.exit_code,
+        ping.frames_delta + trace.frames_delta
+    );
+    if ping.exit_code != 0x1235
+        || trace.exit_code != 13
+        || ping.frames_delta != 0
+        || trace.frames_delta != 0
+    {
+        fail("ring-3 syscalls did not return the documented results")
+    }
+    pass("ring-3 programs call the kernel and exit through the ABI")
 }
 
 /// Deterministic pseudo-random sequence for the stress tests (LCG, Numerical Recipes constants).

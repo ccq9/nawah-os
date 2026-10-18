@@ -130,6 +130,15 @@ impl UserSpace {
     }
 }
 
+/// Copies `bytes` to the start of the frame `phys` through the direct map (loading code or data
+/// into a page before the space runs).
+pub fn write_frame(phys: u64, bytes: &[u8]) {
+    let n = bytes.len().min(PAGE_4K as usize);
+    // SAFETY: `phys` is a frame this kernel allocated and mapped in the direct map; at most one
+    // page is written.
+    unsafe { core::ptr::copy_nonoverlapping(bytes.as_ptr(), vmm::direct(phys) as *mut u8, n) };
+}
+
 /// Switches back to the kernel's own space.
 pub fn activate_kernel() {
     if let Some(ks) = vmm::kernel_space() {

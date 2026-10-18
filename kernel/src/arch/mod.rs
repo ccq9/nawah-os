@@ -7,7 +7,7 @@ mod x86_64;
 #[cfg(target_arch = "x86_64")]
 pub use x86_64::{
     adopt_stacks, continue_on_stack, cpu_id, init_console, init_cpu, interrupts, irq,
-    jump_on_kernel_stack, paging, pit, qemu, Serial,
+    jump_on_kernel_stack, paging, pit, qemu, syscall, user_programs, Serial,
 };
 
 #[cfg(all(target_arch = "x86_64", feature = "ktest"))]
