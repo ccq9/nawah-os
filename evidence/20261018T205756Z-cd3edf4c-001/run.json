@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T205756Z-cd3edf4c-001",
+ "started_at": "2026-10-18T20:57:56+00:00",
+ "finished_at": "2026-10-18T20:57:58+00:00",
+ "source_revision": "cd3edf4c5fc0f4b0708b1e5d6be1ddb583cbecbb",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M5-GLYPHS",
+ "commands": [
+  "python3 -I tests/test_text.py Glyphs"
+ ],
+ "exit_code": 0
+}
