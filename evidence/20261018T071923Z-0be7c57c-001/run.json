@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T071923Z-0be7c57c-001",
+ "started_at": "2026-10-18T07:19:23+00:00",
+ "finished_at": "2026-10-18T07:19:23+00:00",
+ "source_revision": "0be7c57c589eb40b4b0105cc782ca60472de93d8",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "pc-qemu",
+ "worker": "interactive-agent",
+ "purpose": "build",
+ "commands": [
+  "cargo build --release --offline --manifest-path user/apps/hello/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user"
+ ],
+ "exit_code": 101
+}

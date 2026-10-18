@@ -1,0 +1,8 @@
+   Compiling hello v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/hello)
+   Compiling libnawah v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/libnawah)
+warning: linking module flags 'Code Model': IDs have conflicting values: 'i32 2' from , and 'i32 4' from hello.f4ec23b999edbe08-cgu.0
+
+error: failed to load bitcode of module "core-05b8190f7da9d31a.core.d461c473bcfb0801-cgu.0.rcgu.o": 
+
+warning: `hello` (bin "hello") generated 1 warning
+error: could not compile `hello` (bin "hello") due to 1 previous error; 1 warning emitted
