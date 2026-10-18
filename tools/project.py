@@ -623,6 +623,32 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
         return p.returncode
 
 
+def serial_value(text, key):
+    """The value the guest printed after the last `key` in its serial output, up to the next
+    `|` or end of line (WP-34: a hash or a rectangle the host must recompute); '' when absent."""
+    i = text.rfind(key)
+    if i < 0:
+        return ""
+    rest = text[i + len(key):]
+    end = len(rest)
+    for stop in ("|", "\n", "\r"):
+        j = rest.find(stop)
+        if j >= 0:
+            end = min(end, j)
+    return rest[:end]
+
+
+def substitute_host_arg(arg, disk_path, build_id, screen_path, serial_text):
+    """`${DISK}`, `${BUILD_ID}`, `${SCREEN}` and `${SERIAL:key}` (the value after `key` in the
+    serial log, serial_value) in a host_checks argument."""
+    out = arg.replace("${DISK}", str(disk_path)).replace("${BUILD_ID}", build_id).replace("${SCREEN}", str(screen_path))
+    while "${SERIAL:" in out:
+        i = out.index("${SERIAL:")
+        j = out.index("}", i)
+        out = out[:i] + serial_value(serial_text, out[i + 9:j]) + out[j + 1:]
+    return out
+
+
 def new_run_dir(purpose_slug):
     rev, _ = source_identity()
     ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -919,7 +945,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     disk_path = ROOT / "build" / target_name / "disk.img"
     with open(d / "host-check.log", "w") as hc:
         for check in case.get("host_checks", []):
-            cmd = [x.replace("${DISK}", str(disk_path)).replace("${BUILD_ID}", build_id).replace("${SCREEN}", str(d / "screen.ppm")) for x in check]
+            cmd = [substitute_host_arg(x, disk_path, build_id, d / "screen.ppm", text) for x in check]
             r = subprocess.run(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             hc.write(f"$ {' '.join(cmd)}\n{r.stdout}\n[exit {r.returncode}]\n")
             if r.returncode != 0:
@@ -989,6 +1015,9 @@ HOST_SUITES["M5"] = [
     {"id": "TST-M5-LAB-TOOL", "command": ["python3", "-I", "tests/test_monitor_steps.py"],
      "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout (4 cases, OK)",
      "inputs": ["tests/test_monitor_steps.py", "tools/project.py"], "input_globs": []},
+    {"id": "TST-M5-SCREEN-TOOL", "command": ["python3", "-I", "tests/test_screen_tool.py"],
+     "oracle": "tools/screen.py desktop against a synthetic PPM: a pixel check passes on its colour and fails on another; a window hash equals the FNV-1a 64 of the rectangle's R,G,B bytes and fails when a pixel differs; a rectangle outside the image fails without crashing (2 cases, OK)",
+     "inputs": ["tests/test_screen_tool.py", "tools/screen.py"], "input_globs": []},
 ]
 HOST_SUITES["M3"] = [
     {"id": "TST-M3-FAT32-TOOL", "command": ["python3", "-I", "tests/test_fat32_tool.py"],

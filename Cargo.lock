@@ -26,6 +26,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "displayd"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "echo"
 version = "0.1.0"
 dependencies = [
@@ -137,6 +144,13 @@ dependencies = [
 
 [[package]]
 name = "waiter"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
+name = "winapp"
 version = "0.1.0"
 dependencies = [
  "libnawah",

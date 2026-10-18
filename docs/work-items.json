@@ -2271,29 +2271,58 @@
         "docs/PLAN.md §6",
         "docs/adr/0019-graphics-platform.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/adr/0019-graphics-platform.md",
+        "docs/contracts/display.md",
+        "docs/contracts/input.md",
+        "docs/contracts/ipc.md",
+        "docs/contracts/syscall.md",
+        "docs/sources.json",
+        "kernel/src/ktest.rs",
+        "kernel/src/syscall/mod.rs",
+        "platform/pc-qemu/manifests/svc-da.txt",
+        "platform/pc-qemu/manifests/svc-dp.txt",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tests/test_monitor_steps.py",
+        "tests/test_screen_tool.py",
+        "tools/project.py",
+        "tools/screen.py",
+        "user/apps/displayd/src/main.rs",
+        "user/apps/inputd/src/main.rs",
+        "user/apps/winapp/src/main.rs",
+        "user/libnawah/src/lib.rs"
+      ],
       "contract_refs": [
-        "docs/contracts/display.md"
+        "docs/contracts/display.md",
+        "docs/contracts/input.md",
+        "docs/contracts/syscall.md",
+        "docs/contracts/ipc.md"
       ],
       "actions": [
         "compositor ومدير النوافذ: أسطح VMO، تغييرات معلنة، ترتيب وتركيز وحجم، تطبيق لا يستجيب",
-        "display service (compositor): CREATE_SURFACE + VMO, COMMIT damage, back buffer, tick-paced blit; windows with decorations, z-order, focus by click/keyboard, move/resize, minimise; unresponsive clients detected and never waited on",
-        "client library libnawah-display (surface, events) and a demo app winapp; display.md part B",
-        "kernel tests window_states, app_hang; screendump oracle for TST-M5-SCREEN"
+        "display service (user/apps/displayd, compositor): CREATE_SURFACE + VMO (checked with vmo_size, ABI v1.10), COMMIT damage, back buffer in the service's memory, blit every 16 ticks; windows with decorations, cascade placement, z-order, focus by request/click/Alt+Tab, move/resize (RESIZED → client attaches a new surface), minimise/restore, close; unresponsive clients detected after 2000 ticks of a full queue and never waited on; the keyboard focus at input is taken by name (input.md v2.1 FOCUS <name>)",
+        "client side in libnawah (display::Surface, pixel) and the demo app winapp; display.md part B",
+        "kernel tests screen, window_states, app_hang; screendump oracle recomputing the window hash (tools/screen.py desktop, ${SERIAL:key} host-check substitution); host tests TST-M5-LAB-TOOL (extended), TST-M5-SCREEN-TOOL"
       ],
-      "acceptance": "TST-M5-WINDOW-STATES/APP-HANG/SCREEN PASS; display.md v1",
+      "acceptance": "TST-M5-WINDOW-STATES/APP-HANG/SCREEN/SCREEN-TOOL PASS; display.md part B v1, syscall.md v1.10",
       "test_ids": [
         "TST-M5-WINDOW-STATES",
         "TST-M5-APP-HANG",
-        "TST-M5-SCREEN"
+        "TST-M5-SCREEN",
+        "TST-M5-SCREEN-TOOL"
       ],
       "commands": [
         "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5"
+        "python3 tools/project.py test --target pc-qemu --suite M5",
+        "python3 tools/project.py test --target host --suite M5"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

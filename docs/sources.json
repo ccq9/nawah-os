@@ -916,6 +916,18 @@
       ],
       "limits": "QEMU emulates no typematic repeat for the PS/2 keyboard",
       "verified": true
+    },
+    {
+      "id": "S70",
+      "title": "The FNV Non-Cryptographic Hash Algorithm (draft-eastlake-fnv) — FNV-1a 64-bit: offset basis 0xcbf29ce484222325, prime 0x100000001b3, xor then multiply per octet",
+      "url": "https://datatracker.ietf.org/doc/html/draft-eastlake-fnv",
+      "version": "IETF Internet-Draft (Eastlake, Hansen, Fowler, Noll, Vo), read 2026-10-18",
+      "accessed": "2026-10-18",
+      "supports": [
+        "the compositor's window hash (display.md §ب LIST) and tools/screen.py's recomputation use FNV-1a 64 over the R, G, B octets of the client area, row by row"
+      ],
+      "limits": "a non-cryptographic hash: it ties the lab's picture to the compositor's pixels, not to any adversary",
+      "verified": true
     }
   ]
 }

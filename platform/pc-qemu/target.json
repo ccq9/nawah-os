@@ -21,7 +21,9 @@
       "user/apps/fd_leak/Cargo.toml",
       "user/apps/sh/Cargo.toml",
       "user/apps/fbprobe/Cargo.toml",
-      "user/apps/inputd/Cargo.toml"
+      "user/apps/inputd/Cargo.toml",
+      "user/apps/displayd/Cargo.toml",
+      "user/apps/winapp/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -49,7 +51,9 @@
       "${OUT}/apps/netd.elf",
       "${OUT}/apps/sh.elf",
       "${OUT}/apps/fbprobe.elf",
-      "${OUT}/apps/inputd.elf"
+      "${OUT}/apps/inputd.elf",
+      "${OUT}/apps/displayd.elf",
+      "${OUT}/apps/winapp.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -376,6 +380,42 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/inputd",
         "${OUT}/apps/inputd.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/displayd/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/displayd",
+        "${OUT}/apps/displayd.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/winapp/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/winapp",
+        "${OUT}/apps/winapp.elf"
       ],
       [
         "cargo",
@@ -3588,6 +3628,166 @@
           ],
           "gap_s": 0.5
         }
+      },
+      {
+        "id": "TST-M5-SCREEN",
+        "test_id": "TST-M5-SCREEN",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=screen"
+        ],
+        "oracle": "with auth, input, display (the compositor, dependency input) and app (winapp, dependency display) from SVC-DA.TXT: the compositor receives the display object (2 initial handles) and the keyboard focus from the admin (`FOCUS display` at the input service); winapp's window is up (STATUS windows=1); the kernel-side client creates a 320×200 surface (VMO filled 3C8CFF) and a window: display.md's cascade puts the second window's client area at (61,85), it is focused (FOCUS event) on top (z 0), STATUS windows=2; LIST reports the rectangle and the FNV-1a hash of the composed pixels; the lab takes a screendump and tools/screen.py recomputes the same hash over that rectangle, finds winapp's orange at (29,53), the client's colour at (100,100) and the desktop background at (1000,700); the lab then presses Enter and the key reaches the client through input → display (KEY 0x1c down/up); CLOSE and DESTROY_SURFACE leave winapp's window alone (windows=1, focus back to it); clean exit, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=screen",
+          "|path=/SYSTEM/DISPLAYD.ELF|handles=2",
+          "|path=/SYSTEM/WINAPP.ELF|handles=1",
+          "|ktest|screen|status0=OK format=1 screen=1280x800 windows=1 focus=2 pointer=640,400 composed=",
+          "|surface=OK 3|window=OK 4|commit=OK|events=FOCUS 4|rect=61,85,320,200|hash=",
+          "|ktest|screen|keys=KEY 0x1c down 0 enter;KEY 0x1c up 0 enter",
+          "|ktest|screen|close=OK|destroy=OK|status=OK format=1 screen=1280x800 windows=1 focus=2 pointer=640,400 composed=",
+          "|ktest|screen|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|screen|frames_delta=0",
+          "|ktest|pass|a client's surface is on the frame where the compositor says, hashed as the host sees it, and the lab's key reached the focused client"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "monitor": {
+          "after": "|ktest|screen|status0=",
+          "commands": [
+            "screendump ${SCREEN}",
+            "sendkey ret"
+          ],
+          "gap_s": 1.5
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN}",
+            "--window",
+            "${SERIAL:rect=},${SERIAL:hash=}",
+            "--pixel",
+            "29,53,FF8800",
+            "--pixel",
+            "100,100,3C8CFF",
+            "--pixel",
+            "1000,700,1E2A38"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M5-WINDOW-STATES",
+        "test_id": "TST-M5-WINDOW-STATES",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=window_states"
+        ],
+        "oracle": "two kernel-side clients a and b of the compositor (SVC-DP.TXT): surfaces 1/2, windows 3/4 at the cascade positions (21,45) and (61,85), the newer focused; RAISE by a gives a the focus and z 0 (events FOCUS/UNFOCUS to both as display.md lists them); the lab's Alt+Tab (QEMU sendkey) moves the focus to b (b gets FOCUS 4, a UNFOCUS 3, STATUS focus=4); the lab's pointer path to a's title bar and click (mouse_move -470 -368 from the centre, mouse_button 1/0) focuses a again with the pointer at (170,32); RESIZE 200 100 tells a `RESIZED 3 200 100`, a attaches a new 200×100 surface (5) and LIST shows it; MINIMIZE moves the focus to b and RESTORE back to a on top; CLOSE and DESTROY_SURFACE leave windows=0; clean exit, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=window_states",
+          "|ktest|window_states|surfaces=OK 1/OK 2|windows=OK 3/OK 4|raise=OK|ev_a=FOCUS 3;UNFOCUS 3;FOCUS 3|ev_b=FOCUS 4;UNFOCUS 4|a=21,45,300,200,0,1,0|b=61,85,300,200,1,0,0|phase=1|ready=1",
+          "|ktest|window_states|alt_tab_b=FOCUS 4|alt_tab_a=UNFOCUS 3|status=OK format=1 screen=1280x800 windows=2 focus=4 pointer=640,400 composed=",
+          "|phase=2|ready=1",
+          "|ktest|window_states|click_a=FOCUS 3|click_b=UNFOCUS 4|status=OK format=1 screen=1280x800 windows=2 focus=3 pointer=170,32 composed=",
+          "|ktest|window_states|resize=OK|resized=RESIZED 3 200 100|surface2=OK 5|attach=OK|destroy=OK|a2=21,45,200,100,Some(5),0|minimize=OK|min_a=UNFOCUS 3|min_b=FOCUS 4|a3=1,0,0|status_b=OK format=1 screen=1280x800 windows=2 focus=4 pointer=170,32 composed=",
+          "|restore=OK|res_a=FOCUS 3|res_b=UNFOCUS 4|a4=0,1,0",
+          "|ktest|window_states|close=OK/OK|destroy=OK/OK|status=OK format=1 screen=1280x800 windows=0 focus=- pointer=170,32 composed=",
+          "|ktest|window_states|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|window_states|frames_delta=0",
+          "|ktest|pass|focus by request, Alt+Tab and click, z-order, resize with a new surface, minimise and restore all follow display.md"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|phase=1|ready=1",
+              "commands": [
+                "sendkey alt-tab"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|phase=2|ready=1",
+              "commands": [
+                "mouse_move -470 -368",
+                "mouse_button 1",
+                "mouse_button 0"
+              ],
+              "gap_s": 0.5
+            }
+          ]
+        }
+      },
+      {
+        "id": "TST-M5-APP-HANG",
+        "test_id": "TST-M5-APP-HANG",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=app_hang"
+        ],
+        "oracle": "client a of the compositor (SVC-DP.TXT) creates a 300×200 window (surface 1, window 2) and stops reading while writing 70 STATUS requests: 64 replies fill its queue and the compositor drops the other 6 (STATUS dropped=6, unresponsive=0) while still answering client b within 500 ticks; after 2000 ticks of a full queue a is unresponsive (unresponsive=1) and its title bar is red in the lab's screendump (B03030 at (121,33), the surface's colour at (100,100)); the lab's click on the window's close button (mouse_move -331 -367 to (309,33), mouse_button 1/0) removes the window at once (windows=0, no CLOSE_REQUESTED); a then reads its 64 queued replies and is served again (the mark clears on the first accepted write); clean exit, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=app_hang",
+          "|ktest|app_hang|surface=OK 1|window=OK 2|written=70|status_b=OK format=1 screen=1280x800 windows=1 focus=2 pointer=640,400 composed=",
+          " dropped=6 unresponsive=0|took=",
+          "|ktest|app_hang|status_b=OK format=1 screen=1280x800 windows=1 focus=2 pointer=640,400 composed=",
+          " dropped=6 unresponsive=1|close_button=309,33|title_probe=121,33|phase=1|ready=1",
+          "|ktest|app_hang|gone=1|status_b=OK format=1 screen=1280x800 windows=0 focus=- pointer=309,33 composed=",
+          "|ktest|app_hang|backlog=64|status_a1=OK format=1 screen=1280x800 windows=0 focus=- pointer=309,33 composed=",
+          " dropped=6 unresponsive=0|destroy=OK",
+          "|ktest|app_hang|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|app_hang|frames_delta=0",
+          "|ktest|pass|a client that stops reading never blocks the compositor, is marked unresponsive and can be closed from its decoration"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "monitor": {
+          "after": "|phase=1|ready=1",
+          "commands": [
+            "screendump ${SCREEN}",
+            "mouse_move -331 -367",
+            "mouse_button 1",
+            "mouse_button 0"
+          ],
+          "gap_s": 1.5
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN}",
+            "--pixel",
+            "121,33,B03030",
+            "--pixel",
+            "100,100,4060D0"
+          ]
+        ]
       }
     ]
   },

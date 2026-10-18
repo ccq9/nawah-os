@@ -1385,7 +1385,7 @@
     "REQ-M5-003"
    ],
    "layer": "guest",
-   "oracle": "a client's surface committed through the display service appears on the frame: the screendump shows the surface's colour at its window's position and the compositor's serial line names the same rectangle and a hash the host recomputes",
+   "oracle": "with auth, input, display (the compositor, dependency input) and app (winapp, dependency display) from SVC-DA.TXT: the compositor receives the display object (2 initial handles) and the keyboard focus from the admin (`FOCUS display` at the input service); winapp's window is up (STATUS windows=1); the kernel-side client creates a 320×200 surface (VMO filled 3C8CFF) and a window: display.md's cascade puts the second window's client area at (61,85), it is focused (FOCUS event) on top (z 0), STATUS windows=2; LIST reports the rectangle and the FNV-1a hash of the composed pixels; the lab takes a screendump and tools/screen.py recomputes the same hash over that rectangle, finds winapp's orange at (29,53), the client's colour at (100,100) and the desktop background at (1000,700); the lab then presses Enter and the key reaches the client through input → display (KEY 0x1c down/up); CLOSE and DESTROY_SURFACE leave winapp's window alone (windows=1, focus back to it); clean exit, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1435,7 +1435,7 @@
     "REQ-M5-003"
    ],
    "layer": "guest",
-   "oracle": "two windows: focus by click and by keyboard, z-order after raise, resize to a new size (the client is told, commits a new surface size), minimise/restore; the states and sizes the compositor reports match what the clients were told; no surface or frame leak after both clients exit",
+   "oracle": "two kernel-side clients a and b of the compositor (SVC-DP.TXT): surfaces 1/2, windows 3/4 at the cascade positions (21,45) and (61,85), the newer focused; RAISE by a gives a the focus and z 0 (events FOCUS/UNFOCUS to both as display.md lists them); the lab's Alt+Tab (QEMU sendkey) moves the focus to b (b gets FOCUS 4, a UNFOCUS 3, STATUS focus=4); the lab's pointer path to a's title bar and click (mouse_move -470 -368 from the centre, mouse_button 1/0) focuses a again with the pointer at (170,32); RESIZE 200 100 tells a `RESIZED 3 200 100`, a attaches a new 200×100 surface (5) and LIST shows it; MINIMIZE moves the focus to b and RESTORE back to a on top; CLOSE and DESTROY_SURFACE leave windows=0; clean exit, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1446,8 +1446,19 @@
     "REQ-M5-003"
    ],
    "layer": "guest",
-   "oracle": "a client that stops reading its channel neither blocks the compositor nor other clients: its input is dropped when its queue is full, it is marked unresponsive after the timeout, the other window keeps receiving input and updates, and closing the hung window releases its surface",
+   "oracle": "client a of the compositor (SVC-DP.TXT) creates a 300×200 window (surface 1, window 2) and stops reading while writing 70 STATUS requests: 64 replies fill its queue and the compositor drops the other 6 (STATUS dropped=6, unresponsive=0) while still answering client b within 500 ticks; after 2000 ticks of a full queue a is unresponsive (unresponsive=1) and its title bar is red in the lab's screendump (B03030 at (121,33), the surface's colour at (100,100)); the lab's click on the window's close button (mouse_move -331 -367 to (309,33), mouse_button 1/0) removes the window at once (windows=0, no CLOSE_REQUESTED); a then reads its 64 queued replies and is served again (the mark clears on the first accepted write); clean exit, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-SCREEN-TOOL",
+   "requirement_ids": [
+    "REQ-M5-003"
+   ],
+   "layer": "host_unit",
+   "oracle": "tools/screen.py desktop against a synthetic PPM: a pixel check passes on its colour and fails on another; a window hash equals the FNV-1a 64 of the rectangle's R,G,B bytes and fails when a pixel differs; a rectangle outside the image fails without crashing (2 cases, OK)",
+   "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },

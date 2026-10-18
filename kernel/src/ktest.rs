@@ -187,6 +187,9 @@ pub fn run() -> ! {
         "display_boot" => display_boot(),
         "input_route" => input_route(),
         "mouse" => mouse(),
+        "screen" => screen(),
+        "window_states" => window_states(),
+        "app_hang" => app_hang(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
@@ -4568,6 +4571,731 @@ fn mouse() -> ! {
         "mouse",
         frames0,
         "the mouse's packets reach the focus owner as pointer events in the screen's orientation",
+    )
+}
+
+// ---- WP-34: the compositor ------------------------------------------------------------------
+
+/// Window geometry of display.md §ب: the k-th window's client origin and decoration.
+const WIN_ORIGIN: i64 = 20;
+const WIN_CASCADE: i64 = 40;
+const WIN_BORDER: i64 = 1;
+const WIN_TITLE: i64 = 24;
+const WIN_BTN: i64 = 20;
+
+fn client_origin(k: i64) -> (i64, i64) {
+    (
+        WIN_ORIGIN + k * WIN_CASCADE + WIN_BORDER,
+        WIN_ORIGIN + k * WIN_CASCADE + WIN_BORDER + WIN_TITLE,
+    )
+}
+
+/// A request to the display service: events that arrive before the reply (the service sends
+/// FOCUS before answering CREATE_WINDOW, say) go to `events`.
+fn drequest(ep: &Endpoint, req: &[u8], handles: Vec<Entry>, events: &mut Vec<String>) -> String {
+    if ep
+        .write(Message {
+            bytes: req.to_vec(),
+            handles,
+        })
+        .is_err()
+    {
+        return String::from("error:K_E_SVC_WRITE");
+    }
+    let deadline = sched::ticks() + 30_000;
+    let mut reply: Option<String> = None;
+    sched::poll_until(deadline, || loop {
+        match ep.read(4096, 4, None) {
+            Ok(m) => {
+                let text = String::from_utf8_lossy(&m.bytes).into_owned();
+                if text.starts_with("OK") || text.starts_with("ERR") {
+                    reply = Some(text);
+                    return true;
+                }
+                events.push(text);
+            }
+            Err(ChannelError::PeerClosed) => {
+                reply = Some(String::from("error:K_E_SVC_PEER_CLOSED"));
+                return true;
+            }
+            Err(_) => return false,
+        }
+    });
+    reply.unwrap_or_else(|| String::from("error:K_E_SVC_TIMEOUT"))
+}
+
+/// A surface for the kernel-side client: a VMO of `w×h` pixels in the frame's `format`
+/// filled with `rgb`, and the entry that `CREATE_SURFACE` moves to the service.
+fn kernel_surface(w: u32, h: u32, format: u32, rgb: u32) -> (Arc<Vmo>, Entry) {
+    let bytes = (u64::from(w) * u64::from(h) * 4).next_multiple_of(4096);
+    let vmo = Vmo::new(bytes).unwrap_or_else(|| fail("surface VMO"));
+    let px = crate::display::pixel(format, rgb).to_le_bytes();
+    let mut page = [0u8; 4096];
+    for (i, b) in page.iter_mut().enumerate() {
+        *b = px[i % 4];
+    }
+    for f in vmo.frames() {
+        addrspace::write_frame(f.0, &page);
+    }
+    let entry = Entry {
+        object: Object::Vmo(vmo.clone()),
+        rights: Rights(Rights::READ.0 | Rights::MAP.0 | Rights::TRANSFER.0),
+    };
+    (vmo, entry)
+}
+
+/// One `W` line of `LIST`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct WinLine {
+    id: u32,
+    sid: Option<u32>,
+    x: i64,
+    y: i64,
+    w: i64,
+    h: i64,
+    minimized: bool,
+    z: u32,
+    focused: bool,
+    hash: String,
+}
+
+fn parse_windows(reply: &str) -> Vec<WinLine> {
+    reply
+        .lines()
+        .filter_map(|l| {
+            let f: Vec<&str> = l.split(' ').collect();
+            if f.len() != 11 || f[0] != "W" {
+                return None;
+            }
+            Some(WinLine {
+                id: f[1].parse().ok()?,
+                sid: f[2].parse().ok(),
+                x: f[3].parse().ok()?,
+                y: f[4].parse().ok()?,
+                w: f[5].parse().ok()?,
+                h: f[6].parse().ok()?,
+                minimized: f[7] == "minimized",
+                z: f[8].parse().ok()?,
+                focused: f[9] == "1",
+                hash: f[10].into(),
+            })
+        })
+        .collect()
+}
+
+fn status_field<'a>(status: &'a str, key: &str) -> &'a str {
+    status
+        .split(' ')
+        .find_map(|f| f.strip_prefix(key))
+        .unwrap_or("?")
+}
+
+/// The display tests' setting: manager with the manifest's services, the admin's token, the
+/// input focus on the display service, and `n` clients of it.
+fn display_env(
+    name: &'static str,
+    manifest: &'static [u8],
+    services: &[&str],
+    n: usize,
+) -> (
+    SvcHarness,
+    Arc<crate::object::token::Token>,
+    Vec<Arc<Endpoint>>,
+    u32,
+) {
+    let h = SvcHarness::start(name, manifest);
+    svc_wait_ready(&h, services, sched::ticks() + 60_000);
+    let auth = svc_connect(&h, "auth");
+    let (ra, admin) = auth_request(&auth, b"LOGIN admin lab-admin-1", None);
+    let Some(admin) = admin else {
+        kprintln!("OSX|{}|ktest|{}|admin={}", BUILD_ID, name, ra);
+        fail("admin login failed")
+    };
+    drop(auth);
+    // The session's role in M5 before WP-37: the compositor owns the keyboard focus.
+    let input = svc_connect(&h, "input");
+    let focus = cfg_request(&input, b"FOCUS display", Some(token_entry(&admin)));
+    drop(input);
+    if focus != "OK" {
+        kprintln!("OSX|{}|ktest|{}|input_focus={}", BUILD_ID, name, focus);
+        fail("the input service did not give the display the focus")
+    }
+    let mut clients = Vec::with_capacity(n);
+    for _ in 0..n {
+        clients.push(svc_connect(&h, "display"));
+    }
+    let mut ev = Vec::new();
+    let status = drequest(&clients[0], b"STATUS", Vec::new(), &mut ev);
+    let format: u32 = status_field(&status, "format=").parse().unwrap_or(99);
+    if format > 1 {
+        kprintln!("OSX|{}|ktest|{}|status={}", BUILD_ID, name, status);
+        fail("the display service did not report its pixel format")
+    }
+    (h, admin, clients, format)
+}
+
+/// Ends a display test: everything the test holds is dropped by the caller first.
+fn display_finish(name: &'static str, h: SvcHarness, pass_msg: &'static str) -> ! {
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|{}|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        name,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    cfg_balance(name, frames0, pass_msg)
+}
+
+/// TST-M5-SCREEN (REQ-M5-001, REQ-M5-003): a client's surface appears on the frame where the
+/// compositor says, with the hash the host recomputes from the screendump; the demo app's
+/// window is there too; a key from the lab travels input → display → the focused client.
+fn screen() -> ! {
+    let (h, admin, clients, format) = display_env(
+        "screen",
+        b"/SYSTEM/SVC-DA.TXT",
+        &["auth", "input", "display", "app"],
+        1,
+    );
+    let d = &clients[0];
+    let mut ev = Vec::new();
+    let status0 = drequest(d, b"STATUS", Vec::new(), &mut ev);
+    let (vmo, entry) = kernel_surface(320, 200, format, 0x3C8CFF);
+    let r_surface = drequest(d, b"CREATE_SURFACE 320 200", alloc::vec![entry], &mut ev);
+    let sid = r_surface.strip_prefix("OK ").unwrap_or("0");
+    let r_window = drequest(
+        d,
+        alloc::format!("CREATE_WINDOW {} test window", sid).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    let wid = r_window.strip_prefix("OK ").unwrap_or("0");
+    let r_commit = drequest(
+        d,
+        alloc::format!("COMMIT {} 0 0 320 200", sid).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    // Past the blit period, the composed picture is on the frame.
+    sched::poll_until(sched::ticks() + 40, || false);
+    let list = parse_windows(&drequest(d, b"LIST", Vec::new(), &mut ev));
+    let status = drequest(d, b"STATUS", Vec::new(), &mut ev);
+    let win = list.first().cloned().unwrap_or(WinLine {
+        id: 0,
+        sid: None,
+        x: -1,
+        y: -1,
+        w: 0,
+        h: 0,
+        minimized: true,
+        z: 9,
+        focused: false,
+        hash: String::new(),
+    });
+    // The demo app's window came first (k = 0), ours second (k = 1).
+    let (ex, ey) = client_origin(1);
+    kprintln!(
+        "OSX|{}|ktest|screen|status0={}|surface={}|window={}|commit={}|events={}|rect={},{},{},{}|hash={}|status={}|ready=1",
+        BUILD_ID,
+        status0,
+        r_surface,
+        r_window,
+        r_commit,
+        ev.join(";"),
+        win.x,
+        win.y,
+        win.w,
+        win.h,
+        win.hash,
+        status
+    );
+    if status_field(&status0, "windows=") != "1"
+        || !r_surface.starts_with("OK ")
+        || !r_window.starts_with("OK ")
+        || r_commit != "OK"
+        || (win.x, win.y, win.w, win.h) != (ex, ey, 320, 200)
+        || !win.focused
+        || win.z != 0
+        || status_field(&status, "windows=") != "2"
+        || ev != [alloc::format!("FOCUS {}", wid)]
+    {
+        fail("the window is not where display.md says, or the demo app's is missing")
+    }
+    // The lab takes its screendump and presses Enter: the key reaches us through input and
+    // display, as the focused window's owner.
+    let keys = read_events(d, 2, sched::ticks() + 60_000);
+    kprintln!("OSX|{}|ktest|screen|keys={}", BUILD_ID, keys.join(";"));
+    if keys != ["KEY 0x1c down 0 enter", "KEY 0x1c up 0 enter"] {
+        fail("the lab's key did not reach the focused client through input and display")
+    }
+    let r_close = drequest(
+        d,
+        alloc::format!("CLOSE {}", wid).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    let r_destroy = drequest(
+        d,
+        alloc::format!("DESTROY_SURFACE {}", sid).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    let status2 = drequest(d, b"STATUS", Vec::new(), &mut ev);
+    kprintln!(
+        "OSX|{}|ktest|screen|close={}|destroy={}|status={}",
+        BUILD_ID,
+        r_close,
+        r_destroy,
+        status2
+    );
+    if r_close != "OK" || r_destroy != "OK" || status_field(&status2, "windows=") != "1" {
+        fail("closing the window did not leave the demo app's alone")
+    }
+    drop((
+        status0, r_surface, r_window, r_commit, list, status, keys, win,
+    ));
+    drop((r_close, r_destroy, status2, ev, vmo, clients, admin));
+    display_finish(
+        "screen",
+        h,
+        "a client's surface is on the frame where the compositor says, hashed as the host sees it, and the lab's key reached the focused client",
+    )
+}
+
+/// TST-M5-WINDOW-STATES (REQ-M5-003): focus by request, by Alt+Tab and by click; z-order
+/// after a raise; resize (the client is told and attaches a new surface); minimise and
+/// restore; close; nothing left behind.
+fn window_states() -> ! {
+    let (h, admin, clients, format) = display_env(
+        "window_states",
+        b"/SYSTEM/SVC-DP.TXT",
+        &["auth", "input", "display"],
+        2,
+    );
+    let (a, b) = (&clients[0], &clients[1]);
+    let (mut ev_a, mut ev_b) = (Vec::new(), Vec::new());
+    let status0 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    if status_field(&status0, "screen=") != "1280x800" {
+        kprintln!("OSX|{}|ktest|window_states|status={}", BUILD_ID, status0);
+        fail("the lab's pointer steps are written for a 1280x800 frame")
+    }
+    let (vmo_a, entry_a) = kernel_surface(300, 200, format, 0xD04040);
+    let (vmo_b, entry_b) = kernel_surface(300, 200, format, 0x40B060);
+    let sa = drequest(
+        a,
+        b"CREATE_SURFACE 300 200",
+        alloc::vec![entry_a],
+        &mut ev_a,
+    );
+    let sb = drequest(
+        b,
+        b"CREATE_SURFACE 300 200",
+        alloc::vec![entry_b],
+        &mut ev_b,
+    );
+    let (sa_id, sb_id): (String, String) = (
+        sa.strip_prefix("OK ").unwrap_or("0").into(),
+        sb.strip_prefix("OK ").unwrap_or("0").into(),
+    );
+    let wa = drequest(
+        a,
+        alloc::format!("CREATE_WINDOW {} a", sa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let wb = drequest(
+        b,
+        alloc::format!("CREATE_WINDOW {} b", sb_id).as_bytes(),
+        Vec::new(),
+        &mut ev_b,
+    );
+    let (wa_id, wb_id): (String, String) = (
+        wa.strip_prefix("OK ").unwrap_or("0").into(),
+        wb.strip_prefix("OK ").unwrap_or("0").into(),
+    );
+    // Creating b took the focus from a.
+    let _ = read_events(a, 1, sched::ticks() + 200)
+        .into_iter()
+        .map(|e| ev_a.push(e))
+        .count();
+    // 1. a raises itself: focus and the top of the stack.
+    let r_raise = drequest(
+        a,
+        alloc::format!("RAISE {}", wa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let _ = read_events(a, 1, sched::ticks() + 200)
+        .into_iter()
+        .map(|e| ev_a.push(e))
+        .count();
+    let _ = read_events(b, 1, sched::ticks() + 200)
+        .into_iter()
+        .map(|e| ev_b.push(e))
+        .count();
+    let la = parse_windows(&drequest(a, b"LIST", Vec::new(), &mut ev_a));
+    let lb = parse_windows(&drequest(b, b"LIST", Vec::new(), &mut ev_b));
+    let (oa, ob) = (client_origin(0), client_origin(1));
+    kprintln!(
+        "OSX|{}|ktest|window_states|surfaces={}/{}|windows={}/{}|raise={}|ev_a={}|ev_b={}|a={}|b={}|phase=1|ready=1",
+        BUILD_ID,
+        sa,
+        sb,
+        wa,
+        wb,
+        r_raise,
+        ev_a.join(";"),
+        ev_b.join(";"),
+        la.first().map_or(String::new(), |w| alloc::format!("{},{},{},{},{},{},{}", w.x, w.y, w.w, w.h, w.z, u8::from(w.focused), u8::from(w.minimized))),
+        lb.first().map_or(String::new(), |w| alloc::format!("{},{},{},{},{},{},{}", w.x, w.y, w.w, w.h, w.z, u8::from(w.focused), u8::from(w.minimized))),
+    );
+    let geom = |l: &[WinLine], o: (i64, i64)| {
+        l.len() == 1 && (l[0].x, l[0].y, l[0].w, l[0].h) == (o.0, o.1, 300, 200)
+    };
+    if !geom(&la, oa)
+        || !geom(&lb, ob)
+        || r_raise != "OK"
+        || !(la[0].z == 0 && la[0].focused && lb[0].z == 1 && !lb[0].focused)
+        || ev_a
+            != [
+                alloc::format!("FOCUS {}", wa_id),
+                alloc::format!("UNFOCUS {}", wa_id),
+                alloc::format!("FOCUS {}", wa_id),
+            ]
+        || ev_b
+            != [
+                alloc::format!("FOCUS {}", wb_id),
+                alloc::format!("UNFOCUS {}", wb_id),
+            ]
+    {
+        fail("creation, raise or the focus events did not follow display.md")
+    }
+    ev_a.clear();
+    ev_b.clear();
+    // 2. The lab presses Alt+Tab: the focus cycles to b.
+    let fb = read_events(b, 1, sched::ticks() + 60_000);
+    let ua = read_events(a, 1, sched::ticks() + 2_000);
+    let status1 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    kprintln!(
+        "OSX|{}|ktest|window_states|alt_tab_b={}|alt_tab_a={}|status={}|phase=2|ready=1",
+        BUILD_ID,
+        fb.join(";"),
+        ua.join(";"),
+        status1
+    );
+    if fb != [alloc::format!("FOCUS {}", wb_id)]
+        || ua != [alloc::format!("UNFOCUS {}", wa_id)]
+        || status_field(&status1, "focus=") != wb_id
+    {
+        fail("Alt+Tab did not move the focus to the next window")
+    }
+    // 3. The lab moves the pointer onto a's title bar and clicks: a is focused again.
+    let fa = read_events(a, 1, sched::ticks() + 60_000);
+    let ub = read_events(b, 1, sched::ticks() + 2_000);
+    let status2 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    kprintln!(
+        "OSX|{}|ktest|window_states|click_a={}|click_b={}|status={}",
+        BUILD_ID,
+        fa.join(";"),
+        ub.join(";"),
+        status2
+    );
+    if fa != [alloc::format!("FOCUS {}", wa_id)]
+        || ub != [alloc::format!("UNFOCUS {}", wb_id)]
+        || status_field(&status2, "focus=") != wa_id
+        || status_field(&status2, "pointer=") != "170,32"
+    {
+        fail("the click on the title bar did not focus the window, or the pointer is elsewhere")
+    }
+    // 4. Resize: a is told, attaches a new surface of the new size.
+    let r_resize = drequest(
+        a,
+        alloc::format!("RESIZE {} 200 100", wa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let resized = read_events(a, 1, sched::ticks() + 2_000);
+    let (vmo_a2, entry_a2) = kernel_surface(200, 100, format, 0xD04040);
+    let sa2 = drequest(
+        a,
+        b"CREATE_SURFACE 200 100",
+        alloc::vec![entry_a2],
+        &mut ev_a,
+    );
+    let sa2_id: String = sa2.strip_prefix("OK ").unwrap_or("0").into();
+    let r_attach = drequest(
+        a,
+        alloc::format!("ATTACH {} {}", wa_id, sa2_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let r_destroy = drequest(
+        a,
+        alloc::format!("DESTROY_SURFACE {}", sa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let la2 = parse_windows(&drequest(a, b"LIST", Vec::new(), &mut ev_a));
+    // 5. Minimise: the focus goes to b; restore: back to a.
+    let r_min = drequest(
+        a,
+        alloc::format!("MINIMIZE {}", wa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let min_a = read_events(a, 1, sched::ticks() + 2_000);
+    let min_b = read_events(b, 1, sched::ticks() + 2_000);
+    let la3 = parse_windows(&drequest(a, b"LIST", Vec::new(), &mut ev_a));
+    let status3 = drequest(b, b"STATUS", Vec::new(), &mut ev_b);
+    let r_restore = drequest(
+        a,
+        alloc::format!("RESTORE {}", wa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let res_a = read_events(a, 1, sched::ticks() + 2_000);
+    let res_b = read_events(b, 1, sched::ticks() + 2_000);
+    let la4 = parse_windows(&drequest(a, b"LIST", Vec::new(), &mut ev_a));
+    kprintln!(
+        "OSX|{}|ktest|window_states|resize={}|resized={}|surface2={}|attach={}|destroy={}|a2={}|minimize={}|min_a={}|min_b={}|a3={}|status_b={}|restore={}|res_a={}|res_b={}|a4={}",
+        BUILD_ID,
+        r_resize,
+        resized.join(";"),
+        sa2,
+        r_attach,
+        r_destroy,
+        la2.first().map_or(String::new(), |w| alloc::format!("{},{},{},{},{:?},{}", w.x, w.y, w.w, w.h, w.sid, u8::from(w.minimized))),
+        r_min,
+        min_a.join(";"),
+        min_b.join(";"),
+        la3.first().map_or(String::new(), |w| alloc::format!("{},{},{}", u8::from(w.minimized), u8::from(w.focused), w.z)),
+        status3,
+        r_restore,
+        res_a.join(";"),
+        res_b.join(";"),
+        la4.first().map_or(String::new(), |w| alloc::format!("{},{},{}", u8::from(w.minimized), u8::from(w.focused), w.z)),
+    );
+    let sa2_num: u32 = sa2_id.parse().unwrap_or(0);
+    if r_resize != "OK"
+        || resized != [alloc::format!("RESIZED {} 200 100", wa_id)]
+        || !sa2.starts_with("OK ")
+        || r_attach != "OK"
+        || r_destroy != "OK"
+        || !(la2.len() == 1 && (la2[0].w, la2[0].h, la2[0].sid) == (200, 100, Some(sa2_num)))
+        || r_min != "OK"
+        || min_a != [alloc::format!("UNFOCUS {}", wa_id)]
+        || min_b != [alloc::format!("FOCUS {}", wb_id)]
+        || !(la3.len() == 1 && la3[0].minimized && !la3[0].focused)
+        || status_field(&status3, "focus=") != wb_id
+        || r_restore != "OK"
+        || res_a != [alloc::format!("FOCUS {}", wa_id)]
+        || res_b != [alloc::format!("UNFOCUS {}", wb_id)]
+        || !(la4.len() == 1 && !la4[0].minimized && la4[0].focused && la4[0].z == 0)
+    {
+        fail("resize, minimise or restore did not do what display.md says")
+    }
+    // 6. Close both; nothing remains.
+    let ca = drequest(
+        a,
+        alloc::format!("CLOSE {}", wa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let cb = drequest(
+        b,
+        alloc::format!("CLOSE {}", wb_id).as_bytes(),
+        Vec::new(),
+        &mut ev_b,
+    );
+    let da = drequest(
+        a,
+        alloc::format!("DESTROY_SURFACE {}", sa2_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let db = drequest(
+        b,
+        alloc::format!("DESTROY_SURFACE {}", sb_id).as_bytes(),
+        Vec::new(),
+        &mut ev_b,
+    );
+    let status4 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    kprintln!(
+        "OSX|{}|ktest|window_states|close={}/{}|destroy={}/{}|status={}",
+        BUILD_ID,
+        ca,
+        cb,
+        da,
+        db,
+        status4
+    );
+    if ca != "OK"
+        || cb != "OK"
+        || da != "OK"
+        || db != "OK"
+        || status_field(&status4, "windows=") != "0"
+    {
+        fail("closing did not remove the windows")
+    }
+    drop((status0, sa, sb, sa_id, sb_id, wa, wb, wa_id, wb_id, r_raise));
+    drop((
+        la, lb, fb, ua, status1, fa, ub, status2, r_resize, resized, sa2, sa2_id, r_attach,
+    ));
+    drop((
+        r_destroy, la2, r_min, min_a, min_b, la3, status3, r_restore, res_a, res_b, la4,
+    ));
+    drop((
+        ca, cb, da, db, status4, ev_a, ev_b, vmo_a, vmo_b, vmo_a2, clients, admin,
+    ));
+    display_finish(
+        "window_states",
+        h,
+        "focus by request, Alt+Tab and click, z-order, resize with a new surface, minimise and restore all follow display.md",
+    )
+}
+
+/// TST-M5-APP-HANG (REQ-M5-003): a client that stops reading never blocks the compositor;
+/// its events are dropped and counted; after HANG_TICKS it is unresponsive (red title bar in
+/// the lab's screendump); the lab's click on its close button removes the window at once.
+fn app_hang() -> ! {
+    let (h, admin, clients, format) = display_env(
+        "app_hang",
+        b"/SYSTEM/SVC-DP.TXT",
+        &["auth", "input", "display"],
+        2,
+    );
+    let (a, b) = (&clients[0], &clients[1]);
+    let (mut ev_a, mut ev_b) = (Vec::new(), Vec::new());
+    let status0 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    if status_field(&status0, "screen=") != "1280x800" {
+        kprintln!("OSX|{}|ktest|app_hang|status={}", BUILD_ID, status0);
+        fail("the lab's pointer steps are written for a 1280x800 frame")
+    }
+    let (vmo_a, entry_a) = kernel_surface(300, 200, format, 0x4060D0);
+    let sa = drequest(
+        a,
+        b"CREATE_SURFACE 300 200",
+        alloc::vec![entry_a],
+        &mut ev_a,
+    );
+    let sa_id: String = sa.strip_prefix("OK ").unwrap_or("0").into();
+    let wa = drequest(
+        a,
+        alloc::format!("CREATE_WINDOW {} hung", sa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let wa_id: String = wa.strip_prefix("OK ").unwrap_or("0").into();
+    // a stops reading and floods its own queue with requests: 64 replies fit, the rest of
+    // the compositor's writes are dropped — and b is still served at once.
+    let mut written = 0;
+    for _ in 0..70 {
+        if a.write(Message {
+            bytes: b"STATUS".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_ok()
+        {
+            written += 1;
+        }
+    }
+    let t0 = sched::ticks();
+    let status_b = drequest(b, b"STATUS", Vec::new(), &mut ev_b);
+    let took = sched::ticks() - t0;
+    kprintln!(
+        "OSX|{}|ktest|app_hang|surface={}|window={}|written={}|status_b={}|took={}",
+        BUILD_ID,
+        sa,
+        wa,
+        written,
+        status_b,
+        took
+    );
+    if !sa.starts_with("OK ")
+        || !wa.starts_with("OK ")
+        || written != 70
+        || status_field(&status_b, "dropped=") != "6"
+        || status_field(&status_b, "unresponsive=") != "0"
+        || took >= 500
+    {
+        fail("the compositor waited on the hung client, or did not count the drops")
+    }
+    // After HANG_TICKS of a full queue the client is unresponsive.
+    sched::poll_until(sched::ticks() + 2_200, || false);
+    let status_b2 = drequest(b, b"STATUS", Vec::new(), &mut ev_b);
+    // The close button of the first window (k = 0, 300 wide): its centre on the screen.
+    let (ox, oy) = client_origin(0);
+    let (bx, by) = (
+        ox + 300 - WIN_BTN - 2 + WIN_BTN / 2,
+        oy - WIN_TITLE + 2 + WIN_BTN / 2,
+    );
+    kprintln!(
+        "OSX|{}|ktest|app_hang|status_b={}|close_button={},{}|title_probe={},{}|phase=1|ready=1",
+        BUILD_ID,
+        status_b2,
+        bx,
+        by,
+        ox + 100,
+        oy - WIN_TITLE / 2
+    );
+    if status_field(&status_b2, "unresponsive=") != "1" {
+        fail("the hung client was not marked unresponsive after HANG_TICKS")
+    }
+    // The lab takes its screendump (red title bar) and clicks the close button: the window
+    // goes at once, no CLOSE_REQUESTED for a client that cannot read it.
+    let gone = sched::poll_until(sched::ticks() + 60_000, || {
+        let s = drequest(b, b"STATUS", Vec::new(), &mut ev_b);
+        status_field(&s, "windows=") == "0"
+    });
+    let status_b3 = drequest(b, b"STATUS", Vec::new(), &mut ev_b);
+    kprintln!(
+        "OSX|{}|ktest|app_hang|gone={}|status_b={}",
+        BUILD_ID,
+        u8::from(gone),
+        status_b3
+    );
+    if !gone || status_field(&status_b3, "pointer=") != alloc::format!("{},{}", bx, by) {
+        fail("the click on the close button did not remove the unresponsive window")
+    }
+    // a wakes up: its 64 queued replies are still there, then it is served again (the first
+    // accepted write clears the mark, so the second STATUS shows it).
+    let backlog = read_events(a, 64, sched::ticks() + 5_000);
+    let status_a1 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    let status_a = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    let r_destroy = drequest(
+        a,
+        alloc::format!("DESTROY_SURFACE {}", sa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    kprintln!(
+        "OSX|{}|ktest|app_hang|backlog={}|status_a1={}|status_a={}|destroy={}",
+        BUILD_ID,
+        backlog.len(),
+        status_a1,
+        status_a,
+        r_destroy
+    );
+    if backlog.len() != 64
+        || status_field(&status_a1, "unresponsive=") != "1"
+        || status_field(&status_a, "unresponsive=") != "0"
+        || r_destroy != "OK"
+    {
+        fail("the client that read again was not served again")
+    }
+    drop((
+        status0, sa, sa_id, wa, wa_id, status_b, status_b2, status_b3, backlog, status_a1,
+    ));
+    drop((status_a, r_destroy));
+    drop((ev_a, ev_b, vmo_a, clients, admin));
+    display_finish(
+        "app_hang",
+        h,
+        "a client that stops reading never blocks the compositor, is marked unresponsive and can be closed from its decoration",
     )
 }
 

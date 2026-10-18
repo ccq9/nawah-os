@@ -87,6 +87,15 @@ class MonitorSteps(unittest.TestCase):
         self.assertEqual(got, ["sendkey a"])
         self.assertEqual(out.count("# monitor: sent"), 1)
 
+    def test_serial_substitution(self):
+        text = "OSX|x|ktest|screen|rect=61,85,320,200|hash=0123456789abcdef|ready=1\nnext line\n"
+        self.assertEqual(project.serial_value(text, "hash="), "0123456789abcdef")
+        self.assertEqual(project.serial_value(text, "rect="), "61,85,320,200")
+        self.assertEqual(project.serial_value(text, "absent="), "")
+        arg = project.substitute_host_arg("${SERIAL:rect=},${SERIAL:hash=}", "/d", "bid", "/s.ppm", text)
+        self.assertEqual(arg, "61,85,320,200,0123456789abcdef")
+        self.assertEqual(project.substitute_host_arg("${SCREEN}", "/d", "bid", "/s.ppm", text), "/s.ppm")
+
     def test_timeout_kills_qemu(self):
         rc, got, _, err = self.drive({"after": "|never|", "commands": ["sendkey a"]}, [("boot", 5.0)], timeout=2)
         self.assertEqual(rc, 124)

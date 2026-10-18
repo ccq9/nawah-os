@@ -1,0 +1,5 @@
+# TST-M5-SCREEN: the compositor and the demo window application (winapp) that depends on it
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 never 0 0
+app /SYSTEM/WINAPP.ELF display 5000 never 0 0

@@ -1,0 +1,15 @@
+[package]
+name = "displayd"
+version = "0.1.0"
+edition = "2021"
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "displayd"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+libnawah = { path = "../../libnawah" }

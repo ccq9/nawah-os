@@ -4,6 +4,12 @@ QEMU `screendump` (binary PPM, P6) and checks it against what the kernel declare
 Independent of the kernel's own read-back: the picture comes from the emulator's VGA memory.
 
   screen.py probe IMG --build-id ID [--corner N] [--cell N] [--square X,Y,RGB ...]
+  screen.py desktop IMG [--pixel X,Y,RRGGBB ...] [--window X,Y,W,H,HASH ...]
+
+`desktop` (WP-34, display.md part B): every `--pixel` has its colour (±8 per channel) and every
+`--window` rectangle hashes (FNV-1a 64 over R, G, B bytes row by row) to HASH — the value the
+compositor reported for the same pixels of its back buffer, so the frame carries what it
+composed.
 
 Checks: the frame's size is printed; the four 32×32 corners carry red, green, blue and white;
 the build-id bar (one 16×16 cell per hex digit at x = 2·corner on the top edge) decodes to
@@ -63,9 +69,46 @@ def nearest_digit(c):
     return best if dist is not None and dist <= 24 else None
 
 
+def fnv1a64(img, x, y, w, h):
+    """FNV-1a 64 over the rectangle's R, G, B bytes, row by row (the compositor's hash)."""
+    iw, ih, px = img
+    if x < 0 or y < 0 or x + w > iw or y + h > ih:
+        return None
+    v = 0xcbf29ce484222325
+    for yy in range(y, y + h):
+        o = (yy * iw + x) * 3
+        for b in px[o:o + w * 3]:
+            v = ((v ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+    return v
+
+
+def desktop(a):
+    img = read_ppm(a.image)
+    w, h, _ = img
+    pixels, windows = [], []
+    for spec in a.pixel:
+        x, y, colour = spec.split(",")
+        x, y, colour = int(x), int(y), int(colour, 16)
+        v = rgb_at(img, x, y)
+        pixels.append({"x": x, "y": y, "expected": "%06x" % colour, "seen": None if v is None else "%06x" % v, "ok": near(v, colour)})
+    for spec in a.window:
+        x, y, ww, wh, want = spec.split(",")
+        x, y, ww, wh = int(x), int(y), int(ww), int(wh)
+        got = fnv1a64(img, x, y, ww, wh)
+        windows.append({"x": x, "y": y, "w": ww, "h": wh, "expected": want.lower(), "seen": None if got is None else "%016x" % got,
+                        "ok": got is not None and "%016x" % got == want.lower()})
+    ok = all(p["ok"] for p in pixels) and all(wn["ok"] for wn in windows)
+    print(json.dumps({"width": w, "height": h, "pixels": pixels, "windows": windows, "ok": ok}, indent=1))
+    return 0 if ok else 1
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
+    dp = sub.add_parser("desktop")
+    dp.add_argument("image")
+    dp.add_argument("--pixel", action="append", default=[], help="X,Y,RRGGBB of one pixel")
+    dp.add_argument("--window", action="append", default=[], help="X,Y,W,H,HASH of a client area")
     p = sub.add_parser("probe")
     p.add_argument("image")
     p.add_argument("--build-id", required=True)
@@ -73,6 +116,8 @@ def main():
     p.add_argument("--cell", type=int, default=16)
     p.add_argument("--square", action="append", default=[], help="X,Y,RRGGBB of a 64x64 square")
     a = ap.parse_args()
+    if a.cmd == "desktop":
+        return desktop(a)
     img = read_ppm(a.image)
     w, h, _ = img
     c = a.corner

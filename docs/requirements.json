@@ -1402,9 +1402,10 @@
       "acceptance": "window_states/app_hang",
       "test_ids": [
         "TST-M5-WINDOW-STATES",
-        "TST-M5-APP-HANG"
+        "TST-M5-APP-HANG",
+        "TST-M5-SCREEN-TOOL"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "implemented_untested",
       "evidence_refs": []
     },
     {

@@ -56,6 +56,7 @@ pub const SYS_VMO_MAP: u64 = 38;
 pub const SYS_VMO_UNMAP: u64 = 39;
 /// v1.8 (WP-33, input.md v2): the mouse.
 pub const SYS_MOUSE_READ: u64 = 40;
+pub const SYS_VMO_SIZE: u64 = 41;
 
 pub const ERR_NOSYS: i64 = -1;
 pub const ERR_INVALID: i64 = -2;
@@ -773,7 +774,7 @@ pub fn vmo_unmap(addr: u64) -> i64 {
     syscall6(SYS_VMO_UNMAP, addr, 0, 0, 0, 0, 0)
 }
 
-/// `mouse_read` (v1.8, input.md v2): bytes of PS/2 mouse packets waiting; `ERR_SHOULD_WAIT`
+/// `mouse_read` (v1.9, input.md v2): bytes of PS/2 mouse packets waiting; `ERR_SHOULD_WAIT`
 /// when none.
 pub fn mouse_read(h: Handle, buf: &mut [u8]) -> Result<usize, i64> {
     let r = syscall6(
@@ -789,5 +790,109 @@ pub fn mouse_read(h: Handle, buf: &mut [u8]) -> Result<usize, i64> {
         Err(r)
     } else {
         Ok(r as usize)
+    }
+}
+
+/// `vmo_size` (v1.10, ipc.md §3): the VMO's size in bytes.
+pub fn vmo_size(h: Handle) -> Result<u64, i64> {
+    let r = syscall6(SYS_VMO_SIZE, u64::from(h), 0, 0, 0, 0, 0);
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as u64)
+    }
+}
+
+/// The display client's side (display.md §ب, WP-34): surfaces are VMOs of 32-bit pixels in
+/// the frame's format, mapped writable here and shared read-only with the display service.
+pub mod display {
+    use super::{handle_close, handle_duplicate, rights, vmo_create, vmo_map, vmo_unmap, Handle};
+
+    pub const FORMAT_RGBX: u32 = 0;
+    pub const FORMAT_BGRX: u32 = 1;
+
+    /// A pixel of the frame's format from `0xRRGGBB`.
+    pub fn pixel(format: u32, rgb: u32) -> u32 {
+        let (r, g, b) = ((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+        if format == FORMAT_RGBX {
+            r | (g << 8) | (b << 16)
+        } else {
+            b | (g << 8) | (r << 16)
+        }
+    }
+
+    /// A surface: `w × h` pixels in a VMO this process maps writable.
+    pub struct Surface {
+        pub vmo: Handle,
+        pub addr: u64,
+        pub w: u32,
+        pub h: u32,
+        pub format: u32,
+    }
+
+    impl Surface {
+        /// Creates the VMO (`w*h*4` bytes rounded to pages, at most 1 MiB) and maps it.
+        pub fn new(w: u32, h: u32, format: u32) -> Result<Surface, i64> {
+            if w == 0 || h == 0 || w > 4096 || h > 4096 {
+                return Err(super::ERR_INVALID);
+            }
+            let bytes = (u64::from(w) * u64::from(h) * 4).next_multiple_of(4096);
+            let vmo = vmo_create(bytes)?;
+            match vmo_map(vmo, super::PROT_READ | super::PROT_WRITE) {
+                Ok(addr) => Ok(Surface {
+                    vmo,
+                    addr,
+                    w,
+                    h,
+                    format,
+                }),
+                Err(e) => {
+                    handle_close(vmo);
+                    Err(e)
+                }
+            }
+        }
+
+        /// A handle the display service can map read-only (`CREATE_SURFACE` moves it).
+        pub fn share(&self) -> Result<Handle, i64> {
+            handle_duplicate(self.vmo, rights::READ | rights::MAP | rights::TRANSFER)
+        }
+
+        pub fn put(&self, x: u32, y: u32, rgb: u32) {
+            if x < self.w && y < self.h {
+                let i = (y * self.w + x) as usize;
+                // SAFETY: inside the mapping (`i < w*h`, the VMO holds `w*h` pixels).
+                unsafe {
+                    (self.addr as *mut u32)
+                        .add(i)
+                        .write(pixel(self.format, rgb))
+                };
+            }
+        }
+
+        pub fn fill_rect(&self, x: u32, y: u32, w: u32, h: u32, rgb: u32) {
+            let px = pixel(self.format, rgb);
+            let (x1, y1) = (
+                x.saturating_add(w).min(self.w),
+                y.saturating_add(h).min(self.h),
+            );
+            for yy in y.min(self.h)..y1 {
+                for xx in x.min(self.w)..x1 {
+                    let i = (yy * self.w + xx) as usize;
+                    // SAFETY: inside the mapping (both coordinates clipped to the surface).
+                    unsafe { (self.addr as *mut u32).add(i).write(px) };
+                }
+            }
+        }
+
+        pub fn fill(&self, rgb: u32) {
+            self.fill_rect(0, 0, self.w, self.h, rgb);
+        }
+
+        /// Unmaps and closes the VMO (the service keeps its own mapping until `DESTROY_SURFACE`).
+        pub fn destroy(self) {
+            vmo_unmap(self.addr);
+            handle_close(self.vmo);
+        }
     }
 }

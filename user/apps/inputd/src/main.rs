@@ -223,11 +223,15 @@ impl Input {
         (0..MAX_CLIENTS).find(|&i| self.clients[i].chan != 0 && self.clients[i].id == id)
     }
 
-    fn session_client(&self) -> Option<usize> {
+    fn client_by_name(&self, name: &[u8]) -> Option<usize> {
         (0..MAX_CLIENTS).find(|&i| {
             let c = &self.clients[i];
-            c.chan != 0 && &c.name[..c.name_len] == b"session"
+            c.chan != 0 && &c.name[..c.name_len] == name
         })
+    }
+
+    fn session_client(&self) -> Option<usize> {
+        self.client_by_name(b"session")
     }
 
     /// Delivers one event to client `ci`; a full queue drops it (counted), a closed peer
@@ -394,7 +398,8 @@ impl Input {
                 out.num(i64::from(c.id));
             }
             b"FOCUS" => {
-                let Some(id) = fields.next().and_then(parse_u32) else {
+                // By id, or (v2.1, WP-34) by registered name.
+                let Some(target) = fields.next() else {
                     out.put(b"ERR BAD_REQUEST");
                     return;
                 };
@@ -402,11 +407,15 @@ impl Input {
                     out.put(b"ERR ACCESS");
                     return;
                 }
-                if self.client_by_id(id).is_none() {
+                let found = match parse_u32(target) {
+                    Some(id) => self.client_by_id(id),
+                    None => self.client_by_name(target),
+                };
+                let Some(ci) = found else {
                     out.put(b"ERR UNKNOWN");
                     return;
-                }
-                self.focus = Some(id);
+                };
+                self.focus = Some(self.clients[ci].id);
                 out.put(b"OK");
             }
             b"LAYOUT" => {

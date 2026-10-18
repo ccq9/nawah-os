@@ -69,8 +69,11 @@ pub const SYS_DISPLAY_INFO: u64 = 36;
 pub const SYS_DISPLAY_MAP: u64 = 37;
 pub const SYS_VMO_MAP: u64 = 38;
 pub const SYS_VMO_UNMAP: u64 = 39;
-/// v1.8 (WP-33, input.md v2): the mouse.
+/// v1.9 (WP-33, input.md v2): the mouse.
 pub const SYS_MOUSE_READ: u64 = 40;
+/// v1.10 (WP-34, display.md §ب): the size of a VMO, so a service can check a client's
+/// surface against the pixels it declares before reading the mapping.
+pub const SYS_VMO_SIZE: u64 = 41;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -362,6 +365,18 @@ fn handle_rights(h: Handle) -> Result<i64, i64> {
     Ok(i64::from(r.0))
 }
 
+/// `vmo_size(h)` (v1.10, ipc.md §3): the VMO's size in bytes; any rights (type before
+/// rights: `ERR_WRONG_TYPE` for another object).
+fn sys_vmo_size(h: Handle) -> Result<i64, i64> {
+    let table = table()?;
+    let t = table.lock();
+    let e = t.get(h, Rights::NONE).map_err(handle_err)?;
+    match &e.object {
+        Object::Vmo(v) => Ok(v.size() as i64),
+        _ => Err(ERR_WRONG_TYPE),
+    }
+}
+
 fn fs_err(e: FsError) -> i64 {
     match e {
         FsError::NotFound => ERR_NOT_FOUND,
@@ -563,6 +578,7 @@ pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
         SYS_VMO_MAP => flat(sys_vmo_map(args[0] as Handle, args[1])),
         SYS_VMO_UNMAP => flat(sys_vmo_unmap(args[0])),
         SYS_MOUSE_READ => flat(sys_mouse_read(args[0] as Handle, args[1], args[2])),
+        SYS_VMO_SIZE => flat(sys_vmo_size(args[0] as Handle)),
         _ => ERR_NOSYS,
     }
 }

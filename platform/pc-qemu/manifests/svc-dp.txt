@@ -1,0 +1,5 @@
+# TST-M5-WINDOW-STATES / TST-M5-APP-HANG: the compositor with its input dependency and auth
+# (the admin token that gives the compositor the keyboard focus, as the session will in WP-37)
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 never 0 0
