@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""TST-M2-MUTANTS (REQ-M2-014) and TST-M3-MUTANTS (REQ-M3-010, WP-22): seeded-defect mutation
-testing of the kernel against the guest suites — M01..M29 cover arch/, mm/ and sync (M1/M2
-suites); M30 onwards cover the M3 modules (scheduler, objects, syscalls, ELF loader, MMIO window,
-TLB shootdown, SMP placement, virtio-blk, FAT32, VFS) and are killed by M3 cases, including the
-host checks a case runs on the disk image (`--stage` selects one group).
+"""TST-M2-MUTANTS (REQ-M2-014), TST-M3-MUTANTS (REQ-M3-010, WP-22) and TST-M4-MUTANTS
+(REQ-M4-010, WP-31): seeded-defect mutation testing of the kernel and the system services
+against the guest suites — M01..M29 cover arch/, mm/ and sync (M1/M2 suites); M30..M49 cover the
+M3 modules (scheduler, objects, syscalls, ELF loader, MMIO window, TLB shootdown, SMP placement,
+virtio-blk, FAT32, VFS) and are killed by M3 cases, including the host checks a case runs on the
+disk image; M50 onwards cover the M4 modules (process/wait syscalls, tokens, device objects and
+polling, system_info, dir_list, and the user-space services svcmgr, authd, configd, netd, sh)
+and are killed by M4 cases, console sessions included (`--stage` selects one group).
 
 Each mutant is one deliberate defect (a textual patch that must match exactly once). The runner
 works in a detached git worktree of HEAD so the real checkout, its build/ directory and the
@@ -217,11 +220,132 @@ MUTANTS = [
      "    if flags & vfs::O_WRITE != 0 {\n        rights = Rights(rights.0 | Rights::WRITE.0);\n    }",
      "    rights = Rights(rights.0 | Rights::WRITE.0);",
      ["TST-M3-FILE-ROUNDTRIP"], "every open handle gets the WRITE right (read-only open can write)"),
+    # ---- M4 (WP-31): services and their authority; killers are M4 cases ----
+    ("M50", "kernel/src/syscall/mod.rs",
+     "            Some(d) if sched::ticks() >= d => break Err(ERR_TIMED_OUT),",
+     "            Some(d) if sched::ticks() >= d.saturating_mul(1000) => break Err(ERR_TIMED_OUT),",
+     ["TST-M4-WAIT-TIMEOUT"], "object_wait_many's timeout never expires"),
+    ("M51", "kernel/src/object/token.rs",
+     "        self.revoked.store(true, Ordering::Release);",
+     "        self.revoked.store(false, Ordering::Release);",
+     ["TST-M4-TOKEN-OBJECTS", "TST-M4-SESSION-LOCK"], "token_revoke is a no-op"),
+    ("M52", "kernel/src/object/token.rs",
+     "        self.expires != 0 && now >= self.expires",
+     "        self.expires != 0 && now >= self.expires.saturating_add(1_000_000)",
+     ["TST-M4-TOKEN-OBJECTS"], "a token expires 1000 s late"),
+    ("M53", "kernel/src/syscall/mod.rs",
+     "        Object::Authority(_) => {}\n        _ => return Err(ERR_ACCESS),\n    }\n    let token = Arc::new(",
+     "        _ => {}\n    }\n    let token = Arc::new(",
+     ["TST-M4-WAIT-TIMEOUT"], "any handle mints tokens (the authority check removed; the waiter app probes it)"),
+    ("M54", "kernel/src/object/mod.rs",
+     "            Object::Nic(_) => 7,", "            Object::Nic(_) => 8,",
+     ["TST-M4-DHCP", "TST-M4-NET-LINK"], "handle_type reports the interface as a keyboard (the manager misroutes it)"),
+    ("M55", "kernel/src/drivers/virtio_net.rs",
+     "            self.stats.tx_busy += 1;\n            return Err(NetError::Busy);",
+     "            self.stats.tx_busy += 1;\n            return Ok(());",
+     ["TST-M4-NET-LIMITS"], "a full transmit ring drops the frame silently instead of Busy"),
+    ("M56", "kernel/src/net.rs",
+     "    while polled < 8 {", "    while polled < 0 {",
+     ["TST-M4-KBD-SCANCODES"], "the keyboard is never polled"),
+    ("M57", "kernel/src/diag.rs",
+     "    for _ in 0..16 {", "    for _ in 0..0 {",
+     ["TST-M4-SHELL-SVC", "TST-M4-SHELL-LOGIN"], "the console is never polled"),
+    ("M58", "kernel/src/syscall/mod.rs",
+     "    rec[24..32].copy_from_slice(&pmm.managed_frames.to_le_bytes());",
+     "    rec[24..32].copy_from_slice(&pmm.free_frames.to_le_bytes());",
+     ["TST-M4-SHELL-SVC"], "system_info reports the free frames as the total"),
+    ("M59", "kernel/src/fs/vfs.rs",
+     "            if e.is_dir() {\n                put(b\"D \");", "            if false {\n                put(b\"D \");",
+     ["TST-M4-SHELL-SVC"], "dir_list lists directories as files"),
+    ("M60", "kernel/src/syscall/mod.rs",
+     "                | Object::Keyboard(_)\n                | Object::Serial(_) => {}",
+     "                | Object::Keyboard(_)\n                | Object::Serial(_)\n                | Object::Vmo(_) => {}",
+     ["TST-M4-WAIT-TIMEOUT"], "object_wait_many accepts a VMO"),
+    ("M61", "kernel/src/services.rs",
+     "    if crate::diag::present() {\n        initial.push(Entry {",
+     "    if !crate::diag::present() {\n        initial.push(Entry {",
+     ["TST-M4-SHELL-SVC", "TST-M1-BOOT"], "the console is handed to the manager only when absent"),
+    ("M62", "user/apps/svcmgr/src/main.rs",
+     "            b\"auth\" => self.authority,", "            b\"auth\" => None,",
+     ["TST-M4-LOGIN"], "the authority is never handed to auth"),
+    ("M63", "user/apps/svcmgr/src/main.rs",
+     "                } else if self.services[i].deps & !ready == 0 {\n                    self.start(i, now);",
+     "                } else {\n                    self.start(i, now);",
+     ["TST-M4-SVC-ORDER"], "dependents start before their dependencies are ready"),
+    ("M64", "user/apps/svcmgr/src/main.rs",
+     "                State::Starting => {\n                    self.services[i].state = State::Failed;\n                    self.services[i].deadline = None;\n                    self.close_chan(i);",
+     "                State::Starting => {\n                    self.services[i].deadline = None;",
+     ["TST-M4-SVC-TIMEOUT"], "a readiness timeout is ignored"),
+    ("M65", "user/apps/svcmgr/src/main.rs",
+     "        if s.restart_on_failure && s.restarts < s.max_restarts {",
+     "        if s.restart_on_failure {",
+     ["TST-M4-SVC-RESTART"], "the restart limit is ignored (never given up)"),
+    ("M66", "user/apps/svcmgr/src/main.rs",
+     "            s.deadline = Some(now.saturating_add(s.backoff << shift));",
+     "            s.deadline = Some(now.saturating_add(s.backoff));",
+     ["TST-M4-SVC-RESTART"], "the backoff does not double"),
+    ("M67", "user/apps/svcmgr/src/main.rs",
+     "            Some(j) if self.services[i].deps & (1 << j) == 0 => out.put(b\"ERR ACCESS\"),",
+     "            Some(j) if self.services[i].deps & (1 << j) == 0 && false => out.put(b\"ERR ACCESS\"),",
+     ["TST-M4-SHELL-SVC"], "a service connects to any service, declared or not"),
+    ("M68", "user/apps/authd/src/main.rs",
+     "        if ct_eq(&dk, &u.hash) {", "        if ct_eq(&dk, &u.hash) || !dk.is_empty() {",
+     ["TST-M4-LOGIN", "TST-M4-SHELL-LOGIN"], "any password is accepted"),
+    ("M69", "user/apps/authd/src/main.rs",
+     "        if u.fails >= MAX_FAILS {", "        if u.fails >= MAX_FAILS + 1000 {",
+     ["TST-M4-LOGIN"], "the attempt limit never delays"),
+    ("M70", "user/apps/authd/src/main.rs",
+     "    fn close_session(&mut self, slot: usize) {\n        let s = &mut self.sessions[slot];\n        libnawah::token_revoke(s.token);",
+     "    fn close_session(&mut self, slot: usize) {\n        let s = &mut self.sessions[slot];",
+     ["TST-M4-SESSION-LOCK"], "LOGOUT does not revoke the token"),
+    ("M71", "user/apps/configd/src/main.rs",
+     "        if current != expected {\n            out.put(b\"ERR VERSION \");",
+     "        if false {\n            out.put(b\"ERR VERSION \");",
+     ["TST-M4-CONFIG-CAS"], "the compare-and-set ignores the expected version"),
+    ("M72", "user/apps/configd/src/main.rs",
+     "                    if let Some(cached) = st.clients[ci].cache.iter().find(|e| e.rid == rid) {",
+     "                    if let Some(cached) = st.clients[ci].cache.iter().find(|e| e.rid == rid && false) {",
+     ["TST-M4-CONFIG-RETRY"], "a repeated request_id is applied again"),
+    ("M73", "user/apps/configd/src/main.rs",
+     "            DEVICE => admin || token.perms & perm::CONFIG_WRITE != 0,",
+     "            DEVICE => true,",
+     ["TST-M4-AUTHZ-DENIED"], "any token may write the device store"),
+    ("M74", "user/apps/configd/src/main.rs",
+     "                    (Some(POLICY), &b\"policy\"[..]),\n                    (user_store, b\"user\"),",
+     "                    (user_store, &b\"user\"[..]),\n                    (Some(POLICY), b\"policy\"),",
+     ["TST-M4-POLICY-PRECEDENCE"], "the user value takes precedence over the policy"),
+    ("M75", "user/apps/configd/src/main.rs",
+     "            if h != 0 && libnawah::channel_write(h, &msg[..len], &[]) != 0 {",
+     "            if h != 0 && libnawah::channel_write(h, &msg[..len.min(7)], &[]) != 0 {",
+     ["TST-M4-CONFIG-NOTIFY"], "subscribers get a truncated CHANGED notification"),
+    ("M76", "user/apps/netd/src/main.rs",
+     "        let c = checksum(&[&self.tx_frame[o..o + 20]]);", "        let c: u16 = 0;",
+     ["TST-M4-DHCP"], "IPv4 packets go out without a header checksum"),
+    ("M77", "user/apps/netd/src/main.rs",
+     "        self.allow_internet || self.on_link(ip) || ip == self.gateway",
+     "        true || self.on_link(ip) || ip == self.gateway",
+     ["TST-M4-NET-NO-INTERNET"], "the no-internet policy is not applied"),
+    ("M78", "user/apps/netd/src/main.rs",
+     "            if now < due || c.snd_una == c.snd_nxt {", "            if true {",
+     ["TST-M4-TCP-RETRANSMIT"], "the retransmission timer never fires"),
+    ("M79", "user/apps/netd/src/main.rs",
+     "                if !c.retransmitted {\n                    let r = now.saturating_sub(c.sent_at);",
+     "                if true {\n                    let r = now.saturating_sub(c.sent_at);",
+     ["TST-M4-TCP-RETRANSMIT"], "an RTT sample is taken from a retransmitted segment (Karn's rule dropped)"),
+    ("M80", "user/apps/sh/src/main.rs",
+     "                            self.ask(chan, &req[..7 + n], &[t], out);",
+     "                            self.ask(chan, &req[..7 + n], &[], out);",
+     ["TST-M4-SHELL-LOGIN"], "the shell sends a protected request without the session token"),
+    ("M81", "user/apps/sh/src/main.rs",
+     "            out[n] = b'@';", "            out[n] = b'#';",
+     ["TST-M4-SHELL-LOGIN"], "the prompt does not show the session's user"),
 ]
 
 def stage_of(mid: str) -> str:
-    """M01..M29 belong to the M2 gate (TST-M2-MUTANTS), M30.. to the M3 gate (TST-M3-MUTANTS)."""
-    return "M2" if int(mid[1:]) < 30 else "M3"
+    """M01..M29 belong to the M2 gate (TST-M2-MUTANTS), M30..M49 to the M3 gate (TST-M3-MUTANTS),
+    M50.. to the M4 gate (TST-M4-MUTANTS)."""
+    n = int(mid[1:])
+    return "M2" if n < 30 else ("M3" if n < 50 else "M4")
 
 # Applications first (WP-17): the kernel embeds them through NAWAH_APPS_DIR (kernel/build.rs).
 APPS = ["hello", "file_roundtrip", "path_invalid", "fd_leak", "echo", "launch", "child", "waiter", "svcmgr", "svc", "authd", "configd", "netprobe", "kbdprobe", "netd", "sh"]
@@ -255,7 +379,17 @@ def apply(wt: Path, m) -> None:
 
 
 def reset(wt: Path) -> None:
-    subprocess.run(["git", "checkout", "-q", "--", "kernel"], cwd=wt, check=True)
+    subprocess.run(["git", "checkout", "-q", "--", "kernel", "user"], cwd=wt, check=True)
+
+
+def crate_of(rel: str):
+    """The cargo package a mutated file belongs to (for `--check`): the kernel, or a user crate."""
+    parts = Path(rel).parts
+    if parts[0] == "kernel":
+        return None
+    if parts[:2] == ("user", "apps"):
+        return parts[2]
+    return parts[1].replace("_", "-") if parts[0] == "user" else None
 
 
 def suite_of(target, test_id):
@@ -300,7 +434,7 @@ def main():
     ap.add_argument("--target", default="pc-qemu")
     ap.add_argument("--report", default="build/mutants-report.json")
     ap.add_argument("--only", help="comma-separated mutant ids")
-    ap.add_argument("--stage", choices=["M2", "M3"], help="run only the mutants of one gate (M01-M29 = M2, M30.. = M3)")
+    ap.add_argument("--stage", choices=["M2", "M3", "M4"], help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50.. = M4)")
     ap.add_argument("--check", action="store_true", help="apply/revert each patch and cargo check on the host target only")
     a = ap.parse_args()
     mutants = [m for m in MUTANTS if (not a.only or m[0] in a.only.split(",")) and (not a.stage or stage_of(m[0]) == a.stage)]
@@ -325,9 +459,14 @@ def main():
             except RuntimeError as ex:
                 entry.update(status="invalid", reason=str(ex)); report["mutants"].append(entry); print(f"{mid}: INVALID ({ex})"); continue
             if a.check:
-                r = sh(["cargo", "check", "--offline", "--manifest-path", "kernel/Cargo.toml", "--target", "x86_64-unknown-linux-gnu",
-                        "--features", "ktest", "--target-dir", str(tmp / "check-target")], wt,
-                       dict(env, NAWAH_BUILD_ID="mutcheck"))
+                crate = crate_of(rel)
+                if crate is None:
+                    cmd = ["cargo", "check", "--offline", "--manifest-path", "kernel/Cargo.toml", "--target", "x86_64-unknown-linux-gnu",
+                           "--features", "ktest", "--target-dir", str(tmp / "check-target")]
+                else:
+                    cmd = ["cargo", "check", "--offline", "--profile", "app", "-p", crate, "--target", "x86_64-unknown-linux-gnu",
+                           "--target-dir", str(tmp / "check-target")]
+                r = sh(cmd, wt, dict(env, NAWAH_BUILD_ID="mutcheck"))
                 ok = r.returncode == 0
                 entry.update(status="compiles" if ok else "invalid", seconds=round(time.time() - t0, 1))
                 if not ok:

@@ -61,6 +61,13 @@ fn main() -> u64 {
     if libnawah::object_wait_many(&[entry(vmo, SIGNAL_READABLE)], 0) != Err(ERR_WRONG_TYPE) {
         return 0xEA;
     }
+    // (WP-31) Minting a token needs the authority object: a VMO or a channel handle is refused
+    // with ERR_ACCESS (auth.md §1) — the manager alone receives the authority from the kernel.
+    if libnawah::token_create(vmo, 1, 1, 0, 0) != Err(ERR_ACCESS)
+        || libnawah::token_create(a, 1, 1, 0, 0) != Err(ERR_ACCESS)
+    {
+        return 0xF7;
+    }
     if libnawah::object_wait_many(&[entry(0xDEAD_0000, SIGNAL_READABLE)], 0) != Err(ERR_BAD_HANDLE)
     {
         return 0xEB;

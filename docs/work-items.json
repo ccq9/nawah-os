@@ -2057,15 +2057,33 @@
         "docs/PLAN.md §5",
         "docs/adr/0016-services-and-authority.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/mutants.yml",
+        "docs/ENVIRONMENT.md",
+        "docs/PLAN.md",
+        "docs/contracts/shell.md",
+        "docs/operations/m4-review.md",
+        "docs/security/threat-model.md",
+        "docs/stages.json",
+        "kernel/src/ktest.rs",
+        "platform/pc-qemu/manifests/svc-pl.txt",
+        "platform/pc-qemu/manifests/svc-sh.txt",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tools/project.py",
+        "user/apps/sh/src/main.rs",
+        "user/apps/svc/src/main.rs",
+        "user/apps/waiter/src/main.rs"
+      ],
       "contract_refs": [],
       "actions": [
         "بوابة M4: التعافي من انقطاع الطرف، طفرات M4، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
-        "peer-loss recovery tests across services",
-        "mutants M50+ for M4 modules",
-        "docs/operations/m4-review.md; stages.json gate"
+        "TST-M4-PEER-LOSS: svc roles serve/crash_once (dies without replying on its first request, marks the volume, serves after the restart); manifest SVC-PL.TXT; kernel test peer_loss — a vanished client, a dead service restarted after its backoff, the other service undisturbed, no leak",
+        "authority between services: sh gets `cfg get/resolve` (shell.md v1.1) and SVC-SH.TXT carries config undeclared, so the manager's ERR ACCESS is observed (TST-M4-SHELL-SVC); the waiter app probes token_create without the authority (TST-M4-WAIT-TIMEOUT); session_lock checks the token's REVOKED flag after LOGOUT (TST-M4-SESSION-LOCK)",
+        "TST-M4-MUTANTS: M50–M81 over the M4 kernel modules and the services svcmgr/authd/configd/netd/sh (tests/mutants.py --stage M4, resets user/ too, --check builds the mutated crate on the host); HOST_SUITES M4-GATE; mutants workflow step and 300-minute budget",
+        "docs: ENVIRONMENT (lab network, host peers, monitor, COM2), threat-model (no ambient authority between services, peer loss, the console on real hardware), docs/operations/m4-review.md, stages.json M4 gate"
       ],
-      "acceptance": "M4 gate passed",
+      "acceptance": "TST-M4-PEER-LOSS PASS and the whole M4 suite green on CI; TST-M4-MUTANTS >= 95% on the mutants workflow with equivalent mutants audited; docs/operations/m4-review.md; stages.json M4 passed with evidence",
       "test_ids": [
         "TST-M4-PEER-LOSS",
         "TST-M4-MUTANTS"
@@ -2074,9 +2092,10 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M4"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

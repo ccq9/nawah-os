@@ -961,6 +961,13 @@ HOST_SUITES["M3-GATE"] = [
      "oracle": "every seeded M3 defect that compiles (scheduler, objects, syscalls, loader, MMIO window, TLB shootdown, SMP placement, virtio-blk, FAT32, VFS) is killed by at least one M3 case, host checks included; kill ratio >= 0.95",
      "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json", "tools/fat32.py"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"], "timeout_s": 7200},
 ]
+# The M4 gate's mutation run (WP-31): its own suite, run by the mutants workflow after M2 and
+# M3-GATE; the verify workflow's quick host suite M4 stays quick.
+HOST_SUITES["M4-GATE"] = [
+    {"id": "TST-M4-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--stage", "M4", "--report", "build/mutants-m4-report.json"],
+     "oracle": "every seeded M4 defect that compiles (process/wait syscalls, tokens, device objects and polling, system_info, dir_list, svcmgr ordering/timeouts/restarts/authority, authd verification and sessions, configd CAS/retry/precedence/notify/authorization, netd checksums/policy/retransmission, sh token hand-over and prompt) is killed by at least one M4 case, console sessions included; kill ratio >= 0.95",
+     "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"], "timeout_s": 10800},
+]
 HOST_SUITES["M4"] = [
     {"id": "TST-M4-HASH-VECTORS", "command": ["cargo", "test", "--offline", "--release", "-p", "nawah-crypto", "--target", "x86_64-unknown-linux-gnu"],
      "oracle": "nawah-crypto's SHA-256 (FIPS 180-4 examples incl. the two-block message and the empty message, incremental = one-shot), HMAC-SHA-256 (RFC 4231 test cases 1, 2, 6, 7) and PBKDF2-HMAC-SHA-256 (RFC 7914 §11, 1 and 80000 iterations) known answers pass on the host (4 tests, 0 failed); the guest repeats them in the auth service (TST-M4-LOGIN)",

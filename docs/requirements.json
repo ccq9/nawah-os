@@ -1309,7 +1309,7 @@
         "TST-M4-PEER-LOSS",
         "TST-M4-MUTANTS"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "implemented_untested",
       "evidence_refs": []
     }
   ]

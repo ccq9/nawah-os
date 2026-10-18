@@ -1,0 +1,4 @@
+# TST-M4-PEER-LOSS: the config service beside a service that dies without replying on its
+# first request (exit 3) and is restarted once with a 10-tick backoff (then serves)
+config /SYSTEM/CONFIGD.ELF - 5000 never 0 0
+victim /SYSTEM/SVC.ELF - 1000 on-failure 2 10 crash_once

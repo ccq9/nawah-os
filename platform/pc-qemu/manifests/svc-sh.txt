@@ -1,5 +1,7 @@
 # TST-M4-SHELL-SVC / TST-M4-SHELL-LOGIN: the diagnostic shell with the services it may reach
-# (its dependencies are the only services the manager connects it to; services.md §4)
+# (its dependencies are the only services the manager connects it to; services.md §4) — the
+# config service is present but not declared, so `cfg` meets ERR ACCESS (WP-31 authority check)
 auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
 net /SYSTEM/NETD.ELF - 5000 never 0 0
+config /SYSTEM/CONFIGD.ELF - 5000 never 0 0
 sh /SYSTEM/SH.ELF auth,net 5000 never 0 0

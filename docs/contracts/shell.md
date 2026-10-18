@@ -1,4 +1,4 @@
-# عقد الـ shell التشخيصي — الإصدار 1 (WP-30، ADR-0018؛ فوق services.md v1.3 وauth.md v1 وnet.md v1 وfiles.md v1.1 وsyscall.md v1.7)
+# عقد الـ shell التشخيصي — الإصدار 1.1 (WP-30 v1، WP-31 v1.1؛ ADR-0018؛ فوق services.md v1.3 وauth.md v1 وnet.md v1 وfiles.md v1.1 وsyscall.md v1.7)
 
 مجمَّد (أُغلق WP-30 بدليل CI run 39141804574): أي تغيير في الأوامر أو البروتوكول أو القناة = إصدار جديد مع سجل قرار؛ الإضافات إضافية فقط. الكود: `user/apps/sh` (الخدمة `sh`)، `kernel/src/arch/x86_64/com2.rs` (COM2)، `kernel/src/diag.rs` (الاستطلاع والكتابة)، `kernel/src/object/bytes.rs` (الكائن)، `tools/project.py` (`ConsoleSession`: جلسة المختبر)، `tests/test_console_session.py` (اختبار الأداة على المضيف).
 
@@ -20,6 +20,7 @@
 | `net` | `STATUS` من `net` | ردّ الخدمة حرفيًا (net.md ب) |
 | `net dhcp` | `DHCP` من `net` | ردّ الخدمة |
 | `net policy internet=<0/1>` | `POLICY …` + رمز الجلسة إلى `net` | ردّ الخدمة (`OK` / `ERR ACCESS`)؛ بلا جلسة `ERR NO_SESSION` |
+| `cfg get <store> <key>` / `cfg resolve <key>` (v1.1، WP-31) | `GET`/`RESOLVE` إلى `config` (`resolve` برمز الجلسة) — لا تصل إلا إذا أعلن البيان `config` تبعيةً للـ shell، وإلا `ERR ACCESS` من المدير | ردّ الخدمة أو ردّ المدير |
 | `ls [path]` | `dir_list` (الافتراضي `/`) | أسطر files.md §2؛ أخطاء: `ERR NOT_FOUND`/`NOT_DIR`/`BAD_PATH`/`TOO_LARGE` |
 | `cat <path>` | `open`+`read` حتى 4095 بايت | المحتوى (يُلحق LF إن لم ينتهِ به)؛ `ERR NOT_FOUND`/`IS_DIR`/… |
 | `login <user> <password>` | `LOGIN` إلى `auth` | `logged in as <user>` والمحثّ `<user>@nawah> `؛ `login failed: <ردّ auth>` (مثل `ERR ACCESS`)؛ بجلسة مفتوحة `ERR SESSION_OPEN` |
@@ -38,4 +39,4 @@
 
 ## 4. الاختبارات الحاكمة
 
-TST-M4-SHELL-SVC (`svc` يُظهر auth/net/sh `ready` من المدير؛ `cpu`/`mem` تطابق `cpus` و`frames_total` اللذين طبعتهما النواة في السطر `|ktest|shell_svc|cpus=…|frames_total=…`؛ `net dhcp` ثم `net` يُظهر `configured=1 ip=10.0.2.15`؛ `ls /SYSTEM`، `ls /`، `cat /DIR/INNER.TXT`، أخطاء `NOT_FOUND`/`NOT_DIR`/`UNKNOWN_COMMAND`؛ `exit` → `sh stopped` بصفر ولا بقايا ولا تسرب إطارات)، TST-M4-SHELL-LOGIN (بلا جلسة `not logged in` و`ERR NO_SESSION`؛ كلمة مرور خاطئة `login failed: ERR ACCESS`؛ `user` يدخل لكن `net policy` تُرفض `ERR ACCESS` من الخدمة؛ `admin` يدخل والأمر ينجح `OK` ثم يُعاد؛ المحثّ يعكس الجلسة؛ `logout` يعيد `nawah> ` و`ERR NO_SESSION`)، TST-M4-SHELL-TOOL (المضيف).
+TST-M4-SHELL-SVC (`svc` يُظهر auth/net/config/sh `ready` من المدير؛ `cfg get` تُرفض `ERR ACCESS` لأن `config` ليست تبعية معلنة؛ `cpu`/`mem` تطابق `cpus` و`frames_total` اللذين طبعتهما النواة في السطر `|ktest|shell_svc|cpus=…|frames_total=…`؛ `net dhcp` ثم `net` يُظهر `configured=1 ip=10.0.2.15`؛ `ls /SYSTEM`، `ls /`، `cat /DIR/INNER.TXT`، أخطاء `NOT_FOUND`/`NOT_DIR`/`UNKNOWN_COMMAND`؛ `exit` → `sh stopped` بصفر ولا بقايا ولا تسرب إطارات)، TST-M4-SHELL-LOGIN (بلا جلسة `not logged in` و`ERR NO_SESSION`؛ كلمة مرور خاطئة `login failed: ERR ACCESS`؛ `user` يدخل لكن `net policy` تُرفض `ERR ACCESS` من الخدمة؛ `admin` يدخل والأمر ينجح `OK` ثم يُعاد؛ المحثّ يعكس الجلسة؛ `logout` يعيد `nawah> ` و`ERR NO_SESSION`)، TST-M4-SHELL-TOOL (المضيف).

@@ -1292,7 +1292,7 @@
     "REQ-M4-009"
    ],
    "layer": "guest",
-   "oracle": "over the lab's console socket (COM2) the shell answers: `svc` lists every service of SVC-SH.TXT with its state from the manager (auth ready, net ready, sh ready); `cpu` and `mem` print the kernel's own counters (cpus and frames_total equal to the values the kernel test printed from the kernel); `net dhcp` configures the service and `net` then shows configured=1 ip=10.0.2.15 from the net service; `ls /SYSTEM` lists the images and `cat /DIR/INNER.TXT` prints the lab file; an unknown command is ERR UNKNOWN_COMMAND; `exit` ends the session — the manager sees sh stopped with exit 0, nothing is left behind, no frame leaks; exit 33",
+   "oracle": "over the lab's console socket (COM2) the shell answers: `svc` lists every service of SVC-SH.TXT with its state from the manager (auth ready, net ready, sh ready); `cpu` and `mem` print the kernel's own counters (cpus and frames_total equal to the values the kernel test printed from the kernel); `net dhcp` configures the service and `net` then shows configured=1 ip=10.0.2.15 from the net service; `cfg get device x` is refused by the manager (ERR ACCESS: config is not a declared dependency of sh); `ls /SYSTEM` lists the images and `cat /DIR/INNER.TXT` prints the lab file; an unknown command is ERR UNKNOWN_COMMAND; `exit` ends the session — the manager sees sh stopped with exit 0, nothing is left behind, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1318,7 +1318,7 @@
     "REQ-M4-010"
    ],
    "layer": "guest",
-   "oracle": "a client that dies mid-request leaves the service serving others; a service that dies mid-request leaves the client with ERR_PEER_CLOSED and svcmgr restarts it; no object or frame leaks",
+   "oracle": "with the config service and a `victim` service that dies without replying on its first request (svc crash_once, exit 3; restart on-failure, backoff 10): a client that writes a request and vanishes leaves config serving the next client (GET → ERR NOT_FOUND); the victim's client gets its channel closed (K_E_SVC_PEER_CLOSED); the manager restarts the victim once after the backoff (ready, restarts=1, exit=3) and the new instance serves (PING → OK served, twice); config never noticed; manager exit 0, no process, object or frame left; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1329,8 +1329,8 @@
     "REQ-M4-010"
    ],
    "layer": "host_unit",
-   "oracle": "seeded defects in the M4 modules (svcmgr, auth, config, net, drivers) are killed by the M4 suite (>= 95%)",
-   "command": "python3 tools/project.py test --target host --suite M4",
+   "oracle": "seeded defects M50–M81 in the M4 modules (process/wait syscalls, tokens, device objects and polling, system_info, dir_list, svcmgr, authd, configd, netd, sh) are killed by the M4 suite, console sessions included (>= 95%); report build/mutants-m4-report.json",
+   "command": "python3 tools/project.py test --target host --suite M4-GATE",
    "verdict": "NOT_RUN",
    "evidence_refs": [],
    "stale_policy": "warn"

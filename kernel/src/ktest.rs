@@ -183,6 +183,7 @@ pub fn run() -> ! {
         "net_tcp_echo" => net_tcp_echo(),
         "net_tcp_retransmit" => net_tcp_retransmit(),
         "shell_svc" => shell_session("shell_svc"),
+        "peer_loss" => peer_loss(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
@@ -3202,6 +3203,11 @@ fn session_lock() -> ! {
         Some(t) => auth_request(&ep, b"LOGOUT", Some(t)),
         None => (String::new(), None),
     };
+    // LOGOUT revokes the token itself (auth.md §2), not only the service's session record:
+    // every other service judging it by `token_info` must see it dead (WP-31, mutant M70).
+    let logged_out_revoked = t2
+        .as_ref()
+        .is_some_and(|t| t.flags(sched::ticks()) & crate::object::token::FLAG_REVOKED != 0);
     let (whoami_out, _) = match &t2 {
         Some(t) => auth_request(&ep, b"WHOAMI", Some(t)),
         None => (String::new(), None),
@@ -3216,7 +3222,7 @@ fn session_lock() -> ! {
     drop((ep, t1, t2, t3));
     let (mgr_exit, procs, frames0, clean) = h.finish();
     kprintln!(
-        "OSX|{}|ktest|session_lock|load={}|login={}|lock={}|locked_token_revoked={}|whoami_locked={}|unlock_wrong={}|unlock={}|new_token={}|whoami_new={}|old_after_unlock={}|logout={}|whoami_out={}|unlock_out={}|no_handle={}|mgr_exit={:#x}|processes_after={}|clean={}",
+        "OSX|{}|ktest|session_lock|load={}|login={}|lock={}|locked_token_revoked={}|whoami_locked={}|unlock_wrong={}|unlock={}|new_token={}|whoami_new={}|old_after_unlock={}|logout={}|logged_out_revoked={}|whoami_out={}|unlock_out={}|no_handle={}|mgr_exit={:#x}|processes_after={}|clean={}",
         BUILD_ID,
         load,
         r1,
@@ -3229,6 +3235,7 @@ fn session_lock() -> ! {
         whoami_new,
         old_after_unlock,
         logout,
+        u8::from(logged_out_revoked),
         whoami_out,
         unlock_out,
         no_handle,
@@ -3252,6 +3259,7 @@ fn session_lock() -> ! {
         fail("unlock did not continue the session with a new token")
     }
     if logout != "OK"
+        || !logged_out_revoked
         || whoami_out != "ERR ACCESS"
         || unlock_out != "ERR ACCESS"
         || !no_third
@@ -4143,6 +4151,113 @@ fn shell_session(name: &'static str) -> ! {
         name,
         frames0,
         "the shell served the lab's session from the owners of each state and ended cleanly",
+    )
+}
+
+// ---- WP-31: the M4 gate ------------------------------------------------------------------
+
+/// TST-M4-PEER-LOSS (REQ-M4-010): a client that vanishes mid-request leaves the service
+/// serving others; a service that dies mid-request leaves its client with the channel closed
+/// (K_E_SVC_PEER_CLOSED) and the manager restarts it after its backoff, after which it serves
+/// again; the other service is unaffected; nothing is left behind.
+fn peer_loss() -> ! {
+    let h = SvcHarness::start("peer_loss", b"/SYSTEM/SVC-PL.TXT");
+    svc_wait_ready(&h, &["config", "victim"], sched::ticks() + 60_000);
+    let frames0 = {
+        // (a) The vanishing client: a request is written and the endpoint dropped before any
+        // reply could be read; the service's reply meets a closed peer.
+        {
+            let gone = svc_connect(&h, "config");
+            let _ = gone.write(Message {
+                bytes: b"GET device lab.key".to_vec(),
+                handles: Vec::new(),
+            });
+            drop(gone);
+        }
+        let cfg = svc_connect(&h, "config");
+        let after_client_loss = cfg_request(&cfg, b"GET device nokey", None);
+        // (b) The dying service: its first request is never answered — the channel closes.
+        let victim = svc_connect(&h, "victim");
+        let t_crash = sched::ticks();
+        let lost = cfg_request(&victim, b"PING", None);
+        drop(victim);
+        // The manager restarts it once the backoff has passed; the new instance serves.
+        let lines = h.poll_list(sched::ticks() + 5000, |l| {
+            l.iter()
+                .any(|x| x.name == "victim" && x.state == "ready" && x.restarts == 1)
+        });
+        let restarted = lines
+            .iter()
+            .find(|l| l.name == "victim")
+            .map(|l| (l.state.clone(), l.restarts, l.exit, l.last_start));
+        let victim2 = svc_connect(&h, "victim");
+        let served = cfg_request(&victim2, b"PING", None);
+        let served_again = cfg_request(&victim2, b"PING", None);
+        // (c) The config service never noticed.
+        let after_service_loss = cfg_request(&cfg, b"GET device nokey", None);
+        let (state, restarts, exit, last_start) = restarted
+            .clone()
+            .unwrap_or_else(|| ("-".into(), u64::MAX, None, None));
+        kprintln!(
+            "OSX|{}|ktest|peer_loss|after_client_loss={}|lost={}|victim_state={}|restarts={}|exit={}|restart_after_ticks={}|served={}|served_again={}|after_service_loss={}",
+            BUILD_ID,
+            after_client_loss,
+            lost,
+            state,
+            restarts,
+            exit.map_or(-1, |x| x as i64),
+            last_start.map_or(-1, |t| t as i64 - t_crash as i64),
+            served,
+            served_again,
+            after_service_loss
+        );
+        if after_client_loss != "ERR NOT_FOUND" {
+            fail("the config service stopped serving after a client vanished")
+        }
+        if lost != "error:K_E_SVC_PEER_CLOSED" {
+            fail("the dying service did not leave its client with a closed channel")
+        }
+        if state != "ready" || restarts != 1 || exit != Some(3) {
+            fail("the manager did not restart the dead service once")
+        }
+        if last_start.is_none_or(|t| t < t_crash + 10) {
+            fail("the restart came before the backoff")
+        }
+        if served != "OK served" || served_again != "OK served" {
+            fail("the restarted service does not serve")
+        }
+        if after_service_loss != "ERR NOT_FOUND" {
+            fail("the config service was disturbed by the other service's death")
+        }
+        drop((
+            after_client_loss,
+            lost,
+            served,
+            served_again,
+            after_service_loss,
+            lines,
+            restarted,
+            state,
+            cfg,
+            victim2,
+        ));
+        let (mgr_exit, procs, frames0, clean) = h.finish();
+        kprintln!(
+            "OSX|{}|ktest|peer_loss|mgr_exit={:#x}|processes_after={}|clean={}",
+            BUILD_ID,
+            mgr_exit,
+            procs,
+            u8::from(clean)
+        );
+        if mgr_exit != 0 || procs != 0 || !clean {
+            fail("manager or services left something behind")
+        }
+        frames0
+    };
+    cfg_balance(
+        "peer_loss",
+        frames0,
+        "a vanished client and a dead service are each contained: the others keep serving and the dead one is restarted",
     )
 }
 

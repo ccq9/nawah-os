@@ -2505,7 +2505,7 @@
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=session_lock",
           "|text=auth|kat|fails=0|pbkdf2_80000=1",
-          "|ktest|session_lock|load=OK 1|login=OK 1000 1000 15|lock=OK|locked_token_revoked=1|whoami_locked=ERR ACCESS|unlock_wrong=ERR ACCESS|unlock=OK 1000 1000 15|new_token=1|whoami_new=OK 1000 1000 15|old_after_unlock=ERR ACCESS|logout=OK|whoami_out=ERR ACCESS|unlock_out=ERR ACCESS|no_handle=ERR BAD_REQUEST|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|session_lock|load=OK 1|login=OK 1000 1000 15|lock=OK|locked_token_revoked=1|whoami_locked=ERR ACCESS|unlock_wrong=ERR ACCESS|unlock=OK 1000 1000 15|new_token=1|whoami_new=OK 1000 1000 15|old_after_unlock=ERR ACCESS|logout=OK|logged_out_revoked=1|whoami_out=ERR ACCESS|unlock_out=ERR ACCESS|no_handle=ERR BAD_REQUEST|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|session_lock|frames_delta=0",
           "|ktest|pass|lock revokes, unlock with the password continues the session, logout ends it"
         ],
@@ -3086,11 +3086,11 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=shell_svc"
         ],
-        "oracle": "over the lab's console socket (COM2) the shell answers: `svc` lists every service of SVC-SH.TXT with its state from the manager (auth ready, net ready, sh ready); `cpu` and `mem` print the kernel's own counters (cpus and frames_total equal to the values the kernel test printed from the kernel); `net dhcp` configures the service and `net` then shows configured=1 ip=10.0.2.15 from the net service; `ls /SYSTEM` lists the images and `cat /DIR/INNER.TXT` prints the lab file; an unknown command is ERR UNKNOWN_COMMAND; `exit` ends the session — the manager sees sh stopped with exit 0, nothing is left behind, no frame leaks; exit 33",
+        "oracle": "over the lab's console socket (COM2) the shell answers: `svc` lists every service of SVC-SH.TXT with its state from the manager (auth ready, net ready, sh ready); `cpu` and `mem` print the kernel's own counters (cpus and frames_total equal to the values the kernel test printed from the kernel); `net dhcp` configures the service and `net` then shows configured=1 ip=10.0.2.15 from the net service; `cfg get device x` is refused by the manager (ERR ACCESS: config is not a declared dependency of sh); `ls /SYSTEM` lists the images and `cat /DIR/INNER.TXT` prints the lab file; an unknown command is ERR UNKNOWN_COMMAND; `exit` ends the session — the manager sees sh stopped with exit 0, nothing is left behind, no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=shell_svc",
-          "|kernel|spawn|pid=6|path=/SYSTEM/SH.ELF|handles=2",
+          "|kernel|spawn|pid=7|path=/SYSTEM/SH.ELF|handles=2",
           "|ktest|shell_svc|cpus=4|frames_total=",
           "|console_present=1|ready=1",
           "|ktest|shell_svc|sh_state=stopped|sh_exit=0|listing=auth:ready:0:",
@@ -3120,6 +3120,7 @@
               "expect": [
                 "auth ready 0 ",
                 "net ready 0 ",
+                "config ready 0 ",
                 "sh ready 0 "
               ]
             },
@@ -3128,7 +3129,7 @@
               "expect": [
                 "cpus=",
                 " ticks=",
-                " processes=4 threads="
+                " processes=5 threads="
               ],
               "expect_serial": [
                 [
@@ -3170,6 +3171,18 @@
               "send": "net",
               "expect": [
                 "OK link=1 configured=1 ip=10.0.2.15 "
+              ]
+            },
+            {
+              "send": "cfg get device x",
+              "expect": [
+                "ERR ACCESS"
+              ]
+            },
+            {
+              "send": "cfg",
+              "expect": [
+                "usage: cfg get"
               ]
             },
             {
@@ -3368,6 +3381,32 @@
             }
           ]
         }
+      },
+      {
+        "id": "TST-M4-PEER-LOSS",
+        "test_id": "TST-M4-PEER-LOSS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=peer_loss"
+        ],
+        "oracle": "with the config service and a `victim` service that dies without replying on its first request (svc crash_once, exit 3; restart on-failure, backoff 10): a client that writes a request and vanishes leaves config serving the next client (GET → ERR NOT_FOUND); the victim's client gets its channel closed (K_E_SVC_PEER_CLOSED); the manager restarts the victim once after the backoff (ready, restarts=1, exit=3) and the new instance serves (PING → OK served, twice); config never noticed; manager exit 0, no process, object or frame left; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=peer_loss",
+          "|ktest|peer_loss|after_client_loss=ERR NOT_FOUND|lost=error:K_E_SVC_PEER_CLOSED|victim_state=ready|restarts=1|exit=3|restart_after_ticks=",
+          "|served=OK served|served_again=OK served|after_service_loss=ERR NOT_FOUND",
+          "|ktest|peer_loss|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|peer_loss|frames_delta=0",
+          "|ktest|pass|a vanished client and a dead service are each contained: the others keep serving and the dead one is restarted"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600
       }
     ]
   },

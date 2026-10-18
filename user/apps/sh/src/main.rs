@@ -205,7 +205,7 @@ impl Shell {
         };
         match cmd {
             b"help" => out.put(
-                b"commands: help svc cpu mem net [dhcp|policy internet=0|1] ls [path] cat <path> login <user> <password> whoami logout exit\n",
+                b"commands: help svc cpu mem net [dhcp|policy internet=0|1] cfg get <store> <key>|resolve <key> ls [path] cat <path> login <user> <password> whoami logout exit\n",
             ),
             b"svc" => {
                 let mut reply = [0u8; 2048];
@@ -276,6 +276,41 @@ impl Shell {
                         (None, _) => out.put(b"usage: net policy internet=0|1\n"),
                     },
                     Some(_) => out.put(b"usage: net [dhcp|policy internet=0|1]\n"),
+                }
+                libnawah::handle_close(chan);
+            }
+            b"cfg" => {
+                // (v1.1, WP-31) The config service is reachable only when the manifest
+                // declares it as a dependency of sh: otherwise the manager answers ERR ACCESS.
+                let (Some(sub), Some(a)) = (field(line, 1), field(line, 2)) else {
+                    out.put(b"usage: cfg get <store> <key> | cfg resolve <key>\n");
+                    return true;
+                };
+                let mut req = [0u8; 8 + LINE_MAX];
+                let mut n = 0;
+                let parts: [&[u8]; 4] = match (sub, field(line, 3)) {
+                    (b"get", Some(key)) => [b"GET ", a, b" ", key],
+                    (b"resolve", None) => [b"RESOLVE ", a, b"", b""],
+                    _ => {
+                        out.put(b"usage: cfg get <store> <key> | cfg resolve <key>\n");
+                        return true;
+                    }
+                };
+                for part in parts {
+                    req[n..n + part.len()].copy_from_slice(part);
+                    n += part.len();
+                }
+                let Some(chan) = self.connect(b"config", out) else {
+                    return true;
+                };
+                match (sub, self.token) {
+                    (b"resolve", Some(t)) => {
+                        self.ask(chan, &req[..n], &[t], out);
+                    }
+                    (b"resolve", None) => out.put(b"ERR NO_SESSION\n"),
+                    _ => {
+                        self.ask(chan, &req[..n], &[], out);
+                    }
                 }
                 libnawah::handle_close(chan);
             }
