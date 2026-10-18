@@ -7,7 +7,7 @@ on:
   pull_request:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write  # only for pushing evidence to ci-evidence/* branches (never main)
 jobs:
   verify:
     runs-on: ubuntu-24.04
@@ -60,3 +60,14 @@ jobs:
           name: evidence-${{ github.sha }}
           path: evidence/
           retention-days: 90
+      - name: Publish evidence on a ci-evidence branch (readable where artifact download is blocked)
+        if: always()
+        run: |
+          set -e
+          git config user.name "nawah-ci"
+          git config user.email "ci@nawah-os.invalid"
+          git checkout --orphan "ci-evidence/${GITHUB_RUN_ID}"
+          git rm -rfq --cached . >/dev/null
+          git add -f evidence/ build/pc-qemu/build-id.txt 2>/dev/null || git add -f evidence/
+          git commit -qm "CI evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
+          git push -q origin "ci-evidence/${GITHUB_RUN_ID}"
