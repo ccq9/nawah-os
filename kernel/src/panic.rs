@@ -44,6 +44,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 /// Boot-critical failure with a classified code (`K_E_*`): same line shape and exit code as a
 /// panic, used where continuing would mean running on guesses.
+#[cfg_attr(target_arch = "aarch64", allow(dead_code))] // x86_64 callers only until the port grows (ADR-0008)
 pub fn fatal(code: &str) -> ! {
     panic!("{}", code)
 }

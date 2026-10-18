@@ -187,6 +187,7 @@ pub fn alloc_frame() -> Option<Frame> {
 }
 
 /// Allocates `n` physically contiguous frames (first fit, linear scan), or `None`.
+#[cfg_attr(target_arch = "aarch64", allow(dead_code))] // x86_64 callers only until the port grows (ADR-0008)
 pub fn alloc_frames(n: u64) -> Option<Frame> {
     if n == 0 {
         return None;
@@ -222,6 +223,7 @@ pub fn alloc_frames(n: u64) -> Option<Frame> {
 }
 
 /// Frees `n` contiguous frames obtained from `alloc_frames`; stops at the first error.
+#[cfg_attr(target_arch = "aarch64", allow(dead_code))] // x86_64 callers only until the port grows (ADR-0008)
 pub fn free_frames(first: Frame, n: u64) -> Result<(), PmmError> {
     for i in 0..n {
         free_frame(Frame(first.0 + i * FRAME_SIZE))?;
@@ -270,6 +272,7 @@ pub fn stats() -> Stats {
 /// are active (WP-09). Frames below 1 MiB, beyond the bitmap, or inside `keep`
 /// (`[start, end)`: the kernel image, whatever memory type the firmware chose for it) stay
 /// reserved. Returns the number of frames released; a second call releases nothing.
+#[cfg_attr(target_arch = "aarch64", allow(dead_code))] // x86_64 callers only until the port grows (ADR-0008)
 pub fn reclaim_boot_services(bi: &BootInfo, keep: (u64, u64)) -> u64 {
     let mut p = pmm();
     if !p.ready || p.reclaimed {
@@ -314,6 +317,7 @@ pub fn probe_rw(frame: Frame) -> bool {
 }
 
 /// Address of the bitmap storage (the VMM verifies it is mapped before switching page tables).
+#[cfg_attr(target_arch = "aarch64", allow(dead_code))] // x86_64 callers only until the port grows (ADR-0008)
 pub fn bitmap_address() -> u64 {
     pmm().bits as u64
 }

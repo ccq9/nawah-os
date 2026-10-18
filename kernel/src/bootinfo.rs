@@ -14,7 +14,9 @@ pub const MAX_MEMMAP_BYTES: usize = 64 * 1024;
 pub const MEM_CONVENTIONAL: u32 = 7;
 /// Memory types the firmware used for boot services; free for the OS after ExitBootServices
 /// (UEFI 2.11 §7.2.3 Table 7.6, "Memory Type Usage after ExitBootServices()").
+#[cfg_attr(target_arch = "aarch64", allow(dead_code))] // x86_64 callers only until the port grows (ADR-0008)
 pub const MEM_BOOT_SERVICES_CODE: u32 = 3;
+#[cfg_attr(target_arch = "aarch64", allow(dead_code))] // x86_64 callers only until the port grows (ADR-0008)
 pub const MEM_BOOT_SERVICES_DATA: u32 = 4;
 
 impl MemDesc {
@@ -22,9 +24,11 @@ impl MemDesc {
     /// reclaim and ACPI NVS (types 1..=7, 9, 10). Reserved (0, "not usable"), unusable (8),
     /// MMIO (11, 12, "not used by the OS"), PAL code (13), persistent (14) and unaccepted (15)
     /// memory are not (UEFI 2.11 §7.2.3 Table 7.6).
+    #[cfg_attr(target_arch = "aarch64", allow(dead_code))] // x86_64 callers only until the port grows (ADR-0008)
     pub fn is_ram(&self) -> bool {
         matches!(self.typ, 1..=7 | 9 | 10)
     }
+    #[cfg_attr(target_arch = "aarch64", allow(dead_code))] // x86_64 callers only until the port grows (ADR-0008)
     pub fn is_boot_services(&self) -> bool {
         self.typ == MEM_BOOT_SERVICES_CODE || self.typ == MEM_BOOT_SERVICES_DATA
     }

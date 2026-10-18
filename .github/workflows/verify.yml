@@ -31,12 +31,16 @@ jobs:
         env:
           NAWAH_BUILD_ID: ci
         run: |
-          cargo fmt --manifest-path kernel/Cargo.toml --check
-          cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings
-          cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --features inject_ebs_fail -- -D warnings
-          cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --profile ktest --features ktest -- -D warnings
-          cargo clippy --manifest-path kernel/Cargo.toml --target aarch64-unknown-uefi --offline -- -D warnings
-          sh tools/check-unsafe.sh
+          set -o pipefail
+          mkdir -p build
+          {
+            cargo fmt --manifest-path kernel/Cargo.toml --check
+            cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings
+            cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --features inject_ebs_fail -- -D warnings
+            cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --profile ktest --features ktest -- -D warnings
+            cargo clippy --manifest-path kernel/Cargo.toml --target aarch64-unknown-uefi --offline -- -D warnings
+            sh tools/check-unsafe.sh
+          } 2>&1 | tee build/hygiene.log
       - name: E0 (C toolchain experiment, M0 evidence)
         run: |
           python3 tools/project.py build --target pc-qemu-e0
@@ -76,5 +80,6 @@ jobs:
           git checkout --orphan "ci-evidence/${GITHUB_RUN_ID}"
           git rm -rfq --cached . >/dev/null
           git add -f evidence/ build/pc-qemu/build-id.txt 2>/dev/null || git add -f evidence/
+          git add -f build/hygiene.log 2>/dev/null || true
           git commit -qm "CI evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
           git push -q origin "ci-evidence/${GITHUB_RUN_ID}"
