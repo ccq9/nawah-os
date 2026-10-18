@@ -1,6 +1,6 @@
 # ADR-0012 — محمّل ELF64 ووقت تشغيل المستخدم الأدنى (WP-17)
 
-الحالة: مقترح — قيد التنفيذ 2026-10-18؛ يُغلق بدليل CI (ثلاثة اختبارات + أثر الإقلاع `kernel|elf|app=hello|…|exit=0x7|…|selfcheck=1`).
+الحالة: مقبول — منفَّذ ومُغلق 2026-10-18 بدليل CI run 39107870531 (الأجنحة كلها PASS؛ hello: 13336 بايت، 3 مقاطع (تنفيذي واحد)، 19 صفحة، خروج 7 بلا تسريب في كل إقلاع؛ 13 تشويهًا كلٌّ برمزه والإطارات 129035=129035؛ RWX مرفوض والصفحات بأذونات مقاطعها). دروس ثلاث دورات CI: rustfmt يعيد ترتيب `mod` (فصل المجموعات بسطر فارغ)، LTO يرفض دمج نماذج شيفرة مختلفة (ملف تعريف `app`)، وأقسام النموذج الكبير `.ltext/.lrodata/.ldata/.lbss` يجب أن يذكرها مخطط الربط.
 
 المراجع: System V gABI — ELF header (ch4: e_ident/EI_CLASS=ELFCLASS64/EI_DATA=ELFDATA2LSB، e_type ET_EXEC=2، e_machine EM_X86_64=62) وprogram header (ch5: Elf64_Phdr، PT_LOAD=1، PF_X/W/R=1/2/4، «file size may not be larger than memory size»، البايتات الزائدة أصفار) (S41)؛ System V AMD64 ABI §3.2.2 (محاذاة المكدس عند الدخول) (S37)؛ ADR-0009/0010/0011.
 

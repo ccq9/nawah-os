@@ -37,7 +37,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070554Z-5bae9f67-002"
+        "evidence/20261018T073343Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -78,7 +78,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070554Z-5bae9f67-001"
+        "evidence/20261018T073342Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -123,8 +123,8 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070310Z-5bae9f67-001",
-        "evidence/20261018T070312Z-5bae9f67-001"
+        "evidence/20261018T073047Z-0366aee5-001",
+        "evidence/20261018T073049Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -183,7 +183,7 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070554Z-5bae9f67-002"
+        "evidence/20261018T073343Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -356,10 +356,10 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070315Z-5bae9f67-001",
-        "evidence/20261018T070321Z-5bae9f67-001",
-        "evidence/20261018T070325Z-5bae9f67-001",
-        "evidence/20261018T070554Z-5bae9f67-003"
+        "evidence/20261018T073052Z-0366aee5-001",
+        "evidence/20261018T073059Z-0366aee5-001",
+        "evidence/20261018T073102Z-0366aee5-001",
+        "evidence/20261018T073343Z-0366aee5-002"
       ],
       "blocker": null
     },
@@ -429,17 +429,17 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070328Z-5bae9f67-001",
-        "evidence/20261018T070331Z-5bae9f67-001",
-        "evidence/20261018T070334Z-5bae9f67-001",
-        "evidence/20261018T070337Z-5bae9f67-001",
-        "evidence/20261018T070341Z-5bae9f67-001",
-        "evidence/20261018T070344Z-5bae9f67-001",
-        "evidence/20261018T070347Z-5bae9f67-001",
-        "evidence/20261018T070350Z-5bae9f67-001",
-        "evidence/20261018T070354Z-5bae9f67-001",
-        "evidence/20261018T070357Z-5bae9f67-001",
-        "evidence/20261018T070400Z-5bae9f67-001"
+        "evidence/20261018T073105Z-0366aee5-001",
+        "evidence/20261018T073109Z-0366aee5-001",
+        "evidence/20261018T073112Z-0366aee5-001",
+        "evidence/20261018T073115Z-0366aee5-001",
+        "evidence/20261018T073119Z-0366aee5-001",
+        "evidence/20261018T073122Z-0366aee5-001",
+        "evidence/20261018T073125Z-0366aee5-001",
+        "evidence/20261018T073128Z-0366aee5-001",
+        "evidence/20261018T073132Z-0366aee5-001",
+        "evidence/20261018T073135Z-0366aee5-001",
+        "evidence/20261018T073138Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -490,9 +490,9 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070403Z-5bae9f67-001",
-        "evidence/20261018T070406Z-5bae9f67-001",
-        "evidence/20261018T070410Z-5bae9f67-001"
+        "evidence/20261018T073141Z-0366aee5-001",
+        "evidence/20261018T073145Z-0366aee5-001",
+        "evidence/20261018T073148Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -555,11 +555,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070413Z-5bae9f67-001",
-        "evidence/20261018T070416Z-5bae9f67-001",
-        "evidence/20261018T070419Z-5bae9f67-001",
-        "evidence/20261018T070423Z-5bae9f67-001",
-        "evidence/20261018T070321Z-5bae9f67-001"
+        "evidence/20261018T073151Z-0366aee5-001",
+        "evidence/20261018T073154Z-0366aee5-001",
+        "evidence/20261018T073158Z-0366aee5-001",
+        "evidence/20261018T073201Z-0366aee5-001",
+        "evidence/20261018T073059Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -636,11 +636,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070426Z-5bae9f67-001",
-        "evidence/20261018T070429Z-5bae9f67-001",
-        "evidence/20261018T070432Z-5bae9f67-001",
-        "evidence/20261018T070321Z-5bae9f67-001",
-        "evidence/20261018T070357Z-5bae9f67-001"
+        "evidence/20261018T073204Z-0366aee5-001",
+        "evidence/20261018T073207Z-0366aee5-001",
+        "evidence/20261018T073211Z-0366aee5-001",
+        "evidence/20261018T073059Z-0366aee5-001",
+        "evidence/20261018T073135Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -704,9 +704,9 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070436Z-5bae9f67-001",
-        "evidence/20261018T070439Z-5bae9f67-001",
-        "evidence/20261018T070442Z-5bae9f67-001"
+        "evidence/20261018T073214Z-0366aee5-001",
+        "evidence/20261018T073217Z-0366aee5-001",
+        "evidence/20261018T073220Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -818,11 +818,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070446Z-5bae9f67-001",
-        "evidence/20261018T070449Z-5bae9f67-001",
-        "evidence/20261018T070452Z-5bae9f67-001",
-        "evidence/20261018T070455Z-5bae9f67-001",
-        "evidence/20261018T070321Z-5bae9f67-001"
+        "evidence/20261018T073224Z-0366aee5-001",
+        "evidence/20261018T073227Z-0366aee5-001",
+        "evidence/20261018T073231Z-0366aee5-001",
+        "evidence/20261018T073234Z-0366aee5-001",
+        "evidence/20261018T073059Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -883,8 +883,8 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070547Z-5bae9f67-001",
-        "evidence/20261018T070548Z-5bae9f67-001"
+        "evidence/20261018T073336Z-0366aee5-001",
+        "evidence/20261018T073336Z-0366aee5-002"
       ],
       "blocker": null
     },
@@ -950,11 +950,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070459Z-5bae9f67-001",
-        "evidence/20261018T070502Z-5bae9f67-001",
-        "evidence/20261018T070505Z-5bae9f67-001",
-        "evidence/20261018T070508Z-5bae9f67-001",
-        "evidence/20261018T070321Z-5bae9f67-001"
+        "evidence/20261018T073237Z-0366aee5-001",
+        "evidence/20261018T073240Z-0366aee5-001",
+        "evidence/20261018T073244Z-0366aee5-001",
+        "evidence/20261018T073247Z-0366aee5-001",
+        "evidence/20261018T073059Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -1024,11 +1024,11 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070512Z-5bae9f67-001",
-        "evidence/20261018T070515Z-5bae9f67-001",
-        "evidence/20261018T070518Z-5bae9f67-001",
-        "evidence/20261018T070521Z-5bae9f67-001",
-        "evidence/20261018T070321Z-5bae9f67-001"
+        "evidence/20261018T073250Z-0366aee5-001",
+        "evidence/20261018T073253Z-0366aee5-001",
+        "evidence/20261018T073257Z-0366aee5-001",
+        "evidence/20261018T073300Z-0366aee5-001",
+        "evidence/20261018T073059Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -1097,14 +1097,14 @@
         "done"
       ],
       "evidence_refs": [
-        "evidence/20261018T070525Z-5bae9f67-001",
-        "evidence/20261018T070528Z-5bae9f67-001",
-        "evidence/20261018T070531Z-5bae9f67-001",
-        "evidence/20261018T070534Z-5bae9f67-001",
-        "evidence/20261018T070537Z-5bae9f67-001",
-        "evidence/20261018T070541Z-5bae9f67-001",
-        "evidence/20261018T070544Z-5bae9f67-001",
-        "evidence/20261018T070321Z-5bae9f67-001"
+        "evidence/20261018T073303Z-0366aee5-001",
+        "evidence/20261018T073306Z-0366aee5-001",
+        "evidence/20261018T073310Z-0366aee5-001",
+        "evidence/20261018T073313Z-0366aee5-001",
+        "evidence/20261018T073316Z-0366aee5-001",
+        "evidence/20261018T073319Z-0366aee5-001",
+        "evidence/20261018T073323Z-0366aee5-001",
+        "evidence/20261018T073059Z-0366aee5-001"
       ],
       "blocker": null
     },
@@ -1167,12 +1167,18 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M3"
       ],
-      "status": "active",
+      "status": "done",
       "status_history": [
         "planned",
-        "active"
+        "active",
+        "done"
       ],
-      "evidence_refs": [],
+      "evidence_refs": [
+        "evidence/20261018T073326Z-0366aee5-001",
+        "evidence/20261018T073329Z-0366aee5-001",
+        "evidence/20261018T073332Z-0366aee5-001",
+        "evidence/20261018T073059Z-0366aee5-001"
+      ],
       "blocker": null
     },
     {
