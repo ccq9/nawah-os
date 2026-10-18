@@ -225,6 +225,14 @@ impl AddressSpace {
         next_table(self.pml4, index & 0x1FF, false).map(|_| ())
     }
 
+    /// Creates the page tables down to the page-table level for the 2 MiB region holding
+    /// `virt`, without mapping anything (so later 4 KiB mappings there allocate no table).
+    pub fn ensure_pt(&self, virt: u64) -> Result<(), MapError> {
+        let pdpt = next_table(self.pml4, idx(virt, 3), false)?;
+        let pd = next_table(pdpt, idx(virt, 2), false)?;
+        next_table(pd, idx(virt, 1), false).map(|_| ())
+    }
+
     /// Reads one PML4 entry (for sharing the kernel half with user spaces).
     pub fn pml4_entry(&self, index: u64) -> u64 {
         read_entry(self.pml4, index & 0x1FF)

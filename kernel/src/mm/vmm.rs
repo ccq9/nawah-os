@@ -269,6 +269,10 @@ pub fn init(bi: &BootInfo) -> Result<KernelSpace, VmmError> {
     for slot in KERNEL_PML4_SLOTS {
         space.ensure_pdpt(slot)?;
     }
+    // The first 2 MiB of the scratch area get their tables now: page-granular mappings there
+    // (self-check, tests, early drivers) then allocate no table frames, and unmap leaves none
+    // behind. Tables for the rest of the area are allocated on first use and retained.
+    space.ensure_pt(SCRATCH_BASE)?;
     // What the very next instructions need must be mapped: the code (this function), the boot
     // stack and data (inside the image), the memory map buffer, and the new stacks.
     let bitmap = pmm::bitmap_address();
