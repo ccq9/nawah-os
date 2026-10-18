@@ -356,8 +356,25 @@ def write_run(d, rid, target, purpose, commands, exit_code, started, worker="int
         (d / f).touch()
 
 
-def digests_for(paths):
+def digests_for(paths, globs=()):
+    paths = list(paths)
+    for g in globs:
+        paths += sorted(str(x.relative_to(ROOT)) for x in ROOT.glob(g) if x.is_file())
     return {p: sha256_file(safe_rel(p)) for p in paths if safe_rel(p).exists()}
+
+
+def rust_env():
+    """Local fallback (docs/ENVIRONMENT.md): the pinned toolchain name may be uninstallable where
+    static.rust-lang.org is blocked; if the default toolchain is the same rustc version, use it."""
+    pin = "1.97.0"
+    ok = subprocess.run(["rustup", "run", pin, "rustc", "--version"], capture_output=True, text=True)
+    if ok.returncode == 0:
+        return {}
+    default = subprocess.run(["rustup", "default"], capture_output=True, text=True).stdout.split()[0:1]
+    ver = subprocess.run(["rustc", "--version"], capture_output=True, text=True).stdout
+    if default and pin in ver:
+        return {"RUSTUP_TOOLCHAIN": default[0]}
+    return {}
 
 
 def write_verdict(d, rid, test_id, verdict, oracle, expected, observed, inputs, claim_tag="source_backed_fact", reason=None):
@@ -377,6 +394,7 @@ def cmd_build(target_name) -> int:
     rev, _ = source_identity()
     build_id = f"{rev[:12]}"
     env = dict(os.environ, NAWAH_BUILD_ID=build_id, NAWAH_OUT=str(ROOT / "build" / target_name))
+    env.update(rust_env())
     (ROOT / "build" / target_name).mkdir(parents=True, exist_ok=True)
     cmds, rc = [], 0
     for step in t["build"]["steps"]:
@@ -391,7 +409,7 @@ def cmd_build(target_name) -> int:
         if rc != 0:
             break
     write_run(d, rid, target_name, "build", cmds, rc, started)
-    inputs = digests_for(t["build"]["inputs"])
+    inputs = digests_for(t["build"]["inputs"], t["build"].get("input_globs", ()))
     art = t["build"]["artifact"].replace("${OUT}", f"build/{target_name}")
     observed = f"exit={rc}"
     if rc == 0 and safe_rel(art).exists():
@@ -455,7 +473,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", t["qemu"]["boot_timeout_s"])
     write_run(d, rid, target_name, "boot" if not suite_case else f"test:{suite_case['id']}", [" ".join(cmd)], rc, started)
     text = serial.read_text(errors="replace") if serial.exists() else ""
-    inputs = digests_for(t["build"]["inputs"]) | {keep_artifact(d, rid, art): sha256_file(art)}
+    inputs = digests_for(t["build"]["inputs"], t["build"].get("input_globs", ())) | {keep_artifact(d, rid, art): sha256_file(art)}
     case = suite_case or t["boot_oracle"]
     expected_rc = case["expected_exit_code"]
     required = [m.replace("${BUILD_ID}", build_id) for m in case["required_markers"]]
@@ -494,8 +512,8 @@ HOST_SUITES = {
 
 HOST_SUITES["M1"] = [
     {"id": "TST-M1-NOBS", "command": ["python3", "-I", "tests/test_m1_nobs.py"],
-     "oracle": "static: kernel/*.c include no efi.h, name no Boot Services/System Table symbol; kernel_main takes boot_info only; bootinfo.h has no function tables",
-     "inputs": ["tests/test_m1_nobs.py", "kernel/main.c", "boot/common/bootinfo.h", "boot/stub/main.c"], "input_globs": []},
+     "oracle": "static: kmain.rs is safe-only (no unsafe allowed by main.rs), names no firmware table/efi symbol; boot::efi is private; BootInfo carries no function pointers; kernel_main takes &BootInfo only",
+     "inputs": ["tests/test_m1_nobs.py", "kernel/src/main.rs", "kernel/src/kmain.rs", "kernel/src/bootinfo.rs", "kernel/src/boot/mod.rs", "kernel/src/boot/stub.rs"], "input_globs": []},
 ]
 
 
@@ -515,10 +533,7 @@ def cmd_test_host_case(case) -> int:
         rid, d = new_run_dir("host-test")
         rc = run_logged(case["command"], ROOT, d / "stdout.log", d / "stderr.log", 900)
         write_run(d, rid, "host", f"test:{case['id']}", [" ".join(case["command"])], rc, started)
-        paths = list(case["inputs"])
-        for g in case["input_globs"]:
-            paths += sorted(str(x.relative_to(ROOT)) for x in ROOT.glob(g))
-        inputs = digests_for(paths)
+        inputs = digests_for(case["inputs"], case.get("input_globs", ()))
         out = (d / "stdout.log").read_text(errors="replace") + (d / "stderr.log").read_text(errors="replace")
         verdict = "PASS" if rc == 0 and "\nOK" in out else ("ERROR" if rc == 124 else "FAIL")
         write_verdict(d, rid, case["id"], verdict, case["oracle"], "exit 0 + OK", f"exit={rc}; tail={out.strip().splitlines()[-1] if out.strip() else ''}", inputs)

@@ -1,0 +1,6 @@
+# Pinned toolchain (ADR-0002). Targets are installed explicitly (CI: rustup target add
+# x86_64-unknown-uefi; local: official rust-std component verified by hash), not listed here,
+# so that `cargo check` on the host target keeps working where the download is blocked.
+[toolchain]
+channel = "1.97.0"
+components = ["rustfmt", "clippy"]

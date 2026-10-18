@@ -1,0 +1,22 @@
+# nawah-os workspace. Profiles live here (cargo ignores profiles in member manifests).
+[workspace]
+members = ["kernel"]
+resolver = "2"
+
+[profile.dev]
+panic = "abort"
+opt-level = 1
+
+[profile.release]
+panic = "abort"
+opt-level = 2
+lto = true
+codegen-units = 1
+debug = 1
+
+# Test kernel: release optimisation plus runtime checks (overflow, debug assertions) so that
+# bugs invisible in the normal kernel surface in the test kernel (Sol OS ADR-010 §13).
+[profile.ktest]
+inherits = "release"
+debug-assertions = true
+overflow-checks = true

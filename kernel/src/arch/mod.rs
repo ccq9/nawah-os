@@ -1,0 +1,8 @@
+//! Architecture-specific code. Everything that touches hardware directly lives here
+//! (ADR-0002 item 6). The rest of the kernel uses only the re-exported interface.
+
+#[cfg(target_arch = "x86_64")]
+mod x86_64;
+
+#[cfg(target_arch = "x86_64")]
+pub use x86_64::{halt, init_console, qemu, Serial};

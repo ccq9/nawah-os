@@ -1,0 +1,8 @@
+[build]
+target = "x86_64-unknown-uefi"
+
+# x86_64-unknown-uefi (rustc built-in spec, read with --print target-spec-json): PE32+ via rust-lld
+# (msvc flavour), entry efi_main, subsystem efi_application, red zone disabled, -mmx,-sse,+soft-float,
+# stack probes by call. Frame pointers kept for diagnostics.
+[target.x86_64-unknown-uefi]
+rustflags = ["-C", "force-frame-pointers=yes"]

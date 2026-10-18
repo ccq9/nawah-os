@@ -1,0 +1,18 @@
+[package]
+name = "nawah-kernel"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+publish = false
+
+[[bin]]
+name = "nawah-kernel"
+path = "src/main.rs"
+test = false
+bench = false
+
+[features]
+# Test kernel: in-kernel tests selected by name, QEMU exit codes (never in the shipped kernel).
+ktest = []
+# TST-M1-NEG: pass a deliberately stale map key to ExitBootServices (negative test build).
+inject_ebs_fail = []

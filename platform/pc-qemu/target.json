@@ -1,42 +1,133 @@
 {
  "target": "pc-qemu",
- "purpose": "PC lab target: x86-64, UEFI (OVMF), QEMU q35, single vCPU. Single-image kernel (boot/stub + kernel/) per ADR-0001.",
+ "purpose": "PC lab target: x86-64, UEFI (OVMF), QEMU q35, single vCPU. Single-image Rust kernel (kernel/, x86_64-unknown-uefi) per ADR-0001/ADR-0002.",
  "build": {
   "test_id": "TST-M1-BUILD",
   "timeout_s": 1200,
-  "inputs": ["boot/stub/main.c", "kernel/main.c", "boot/common/efi.h", "boot/common/types.h", "boot/common/serial.h", "boot/common/bootinfo.h", "platform/pc-qemu/target.json"],
-  "artifact": "${OUT}/KERNEL.EFI",
-  "extra_artifacts": ["${OUT}/KERNEL-NEG.EFI"],
+  "inputs": [
+   "Cargo.toml",
+   "kernel/Cargo.toml",
+   "kernel/build.rs",
+   ".cargo/config.toml",
+   "rust-toolchain.toml",
+   "platform/pc-qemu/target.json"
+  ],
+  "input_globs": [
+   "kernel/src/**/*.rs"
+  ],
+  "artifact": "${OUT}/NAWAH.EFI",
+  "extra_artifacts": [
+   "${OUT}/NAWAH-NEG.EFI"
+  ],
+  "toolchain": "rust-1.97.0 x86_64-unknown-uefi",
   "steps": [
-   ["clang", "-target", "x86_64-unknown-windows", "-ffreestanding", "-fshort-wchar", "-mno-red-zone", "-fno-stack-protector", "-fno-builtin", "-nostdlib", "-O2", "-Wall", "-Wextra", "-Werror", "-DBUILD_ID=${BUILD_ID}", "-c", "boot/stub/main.c", "-o", "${OUT}/stub.o"],
-   ["clang", "-target", "x86_64-unknown-windows", "-ffreestanding", "-fshort-wchar", "-mno-red-zone", "-fno-stack-protector", "-fno-builtin", "-nostdlib", "-O2", "-Wall", "-Wextra", "-Werror", "-DBUILD_ID=${BUILD_ID}", "-DNAWAH_INJECT_EBS_FAIL=1", "-c", "boot/stub/main.c", "-o", "${OUT}/stub-neg.o"],
-   ["clang", "-target", "x86_64-unknown-windows", "-ffreestanding", "-fshort-wchar", "-mno-red-zone", "-fno-stack-protector", "-fno-builtin", "-nostdlib", "-O2", "-Wall", "-Wextra", "-Werror", "-c", "kernel/main.c", "-o", "${OUT}/kernel.o"],
-   ["lld-link", "/subsystem:efi_application", "/entry:efi_main", "/nodefaultlib", "${OUT}/stub.o", "${OUT}/kernel.o", "/out:${OUT}/KERNEL.EFI"],
-   ["lld-link", "/subsystem:efi_application", "/entry:efi_main", "/nodefaultlib", "${OUT}/stub-neg.o", "${OUT}/kernel.o", "/out:${OUT}/KERNEL-NEG.EFI"]
+   [
+    "cargo",
+    "build",
+    "--release",
+    "--offline",
+    "--manifest-path",
+    "kernel/Cargo.toml",
+    "--target",
+    "x86_64-unknown-uefi",
+    "--target-dir",
+    "${OUT}/cargo"
+   ],
+   [
+    "cp",
+    "${OUT}/cargo/x86_64-unknown-uefi/release/nawah-kernel.efi",
+    "${OUT}/NAWAH.EFI"
+   ],
+   [
+    "cargo",
+    "build",
+    "--release",
+    "--offline",
+    "--manifest-path",
+    "kernel/Cargo.toml",
+    "--target",
+    "x86_64-unknown-uefi",
+    "--target-dir",
+    "${OUT}/cargo-neg",
+    "--features",
+    "inject_ebs_fail"
+   ],
+   [
+    "cp",
+    "${OUT}/cargo-neg/x86_64-unknown-uefi/release/nawah-kernel.efi",
+    "${OUT}/NAWAH-NEG.EFI"
+   ]
   ]
  },
  "qemu": {
-  "binary": "qemu-system-x86_64", "machine": "q35", "cpu": "qemu64", "memory": "512M", "smp": 1,
-  "ovmf_code": "/usr/share/OVMF/OVMF_CODE_4M.fd", "ovmf_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd", "boot_timeout_s": 180
+  "binary": "qemu-system-x86_64",
+  "machine": "q35",
+  "cpu": "qemu64",
+  "memory": "512M",
+  "smp": 1,
+  "ovmf_code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
+  "ovmf_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
+  "boot_timeout_s": 180
  },
  "boot_oracle": {
   "test_id": "TST-M1-BOOT",
   "oracle": "contracts/boot.md v1: boot|start, boot|ebs|ok=1, then kernel|post_ebs with map_key and descriptors emitted from kernel/ after ExitBootServices; QEMU exit 33 (0x10 via isa-debug-exit); no boot|error",
   "expected_exit_code": 33,
-  "required_markers": ["OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs", "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=", "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x", "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10"],
-  "forbidden_markers": ["|boot|error|", "|kernel|panic|"],
-  "max_counts": {"|boot|start|": 1}
+  "required_markers": [
+   "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
+   "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
+   "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
+   "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10"
+  ],
+  "forbidden_markers": [
+   "|boot|error|",
+   "|kernel|panic|"
+  ],
+  "max_counts": {
+   "|boot|start|": 1
+  }
  },
  "suites": {
   "M1": [
-   {"id": "TST-M1-BOOT", "test_id": "TST-M1-BOOT", "oracle": "contracts/boot.md v1 success path (see boot_oracle)", "expected_exit_code": 33,
-    "required_markers": ["OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs", "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=", "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x", "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10"],
-    "forbidden_markers": ["|boot|error|", "|kernel|panic|"], "max_counts": {"|boot|start|": 1}},
-   {"id": "TST-M1-NEG", "test_id": "TST-M1-NEG", "artifact": "${OUT}/KERNEL-NEG.EFI",
+   {
+    "id": "TST-M1-BOOT",
+    "test_id": "TST-M1-BOOT",
+    "oracle": "contracts/boot.md v1 success path (see boot_oracle)",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
+     "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
+     "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
+     "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10"
+    ],
+    "forbidden_markers": [
+     "|boot|error|",
+     "|kernel|panic|"
+    ],
+    "max_counts": {
+     "|boot|start|": 1
+    }
+   },
+   {
+    "id": "TST-M1-NEG",
+    "test_id": "TST-M1-NEG",
+    "artifact": "${OUT}/NAWAH-NEG.EFI",
     "oracle": "contracts/boot.md v1 failure path: stale map key injected -> firmware rejects EBS twice -> boot|error|code=BOOT_E_EBS_FAILED, boot|halt|reboot=0, QEMU exit 97 (0x30); exactly one boot|start (no reboot loop); kernel never entered",
     "expected_exit_code": 97,
-    "required_markers": ["OSX|${BUILD_ID}|boot|start|", "OSX|${BUILD_ID}|boot|ebs|retry=1|", "OSX|${BUILD_ID}|boot|error|code=BOOT_E_EBS_FAILED|", "OSX|${BUILD_ID}|boot|halt|reboot=0"],
-    "forbidden_markers": ["|kernel|post_ebs|", "|boot|ebs|ok=1|"], "max_counts": {"|boot|start|": 1}}
+    "required_markers": [
+     "OSX|${BUILD_ID}|boot|start|",
+     "OSX|${BUILD_ID}|boot|ebs|retry=1|",
+     "OSX|${BUILD_ID}|boot|error|code=BOOT_E_EBS_FAILED|",
+     "OSX|${BUILD_ID}|boot|halt|reboot=0"
+    ],
+    "forbidden_markers": [
+     "|kernel|post_ebs|",
+     "|boot|ebs|ok=1|"
+    ],
+    "max_counts": {
+     "|boot|start|": 1
+    }
+   }
   ]
  }
 }
