@@ -976,7 +976,7 @@
       "id": "S74",
       "title": "fontTools (Python library) — independent OpenType reader used as the reference in TST-M5-GLYPHS",
       "url": "https://github.com/fonttools/fonttools",
-      "version": "the Ubuntu 24.04 package python3-fonttools on the CI runner, 4.65.0 locally; tests/test_text.py prints the version it ran with into the evidence",
+      "version": "4.46.0 on the CI runner (Ubuntu 24.04 python3-fonttools, recorded by tests/test_text.py in CI run 39160436412), 4.65.0 locally",
       "accessed": "2026-10-18",
       "supports": [
         "getBestCmap, hmtx, glyf getCoordinates with composites resolved, DecomposingRecordingPen and decomposeQuadraticSegment for the reference rasteriser's contour walk"
@@ -988,7 +988,7 @@
       "id": "S75",
       "title": "HarfBuzz text shaping engine (hb-shape) — the reference shaper in TST-M5-SHAPING and for the guest sample",
       "url": "https://harfbuzz.github.io/",
-      "version": "the Ubuntu 24.04 package libharfbuzz-bin (8.3.0 locally, same distribution); tests/test_text.py prints the version it ran with into the evidence",
+      "version": "8.3.0 on the CI runner and locally (Ubuntu 24.04 libharfbuzz-bin, recorded by tests/test_text.py in CI run 39160436412)",
       "accessed": "2026-10-18",
       "supports": [
         "Arabic shaping with the font's GSUB: feature stages isol, fina, medi, init (each its own stage), then rlig; output of glyph ids per run"

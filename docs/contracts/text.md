@@ -1,6 +1,6 @@
 # عقد النص — الإصدار 1 (WP-35، ADR-0019 §6)
 
-قيد WP-35 — مسودة حتى إغلاقه بدليل CI؛ عند الإغلاق يُجمَّد: أي تغيير في الواجهة أو الخوارزميات أو البيانات = إصدار جديد مع سجل قرار. الكود: `user/libnawah-text` (الحزمة `nawah-text`: `no_std`، بلا تخصيص، بلا تبعيات، `#![deny(unsafe_code)]`)، `tools/unicode_tables.py` (توليد الجداول)، `tools/text_vectors.py` (عيّنة الضيف)، `user/apps/textprobe` (الضيف)، `tests/test_text.py` (المضيف).
+**مجمَّد** (أُغلق WP-35 بدليل CI run 39160436412): أي تغيير في الواجهة أو الخوارزميات أو البيانات = إصدار جديد مع سجل قرار. الكود: `user/libnawah-text` (الحزمة `nawah-text`: `no_std`، بلا تخصيص، بلا تبعيات، `#![deny(unsafe_code)]`)، `tools/unicode_tables.py` (توليد الجداول)، `tools/text_vectors.py` (عيّنة الضيف)، `user/apps/textprobe` (الضيف)، `tests/test_text.py` (المضيف).
 
 ## 1. البيانات والخطوط
 
