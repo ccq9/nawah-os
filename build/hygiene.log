@@ -1,0 +1,9 @@
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.68s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.56s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `ktest` profile [optimized + debuginfo] target(s) in 0.56s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.13s
+unsafe lines: 146 (baseline 146)
