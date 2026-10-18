@@ -1,6 +1,6 @@
 # ADR-0009 — وضع المستخدم وعقد نداءات النظام (WP-14)
 
-الحالة: منفَّذ 2026-10-18؛ الإغلاق مرهون بدليل CI (TST-M3-USER-SYSCALL / USER-BAD-PTR / USER-KERNEL-ACCESS / SYSRET-CANONICAL + أثر TST-M1-BOOT).
+الحالة: مقبول — منفَّذ ومُغلق 2026-10-18 بدليل CI run 39102587418 (الاختبارات الأربعة PASS؛ أثر الإقلاع: ping من حلقة 3 = 0x1235، user_fault 14 برمز 0x5 عند قراءة ذاكرة النواة، بلا تسريب إطار). العقد syscall.md v1 مجمَّد.
 
 المراجع: Intel SDM Vol.3A §5.8.8 (SYSCALL/SYSRET)، Vol.4 جدول 2-2 (EFER.SCE، STAR، LSTAR، FMASK، GS_BASE/KERNEL_GS_BASE)، Vol.2B SWAPGS، Vol.3A §4.6/§2.5 (SMEP/SMAP، STAC/CLAC)، §7.14.2 (TSS.RSP0) (S26)؛ ADR-0008 (ما تعلمناه عن الاقتران).
 
