@@ -324,7 +324,7 @@
     "REQ-M2-011"
    ],
    "layer": "negative",
-   "oracle": "supervisor write to .text with CR0.WP -> #PF error code 3 (present, write, supervisor: SDM Fig. 7-11); CR2 = RIP = target; exit 173",
+   "oracle": "WP cleared first (firmware may have set it): a supervisor write to a read-only page goes through; after the kernel's own enable_wp a write to .text -> #PF error code 3 with CR2 = RIP = target",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [

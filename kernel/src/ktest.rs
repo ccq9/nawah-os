@@ -107,10 +107,32 @@ pub fn run() -> ! {
             panic!("K_T_PANIC deliberate test panic");
         }
         "vmm_wp" => {
-            // Writing to .text: the target is the store instruction itself, so RIP, CR2 and the
-            // expected address are all the same value.
+            // Firmware-independent: OVMF may enter the kernel with CR0.WP already set, so first
+            // clear WP and show that a supervisor write to the read-only PE header page goes
+            // through (value restored), then re-enable WP with the kernel's own routine; the
+            // write to .text below must then fault. The target is the store instruction itself,
+            // so RIP, CR2 and the expected address are all the same value.
+            let Some(ks) = vmm::kernel_space() else {
+                fail("kernel space not active")
+            };
+            let header = ks.image_base + 8; // inside the read-only header page, past "MZ"
+            paging::disable_wp();
+            let saved = inject::read_qword(header);
+            inject::write_qword(header, saved ^ 0x5A5A_5A5A_5A5A_5A5A);
+            let wp_off_write_ok = inject::read_qword(header) != saved;
+            inject::write_qword(header, saved);
+            paging::enable_wp();
             let target = inject::expected_rip("write");
-            kprintln!("OSX|{}|ktest|vmm_wp|target={:#x}", BUILD_ID, target);
+            kprintln!(
+                "OSX|{}|ktest|vmm_wp|wp_off_write_ok={}|wp_now={}|target={:#x}",
+                BUILD_ID,
+                u8::from(wp_off_write_ok),
+                u8::from(paging::wp_enabled()),
+                target
+            );
+            if !wp_off_write_ok {
+                fail("write with WP clear did not go through")
+            }
             expect_rip("write");
             inject::write_fault(target);
             fail("write to .text did not fault")

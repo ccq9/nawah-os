@@ -39,6 +39,7 @@ jobs:
           path: |
             evidence/
             build/mutants-report.json
+            build/mutants-scratch/
           retention-days: 90
       - name: Publish evidence on a ci-evidence branch
         if: always()
@@ -49,5 +50,6 @@ jobs:
           git checkout --orphan "ci-evidence/mutants-${GITHUB_RUN_ID}"
           git rm -rfq --cached . >/dev/null
           git add -f evidence/ build/mutants-report.json 2>/dev/null || git add -f evidence/
+          git add -f build/mutants-scratch 2>/dev/null || true
           git commit -qm "mutation evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
           git push -q origin "ci-evidence/mutants-${GITHUB_RUN_ID}"

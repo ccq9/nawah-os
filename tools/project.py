@@ -483,6 +483,14 @@ def prepare_esp(t, target_name, artifact):
 
 def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     t = load_target(target_name)
+    if suite_case is None:
+        # One oracle per boot test: when a suite case carries the boot test id, it is the oracle
+        # (`boot_oracle` is only the fallback for targets without suites).
+        boot_id = t["boot_oracle"]["test_id"]
+        for cases in t.get("suites", {}).values():
+            for c in cases:
+                if c["test_id"] == boot_id and not c.get("qemu_extra"):
+                    suite_case = dict(c, _plain_boot=True)
     art_rel = (suite_case or {}).get("artifact") or t["build"]["artifact"]
     art = safe_rel(art_rel.replace("${OUT}", f"build/{target_name}"))
     if not art.exists():
@@ -496,7 +504,8 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     cmd = qemu_cmd(t, target_name, esp, serial, extra)
     timeout_s = int(os.environ.get("NAWAH_QEMU_TIMEOUT_S", t["qemu"]["boot_timeout_s"]))
     rc = run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s)
-    write_run(d, rid, target_name, "boot" if not suite_case else f"test:{suite_case['id']}", [" ".join(cmd)], rc, started)
+    plain_boot = suite_case is None or suite_case.get("_plain_boot")
+    write_run(d, rid, target_name, "boot" if plain_boot else f"test:{suite_case['id']}", [" ".join(cmd)], rc, started)
     text = serial.read_text(errors="replace") if serial.exists() else ""
     inputs = digests_for(t["build"]["inputs"], t["build"].get("input_globs", ())) | {keep_artifact(d, rid, art): sha256_file(art)}
     case = suite_case or t["boot_oracle"]
@@ -524,7 +533,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
                   f"exit={rc}; serial_lines={len(text.splitlines())}; missing={missing}; forbidden_present={present_forbidden}",
                   inputs, reason=reason)
     attach_evidence(case["test_id"], rid, verdict)
-    print(f"{'boot' if not suite_case else case['id']} {target_name}: {verdict} ({reason}) run={rid}")
+    print(f"{'boot' if plain_boot else case['id']} {target_name}: {verdict} ({reason}) run={rid}")
     for line in text.splitlines()[:40]:
         print("  serial|", line)
     return 0 if verdict == "PASS" else 1

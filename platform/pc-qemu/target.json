@@ -512,11 +512,12 @@
      "-fw_cfg",
      "name=opt/nawah/test,string=vmm_wp"
     ],
-    "oracle": "supervisor write to .text with CR0.WP -> #PF error code 3 (present, write, supervisor: SDM Fig. 7-11); CR2 = RIP = target; exit 173",
+    "oracle": "firmware-independent: WP cleared -> supervisor write to the read-only header page goes through (restored); kernel's enable_wp -> write to .text raises #PF error code 3 (present, write, supervisor: SDM Fig. 7-11), CR2 = RIP = target; exit 173",
     "expected_exit_code": 173,
     "required_markers": [
      "OSX|${BUILD_ID}|ktest|start|name=vmm_wp",
-     "|exc|vector=14|name=#PF|error=0x3|"
+     "|exc|vector=14|name=#PF|error=0x3|",
+     "|ktest|vmm_wp|wp_off_write_ok=1|wp_now=1|target=0x"
     ],
     "forbidden_markers": [
      "|ktest|fail|",
@@ -528,7 +529,7 @@
       "\\|rip=(0x[0-9a-f]+)\\|"
      ],
      [
-      "vmm_wp\\|target=(0x[0-9a-f]+)",
+      "vmm_wp\\|wp_off_write_ok=1\\|wp_now=1\\|target=(0x[0-9a-f]+)",
       "\\|cr2=(0x[0-9a-f]+)\\|"
      ]
     ]

@@ -48,12 +48,16 @@ MUTANTS = [
     ("M07", "kernel/src/mm/pmm.rs",
      "const LOW_RESERVED: u64 = 1 << 20; // 1 MiB", "const LOW_RESERVED: u64 = 0; // 1 MiB",
      ["TST-M2-PMM-COUNTS", "TST-M2-PMM-DOUBLE-FREE"], "first MiB handed out"),
+    # Removing enable_wp()/enable_nxe() was equivalent on this firmware: OVMF enters the kernel
+    # with CR0.WP = 1 and IA32_EFER.NXE = 1 already (mutation run 39098959577). vmm_wp now clears
+    # WP before relying on the kernel's enable_wp, so M08 is detectable; for NX the detectable
+    # defect is a writable section mapped executable (M09).
     ("M08", "kernel/src/arch/x86_64/paging.rs",
-     "        enable_wp();\n", "",
-     ["TST-M2-VMM-WP", "TST-M2-VMM-SWITCH"], "CR0.WP never set"),
-    ("M09", "kernel/src/arch/x86_64/paging.rs",
-     "        if self.nx {\n            enable_nxe();\n        }", "",
-     ["TST-M2-VMM-SWITCH", "TST-M2-VMM-NX"], "EFER.NXE never set while XD bits are used"),
+     "const CR0_WP: u64 = 1 << 16;", "const CR0_WP: u64 = 0;",
+     ["TST-M2-VMM-WP", "TST-M2-VMM-SWITCH"], "enable_wp a no-op (WP bit constant zeroed); the test clears WP first, so firmware state cannot mask it"),
+    ("M09", "kernel/src/mm/vmm.rs",
+     "            rw += 1;\n            WRITE | NX", "            rw += 1;\n            WRITE",
+     ["TST-M2-VMM-NX", "TST-M2-VMM-SWITCH"], ".data/.bss executable (NX dropped)"),
     ("M10", "kernel/src/mm/vmm.rs",
      "    space.map_range(base, base, hdr_len, NX)?;", "    space.map_range(base, base, hdr_len, WRITE | NX)?;",
      ["TST-M2-VMM-SWITCH"], "image headers writable"),
@@ -127,6 +131,9 @@ KTEST_OUT = "build/pc-qemu/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.ef
 RELEASE_STEP = ["cargo", "build", "--release", "--offline", "--manifest-path", "kernel/Cargo.toml",
                 "--target", "x86_64-unknown-uefi", "--target-dir", "build/pc-qemu/cargo"]
 RELEASE_OUT = "build/pc-qemu/cargo/x86_64-unknown-uefi/release/nawah-kernel.efi"
+NEG_STEP = ["cargo", "build", "--release", "--offline", "--manifest-path", "kernel/Cargo.toml",
+            "--target", "x86_64-unknown-uefi", "--target-dir", "build/pc-qemu/cargo-neg", "--features", "inject_ebs_fail"]
+NEG_OUT = "build/pc-qemu/cargo-neg/x86_64-unknown-uefi/release/nawah-kernel.efi"
 
 
 def sh(cmd, cwd, env=None, timeout=1800):
@@ -156,16 +163,14 @@ def suite_of(target, test_id):
 
 
 def run_killers(wt: Path, env, target, killers):
-    """Returns (killed_by: list, results: {test_id: PASS|FAIL})."""
+    """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED}). Every case runs through
+    its suite entry (the strong oracle); a missing artifact (exit 20) is SKIPPED, never a kill."""
     results = {}
     pyproj = ["python3", str(wt / "tools" / "project.py")]
     for tid in killers:
-        if tid == "TST-M1-BOOT":
-            r = sh(pyproj + ["boot", "--target", target], wt, env)
-        else:
-            suite = suite_of(target, tid)
-            r = sh(pyproj + ["test", "--target", target, "--suite", suite, "--only", tid], wt, env)
-        results[tid] = "PASS" if r.returncode == 0 else "FAIL"
+        suite = suite_of(target, tid)
+        r = sh(pyproj + ["test", "--target", target, "--suite", suite, "--only", tid], wt, env)
+        results[tid] = "PASS" if r.returncode == 0 else ("SKIPPED" if r.returncode == 20 or "no artifact" in r.stdout else "FAIL")
     return [t for t, v in results.items() if v == "FAIL"], results
 
 
@@ -235,17 +240,29 @@ def main():
                 print(f"{mid}: INVALID (does not build) ({note})"); continue
             (wt / "build" / a.target / "build-id.txt").write_text(benv["NAWAH_BUILD_ID"] + "\n")
             killed_by, results = run_killers(wt, env, a.target, killers)
+            declared_miss = not killed_by
             if not killed_by:
-                # Be fair before declaring a survivor: run everything the suite has.
+                # Be fair before declaring a survivor: build the remaining artifacts and run
+                # everything the suites have.
                 rest = [c for c in all_cases(a.target) if c not in killers]
-                if not need_release:
-                    r = sh(RELEASE_STEP, wt, benv, timeout=1800)
+                for step, out, name in ((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"), (NEG_STEP, NEG_OUT, "NAWAH-NEG.EFI")):
+                    if (wt / "build" / a.target / name).exists() and name == "NAWAH.EFI" and need_release:
+                        continue
+                    r = sh(step, wt, benv, timeout=1800)
                     if r.returncode == 0:
-                        shutil.copy(wt / RELEASE_OUT, wt / "build" / a.target / "NAWAH.EFI")
-                    else:
-                        rest = [c for c in rest if c != "TST-M1-BOOT"]
+                        shutil.copy(wt / out, wt / "build" / a.target / name)
                 more_killed, more = run_killers(wt, env, a.target, rest)
                 results.update(more); killed_by = more_killed
+            if declared_miss:
+                # Keep the scratch evidence (serial logs) of anything that escaped its declared
+                # killers, so the report can be audited.
+                keep = REPO / "build" / "mutants-scratch" / mid
+                if keep.exists():
+                    shutil.rmtree(keep)
+                shutil.copytree(scratch, keep)
+                entry["declared_killers_missed"] = True
+            for d in scratch.iterdir():
+                shutil.rmtree(d, ignore_errors=True)
             entry.update(status="killed" if killed_by else "survived", killed_by=killed_by, results=results,
                          seconds=round(time.time() - t0, 1))
             report["mutants"].append(entry)
@@ -258,6 +275,7 @@ def main():
     killed = [m for m in valid if m["status"] == "killed"]
     ratio = len(killed) / len(valid) if valid else 0.0
     report.update(valid=len(valid), killed=len(killed), survived=[m["id"] for m in valid if m["status"] == "survived"],
+                  declared_killers_missed=[m["id"] for m in report["mutants"] if m.get("declared_killers_missed")],
                   invalid=[m["id"] for m in report["mutants"] if m["status"] == "invalid"], ratio=round(ratio, 4),
                   finished=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
     rp = REPO / a.report
@@ -268,7 +286,7 @@ def main():
         print(f"\n{'OK' if not bad else 'FAIL'}: {len(report['mutants']) - len(bad)}/{len(report['mutants'])} mutants apply and type-check" + (f"; invalid: {bad}" if bad else ""))
         return 0 if not bad else 1
     verdict = ratio >= THRESHOLD and valid
-    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; invalid={report['invalid']}; report={a.report}")
+    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; invalid={report['invalid']}; declared_killers_missed={report['declared_killers_missed']}; report={a.report}")
     return 0 if verdict else 1
 
 

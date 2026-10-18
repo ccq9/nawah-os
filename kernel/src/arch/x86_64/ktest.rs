@@ -285,6 +285,19 @@ pub fn page_fault() {
     unsafe { ktest_trigger_pf() }
 }
 
+/// Reads a qword through the identity map (test kernel helper for the WP probe).
+pub fn read_qword(address: u64) -> u64 {
+    // SAFETY: the caller passes an address inside the mapped kernel image.
+    unsafe { (address as *const u64).read_volatile() }
+}
+
+/// Writes a qword through the identity map; with CR0.WP clear this succeeds on a read-only page.
+pub fn write_qword(address: u64, value: u64) {
+    // SAFETY: the caller passes an address inside the mapped kernel image whose original value
+    // it restores; nothing executes from or depends on the PE header after boot.
+    unsafe { (address as *mut u64).write_volatile(value) }
+}
+
 /// Stores 0 at `address`; the caller picks an address whose page rejects writes (vmm_wp).
 pub fn write_fault(address: u64) {
     // SAFETY: as in divide_error; with CR0.WP the store never happens because the page is

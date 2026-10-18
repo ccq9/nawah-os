@@ -238,7 +238,9 @@ fn enable_nxe() {
     }
 }
 
-fn enable_wp() {
+/// Sets CR0.WP: supervisor writes to read-only pages fault. Public so the test kernel can prove
+/// the kernel's own control of the bit independently of what the firmware left in CR0.
+pub fn enable_wp() {
     // SAFETY: CR0 read-modify-write at CPL 0; only bit 16 (WP) changes.
     unsafe {
         asm!(
@@ -247,6 +249,22 @@ fn enable_wp() {
             "mov cr0, {t}",
             t = out(reg) _,
             wp = in(reg) CR0_WP,
+            options(nomem, nostack),
+        );
+    }
+}
+
+/// Clears CR0.WP (test kernel only: the vmm_wp test starts from a known state).
+#[cfg(feature = "ktest")]
+pub fn disable_wp() {
+    // SAFETY: CR0 read-modify-write at CPL 0; only bit 16 (WP) changes.
+    unsafe {
+        asm!(
+            "mov {t}, cr0",
+            "and {t}, {mask}",
+            "mov cr0, {t}",
+            t = out(reg) _,
+            mask = in(reg) !CR0_WP,
             options(nomem, nostack),
         );
     }
