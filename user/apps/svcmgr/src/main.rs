@@ -217,6 +217,7 @@ struct Manager {
     keyboard: Option<Handle>,
     serial: Option<Handle>,
     display: Option<Handle>,
+    mouse: Option<Handle>,
 }
 
 enum LoadError {
@@ -404,32 +405,34 @@ impl Manager {
             s.deadline = None;
             return;
         };
-        // A kernel resource goes to the service named for it, as a copy (the manager keeps
-        // the original for restarts): the authority to `auth`, the interface to `net`, the
-        // keyboard to `input`, the console to `sh`.
-        let mut initial = [theirs, 0];
+        // Kernel resources go to the service named for them, as copies (the manager keeps
+        // the originals for restarts): the authority to `auth`, the interface to `net`, the
+        // keyboard then the mouse to `input`, the console to `sh`, the display to `display`.
+        let mut initial = [theirs, 0, 0];
         let mut n_initial = 1;
-        let resource = match s.name() {
-            b"auth" => self.authority,
-            b"net" => self.nic,
-            b"input" => self.keyboard,
-            b"sh" => self.serial,
-            b"display" => self.display,
-            _ => None,
+        let resources: [Option<Handle>; 2] = match s.name() {
+            b"auth" => [self.authority, None],
+            b"net" => [self.nic, None],
+            b"input" => [self.keyboard, self.mouse],
+            b"sh" => [self.serial, None],
+            b"display" => [self.display, None],
+            _ => [None, None],
         };
-        if let Some(r) = resource {
+        for r in resources.into_iter().flatten() {
             let rights = libnawah::handle_rights(r);
             if rights >= 0 {
                 if let Ok(copy) = libnawah::handle_duplicate(r, rights as u32) {
-                    initial[1] = copy;
-                    n_initial = 2;
+                    initial[n_initial] = copy;
+                    n_initial += 1;
                 }
             }
         }
         let s = &mut self.services[i];
         let spawned = libnawah::process_spawn(s.path(), &initial[..n_initial]);
-        if spawned.is_err() && n_initial == 2 {
-            libnawah::handle_close(initial[1]);
+        if spawned.is_err() {
+            for &h in &initial[1..n_initial] {
+                libnawah::handle_close(h);
+            }
         }
         match spawned {
             Ok(p) => {
@@ -710,8 +713,8 @@ fn main() -> u64 {
     }
     // Initial handles are consecutive (syscall.md §5): the kernel's resources follow the
     // control channel, recognised by type (handle_type) whatever their order.
-    let (mut authority, mut nic, mut keyboard, mut serial, mut display) =
-        (None, None, None, None, None);
+    let (mut authority, mut nic, mut keyboard, mut serial, mut display, mut mouse) =
+        (None, None, None, None, None, None);
     for h in ctl + 1..ctl + 8 {
         match libnawah::handle_type(h) {
             libnawah::object_type::AUTHORITY => authority = Some(h),
@@ -719,6 +722,7 @@ fn main() -> u64 {
             libnawah::object_type::KEYBOARD => keyboard = Some(h),
             libnawah::object_type::SERIAL => serial = Some(h),
             libnawah::object_type::DISPLAY => display = Some(h),
+            libnawah::object_type::MOUSE => mouse = Some(h),
             t if t < 0 => break,
             _ => {}
         }
@@ -733,6 +737,7 @@ fn main() -> u64 {
         keyboard,
         serial,
         display,
+        mouse,
     };
     // Wait-set slots: 0 = control; then per service (boot channel, process).
     let mut entries = [WaitEntry {

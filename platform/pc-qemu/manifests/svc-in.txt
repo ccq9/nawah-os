@@ -1,0 +1,4 @@
+# TST-M5-INPUT-ROUTE / TST-M5-MOUSE: the trusted input service (keyboard and mouse from the
+# manager, input.md v2) with auth, whose admin token is the only authority over the focus
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0

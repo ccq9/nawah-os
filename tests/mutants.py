@@ -263,15 +263,15 @@ MUTANTS = [
      "            if e.is_dir() {\n                put(b\"D \");", "            if false {\n                put(b\"D \");",
      ["TST-M4-SHELL-SVC"], "dir_list lists directories as files"),
     ("M60", "kernel/src/syscall/mod.rs",
-     "                | Object::Keyboard(_)\n                | Object::Serial(_) => {}",
-     "                | Object::Keyboard(_)\n                | Object::Serial(_)\n                | Object::Vmo(_) => {}",
+     "                | Object::Serial(_)\n                | Object::Mouse(_) => {}",
+     "                | Object::Serial(_)\n                | Object::Mouse(_)\n                | Object::Vmo(_) => {}",
      ["TST-M4-WAIT-TIMEOUT"], "object_wait_many accepts a VMO"),
     ("M61", "kernel/src/services.rs",
      "    if crate::diag::present() {\n        initial.push(Entry {",
      "    if !crate::diag::present() {\n        initial.push(Entry {",
      ["TST-M4-SHELL-SVC", "TST-M1-BOOT"], "the console is handed to the manager only when absent"),
     ("M62", "user/apps/svcmgr/src/main.rs",
-     "            b\"auth\" => self.authority,", "            b\"auth\" => None,",
+     "            b\"auth\" => [self.authority, None],", "            b\"auth\" => [None, None],",
      ["TST-M4-LOGIN"], "the authority is never handed to auth"),
     ("M63", "user/apps/svcmgr/src/main.rs",
      "                } else if self.services[i].deps & !ready == 0 {\n                    self.start(i, now);",
@@ -353,7 +353,7 @@ def stage_of(mid: str) -> str:
     return "M2" if n < 30 else ("M3" if n < 50 else "M4")
 
 # Applications first (WP-17): the kernel embeds them through NAWAH_APPS_DIR (kernel/build.rs).
-APPS = ["hello", "file_roundtrip", "path_invalid", "fd_leak", "echo", "launch", "child", "waiter", "svcmgr", "svc", "authd", "configd", "netprobe", "kbdprobe", "netd", "sh", "fbprobe"]
+APPS = ["hello", "file_roundtrip", "path_invalid", "fd_leak", "echo", "launch", "child", "waiter", "svcmgr", "svc", "authd", "configd", "netprobe", "kbdprobe", "netd", "sh", "fbprobe", "inputd"]
 def app_step(name):
     return (["cargo", "build", "--profile", "app", "--offline", "--manifest-path", f"user/apps/{name}/Cargo.toml",
              "--target", "x86_64-unknown-none", "--target-dir", "build/pc-qemu/cargo-user"],

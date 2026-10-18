@@ -1396,7 +1396,7 @@
     "REQ-M5-002"
    ],
    "layer": "guest",
-   "oracle": "keys sent through the monitor reach only the focus owner the session named; a second client gets nothing; switching focus moves the stream; the US and Arabic layouts give the declared keycodes/characters; Ctrl+Alt+Del is delivered to the session and never to a client",
+   "oracle": "the input service (auth + input from SVC-IN.TXT) receives the keyboard and the mouse from the manager; clients a, b, session register (OK 1/2/3); FOCUS without a token, with a user's token, or for an unknown client is refused (ERR ACCESS/ERR ACCESS/ERR UNKNOWN) and LAYOUT with a user's token is refused; with the admin's token FOCUS 1 is OK; keys sent through the monitor (`a`, `shift-b`, `ctrl-alt-delete`) reach a as exactly ten KEY events with set-1 codes, modifiers and US characters, the session client receives exactly `SAK` (Delete never reported), b receives nothing; after FOCUS 2 + LAYOUT ar, `a` reaches b as `ش` and a receives nothing; STATUS counts 12 keys, 1 SAK, 0 dropped; clean exit, no frame leak",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1407,8 +1407,19 @@
     "REQ-M5-002"
    ],
    "layer": "guest",
-   "oracle": "PS/2 mouse packets injected through the monitor (mouse_move/mouse_button) arrive as pointer events with the expected deltas and buttons; the pointer stays within the screen",
+   "oracle": "the PS/2 mouse answers at boot (kernel|kbd|…|mouse=1); pointer actions injected through the monitor reach the focused client as PTR events: `mouse_move 10 5` → `PTR 10 5 0` (y downwards: the PS/2 sign inverted), `mouse_button 1` → `PTR 0 0 1`, `mouse_button 0` → `PTR 0 0 0`; STATUS counts 3 packets, no key/SAK/drop; clean exit, no frame leak",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-LAB-TOOL",
+   "requirement_ids": [
+    "REQ-M5-002"
+   ],
+   "layer": "host_unit",
+   "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU: a single-step case sends its commands once its marker appears with ${SCREEN} resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout (4 cases, OK)",
+   "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },

@@ -581,36 +581,41 @@ class ConsoleSession:
 def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions):
     """`run_logged` for a QEMU case that drives the guest through the monitor (WP-27): once
     `actions["after"]` appears in the serial log, every line of `actions["commands"]` goes to
-    the monitor socket (`sendkey a`, …), then QEMU runs to its end as usual."""
+    the monitor socket (`sendkey a`, …), then QEMU runs to its end as usual. A case may need
+    several such steps (WP-33: keys after one marker, more keys after a later one):
+    `actions["steps"]` is a list of `{after, commands}` sent in order, each once its marker
+    has appeared after the previous step was sent."""
     import socket
     import time
+    steps = actions.get("steps") or [actions]
     with open(log_out, "ab") as o, open(log_err, "ab") as e:
         o.write(f"$ {' '.join(cmd)}\n".encode()); o.flush()
         p = subprocess.Popen(cmd, cwd=cwd, stdout=o, stderr=e)
         deadline = time.monotonic() + timeout
-        sent = False
-        marker = actions["after"].encode()
+        next_step = 0
         while p.poll() is None and time.monotonic() < deadline:
-            if not sent and serial_path.exists() and marker in serial_path.read_bytes():
-                try:
-                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as m:
-                        m.settimeout(5)
-                        m.connect(str(monitor_path))
-                        time.sleep(0.3)
-                        try:
-                            m.recv(4096)
-                        except OSError:
-                            pass
-                        for line in actions["commands"]:
-                            # `${SCREEN}`: the screendump file of this run (WP-32), kept as
-                            # evidence next to the serial log.
-                            line = line.replace("${SCREEN}", str(serial_path.parent / "screen.ppm"))
-                            m.sendall((line + "\n").encode())
-                            time.sleep(float(actions.get("gap_s", 0.2)))
-                    o.write(f"# monitor: sent {len(actions['commands'])} command(s) after {actions['after']!r}\n".encode()); o.flush()
-                except OSError as ex:
-                    e.write(f"monitor: {ex}\n".encode()); e.flush()
-                sent = True
+            if next_step < len(steps) and serial_path.exists():
+                step = steps[next_step]
+                if step["after"].encode() in serial_path.read_bytes():
+                    try:
+                        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as m:
+                            m.settimeout(5)
+                            m.connect(str(monitor_path))
+                            time.sleep(0.3)
+                            try:
+                                m.recv(4096)
+                            except OSError:
+                                pass
+                            for line in step["commands"]:
+                                # `${SCREEN}`: the screendump file of this run (WP-32), kept
+                                # as evidence next to the serial log.
+                                line = line.replace("${SCREEN}", str(serial_path.parent / "screen.ppm"))
+                                m.sendall((line + "\n").encode())
+                                time.sleep(float(step.get("gap_s", actions.get("gap_s", 0.2))))
+                        o.write(f"# monitor: sent {len(step['commands'])} command(s) after {step['after']!r}\n".encode()); o.flush()
+                    except OSError as ex:
+                        e.write(f"monitor: {ex}\n".encode()); e.flush()
+                    next_step += 1
             time.sleep(0.1)
         if p.poll() is None:
             p.kill(); p.wait()
@@ -979,6 +984,11 @@ HOST_SUITES["M4"] = [
     {"id": "TST-M4-SHELL-TOOL", "command": ["python3", "-I", "tests/test_console_session.py"],
      "oracle": "the lab's console session (ConsoleSession) against a fake shell over TCP: waits for the serial marker, splits output at the prompt, judges expect/absent/prompt/expect_serial, reports misses by step, a missing marker sends nothing (3 cases, OK)",
      "inputs": ["tests/test_console_session.py", "tools/project.py"], "input_globs": []},
+]
+HOST_SUITES["M5"] = [
+    {"id": "TST-M5-LAB-TOOL", "command": ["python3", "-I", "tests/test_monitor_steps.py"],
+     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout (4 cases, OK)",
+     "inputs": ["tests/test_monitor_steps.py", "tools/project.py"], "input_globs": []},
 ]
 HOST_SUITES["M3"] = [
     {"id": "TST-M3-FAT32-TOOL", "command": ["python3", "-I", "tests/test_fat32_tool.py"],

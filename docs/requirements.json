@@ -1368,9 +1368,10 @@
       "acceptance": "input_route/mouse",
       "test_ids": [
         "TST-M5-INPUT-ROUTE",
-        "TST-M5-MOUSE"
+        "TST-M5-MOUSE",
+        "TST-M5-LAB-TOOL"
       ],
-      "implementation_status": "planned",
+      "implementation_status": "implemented_untested",
       "evidence_refs": []
     },
     {

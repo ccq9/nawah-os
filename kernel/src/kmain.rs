@@ -391,16 +391,23 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         Err(code) => alloc::format!("present=1|code={code}|selfcheck=0"),
     };
     kprintln!("OSX|{}|kernel|display|{}", build_id, display_line);
-    // Keyboard (WP-27): the i8042 is used as the firmware left it; bytes are polled per tick.
+    // Keyboard and mouse (WP-27, WP-33): the i8042 as the firmware left it plus the auxiliary
+    // interface; bytes are polled per tick into the two objects.
     let kbd = crate::net::keyboard_object();
+    let mouse = crate::net::mouse_object();
+    let (drained, mouse_ok) = arch::i8042::init();
+    crate::net::MOUSE_PRESENT.store(mouse_ok, core::sync::atomic::Ordering::Relaxed);
     kprintln!(
-        "OSX|{}|kernel|kbd|drained={}|ring={}|pending={}|overflow={}|code=ok|selfcheck=1",
+        "OSX|{}|kernel|kbd|drained={}|ring={}|pending={}|overflow={}|mouse={}|mouse_ring={}|code=ok|selfcheck=1",
         build_id,
-        arch::i8042::init(),
+        drained,
         crate::object::bytes::KBD_RING,
         kbd.pending(),
-        kbd.overflow()
+        kbd.overflow(),
+        u8::from(mouse_ok),
+        crate::object::bytes::MOUSE_RING
     );
+    drop(mouse);
     // Diagnostic console (WP-30, ADR-0018): COM2 probed by loopback; its bytes are polled per
     // tick into the console object the service manager routes to `sh`.
     let console_present = crate::diag::init();

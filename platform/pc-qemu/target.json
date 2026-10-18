@@ -20,7 +20,8 @@
       "user/apps/path_invalid/Cargo.toml",
       "user/apps/fd_leak/Cargo.toml",
       "user/apps/sh/Cargo.toml",
-      "user/apps/fbprobe/Cargo.toml"
+      "user/apps/fbprobe/Cargo.toml",
+      "user/apps/inputd/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -47,7 +48,8 @@
       "${OUT}/apps/kbdprobe.elf",
       "${OUT}/apps/netd.elf",
       "${OUT}/apps/sh.elf",
-      "${OUT}/apps/fbprobe.elf"
+      "${OUT}/apps/fbprobe.elf",
+      "${OUT}/apps/inputd.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -360,6 +362,24 @@
       [
         "cargo",
         "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/inputd/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/inputd",
+        "${OUT}/apps/inputd.elf"
+      ],
+      [
+        "cargo",
+        "build",
         "--release",
         "--offline",
         "--manifest-path",
@@ -502,11 +522,11 @@
           "|boot|gop|present=1|w=",
           "|kernel|display|present=1|w=",
           "|corner=32|cell=16|code=ok|selfcheck=1",
-          "|ring=64|pending=0|overflow=0|code=ok|selfcheck=1",
+          "|ring=64|pending=0|overflow=0|mouse=1|mouse_ring=192|code=ok|selfcheck=1",
           "|kernel|svcmgr|pid=",
           "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
           "|kernel|spawn|pid=",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=6|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -2308,7 +2328,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_order",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=6|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_order|load=OK 3|list=A:ready:0:",
           "|all_ready=1|b_after_a=1|c_after_ab=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2354,7 +2374,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_timeout",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=6|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_timeout|load=OK 2|list=M:failed:0:",
           "|failed_after_timeout=1|dependent_blocked=1|list_after=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2400,7 +2420,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_restart",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=6|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_restart|load=OK 1|list=X:given_up:3:",
           "|state=given_up|restarts=3|exit=1|span=",
@@ -3482,6 +3502,92 @@
             "192,96,00FFFF"
           ]
         ]
+      },
+      {
+        "id": "TST-M5-INPUT-ROUTE",
+        "test_id": "TST-M5-INPUT-ROUTE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=input_route"
+        ],
+        "oracle": "the input service (SVC-IN.TXT: auth, input) receives the keyboard and the mouse from the manager; three clients register (a, b, session → OK 1/2/3); FOCUS without a token, with a user's token or for an unknown client is refused (ERR ACCESS / ERR ACCESS / ERR UNKNOWN), LAYOUT with a user's token is refused, FOCUS 1 with the admin's token is OK and STATUS reports it; the lab then presses `a`, `shift-b` and `ctrl-alt-delete` through the QEMU monitor: client a receives exactly the ten key events `KEY 0x1e down 0 a`, `KEY 0x1e up 0 a`, `KEY 0x2a down 1 -`, `KEY 0x30 down 1 B`, `KEY 0x30 up 1 B`, `KEY 0x2a up 0 -`, `KEY 0x1d down 2 -`, `KEY 0x38 down 6 -`, `KEY 0x38 up 2 -`, `KEY 0x1d up 0 -` (set-1 codes, modifiers, US layout; QEMU presses in order and releases in reverse), the session client receives exactly `SAK` (the Delete make and break codes are never reported), client b receives nothing; the admin moves the focus to b and selects the Arabic layout, the lab presses `a` again and b receives `KEY 0x1e down 0 ش` and `KEY 0x1e up 0 ش` while a receives nothing more; STATUS counts 12 keys, 1 SAK, 0 dropped; the manager and services exit cleanly, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=input_route",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
+          "|path=/SYSTEM/INPUTD.ELF|handles=3",
+          "|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0|phase=1|ready=1",
+          "|ktest|input_route|a=KEY 0x1e down 0 a;KEY 0x1e up 0 a;KEY 0x2a down 1 -;KEY 0x30 down 1 B;KEY 0x30 up 1 B;KEY 0x2a up 0 -;KEY 0x1d down 2 -;KEY 0x38 down 6 -;KEY 0x38 up 2 -;KEY 0x1d up 0 -|s=SAK|b=",
+          "|ktest|input_route|focus_b=OK|layout_ar=OK|phase=2|ready=1",
+          "|ktest|input_route|b2=KEY 0x1e down 0 ش;KEY 0x1e up 0 ش|a2=|status=OK focus=2 layout=ar keys=12 packets=0 saks=1 dropped=0 buttons=0",
+          "|ktest|input_route|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|input_route|frames_delta=0",
+          "|ktest|pass|key events reach the focus owner only, with the layout applied, and the secure attention sequence reaches the session alone"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|ktest|input_route|reg=",
+              "commands": [
+                "sendkey a",
+                "sendkey shift-b",
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|phase=2|ready=1",
+              "commands": [
+                "sendkey a"
+              ],
+              "gap_s": 0.5
+            }
+          ]
+        }
+      },
+      {
+        "id": "TST-M5-MOUSE",
+        "test_id": "TST-M5-MOUSE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=mouse"
+        ],
+        "oracle": "the kernel enables the i8042 auxiliary interface and the PS/2 mouse answers its set-defaults and enable-reporting commands at boot (kernel|kbd|…|mouse=1); the input service's focused client receives the lab's pointer actions sent through the QEMU monitor — `mouse_move 10 5` as `PTR 10 5 0` (y grows downwards on the screen: the PS/2 sign is inverted), `mouse_button 1` as `PTR 0 0 1`, `mouse_button 0` as `PTR 0 0 0` — and STATUS counts 3 packets with no key, SAK or drop; the manager and services exit cleanly, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=mouse",
+          "|kernel|kbd|drained=0|ring=64|pending=0|overflow=0|mouse=1|mouse_ring=192|code=ok|selfcheck=1",
+          "|ktest|mouse|present=1|reg=OK 1|focus=OK|ready=1",
+          "|ktest|mouse|events=PTR 10 5 0;PTR 0 0 1;PTR 0 0 0|status=OK focus=1 layout=us keys=0 packets=3 saks=0 dropped=0 buttons=0",
+          "|ktest|mouse|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|mouse|frames_delta=0",
+          "|ktest|pass|the mouse's packets reach the focus owner as pointer events in the screen's orientation"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "monitor": {
+          "after": "|ktest|mouse|present=1|reg=OK 1|focus=OK|ready=1",
+          "commands": [
+            "mouse_move 10 5",
+            "mouse_button 1",
+            "mouse_button 0"
+          ],
+          "gap_s": 0.5
+        }
       }
     ]
   },

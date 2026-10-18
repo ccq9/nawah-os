@@ -2194,29 +2194,60 @@
         "docs/PLAN.md §6",
         "docs/adr/0019-graphics-platform.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/adr/0019-graphics-platform.md",
+        "docs/contracts/input.md",
+        "docs/contracts/ipc.md",
+        "docs/contracts/services.md",
+        "docs/contracts/syscall.md",
+        "docs/sources.json",
+        "kernel/src/arch/x86_64/i8042.rs",
+        "kernel/src/kmain.rs",
+        "kernel/src/ktest.rs",
+        "kernel/src/net.rs",
+        "kernel/src/object/bytes.rs",
+        "kernel/src/object/mod.rs",
+        "kernel/src/services.rs",
+        "kernel/src/syscall/mod.rs",
+        "platform/pc-qemu/manifests/svc-in.txt",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tests/test_monitor_steps.py",
+        "tools/project.py",
+        "tools/unsafe-baseline.txt",
+        "user/apps/inputd/src/main.rs",
+        "user/apps/svcmgr/src/main.rs",
+        "user/libnawah/src/lib.rs"
+      ],
       "contract_refs": [
         "docs/contracts/input.md",
-        "docs/contracts/services.md"
+        "docs/contracts/services.md",
+        "docs/contracts/syscall.md",
+        "docs/contracts/ipc.md"
       ],
       "actions": [
         "الإدخال الموثوق: فك الرموز والتخطيطات والفأرة والتوجيه والانتباه الآمن",
         "i8042 auxiliary port enabled for the PS/2 mouse (3-byte packets polled per tick into Object::Mouse, type 11; input.md v2 additive)",
-        "input service: set-1 scancodes to fixed keycodes, US and Arabic layouts, key/pointer event records, routing to the focus owner the session names (token-checked), secure attention reserved for the session; services.md v1.4 routes mouse to input",
-        "lab: monitor sendkey/mouse_move/mouse_button; kernel tests input_route, mouse"
+        "input service (user/apps/inputd): set-1 scancodes to fixed keycodes, US and Arabic 101 layouts, KEY/PTR event records, routing to the focus owner named with an ADMIN token, secure attention (Ctrl+Alt+Del) reserved for the `session` client; services.md v1.5 routes keyboard + mouse to input; syscall.md v1.9 adds mouse_read (40); ipc.md type 11",
+        "lab: monitor sendkey/mouse_move/mouse_button in ordered steps (run_qemu_monitored steps, host test TST-M5-LAB-TOOL); kernel tests input_route, mouse"
       ],
-      "acceptance": "TST-M5-INPUT-ROUTE/MOUSE PASS; input.md v2",
+      "acceptance": "TST-M5-INPUT-ROUTE/MOUSE/LAB-TOOL PASS; input.md v2, services.md v1.5, syscall.md v1.9",
       "test_ids": [
         "TST-M5-INPUT-ROUTE",
-        "TST-M5-MOUSE"
+        "TST-M5-MOUSE",
+        "TST-M5-LAB-TOOL"
       ],
       "commands": [
         "python3 tools/project.py build --target pc-qemu",
-        "python3 tools/project.py test --target pc-qemu --suite M5"
+        "python3 tools/project.py test --target pc-qemu --suite M5",
+        "python3 tools/project.py test --target host --suite M5"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

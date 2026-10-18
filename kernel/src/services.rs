@@ -73,6 +73,12 @@ pub fn spawn_manager() -> Result<Manager, &'static str> {
             rights: Rights::SERIAL_DEFAULT,
         });
     }
+    // The mouse (WP-33, input.md v2): always present as an object; the service learns from
+    // the boot line whether a mouse answered.
+    initial.push(Entry {
+        object: Object::Mouse(crate::net::mouse_object()),
+        rights: Rights::MOUSE_DEFAULT,
+    });
     // The display (WP-32, display.md) when firmware left a frame buffer.
     if let Some(d) = crate::display::display_object() {
         initial.push(Entry {

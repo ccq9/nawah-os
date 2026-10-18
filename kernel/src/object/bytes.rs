@@ -11,6 +11,8 @@ use crate::sync::IrqSpinLock;
 pub const MAX: usize = 256;
 pub const KBD_RING: usize = 64;
 pub const CONSOLE_RING: usize = 256;
+/// 64 three-byte mouse packets.
+pub const MOUSE_RING: usize = 192;
 
 struct Ring {
     buf: [u8; MAX],

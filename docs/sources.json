@@ -876,6 +876,46 @@
       ],
       "limits": "the picture is the emulated VGA's view of the frame at the moment of the command; the kernel's own read-back and the dump are two independent witnesses",
       "verified": false
+    },
+    {
+      "id": "S67",
+      "title": "Keyboard scancodes (A. Brouwer) — §13 The PS/2 mouse: default 3-byte protocol, mouse commands F4h/F6h, FAh acknowledgement",
+      "url": "https://aeb.win.tue.nl/linux/kbd/scancodes-13.html",
+      "version": "secondary reference (the Linux keyboard/mouse documentation by Andries Brouwer), read 2026-10-18; the IBM PS/2 Hardware Interface Technical Reference is not publicly fetchable",
+      "accessed": "2026-10-18",
+      "supports": [
+        "packet byte 0: Yovfl Xovfl dy8 dx8 1 Middle Right Left (bit 3 literal 1; dx8/dy8 are the ninth sign bits; X/Y movement 9-bit two's complement), bytes 1–2 the X and Y movement; positive Y is upwards",
+        "every command or data byte sent to the mouse (except resend FEh) is acknowledged with FAh",
+        "F4h enables stream-mode reporting (disabled after reset and after F5h); F6h sets the defaults (a reset without diagnostics)"
+      ],
+      "limits": "the controller-side commands A8h (enable auxiliary interface) and D4h (write to the auxiliary device) are in S52",
+      "verified": true
+    },
+    {
+      "id": "S68",
+      "title": "QEMU monitor — `mouse_move dx dy [dz]` and `mouse_button val` (human monitor commands)",
+      "url": "https://www.qemu.org/docs/master/system/monitor.html",
+      "version": "QEMU documentation (master; the lab runs 8.2.2), read 2026-10-18",
+      "accessed": "2026-10-18",
+      "supports": [
+        "`mouse_move dx dy [dz]`: moves the active mouse by the given relative offsets (positive dy = downwards on the screen; the PS/2 device inverts it in its packet)",
+        "`mouse_button val`: changes the button state (1 left, 2 right, 4 middle; 0 releases)"
+      ],
+      "limits": "the emulated PS/2 mouse reports one packet per monitor command (one `sync` each); the sign of the PS/2 Y byte is verified by TST-M5-MOUSE, not assumed",
+      "verified": true
+    },
+    {
+      "id": "S69",
+      "title": "QEMU source — ui/input.c `qmp_send_key`: keys of one `sendkey` are pressed in the given order and released in reverse order",
+      "url": "https://raw.githubusercontent.com/qemu/qemu/master/ui/input.c",
+      "version": "QEMU master, read 2026-10-18 (the loop `for (p = keys; …)` presses; `while (count) { count--; … false }` releases)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "`sendkey shift-b` yields shift down, b down, b up, shift up; `sendkey ctrl-alt-delete` yields ctrl, alt, delete down then delete, alt, ctrl up",
+        "the hold time between press and release defaults to 100 ms (S54)"
+      ],
+      "limits": "QEMU emulates no typematic repeat for the PS/2 keyboard",
+      "verified": true
     }
   ]
 }

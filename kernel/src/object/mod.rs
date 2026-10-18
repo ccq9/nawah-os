@@ -59,6 +59,9 @@ impl Rights {
     /// Rights of the console handle (WP-30): READ receives bytes, WRITE sends them.
     pub const SERIAL_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::WRITE.0 | Self::WAIT.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of the mouse handle (WP-33).
+    pub const MOUSE_DEFAULT: Rights =
+        Rights(Self::READ.0 | Self::WAIT.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
     /// Rights of the display handle (WP-32): READ describes, MAP hands out the frame.
     pub const DISPLAY_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::MAP.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
@@ -95,6 +98,8 @@ pub enum Object {
     /// The display (WP-32, display.md): the frame buffer's description; its memory comes as a
     /// physical VMO from `display_map`.
     Display(Arc<crate::display::DisplayObject>),
+    /// The mouse (WP-33, input.md v2): PS/2 packets from the auxiliary port.
+    Mouse(Arc<bytes::ByteObject>),
 }
 
 impl Object {
@@ -111,6 +116,7 @@ impl Object {
             Object::Keyboard(_) => 8,
             Object::Serial(_) => 9,
             Object::Display(_) => 10,
+            Object::Mouse(_) => 11,
         }
     }
 }

@@ -54,6 +54,8 @@ pub const SYS_DISPLAY_INFO: u64 = 36;
 pub const SYS_DISPLAY_MAP: u64 = 37;
 pub const SYS_VMO_MAP: u64 = 38;
 pub const SYS_VMO_UNMAP: u64 = 39;
+/// v1.8 (WP-33, input.md v2): the mouse.
+pub const SYS_MOUSE_READ: u64 = 40;
 
 pub const ERR_NOSYS: i64 = -1;
 pub const ERR_INVALID: i64 = -2;
@@ -353,6 +355,7 @@ pub mod object_type {
     pub const KEYBOARD: i64 = 8;
     pub const SERIAL: i64 = 9;
     pub const DISPLAY: i64 = 10;
+    pub const MOUSE: i64 = 11;
 }
 
 /// The type code of the object behind `h`, or an error.
@@ -768,4 +771,23 @@ pub fn vmo_map(h: Handle, prot: u64) -> Result<u64, i64> {
 
 pub fn vmo_unmap(addr: u64) -> i64 {
     syscall6(SYS_VMO_UNMAP, addr, 0, 0, 0, 0, 0)
+}
+
+/// `mouse_read` (v1.8, input.md v2): bytes of PS/2 mouse packets waiting; `ERR_SHOULD_WAIT`
+/// when none.
+pub fn mouse_read(h: Handle, buf: &mut [u8]) -> Result<usize, i64> {
+    let r = syscall6(
+        SYS_MOUSE_READ,
+        u64::from(h),
+        buf.as_mut_ptr() as u64,
+        buf.len() as u64,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as usize)
+    }
 }

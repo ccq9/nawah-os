@@ -69,6 +69,8 @@ pub const SYS_DISPLAY_INFO: u64 = 36;
 pub const SYS_DISPLAY_MAP: u64 = 37;
 pub const SYS_VMO_MAP: u64 = 38;
 pub const SYS_VMO_UNMAP: u64 = 39;
+/// v1.8 (WP-33, input.md v2): the mouse.
+pub const SYS_MOUSE_READ: u64 = 40;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -560,6 +562,7 @@ pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
         SYS_DISPLAY_MAP => flat(sys_display_map(args[0] as Handle)),
         SYS_VMO_MAP => flat(sys_vmo_map(args[0] as Handle, args[1])),
         SYS_VMO_UNMAP => flat(sys_vmo_unmap(args[0])),
+        SYS_MOUSE_READ => flat(sys_mouse_read(args[0] as Handle, args[1], args[2])),
         _ => ERR_NOSYS,
     }
 }
@@ -660,7 +663,8 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
                 | Object::Process(_)
                 | Object::Nic(_)
                 | Object::Keyboard(_)
-                | Object::Serial(_) => {}
+                | Object::Serial(_)
+                | Object::Mouse(_) => {}
                 _ => return Err(ERR_WRONG_TYPE),
             }
             if !e.rights.contains(Rights::WAIT) {
@@ -683,7 +687,9 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
                 Object::Channel(ep) => ep.poll(*wanted, Some(tid)),
                 Object::Process(p) if wanted & SIGNAL_EXITED != 0 && p.watch(tid) => SIGNAL_EXITED,
                 Object::Nic(n) => n.poll(*wanted, Some(tid)),
-                Object::Keyboard(k) | Object::Serial(k) => k.poll(*wanted, Some(tid)),
+                Object::Keyboard(k) | Object::Serial(k) | Object::Mouse(k) => {
+                    k.poll(*wanted, Some(tid))
+                }
                 _ => 0,
             };
             if asserted != 0 && hit.is_none() {
@@ -704,7 +710,7 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
             Object::Channel(ep) => ep.forget_waiter(tid),
             Object::Process(p) => p.forget_waiter(tid),
             Object::Nic(n) => n.forget_waiter(tid),
-            Object::Keyboard(k) | Object::Serial(k) => k.forget_waiter(tid),
+            Object::Keyboard(k) | Object::Serial(k) | Object::Mouse(k) => k.forget_waiter(tid),
             _ => {}
         }
     }
@@ -1111,4 +1117,31 @@ fn sys_vmo_map(h: Handle, prot: u64) -> Result<i64, i64> {
 fn sys_vmo_unmap(addr: u64) -> Result<i64, i64> {
     let r = sched::with_current_space(|space| space.unmap_vmo(addr)).ok_or(ERR_INVALID)?;
     r.map(|_| 0).map_err(|_| ERR_INVALID)
+}
+
+/// `mouse_read(h, ptr, cap)` (v1.8, input.md v2): bytes of the mouse's PS/2 packets waiting
+/// in the ring (3 per packet, the service re-synchronises on bit 3 of the first byte);
+/// `ERR_SHOULD_WAIT` when none.
+fn sys_mouse_read(h: Handle, ptr: u64, cap: u64) -> Result<i64, i64> {
+    let cap = (cap as usize).min(crate::object::bytes::MOUSE_RING);
+    if cap == 0 {
+        return Err(ERR_INVALID);
+    }
+    let dev = {
+        let table = table()?;
+        let t = table.lock();
+        let e = t.get(h, Rights::READ).map_err(handle_err)?;
+        match &e.object {
+            Object::Mouse(m) => m.clone(),
+            _ => return Err(ERR_WRONG_TYPE),
+        }
+    };
+    user_range_ok(ptr, cap as u64, true)?;
+    let mut buf = [0u8; crate::object::bytes::MOUSE_RING];
+    let n = dev.read(&mut buf[..cap]);
+    if n == 0 {
+        return Err(ERR_SHOULD_WAIT);
+    }
+    copy_to_user(ptr, &buf[..n])?;
+    Ok(n as i64)
 }

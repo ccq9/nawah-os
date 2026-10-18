@@ -6,7 +6,7 @@ use alloc::sync::Arc;
 
 use crate::arch::pci::Device;
 use crate::drivers::virtio_net::{NetError, NetInfo, NetStats, VirtioNet};
-use crate::object::bytes::{ByteObject, KBD_RING};
+use crate::object::bytes::{ByteObject, KBD_RING, MOUSE_RING};
 use crate::object::nic::NicObject;
 use crate::sync::IrqSpinLock;
 
@@ -15,10 +15,21 @@ static DEVICE: IrqSpinLock<Option<VirtioNet>> = IrqSpinLock::new("net", None);
 /// (and to the test kernel's cases).
 static NIC_OBJECT: IrqSpinLock<Option<Arc<NicObject>>> = IrqSpinLock::new("nic-object", None);
 static KBD_OBJECT: IrqSpinLock<Option<Arc<ByteObject>>> = IrqSpinLock::new("kbd-object", None);
+/// The mouse's byte stream (WP-33, input.md v2): 3-byte PS/2 packets from the auxiliary port.
+static MOUSE_OBJECT: IrqSpinLock<Option<Arc<ByteObject>>> = IrqSpinLock::new("mouse-object", None);
+/// Whether a mouse answered the controller at boot (`kernel|kbd|…|mouse=`).
+pub static MOUSE_PRESENT: core::sync::atomic::AtomicBool =
+    core::sync::atomic::AtomicBool::new(false);
 
 pub fn nic_object() -> Arc<NicObject> {
     let mut g = NIC_OBJECT.lock();
     g.get_or_insert_with(|| Arc::new(NicObject::new())).clone()
+}
+
+pub fn mouse_object() -> Arc<ByteObject> {
+    let mut g = MOUSE_OBJECT.lock();
+    g.get_or_insert_with(|| Arc::new(ByteObject::new("mouse", MOUSE_RING)))
+        .clone()
 }
 
 pub fn keyboard_object() -> Arc<ByteObject> {
@@ -42,13 +53,17 @@ pub fn tick_poll() {
     }
     let mut polled = 0;
     while polled < 8 {
-        let Some(byte) = crate::arch::i8042::poll_byte() else {
+        let Some((byte, mouse)) = crate::arch::i8042::poll() else {
             break;
         };
         polled += 1;
-        let kbd = KBD_OBJECT.lock().clone();
-        if let Some(k) = kbd {
-            for tid in k.push(byte) {
+        let dev = if mouse {
+            MOUSE_OBJECT.lock().clone()
+        } else {
+            KBD_OBJECT.lock().clone()
+        };
+        if let Some(d) = dev {
+            for tid in d.push(byte) {
                 crate::sched::wake(tid);
             }
         }

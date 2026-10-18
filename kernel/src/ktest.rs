@@ -185,6 +185,8 @@ pub fn run() -> ! {
         "shell_svc" => shell_session("shell_svc"),
         "peer_loss" => peer_loss(),
         "display_boot" => display_boot(),
+        "input_route" => input_route(),
+        "mouse" => mouse(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
@@ -4351,6 +4353,220 @@ fn display_boot() -> ! {
     }
     drop((decoded, expected));
     pass("the frame carries the kernel's pattern and a process's paint through the display object")
+}
+
+// ---- WP-33: trusted input --------------------------------------------------------------------
+
+/// Reads up to `count` messages from `ep` until `deadline`; their texts in order.
+fn read_events(ep: &Endpoint, count: usize, deadline: u64) -> Vec<String> {
+    let mut out = Vec::with_capacity(count.max(1));
+    sched::poll_until(deadline, || {
+        while out.len() < count {
+            match ep.read(256, 0, None) {
+                Ok(m) => out.push(String::from_utf8_lossy(&m.bytes).into_owned()),
+                Err(_) => break,
+            }
+        }
+        out.len() >= count
+    });
+    out
+}
+
+/// The input tests' setting: manager with auth + input (SVC-IN.TXT), an admin token from a
+/// real login, and `n` client channels to the input service.
+fn input_env(
+    name: &'static str,
+    n: usize,
+) -> (
+    SvcHarness,
+    Arc<crate::object::token::Token>,
+    Vec<Arc<Endpoint>>,
+) {
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-IN.TXT");
+    svc_wait_ready(&h, &["auth", "input"], sched::ticks() + 60_000);
+    let auth = svc_connect(&h, "auth");
+    let (ra, admin) = auth_request(&auth, b"LOGIN admin lab-admin-1", None);
+    let Some(admin) = admin else {
+        kprintln!("OSX|{}|ktest|{}|admin={}", BUILD_ID, name, ra);
+        fail("admin login failed")
+    };
+    drop(auth);
+    let mut clients = Vec::with_capacity(n);
+    for _ in 0..n {
+        clients.push(svc_connect(&h, "input"));
+    }
+    (h, admin, clients)
+}
+
+/// TST-M5-INPUT-ROUTE (REQ-M5-002): key events reach the focus owner only, with the layout
+/// applied; focus and layout need an ADMIN token; the secure attention sequence goes to the
+/// `session` client alone and is never reported as keys. The lab presses the keys through the
+/// QEMU monitor after each `ready=1` line.
+fn input_route() -> ! {
+    let (h, admin, clients) = input_env("input_route", 3);
+    let auth = svc_connect(&h, "auth");
+    let (ru, user) = auth_request(&auth, b"LOGIN user lab-user-1", None);
+    let Some(user) = user else {
+        kprintln!("OSX|{}|ktest|input_route|user={}", BUILD_ID, ru);
+        fail("user login failed")
+    };
+    drop(auth);
+    let (a, b, s) = (&clients[0], &clients[1], &clients[2]);
+    let reg_a = cfg_request(a, b"REGISTER a", None);
+    let reg_b = cfg_request(b, b"REGISTER b", None);
+    let reg_s = cfg_request(s, b"REGISTER session", None);
+    // Authority: no token, a user's token and an unknown client are refused; the admin's
+    // token moves the focus.
+    let f_none = cfg_request(a, b"FOCUS 1", None);
+    let f_user = cfg_request(a, b"FOCUS 1", Some(token_entry(&user)));
+    let f_unknown = cfg_request(a, b"FOCUS 99", Some(token_entry(&admin)));
+    let l_user = cfg_request(b, b"LAYOUT ar", Some(token_entry(&user)));
+    let f_a = cfg_request(s, b"FOCUS 1", Some(token_entry(&admin)));
+    let status0 = cfg_request(a, b"STATUS", None);
+    kprintln!(
+        "OSX|{}|ktest|input_route|reg={}/{}/{}|focus_none={}|focus_user={}|focus_unknown={}|layout_user={}|focus_a={}|status={}|phase=1|ready=1",
+        BUILD_ID, reg_a, reg_b, reg_s, f_none, f_user, f_unknown, l_user, f_a, status0
+    );
+    if reg_a != "OK 1"
+        || reg_b != "OK 2"
+        || reg_s != "OK 3"
+        || f_none != "ERR ACCESS"
+        || f_user != "ERR ACCESS"
+        || f_unknown != "ERR UNKNOWN"
+        || l_user != "ERR ACCESS"
+        || f_a != "OK"
+        || !status0.starts_with("OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0")
+    {
+        fail("registration or the authority checks did not answer as input.md says")
+    }
+    // Phase 1: the lab sends `a`, `shift-b` and `ctrl-alt-delete` (QEMU presses in order and
+    // releases in reverse order): ten key events to A, one SAK to S, nothing to B.
+    let ev_a = read_events(a, 10, sched::ticks() + 60_000);
+    let ev_s = read_events(s, 1, sched::ticks() + 5_000);
+    let ev_b = read_events(b, 1, sched::ticks() + 200);
+    kprintln!(
+        "OSX|{}|ktest|input_route|a={}|s={}|b={}",
+        BUILD_ID,
+        ev_a.join(";"),
+        ev_s.join(";"),
+        ev_b.join(";")
+    );
+    let expected_a = [
+        "KEY 0x1e down 0 a",
+        "KEY 0x1e up 0 a",
+        "KEY 0x2a down 1 -",
+        "KEY 0x30 down 1 B",
+        "KEY 0x30 up 1 B",
+        "KEY 0x2a up 0 -",
+        "KEY 0x1d down 2 -",
+        "KEY 0x38 down 6 -",
+        "KEY 0x38 up 2 -",
+        "KEY 0x1d up 0 -",
+    ];
+    if ev_a != expected_a || ev_s != ["SAK"] || !ev_b.is_empty() {
+        fail("key events were decoded wrongly or reached the wrong client")
+    }
+    // Phase 2: the focus moves to B with the Arabic layout; the lab sends `a` again.
+    let f_b = cfg_request(s, b"FOCUS 2", Some(token_entry(&admin)));
+    let l_ar = cfg_request(s, b"LAYOUT ar", Some(token_entry(&admin)));
+    kprintln!(
+        "OSX|{}|ktest|input_route|focus_b={}|layout_ar={}|phase=2|ready=1",
+        BUILD_ID,
+        f_b,
+        l_ar
+    );
+    if f_b != "OK" || l_ar != "OK" {
+        fail("the admin could not move the focus or change the layout")
+    }
+    let ev_b2 = read_events(b, 2, sched::ticks() + 60_000);
+    let ev_a2 = read_events(a, 1, sched::ticks() + 200);
+    let status = cfg_request(a, b"STATUS", None);
+    kprintln!(
+        "OSX|{}|ktest|input_route|b2={}|a2={}|status={}",
+        BUILD_ID,
+        ev_b2.join(";"),
+        ev_a2.join(";"),
+        status
+    );
+    if ev_b2 != ["KEY 0x1e down 0 ش", "KEY 0x1e up 0 ش"]
+        || !ev_a2.is_empty()
+        || status != "OK focus=2 layout=ar keys=12 packets=0 saks=1 dropped=0 buttons=0"
+    {
+        fail("the Arabic layout or the moved focus did not take effect")
+    }
+    drop((ev_a, ev_s, ev_b, ev_b2, ev_a2, status, status0));
+    drop((
+        reg_a, reg_b, reg_s, f_none, f_user, f_unknown, l_user, f_a, f_b, l_ar,
+    ));
+    drop((clients, admin, user));
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|input_route|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    cfg_balance(
+        "input_route",
+        frames0,
+        "key events reach the focus owner only, with the layout applied, and the secure attention sequence reaches the session alone",
+    )
+}
+
+/// TST-M5-MOUSE (REQ-M5-002): the PS/2 mouse answers at boot; its packets reach the focus
+/// owner as pointer events with the screen's orientation and the button state. The lab moves
+/// the pointer and clicks through the QEMU monitor after the `ready=1` line.
+fn mouse() -> ! {
+    let (h, admin, clients) = input_env("mouse", 1);
+    let a = &clients[0];
+    let reg = cfg_request(a, b"REGISTER a", None);
+    let focus = cfg_request(a, b"FOCUS 1", Some(token_entry(&admin)));
+    let present = crate::net::MOUSE_PRESENT.load(core::sync::atomic::Ordering::Relaxed);
+    kprintln!(
+        "OSX|{}|ktest|mouse|present={}|reg={}|focus={}|ready=1",
+        BUILD_ID,
+        u8::from(present),
+        reg,
+        focus
+    );
+    if !present || reg != "OK 1" || focus != "OK" {
+        fail("no mouse answered at boot, or the client could not take the focus")
+    }
+    // The lab: `mouse_move 10 5`, `mouse_button 1`, `mouse_button 0`.
+    let ev = read_events(a, 3, sched::ticks() + 60_000);
+    let status = cfg_request(a, b"STATUS", None);
+    kprintln!(
+        "OSX|{}|ktest|mouse|events={}|status={}",
+        BUILD_ID,
+        ev.join(";"),
+        status
+    );
+    if ev != ["PTR 10 5 0", "PTR 0 0 1", "PTR 0 0 0"]
+        || status != "OK focus=1 layout=us keys=0 packets=3 saks=0 dropped=0 buttons=0"
+    {
+        fail("pointer events did not carry the lab's motion and button state")
+    }
+    drop((ev, status, reg, focus, clients, admin));
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|mouse|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    cfg_balance(
+        "mouse",
+        frames0,
+        "the mouse's packets reach the focus owner as pointer events in the screen's orientation",
+    )
 }
 
 // ---- WP-27: the network interface and the keyboard ----------------------------------------
