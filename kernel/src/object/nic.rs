@@ -38,8 +38,16 @@ impl NicObject {
         hit
     }
 
+    /// Removes `tid`; an emptied list also gives its storage back, because this object lives
+    /// as long as the kernel and a retained capacity would hold a heap page that the frame
+    /// balance of a test counts (CI run 39136539144: the net service's last wait ended on a
+    /// channel, and the NIC list kept its page).
     pub fn forget_waiter(&self, tid: u32) {
-        self.waiters.lock().retain(|t| *t != tid);
+        let mut w = self.waiters.lock();
+        w.retain(|t| *t != tid);
+        if w.is_empty() {
+            *w = Vec::new();
+        }
     }
 
     /// Takes the registered waiters (the tick wakes them when a frame has arrived).

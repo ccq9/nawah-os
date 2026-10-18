@@ -91,8 +91,14 @@ impl KeyboardObject {
         hit
     }
 
+    /// Removes `tid`; an emptied list gives its storage back (the object lives as long as the
+    /// kernel; see `NicObject::forget_waiter`).
     pub fn forget_waiter(&self, tid: u32) {
-        self.ring.lock().waiters.retain(|t| *t != tid);
+        let mut r = self.ring.lock();
+        r.waiters.retain(|t| *t != tid);
+        if r.waiters.is_empty() {
+            r.waiters = Vec::new();
+        }
     }
 }
 
