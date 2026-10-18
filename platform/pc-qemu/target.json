@@ -2999,11 +2999,11 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=net_tcp_echo"
         ],
-        "oracle": "a TCP echo server on the host (127.0.0.1:17008, reached as 10.0.2.2 through SLIRP): TCP_CONNECT completes the three-way handshake (OK 1), two sends are acknowledged (OK 9 / OK 25) and their echoes come back through TCP_RECV, an empty receive times out, TCP_STATUS shows ESTABLISHED with no retransmission and rto=1000, TCP_CLOSE closes in order and the identifier is released (ERR CLOSED), a connect to a port nobody listens on is refused by RST (ERR REFUSED), a malformed request is ERR BAD_REQUEST; clean exit, no frame leaks; exit 33",
+        "oracle": "a TCP echo server on the host (127.0.0.1:17008, reached as 10.0.2.2 through SLIRP): TCP_CONNECT completes the three-way handshake (OK 1), two sends are acknowledged (OK 9 / OK 24) and their echoes come back through TCP_RECV, an empty receive times out, TCP_STATUS shows ESTABLISHED with no retransmission and rto=1000, TCP_CLOSE closes in order and the identifier is released (ERR CLOSED), a connect to a port nobody listens on is refused by RST (ERR REFUSED), a malformed request is ERR BAD_REQUEST; clean exit, no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=net_tcp_echo",
-          "|ktest|net_tcp_echo|dhcp_ok=1|conn=OK 1|sent=OK 9|got=OK hello tcp|sent2=OK 25|got2=OK second round through tcp|empty=ERR TIMEOUT|status=OK state=ESTABLISHED retransmits=0 rto=1000 srtt=",
+          "|ktest|net_tcp_echo|dhcp_ok=1|conn=OK 1|sent=OK 9|got=OK hello tcp|sent2=OK 24|got2=OK second round through tcp|empty=ERR TIMEOUT|status=OK state=ESTABLISHED retransmits=0 rto=1000 srtt=",
           "|closed=OK|after=ERR CLOSED|refused=ERR REFUSED|bad=ERR BAD_REQUEST",
           "|ktest|net_tcp_echo|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|net_tcp_echo|frames_delta=0",

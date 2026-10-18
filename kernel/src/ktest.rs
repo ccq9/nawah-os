@@ -4009,7 +4009,7 @@ fn net_tcp_echo() -> ! {
         if dhcp != LAB_DHCP || conn != "OK 1" || sent != "OK 9" || got != "OK hello tcp" {
             fail("the handshake or the first exchange with the host's TCP echo failed")
         }
-        if sent2 != "OK 25" || got2 != "OK second round through tcp" || empty != "ERR TIMEOUT" {
+        if sent2 != "OK 24" || got2 != "OK second round through tcp" || empty != "ERR TIMEOUT" {
             fail("the second exchange or the receive timeout went wrong")
         }
         if !status.starts_with("OK state=ESTABLISHED retransmits=0 rto=1000 srtt=") {
