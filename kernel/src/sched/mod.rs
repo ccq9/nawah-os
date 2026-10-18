@@ -77,6 +77,9 @@ pub struct Thread {
     owns_stack: bool,
     /// The CPU this thread runs on (WP-20: never migrates).
     pub cpu: u8,
+    /// Inside `join`/`wait_process`: competes at the lowest priority until it returns, so a
+    /// waiter never starves what it may be waiting for (WP-22, ADR-0010 amendment).
+    waiting: bool,
     /// True from the moment the thread is picked until a later scheduling decision on its CPU
     /// shows its stack is no longer in use; an Exited thread is reaped only when false.
     on_cpu: bool,
@@ -159,10 +162,19 @@ fn me() -> usize {
     arch::cpu_id() as usize
 }
 
-/// Priority of the thread running on `cpu` (PRIORITIES when unknown).
+/// The priority a thread competes with: its own, or the lowest while it waits.
+fn effective_prio(t: &Thread) -> u8 {
+    if t.waiting {
+        PRIORITIES - 1
+    } else {
+        t.priority
+    }
+}
+
+/// Effective priority of the thread running on `cpu` (PRIORITIES when unknown).
 fn running_prio(s: &Sched, cpu: usize) -> u8 {
     index_of(s, s.current[cpu])
-        .map(|i| s.threads[i].priority)
+        .map(|i| effective_prio(&s.threads[i]))
         .unwrap_or(PRIORITIES)
 }
 
@@ -189,6 +201,7 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         wake_tokens: 0,
         owns_stack: false,
         cpu: 0,
+        waiting: false,
         on_cpu: true,
     };
     // Capacities up front, so the first few spawns do not grow the vectors (keeps the boot
@@ -236,6 +249,7 @@ pub fn adopt_ap(cpu: usize, stack: StackInfo) {
             wake_tokens: 0,
             owns_stack: false,
             cpu: cpu as u8,
+            waiting: false,
             on_cpu: true,
         });
         s.current[cpu] = id;
@@ -274,6 +288,7 @@ fn new_thread(
         wake_tokens: 0,
         owns_stack: true,
         cpu: cpu as u8,
+        waiting: false,
         on_cpu: false,
     });
     // A new thread of better or equal priority runs at its CPU's next preemption point or yield.
@@ -366,10 +381,9 @@ fn index_of(s: &Sched, tid: u32) -> Option<usize> {
 }
 
 /// The thread to run next on `cpu`: one of its threads, Ready (or the Running current), with
-/// the smallest priority value, ties broken by the smallest `last_pick`, then by position.
-/// With `demote_current`, the running thread competes at the lowest priority: it is waiting
-/// (join/wait_process) and must not starve the lower-priority thread it may be waiting for.
-fn pick_next(s: &Sched, cpu: usize, demote_current: bool) -> usize {
+/// the smallest effective priority value (a waiting thread counts as the lowest), ties broken
+/// by the smallest `last_pick`, then by position.
+fn pick_next(s: &Sched, cpu: usize) -> usize {
     let mut best: Option<(usize, u8)> = None;
     let current = s.current[cpu];
     for (i, t) in s.threads.iter().enumerate() {
@@ -381,11 +395,7 @@ fn pick_next(s: &Sched, cpu: usize, demote_current: bool) -> usize {
         if !runnable {
             continue;
         }
-        let prio = if is_current && demote_current {
-            PRIORITIES - 1
-        } else {
-            t.priority
-        };
+        let prio = effective_prio(t);
         best = match best {
             None => Some((i, prio)),
             Some((b, bp)) => {
@@ -421,11 +431,6 @@ fn retire_prev(s: &mut Sched, cpu: usize) {
 }
 
 fn prepare_switch(s: &mut Sched) -> Option<Switch> {
-    prepare_switch_with(s, false)
-}
-
-/// `prepare_switch` for a thread that is waiting (`demote_current`, see `pick_next`).
-fn prepare_switch_with(s: &mut Sched, demote_current: bool) -> Option<Switch> {
     let cpu = me();
     let cur = s.current[cpu];
     retire_prev(s, cpu);
@@ -433,7 +438,7 @@ fn prepare_switch_with(s: &mut Sched, demote_current: bool) -> Option<Switch> {
     s.need_resched[cpu] = false;
     s.seq += 1;
     s.threads[cur_i].last_pick = s.seq;
-    let next_i = pick_next(s, cpu, demote_current);
+    let next_i = pick_next(s, cpu);
     if next_i == cur_i {
         // Only a Running current thread can be picked again; it starts a fresh slice.
         s.threads[cur_i].slice = QUANTUM_TICKS;
@@ -661,15 +666,17 @@ pub fn yield_now() -> bool {
     switched
 }
 
-/// Gives the CPU to any other Ready thread, whatever its priority: the caller is waiting
-/// (join/wait_process) and must not starve what it waits for (CI run 39118752606: a
-/// priority-1 waiter starved a priority-3 spinner forever). Returns whether a switch happened.
-fn yield_waiting() -> bool {
-    let was = arch::interrupts::save_and_disable();
-    let sw = with(|s| prepare_switch_with(s, true));
-    let switched = perform(sw);
-    arch::interrupts::restore(was);
-    switched
+/// Marks the current thread as waiting (or not): while waiting it competes at the lowest
+/// priority, so it never starves what it waits for (CI run 39118752606: a priority-1 waiter
+/// starved a priority-3 spinner; CI run 39119679600: two waiters at priority 1 kept handing
+/// the CPU to each other — the demotion must be visible to every decision, not only the
+/// waiter's own).
+fn set_waiting(waiting: bool) {
+    with(|s| {
+        if let Some(i) = index_of(s, s.current[me()]) {
+            s.threads[i].waiting = waiting;
+        }
+    });
 }
 
 /// Whether the running thread of this CPU is its idle thread (thread 0 on CPU 0).
@@ -726,6 +733,13 @@ pub fn exit_current(code: u64) -> ! {
 /// Waits until kernel thread `tid` has exited and returns its code (None for an unknown thread
 /// or a process thread, which is waited for through its process).
 pub fn join(tid: u32) -> Option<u64> {
+    set_waiting(true);
+    let r = join_loop(tid);
+    set_waiting(false);
+    r
+}
+
+fn join_loop(tid: u32) -> Option<u64> {
     loop {
         let found = with(|s| {
             if let Some(pos) = s.finished_threads.iter().position(|(t, _)| *t == tid) {
@@ -739,7 +753,7 @@ pub fn join(tid: u32) -> Option<u64> {
         if let Some(r) = found {
             return r;
         }
-        if !yield_waiting() {
+        if !yield_now() {
             context::idle_wait();
         }
     }
@@ -747,6 +761,13 @@ pub fn join(tid: u32) -> Option<u64> {
 
 /// Waits until process `pid` has exited (its last thread) and returns its exit code.
 pub fn wait_process(pid: u32) -> Option<u64> {
+    set_waiting(true);
+    let r = wait_process_loop(pid);
+    set_waiting(false);
+    r
+}
+
+fn wait_process_loop(pid: u32) -> Option<u64> {
     loop {
         let found = with(|s| {
             if let Some(pos) = s.finished_processes.iter().position(|(p, _)| *p == pid) {
@@ -760,7 +781,7 @@ pub fn wait_process(pid: u32) -> Option<u64> {
         if let Some(r) = found {
             return r;
         }
-        if !yield_waiting() {
+        if !yield_now() {
             context::idle_wait();
         }
     }
