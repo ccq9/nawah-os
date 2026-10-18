@@ -3697,6 +3697,8 @@ fn policy_precedence() -> ! {
         {
             fail("export/import wrong")
         }
+        // The entries hold token objects: release them before the balance.
+        drop(a);
         cfg_close(env, "policy_precedence")
     };
     cfg_balance("policy_precedence", frames0, "policy beats the user value, which beats the device default; removing the policy restores the user value")
