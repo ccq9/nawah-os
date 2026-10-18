@@ -5028,7 +5028,8 @@ fn window_states() -> ! {
         Vec::new(),
         &mut ev_a,
     );
-    let resized = read_events(a, 1, sched::ticks() + 2_000);
+    // The service sends the event before its reply: drequest collected it (CI run 39155828636).
+    let resized = core::mem::take(&mut ev_a);
     let (vmo_a2, entry_a2) = kernel_surface(200, 100, format, 0xD04040);
     let sa2 = drequest(
         a,
@@ -5057,7 +5058,7 @@ fn window_states() -> ! {
         Vec::new(),
         &mut ev_a,
     );
-    let min_a = read_events(a, 1, sched::ticks() + 2_000);
+    let min_a = core::mem::take(&mut ev_a);
     let min_b = read_events(b, 1, sched::ticks() + 2_000);
     let la3 = parse_windows(&drequest(a, b"LIST", Vec::new(), &mut ev_a));
     let status3 = drequest(b, b"STATUS", Vec::new(), &mut ev_b);
@@ -5067,7 +5068,7 @@ fn window_states() -> ! {
         Vec::new(),
         &mut ev_a,
     );
-    let res_a = read_events(a, 1, sched::ticks() + 2_000);
+    let res_a = core::mem::take(&mut ev_a);
     let res_b = read_events(b, 1, sched::ticks() + 2_000);
     let la4 = parse_windows(&drequest(a, b"LIST", Vec::new(), &mut ev_a));
     kprintln!(
