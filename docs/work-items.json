@@ -1475,6 +1475,374 @@
         "evidence/20261018T113653Z-029e0e06-001"
       ],
       "blocker": null
+    },
+    {
+      "id": "WP-23",
+      "stage": "M4",
+      "requirement_ids": [
+        "REQ-M4-001"
+      ],
+      "depends_on": [
+        "WP-22"
+      ],
+      "inputs": [
+        "docs/PLAN.md §5",
+        "docs/adr/0016-services-and-authority.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/syscall.md",
+        "docs/contracts/ipc.md",
+        "docs/contracts/files.md"
+      ],
+      "actions": [
+        "ABI v1.4: process_spawn من الحجم بمقابض أولية، كائن العملية، object_wait_many بمهلة، clock_ticks",
+        "syscalls 20 process_spawn, 21 object_wait_many, 22 clock_ticks (ABI v1.4 additive)",
+        "Object::Process with exit code and EXITED signal; initial handles at spawn; rdi bootstrap handle",
+        "loader::load_from_path over vfs",
+        "libnawah wrappers; echo app for the lab volume; project.py copies apps into /SYSTEM"
+      ],
+      "acceptance": "TST-M4-SPAWN-VOLUME/WAIT-TIMEOUT/CHILD-EXIT PASS on CI; syscall.md v1.4 frozen",
+      "test_ids": [
+        "TST-M4-SPAWN-VOLUME",
+        "TST-M4-WAIT-TIMEOUT",
+        "TST-M4-CHILD-EXIT"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M4"
+      ],
+      "status": "active",
+      "status_history": [
+        "planned",
+        "active"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-24",
+      "stage": "M4",
+      "requirement_ids": [
+        "REQ-M4-002"
+      ],
+      "depends_on": [
+        "WP-23"
+      ],
+      "inputs": [
+        "docs/PLAN.md §5",
+        "docs/adr/0016-services-and-authority.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/services.md"
+      ],
+      "actions": [
+        "مدير الخدمات svcmgr: البيان، الترتيب الطوبولوجي، مهلة الجاهزية، إعادة التشغيل بحد وتراجع، قناة تحكم",
+        "svcmgr app started by the kernel as the first process",
+        "manifest parser with cycle detection",
+        "READY handshake, timeouts, restart policy with max attempts and backoff",
+        "control channel: list; kernel test drives it"
+      ],
+      "acceptance": "TST-M4-SVC-ORDER/TIMEOUT/RESTART PASS on CI; services.md v1",
+      "test_ids": [
+        "TST-M4-SVC-ORDER",
+        "TST-M4-SVC-TIMEOUT",
+        "TST-M4-SVC-RESTART"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M4"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-25",
+      "stage": "M4",
+      "requirement_ids": [
+        "REQ-M4-003",
+        "REQ-M4-004"
+      ],
+      "depends_on": [
+        "WP-24"
+      ],
+      "inputs": [
+        "docs/PLAN.md §5",
+        "docs/adr/0016-services-and-authority.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/auth.md"
+      ],
+      "actions": [
+        "المصادقة والرموز والجلسات: nawah-crypto (SHA-256/HMAC/PBKDF2 بمتجهات)، خدمة auth، كائنا Token/Authority، حد محاولات، قفل/خروج",
+        "no_std crypto crate with host tests against FIPS/RFC vectors",
+        "kernel: Object::Token/Authority, token_create/token_revoke/token_info syscalls",
+        "auth service: users db on the volume, login/lock/unlock/logout, attempt limit and delay",
+        "authority check in a service (config) exercised by TST-M4-AUTHZ-DENIED"
+      ],
+      "acceptance": "TST-M4-HASH-VECTORS/LOGIN/SESSION-LOCK/AUTHZ-DENIED PASS on CI; auth.md v1",
+      "test_ids": [
+        "TST-M4-HASH-VECTORS",
+        "TST-M4-LOGIN",
+        "TST-M4-SESSION-LOCK",
+        "TST-M4-AUTHZ-DENIED"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M4"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-26",
+      "stage": "M4",
+      "requirement_ids": [
+        "REQ-M4-005"
+      ],
+      "depends_on": [
+        "WP-25"
+      ],
+      "inputs": [
+        "docs/PLAN.md §5",
+        "docs/adr/0016-services-and-authority.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/config.md"
+      ],
+      "actions": [
+        "خدمة التكوين والسياسات: مخازن منفصلة بإصدارات، CAS، request_id، إشعارات، أسبقية، حفظ آمن وثبات",
+        "config service with four stores on the volume (tmp file + sync + replace)",
+        "versioned keys, compare-and-set, idempotent request ids with stored results",
+        "subscriptions over channels",
+        "policy precedence; export/import with schema check"
+      ],
+      "acceptance": "TST-M4-CONFIG-PERSIST/CAS/RETRY/NOTIFY/POLICY-PRECEDENCE PASS on CI; config.md v1",
+      "test_ids": [
+        "TST-M4-CONFIG-PERSIST",
+        "TST-M4-CONFIG-CAS",
+        "TST-M4-CONFIG-RETRY",
+        "TST-M4-CONFIG-NOTIFY",
+        "TST-M4-POLICY-PRECEDENCE"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M4"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-27",
+      "stage": "M4",
+      "requirement_ids": [
+        "REQ-M4-006"
+      ],
+      "depends_on": [
+        "WP-23"
+      ],
+      "inputs": [
+        "docs/PLAN.md §5",
+        "docs/adr/0016-services-and-authority.md"
+      ],
+      "files": [],
+      "contract_refs": [],
+      "actions": [
+        "تعريفات المختبر: virtio-net وPS/2 (i8042) بحدود موارد ثابتة؛ نموذج ثقة DMA في threat-model",
+        "virtio-net over the modern transport (receive/transmit queues from driver-owned frames, MAC from device config)",
+        "i8042 PS/2 keyboard driver with scancode set 1 decoding; QEMU monitor sendkey in the lab",
+        "resource limits and refusal tests; threat-model DMA section"
+      ],
+      "acceptance": "TST-M4-NET-LINK/NET-LIMITS/KBD-SCANCODES PASS on CI",
+      "test_ids": [
+        "TST-M4-NET-LINK",
+        "TST-M4-NET-LIMITS",
+        "TST-M4-KBD-SCANCODES"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M4"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-28",
+      "stage": "M4",
+      "requirement_ids": [
+        "REQ-M4-007"
+      ],
+      "depends_on": [
+        "WP-27",
+        "WP-24"
+      ],
+      "inputs": [
+        "docs/PLAN.md §5",
+        "docs/adr/0016-services-and-authority.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/net.md"
+      ],
+      "actions": [
+        "الشبكة الأساسية netd: Ethernet/ARP/IPv4/ICMP/UDP/DHCP وفصل الإنترنت",
+        "netd service with its own stack over the virtio-net driver channel",
+        "DHCP client against QEMU user networking; ICMP echo; UDP sockets",
+        "connectivity state model: link/configured/internet; no-internet policy"
+      ],
+      "acceptance": "TST-M4-DHCP/ICMP-ECHO/UDP-ECHO/NET-NO-INTERNET PASS on CI; net.md v1",
+      "test_ids": [
+        "TST-M4-DHCP",
+        "TST-M4-ICMP-ECHO",
+        "TST-M4-UDP-ECHO",
+        "TST-M4-NET-NO-INTERNET"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M4"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-29",
+      "stage": "M4",
+      "requirement_ids": [
+        "REQ-M4-008"
+      ],
+      "depends_on": [
+        "WP-28"
+      ],
+      "inputs": [
+        "docs/PLAN.md §5",
+        "docs/adr/0016-services-and-authority.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/net.md"
+      ],
+      "actions": [
+        "TCP أساسي في netd مع إعادة الإرسال وواجهة مقابس",
+        "TCP state machine (RFC 9293): handshake, data, close, RTO retransmission",
+        "socket API over the netd channel",
+        "lab: host echo servers via hostfwd, a dropping proxy for the retransmit test"
+      ],
+      "acceptance": "TST-M4-TCP-ECHO/TCP-RETRANSMIT PASS on CI",
+      "test_ids": [
+        "TST-M4-TCP-ECHO",
+        "TST-M4-TCP-RETRANSMIT"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M4"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-30",
+      "stage": "M4",
+      "requirement_ids": [
+        "REQ-M4-009"
+      ],
+      "depends_on": [
+        "WP-25",
+        "WP-24"
+      ],
+      "inputs": [
+        "docs/PLAN.md §5",
+        "docs/adr/0016-services-and-authority.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/shell.md"
+      ],
+      "actions": [
+        "shell تشخيصي تفاعلي على قناة تسلسلية ثانية وقناة مختبر TCP",
+        "sh service: svc/cpu/mem/net/ls/cat/login over a second 16550 channel",
+        "project.py console socket: send commands, read output, oracles on transcripts"
+      ],
+      "acceptance": "TST-M4-SHELL-SVC/SHELL-LOGIN PASS on CI; shell.md v1",
+      "test_ids": [
+        "TST-M4-SHELL-SVC",
+        "TST-M4-SHELL-LOGIN"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M4"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-31",
+      "stage": "M4",
+      "requirement_ids": [
+        "REQ-M4-010"
+      ],
+      "depends_on": [
+        "WP-26",
+        "WP-29",
+        "WP-30"
+      ],
+      "inputs": [
+        "docs/PLAN.md §5",
+        "docs/adr/0016-services-and-authority.md"
+      ],
+      "files": [],
+      "contract_refs": [],
+      "actions": [
+        "بوابة M4: التعافي من انقطاع الطرف، طفرات M4، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
+        "peer-loss recovery tests across services",
+        "mutants M50+ for M4 modules",
+        "docs/operations/m4-review.md; stages.json gate"
+      ],
+      "acceptance": "M4 gate passed",
+      "test_ids": [
+        "TST-M4-PEER-LOSS",
+        "TST-M4-MUTANTS"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M4"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
     }
   ]
 }

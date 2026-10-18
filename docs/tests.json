@@ -973,6 +973,315 @@
    "evidence_refs": [
     "evidence/20261018T113857Z-029e0e06-004"
    ]
+  },
+  {
+   "id": "TST-M4-SPAWN-VOLUME",
+   "requirement_ids": [
+    "REQ-M4-001"
+   ],
+   "layer": "guest",
+   "oracle": "a kernel test spawns /SYSTEM/ECHO.ELF from the lab volume with a channel as initial handle; the child receives it in rdi, echoes a message back, exits 0; frames/objects balance",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-WAIT-TIMEOUT",
+   "requirement_ids": [
+    "REQ-M4-001"
+   ],
+   "layer": "guest",
+   "oracle": "object_wait_many on an idle channel with timeout 20 ticks returns ERR_TIMED_OUT after 20..=40 ticks; with a message queued it returns the index at once",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-CHILD-EXIT",
+   "requirement_ids": [
+    "REQ-M4-001"
+   ],
+   "layer": "guest",
+   "oracle": "object_wait_many on a process handle wakes when the child exits (EXITED signal) and the exit code is readable; a closed process handle leaves no object",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-SVC-ORDER",
+   "requirement_ids": [
+    "REQ-M4-002"
+   ],
+   "layer": "guest",
+   "oracle": "svcmgr starts A, B(after A), C(after A,B) from the manifest: the recorded start order is topological and each dependent starts only after its dependency reported READY",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-SVC-TIMEOUT",
+   "requirement_ids": [
+    "REQ-M4-002"
+   ],
+   "layer": "guest",
+   "oracle": "a service that never reports READY within its manifest timeout is marked failed, its dependents are not started, and svcmgr keeps serving list requests",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-SVC-RESTART",
+   "requirement_ids": [
+    "REQ-M4-002"
+   ],
+   "layer": "guest",
+   "oracle": "a service that exits with failure is restarted at most max_restarts times with exponential backoff, then marked given_up; the machine stays responsive (ticks advance, list answers)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-HASH-VECTORS",
+   "requirement_ids": [
+    "REQ-M4-003"
+   ],
+   "layer": "host_unit",
+   "oracle": "SHA-256 (FIPS 180-4 examples), HMAC-SHA256 (RFC 4231) and PBKDF2-HMAC-SHA256 (RFC 7914 §11 / known vectors) match in the no_std crate on the host, and the same crate inside the guest prints the same digests",
+   "command": "python3 tools/project.py test --target host --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-LOGIN",
+   "requirement_ids": [
+    "REQ-M4-003"
+   ],
+   "layer": "guest",
+   "oracle": "login with the right password returns a session token; a wrong password is refused; after 5 failures the account is delayed; the users database on the volume holds no plaintext (host check greps the image)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-SESSION-LOCK",
+   "requirement_ids": [
+    "REQ-M4-003"
+   ],
+   "layer": "guest",
+   "oracle": "lock then unlock with the password keeps the session; logout revokes the token so a request with it is refused with ERR_ACCESS",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-AUTHZ-DENIED",
+   "requirement_ids": [
+    "REQ-M4-004"
+   ],
+   "layer": "guest",
+   "oracle": "a config write carrying a token without the ADMIN permission is refused with ERR_ACCESS by the config service itself, and the same request with an admin token succeeds",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-CONFIG-PERSIST",
+   "requirement_ids": [
+    "REQ-M4-005"
+   ],
+   "layer": "guest",
+   "oracle": "a value written through the config service is read back after a QEMU restart on the same image (phase 2) and the host tool sees the store file",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-CONFIG-CAS",
+   "requirement_ids": [
+    "REQ-M4-005"
+   ],
+   "layer": "guest",
+   "oracle": "two writers with the same expected version: the second is refused with ERR_VERSION and the store holds the first value",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-CONFIG-RETRY",
+   "requirement_ids": [
+    "REQ-M4-005"
+   ],
+   "layer": "guest",
+   "oracle": "the same request_id sent twice applies once (version advances once) and returns the stored result the second time",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-CONFIG-NOTIFY",
+   "requirement_ids": [
+    "REQ-M4-005"
+   ],
+   "layer": "guest",
+   "oracle": "a subscriber channel receives CHANGED(key, version) after a write, and nothing after a refused write",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-POLICY-PRECEDENCE",
+   "requirement_ids": [
+    "REQ-M4-005"
+   ],
+   "layer": "guest",
+   "oracle": "with a policy value set, reads return the policy value over the user value and the default; removing the policy restores the user value",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-NET-LINK",
+   "requirement_ids": [
+    "REQ-M4-006"
+   ],
+   "layer": "guest",
+   "oracle": "virtio-net initialises (modern transport, MAC read from device config, link up), receive queue filled from driver-owned frames; frames balance",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-NET-LIMITS",
+   "requirement_ids": [
+    "REQ-M4-006"
+   ],
+   "layer": "guest",
+   "oracle": "a flood of transmit requests beyond the queue limit is refused with ERR_NO_RESOURCES without allocation growth; oversize frames are refused",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-KBD-SCANCODES",
+   "requirement_ids": [
+    "REQ-M4-006"
+   ],
+   "layer": "guest",
+   "oracle": "keys injected through the QEMU monitor (sendkey) arrive as PS/2 scancodes through the i8042 driver and are decoded to the expected key codes",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-DHCP",
+   "requirement_ids": [
+    "REQ-M4-007"
+   ],
+   "layer": "guest",
+   "oracle": "netd obtains a lease from the QEMU user network (10.0.2.15/24, gateway 10.0.2.2, DNS 10.0.2.3) via DISCOVER/OFFER/REQUEST/ACK",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-ICMP-ECHO",
+   "requirement_ids": [
+    "REQ-M4-007"
+   ],
+   "layer": "guest",
+   "oracle": "an ICMP echo request to 10.0.2.2 is answered (reply matches id/seq/payload)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-UDP-ECHO",
+   "requirement_ids": [
+    "REQ-M4-007"
+   ],
+   "layer": "guest",
+   "oracle": "a UDP datagram to a host echo server (hostfwd) comes back intact; a datagram to a closed port yields no answer within the timeout and the service stays up",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-NET-NO-INTERNET",
+   "requirement_ids": [
+    "REQ-M4-007"
+   ],
+   "layer": "guest",
+   "oracle": "with the link configured, the internet state stays 'unknown/none' until an explicit probe; policy no_internet blocks a connection attempt outside the local network with ERR_POLICY",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-TCP-ECHO",
+   "requirement_ids": [
+    "REQ-M4-008"
+   ],
+   "layer": "guest",
+   "oracle": "a TCP connection to a host echo server (hostfwd): handshake, data both ways, orderly close",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-TCP-RETRANSMIT",
+   "requirement_ids": [
+    "REQ-M4-008"
+   ],
+   "layer": "guest",
+   "oracle": "with a segment dropped by the lab (host-side drop), the data still arrives through retransmission within the RTO budget",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-SHELL-SVC",
+   "requirement_ids": [
+    "REQ-M4-009"
+   ],
+   "layer": "guest",
+   "oracle": "over the lab console socket, `svc list` prints every manifest service with its state; `cpu`/`mem` print values matching the kernel's own trace lines",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-SHELL-LOGIN",
+   "requirement_ids": [
+    "REQ-M4-009"
+   ],
+   "layer": "guest",
+   "oracle": "`login` with a wrong password is refused; with the right one the prompt shows the user and an admin command succeeds",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-PEER-LOSS",
+   "requirement_ids": [
+    "REQ-M4-010"
+   ],
+   "layer": "guest",
+   "oracle": "a client that dies mid-request leaves the service serving others; a service that dies mid-request leaves the client with ERR_PEER_CLOSED and svcmgr restarts it; no object or frame leaks",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M4-MUTANTS",
+   "requirement_ids": [
+    "REQ-M4-010"
+   ],
+   "layer": "host_unit",
+   "oracle": "seeded defects in the M4 modules (svcmgr, auth, config, net, drivers) are killed by the M4 suite (>= 95%)",
+   "command": "python3 tools/project.py test --target host --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": [],
+   "stale_policy": "warn"
   }
  ]
 }

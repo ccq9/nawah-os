@@ -990,6 +990,288 @@
         "evidence/20261018T114630Z-029e0e06-001",
         "evidence/20261018T113752Z-029e0e06-001"
       ]
+    },
+    {
+      "id": "REQ-M4-001",
+      "statement": "إنشاء عمليات من صور على حجم النظام بمقابض أولية، وكائن عملية يُشعر بالخروج، وانتظار متعدد بمهلة (ABI v1.4 إضافي)",
+      "rationale": "services need processes, waiting and timeouts",
+      "source": "OS-EXEC-AR 3.2 §20 M4",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M4",
+      "dependencies": [
+        "REQ-M3-006",
+        "REQ-M3-005",
+        "REQ-M3-008"
+      ],
+      "contract_refs": [
+        "docs/contracts/syscall.md",
+        "docs/contracts/ipc.md"
+      ],
+      "failure_cases": [
+        "عملية تنتظر إلى الأبد بلا مهلة",
+        "مقبض أولي يصل إلى العملية الخطأ"
+      ],
+      "acceptance": "spawn_volume/wait_timeout/child_exit",
+      "test_ids": [
+        "TST-M4-SPAWN-VOLUME",
+        "TST-M4-WAIT-TIMEOUT",
+        "TST-M4-CHILD-EXIT"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M4-002",
+      "statement": "مدير خدمات بترتيب معلوم وتبعيات ومهلات جاهزية وسياسة إعادة تشغيل بحد أقصى للمحاولات",
+      "rationale": "OS-EXEC-AR §8.7",
+      "source": "OS-EXEC-AR 3.2 §20 M4",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M4",
+      "dependencies": [
+        "REQ-M4-001"
+      ],
+      "contract_refs": [
+        "docs/contracts/services.md"
+      ],
+      "failure_cases": [
+        "خدمة متعطلة تُعاد في حلقة بلا حد",
+        "تابعة تبدأ قبل جاهزية تبعيتها"
+      ],
+      "acceptance": "svc_order/svc_timeout/svc_restart",
+      "test_ids": [
+        "TST-M4-SVC-ORDER",
+        "TST-M4-SVC-TIMEOUT",
+        "TST-M4-SVC-RESTART"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M4-003",
+      "statement": "مستخدمون ومجموعات وجلسات ومصادقة: كلمات مرور بـ PBKDF2-HMAC-SHA256 بمتجهات اختبار، رموز جلسة بصلاحيات، حد محاولات، قفل وخروج يبطلان الرموز",
+      "rationale": "OS-EXEC-AR §8.7 (no plaintext, no new algorithm)",
+      "source": "OS-EXEC-AR 3.2 §20 M4",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M4",
+      "dependencies": [
+        "REQ-M4-001"
+      ],
+      "contract_refs": [
+        "docs/contracts/auth.md"
+      ],
+      "failure_cases": [
+        "كلمة مرور مكشوفة على القرص",
+        "رمز جلسة يبقى صالحًا بعد الخروج"
+      ],
+      "acceptance": "hash_vectors/login/session_lock",
+      "test_ids": [
+        "TST-M4-HASH-VECTORS",
+        "TST-M4-LOGIN",
+        "TST-M4-SESSION-LOCK"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M4-004",
+      "statement": "الخدمة ذات السلطة ترفض الطلب غير المخول عند طبقة السلطة (رمز بلا الصلاحية)، حتى لو فحصته الواجهة",
+      "rationale": "OS-EXEC-AR §12 item 2, §20 M4",
+      "source": "OS-EXEC-AR 3.2 §20 M4",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M4",
+      "dependencies": [
+        "REQ-M4-003"
+      ],
+      "contract_refs": [
+        "docs/contracts/auth.md",
+        "docs/contracts/services.md"
+      ],
+      "failure_cases": [
+        "طلب مُمرَّر لأن الواجهة فحصته"
+      ],
+      "acceptance": "authz_denied",
+      "test_ids": [
+        "TST-M4-AUTHZ-DENIED"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M4-005",
+      "statement": "تكوين وسياسات بمخازن منفصلة وإصدارات: حفظ يبقى بعد إعادة التشغيل، تحديث متزامن مرفوض، طلب مكرر لا يُطبَّق مرتين، إشعارات تغيير، أسبقية السياسة",
+      "rationale": "OS-EXEC-AR §13, §12 item 3-4",
+      "source": "OS-EXEC-AR 3.2 §20 M4",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M4",
+      "dependencies": [
+        "REQ-M4-001",
+        "REQ-M3-007"
+      ],
+      "contract_refs": [
+        "docs/contracts/config.md"
+      ],
+      "failure_cases": [
+        "قيمة تضيع بعد إعادة التشغيل",
+        "تحديثان متزامنان يفسد أحدهما الآخر",
+        "طلب معاد يُطبَّق مرتين"
+      ],
+      "acceptance": "config_persist/cas/retry/notify/policy",
+      "test_ids": [
+        "TST-M4-CONFIG-PERSIST",
+        "TST-M4-CONFIG-CAS",
+        "TST-M4-CONFIG-RETRY",
+        "TST-M4-CONFIG-NOTIFY",
+        "TST-M4-POLICY-PRECEDENCE"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M4-006",
+      "statement": "تعريفات المختبر virtio-net وPS/2 بحدود موارد ثابتة ونموذج ثقة DMA مثبَّت قبل التمكين",
+      "rationale": "OS-EXEC-AR §8.5",
+      "source": "OS-EXEC-AR 3.2 §20 M4",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M4",
+      "dependencies": [
+        "REQ-M3-007"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "واصف DMA من مصدر غير موثوق",
+        "طابور بلا حد يستنزف الإطارات"
+      ],
+      "acceptance": "net_link/net_limits/kbd_scancodes",
+      "test_ids": [
+        "TST-M4-NET-LINK",
+        "TST-M4-NET-LIMITS",
+        "TST-M4-KBD-SCANCODES"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M4-007",
+      "statement": "شبكة أساسية: ARP/IPv4/ICMP/UDP/DHCP مع فصل حالة الاتصال عن وجود الإنترنت وسياسة لا إنترنت افتراضيًا",
+      "rationale": "OS-EXEC-AR §8.8; PLAN §5",
+      "source": "OS-EXEC-AR 3.2 §20 M4",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M4",
+      "dependencies": [
+        "REQ-M4-006",
+        "REQ-M4-002"
+      ],
+      "contract_refs": [
+        "docs/contracts/net.md"
+      ],
+      "failure_cases": [
+        "ادعاء إنترنت لمجرد وجود رابط",
+        "حزمة مشوهة تُسقط الخدمة"
+      ],
+      "acceptance": "dhcp/icmp_echo/udp_echo/no_internet",
+      "test_ids": [
+        "TST-M4-DHCP",
+        "TST-M4-ICMP-ECHO",
+        "TST-M4-UDP-ECHO",
+        "TST-M4-NET-NO-INTERNET"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M4-008",
+      "statement": "TCP أساسي (مصافحة، بيانات، إغلاق، إعادة إرسال) وواجهة مقابس عبر الخدمة",
+      "rationale": "OS-EXEC-AR §8.8",
+      "source": "OS-EXEC-AR 3.2 §20 M4",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M4",
+      "dependencies": [
+        "REQ-M4-007"
+      ],
+      "contract_refs": [
+        "docs/contracts/net.md"
+      ],
+      "failure_cases": [
+        "بيانات تضيع بلا إعادة إرسال"
+      ],
+      "acceptance": "tcp_echo/tcp_retransmit",
+      "test_ids": [
+        "TST-M4-TCP-ECHO",
+        "TST-M4-TCP-RETRANSMIT"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M4-009",
+      "statement": "أدوات تشخيص داخل النظام: shell نصي يعرض الخدمات والمعالجات والذاكرة والشبكة والملفات ويسجّل الدخول، قابل للاختبار من المختبر",
+      "rationale": "OS-EXEC-AR §20 M4 (diagnostics); PROJECT R1 (text shell)",
+      "source": "OS-EXEC-AR 3.2 §20 M4",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M4",
+      "dependencies": [
+        "REQ-M4-002",
+        "REQ-M4-003"
+      ],
+      "contract_refs": [
+        "docs/contracts/shell.md"
+      ],
+      "failure_cases": [
+        "أمر يعرض حالة من الواجهة لا من مالكها"
+      ],
+      "acceptance": "shell_svc/shell_login",
+      "test_ids": [
+        "TST-M4-SHELL-SVC",
+        "TST-M4-SHELL-LOGIN"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M4-010",
+      "statement": "بوابة M4: التعافي من انقطاع الطرف وفشل الخدمة وفق العقد، تكرار الطلب والتحديث المتزامن مختبران، اختبار طفرات ≥95% على وحدات M4، مراجعة مسماة",
+      "rationale": "OS-EXEC-AR §20 M4",
+      "source": "OS-EXEC-AR 3.2 §20 M4",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M4",
+      "dependencies": [
+        "REQ-M4-002",
+        "REQ-M4-004",
+        "REQ-M4-005",
+        "REQ-M4-007",
+        "REQ-M4-009"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "ادعاء تعافٍ بلا اختبار"
+      ],
+      "acceptance": "peer_loss + mutants + review",
+      "test_ids": [
+        "TST-M4-PEER-LOSS",
+        "TST-M4-MUTANTS"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
     }
   ]
 }
