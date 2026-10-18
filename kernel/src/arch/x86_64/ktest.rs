@@ -13,6 +13,7 @@ use core::sync::atomic::Ordering;
 use super::gdt::{TablePointer, DOUBLE_FAULT_IST, KERNEL_CODE_SELECTOR};
 use super::idt::INTERRUPT_GATE;
 use super::trap::{EXCEPTION_VECTORS, KTEST_FAULT_IN_HANDLER};
+use crate::cell::BootCell;
 
 /// Canonical address far above any physical memory the lab maps (512 MiB RAM, 4-level paging):
 /// writing to it gives #PF with error code 2 (not present, write, supervisor: SDM Fig. 7-11).
@@ -174,6 +175,13 @@ ktest_trigger_triple:
     lidt [rsp]
     ud2
 
+    # Pushes until the stack runs into its guard page. The #PF frame cannot be pushed there
+    # either, so the CPU raises #DF (SDM Table 7-5), delivered on the IST1 stack.
+    .global ktest_trigger_stack_overflow
+ktest_trigger_stack_overflow:
+    push rax
+    jmp ktest_trigger_stack_overflow
+
     .balign 8
 ktest_reg_patterns:
     .quad 0x1111111111111111
@@ -203,11 +211,11 @@ extern "sysv64" {
     fn ktest_bp_preserves_state() -> u64;
     fn ktest_trigger_gp();
     fn ktest_trigger_pf();
-    #[allow(dead_code)]
     fn ktest_trigger_write(address: u64);
     fn ktest_trigger_df() -> !;
     fn ktest_trigger_db();
     fn ktest_trigger_triple() -> !;
+    fn ktest_trigger_stack_overflow() -> !;
     static ktest_de_insn: u8;
     static ktest_ud_insn: u8;
     static ktest_db_after: u8;
@@ -277,11 +285,35 @@ pub fn page_fault() {
     unsafe { ktest_trigger_pf() }
 }
 
-/// Stores 0 at `address` (expected to fault once the page is read-only, WP-09).
-#[allow(dead_code)] // used by the WP-09 vmm_wp test
+/// Stores 0 at `address`; the caller picks an address whose page rejects writes (vmm_wp).
 pub fn write_fault(address: u64) {
-    // SAFETY: as in divide_error; the caller chooses an address whose page rejects the write.
+    // SAFETY: as in divide_error; with CR0.WP the store never happens because the page is
+    // read-only, and the #PF is caught by the loaded IDT.
     unsafe { ktest_trigger_write(address) }
+}
+
+/// Sixteen `ret` instructions in writable data: a static with interior mutability lands in
+/// .data, which the kernel address space maps RW + NX (vmm_nx).
+static DATA_CODE: BootCell<[u8; 16]> = BootCell::new([0xC3; 16]);
+
+pub fn data_code_address() -> u64 {
+    DATA_CODE.get() as u64
+}
+
+/// Calls into `DATA_CODE`: under EFER.NXE the instruction fetch faults (#PF, error code bit 4);
+/// without NX the `ret` would simply return.
+pub fn execute_from_data() {
+    // SAFETY: a direct call to writable data; the fault is intended and caught by the loaded
+    // IDT. clobber_abi marks every caller-saved register as clobbered in case it returned.
+    unsafe {
+        asm!("call {}", in(reg) data_code_address(), clobber_abi("sysv64"));
+    }
+}
+
+/// Overflows the current stack by pushing until the guard page stops it (vmm_guard).
+pub fn stack_overflow() -> ! {
+    // SAFETY: overflowing the stack is the point; the #DF handler ends the run on IST1.
+    unsafe { ktest_trigger_stack_overflow() }
 }
 
 /// Makes the exception handler raise #UD on every entry, then raises the first exception. The

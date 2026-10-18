@@ -2,9 +2,11 @@
 //!
 //! Policy (ADR-0004): free = EfiConventionalMemory only, at or above 1 MiB (the first MiB is kept
 //! for the SMP trampoline and legacy regions). Everything else — loader code/data (our image and
-//! its static buffers), boot-services memory (still holding the firmware page tables we run on
-//! until WP-09), runtime services, ACPI, MMIO — stays reserved. One bit per frame: 1 = reserved or
-//! allocated, 0 = free. The bitmap itself is carved from the first free region that fits.
+//! its static buffers), boot-services memory (holding the firmware page tables we run on until
+//! the kernel's own tables are active), runtime services, ACPI, MMIO — stays reserved. One bit per
+//! frame: 1 = reserved or allocated, 0 = free. The bitmap itself is carved from the first free
+//! region that fits. After the CR3 switch (WP-09) `reclaim_boot_services` releases the
+//! EfiBootServicesCode/Data frames.
 //!
 //! Single-CPU, interrupts disabled: no lock yet (WP-11 wraps the allocator in an irqsave lock).
 //! Failure policy: exhaustion returns `None`; freeing a free frame returns an error — never a panic.
@@ -44,6 +46,7 @@ struct Pmm {
     bitmap_frames: u64,
     hint: usize,
     ready: bool,
+    reclaimed: bool,
 }
 
 static PMM: BootCell<Pmm> = BootCell::new(Pmm {
@@ -55,6 +58,7 @@ static PMM: BootCell<Pmm> = BootCell::new(Pmm {
     bitmap_frames: 0,
     hint: 0,
     ready: false,
+    reclaimed: false,
 });
 
 fn pmm() -> &'static mut Pmm {
@@ -212,8 +216,42 @@ pub fn stats() -> Stats {
     }
 }
 
-/// Writes a pattern into the frame and reads it back (the frame is identity-mapped while the
-/// firmware page tables are in use; WP-09 moves this to the direct map). Test kernel helper.
+/// Releases EfiBootServicesCode/Data frames: after ExitBootServices they are "memory available
+/// for general use" (UEFI 2.11 §7.2.3 Table 7.6, memory type usage after ExitBootServices), but the firmware page tables the kernel
+/// ran on until the CR3 switch live there, so this is only called once the kernel's own tables
+/// are active (WP-09). Frames below 1 MiB, beyond the bitmap, or inside `keep`
+/// (`[start, end)`: the kernel image, whatever memory type the firmware chose for it) stay
+/// reserved. Returns the number of frames released; a second call releases nothing.
+pub fn reclaim_boot_services(bi: &BootInfo, keep: (u64, u64)) -> u64 {
+    let p = pmm();
+    if !p.ready || p.reclaimed {
+        return 0;
+    }
+    p.reclaimed = true;
+    let mut released = 0u64;
+    for d in bi.memmap() {
+        if !d.is_boot_services() {
+            continue;
+        }
+        let first = (d.phys_start.max(LOW_RESERVED)) / FRAME_SIZE;
+        let last = ((d.phys_start + d.pages * FRAME_SIZE) / FRAME_SIZE).min(p.frames);
+        let mut f = first;
+        while f < last {
+            let addr = f * FRAME_SIZE;
+            if (addr < keep.0 || addr >= keep.1) && p.get_bit(f) {
+                p.set_bit(f, false);
+                released += 1;
+            }
+            f += 1;
+        }
+    }
+    p.managed += released;
+    p.free += released;
+    released
+}
+
+/// Writes a pattern into the frame and reads it back through the identity mapping of RAM (kept
+/// by the kernel's own page tables as well as the firmware's). Test kernel helper.
 #[cfg(feature = "ktest")]
 pub fn probe_rw(frame: Frame) -> bool {
     let ptr = frame.0 as *mut u64;
@@ -227,8 +265,13 @@ pub fn probe_rw(frame: Frame) -> bool {
     }
 }
 
+/// Address of the bitmap storage (the VMM verifies it is mapped before switching page tables).
+pub fn bitmap_address() -> u64 {
+    pmm().bits as u64
+}
+
 /// First frame of the bitmap storage (test kernel: must be unfreeable).
 #[cfg(feature = "ktest")]
 pub fn bitmap_frame() -> Frame {
-    Frame(pmm().bits as u64 & !(FRAME_SIZE - 1))
+    Frame(bitmap_address() & !(FRAME_SIZE - 1))
 }

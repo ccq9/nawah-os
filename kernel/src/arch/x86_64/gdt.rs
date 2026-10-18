@@ -33,8 +33,11 @@ pub struct Stack<const N: usize>(pub [u8; N]);
 pub static KERNEL_STACK: BootCell<Stack<KERNEL_STACK_SIZE>> =
     BootCell::new(Stack([0; KERNEL_STACK_SIZE]));
 
-/// Emergency stack for #DF (IST1).
+/// Emergency stack for #DF (IST1) until the VMM's guarded stacks are adopted.
 static DF_STACK: BootCell<Stack<DF_STACK_SIZE>> = BootCell::new(Stack([0; DF_STACK_SIZE]));
+
+/// Stacks adopted after the kernel address space is active (`(base, size)`: kernel, then #DF).
+static ADOPTED_STACKS: BootCell<[(u64, u64); 2]> = BootCell::new([(0, 0); 2]);
 
 /// Kernel code segment: present, DPL=0, execute/read, L=1, D=0 (64-bit mode).
 const KERNEL_CODE_DESCRIPTOR: u64 = 0x00AF_9B00_0000_FFFF;
@@ -160,12 +163,31 @@ pub fn init() {
     }
 }
 
-/// Names the stack an address falls in, for diagnostics.
+/// Points IST1 at the adopted #DF stack and records both adopted stacks for `stack_name`.
+/// The CPU reads the TSS at exception time, so the new IST1 is in effect at once.
+pub fn adopt_stacks(kernel: (u64, u64), df: (u64, u64)) {
+    // SAFETY: boot path, single CPU (BootCell contract); `ist` is packed, hence write_unaligned
+    // through a raw pointer; slot DOUBLE_FAULT_IST - 1 is inside the 7-entry array.
+    unsafe {
+        ADOPTED_STACKS.get().write([kernel, df]);
+        (&raw mut (*TSS.get()).ist)
+            .cast::<u64>()
+            .add(usize::from(DOUBLE_FAULT_IST) - 1)
+            .write_unaligned(df.0 + df.1);
+    }
+}
+
+/// Names the stack an address falls in, for diagnostics: the adopted stacks first, then the
+/// static boot-time ones.
 pub fn stack_name(address: u64) -> &'static str {
-    let within = |base: u64, size: usize| address >= base && address < base + size as u64;
-    if within(DF_STACK.get() as u64, DF_STACK_SIZE) {
+    let within = |base: u64, size: u64| size != 0 && address >= base && address < base + size;
+    // SAFETY: read of a BootCell written on the boot path only (zeros before adoption).
+    let [kernel, df] = unsafe { ADOPTED_STACKS.get().read() };
+    if within(df.0, df.1) || within(DF_STACK.get() as u64, DF_STACK_SIZE as u64) {
         "df"
-    } else if within(KERNEL_STACK.get() as u64, KERNEL_STACK_SIZE) {
+    } else if within(kernel.0, kernel.1)
+        || within(KERNEL_STACK.get() as u64, KERNEL_STACK_SIZE as u64)
+    {
         "kernel"
     } else {
         "unknown"

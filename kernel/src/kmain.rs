@@ -5,8 +5,8 @@ use crate::arch;
 use crate::bootinfo::{BootInfo, MEM_CONVENTIONAL};
 use crate::mm;
 
-/// Stage M1: validate the handoff, account the memory map, emit the trace the oracle checks,
-/// then end the lab run. Later stages continue into M2 initialisation instead of exiting.
+/// M1/M2 boot path: own CPU tables, validate the handoff, account the memory map, bring up the
+/// frame allocator and the kernel address space, then continue on a guarded stack.
 pub fn kernel_main(bi: &BootInfo) -> ! {
     // CPU tables first: from here on a fault is a diagnostic line, not a silent reset.
     arch::init_cpu();
@@ -51,6 +51,56 @@ pub fn kernel_main(bi: &BootInfo) -> ! {
         st.bitmap_frames,
         u8::from(selfcheck)
     );
+
+    // Kernel-owned page tables (WP-09). Failure here is unrecoverable: the firmware tables are
+    // the only alternative and they are about to be reclaimed.
+    let ks = match mm::vmm::init(bi) {
+        Ok(ks) => ks,
+        Err(e) => {
+            kprintln!("OSX|{}|kernel|panic|code={}", build_id, e.code());
+            arch::halt()
+        }
+    };
+    kprintln!(
+        "OSX|{}|kernel|vmm|cr3={:#x}|image={:#x}+{:#x}|wp={}|nxe={}|text_rx={}|data_rw_nx={}|sections_rx={}|sections_ro={}|sections_rw={}|ram_mib={}|reclaimed_frames={}|direct_ok={}",
+        build_id,
+        ks.cr3,
+        ks.image_base,
+        ks.image_size,
+        u8::from(ks.wp),
+        u8::from(ks.nxe),
+        u8::from(ks.text_rx),
+        u8::from(ks.data_rw_nx),
+        ks.sections_rx,
+        ks.sections_ro,
+        ks.sections_rw,
+        ks.ram_bytes_mapped >> 20,
+        ks.reclaimed_frames,
+        u8::from(ks.direct_ok)
+    );
+    arch::adopt_stacks(
+        (ks.kernel_stack.base, ks.kernel_stack.size),
+        (ks.df_stack.base, ks.df_stack.size),
+    );
+    arch::continue_on_stack(ks.kernel_stack.top(), kernel_main_guarded, bi)
+}
+
+/// Continues on the guarded kernel stack with IST1 on the guarded #DF stack.
+extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
+    let build_id = bi.build_id();
+    match mm::vmm::kernel_space() {
+        Some(ks) => kprintln!(
+            "OSX|{}|kernel|stack|guarded=1|base={:#x}|guard={:#x}|ist1_guard={:#x}",
+            build_id,
+            ks.kernel_stack.base,
+            ks.kernel_stack.guard,
+            ks.df_stack.guard
+        ),
+        None => {
+            kprintln!("OSX|{}|kernel|panic|code=K_E_VMM_NOT_ACTIVE", build_id);
+            arch::halt()
+        }
+    }
     #[cfg(feature = "ktest")]
     crate::ktest::run();
     #[cfg(not(feature = "ktest"))]

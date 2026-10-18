@@ -3,8 +3,11 @@
 use core::arch::asm;
 use core::arch::x86_64::__cpuid;
 
+use crate::bootinfo::BootInfo;
+
 mod gdt;
 mod idt;
+pub mod paging;
 mod port;
 pub mod qemu;
 mod serial;
@@ -76,6 +79,37 @@ pub unsafe fn jump_on_kernel_stack(entry: extern "sysv64" fn(*const u8) -> !, ar
             rsp = in(reg) rsp,
             entry = in(reg) entry,
             in("rdi") arg,
+            options(noreturn),
+        );
+    }
+}
+
+/// Adopts the stacks the VMM mapped with guard pages (`(base, size)` each): the double-fault
+/// gate's IST1 points at the new emergency stack from now on, and exception diagnostics name
+/// both stacks. Called once, before `continue_on_stack`.
+pub fn adopt_stacks(kernel: (u64, u64), df: (u64, u64)) {
+    gdt::adopt_stacks(kernel, df);
+}
+
+/// Moves to `stack_top` and jumps to `entry(bi)`, never returning. Used once after the kernel
+/// address space is active, so the rest of the kernel runs on a guarded stack.
+pub fn continue_on_stack<'a>(
+    stack_top: u64,
+    entry: extern "sysv64" fn(&'a BootInfo) -> !,
+    bi: &'a BootInfo,
+) -> ! {
+    // Entry alignment: RSP == top - 8 mimics the state after a `call` (16-byte aligned before it).
+    let rsp = (stack_top & !0xF) - 8;
+    // SAFETY: the caller hands over a mapped, unused stack; the jump target follows the sysv64
+    // ABI with `bi` in rdi and never returns, so nothing on the old stack is needed again.
+    unsafe {
+        asm!(
+            "mov rsp, {rsp}",
+            "xor ebp, ebp",
+            "jmp {entry}",
+            rsp = in(reg) rsp,
+            entry = in(reg) entry,
+            in("rdi") bi as *const BootInfo,
             options(noreturn),
         );
     }

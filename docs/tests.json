@@ -311,8 +311,8 @@
     "REQ-M2-011"
    ],
    "layer": "guest",
-   "oracle": "after CR3 switch to kernel page tables, serial and data still work; kernel sections mapped",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "oracle": "after the CR3 switch: CR3 = kernel PML4, CR0.WP and EFER.NXE set, .text RX / .data RW+NX / headers R+NX, direct map aliases RAM, null page and stack guard pages unmapped, boot-services memory reclaimed, allocator still works; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -322,8 +322,8 @@
     "REQ-M2-011"
    ],
    "layer": "negative",
-   "oracle": "write to .text -> #PF error code 3 (present, write, supervisor) with CR0.WP",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "oracle": "supervisor write to .text with CR0.WP -> #PF error code 3 (present, write, supervisor: SDM Fig. 7-11); CR2 = RIP = target; exit 173",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -333,8 +333,8 @@
     "REQ-M2-011"
    ],
    "layer": "negative",
-   "oracle": "execute from .data -> #PF with instruction-fetch bit (error code bit 4) under EFER.NXE",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "oracle": "instruction fetch from .data under EFER.NXE -> #PF error code 0x11 (present, instruction fetch: SDM Fig. 7-11 bit 4); CR2 = RIP = target; exit 173",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },
@@ -344,8 +344,8 @@
     "REQ-M2-011"
    ],
    "layer": "negative",
-   "oracle": "kernel stack overflow hits the guard page -> #DF on IST1",
-   "command": "python3 tools/project.py test --target pc-qemu --suite M2 (planned)",
+   "oracle": "push loop overflows the guarded kernel stack: #PF in the guard page cannot push its frame -> #DF (SDM Table 7-5) on the guarded IST1 stack, error code 0, CR2 = stack base - 8; exit 161",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   },

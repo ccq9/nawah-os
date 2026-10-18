@@ -114,7 +114,7 @@
    {
     "id": "TST-M1-BOOT",
     "test_id": "TST-M1-BOOT",
-    "oracle": "contracts/boot.md v1 success path (see boot_oracle)",
+    "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted",
     "expected_exit_code": 33,
     "required_markers": [
      "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
@@ -123,7 +123,11 @@
      "|kernel|pmm|managed_frames=",
      "|selfcheck=1",
      "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
-     "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10"
+     "OSX|${BUILD_ID}|kernel|m1_done|exit=0x10",
+     "|kernel|vmm|",
+     "|wp=1|nxe=1|text_rx=1|data_rw_nx=1|",
+     "|direct_ok=1",
+     "|kernel|stack|guarded=1|"
     ],
     "forbidden_markers": [
      "|boot|error|",
@@ -469,6 +473,110 @@
      "|ktest|fail|",
      "|kernel|panic|",
      "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M2-VMM-SWITCH",
+    "test_id": "TST-M2-VMM-SWITCH",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=vmm_switch"
+    ],
+    "oracle": "after the CR3 switch: CR3 = kernel PML4, CR0.WP and EFER.NXE set, .text RX / .data RW+NX / headers R+NX, direct map aliases RAM, null page and stack guard pages unmapped, boot-services memory reclaimed, allocator still works; exit 33",
+    "expected_exit_code": 33,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=vmm_switch",
+     "|ktest|pass|kernel address space active"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|",
+     "|exc|vector"
+    ]
+   },
+   {
+    "id": "TST-M2-VMM-WP",
+    "test_id": "TST-M2-VMM-WP",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=vmm_wp"
+    ],
+    "oracle": "supervisor write to .text with CR0.WP -> #PF error code 3 (present, write, supervisor: SDM Fig. 7-11); CR2 = RIP = target; exit 173",
+    "expected_exit_code": 173,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=vmm_wp",
+     "|exc|vector=14|name=#PF|error=0x3|"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_rip=(0x[0-9a-f]+)",
+      "\\|rip=(0x[0-9a-f]+)\\|"
+     ],
+     [
+      "vmm_wp\\|target=(0x[0-9a-f]+)",
+      "\\|cr2=(0x[0-9a-f]+)\\|"
+     ]
+    ]
+   },
+   {
+    "id": "TST-M2-VMM-NX",
+    "test_id": "TST-M2-VMM-NX",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=vmm_nx"
+    ],
+    "oracle": "instruction fetch from .data under EFER.NXE -> #PF error code 0x11 (present, instruction fetch: SDM Fig. 7-11 bit 4); CR2 = RIP = target; exit 173",
+    "expected_exit_code": 173,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=vmm_nx",
+     "|exc|vector=14|name=#PF|error=0x11|"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_rip=(0x[0-9a-f]+)",
+      "\\|rip=(0x[0-9a-f]+)\\|"
+     ],
+     [
+      "vmm_nx\\|target=(0x[0-9a-f]+)",
+      "\\|cr2=(0x[0-9a-f]+)\\|"
+     ]
+    ]
+   },
+   {
+    "id": "TST-M2-VMM-GUARD",
+    "test_id": "TST-M2-VMM-GUARD",
+    "artifact": "${OUT}/NAWAH-KTEST.EFI",
+    "qemu_extra": [
+     "-fw_cfg",
+     "name=opt/nawah/test,string=vmm_guard"
+    ],
+    "oracle": "push loop overflows the guarded kernel stack: #PF in the guard page cannot push its frame -> #DF (SDM Table 7-5) on the guarded IST1 stack, error code 0, CR2 = stack base - 8; exit 161",
+    "expected_exit_code": 161,
+    "required_markers": [
+     "OSX|${BUILD_ID}|ktest|start|name=vmm_guard",
+     "|exc|vector=8|name=#DF|error=0x0|",
+     "|stack=df"
+    ],
+    "forbidden_markers": [
+     "|ktest|fail|",
+     "|kernel|panic|"
+    ],
+    "equal_values": [
+     [
+      "expect_cr2=(0x[0-9a-f]+)",
+      "\\|cr2=(0x[0-9a-f]+)\\|"
+     ]
     ]
    }
   ]

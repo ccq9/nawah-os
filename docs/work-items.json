@@ -505,21 +505,37 @@
    ],
    "inputs": [
     "docs/PLAN.md §3",
-    "ADR-0003",
-    "Intel SDM Vol.3A (S26)"
+    "ADR-0004 §WP-09",
+    "Intel SDM Vol.3A §4.5/§4.6/§2.5, Vol.4 IA32_EFER (S26)",
+    "UEFI 2.11 §7.2.3 memory type usage after ExitBootServices",
+    "PE/COFF section table"
    ],
    "files": [
+    "docs/adr/0004-memory.md",
+    "kernel/src/arch/x86_64/gdt.rs",
+    "kernel/src/arch/x86_64/ktest.rs",
+    "kernel/src/arch/x86_64/mod.rs",
     "kernel/src/arch/x86_64/paging.rs",
-    "kernel/src/mm/vmm.rs"
+    "kernel/src/bootinfo.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
+    "kernel/src/mm/mod.rs",
+    "kernel/src/mm/pmm.rs",
+    "kernel/src/mm/vmm.rs",
+    "platform/pc-qemu/target.json",
+    "tools/unsafe-baseline.txt"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
    ],
    "actions": [
-    "4-level tables, direct map, section permissions, WP/NXE, guard pages, CR3 switch",
-    "ktests"
+    "4-level tables: identity (minus frame 0 and image) + direct map at 0xffff_8000_0000_0000, 2 MiB pages where aligned",
+    "image sections from PE headers: .text RX, .rdata/headers R+NX, .data/.bss RW+NX",
+    "EFER.NXE (CPUID-checked) and CR0.WP, CR3 switch, boot-services memory reclaimed",
+    "guarded kernel stack (64 KiB) and #DF stack (16 KiB) from the allocator; IST1 and RSP moved",
+    "ktests vmm_switch/vmm_wp/vmm_nx/vmm_guard; self-check line in every build"
    ],
-   "acceptance": "vmm tests PASS",
+   "acceptance": "TST-M2-VMM-SWITCH/WP/NX/GUARD PASS on CI; TST-M1-BOOT still PASS with the vmm and guarded-stack markers",
    "test_ids": [
     "TST-M2-VMM-SWITCH",
     "TST-M2-VMM-WP",
@@ -530,9 +546,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M2"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null

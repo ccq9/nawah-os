@@ -5,8 +5,9 @@
 //! as the QEMU exit code plus serial markers (`platform/pc-qemu/target.json`, suite M2).
 //! A missing or unknown name is an explicit failure, so a lost name cannot pass by accident.
 
-use crate::arch::{fwcfg, ktest as inject, qemu};
+use crate::arch::{fwcfg, ktest as inject, paging, qemu};
 use crate::mm::pmm::{self, Frame, PmmError};
+use crate::mm::vmm;
 use crate::BUILD_ID;
 
 fn fail(what: &str) -> ! {
@@ -87,6 +88,42 @@ pub fn run() -> ! {
         "pmm_counts" => pmm_counts(),
         "pmm_exhaust" => pmm_exhaust(),
         "pmm_double_free" => pmm_double_free(),
+        "vmm_switch" => vmm_switch(),
+        "vmm_wp" => {
+            // Writing to .text: the target is the store instruction itself, so RIP, CR2 and the
+            // expected address are all the same value.
+            let target = inject::expected_rip("write");
+            kprintln!("OSX|{}|ktest|vmm_wp|target={:#x}", BUILD_ID, target);
+            expect_rip("write");
+            inject::write_fault(target);
+            fail("write to .text did not fault")
+        }
+        "vmm_nx" => {
+            let target = inject::data_code_address();
+            kprintln!(
+                "OSX|{}|ktest|vmm_nx|target={:#x}|expect_rip={:#x}",
+                BUILD_ID,
+                target,
+                target
+            );
+            inject::execute_from_data();
+            fail("execution from .data did not fault")
+        }
+        "vmm_guard" => {
+            let Some(ks) = vmm::kernel_space() else {
+                fail("kernel space not active")
+            };
+            // The first push below the mapped stack lands 8 bytes under its base, inside the
+            // guard page; the CPU then fails to push the #PF frame there and raises #DF.
+            kprintln!(
+                "OSX|{}|ktest|vmm_guard|stack_base={:#x}|guard={:#x}|expect_cr2={:#x}",
+                BUILD_ID,
+                ks.kernel_stack.base,
+                ks.kernel_stack.guard,
+                ks.kernel_stack.base - 8
+            );
+            inject::stack_overflow()
+        }
         "idt_layout" => {
             let mismatches = inject::idt_layout_mismatches();
             if mismatches == 0 {
@@ -100,6 +137,70 @@ pub fn run() -> ! {
             qemu::exit(qemu::EXIT_UNKNOWN_TEST)
         }
     }
+}
+
+/// Positive checks of the active kernel address space: CR3 is ours, WP/NXE are on, section
+/// permissions took effect, the direct map works, guard pages and the null page are unmapped,
+/// boot-services memory was reclaimed and the allocator still works afterwards.
+fn vmm_switch() -> ! {
+    let Some(ks) = vmm::kernel_space() else {
+        fail("kernel space not active")
+    };
+    if paging::read_cr3() != ks.cr3 {
+        fail("CR3 is not the kernel PML4")
+    }
+    if !ks.wp || !ks.nxe {
+        fail("CR0.WP or EFER.NXE not set")
+    }
+    if !ks.text_rx
+        || !ks.data_rw_nx
+        || ks.sections_rx == 0
+        || ks.sections_ro == 0
+        || ks.sections_rw == 0
+    {
+        fail("section permissions not applied")
+    }
+    if !ks.direct_ok {
+        fail("direct map does not alias physical memory")
+    }
+    let header = match vmm::flags_of(ks.image_base) {
+        Some(f) => !vmm::is_writable(f) && vmm::is_nx(f),
+        None => false,
+    };
+    if !header {
+        fail("image headers not mapped read-only")
+    }
+    if vmm::flags_of(0).is_some() {
+        fail("null page is mapped")
+    }
+    if vmm::flags_of(ks.kernel_stack.guard).is_some() || vmm::flags_of(ks.df_stack.guard).is_some()
+    {
+        fail("a stack guard page is mapped")
+    }
+    if vmm::flags_of(ks.kernel_stack.base).is_none()
+        || vmm::flags_of(ks.df_stack.top() - 8).is_none()
+    {
+        fail("a stack is not mapped")
+    }
+    if ks.reclaimed_frames == 0 {
+        fail("no boot-services memory reclaimed")
+    }
+    let alloc_ok = match pmm::alloc_frame() {
+        Some(f) => pmm::probe_rw(f) && pmm::free_frame(f).is_ok(),
+        None => false,
+    };
+    if !alloc_ok {
+        fail("allocator broken after reclaim")
+    }
+    kprintln!(
+        "OSX|{}|ktest|vmm_switch|cr3={:#x}|ram_mib={}|reclaimed_frames={}|free_frames={}",
+        BUILD_ID,
+        ks.cr3,
+        ks.ram_bytes_mapped >> 20,
+        ks.reclaimed_frames,
+        pmm::stats().free_frames
+    );
+    pass("kernel address space active with WP, NXE, section permissions, direct map, guards")
 }
 
 const PMM_N: usize = 1024;

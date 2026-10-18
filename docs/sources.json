@@ -216,7 +216,8 @@
     "wrong MapKey -> EFI_INVALID_PARAMETER; GetMemoryMap+ExitBootServices must be called again",
     "after first EBS call, only Memory Allocation Services may be called among boot services",
     "GetMemoryMap EFI_BUFFER_TOO_SMALL returns needed size; allocating the buffer may enlarge the map",
-    "after EBS only runtime services"
+    "after EBS only runtime services",
+    "Table 7.6 'Memory Type Usage after ExitBootServices()': EfiBootServicesCode/Data = 'Memory available for general use'; EfiRuntimeServices*/EfiACPIMemoryNVS preserved; EfiACPIReclaimMemory preserved until ACPI is enabled; EfiReservedMemoryType 'Not usable'; EfiMemoryMappedIO not used by the OS (verified 2026-10-18 from the HTML text)"
    ],
    "limits": "verified from fetched official text",
    "verified": true
