@@ -176,10 +176,11 @@ fn lock_irqsave() -> ! {
     }
     if_after_disabled = interrupts::enabled();
     interrupts::enable();
-    // Timer held off while the lock is held, resumes after release.
-    let t0 = irq::counters().ticks;
+    // Timer held off while the lock is held, resumes after release. The baseline is read inside
+    // the critical section: a tick between reading it and the lock's cli would not be "held".
     let (ticks_while_held, try_while_held) = {
         let g = TEST_LOCK.lock();
+        let t0 = irq::counters().ticks;
         pit::wait_ms(20);
         let t = irq::counters().ticks - t0;
         let tried = TEST_LOCK.try_lock().is_some();
