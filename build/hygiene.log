@@ -1,0 +1,162 @@
+    Checking libnawah v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/libnawah)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.16s
+   Compiling hello v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/hello)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.30s
+   Compiling file_roundtrip v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/file_roundtrip)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.11s
+   Compiling path_invalid v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/path_invalid)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.11s
+   Compiling fd_leak v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/fd_leak)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.10s
+   Compiling echo v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/echo)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.10s
+   Compiling launch v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/launch)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.11s
+   Compiling child v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/child)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.10s
+   Compiling waiter v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/waiter)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.11s
+   Compiling svcmgr v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/svcmgr)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.16s
+   Compiling svc v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/svc)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.10s
+    Checking nawah-crypto v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/nawah-crypto)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.06s
+   Compiling authd v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/authd)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.15s
+   Compiling configd v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/configd)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.19s
+   Compiling netprobe v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/netprobe)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.11s
+   Compiling kbdprobe v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/kbdprobe)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.10s
+   Compiling netd v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/netd)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.25s
+   Compiling sh v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/sh)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.13s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 1.07s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 1.08s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `ktest` profile [optimized + debuginfo] target(s) in 1.23s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+error[E0432]: unresolved import `crate::arch::mmio`
+  --> kernel/src/drivers/virtio_blk.rs:25:18
+   |
+25 | use crate::arch::mmio::{
+   |                  ^^^^ could not find `mmio` in `arch`
+   |
+note: found an item that was configured out
+  --> kernel/src/arch/mod.rs:10:54
+   |
+ 7 | #[cfg(target_arch = "x86_64")]
+   |       ---------------------- the item is gated behind the `x86_64` feature
+...
+10 |     init_cpu, interrupts, irq, jump_on_kernel_stack, mmio, paging, pci, pit, qemu, smp, spin_hint,
+   |                                                      ^^^^
+
+error[E0432]: unresolved import `crate::arch::pci`
+  --> kernel/src/drivers/virtio_blk.rs:28:18
+   |
+28 | use crate::arch::pci::{self, Bar, Device};
+   |                  ^^^ could not find `pci` in `arch`
+   |
+note: found an item that was configured out
+  --> kernel/src/arch/mod.rs:10:68
+   |
+ 7 | #[cfg(target_arch = "x86_64")]
+   |       ---------------------- the item is gated behind the `x86_64` feature
+...
+10 |     init_cpu, interrupts, irq, jump_on_kernel_stack, mmio, paging, pci, pit, qemu, smp, spin_hint,
+   |                                                                    ^^^
+
+error[E0432]: unresolved import `crate::mm::dma`
+  --> kernel/src/drivers/virtio_blk.rs:29:5
+   |
+29 | use crate::mm::dma;
+   |     ^^^^^^^^^^^^^^ no `dma` in `mm`
+   |
+note: found an item that was configured out
+  --> kernel/src/mm/mod.rs:7:9
+   |
+ 6 | #[cfg(target_arch = "x86_64")]
+   |       ---------------------- the item is gated behind the `x86_64` feature
+ 7 | pub mod dma;
+   |         ^^^
+
+error[E0432]: unresolved import `crate::arch::mmio`
+  --> kernel/src/drivers/virtio_net.rs:19:18
+   |
+19 | use crate::arch::mmio::{
+   |                  ^^^^ could not find `mmio` in `arch`
+   |
+note: found an item that was configured out
+  --> kernel/src/arch/mod.rs:10:54
+   |
+ 7 | #[cfg(target_arch = "x86_64")]
+   |       ---------------------- the item is gated behind the `x86_64` feature
+...
+10 |     init_cpu, interrupts, irq, jump_on_kernel_stack, mmio, paging, pci, pit, qemu, smp, spin_hint,
+   |                                                      ^^^^
+
+error[E0432]: unresolved import `crate::arch::pci`
+  --> kernel/src/drivers/virtio_net.rs:22:18
+   |
+22 | use crate::arch::pci::{self, Bar, Device};
+   |                  ^^^ could not find `pci` in `arch`
+   |
+note: found an item that was configured out
+  --> kernel/src/arch/mod.rs:10:68
+   |
+ 7 | #[cfg(target_arch = "x86_64")]
+   |       ---------------------- the item is gated behind the `x86_64` feature
+...
+10 |     init_cpu, interrupts, irq, jump_on_kernel_stack, mmio, paging, pci, pit, qemu, smp, spin_hint,
+   |                                                                    ^^^
+
+error[E0432]: unresolved import `crate::mm::dma`
+  --> kernel/src/drivers/virtio_net.rs:23:5
+   |
+23 | use crate::mm::dma;
+   |     ^^^^^^^^^^^^^^ no `dma` in `mm`
+   |
+note: found an item that was configured out
+  --> kernel/src/mm/mod.rs:7:9
+   |
+ 6 | #[cfg(target_arch = "x86_64")]
+   |       ---------------------- the item is gated behind the `x86_64` feature
+ 7 | pub mod dma;
+   |         ^^^
+
+error[E0433]: cannot find `vmm` in `mm`
+   --> kernel/src/drivers/virtio_blk.rs:183:24
+    |
+183 |             crate::mm::vmm::map_mmio(base, size.min(1 << 20)).map_err(|_| BlkError::Map)
+    |                        ^^^ could not find `vmm` in `mm`
+    |
+note: found an item that was configured out
+   --> kernel/src/mm/mod.rs:12:9
+    |
+ 11 | #[cfg(target_arch = "x86_64")]
+    |       ---------------------- the item is gated behind the `x86_64` feature
+ 12 | pub mod vmm;
+    |         ^^^
+
+error[E0433]: cannot find `vmm` in `mm`
+   --> kernel/src/drivers/virtio_net.rs:190:24
+    |
+190 |             crate::mm::vmm::map_mmio(base, size.min(1 << 20)).map_err(|_| NetError::Map)
+    |                        ^^^ could not find `vmm` in `mm`
+    |
+note: found an item that was configured out
+   --> kernel/src/mm/mod.rs:12:9
+    |
+ 11 | #[cfg(target_arch = "x86_64")]
+    |       ---------------------- the item is gated behind the `x86_64` feature
+ 12 | pub mod vmm;
+    |         ^^^
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.
+error: could not compile `nawah-kernel` (bin "nawah-kernel") due to 8 previous errors
