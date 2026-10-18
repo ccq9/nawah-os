@@ -18,9 +18,27 @@
 - **الحدود تحت الضغط** (TST-M4-NET-LIMITS): 64 إرسالًا متتاليًا = 16 مقبولًا و48 `Busy`، لا أكثر من 16 خانة معلّقة أبدًا، كل الخانات تعود بعد أن يستهلكها الجهاز، وعدد الإطارات 18 لا يتغير.
 - **المختبر**: شبكة QEMU user-mode (SLIRP؛ S55): الضيف 10.0.2.15، البوابة 10.0.2.2 (MAC `52:55:0a:00:02:02`)، DNS 10.0.2.3؛ ARP للبوابة يُجاب في الإقلاع (`kernel|net|…|selfcheck=1`) وفي TST-M4-NET-LINK من النواة ومن عملية.
 
-## ب. الخدمة `netd` (مسودة WP-28/29)
+## ب. الخدمة `net` (الإصدار 1، WP-28؛ TCP مسودة WP-29)
 
-- **الخدمة** `netd` فوق تعريف virtio-net (قناة إطارات: `TX frame`, `RX frame`).
-- **الحالة**: `link` (الرابط موجود)، `configured` (عنوان IPv4 من DHCP أو ثابت)، `internet` ∈ {unknown, none, reachable} ولا تصبح `reachable` إلا بفحص صريح (`PROBE`) ينجح؛ السياسة `no_internet=1` افتراضيًا ترفض الاتصال خارج الشبكة المحلية بـ`ERR_POLICY`.
-- **الطلبات**: `STATUS`، `DHCP`، `PING addr` → rtt_ticks، `UDP_OPEN port`، `UDP_SEND sock addr port data`، `UDP_RECV sock timeout`، `TCP_CONNECT addr port`، `TCP_SEND`, `TCP_RECV`, `TCP_CLOSE`.
-- **الحدود**: حزم ≤ 1514 بايت، طابور استقبال 32 إطارًا، 16 مقبسًا لكل عميل؛ الحزم المشوهة تُعدّ وتُسقط ولا تُسقط الخدمة.
+الجزء ب يُجمَّد عند إغلاق WP-28 بدليل CI (ما عدا TCP: WP-29). الكود: `user/apps/netd` (`/SYSTEM/NETD.ELF`، الاسم `net`، تستلم واجهة الشبكة مقبضًا أوليًا ثانيًا من المدير).
+
+- **المكدس** (خاص بالخدمة، لا شيء في النواة): Ethernet؛ ARP (RFC 826، S53) بجدول 8 مدخلات وحلّ محدود (3 طلبات خلال 300 نبضة ثم `ERR ARP`)؛ IPv4 (RFC 791، S56) بلا تجزئة (الحزم المجزّأة تُسقط وتُعدّ `rx_bad`؛ تجزئة الرأس تُفحص؛ TTL 64؛ DF)؛ ICMP (RFC 792 / IANA، S57) ردّ على طلب الصدى الوارد، وطلب صدى بمعرّف ثابت وتسلسل؛ UDP (RFC 768، S58) بتجزئة الرأس الزائف في الاتجاهين؛ عميل DHCP (RFC 2131/2132، S59/S60): DISCOVER/OFFER/REQUEST/ACK مع الخيارات 1 و3 و6 و51 و53 و54 و55، 3 محاولات بمهلة 1500 نبضة، وسطر تشخيص `net|dhcp|ip=…|mask=…|gw=…|dns=…|lease=…|attempt=…`.
+- **الحالات الثلاث** (RSK-003): `link` من واجهة النواة؛ `configured` بعد ACK؛ `internet` ∈ {unknown, none, reachable} لا يتغير إلا بـ `PROBE` صريح (نجاح → reachable، فشل → none)، ولا يُفترض أبدًا.
+- **السياسة**: `allow_internet=0` افتراضيًا: وجهة خارج الشبكة الفرعية (ليست البوابة ولا بثًّا) → `ERR POLICY` لـ `PING` و`UDP_SEND`؛ `PROBE` مستثنى (فحص النظام نفسه، حمولة ثابتة). التغيير بـ `POLICY internet=0|1` مع مقبض رمز `ADMIN` صالح (بلا مقبض `ERR BAD_REQUEST`؛ رمز بلا ADMIN أو مُبطَل `ERR ACCESS`).
+- **الحدود**: 8 عملاء، 16 مقبس UDP (طابور 4 مخططات لكل مقبس، 1024 بايت لكل مخطط؛ الفائض يُسقط ويُعدّ)، إطار ≤ 1514؛ الحزم المشوهة تُعدّ ولا تُسقط الخدمة.
+
+| الطلب (عبر `CONNECT net`) | الردّ |
+|---|---|
+| `STATUS` | `OK link=<0/1> configured=<0/1> ip=… mask=… gw=… dns=… internet=<unknown/none/reachable> allow_internet=<0/1> rx=… rx_bad=… tx=…` |
+| `DHCP` | `OK ip=… mask=… gw=… dns=…` أو `ERR TIMEOUT` |
+| `PING <ip> [timeout_ticks]` | `OK rtt=<ticks>`؛ `ERR TIMEOUT`؛ `ERR ARP`؛ `ERR POLICY`؛ `ERR BAD_REQUEST` |
+| `PROBE <ip> [timeout_ticks]` | كـ `PING` بلا سياسة، ويحسم `internet` |
+| `POLICY internet=<0/1>` + مقبض رمز ADMIN | `OK`؛ `ERR ACCESS`؛ `ERR BAD_REQUEST` |
+| `UDP_OPEN <port>` | `OK <sock>`؛ `ERR EXISTS`؛ `ERR FULL` |
+| `UDP_SEND <sock> <ip> <port> <data…>` | `OK <len>`؛ `ERR POLICY`؛ `ERR ARP`؛ `ERR BUSY`؛ `ERR BAD_REQUEST` (مقبس ليس للعميل) |
+| `UDP_RECV <sock> <timeout_ticks>` | `OK <ip> <port> <data>`؛ `ERR TIMEOUT` |
+| `UDP_CLOSE <sock>` | `OK`؛ المقابس تُغلق أيضًا عند إغلاق قناة العميل |
+| `TCP_*` | WP-29 |
+
+- **المختبر**: خادم صدى UDP على المضيف (`tools/project.py`، `host_services`) يُوصَل عبر 10.0.2.2 (SLIRP يوجّهه إلى loopback المضيف)؛ الوجهة خارج الشبكة في الاختبارات 192.0.2.1 (TEST-NET-1، RFC 5737) فلا تُجاب أبدًا.
+- **الاختبارات الحاكمة**: TST-M4-DHCP، TST-M4-ICMP-ECHO، TST-M4-UDP-ECHO، TST-M4-NET-NO-INTERNET.

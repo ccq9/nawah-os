@@ -1214,7 +1214,7 @@
     "REQ-M4-007"
    ],
    "layer": "guest",
-   "oracle": "netd obtains a lease from the QEMU user network (10.0.2.15/24, gateway 10.0.2.2, DNS 10.0.2.3) via DISCOVER/OFFER/REQUEST/ACK",
+   "oracle": "the net service (manifest /SYSTEM/SVC-NET.TXT, NIC handle from the manager) runs the DHCP client against the lab's SLIRP server: DISCOVER/OFFER/REQUEST/ACK give ip=10.0.2.15 mask=255.255.255.0 gw=10.0.2.2 dns=10.0.2.3 (trace net|dhcp|… with the lease), STATUS shows link=1 configured=1 and internet=unknown (never assumed) with allow_internet=0; clean exit, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1225,7 +1225,7 @@
     "REQ-M4-007"
    ],
    "layer": "guest",
-   "oracle": "an ICMP echo request to 10.0.2.2 is answered (reply matches id/seq/payload)",
+   "oracle": "after DHCP, PING 10.0.2.2 (ICMP echo request through ARP resolution of the gateway) answers OK rtt=<ticks> twice; a malformed address answers ERR BAD_REQUEST; clean exit; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1236,7 +1236,7 @@
     "REQ-M4-007"
    ],
    "layer": "guest",
-   "oracle": "a UDP datagram to a host echo server (hostfwd) comes back intact; a datagram to a closed port yields no answer within the timeout and the service stays up",
+   "oracle": "a UDP echo server on the host (127.0.0.1:17007, reached as 10.0.2.2 through SLIRP) echoes two datagrams sent from socket 40000 (UDP_SEND OK 18 / OK 15) which come back through UDP_RECV with the sender address and port; a second open of the same port is ERR EXISTS; an empty receive times out; after UDP_CLOSE the socket is gone; clean exit; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1247,7 +1247,7 @@
     "REQ-M4-007"
    ],
    "layer": "guest",
-   "oracle": "with the link configured, the internet state stays 'unknown/none' until an explicit probe; policy no_internet blocks a connection attempt outside the local network with ERR_POLICY",
+   "oracle": "link, configured and internet are separate states: with the default policy, PING and UDP_SEND to the off-link 192.0.2.1 (TEST-NET-1) are refused with ERR POLICY while STATUS says internet=unknown; an explicit PROBE 192.0.2.1 times out and settles internet=none (never assumed reachable); POLICY internet=1 is refused for the user token (ERR ACCESS) and without a token (ERR BAD_REQUEST) and accepted for the admin token; then the off-link send goes out (OK 5) and the ping times out (internet stays none); POLICY internet=0 restores the refusal; clean exit; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []

@@ -1855,15 +1855,26 @@
         "docs/PLAN.md §5",
         "docs/adr/0016-services-and-authority.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/contracts/net.md",
+        "docs/sources.json",
+        "kernel/src/ktest.rs",
+        "platform/pc-qemu/manifests/svc-net.txt",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tools/project.py",
+        "user/apps/netd/src/main.rs"
+      ],
       "contract_refs": [
         "docs/contracts/net.md"
       ],
       "actions": [
-        "الشبكة الأساسية netd: Ethernet/ARP/IPv4/ICMP/UDP/DHCP وفصل الإنترنت",
-        "netd service with its own stack over the virtio-net driver channel",
-        "DHCP client against QEMU user networking; ICMP echo; UDP sockets",
-        "connectivity state model: link/configured/internet; no-internet policy"
+        "ARP/IPv4/ICMP/UDP/DHCP وفصل الإنترنت",
+        "netd (net.md part B): Ethernet framing, ARP table with bounded resolution, IPv4 without fragments (header checksum verified, fragments dropped and counted), ICMP echo reply and PING with RTT, UDP sockets (16, 4-datagram queues) with RFC 768 checksums, DHCP client with retries (RFC 2131/2132: DISCOVER/OFFER/REQUEST/ACK, options 1/3/6/51/53/54/55)",
+        "three separate states link/configured/internet (internet only settled by an explicit PROBE); the no-internet policy applied in the service (off-link traffic ERR POLICY), changed only with an admin token",
+        "lab: a UDP echo peer on the host (tools/project.py host_services) reached through SLIRP's 10.0.2.2; kernel tests net_dhcp, net_icmp, net_udp_echo, net_no_internet; manifest SVC-NET.TXT"
       ],
       "acceptance": "TST-M4-DHCP/ICMP-ECHO/UDP-ECHO/NET-NO-INTERNET PASS on CI; net.md v1",
       "test_ids": [
@@ -1876,9 +1887,10 @@
         "python3 tools/project.py build --target pc-qemu",
         "python3 tools/project.py test --target pc-qemu --suite M4"
       ],
-      "status": "planned",
+      "status": "active",
       "status_history": [
-        "planned"
+        "planned",
+        "active"
       ],
       "evidence_refs": [],
       "blocker": null

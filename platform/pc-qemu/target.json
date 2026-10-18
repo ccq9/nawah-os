@@ -42,7 +42,8 @@
       "${OUT}/apps/authd.elf",
       "${OUT}/apps/configd.elf",
       "${OUT}/apps/netprobe.elf",
-      "${OUT}/apps/kbdprobe.elf"
+      "${OUT}/apps/kbdprobe.elf",
+      "${OUT}/apps/netd.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -297,6 +298,24 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/kbdprobe",
         "${OUT}/apps/kbdprobe.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/netd/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/netd",
+        "${OUT}/apps/netd.elf"
       ],
       [
         "cargo",
@@ -2863,6 +2882,114 @@
           "gap_s": 0.3
         },
         "timeout_s": 240
+      },
+      {
+        "id": "TST-M4-DHCP",
+        "test_id": "TST-M4-DHCP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=net_dhcp"
+        ],
+        "oracle": "the net service (manifest /SYSTEM/SVC-NET.TXT, NIC handle from the manager) runs the DHCP client against the lab's SLIRP server: DISCOVER/OFFER/REQUEST/ACK give ip=10.0.2.15 mask=255.255.255.0 gw=10.0.2.2 dns=10.0.2.3 (trace net|dhcp|… with the lease), STATUS shows link=1 configured=1 and internet=unknown (never assumed) with allow_internet=0; clean exit, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=net_dhcp",
+          "|text=net|dhcp|ip=10.0.2.15|mask=255.255.255.0|gw=10.0.2.2|dns=10.0.2.3|lease=",
+          "|ktest|net_dhcp|dhcp=OK ip=10.0.2.15 mask=255.255.255.0 gw=10.0.2.2 dns=10.0.2.3|status=OK link=1 configured=1 ip=10.0.2.15 mask=255.255.255.0 gw=10.0.2.2 dns=10.0.2.3 internet=unknown allow_internet=0",
+          "|ktest|net_dhcp|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|net_dhcp|frames_delta=0",
+          "|ktest|pass|the service configures itself by DHCP from the lab network"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600
+      },
+      {
+        "id": "TST-M4-ICMP-ECHO",
+        "test_id": "TST-M4-ICMP-ECHO",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=net_icmp"
+        ],
+        "oracle": "after DHCP, PING 10.0.2.2 (ICMP echo request through ARP resolution of the gateway) answers OK rtt=<ticks> twice; a malformed address answers ERR BAD_REQUEST; clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=net_icmp",
+          "|ktest|net_icmp|dhcp_ok=1|ping=OK rtt=",
+          "|rtt_ok=1|bad=ERR BAD_REQUEST|status=OK link=1 configured=1",
+          "|ktest|net_icmp|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|net_icmp|frames_delta=0",
+          "|ktest|pass|ICMP echo requests to the gateway are answered and timed"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600
+      },
+      {
+        "id": "TST-M4-UDP-ECHO",
+        "test_id": "TST-M4-UDP-ECHO",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=net_udp_echo"
+        ],
+        "oracle": "a UDP echo server on the host (127.0.0.1:17007, reached as 10.0.2.2 through SLIRP) echoes two datagrams sent from socket 40000 (UDP_SEND OK 18 / OK 15) which come back through UDP_RECV with the sender address and port; a second open of the same port is ERR EXISTS; an empty receive times out; after UDP_CLOSE the socket is gone; clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=net_udp_echo",
+          "|ktest|net_udp_echo|dhcp_ok=1|open=OK 0|dup=ERR EXISTS|sent=OK 18|got=OK 10.0.2.2 17007 nawah udp echo one|sent2=OK 15|got2=OK 10.0.2.2 17007 second datagram|empty=ERR TIMEOUT|closed=OK|after=ERR BAD_REQUEST",
+          "|ktest|net_udp_echo|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|net_udp_echo|frames_delta=0",
+          "|ktest|pass|UDP datagrams reach the host's echo server and come back"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_services": [
+          {
+            "type": "udp_echo",
+            "port": 17007
+          }
+        ]
+      },
+      {
+        "id": "TST-M4-NET-NO-INTERNET",
+        "test_id": "TST-M4-NET-NO-INTERNET",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=net_no_internet"
+        ],
+        "oracle": "link, configured and internet are separate states: with the default policy, PING and UDP_SEND to the off-link 192.0.2.1 (TEST-NET-1) are refused with ERR POLICY while STATUS says internet=unknown; an explicit PROBE 192.0.2.1 times out and settles internet=none (never assumed reachable); POLICY internet=1 is refused for the user token (ERR ACCESS) and without a token (ERR BAD_REQUEST) and accepted for the admin token; then the off-link send goes out (OK 5) and the ping times out (internet stays none); POLICY internet=0 restores the refusal; clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=net_no_internet",
+          "|ktest|net_no_internet|dhcp_ok=1|ping_off=ERR POLICY|open=OK 0|send_off=ERR POLICY|internet1=true|probe=ERR TIMEOUT|internet2=true|pol_user=ERR ACCESS|pol_none=ERR BAD_REQUEST|pol_admin=OK|send_allowed=OK 5|ping_allowed=ERR TIMEOUT|internet3=true|pol_back=OK|ping_again=ERR POLICY",
+          "|ktest|net_no_internet|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|net_no_internet|frames_delta=0",
+          "|ktest|pass|link, configured and internet are separate; off-link traffic needs an explicit policy"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600
       }
     ]
   },

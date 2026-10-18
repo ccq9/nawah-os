@@ -723,6 +723,71 @@
       ],
       "limits": "the gateway MAC 52:55:0a:00:02:02 is SLIRP's implementation choice (net/slirp.c special_ethaddr), confirmed by the lab",
       "verified": true
+    },
+    {
+      "id": "S56",
+      "title": "RFC 791 — Internet Protocol (STD 5)",
+      "url": "https://rfc-editor.org/rfc/rfc791",
+      "version": "September 1981 (Postel)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "header: Version/IHL, Type of Service, Total Length; Identification, Flags (bit 1 DF, bit 2 MF), Fragment Offset; TTL, Protocol, Header Checksum; Source, Destination",
+        "\"The checksum field is the 16 bit one's complement of the one's complement sum of all 16 bit words in the header\""
+      ],
+      "limits": "fragmentation is not implemented (fragments are dropped and counted)",
+      "verified": true
+    },
+    {
+      "id": "S57",
+      "title": "IANA ICMP Parameters (RFC 792 types): Echo Reply 0, Echo 8",
+      "url": "https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml",
+      "version": "registry read 2026-10-18",
+      "accessed": "2026-10-18",
+      "supports": [
+        "type 0 Echo Reply and type 8 Echo, code 0, per RFC 792",
+        "echo message layout (type, code, checksum, identifier, sequence, data) and the checksum over the ICMP message are RFC 792's; the RFC text itself was not fetched this session"
+      ],
+      "limits": "RFC 792 cited through the registry; confirmed by the lab (TST-M4-ICMP-ECHO)",
+      "verified": true
+    },
+    {
+      "id": "S58",
+      "title": "RFC 768 — User Datagram Protocol (STD 6)",
+      "url": "https://www.rfc-editor.org/rfc/rfc768",
+      "version": "28 August 1980 (Postel)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "header: Source Port, Destination Port, Length (header + data, minimum 8), Checksum",
+        "checksum: one's complement of the one's complement sum over the pseudo header (source, destination, zero, protocol 17, UDP length), header and data, zero-padded; a computed zero is sent as all ones; an all-zero checksum means none"
+      ],
+      "limits": "only IPv4 pseudo headers; the sender always computes the checksum",
+      "verified": true
+    },
+    {
+      "id": "S59",
+      "title": "RFC 2131 — Dynamic Host Configuration Protocol",
+      "url": "https://www.rfc-editor.org/rfc/rfc2131.txt",
+      "version": "March 1997 (Droms)",
+      "accessed": "2026-10-18",
+      "supports": [
+        "message: op(1) htype(1) hlen(1) hops(1) xid(4) secs(2) flags(2) ciaddr(4) yiaddr(4) siaddr(4) giaddr(4) chaddr(16) sname(64) file(128) options — 236 fixed octets; BOOTREQUEST 1, BOOTREPLY 2; client port 68, server port 67; the leftmost flags bit is BROADCAST",
+        "DISCOVER→OFFER→REQUEST→ACK; in REQUEST the client sets the server identifier and the requested IP address (= yiaddr of the OFFER), ciaddr 0",
+        "options begin with the magic cookie 99.130.83.99; retransmission with randomized exponential backoff (4 s, doubling to 64 s)"
+      ],
+      "limits": "the lab client retries 3 times with a fixed 1500-tick wait (no randomized backoff: a lab simplification recorded in net.md)",
+      "verified": true
+    },
+    {
+      "id": "S60",
+      "title": "RFC 2132 — DHCP Options and BOOTP Vendor Extensions",
+      "url": "https://rfc-editor.org/rfc/rfc2132",
+      "version": "March 1997",
+      "accessed": "2026-10-18",
+      "supports": [
+        "Subnet Mask 1 (4), Router 3 (4n), DNS 6 (4n), Requested IP Address 50 (4), Lease Time 51 (4), Message Type 53 (1: DISCOVER 1, OFFER 2, REQUEST 3, ACK 5, NAK 6), Server Identifier 54 (4), Parameter Request List 55, Pad 0, End 255"
+      ],
+      "limits": "only the options the client sends or reads are listed",
+      "verified": true
     }
   ]
 }

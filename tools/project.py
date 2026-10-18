@@ -357,6 +357,42 @@ def run_logged(cmd, cwd, log_out, log_err, timeout):
             e.write(b"TIMEOUT\n"); return 124
 
 
+class HostServices:
+    """Host-side peers a case needs while the guest runs (WP-28): a UDP echo server bound to
+    the loopback, reached from the guest through SLIRP's host address 10.0.2.2."""
+
+    def __init__(self, specs):
+        import socket
+        import threading
+        self.threads, self.socks, self.stop = [], [], threading.Event()
+        for spec in specs or []:
+            if spec["type"] == "udp_echo":
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.bind(("127.0.0.1", int(spec["port"])))
+                sock.settimeout(0.2)
+                self.socks.append(sock)
+                t = threading.Thread(target=self._echo, args=(sock,), daemon=True)
+                t.start(); self.threads.append(t)
+
+    def _echo(self, sock):
+        while not self.stop.is_set():
+            try:
+                data, peer = sock.recvfrom(2048)
+            except OSError:
+                continue
+            try:
+                sock.sendto(data, peer)
+            except OSError:
+                pass
+
+    def close(self):
+        self.stop.set()
+        for t in self.threads:
+            t.join(timeout=2)
+        for s in self.socks:
+            s.close()
+
+
 def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions):
     """`run_logged` for a QEMU case that drives the guest through the monitor (WP-27): once
     `actions["after"]` appears in the serial log, every line of `actions["commands"]` goes to
@@ -618,6 +654,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         disk = prepare_disk(t, target_name, fresh=(i == 0))
         extra = ph.get("qemu_extra", case.get("qemu_extra", []))
         actions = ph.get("monitor", case.get("monitor"))
+        peers = HostServices(ph.get("host_services", case.get("host_services")))
         # A short socket path (AF_UNIX paths are limited to 107 bytes).
         monitor = (ROOT / "build" / target_name / f"mon{i + 1}.sock") if actions else None
         if monitor is not None:
@@ -625,7 +662,10 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")), monitor)
         run = (lambda: run_qemu_monitored(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s, serial, monitor, actions)) if actions \
             else (lambda: run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s))
-        rc = run()
+        try:
+            rc = run()
+        finally:
+            peers.close()
         if rc < 0:
             # QEMU itself died (signal): a lab failure, not a verdict on the kernel. One retry on
             # a fresh image; if it dies again the case fails and says why (LAB_ERROR), so a
@@ -633,7 +673,11 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
             lab_errors.append(f"phase {i + 1}: qemu died with signal {-rc}, retried")
             serial.unlink(missing_ok=True)
             disk = prepare_disk(t, target_name, fresh=(i == 0))
-            rc = run()
+            peers = HostServices(ph.get("host_services", case.get("host_services")))
+            try:
+                rc = run()
+            finally:
+                peers.close()
         text = serial.read_text(errors="replace") if serial.exists() else ""
         cmds.append(" ".join(cmd)); texts.append(text); rcs.append(rc)
         if len(phases) > 1:

@@ -51,6 +51,7 @@ jobs:
             cargo clippy --manifest-path user/apps/configd/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/netprobe/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/kbdprobe/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/apps/netd/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --features inject_ebs_fail -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --profile ktest --features ktest -- -D warnings

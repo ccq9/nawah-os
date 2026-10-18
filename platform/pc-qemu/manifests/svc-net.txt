@@ -1,0 +1,3 @@
+# TST-M4-DHCP / ICMP-ECHO / UDP-ECHO / NET-NO-INTERNET: the network service with auth (policy token)
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+net /SYSTEM/NETD.ELF - 5000 never 0 0

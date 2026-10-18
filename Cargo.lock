@@ -80,6 +80,13 @@ name = "nawah-kernel"
 version = "0.1.0"
 
 [[package]]
+name = "netd"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "netprobe"
 version = "0.1.0"
 dependencies = [

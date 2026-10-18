@@ -176,6 +176,10 @@ pub fn run() -> ! {
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
         "net_link" => net_link(),
+        "net_dhcp" => net_dhcp(),
+        "net_icmp" => net_icmp(),
+        "net_udp_echo" => net_udp_echo(),
+        "net_no_internet" => net_no_internet(),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
         "lock_reentry" => {
@@ -3744,6 +3748,225 @@ fn config_persist(write: bool) -> ! {
         } else {
             "config value survived the QEMU restart"
         },
+    )
+}
+
+// ---- WP-28: the network service ------------------------------------------------------------
+
+/// The net tests' setting: manager with auth + net, both connected, the net service
+/// configured by DHCP, admin and user tokens from real logins.
+struct NetEnv {
+    h: SvcHarness,
+    net: Arc<Endpoint>,
+    admin: Arc<crate::object::token::Token>,
+    user: Arc<crate::object::token::Token>,
+}
+
+fn net_env(name: &'static str) -> (NetEnv, String) {
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-NET.TXT");
+    svc_wait_ready(&h, &["auth", "net"], sched::ticks() + 60_000);
+    let auth = svc_connect(&h, "auth");
+    let (ra, admin) = auth_request(&auth, b"LOGIN admin lab-admin-1", None);
+    let (ru, user) = auth_request(&auth, b"LOGIN user lab-user-1", None);
+    let (Some(admin), Some(user)) = (admin, user) else {
+        kprintln!("OSX|{}|ktest|{}|admin={}|user={}", BUILD_ID, name, ra, ru);
+        fail("logins failed")
+    };
+    drop(auth);
+    let net = svc_connect(&h, "net");
+    let dhcp = cfg_request(&net, b"DHCP", None);
+    (
+        NetEnv {
+            h,
+            net,
+            admin,
+            user,
+        },
+        dhcp,
+    )
+}
+
+fn net_close(env: NetEnv, name: &str) -> u64 {
+    let NetEnv {
+        h,
+        net,
+        admin,
+        user,
+    } = env;
+    drop((net, admin, user));
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|{}|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        name,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    frames0
+}
+
+const LAB_DHCP: &str = "OK ip=10.0.2.15 mask=255.255.255.0 gw=10.0.2.2 dns=10.0.2.3";
+
+fn net_dhcp() -> ! {
+    let (env, dhcp) = net_env("net_dhcp");
+    let frames0 = {
+        let status = cfg_request(&env.net, b"STATUS", None);
+        kprintln!(
+            "OSX|{}|ktest|net_dhcp|dhcp={}|status={}",
+            BUILD_ID,
+            dhcp,
+            status
+        );
+        if dhcp != LAB_DHCP {
+            fail("DHCP did not configure the lab addresses")
+        }
+        if !status.starts_with("OK link=1 configured=1 ip=10.0.2.15 mask=255.255.255.0 gw=10.0.2.2 dns=10.0.2.3 internet=unknown allow_internet=0") {
+            fail("STATUS does not show the configuration")
+        }
+        net_close(env, "net_dhcp")
+    };
+    cfg_balance(
+        "net_dhcp",
+        frames0,
+        "the service configures itself by DHCP from the lab network",
+    )
+}
+
+fn net_icmp() -> ! {
+    let (env, dhcp) = net_env("net_icmp");
+    let frames0 = {
+        let ping = cfg_request(&env.net, b"PING 10.0.2.2 1000", None);
+        let ping2 = cfg_request(&env.net, b"PING 10.0.2.2 1000", None);
+        let rtt_ok = ping.starts_with("OK rtt=") && ping2.starts_with("OK rtt=");
+        let bad = cfg_request(&env.net, b"PING nowhere", None);
+        let status = cfg_request(&env.net, b"STATUS", None);
+        kprintln!(
+            "OSX|{}|ktest|net_icmp|dhcp_ok={}|ping={}|ping2={}|rtt_ok={}|bad={}|status={}",
+            BUILD_ID,
+            u8::from(dhcp == LAB_DHCP),
+            ping,
+            ping2,
+            u8::from(rtt_ok),
+            bad,
+            status
+        );
+        if dhcp != LAB_DHCP || !rtt_ok || bad != "ERR BAD_REQUEST" {
+            fail("ICMP echo to the gateway did not round-trip")
+        }
+        net_close(env, "net_icmp")
+    };
+    cfg_balance(
+        "net_icmp",
+        frames0,
+        "ICMP echo requests to the gateway are answered and timed",
+    )
+}
+
+fn net_udp_echo() -> ! {
+    let (env, dhcp) = net_env("net_udp_echo");
+    let frames0 = {
+        let n = &env.net;
+        let open = cfg_request(n, b"UDP_OPEN 40000", None);
+        let dup = cfg_request(n, b"UDP_OPEN 40000", None);
+        let sent = cfg_request(n, b"UDP_SEND 0 10.0.2.2 17007 nawah udp echo one", None);
+        let got = cfg_request(n, b"UDP_RECV 0 2000", None);
+        let sent2 = cfg_request(n, b"UDP_SEND 0 10.0.2.2 17007 second datagram", None);
+        let got2 = cfg_request(n, b"UDP_RECV 0 2000", None);
+        let empty = cfg_request(n, b"UDP_RECV 0 50", None);
+        let closed = cfg_request(n, b"UDP_CLOSE 0", None);
+        let after = cfg_request(n, b"UDP_SEND 0 10.0.2.2 17007 x", None);
+        kprintln!(
+            "OSX|{}|ktest|net_udp_echo|dhcp_ok={}|open={}|dup={}|sent={}|got={}|sent2={}|got2={}|empty={}|closed={}|after={}",
+            BUILD_ID,
+            u8::from(dhcp == LAB_DHCP),
+            open, dup, sent, got, sent2, got2, empty, closed, after
+        );
+        if dhcp != LAB_DHCP || open != "OK 0" || dup != "ERR EXISTS" || sent != "OK 18" {
+            fail("socket open/send wrong")
+        }
+        if got != "OK 10.0.2.2 17007 nawah udp echo one"
+            || sent2 != "OK 15"
+            || got2 != "OK 10.0.2.2 17007 second datagram"
+        {
+            fail("the host's echo did not come back through UDP")
+        }
+        if empty != "ERR TIMEOUT" || closed != "OK" || after != "ERR BAD_REQUEST" {
+            fail("receive timeout or close wrong")
+        }
+        net_close(env, "net_udp_echo")
+    };
+    cfg_balance(
+        "net_udp_echo",
+        frames0,
+        "UDP datagrams reach the host's echo server and come back",
+    )
+}
+
+fn net_no_internet() -> ! {
+    let (env, dhcp) = net_env("net_no_internet");
+    let frames0 = {
+        let n = &env.net;
+        // Off-link destinations are refused by the service's policy; the gateway is on-link.
+        let ping_off = cfg_request(n, b"PING 192.0.2.1 200", None);
+        let open = cfg_request(n, b"UDP_OPEN 40001", None);
+        let send_off = cfg_request(n, b"UDP_SEND 0 192.0.2.1 9 hello", None);
+        let status1 = cfg_request(n, b"STATUS", None);
+        // The explicit probe decides `internet`: TEST-NET-1 never answers.
+        let probe = cfg_request(n, b"PROBE 192.0.2.1 300", None);
+        let status2 = cfg_request(n, b"STATUS", None);
+        // Policy change needs an admin token: the user's is refused, the admin's accepted.
+        let pol_user = cfg_request(n, b"POLICY internet=1", Some(token_entry(&env.user)));
+        let pol_none = cfg_request(n, b"POLICY internet=1", None);
+        let pol_admin = cfg_request(n, b"POLICY internet=1", Some(token_entry(&env.admin)));
+        let send_allowed = cfg_request(n, b"UDP_SEND 0 192.0.2.1 9 hello", None);
+        let ping_allowed = cfg_request(n, b"PING 192.0.2.1 200", None);
+        let status3 = cfg_request(n, b"STATUS", None);
+        let pol_back = cfg_request(n, b"POLICY internet=0", Some(token_entry(&env.admin)));
+        let ping_again = cfg_request(n, b"PING 192.0.2.1 200", None);
+        kprintln!(
+            "OSX|{}|ktest|net_no_internet|dhcp_ok={}|ping_off={}|open={}|send_off={}|internet1={}|probe={}|internet2={}|pol_user={}|pol_none={}|pol_admin={}|send_allowed={}|ping_allowed={}|internet3={}|pol_back={}|ping_again={}",
+            BUILD_ID,
+            u8::from(dhcp == LAB_DHCP),
+            ping_off, open, send_off,
+            status1.contains(" internet=unknown allow_internet=0"),
+            probe,
+            status2.contains(" internet=none allow_internet=0"),
+            pol_user, pol_none, pol_admin, send_allowed, ping_allowed,
+            status3.contains(" internet=none allow_internet=1"),
+            pol_back, ping_again
+        );
+        if dhcp != LAB_DHCP
+            || ping_off != "ERR POLICY"
+            || open != "OK 0"
+            || send_off != "ERR POLICY"
+            || !status1.contains(" internet=unknown allow_internet=0")
+        {
+            fail("the no-internet policy did not refuse off-link traffic")
+        }
+        if probe != "ERR TIMEOUT" || !status2.contains(" internet=none allow_internet=0") {
+            fail("the explicit probe did not settle internet=none")
+        }
+        if pol_user != "ERR ACCESS" || pol_none != "ERR BAD_REQUEST" || pol_admin != "OK" {
+            fail("the policy change was not gated by the admin token")
+        }
+        if send_allowed != "OK 5"
+            || ping_allowed != "ERR TIMEOUT"
+            || !status3.contains(" internet=none allow_internet=1")
+            || pol_back != "OK"
+            || ping_again != "ERR POLICY"
+        {
+            fail("the allowed off-link attempt or the policy restore went wrong")
+        }
+        net_close(env, "net_no_internet")
+    };
+    cfg_balance(
+        "net_no_internet",
+        frames0,
+        "link, configured and internet are separate; off-link traffic needs an explicit policy",
     )
 }
 
