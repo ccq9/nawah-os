@@ -284,11 +284,13 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
     let expected = smp.madt_cpus.min(arch::smp::MAX_CPUS as u32);
     // Every AP runs a probe thread (placed there, joined from here) and must have taken timer
     // ticks of its own; the frame count returns to where it was.
+    // The diagnostic strings are allocated before the balance is taken (CI run 39115391817:
+    // their slab page read as a one-frame leak).
+    let mut probes = alloc::string::String::with_capacity(64);
+    let mut ap_ticks = alloc::string::String::with_capacity(64);
     let smp_frames_before = mm::pmm::stats().free_frames;
     let online_mask = arch::smp::online_mask();
-    let mut probes = alloc::string::String::new();
     let mut probes_ok = true;
-    let mut ap_ticks = alloc::string::String::new();
     for cpu in 1..arch::smp::MAX_CPUS {
         if online_mask & (1 << cpu) == 0 {
             continue;
@@ -314,7 +316,7 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         && probes_ok
         && smp_delta == 0;
     kprintln!(
-        "OSX|{}|kernel|smp|madt_cpus={}|online={}|expected={}|bsp_apic={}|trampoline={:#x}|mode={:?}|skipped={}|failed={}|id_mismatch={}|online_mask={:#x}|probes={}|ap_ticks={}|tlb_sent={}|tlb_served={}|resched_ipis={}|frames_delta={}|code={}|selfcheck={}",
+        "OSX|{}|kernel|smp|madt_cpus={}|online={}|expected={}|bsp_apic={}|trampoline={:#x}|mode={:?}|skipped={}|failed={}|id_mismatch={}|online_mask={:#x}|probes={}|ap_ticks={}|tlb_sent={}|tlb_served={}|resched_ipis={}|frames_delta={}|code={}|smp_selfcheck={}",
         build_id,
         smp.madt_cpus,
         smp.online,

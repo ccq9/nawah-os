@@ -229,6 +229,7 @@
           "|kernel|sched|boot_tid=0|probe_join=0x5eee|",
           "|kernel|smp|madt_cpus=4|online=4|expected=4|",
           "|failed=0|id_mismatch=0|online_mask=0xf|probes=1:0x101,2:0x202,3:0x303,|",
+          "|code=ok|smp_selfcheck=1",
           "|threads=1|processes=0|quantum_ticks=10|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|object|channel_ok=1|vmo_size=8192|peer_closed=1|live_channels=0|live_endpoints=0|live_vmos=0|live_handles=0|frames_delta=0|selfcheck=1",
           "|kernel|pci|ecam=0xe0000000|segment=0|functions=",
@@ -1808,7 +1809,7 @@
           "OSX|${BUILD_ID}|ktest|start|name=smp_online",
           "|kernel|smp|madt_cpus=4|online=4|expected=4|",
           "|failed=0|id_mismatch=0|online_mask=0xf|",
-          "|code=ok|selfcheck=1",
+          "|code=ok|smp_selfcheck=1",
           "|ktest|smp_online|online_mask=0xf|online=4|seen=[0, 1, 2, 3]|",
           "|all_tick=1|",
           "|ktest|pass|every MADT CPU is online"
