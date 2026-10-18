@@ -2106,6 +2106,285 @@
         "evidence/20261018T162118Z-657ed0c3-001"
       ],
       "blocker": null
+    },
+    {
+      "id": "WP-32",
+      "stage": "M5",
+      "requirement_ids": [
+        "REQ-M5-001"
+      ],
+      "depends_on": [
+        "WP-31"
+      ],
+      "inputs": [
+        "docs/PLAN.md §6",
+        "docs/adr/0019-graphics-platform.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/display.md",
+        "docs/contracts/syscall.md",
+        "docs/contracts/ipc.md"
+      ],
+      "actions": [
+        "العرض: إطار GOP وكائن العرض ومسار الرسم التشخيصي ومجس الشاشة في المختبر",
+        "boot stub: EFI_GRAPHICS_OUTPUT_PROTOCOL located before EBS, BootInfo.fb filled (base, size, resolution, stride, pixel format), unsupported formats reported absent",
+        "kernel: the frame mapped in the private MMIO window (WC when PAT allows), kernel|display boot line with the diagnostic pattern (build id corner marks), Object::Display (type 10) with display_info and display_map (a physical VMO over the frame), and user mappings vmo_map/vmo_unmap (ABI v1.8 additive: a mapping region above the image, protection from the handle's rights, never executable, 64 per process, gone with the process)",
+        "lab: tools/screen.py reads a QEMU screendump (PPM) and checks named regions; project.py `screendump` action through the monitor; display.md part A"
+      ],
+      "acceptance": "TST-M5-DISPLAY-BOOT PASS; display.md part A v1; ADR-0019 §1–2",
+      "test_ids": [
+        "TST-M5-DISPLAY-BOOT"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M5"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-33",
+      "stage": "M5",
+      "requirement_ids": [
+        "REQ-M5-002"
+      ],
+      "depends_on": [
+        "WP-32"
+      ],
+      "inputs": [
+        "docs/PLAN.md §6",
+        "docs/adr/0019-graphics-platform.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/input.md",
+        "docs/contracts/services.md"
+      ],
+      "actions": [
+        "الإدخال الموثوق: فك الرموز والتخطيطات والفأرة والتوجيه والانتباه الآمن",
+        "i8042 auxiliary port enabled for the PS/2 mouse (3-byte packets polled per tick into Object::Mouse, type 11; input.md v2 additive)",
+        "input service: set-1 scancodes to fixed keycodes, US and Arabic layouts, key/pointer event records, routing to the focus owner the session names (token-checked), secure attention reserved for the session; services.md v1.4 routes mouse to input",
+        "lab: monitor sendkey/mouse_move/mouse_button; kernel tests input_route, mouse"
+      ],
+      "acceptance": "TST-M5-INPUT-ROUTE/MOUSE PASS; input.md v2",
+      "test_ids": [
+        "TST-M5-INPUT-ROUTE",
+        "TST-M5-MOUSE"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M5"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-34",
+      "stage": "M5",
+      "requirement_ids": [
+        "REQ-M5-003"
+      ],
+      "depends_on": [
+        "WP-32",
+        "WP-33"
+      ],
+      "inputs": [
+        "docs/PLAN.md §6",
+        "docs/adr/0019-graphics-platform.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/display.md"
+      ],
+      "actions": [
+        "compositor ومدير النوافذ: أسطح VMO، تغييرات معلنة، ترتيب وتركيز وحجم، تطبيق لا يستجيب",
+        "display service (compositor): CREATE_SURFACE + VMO, COMMIT damage, back buffer, tick-paced blit; windows with decorations, z-order, focus by click/keyboard, move/resize, minimise; unresponsive clients detected and never waited on",
+        "client library libnawah-display (surface, events) and a demo app winapp; display.md part B",
+        "kernel tests window_states, app_hang; screendump oracle for TST-M5-SCREEN"
+      ],
+      "acceptance": "TST-M5-WINDOW-STATES/APP-HANG/SCREEN PASS; display.md v1",
+      "test_ids": [
+        "TST-M5-WINDOW-STATES",
+        "TST-M5-APP-HANG",
+        "TST-M5-SCREEN"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M5"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-35",
+      "stage": "M5",
+      "requirement_ids": [
+        "REQ-M5-004"
+      ],
+      "depends_on": [
+        "WP-32"
+      ],
+      "inputs": [
+        "docs/PLAN.md §6",
+        "docs/adr/0019-graphics-platform.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/text.md"
+      ],
+      "actions": [
+        "طبقة النص: OpenType وتنقيط وbidi وتشكيل عربي وخطوط مرخصة",
+        "libnawah-text (no_std, no deps): OpenType reader (cmap, glyf/loca, hmtx), scanline rasteriser with 4× anti-aliasing, UAX #9 bidi (P/W/N/I rules, numbers, paths), Arabic shaping (forms, lam-alef) with GSUB when present and an internal table otherwise",
+        "fonts: Noto Sans / Noto Sans Arabic (OFL 1.1) with their licence under /SYSTEM/FONTS, registered as sources; host tool generates golden bitmaps from the same outlines",
+        "host tests bidi/shaping/glyphs with published vectors; guest sample set; text.md"
+      ],
+      "acceptance": "TST-M5-BIDI/SHAPING/GLYPHS PASS; text.md v1",
+      "test_ids": [
+        "TST-M5-BIDI",
+        "TST-M5-SHAPING",
+        "TST-M5-GLYPHS"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M5"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-36",
+      "stage": "M5",
+      "requirement_ids": [
+        "REQ-M5-005"
+      ],
+      "depends_on": [
+        "WP-34",
+        "WP-35"
+      ],
+      "inputs": [
+        "docs/PLAN.md §6",
+        "docs/adr/0019-graphics-platform.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/ui.md"
+      ],
+      "actions": [
+        "عناصر UI والوصول: شجرة تركيز، تنقل بلوحة المفاتيح، قارئ شاشة نصي، تكبير وتباين",
+        "libui (no_std): window, button, label, text field (bidi), list, checkbox, scroll; focus tree in declared order; Tab/Shift+Tab/arrows/Enter/Esc; every element with label, role and state",
+        "a11y channel from the compositor to the narrator service (announcements on the diagnostic console in M5); text scale and high contrast read from config; ui.md",
+        "kernel tests keyboard_nav, a11y_tree with a sample dialog app"
+      ],
+      "acceptance": "TST-M5-KEYBOARD-NAV/A11Y-TREE PASS; ui.md v1",
+      "test_ids": [
+        "TST-M5-KEYBOARD-NAV",
+        "TST-M5-A11Y-TREE"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M5"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-37",
+      "stage": "M5",
+      "requirement_ids": [
+        "REQ-M5-006"
+      ],
+      "depends_on": [
+        "WP-33",
+        "WP-34",
+        "WP-36"
+      ],
+      "inputs": [
+        "docs/PLAN.md §6",
+        "docs/adr/0019-graphics-platform.md"
+      ],
+      "files": [],
+      "contract_refs": [
+        "docs/contracts/session.md"
+      ],
+      "actions": [
+        "الجلسة والقفل الموثوق: مالك القفل، شاشة الدخول، الانتباه الآمن، البقاء عند تعطل العرض",
+        "session service: owns the lock state and the session token (auth.md), the login/lock screen as its own surface, input routed directly from input (never through the compositor or a client) while locked/authenticating; secure attention; restarted compositor/input ask the session before showing or routing anything; session crash → authenticated rescue (login screen only)",
+        "session.md; manifest SERVICES.TXT for the real boot: auth, config, net, input, display, session, sh",
+        "kernel tests lock_survives, auth_input_isolated, login_screen (service kills through the manager's STOP and restart policies)"
+      ],
+      "acceptance": "TST-M5-LOCK-SURVIVES/AUTH-INPUT-ISOLATED/LOGIN-SCREEN PASS; session.md v1",
+      "test_ids": [
+        "TST-M5-LOCK-SURVIVES",
+        "TST-M5-AUTH-INPUT-ISOLATED",
+        "TST-M5-LOGIN-SCREEN"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M5"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
+    },
+    {
+      "id": "WP-38",
+      "stage": "M5",
+      "requirement_ids": [
+        "REQ-M5-007"
+      ],
+      "depends_on": [
+        "WP-35",
+        "WP-37"
+      ],
+      "inputs": [
+        "docs/PLAN.md §6",
+        "docs/adr/0019-graphics-platform.md"
+      ],
+      "files": [],
+      "contract_refs": [],
+      "actions": [
+        "بوابة M5: سيناريوهات الخروج، طفرات M5، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
+        "scenario cases 7, 8 and 11 of OS-EXEC-AR §20 across the M5 suite; mutants M82+ for display/input/compositor/text/ui/session (>= 95%)",
+        "docs/operations/m5-review.md; stages.json M5 gate; threat-model (display/input/session trust boundaries)"
+      ],
+      "acceptance": "M5 gate passed",
+      "test_ids": [
+        "TST-M5-MUTANTS"
+      ],
+      "commands": [
+        "python3 tools/project.py build --target pc-qemu",
+        "python3 tools/project.py test --target pc-qemu --suite M5"
+      ],
+      "status": "planned",
+      "status_history": [
+        "planned"
+      ],
+      "evidence_refs": [],
+      "blocker": null
     }
   ]
 }

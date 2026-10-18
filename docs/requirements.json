@@ -336,13 +336,13 @@
       "dependencies": [],
       "contract_refs": [],
       "failure_cases": [],
-      "acceptance": "يُفصَّل في M5",
+      "acceptance": "مفصَّل في REQ-M5-004 (WP-35)",
       "test_ids": [],
       "implementation_status": "deferred",
       "evidence_refs": [],
-      "detail_status": "deferred",
+      "detail_status": "detailed",
       "detail_stage": "M5",
-      "defer_reason": "text layer not started"
+      "defer_reason": "detailed in M5 planning (REQ-M5-004)"
     },
     {
       "id": "REQ-M2-001",
@@ -1314,6 +1314,206 @@
         "evidence/20261018T162326Z-657ed0c3-001",
         "evidence/20261018T165144Z-657ed0c3-001"
       ]
+    },
+    {
+      "id": "REQ-M5-001",
+      "statement": "عرض من إطار GOP الخطي (قبل EBS) بكائن عرض تملكه خدمة العرض ومسار رسم تشخيصي في الإقلاع، والمختبر يرى الشاشة (screendump) ويقارنها بما أُعلن",
+      "rationale": "OS-EXEC-AR §9 (مسار رسم تشخيصي أولًا)، §20 M5",
+      "source": "OS-EXEC-AR 3.2 §20 M5",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M5",
+      "dependencies": [
+        "REQ-M4-006",
+        "REQ-M3-004"
+      ],
+      "contract_refs": [
+        "docs/contracts/display.md"
+      ],
+      "failure_cases": [
+        "إطار بصيغة بكسل غير مدعومة يُعامل كأنه موجود",
+        "رسم خارج حدود الإطار"
+      ],
+      "acceptance": "display_boot/screen",
+      "test_ids": [
+        "TST-M5-DISPLAY-BOOT",
+        "TST-M5-SCREEN"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M5-002",
+      "statement": "إدخال موثوق: فك رموز لوحة المفاتيح بتخطيطين (US، عربي)، فأرة PS/2، توجيه الأحداث إلى مالك التركيز الذي تقرره الجلسة، والانتباه الآمن محجوز للجلسة",
+      "rationale": "OS-EXEC-AR §9، §12، §17 (تخطيطات لوحة المفاتيح)",
+      "source": "OS-EXEC-AR 3.2 §20 M5",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M5",
+      "dependencies": [
+        "REQ-M4-006",
+        "REQ-M4-003"
+      ],
+      "contract_refs": [
+        "docs/contracts/input.md"
+      ],
+      "failure_cases": [
+        "إدخال يصل إلى تطبيق غير مالك التركيز",
+        "Ctrl+Alt+Del تُعترض من تطبيق"
+      ],
+      "acceptance": "input_route/mouse",
+      "test_ids": [
+        "TST-M5-INPUT-ROUTE",
+        "TST-M5-MOUSE"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M5-003",
+      "statement": "compositor ومدير نوافذ في فضاء المستخدم: أسطح VMO يملكها العميل، تغييرات معلنة، ترتيب وتركيز وتغيير حجم، تطبيق لا يستجيب لا يوقف العرض",
+      "rationale": "OS-EXEC-AR §9",
+      "source": "OS-EXEC-AR 3.2 §20 M5",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M5",
+      "dependencies": [
+        "REQ-M5-001",
+        "REQ-M5-002",
+        "REQ-M3-003"
+      ],
+      "contract_refs": [
+        "docs/contracts/display.md"
+      ],
+      "failure_cases": [
+        "انتظار على عميل يعلّق الـ compositor",
+        "سطح يُقرأ بعد زوال عميله"
+      ],
+      "acceptance": "window_states/app_hang",
+      "test_ids": [
+        "TST-M5-WINDOW-STATES",
+        "TST-M5-APP-HANG"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M5-004",
+      "statement": "طبقة نص من الأساس: قارئ OpenType وتنقيط، UAX #9 (bidi) للنص المختلط والأرقام والمسارات، تشكيل عربي، خطوط مرخصة مُتتبَّعة",
+      "rationale": "OS-EXEC-AR §17، §3 (تتبع ترخيص الخطوط)",
+      "source": "OS-EXEC-AR 3.2 §20 M5",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M5",
+      "dependencies": [
+        "REQ-SCOPE-004"
+      ],
+      "contract_refs": [
+        "docs/contracts/text.md"
+      ],
+      "failure_cases": [
+        "عكس آلي لكل رمز أو مسار",
+        "حرف عربي بشكل منعزل في وسط الكلمة"
+      ],
+      "acceptance": "bidi/shaping/glyphs (أوراكل نصية على المضيف وفي الضيف)",
+      "test_ids": [
+        "TST-M5-BIDI",
+        "TST-M5-SHAPING",
+        "TST-M5-GLYPHS"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M5-005",
+      "statement": "عناصر UI بشجرة تركيز ثابتة الترتيب وتنقل كامل بلوحة المفاتيح، وتسميات وأدوار وحالات لقارئ شاشة نصي، وتكبير النص والتباين من التكوين",
+      "rationale": "OS-EXEC-AR §17 (الوصول)",
+      "source": "OS-EXEC-AR 3.2 §20 M5",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M5",
+      "dependencies": [
+        "REQ-M5-003",
+        "REQ-M5-004",
+        "REQ-M4-005"
+      ],
+      "contract_refs": [
+        "docs/contracts/ui.md"
+      ],
+      "failure_cases": [
+        "عنصر بلا تسمية يصل إليه التركيز",
+        "ترتيب تركيز يتغير بين تشغيلين"
+      ],
+      "acceptance": "keyboard_nav/a11y_tree",
+      "test_ids": [
+        "TST-M5-KEYBOARD-NAV",
+        "TST-M5-A11Y-TREE"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M5-006",
+      "statement": "مسار دخول وقفل موثوق: الجلسة تملك حالة القفل، إدخال المصادقة لا يمر بالـ compositor ولا بتطبيق، القفل يبقى عند تعطل مكونات العرض أو إعادة تشغيلها، ولا يُفتح سطح المكتب تلقائيًا",
+      "rationale": "OS-EXEC-AR §9 (فصل الواجهة عن السلطة)، §12، §20 M5",
+      "source": "OS-EXEC-AR 3.2 §20 M5",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M5",
+      "dependencies": [
+        "REQ-M5-002",
+        "REQ-M5-003",
+        "REQ-M4-003"
+      ],
+      "contract_refs": [
+        "docs/contracts/session.md"
+      ],
+      "failure_cases": [
+        "انهيار الـ compositor يكشف سطح المكتب",
+        "كلمة مرور تُرى في طابور تطبيق"
+      ],
+      "acceptance": "lock_survives/auth_input_isolated/login_screen",
+      "test_ids": [
+        "TST-M5-LOCK-SURVIVES",
+        "TST-M5-AUTH-INPUT-ISOLATED",
+        "TST-M5-LOGIN-SCREEN"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
+    },
+    {
+      "id": "REQ-M5-007",
+      "statement": "بوابة M5: النوافذ تتعامل مع الحجم والتركيز وتوقف تطبيق، الجلسة تبقى مغلقة عند تعطل العرض، لا يتسرب إدخال المصادقة، النص العربي والمختلط والتنقل بلوحة المفاتيح مختبَرة، طفرات ≥95% على وحدات M5، مراجعة مسماة",
+      "rationale": "OS-EXEC-AR §20 M5",
+      "source": "OS-EXEC-AR 3.2 §20 M5",
+      "origin": "user_requirement",
+      "priority": "must",
+      "release": "R1",
+      "stage": "M5",
+      "dependencies": [
+        "REQ-M5-001",
+        "REQ-M5-002",
+        "REQ-M5-003",
+        "REQ-M5-004",
+        "REQ-M5-005",
+        "REQ-M5-006"
+      ],
+      "contract_refs": [],
+      "failure_cases": [
+        "ادعاء عزل بلا اختبار"
+      ],
+      "acceptance": "scenario + mutants + review",
+      "test_ids": [
+        "TST-M5-MUTANTS"
+      ],
+      "implementation_status": "planned",
+      "evidence_refs": []
     }
   ]
 }

@@ -1364,6 +1364,172 @@
    "evidence_refs": [
     "evidence/20261018T162346Z-657ed0c3-001"
    ]
+  },
+  {
+   "id": "TST-M5-DISPLAY-BOOT",
+   "requirement_ids": [
+    "REQ-M5-001"
+   ],
+   "layer": "guest",
+   "oracle": "the boot stub captures the GOP mode into BootInfo (present=1, 32-bpp, resolution and stride printed), the kernel maps the frame and draws the diagnostic pattern (kernel|display|…|selfcheck=1), and a monitor screendump taken after boot shows the pattern's colours at the declared corners (tools/screen.py)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-SCREEN",
+   "requirement_ids": [
+    "REQ-M5-001",
+    "REQ-M5-003"
+   ],
+   "layer": "guest",
+   "oracle": "a client's surface committed through the display service appears on the frame: the screendump shows the surface's colour at its window's position and the compositor's serial line names the same rectangle and a hash the host recomputes",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-INPUT-ROUTE",
+   "requirement_ids": [
+    "REQ-M5-002"
+   ],
+   "layer": "guest",
+   "oracle": "keys sent through the monitor reach only the focus owner the session named; a second client gets nothing; switching focus moves the stream; the US and Arabic layouts give the declared keycodes/characters; Ctrl+Alt+Del is delivered to the session and never to a client",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-MOUSE",
+   "requirement_ids": [
+    "REQ-M5-002"
+   ],
+   "layer": "guest",
+   "oracle": "PS/2 mouse packets injected through the monitor (mouse_move/mouse_button) arrive as pointer events with the expected deltas and buttons; the pointer stays within the screen",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-WINDOW-STATES",
+   "requirement_ids": [
+    "REQ-M5-003"
+   ],
+   "layer": "guest",
+   "oracle": "two windows: focus by click and by keyboard, z-order after raise, resize to a new size (the client is told, commits a new surface size), minimise/restore; the states and sizes the compositor reports match what the clients were told; no surface or frame leak after both clients exit",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-APP-HANG",
+   "requirement_ids": [
+    "REQ-M5-003"
+   ],
+   "layer": "guest",
+   "oracle": "a client that stops reading its channel neither blocks the compositor nor other clients: its input is dropped when its queue is full, it is marked unresponsive after the timeout, the other window keeps receiving input and updates, and closing the hung window releases its surface",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-BIDI",
+   "requirement_ids": [
+    "REQ-M5-004"
+   ],
+   "layer": "host_unit",
+   "oracle": "libnawah-text's UAX #9 implementation reproduces the published Unicode BidiCharacterTest vectors in the supported subset (paragraph levels, reordered positions) on the host, and the guest reproduces a fixed sample set",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-SHAPING",
+   "requirement_ids": [
+    "REQ-M5-004"
+   ],
+   "layer": "host_unit",
+   "oracle": "Arabic joining: isolated/initial/medial/final forms and lam-alef ligatures for a vector set derived from the Unicode Arabic shaping tables; mixed Arabic/Latin/digits keep their runs; host and guest agree",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-GLYPHS",
+   "requirement_ids": [
+    "REQ-M5-004"
+   ],
+   "layer": "host_unit",
+   "oracle": "the OpenType reader finds glyphs through cmap for the fonts shipped under /SYSTEM/FONTS (OFL), advances match hmtx, and the rasteriser's coverage of reference glyphs matches golden bitmaps generated on the host from the same outlines",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-KEYBOARD-NAV",
+   "requirement_ids": [
+    "REQ-M5-005"
+   ],
+   "layer": "guest",
+   "oracle": "a sample dialog (buttons, text field, list, checkbox): Tab/Shift+Tab/arrows/Enter/Esc traverse the focus tree in the declared order (printed), each focus change is announced with role, label and state on the a11y channel, and the order is identical across two runs",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-A11Y-TREE",
+   "requirement_ids": [
+    "REQ-M5-005"
+   ],
+   "layer": "guest",
+   "oracle": "every element of the sample dialog has a label and role; the narrator's transcript on the diagnostic console lists them in focus order; text scale 2× and high contrast from config change the rendered sizes/colours (screendump)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-LOCK-SURVIVES",
+   "requirement_ids": [
+    "REQ-M5-006"
+   ],
+   "layer": "guest",
+   "oracle": "while locked, the display service is killed and restarted and the input service is killed and restarted: the lock screen is what the restarted compositor shows, the session stays locked, key input goes to the session only (a client that had focus before the lock receives nothing), and only a correct password unlocks",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-AUTH-INPUT-ISOLATED",
+   "requirement_ids": [
+    "REQ-M5-006"
+   ],
+   "layer": "guest",
+   "oracle": "with a client window focused, the session locks (secure attention); the password typed on the lock screen never appears in any client's input queue (the client prints every key it gets: none), and the compositor never sees the key events",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-LOGIN-SCREEN",
+   "requirement_ids": [
+    "REQ-M5-006"
+   ],
+   "layer": "guest",
+   "oracle": "from boot: the login screen is the first surface; a wrong password is refused with the auth service's answer; the right one opens the session (token held by the session service); logout returns to the login screen and the previous client's surfaces are gone",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-MUTANTS",
+   "requirement_ids": [
+    "REQ-M5-007"
+   ],
+   "layer": "host_unit",
+   "oracle": "seeded defects in the M5 modules (display, input, compositor, text, ui, session) are killed by the M5 suite (>= 95%)",
+   "command": "python3 tools/project.py test --target host --suite M5-GATE",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   }
  ]
 }
