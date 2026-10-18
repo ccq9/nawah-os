@@ -9,7 +9,7 @@
 #![no_main]
 
 use libnawah::{
-    Handle, WaitEntry, ERR_PEER_CLOSED, ERR_TIMED_OUT, SIGNAL_EXITED, SIGNAL_PEER_CLOSED,
+    rights, Handle, WaitEntry, ERR_PEER_CLOSED, ERR_TIMED_OUT, SIGNAL_EXITED, SIGNAL_PEER_CLOSED,
     SIGNAL_READABLE, TIMEOUT_FOREVER,
 };
 
@@ -209,6 +209,9 @@ struct Manager {
     n: usize,
     loaded: bool,
     ctl: Handle,
+    /// The token authority the kernel handed over as the second initial handle (auth.md §1);
+    /// given to the service named `auth` alone.
+    authority: Option<Handle>,
 }
 
 enum LoadError {
@@ -396,7 +399,25 @@ impl Manager {
             s.deadline = None;
             return;
         };
-        match libnawah::process_spawn(s.path(), &[theirs]) {
+        // The `auth` service alone receives a copy of the token authority (auth.md §1).
+        let mut initial = [theirs, 0];
+        let mut n_initial = 1;
+        if s.name() == b"auth" {
+            if let Some(a) = self.authority {
+                if let Ok(copy) =
+                    libnawah::handle_duplicate(a, rights::DUPLICATE | rights::TRANSFER)
+                {
+                    initial[1] = copy;
+                    n_initial = 2;
+                }
+            }
+        }
+        let s = &mut self.services[i];
+        let spawned = libnawah::process_spawn(s.path(), &initial[..n_initial]);
+        if spawned.is_err() && n_initial == 2 {
+            libnawah::handle_close(initial[1]);
+        }
+        match spawned {
             Ok(p) => {
                 let mut msg = Out::new();
                 msg.put(b"START");
@@ -580,6 +601,29 @@ impl Manager {
             }
         } else if req == b"LIST" {
             self.list(&mut out);
+        } else if let Some(name) = req.strip_prefix(b"CONNECT ") {
+            // A client channel to a ready service: one end goes to the service on its boot
+            // channel (`CONNECT` + handle), the other back to the requester (services.md §3).
+            match self.find(name) {
+                Some(i) if self.services[i].state == State::Ready => {
+                    let chan = self.services[i].chan;
+                    match (chan, libnawah::channel_create()) {
+                        (Some(c), Ok((client, server))) => {
+                            if libnawah::channel_write(c, b"CONNECT", &[server]) == 0 {
+                                out.put(b"OK");
+                                libnawah::channel_write(self.ctl, out.bytes(), &[client]);
+                                return true;
+                            }
+                            libnawah::handle_close(client);
+                            libnawah::handle_close(server);
+                            out.put(b"ERR NOT_READY");
+                        }
+                        _ => out.put(b"ERR NOT_READY"),
+                    }
+                }
+                Some(_) => out.put(b"ERR NOT_READY"),
+                None => out.put(b"ERR UNKNOWN"),
+            }
         } else if let Some(name) = req.strip_prefix(b"STOP ") {
             match self.find(name) {
                 Some(i) => {
@@ -608,11 +652,19 @@ fn main() -> u64 {
     if ctl == 0 {
         return 0xE0;
     }
+    // Initial handles are consecutive (syscall.md §5): the authority, when the kernel passed
+    // one, is the handle after the control channel.
+    let authority = if libnawah::handle_rights(ctl + 1) >= 0 {
+        Some(ctl + 1)
+    } else {
+        None
+    };
     let mut m = Manager {
         services: [EMPTY; MAX_SERVICES],
         n: 0,
         loaded: false,
         ctl,
+        authority,
     };
     // Wait-set slots: 0 = control; then per service (boot channel, process).
     let mut entries = [WaitEntry {

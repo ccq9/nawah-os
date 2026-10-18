@@ -1,0 +1,3 @@
+# TST-M4-LOGIN / TST-M4-SESSION-LOCK: the authentication service alone (its start runs the
+# 80000-iteration PBKDF2 known answer, hence the long readiness timeout)
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0

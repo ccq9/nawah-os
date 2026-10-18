@@ -1058,7 +1058,7 @@
     "REQ-M4-003"
    ],
    "layer": "host_unit",
-   "oracle": "SHA-256 (FIPS 180-4 examples), HMAC-SHA256 (RFC 4231) and PBKDF2-HMAC-SHA256 (RFC 7914 §11 / known vectors) match in the no_std crate on the host, and the same crate inside the guest prints the same digests",
+   "oracle": "nawah-crypto's SHA-256 (FIPS 180-4 examples incl. the two-block message and the empty message, incremental = one-shot), HMAC-SHA-256 (RFC 4231 test cases 1, 2, 6, 7) and PBKDF2-HMAC-SHA-256 (RFC 7914 §11, 1 and 80000 iterations) known answers pass on the host (cargo test); the guest repeats them in the auth service (TST-M4-LOGIN: user|trace auth|kat|fails=0|pbkdf2_80000=1)",
    "command": "python3 tools/project.py test --target host --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1069,7 +1069,7 @@
     "REQ-M4-003"
    ],
    "layer": "guest",
-   "oracle": "login with the right password returns a session token; a wrong password is refused; after 5 failures the account is delayed; the users database on the volume holds no plaintext (host check greps the image)",
+   "oracle": "the auth service (manifest /SYSTEM/SVC-AUTH.TXT) starts after its known-answer self-test (user|trace auth|kat|fails=0|pbkdf2_80000=1) and loads 2 lab users; through CONNECT auth: LOGIN admin with the right password answers OK 1000 1000 15 with a usable token (uid 1000, all permissions, expiry ahead); LOGIN user answers OK 1001 1001 8; a wrong password and an unknown name both answer ERR ACCESS with no token; after 5 consecutive failures on admin the right password answers ERR DELAYED <ticks> while user still logs in; after the delay admin logs in and WHOAMI with the token answers the identity; an unknown request answers ERR BAD_REQUEST; the manager and the service exit cleanly, no frame leaks; host checks: fsck/fat32.py and both lab passwords absent from the raw image; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1080,7 +1080,7 @@
     "REQ-M4-003"
    ],
    "layer": "guest",
-   "oracle": "lock then unlock with the password keeps the session; logout revokes the token so a request with it is refused with ERR_ACCESS",
+   "oracle": "through CONNECT auth: after LOGIN admin, LOCK with the token answers OK and the token is revoked (WHOAMI with it: ERR ACCESS); UNLOCK with a wrong password: ERR ACCESS; UNLOCK with the right password answers the identity with a new token (different identity, usable) while the old one stays refused; LOGOUT with the new token answers OK and afterwards WHOAMI and UNLOCK with it answer ERR ACCESS with no token; WHOAMI without a handle answers ERR BAD_REQUEST; clean exit, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1294,6 +1294,17 @@
    "verdict": "NOT_RUN",
    "evidence_refs": [],
    "stale_policy": "warn"
+  },
+  {
+   "id": "TST-M4-TOKEN-OBJECTS",
+   "requirement_ids": [
+    "REQ-M4-003"
+   ],
+   "layer": "guest",
+   "oracle": "kernel unit test of tokens and the authority (auth.md §1–2): every token has a distinct identity; a fresh token has no flags; a copy without WRITE cannot revoke (rights are the handle's); only an Authority object counts as authority (a channel does not); revocation shows through every copy; expiry follows the clock at the expiry tick; one live token while held, none after; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M4",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   }
  ]
 }

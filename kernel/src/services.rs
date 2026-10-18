@@ -36,19 +36,27 @@ pub struct Manager {
 static BOOT_MANAGER: IrqSpinLock<Option<Manager>> = IrqSpinLock::new("svcmgr", None);
 
 /// Loads the manager image from the volume and starts it with the far end of a fresh control
-/// channel as its bootstrap handle; the near end comes back in the `Manager`.
+/// channel as its bootstrap handle and a fresh token authority as its second initial handle
+/// (auth.md §1: the manager hands the authority to the `auth` service alone); the near end of
+/// the channel comes back in the `Manager`.
 pub fn spawn_manager() -> Result<Manager, &'static str> {
     let image = crate::loader::read_image(MANAGER_IMAGE).map_err(|e| e.code())?;
     let (ours, theirs) = channel::create();
     let object = Arc::new(ProcessObject::new());
-    let initial = alloc::vec![Entry {
-        object: Object::Channel(theirs),
-        rights: Rights::CHANNEL_DEFAULT,
-    }];
+    let initial = alloc::vec![
+        Entry {
+            object: Object::Channel(theirs),
+            rights: Rights::CHANNEL_DEFAULT,
+        },
+        Entry {
+            object: Object::Authority(Arc::new(crate::object::token::Authority::new())),
+            rights: Rights::AUTHORITY_DEFAULT,
+        },
+    ];
     let pid =
         crate::user::spawn_elf_with(&image, 1, initial, object.clone()).map_err(|e| e.code())?;
     kprintln!(
-        "OSX|{}|kernel|spawn|pid={}|path={}|handles=1|by=kernel",
+        "OSX|{}|kernel|spawn|pid={}|path={}|handles=2|by=kernel",
         crate::BUILD_ID,
         pid,
         core::str::from_utf8(MANAGER_IMAGE).unwrap_or("?")
@@ -62,15 +70,26 @@ pub fn spawn_manager() -> Result<Manager, &'static str> {
 
 /// Sends `req` on the control channel and waits for the reply until `deadline` (ticks).
 pub fn request(ctl: &Endpoint, req: &[u8], deadline: u64) -> Result<Vec<u8>, &'static str> {
+    request_with(ctl, req, Vec::new(), deadline).map(|m| m.bytes)
+}
+
+/// `request` with handles attached to the request; the whole reply (with any handle it
+/// carries, such as a client endpoint from `CONNECT` or a token from `auth`) comes back.
+pub fn request_with(
+    ctl: &Endpoint,
+    req: &[u8],
+    handles: Vec<Entry>,
+    deadline: u64,
+) -> Result<Message, &'static str> {
     ctl.write(Message {
         bytes: req.to_vec(),
-        handles: Vec::new(),
+        handles,
     })
     .map_err(|_| "K_E_SVC_WRITE")?;
-    let mut reply: Option<Result<Vec<u8>, &'static str>> = None;
+    let mut reply: Option<Result<Message, &'static str>> = None;
     sched::poll_until(deadline, || {
-        match ctl.read(REPLY_MAX, 0, None) {
-            Ok(m) => reply = Some(Ok(m.bytes)),
+        match ctl.read(REPLY_MAX, 4, None) {
+            Ok(m) => reply = Some(Ok(m)),
             Err(ChannelError::ShouldWait) => {}
             Err(ChannelError::PeerClosed) => reply = Some(Err("K_E_SVC_PEER_CLOSED")),
             Err(ChannelError::BufferTooSmall { .. }) => reply = Some(Err("K_E_SVC_REPLY_SIZE")),

@@ -8,6 +8,7 @@
 pub mod channel;
 pub mod handle;
 pub mod process;
+pub mod token;
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -42,6 +43,11 @@ impl Rights {
         Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0 | Self::MAP.0);
     /// Rights of the handle `process_spawn` returns (WP-23).
     pub const PROCESS_DEFAULT: Rights = Rights(Self::WAIT.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of the token handle its minter gets (WP-25): WRITE revokes; a client copy
+    /// goes out without it.
+    pub const TOKEN_MINTER: Rights = Rights(Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of the authority handle (WP-25).
+    pub const AUTHORITY_DEFAULT: Rights = Rights(Self::DUPLICATE.0 | Self::TRANSFER.0);
 
     pub const fn contains(self, other: Rights) -> bool {
         self.0 & other.0 == other.0
@@ -61,6 +67,11 @@ pub enum Object {
     File(crate::fs::vfs::FileRef),
     /// A process the holder spawned (WP-23); WAIT gates waiting for its exit.
     Process(Arc<process::ProcessObject>),
+    /// A session token (WP-25); WRITE gates revocation.
+    Token(Arc<token::Token>),
+    /// The capability to mint tokens (WP-25); the value only exists to be held (its drop
+    /// keeps the live count), nothing reads it.
+    Authority(#[allow(dead_code)] Arc<token::Authority>),
 }
 
 /// Largest VMO (contract §3).
@@ -119,6 +130,8 @@ pub struct Stats {
     pub handles: u32,
     pub files: u32,
     pub processes: u32,
+    pub tokens: u32,
+    pub authorities: u32,
 }
 
 pub fn stats() -> Stats {
@@ -129,5 +142,7 @@ pub fn stats() -> Stats {
         handles: handle::live_handles(),
         files: crate::fs::vfs::live_files(),
         processes: process::live(),
+        tokens: token::live_tokens(),
+        authorities: token::live_authorities(),
     }
 }

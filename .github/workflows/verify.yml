@@ -46,6 +46,8 @@ jobs:
             cargo clippy --manifest-path user/apps/waiter/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/svcmgr/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/svc/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/nawah-crypto/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/apps/authd/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --features inject_ebs_fail -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --profile ktest --features ktest -- -D warnings
@@ -75,6 +77,7 @@ jobs:
           python3 tools/project.py test --target host --suite M0
           python3 tools/project.py test --target host --suite M1
           python3 tools/project.py test --target host --suite M3
+          python3 tools/project.py test --target host --suite M4
       - name: "validate-records --strict (after fresh evidence, nothing may be stale)"
         run: python3 tools/project.py validate-records --strict
       - name: Status

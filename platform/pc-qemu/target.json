@@ -22,6 +22,7 @@
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
+      "platform/pc-qemu/manifests/*.txt",
       "user/**/*.rs"
     ],
     "artifact": "${OUT}/NAWAH.EFI",
@@ -37,7 +38,8 @@
       "${OUT}/apps/child.elf",
       "${OUT}/apps/waiter.elf",
       "${OUT}/apps/svcmgr.elf",
-      "${OUT}/apps/svc.elf"
+      "${OUT}/apps/svc.elf",
+      "${OUT}/apps/authd.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -220,6 +222,24 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/svc",
         "${OUT}/apps/svc.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/authd/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/authd",
+        "${OUT}/apps/authd.elf"
       ],
       [
         "cargo",
@@ -2283,7 +2303,146 @@
             "${DISK}"
           ]
         ]
+      },
+      {
+        "id": "TST-M4-TOKEN-OBJECTS",
+        "test_id": "TST-M4-TOKEN-OBJECTS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=token_objects"
+        ],
+        "oracle": "kernel unit test of tokens and the authority (auth.md §1–2): every token has a distinct identity; a fresh token has no flags; a copy without WRITE cannot revoke (rights are the handle's); only an Authority object counts as authority (a channel does not); revocation shows through every copy; expiry follows the clock at the expiry tick; one live token while held, none after; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=token_objects",
+          "|ktest|token_objects|distinct_ids=1|fresh=1|client_cannot_revoke=1|is_authority=1|channel_is_not_authority=1|revoked_everywhere=1|expires_later=1|live_tokens=1|tokens_after=0|authorities_after=0",
+          "|ktest|pass|tokens carry identity, expire by the clock, revoke through every copy; only WRITE revokes"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
+        "id": "TST-M4-LOGIN",
+        "test_id": "TST-M4-LOGIN",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=login"
+        ],
+        "oracle": "the auth service (manifest /SYSTEM/SVC-AUTH.TXT) starts after its known-answer self-test (user|trace auth|kat|fails=0|pbkdf2_80000=1) and loads 2 lab users; through CONNECT auth: LOGIN admin with the right password answers OK 1000 1000 15 with a usable token (uid 1000, all permissions, expiry ahead); LOGIN user answers OK 1001 1001 8; a wrong password and an unknown name both answer ERR ACCESS with no token; after 5 consecutive failures on admin the right password answers ERR DELAYED <ticks> while user still logs in; after the delay admin logs in and WHOAMI with the token answers the identity; an unknown request answers ERR BAD_REQUEST; the manager and the service exit cleanly, no frame leaks; host checks: fsck/fat32.py and both lab passwords absent from the raw image; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=login",
+          "|user|trace|len=",
+          "|text=auth|kat|fails=0|pbkdf2_80000=1",
+          "|text=auth|users|schema=1|count=2",
+          "|ktest|login|load=OK 1|login=OK 1000 1000 15|token_ok=1|user=OK 1001 1001 8|user_ok=1|wrong=ERR ACCESS|unknown=ERR ACCESS|no_token=1|refused=4|delayed=true|other=OK 1001 1001 8|after_delay=OK 1000 1000 15|whoami=OK 1000 1000 15|bad=ERR BAD_REQUEST|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|login|frames_delta=0",
+          "|ktest|pass|login gives a session token, refuses bad credentials, delays after 5 failures"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "absent-raw",
+            "${DISK}",
+            "lab-admin-1"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "absent-raw",
+            "${DISK}",
+            "lab-user-1"
+          ]
+        ],
+        "timeout_s": 600
+      },
+      {
+        "id": "TST-M4-SESSION-LOCK",
+        "test_id": "TST-M4-SESSION-LOCK",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=session_lock"
+        ],
+        "oracle": "through CONNECT auth: after LOGIN admin, LOCK with the token answers OK and the token is revoked (WHOAMI with it: ERR ACCESS); UNLOCK with a wrong password: ERR ACCESS; UNLOCK with the right password answers the identity with a new token (different identity, usable) while the old one stays refused; LOGOUT with the new token answers OK and afterwards WHOAMI and UNLOCK with it answer ERR ACCESS with no token; WHOAMI without a handle answers ERR BAD_REQUEST; clean exit, no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=session_lock",
+          "|text=auth|kat|fails=0|pbkdf2_80000=1",
+          "|ktest|session_lock|load=OK 1|login=OK 1000 1000 15|lock=OK|locked_token_revoked=1|whoami_locked=ERR ACCESS|unlock_wrong=ERR ACCESS|unlock=OK 1000 1000 15|new_token=1|whoami_new=OK 1000 1000 15|old_after_unlock=ERR ACCESS|logout=OK|whoami_out=ERR ACCESS|unlock_out=ERR ACCESS|no_handle=ERR BAD_REQUEST|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|session_lock|frames_delta=0",
+          "|ktest|pass|lock revokes, unlock with the password continues the session, logout ends it"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ],
+        "timeout_s": 600
       }
     ]
+  },
+  "lab": {
+    "users": [
+      {
+        "name": "admin",
+        "password": "lab-admin-1",
+        "uid": 1000,
+        "gid": 1000,
+        "perms": 15,
+        "iterations": 20000
+      },
+      {
+        "name": "user",
+        "password": "lab-user-1",
+        "uid": 1001,
+        "gid": 1001,
+        "perms": 8,
+        "iterations": 20000
+      }
+    ],
+    "note": "Lab credentials (auth.md §3): the users database on the image is derived by tools/project.py with hashlib (independent of nawah-crypto); the passwords never reach the image in the clear (fat32.py absent-raw)."
   }
 }

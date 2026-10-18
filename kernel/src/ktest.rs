@@ -6,6 +6,7 @@
 //! A missing or unknown name is an explicit failure, so a lost name cannot pass by accident.
 
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
@@ -164,6 +165,9 @@ pub fn run() -> ! {
         "svc_order" => svc_order(),
         "svc_timeout" => svc_timeout(),
         "svc_restart" => svc_restart(),
+        "token_objects" => token_objects(),
+        "login" => login(),
+        "session_lock" => session_lock(),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -2908,6 +2912,358 @@ fn svc_restart() -> ! {
     }
     drop((lines, x, text, load));
     svc_balance("svc_restart", frames0)
+}
+
+// ---- WP-25: tokens, authority, the auth service --------------------------------------------
+
+/// Tokens and the authority (auth.md §1–§2) through the syscall layer's rules, exercised on
+/// kernel objects: minting needs an authority, `token_info` reports identity and flags, a copy
+/// without WRITE cannot revoke, revocation shows through every copy, expiry follows the clock.
+fn token_objects() -> ! {
+    use crate::object::token::{Authority, Token, FLAG_EXPIRED, FLAG_REVOKED, PERM_ADMIN};
+    let obj0 = object::stats();
+    let authority = Arc::new(Authority::new());
+    let now = sched::ticks();
+    let t = Arc::new(Token::new(1000, 1000, PERM_ADMIN, now + 5));
+    let copy = t.clone();
+    let distinct_ids = t.id != Token::new(1, 1, 0, 0).id;
+    let fresh = t.flags(now) == 0 && copy.flags(now) == 0;
+    // A handle table: the minter's entry (WRITE) and a client copy (no WRITE); revocation is
+    // gated by the WRITE right of the handle used, as sys_token_revoke does.
+    let mut table = HandleTable::new();
+    let minter = table
+        .insert(Entry {
+            object: Object::Token(t.clone()),
+            rights: Rights::TOKEN_MINTER,
+        })
+        .unwrap_or(0);
+    let client = table
+        .duplicate(minter, Rights(Rights::DUPLICATE.0 | Rights::TRANSFER.0))
+        .unwrap_or(0);
+    let client_cannot_revoke = !table
+        .get(client, Rights::NONE)
+        .map(|e| e.rights.contains(Rights::WRITE))
+        .unwrap_or(true);
+    let authority_entry = table
+        .insert(Entry {
+            object: Object::Authority(authority.clone()),
+            rights: Rights::AUTHORITY_DEFAULT,
+        })
+        .unwrap_or(0);
+    let is_authority = matches!(
+        table.get(authority_entry, Rights::NONE).map(|e| &e.object),
+        Ok(Object::Authority(_))
+    );
+    let channel_is_not_authority = {
+        let (a, _b) = channel::create();
+        let h = table
+            .insert(Entry {
+                object: Object::Channel(a),
+                rights: Rights::CHANNEL_DEFAULT,
+            })
+            .unwrap_or(0);
+        !matches!(
+            table.get(h, Rights::NONE).map(|e| &e.object),
+            Ok(Object::Authority(_))
+        )
+    };
+    t.revoke();
+    let revoked_everywhere = copy.flags(now) & FLAG_REVOKED != 0;
+    let expires_later =
+        t.flags(now + 5) & FLAG_EXPIRED != 0 && t.flags(now + 4) & FLAG_EXPIRED == 0;
+    let live_tokens = object::stats().tokens;
+    drop(table);
+    drop(copy);
+    drop(t);
+    drop(authority);
+    let obj1 = object::stats();
+    kprintln!(
+        "OSX|{}|ktest|token_objects|distinct_ids={}|fresh={}|client_cannot_revoke={}|is_authority={}|channel_is_not_authority={}|revoked_everywhere={}|expires_later={}|live_tokens={}|tokens_after={}|authorities_after={}",
+        BUILD_ID,
+        u8::from(distinct_ids),
+        u8::from(fresh),
+        u8::from(client_cannot_revoke),
+        u8::from(is_authority),
+        u8::from(channel_is_not_authority),
+        u8::from(revoked_everywhere),
+        u8::from(expires_later),
+        live_tokens,
+        obj1.tokens,
+        obj1.authorities
+    );
+    if !(distinct_ids && fresh && client_cannot_revoke && is_authority && channel_is_not_authority)
+    {
+        fail("token minting, identity or rights wrong")
+    }
+    if !revoked_everywhere || !expires_later || live_tokens != 1 {
+        fail("revocation, expiry or accounting wrong")
+    }
+    if obj1 != obj0 {
+        fail("token or authority objects leaked")
+    }
+    pass(
+        "tokens carry identity, expire by the clock, revoke through every copy; only WRITE revokes",
+    )
+}
+
+/// Starts the `auth` service through a manager and connects to it; the client endpoint.
+fn auth_connect(h: &SvcHarness) -> Arc<Endpoint> {
+    // The service runs the 80000-iteration known answer before READY: generous deadline.
+    let lines = h.poll_list(sched::ticks() + 60_000, |l| {
+        l.iter()
+            .any(|x| x.name == "auth" && x.state != "starting" && x.state != "pending")
+    });
+    let state = lines
+        .iter()
+        .find(|l| l.name == "auth")
+        .map(|l| l.state.clone())
+        .unwrap_or_default();
+    if state != "ready" {
+        kprintln!("OSX|{}|ktest|{}|auth_state={}", BUILD_ID, h.name, state);
+        fail("auth service did not become ready")
+    }
+    match crate::services::request_with(&h.m.ctl, b"CONNECT auth", Vec::new(), sched::ticks() + 500)
+    {
+        Ok(m) if m.bytes == b"OK" && m.handles.len() == 1 => match &m.handles[0].object {
+            Object::Channel(ep) => ep.clone(),
+            _ => fail("CONNECT answered with a non-channel handle"),
+        },
+        Ok(m) => {
+            kprintln!(
+                "OSX|{}|ktest|{}|connect_reply={}|handles={}",
+                BUILD_ID,
+                h.name,
+                String::from_utf8_lossy(&m.bytes),
+                m.handles.len()
+            );
+            fail("CONNECT refused")
+        }
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|connect_error={}", BUILD_ID, h.name, e);
+            fail("CONNECT failed")
+        }
+    }
+}
+
+/// One request to the auth service, with an optional token; the reply text and token.
+fn auth_request(
+    ep: &Endpoint,
+    req: &[u8],
+    token: Option<&Arc<crate::object::token::Token>>,
+) -> (String, Option<Arc<crate::object::token::Token>>) {
+    let handles = match token {
+        Some(t) => alloc::vec![Entry {
+            object: Object::Token(t.clone()),
+            rights: Rights(Rights::DUPLICATE.0 | Rights::TRANSFER.0),
+        }],
+        None => Vec::new(),
+    };
+    match crate::services::request_with(ep, req, handles, sched::ticks() + 30_000) {
+        Ok(m) => {
+            let text = String::from_utf8_lossy(&m.bytes).into_owned();
+            let tok = m.handles.into_iter().find_map(|e| match e.object {
+                Object::Token(t) => Some(t),
+                _ => None,
+            });
+            (text, tok)
+        }
+        Err(e) => (alloc::format!("error:{}", e), None),
+    }
+}
+
+fn login() -> ! {
+    use crate::object::token::PERM_ALL;
+    let h = SvcHarness::start("login", b"/SYSTEM/SVC-AUTH.TXT");
+    let ep = auth_connect(&h);
+    let now = sched::ticks();
+    // Right password: a usable token with the user's identity and permissions.
+    let (r1, t1) = auth_request(&ep, b"LOGIN admin lab-admin-1", None);
+    let token_ok = t1.as_ref().is_some_and(|t| {
+        t.uid == 1000 && t.perms == PERM_ALL && t.flags(now) == 0 && t.expires > now
+    });
+    let (r_user, t_user) = auth_request(&ep, b"LOGIN user lab-user-1", None);
+    let user_ok = t_user
+        .as_ref()
+        .is_some_and(|t| t.uid == 1001 && t.perms == 8);
+    // Wrong password and unknown name: the same refusal, no token.
+    let (r2, t2) = auth_request(&ep, b"LOGIN admin wrong-password", None);
+    let (r3, t3) = auth_request(&ep, b"LOGIN nobody lab-admin-1", None);
+    // Four more failures reach the limit; the right password is then delayed.
+    let mut refused = 0;
+    for _ in 0..4 {
+        if auth_request(&ep, b"LOGIN admin wrong-password", None).0 == "ERR ACCESS" {
+            refused += 1;
+        }
+    }
+    let (r_delayed, t_delayed) = auth_request(&ep, b"LOGIN admin lab-admin-1", None);
+    let delayed = r_delayed.starts_with("ERR DELAYED ") && t_delayed.is_none();
+    // The other user is not delayed.
+    let (r_other, t_other) = auth_request(&ep, b"LOGIN user lab-user-1", None);
+    // After the delay the right password works again.
+    let t = sched::ticks() + 2100;
+    sched::poll_until(t, || false);
+    let (r_after, t_after) = auth_request(&ep, b"LOGIN admin lab-admin-1", None);
+    let whoami = match &t_after {
+        Some(tk) => auth_request(&ep, b"WHOAMI", Some(tk)).0,
+        None => String::new(),
+    };
+    let bad = auth_request(&ep, b"WHATEVER", None).0;
+    let load = h.load_reply.clone();
+    drop(ep);
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|login|load={}|login={}|token_ok={}|user={}|user_ok={}|wrong={}|unknown={}|no_token={}|refused={}|delayed={}|other={}|after_delay={}|whoami={}|bad={}|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        load,
+        r1,
+        u8::from(token_ok),
+        r_user,
+        u8::from(user_ok),
+        r2,
+        r3,
+        u8::from(t2.is_none() && t3.is_none()),
+        refused,
+        delayed,
+        r_other,
+        r_after,
+        whoami,
+        bad,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if r1 != "OK 1000 1000 15" || !token_ok || r_user != "OK 1001 1001 8" || !user_ok {
+        fail("login with the right password did not give the user's token")
+    }
+    if r2 != "ERR ACCESS" || r3 != "ERR ACCESS" || t2.is_some() || t3.is_some() || refused != 4 {
+        fail("wrong credentials were not refused the documented way")
+    }
+    if !delayed || r_other != "OK 1001 1001 8" || t_other.is_none() {
+        fail("the attempt limit did not delay the right name only")
+    }
+    if r_after != "OK 1000 1000 15" || whoami != "OK 1000 1000 15" || bad != "ERR BAD_REQUEST" {
+        fail("login after the delay, WHOAMI or the bad request answer wrong")
+    }
+    drop((
+        t1, t_user, t2, t3, t_delayed, t_other, t_after, r1, r_user, r2, r3, r_delayed, r_other,
+        r_after, whoami, bad, load,
+    ));
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    let delta = SvcHarness::frames_delta(frames0);
+    kprintln!("OSX|{}|ktest|login|frames_delta={}", BUILD_ID, delta);
+    if delta != 0 {
+        fail("frames leaked")
+    }
+    pass("login gives a session token, refuses bad credentials, delays after 5 failures")
+}
+
+fn session_lock() -> ! {
+    let h = SvcHarness::start("session_lock", b"/SYSTEM/SVC-AUTH.TXT");
+    let ep = auth_connect(&h);
+    let (r1, t1) = auth_request(&ep, b"LOGIN admin lab-admin-1", None);
+    let Some(t1) = t1 else { fail("login failed") };
+    let id1 = t1.id;
+    let (lock, _) = auth_request(&ep, b"LOCK", Some(&t1));
+    let locked_token_revoked = t1.flags(sched::ticks()) & crate::object::token::FLAG_REVOKED != 0;
+    let (whoami_locked, _) = auth_request(&ep, b"WHOAMI", Some(&t1));
+    let (unlock_wrong, _) = auth_request(&ep, b"UNLOCK wrong-password", Some(&t1));
+    let (unlock, t2) = auth_request(&ep, b"UNLOCK lab-admin-1", Some(&t1));
+    let new_token = t2
+        .as_ref()
+        .is_some_and(|t| t.uid == 1000 && t.id != id1 && t.flags(sched::ticks()) == 0);
+    let (whoami_new, _) = match &t2 {
+        Some(t) => auth_request(&ep, b"WHOAMI", Some(t)),
+        None => (String::new(), None),
+    };
+    let (old_after_unlock, _) = auth_request(&ep, b"WHOAMI", Some(&t1));
+    let (logout, _) = match &t2 {
+        Some(t) => auth_request(&ep, b"LOGOUT", Some(t)),
+        None => (String::new(), None),
+    };
+    let (whoami_out, _) = match &t2 {
+        Some(t) => auth_request(&ep, b"WHOAMI", Some(t)),
+        None => (String::new(), None),
+    };
+    let (unlock_out, t3) = match &t2 {
+        Some(t) => auth_request(&ep, b"UNLOCK lab-admin-1", Some(t)),
+        None => (String::new(), None),
+    };
+    let (no_handle, _) = auth_request(&ep, b"WHOAMI", None);
+    let load = h.load_reply.clone();
+    drop(ep);
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|session_lock|load={}|login={}|lock={}|locked_token_revoked={}|whoami_locked={}|unlock_wrong={}|unlock={}|new_token={}|whoami_new={}|old_after_unlock={}|logout={}|whoami_out={}|unlock_out={}|no_handle={}|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        load,
+        r1,
+        lock,
+        u8::from(locked_token_revoked),
+        whoami_locked,
+        unlock_wrong,
+        unlock,
+        u8::from(new_token),
+        whoami_new,
+        old_after_unlock,
+        logout,
+        whoami_out,
+        unlock_out,
+        no_handle,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if r1 != "OK 1000 1000 15"
+        || lock != "OK"
+        || !locked_token_revoked
+        || whoami_locked != "ERR ACCESS"
+    {
+        fail("lock did not revoke the token")
+    }
+    if unlock_wrong != "ERR ACCESS"
+        || unlock != "OK 1000 1000 15"
+        || !new_token
+        || whoami_new != "OK 1000 1000 15"
+        || old_after_unlock != "ERR ACCESS"
+    {
+        fail("unlock did not continue the session with a new token")
+    }
+    if logout != "OK"
+        || whoami_out != "ERR ACCESS"
+        || unlock_out != "ERR ACCESS"
+        || t3.is_some()
+        || no_handle != "ERR BAD_REQUEST"
+    {
+        fail("logout did not end the session")
+    }
+    drop((
+        t1,
+        t2,
+        t3,
+        r1,
+        lock,
+        whoami_locked,
+        unlock_wrong,
+        unlock,
+        whoami_new,
+        old_after_unlock,
+        logout,
+        whoami_out,
+        unlock_out,
+        no_handle,
+        load,
+    ));
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    let delta = SvcHarness::frames_delta(frames0);
+    kprintln!("OSX|{}|ktest|session_lock|frames_delta={}", BUILD_ID, delta);
+    if delta != 0 {
+        fail("frames leaked")
+    }
+    pass("lock revokes, unlock with the password continues the session, logout ends it")
 }
 
 /// A process that exits with 44 file handles open (20 files + 20 duplicates, 4 created and

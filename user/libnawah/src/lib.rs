@@ -34,6 +34,10 @@ pub const SYS_PROCESS_SPAWN: u64 = 20;
 pub const SYS_OBJECT_WAIT_MANY: u64 = 21;
 pub const SYS_CLOCK_TICKS: u64 = 22;
 pub const SYS_PROCESS_STATUS: u64 = 23;
+/// v1.5 (WP-25): session tokens and the authority that mints them.
+pub const SYS_TOKEN_CREATE: u64 = 24;
+pub const SYS_TOKEN_INFO: u64 = 25;
+pub const SYS_TOKEN_REVOKE: u64 = 26;
 
 pub const ERR_NOSYS: i64 = -1;
 pub const ERR_INVALID: i64 = -2;
@@ -238,6 +242,87 @@ pub fn process_status(h: Handle) -> Result<u64, i64> {
 /// The handle the process received at start (0 when it was started with none).
 pub fn bootstrap_handle() -> Handle {
     BOOTSTRAP.load(core::sync::atomic::Ordering::Relaxed)
+}
+
+/// Token permission bits (auth.md §1).
+pub mod perm {
+    pub const ADMIN: u32 = 1;
+    pub const CONFIG_WRITE: u32 = 2;
+    pub const NET: u32 = 4;
+    pub const SHELL: u32 = 8;
+}
+
+/// What `token_info` reports.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TokenInfo {
+    pub uid: u32,
+    pub gid: u32,
+    pub perms: u32,
+    /// bit 0 revoked, bit 1 expired.
+    pub flags: u32,
+    pub expires: u64,
+    /// The token's identity: equal for two handles to the same token.
+    pub id: u64,
+}
+
+impl TokenInfo {
+    pub fn usable(&self) -> bool {
+        self.flags == 0
+    }
+}
+
+/// Mints a token with `authority` (ERR_ACCESS without one); the handle carries WRITE.
+pub fn token_create(
+    authority: Handle,
+    uid: u32,
+    gid: u32,
+    perms: u32,
+    expires: u64,
+) -> Result<Handle, i64> {
+    let r = syscall6(
+        SYS_TOKEN_CREATE,
+        u64::from(authority),
+        u64::from(uid),
+        u64::from(gid),
+        u64::from(perms),
+        expires,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as Handle)
+    }
+}
+
+pub fn token_info(h: Handle) -> Result<TokenInfo, i64> {
+    let mut buf = [0u8; 32];
+    let r = syscall6(
+        SYS_TOKEN_INFO,
+        u64::from(h),
+        buf.as_mut_ptr() as u64,
+        0,
+        0,
+        0,
+        0,
+    );
+    if r < 0 {
+        return Err(r);
+    }
+    let w = |i: usize| u32::from_le_bytes([buf[i], buf[i + 1], buf[i + 2], buf[i + 3]]);
+    Ok(TokenInfo {
+        uid: w(0),
+        gid: w(4),
+        perms: w(8),
+        flags: w(12),
+        expires: u64::from_le_bytes(buf[16..24].try_into().unwrap_or([0; 8])),
+        id: u64::from_le_bytes(buf[24..32].try_into().unwrap_or([0; 8])),
+    })
+}
+
+/// Revokes a token through a handle with WRITE (the minter's).
+pub fn token_revoke(h: Handle) -> i64 {
+    syscall6(SYS_TOKEN_REVOKE, u64::from(h), 0, 0, 0, 0, 0)
 }
 
 #[doc(hidden)]

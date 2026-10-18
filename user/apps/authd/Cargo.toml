@@ -1,0 +1,16 @@
+[package]
+name = "authd"
+version = "0.1.0"
+edition = "2021"
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "authd"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+libnawah = { path = "../../libnawah" }
+nawah-crypto = { path = "../../nawah-crypto" }

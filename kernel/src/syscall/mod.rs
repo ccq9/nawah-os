@@ -49,6 +49,10 @@ pub const SYS_PROCESS_SPAWN: u64 = 20;
 pub const SYS_OBJECT_WAIT_MANY: u64 = 21;
 pub const SYS_CLOCK_TICKS: u64 = 22;
 pub const SYS_PROCESS_STATUS: u64 = 23;
+/// v1.5 (WP-25, auth.md §2): tokens and the authority that mints them.
+pub const SYS_TOKEN_CREATE: u64 = 24;
+pub const SYS_TOKEN_INFO: u64 = 25;
+pub const SYS_TOKEN_REVOKE: u64 = 26;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -518,6 +522,15 @@ pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
         SYS_OBJECT_WAIT_MANY => flat(sys_object_wait_many(args[0], args[1], args[2])),
         SYS_CLOCK_TICKS => sched::ticks() as i64,
         SYS_PROCESS_STATUS => flat(sys_process_status(args[0] as Handle)),
+        SYS_TOKEN_CREATE => flat(sys_token_create(
+            args[0] as Handle,
+            args[1],
+            args[2],
+            args[3],
+            args[4],
+        )),
+        SYS_TOKEN_INFO => flat(sys_token_info(args[0] as Handle, args[1])),
+        SYS_TOKEN_REVOKE => flat(sys_token_revoke(args[0] as Handle)),
         _ => ERR_NOSYS,
     }
 }
@@ -676,5 +689,79 @@ fn sys_process_status(h: Handle) -> Result<i64, i64> {
         // The result is non-negative: the top bit of a 64-bit exit code is not reported.
         Some(code) => Ok((code & (i64::MAX as u64)) as i64),
         None => Err(ERR_SHOULD_WAIT),
+    }
+}
+
+// ---- v1.5: tokens and authority (WP-25) -------------------------------------------------------
+
+/// `token_create(authority_h, uid, gid, perms, expires)`: mints a token; the handle must be
+/// an authority (anything else is a lack of authority: `ERR_ACCESS`, auth.md §2). The new
+/// handle carries the minter's rights (WRITE|DUPLICATE|TRANSFER).
+fn sys_token_create(ah: Handle, uid: u64, gid: u64, perms: u64, expires: u64) -> Result<i64, i64> {
+    if uid > u64::from(u32::MAX)
+        || gid > u64::from(u32::MAX)
+        || perms & !u64::from(crate::object::token::PERM_ALL) != 0
+    {
+        return Err(ERR_INVALID);
+    }
+    let table = table()?;
+    let mut t = table.lock();
+    match &t.get(ah, Rights::NONE).map_err(handle_err)?.object {
+        Object::Authority(_) => {}
+        _ => return Err(ERR_ACCESS),
+    }
+    let token = Arc::new(crate::object::token::Token::new(
+        uid as u32,
+        gid as u32,
+        perms as u32,
+        expires,
+    ));
+    let h = t
+        .insert(Entry {
+            object: Object::Token(token),
+            rights: Rights::TOKEN_MINTER,
+        })
+        .map_err(handle_err)?;
+    Ok(i64::from(h))
+}
+
+/// `token_info(h, out_ptr)`: writes uid, gid, perms, flags (u32 each), expires (u64) and the
+/// token's identity (u64) — 32 bytes — for any holder.
+fn sys_token_info(h: Handle, out: u64) -> Result<i64, i64> {
+    user_range_ok(out, 32, true)?;
+    let table = table()?;
+    let token = {
+        let t = table.lock();
+        match &t.get(h, Rights::NONE).map_err(handle_err)?.object {
+            Object::Token(tk) => tk.clone(),
+            _ => return Err(ERR_WRONG_TYPE),
+        }
+    };
+    let now = sched::ticks();
+    let mut buf = [0u8; 32];
+    buf[0..4].copy_from_slice(&token.uid.to_le_bytes());
+    buf[4..8].copy_from_slice(&token.gid.to_le_bytes());
+    buf[8..12].copy_from_slice(&token.perms.to_le_bytes());
+    buf[12..16].copy_from_slice(&token.flags(now).to_le_bytes());
+    buf[16..24].copy_from_slice(&token.expires.to_le_bytes());
+    buf[24..32].copy_from_slice(&token.id.to_le_bytes());
+    copy_to_user(out, &buf)?;
+    Ok(0)
+}
+
+/// `token_revoke(h)`: needs WRITE (the minter's copy); final, visible through every copy.
+fn sys_token_revoke(h: Handle) -> Result<i64, i64> {
+    let table = table()?;
+    let t = table.lock();
+    let e = t.get(h, Rights::NONE).map_err(handle_err)?;
+    match &e.object {
+        Object::Token(tk) => {
+            if !e.rights.contains(Rights::WRITE) {
+                return Err(ERR_ACCESS);
+            }
+            tk.revoke();
+            Ok(0)
+        }
+        _ => Err(ERR_WRONG_TYPE),
     }
 }

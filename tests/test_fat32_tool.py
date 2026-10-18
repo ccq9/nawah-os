@@ -63,6 +63,13 @@ class Fat32Tool(unittest.TestCase):
             f.seek((131072 - 9) * 512)
             self.assertEqual(f.read(4), b"\0\0\0\0")
 
+    def test_absent_raw(self):
+        # The lab's hello text is on the image; a string that never reached it is absent.
+        self.assertEqual(run("absent-raw", self.img, "hello from the lab disk").returncode, 1)
+        r = run("absent-raw", self.img, "lab-admin-1")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("absent from all 131072 sectors", r.stdout)
+
     def test_fsck(self):
         fsck = shutil.which("fsck.fat")
         if not fsck:

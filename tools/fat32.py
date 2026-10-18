@@ -297,6 +297,19 @@ def cmd_format(a):
     print(f"formatted {a.image}: {a.sectors} sectors, spc={a.spc}, clusters={Image(a.image).clusters}")
 
 
+def cmd_absent_raw(a):
+    """Exit 0 when `text` occurs nowhere in the raw image (every sector, allocated or not): the
+    check that a secret the guest handled never reached the disk in the clear (WP-25)."""
+    needle = a.text.encode()
+    with open(a.image, "rb") as f:
+        data = f.read()
+    pos = data.find(needle)
+    if pos >= 0:
+        print(f"{a.image}: {a.text!r} found at offset {pos} (sector {pos // SECTOR})")
+        sys.exit(1)
+    print(f"{a.image}: {a.text!r} absent from all {len(data) // SECTOR} sectors")
+
+
 def cmd_ls(a):
     img = Image(a.image)
     d = img.root_cluster
@@ -397,8 +410,10 @@ def main(argv=None):
     s = sub.add_parser("verify"); s.add_argument("image"); s.add_argument("path"); s.add_argument("sha256"); s.add_argument("--size", type=int)
     s = sub.add_parser("check"); s.add_argument("image")
     s = sub.add_parser("expect"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
+    s = sub.add_parser("absent-raw"); s.add_argument("image"); s.add_argument("text")
     a = ap.parse_args(argv)
-    return {"format": cmd_format, "ls": cmd_ls, "cat": cmd_cat, "verify": cmd_verify, "check": cmd_check, "expect": cmd_expect}[a.cmd](a) or 0
+    return {"format": cmd_format, "ls": cmd_ls, "cat": cmd_cat, "verify": cmd_verify, "check": cmd_check, "expect": cmd_expect,
+            "absent-raw": cmd_absent_raw}[a.cmd](a) or 0
 
 
 if __name__ == "__main__":

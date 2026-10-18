@@ -1080,6 +1080,7 @@
       "acceptance": "hash_vectors/login/session_lock",
       "test_ids": [
         "TST-M4-HASH-VECTORS",
+        "TST-M4-TOKEN-OBJECTS",
         "TST-M4-LOGIN",
         "TST-M4-SESSION-LOCK"
       ],
