@@ -518,6 +518,14 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
     crate::ktest::run();
     #[cfg(not(feature = "ktest"))]
     {
+        // WP-24 (ADR-0016 §1): the service manager is the first process — started from the
+        // volume with a control channel; the lab manifest is loaded through it and the reply
+        // reported. The test kernel starts managers of its own inside its cases instead.
+        kprintln!(
+            "OSX|{}|kernel|svcmgr|{}",
+            build_id,
+            crate::services::start_at_boot(2000)
+        );
         // Nothing waits on the timer yet; stop it so the shutdown is quiet.
         arch::irq::timer_stop();
         kprintln!("OSX|{}|kernel|m1_done|exit=0x10", build_id);

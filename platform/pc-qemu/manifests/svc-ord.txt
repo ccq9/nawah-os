@@ -1,0 +1,4 @@
+# TST-M4-SVC-ORDER: B after A, C after A and B
+A /SYSTEM/SVC.ELF - 200 never 0 0 ready
+B /SYSTEM/SVC.ELF A 200 never 0 0 ready
+C /SYSTEM/SVC.ELF A,B 200 never 0 0 ready

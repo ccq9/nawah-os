@@ -1556,16 +1556,35 @@
         "docs/PLAN.md §5",
         "docs/adr/0016-services-and-authority.md"
       ],
-      "files": [],
+      "files": [
+        ".github/workflows/verify.yml",
+        "Cargo.toml",
+        "docs/contracts/services.md",
+        "kernel/build.rs",
+        "kernel/src/kmain.rs",
+        "kernel/src/ktest.rs",
+        "kernel/src/main.rs",
+        "kernel/src/sched/mod.rs",
+        "kernel/src/services.rs",
+        "platform/pc-qemu/manifests/services.txt",
+        "platform/pc-qemu/manifests/svc-ord.txt",
+        "platform/pc-qemu/manifests/svc-rst.txt",
+        "platform/pc-qemu/manifests/svc-tmo.txt",
+        "platform/pc-qemu/target.json",
+        "tests/mutants.py",
+        "tools/project.py",
+        "user/apps/svc/src/main.rs",
+        "user/apps/svcmgr/src/main.rs"
+      ],
       "contract_refs": [
         "docs/contracts/services.md"
       ],
       "actions": [
         "مدير الخدمات svcmgr: البيان، الترتيب الطوبولوجي، مهلة الجاهزية، إعادة التشغيل بحد وتراجع، قناة تحكم",
-        "svcmgr app started by the kernel as the first process",
-        "manifest parser with cycle detection",
-        "READY handshake, timeouts, restart policy with max attempts and backoff",
-        "control channel: list; kernel test drives it"
+        "svcmgr app (no_std, no alloc, 16 services) started by the release kernel as the first process (kernel|svcmgr boot line, TST-M1-BOOT)",
+        "manifest parser with duplicate/unknown-dependency/cycle detection (Kahn)",
+        "START/READY handshake on the boot channel, readiness timeouts (final), on-failure restarts with exponential backoff up to max_restarts, dependents of dead services blocked",
+        "control channel LOAD/LIST/STOP; kernel::services (spawn_manager/request/poll_until) drives it in TST-M4-SVC-ORDER/TIMEOUT/RESTART with lab manifests under /SYSTEM"
       ],
       "acceptance": "TST-M4-SVC-ORDER/TIMEOUT/RESTART PASS on CI; services.md v1",
       "test_ids": [

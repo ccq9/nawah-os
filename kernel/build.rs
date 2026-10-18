@@ -24,6 +24,8 @@ const APPS: &[&str] = &[
     "launch",
     "child",
     "waiter",
+    "svcmgr",
+    "svc",
 ];
 
 fn emit_apps() {

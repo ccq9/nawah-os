@@ -1,0 +1,2 @@
+# Lab manifest (/SYSTEM/SERVICES.TXT, services.md §2): no service yet — the manager answers
+# `OK 0` at boot (TST-M1-BOOT). Fields: name path deps timeout_ticks restart max backoff [arg]

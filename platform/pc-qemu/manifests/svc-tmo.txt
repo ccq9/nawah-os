@@ -1,0 +1,3 @@
+# TST-M4-SVC-TIMEOUT: M never reports READY (50-tick timeout); D depends on it
+M /SYSTEM/SVC.ELF - 50 never 0 0 mute
+D /SYSTEM/SVC.ELF M 200 never 0 0 ready

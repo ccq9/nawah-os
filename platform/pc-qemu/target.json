@@ -35,7 +35,9 @@
       "${OUT}/apps/echo.elf",
       "${OUT}/apps/launch.elf",
       "${OUT}/apps/child.elf",
-      "${OUT}/apps/waiter.elf"
+      "${OUT}/apps/waiter.elf",
+      "${OUT}/apps/svcmgr.elf",
+      "${OUT}/apps/svc.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -186,6 +188,42 @@
       [
         "cargo",
         "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/svcmgr/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/svcmgr",
+        "${OUT}/apps/svcmgr.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/svc/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/svc",
+        "${OUT}/apps/svc.elf"
+      ],
+      [
+        "cargo",
+        "build",
         "--release",
         "--offline",
         "--manifest-path",
@@ -281,7 +319,7 @@
       {
         "id": "TST-M1-BOOT",
         "test_id": "TST-M1-BOOT",
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read",
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
@@ -315,6 +353,10 @@
           "|read_ok=1|flush_ok=1|code=ok|selfcheck=1",
           "|kernel|fat32|label=NAWAHLAB|sectors_per_cluster=1|reserved=32|fats=2|fat_sectors=1024|clusters=128992|root_cluster=2|free_clusters=",
           "|hello_size=24|hello_ok=1|code=ok|selfcheck=1",
+          "|kernel|svcmgr|pid=",
+          "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
+          "|kernel|spawn|pid=",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=1",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -1688,7 +1730,8 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=fat32_write",
-          "|ktest|fat32_write|created=size3006+3000+6|taken_during=6|restored=1|read_ok=1|dup=K_E_FS_EXISTS|in_dir_ok=1|overwrite_ok=1|unlinked=6+1|gone=K_E_FS_NOT_FOUND",
+          "|ktest|fat32_write|created=size3006+3000+6|free_before=",
+          "|taken_during=6|restored=1|read_ok=1|dup=K_E_FS_EXISTS|in_dir_ok=1|overwrite_ok=1|unlinked=6+1|gone=K_E_FS_NOT_FOUND",
           "|ktest|pass|FAT32 create/write/overwrite/unlink"
         ],
         "forbidden_markers": [
@@ -2100,6 +2143,143 @@
         "min_counts": {
           "|kernel|spawn|pid=": 2
         }
+      },
+      {
+        "id": "TST-M4-SVC-ORDER",
+        "test_id": "TST-M4-SVC-ORDER",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=svc_order"
+        ],
+        "oracle": "the test kernel starts /SYSTEM/SVCMGR.ELF with a control channel and loads /SYSTEM/SVC-ORD.TXT (A; B after A; C after A,B; all /SYSTEM/SVC.ELF with arg `ready`): LOAD answers `OK 3`; LIST polling ends with all three `ready`; B's first start tick >= A's ready tick and C's >= max(A, B ready); closing the control channel makes the manager exit 0 and the services exit on their closed channels: no process, object or frame remains; exactly 4 spawn lines (manager + 3 services); fsck/fat32.py check pass; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=svc_order",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=1",
+          "|path=/SYSTEM/SVC.ELF|handles=1",
+          "|ktest|svc_order|load=OK 3|list=A:ready:0:",
+          "|all_ready=1|b_after_a=1|c_after_ab=1|mgr_exit=0x0|processes_after=0|frames_delta=0|clean=1",
+          "|ktest|pass|services start in dependency order"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "max_counts": {
+          "|kernel|spawn|pid=": 4
+        },
+        "min_counts": {
+          "|kernel|spawn|pid=": 4
+        },
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M4-SVC-TIMEOUT",
+        "test_id": "TST-M4-SVC-TIMEOUT",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=svc_timeout"
+        ],
+        "oracle": "manifest /SYSTEM/SVC-TMO.TXT: M (arg `mute`, never READY, timeout 50 ticks) and D depending on M: LOAD answers `OK 2`; M becomes `failed` with no ready tick, D stays `blocked` and is never started (2 spawn lines: manager + M), the manager still answers LIST afterwards; after the control channel closes everything exits and nothing remains; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=svc_timeout",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=1",
+          "|path=/SYSTEM/SVC.ELF|handles=1",
+          "|ktest|svc_timeout|load=OK 2|list=M:failed:0:",
+          "|failed_after_timeout=1|dependent_blocked=1|list_after=1|mgr_exit=0x0|processes_after=0|frames_delta=0|clean=1",
+          "|ktest|pass|a silent service fails at its timeout"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "max_counts": {
+          "|kernel|spawn|pid=": 2
+        },
+        "min_counts": {
+          "|kernel|spawn|pid=": 2
+        },
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M4-SVC-RESTART",
+        "test_id": "TST-M4-SVC-RESTART",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=svc_restart"
+        ],
+        "oracle": "manifest /SYSTEM/SVC-RST.TXT: X (arg `crash`, exits 1 at once, on-failure, max 3 restarts, backoff 10): LOAD answers `OK 1`; X ends `given_up` with restarts=3 and exit=1 after 4 starts (5 spawn lines with the manager) spanning >= 70 ticks (backoff 10+20+40); the manager still answers LIST; the clock advanced; nothing remains after the control channel closes; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=svc_restart",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=1",
+          "|path=/SYSTEM/SVC.ELF|handles=1",
+          "|ktest|svc_restart|load=OK 1|list=X:given_up:3:",
+          "|state=given_up|restarts=3|exit=1|span=",
+          "|backoff_ok=1|elapsed=",
+          "|list_after=1|mgr_exit=0x0|processes_after=0|frames_delta=0|clean=1",
+          "|ktest|pass|a crashing service is restarted with backoff up to its limit, then given up"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "max_counts": {
+          "|kernel|spawn|pid=": 5
+        },
+        "min_counts": {
+          "|kernel|spawn|pid=": 5
+        },
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
       }
     ]
   }

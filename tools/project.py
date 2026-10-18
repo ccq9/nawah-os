@@ -509,6 +509,9 @@ def prepare_disk(t, target_name, fresh=True):
         for elf in sorted((out / "apps").glob("*.elf")) if (out / "apps").is_dir() else []:
             if len(elf.stem) <= 8:
                 cmd += ["--add", f"SYSTEM/{elf.stem.upper()}.ELF={elf}"]
+        # Service manifests (WP-24): platform/<target>/manifests/*.txt as /SYSTEM/<NAME>.TXT.
+        for man in sorted((ROOT / "platform" / target_name / "manifests").glob("*.txt")):
+            cmd += ["--add", f"SYSTEM/{man.stem.upper()}.TXT={man}"]
         subprocess.run(cmd, cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
     return img
 

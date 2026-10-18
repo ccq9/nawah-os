@@ -1,0 +1,2 @@
+# TST-M4-SVC-RESTART: X exits 1 at once; 3 restarts with backoff 10, 20, 40 ticks, then given_up
+X /SYSTEM/SVC.ELF - 200 on-failure 3 10 crash

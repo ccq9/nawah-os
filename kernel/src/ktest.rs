@@ -5,6 +5,7 @@
 //! as the QEMU exit code plus serial markers (`platform/pc-qemu/target.json`, suite M2).
 //! A missing or unknown name is an explicit failure, so a lost name cannot pass by accident.
 
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
@@ -160,6 +161,9 @@ pub fn run() -> ! {
         "spawn_volume" => volume_app("spawn_volume", crate::apps::LAUNCH, 0x70),
         "wait_timeout" => wait_timeout(),
         "child_exit" => volume_app("child_exit", crate::apps::CHILD, 0x72),
+        "svc_order" => svc_order(),
+        "svc_timeout" => svc_timeout(),
+        "svc_restart" => svc_restart(),
         "lock_reentry" => {
             let _held = TEST_LOCK.lock();
             kprintln!("OSX|{}|ktest|lock_reentry|held=1|reacquiring=1", BUILD_ID);
@@ -2606,6 +2610,281 @@ fn wait_timeout() -> ! {
         fail("frames, objects or handles leaked by the application")
     }
     pass("object_wait_many times out, polls, refuses bad entries; the clock is monotonic")
+}
+
+// ---- WP-24: the service manager -------------------------------------------------------------
+
+/// One line of the manager's `LIST` reply (services.md §3).
+#[derive(Clone, Default)]
+struct SvcLine {
+    name: String,
+    state: String,
+    restarts: u64,
+    first_start: Option<u64>,
+    last_start: Option<u64>,
+    ready: Option<u64>,
+    exit: Option<u64>,
+}
+
+fn svc_field(f: Option<&str>) -> Option<u64> {
+    f.and_then(|x| x.parse().ok())
+}
+
+fn parse_list(reply: &[u8]) -> Vec<SvcLine> {
+    core::str::from_utf8(reply)
+        .unwrap_or("")
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| {
+            let mut f = l.split(' ');
+            SvcLine {
+                name: f.next().unwrap_or("").into(),
+                state: f.next().unwrap_or("").into(),
+                restarts: svc_field(f.next()).unwrap_or(u64::MAX),
+                first_start: svc_field(f.next()),
+                last_start: svc_field(f.next()),
+                ready: svc_field(f.next()),
+                exit: svc_field(f.next()),
+            }
+        })
+        .collect()
+}
+
+/// A manager started for one test with `manifest` loaded: the balance before it, the
+/// `LOAD` reply, and a `LIST` poller.
+struct SvcHarness {
+    name: &'static str,
+    m: crate::services::Manager,
+    obj0: object::Stats,
+    frames0: u64,
+    load_reply: String,
+}
+
+impl SvcHarness {
+    fn start(name: &'static str, manifest: &[u8]) -> Self {
+        if crate::fs::mount().is_err() {
+            fail("volume did not mount")
+        }
+        let obj0 = object::stats();
+        let frames0 = pmm::stats().free_frames;
+        let m = match crate::services::spawn_manager() {
+            Ok(m) => m,
+            Err(e) => {
+                kprintln!("OSX|{}|ktest|{}|spawn_error={}", BUILD_ID, name, e);
+                fail("service manager did not start")
+            }
+        };
+        let deadline = sched::ticks() + 500;
+        let load_reply = match crate::services::request(
+            &m.ctl,
+            &crate::services::load_request(manifest),
+            deadline,
+        ) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => e.into(),
+        };
+        SvcHarness {
+            name,
+            m,
+            obj0,
+            frames0,
+            load_reply,
+        }
+    }
+
+    /// Asks `LIST` every 10 ticks until `done(lines)` holds or `deadline`; the last listing.
+    fn poll_list(&self, deadline: u64, mut done: impl FnMut(&[SvcLine]) -> bool) -> Vec<SvcLine> {
+        loop {
+            let last = match crate::services::request(&self.m.ctl, b"LIST", sched::ticks() + 200) {
+                Ok(b) => parse_list(&b),
+                Err(e) => {
+                    kprintln!("OSX|{}|ktest|{}|list_error={}", BUILD_ID, self.name, e);
+                    fail("LIST request failed")
+                }
+            };
+            if done(&last) || sched::ticks() >= deadline {
+                return last;
+            }
+            let t = sched::ticks() + 10;
+            sched::poll_until(t, || false);
+        }
+    }
+
+    fn list_text(lines: &[SvcLine]) -> String {
+        let mut s = String::new();
+        for l in lines {
+            s.push_str(&alloc::format!(
+                "{}:{}:{}:{}:{}:{}:{};",
+                l.name,
+                l.state,
+                l.restarts,
+                l.first_start.map_or(-1, |x| x as i64),
+                l.last_start.map_or(-1, |x| x as i64),
+                l.ready.map_or(-1, |x| x as i64),
+                l.exit.map_or(-1, |x| x as i64)
+            ));
+        }
+        s
+    }
+
+    /// Closes the control channel (the manager exits 0, its services see their channels
+    /// close and exit) and waits until no process is left; the resource balance afterwards.
+    fn finish(self) -> (u64, usize, i64, bool) {
+        let SvcHarness {
+            m, obj0, frames0, ..
+        } = self;
+        let object = m.object.clone();
+        drop(m);
+        let deadline = sched::ticks() + 1000;
+        let gone = sched::poll_until(deadline, || sched::stats().processes == 0);
+        let code = object.exit_code().unwrap_or(u64::MAX);
+        drop(object);
+        let obj1 = object::stats();
+        let frames1 = pmm::stats().free_frames;
+        (
+            code,
+            sched::stats().processes,
+            frames0 as i64 - frames1 as i64,
+            gone && obj1 == obj0,
+        )
+    }
+}
+
+fn svc_order() -> ! {
+    let h = SvcHarness::start("svc_order", b"/SYSTEM/SVC-ORD.TXT");
+    let lines = h.poll_list(sched::ticks() + 1000, |l| {
+        l.len() == 3 && l.iter().all(|x| x.state == "ready")
+    });
+    let get = |n: &str| {
+        lines
+            .iter()
+            .find(|l| l.name == n)
+            .cloned()
+            .unwrap_or_default()
+    };
+    let (a, b, c) = (get("A"), get("B"), get("C"));
+    let all_ready = [&a, &b, &c].iter().all(|l| l.state == "ready");
+    let b_after_a = b.first_start >= a.ready && a.ready.is_some();
+    let c_after_ab = c.first_start >= a.ready.max(b.ready) && b.ready.is_some();
+    let text = SvcHarness::list_text(&lines);
+    let load = h.load_reply.clone();
+    let (mgr_exit, procs, frames_delta, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|svc_order|load={}|list={}|all_ready={}|b_after_a={}|c_after_ab={}|mgr_exit={:#x}|processes_after={}|frames_delta={}|clean={}",
+        BUILD_ID,
+        load,
+        text,
+        u8::from(all_ready),
+        u8::from(b_after_a),
+        u8::from(c_after_ab),
+        mgr_exit,
+        procs,
+        frames_delta,
+        u8::from(clean)
+    );
+    if load != "OK 3" || !all_ready {
+        fail("manifest not loaded or services not ready")
+    }
+    if !b_after_a || !c_after_ab {
+        fail("a dependent started before its dependency was ready")
+    }
+    if mgr_exit != 0 || procs != 0 || frames_delta != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    pass("services start in dependency order, each after its dependencies are ready")
+}
+
+fn svc_timeout() -> ! {
+    let h = SvcHarness::start("svc_timeout", b"/SYSTEM/SVC-TMO.TXT");
+    let lines = h.poll_list(sched::ticks() + 1000, |l| {
+        l.iter().any(|x| x.name == "M" && x.state == "failed")
+    });
+    let get = |n: &str| {
+        lines
+            .iter()
+            .find(|l| l.name == n)
+            .cloned()
+            .unwrap_or_default()
+    };
+    let (m, d) = (get("M"), get("D"));
+    let failed_after_timeout = m.state == "failed" && m.ready.is_none();
+    let dependent_blocked = d.state == "blocked" && d.first_start.is_none();
+    // The manager still answers after the failure.
+    let again = crate::services::request(&h.m.ctl, b"LIST", sched::ticks() + 200).is_ok();
+    let text = SvcHarness::list_text(&lines);
+    let load = h.load_reply.clone();
+    let (mgr_exit, procs, frames_delta, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|svc_timeout|load={}|list={}|failed_after_timeout={}|dependent_blocked={}|list_after={}|mgr_exit={:#x}|processes_after={}|frames_delta={}|clean={}",
+        BUILD_ID,
+        load,
+        text,
+        u8::from(failed_after_timeout),
+        u8::from(dependent_blocked),
+        u8::from(again),
+        mgr_exit,
+        procs,
+        frames_delta,
+        u8::from(clean)
+    );
+    if load != "OK 2" || !failed_after_timeout || !dependent_blocked || !again {
+        fail("timeout handling wrong")
+    }
+    if mgr_exit != 0 || procs != 0 || frames_delta != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    pass("a silent service fails at its timeout, its dependent stays blocked, the manager answers")
+}
+
+fn svc_restart() -> ! {
+    let h = SvcHarness::start("svc_restart", b"/SYSTEM/SVC-RST.TXT");
+    let t0 = sched::ticks();
+    let lines = h.poll_list(sched::ticks() + 1000, |l| {
+        l.iter().any(|x| x.name == "X" && x.state == "given_up")
+    });
+    let x = lines
+        .iter()
+        .find(|l| l.name == "X")
+        .cloned()
+        .unwrap_or_default();
+    // Backoff 10, 20, 40 between the four starts: at least 70 ticks from first to last.
+    let span = x
+        .last_start
+        .unwrap_or(0)
+        .saturating_sub(x.first_start.unwrap_or(u64::MAX));
+    let backoff_ok = span >= 70;
+    let elapsed = sched::ticks() - t0;
+    let again = crate::services::request(&h.m.ctl, b"LIST", sched::ticks() + 200).is_ok();
+    let text = SvcHarness::list_text(&lines);
+    let load = h.load_reply.clone();
+    let (mgr_exit, procs, frames_delta, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|svc_restart|load={}|list={}|state={}|restarts={}|exit={}|span={}|backoff_ok={}|elapsed={}|list_after={}|mgr_exit={:#x}|processes_after={}|frames_delta={}|clean={}",
+        BUILD_ID,
+        load,
+        text,
+        x.state,
+        x.restarts,
+        x.exit.map_or(-1, |e| e as i64),
+        span,
+        u8::from(backoff_ok),
+        elapsed,
+        u8::from(again),
+        mgr_exit,
+        procs,
+        frames_delta,
+        u8::from(clean)
+    );
+    if load != "OK 1" || x.state != "given_up" || x.restarts != 3 || x.exit != Some(1) {
+        fail("restart policy wrong")
+    }
+    if !backoff_ok || !again {
+        fail("backoff too short or the manager stopped answering")
+    }
+    if mgr_exit != 0 || procs != 0 || frames_delta != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    pass("a crashing service is restarted with backoff up to its limit, then given up")
 }
 
 /// A process that exits with 44 file handles open (20 files + 20 duplicates, 4 created and

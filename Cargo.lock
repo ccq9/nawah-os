@@ -60,6 +60,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "svc"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
+name = "svcmgr"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "waiter"
 version = "0.1.0"
 dependencies = [

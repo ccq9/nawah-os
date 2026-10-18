@@ -813,6 +813,26 @@ fn join_loop(tid: u32) -> Option<u64> {
     }
 }
 
+/// Polls `ready` with the cooperative wait of `join`/`wait_process` (yield to a ready thread,
+/// else idle until an interrupt) until it answers true or the clock reaches `deadline`
+/// (ticks); usable from the boot thread, which cannot block. Returns whether `ready` held.
+pub fn poll_until(deadline: u64, mut ready: impl FnMut() -> bool) -> bool {
+    set_waiting(true);
+    let held = loop {
+        if ready() {
+            break true;
+        }
+        if ticks() >= deadline {
+            break false;
+        }
+        if !yield_now() {
+            context::idle_wait();
+        }
+    };
+    set_waiting(false);
+    held
+}
+
 /// Waits until process `pid` has exited (its last thread) and returns its exit code.
 pub fn wait_process(pid: u32) -> Option<u64> {
     set_waiting(true);

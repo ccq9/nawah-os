@@ -75,7 +75,7 @@
     "REQ-M1-002"
    ],
    "layer": "guest",
-   "oracle": "serial: boot|start, boot|ebs|ok, kernel|post_ebs with map_key; QEMU exit 33",
+   "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1013,7 +1013,7 @@
     "REQ-M4-002"
    ],
    "layer": "guest",
-   "oracle": "svcmgr starts A, B(after A), C(after A,B) from the manifest: the recorded start order is topological and each dependent starts only after its dependency reported READY",
+   "oracle": "the test kernel starts /SYSTEM/SVCMGR.ELF with a control channel and loads /SYSTEM/SVC-ORD.TXT (A; B after A; C after A,B; all /SYSTEM/SVC.ELF with arg `ready`): LOAD answers `OK 3`; LIST polling ends with all three `ready`; B's first start tick >= A's ready tick and C's >= max(A, B ready); closing the control channel makes the manager exit 0 and the services exit on their closed channels: no process, object or frame remains; exactly 4 spawn lines (manager + 3 services); fsck/fat32.py check pass; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1024,7 +1024,7 @@
     "REQ-M4-002"
    ],
    "layer": "guest",
-   "oracle": "a service that never reports READY within its manifest timeout is marked failed, its dependents are not started, and svcmgr keeps serving list requests",
+   "oracle": "manifest /SYSTEM/SVC-TMO.TXT: M (arg `mute`, never READY, timeout 50 ticks) and D depending on M: LOAD answers `OK 2`; M becomes `failed` with no ready tick, D stays `blocked` and is never started (2 spawn lines: manager + M), the manager still answers LIST afterwards; after the control channel closes everything exits and nothing remains; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1035,7 +1035,7 @@
     "REQ-M4-002"
    ],
    "layer": "guest",
-   "oracle": "a service that exits with failure is restarted at most max_restarts times with exponential backoff, then marked given_up; the machine stays responsive (ticks advance, list answers)",
+   "oracle": "manifest /SYSTEM/SVC-RST.TXT: X (arg `crash`, exits 1 at once, on-failure, max 3 restarts, backoff 10): LOAD answers `OK 1`; X ends `given_up` with restarts=3 and exit=1 after 4 starts (5 spawn lines with the manager) spanning >= 70 ticks (backoff 10+20+40); the manager still answers LIST; the clock advanced; nothing remains after the control channel closes; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "NOT_RUN",
    "evidence_refs": []
