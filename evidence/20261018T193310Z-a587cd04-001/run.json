@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T193310Z-a587cd04-001",
+ "started_at": "2026-10-18T19:33:10+00:00",
+ "finished_at": "2026-10-18T19:33:10+00:00",
+ "source_revision": "a587cd04d44dbad911e335a418d346a4190d6c7f",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M5-SCREEN-TOOL",
+ "commands": [
+  "python3 -I tests/test_screen_tool.py"
+ ],
+ "exit_code": 0
+}
