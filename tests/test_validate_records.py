@@ -91,7 +91,10 @@ class ValidateRecords(unittest.TestCase):
         ev = make_evidence(r, "TST-M0-001", corrupt_digest=True)
         r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]
         write_all(r)  # rewrite records; evidence dir stays
-        self.assertEqual(project.validate_records(verbose=False), 50)
+        # Policy (ADR-0001 §evidence, project.py): a verdict whose inputs no longer match is
+        # suspended (warning, exit 0) by default and an error under --strict (gates, CI).
+        self.assertEqual(project.validate_records(verbose=False), 0)
+        self.assertEqual(project.validate_records(verbose=False, strict=True), 50)
 
     def test_valid_evidence_accepted_and_done_allowed(self):
         r = base_records(); write_all(r)
@@ -107,7 +110,8 @@ class ValidateRecords(unittest.TestCase):
         r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]
         write_all(r)
         (TMP / "docs" / "ENVIRONMENT.md").write_text("changed")
-        self.assertEqual(project.validate_records(verbose=False), 50)
+        self.assertEqual(project.validate_records(verbose=False), 0)
+        self.assertEqual(project.validate_records(verbose=False, strict=True), 50)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T030935Z-e8506c09-002"
+    "evidence/20261018T032135Z-1e20e326-002"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T030935Z-e8506c09-001"
+    "evidence/20261018T032135Z-1e20e326-001"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T030847Z-e8506c09-001",
-    "evidence/20261018T030849Z-e8506c09-001"
+    "evidence/20261018T031547Z-1e20e326-001",
+    "evidence/20261018T031550Z-1e20e326-001"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T030935Z-e8506c09-002"
+    "evidence/20261018T032135Z-1e20e326-002"
    ],
    "blocker": null
   },
@@ -354,10 +354,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T030853Z-e8506c09-001",
-    "evidence/20261018T030854Z-e8506c09-001",
-    "evidence/20261018T030857Z-e8506c09-001",
-    "evidence/20261018T030936Z-e8506c09-001"
+    "evidence/20261018T031553Z-1e20e326-001",
+    "evidence/20261018T031555Z-1e20e326-001",
+    "evidence/20261018T031558Z-1e20e326-001",
+    "evidence/20261018T032136Z-1e20e326-001"
    ],
    "blocker": null
   },
@@ -427,17 +427,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261018T030900Z-e8506c09-001",
-    "evidence/20261018T030903Z-e8506c09-001",
-    "evidence/20261018T030907Z-e8506c09-001",
-    "evidence/20261018T030910Z-e8506c09-001",
-    "evidence/20261018T030913Z-e8506c09-001",
-    "evidence/20261018T030916Z-e8506c09-001",
-    "evidence/20261018T030919Z-e8506c09-001",
-    "evidence/20261018T030922Z-e8506c09-001",
-    "evidence/20261018T030925Z-e8506c09-001",
-    "evidence/20261018T030928Z-e8506c09-001",
-    "evidence/20261018T030932Z-e8506c09-001"
+    "evidence/20261018T031602Z-1e20e326-001",
+    "evidence/20261018T031605Z-1e20e326-001",
+    "evidence/20261018T031608Z-1e20e326-001",
+    "evidence/20261018T031611Z-1e20e326-001",
+    "evidence/20261018T031615Z-1e20e326-001",
+    "evidence/20261018T031618Z-1e20e326-001",
+    "evidence/20261018T031621Z-1e20e326-001",
+    "evidence/20261018T031624Z-1e20e326-001",
+    "evidence/20261018T031627Z-1e20e326-001",
+    "evidence/20261018T031630Z-1e20e326-001",
+    "evidence/20261018T031633Z-1e20e326-001"
    ],
    "blocker": null
   },
@@ -456,12 +456,12 @@
     "Intel SDM Vol.3A (S26)"
    ],
    "files": [
+    "docs/adr/0004-memory.md",
+    "kernel/src/kmain.rs",
+    "kernel/src/ktest.rs",
     "kernel/src/mm/mod.rs",
     "kernel/src/mm/pmm.rs",
-    "kernel/src/ktest.rs",
-    "kernel/src/kmain.rs",
-    "platform/pc-qemu/target.json",
-    "docs/adr/0004-memory.md"
+    "platform/pc-qemu/target.json"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
@@ -481,12 +481,17 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M2"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261018T031636Z-1e20e326-001",
+    "evidence/20261018T031639Z-1e20e326-001",
+    "evidence/20261018T031642Z-1e20e326-001"
+   ],
    "blocker": null
   },
   {
