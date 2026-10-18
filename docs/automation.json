@@ -2,13 +2,14 @@
  "schema_version": "1.0.0",
  "mode": "interactive",
  "verification_runner": {
-  "mode": "interactive",
-  "tool": "tools/project.py (build/boot/test/validate-records)",
+  "mode": "durable",
+  "tool": "GitHub Actions .github/workflows/verify.yml (ubuntu-24.04, no AI)",
   "deterministic": true,
   "evidence": [
-   "evidence/20261017T210133Z-c049336e-001",
-   "evidence/20261017T210133Z-c049336e-002"
-  ]
+   "evidence/ci/39090532071/jobs.json",
+   "evidence/ci/39090532071/run.json"
+  ],
+  "log_access": "step conclusions via API; raw log download blocked by this environment's proxy (blob storage host)"
  },
  "development_worker": {
   "mode": "interactive",
@@ -20,12 +21,13 @@
  "worker_version": "claude-fable-5-1",
  "supervisor": null,
  "persistent_store": {
-  "type": "local-git",
-  "path": "/home/claude/nawah-os",
-  "durable_across_sessions": false,
-  "remote": null
+  "type": "git",
+  "local_path": "/home/claude/nawah-os",
+  "remote": "https://github.com/ccq9/nawah-os (private)",
+  "durable_across_sessions": true,
+  "owner": "ccq9"
  },
- "persistence_verified_by": null,
+ "persistence_verified_by": "evidence/ci/39090532071/jobs.json (sentinel state/durability-sentinel.json read by fresh runner, step success)",
  "lease_policy": {
   "file": "state/lease.json",
   "ttl_s": 900,
@@ -40,7 +42,8 @@
   "host"
  ],
  "permission_refs": [
-  "user message 2026-10-17: MODE: EXECUTE; create repository authorized (remote creation not possible here)"
+  "user message 2026-10-17: MODE: EXECUTE; create repository authorized (remote creation not possible here)",
+  "user message 2026-10-18: remote repo https://github.com/ccq9/nawah-os created by user; add_repo push access granted"
  ],
  "retry_policy": {
   "transient": {

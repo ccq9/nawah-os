@@ -258,34 +258,39 @@
     "WP-03"
    ],
    "inputs": [
-    "remote private repository URL from user"
+    "remote private repository URL from user (received 2026-10-18)"
    ],
    "files": [
     "docs/automation.json",
-    "docs/ENVIRONMENT.md"
+    ".github/workflows/verify.yml",
+    "state/durability-sentinel.json",
+    "docs/history-rebase-map.json"
    ],
    "contract_refs": [],
    "actions": [
-    "attach remote",
+    "rebase onto remote root",
     "push",
-    "sentinel durability test",
-    "update automation.json"
+    "CI verification runner",
+    "durability sentinel read by fresh runner"
    ],
    "acceptance": "persistence_verified_by يشير إلى دليل اختبار الشاهد",
-   "test_ids": [
-    "TST-M0-001"
-   ],
+   "test_ids": [],
    "commands": [
     "git push"
    ],
-   "status": "blocked",
+   "status": "done",
    "status_history": [
     "planned",
     "active",
-    "blocked"
+    "blocked",
+    "planned",
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
-   "blocker": "لا مستودع بعيد: رمز GitHub في البيئة غير صالح ولا يوجد مستودع من المستخدم (DEC-001)"
+   "evidence_refs": [
+    "evidence/ci/39090532071/jobs.json"
+   ],
+   "blocker": null
   }
  ]
 }
