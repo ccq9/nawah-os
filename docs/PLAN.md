@@ -60,8 +60,8 @@
 
 | الحزمة | المحتوى | الاختبار الحاكم | المصادر |
 |---|---|---|---|
-| WP-23 ABI v1.4 | `process_spawn` من الحجم بمقابض أولية وكائن عملية، `object_wait_many` بمهلة، `clock_ticks`، مقبض الإقلاع في rdi | TST-M4-SPAWN-VOLUME، WAIT-TIMEOUT، CHILD-EXIT | عقود M3، SysV ABI (S37) |
-| WP-24 svcmgr | البيان، الترتيب الطوبولوجي، مهلة الجاهزية، إعادة تشغيل بحد وتراجع، قناة تحكم | TST-M4-SVC-ORDER، SVC-TIMEOUT، SVC-RESTART | §8.7 |
+| WP-23 ABI v1.4 | `process_spawn` من الحجم بمقابض أولية وكائن عملية، `object_wait_many` بمهلة (حتى 64 مدخلًا)، `clock_ticks`، `process_status`، مقبض الإقلاع في rdi؛ التطبيقات على الصورة تحت `/SYSTEM` — **أُغلق 2026-10-18** (CI run 39130028974؛ 7 جولات كشفت: تخطيط RELRO في ربط التطبيقات، مدى صفري عند حافة المستخدم، ترتيب فحص النوع/الحقوق) | TST-M4-SPAWN-VOLUME، WAIT-TIMEOUT، CHILD-EXIT | عقود M3، SysV ABI (S37) |
+| WP-24 svcmgr | البيان، الترتيب الطوبولوجي، مهلة الجاهزية، إعادة تشغيل بحد وتراجع، قناة تحكم؛ النواة تبدؤه أول عملية (`kernel|svcmgr|…|reply=OK 0`) — **أُغلق 2026-10-18** (CI run 39130028974) | TST-M4-SVC-ORDER، SVC-TIMEOUT، SVC-RESTART، TST-M1-BOOT | §8.7 |
 | WP-25 المصادقة | SHA-256/HMAC/PBKDF2 بمتجهات (FIPS 180-4، RFC 4231، RFC 6070)، كائنا Token/Authority، خدمة auth، حد محاولات، قفل/خروج | TST-M4-HASH-VECTORS، LOGIN، SESSION-LOCK، AUTHZ-DENIED | FIPS 180-4، RFC 2104، RFC 8018، NIST SP 800-132 |
 | WP-26 التكوين | مخازن device/user/session/policy بإصدارات، CAS، request_id، إشعارات، أسبقية، حفظ آمن | TST-M4-CONFIG-PERSIST، CAS، RETRY، NOTIFY، POLICY-PRECEDENCE | §12–13 |
 | WP-27 التعريفات | virtio-net، PS/2 (i8042)، حدود موارد، نموذج ثقة DMA | TST-M4-NET-LINK، NET-LIMITS، KBD-SCANCODES | Virtio 1.3 §5.1 (S42)، i8042/PS2 |
