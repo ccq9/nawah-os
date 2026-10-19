@@ -1,0 +1,15 @@
+$ cargo test --offline --release -p nawah-crypto --target x86_64-unknown-linux-gnu
+
+running 4 tests
+test tests::ct_eq_lengths ... ok
+test tests::incremental_matches_one_shot ... ok
+test tests::known_answers ... ok
+test tests::pbkdf2_80000_iterations ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
