@@ -1,0 +1,32 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: failed to load Boot0001 "UEFI Non-Block Boot Device" from PciRoot(0x0)/Pci(0x2,0x0): Not Found
+BdsDxe: loading Boot0002 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0002 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+OSX|41224c207633|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs
+OSX|41224c207633|boot|acpi|rsdp=0x1f77e014
+OSX|41224c207633|boot|gop|present=1|w=1280|h=800|stride=1280|format=1|base=0x80000000
+OSX|41224c207633|boot|memmap|bytes=6048|desc_size=48|key=0xaa7
+OSX|41224c207633|boot|ebs|ok=1|attempts=1
+OSX|41224c207633|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel
+OSX|41224c207633|kernel|post_ebs|map_key=0xaa7|descriptors=126|conventional_pages=116801|ebs_attempts=1
+OSX|41224c207633|kernel|pmm|managed_frames=116643|free_frames=116639|allocated_frames=4|bitmap_frames=4|selfcheck=1
+OSX|41224c207633|kernel|vmm|cr3=0x104000|image=0x1d720000+0xfb000|wp=1|nxe=1|text_rx=1|data_rw_nx=1|sections_rx=1|sections_ro=3|sections_rw=1|ram_mib=511|reclaimed_frames=12253|direct_ok=1
+OSX|41224c207633|kernel|stack|guarded=1|base=0xffff900000001000|guard=0xffff900000000000|ist1_guard=0xffff900000020000
+OSX|41224c207633|kernel|mm|heap_ok=1|scratch_ok=1|as_ok=1|as_code=ok|heap_live_blocks=0|heap_live_bytes=0|heap_pages=0|heap_large_frames=0|frames_delta=0|selfcheck=1
+OSX|41224c207633|kernel|irq|pic_masks=0xff,0xff|lapic_mode=XApic|lapic_id=0|lapic_version=0x50014|lapic_hz=1004890700|svr=0x1ff|cpus=4|ioapics=1|ioapic_entries=24|ioapic_masked=24|ioapic_version=0x20|overrides=5|pcat_compat=1|timer_hz=1000
+OSX|41224c207633|kernel|timer|window_ms=50|pit_ok=1|ticks=50|total=50|unexpected=0|last_unexpected=0x0|spurious=0|max_depth=1|selfcheck=1
+OSX|41224c207633|kernel|sched|boot_tid=0|probe_join=0x5eee|switches=2|preemptions=0|ticks=1|threads=1|processes=0|quantum_ticks=10|frames_delta=0|code=ok|selfcheck=1
+OSX|41224c207633|kernel|object|channel_ok=1|vmo_size=8192|peer_closed=1|live_channels=0|live_endpoints=0|live_vmos=0|live_handles=0|frames_delta=0|selfcheck=1
+OSX|41224c207633|kernel|pci|ecam=0xe0000000|segment=0|functions=7|list=00:00.0=8086:29c0/6.0,00:01.0=1234:1111/3.0,00:02.0=1af4:1042/1.0,00:03.0=1af4:1041/2.0,00:1f.0=8086:2918/6.1,00:1f.2=8086:2922/1.6,00:1f.3=8086:2930/c.5,
+OSX|41224c207633|kernel|blk|device=0x1042|bdf=0x200|capacity_sectors=131072|queue_size=16|features=0x100000200|flush=1|dma_frames=18|mmio=0xffffa80000029000|mmio_shared=1|mmio_ranges=42|mmio_bytes=184320|read_ok=1|flush_ok=1|code=ok|selfcheck=1
+OSX|41224c207633|kernel|net|device=0x1041|bdf=0x300|mac=52:54:00:12:34:56|link=1|features=0x100010020|queue_size=16|dma_frames=18|gateway=52:55:0a:00:02:02|arp_ticks=0|rx_frames=1|tx_frames=1|rx_bad=0|tx_in_flight=0|mmio=0xffffa8000002d000|code=ok|selfcheck=1
+OSX|41224c207633|kernel|display|present=1|w=1280|h=800|stride=1280|format=1|bytes=4096000|base=0x80000000|drawn=1031168|corner=32|cell=16|code=ok|selfcheck=1
+OSX|41224c207633|kernel|kbd|drained=0|ring=64|pending=0|overflow=0|mouse=1|mouse_ring=192|code=ok|selfcheck=1
+OSX|41224c207633|kernel|diag|port=0x2f8|present=1|ring=256|code=ok|selfcheck=1
+OSX|41224c207633|kernel|fat32|label=NAWAHLAB|sectors_per_cluster=1|reserved=32|fats=2|fat_sectors=1024|clusters=128992|root_cluster=2|free_clusters=125873|hello_size=24|hello_ok=1|code=ok|selfcheck=1
+OSX|41224c207633|kernel|smp|madt_cpus=4|online=4|expected=4|bsp_apic=0|trampoline=0x8000|mode=XApic|skipped=0|failed=0|id_mismatch=0|online_mask=0xf|probes=1:0x101,2:0x202,3:0x303,|ap_ticks=21,12,4,|tlb_sent=3|tlb_served=9|resched_ipis=3|frames_delta=0|code=ok|smp_selfcheck=1
+OSX|41224c207633|kernel|user|lstar=0x1d7210f5|smep=0|smap=0|trap_stack_guard=0xffff900000040000|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1
+OSX|41224c207633|user|trace|len=14|text=hello from elf
+OSX|41224c207633|kernel|elf|app=hello|size=13472|segments=3|pages=19|exit=0x7|frames_delta=0|code=ok|selfcheck=1
+OSX|41224c207633|ktest|start|name=handle_table
+OSX|41224c207633|ktest|handle_table|h1=0x10000|h2=0x10001|h3=0x20000|dup=0x10002|removed=1|stale_refused=1|reuse_ok=1|dup_rights_ok=1|escalation_refused=1|live_ok=1|added=1021|limit_ok=1|handles_after=0|channels_after=0|vmos_after=0
+OSX|41224c207633|ktest|pass|handle table: generations, slot reuse, rights subsets, limit, counts
