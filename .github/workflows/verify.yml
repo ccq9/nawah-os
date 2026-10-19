@@ -34,6 +34,8 @@ jobs:
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
       - name: validate-records (committed state)
         run: python3 tools/project.py validate-records
+      - name: the head commit names only an active or done work item (DEC-004)
+        run: python3 tools/project.py check-commit
       - name: Rust hygiene (fmt, clippy on both feature sets, unsafe policy)
         env:
           NAWAH_BUILD_ID: ci

@@ -315,10 +315,12 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
         for d in wi["depends_on"]:
             if by_id["work-items"].get(d, {}).get("status") == "superseded":
                 pb.err(w, f"depends on superseded {d}; depend on {by_id['work-items'][d].get('superseded_by')} instead")
-        if wi["status"] == "active":
+        # §2.1: active only when every dependency is done, and done likewise (arena review ع2:
+        # a done item with an active dependency passed).
+        if wi["status"] in ("active", "done"):
             for d in wi["depends_on"]:
                 if by_id["work-items"].get(d, {}).get("status") != "done":
-                    pb.err(w, f"active while dependency {d} is not done")
+                    pb.err(w, f"{wi['status']} while dependency {d} is not done")
     detect_cycles(idset["work-items"], {w["id"]: w["depends_on"] for w in recs.get("work-items", [])}, "work-items", pb)
 
     for dp in recs.get("decisions-pending", []):
@@ -1041,12 +1043,12 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
 
 HOST_SUITES = {
     "M0": [
-        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 10 cases incl. 6 required rejections",
+        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 17 cases incl. 6 required rejections and the dependency rule for active and done items",
          "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
         {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist",
          "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md"], "input_globs": []},
         {"id": "TST-M0-003", "command": ["python3", "-I", "tests/test_ci_workflows.py"],
-         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged (9 cases, OK)",
+         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004) (11 cases, OK)",
          "inputs": ["tests/test_ci_workflows.py", "tools/project.py"], "input_globs": [".github/workflows/*.yml"]},
     ],
 }
@@ -1284,6 +1286,32 @@ def cmd_checkpoint(note=None) -> int:
     return E_OK
 
 
+# ----------------------------------------------------------------------------- commit discipline
+WP_IN_SUBJECT = re.compile(r"^(?:WIP\s+)?(WP-\d+)\b")
+
+
+def cmd_check_commit(rev: str = "HEAD") -> int:
+    """DEC-004 (2026-10-19): a commit whose subject names a work item lands only while that item
+    is active or done in the records at that commit (OS-EXEC-AR §2.1) — four WP-43 commits reached
+    main while WP-43 was planned. CI checks the head commit only (its checkout has depth 1): a
+    push of several commits is judged by its last one, a declared limit."""
+    r = subprocess.run(["git", "log", "-1", "--format=%s", rev], cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"check-commit: {r.stderr.strip()}"); return E_INTERNAL
+    subject = r.stdout.strip()
+    m = WP_IN_SUBJECT.match(subject)
+    if not m:
+        print("check-commit: the subject names no work item"); return E_OK
+    wid = m.group(1)
+    items = {w["id"]: w for w in load_json(DOCS / "work-items.json")["records"]}
+    if wid not in items:
+        print(f"check-commit: {wid} is not a work item"); return E_VALIDATION
+    status = items[wid]["status"]
+    if status not in ("active", "done"):
+        print(f"check-commit: {wid} is {status}; its work may land only while it is active (§2.1, DEC-004)"); return E_VALIDATION
+    print(f"check-commit: {wid} is {status}"); return E_OK
+
+
 # ----------------------------------------------------------------------------- CI evidence import
 def cmd_import_ci_evidence(run_id: str) -> int:
     """Fetch the ci-evidence/<run> branch pushed by the verification runner and adopt its run
@@ -1475,6 +1503,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("validate-records"); s.add_argument("--strict", action="store_true"); sub.add_parser("reverify-host")
     s = sub.add_parser("import-ci-evidence"); s.add_argument("--run", required=True)
+    s = sub.add_parser("check-commit", help="the head commit names only an active or done work item (DEC-004)"); s.add_argument("--rev", default="HEAD")
     s = sub.add_parser("status"); s.add_argument("--json", action="store_true")
     for n in ("build", "boot"):
         s = sub.add_parser(n); s.add_argument("--target", required=True)
@@ -1494,6 +1523,7 @@ def main(argv=None):
     if a.cmd == "checkpoint": return cmd_checkpoint(a.note)
     if a.cmd == "reverify-host": return cmd_reverify_host()
     if a.cmd == "import-ci-evidence": return cmd_import_ci_evidence(a.run)
+    if a.cmd == "check-commit": return cmd_check_commit(a.rev)
     if a.cmd == "preflight": return cmd_preflight(a.suite, a.only)
     if a.cmd == "hygiene": return cmd_hygiene()
     print(f"{a.cmd}: not implemented yet in this work package (planned: M1); see docs/work-items.json")

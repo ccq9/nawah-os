@@ -1370,7 +1370,9 @@
    "test_ids": [
     "TST-M5-INPUT-ROUTE",
     "TST-M5-MOUSE",
-    "TST-M5-LAB-TOOL"
+    "TST-M5-LAB-TOOL",
+    "TST-M5-INPUT-NAME-RESERVED",
+    "TST-M5-FOCUS-AFTER-RESTART"
    ],
    "implementation_status": "partial",
    "evidence_refs": [
@@ -1405,7 +1407,8 @@
     "TST-M5-WINDOW-STATES",
     "TST-M5-APP-HANG",
     "TST-M5-SCREEN-TOOL",
-    "TST-M5-APP-OVERSIZE"
+    "TST-M5-APP-OVERSIZE",
+    "TST-M5-CLIENT-LIMITS"
    ],
    "implementation_status": "partial",
    "evidence_refs": [
@@ -1476,7 +1479,8 @@
     "TST-M5-KEYBOARD-NAV",
     "TST-M5-A11Y-TREE",
     "TST-M5-UI-UNIT",
-    "TST-M5-UI-TOOL"
+    "TST-M5-UI-TOOL",
+    "TST-M5-NARRATOR-AUTHORITY"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
@@ -1512,7 +1516,14 @@
     "TST-M5-LOCK-SURVIVES",
     "TST-M5-AUTH-INPUT-ISOLATED",
     "TST-M5-LOGIN-SCREEN",
-    "TST-M5-LOCK-DISPLAY-DOWN"
+    "TST-M5-LOCK-DISPLAY-DOWN",
+    "TST-M5-LOCK-AUTH-HANG",
+    "TST-M5-UNLOCK-AUTH-HANG",
+    "TST-M5-SESSION-HANG",
+    "TST-M5-NARRATOR-AUTHORITY",
+    "TST-M5-LIST-HASH-HELD",
+    "TST-M5-SESSION-LOSS",
+    "TST-M5-FILE-AUTHORITY"
    ],
    "implementation_status": "partial",
    "evidence_refs": [
@@ -1647,14 +1658,17 @@
     "انتظار الجلسة لردّ compositor معلَّق يجمّدها",
     "القفل يُرفع أو الشاشة تكشف التطبيقات أثناء التعليق"
    ],
-   "acceptance": "process_kill + kill_edges + svc_watchdog + lock_hang + session_deadline (each named failure case has its test: a hung service — SVC-WATCHDOG; the session waiting on a hung component — SESSION-DEADLINE; the lock during a hang — LOCK-HANG; the lock with the compositor already down — LOCK-DISPLAY-DOWN)",
+   "acceptance": "process_kill + kill_edges + svc_watchdog + lock_hang + session_deadline + lock_display_down. Covered: a hung service (SVC-WATCHDOG); a hung display or input at session start (SESSION-DEADLINE); compositor and input hung after the lock, keys and unlock (LOCK-HANG, no screendump); the compositor already down when locking (LOCK-DISPLAY-DOWN). Not covered yet: a request in flight while locked and the screen while hung (TST-M5-SESSION-HANG, WP-40); auth hung: the session waits on it with no deadline at sign-in, unlock, lock and sign-out (session.md §8; TST-M5-LOCK-AUTH-HANG and TST-M5-UNLOCK-AUTH-HANG, WP-40) — arena review ع4, DEC-004",
    "test_ids": [
     "TST-M5-PROCESS-KILL",
     "TST-M5-KILL-EDGES",
     "TST-M5-SVC-WATCHDOG",
     "TST-M5-LOCK-HANG",
     "TST-M5-SESSION-DEADLINE",
-    "TST-M5-LOCK-DISPLAY-DOWN"
+    "TST-M5-LOCK-DISPLAY-DOWN",
+    "TST-M5-LOCK-AUTH-HANG",
+    "TST-M5-UNLOCK-AUTH-HANG",
+    "TST-M5-SESSION-HANG"
    ],
    "implementation_status": "partial",
    "evidence_refs": [

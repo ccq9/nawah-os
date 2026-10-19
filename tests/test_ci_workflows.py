@@ -197,6 +197,39 @@ class CiEvidenceImport(unittest.TestCase):
         self.assertEqual(self.staged(), ["staged.txt"])
 
 
+class CheckCommit(unittest.TestCase):
+    """DEC-004: a commit whose subject names a work item lands only while that item is active or
+    done (OS-EXEC-AR §2.1). The breach it guards against: four WP-43 commits reached main while
+    WP-43 was planned (21a979f9, f74a43c9, 1abd1f94, 41224c20). CI runs it on the head commit."""
+
+    def setUp(self):
+        self.root = pathlib.Path(tempfile.mkdtemp(prefix="nawah-commit-"))
+        self.addCleanup(shutil.rmtree, self.root, True)
+        self.env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(self.root), "GIT_CONFIG_NOSYSTEM": "1",
+                    "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+                    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid", "NAWAH_ROOT": str(self.root)}
+        subprocess.run(["git", "init", "-q"], cwd=self.root, env=self.env, check=True)
+        (self.root / "docs").mkdir()
+        items = [{"id": "WP-01", "status": "active"}, {"id": "WP-02", "status": "planned"}, {"id": "WP-03", "status": "done"}]
+        (self.root / "docs" / "work-items.json").write_text(json.dumps({"schema_version": "1.0.0", "records": items}))
+
+    def check(self, subject):
+        subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", subject], cwd=self.root, env=self.env, check=True)
+        return subprocess.run([sys.executable, "-I", str(ROOT / "tools" / "project.py"), "check-commit"],
+                              env=self.env, capture_output=True, text=True)
+
+    def test_a_commit_for_a_planned_item_is_rejected(self):
+        for subject, rc in (("WP-01: work", 0), ("WIP WP-01 (1/n): work", 0), ("WP-03 records", 0),
+                            ("records: CI run imported", 0), ("checkpoint: x", 0),
+                            ("WP-02 M6: early work", 50), ("WIP WP-02 (1/n): early", 50), ("WP-99: unknown", 50)):
+            r = self.check(subject)
+            self.assertEqual(r.returncode, rc, subject + "\n" + r.stdout + r.stderr)
+
+    def test_ci_runs_it(self):
+        steps = [s.get("run", "") for j in load("verify.yml")["jobs"].values() for s in j["steps"]]
+        self.assertTrue(any("project.py check-commit" in s for s in steps))
+
+
 class MutationHarness(unittest.TestCase):
     def test_mutants_build_every_app_the_kernel_embeds_and_the_build_compiles(self):
         # Review 2026-10-19 (M8): the harness kept its own app list; WP-40 added exiter to the
