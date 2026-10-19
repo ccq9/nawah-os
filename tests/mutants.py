@@ -277,9 +277,11 @@ MUTANTS = [
      "                } else if self.services[i].deps & !ready == 0 {\n                    self.start(i, now);",
      "                } else {\n                    self.start(i, now);",
      ["TST-M4-SVC-ORDER"], "dependents start before their dependencies are ready"),
+    # Re-anchored on the watchdog's deeper nesting and the forced kill of a service hung before
+    # READY (WP-40, services.md v1.8): the whole timeout arm is dropped but the disarm.
     ("M64", "user/apps/svcmgr/src/main.rs",
-     "                State::Starting => {\n                    self.services[i].state = State::Failed;\n                    self.services[i].deadline = None;\n                    self.close_chan(i);",
-     "                State::Starting => {\n                    self.services[i].deadline = None;",
+     "                        State::Starting => {\n                            self.services[i].state = State::Failed;\n                            self.services[i].deadline = None;\n                            self.close_chan(i);\n                            // A cooperative service exits on the close; one hung before READY\n                            // never reads its channel, so it is forced after the grace (v1.8).\n                            if self.services[i].process.is_some() {\n                                self.services[i].kill_at = Some(now.saturating_add(STOP_GRACE));\n                            }\n                        }",
+     "                        State::Starting => {\n                            self.services[i].deadline = None;\n                        }",
      ["TST-M4-SVC-TIMEOUT"], "a readiness timeout is ignored"),
     ("M65", "user/apps/svcmgr/src/main.rs",
      "        if s.restart_on_failure && s.restarts < s.max_restarts {",
