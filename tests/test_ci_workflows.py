@@ -57,6 +57,18 @@ class Workflows(unittest.TestCase):
         self.assertIs(group.get("cancel-in-progress"), True,
                       "a newer push cancels the run it supersedes")
 
+    def test_every_action_is_pinned_to_a_commit(self):
+        # A tag can be moved to other code; a commit cannot (the audit of 2026-10-19). The
+        # comment after the pin names the release it was taken from.
+        for f in sorted(WORKFLOWS.glob("*.yml")):
+            for job, body in load(f.name)["jobs"].items():
+                for step in body["steps"]:
+                    uses = step.get("uses")
+                    if uses is None:
+                        continue
+                    ref = uses.rpartition("@")[2]
+                    self.assertRegex(ref, r"^[0-9a-f]{40}$", f"{f.name}: {job} uses {uses}")
+
     def test_mutants_never_on_push(self):
         on = load("mutants.yml")["on"]
         self.assertNotIn("push", on)

@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
       - name: Toolchain
         run: |
           sudo apt-get update -qq
@@ -44,7 +44,7 @@ jobs:
           cat build/mutants-m3-report.json || true
           cat build/mutants-m4-report.json || true
       # A convenience copy, as in verify.yml: the ci-evidence branch below is the record.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         if: always()
         continue-on-error: true
         with:
