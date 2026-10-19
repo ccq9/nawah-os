@@ -5174,8 +5174,10 @@ fn alt_tab_cycle() -> ! {
     if quick != wins[0] {
         fail("a single Alt+Tab did not go back to the window used just before")
     }
+    // Everything the test holds goes before the balance: a test function never returns, so
+    // a binding left out stays allocated and its slab page shows as a lost frame.
     drop((
-        ev, vmos, sids, wins, visits, focus0, last, list, want, quick, admin, clients,
+        ev, vmos, sids, wins, minimize, visits, focus0, last, list, want, quick, admin, clients,
     ));
     display_finish(
         name,
