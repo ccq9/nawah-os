@@ -5084,7 +5084,10 @@ fn screen() -> ! {
 /// top. Before v1.6 each Tab worked from the stacking its predecessor had just changed (5, 6,
 /// 5) and the minimised window was never reached. (2) Two Tabs end the walk on the oldest
 /// window: restored, on top. (3) The lab's single Alt+Tab (Alt released between presses) goes
-/// back to the window used before that walk, the newest.
+/// back to the window used before that walk, the newest. (4) A window closed and one opened
+/// (taking the focus and the closed one's slot) during a walk: the new window stays on top and
+/// the walk's last window goes just under it. (5) The input service restarted with Alt held
+/// ends the walk as a release does: the window it restored and passed over is minimised again.
 fn alt_tab_cycle() -> ! {
     const ALT: u8 = 0x38;
     const TAB: u8 = 0x0F;
@@ -5157,6 +5160,41 @@ fn alt_tab_cycle() -> ! {
                 sched::poll_until(t, || false);
             }
         };
+    // The stacking in LIST, top first, and the minimised windows, polled until it is `want`
+    // (at most `wait` ticks).
+    let stack = |want: &str, wait: u64, ev: &mut Vec<String>| -> String {
+        let until = sched::ticks() + wait;
+        loop {
+            let mut list = parse_windows(&drequest(c, b"LIST", Vec::new(), ev));
+            list.sort_by_key(|w| w.z);
+            let ids: Vec<String> = list.iter().map(|w| alloc::format!("{}", w.id)).collect();
+            let min: Vec<String> = list
+                .iter()
+                .filter(|w| w.minimized)
+                .map(|w| alloc::format!("{}", w.id))
+                .collect();
+            let got = alloc::format!("{}/{}", ids.join(","), min.join(","));
+            if got == want || sched::ticks() >= until {
+                return got;
+            }
+            let t = sched::ticks() + 10;
+            sched::poll_until(t, || false);
+        }
+    };
+    // The compositor's count of key events, polled until it reaches `n`: a release has been
+    // handled before the state after it is read.
+    let keys_reach = |n: i64, wait: u64| -> i64 {
+        let until = sched::ticks() + wait;
+        loop {
+            let k = display_keys(c);
+            if k >= n || sched::ticks() >= until {
+                return k;
+            }
+            let t = sched::ticks() + 10;
+            sched::poll_until(t, || false);
+        }
+    };
+    let keys0 = display_keys(c);
     let focus0 = focus_of(&mut ev);
     // 1. Alt held across three Tabs: the whole loop, the minimised window restored while it is
     //    reached; at Alt's release the walk is undone but for its last window (the start), so
@@ -5174,6 +5212,7 @@ fn alt_tab_cycle() -> ! {
         }
     }
     crate::net::inject_keyboard(&[ALT | RELEASE]);
+    keys_reach(keys0 + 8, 2_000);
     let (oldest_min, _) = window(&wins[0], &mut ev, &|m, _| m);
     let (_, newest_z) = window(&wins[2], &mut ev, &|_, z| z == 0);
     let rewound = oldest_min && newest_z == 0;
@@ -5187,6 +5226,7 @@ fn alt_tab_cycle() -> ! {
         partial.push(last.clone());
     }
     crate::net::inject_keyboard(&[ALT | RELEASE]);
+    let keys2 = keys_reach(keys0 + 14, 2_000);
     let (end_min, end_z) = window(&wins[0], &mut ev, &|m, z| !m && z == 0);
     let ended_on = !end_min && end_z == 0;
     let want: Vec<String> = alloc::vec![wins[1].clone(), wins[0].clone(), wins[2].clone()];
@@ -5212,9 +5252,91 @@ fn alt_tab_cycle() -> ! {
     }
     // 3. The lab's single Alt+Tab press: back to the window used before the second walk.
     let quick = moved(&last, 60_000, &mut ev);
-    kprintln!("OSX|{}|ktest|{}|quick_to={}", BUILD_ID, name, quick);
-    if quick != wins[2] {
+    // The lab's key is Alt, Tab, Tab up, Alt up: the walk is over once all four are handled.
+    let lab_keys = keys_reach(keys2 + 4, 60_000) - keys2;
+    kprintln!(
+        "OSX|{}|ktest|{}|quick_to={}|lab_keys={}",
+        BUILD_ID,
+        name,
+        quick,
+        lab_keys
+    );
+    if quick != wins[2] || lab_keys != 4 {
         fail("a single Alt+Tab did not go back to the window used just before")
+    }
+    // 4. During a walk (on 4, then 5) the client closes 4 and opens a window, which takes the
+    //    focus (and 4's slot): at Alt's release the new window stays on top, focused, and the
+    //    walk's last window, 5, is just under it — not back in its old place.
+    crate::net::inject_keyboard(&[ALT]);
+    for _ in 0..2 {
+        crate::net::inject_keyboard(&[TAB, TAB | RELEASE]);
+        last = moved(&last, 2_000, &mut ev);
+    }
+    let close = drequest(
+        c,
+        alloc::format!("CLOSE {}", wins[0]).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    let r_new = drequest(
+        c,
+        alloc::format!("CREATE_WINDOW {} w4", sids[0]).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    let new_win = String::from(r_new.strip_prefix("OK ").unwrap_or("0"));
+    crate::net::inject_keyboard(&[ALT | RELEASE]);
+    keys_reach(keys2 + 4 + 6, 2_000);
+    let want_churn = alloc::format!("{},{},{}/", new_win, wins[1], wins[2]);
+    let churn = stack(&want_churn, 2_000, &mut ev);
+    let churn_focus = focus_of(&mut ev);
+    // 5. 6 minimised; a walk goes 5, 6 (restored), 7 and the input service is restarted with
+    //    Alt still held: the walk ends there as at a release — 6 is minimised again and 7 is on
+    //    top (before, the walk was dropped and 6 stayed restored).
+    let minimize6 = drequest(
+        c,
+        alloc::format!("MINIMIZE {}", wins[2]).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    crate::net::inject_keyboard(&[ALT]);
+    let mut lost_visits = Vec::new();
+    for _ in 0..3 {
+        crate::net::inject_keyboard(&[TAB, TAB | RELEASE]);
+        last = moved(&last, 2_000, &mut ev);
+        lost_visits.push(last.clone());
+    }
+    let restart = match crate::services::request(&h.m.ctl, b"RESTART input", sched::ticks() + 500) {
+        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+        Err(e) => e.into(),
+    };
+    let want_lost = alloc::format!("{},{},{}/{}", new_win, wins[1], wins[2], wins[2]);
+    let lost = stack(&want_lost, 60_000, &mut ev);
+    let lines = h.poll_list(sched::ticks() + 60_000, |l| {
+        l.iter()
+            .any(|x| x.name == "input" && x.state == "ready" && x.restarts == 1)
+    });
+    let (input_state, input_restarts, _) = svc_state(&lines, "input");
+    kprintln!(
+        "OSX|{}|ktest|{}|close={}|new={}|churn={}|churn_focus={}|minimize={}|lost_visits={}|restart={}|lost={}|input={}:{}",
+        BUILD_ID,
+        name,
+        close,
+        new_win,
+        churn,
+        churn_focus,
+        minimize6,
+        lost_visits.join(","),
+        restart,
+        lost,
+        input_state,
+        input_restarts
+    );
+    if close != "OK" || churn != want_churn || churn_focus != new_win {
+        fail("a walk ended on a window other than its last, or under a window opened during it")
+    }
+    if minimize6 != "OK" || restart != "OK" || lost != want_lost || input_restarts != 1 {
+        fail("a walk interrupted by the loss of the input service left the windows it passed over moved")
     }
     // Everything the test holds goes before the balance: a test function never returns, so
     // a binding left out stays allocated and its slab page shows as a lost frame.
@@ -5231,6 +5353,19 @@ fn alt_tab_cycle() -> ! {
         want,
         want_partial,
         quick,
+        close,
+        r_new,
+        new_win,
+        want_churn,
+        churn,
+        churn_focus,
+        minimize6,
+        lost_visits,
+        restart,
+        want_lost,
+        lost,
+        lines,
+        input_state,
         admin,
         clients,
     ));
