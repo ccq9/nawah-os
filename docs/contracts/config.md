@@ -1,4 +1,6 @@
-# عقد التكوين والسياسات — الإصدار 1 (WP-26، ADR-0016 §6؛ فوق auth.md v1 وservices.md v1.1 وfiles.md v1)
+# عقد التكوين والسياسات — الإصدار 1.1 (WP-26 v1، v1.1 مراجعة 2026-10-19؛ ADR-0016 §6؛ فوق auth.md v1 وservices.md v1.1 وfiles.md v1)
+
+**v1.1 (مراجعة المشروع 2026-10-19؛ TST-M4-AUTHZ-DENIED):** `GET` و`EXPORT` على `session` يقرآن قيم uid الرمز **الصالح** فقط؛ الرمز المُبطَل (بعد `LOCK` أو `LOGOUT`) أو المنتهي يُعامل كغياب الرمز فلا يرى قيم جلسته (`ERR NOT_FOUND`، و`EXPORT` بلا أسطر). المخازن الأخرى بلا تغيير (قراءتها لا تحتاج رمزًا).
 
 مجمَّد (أُغلق WP-26 بدليل CI run 39133153681): أي تغيير في المخازن أو الطلبات أو الحفظ = إصدار جديد مع سجل قرار. الكود: `user/apps/configd` (الخدمة `config`)، `kernel/src/ktest.rs` (الاختبارات الحاكمة)، `tools/fat32.py` (`grep` للفحص على المضيف).
 
@@ -23,12 +25,12 @@
 
 | الطلب | الردّ |
 |---|---|
-| `GET <store> <key>` | `OK <version> <value>` أو `ERR NOT_FOUND` |
+| `GET <store> <key>` (+ مقبض رمز اختياري) | `OK <version> <value>` أو `ERR NOT_FOUND`؛ في `session` قيم uid الرمز الصالح وحده (v1.1) |
 | `SET <store> <key> <expected_version> <request_id> <value…>` + مقبض رمز | `OK <version>`؛ `ERR VERSION <current>` إن لم يطابق `expected_version` الإصدار الحالي (0 = يجب ألا يكون موجودًا)؛ `ERR ACCESS` (رمز غير صالح أو بلا الصلاحية — §1)؛ `ERR INVALID` (مفتاح/قيمة/مخزن)؛ `ERR FULL`؛ `ERR IO` (فشل الحفظ: لا تغيير في الذاكرة) |
 | `DEL <store> <key> <expected_version> <request_id>` + مقبض رمز | كما `SET`؛ `OK <version>` بإصدار المفتاح المحذوف |
 | `RESOLVE <key>` + مقبض رمز | `OK <source> <version> <value>` حيث `source` ∈ {policy, user, device} أو `ERR NOT_FOUND` |
 | `SUBSCRIBE <store>` + مقبض طرف قناة | `OK`؛ بعدها تصل على تلك القناة رسالة `CHANGED <store> <key> <version>` لكل تعديل **ناجح** (الحذف بإصدار 0)؛ لا شيء للطلبات المرفوضة؛ قناة لا تستقبل (طابور ممتلئ أو مغلقة) تُسقَط |
-| `EXPORT <store>` | `OK` ثم سطر لكل مفتاح `key version value` |
+| `EXPORT <store>` (+ مقبض رمز اختياري) | `OK` ثم سطر لكل مفتاح `key version value`؛ في `session` كما `GET` (v1.1) |
 | `IMPORT <store> <request_id>` + مقبض رمز، والنص بعد السطر الأول `key value` لكل سطر | `OK <count>`؛ يُرفض كله (`ERR INVALID <line>`) إن كان سطر غير صالح؛ الصلاحيات كـ `SET`؛ كل مفتاح يأخذ إصدارًا جديدًا |
 | غير ذلك | `ERR BAD_REQUEST` |
 

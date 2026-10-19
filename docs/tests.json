@@ -1132,7 +1132,7 @@
     "REQ-M4-004"
    ],
    "layer": "guest",
-   "oracle": "with auth and config running (manifest /SYSTEM/SVC-CFG.TXT) and real logins: SET device with the user token (SHELL only) answers ERR ACCESS and the key stays absent; SET without a handle ERR BAD_REQUEST; the same SET with the admin token OK 1 and GET shows it; the user may write user/1001 (OK 1) but not user/1000 nor policy (ERR ACCESS); a revoked admin token is refused (ERR ACCESS) and the value stays; clean exit, no frame leaks; exit 33",
+   "oracle": "with auth and config running (manifest /SYSTEM/SVC-CFG.TXT) and real logins: SET device with the user token (SHELL only) answers ERR ACCESS and the key stays absent; SET without a handle ERR BAD_REQUEST; the same SET with the admin token OK 1 and GET shows it; the user may write user/1001 (OK 1) but not user/1000 nor policy (ERR ACCESS); a revoked admin token is refused (ERR ACCESS) and the value stays; a session value the admin token set (OK 1) reads back with it (OK 1 secret) but not once it is revoked (GET ERR NOT_FOUND, EXPORT session OK with no lines; config.md v1.1); clean exit, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [

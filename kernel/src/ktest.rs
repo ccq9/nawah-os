@@ -3831,6 +3831,13 @@ fn authz_denied() -> ! {
             b"SET policy lab.key 0 106 forced",
             Some(token_entry(&env.user)),
         );
+        // Session values are read with the token that wrote them (config.md v1.1).
+        let session_set = cfg_request(
+            ep,
+            b"SET session lab.s 0 108 secret",
+            Some(token_entry(&env.admin)),
+        );
+        let session_live = cfg_request(ep, b"GET session lab.s", Some(token_entry(&env.admin)));
         // A revoked token is refused even with every permission.
         env.admin.revoke();
         let revoked = cfg_request(
@@ -3839,6 +3846,24 @@ fn authz_denied() -> ! {
             Some(token_entry(&env.admin)),
         );
         let still = cfg_request(ep, b"GET device lab.key", None);
+        // ... and no longer reads its session values.
+        let session_revoked = cfg_request(ep, b"GET session lab.s", Some(token_entry(&env.admin)));
+        let export_revoked = cfg_request(ep, b"EXPORT session", Some(token_entry(&env.admin)));
+        kprintln!(
+            "OSX|{}|ktest|authz_denied|session_set={}|session_live={}|session_revoked={}|export_revoked={}|",
+            BUILD_ID,
+            session_set,
+            session_live,
+            session_revoked,
+            export_revoked
+        );
+        if session_set != "OK 1"
+            || session_live != "OK 1 secret"
+            || session_revoked != "ERR NOT_FOUND"
+            || export_revoked != "OK"
+        {
+            fail("a revoked token still read its session values")
+        }
         kprintln!(
             "OSX|{}|ktest|authz_denied|denied={}|unchanged={}|no_handle={}|allowed={}|now={}|own={}|other={}|policy_user={}|revoked={}|still={}",
             BUILD_ID,
