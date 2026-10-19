@@ -1654,7 +1654,7 @@
     "TST-M5-SESSION-DEADLINE",
     "TST-M5-LOCK-DISPLAY-DOWN"
    ],
-   "implementation_status": "partial",
+   "implementation_status": "verified_in_scope",
    "evidence_refs": [
     "evidence/20261019T064439Z-f74a43c9-001",
     "evidence/20261019T064445Z-f74a43c9-001",
