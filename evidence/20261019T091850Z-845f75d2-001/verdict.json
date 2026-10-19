@@ -1,0 +1,28 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261019T091850Z-845f75d2-001",
+ "test_id": "TST-M5-BIDI",
+ "verdict": "PASS",
+ "oracle": "nawah-text's UAX #9 reproduces every line of the Unicode conformance file BidiCharacterTest-17.0.0 (91707 lines: paragraph level, resolved levels with X9-removed characters, visual order after L2), and tables.rs is what tools/unicode_tables.py generates from the UCD files (DerivedBidiClass, DerivedJoiningType, BidiBrackets 17.0.0)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "27fe90242138d61376cb42cd7cf189f7733aab9fc0038704263f67733303827e",
+ "inputs": {
+  "tests/test_text.py": "9f72d19c8378c4a55653b5eadd3c402023cbae42db3c447de360e0b613de9b66",
+  "tools/unicode_tables.py": "ddedde1c48789a3f81c06ce2ada103e1b20b26083e3d9e0f47d8d026ea68bb77",
+  "user/libnawah-text/ucd/BidiCharacterTest.txt.xz": "12d524ba63fe337be3995f2adee58b51d00d860052c113050b8b4049541fe1ac",
+  "user/libnawah-text/src/bidi.rs": "c90c55187eb45e61eb0947fe32ffdf6463c67677d894a39670ec2abb788a1602",
+  "user/libnawah-text/src/font.rs": "be41ee698056131651ee176bf9da4fdaf9534f94959692e07f9031d573417bf6",
+  "user/libnawah-text/src/layout.rs": "484bc412fd8ce37dc2214993688439a1067b934b057fc3ff732624365eaa415e",
+  "user/libnawah-text/src/lib.rs": "d08f77a0142e15b8a2fa2cb5e24242fa8b1a712bdc733416f46c93188c5531cf",
+  "user/libnawah-text/src/raster.rs": "de7bb116c7ff51f0c335dcaa6a08104e35f278e7db6a047da3c1dd850ae6d7dd",
+  "user/libnawah-text/src/shape.rs": "c9e0ff687fbcbf8349e0a4b3cdb11697c29a8869dc55c80006bca978fdef1e43",
+  "user/libnawah-text/src/tables.rs": "136625d6a0be90d42b1347cacb4747f9535cce71195ecf88d6c8baad3d549e3b",
+  "user/libnawah-text/examples/bidi_check.rs": "148768dc050caee9bc6b4480f872be00c670bc5681be5f4e2197f248e6bcc60f",
+  "user/libnawah-text/examples/textdump.rs": "c3189319875b60d1add77cd6b279dc63ff35aa6f1650d963ffbd7bebdd092755",
+  "user/libnawah-text/ucd/BidiBrackets.txt": "dadbaf38a0d0246e5b805bf8725cb81b7c621f93d030595635f5ba2c2f179428",
+  "user/libnawah-text/ucd/DerivedBidiClass.txt": "4867b4b7f0731ed1bfcd34cc6251211ff1542541fce0734b6fbda139ee80b3a4",
+  "user/libnawah-text/ucd/DerivedJoiningType.txt": "f39ebe974825d6736aee15582250307aa532b2cfab3caf3f86bd23fddc9c5c4d"
+ },
+ "claim_tag": "source_backed_fact"
+}
