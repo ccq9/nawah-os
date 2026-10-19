@@ -1,0 +1,6 @@
+$ python3 -I tools/transcript.py streams /home/runner/work/nawah-os/nawah-os/evidence/20261019T165858Z-5729e645-001 platform/pc-qemu/expect/auth-input-isolated.txt
+serial.log: session: 6 lines as expected
+serial.log: spy: 12 lines as expected
+serial.log: narrator: 44 lines as expected
+
+[exit 0]
