@@ -36,6 +36,7 @@ const APPS: &[&str] = &[
     "killer",
     "idle",
     "exiter",
+    "fileauth",
 ];
 
 fn emit_apps() {

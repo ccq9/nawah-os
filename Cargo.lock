@@ -78,6 +78,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fileauth"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "hello"
 version = "0.1.0"
 dependencies = [

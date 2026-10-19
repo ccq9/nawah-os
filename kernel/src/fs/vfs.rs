@@ -66,6 +66,36 @@ pub struct Stat {
     pub first_cluster: u32,
 }
 
+/// Where a path falls for the system-files authority (files.md v1.3, WP-44): under /SYSTEM,
+/// under its world-readable /SYSTEM/FONTS, or elsewhere. Components are compared as the 8.3
+/// names the volume resolves (`/system/`, `/SYSTEM./` are /SYSTEM too); `.` and `..` are not
+/// names there (`short_name` refuses them), so no path reaches /SYSTEM through another.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PathClass {
+    Open,
+    Fonts,
+    System,
+}
+
+pub fn classify(path: &[u8]) -> PathClass {
+    // A malformed path needs no authority: the file call refuses it as before (ERR_BAD_PATH).
+    if check_path(path).is_err() {
+        return PathClass::Open;
+    }
+    let mut parts = path
+        .strip_prefix(b"/")
+        .unwrap_or(path)
+        .split(|&c| c == b'/');
+    let first = parts.next().and_then(|c| super::fat32::short_name(c).ok());
+    if first != Some(*b"SYSTEM     ") {
+        return PathClass::Open;
+    }
+    match parts.next().and_then(|c| super::fat32::short_name(c).ok()) {
+        Some(n) if n == *b"FONTS      " => PathClass::Fonts,
+        _ => PathClass::System,
+    }
+}
+
 fn check_path(path: &[u8]) -> Result<(), FsError> {
     if path.is_empty() || path.len() > PATH_MAX || path[0] != b'/' || !path.is_ascii() {
         return Err(FsError::BadName);

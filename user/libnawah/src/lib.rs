@@ -386,6 +386,8 @@ pub mod object_type {
     pub const SERIAL: i64 = 9;
     pub const DISPLAY: i64 = 10;
     pub const MOUSE: i64 = 11;
+    /// The system-files authority (WP-44, files.md v1.3).
+    pub const SYSTEM_FILES: i64 = 12;
 }
 
 /// The type code of the object behind `h`, or an error.

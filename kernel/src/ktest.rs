@@ -171,6 +171,7 @@ pub fn run() -> ! {
         "login" => login(),
         "session_lock" => session_lock(),
         "authz_denied" => authz_denied(),
+        "file_authority" => file_authority(),
         "config_cas" => config_cas(),
         "config_retry" => config_retry(),
         "config_notify" => config_notify(),
@@ -3709,6 +3710,97 @@ fn cfg_env(name: &'static str) -> CfgEnv {
         admin,
         user,
     }
+}
+
+/// TST-M5-FILE-AUTHORITY (REQ-M5-006, RSK-008; files.md v1.3, WP-44): /SYSTEM belongs to the
+/// holders of the system-files authority. `fileauth` with no handle finds every read and every
+/// change under /SYSTEM refused, however the path is spelled, the fonts readable but not
+/// writable, and the rest of the volume as before (exit 0x44); with a READ-only authority it
+/// reads /SYSTEM but still changes nothing (0x45). The kernel reads back that neither run
+/// changed /SYSTEM. The services the manager hands the authority to still work: auth signs the
+/// lab in, and config, holding WRITE, stores an admin setting on /SYSTEM.
+fn file_authority() -> ! {
+    use crate::fs::vfs;
+    let name = "file_authority";
+    if crate::apps::FILEAUTH.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let size = |p: &[u8]| vfs::stat(p).map_or(-1, |s| s.size as i64);
+    let (inputd0, users0) = (size(b"/SYSTEM/INPUTD.ELF"), size(b"/SYSTEM/USERS.DB"));
+    let obj0 = object::stats();
+    let probe = match crate::user::run_elf(crate::apps::FILEAUTH) {
+        Ok((o, _)) => o,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|error={}", BUILD_ID, name, e.code());
+            fail("application did not load")
+        }
+    };
+    let reader = run_with_object(
+        name,
+        crate::apps::FILEAUTH,
+        Entry {
+            object: Object::SystemFiles(Arc::new(crate::object::token::SystemFiles::new())),
+            rights: Rights::READ,
+        },
+    );
+    let obj1 = object::stats();
+    let inputd_same = inputd0 > 0 && size(b"/SYSTEM/INPUTD.ELF") == inputd0;
+    let users_same = users0 > 0 && size(b"/SYSTEM/USERS.DB") == users0;
+    let created = vfs::stat(b"/SYSTEM/NEW.TXT").is_ok();
+    kprintln!(
+        "OSX|{}|ktest|{}|probe={:#x}|probe_ro={:#x}|frames={}+{}|inputd_same={}|usersdb_same={}|created={}|objects_same={}",
+        BUILD_ID,
+        name,
+        probe.exit_code,
+        reader.exit_code,
+        probe.frames_delta,
+        reader.frames_delta,
+        u8::from(inputd_same),
+        u8::from(users_same),
+        u8::from(created),
+        u8::from(obj1 == obj0)
+    );
+    if probe.exit_code != 0x44 || reader.exit_code != 0x45 {
+        fail("an ordinary process reached /SYSTEM (exit code = failing step)")
+    }
+    if !inputd_same
+        || !users_same
+        || created
+        || probe.frames_delta != 0
+        || reader.frames_delta != 0
+        || obj1 != obj0
+    {
+        fail("/SYSTEM changed, or the probes left something behind")
+    }
+    // The services the manager hands the authority to: auth reads USERS.DB (the logins of
+    // cfg_env), config writes its store on /SYSTEM.
+    let env = cfg_env(name);
+    let set = cfg_request(
+        &env.cfg,
+        b"SET device lab.fauth 0 201 kept",
+        Some(token_entry(&env.admin)),
+    );
+    let get = cfg_request(&env.cfg, b"GET device lab.fauth", None);
+    kprintln!(
+        "OSX|{}|ktest|{}|services=auth,config|set={}|get={}",
+        BUILD_ID,
+        name,
+        set,
+        get
+    );
+    if set != "OK 1" || get != "OK 1 kept" {
+        fail("a service holding the authority could not use /SYSTEM")
+    }
+    drop((set, get));
+    let frames0 = cfg_close(env, name);
+    cfg_balance(
+        name,
+        frames0,
+        "an ordinary process cannot read or change /SYSTEM; the services holding the authority can",
+    )
 }
 
 /// One config request with an optional token or channel handle; the reply text.

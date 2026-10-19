@@ -7,6 +7,7 @@ use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 
 static LIVE_TOKENS: AtomicU32 = AtomicU32::new(0);
 static LIVE_AUTHORITIES: AtomicU32 = AtomicU32::new(0);
+static LIVE_SYSTEM_FILES: AtomicU32 = AtomicU32::new(0);
 /// Token identities: every token minted gets the next number, so a service can tell two
 /// handles to the same token apart from handles to different tokens.
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -17,6 +18,11 @@ pub fn live_tokens() -> u32 {
 
 pub fn live_authorities() -> u32 {
     LIVE_AUTHORITIES.load(Ordering::Relaxed)
+}
+
+/// System-files authorities alive (WP-44; leak checks).
+pub fn live_system_files() -> u32 {
+    LIVE_SYSTEM_FILES.load(Ordering::Relaxed)
 }
 
 /// Permission bits carried by a token (auth.md §1).
@@ -98,5 +104,30 @@ impl Default for Authority {
 impl Drop for Authority {
     fn drop(&mut self) {
         LIVE_AUTHORITIES.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
+/// The capability over /SYSTEM (WP-44, files.md v1.3): created once at boot for the service
+/// manager, which hands narrowed copies to the system services that need them (READ to `auth`,
+/// READ|WRITE to `config`). Its rights, not the process, decide: READ reads under /SYSTEM,
+/// WRITE changes it.
+pub struct SystemFiles(());
+
+impl SystemFiles {
+    pub fn new() -> Self {
+        LIVE_SYSTEM_FILES.fetch_add(1, Ordering::Relaxed);
+        SystemFiles(())
+    }
+}
+
+impl Default for SystemFiles {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Drop for SystemFiles {
+    fn drop(&mut self) {
+        LIVE_SYSTEM_FILES.fetch_sub(1, Ordering::Relaxed);
     }
 }

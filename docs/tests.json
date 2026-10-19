@@ -1327,7 +1327,7 @@
     "REQ-M4-009"
    ],
    "layer": "guest",
-   "oracle": "over the lab's console socket (COM2) the shell answers: `svc` lists every service of SVC-SH.TXT with its state from the manager (auth ready, net ready, sh ready); `cpu` and `mem` print the kernel's own counters (cpus and frames_total equal to the values the kernel test printed from the kernel); `net dhcp` configures the service and `net` then shows configured=1 ip=10.0.2.15 from the net service; `cfg get device x` is refused by the manager (ERR ACCESS: config is not a declared dependency of sh); `ls /SYSTEM` lists the images and `cat /DIR/INNER.TXT` prints the lab file; an unknown command is ERR UNKNOWN_COMMAND; `exit` ends the session — the manager sees sh stopped with exit 0, nothing is left behind, no frame leaks; exit 33",
+   "oracle": "over the lab's console socket (COM2) the shell answers: `svc` lists every service of SVC-SH.TXT with its state from the manager (auth ready, net ready, sh ready); `cpu` and `mem` print the kernel's own counters (cpus and frames_total equal to the values the kernel test printed from the kernel); `net dhcp` configures the service and `net` then shows configured=1 ip=10.0.2.15 from the net service; `cfg get device x` is refused by the manager (ERR ACCESS: config is not a declared dependency of sh); `ls /SYSTEM` and `cat /SYSTEM/USERS.DB` are refused with ERR ACCESS (the shell holds no system-files authority: files.md v1.3, WP-44) while `ls /` still lists SYSTEM and `cat /DIR/INNER.TXT` prints the lab file; an unknown command is ERR UNKNOWN_COMMAND; `exit` ends the session — the manager sees sh stopped with exit 0, nothing is left behind, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1934,7 +1934,7 @@
     "REQ-M5-006"
    ],
    "layer": "security_access_perf",
-   "oracle": "planned (WP-44, RSK-008): an ordinary process opening /SYSTEM/USERS.DB for reading and /SYSTEM/INPUTD.ELF for writing gets ERR_ACCESS; system services still start; exit 33",
+   "oracle": "REQ-M5-006, RSK-008 files.md v1.3 (WP-44): the fileauth application with no handle: opening /SYSTEM/USERS.DB, /system/users.db and /SYSTEM./USERS.DB for reading, stat and dir_list of /SYSTEM, spawning /SYSTEM/USERS.DB, opening /SYSTEM/INPUTD.ELF for writing, creating /SYSTEM/NEW.TXT, truncating USERS.DB, unlinking SVC-AUTH.TXT, writing or unlinking a font are all refused with ERR_ACCESS; a font reads; a relative path keeps ERR_BAD_PATH; /FAUTH.TXT is created, written and removed as before: exit 0x44. Given a READ-only SystemFiles handle it lists /SYSTEM, stats and reads USERS.DB but every change is still refused: exit 0x45. The kernel reads back INPUTD.ELF's and USERS.DB's sizes unchanged and no NEW.TXT; neither run leaks a frame or an object. Then the SVC-CFG stack (the manager hands the authority READ to auth, READ|WRITE to config): the lab users sign in and an admin SET of device lab.fauth is stored (OK 1, read back OK 1 kept); the manager exits 0, no process left, no frame leak; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []

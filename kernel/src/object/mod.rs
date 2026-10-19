@@ -68,6 +68,10 @@ impl Rights {
     /// Rights of the display handle (WP-32): READ describes, MAP hands out the frame.
     pub const DISPLAY_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::MAP.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of the system-files authority (WP-44): READ reads under /SYSTEM, WRITE changes
+    /// it; copies for services drop what they do not need.
+    pub const SYSFILES_DEFAULT: Rights =
+        Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
 
     pub const fn contains(self, other: Rights) -> bool {
         self.0 & other.0 == other.0
@@ -103,6 +107,9 @@ pub enum Object {
     Display(Arc<crate::display::DisplayObject>),
     /// The mouse (WP-33, input.md v2): PS/2 packets from the auxiliary port.
     Mouse(Arc<bytes::ByteObject>),
+    /// The system-files authority (WP-44, files.md v1.3): held, never read; its rights gate
+    /// the file calls under /SYSTEM.
+    SystemFiles(#[allow(dead_code)] Arc<token::SystemFiles>),
 }
 
 impl Object {
@@ -120,6 +127,7 @@ impl Object {
             Object::Serial(_) => 9,
             Object::Display(_) => 10,
             Object::Mouse(_) => 11,
+            Object::SystemFiles(_) => 12,
         }
     }
 }
@@ -225,6 +233,8 @@ pub struct Stats {
     pub processes: u32,
     pub tokens: u32,
     pub authorities: u32,
+    /// System-files authorities (WP-44).
+    pub system_files: u32,
 }
 
 pub fn stats() -> Stats {
@@ -237,5 +247,6 @@ pub fn stats() -> Stats {
         processes: process::live(),
         tokens: token::live_tokens(),
         authorities: token::live_authorities(),
+        system_files: token::live_system_files(),
     }
 }

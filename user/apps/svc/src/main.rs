@@ -3,10 +3,11 @@
 //! close) then exits 0; `mute` never answers and exits 0 once the channel closes; `crash`
 //! exits 1 at once; (WP-31) `serve` answers READY and serves clients the manager connects
 //! (`PING` → `OK served`); `crash_once` serves the same way but dies (exit 3, no reply) on
-//! the first request of its life on this volume — it leaves `/SYSTEM/CRASHED.TXT` behind so
-//! the instance the manager restarts serves normally (TST-M4-PEER-LOSS). (WP-40) `ready` also
-//! answers the watchdog's `PING` with `PONG` (traced `svc|pong`); `hang` answers READY then stops servicing its
-//! channel, so the watchdog finds it hung and kills it (TST-M5-SVC-WATCHDOG). (Review
+//! the first request of its life on this volume — it leaves `/CRASHED.TXT` behind (outside
+//! `/SYSTEM`, which it cannot write: WP-44) so the instance the manager restarts serves
+//! normally (TST-M4-PEER-LOSS). (WP-40) `ready` also answers the watchdog's `PING` with `PONG`
+//! (traced `svc|pong`); `hang` answers READY then stops servicing its channel, so the watchdog
+//! finds it hung and kills it (TST-M5-SVC-WATCHDOG). (Review
 //! 2026-10-19) `closer` answers READY then closes its boot channel and stays alive; `early_hang`
 //! hangs before READY without reading its channel; `ticker` writes `T` every 5 ticks from a timed
 //! wait; `sleeper` sleeps a million ticks; `loud` sends 100 junk bytes, then acts as `ready`; `silent <lo> <hi>` serves clients like `serve` but
@@ -78,7 +79,7 @@ fn trace_held(held: u64, lo: u64, hi: u64) {
     at += tail.len();
     libnawah::trace(&t[..at]);
 }
-const CRASH_MARK: &[u8] = b"/SYSTEM/CRASHED.TXT";
+const CRASH_MARK: &[u8] = b"/CRASHED.TXT";
 
 /// The `serve`/`crash_once`/`silent` roles: clients arrive as `CONNECT` + handle on the boot
 /// channel.
