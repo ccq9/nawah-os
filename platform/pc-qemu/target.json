@@ -3919,6 +3919,47 @@
         }
       },
       {
+        "id": "TST-M5-ALT-TAB-CYCLE",
+        "test_id": "TST-M5-ALT-TAB-CYCLE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=alt_tab_cycle"
+        ],
+        "oracle": "one kernel-side client of the compositor (SVC-DP.TXT) creates three 120×80 surfaces (1, 2, 3) and three windows in order (4, 5, 6; the newest, 6, focused) and minimises the oldest (MINIMIZE 4 → OK). The test types its keys into the keyboard ring itself (net::inject_keyboard, test kernel only), waiting for each focus move, because the lab's sendkey releases Alt at once. (1) Alt held across three Tabs: the focus walks the windows as they were stacked at the first Tab, the most recently used first — 5, 4 (restored from minimised while reached), 6 — and at Alt's release the walk is undone but for the window it ended on: 4 is minimised again and 6 is on top (z 0). Before v1.6 each Tab raised the window it reached and the next went straight back (5, 6, 5) and the minimised window was never reached. (2) Alt held across two Tabs: 5, 4; the walk ends on 4, which stays restored and goes on top. (3) The lab presses Alt+Tab once (Alt released between presses): the focus goes back to the window used before that walk, 6, and the compositor has handled the lab's four key events before the test goes on. Every key event the test types is counted by the compositor (KEYS) before the state after it is read. Phases 4 to 7 each start from a stacking set by RAISE requests. (4) During a walk (4, then 5) the client closes 4 and opens window 7 on 4's surface, which takes the focus: at Alt's release the stacking is 7, 5, 6 — the new window focused on top and the walk's last window just under it (before the second revision the walk's end was taken from the focus: 7, 6, 5). (5) From 7, 5, 6 a walk reaches 5, the client closes 6 and opens 8 in 6's slot (8 takes the focus), the walk goes on to 7: at the release 7, 8, 5 — 8 is a window created during the walk, not the closed one (matched by slot it was 7, 5, 8). (6) From 7, 8, 5 with 5 minimised a walk reaches 8, the client restores 5 itself, the walk goes on to 7: 5 stays restored at the release, 7, 8, 5 (before, every window minimised at the first Tab was minimised again). (7) From 7, 8, 5 with 5 minimised a walk goes 8, 5 (restored), 7 and the manager restarts the input service with Alt still held: the walk ends as at a release — 7, 8, 5 with 5 minimised again (before, the walk was dropped: 7, 5, 8, 5 restored); the input service is ready again (restarts 1). Clean exit, no frame leaks; exit 33 (display.md v1.6; S77; M5 pre-gate review, M7)",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=alt_tab_cycle",
+          "|ktest|alt_tab_cycle|windows=4,5,6|minimize=OK|focus0=6|held_visits=5,4,6|restored=1|rewound=1|partial=5,4|ended_on_top=1|quick=1|ready=1",
+          "|ktest|alt_tab_cycle|quick_to=6|lab_keys=4",
+          "|ktest|alt_tab_cycle|visits=4,5|close=OK|new=7|churn=7,5,6/|churn_focus=7",
+          "|ktest|alt_tab_cycle|visits=5,7|close=OK|new=8|slot=7,8,5/",
+          "|ktest|alt_tab_cycle|visits=8,7|minimize=OK|restore=OK|own_restore=7,8,5/",
+          "|ktest|alt_tab_cycle|minimize=OK|lost_visits=8,5,7|restart=OK|lost=7,8,5/5|input=ready:1|keys=1",
+          "|ktest|alt_tab_cycle|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|alt_tab_cycle|frames_delta=0",
+          "|ktest|pass|with Alt held Tab visits every window in most-recent order, and one Alt+Tab goes back to the last one"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|quick=1|ready=1",
+              "commands": [
+                "sendkey alt-tab"
+              ],
+              "gap_s": 0.5
+            }
+          ]
+        }
+      },
+      {
         "id": "TST-M5-APP-HANG",
         "test_id": "TST-M5-APP-HANG",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",
@@ -3980,13 +4021,13 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=app_oversize"
         ],
-        "oracle": "REQ-M5-003 display.md v1.4, input.md v2.4 (review 2026-10-19, M1): SVC-DP.TXT with two display clients. Client a (connected first) sends a 2000-byte message: it is discarded and answered ERR BAD_REQUEST, and client b's STATUS is answered within 500 ticks; a then sends STATUS carrying two handles: ERR BAD_REQUEST, both handles closed by the compositor (their peers see PEER_CLOSED), b answered within 500 ticks again, and a's own next STATUS is answered (it stays connected). At the input service, a 300-byte message from the controller gets ERR BAD_REQUEST and its next STATUS is answered. Manager exits 0, no process left, kernel objects balanced; every frame comes back except exactly the kernel heap slab pages taken for these new message sizes (kept for reuse by design: unaccounted_frames=0); exit 33",
+        "oracle": "REQ-M5-003 display.md v1.4, input.md v2.4 (review 2026-10-19, M1): SVC-DP.TXT with two display clients. Client a (connected first) sends a 2000-byte message: it is discarded and answered ERR BAD_REQUEST, and client b's STATUS is answered within 500 ticks; a then sends STATUS carrying two handles: ERR BAD_REQUEST, both handles closed by the compositor (their peers see PEER_CLOSED), b answered within 500 ticks again, and a's own next STATUS is answered (it stays connected). At the input service, a 300-byte message from the controller gets ERR BAD_REQUEST and its next STATUS is answered. Manager exits 0, no process left, kernel objects balanced, every frame back (frames_delta=0); exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=app_oversize",
           "|ktest|app_oversize|big=ERR BAD_REQUEST|two=ERR BAD_REQUEST|b_after_big=1|b_after_two=1|a_after=1|handles_closed=1|input_big=ERR BAD_REQUEST|input_after=1",
           "|ktest|app_oversize|mgr_exit=0x0|processes_after=0|clean=1",
-          "|unaccounted_frames=0|",
+          "|ktest|app_oversize|frames_delta=0",
           "|ktest|pass|a message too large for the compositor or the input service is refused and stalls nobody"
         ],
         "forbidden_markers": [

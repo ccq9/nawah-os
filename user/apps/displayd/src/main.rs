@@ -67,6 +67,9 @@ const CURSOR_EDGE: u32 = 0x000000;
 const MOD_SHIFT: u32 = 1;
 const MOD_ALT: u32 = 4;
 const KEY_TAB: u32 = 0x0f;
+const KEY_ALT: u32 = 0x38;
+/// Right Alt (E0 38: extended keys carry bit 7, as the arrows do).
+const KEY_ALT_RIGHT: u32 = 0xb8;
 const KEY_F4: u32 = 0x3e;
 const KEY_F9: u32 = 0x43;
 const KEY_UP: u32 = 0xc8;
@@ -480,6 +483,10 @@ struct Compositor {
     /// A key whose press was a shortcut: its release is swallowed too, so no client sees
     /// half of it.
     consumed_key: Option<u32>,
+    /// An Alt+Tab walk in progress (v1.6): the reachable windows' ids as they were stacked at
+    /// the first Tab, the most recently used first, and where the walk is. It ends when Alt
+    /// is released, so the next Alt+Tab starts from the new stacking.
+    switch: Option<Switch>,
     /// The narrator client (display.md v1.1 §ب-1): announcements of the focused window go
     /// to it.
     narrator: Option<usize>,
@@ -495,6 +502,21 @@ struct Compositor {
     input_asked: bool,
     /// When the next `CONNECT input` may go out while the input channel is gone.
     input_retry: u64,
+}
+
+/// An Alt+Tab walk (v1.6): window ids from the top of the stack at the first Tab.
+struct Switch {
+    ids: [u32; MAX_WINDOWS],
+    n: usize,
+    /// The index the walk is at (the focused window when it started), or none.
+    at: Option<usize>,
+    /// The whole stacking at the first Tab (window ids, top first) and the windows the walk
+    /// restored from minimised: when the walk ends it is undone but for the window it ended
+    /// on, which goes on top — passing over a window does not move it, nor leave it restored.
+    order0: [u32; MAX_WINDOWS],
+    n0: usize,
+    restored: [u32; MAX_WINDOWS],
+    n_restored: usize,
 }
 
 impl Compositor {
@@ -1150,6 +1172,10 @@ impl Compositor {
             return;
         };
         let down = dir == b"down";
+        // Alt released (or no longer held): an Alt+Tab walk ends there (v1.6).
+        if mods & MOD_ALT == 0 || (!down && (code == KEY_ALT || code == KEY_ALT_RIGHT)) {
+            self.end_switch(now);
+        }
         if !down && self.consumed_key == Some(code) {
             self.consumed_key = None;
             return;
@@ -1157,23 +1183,67 @@ impl Compositor {
         if down && mods & MOD_ALT != 0 {
             match code {
                 KEY_TAB => {
-                    // The next cyclable window in z-order after the focused one (or the top
-                    // when nothing is focused); a minimised one is restored first (v1.3).
-                    if self.n_order > 0 {
-                        let base = self
-                            .focus
-                            .map(|wi| self.z_of(wi))
-                            .unwrap_or(self.n_order - 1);
-                        for step in 1..=self.n_order {
-                            let wi = self.order[(base + step) % self.n_order];
+                    // As on the reference (v1.6, review M7; Microsoft: "to cycle through
+                    // multiple windows, continue to hold the Alt key and press Tab multiple
+                    // times"): while Alt stays held, each Tab moves on through the windows as
+                    // they were stacked at the first Tab — the most recently used first — so
+                    // every window is reached; a single press goes back to the one used just
+                    // before. Before v1.6 each Tab worked from the stacking its predecessor
+                    // had just changed, so it went straight back and a third window was never
+                    // reached. A minimised one is restored first (v1.3); a held one is never
+                    // reached (v1.2).
+                    if self.switch.is_none() {
+                        let mut s = Switch {
+                            ids: [0; MAX_WINDOWS],
+                            n: 0,
+                            at: None,
+                            order0: [0; MAX_WINDOWS],
+                            n0: self.n_order,
+                            restored: [0; MAX_WINDOWS],
+                            n_restored: 0,
+                        };
+                        for k in 0..self.n_order {
+                            let wi = self.order[k];
+                            s.order0[k] = self.windows[wi].id;
                             if self.cyclable(wi) {
-                                if self.windows[wi].minimized {
-                                    self.set_minimized(wi, false, now);
-                                } else {
-                                    self.focus_and_raise(wi, now);
+                                if self.focus == Some(wi) {
+                                    s.at = Some(s.n);
                                 }
-                                break;
+                                s.ids[s.n] = self.windows[wi].id;
+                                s.n += 1;
                             }
+                        }
+                        self.switch = Some(s);
+                    }
+                    let mut target = None;
+                    if let Some(s) = self.switch.as_ref() {
+                        for step in 1..=s.n {
+                            let i = match s.at {
+                                Some(a) => (a + step) % s.n,
+                                None => step - 1,
+                            };
+                            if let Some(wi) = self.window_by_id(s.ids[i]) {
+                                if self.cyclable(wi) && self.focus != Some(wi) {
+                                    target = Some((i, wi));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if let Some((i, wi)) = target {
+                        let minimized = self.windows[wi].minimized;
+                        if let Some(s) = self.switch.as_mut() {
+                            s.at = Some(i);
+                            let id = self.windows[wi].id;
+                            if minimized && !s.restored[..s.n_restored].contains(&id) {
+                                s.restored[s.n_restored] = id;
+                                s.n_restored += 1;
+                            }
+                        }
+                        if minimized {
+                            self.set_minimized(wi, false, now);
+                        } else {
+                            self.focus_and_raise(wi, now);
                         }
                     }
                     self.consumed_key = Some(code);
@@ -1513,6 +1583,8 @@ impl Compositor {
                     out.put(b"ERR ACCESS");
                     return false;
                 }
+                // A walk in progress ends here, as if Alt were released (v1.6).
+                self.end_switch(now);
                 match verb {
                     b"LOCKED" => self.locked = true,
                     b"UNLOCKED" => self.locked = false,
@@ -1687,9 +1759,57 @@ impl Compositor {
         }
     }
 
+    /// Ends an Alt+Tab walk (v1.6) — at Alt's release, a lock-state change or the loss of the
+    /// input service: the walk is undone but for the window it ended on. That window goes on
+    /// top (just under the focus if a window created or raised during the walk took it), then
+    /// the windows created during the walk, then the others as stacked at the first Tab; a
+    /// window the walk restored from minimised and only passed over is minimised again.
+    fn end_switch(&mut self, now: u64) {
+        let Some(s) = self.switch.take() else {
+            return;
+        };
+        let ended = s.at.and_then(|i| self.window_by_id(s.ids[i]));
+        let focus = self.focus;
+        let mut order = [0usize; MAX_WINDOWS];
+        let mut k = 0;
+        let put = |order: &mut [usize; MAX_WINDOWS], k: &mut usize, wi: usize| {
+            if !order[..*k].contains(&wi) {
+                order[*k] = wi;
+                *k += 1;
+            }
+        };
+        for wi in [focus, ended].into_iter().flatten() {
+            put(&mut order, &mut k, wi);
+        }
+        for &wi in &self.order[..self.n_order] {
+            if !s.order0[..s.n0].contains(&self.windows[wi].id) {
+                put(&mut order, &mut k, wi);
+            }
+        }
+        for &id in &s.order0[..s.n0] {
+            if let Some(wi) = self.window_by_id(id) {
+                put(&mut order, &mut k, wi);
+            }
+        }
+        debug_assert_eq!(k, self.n_order);
+        if k == self.n_order && order[..k] != self.order[..k] {
+            self.order[..k].copy_from_slice(&order[..k]);
+            self.damage(self.screen);
+        }
+        for &id in &s.restored[..s.n_restored] {
+            if let Some(wi) = self.window_by_id(id) {
+                if Some(wi) != ended && Some(wi) != focus {
+                    self.set_minimized(wi, true, now);
+                }
+            }
+        }
+    }
+
     /// The input service went away (crash or restart): its channel is dropped and a new one
-    /// asked for (display.md v1.2); meanwhile no key or pointer event arrives.
+    /// asked for (display.md v1.2); meanwhile no key or pointer event arrives. A walk cannot
+    /// see its Alt released any more, so it ends here (v1.6).
     fn input_lost(&mut self, now: u64) {
+        self.end_switch(now);
         libnawah::handle_close(self.input);
         self.input = 0;
         self.input_retry = now;
@@ -1839,6 +1959,7 @@ fn main() -> u64 {
         composed: 0,
         unresponsive: 0,
         consumed_key: None,
+        switch: None,
         narrator: None,
         fonts,
         text,

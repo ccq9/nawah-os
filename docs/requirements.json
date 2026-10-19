@@ -1574,11 +1574,13 @@
    "failure_cases": [
     "نافذة مصغَّرة لا تُستعاد بلوحة المفاتيح",
     "مستخدم القارئ لا يعرف أين التركيز بعد عودة النافذة",
-    "تغيير الحجم يُفقد التركيز"
+    "تغيير الحجم يُفقد التركيز",
+    "نافذة ثالثة لا تُبلغ بـ Alt+Tab"
    ],
    "acceptance": "window_a11y",
    "test_ids": [
-    "TST-M5-WINDOW-A11Y"
+    "TST-M5-WINDOW-A11Y",
+    "TST-M5-ALT-TAB-CYCLE"
    ],
    "implementation_status": "partial",
    "evidence_refs": [

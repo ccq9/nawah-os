@@ -70,6 +70,21 @@ pub fn tick_poll() {
     }
 }
 
+/// Test kernel only: `bytes` enter the keyboard ring as if the controller had sent them (set 1
+/// scancodes), and the ring's waiters wake — so a test can hold a key across others, which the
+/// lab's `sendkey` cannot (TST-M5-ALT-TAB-CYCLE).
+#[cfg(feature = "ktest")]
+pub fn inject_keyboard(bytes: &[u8]) {
+    let dev = KBD_OBJECT.lock().clone();
+    if let Some(d) = dev {
+        for &b in bytes {
+            for tid in d.push(b) {
+                crate::sched::wake(tid);
+            }
+        }
+    }
+}
+
 /// Brings up the first virtio-net function among `devices`; `Ok(None)` when there is none.
 pub fn init(devices: &[Device]) -> Result<Option<NetInfo>, &'static str> {
     match VirtioNet::init(devices) {
