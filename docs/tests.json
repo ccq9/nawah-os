@@ -1670,7 +1670,7 @@
     "REQ-M5-010"
    ],
    "layer": "service_integration",
-   "oracle": "planned (WP-40): a service that ignores STOP is ended with process_kill after its stop grace and restarted when asked (RESTART); a service with watchdog=<ticks> that stops answering PING is killed within two periods and restarted by its on-failure policy (restarts counted, exit EXIT_KILLED in LIST); a service without a watchdog is never pinged; the manager keeps answering LIST throughout; exit 33",
+   "oracle": "services.md v1.7: the manager PINGs Ready services with watchdog=<ticks>; a service that answers PONG stays ready, one that does not is force-killed (EXIT_KILLED) and its restart policy applied (given_up, restarts=1 at max_restarts=1), and a no-watchdog service that ignores STOP is force-killed after the STOP grace; the manager keeps answering LIST; no frame leak",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
