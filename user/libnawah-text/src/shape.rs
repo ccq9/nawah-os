@@ -94,9 +94,9 @@ pub fn shape(font: &Font, text: &[u32], glyphs: &mut [u16], clusters: &mut [u16]
     }
     // Form features, each through its own lookups, on the characters of that form.
     let mut lookups = [0u16; 16];
-    // ZWNJ only separates (its joining type does that above); in context matching it is
-    // skipped as HarfBuzz does, so a letter's form does not depend on it (review M6).
-    let zwnj = font.glyph_id(0x200C);
+    // The joiners act through their joining types (above); in context matching both are
+    // skipped as HarfBuzz does, so a letter's form does not depend on them (review M6).
+    let joiners = [font.glyph_id(0x200C), font.glyph_id(0x200D)];
     for (feature, form) in [
         (b"isol", Form::Isol),
         (b"fina", Form::Fina),
@@ -121,9 +121,14 @@ pub fn shape(font: &Font, text: &[u32], glyphs: &mut [u16], clusters: &mut [u16]
                         // Chaining context (format 3): the nested single substitutions at
                         // their sequence positions (marks are not skipped for those).
                         let mut records = [(0u16, 0u16); 8];
-                        if let Some(k) =
-                            font.chain_context(l, &glyphs[..n], i, skip_marks, zwnj, &mut records)
-                        {
+                        if let Some(k) = font.chain_context(
+                            l,
+                            &glyphs[..n],
+                            i,
+                            skip_marks,
+                            joiners,
+                            &mut records,
+                        ) {
                             for &(seq, nested) in &records[..k] {
                                 let at = i + seq as usize;
                                 if at < n {

@@ -316,7 +316,8 @@ class Shaping(unittest.TestCase):
         # Compared: the glyph of every Arabic letter, by its character index, with HarfBuzz's.
         lines = ["\u200dب", "ب \u200dب", "\u200d\u200dب", "a\u200dب", "1\u200dب", "\u200dب\u200d", "ب \u200dب\u200d ب",
                  "ب\u200d", "ب\u200d\u200dب", "ب\u200c\u200dب", "ب\u200d\u200cب", "بَ\u200dب", "ب\u200dَب", "ل\u200dا",
-                 "ل\u200cا", "ب\u200da", "ب\u200dـب", "می\u200cخواهم", "\u200cب", "ب\u200c"]
+                 "ل\u200cا", "ب\u200da", "ب\u200dـب", "می\u200cخواهم", "\u200cب", "ب\u200c",
+                 "٣\u200dب", "،\u200dب", "٣َ\u200dب", "ا\u200d\u200cه"]
         bad = []
         for base, direction in (("rtl", "rtl"), ("ltr", "rtl")):
             out = textdump([f"layout {base} 16 " + hexes(t) for t in lines])

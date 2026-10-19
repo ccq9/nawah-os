@@ -9,7 +9,7 @@
 use crate::bidi::{self, Base, Bidi, REMOVED};
 use crate::font::{Font, Outline};
 use crate::raster::{Bitmap, Rasterizer};
-use crate::shape::{self, JT_T};
+use crate::shape::{self, JT_T, JT_U};
 
 pub const MAX_CHARS: usize = 512;
 pub const LATIN: u8 = 0;
@@ -169,29 +169,8 @@ impl Layout {
             }
             self.font_of[i] = f;
         }
-        // A joiner with no Arabic letter before it (first in the line, after a space, a digit
-        // or a Latin letter) belongs to the run of the Arabic letter after it, which it joins
-        // (review M6: that letter was drawn isolated).
-        let mut forward = [false; MAX_CHARS];
-        let mut i = 0;
-        while i < n {
-            if is_joiner(self.text[i]) && (i == 0 || self.font_of[i - 1] != ARABIC) {
-                let mut j = i;
-                while j < n && is_joiner(self.text[j]) {
-                    j += 1;
-                }
-                if j < n && self.font_of[j] == ARABIC {
-                    self.font_of[i..j].fill(ARABIC);
-                    forward[i..j].fill(true);
-                }
-                i = j;
-            } else {
-                i += 1;
-            }
-        }
         // Removed characters (X9) take the level of the character before them so they do not
-        // split a run (a ZWJ inside an Arabic word still joins); a forward joiner takes the
-        // level of the letter after it.
+        // split a run (a ZWJ inside an Arabic word still joins).
         let mut run_level = [0u8; MAX_CHARS];
         let mut prev = self.levels.first().copied().unwrap_or(0);
         for (rl, &lv) in run_level.iter_mut().zip(&self.levels[..n]) {
@@ -200,10 +179,31 @@ impl Layout {
             }
             *rl = prev;
         }
-        for k in (0..n).rev() {
-            if forward[k] && k + 1 < n {
-                run_level[k] = run_level[k + 1];
+        // A joiner the character before it cannot use — first in the line, after a character
+        // of the Latin font, after a non-joining one (an Arabic-Indic digit, an Arabic comma),
+        // or after one at another level — belongs to the run of the Arabic letter after it,
+        // which it joins, and takes that letter's level (review M6: the letter was drawn
+        // isolated).
+        let mut i = 0;
+        while i < n {
+            if !is_joiner(self.text[i]) {
+                i += 1;
+                continue;
             }
+            let mut j = i;
+            while j < n && is_joiner(self.text[j]) {
+                j += 1;
+            }
+            let before_cannot_join = i == 0
+                || self.font_of[i - 1] != ARABIC
+                || shape::joining_type(self.text[i - 1]) == JT_U
+                || (j < n && run_level[i - 1] != run_level[j]);
+            if j < n && self.font_of[j] == ARABIC && before_cannot_join {
+                self.font_of[i..j].fill(ARABIC);
+                let level = run_level[j];
+                run_level[i..j].fill(level);
+            }
+            i = j;
         }
         let count = bidi::reorder(&self.levels[..n], &mut self.order[..n]);
         // Walk the visual order; each run (same level and font, contiguous in logical order)
