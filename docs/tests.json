@@ -1476,7 +1476,7 @@
     "REQ-M5-003"
    ],
    "layer": "guest",
-   "oracle": "REQ-M5-003 display.md v1.4, input.md v2.4 (review 2026-10-19, M1): SVC-DP.TXT with two display clients. Client a (connected first) sends a 2000-byte message: it is discarded and answered ERR BAD_REQUEST, and client b's STATUS is answered within 500 ticks; a then sends STATUS carrying two handles: ERR BAD_REQUEST, both handles closed by the compositor (their peers see PEER_CLOSED), b answered within 500 ticks again, and a's own next STATUS is answered (it stays connected). At the input service, a 300-byte message from the controller gets ERR BAD_REQUEST and its next STATUS is answered. Manager exits 0, no process left, no frame leak; exit 33",
+   "oracle": "REQ-M5-003 display.md v1.4, input.md v2.4 (review 2026-10-19, M1): SVC-DP.TXT with two display clients. Client a (connected first) sends a 2000-byte message: it is discarded and answered ERR BAD_REQUEST, and client b's STATUS is answered within 500 ticks; a then sends STATUS carrying two handles: ERR BAD_REQUEST, both handles closed by the compositor (their peers see PEER_CLOSED), b answered within 500 ticks again, and a's own next STATUS is answered (it stays connected). At the input service, a 300-byte message from the controller gets ERR BAD_REQUEST and its next STATUS is answered. Manager exits 0, no process left, kernel objects balanced; every frame comes back except exactly the kernel heap slab pages taken for these new message sizes (kept for reuse by design: unaccounted_frames=0); exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []

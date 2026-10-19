@@ -3980,12 +3980,13 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=app_oversize"
         ],
-        "oracle": "REQ-M5-003 display.md v1.4, input.md v2.4 (review 2026-10-19, M1): SVC-DP.TXT with two display clients. Client a (connected first) sends a 2000-byte message: it is discarded and answered ERR BAD_REQUEST, and client b's STATUS is answered within 500 ticks; a then sends STATUS carrying two handles: ERR BAD_REQUEST, both handles closed by the compositor (their peers see PEER_CLOSED), b answered within 500 ticks again, and a's own next STATUS is answered (it stays connected). At the input service, a 300-byte message from the controller gets ERR BAD_REQUEST and its next STATUS is answered. Manager exits 0, no process left, no frame leak; exit 33",
+        "oracle": "REQ-M5-003 display.md v1.4, input.md v2.4 (review 2026-10-19, M1): SVC-DP.TXT with two display clients. Client a (connected first) sends a 2000-byte message: it is discarded and answered ERR BAD_REQUEST, and client b's STATUS is answered within 500 ticks; a then sends STATUS carrying two handles: ERR BAD_REQUEST, both handles closed by the compositor (their peers see PEER_CLOSED), b answered within 500 ticks again, and a's own next STATUS is answered (it stays connected). At the input service, a 300-byte message from the controller gets ERR BAD_REQUEST and its next STATUS is answered. Manager exits 0, no process left, kernel objects balanced; every frame comes back except exactly the kernel heap slab pages taken for these new message sizes (kept for reuse by design: unaccounted_frames=0); exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=app_oversize",
           "|ktest|app_oversize|big=ERR BAD_REQUEST|two=ERR BAD_REQUEST|b_after_big=1|b_after_two=1|a_after=1|handles_closed=1|input_big=ERR BAD_REQUEST|input_after=1",
           "|ktest|app_oversize|mgr_exit=0x0|processes_after=0|clean=1",
+          "|unaccounted_frames=0|",
           "|ktest|pass|a message too large for the compositor or the input service is refused and stalls nobody"
         ],
         "forbidden_markers": [

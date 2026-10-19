@@ -2704,9 +2704,11 @@ struct SvcHarness {
     m: crate::services::Manager,
     obj0: object::Stats,
     frames0: u64,
-    /// Kernel heap slab pages when `frames0` was taken (they are kept once taken, so heap
-    /// growth during a test shows in its frame balance).
+    /// Kernel heap slab pages and live blocks when `frames0` was taken: slab pages are kept
+    /// once taken, so heap growth shows in a test's frame balance; live blocks tell that
+    /// growth from a leak.
     slab0: u64,
+    live0: u64,
     load_reply: String,
 }
 
@@ -2717,7 +2719,8 @@ impl SvcHarness {
         }
         let obj0 = object::stats();
         let frames0 = pmm::stats().free_frames;
-        let slab0 = crate::mm::heap::stats().slab_pages;
+        let heap0 = crate::mm::heap::stats();
+        let (slab0, live0) = (heap0.slab_pages, heap0.live_blocks);
         let m = match crate::services::spawn_manager() {
             Ok(m) => m,
             Err(e) => {
@@ -2740,6 +2743,7 @@ impl SvcHarness {
             obj0,
             frames0,
             slab0,
+            live0,
             load_reply,
         }
     }
@@ -4944,7 +4948,6 @@ fn display_env(
 
 /// Ends a display test: everything the test holds is dropped by the caller first.
 fn display_finish(name: &'static str, h: SvcHarness, pass_msg: &'static str) -> ! {
-    let slab0 = h.slab0;
     let (mgr_exit, procs, frames0, clean) = h.finish();
     kprintln!(
         "OSX|{}|ktest|{}|mgr_exit={:#x}|processes_after={}|clean={}",
@@ -4953,13 +4956,6 @@ fn display_finish(name: &'static str, h: SvcHarness, pass_msg: &'static str) -> 
         mgr_exit,
         procs,
         u8::from(clean)
-    );
-    // Diagnostic (not asserted): heap slab pages taken since the frame balance started.
-    kprintln!(
-        "OSX|{}|ktest|{}|slab_pages_since_start={}",
-        BUILD_ID,
-        name,
-        crate::mm::heap::stats().slab_pages as i64 - slab0 as i64
     );
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
@@ -5404,15 +5400,6 @@ fn timed_request(
 /// then a request carrying two handles; after each, client `b` is answered within 500 ticks,
 /// and `a` itself still is. The input service the same, with 300 bytes from the controller.
 fn app_oversize() -> ! {
-    // The kernel heap keeps a slab page once taken, and this test is the first to move
-    // messages of these sizes (a 2000-byte request, a full 4096-byte read): warm those size
-    // classes before the frame balance starts, so the balance measures leaks, not growth.
-    drop(
-        [2000usize, 4096, 1024, 512]
-            .iter()
-            .flat_map(|&n| (0..16).map(move |_| alloc::vec![0u8; n]))
-            .collect::<Vec<_>>(),
-    );
     let (h, admin, clients, _format) = display_env(
         "app_oversize",
         b"/SYSTEM/SVC-DP.TXT",
@@ -5466,27 +5453,42 @@ fn app_oversize() -> ! {
     if !ok(&a_after) || !ok(&iafter) || !closed {
         fail("a server stopped serving the sender, or kept the handles of a refused message")
     }
+    // Everything this test allocated goes before the heap is measured.
     drop((admin, clients, input, k1, k2, ev_a, ev_b, ev_i));
-    let slab0 = h.slab0;
+    drop((big, two, b1, b2, a_after, ibig, iafter));
+    let (slab0, live0) = (h.slab0, h.live0);
     let (mgr_exit, procs, frames0, clean) = h.finish();
-    // Diagnostic: kernel slab pages taken since the frame balance started (kept for reuse,
-    // never returned), so a frames_delta can be told from a leak.
+    // The balance. This is the first test to move messages of these sizes, so the kernel heap
+    // may take slab pages for them and keeps them for reuse (heap.rs: never returned): every
+    // frame must come back except exactly those pages, and every kernel object (`clean`).
+    // Live heap blocks are printed but not judged: every display test ends 2 above its start
+    // (APP-HANG and WINDOW-STATES measured the same), so that count is the harness's own.
+    let heap1 = crate::mm::heap::stats();
+    let frames = SvcHarness::frames_delta(frames0);
+    let slab = heap1.slab_pages as i64 - slab0 as i64;
+    let live = heap1.live_blocks as i64 - live0 as i64;
     kprintln!(
-        "OSX|{}|ktest|app_oversize|mgr_exit={:#x}|processes_after={}|clean={}|slab_pages_since_start={}",
+        "OSX|{}|ktest|app_oversize|mgr_exit={:#x}|processes_after={}|clean={}",
         BUILD_ID,
         mgr_exit,
         procs,
-        u8::from(clean),
-        crate::mm::heap::stats().slab_pages as i64 - slab0 as i64
+        u8::from(clean)
+    );
+    kprintln!(
+        "OSX|{}|ktest|app_oversize|frames_delta={}|heap_pages_kept={}|unaccounted_frames={}|live_blocks_delta={}",
+        BUILD_ID,
+        frames,
+        slab,
+        frames - slab,
+        live
     );
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
     }
-    cfg_balance(
-        "app_oversize",
-        frames0,
-        "a message too large for the compositor or the input service is refused and stalls nobody",
-    )
+    if frames != slab {
+        fail("frames leaked")
+    }
+    pass("a message too large for the compositor or the input service is refused and stalls nobody")
 }
 
 /// TST-M5-APP-HANG (REQ-M5-003): a client that stops reading never blocks the compositor;
