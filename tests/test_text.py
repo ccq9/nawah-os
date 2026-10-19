@@ -247,30 +247,90 @@ class Shaping(unittest.TestCase):
             print(f"shaping {label}: {len(texts) - len(bad)}/{len(texts)} equal to HarfBuzz")
             self.assertEqual(bad[:5], [])
 
+    @staticmethod
+    def harfbuzz_clusters(texts, direction="rtl"):
+        """Per text, {cluster: glyph id} from hb-shape (the first glyph of each cluster)."""
+        with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8", suffix=".txt") as t:
+            t.write("\n".join(texts) + "\n")
+            name = t.name
+        try:
+            r = subprocess.run(["hb-shape", "--font-file", str(ARABIC), f"--direction={direction}", "--script=arab",
+                                "--language=ar", "--no-glyph-names", "--no-positions", "--text-file", name],
+                               capture_output=True, text=True, check=True)
+        finally:
+            os.unlink(name)
+        out = []
+        for line in r.stdout.splitlines():
+            m = {}
+            items = line.strip().strip("[]").split("|")
+            # hb-shape prints right-to-left runs in visual order: back to logical, so the
+            # first glyph of a cluster is its letter, not a mark HarfBuzz merged into it.
+            if direction == "rtl":
+                items.reverse()
+            for item in items:
+                gid, cluster = item.split("=")
+                # HarfBuzz draws joiners and spaces as glyph 3 and may put a joiner in the
+                # letter's cluster: only the letter's own glyph is kept.
+                if gid != "3":
+                    m.setdefault(int(cluster), gid)
+            out.append(m)
+        return out
+
+    @staticmethod
+    def arabic_letters(text):
+        """Indices of the characters whose glyph is compared: Arabic letters (not joiners, marks, spaces)."""
+        return [i for i, c in enumerate(text) if 0x620 <= ord(c) <= 0x64A or ord(c) in (0x67E, 0x686, 0x698, 0x6A9, 0x6AF, 0x6CC)]
+
+    def all_joiner_pairs(self):
+        return [a + z + b for z in ("\u200d", "\u200c") for a in self.LETTERS for b in self.LETTERS]
+
     def test_joiners(self):
-        # ZWJ/ZWNJ: the forms around them equal HarfBuzz's; HarfBuzz draws the joiner itself
-        # as an invisible space glyph where the library keeps the font's (the layout drops
-        # it: X9 removes it), so position 1 is not compared.
-        rng = random.Random(5)
-        texts = [rng.choice(self.LETTERS) + z + rng.choice(self.LETTERS) for z in ("‍", "‌") for _ in range(50)]
+        # ZWJ/ZWNJ in the shaper: the forms around them equal HarfBuzz's for every letter pair
+        # (2 × 48 × 48; review M6 found the 50-pair samples missed cases). HarfBuzz draws the
+        # joiner itself as a glyph the layout drops (X9), so position 1 is not compared.
+        texts = self.all_joiner_pairs()
         mine = [x.split() for x in textdump(["shape " + hexes(t) for t in texts])]
         ref = self.harfbuzz(texts)
         bad = [(t, a, b) for t, a, b in zip(texts, mine, ref) if len(a) != 3 or len(b) != 3 or (a[0], a[2]) != (b[0], b[2])]
+        print(f"shaper joiners: {len(texts) - len(bad)}/{len(texts)} equal to HarfBuzz")
         self.assertEqual(bad[:5], [])
 
     def test_layout_joiners(self):
         # The line layout — the path every drawn text takes — keeps a joiner inside its Arabic
-        # run, so the forms around it equal HarfBuzz's: ZWJ joins, ZWNJ separates. Review M6:
-        # the joiner took the Latin font and split the run, so a ZWJ pair was drawn isolated.
-        # The joiner itself is removed (X9) and draws nothing, so the line has two glyphs.
-        rng = random.Random(11)
-        texts = [rng.choice(self.LETTERS) + z + rng.choice(self.LETTERS) for z in ("‍", "‌") for _ in range(50)]
+        # run, so the forms around it equal HarfBuzz's: ZWJ joins, ZWNJ separates, for every
+        # letter pair. Review M6: the joiner took the Latin font and split the run, so a ZWJ
+        # pair was drawn isolated. The joiner itself is removed (X9) and draws nothing.
+        texts = self.all_joiner_pairs()
         lines = textdump(["layout rtl 16 " + hexes(t) for t in texts])
         mine = [[g.split(":")[1] for g in reversed(x.split(" | ")[1].split())] for x in lines]
         ref = self.harfbuzz(texts)
         bad = [(t, a, b) for t, a, b in zip(texts, mine, ref) if len(b) != 3 or a != [b[0], b[2]]]
         print(f"layout joiners: {len(texts) - len(bad)}/{len(texts)} equal to HarfBuzz")
         self.assertEqual(bad[:5], [])
+
+    def test_layout_joiner_edges(self):
+        # A joiner with no Arabic letter before it — first in the line, after a space, a digit
+        # or a Latin letter — still joins the letter after it (review M6: the letter stayed
+        # isolated), and the usual combinations hold: consecutive joiners, a joiner with a mark,
+        # at the end, lam-joiner-alef, tatweel, a Persian ZWNJ word, both paragraph directions.
+        # Compared: the glyph of every Arabic letter, by its character index, with HarfBuzz's.
+        lines = ["\u200dب", "ب \u200dب", "\u200d\u200dب", "a\u200dب", "1\u200dب", "\u200dب\u200d", "ب \u200dب\u200d ب",
+                 "ب\u200d", "ب\u200d\u200dب", "ب\u200c\u200dب", "ب\u200d\u200cب", "بَ\u200dب", "ب\u200dَب", "ل\u200dا",
+                 "ل\u200cا", "ب\u200da", "ب\u200dـب", "می\u200cخواهم", "\u200cب", "ب\u200c"]
+        bad = []
+        for base, direction in (("rtl", "rtl"), ("ltr", "rtl")):
+            out = textdump([f"layout {base} 16 " + hexes(t) for t in lines])
+            ref = self.harfbuzz_clusters(lines, direction)
+            for t, x, hb in zip(lines, out, ref):
+                mine = {}
+                for g in x.split(" | ")[1].split():
+                    font, gid, _x, cluster = g.split(":")
+                    mine.setdefault(int(cluster), gid)
+                for i in self.arabic_letters(t):
+                    if mine.get(i) != hb.get(i):
+                        bad.append((base, t, i, mine.get(i), hb.get(i)))
+        print(f"layout joiner edges: {2 * len(lines) - len({(b[0], b[1]) for b in bad})}/{2 * len(lines)} lines equal to HarfBuzz")
+        self.assertEqual(bad[:6], [])
 
     def test_forms(self):
         # Joining types from DerivedJoiningType.txt: beh is dual-joining, alef right-joining

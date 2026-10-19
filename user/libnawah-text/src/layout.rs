@@ -1,6 +1,8 @@
 //! One line of text to positioned glyphs (WP-35, text.md): UAX #9 levels, runs of one level
 //! and one font (Arabic script → the Arabic font, everything else → the Latin font, with a
-//! fallback to the other font for a missing glyph), Arabic shaping per run, paired brackets
+//! fallback to the other font for a missing glyph; ZWJ and ZWNJ go with the character before
+//! them, or with the Arabic letter after them when no Arabic letter precedes, text.md v1.1),
+//! Arabic shaping per run, paired brackets
 //! mirrored in right-to-left runs (BidiBrackets.txt; other mirrored characters are not), the
 //! runs in visual order (L2) and advances from `hmtx`. Positions are 26.6 fixed point.
 
@@ -39,6 +41,11 @@ impl<'a> Fonts<'a> {
             &self.latin
         }
     }
+}
+
+/// ZWNJ or ZWJ: removed by X9, they draw nothing and steer the joining inside a run.
+fn is_joiner(cp: u32) -> bool {
+    matches!(cp, 0x200C | 0x200D)
 }
 
 fn is_arabic_script(cp: u32) -> bool {
@@ -150,7 +157,7 @@ impl Layout {
             // glyph for them: they draw nothing (X9 removes them) and only steer the joining
             // inside the run. In the Latin font they split an Arabic word in two runs and a
             // ZWJ pair was shaped isolated (review M6).
-            if matches!(cp, 0x200C | 0x200D) && i > 0 {
+            if is_joiner(cp) && i > 0 {
                 self.font_of[i] = self.font_of[i - 1];
                 continue;
             }
@@ -162,8 +169,29 @@ impl Layout {
             }
             self.font_of[i] = f;
         }
+        // A joiner with no Arabic letter before it (first in the line, after a space, a digit
+        // or a Latin letter) belongs to the run of the Arabic letter after it, which it joins
+        // (review M6: that letter was drawn isolated).
+        let mut forward = [false; MAX_CHARS];
+        let mut i = 0;
+        while i < n {
+            if is_joiner(self.text[i]) && (i == 0 || self.font_of[i - 1] != ARABIC) {
+                let mut j = i;
+                while j < n && is_joiner(self.text[j]) {
+                    j += 1;
+                }
+                if j < n && self.font_of[j] == ARABIC {
+                    self.font_of[i..j].fill(ARABIC);
+                    forward[i..j].fill(true);
+                }
+                i = j;
+            } else {
+                i += 1;
+            }
+        }
         // Removed characters (X9) take the level of the character before them so they do not
-        // split a run (a ZWJ inside an Arabic word still joins).
+        // split a run (a ZWJ inside an Arabic word still joins); a forward joiner takes the
+        // level of the letter after it.
         let mut run_level = [0u8; MAX_CHARS];
         let mut prev = self.levels.first().copied().unwrap_or(0);
         for (rl, &lv) in run_level.iter_mut().zip(&self.levels[..n]) {
@@ -171,6 +199,11 @@ impl Layout {
                 prev = lv;
             }
             *rl = prev;
+        }
+        for k in (0..n).rev() {
+            if forward[k] && k + 1 < n {
+                run_level[k] = run_level[k + 1];
+            }
         }
         let count = bidi::reorder(&self.levels[..n], &mut self.order[..n]);
         // Walk the visual order; each run (same level and font, contiguous in logical order)

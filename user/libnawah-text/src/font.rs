@@ -690,7 +690,8 @@ impl<'a> Font<'a> {
     }
 
     /// Chaining contextual substitution (lookup type 6, format 3 — coverage based) at
-    /// `pos` of `glyphs`, skipping marks when `skip_marks`: for the first subtable that
+    /// `pos` of `glyphs`, skipping marks when `skip_marks` and the glyph `ignore` (ZWNJ's,
+    /// as HarfBuzz skips ZWNJ in context matching; 0 for none): for the first subtable that
     /// matches, its (sequence index, lookup) records are written to `records` and their count
     /// comes back; `None` when no subtable matches.
     pub fn chain_context(
@@ -699,12 +700,14 @@ impl<'a> Font<'a> {
         glyphs: &[u16],
         pos: usize,
         skip_marks: bool,
+        ignore: u16,
         records: &mut [(u16, u16); 8],
     ) -> Option<usize> {
         let mut subs = [(0u16, 0usize); 16];
         let n = self.lookup_subtables(index, &mut subs)?;
         let d = self.data;
-        let skip = |g: u16| skip_marks && self.glyph_class(g) == 3;
+        let skip =
+            |g: u16| (skip_marks && self.glyph_class(g) == 3) || (ignore != 0 && g == ignore);
         for &(kind, st) in &subs[..n] {
             if kind != 6 || u16_at(d, st)? != 3 {
                 continue;
