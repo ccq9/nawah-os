@@ -1,0 +1,31 @@
+test_dependency_cycle (__main__.ValidateRecords.test_dependency_cycle) ... ok
+test_done_requires_passing_tests_and_evidence (__main__.ValidateRecords.test_done_requires_passing_tests_and_evidence) ... ok
+test_duplicate_id (__main__.ValidateRecords.test_duplicate_id) ... ok
+test_evidence_mismatch_is_rejected (__main__.ValidateRecords.test_evidence_mismatch_is_rejected) ... FAIL
+test_illegal_transition (__main__.ValidateRecords.test_illegal_transition) ... ok
+test_missing_reference (__main__.ValidateRecords.test_missing_reference) ... ok
+test_missing_required_field (__main__.ValidateRecords.test_missing_required_field) ... ok
+test_stale_input_requires_reevaluation (__main__.ValidateRecords.test_stale_input_requires_reevaluation) ... FAIL
+test_valid_evidence_accepted_and_done_allowed (__main__.ValidateRecords.test_valid_evidence_accepted_and_done_allowed) ... ok
+test_valid_set_passes (__main__.ValidateRecords.test_valid_set_passes) ... ok
+
+======================================================================
+FAIL: test_evidence_mismatch_is_rejected (__main__.ValidateRecords.test_evidence_mismatch_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_validate_records.py", line 94, in test_evidence_mismatch_is_rejected
+    self.assertEqual(project.validate_records(verbose=False), 50)
+AssertionError: 0 != 50
+
+======================================================================
+FAIL: test_stale_input_requires_reevaluation (__main__.ValidateRecords.test_stale_input_requires_reevaluation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_validate_records.py", line 110, in test_stale_input_requires_reevaluation
+    self.assertEqual(project.validate_records(verbose=False), 50)
+AssertionError: 0 != 50
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.118s
+
+FAILED (failures=2)
