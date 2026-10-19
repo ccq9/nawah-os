@@ -78,6 +78,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "idle"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "inputd"
 version = "0.1.0"
 dependencies = [
@@ -86,6 +93,13 @@ dependencies = [
 
 [[package]]
 name = "kbdprobe"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
+name = "killer"
 version = "0.1.0"
 dependencies = [
  "libnawah",
@@ -160,6 +174,13 @@ dependencies = [
 
 [[package]]
 name = "sh"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
+name = "spin"
 version = "0.1.0"
 dependencies = [
  "libnawah",

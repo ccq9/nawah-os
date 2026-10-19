@@ -1,0 +1,15 @@
+[package]
+name = "spin"
+version = "0.1.0"
+edition = "2021"
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "spin"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+libnawah = { path = "../../libnawah" }

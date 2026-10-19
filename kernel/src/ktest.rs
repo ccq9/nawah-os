@@ -196,6 +196,7 @@ pub fn run() -> ! {
         "window_a11y" => keyboard_nav("window_a11y"),
         "a11y_tree" => a11y_tree(),
         "arabic_ui" => arabic_ui(),
+        "process_kill" => process_kill(),
         "login_screen" => login_screen(),
         "auth_input_isolated" => auth_input_isolated(),
         "lock_survives" => lock_survives(),
@@ -5855,6 +5856,44 @@ fn lock_survives() -> ! {
         h,
         "the lock survived the restart of the compositor and of the input service, and only the right password opened it",
     )
+}
+
+// ---- WP-40: forced termination ---------------------------------------------------------------
+
+/// TST-M5-PROCESS-KILL (REQ-M5-010, §8.7): the `killer` app proves the whole process_kill
+/// contract in user space — a read-only process handle cannot kill (ERR_ACCESS), a non-process
+/// handle is ERR_WRONG_TYPE, the owner's handle ends a child blocked in channel_read with
+/// EXIT_KILLED, killing an exited process is a no-op, and a SPIN child (ring 3) and an IDLE
+/// child (object_wait_many) are likewise ended with EXIT_KILLED. The test checks its exit and
+/// that no frame leaked (the three children's resources all came back).
+fn process_kill() -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let frames0 = pmm::stats().free_frames;
+    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let pid = match crate::user::spawn_elf_with(crate::apps::KILLER, 1, Vec::new(), object) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|process_kill|error={}", BUILD_ID, e.code());
+            fail("killer did not load")
+        }
+    };
+    let code = sched::wait_process(pid).unwrap_or(u64::MAX);
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|process_kill|killer_exit={:#x}|frames_delta={}",
+        BUILD_ID,
+        code,
+        frames
+    );
+    if code != 0x6B {
+        fail("the process_kill contract did not hold (see killer_exit)")
+    }
+    if frames != 0 {
+        fail("process_kill leaked frames")
+    }
+    pass("process_kill ends a blocked, a spinning and a waiting process with EXIT_KILLED, and refuses a handle without WRITE")
 }
 
 // ---- WP-27: the network interface and the keyboard ----------------------------------------

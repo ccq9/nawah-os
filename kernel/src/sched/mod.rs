@@ -101,6 +101,9 @@ pub struct Process {
     pub handles: Arc<IrqSpinLock<HandleTable>>,
     /// The waitable view a parent holds (WP-23); told the exit code once the process is gone.
     pub object: Option<Arc<ProcessObject>>,
+    /// Set by `process_kill` (WP-40): every thread of the process exits with this code at its
+    /// next safe point (a syscall return, a blocking wait returning, or a timer preemption).
+    pub kill: Option<u64>,
 }
 
 impl Process {
@@ -412,6 +415,7 @@ pub fn spawn_user_with(
             exit_code: None,
             handles: Arc::new(IrqSpinLock::new("handles", table)),
             object,
+            kill: None,
         });
         let cpu = me();
         match new_thread(
@@ -863,6 +867,78 @@ fn wait_process_loop(pid: u32) -> Option<u64> {
         }
         if !yield_now() {
             context::idle_wait();
+        }
+    }
+}
+
+/// Marks process `pid` to be killed with `code` (WP-40, ADR-0016 §2 / §8.7): every thread of
+/// it is made runnable and asked to reschedule, and each exits at its next safe point
+/// (`check_kill`: a syscall return, a blocking wait returning, or a timer preemption). An
+/// unknown or already-exited process is ignored. Returns whether a live process was marked.
+pub fn kill_process(pid: u32, code: u64) -> bool {
+    with(|s| {
+        let Some(p) = s.processes.iter_mut().find(|p| p.id == pid) else {
+            return false;
+        };
+        if p.exit_code.is_some() {
+            return false; // its last thread already exited; nothing to kill
+        }
+        if p.kill.is_none() {
+            p.kill = Some(code);
+        }
+        // Wake every thread of the process so it reaches a safe point, and nudge the CPUs
+        // running them. A thread blocked/sleeping becomes Ready (its wait returns, then
+        // `check_kill` exits it); a running one gets a reschedule to its preemption point.
+        let mut cpus = [false; MAX_CPUS];
+        for t in s.threads.iter_mut() {
+            if t.process != Some(pid) {
+                continue;
+            }
+            match t.state {
+                State::Blocked | State::BlockedUntil { .. } | State::Sleeping { .. } => {
+                    t.state = State::Ready;
+                }
+                _ => {}
+            }
+            cpus[usize::from(t.cpu)] = true;
+        }
+        for (c, &want) in cpus.iter().enumerate() {
+            if want {
+                request_resched(s, c);
+            }
+        }
+        true
+    })
+}
+
+/// Whether the current thread's process has been killed (WP-40): a wait loop breaks on this to
+/// run its cleanup before `check_kill` exits the thread.
+pub fn killed() -> bool {
+    current_kill_code().is_some()
+}
+
+/// The kill code of the current thread's process, if it was killed (WP-40). Safe before the
+/// scheduler is initialised (the early-boot timer reaches `check_kill` via `preempt_point`):
+/// it locks `SCHED` directly and answers None when there is no scheduler yet.
+fn current_kill_code() -> Option<u64> {
+    let mut g = SCHED.lock();
+    let s = g.as_mut()?;
+    let i = index_of(s, s.current[me()])?;
+    let pid = s.threads[i].process?;
+    s.processes
+        .iter()
+        .find(|p| p.id == pid)
+        .and_then(|p| p.kill)
+}
+
+/// A safe point: if the current thread's process was killed, exits it now (never returns).
+/// Called at every syscall return, after a blocking wait returns, and at timer preemption, so
+/// a killed thread dies whatever it was doing — spinning in ring 3, blocked, or sleeping.
+pub fn check_kill() {
+    if let Some(code) = current_kill_code() {
+        let idle = with(|s| current_is_idle(s));
+        if !idle {
+            exit_current(code);
         }
     }
 }

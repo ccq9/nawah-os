@@ -30,7 +30,10 @@
       "user/apps/dialog/Cargo.toml",
       "user/apps/sessiond/Cargo.toml",
       "user/apps/spy/Cargo.toml",
-      "user/libui/Cargo.toml"
+      "user/libui/Cargo.toml",
+      "user/apps/killer/Cargo.toml",
+      "user/apps/spin/Cargo.toml",
+      "user/apps/idle/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -66,7 +69,10 @@
       "${OUT}/apps/narrator.elf",
       "${OUT}/apps/dialog.elf",
       "${OUT}/apps/sessiond.elf",
-      "${OUT}/apps/spy.elf"
+      "${OUT}/apps/spy.elf",
+      "${OUT}/apps/killer.elf",
+      "${OUT}/apps/spin.elf",
+      "${OUT}/apps/idle.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -519,6 +525,60 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/spy",
         "${OUT}/apps/spy.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/killer/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/killer",
+        "${OUT}/apps/killer.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/spin/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/spin",
+        "${OUT}/apps/spin.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/idle/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/idle",
+        "${OUT}/apps/idle.elf"
       ],
       [
         "cargo",
@@ -4609,6 +4669,30 @@
             "${SERIAL:probe_bg=},F0F0F0"
           ]
         ]
+      },
+      {
+        "id": "TST-M5-PROCESS-KILL",
+        "test_id": "TST-M5-PROCESS-KILL",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=process_kill"
+        ],
+        "oracle": "REQ-M5-010 §8.7: the killer app spawns an ECHO child (blocked in channel_read), a SPIN child (ring 3) and an IDLE child (object_wait_many); a read-only process handle cannot kill (ERR_ACCESS), a non-process handle is ERR_WRONG_TYPE, the owner's WRITE handle kills each child so it exits EXIT_KILLED (0x20000) at its safe point, and killing an exited process is a no-op; killer exits 0x6B and no frame leaks (frames_delta=0); exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=process_kill",
+          "|kernel|spawn|pid=",
+          "|ktest|process_kill|killer_exit=0x6b|frames_delta=0",
+          "|ktest|pass|process_kill ends a blocked, a spinning and a waiting process with EXIT_KILLED"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600
       }
     ]
   },

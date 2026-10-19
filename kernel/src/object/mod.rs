@@ -43,8 +43,11 @@ impl Rights {
     /// Rights of a fresh VMO handle.
     pub const VMO_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0 | Self::MAP.0);
-    /// Rights of the handle `process_spawn` returns (WP-23).
-    pub const PROCESS_DEFAULT: Rights = Rights(Self::WAIT.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of the handle `process_spawn` returns to the creator (WP-23; +WRITE in WP-40):
+    /// WAIT to watch its exit, WRITE the authority to `process_kill` it, DUPLICATE|TRANSFER to
+    /// pass it on. A duplicate for a mere watcher can drop WRITE.
+    pub const PROCESS_OWNER: Rights =
+        Rights(Self::WAIT.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
     /// Rights of the token handle its minter gets (WP-25): WRITE revokes; a client copy
     /// goes out without it.
     pub const TOKEN_MINTER: Rights = Rights(Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);

@@ -74,6 +74,9 @@ pub const SYS_MOUSE_READ: u64 = 40;
 /// v1.10 (WP-34, display.md §ب): the size of a VMO, so a service can check a client's
 /// surface against the pixels it declares before reading the mapping.
 pub const SYS_VMO_SIZE: u64 = 41;
+/// v1.11 (WP-40, §8.7): end a process the holder created. The handle needs WRITE (the
+/// creator's; a duplicate may drop it), so no one kills a process it only watches.
+pub const SYS_PROCESS_KILL: u64 = 42;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -299,7 +302,15 @@ fn channel_read(
     let msg = loop {
         match ep.read(cap_b, cap_h, if block { Some(tid) } else { None }) {
             Ok(m) => break m,
-            Err(ChannelError::ShouldWait) if block => sched::block_current(),
+            Err(ChannelError::ShouldWait) if block => {
+                sched::block_current();
+                // Woken to die, not to retry: return so this frame's `ep` (an Arc) drops,
+                // then `dispatch` exits the thread at a point holding no locals (WP-40). The
+                // error is never seen by the program — it is already being killed.
+                if sched::killed() {
+                    return Err(ERR_TIMED_OUT);
+                }
+            }
             Err(e) => return Err(channel_err(e)),
         }
     };
@@ -495,6 +506,14 @@ fn flat(r: Result<i64, i64>) -> i64 {
 
 /// Dispatches one call; never panics on bad input.
 pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
+    let r = dispatch_inner(nr, args);
+    // Safe point on every syscall return: if this process was killed while the call ran, the
+    // thread dies now instead of going back to ring 3 (WP-40).
+    crate::sched::check_kill();
+    r
+}
+
+fn dispatch_inner(nr: u64, args: [u64; 6]) -> i64 {
     match nr {
         SYS_EXIT => crate::sched::exit_current(args[0]),
         SYS_YIELD => {
@@ -579,6 +598,7 @@ pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
         SYS_VMO_UNMAP => flat(sys_vmo_unmap(args[0])),
         SYS_MOUSE_READ => flat(sys_mouse_read(args[0] as Handle, args[1], args[2])),
         SYS_VMO_SIZE => flat(sys_vmo_size(args[0] as Handle)),
+        SYS_PROCESS_KILL => flat(sys_process_kill(args[0] as Handle)),
         _ => ERR_NOSYS,
     }
 }
@@ -638,7 +658,9 @@ fn sys_process_spawn(ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64>
         .lock()
         .insert(Entry {
             object: Object::Process(object),
-            rights: Rights::PROCESS_DEFAULT,
+            // The creator gets WRITE too (PROCESS_OWNER): authority to kill its child. A
+            // duplicate for a mere watcher can drop WRITE.
+            rights: Rights::PROCESS_OWNER,
         })
         .map_err(handle_err)?;
     Ok(i64::from(h))
@@ -720,6 +742,10 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
             Some(d) => sched::block_current_until(d),
             None => sched::block_current(),
         }
+        // Woken to die: stop waiting so the cleanup below runs before the thread exits (WP-40).
+        if sched::killed() {
+            break Err(ERR_TIMED_OUT);
+        }
     };
     for (obj, _) in &targets {
         match obj {
@@ -730,6 +756,8 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
             _ => {}
         }
     }
+    // On a kill the loop broke with an error; returning drops `targets` (its Arc clones), then
+    // `dispatch` exits the thread with no locals held (WP-40). `result` is never seen.
     result
 }
 
@@ -749,6 +777,37 @@ fn sys_process_status(h: Handle) -> Result<i64, i64> {
         Some(code) => Ok((code & (i64::MAX as u64)) as i64),
         None => Err(ERR_SHOULD_WAIT),
     }
+}
+
+/// Exit code of a process ended by `process_kill` (WP-40); distinct from a clean exit and from
+/// a ring-3 fault (`USER_FAULT_EXIT_BASE`). Reported by `process_status` and the manager.
+pub const EXIT_KILLED: u64 = 0x2_0000;
+
+/// `process_kill(h)` (v1.11, §8.7): ends the process the handle views. Needs WRITE (the
+/// creator's authority; a duplicate may drop it), so watching a process does not grant killing
+/// it. `ERR_WRONG_TYPE` for another object; an already-exited process is a no-op (`0`). The
+/// threads exit at their next safe point (`sched::check_kill`); their resources are released
+/// then, so a peer sees its channel close.
+fn sys_process_kill(h: Handle) -> Result<i64, i64> {
+    let table = table()?;
+    let obj = {
+        let t = table.lock();
+        // Handle, then type, then rights (ipc.md §1): a non-process handle is WRONG_TYPE
+        // whatever its rights; a process handle without WRITE is ACCESS.
+        let e = t.get(h, Rights::NONE).map_err(handle_err)?;
+        let p = match &e.object {
+            Object::Process(p) => p.clone(),
+            _ => return Err(ERR_WRONG_TYPE),
+        };
+        if !e.rights.contains(Rights::WRITE) {
+            return Err(ERR_ACCESS);
+        }
+        p
+    };
+    if let Some(pid) = obj.pid() {
+        crate::sched::kill_process(pid, EXIT_KILLED);
+    }
+    Ok(0)
 }
 
 // ---- v1.5: tokens and authority (WP-25) -------------------------------------------------------

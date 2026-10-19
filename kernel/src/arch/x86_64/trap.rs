@@ -291,6 +291,12 @@ fn read_cr2() -> u64 {
 extern "sysv64" fn exception_handler(frame: &TrapFrame) {
     if frame.vector >= EXCEPTION_VECTORS as u64 {
         super::irq::dispatch((frame.vector & 0xFF) as u8);
+        // A killed process spinning in ring 3 dies on its way back out (WP-40): only when the
+        // interrupt came from ring 3, so no kernel syscall frame (with its Arc locals) is
+        // abandoned — a thread interrupted in the kernel is left to exit at its syscall return.
+        if frame.cs & 3 == 3 {
+            crate::sched::check_kill();
+        }
         return;
     }
     if frame.cs & 3 == 3 {

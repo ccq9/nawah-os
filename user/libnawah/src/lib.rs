@@ -57,6 +57,8 @@ pub const SYS_VMO_UNMAP: u64 = 39;
 /// v1.8 (WP-33, input.md v2): the mouse.
 pub const SYS_MOUSE_READ: u64 = 40;
 pub const SYS_VMO_SIZE: u64 = 41;
+/// v1.11 (WP-40): end a process the holder created (the handle needs WRITE).
+pub const SYS_PROCESS_KILL: u64 = 42;
 
 pub const ERR_NOSYS: i64 = -1;
 pub const ERR_INVALID: i64 = -2;
@@ -256,6 +258,13 @@ pub fn process_status(h: Handle) -> Result<u64, i64> {
     } else {
         Ok(r as u64)
     }
+}
+
+/// Ends the process the handle views (WP-40); the handle needs WRITE. Returns 0, or a negative
+/// error (`ERR_ACCESS` without WRITE, `ERR_WRONG_TYPE` for another object). An already-exited
+/// process answers 0.
+pub fn process_kill(h: Handle) -> i64 {
+    syscall6(SYS_PROCESS_KILL, u64::from(h), 0, 0, 0, 0, 0)
 }
 
 /// The handle the process received at start (0 when it was started with none).

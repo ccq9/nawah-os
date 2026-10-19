@@ -33,6 +33,7 @@ const APPS: &[&str] = &[
     "kbdprobe",
     "fbprobe",
     "textprobe",
+    "killer",
 ];
 
 fn emit_apps() {

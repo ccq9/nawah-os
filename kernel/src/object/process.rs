@@ -21,8 +21,7 @@ struct State {
 }
 
 pub struct ProcessObject {
-    /// 0 until the scheduler binds the object to the process it created (diagnostics).
-    #[allow(dead_code)]
+    /// 0 until the scheduler binds the object to the process it created.
     pid: AtomicU32,
     state: IrqSpinLock<State>,
 }
@@ -44,6 +43,14 @@ impl ProcessObject {
 
     pub fn bind(&self, pid: u32) {
         self.pid.store(pid, Ordering::Relaxed);
+    }
+
+    /// The process id the scheduler bound, or None before binding (WP-40, for `process_kill`).
+    pub fn pid(&self) -> Option<u32> {
+        match self.pid.load(Ordering::Relaxed) {
+            0 => None,
+            p => Some(p),
+        }
     }
 
     /// The exit code once the process has exited.
