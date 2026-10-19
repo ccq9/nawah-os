@@ -1,13 +1,15 @@
 //! One line of text to positioned glyphs (WP-35, text.md): UAX #9 levels, runs of one level
 //! and one font (Arabic script → the Arabic font, everything else → the Latin font, with a
-//! fallback to the other font for a missing glyph), Arabic shaping per run, paired brackets
+//! fallback to the other font for a missing glyph; ZWJ and ZWNJ go with the character before
+//! them, or with the Arabic letter after them when no Arabic letter precedes, text.md v1.1),
+//! Arabic shaping per run, paired brackets
 //! mirrored in right-to-left runs (BidiBrackets.txt; other mirrored characters are not), the
 //! runs in visual order (L2) and advances from `hmtx`. Positions are 26.6 fixed point.
 
 use crate::bidi::{self, Base, Bidi, REMOVED};
 use crate::font::{Font, Outline};
 use crate::raster::{Bitmap, Rasterizer};
-use crate::shape::{self, JT_T};
+use crate::shape::{self, JT_T, JT_U};
 
 pub const MAX_CHARS: usize = 512;
 pub const LATIN: u8 = 0;
@@ -39,6 +41,11 @@ impl<'a> Fonts<'a> {
             &self.latin
         }
     }
+}
+
+/// ZWNJ or ZWJ: removed by X9, they draw nothing and steer the joining inside a run.
+fn is_joiner(cp: u32) -> bool {
+    matches!(cp, 0x200C | 0x200D)
 }
 
 fn is_arabic_script(cp: u32) -> bool {
@@ -146,6 +153,14 @@ impl Layout {
             if shape::joining_type(cp) == JT_T && i > 0 {
                 f = self.font_of[i - 1];
             }
+            // ZWNJ and ZWJ stay in the run of the character before them, whatever font has a
+            // glyph for them: they draw nothing (X9 removes them) and only steer the joining
+            // inside the run. In the Latin font they split an Arabic word in two runs and a
+            // ZWJ pair was shaped isolated (review M6).
+            if is_joiner(cp) && i > 0 {
+                self.font_of[i] = self.font_of[i - 1];
+                continue;
+            }
             if fonts.get(f).glyph_id(cp) == 0 {
                 let other = if f == ARABIC { LATIN } else { ARABIC };
                 if fonts.get(other).glyph_id(cp) != 0 {
@@ -163,6 +178,37 @@ impl Layout {
                 prev = lv;
             }
             *rl = prev;
+        }
+        // A joiner the character before it cannot use — first in the line, after a character
+        // of the Latin font, after a non-joining one (an Arabic-Indic digit, an Arabic comma),
+        // or after one at another level — belongs to the run of the Arabic letter after it,
+        // which it joins, and takes that letter's level (review M6: the letter was drawn
+        // isolated). It goes there only if that character can join: a letter, then a joiner,
+        // then a digit keeps the joiner (the letter takes its joining form).
+        let mut i = 0;
+        while i < n {
+            if !is_joiner(self.text[i]) {
+                i += 1;
+                continue;
+            }
+            let mut j = i;
+            while j < n && is_joiner(self.text[j]) {
+                j += 1;
+            }
+            let before_cannot_join = i == 0
+                || self.font_of[i - 1] != ARABIC
+                || shape::joining_type(self.text[i - 1]) == JT_U
+                || (j < n && run_level[i - 1] != run_level[j]);
+            if j < n
+                && self.font_of[j] == ARABIC
+                && shape::joining_type(self.text[j]) != JT_U
+                && before_cannot_join
+            {
+                self.font_of[i..j].fill(ARABIC);
+                let level = run_level[j];
+                run_level[i..j].fill(level);
+            }
+            i = j;
         }
         let count = bidi::reorder(&self.levels[..n], &mut self.order[..n]);
         // Walk the visual order; each run (same level and font, contiguous in logical order)
