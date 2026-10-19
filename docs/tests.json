@@ -1834,7 +1834,7 @@
     "REQ-M3-005"
    ],
    "layer": "negative",
-   "oracle": "planned (WP-32 reopened; arena review K-3; DEC-004): a VMO handle with MAP|WRITE and no READ: vmo_map(prot=2) is refused with ERR_ACCESS (x86 has no write-only page, so a writable mapping is readable); with MAP|READ|WRITE it maps; exit 33",
+   "oracle": "REQ-M3-005 (WP-32 reopened, review K-3, DEC-004): ring-3 program: a VMO handle with MAP and WRITE but no READ cannot be mapped, not even for writing alone (ERR_ACCESS: x86 has no write-only page, so a writable mapping is readable — review K-3, DEC-004); a duplicate with READ added maps for writing; exit 0x2E; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []

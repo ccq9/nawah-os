@@ -804,7 +804,8 @@
    ],
    "failure_cases": [
     "رسالة فوق الحد تُقبل",
-    "مقبض مغلق يُستعمل"
+    "مقبض مغلق يُستعمل",
+    "ربط VMO للكتابة بمقبض بلا حق READ يُقرأ (x86 لا يعرف صفحة كتابة فقط؛ K-3)"
    ],
    "acceptance": "ipc_roundtrip/rights_denied/closed_handle/oversize/no_leak",
    "test_ids": [
@@ -814,7 +815,8 @@
     "TST-M3-IPC-OVERSIZE",
     "TST-M3-IPC-NO-LEAK",
     "TST-M3-HANDLE-TABLE",
-    "TST-M3-BLOCK-WAKE"
+    "TST-M3-BLOCK-WAKE",
+    "TST-M3-VMO-MAP-RIGHTS"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [

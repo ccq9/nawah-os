@@ -133,6 +133,9 @@ pub fn run() -> ! {
         "user_sleep" => user_sleep(),
         "ipc_roundtrip" => user_program_case("ipc_roundtrip", user_programs::ipc_roundtrip(), 0x1C),
         "rights_denied" => user_program_case("rights_denied", user_programs::rights_denied(), 0x2D),
+        "vmo_map_rights" => {
+            user_program_case("vmo_map_rights", user_programs::vmo_map_rights(), 0x2E)
+        }
         "closed_handle" => user_program_case("closed_handle", user_programs::closed_handle(), 0x3E),
         "oversize_rejected" => {
             user_program_case("oversize_rejected", user_programs::oversize(), 0x4F)

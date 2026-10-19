@@ -1767,6 +1767,28 @@
         ]
       },
       {
+        "id": "TST-M3-VMO-MAP-RIGHTS",
+        "test_id": "TST-M3-VMO-MAP-RIGHTS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=vmo_map_rights"
+        ],
+        "oracle": "ring-3 program: a VMO handle with MAP and WRITE but no READ cannot be mapped, not even for writing alone (ERR_ACCESS: x86 has no write-only page, so a writable mapping is readable — review K-3, DEC-004); a duplicate with READ added maps for writing; exit 0x2E; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=vmo_map_rights",
+          "|ktest|vmo_map_rights|exit=0x2e|expected=0x2e|frames_delta=0",
+          "|ktest|pass|ring-3 program behaved"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
         "id": "TST-M3-CLOSED-HANDLE",
         "test_id": "TST-M3-CLOSED-HANDLE",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

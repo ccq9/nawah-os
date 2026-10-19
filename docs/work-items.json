@@ -2111,7 +2111,8 @@
    "id": "WP-32",
    "stage": "M5",
    "requirement_ids": [
-    "REQ-M5-001"
+    "REQ-M5-001",
+    "REQ-M3-005"
    ],
    "depends_on": [
     "WP-31"
@@ -2160,21 +2161,25 @@
     "العرض: إطار GOP وكائن العرض ومسار الرسم التشخيصي ومجس الشاشة في المختبر",
     "boot stub: EFI_GRAPHICS_OUTPUT_PROTOCOL located before EBS, BootInfo.fb filled (base, size, resolution, stride, pixel format), unsupported formats reported absent",
     "kernel: the frame mapped in the private MMIO window (WC when PAT allows), kernel|display boot line with the diagnostic pattern (build id corner marks), Object::Display (type 10) with display_info and display_map (a physical VMO over the frame), and user mappings vmo_map/vmo_unmap (ABI v1.8 additive: a mapping region above the image, protection from the handle's rights, never executable, 64 per process, gone with the process)",
-    "lab: tools/screen.py reads a QEMU screendump (PPM) and checks named regions; project.py `screendump` action through the monitor; display.md part A"
+    "lab: tools/screen.py reads a QEMU screendump (PPM) and checks named regions; project.py `screendump` action through the monitor; display.md part A",
+    "Reopened 2026-10-19 (OS-EXEC-AR §2.1; M5 pre-gate review K-3; DEC-004): vmo_map (ABI v1.8, introduced here in de5936c6) asked for WRITE alone on a write-only mapping, but x86 has no write-only page, so a handle without READ could read through a writable mapping. Fix: every mapping needs READ (syscall.md, ipc.md); test TST-M3-VMO-MAP-RIGHTS, which failed first (exit 0x3: the write-only mapping succeeded)"
    ],
-   "acceptance": "TST-M5-DISPLAY-BOOT PASS; display.md part A v1; ADR-0019 §1–2",
+   "acceptance": "TST-M5-DISPLAY-BOOT PASS; display.md part A v1; ADR-0019 §1–2; reopened for K-3: TST-M3-VMO-MAP-RIGHTS PASS on CI (a handle without READ cannot map)",
    "test_ids": [
-    "TST-M5-DISPLAY-BOOT"
+    "TST-M5-DISPLAY-BOOT",
+    "TST-M3-VMO-MAP-RIGHTS"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
-   "status": "done",
+   "status": "active",
    "status_history": [
     "planned",
     "active",
-    "done"
+    "done",
+    "planned",
+    "active"
    ],
    "evidence_refs": [
     "evidence/20261019T091842Z-41224c20-001"
@@ -2231,7 +2236,8 @@
     "الإدخال الموثوق: فك الرموز والتخطيطات والفأرة والتوجيه والانتباه الآمن",
     "i8042 auxiliary port enabled for the PS/2 mouse (3-byte packets polled per tick into Object::Mouse, type 11; input.md v2 additive)",
     "input service (user/apps/inputd): set-1 scancodes to fixed keycodes, US and Arabic 101 layouts, KEY/PTR event records, routing to the focus owner named with an ADMIN token, secure attention (Ctrl+Alt+Del) reserved for the `session` client; services.md v1.5 routes keyboard + mouse to input; syscall.md v1.9 adds mouse_read (40); ipc.md type 11",
-    "lab: monitor sendkey/mouse_move/mouse_button in ordered steps (run_qemu_monitored steps, host test TST-M5-LAB-TOOL); kernel tests input_route, mouse"
+    "lab: monitor sendkey/mouse_move/mouse_button in ordered steps (run_qemu_monitored steps, host test TST-M5-LAB-TOOL); kernel tests input_route, mouse",
+    "Effect of WP-32's reopening (K-3, DEC-004, 2026-10-19): none on this item — vmo_map now needs READ for every mapping, and every program that maps a VMO here (displayd, dialog, sessiond, textprobe, libnawah) maps with READ"
    ],
    "acceptance": "TST-M5-INPUT-ROUTE/MOUSE/LAB-TOOL PASS; input.md v2, services.md v1.5, syscall.md v1.9",
    "test_ids": [
@@ -2305,7 +2311,8 @@
     "compositor ومدير النوافذ: أسطح VMO، تغييرات معلنة، ترتيب وتركيز وحجم، تطبيق لا يستجيب",
     "display service (user/apps/displayd, compositor): CREATE_SURFACE + VMO (checked with vmo_size, ABI v1.10), COMMIT damage, back buffer in the service's memory, blit every 16 ticks; windows with decorations, cascade placement, z-order, focus by request/click/Alt+Tab, move/resize (RESIZED → client attaches a new surface), minimise/restore, close; unresponsive clients detected after 2000 ticks of a full queue and never waited on; the keyboard focus at input is taken by name (input.md v2.1 FOCUS <name>)",
     "client side in libnawah (display::Surface, pixel) and the demo app winapp; display.md part B",
-    "kernel tests screen, window_states, app_hang; screendump oracle recomputing the window hash (tools/screen.py desktop, ${SERIAL:key} host-check substitution); host tests TST-M5-LAB-TOOL (extended), TST-M5-SCREEN-TOOL"
+    "kernel tests screen, window_states, app_hang; screendump oracle recomputing the window hash (tools/screen.py desktop, ${SERIAL:key} host-check substitution); host tests TST-M5-LAB-TOOL (extended), TST-M5-SCREEN-TOOL",
+    "Effect of WP-32's reopening (K-3, DEC-004, 2026-10-19): none on this item — vmo_map now needs READ for every mapping, and every program that maps a VMO here (displayd, dialog, sessiond, textprobe, libnawah) maps with READ"
    ],
    "acceptance": "TST-M5-WINDOW-STATES/APP-HANG/SCREEN/SCREEN-TOOL PASS; display.md part B v1, syscall.md v1.10",
    "test_ids": [
@@ -2391,7 +2398,8 @@
     "طبقة النص: OpenType وتنقيط وbidi وتشكيل عربي وخطوط مرخصة",
     "nawah-text (user/libnawah-text: no_std, no allocation, no deps, no unsafe): OpenType reader (cmap 4/12, glyf/loca with composites, hmtx, GSUB types 1/4/6-format-3/7, GDEF classes), scanline rasteriser (4×4 samples, non-zero, 1/64 px flattening), UAX #9 complete through L2 (tables generated from UCD 17.0.0 by tools/unicode_tables.py), Arabic shaping (joining forms from DerivedJoiningType, GSUB isol/fina/medi/init then rlig), line layout (runs by level and font, mirrored brackets, visual order, advances) and a line renderer",
     "fonts: Noto Sans / Noto Sans Arabic Regular (OFL 1.1, googlefonts/noto-fonts ffebf8c1) with OFL.txt under /SYSTEM/FONTS (tools/fat32.py nested directories); sources S71–S75",
-    "host tests against independent references (BidiCharacterTest, fontTools, HarfBuzz, a reference rasteriser) in tests/test_text.py; guest sample (tools/text_vectors.py → textprobe) with a drawn line checked against the screendump and the host's rendering (tools/text_check.py); text.md v1"
+    "host tests against independent references (BidiCharacterTest, fontTools, HarfBuzz, a reference rasteriser) in tests/test_text.py; guest sample (tools/text_vectors.py → textprobe) with a drawn line checked against the screendump and the host's rendering (tools/text_check.py); text.md v1",
+    "Effect of WP-32's reopening (K-3, DEC-004, 2026-10-19): none on this item — vmo_map now needs READ for every mapping, and every program that maps a VMO here (displayd, dialog, sessiond, textprobe, libnawah) maps with READ"
    ],
    "acceptance": "TST-M5-BIDI/SHAPING/GLYPHS/TEXT-GUEST PASS; text.md v1",
    "test_ids": [

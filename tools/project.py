@@ -317,9 +317,16 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
                 pb.err(w, f"depends on superseded {d}; depend on {by_id['work-items'][d].get('superseded_by')} instead")
         # §2.1: active only when every dependency is done, and done likewise (arena review ع2:
         # a done item with an active dependency passed).
+        # A dependency reopened for a defect (its history holds done) is the exception: §2.1
+        # asks to record the effect on what was built on it, not to reopen all of it (DEC-004).
         if wi["status"] in ("active", "done"):
             for d in wi["depends_on"]:
-                if by_id["work-items"].get(d, {}).get("status") != "done":
+                dep = by_id["work-items"].get(d, {})
+                if dep.get("status") == "done":
+                    continue
+                if "done" in dep.get("status_history", []):
+                    pb.warn(w, f"{wi['status']} on {d}, reopened ({dep.get('status')}): record the effect")
+                else:
                     pb.err(w, f"{wi['status']} while dependency {d} is not done")
     detect_cycles(idset["work-items"], {w["id"]: w["depends_on"] for w in recs.get("work-items", [])}, "work-items", pb)
 

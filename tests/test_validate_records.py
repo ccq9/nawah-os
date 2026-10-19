@@ -133,6 +133,20 @@ class ValidateRecords(unittest.TestCase):
         write_all(r)
         self.assertEqual(project.validate_records(verbose=False), 0)  # both done
 
+    def test_reopened_dependency_is_recorded_not_cascaded(self):
+        # §2.1: a done item reopened for a defect (its history holds done) does not reopen
+        # everything built on it; the effect on its dependants is a warning to record (DEC-004:
+        # WP-32 reopened for K-3 while WP-33..WP-35 stay done).
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]
+        w0 = r["work-items"][0]; w0["status"] = "active"; w0["status_history"] = ["planned", "active", "done", "planned", "active"]
+        w1 = copy.deepcopy(w0); w1["id"] = "WP-01"; w1["depends_on"] = ["WP-00"]
+        w1["status"] = "done"; w1["status_history"] = ["planned", "active", "done"]; w1["evidence_refs"] = [ev]
+        r["work-items"].append(w1)
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 0)
+
     def test_stale_policy_warn_survives_strict(self):
         r = base_records(); write_all(r)
         ev = make_evidence(r, "TST-M0-001")

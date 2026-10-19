@@ -519,6 +519,59 @@ user_prog_ipc_no_leak:
     ud2
 user_prog_ipc_no_leak_end:
 
+    # VMO map rights (WP-32 reopened, review K-3, DEC-004): x86 has no write-only page, so a
+    # writable mapping can be read too. A handle with MAP and WRITE but no READ must not map
+    # (ERR_ACCESS); with READ added it maps for writing. Exit 0x2E.
+    .balign 16
+    .global user_prog_vmo_map_rights
+    .global user_prog_vmo_map_rights_end
+user_prog_vmo_map_rights:
+    STEP 1
+    mov edi, 4096
+    mov eax, 11
+    syscall
+    test rax, rax
+    js 9f
+    mov r12d, eax
+    STEP 2
+    mov esi, 0x12
+    mov edi, r12d
+    mov eax, 10
+    syscall
+    test rax, rax
+    js 9f
+    mov ebx, eax
+    STEP 3
+    mov esi, 2
+    mov edi, ebx
+    mov eax, 38
+    syscall
+    EXPECT -6
+    STEP 4
+    mov esi, 0x13
+    mov edi, r12d
+    mov eax, 10
+    syscall
+    test rax, rax
+    js 9f
+    mov ebp, eax
+    STEP 5
+    mov esi, 2
+    mov edi, ebp
+    mov eax, 38
+    syscall
+    test rax, rax
+    js 9f
+    mov edi, 0x2E
+    mov eax, 0
+    syscall
+    ud2
+9:  mov edi, r15d
+    mov eax, 0
+    syscall
+    ud2
+user_prog_vmo_map_rights_end:
+
     # ABI v1.1: SYS_SLEEP(3 ticks) then SYS_YIELD; exit 0x51 when both returned 0, else 0x50.
     .balign 16
     .global user_prog_sleep
@@ -597,6 +650,8 @@ extern "C" {
     static user_prog_oversize_end: u8;
     static user_prog_ipc_no_leak: u8;
     static user_prog_ipc_no_leak_end: u8;
+    static user_prog_vmo_map_rights: u8;
+    static user_prog_vmo_map_rights_end: u8;
 }
 
 fn bytes(start: *const u8, end: *const u8) -> &'static [u8] {
@@ -692,6 +747,15 @@ pub fn oversize() -> &'static [u8] {
     bytes(
         &raw const user_prog_oversize,
         &raw const user_prog_oversize_end,
+    )
+}
+
+/// A mapping needs READ whatever it grants (review K-3); exit code 0x2E.
+#[cfg(feature = "ktest")]
+pub fn vmo_map_rights() -> &'static [u8] {
+    bytes(
+        &raw const user_prog_vmo_map_rights,
+        &raw const user_prog_vmo_map_rights_end,
     )
 }
 
