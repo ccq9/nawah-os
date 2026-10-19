@@ -5,7 +5,8 @@
 //! compositor never sees them — and the password goes nowhere but to `auth`, then is wiped.
 //! The secure attention sequence (Ctrl+Alt+Del, input.md v2.2) locks an unlocked session.
 //! A lost `input` or `display` is reconnected through the manager and given the state again;
-//! both start holding everything back until the session says otherwise.
+//! both start holding everything back until the session says otherwise. One that does not
+//! answer a request within REQUEST_DEADLINE is lost too (session.md v1.1).
 //!
 //! Initial handle: the boot channel. Dependencies: `auth`, `input`, `display`. Clients (tests)
 //! ask `STATE`.
@@ -31,6 +32,9 @@ const MAX_CLIENTS: usize = 4;
 const NAME_MAX: usize = 16;
 /// Ticks between two attempts to reach a dependency (session.md §5).
 const RECONNECT: u64 = 50;
+/// The longest a request to `display` or `input` waits for its reply (session.md v1.1): past
+/// it the component is treated as lost, never waited on for ever.
+const REQUEST_DEADLINE: u64 = 5000;
 /// How long the focus stays with the session after an unlock while a key is still held
 /// (its release would otherwise reach an application).
 const RELEASE_WAIT: u64 = 1000;
@@ -218,7 +222,9 @@ impl Conn {
         }
     }
 
-    /// One request and its reply (`OK…` or `ERR…`); a closed peer is an error.
+    /// One request and its reply (`OK…` or `ERR…`); a closed peer is an error, and so is a
+    /// reply that does not come within REQUEST_DEADLINE (`ERR_TIMED_OUT`, session.md v1.1).
+    /// Events that arrive meanwhile are kept; they do not extend the deadline.
     fn request(&mut self, req: &[u8], handles: &[Handle], reply: &mut [u8]) -> Result<usize, i64> {
         if libnawah::channel_write(self.chan, req, handles) != 0 {
             for &h in handles {
@@ -226,6 +232,7 @@ impl Conn {
             }
             return Err(ERR_PEER_CLOSED);
         }
+        let deadline = libnawah::clock_ticks().saturating_add(REQUEST_DEADLINE);
         loop {
             let mut msg = [0u8; MSG_MAX];
             let mut hs = [0u32; 1];
@@ -242,12 +249,16 @@ impl Conn {
                     self.keep(&msg[..n]);
                 }
                 Err(ERR_SHOULD_WAIT) => {
+                    let now = libnawah::clock_ticks();
+                    if now >= deadline {
+                        return Err(ERR_TIMED_OUT);
+                    }
                     let _ = libnawah::object_wait_many(
                         &[WaitEntry {
                             handle: self.chan,
                             signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
                         }],
-                        5000,
+                        deadline - now,
                     );
                 }
                 Err(e) => return Err(e),
@@ -393,9 +404,13 @@ impl Session {
             }
             return None;
         };
+        let sent = libnawah::clock_ticks();
         match d.request(req, handles, reply) {
             Ok(n) => Some(n),
-            Err(_) => {
+            Err(e) => {
+                if e == ERR_TIMED_OUT {
+                    timed_out(b"display", sent);
+                }
                 self.display_lost(libnawah::clock_ticks());
                 None
             }
@@ -403,10 +418,14 @@ impl Session {
     }
 
     fn input_call(&mut self, req: &[u8], reply: &mut [u8]) -> Option<usize> {
+        let sent = libnawah::clock_ticks();
         let r = self.input.as_mut()?.request(req, &[], reply);
         match r {
             Ok(n) => Some(n),
-            Err(_) => {
+            Err(e) => {
+                if e == ERR_TIMED_OUT {
+                    timed_out(b"input", sent);
+                }
                 self.input_lost(libnawah::clock_ticks());
                 None
             }
@@ -1256,6 +1275,17 @@ fn manager_connect(boot: Handle, name: &[u8]) -> Option<Handle> {
         Ok((2, 1)) if &buf[..2] == b"OK" => Some(hs[0]),
         _ => None,
     }
+}
+
+/// `session|<who>=timed_out|waited=<ticks>` (session.md v1.1 §7): a request to `who` got no
+/// reply within REQUEST_DEADLINE.
+fn timed_out(who: &[u8], sent: u64) {
+    let mut t = Out::new();
+    t.put(b"session|")
+        .put(who)
+        .put(b"=timed_out|waited=")
+        .num(libnawah::clock_ticks().saturating_sub(sent) as i64);
+    libnawah::trace(t.bytes());
 }
 
 fn main() -> u64 {

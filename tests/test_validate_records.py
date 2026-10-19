@@ -132,5 +132,38 @@ class ValidateRecords(unittest.TestCase):
         self.assertEqual(project.validate_records(verbose=False), 0)
         self.assertEqual(project.validate_records(verbose=False, strict=True), 50)
 
+    def test_pass_with_planned_oracle_is_rejected(self):
+        # A passing test's oracle must say what it checks, not what was planned.
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]
+        r["tests"][0]["oracle"] = "planned (WP-00): exit 0 and five more checks"
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 50)
+        r["tests"][0]["oracle"] = "exit 0"
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 0)
+
+    def test_done_work_item_cannot_promise_a_newer_contract(self):
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]
+        w = r["work-items"][0]; w["status"] = "done"; w["status_history"] = ["planned", "active", "done"]; w["evidence_refs"] = [ev]
+        w["actions"] = ["x.md v1.1: one more request"]
+
+        def write_with_contract(version):
+            write_all(r)  # recreates docs/, so the contract is written after it
+            contracts = TMP / "docs" / "contracts"; contracts.mkdir(exist_ok=True)
+            (contracts / "x.md").write_text(f"# عقد x — الإصدار {version} (WP-00)\n", encoding="utf-8")
+
+        write_with_contract("1")
+        self.assertEqual(project.validate_records(verbose=False), 50)       # done, contract still v1
+        w["status"] = "active"; w["status_history"] = ["planned", "active"]; w["evidence_refs"] = []
+        write_with_contract("1")
+        self.assertEqual(project.validate_records(verbose=False), 0)        # active: a warning only
+        w["status"] = "done"; w["status_history"] = ["planned", "active", "done"]; w["evidence_refs"] = [ev]
+        write_with_contract("1.1")
+        self.assertEqual(project.validate_records(verbose=False), 0)        # the promised version exists
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

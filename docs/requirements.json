@@ -1341,7 +1341,7 @@
     "TST-M5-DISPLAY-BOOT",
     "TST-M5-SCREEN"
    ],
-   "implementation_status": "verified_in_scope",
+   "implementation_status": "partial",
    "evidence_refs": [
     "evidence/20261019T022245Z-37bc562e-001"
    ]
@@ -1406,7 +1406,7 @@
     "TST-M5-APP-HANG",
     "TST-M5-SCREEN-TOOL"
    ],
-   "implementation_status": "verified_in_scope",
+   "implementation_status": "partial",
    "evidence_refs": [
     "evidence/20261019T022304Z-37bc562e-001",
     "evidence/20261019T022312Z-37bc562e-001",
@@ -1576,7 +1576,7 @@
    "test_ids": [
     "TST-M5-WINDOW-A11Y"
    ],
-   "implementation_status": "verified_in_scope",
+   "implementation_status": "partial",
    "evidence_refs": [
     "evidence/20261019T022553Z-37bc562e-001"
    ]
@@ -1610,7 +1610,7 @@
     "TST-M5-ARABIC-UI",
     "TST-M5-UI-UNIT"
    ],
-   "implementation_status": "verified_in_scope",
+   "implementation_status": "partial",
    "evidence_refs": [
     "evidence/20261019T022559Z-37bc562e-001",
     "evidence/20261019T022654Z-37bc562e-001"
@@ -1641,11 +1641,13 @@
     "انتظار الجلسة لردّ compositor معلَّق يجمّدها",
     "القفل يُرفع أو الشاشة تكشف التطبيقات أثناء التعليق"
    ],
-   "acceptance": "process_kill + svc_watchdog + lock_hang",
+   "acceptance": "process_kill + kill_edges + svc_watchdog + lock_hang + session_deadline (each named failure case has its test: a hung service — SVC-WATCHDOG; the session waiting on a hung component — SESSION-DEADLINE; the lock during a hang — LOCK-HANG)",
    "test_ids": [
     "TST-M5-PROCESS-KILL",
+    "TST-M5-KILL-EDGES",
     "TST-M5-SVC-WATCHDOG",
-    "TST-M5-LOCK-HANG"
+    "TST-M5-LOCK-HANG",
+    "TST-M5-SESSION-DEADLINE"
    ],
    "implementation_status": "partial",
    "evidence_refs": [

@@ -27,6 +27,9 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+#[cfg(feature = "ktest")]
+use core::sync::atomic::AtomicU64;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::arch;
 use crate::arch::context::{self, Start};
@@ -108,6 +111,7 @@ pub struct Process {
     /// blocked — `wake` skips them — so it stops responding (a hang) without spinning. Only
     /// `process_kill` (which sets Ready directly) can still end it. Not reachable from user
     /// space; the test kernel uses it to hang a service during the lock (TST-M5-LOCK-HANG).
+    #[cfg(feature = "ktest")]
     pub frozen: bool,
 }
 
@@ -421,6 +425,7 @@ pub fn spawn_user_with(
             handles: Arc::new(IrqSpinLock::new("handles", table)),
             object,
             kill: None,
+            #[cfg(feature = "ktest")]
             frozen: false,
         });
         let cpu = me();
@@ -679,7 +684,17 @@ pub fn tick() {
         s.ticks += 1;
         let now = s.ticks;
         let mut wake = [false; MAX_CPUS];
+        #[cfg(feature = "ktest")]
+        let procs = &s.processes;
         for t in s.threads.iter_mut() {
+            // A frozen process's timed waits do not expire either: it stays blocked whatever
+            // timeout it waits with (test-only; review 2026-10-19, K3).
+            #[cfg(feature = "ktest")]
+            if t.process
+                .is_some_and(|pid| procs.iter().any(|p| p.id == pid && p.frozen))
+            {
+                continue;
+            }
             if let State::Sleeping { until } | State::BlockedUntil { until } = t.state {
                 if until <= now {
                     t.state = State::Ready;
@@ -767,6 +782,10 @@ pub fn sleep_ticks(ticks: u64) {
     } else {
         let sw = with(|s| {
             let i = index_of(s, s.current[me()]).expect("current thread exists");
+            // As in `block_current_with`: a killed process does not go to sleep (K1).
+            if kill_pending(s, i) {
+                return None;
+            }
             s.threads[i].state = State::Sleeping { until };
             prepare_switch(s)
         });
@@ -787,7 +806,13 @@ pub fn exit_current(code: u64) -> ! {
             if let Some(p) = s.processes.iter_mut().find(|p| p.id == pid) {
                 p.threads -= 1;
                 if p.threads == 0 {
-                    p.exit_code = Some(code);
+                    // A killed process reports EXIT_KILLED however its last thread left — even
+                    // through `exit(n)` or a fault before it reached a safe point (review
+                    // 2026-10-19, K2: a manager would otherwise read a kill as a clean stop).
+                    p.exit_code = Some(p.kill.unwrap_or(code));
+                    if p.kill.is_some() {
+                        KILLS_PENDING.fetch_sub(1, Ordering::SeqCst);
+                    }
                 }
             }
         }
@@ -881,6 +906,16 @@ fn wait_process_loop(pid: u32) -> Option<u64> {
 /// it is made runnable and asked to reschedule, and each exits at its next safe point
 /// (`check_kill`: a syscall return, a blocking wait returning, or a timer preemption). An
 /// unknown or already-exited process is ignored. Returns whether a live process was marked.
+/// Processes marked killed whose last thread has not exited yet (K4 fast path).
+static KILLS_PENDING: AtomicUsize = AtomicUsize::new(0);
+
+/// Whether thread `i` belongs to a process with a kill pending.
+fn kill_pending(s: &Sched, i: usize) -> bool {
+    s.threads[i]
+        .process
+        .is_some_and(|pid| s.processes.iter().any(|p| p.id == pid && p.kill.is_some()))
+}
+
 pub fn kill_process(pid: u32, code: u64) -> bool {
     with(|s| {
         let Some(p) = s.processes.iter_mut().find(|p| p.id == pid) else {
@@ -891,6 +926,10 @@ pub fn kill_process(pid: u32, code: u64) -> bool {
         }
         if p.kill.is_none() {
             p.kill = Some(code);
+            // Counted before any thread can look (we hold the lock); `exit_current` uncounts
+            // it when the last thread goes. Lets every safe point skip the lock when no kill is
+            // pending anywhere (review 2026-10-19, K4).
+            KILLS_PENDING.fetch_add(1, Ordering::SeqCst);
         }
         // Wake every thread of the process so it reaches a safe point, and nudge the CPUs
         // running them. A thread blocked/sleeping becomes Ready (its wait returns, then
@@ -917,9 +956,23 @@ pub fn kill_process(pid: u32, code: u64) -> bool {
     })
 }
 
-/// Test-only (WP-40): freezes the live process whose spawn image base name equals `name`
-/// (e.g. `DISPLAYD.ELF`). Returns whether one matched. The test kernel uses it to hang a named
-/// service during the lock (TST-M5-LOCK-HANG).
+/// Test-only (WP-40): freezes live process `pid` — its threads are never woken again, neither
+/// by `wake` nor by an expiring timeout, so it stops responding without spinning; only
+/// `process_kill` ends it. Returns whether a live process matched.
+#[cfg(feature = "ktest")]
+pub fn freeze_pid(pid: u32) -> bool {
+    with(|s| match s.processes.iter_mut().find(|p| p.id == pid) {
+        Some(p) if p.exit_code.is_none() => {
+            p.frozen = true;
+            true
+        }
+        _ => false,
+    })
+}
+
+/// Test-only (WP-40): as `freeze_pid`, for the live process whose spawn image base name equals
+/// `name` (e.g. `DISPLAYD.ELF`) — how the test kernel hangs a named service during the lock
+/// (TST-M5-LOCK-HANG). Returns whether one matched.
 #[cfg(feature = "ktest")]
 pub fn freeze_named(name: &[u8]) -> bool {
     with(|s| {
@@ -933,6 +986,47 @@ pub fn freeze_named(name: &[u8]) -> bool {
     })
 }
 
+/// Test-only kill injection points (review 2026-10-19, TST-M5-KILL-EDGES): the places in a
+/// system call where a kill from another CPU can land while the thread is running in the
+/// kernel, after its last safe point — `object_wait_many` just before it blocks and `sleep` just
+/// before it sleeps (K1), `exit` just before the thread ends (K2). Arming one for a process makes
+/// that race deterministic.
+#[cfg(feature = "ktest")]
+pub const KILL_AT_BLOCK: u64 = 1;
+#[cfg(feature = "ktest")]
+pub const KILL_AT_SLEEP: u64 = 2;
+#[cfg(feature = "ktest")]
+pub const KILL_AT_EXIT: u64 = 3;
+/// The armed point: `pid << 8 | point`, or 0.
+#[cfg(feature = "ktest")]
+static KILL_POINT: AtomicU64 = AtomicU64::new(0);
+
+/// Test-only: the next time process `pid` reaches `point`, it is marked killed there.
+#[cfg(feature = "ktest")]
+pub fn arm_kill_point(pid: u32, point: u64) {
+    KILL_POINT.store((u64::from(pid) << 8) | point, Ordering::SeqCst);
+}
+
+/// Test-only: called at each injection point; if `point` is armed for the current process, it
+/// is disarmed and the process marked killed (EXIT_KILLED) while this thread runs here.
+#[cfg(feature = "ktest")]
+pub fn kill_point(point: u64) {
+    let armed = KILL_POINT.load(Ordering::SeqCst);
+    if armed == 0 || armed & 0xFF != point {
+        return;
+    }
+    let pid = with(|s| index_of(s, s.current[me()]).and_then(|i| s.threads[i].process));
+    if let Some(pid) = pid {
+        if u64::from(pid) == armed >> 8
+            && KILL_POINT
+                .compare_exchange(armed, 0, Ordering::SeqCst, Ordering::SeqCst)
+                .is_ok()
+        {
+            kill_process(pid, crate::syscall::EXIT_KILLED);
+        }
+    }
+}
+
 /// Whether the current thread's process has been killed (WP-40): a wait loop breaks on this to
 /// run its cleanup before `check_kill` exits the thread.
 pub fn killed() -> bool {
@@ -943,6 +1037,11 @@ pub fn killed() -> bool {
 /// scheduler is initialised (the early-boot timer reaches `check_kill` via `preempt_point`):
 /// it locks `SCHED` directly and answers None when there is no scheduler yet.
 fn current_kill_code() -> Option<u64> {
+    // Every syscall return and every return to ring 3 passes here: with no kill pending
+    // anywhere (the usual case) answer without taking the scheduler lock (K4).
+    if KILLS_PENDING.load(Ordering::SeqCst) == 0 {
+        return None;
+    }
     let mut g = SCHED.lock();
     let s = g.as_mut()?;
     let i = index_of(s, s.current[me()])?;
@@ -983,6 +1082,12 @@ fn block_current_with(deadline: Option<u64>) {
     let sw = with(|s| {
         assert!(!current_is_idle(s), "an idle thread cannot block");
         let i = index_of(s, s.current[me()]).expect("current thread exists");
+        // A process already marked killed never blocks: `kill_process` only readies threads
+        // that are blocked at that moment, so one marked before its first block would sleep for
+        // ever (review 2026-10-19, K1). The caller's wait loop sees `killed()` and returns.
+        if kill_pending(s, i) {
+            return None;
+        }
         if s.threads[i].wake_tokens > 0 {
             s.threads[i].wake_tokens -= 1;
             return None;
@@ -1009,6 +1114,7 @@ pub fn wake(tid: u32) {
         if let Some(i) = index_of(s, tid) {
             // A frozen process's threads stay blocked (WP-40, test-only hang): the wake-up is
             // dropped, so it never answers. Only `process_kill` ends it (it sets Ready directly).
+            #[cfg(feature = "ktest")]
             if let Some(pid) = s.threads[i].process {
                 if s.processes.iter().any(|p| p.id == pid && p.frozen) {
                     return;

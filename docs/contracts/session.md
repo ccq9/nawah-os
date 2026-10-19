@@ -1,4 +1,10 @@
-# عقد الجلسة والقفل — الإصدار 1 (WP-37، ADR-0019 §5)
+# عقد الجلسة والقفل — الإصدار 1.1 (WP-37 v1، WP-40 v1.1؛ ADR-0019 §5)
+
+## 0. الإصدار 1.1 (WP-40، مهلة الطلبات — تصحيح سلوك، لا رسائل جديدة)
+
+- **كل طلب إلى `display` أو `input` له مهلة** `REQUEST_DEADLINE = 5000` نبضة من لحظة إرساله. الأحداث التي تصل أثناء الانتظار تُحفظ كما في v1 ولا تمدّ المهلة. إن لم يصل `OK…` أو `ERR…` قبلها يُعامَل المكوّن **مفقودًا** كما لو أُغلقت قناته: تغلق الجلسة قناتها إليه وتعيد الاتصال عبر المدير كل 50 نبضة (§5)، وتطبع `session|display=timed_out|waited=<n>` أو `session|input=timed_out|waited=<n>`. بهذا لا تنتظر الجلسة مكوّنًا معلّقًا بلا حد (REQ-M5-010).
+- **عند البدء**: إن فُقد `input` أو `display` هكذا قبل أن تقوم شاشة الدخول، تخرج الجلسة بالرمز `0xE4` قبل `READY` (كما كانت تفعل حين يفشل الطلب) فتُطبَّق سياستها في البيان.
+- الجلسة خيط واحد: أثناء انتظار ردّ لا تجيب عملاءها، فطلب `STATE` قد يتأخر حتى مهلة واحدة لكل طلب معلّق قبله.
 
 **مجمَّد** (أُغلق WP-37 بدليل CI run 39168643209): أي تغيير في الحالات أو الشاشات أو الرسائل = إصدار جديد مع سجل قرار. الكود: `user/apps/sessiond` (الخدمة)، `user/apps/spy` (عميل اختبار يطبع كل مفتاح يصله)، وما تغيّر لأجلها في `inputd` (input.md v2.2) و`displayd` (display.md v1.2) و`svcmgr` (services.md v1.6) و`libui` (ui.md v1.1).
 
@@ -54,9 +60,12 @@ Ctrl+Alt+Del تحجزه `input` (input.md v2.2): ينتقل التركيز إل�
 
 ## 7. التتبع (ASCII؛ لا كلمة مرور أبدًا)
 
-`session|state=no_session|window=x,y,w,h` · `session|login=refused|answer=<جواب auth>` · `session|state=unlocked|user=<name>|uid=<uid>|token=usable` · `session|focus=display|n=<k>` · `session|state=locked|user=<name>|window=x,y,w,h` · `session|unlock=refused|answer=<جواب auth>` · `session|state=logged_out|user=<name>` · `session|display=reconnected|n=<k>` · `session|input=reconnected|n=<k>`.
+`session|state=no_session|window=x,y,w,h` · `session|login=refused|answer=<جواب auth>` · `session|state=unlocked|user=<name>|uid=<uid>|token=usable` · `session|focus=display|n=<k>` · `session|state=locked|user=<name>|window=x,y,w,h` · `session|unlock=refused|answer=<جواب auth>` · `session|state=logged_out|user=<name>` · `session|display=reconnected|n=<k>` · `session|input=reconnected|n=<k>` · (v1.1) `session|display=timed_out|waited=<n>` · `session|input=timed_out|waited=<n>`.
 
-## 8. الحدود المعلنة (v1)
+## 8. الحدود المعلنة (v1، v1.1)
+
+- (v1.1) الجلسة لا تجيب `PING` المراقِب (لا `watchdog=` لها في أي بيان): مراقبتها تحتاج فترة أطول من `REQUEST_DEADLINE` لأنها لا تجيب أثناء انتظار ردّ، وهذا يُصمَّم مع بيان الإقلاع الحقيقي في M6. جلسة تنهار تُعاد بسياستها؛ أما تعليقها فلا يُكتشف بعد إلا ما تحدّه المهلة.
+- (v1.1) طلبات `auth` بلا مهلة بعد: الجلسة تنتظر ردّه كما في v1. مكوّن `auth` معلّق يعلّق الدخول وفتح القفل؛ المهلة له تحتاج قياس كلفة التحقق من كلمة المرور في CI أولًا كي لا تُرفض كلمة صحيحة لبطء.
 
 - الخروج لا ينهي عمليات المستخدم: الـ compositor يزيل نوافذها وأسطحها ويرسل `LOGGED_OUT`، والتطبيق المهذب يخرج؛ ربط العمليات بالجلسة وإنهاؤها قسرًا مع M6.
 - مستخدم واحد في كل مرة؛ لا تبديل مستخدم ولا تغيير كلمة مرور.
@@ -65,4 +74,4 @@ Ctrl+Alt+Del تحجزه `input` (input.md v2.2): ينتقل التركيز إل�
 
 ## 9. الاختبارات الحاكمة
 
-TST-M5-LOGIN-SCREEN، TST-M5-AUTH-INPUT-ISOLATED، TST-M5-LOCK-SURVIVES (ADR-0019 §8).
+TST-M5-LOGIN-SCREEN، TST-M5-AUTH-INPUT-ISOLATED، TST-M5-LOCK-SURVIVES (ADR-0019 §8). (v1.1) TST-M5-SESSION-DEADLINE (WP-40): `input` و`display` خدمتا اختبار تقبلان الطلب ولا تجيبان أبدًا؛ الجلسة تعطي كلًّا منهما مهلته ثم تغلق قناته (كل خدمة تقيس المدة من وصول الطلب إلى الإغلاق وتجدها بين 4900 و6000 نبضة)، ثم تخرج بـ `0xE4` بدل أن تعلق؛ والخدمتان تبقيان `ready`.

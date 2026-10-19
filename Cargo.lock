@@ -50,6 +50,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "exiter"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "fbprobe"
 version = "0.1.0"
 dependencies = [

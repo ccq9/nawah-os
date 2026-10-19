@@ -1,6 +1,11 @@
-# TST-M5-SVC-WATCHDOG (WP-40, services.md v1.7): a watchdog-monitored healthy service that
-# answers PING, a watchdog-monitored hung one that does not (killed and given up), and a
-# service with no watchdog that ignores STOP (force-killed after the grace).
-pong /SYSTEM/SVC.ELF - 5000 never 0 0 watchdog=50 ready
+# TST-M5-SVC-WATCHDOG (WP-40, services.md v1.7, v1.8): a watchdog-monitored healthy service that
+# answers PING (its line keeps two spaces before the arg: v1.8 trims them), a watchdog-monitored
+# hung one that does not (killed and given up), a service with no watchdog that ignores STOP
+# (force-killed after the grace), a watchdog-monitored one that closes its boot channel (v1.8:
+# hung, killed) and one that hangs before READY (v1.8: failed at the timeout, forced after the
+# grace).
+pong /SYSTEM/SVC.ELF - 5000 never 0 0 watchdog=50  ready
 hung /SYSTEM/SVC.ELF - 5000 on-failure 1 10 watchdog=50 hang
 stubborn /SYSTEM/SVC.ELF - 5000 never 0 0 hang
+closer /SYSTEM/SVC.ELF - 5000 never 0 0 watchdog=50 closer
+early /SYSTEM/SVC.ELF - 50 never 0 0 early_hang

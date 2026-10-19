@@ -162,6 +162,24 @@ def check_evidence_dir(rel, pb: Problems, where, expect_test_id=None, current_di
     return verdict
 
 
+PLANNED_WORD = re.compile(r"\bplanned\b", re.IGNORECASE)
+CONTRACT_PROMISE = re.compile(r"\b([a-z0-9-]+\.md)\s+v([0-9]+(?:\.[0-9]+)?)\b")
+
+
+def contract_version(name):
+    """The version in a contract's first line (`… الإصدار 1.7 …`), or None when the file is
+    absent or its header carries no version."""
+    p = DOCS / "contracts" / name
+    if not p.is_file():
+        return None
+    m = re.search(r"الإصدار\s*([0-9]+(?:\.[0-9]+)?)", p.read_text(encoding="utf-8").split("\n", 1)[0])
+    return m.group(1) if m else None
+
+
+def version_tuple(v):
+    return tuple(int(x) for x in (v if "." in v else v + ".0").split("."))
+
+
 def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
     """Structural and semantic validation. Stale verdicts (inputs changed since the run) are
     warnings — the verdict is suspended, 'needs re-evaluation' — unless strict=True (gates, CI
@@ -234,6 +252,11 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
                 pb.err(w, f"registry verdict {t['verdict']} != evidence verdict {v['verdict']} ({e})")
         if t["verdict"] == "PASS" and not t["evidence_refs"]:
             pb.err(w, "PASS without evidence_refs")
+        # A passing test's oracle states what the test checks, not what was planned: three
+        # oracles kept their plan text after PASS and claimed steps the tests never ran
+        # (WINDOW-A11Y, ARABIC-UI, PROCESS-KILL; audit 2026-10-19).
+        if t["verdict"] == "PASS" and PLANNED_WORD.search(t["oracle"]):
+            pb.err(w, "PASS while the oracle still describes the plan ('planned'); state what the test checks")
 
     for wi in recs.get("work-items", []):
         w = f"work-items/{wi['id']}"
@@ -249,6 +272,16 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
                 pb.err(w, f"illegal status transition {a} -> {b}")
         if hist[-1] != wi["status"]:
             pb.err(w, f"status {wi['status']} != last of status_history {hist[-1]}")
+        # A contract version a work item promises must exist (audit 2026-10-19: WP-30 closed
+        # promising files.md v1.1 and WP-40 planned session.md v1.1; both contracts stayed v1).
+        # Done: an error. Active: a warning — the work is in progress.
+        if wi["status"] in ("done", "active"):
+            for action in wi["actions"]:
+                for name, ver in CONTRACT_PROMISE.findall(action):
+                    have = contract_version(name)
+                    if have is not None and version_tuple(have) < version_tuple(ver):
+                        (pb.err if wi["status"] == "done" else pb.warn)(
+                            w, f"promises {name} v{ver} but the contract is v{have}")
         if wi["status"] == "done":
             if not wi["evidence_refs"]:
                 pb.err(w, "done without evidence_refs")
@@ -1291,6 +1324,60 @@ def rust_src_state(src: Path, commit: str) -> str:
     return "ok" if head == commit else f"mismatch:{head}"
 
 
+VERIFY_WORKFLOW = ROOT / ".github" / "workflows" / "verify.yml"
+HYGIENE_STEP = "Rust hygiene"
+
+
+def hygiene_commands(workflow=VERIFY_WORKFLOW):
+    """(env, commands) of CI's hygiene step, read from the workflow itself so the local gate and
+    CI cannot drift apart: CI run 39185115793 failed on clippy for the kernel built without
+    `ktest` (dead test-only code), a configuration the local pre-flight never ran. Every line of
+    the step's script that starts with `cargo ` or `sh tools/` is a command; the shell plumbing
+    around them (`set`, `mkdir`, the `{ … } | tee` group) is not."""
+    import yaml
+    doc = yaml.safe_load(Path(workflow).read_text(encoding="utf-8"))
+    for job in doc.get("jobs", {}).values():
+        for step in job.get("steps", []):
+            if str(step.get("name", "")).startswith(HYGIENE_STEP):
+                cmds = [l.strip() for l in str(step.get("run", "")).splitlines()
+                        if l.strip().startswith(("cargo ", "sh tools/"))]
+                env = {str(k): str(v) for k, v in (step.get("env") or {}).items()}
+                return env, cmds
+    raise ValueError(f"{workflow}: no step named '{HYGIENE_STEP}…'")
+
+
+def local_hygiene_argv(cmd):
+    """A CI hygiene command as run here: `--offline` dropped (CI pre-fetches; the local registry
+    differs), nothing else changed — the lint configuration is exactly CI's."""
+    import shlex
+    return [a for a in shlex.split(cmd) if a != "--offline"]
+
+
+def cmd_hygiene() -> int:
+    """CI's hygiene gate, locally: the same commands in the same order (fmt, clippy -D warnings on
+    every crate and every kernel configuration, the unsafe policy). Cross targets are not
+    installed here, so cargo builds `core` from the library source (build-std); one shared target
+    directory keeps that to one build per target triple."""
+    try:
+        extra, cmds = hygiene_commands()
+    except (OSError, ValueError) as e:
+        print(f"hygiene: {e}")
+        return E_INTERNAL
+    env = dict(os.environ)
+    env.update(extra)
+    env.update(BUILD_STD_ENV)
+    env["CARGO_TARGET_DIR"] = str(ROOT / "build" / "hygiene-target")
+    t0 = time.time()
+    for i, cmd in enumerate(cmds, 1):
+        r = subprocess.run(local_hygiene_argv(cmd), cwd=ROOT, env=env, capture_output=True, text=True)
+        if r.returncode != 0:
+            print(f"hygiene: FAIL [{i}/{len(cmds)}] {cmd}")
+            print("\n".join((r.stdout + r.stderr).strip().splitlines()[-40:]))
+            return E_VALIDATION
+    print(f"hygiene: PASS — {len(cmds)} commands of CI's '{HYGIENE_STEP}' step ({time.time() - t0:.0f}s)")
+    return E_OK
+
+
 def cmd_preflight(suite, only) -> int:
     # CI's hygiene gate runs `cargo fmt --all --check` before anything builds, and a formatting
     # miss there fails the whole run before the suites execute (CI run 39175302719). Catch it
@@ -1298,6 +1385,11 @@ def cmd_preflight(suite, only) -> int:
     if subprocess.run(["cargo", "fmt", "--all", "--check"], cwd=ROOT).returncode != 0:
         print("preflight: cargo fmt --all --check failed (run `cargo fmt --all` and retry)")
         return E_INTERNAL
+    # Then the rest of the same gate — every clippy configuration and the unsafe policy — read
+    # from the workflow (CI run 39185115793: the kernel without `ktest` was never linted here).
+    rc = cmd_hygiene()
+    if rc != E_OK:
+        return rc
     release, commit = rustc_identity()
     sysroot = Path(subprocess.run(["rustc", "--print", "sysroot"], capture_output=True, text=True).stdout.strip())
     src = sysroot / "lib" / "rustlib" / "src" / "rust"
@@ -1338,6 +1430,7 @@ def main(argv=None):
     s.add_argument("--only", help="comma-separated case ids (guest suites)")
     s = sub.add_parser("preflight", help="build and run a guest suite here before a push (build-std, scratch evidence)")
     s.add_argument("--suite", required=True); s.add_argument("--only", help="comma-separated case ids")
+    sub.add_parser("hygiene", help="CI's hygiene step here: the same fmt/clippy/unsafe commands, read from verify.yml")
     for n in ("next", "report", "checkpoint", "resume", "run"):
         s = sub.add_parser(n); s.add_argument("--json", action="store_true"); s.add_argument("--result"); s.add_argument("--once", action="store_true"); s.add_argument("--until"); s.add_argument("--note")
     a = ap.parse_args(argv)
@@ -1350,6 +1443,7 @@ def main(argv=None):
     if a.cmd == "reverify-host": return cmd_reverify_host()
     if a.cmd == "import-ci-evidence": return cmd_import_ci_evidence(a.run)
     if a.cmd == "preflight": return cmd_preflight(a.suite, a.only)
+    if a.cmd == "hygiene": return cmd_hygiene()
     print(f"{a.cmd}: not implemented yet in this work package (planned: M1); see docs/work-items.json")
     return E_INTERNAL
 

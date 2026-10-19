@@ -2676,16 +2676,19 @@
     "الإنهاء القسري والحيوية والتعليق أثناء القفل (السيناريو 8، R-40)",
     "ABI v1.11: process_kill(h) with WRITE on the process handle (spawn hands it out), EXIT_KILLED; the kill takes effect at safe points (syscall exit, blocking waits, the return to ring 3 from an interrupt) on any CPU",
     "services.md v1.7: STOP grace then process_kill; watchdog=<ticks> in the manifest: PING/PONG on the boot channel, a missed period kills and the restart policy applies",
-    "session.md v1.1: requests to display/input carry a deadline — a hung component is treated as lost, never waited on forever; display/input/session answer PING",
+    "session.md v1.1: requests to display/input carry a deadline (REQUEST_DEADLINE = 5000 ticks) — a hung component is treated as lost, never waited on forever (TST-M5-SESSION-DEADLINE); display and input answer PING (v1.7). Scope decision 2026-10-19: the session itself does not answer PING in v1.1 — a session watchdog must outlast REQUEST_DEADLINE, and that interplay is designed with the real boot manifest (M6); declared in session.md §8. Requests to auth stay unbounded (declared, session.md §8)",
     "ktest fault: freeze a process by name (test kernel only); process names kept for diagnostics",
-    "tests: TST-M5-PROCESS-KILL, TST-M5-SVC-WATCHDOG, TST-M5-LOCK-HANG",
+    "tests: TST-M5-PROCESS-KILL, TST-M5-KILL-EDGES, TST-M5-SVC-WATCHDOG, TST-M5-LOCK-HANG",
+    "Review fixes 2026-10-19 (Docs review K1–K4, S1–S7, R4): kernel — a pending kill refuses a block or sleep under the scheduler lock (K1), a killed process reports EXIT_KILLED whatever its own exit code (K2), a frozen process's timed waits do not expire (ktest only, K3), an atomic pending-kill count spares the lock on the common path and the freeze check is ktest-only (K4); services.md v1.8 — a gone boot channel or an undeliverable PING is a hang, a passed watchdog deadline is always re-armed or cleared, queued PONGs are read before judging, a readiness timeout forces the process after STOP_GRACE, a service being killed is not ready, spaces after watchdog=<n> are separators, and an unsolicited PONG is a declared limit (S1–S7); tests — TST-M5-KILL-EDGES (new), PROCESS-KILL settles each child and checks the refused kill left it alive, PEER_CLOSED and a sleeping child, SVC-WATCHDOG adds a channel closer, an early hanger, a two-space line, a PONG count and a STOP grace lower bound, LOCK-HANG checks restarts=0 before the freezes and caps the spawn counts",
     "Honesty audit 2026-10-19 (CI run 39189093802): PROCESS-KILL, SVC-WATCHDOG and LOCK-HANG (compositor then input frozen while locked) PASS; REQ-M5-010 stays partial because its named failure case — the session waiting on a hung component's reply — is untested and session.md v1.1 was not written. Council verdict: first establish from the code whether the session can block on a display/input reply; then TST-M5-SESSION-HANG (freeze while the session's request is in flight; session keeps serving, lock holds, no key leaks, screendump shows only the lock screen, only the right password unlocks) and session.md v1.1 either way; the session gets PING only with a test that kills it while locked and proves the ADR-0019 §5 rescue; then amend REQ-M5-010's acceptance and close"
    ],
    "acceptance": "the three tests PASS on CI, every earlier suite green; R-40 closed in the review",
    "test_ids": [
     "TST-M5-PROCESS-KILL",
+    "TST-M5-KILL-EDGES",
     "TST-M5-SVC-WATCHDOG",
-    "TST-M5-LOCK-HANG"
+    "TST-M5-LOCK-HANG",
+    "TST-M5-SESSION-DEADLINE"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
@@ -2741,6 +2744,50 @@
    "blocker": null
   },
   {
+   "id": "WP-42",
+   "stage": "M5",
+   "requirement_ids": [
+    "REQ-M5-001",
+    "REQ-M5-003",
+    "REQ-M5-008",
+    "REQ-M5-009"
+   ],
+   "depends_on": [
+    "WP-39"
+   ],
+   "inputs": [
+    "docs/requirements.json (failure_cases)",
+    "review 2026-10-19 (failure-case coverage audit)"
+   ],
+   "files": [],
+   "contract_refs": [],
+   "actions": [
+    "إغلاق حالات الفشل المسمّاة التي لا يختبرها أي اختبار (مراجعة 2026-10-19)",
+    "REQ-M5-001: a frame in an unsupported pixel format is refused (present=0) and no drawing lands outside the frame (fbprobe paints or maps past the end and is refused without a fault)",
+    "REQ-M5-003: a surface is never read after its client is gone (close a client while its surface is shown: windows= drops, LIST and the hash leave it out, frames_delta=0)",
+    "REQ-M5-008: resizing a window by keyboard keeps the focus where display.md says (a resize step in WINDOW-A11Y and its narrator line)",
+    "REQ-M5-009: mixed text typed by keyboard (Arabic, then Latin, digits and separators after switching back) and the right-to-left drawing checked, not only the background pixel"
+   ],
+   "acceptance": "every named failure case of REQ-M5-001, -003, -008 and -009 is exercised by a PASS test on CI; then the four requirements return to verified_in_scope",
+   "test_ids": [
+    "TST-M5-DISPLAY-BOOT",
+    "TST-M5-SCREEN",
+    "TST-M5-WINDOW-STATES",
+    "TST-M5-WINDOW-A11Y",
+    "TST-M5-ARABIC-UI"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
    "id": "WP-38",
    "stage": "M5",
    "requirement_ids": [
@@ -2751,7 +2798,8 @@
     "WP-37",
     "WP-39",
     "WP-40",
-    "WP-41"
+    "WP-41",
+    "WP-42"
    ],
    "inputs": [
     "docs/PLAN.md §6",

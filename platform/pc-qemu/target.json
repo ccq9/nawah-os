@@ -33,7 +33,8 @@
       "user/libui/Cargo.toml",
       "user/apps/killer/Cargo.toml",
       "user/apps/spin/Cargo.toml",
-      "user/apps/idle/Cargo.toml"
+      "user/apps/idle/Cargo.toml",
+      "user/apps/exiter/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -72,7 +73,8 @@
       "${OUT}/apps/spy.elf",
       "${OUT}/apps/killer.elf",
       "${OUT}/apps/spin.elf",
-      "${OUT}/apps/idle.elf"
+      "${OUT}/apps/idle.elf",
+      "${OUT}/apps/exiter.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -579,6 +581,24 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/idle",
         "${OUT}/apps/idle.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/exiter/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/exiter",
+        "${OUT}/apps/exiter.elf"
       ],
       [
         "cargo",
@@ -4570,12 +4590,13 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=lock_hang"
         ],
-        "oracle": "SVC-LH.TXT (the SVC-SS.TXT stack but the compositor and the input service are watchdog-monitored, watchdog=200, on-failure): the lab signs in and presses Ctrl+Alt+Del with the spy focused (its count: the Ctrl and Alt presses, 2); while locked the test wedges the live compositor with sched::freeze_named(DISPLAYD.ELF) — its threads are never woken, so it stops answering the watchdog's PING. No RESTART is driven by the test: the manager's watchdog alone misses the PONG, force-kills it (EXIT_KILLED=0x20000) and restarts it once (restarts=1, ready); the session stays locked and reconnects to the new compositor (`session|display=reconnected|n=2|state=locked|window=510,336,260,128`, STATE `OK locked user=admin changes=2 display=2 input=1 focus=session`), which holds two windows (the lock screen and the spy's new one: connections=2). Then the live input service is wedged the same way (INPUTD.ELF): the watchdog kills it (EXIT_KILLED) and restarts it once while the compositor is left alone (its restarts stay 1), and the session takes the keyboard back from the new input service still locked (`session|input=reconnected|n=2|state=locked`, STATE `OK locked user=admin changes=2 display=2 input=2 focus=session`); the spy still counts 2. A wrong password typed through the restarted input service is refused (`unlock=refused|answer=ERR ACCESS`, still locked), the right one unlocks (`OK unlocked user=admin changes=3 display=2 input=2 focus=display`) while the restarted compositor received no key at all (KEYS 0) and the spy still counts 2; `z` then reaches the spy (4) through both new services; the session's and the spy's traces equal platform/pc-qemu/expect/lock-hang.txt stream by stream; DISPLAYD.ELF and INPUTD.ELF are each spawned twice (the initial start and the one watchdog restart); the password never appears in the serial log; no frame leaks; exit 33",
+        "oracle": "SVC-LH.TXT (the SVC-SS.TXT stack but the compositor and the input service are watchdog-monitored, watchdog=200, on-failure): the lab signs in and presses Ctrl+Alt+Del with the spy focused (its count: the Ctrl and Alt presses, 2); before any freeze both components are ready with restarts=0; while locked the test wedges the live compositor with sched::freeze_named(DISPLAYD.ELF) — its threads are never woken, so it stops answering the watchdog's PING. No RESTART is driven by the test: the manager's watchdog alone misses the PONG, force-kills it (EXIT_KILLED=0x20000) and restarts it once (restarts=1, ready); the session stays locked and reconnects to the new compositor (`session|display=reconnected|n=2|state=locked|window=510,336,260,128`, STATE `OK locked user=admin changes=2 display=2 input=1 focus=session`), which holds two windows (the lock screen and the spy's new one: connections=2). Then the live input service is wedged the same way (INPUTD.ELF): the watchdog kills it (EXIT_KILLED) and restarts it once while the compositor is left alone (its restarts stay 1), and the session takes the keyboard back from the new input service still locked (`session|input=reconnected|n=2|state=locked`, STATE `OK locked user=admin changes=2 display=2 input=2 focus=session`); the spy still counts 2. A wrong password typed through the restarted input service is refused (`unlock=refused|answer=ERR ACCESS`, still locked), the right one unlocks (`OK unlocked user=admin changes=3 display=2 input=2 focus=display`) while the restarted compositor received no key at all (KEYS 0) and the spy still counts 2; `z` then reaches the spy (4) through both new services; the session's and the spy's traces equal platform/pc-qemu/expect/lock-hang.txt stream by stream; DISPLAYD.ELF and INPUTD.ELF are each spawned exactly twice (min and max count: the initial start and the one watchdog restart); the password never appears in the serial log; no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=lock_hang",
           "|path=/SYSTEM/SESSIOND.ELF|handles=1",
           "|ktest|lock_hang|services=5|ready=1",
+          "|ktest|lock_hang|before_freeze=display:ready:0|input:ready:0",
           "|text=session|display=reconnected|n=2|state=locked|window=510,336,260,128",
           "|ktest|lock_hang|frozen=1|killed=display:ready:1:0x20000|state=OK locked user=admin changes=2 display=2 input=1 focus=session|spy=OK keys=2 focus=0 connections=2|windows=2|phase=2|ready=1",
           "|text=session|input=reconnected|n=2|state=locked",
@@ -4681,7 +4702,45 @@
             "${EVIDENCE}",
             "platform/pc-qemu/expect/lock-hang.txt"
           ]
-        ]
+        ],
+        "max_counts": {
+          "|path=/SYSTEM/DISPLAYD.ELF|": 2,
+          "|path=/SYSTEM/INPUTD.ELF|": 2,
+          "|text=display|fonts=1": 2
+        }
+      },
+      {
+        "id": "TST-M5-SESSION-DEADLINE",
+        "test_id": "TST-M5-SESSION-DEADLINE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=session_deadline"
+        ],
+        "oracle": "REQ-M5-010 session.md v1.1: SVC-SD.TXT runs the session with the real auth, but `input` and `display` are svc `silent` — each takes every request and never answers. The session's first request to each (REGISTER, then STATUS) gets its REQUEST_DEADLINE of 5000 ticks: the session traces `session|input=timed_out|waited=<n>` and `session|display=timed_out|waited=<n>`, treats each as lost and closes its channel; each silent service measures the ticks from the request's arrival to that close and finds them within [4900, 6000] (`svc|silent|held=<n>|in_window=1`, twice, never in_window=0). The session then exits 0xE4 before READY (failed:228) instead of blocking for ever; input and display stay ready; the manager exits 0, no process left, no frame leak; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=session_deadline",
+          "|text=session|input=timed_out|waited=",
+          "|text=session|display=timed_out|waited=",
+          "|ktest|session_deadline|load=OK 4|",
+          "|session=failed:228|input=ready:-1|display=ready:-1|",
+          "|processes_after=0|clean=1",
+          "|ktest|session_deadline|frames_delta=0",
+          "|ktest|pass|the session gave each silent component its request deadline, closed it, and exited instead of hanging"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|in_window=0"
+        ],
+        "min_counts": {
+          "|text=svc|silent|held=": 2,
+          "|in_window=1": 2
+        },
+        "timeout_s": 900
       },
       {
         "id": "TST-M5-WINDOW-A11Y",
@@ -4799,13 +4858,36 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=process_kill"
         ],
-        "oracle": "REQ-M5-010 §8.7: the killer app spawns an ECHO child (blocked in channel_read), a SPIN child (ring 3) and an IDLE child (object_wait_many); a read-only process handle cannot kill (ERR_ACCESS), a non-process handle is ERR_WRONG_TYPE, the owner's WRITE handle kills each child so it exits EXIT_KILLED (0x20000) at its safe point, and killing an exited process is a no-op; killer exits 0x6B and no frame leaks (frames_delta=0); exit 33",
+        "oracle": "REQ-M5-010 §8.7: the killer app spawns each child and gives it 20 ticks to reach the state it is killed in (it runs on the killer's CPU with nothing else to do): ECHO blocked in channel_read — a read-only duplicate of its handle cannot kill it (ERR_ACCESS) and it is still alive 20 ticks later (its exit wait times out), a non-process handle is ERR_WRONG_TYPE, the owner's WRITE handle kills it (EXIT_KILLED=0x20000) and the killer's end of its channel then sees PEER_CLOSED, and killing it again is a no-op; SPIN never leaving ring 3, IDLE blocked in object_wait_many and SVC as `sleeper` inside sleep(1000000) are each killed with EXIT_KILLED. Every exit wait is bounded (5000 ticks). killer exits 0x6B; no frame leaks (frames_delta=0); exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=process_kill",
           "|kernel|spawn|pid=",
           "|ktest|process_kill|killer_exit=0x6b|frames_delta=0",
-          "|ktest|pass|process_kill ends a blocked, a spinning and a waiting process with EXIT_KILLED"
+          "|ktest|pass|process_kill ends a blocked, a spinning, a waiting and a sleeping process with EXIT_KILLED, and refuses a handle without WRITE"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600
+      },
+      {
+        "id": "TST-M5-KILL-EDGES",
+        "test_id": "TST-M5-KILL-EDGES",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=kill_edges"
+        ],
+        "oracle": "REQ-M5-010 (review 2026-10-19, K1–K3): (a) IDLE and (b) EXITER (first call exit(0x55)) are spawned and killed with interrupts off, pinned to this CPU so they have not run, and end with EXIT_KILLED=0x20000; these hold whichever safe point delivers the kill. (d)–(f) use the test-kernel kill injection points, where a kill from another CPU can land while the child runs in the kernel past its last safe point: IDLE killed just before object_wait_many blocks (d), SVC as `sleeper` killed just before sleep(1000000) sleeps (e), EXITER killed inside exit(0x55) (f) — each ends with EXIT_KILLED within 5000 ticks (a block or sleep refused while a kill is pending, K1; the kill's code wins over the exit's, K2). (c) SVC as `ticker` (a `T` every 5 ticks from a timed wait) ticks at least 5 times, is frozen and then ticks 0 times (a frozen process's timed waits do not expire, K3), and process_kill still ends it with EXIT_KILLED; no process left (processes_after=0), no frame leaked (frames_delta=0); exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=kill_edges",
+          "|ktest|kill_edges|idle_before_run=0x20000:1|exiter_before_run=0x20000:1|kill_at_block=0x20000:1|kill_at_sleep=0x20000:1|kill_at_exit=0x20000:1|ticker_ticked=1|frozen=1|ticker_stopped=1|ticker_killed=0x20000:1|processes_after=0|frames_delta=0",
+          "|ktest|pass|a kill before the first run, just before a block or a sleep, inside exit, and on a frozen timed wait all end in EXIT_KILLED"
         ],
         "forbidden_markers": [
           "|ktest|fail|",
@@ -4823,15 +4905,15 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=svc_watchdog"
         ],
-        "oracle": "REQ-M5-010 services.md v1.7: the manager watchdogs Ready services (watchdog=<ticks>, PING/PONG on the boot channel). `hung` (watchdog=50, role hang) answers READY then stops servicing, so a missed PONG period has it force-killed (EXIT_KILLED=131072); with max_restarts=1 it is restarted once, hangs again and is given up (given_up, restarts=1). `pong` (watchdog=50, role ready) answers every PING and stays ready (restarts=0). `stubborn` (no watchdog, role hang) ignores STOP and is force-killed after the STOP grace (stopped, EXIT_KILLED). The manager keeps answering LIST; no frame leak; exit 33",
+        "oracle": "REQ-M5-010 services.md v1.7, v1.8: the manager watchdogs Ready services (watchdog=<ticks>, PING/PONG on the boot channel). `hung` (watchdog=50, role hang) answers READY then stops servicing, so a missed PONG period has it force-killed (EXIT_KILLED=131072); with max_restarts=1 it is restarted once, hangs again and is given up (given_up, restarts=1). `pong` (watchdog=50, role ready, its manifest line with two spaces before the arg — v1.8 trims them) answers every PING and stays ready (restarts=0); each PONG is traced (`svc|pong`, at least 3). `closer` (watchdog=50) closes its boot channel after READY: it can no longer be asked, so it is killed as hung (failed, 131072). `early` (timeout 50) hangs before READY without reading its channel: failed at the timeout, still alive 200 ticks after its start (the grace runs from the timeout), then forced (failed, 131072). `stubborn` (no watchdog, role hang) ignores STOP: 150 ticks after the STOP it is still stopping, then the grace ends in process_kill (stopped, 131072). The manager keeps answering LIST; no frame leak; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_watchdog",
-          "|ktest|svc_watchdog|load=OK 3|",
-          "|hung=given_up:1:131072|pong=ready:0|stop=OK|stubborn=stopped:131072|",
+          "|ktest|svc_watchdog|load=OK 5|",
+          "|hung=given_up:1:131072|pong=ready:0|closer=failed:131072|early=failed:131072|early_alive_at_200=1|stop=OK|stubborn_at_150=stopping|stubborn=stopped:131072|",
           "|processes_after=0|clean=1",
           "|ktest|svc_watchdog|frames_delta=0",
-          "|ktest|pass|the watchdog ends a hung service and gives it up"
+          "|ktest|pass|the watchdog ends a hung service and gives it up, leaves a healthy one, kills one that closed its channel, forces one hung before READY after the grace, and STOP force-kills a stubborn one"
         ],
         "forbidden_markers": [
           "|ktest|fail|",
@@ -4839,7 +4921,10 @@
           "|exc|vector",
           "|user_fault|"
         ],
-        "timeout_s": 600
+        "timeout_s": 600,
+        "min_counts": {
+          "|user|trace|len=8|text=svc|pong": 3
+        }
       }
     ]
   },

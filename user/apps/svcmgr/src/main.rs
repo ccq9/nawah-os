@@ -85,6 +85,12 @@ struct Service {
     wd_deadline: Option<u64>,
     /// A PING is outstanding; a second period without a PONG means the service is hung.
     awaiting_pong: bool,
+    /// The manager has force-killed the process (watchdog or readiness timeout) and its exit
+    /// has not come yet (v1.8): not counted ready meanwhile, so no dependent starts on it.
+    killing: bool,
+    /// A process left behind by a readiness timeout is force-killed at this tick unless it
+    /// exited by itself first (v1.8; the same grace as STOP).
+    kill_at: Option<u64>,
 }
 
 /// Ticks a stopping service is given to exit on its own before the manager force-kills it
@@ -116,6 +122,8 @@ const EMPTY: Service = Service {
     watchdog: 0,
     wd_deadline: None,
     awaiting_pong: false,
+    killing: false,
+    kill_at: None,
 };
 
 impl Service {
@@ -316,7 +324,13 @@ impl Manager {
                 let Some(wd) = parse_u64(&after[..end]) else {
                     return Err(syntax);
                 };
-                (wd, after.get(end + 1..).unwrap_or(&[]))
+                // The arg follows without its separating spaces (v1.8: two spaces used to leave
+                // one in front of it).
+                let mut arg = &after[end..];
+                while let [b' ', tail @ ..] = arg {
+                    arg = tail;
+                }
+                (wd, arg)
             } else {
                 (0, rest)
             };
@@ -380,7 +394,7 @@ impl Manager {
 
     fn ready_mask(&self) -> u16 {
         (0..self.n)
-            .filter(|&i| self.services[i].state == State::Ready)
+            .filter(|&i| self.services[i].state == State::Ready && !self.services[i].killing)
             .fold(0, |m, i| m | (1 << i))
     }
 
@@ -430,6 +444,8 @@ impl Manager {
         }
         s.last_start = Some(now);
         s.ready_tick = None;
+        s.killing = false;
+        s.kill_at = None;
         let Ok((ours, theirs)) = libnawah::channel_create() else {
             s.state = State::Failed;
             s.deadline = None;
@@ -513,9 +529,9 @@ impl Manager {
     /// A message (or the close) on service `i`'s boot channel: `READY`, or (services.md §4,
     /// v1.3) a request of the service's own — `LIST`, or `CONNECT <name>` for a service it
     /// declared as a dependency — answered on the same channel.
-    fn on_boot_channel(&mut self, i: usize, now: u64) {
+    fn on_boot_channel(&mut self, i: usize, now: u64) -> bool {
         let Some(c) = self.services[i].chan else {
-            return;
+            return false;
         };
         let mut buf = [0u8; 64];
         let mut hs = [0u32; 1];
@@ -543,9 +559,13 @@ impl Manager {
                 } else if let Some(name) = req.strip_prefix(b"CONNECT ") {
                     self.connect_for(i, name);
                 }
+                true
             }
-            Err(ERR_PEER_CLOSED) => self.close_chan(i),
-            Err(_) => {}
+            Err(ERR_PEER_CLOSED) => {
+                self.close_chan(i);
+                false
+            }
+            Err(_) => false,
         }
     }
 
@@ -597,6 +617,8 @@ impl Manager {
         self.services[i].process = None;
         self.services[i].wd_deadline = None;
         self.services[i].awaiting_pong = false;
+        self.services[i].killing = false;
+        self.services[i].kill_at = None;
         self.close_chan(i);
         let s = &mut self.services[i];
         s.exit = Some(code);
@@ -633,6 +655,11 @@ impl Manager {
                             self.services[i].state = State::Failed;
                             self.services[i].deadline = None;
                             self.close_chan(i);
+                            // A cooperative service exits on the close; one hung before READY
+                            // never reads its channel, so it is forced after the grace (v1.8).
+                            if self.services[i].process.is_some() {
+                                self.services[i].kill_at = Some(now.saturating_add(STOP_GRACE));
+                            }
                         }
                         State::Failed => {
                             self.services[i].restarts += 1;
@@ -651,19 +678,42 @@ impl Manager {
                     }
                 }
             }
-            // Watchdog: PING a Ready service each period; a second period with no PONG means it
-            // is hung — force it and let `on_exit` apply its restart policy (v1.7).
-            if self.services[i].state == State::Ready {
+            // Readiness-timeout leftover still alive after the grace: force it (v1.8).
+            if let Some(k) = self.services[i].kill_at {
+                if k <= now {
+                    self.services[i].kill_at = None;
+                    if let Some(p) = self.services[i].process {
+                        self.services[i].killing = true;
+                        libnawah::process_kill(p);
+                    }
+                }
+            }
+            // Watchdog (v1.7, v1.8): PING a Ready service each period. A period with its PING
+            // unanswered, a boot channel gone (it can no longer be asked) or a PING that cannot
+            // be delivered means it is hung: force it and let `on_exit` apply its restart policy.
+            // A PONG already queued is read before judging, and a passed deadline is always
+            // re-armed or cleared — never left behind for the loop to spin on.
+            if self.services[i].state == State::Ready && !self.services[i].killing {
                 if let Some(d) = self.services[i].wd_deadline {
                     if d <= now {
-                        if self.services[i].awaiting_pong {
+                        for _ in 0..16 {
+                            if !self.on_boot_channel(i, now) {
+                                break;
+                            }
+                        }
+                        let hung = self.services[i].awaiting_pong
+                            || match self.services[i].chan {
+                                Some(c) => libnawah::channel_write(c, b"PING", &[]) != 0,
+                                None => true,
+                            };
+                        if hung {
                             self.services[i].wd_deadline = None;
+                            self.services[i].killing = true;
                             if let Some(p) = self.services[i].process {
                                 libnawah::process_kill(p);
                             }
                             self.close_chan(i);
-                        } else if let Some(c) = self.services[i].chan {
-                            libnawah::channel_write(c, b"PING", &[]);
+                        } else {
                             self.services[i].awaiting_pong = true;
                             self.services[i].wd_deadline =
                                 Some(now.saturating_add(self.services[i].watchdog));
@@ -676,7 +726,13 @@ impl Manager {
 
     fn next_deadline(&self) -> Option<u64> {
         (0..self.n)
-            .flat_map(|i| [self.services[i].deadline, self.services[i].wd_deadline])
+            .flat_map(|i| {
+                [
+                    self.services[i].deadline,
+                    self.services[i].wd_deadline,
+                    self.services[i].kill_at,
+                ]
+            })
             .flatten()
             .min()
     }
@@ -884,7 +940,9 @@ fn main() -> u64 {
                             break;
                         }
                     }
-                    (i, 1) => m.on_boot_channel(i, now),
+                    (i, 1) => {
+                        m.on_boot_channel(i, now);
+                    }
                     (i, _) => m.on_exit(i, now),
                 }
             }

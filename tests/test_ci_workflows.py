@@ -60,6 +60,40 @@ class Workflows(unittest.TestCase):
 
 
 class Preflight(unittest.TestCase):
+    def test_preflight_runs_the_ci_hygiene_commands(self):
+        # The local gate is CI's hygiene step itself, read from verify.yml (CI run 39185115793
+        # failed on a clippy configuration the local pre-flight never ran).
+        env, cmds = project.hygiene_commands()
+        step = next(s for j in load("verify.yml")["jobs"].values() for s in j["steps"]
+                    if str(s.get("name", "")).startswith(project.HYGIENE_STEP))
+        script = [l.strip() for l in step["run"].splitlines()]
+        expected = [l for l in script if l.startswith(("cargo ", "sh tools/"))]
+        self.assertEqual(cmds, expected)
+        self.assertEqual(env, {str(k): str(v) for k, v in (step.get("env") or {}).items()})
+        self.assertIn("cargo fmt --all --check", cmds)
+        kernel = [c for c in cmds if "kernel/Cargo.toml" in c]
+        self.assertTrue(any("--features" not in c and "x86_64-unknown-uefi" in c for c in kernel),
+                        "the production kernel (no ktest) must be linted")
+        self.assertTrue(any("--features ktest" in c for c in kernel))
+        self.assertTrue(any("aarch64-unknown-uefi" in c for c in kernel))
+        self.assertTrue(all("-D warnings" in c for c in cmds if c.startswith("cargo clippy")))
+        self.assertIn("sh tools/check-unsafe.sh", cmds)
+        # Locally only --offline is dropped; the lint configuration is unchanged.
+        c = "cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings"
+        self.assertEqual(project.local_hygiene_argv(c),
+                         ["cargo", "clippy", "--manifest-path", "kernel/Cargo.toml", "--target",
+                          "x86_64-unknown-uefi", "--", "-D", "warnings"])
+        # And pre-flight runs it, after fmt and before the build.
+        import inspect
+        src = inspect.getsource(project.cmd_preflight)
+        self.assertLess(src.index('"fmt"'), src.index("cmd_hygiene()"))
+        self.assertLess(src.index("cmd_hygiene()"), src.index('"build"'))
+        with tempfile.TemporaryDirectory() as d:
+            p = pathlib.Path(d) / "w.yml"
+            p.write_text("name: x\njobs:\n  a:\n    runs-on: u\n    steps:\n      - run: echo\n")
+            with self.assertRaises(ValueError):
+                project.hygiene_commands(p)
+
     def test_environment(self):
         env = project.preflight_env({"PATH": "/bin", "RUSTUP_TOOLCHAIN": "t"}, "/tmp/scratch", True)
         self.assertEqual(env["PATH"], "/bin")

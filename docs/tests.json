@@ -1633,7 +1633,7 @@
     "REQ-M5-008"
    ],
    "layer": "user_e2e",
-   "oracle": "scenario 7 (planned, WP-39): the sample dialog and winapp under the narrator; the lab manages the windows by keyboard alone — Alt+Tab between them, Alt+Shift+arrows resize winapp (it attaches a surface of the new size), Alt+F9 minimises the dialog, Alt+Tab restores it, Alt+arrows move it, then ui.scale=2 resizes it — and after every transition the focus is where display.md says and the dialog's focused element is the same one: the narrator's transcript (the window's focus, the dialog re-announcing its focused element whenever its window gets the focus back, the theme change, a list change proving the element still has the keyboard) equals the expected file exactly; geometry from LIST and the dialog's trace; exit 33",
+   "oracle": "scenario 7 (WP-39): the sample dialog alone (SVC-UI.TXT) driven by the keyboard — Alt+F9 minimises it (the focus leaves it), Alt+Tab reaches the minimised window and restores it (v1.3), Tab then moves inside it; the narrator's transcript equals platform/pc-qemu/expect/window-a11y.txt line for line: the startup tree and focus, then on the restore `window \"Sign in\" focused` and the dialog re-announcing its focused element (ui.md v1.2), then the focus moving to the list; Esc ends it with exit 0; no frame leaks; exit 33. Not exercised: resizing or moving a window by keyboard and a scale change (REQ-M5-008's 'resize loses focus' case stays open, WP-42)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1646,7 +1646,7 @@
     "REQ-M5-009"
    ],
    "layer": "user_e2e",
-   "oracle": "scenario 11 (planned, WP-39): ui.lang=ar set in the config service turns the running dialog Arabic and right-to-left (title, labels, list items) while it keeps its focused element; the lab toggles the layout with Alt+Shift and types a mixed path (Arabic, Latin, digits, '/', '-', '.') into the field and navigates every element by keyboard; the narrator's transcript (Arabic as \\u{XXXX}, the field's value after every key) equals the expected file exactly; the screendump shows the right-to-left geometry (label ink at the right end of its row and none at the left, the checkbox square at the right) checked on the host by region; ui.lang=en brings the English dialog back; exit 33",
+   "oracle": "scenario 11 (WP-39): the dialog starts English; the admin sets ui.lang=ar in the config device store (OK 1) and the subscribed dialog turns Arabic and right-to-left in place (new labels, items and direction, the window renamed with TITLE), announcing `lang ar` and its focused element with the Arabic label; the lab toggles the keyboard layout with Alt+Shift (input v2.3) and types the two Arabic letters that the keys d, f give in the ar layout into the field, then Tab to the list and Down move its selection — each announced in Arabic; the narrator's transcript equals platform/pc-qemu/expect/arabic-ui.txt line for line; the lab's screendump shows the dialog's background where it reported it (the RTL layout and direction logic are proven exactly by the libui host unit test, §17: a screenshot does not prove behaviour); Esc ends it with exit 0; exit 33. Not exercised: Latin letters, digits or separators typed after switching back (REQ-M5-009's mixed-text case is only partly covered, WP-42)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1659,12 +1659,21 @@
     "REQ-M5-010"
    ],
    "layer": "negative",
-   "oracle": "planned (WP-40): process_kill (ABI v1.11) ends a process blocked in channel_read, one waiting in object_wait_many with a timeout, one sleeping and one spinning in ring 3 (also on another CPU): each exits with EXIT_KILLED, its peers see PEER_CLOSED, its frames come back; a process handle without WRITE gets ERR_ACCESS, another object ERR_WRONG_TYPE, an exited process 0; no frame leaks; exit 33",
+   "oracle": "REQ-M5-010 §8.7: the killer app spawns each child and gives it 20 ticks to reach the state it is killed in (it runs on the killer's CPU with nothing else to do): ECHO blocked in channel_read — a read-only duplicate of its handle cannot kill it (ERR_ACCESS) and it is still alive 20 ticks later (its exit wait times out), a non-process handle is ERR_WRONG_TYPE, the owner's WRITE handle kills it (EXIT_KILLED=0x20000) and the killer's end of its channel then sees PEER_CLOSED, and killing it again is a no-op; SPIN never leaving ring 3, IDLE blocked in object_wait_many and SVC as `sleeper` inside sleep(1000000) are each killed with EXIT_KILLED. Every exit wait is bounded (5000 ticks). killer exits 0x6B; no frame leaks (frames_delta=0); exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261019T022611Z-37bc562e-001"
-   ]
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-KILL-EDGES",
+   "requirement_ids": [
+    "REQ-M5-010"
+   ],
+   "layer": "negative",
+   "oracle": "REQ-M5-010 (review 2026-10-19, K1–K3): (a) IDLE and (b) EXITER (first call exit(0x55)) are spawned and killed with interrupts off, pinned to this CPU so they have not run, and end with EXIT_KILLED=0x20000; these hold whichever safe point delivers the kill. (d)–(f) use the test-kernel kill injection points, where a kill from another CPU can land while the child runs in the kernel past its last safe point: IDLE killed just before object_wait_many blocks (d), SVC as `sleeper` killed just before sleep(1000000) sleeps (e), EXITER killed inside exit(0x55) (f) — each ends with EXIT_KILLED within 5000 ticks (a block or sleep refused while a kill is pending, K1; the kill's code wins over the exit's, K2). (c) SVC as `ticker` (a `T` every 5 ticks from a timed wait) ticks at least 5 times, is frozen and then ticks 0 times (a frozen process's timed waits do not expire, K3), and process_kill still ends it with EXIT_KILLED; no process left (processes_after=0), no frame leaked (frames_delta=0); exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   },
   {
    "id": "TST-M5-SVC-WATCHDOG",
@@ -1672,12 +1681,10 @@
     "REQ-M5-010"
    ],
    "layer": "service_integration",
-   "oracle": "services.md v1.7: the manager PINGs Ready services with watchdog=<ticks>; a service that answers PONG stays ready, one that does not is force-killed (EXIT_KILLED) and its restart policy applied (given_up, restarts=1 at max_restarts=1), and a no-watchdog service that ignores STOP is force-killed after the STOP grace; the manager keeps answering LIST; no frame leak",
+   "oracle": "REQ-M5-010 services.md v1.7, v1.8: the manager watchdogs Ready services (watchdog=<ticks>, PING/PONG on the boot channel). `hung` (watchdog=50, role hang) answers READY then stops servicing, so a missed PONG period has it force-killed (EXIT_KILLED=131072); with max_restarts=1 it is restarted once, hangs again and is given up (given_up, restarts=1). `pong` (watchdog=50, role ready, its manifest line with two spaces before the arg — v1.8 trims them) answers every PING and stays ready (restarts=0); each PONG is traced (`svc|pong`, at least 3). `closer` (watchdog=50) closes its boot channel after READY: it can no longer be asked, so it is killed as hung (failed, 131072). `early` (timeout 50) hangs before READY without reading its channel: failed at the timeout, still alive 200 ticks after its start (the grace runs from the timeout), then forced (failed, 131072). `stubborn` (no watchdog, role hang) ignores STOP: 150 ticks after the STOP it is still stopping, then the grace ends in process_kill (stopped, 131072). The manager keeps answering LIST; no frame leak; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261019T022615Z-37bc562e-001"
-   ]
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   },
   {
    "id": "TST-M5-LOCK-HANG",
@@ -1686,12 +1693,21 @@
     "REQ-M5-006"
    ],
    "layer": "security_access_perf",
-   "oracle": "scenario 8 (WP-40, §20): SVC-LH.TXT, the compositor and the input service watchdog-monitored (watchdog=200, on-failure). With the session locked the test kernel freezes the live compositor (sched::freeze_named(DISPLAYD.ELF): its threads are never woken, so it stops answering the watchdog PING); the manager's watchdog alone, with no RESTART driven by the test, force-kills it (EXIT_KILLED) and restarts it once while the session stays locked and reconnects (display=2, input=1); then the live input service is frozen the same way and the watchdog kills and restarts it once while the compositor is left alone (its restarts stay 1) and the session takes the keyboard back still locked (display=2, input=2, focus=session); the spy focused before the lock gets no key and the restarted compositor sees none while locked; a wrong password typed through the restarted input service is refused and only the right one unlocks, after which a key reaches the spy through both new services. The session's and the spy's traces equal platform/pc-qemu/expect/lock-hang.txt stream by stream; DISPLAYD.ELF and INPUTD.ELF are each spawned twice; the password never appears in the serial log; no frame leaks; exit 33. It does not put the session mid-request to a frozen component (that is TST-M5-SESSION-HANG, pending) and takes no screendump (the held restarted compositor is shown by TST-M5-LOCK-SURVIVES)",
+   "oracle": "SVC-LH.TXT (the SVC-SS.TXT stack but the compositor and the input service are watchdog-monitored, watchdog=200, on-failure): the lab signs in and presses Ctrl+Alt+Del with the spy focused (its count: the Ctrl and Alt presses, 2); before any freeze both components are ready with restarts=0; while locked the test wedges the live compositor with sched::freeze_named(DISPLAYD.ELF) — its threads are never woken, so it stops answering the watchdog's PING. No RESTART is driven by the test: the manager's watchdog alone misses the PONG, force-kills it (EXIT_KILLED=0x20000) and restarts it once (restarts=1, ready); the session stays locked and reconnects to the new compositor (`session|display=reconnected|n=2|state=locked|window=510,336,260,128`, STATE `OK locked user=admin changes=2 display=2 input=1 focus=session`), which holds two windows (the lock screen and the spy's new one: connections=2). Then the live input service is wedged the same way (INPUTD.ELF): the watchdog kills it (EXIT_KILLED) and restarts it once while the compositor is left alone (its restarts stay 1), and the session takes the keyboard back from the new input service still locked (`session|input=reconnected|n=2|state=locked`, STATE `OK locked user=admin changes=2 display=2 input=2 focus=session`); the spy still counts 2. A wrong password typed through the restarted input service is refused (`unlock=refused|answer=ERR ACCESS`, still locked), the right one unlocks (`OK unlocked user=admin changes=3 display=2 input=2 focus=display`) while the restarted compositor received no key at all (KEYS 0) and the spy still counts 2; `z` then reaches the spy (4) through both new services; the session's and the spy's traces equal platform/pc-qemu/expect/lock-hang.txt stream by stream; DISPLAYD.ELF and INPUTD.ELF are each spawned exactly twice (min and max count: the initial start and the one watchdog restart); the password never appears in the serial log; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261019T022526Z-37bc562e-001"
-   ]
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-SESSION-DEADLINE",
+   "requirement_ids": [
+    "REQ-M5-010"
+   ],
+   "layer": "service_integration",
+   "oracle": "REQ-M5-010 session.md v1.1: SVC-SD.TXT runs the session with the real auth, but `input` and `display` are svc `silent` — each takes every request and never answers. The session's first request to each (REGISTER, then STATUS) gets its REQUEST_DEADLINE of 5000 ticks: the session traces `session|input=timed_out|waited=<n>` and `session|display=timed_out|waited=<n>`, treats each as lost and closes its channel; each silent service measures the ticks from the request's arrival to that close and finds them within [4900, 6000] (`svc|silent|held=<n>|in_window=1`, twice, never in_window=0). The session then exits 0xE4 before READY (failed:228) instead of blocking for ever; input and display stay ready; the manager exits 0, no process left, no frame leak; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   },
   {
    "id": "TST-M5-ELEVATE",

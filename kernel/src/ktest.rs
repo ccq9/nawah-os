@@ -197,7 +197,9 @@ pub fn run() -> ! {
         "a11y_tree" => a11y_tree(),
         "arabic_ui" => arabic_ui(),
         "process_kill" => process_kill(),
+        "kill_edges" => kill_edges(),
         "svc_watchdog" => svc_watchdog(),
+        "session_deadline" => session_deadline(),
         "login_screen" => login_screen(),
         "auth_input_isolated" => auth_input_isolated(),
         "lock_survives" => lock_survives(),
@@ -2814,8 +2816,11 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         "svc_timeout" => pass(
             "a silent service fails at its timeout, its dependent stays blocked, the manager answers",
         ),
+        "session_deadline" => pass(
+            "the session gave each silent component its request deadline, closed it, and exited instead of hanging",
+        ),
         "svc_watchdog" => pass(
-            "the watchdog ends a hung service and gives it up, leaves a healthy one, and STOP force-kills a stubborn one",
+            "the watchdog ends a hung service and gives it up, leaves a healthy one, kills one that closed its channel, forces one hung before READY after the grace, and STOP force-kills a stubborn one",
         ),
         _ => pass("a crashing service is restarted with backoff up to its limit, then given up"),
     }
@@ -2958,68 +2963,97 @@ fn svc_restart() -> ! {
     svc_balance("svc_restart", frames0)
 }
 
-/// TST-M5-SVC-WATCHDOG (REQ-M5-010, services.md v1.7, §8.7): a hung service is detected and
-/// ended, a healthy one is not, and a service that ignores STOP is force-killed after the
+/// The named line of a `LIST` reply (empty when absent).
+fn svc_find(lines: &[SvcLine], name: &str) -> SvcLine {
+    lines
+        .iter()
+        .find(|l| l.name == name)
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// TST-M5-SVC-WATCHDOG (REQ-M5-010, services.md v1.7, v1.8, §8.7): a hung service is detected
+/// and ended, a healthy one is not, and a service that ignores STOP is force-killed after the
 /// grace. `hung` (watchdog=50, role hang) answers READY then stops servicing, so the watchdog
 /// kills it; with max_restarts=1 it is restarted once, hangs again and is given up (restarts=1,
-/// EXIT_KILLED). `pong` (watchdog=50, role ready) answers every PING and stays ready. `stubborn`
-/// (no watchdog, role hang) is force-killed on STOP (the grace then process_kill). The manager
-/// keeps answering LIST throughout.
+/// EXIT_KILLED). `pong` (watchdog=50, role ready, two spaces before its arg) answers every PING
+/// and stays ready; each PONG is traced and counted by the case. `stubborn` (no watchdog, role
+/// hang) ignores STOP: 150 ticks after the STOP it is still stopping, then the grace ends in
+/// process_kill. v1.8: `closer` (watchdog=50) closes its boot channel after READY — it can no
+/// longer be asked, so it is killed as hung; `early` (timeout 50) hangs before READY — failed at
+/// the timeout, still alive 200 ticks after its start (the grace runs from the timeout), then
+/// forced. The manager keeps answering LIST throughout.
 fn svc_watchdog() -> ! {
     const EXIT_KILLED: u64 = 0x2_0000;
     let h = SvcHarness::start("svc_watchdog", b"/SYSTEM/SVC-WD.TXT");
-    // The watchdog kills the hung service, restarts it once, then gives up — while the healthy
-    // one that answers PING stays ready.
+    // `early` fails at its readiness timeout (start + 50); the force comes a STOP grace (200)
+    // later, so at start + 200 it must be failed and still alive.
+    let first = h.poll_list(sched::ticks() + 2000, |l| {
+        l.iter().any(|x| x.name == "early" && x.state == "failed")
+    });
+    let early_alive = match svc_find(&first, "early").last_start {
+        Some(start) if sched::ticks() < start + 200 => {
+            sched::poll_until(start + 200, || false);
+            let e = svc_find(&h.poll_list(sched::ticks(), |_| true), "early");
+            e.state == "failed" && e.exit.is_none()
+        }
+        _ => false,
+    };
+    // The watchdog kills the hung service, restarts it once, then gives up; the channel closer
+    // is killed as hung and the early hanger is forced — while the healthy one stays ready.
     let lines = h.poll_list(sched::ticks() + 6000, |l| {
         l.iter().any(|x| x.name == "hung" && x.state == "given_up")
+            && l.iter().any(|x| x.name == "closer" && x.exit.is_some())
+            && l.iter().any(|x| x.name == "early" && x.exit.is_some())
     });
-    let hung = lines
-        .iter()
-        .find(|l| l.name == "hung")
-        .cloned()
-        .unwrap_or_default();
-    let pong = lines
-        .iter()
-        .find(|l| l.name == "pong")
-        .cloned()
-        .unwrap_or_default();
-    // The stubborn service (no watchdog) ignores STOP; the grace then force-kills it.
+    let hung = svc_find(&lines, "hung");
+    let pong = svc_find(&lines, "pong");
+    let closer = svc_find(&lines, "closer");
+    let early = svc_find(&lines, "early");
+    // The stubborn service (no watchdog) ignores STOP; the grace then force-kills it — not
+    // before: 150 ticks after the request it is still stopping.
+    let t0 = sched::ticks();
     let stop = match crate::services::request(&h.m.ctl, b"STOP stubborn", sched::ticks() + 500) {
         Ok(b) => String::from_utf8_lossy(&b).into_owned(),
         Err(e) => e.into(),
     };
+    sched::poll_until(t0 + 150, || false);
+    let mid = svc_find(&h.poll_list(sched::ticks(), |_| true), "stubborn");
     let lines2 = h.poll_list(sched::ticks() + 2000, |l| {
         l.iter()
             .any(|x| x.name == "stubborn" && x.state == "stopped")
     });
-    let stubborn = lines2
-        .iter()
-        .find(|l| l.name == "stubborn")
-        .cloned()
-        .unwrap_or_default();
+    let stubborn = svc_find(&lines2, "stubborn");
     let again = crate::services::request(&h.m.ctl, b"LIST", sched::ticks() + 200).is_ok();
     let text = SvcHarness::list_text(&lines2);
     let load = h.load_reply.clone();
     let (mgr_exit, procs, frames0, clean) = h.finish();
+    let code = |l: &SvcLine| l.exit.map_or(-1, |e| e as i64);
     kprintln!(
-        "OSX|{}|ktest|svc_watchdog|load={}|list={}|hung={}:{}:{}|pong={}:{}|stop={}|stubborn={}:{}|list_after={}|mgr_exit={:#x}|processes_after={}|clean={}",
+        "OSX|{}|ktest|svc_watchdog|load={}|list={}|hung={}:{}:{}|pong={}:{}|closer={}:{}|early={}:{}|early_alive_at_200={}|stop={}|stubborn_at_150={}|stubborn={}:{}|list_after={}|mgr_exit={:#x}|processes_after={}|clean={}",
         BUILD_ID,
         load,
         text,
         hung.state,
         hung.restarts,
-        hung.exit.map_or(-1, |e| e as i64),
+        code(&hung),
         pong.state,
         pong.restarts,
+        closer.state,
+        code(&closer),
+        early.state,
+        code(&early),
+        u8::from(early_alive),
         stop,
+        mid.state,
         stubborn.state,
-        stubborn.exit.map_or(-1, |e| e as i64),
+        code(&stubborn),
         u8::from(again),
         mgr_exit,
         procs,
         u8::from(clean)
     );
-    if load != "OK 3"
+    if load != "OK 5"
         || hung.state != "given_up"
         || hung.restarts != 1
         || hung.exit != Some(EXIT_KILLED)
@@ -3029,7 +3063,17 @@ fn svc_watchdog() -> ! {
     if pong.state != "ready" || pong.restarts != 0 {
         fail("a service that answered the watchdog was not left alone")
     }
-    if stop != "OK" || stubborn.state != "stopped" || stubborn.exit != Some(EXIT_KILLED) {
+    if closer.state != "failed" || closer.exit != Some(EXIT_KILLED) {
+        fail("a service that closed its boot channel was not killed as hung (services.md v1.8)")
+    }
+    if !early_alive || early.state != "failed" || early.exit != Some(EXIT_KILLED) {
+        fail("a service hung before READY was not forced after the grace (services.md v1.8)")
+    }
+    if stop != "OK"
+        || mid.state != "stopping"
+        || stubborn.state != "stopped"
+        || stubborn.exit != Some(EXIT_KILLED)
+    {
         fail("a service that ignored STOP was not force-killed after the grace")
     }
     if !again {
@@ -3038,8 +3082,59 @@ fn svc_watchdog() -> ! {
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
     }
-    drop((lines, lines2, hung, pong, stubborn, text, load, stop));
+    drop((
+        first, lines, lines2, hung, pong, closer, early, mid, stubborn, text, load, stop,
+    ));
     svc_balance("svc_watchdog", frames0)
+}
+
+/// TST-M5-SESSION-DEADLINE (REQ-M5-010, session.md v1.1): the session waits on no component for
+/// ever. `input` and `display` are svc `silent`: each takes the session's request (REGISTER,
+/// then STATUS) and never answers. The session must give each its REQUEST_DEADLINE, treat it as
+/// lost and close its channel (each silent service traces how long the request was held and
+/// whether that falls in [4900, 6000] ticks), then exit 0xE4 — without the deadline it would
+/// block in its first request for ever. The silent services stay ready; nothing leaks.
+fn session_deadline() -> ! {
+    let h = SvcHarness::start("session_deadline", b"/SYSTEM/SVC-SD.TXT");
+    let lines = h.poll_list(sched::ticks() + 120_000, |l| {
+        l.iter().any(|x| x.name == "session" && x.exit.is_some())
+    });
+    let session = svc_find(&lines, "session");
+    let input = svc_find(&lines, "input");
+    let display = svc_find(&lines, "display");
+    let text = SvcHarness::list_text(&lines);
+    let load = h.load_reply.clone();
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    let code = |l: &SvcLine| l.exit.map_or(-1, |e| e as i64);
+    kprintln!(
+        "OSX|{}|ktest|session_deadline|load={}|list={}|session={}:{}|input={}:{}|display={}:{}|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        load,
+        text,
+        session.state,
+        code(&session),
+        input.state,
+        code(&input),
+        display.state,
+        code(&display),
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 4" {
+        fail("the manifest did not load")
+    }
+    if session.state != "failed" || session.exit != Some(0xE4) {
+        fail("the session did not give up on components that never answer (session.md v1.1)")
+    }
+    if input.state != "ready" || display.state != "ready" {
+        fail("a silent component did not stay ready")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    drop((lines, session, input, display, text, load));
+    svc_balance("session_deadline", frames0)
 }
 
 // ---- WP-25: tokens, authority, the auth service --------------------------------------------
@@ -5989,6 +6084,22 @@ fn lock_hang() -> ! {
         );
         fail("the secure attention sequence did not lock the session")
     }
+    // Healthy so far: the watchdog has touched neither component, so each restart counted below
+    // is the freeze's own, not a spurious one (review 2026-10-19, T2).
+    let pre = h.poll_list(sched::ticks(), |_| true);
+    let (pd, pi) = (svc_find(&pre, "display"), svc_find(&pre, "input"));
+    kprintln!(
+        "OSX|{}|ktest|lock_hang|before_freeze=display:{}:{}|input:{}:{}",
+        BUILD_ID,
+        pd.state,
+        pd.restarts,
+        pi.state,
+        pi.restarts
+    );
+    if pd.state != "ready" || pd.restarts != 0 || pi.state != "ready" || pi.restarts != 0 {
+        fail("a watchdog-monitored component was restarted before any freeze")
+    }
+    drop((pre, pd, pi));
     // Wedge the live compositor: it stays blocked in `object_wait_many`, so it never answers the
     // watchdog's PING. The manager — not the test — must notice and restart it.
     let frozen = sched::freeze_named(b"DISPLAYD.ELF");
@@ -6157,7 +6268,212 @@ fn process_kill() -> ! {
     if frames != 0 {
         fail("process_kill leaked frames")
     }
-    pass("process_kill ends a blocked, a spinning and a waiting process with EXIT_KILLED, and refuses a handle without WRITE")
+    pass("process_kill ends a blocked, a spinning, a waiting and a sleeping process with EXIT_KILLED, and refuses a handle without WRITE")
+}
+
+/// TST-M5-KILL-EDGES (REQ-M5-010; review 2026-10-19, K1–K3): the edges of process_kill that the
+/// first tests missed. (a) IDLE and (b) EXITER killed before they ever ran (spawn and kill with
+/// interrupts off, pinned to this CPU) end with EXIT_KILLED — not a sleep for ever, not 0x55;
+/// these hold whichever safe point delivers the kill. (d)–(f) pin the fixes down with the
+/// test-kernel injection points: the kill lands while the child runs in the kernel past its last
+/// safe point — before object_wait_many blocks (d), before sleep sleeps (e), inside exit(0x55)
+/// (f) — and each must end in EXIT_KILLED (K1, K2). (c) SVC as `ticker` (a `T` every 5 ticks
+/// from a timed wait) is frozen: it must stop ticking — a frozen process's timed waits do not
+/// expire — and process_kill must still end it (K3). Everything comes back: no process left, no
+/// frame leaked.
+fn kill_edges() -> ! {
+    use crate::object::process::ProcessObject;
+    use crate::syscall::EXIT_KILLED;
+    let frames0 = pmm::stats().free_frames;
+    let chan_entry = |ep: Arc<Endpoint>| Entry {
+        object: Object::Channel(ep),
+        rights: Rights::CHANNEL_DEFAULT,
+    };
+    // Spawns `image` and marks it killed before it can run; then waits (bounded) for its exit.
+    let kill_before_run = |name: &str, image: &[u8], handles: Vec<Entry>| -> (u64, bool) {
+        let object = Arc::new(ProcessObject::new());
+        let was = interrupts::save_and_disable();
+        let spawned = crate::user::spawn_elf_with(image, 1, handles, object.clone());
+        let marked = spawned
+            .as_ref()
+            .is_ok_and(|&pid| sched::kill_process(pid, EXIT_KILLED));
+        interrupts::restore(was);
+        if let Err(e) = spawned {
+            kprintln!(
+                "OSX|{}|ktest|kill_edges|{}_error={}",
+                BUILD_ID,
+                name,
+                e.code()
+            );
+            fail("child did not load")
+        }
+        let exited = sched::poll_until(sched::ticks() + 5000, || object.exit_code().is_some());
+        (object.exit_code().unwrap_or(u64::MAX), marked && exited)
+    };
+    // (a) A child marked before it ever ran dies with EXIT_KILLED. Our end `idle_peer` stays open
+    // and silent, so nothing but the kill can end its wait.
+    let (idle_end, idle_peer) = channel::create();
+    let (idle_code, idle_ok) =
+        kill_before_run("idle", crate::apps::IDLE, alloc::vec![chan_entry(idle_end)]);
+    // (b) A child marked before it ran whose first call is exit(0x55) reports the kill. (a) and
+    // (b) hold whichever safe point delivers the kill, so they do not pin K1 or K2 down: mutants
+    // of either fix pass them. (d)–(f) do.
+    let (exiter_code, exiter_ok) = kill_before_run("exiter", crate::apps::EXITER, Vec::new());
+    // (d)–(f) K1, K2: the kill lands where one from another CPU can — while the child runs in
+    // the kernel past its last safe point (test-kernel injection points, `sched::kill_point`):
+    // just before object_wait_many blocks (d) or sleep sleeps (e), and in exit before the thread
+    // ends (f). Without K1 the child would block or sleep for ever; without K2, (f) would report
+    // 0x55. `start`, when given, is written to the child once its point is armed.
+    let kill_at = |name: &str,
+                   image: &[u8],
+                   handles: Vec<Entry>,
+                   point: u64,
+                   start: Option<&Endpoint>|
+     -> (u64, bool) {
+        let object = Arc::new(ProcessObject::new());
+        let was = interrupts::save_and_disable();
+        let spawned = crate::user::spawn_elf_with(image, 1, handles, object.clone());
+        if let Ok(pid) = spawned {
+            sched::arm_kill_point(pid, point);
+        }
+        interrupts::restore(was);
+        if let Err(e) = spawned {
+            kprintln!(
+                "OSX|{}|ktest|kill_edges|{}_error={}",
+                BUILD_ID,
+                name,
+                e.code()
+            );
+            fail("child did not load")
+        }
+        if let Some(peer) = start {
+            let _ = peer.write(Message {
+                bytes: b"START sleeper".to_vec(),
+                handles: Vec::new(),
+            });
+        }
+        let exited = sched::poll_until(sched::ticks() + 5000, || object.exit_code().is_some());
+        (object.exit_code().unwrap_or(u64::MAX), exited)
+    };
+    let (block_end, block_peer) = channel::create();
+    let (at_block, at_block_ok) = kill_at(
+        "block",
+        crate::apps::IDLE,
+        alloc::vec![chan_entry(block_end)],
+        sched::KILL_AT_BLOCK,
+        None,
+    );
+    let (sleep_end, sleep_peer) = channel::create();
+    let (at_sleep, at_sleep_ok) = kill_at(
+        "sleep",
+        crate::apps::SVC,
+        alloc::vec![chan_entry(sleep_end)],
+        sched::KILL_AT_SLEEP,
+        Some(&sleep_peer),
+    );
+    let (at_exit, at_exit_ok) = kill_at(
+        "exit",
+        crate::apps::EXITER,
+        Vec::new(),
+        sched::KILL_AT_EXIT,
+        None,
+    );
+    drop((block_peer, sleep_peer));
+    // (c) K3: a frozen process stops, whatever timeout it waits with, and can still be killed.
+    let (tick_end, tick_peer) = channel::create();
+    let tick_obj = Arc::new(ProcessObject::new());
+    let tick_pid = match crate::user::spawn_elf_with(
+        crate::apps::SVC,
+        1,
+        alloc::vec![chan_entry(tick_end)],
+        tick_obj.clone(),
+    ) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!(
+                "OSX|{}|ktest|kill_edges|ticker_error={}",
+                BUILD_ID,
+                e.code()
+            );
+            fail("ticker did not load")
+        }
+    };
+    let _ = tick_peer.write(Message {
+        bytes: b"START ticker".to_vec(),
+        handles: Vec::new(),
+    });
+    // Counts the `T`s that arrive during `ticks`.
+    let count_ticks = |ticks: u64| -> usize {
+        let end = sched::ticks() + ticks;
+        let mut n = 0;
+        loop {
+            while let Ok(m) = tick_peer.read(16, 1, None) {
+                n += usize::from(m.bytes == b"T");
+            }
+            if sched::ticks() >= end {
+                return n;
+            }
+            sched::poll_until(sched::ticks() + 5, || false);
+        }
+    };
+    let before = count_ticks(100);
+    let frozen = sched::freeze_pid(tick_pid);
+    // At most one `T` was already on its way (the ticker may have been running); let it land.
+    let _ = count_ticks(20);
+    let while_frozen = count_ticks(200);
+    let tick_marked = sched::kill_process(tick_pid, EXIT_KILLED);
+    let tick_exited = sched::poll_until(sched::ticks() + 5000, || tick_obj.exit_code().is_some());
+    let tick_code = tick_obj.exit_code().unwrap_or(u64::MAX);
+    drop((idle_peer, tick_peer, tick_obj));
+    let gone = sched::poll_until(sched::ticks() + 2000, || sched::stats().processes == 0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|kill_edges|ticks_before={}|ticks_while_frozen={}",
+        BUILD_ID,
+        before,
+        while_frozen
+    );
+    kprintln!(
+        "OSX|{}|ktest|kill_edges|idle_before_run={:#x}:{}|exiter_before_run={:#x}:{}|kill_at_block={:#x}:{}|kill_at_sleep={:#x}:{}|kill_at_exit={:#x}:{}|ticker_ticked={}|frozen={}|ticker_stopped={}|ticker_killed={:#x}:{}|processes_after={}|frames_delta={}",
+        BUILD_ID,
+        idle_code,
+        u8::from(idle_ok),
+        exiter_code,
+        u8::from(exiter_ok),
+        at_block,
+        u8::from(at_block_ok),
+        at_sleep,
+        u8::from(at_sleep_ok),
+        at_exit,
+        u8::from(at_exit_ok),
+        u8::from(before >= 5),
+        u8::from(frozen),
+        u8::from(while_frozen == 0),
+        tick_code,
+        u8::from(tick_marked && tick_exited),
+        procs,
+        frames
+    );
+    if idle_code != EXIT_KILLED || !idle_ok || exiter_code != EXIT_KILLED || !exiter_ok {
+        fail("a child killed before it ran did not end with EXIT_KILLED")
+    }
+    if at_block != EXIT_KILLED || !at_block_ok || at_sleep != EXIT_KILLED || !at_sleep_ok {
+        fail("a kill that landed just before a block or a sleep was lost (K1)")
+    }
+    if at_exit != EXIT_KILLED || !at_exit_ok {
+        fail("a process killed inside its exit did not report EXIT_KILLED (K2)")
+    }
+    if before < 5 || !frozen || while_frozen != 0 {
+        fail("a frozen process kept running through its timed waits (K3)")
+    }
+    if tick_code != EXIT_KILLED || !tick_marked || !tick_exited {
+        fail("process_kill did not end a frozen process")
+    }
+    if !gone || procs != 0 || frames != 0 {
+        fail("kill_edges left a process or leaked frames")
+    }
+    pass("a kill before the first run, just before a block or a sleep, inside exit, and on a frozen timed wait all end in EXIT_KILLED")
 }
 
 // ---- WP-27: the network interface and the keyboard ----------------------------------------

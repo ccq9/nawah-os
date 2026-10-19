@@ -515,12 +515,20 @@ pub fn dispatch(nr: u64, args: [u64; 6]) -> i64 {
 
 fn dispatch_inner(nr: u64, args: [u64; 6]) -> i64 {
     match nr {
-        SYS_EXIT => crate::sched::exit_current(args[0]),
+        SYS_EXIT => {
+            // Test kernel: where a kill can land after the last safe point (K2).
+            #[cfg(feature = "ktest")]
+            crate::sched::kill_point(crate::sched::KILL_AT_EXIT);
+            crate::sched::exit_current(args[0])
+        }
         SYS_YIELD => {
             crate::sched::yield_now();
             0
         }
         SYS_SLEEP => {
+            // Test kernel: where a kill can land before the sleep (K1).
+            #[cfg(feature = "ktest")]
+            crate::sched::kill_point(crate::sched::KILL_AT_SLEEP);
             crate::sched::sleep_ticks(args[0].min(1_000_000));
             0
         }
@@ -740,6 +748,9 @@ fn sys_object_wait_many(ptr: u64, n: u64, timeout: u64) -> Result<i64, i64> {
         if let Some((i, asserted)) = hit {
             break Ok((i as i64) | (i64::from(asserted) << 8));
         }
+        // Test kernel: where a kill from another CPU can land before the block (K1).
+        #[cfg(feature = "ktest")]
+        sched::kill_point(sched::KILL_AT_BLOCK);
         match deadline {
             Some(d) if sched::ticks() >= d => break Err(ERR_TIMED_OUT),
             Some(d) => sched::block_current_until(d),

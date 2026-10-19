@@ -1,0 +1,8 @@
+# TST-M5-SESSION-DEADLINE (WP-40, session.md v1.1): the session service with the real auth, but
+# an input service and a compositor that take every request and never answer (svc `silent`, with
+# the window the session's REQUEST_DEADLINE of 5000 ticks must fall in). The session must give
+# each its deadline, close it, and exit 0xE4 — not hang.
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/SVC.ELF - 5000 never 0 0 silent 4900 6000
+display /SYSTEM/SVC.ELF - 5000 never 0 0 silent 4900 6000
+session /SYSTEM/SESSIOND.ELF auth,input,display 120000 never 0 0
