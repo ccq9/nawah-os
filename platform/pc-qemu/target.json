@@ -3973,6 +3973,31 @@
         ]
       },
       {
+        "id": "TST-M5-APP-OVERSIZE",
+        "test_id": "TST-M5-APP-OVERSIZE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=app_oversize"
+        ],
+        "oracle": "REQ-M5-003 display.md v1.4, input.md v2.4 (review 2026-10-19, M1): SVC-DP.TXT with two display clients. Client a (connected first) sends a 2000-byte message: it is discarded and answered ERR BAD_REQUEST, and client b's STATUS is answered within 500 ticks; a then sends STATUS carrying two handles: ERR BAD_REQUEST, both handles closed by the compositor (their peers see PEER_CLOSED), b answered within 500 ticks again, and a's own next STATUS is answered (it stays connected). At the input service, a 300-byte message from the controller gets ERR BAD_REQUEST and its next STATUS is answered. Manager exits 0, no process left, kernel objects balanced; every frame comes back except exactly the kernel heap slab pages taken for these new message sizes (kept for reuse by design: unaccounted_frames=0); exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=app_oversize",
+          "|ktest|app_oversize|big=ERR BAD_REQUEST|two=ERR BAD_REQUEST|b_after_big=1|b_after_two=1|a_after=1|handles_closed=1|input_big=ERR BAD_REQUEST|input_after=1",
+          "|ktest|app_oversize|mgr_exit=0x0|processes_after=0|clean=1",
+          "|unaccounted_frames=0|",
+          "|ktest|pass|a message too large for the compositor or the input service is refused and stalls nobody"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600
+      },
+      {
         "id": "TST-M5-TEXT-GUEST",
         "test_id": "TST-M5-TEXT-GUEST",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",
@@ -4905,12 +4930,12 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=svc_watchdog"
         ],
-        "oracle": "REQ-M5-010 services.md v1.7, v1.8: the manager watchdogs Ready services (watchdog=<ticks>, PING/PONG on the boot channel). `hung` (watchdog=50, role hang) answers READY then stops servicing, so a missed PONG period has it force-killed (EXIT_KILLED=131072); with max_restarts=1 it is restarted once, hangs again and is given up (given_up, restarts=1). `pong` (watchdog=50, role ready, its manifest line with two spaces before the arg — v1.8 trims them) answers every PING and stays ready (restarts=0); each PONG is traced (`svc|pong`, at least 3). `closer` (watchdog=50) closes its boot channel after READY: it can no longer be asked, so it is killed as hung (failed, 131072). `early` (timeout 50) hangs before READY without reading its channel: failed at the timeout, still alive 200 ticks after its start (the grace runs from the timeout), then forced (failed, 131072). `stubborn` (no watchdog, role hang) ignores STOP: 150 ticks after the STOP it is still stopping, then the grace ends in process_kill (stopped, 131072). The manager keeps answering LIST; no frame leak; exit 33",
+        "oracle": "REQ-M5-010 services.md v1.7, v1.8, v1.9: the manager watchdogs Ready services (watchdog=<ticks>, PING/PONG on the boot channel). `hung` (watchdog=50, role hang) answers READY then stops servicing, so a missed PONG period has it force-killed (EXIT_KILLED=131072); with max_restarts=1 it is restarted once, hangs again and is given up (given_up, restarts=1). `pong` (watchdog=50, role ready, its manifest line with two spaces before the arg — v1.8 trims them) answers every PING and stays ready (restarts=0); each PONG is traced (`svc|pong`, at least 3). `closer` (watchdog=50) closes its boot channel after READY: it can no longer be asked, so it is killed as hung (failed, 131072). `early` (timeout 50) hangs before READY without reading its channel: failed at the timeout, still alive 200 ticks after its start (the grace runs from the timeout), then forced (failed, 131072). `stubborn` (no watchdog, role hang) ignores STOP: 150 ticks after the STOP it is still stopping, then the grace ends in process_kill (stopped, 131072). `loud` first sends 100 bytes on its boot channel, more than any request (v1.9: discarded and answered ERR BAD_REQUEST), then READY: it is ready (restarts=0). The manager keeps answering LIST; no frame leak; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_watchdog",
-          "|ktest|svc_watchdog|load=OK 5|",
-          "|hung=given_up:1:131072|pong=ready:0|closer=failed:131072|early=failed:131072|early_alive_at_200=1|stop=OK|stubborn_at_150=stopping|stubborn=stopped:131072|",
+          "|ktest|svc_watchdog|load=OK 6|",
+          "|hung=given_up:1:131072|pong=ready:0|closer=failed:131072|early=failed:131072|early_alive_at_200=1|loud=ready:0|stop=OK|stubborn_at_150=stopping|stubborn=stopped:131072|",
           "|processes_after=0|clean=1",
           "|ktest|svc_watchdog|frames_delta=0",
           "|ktest|pass|the watchdog ends a hung service and gives it up, leaves a healthy one, kills one that closed its channel, forces one hung before READY after the grace, and STOP force-kills a stubborn one"

@@ -1471,6 +1471,17 @@
    ]
   },
   {
+   "id": "TST-M5-APP-OVERSIZE",
+   "requirement_ids": [
+    "REQ-M5-003"
+   ],
+   "layer": "guest",
+   "oracle": "REQ-M5-003 display.md v1.4, input.md v2.4 (review 2026-10-19, M1): SVC-DP.TXT with two display clients. Client a (connected first) sends a 2000-byte message: it is discarded and answered ERR BAD_REQUEST, and client b's STATUS is answered within 500 ticks; a then sends STATUS carrying two handles: ERR BAD_REQUEST, both handles closed by the compositor (their peers see PEER_CLOSED), b answered within 500 ticks again, and a's own next STATUS is answered (it stays connected). At the input service, a 300-byte message from the controller gets ERR BAD_REQUEST and its next STATUS is answered. Manager exits 0, no process left, kernel objects balanced; every frame comes back except exactly the kernel heap slab pages taken for these new message sizes (kept for reuse by design: unaccounted_frames=0); exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
    "id": "TST-M5-SCREEN-TOOL",
    "requirement_ids": [
     "REQ-M5-003"
@@ -1685,12 +1696,10 @@
     "REQ-M5-010"
    ],
    "layer": "service_integration",
-   "oracle": "REQ-M5-010 services.md v1.7, v1.8: the manager watchdogs Ready services (watchdog=<ticks>, PING/PONG on the boot channel). `hung` (watchdog=50, role hang) answers READY then stops servicing, so a missed PONG period has it force-killed (EXIT_KILLED=131072); with max_restarts=1 it is restarted once, hangs again and is given up (given_up, restarts=1). `pong` (watchdog=50, role ready, its manifest line with two spaces before the arg — v1.8 trims them) answers every PING and stays ready (restarts=0); each PONG is traced (`svc|pong`, at least 3). `closer` (watchdog=50) closes its boot channel after READY: it can no longer be asked, so it is killed as hung (failed, 131072). `early` (timeout 50) hangs before READY without reading its channel: failed at the timeout, still alive 200 ticks after its start (the grace runs from the timeout), then forced (failed, 131072). `stubborn` (no watchdog, role hang) ignores STOP: 150 ticks after the STOP it is still stopping, then the grace ends in process_kill (stopped, 131072). The manager keeps answering LIST; no frame leak; exit 33",
+   "oracle": "REQ-M5-010 services.md v1.7, v1.8, v1.9: the manager watchdogs Ready services (watchdog=<ticks>, PING/PONG on the boot channel). `hung` (watchdog=50, role hang) answers READY then stops servicing, so a missed PONG period has it force-killed (EXIT_KILLED=131072); with max_restarts=1 it is restarted once, hangs again and is given up (given_up, restarts=1). `pong` (watchdog=50, role ready, its manifest line with two spaces before the arg — v1.8 trims them) answers every PING and stays ready (restarts=0); each PONG is traced (`svc|pong`, at least 3). `closer` (watchdog=50) closes its boot channel after READY: it can no longer be asked, so it is killed as hung (failed, 131072). `early` (timeout 50) hangs before READY without reading its channel: failed at the timeout, still alive 200 ticks after its start (the grace runs from the timeout), then forced (failed, 131072). `stubborn` (no watchdog, role hang) ignores STOP: 150 ticks after the STOP it is still stopping, then the grace ends in process_kill (stopped, 131072). `loud` first sends 100 bytes on its boot channel, more than any request (v1.9: discarded and answered ERR BAD_REQUEST), then READY: it is ready (restarts=0). The manager keeps answering LIST; no frame leak; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261019T045338Z-31925b00-001"
-   ]
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   },
   {
    "id": "TST-M5-LOCK-HANG",

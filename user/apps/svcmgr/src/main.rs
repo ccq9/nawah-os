@@ -9,8 +9,8 @@
 #![no_main]
 
 use libnawah::{
-    Handle, WaitEntry, ERR_PEER_CLOSED, ERR_TIMED_OUT, SIGNAL_EXITED, SIGNAL_PEER_CLOSED,
-    SIGNAL_READABLE, TIMEOUT_FOREVER,
+    Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_TIMED_OUT, SIGNAL_EXITED,
+    SIGNAL_PEER_CLOSED, SIGNAL_READABLE, TIMEOUT_FOREVER,
 };
 
 libnawah::entry!(main);
@@ -564,6 +564,16 @@ impl Manager {
             Err(ERR_PEER_CLOSED) => {
                 self.close_chan(i);
                 false
+            }
+            // Larger than any request (services.md v1.9): discarded and refused, so the next
+            // message — READY, PONG — is read and other services are not starved (review
+            // 2026-10-19, M1).
+            Err(ERR_BUFFER_TOO_SMALL) => {
+                if !libnawah::channel_discard(c) {
+                    return false;
+                }
+                libnawah::channel_write(c, b"ERR BAD_REQUEST", &[]);
+                true
             }
             Err(_) => false,
         }
