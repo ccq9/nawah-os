@@ -48,6 +48,12 @@ fn is_joiner(cp: u32) -> bool {
     matches!(cp, 0x200C | 0x200D)
 }
 
+/// The bidi marks ALM, LRM and RLM: formatting characters X9 keeps (they take part in the
+/// levels around them) that draw nothing, like the ones it removes (text.md v1.2).
+fn is_mark_char(cp: u32) -> bool {
+    matches!(cp, 0x061C | 0x200E | 0x200F)
+}
+
 fn is_arabic_script(cp: u32) -> bool {
     matches!(cp, 0x0600..=0x06FF | 0x0750..=0x077F | 0x0870..=0x08FF | 0xFB50..=0xFDFF | 0xFE70..=0xFEFF)
 }
@@ -156,8 +162,9 @@ impl Layout {
             // ZWNJ and ZWJ stay in the run of the character before them, whatever font has a
             // glyph for them: they draw nothing (X9 removes them) and only steer the joining
             // inside the run. In the Latin font they split an Arabic word in two runs and a
-            // ZWJ pair was shaped isolated (review M6).
-            if is_joiner(cp) && i > 0 {
+            // ZWJ pair was shaped isolated (review M6). So do the other characters that draw
+            // nothing — removed by X9 (word joiner, soft hyphen, ZWNBSP) or a bidi mark (v1.2).
+            if i > 0 && (is_joiner(cp) || self.levels[i] == REMOVED || is_mark_char(cp)) {
                 self.font_of[i] = self.font_of[i - 1];
                 continue;
             }
@@ -169,12 +176,12 @@ impl Layout {
             }
             self.font_of[i] = f;
         }
-        // Removed characters (X9) take the level of the character before them so they do not
-        // split a run (a ZWJ inside an Arabic word still joins).
+        // Removed characters (X9) and the bidi marks take the level of the character before
+        // them so they do not split a run (a ZWJ inside an Arabic word still joins).
         let mut run_level = [0u8; MAX_CHARS];
         let mut prev = self.levels.first().copied().unwrap_or(0);
-        for (rl, &lv) in run_level.iter_mut().zip(&self.levels[..n]) {
-            if lv != REMOVED {
+        for (i, (rl, &lv)) in run_level.iter_mut().zip(&self.levels[..n]).enumerate() {
+            if lv != REMOVED && !(i > 0 && is_mark_char(self.text[i])) {
                 prev = lv;
             }
             *rl = prev;
@@ -239,33 +246,46 @@ impl Layout {
             }
             let rtl = lv & 1 == 1;
             let font = fonts.get(f);
-            // Mirrored brackets in right-to-left runs.
+            // Mirrored brackets in right-to-left runs. An Arabic run is shaped without the
+            // transparent characters that draw nothing (all but the joiners, which steer the
+            // joining): HarfBuzz skips them, so lam, a word joiner, alef still ligate (v1.2).
             let mut chars = [0u32; MAX_CHARS];
-            for (i, ch) in chars[..e - s].iter_mut().enumerate() {
-                let cp = self.text[s + i];
-                *ch = match (rtl, bidi::bracket_of(cp)) {
+            let mut index = [0u16; MAX_CHARS];
+            let mut m = 0;
+            for i in s..e {
+                let cp = self.text[i];
+                let hidden = self.levels[i] == REMOVED || is_mark_char(cp);
+                if f == ARABIC && hidden && !is_joiner(cp) && shape::joining_type(cp) == JT_T {
+                    continue;
+                }
+                chars[m] = match (rtl, bidi::bracket_of(cp)) {
                     (true, Some((pair, _))) => pair,
                     _ => cp,
                 };
+                index[m] = (i - s) as u16;
+                m += 1;
             }
             let len = if f == ARABIC {
                 shape::shape(
                     font,
-                    &chars[..e - s],
+                    &chars[..m],
                     &mut self.run_glyphs,
                     &mut self.run_clusters,
                 )
             } else {
-                for (i, &ch) in chars[..e - s].iter().enumerate() {
+                for (i, &ch) in chars[..m].iter().enumerate() {
                     self.run_glyphs[i] = font.glyph_id(ch);
                     self.run_clusters[i] = i as u16;
                 }
-                e - s
+                m
             };
             for j in 0..len {
                 let jj = if rtl { len - 1 - j } else { j };
-                let cluster = s + self.run_clusters[jj] as usize;
-                if self.levels[cluster] == REMOVED || g >= out.len() {
+                let cluster = s + index[self.run_clusters[jj] as usize] as usize;
+                if self.levels[cluster] == REMOVED
+                    || is_mark_char(self.text[cluster])
+                    || g >= out.len()
+                {
                     continue;
                 }
                 let gid = self.run_glyphs[jj];

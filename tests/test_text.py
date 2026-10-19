@@ -360,6 +360,32 @@ class Shaping(unittest.TestCase):
         print(f"layout joiner edges: {2 * len(lines) - len({(b[0], b[1]) for b in bad})}/{2 * len(lines)} lines equal to HarfBuzz")
         self.assertEqual(bad[:6], [])
 
+    def test_layout_format_chars(self):
+        # Invisible format characters inside an Arabic word — word joiner, soft hyphen, zero
+        # width no-break space, the bidi marks LRM, RLM and ALM — draw nothing and do not split
+        # the word into runs, so the letters around them join as HarfBuzz joins them (review
+        # M6: the layout gave them the Latin font and the letters were drawn isolated). Compared
+        # in both paragraph directions, like the joiner edge lines.
+        fmt = ["\u2060", "\u00ad", "\ufeff", "\u200e", "\u200f", "\u061c"]
+        lines = [t.replace("{}", x) for x in fmt for t in ("ب{}ب", "بب{}بب", "ل{}ا", "ب{}", "سلا{}م", "ب{}{}ب")]
+        bad = []
+        drawn = []
+        for base, direction in (("rtl", "rtl"), ("ltr", "rtl")):
+            out = textdump([f"layout {base} 16 " + hexes(t) for t in lines])
+            ref = self.harfbuzz_clusters(lines, direction)
+            for t, x, hb in zip(lines, out, ref):
+                mine = {}
+                for g in x.split(" | ")[1].split():
+                    font, gid, _x, cluster = g.split(":")
+                    mine.setdefault(int(cluster), gid)
+                    if ord(t[int(cluster)]) in (0x2060, 0xAD, 0xFEFF, 0x200E, 0x200F, 0x61C):
+                        drawn.append((base, t, gid))
+                for i in self.arabic_letters(t):
+                    if mine.get(i) != hb.get(i):
+                        bad.append((base, t, i, mine.get(i), hb.get(i)))
+        print(f"layout format characters: {2 * len(lines) - len({(b[0], b[1]) for b in bad})}/{2 * len(lines)} lines equal to HarfBuzz, {len(drawn)} drawn")
+        self.assertEqual((bad[:6], drawn[:6]), ([], []))
+
     def test_forms(self):
         # Joining types from DerivedJoiningType.txt: beh is dual-joining, alef right-joining
         # only, hamza non-joining; tatweel (U+0640) joins both sides; marks are transparent.
