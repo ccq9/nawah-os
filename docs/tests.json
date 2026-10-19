@@ -35,7 +35,7 @@
     "REQ-M0-005"
    ],
    "layer": "host_unit",
-   "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch) (5 cases, OK)",
+   "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged (9 cases, OK)",
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [

@@ -1046,7 +1046,7 @@ HOST_SUITES = {
         {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist",
          "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md"], "input_globs": []},
         {"id": "TST-M0-003", "command": ["python3", "-I", "tests/test_ci_workflows.py"],
-         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch) (5 cases, OK)",
+         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged (9 cases, OK)",
          "inputs": ["tests/test_ci_workflows.py", "tools/project.py"], "input_globs": [".github/workflows/*.yml"]},
     ],
 }
@@ -1294,25 +1294,33 @@ def cmd_import_ci_evidence(run_id: str) -> int:
     r = subprocess.run(["git", "fetch", "-q", "origin", f"{ref}:refs/remotes/ci/{run_id}"], cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
         print(f"fetch failed: {r.stderr.strip()}"); return E_BLOCKED
+    # The branch is checked out into a temporary copy, removed when the import ends (left
+    # behind, 44 copies filled the workspace's disk on 2026-10-19), through an index of its own
+    # inside the copy: the repository's index, and what the user has staged in it, stay as
+    # they were.
     tmp = Path(tempfile.mkdtemp(prefix="ci-ev-"))
-    subprocess.run(["git", f"--work-tree={tmp}", "checkout", "-q", f"ci/{run_id}", "--", "evidence"], cwd=ROOT, check=True)
     imported = 0
-    for d in sorted((tmp / "evidence").iterdir()):
-        if not (d / "verdict.json").exists():
-            continue
-        dest = EVIDENCE / d.name
-        if dest.exists():
-            continue
-        shutil.copytree(d, dest)
-        v = load_json(dest / "verdict.json")
-        run = load_json(dest / "run.json")
-        run["notes"] = (run.get("notes", "") + f" imported from CI run {run_id} (verification runner)").strip()
-        (dest / "run.json").write_text(json.dumps(run, ensure_ascii=False, indent=1) + "\n")
-        attach_evidence(v["test_id"], d.name, v["verdict"])
-        imported += 1
-        print(f"imported {d.name} {v['test_id']} {v['verdict']}")
-    # the runner's `git checkout` may have left the index pointing at the evidence tree; restore
-    subprocess.run(["git", "reset", "-q"], cwd=ROOT)
+    try:
+        subprocess.run(["git", f"--work-tree={tmp}", "checkout", "-q", f"ci/{run_id}", "--", "evidence"], cwd=ROOT, check=True,
+                       env={**os.environ, "GIT_INDEX_FILE": str(tmp / ".index")})
+        for d in sorted((tmp / "evidence").iterdir()):
+            if not (d / "verdict.json").exists():
+                continue
+            dest = EVIDENCE / d.name
+            if dest.exists():
+                continue
+            shutil.copytree(d, dest)
+            v = load_json(dest / "verdict.json")
+            run = load_json(dest / "run.json")
+            run["notes"] = (run.get("notes", "") + f" imported from CI run {run_id} (verification runner)").strip()
+            (dest / "run.json").write_text(json.dumps(run, ensure_ascii=False, indent=1) + "\n")
+            attach_evidence(v["test_id"], d.name, v["verdict"])
+            imported += 1
+            print(f"imported {d.name} {v['test_id']} {v['verdict']}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+        if tmp.exists():
+            print(f"warning: the temporary copy {tmp} could not be removed")
     print(f"imported {imported} run(s) from CI run {run_id}")
     return E_OK
 
