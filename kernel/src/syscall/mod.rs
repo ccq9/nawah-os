@@ -1181,10 +1181,9 @@ fn sys_vmo_map(h: Handle, prot: u64) -> Result<i64, i64> {
         let Object::Vmo(v) = &e.object else {
             return Err(ERR_WRONG_TYPE);
         };
-        let mut need = Rights::MAP;
-        if prot & 1 != 0 {
-            need = Rights(need.0 | Rights::READ.0);
-        }
+        // Every mapping is readable: x86 has no write-only page, so WRITE alone would hand a
+        // handle without READ the frames' contents (syscall.md v1.12; review K-3, DEC-004).
+        let mut need = Rights(Rights::MAP.0 | Rights::READ.0);
         if prot & 2 != 0 {
             need = Rights(need.0 | Rights::WRITE.0);
         }
