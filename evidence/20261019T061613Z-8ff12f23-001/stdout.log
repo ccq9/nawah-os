@@ -1,0 +1,9 @@
+$ python3 -I tests/test_text.py Glyphs
+references: fontTools 4.46.0; hb-shape (HarfBuzz) 8.3.0
+latin: cmap 2840 code points equal
+arabic: cmap 1161 code points equal
+latin: metrics of 3748 glyphs equal
+arabic: metrics of 1661 glyphs equal
+latin: outlines of 3748 glyphs equal (composites resolved)
+arabic: outlines of 1661 glyphs equal (composites resolved)
+rasteriser: 88 bitmaps, 1133 edge pixels differ, worst 4/16, full/empty flips 0, coverage 177936 vs 178786 (0.4754%)
