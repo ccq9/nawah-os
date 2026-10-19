@@ -102,7 +102,7 @@
    "risk": "خدمة معلّقة لا تُنهى فتبقى عملية مهجورة (R-40)",
    "likelihood": "medium",
    "impact": "high",
-   "evidence": "WP-40: process_kill (syscall.md v1.11) وservices.md v1.7/v1.8؛ CI run 39196967624",
+   "evidence": "WP-40 (أُغلق): process_kill (syscall.md v1.11) وservices.md v1.7/v1.8 وsession.md v1.1؛ CI run 39209967564",
    "owner": "agent",
    "warning_signal": "خدمة failed/stopping بلا رمز خروج في LIST",
    "mitigation": "مهلة الإيقاف والمراقِب ومهلة الجاهزية تُنهي العملية؛ مهلة طلبات الجلسة (session.md v1.1)",

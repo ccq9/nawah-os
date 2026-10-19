@@ -2680,7 +2680,8 @@
     "ktest fault: freeze a process by name (test kernel only); process names kept for diagnostics",
     "tests: TST-M5-PROCESS-KILL, TST-M5-KILL-EDGES, TST-M5-SVC-WATCHDOG, TST-M5-LOCK-HANG",
     "Review fixes 2026-10-19 (Docs review K1–K4, S1–S7, R4): kernel — a pending kill refuses a block or sleep under the scheduler lock (K1), a killed process reports EXIT_KILLED whatever its own exit code (K2), a frozen process's timed waits do not expire (ktest only, K3), an atomic pending-kill count spares the lock on the common path and the freeze check is ktest-only (K4); services.md v1.8 — a gone boot channel or an undeliverable PING is a hang, a passed watchdog deadline is always re-armed or cleared, queued PONGs are read before judging, a readiness timeout forces the process after STOP_GRACE, a service being killed is not ready, spaces after watchdog=<n> are separators, and an unsolicited PONG is a declared limit (S1–S7); tests — TST-M5-KILL-EDGES (new), PROCESS-KILL settles each child and checks the refused kill left it alive, PEER_CLOSED and a sleeping child, SVC-WATCHDOG adds a channel closer, an early hanger, a two-space line, a PONG count and a STOP grace lower bound, LOCK-HANG checks restarts=0 before the freezes and caps the spawn counts",
-    "Honesty audit 2026-10-19 (CI run 39189093802): PROCESS-KILL, SVC-WATCHDOG and LOCK-HANG (compositor then input frozen while locked) PASS; REQ-M5-010 stays partial because its named failure case — the session waiting on a hung component's reply — is untested and session.md v1.1 was not written. Council verdict: first establish from the code whether the session can block on a display/input reply; then TST-M5-SESSION-HANG (freeze while the session's request is in flight; session keeps serving, lock holds, no key leaks, screendump shows only the lock screen, only the right password unlocks) and session.md v1.1 either way; the session gets PING only with a test that kills it while locked and proves the ADR-0019 §5 rescue; then amend REQ-M5-010's acceptance and close"
+    "Honesty audit 2026-10-19 (CI run 39189093802): PROCESS-KILL, SVC-WATCHDOG and LOCK-HANG (compositor then input frozen while locked) PASS; REQ-M5-010 stays partial because its named failure case — the session waiting on a hung component's reply — is untested and session.md v1.1 was not written. Council verdict: first establish from the code whether the session can block on a display/input reply; then TST-M5-SESSION-HANG (freeze while the session's request is in flight; session keeps serving, lock holds, no key leaks, screendump shows only the lock screen, only the right password unlocks) and session.md v1.1 either way; the session gets PING only with a test that kills it while locked and proves the ADR-0019 §5 rescue; then amend REQ-M5-010's acceptance and close",
+    "Closed 2026-10-19 on CI run 39209967564 (129/129 PASS on f74a43c9): PROCESS-KILL, KILL-EDGES, SVC-WATCHDOG, LOCK-HANG and SESSION-DEADLINE PASS with every earlier suite green; REQ-M5-010's fourth failure case (the lock with the compositor already down) is covered by TST-M5-LOCK-DISPLAY-DOWN (WP-43, same run); syscall.md v1.11, services.md v1.7/v1.8 and session.md v1.1 frozen; RSK-009 mitigated. Closed on the owner's sign-off of the M5 pre-gate review"
    ],
    "acceptance": "its five tests (PROCESS-KILL, KILL-EDGES, SVC-WATCHDOG, LOCK-HANG, SESSION-DEADLINE) PASS on CI with every earlier suite green; R-40 recorded as RSK-009 (mitigated); what the M5 pre-gate review found beyond it (lock with the compositor already down, a request in flight while locked) is WP-43's",
    "test_ids": [
@@ -2694,10 +2695,11 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
    "evidence_refs": [
     "evidence/20261019T064439Z-f74a43c9-001",
