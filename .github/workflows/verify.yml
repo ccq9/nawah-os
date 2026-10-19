@@ -114,12 +114,15 @@ jobs:
         run: python3 tools/project.py validate-records --strict
       - name: Status
         run: python3 tools/project.py status --json
+      # A convenience copy: the evidence of record is the ci-evidence branch below, which
+      # import-ci-evidence reads. A full artifact quota must not turn a green run red.
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: evidence-${{ github.sha }}
           path: evidence/
-          retention-days: 90
+          retention-days: 7
       - name: Publish evidence on a ci-evidence branch (readable where artifact download is blocked)
         if: always()
         run: |
