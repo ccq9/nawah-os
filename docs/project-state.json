@@ -4,7 +4,7 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "13e5c6699669e819d96088fb23686148da0ea84c",
+ "source_revision": "9541d1b0d403797ec89980cef41cbdc9f099836d",
  "dirty_state": false,
  "current_stage": "M5",
  "current_task": "WP-40",
@@ -51,15 +51,15 @@
   "REQ-M4-010",
   "REQ-M5-005"
  ],
- "last_run_id": "20261019T090349Z-1abd1f94-001",
+ "last_run_id": "20261019T092345Z-41224c20-002",
  "blockers": [],
  "next_action": "WP-40: الإنهاء القسري والحيوية والتعليق أثناء القفل (السيناريو 8، R-40)",
  "required_inputs": [
   "rust-std-1.97.0-x86_64-unknown-uefi.tar.xz upload from user (for local Rust builds; CI unaffected)"
  ],
  "runner_status": "running",
- "checkpoint_generation": 37,
- "event_sequence": 37,
+ "checkpoint_generation": 38,
+ "event_sequence": 38,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 7,
@@ -71,7 +71,7 @@
   "holder_id": "claude-session-0181Xwa63MqYc3ru5mo8VYkB",
   "acquired_at": "2026-10-17T20:55:00Z",
   "ttl_s": 900,
-  "fencing_token": 37
+  "fencing_token": 38
  },
  "host_fingerprint": "linux-6.18.44-fc-v139-x86_64-2vcpu",
  "errata_version": "1",
