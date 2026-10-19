@@ -2779,17 +2779,18 @@ impl SvcHarness {
         } = self;
         let object = m.object.clone();
         drop(m);
-        let deadline = sched::ticks() + 1000;
-        let gone = sched::poll_until(deadline, || sched::stats().processes == 0);
+        let gone = sched::poll_until(sched::ticks() + 1000, || sched::stats().processes == 0);
         let code = object.exit_code().unwrap_or(u64::MAX);
+        // Drop our own reference first: `object::stats().processes` counts process objects, so
+        // the manager's would otherwise never let the counts return to the baseline.
         drop(object);
-        let obj1 = object::stats();
-        (
-            code,
-            sched::stats().processes,
-            frames0,
-            gone && obj1 == obj0,
-        )
+        // Then wait for the service objects to be reclaimed. Reap removes a process from the
+        // table before dropping its handles (outside the scheduler lock, WP-20), so on SMP the
+        // channels/surfaces it owned are freed a few ticks after `processes == 0` — a single
+        // snapshot there read a mid-reap count and flaked TST-M5-WINDOW-A11Y with clean=0 (CI
+        // run 39177067037) though the transcript matched. A genuine leak still never settles.
+        let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
+        (code, sched::stats().processes, frames0, gone && settled)
     }
 
     fn frames_delta(frames0: u64) -> i64 {
