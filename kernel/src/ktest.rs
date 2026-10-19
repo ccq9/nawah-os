@@ -140,6 +140,7 @@ pub fn run() -> ! {
         "ipc_no_leak" => ipc_no_leak(),
         "handle_table" => handle_table(),
         "block_wake" => block_wake(),
+        "channel_chain" => channel_chain(),
         "app_exit_code" => app_exit_code(),
         "elf_malformed" => elf_malformed(),
         "elf_wx" => elf_wx(),
@@ -1385,6 +1386,48 @@ fn msg(byte: u8) -> Message {
         bytes: alloc::vec![byte],
         handles: Vec::new(),
     }
+}
+
+/// A chain of channels, each one's end carried in the next one's queue, tears down with no
+/// more kernel stack than one link: dropping it used to recurse once per link and overflow the
+/// 32 KiB thread stack (review 2026-10-19). Nothing survives the teardown.
+fn channel_chain() -> ! {
+    const LINKS: usize = 4096;
+    let obj0 = object::stats();
+    let (first_a, mut tail) = channel::create();
+    drop(first_a);
+    for _ in 1..LINKS {
+        let (a, b) = channel::create();
+        let carried = Entry {
+            object: Object::Channel(tail),
+            rights: Rights::CHANNEL_DEFAULT,
+        };
+        let m = Message {
+            bytes: Vec::new(),
+            handles: alloc::vec![carried],
+        };
+        if a.write(m).is_err() {
+            fail("write of the previous link failed")
+        }
+        drop(a);
+        tail = b;
+    }
+    let obj_held = object::stats();
+    drop(tail);
+    let obj1 = object::stats();
+    kprintln!(
+        "OSX|{}|ktest|channel_chain|links={}|channels_held={}|channels_after={}|endpoints_after={}|channels_before={}",
+        BUILD_ID,
+        LINKS,
+        obj_held.channels - obj0.channels,
+        obj1.channels,
+        obj1.endpoints,
+        obj0.channels
+    );
+    if obj1.channels != obj0.channels || obj1.endpoints != obj0.endpoints {
+        fail("channels or endpoints survived the teardown")
+    }
+    pass("a chain of channels tears down without recursion")
 }
 
 /// Blocking read and wake-ups: a reader blocked on an empty channel is woken by a write; a

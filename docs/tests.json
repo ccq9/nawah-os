@@ -936,6 +936,17 @@
    ]
   },
   {
+   "id": "TST-M3-CHANNEL-CHAIN",
+   "requirement_ids": [
+    "REQ-M3-005"
+   ],
+   "layer": "guest",
+   "oracle": "4096 channels chained (each one's end carried in the next one's queue) tear down when the last end is dropped, with no recursion per link (it used to overflow the 32 KiB kernel stack): no fault, every channel and endpoint freed; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
    "id": "TST-M3-FAT32-READ",
    "requirement_ids": [
     "REQ-M3-007"

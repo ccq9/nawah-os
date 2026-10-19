@@ -814,7 +814,8 @@
     "TST-M3-IPC-OVERSIZE",
     "TST-M3-IPC-NO-LEAK",
     "TST-M3-HANDLE-TABLE",
-    "TST-M3-BLOCK-WAKE"
+    "TST-M3-BLOCK-WAKE",
+    "TST-M3-CHANNEL-CHAIN"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [

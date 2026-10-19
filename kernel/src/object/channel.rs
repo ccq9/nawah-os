@@ -14,6 +14,7 @@ use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU32, Ordering};
 
 use super::handle::Entry;
+use super::Object;
 use crate::sched;
 use crate::sync::{IrqGuard, IrqSpinLock};
 
@@ -89,6 +90,11 @@ pub fn create() -> (Arc<Endpoint>, Arc<Endpoint>) {
 }
 
 impl Endpoint {
+    /// Takes the messages queued for this endpoint; see `drop_messages`.
+    fn take_queue(&self) -> VecDeque<Message> {
+        core::mem::take(&mut self.shared.sides.lock()[self.side].queue)
+    }
+
     /// Whether `other` is the other end of this endpoint's channel (or this very endpoint).
     pub fn same_channel(&self, other: &Endpoint) -> bool {
         Arc::ptr_eq(&self.shared, &other.shared)
@@ -221,11 +227,31 @@ impl Drop for Endpoint {
             let waiters = core::mem::take(&mut sides[1 - self.side].waiters);
             (dead, waiters)
         };
-        drop(dead);
+        drop_messages(dead);
         for tid in waiters {
             sched::wake(tid);
         }
         LIVE_ENDPOINTS.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
+/// Drops dead messages without recursing through the channels they carry. A message can hold
+/// the last reference to an endpoint whose own queue holds the last reference to another, and
+/// so on: dropped recursively, such a chain costs a few stack frames per link, and one a user
+/// process builds in a loop overflows the 32 KiB kernel stack (review 2026-10-19). The queue of
+/// each endpoint about to die is moved onto this worklist first, so its own drop finds nothing
+/// to recurse into. Only the holder of the last reference can see a count of 1 (there are no
+/// weak references to endpoints), so a queue is never taken from an endpoint that lives on.
+fn drop_messages(dead: VecDeque<Message>) {
+    let mut work = dead;
+    while let Some(msg) = work.pop_front() {
+        for entry in msg.handles {
+            if let Object::Channel(ep) = &entry.object {
+                if Arc::strong_count(ep) == 1 {
+                    work.extend(ep.take_queue());
+                }
+            }
+        }
     }
 }
 
