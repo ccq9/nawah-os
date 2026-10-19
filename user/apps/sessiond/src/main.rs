@@ -6,7 +6,9 @@
 //! The secure attention sequence (Ctrl+Alt+Del, input.md v2.2) locks an unlocked session.
 //! A lost `input` or `display` is reconnected through the manager and given the state again;
 //! both start holding everything back until the session says otherwise. One that does not
-//! answer a request within REQUEST_DEADLINE is lost too (session.md v1.1).
+//! answer a request within REQUEST_DEADLINE is lost too (session.md v1.1). The session never
+//! waits on `auth` (v1.2): a lock or a sign-out takes effect at once, and a sign-in or unlock
+//! waits for its answer while the session keeps serving.
 //!
 //! Initial handle: the boot channel. Dependencies: `auth`, `input`, `display`. Clients (tests)
 //! ask `STATE`.
@@ -45,6 +47,19 @@ const DISPLAY: usize = 2;
 const DEPS: [&[u8]; 3] = [b"auth", b"input", b"display"];
 
 static mut PAINTER: Painter = Painter::new();
+
+/// A request sent to `auth` whose answer has not come yet (session.md v1.2). auth answers each
+/// request in order and sends nothing else, so the answers match these front to back.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AuthOp {
+    Login { name: [u8; NAME_MAX], len: usize },
+    Unlock,
+    Lock,
+    Logout,
+}
+
+/// Requests to `auth` that may wait for their answers at once.
+const AUTH_OPS: usize = 4;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum State {
@@ -319,6 +334,11 @@ struct Session {
     uid: i64,
     token: Handle,
     auth: Handle,
+    /// Requests to `auth` waiting for their answers, oldest first.
+    auth_ops: [Option<AuthOp>; AUTH_OPS],
+    /// Locked here but not (yet) at auth: auth was away or lost the request. Sent again when
+    /// auth is back.
+    lock_unsent: bool,
     input: Option<Conn>,
     display: Option<Conn>,
     connected: [bool; 3],
@@ -351,18 +371,15 @@ struct Session {
 impl Session {
     // ---- the services ------------------------------------------------------------------
 
-    /// A request to `auth` with an optional copy of the token; the reply and the handle it
-    /// carried (a token). auth sends no events, so the first message is the reply.
-    fn auth_call(
-        &mut self,
-        req: &[u8],
-        with_token: bool,
-        reply: &mut [u8],
-    ) -> (usize, Option<Handle>) {
-        let fail = b"ERR UNAVAILABLE";
+    /// Sends a request to `auth` with an optional copy of the token and queues what its answer
+    /// is for (session.md v1.2): the session never waits for auth, so a hung auth holds back only
+    /// what needs its answer. `false` when auth is away or the request could not be sent.
+    fn auth_send(&mut self, req: &[u8], with_token: bool, op: AuthOp) -> bool {
+        let Some(slot) = self.auth_ops.iter().position(Option::is_none) else {
+            return false;
+        };
         if self.auth == 0 {
-            reply[..fail.len()].copy_from_slice(fail);
-            return (fail.len(), None);
+            return false;
         }
         let mut handles = [0u32; 1];
         let mut nh = 0;
@@ -381,16 +398,64 @@ impl Session {
                 libnawah::handle_close(handles[0]);
             }
             self.auth_lost(libnawah::clock_ticks());
-            reply[..fail.len()].copy_from_slice(fail);
-            return (fail.len(), None);
+            return false;
         }
-        let mut hs = [0u32; 1];
-        match libnawah::channel_read(self.auth, reply, &mut hs, true) {
-            Ok((n, h)) => (n, (h == 1).then_some(hs[0])),
-            Err(_) => {
-                self.auth_lost(libnawah::clock_ticks());
-                reply[..fail.len()].copy_from_slice(fail);
-                (fail.len(), None)
+        self.auth_ops[slot] = Some(op);
+        true
+    }
+
+    /// Whether a sign-in or an unlock is waiting for auth's answer (one at a time).
+    fn auth_waiting(&self) -> bool {
+        self.auth_ops
+            .iter()
+            .any(|o| matches!(o, Some(AuthOp::Login { .. } | AuthOp::Unlock)))
+    }
+
+    /// auth's answer to the oldest request still waiting, with the handle it carried.
+    fn auth_reply(&mut self, op: AuthOp, answer: &[u8], extra: Option<Handle>, now: u64) {
+        match op {
+            AuthOp::Login { name, len } if self.state == State::NoSession => match extra {
+                Some(t) if answer.starts_with(b"OK ") => {
+                    self.user[..len].copy_from_slice(&name[..len]);
+                    self.user_len = len;
+                    self.opened(answer, t, now);
+                }
+                other => {
+                    if let Some(t) = other {
+                        libnawah::handle_close(t);
+                    }
+                    let mut tr = Out::new();
+                    tr.put(b"session|login=refused|answer=").ascii(answer);
+                    libnawah::trace(tr.bytes());
+                    self.show(Screen::Login, Some(refusal(answer, false)));
+                }
+            },
+            AuthOp::Unlock if self.state == State::Locked => match extra {
+                Some(t) if answer.starts_with(b"OK ") => self.opened(answer, t, now),
+                other => {
+                    if let Some(t) = other {
+                        libnawah::handle_close(t);
+                    }
+                    let mut tr = Out::new();
+                    tr.put(b"session|unlock=refused|answer=").ascii(answer);
+                    libnawah::trace(tr.bytes());
+                    self.show(Screen::Lock, Some(refusal(answer, true)));
+                }
+            },
+            // A token auth will not lock ends the session (it is locked here already).
+            AuthOp::Lock => {
+                if let Some(h) = extra {
+                    libnawah::handle_close(h);
+                }
+                if answer != b"OK" && self.state == State::Locked {
+                    self.sign_out(now);
+                }
+            }
+            // Logout, or an answer the state has moved past (signed out meanwhile).
+            _ => {
+                if let Some(h) = extra {
+                    libnawah::handle_close(h);
+                }
             }
         }
     }
@@ -432,6 +497,8 @@ impl Session {
         }
     }
 
+    /// auth is gone: what waited for it is refused as unavailable (a lock stays, and is sent
+    /// again when auth is back); then it is reconnected through the manager.
     fn auth_lost(&mut self, now: u64) {
         if self.auth != 0 {
             libnawah::handle_close(self.auth);
@@ -439,6 +506,14 @@ impl Session {
         self.auth = 0;
         self.connected[AUTH] = false;
         self.retry[AUTH] = now;
+        let ops = core::mem::replace(&mut self.auth_ops, [None; AUTH_OPS]);
+        for op in ops.into_iter().flatten() {
+            match op {
+                AuthOp::Lock => self.lock_unsent = true,
+                AuthOp::Logout => {}
+                _ => self.auth_reply(op, b"ERR UNAVAILABLE", None, now),
+            }
+        }
     }
 
     fn input_lost(&mut self, now: u64) {
@@ -498,7 +573,12 @@ impl Session {
         self.connected[i] = true;
         self.conn_n[i] += 1;
         match i {
-            AUTH => self.auth = h,
+            AUTH => {
+                self.auth = h;
+                if self.state == State::Locked && self.lock_unsent {
+                    self.lock_unsent = !self.auth_send(b"LOCK", true, AuthOp::Lock);
+                }
+            }
             INPUT => self.input_up(h, now),
             _ => self.display_up(h, now),
         }
@@ -880,6 +960,7 @@ impl Session {
             libnawah::handle_close(self.token);
         }
         self.token = token;
+        self.lock_unsent = false;
         self.uid = answer
             .strip_prefix(b"OK ")
             .and_then(|r| r.split(|&c| c == b' ').next())
@@ -900,6 +981,9 @@ impl Session {
     }
 
     fn submit_login(&mut self, now: u64) {
+        if self.auth_waiting() {
+            return;
+        }
         let mut name = [0u8; NAME_MAX];
         let nn = self.dialog.value(self.ids.user, &mut name);
         let mut pw = [0u8; 4 * TEXT_MAX];
@@ -909,93 +993,54 @@ impl Session {
         let mut req = Out::new();
         req.put(b"LOGIN ").put(&name[..nn]).put(b" ").put(&pw[..np]);
         wipe(&mut pw);
-        let mut reply = [0u8; 128];
-        let (n, token) = self.auth_call(req.bytes(), false, &mut reply);
+        let op = AuthOp::Login { name, len: nn };
+        let sent = self.auth_send(req.bytes(), false, op);
         req.wipe();
-        let answer = &reply[..n];
-        match token {
-            Some(t) if answer.starts_with(b"OK ") => {
-                self.user[..nn].copy_from_slice(&name[..nn]);
-                self.user_len = nn;
-                let mut a = [0u8; 128];
-                a[..n].copy_from_slice(answer);
-                self.opened(&a[..n], t, now);
-            }
-            other => {
-                if let Some(t) = other {
-                    libnawah::handle_close(t);
-                }
-                let mut tr = Out::new();
-                tr.put(b"session|login=refused|answer=").ascii(answer);
-                libnawah::trace(tr.bytes());
-                let msg = refusal(answer, false);
-                self.show(Screen::Login, Some(msg));
-            }
+        if !sent {
+            self.auth_reply(op, b"ERR UNAVAILABLE", None, now);
         }
     }
 
     fn submit_unlock(&mut self, now: u64) {
+        if self.auth_waiting() {
+            return;
+        }
         let mut pw = [0u8; 4 * TEXT_MAX];
         let np = self.dialog.value(self.ids.password, &mut pw);
         self.dialog.clear_value(self.ids.password);
         let mut req = Out::new();
         req.put(b"UNLOCK ").put(&pw[..np]);
         wipe(&mut pw);
-        let mut reply = [0u8; 128];
-        let (n, token) = self.auth_call(req.bytes(), true, &mut reply);
+        let sent = self.auth_send(req.bytes(), true, AuthOp::Unlock);
         req.wipe();
-        let answer = &reply[..n];
-        match token {
-            Some(t) if answer.starts_with(b"OK ") => {
-                let mut a = [0u8; 128];
-                a[..n].copy_from_slice(answer);
-                self.opened(&a[..n], t, now);
-            }
-            other => {
-                if let Some(t) = other {
-                    libnawah::handle_close(t);
-                }
-                let mut tr = Out::new();
-                tr.put(b"session|unlock=refused|answer=").ascii(answer);
-                libnawah::trace(tr.bytes());
-                let msg = refusal(answer, true);
-                self.show(Screen::Lock, Some(msg));
-            }
+        if !sent {
+            self.auth_reply(AuthOp::Unlock, b"ERR UNAVAILABLE", None, now);
         }
     }
 
-    /// The secure attention sequence while unlocked: the token is locked at auth, the
-    /// screen held, the lock screen shown. A token auth will not lock ends the session.
-    fn lock(&mut self, now: u64) {
-        let mut reply = [0u8; 64];
-        let (n, extra) = self.auth_call(b"LOCK", true, &mut reply);
-        if let Some(h) = extra {
-            libnawah::handle_close(h);
-        }
-        if &reply[..n] != b"OK" {
-            self.sign_out(now);
-            return;
-        }
+    /// The secure attention sequence while unlocked: the screen is held and the lock screen
+    /// shown at once, then auth is told to lock the token (session.md v1.2: never waited on, so a
+    /// hung auth cannot leave the desktop open). A token auth will not lock ends the session.
+    fn lock(&mut self, _now: u64) {
         self.state = State::Locked;
         self.changes += 1;
         let mut r = [0u8; 64];
         self.display_call(b"LOCKED", &[], &mut r);
         self.show(Screen::Lock, None);
         self.trace_state(true);
+        self.lock_unsent = !self.auth_send(b"LOCK", true, AuthOp::Lock);
     }
 
     /// Ends the session: auth forgets the token, the display removes every other client's
     /// windows and surfaces, and the sign-in screen comes back.
     fn sign_out(&mut self, _now: u64) {
         if self.token != 0 {
-            let mut reply = [0u8; 64];
-            let (_, extra) = self.auth_call(b"LOGOUT", true, &mut reply);
-            if let Some(h) = extra {
-                libnawah::handle_close(h);
-            }
+            // auth forgets the token; not waited on (v1.2): a hung auth never holds the sign-out.
+            let _ = self.auth_send(b"LOGOUT", true, AuthOp::Logout);
             libnawah::handle_close(self.token);
             self.token = 0;
         }
+        self.lock_unsent = false;
         let mut r = [0u8; 64];
         self.display_call(b"LOGOUT", &[], &mut r);
         let mut t = Out::new();
@@ -1121,6 +1166,14 @@ impl Session {
                             Owner::Display => b"display",
                             Owner::Nobody => b"-",
                         });
+                } else if &buf[..n] == b"AUTH" {
+                    // v1.2: how many requests wait for auth's answer, and whether a lock is
+                    // still to be told to it.
+                    let waiting = self.auth_ops.iter().filter(|o| o.is_some()).count();
+                    out.put(b"OK waiting=")
+                        .num(waiting as i64)
+                        .put(b" lock_unsent=")
+                        .num(i64::from(self.lock_unsent));
                 } else {
                     out.put(b"ERR BAD_REQUEST");
                 }
@@ -1233,16 +1286,31 @@ impl Session {
         }
     }
 
+    /// One message from auth: the answer to the oldest request still waiting (auth sends
+    /// nothing else; an answer nothing waits for is dropped).
     fn read_auth(&mut self, now: u64) {
-        let mut buf = [0u8; 64];
+        let mut buf = [0u8; 128];
         let mut hs = [0u32; 1];
         match libnawah::channel_read(self.auth, &mut buf, &mut hs, false) {
-            Ok((_, nh)) => {
-                if nh == 1 {
-                    libnawah::handle_close(hs[0]);
+            Ok((n, nh)) => {
+                let extra = (nh == 1).then_some(hs[0]);
+                let op = self.auth_ops[0].take();
+                self.auth_ops.rotate_left(1);
+                match op {
+                    Some(op) => {
+                        let mut a = [0u8; 128];
+                        a[..n].copy_from_slice(&buf[..n]);
+                        self.auth_reply(op, &a[..n], extra, now);
+                    }
+                    None => {
+                        if let Some(h) = extra {
+                            libnawah::handle_close(h);
+                        }
+                    }
                 }
             }
-            Err(ERR_PEER_CLOSED) => self.auth_lost(now),
+            // An answer larger than any auth gives: the channel is not trusted any more.
+            Err(ERR_PEER_CLOSED | ERR_BUFFER_TOO_SMALL) => self.auth_lost(now),
             Err(_) => {}
         }
     }
@@ -1333,6 +1401,8 @@ fn main() -> u64 {
         uid: 0,
         token: 0,
         auth,
+        auth_ops: [None; AUTH_OPS],
+        lock_unsent: false,
         input: None,
         display: None,
         connected: [true, true, true],

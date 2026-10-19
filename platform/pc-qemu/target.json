@@ -4798,6 +4798,196 @@
         }
       },
       {
+        "id": "TST-M5-LOCK-AUTH-HANG",
+        "test_id": "TST-M5-LOCK-AUTH-HANG",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=lock_auth_hang"
+        ],
+        "oracle": "REQ-M5-010, REQ-M5-006 session.md v1.2 (arena review ع3): SVC-SS.TXT. The lab signs in and the spy's window is on the frame (23856 of its pixels); the test freezes the live auth service (sched::freeze_named(AUTHD.ELF): it never reads its channel again until released). The lab's Ctrl+Alt+Del locks the session at once: STATE answers `OK locked user=admin changes=2 display=1 input=1 focus=session` and a second STATE comes back within 500 ticks, the session's LOCK waits unanswered (`AUTH` → `OK waiting=1 lock_unsent=0`), the frame holds the lock screen and no pixel of the spy's window. Sign out on the lock screen (Tab, Tab, Enter) brings the sign-in screen back with auth still frozen (`OK no_session user=- changes=3 display=1 input=1 focus=session`, waiting=2: LOCK and LOGOUT). Released (sched::thaw_named), auth answers both (waiting=0) and the lab signs in again (changes=4). Before v1.2 the session waited on auth's answer to LOCK with no deadline and the desktop stayed on the screen. The password never appears in the serial log; the manager exits 0, no process left, no frame leak; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=lock_auth_hang",
+          "|ktest|lock_auth_hang|services=5|ready=1",
+          "|ktest|lock_auth_hang|auth_frozen=1|spy_px_before=23856|phase=1|ready=1",
+          "|ktest|lock_auth_hang|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|in_time=1|auth=OK waiting=1 lock_unsent=0|lit=1|spy_px=0|phase=2|ready=1",
+          "|ktest|lock_auth_hang|signed_out=OK no_session user=- changes=3 display=1 input=1 focus=session|auth=OK waiting=2 lock_unsent=0|phase=3",
+          "|ktest|lock_auth_hang|auth_released=1|auth=OK waiting=0 lock_unsent=0|phase=4|ready=1",
+          "|ktest|lock_auth_hang|signed_in_again=OK unlocked user=admin changes=4 ",
+          "|ktest|lock_auth_hang|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|lock_auth_hang|frames_delta=0",
+          "|ktest|pass|the session locked and signed out at once while auth hung, and auth answered once released"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1"
+        ],
+        "timeout_s": 900,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|lock_auth_hang|auth_frozen=1|",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|spy_px=0|phase=2|ready=1",
+              "commands": [
+                "sendkey tab",
+                "sendkey tab",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|lock_auth_hang|auth_released=1|",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            }
+          ]
+        }
+      },
+      {
+        "id": "TST-M5-UNLOCK-AUTH-HANG",
+        "test_id": "TST-M5-UNLOCK-AUTH-HANG",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=unlock_auth_hang"
+        ],
+        "oracle": "REQ-M5-010, REQ-M5-006 session.md v1.2: SVC-SS.TXT. The lab signs in and presses Ctrl+Alt+Del with auth answering (an ordinary lock, `AUTH` → waiting=0); the test freezes auth (AUTHD.ELF) and the lab types the right password: the UNLOCK waits (`OK waiting=1 lock_unsent=0`) for 6000 ticks, longer than REQUEST_DEADLINE (5000) — every STATE in that time answers `OK locked user=admin changes=2 display=1 input=1 focus=session` within 500 ticks (slow=0), the UNLOCK still waits at the end (no refusal for slowness: no `unlock=refused`), the compositor received no key (display_keys=0) and the spy's count is unchanged. Released, auth answers the waiting UNLOCK and the same password opens the session (`OK unlocked user=admin changes=3 display=1 input=1 focus=display`); `z` then reaches the spy (its key count grows). The password never appears in the serial log; the manager exits 0, no process left, no frame leak; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=unlock_auth_hang",
+          "|ktest|unlock_auth_hang|services=5|ready=1",
+          "|ktest|unlock_auth_hang|auth_frozen=1|phase=1|ready=1",
+          "|ktest|unlock_auth_hang|auth=OK waiting=1 lock_unsent=0|held_ticks=6000|slow=0|state=OK locked user=admin changes=2 display=1 input=1 focus=session|auth_after=OK waiting=1 lock_unsent=0|display_keys=0|spy_same=1|phase=2|ready=1",
+          "|ktest|unlock_auth_hang|auth_released=1|unlocked=OK unlocked user=admin changes=3 display=1 input=1 focus=display|phase=3|ready=1",
+          "|ktest|unlock_auth_hang|spy_after=OK keys=",
+          "|ktest|unlock_auth_hang|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|unlock_auth_hang|frames_delta=0",
+          "|ktest|pass|the unlock waited for the frozen auth without holding the session, and the same password opened it once auth was released"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1",
+          "|text=session|unlock=refused|"
+        ],
+        "timeout_s": 900,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|focus=display|n=1",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|unlock_auth_hang|auth_frozen=1|",
+              "commands": [
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|unlock_auth_hang|auth_released=1|",
+              "commands": [
+                "sendkey z"
+              ],
+              "gap_s": 1.0
+            }
+          ]
+        }
+      },
+      {
         "id": "TST-M5-LOCK-DISPLAY-DOWN",
         "test_id": "TST-M5-LOCK-DISPLAY-DOWN",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

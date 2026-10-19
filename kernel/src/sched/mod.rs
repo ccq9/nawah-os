@@ -986,6 +986,43 @@ pub fn freeze_named(name: &[u8]) -> bool {
     })
 }
 
+/// Test-only (WP-40): releases the live process `freeze_named` froze, as if its hang ended: its
+/// blocked threads are made ready and each re-checks what it waited for, so a request queued to
+/// it meanwhile is answered now (TST-M5-UNLOCK-AUTH-HANG). Returns whether one matched.
+#[cfg(feature = "ktest")]
+pub fn thaw_named(name: &[u8]) -> bool {
+    with(|s| {
+        let Some(pid) = s
+            .processes
+            .iter_mut()
+            .find(|p| {
+                p.exit_code.is_none()
+                    && p.frozen
+                    && p.object.as_ref().is_some_and(|o| o.name_is(name))
+            })
+            .map(|p| {
+                p.frozen = false;
+                p.id
+            })
+        else {
+            return false;
+        };
+        for i in 0..s.threads.len() {
+            if s.threads[i].process == Some(pid)
+                && matches!(
+                    s.threads[i].state,
+                    State::Blocked | State::BlockedUntil { .. }
+                )
+            {
+                s.threads[i].state = State::Ready;
+                let cpu = usize::from(s.threads[i].cpu);
+                request_resched(s, cpu);
+            }
+        }
+        true
+    })
+}
+
 /// Test-only kill injection points (review 2026-10-19, TST-M5-KILL-EDGES): the places in a
 /// system call where a kill from another CPU can land while the thread is running in the
 /// kernel, after its last safe point — `object_wait_many` just before it blocks and `sleep` just
