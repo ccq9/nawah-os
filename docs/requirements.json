@@ -1372,7 +1372,7 @@
     "TST-M5-MOUSE",
     "TST-M5-LAB-TOOL"
    ],
-   "implementation_status": "verified_in_scope",
+   "implementation_status": "partial",
    "evidence_refs": [
     "evidence/20261019T040817Z-f320cbbe-001",
     "evidence/20261019T040827Z-f320cbbe-001",
@@ -1440,7 +1440,7 @@
     "TST-M5-GLYPHS",
     "TST-M5-TEXT-GUEST"
    ],
-   "implementation_status": "verified_in_scope",
+   "implementation_status": "partial",
    "evidence_refs": [
     "evidence/20261019T041359Z-f320cbbe-001",
     "evidence/20261019T041400Z-f320cbbe-001",
@@ -1511,7 +1511,7 @@
     "TST-M5-AUTH-INPUT-ISOLATED",
     "TST-M5-LOGIN-SCREEN"
    ],
-   "implementation_status": "verified_in_scope",
+   "implementation_status": "partial",
    "evidence_refs": [
     "evidence/20261019T041114Z-f320cbbe-001",
     "evidence/20261019T041044Z-f320cbbe-001",

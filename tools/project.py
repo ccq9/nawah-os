@@ -1236,6 +1236,25 @@ def append_event(etype, state, task_id=None, run_id=None, result=None, evidence_
     return ev["seq"]
 
 
+def derive_position(work_items, requirements):
+    """Where the project stands, from the records alone: the current task is the first active
+    work item, else the first planned one whose dependencies are all done; its stage is the
+    current stage; completed requirements are those verified in scope. (Review 2026-10-19,
+    T-8: checkpoints never updated these fields, so project-state still said M2/WP-07 in M5.)"""
+    by_id = {w["id"]: w for w in work_items}
+    task = next((w for w in work_items if w["status"] == "active"), None)
+    if task is None:
+        task = next((w for w in work_items if w["status"] == "planned"
+                     and all(by_id.get(d, {}).get("status") == "done" for d in w["depends_on"])), None)
+    done = [r["id"] for r in requirements if r["implementation_status"] == "verified_in_scope"]
+    return {
+        "current_task": task["id"] if task else None,
+        "current_stage": task["stage"] if task else None,
+        "next_action": f"{task['id']}: {task['actions'][0]}" if task and task["actions"] else None,
+        "completed_requirement_ids": done,
+    }
+
+
 def cmd_checkpoint(note=None) -> int:
     rc = validate_records(verbose=False)
     if rc != 0:
@@ -1244,6 +1263,14 @@ def cmd_checkpoint(note=None) -> int:
     ps = load_json(p)
     rev, dirty = source_identity()
     ps["source_revision"], ps["dirty_state"] = rev, dirty
+    pos = derive_position(load_json(DOCS / "work-items.json")["records"],
+                          load_json(DOCS / "requirements.json")["records"])
+    for key, value in pos.items():
+        if value is not None:
+            ps[key] = value
+    runs = sorted(d.name for d in EVIDENCE.iterdir() if d.is_dir() and d.name[:8].isdigit()) if EVIDENCE.is_dir() else []
+    if runs:
+        ps["last_run_id"] = runs[-1]
     ps["checkpoint_generation"] += 1
     if ps.get("lease"):
         ps["lease"]["fencing_token"] = ps["checkpoint_generation"]

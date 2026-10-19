@@ -84,6 +84,30 @@
    "mitigation": "docs/hardware.json يفصل الأهداف؛ لا كتابة على عتاد حقيقي بلا تفويض",
    "response_plan": "جهاز مرجعي واحد في Beta",
    "status": "open"
+  },
+  {
+   "id": "RSK-008",
+   "risk": "أي عملية تفتح أي ملف للقراءة والكتابة: ملف المستخدمين وبرامج النظام وملف الخدمات غير محمية (R-43)",
+   "likelihood": "high",
+   "impact": "critical",
+   "evidence": "kernel/src/syscall/mod.rs sys_open بلا فحص سلطة؛ مراجعة ما قبل بوابة M5 (2026-10-19)، النتيجة M4",
+   "owner": "agent",
+   "warning_signal": "تطبيق يقرأ /SYSTEM/USERS.DB أو يكتب ملفًا في /SYSTEM",
+   "mitigation": "لا تطبيقات من خارج المشروع في الصورة؛ كل البيانات تجريبية",
+   "response_plan": "WP-44 قبل بوابة M5",
+   "status": "open"
+  },
+  {
+   "id": "RSK-009",
+   "risk": "خدمة معلّقة لا تُنهى فتبقى عملية مهجورة (R-40)",
+   "likelihood": "medium",
+   "impact": "high",
+   "evidence": "WP-40: process_kill (syscall.md v1.11) وservices.md v1.7/v1.8؛ CI run 39196967624",
+   "owner": "agent",
+   "warning_signal": "خدمة failed/stopping بلا رمز خروج في LIST",
+   "mitigation": "مهلة الإيقاف والمراقِب ومهلة الجاهزية تُنهي العملية؛ مهلة طلبات الجلسة (session.md v1.1)",
+   "response_plan": "حالات باقية في WP-43 (M5، M9)",
+   "status": "mitigated"
   }
  ]
 }

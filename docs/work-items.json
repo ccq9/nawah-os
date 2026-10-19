@@ -2788,6 +2788,93 @@
    "blocker": null
   },
   {
+   "stage": "M5",
+   "files": [],
+   "contract_refs": [],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "id": "WP-43",
+   "requirement_ids": [
+    "REQ-M5-002",
+    "REQ-M5-003",
+    "REQ-M5-004",
+    "REQ-M5-006",
+    "REQ-M5-007",
+    "REQ-M5-008",
+    "REQ-M5-010"
+   ],
+   "depends_on": [
+    "WP-40"
+   ],
+   "inputs": [
+    "M5 pre-gate review 2026-10-19 (M5-gate-review.docx): findings M1–M3, M5–M7, M9, S-5–S-7"
+   ],
+   "actions": [
+    "تقوية M5 بعد مراجعة ما قبل البوابة (2026-10-19)",
+    "M1: a message too large for a server's buffer is discarded with an error (displayd, svcmgr, inputd), never left at the head of the queue — test: one client sends 2000 bytes, another's STATUS is answered within 500 ticks",
+    "M2: the narrator role only for a service the manifest names; no per-keystroke announcement from a password field — test: the spy asks NARRATOR and is refused, and hears nothing from the session's window",
+    "M3: a client's LIST hash covers its own surface, not the composited pixels, and nothing while it is held — test: during the lock, the spy's hash does not change while the password is typed",
+    "M5: the screen is covered when the session locks with the compositor down or hung — test: stop the compositor while unlocked, lock, the screendump shows no application pixel",
+    "M6: ZWJ/ZWNJ stay inside the Arabic run in layout — test: layout output equals HarfBuzz on the ZWJ/ZWNJ cases",
+    "M7: Alt+Tab visits every window in a stable order — test: three windows, three presses visit all three, a minimised one included",
+    "M9: the session's own loss — test: drop the session while locked and after unlock; focus cleared, screen held, a new session starts at no_session",
+    "S-5: input reserves the display name for the compositor's manager identity; S-6: after a compositor restart while unlocked the keyboard goes back to it; S-7: per-client window and surface limits — each with a test"
+   ],
+   "acceptance": "each finding has a test that fails before its fix and passes after on CI; then REQ-M5-002, -004 and -006 return to verified_in_scope",
+   "test_ids": [
+    "TST-M5-APP-HANG",
+    "TST-M5-AUTH-INPUT-ISOLATED",
+    "TST-M5-LOCK-SURVIVES",
+    "TST-M5-LOCK-HANG",
+    "TST-M5-SHAPING",
+    "TST-M5-WINDOW-A11Y",
+    "TST-M5-INPUT-ROUTE"
+   ]
+  },
+  {
+   "stage": "M5",
+   "files": [],
+   "contract_refs": [],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "id": "WP-44",
+   "requirement_ids": [
+    "REQ-M5-006"
+   ],
+   "depends_on": [
+    "WP-40"
+   ],
+   "inputs": [
+    "M5 pre-gate review 2026-10-19: finding M4",
+    "R-43 (docs/operations/m4-review.md:37), RSK-008"
+   ],
+   "actions": [
+    "صلاحية ملفات النظام (R-43)",
+    "files.md v1.2: /SYSTEM is readable and writable only by holders of a system-files authority the manager hands to system services; user processes open their own paths only",
+    "test: an ordinary process opening /SYSTEM/USERS.DB for reading and /SYSTEM/INPUTD.ELF for writing gets ERR_ACCESS; system services still start"
+   ],
+   "acceptance": "the file-authority test passes on CI and RSK-008 is closed",
+   "test_ids": [
+    "TST-M5-AUTH-INPUT-ISOLATED"
+   ]
+  },
+  {
    "id": "WP-38",
    "stage": "M5",
    "requirement_ids": [
@@ -2799,7 +2886,9 @@
     "WP-39",
     "WP-40",
     "WP-41",
-    "WP-42"
+    "WP-42",
+    "WP-43",
+    "WP-44"
    ],
    "inputs": [
     "docs/PLAN.md §6",
@@ -2811,7 +2900,8 @@
    "actions": [
     "بوابة M5: سيناريوهات الخروج، طفرات M5، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
     "scenario cases 7, 8 and 11 of OS-EXEC-AR §20 across the M5 suite; mutants M82+ for display/input/compositor/text/ui/session (>= 95%)",
-    "docs/operations/m5-review.md; stages.json M5 gate; threat-model (display/input/session trust boundaries)"
+    "docs/operations/m5-review.md; stages.json M5 gate; threat-model (display/input/session trust boundaries)",
+    "Review 2026-10-19: M5 mutants (M82+) for the kill, watchdog, request deadline, focus routing and lock state; mutants --stage M5 and an M5-GATE host suite; stale M2–M4 mutation scores re-run (their stale_policy=warn hides the WP-40 kernel changes)"
    ],
    "acceptance": "M5 gate passed",
    "test_ids": [

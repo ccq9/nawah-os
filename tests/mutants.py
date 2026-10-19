@@ -353,7 +353,31 @@ def stage_of(mid: str) -> str:
     return "M2" if n < 30 else ("M3" if n < 50 else "M4")
 
 # Applications first (WP-17): the kernel embeds them through NAWAH_APPS_DIR (kernel/build.rs).
-APPS = ["hello", "file_roundtrip", "path_invalid", "fd_leak", "echo", "launch", "child", "waiter", "svcmgr", "svc", "authd", "configd", "netprobe", "kbdprobe", "netd", "sh", "fbprobe", "inputd", "displayd", "winapp", "textprobe", "narrator", "dialog", "killer", "spin", "idle"]
+def target_apps():
+    """Every user app the pc-qemu build steps compile, in build order, read from
+    platform/pc-qemu/target.json so this list cannot drift from the real build: a hand-kept
+    copy lacked exiter, sessiond and spy after WP-40, so every mutant build would have failed
+    (review 2026-10-19, M8)."""
+    import re
+    found = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+        elif isinstance(o, str):
+            m = re.fullmatch(r"user/apps/([a-z0-9_]+)/Cargo.toml", o)
+            if m:
+                found.append(m.group(1))
+
+    walk(json.loads((REPO / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))["build"])
+    return list(dict.fromkeys(found))
+
+
+APPS = target_apps()
 def app_step(name):
     return (["cargo", "build", "--profile", "app", "--offline", "--manifest-path", f"user/apps/{name}/Cargo.toml",
              "--target", "x86_64-unknown-none", "--target-dir", "build/pc-qemu/cargo-user"],

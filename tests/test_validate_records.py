@@ -181,5 +181,20 @@ class ValidateRecords(unittest.TestCase):
         write_all(r)
         self.assertEqual(project.validate_records(verbose=False), 0)
 
+    def test_checkpoint_position_follows_the_records(self):
+        # Review 2026-10-19 (T-8): project-state said M2/WP-07 during M5.
+        r = base_records()
+        w0 = r["work-items"][0]
+        w1 = copy.deepcopy(w0); w1["id"] = "WP-01"; w1["depends_on"] = ["WP-00"]; w1["actions"] = ["next one"]
+        pos = project.derive_position([w0, w1], r["requirements"])
+        self.assertEqual((pos["current_task"], pos["current_stage"]), ("WP-00", "M0"))  # first ready planned
+        w0["status"] = "done"
+        self.assertEqual(project.derive_position([w0, w1], r["requirements"])["current_task"], "WP-01")
+        w1["status"] = "active"
+        pos = project.derive_position([w0, w1], r["requirements"])
+        self.assertEqual(pos["current_task"], "WP-01"); self.assertEqual(pos["next_action"], "WP-01: next one")
+        r["requirements"][0]["implementation_status"] = "verified_in_scope"
+        self.assertEqual(project.derive_position([w0, w1], r["requirements"])["completed_requirement_ids"], ["REQ-M0-001"])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

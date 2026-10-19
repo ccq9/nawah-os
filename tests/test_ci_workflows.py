@@ -7,6 +7,7 @@ to their end and mailed the account); `mutants` never runs on a push. The local 
 (`project.py preflight`) builds with build-std from the library source at the compiler's own
 commit, with scratch evidence only."""
 
+import json
 import pathlib
 import subprocess
 import sys
@@ -126,6 +127,22 @@ class Preflight(unittest.TestCase):
             head = run("rev-parse", "HEAD").stdout.strip()
             self.assertEqual(project.rust_src_state(src, head), "ok")
             self.assertEqual(project.rust_src_state(src, "0" * 40), f"mismatch:{head}")
+
+
+class MutationHarness(unittest.TestCase):
+    def test_mutants_build_every_app_the_kernel_embeds_and_the_build_compiles(self):
+        # Review 2026-10-19 (M8): the harness kept its own app list; WP-40 added exiter to the
+        # kernel's embedded apps and the list did not follow, so every mutant build would fail.
+        import re
+        sys.path.insert(0, str(ROOT / "tests"))
+        import mutants  # noqa: E402
+        target = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        built = set(re.findall(r"user/apps/([a-z0-9_]+)/Cargo.toml", json.dumps(target["build"])))
+        embedded = set(re.findall(r'^\s*"([a-z0-9_]+)",\s*$', (ROOT / "kernel" / "build.rs").read_text(encoding="utf-8"), re.M))
+        self.assertTrue(embedded, "no embedded app list found in kernel/build.rs")
+        self.assertEqual(set(mutants.APPS), built)
+        self.assertLessEqual(embedded, set(mutants.APPS), "an app the kernel embeds is not built by the harness")
+        self.assertEqual(len(mutants.APPS), len(set(mutants.APPS)))
 
 
 if __name__ == "__main__":
