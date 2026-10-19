@@ -5,7 +5,8 @@ by hand, gives its job a time limit, and cancels the run a newer push to the sam
 (42 of the 59 failed verify runs that day had been superseded within ten minutes and still ran
 to their end and mailed the account); `mutants` never runs on a push. The local pre-flight
 (`project.py preflight`) builds with build-std from the library source at the compiler's own
-commit, with scratch evidence only."""
+commit, with scratch evidence only. `project.py import-ci-evidence` leaves no temporary copy of
+the runner's evidence behind."""
 
 import json
 import pathlib
@@ -127,6 +128,40 @@ class Preflight(unittest.TestCase):
             head = run("rev-parse", "HEAD").stdout.strip()
             self.assertEqual(project.rust_src_state(src, head), "ok")
             self.assertEqual(project.rust_src_state(src, "0" * 40), f"mismatch:{head}")
+
+
+class CiEvidenceImport(unittest.TestCase):
+    def test_import_leaves_no_temporary_copy(self):
+        # import-ci-evidence checks the runner's evidence branch out into a temporary directory
+        # and copies the runs from there; the copy goes when the import ends (2026-10-19: 44
+        # left-over copies, 21 GB, filled the workspace's disk).
+        base = pathlib.Path(tempfile.mkdtemp(prefix="nawah-import-"))
+        env = {"PATH": "/usr/bin:/bin", "HOME": str(base), "TMPDIR": str(base / "tmp"),
+               "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+        (base / "tmp").mkdir()
+        git = lambda cwd, *a: subprocess.run(["git", *a], cwd=cwd, env=env, check=True, capture_output=True)
+        git(base, "init", "-q", "--bare", "origin")
+        work = base / "work"
+        git(base, "init", "-q", "work")
+        run = work / "evidence" / "20260101T000000Z-deadbeef-001"
+        run.mkdir(parents=True)
+        (run / "verdict.json").write_text(json.dumps({"test_id": "TST-X", "verdict": "PASS"}))
+        (run / "run.json").write_text(json.dumps({"run_id": run.name}))
+        git(work, "checkout", "-q", "-b", "ci-evidence/42")
+        git(work, "add", "-A")
+        git(work, "commit", "-q", "-m", "evidence")
+        git(work, "push", "-q", str(base / "origin"), "ci-evidence/42")
+        root = base / "root"
+        git(base, "init", "-q", "root")
+        git(root, "remote", "add", "origin", str(base / "origin"))
+        (root / "evidence").mkdir()
+        r = subprocess.run([sys.executable, "-I", str(ROOT / "tools" / "project.py"), "import-ci-evidence", "--run", "42"],
+                           env={**env, "NAWAH_ROOT": str(root)}, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("imported 1 run(s) from CI run 42", r.stdout)
+        self.assertTrue((root / "evidence" / run.name / "verdict.json").exists())
+        self.assertEqual(sorted(p.name for p in (base / "tmp").iterdir()), [])
 
 
 class MutationHarness(unittest.TestCase):
