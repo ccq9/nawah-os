@@ -27,7 +27,7 @@
    "reference": "S77: Alt+Tab switches between open windows; to cycle through multiple windows, continue to hold Alt and press Tab multiple times. How the reference shows the walk (a switcher view, the focus moving at Alt's release) is not in S77 and not yet observed on a captured installation (DEC-002), so it is not claimed here",
    "nawah": "display.md v1.6: while Alt is held each Tab moves through the windows as stacked at the first Tab, most recently used first; there is no switcher: the reached window takes the focus and is raised (a minimised one restored) at each Tab; when the walk ends (Alt released, the input service lost, or the lock state changed) it is undone but for the window it ended on, which goes on top (windows passed over return to their places, ones the walk restored to minimised)",
    "reason": "the walk S77 describes (every window reached while Alt is held) is what was missing (review M7); a switcher view would need drawing and narrator announcements outside WP-43's scope",
-   "impact": "while Alt is held, each window passed over is shown on top and focused for the moment the walk is on it; a narrator user hears each one announced as it is reached; after the release only the chosen window has moved",
+   "impact": "while Alt is held, each window passed over is shown on top and focused for the moment the walk is on it; a narrator user hears each one announced as it is reached; after the walk only the chosen window has moved (and a window opened or raised during the walk that took the focus, which stays on top)",
    "decision": "ADR-0019 item 12",
    "test": "TST-M5-ALT-TAB-CYCLE"
   }

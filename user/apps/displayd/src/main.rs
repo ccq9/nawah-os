@@ -510,13 +510,13 @@ struct Switch {
     n: usize,
     /// The index the walk is at (the focused window when it started), or none.
     at: Option<usize>,
-    /// The whole stacking at the first Tab (window ids, top first) and the windows the walk
-    /// restored from minimised: when the walk ends it is undone but for the window it ended
-    /// on, which goes on top — passing over a window does not move it, nor leave it restored.
-    order0: [u32; MAX_WINDOWS],
+    /// The whole stacking at the first Tab (slots, top first) and the windows minimised then:
+    /// when Alt is released the walk is undone but for the window it ended on, which goes on
+    /// top — passing over a window does not move it, nor leave it restored.
+    order0: [usize; MAX_WINDOWS],
     n0: usize,
-    restored: [u32; MAX_WINDOWS],
-    n_restored: usize,
+    minimized0: [u32; MAX_WINDOWS],
+    n_min0: usize,
 }
 
 impl Compositor {
@@ -1197,14 +1197,17 @@ impl Compositor {
                             ids: [0; MAX_WINDOWS],
                             n: 0,
                             at: None,
-                            order0: [0; MAX_WINDOWS],
+                            order0: self.order,
                             n0: self.n_order,
-                            restored: [0; MAX_WINDOWS],
-                            n_restored: 0,
+                            minimized0: [0; MAX_WINDOWS],
+                            n_min0: 0,
                         };
                         for k in 0..self.n_order {
                             let wi = self.order[k];
-                            s.order0[k] = self.windows[wi].id;
+                            if self.windows[wi].used && self.windows[wi].minimized {
+                                s.minimized0[s.n_min0] = self.windows[wi].id;
+                                s.n_min0 += 1;
+                            }
                             if self.cyclable(wi) {
                                 if self.focus == Some(wi) {
                                     s.at = Some(s.n);
@@ -1231,16 +1234,10 @@ impl Compositor {
                         }
                     }
                     if let Some((i, wi)) = target {
-                        let minimized = self.windows[wi].minimized;
                         if let Some(s) = self.switch.as_mut() {
                             s.at = Some(i);
-                            let id = self.windows[wi].id;
-                            if minimized && !s.restored[..s.n_restored].contains(&id) {
-                                s.restored[s.n_restored] = id;
-                                s.n_restored += 1;
-                            }
                         }
-                        if minimized {
+                        if self.windows[wi].minimized {
                             self.set_minimized(wi, false, now);
                         } else {
                             self.focus_and_raise(wi, now);
@@ -1583,8 +1580,8 @@ impl Compositor {
                     out.put(b"ERR ACCESS");
                     return false;
                 }
-                // A walk in progress ends here, as if Alt were released (v1.6).
-                self.end_switch(now);
+                // A walk in progress is dropped: the screen changes under it (v1.6).
+                self.switch = None;
                 match verb {
                     b"LOCKED" => self.locked = true,
                     b"UNLOCKED" => self.locked = false,
@@ -1759,57 +1756,50 @@ impl Compositor {
         }
     }
 
-    /// Ends an Alt+Tab walk (v1.6) — at Alt's release, a lock-state change or the loss of the
-    /// input service: the walk is undone but for the window it ended on. That window goes on
-    /// top (just under the focus if a window created or raised during the walk took it), then
-    /// the windows created during the walk, then the others as stacked at the first Tab; a
-    /// window the walk restored from minimised and only passed over is minimised again.
+    /// The input service went away (crash or restart): its channel is dropped and a new one
+    /// asked for (display.md v1.2); meanwhile no key or pointer event arrives.
+    /// Ends an Alt+Tab walk (v1.6): the window it ended on goes on top of the stacking as it
+    /// was at the first Tab (windows created since stay just under it), and windows that were
+    /// minimised then and were only passed over are minimised again.
     fn end_switch(&mut self, now: u64) {
         let Some(s) = self.switch.take() else {
             return;
         };
-        let ended = s.at.and_then(|i| self.window_by_id(s.ids[i]));
-        let focus = self.focus;
+        let last = self.focus;
         let mut order = [0usize; MAX_WINDOWS];
         let mut k = 0;
-        let put = |order: &mut [usize; MAX_WINDOWS], k: &mut usize, wi: usize| {
-            if !order[..*k].contains(&wi) {
-                order[*k] = wi;
-                *k += 1;
-            }
-        };
-        for wi in [focus, ended].into_iter().flatten() {
-            put(&mut order, &mut k, wi);
+        if let Some(f) = last {
+            order[k] = f;
+            k += 1;
         }
         for &wi in &self.order[..self.n_order] {
-            if !s.order0[..s.n0].contains(&self.windows[wi].id) {
-                put(&mut order, &mut k, wi);
+            if Some(wi) != last && !s.order0[..s.n0].contains(&wi) {
+                order[k] = wi;
+                k += 1;
             }
         }
-        for &id in &s.order0[..s.n0] {
-            if let Some(wi) = self.window_by_id(id) {
-                put(&mut order, &mut k, wi);
+        for &wi in &s.order0[..s.n0] {
+            if Some(wi) != last && self.order[..self.n_order].contains(&wi) {
+                order[k] = wi;
+                k += 1;
             }
         }
-        debug_assert_eq!(k, self.n_order);
-        if k == self.n_order && order[..k] != self.order[..k] {
+        if k == self.n_order {
             self.order[..k].copy_from_slice(&order[..k]);
-            self.damage(self.screen);
         }
-        for &id in &s.restored[..s.n_restored] {
+        for &id in &s.minimized0[..s.n_min0] {
             if let Some(wi) = self.window_by_id(id) {
-                if Some(wi) != ended && Some(wi) != focus {
+                if Some(wi) != last && !self.windows[wi].minimized {
                     self.set_minimized(wi, true, now);
                 }
             }
         }
+        self.damage(self.screen);
     }
 
-    /// The input service went away (crash or restart): its channel is dropped and a new one
-    /// asked for (display.md v1.2); meanwhile no key or pointer event arrives. A walk cannot
-    /// see its Alt released any more, so it ends here (v1.6).
     fn input_lost(&mut self, now: u64) {
-        self.end_switch(now);
+        // A walk cannot see its Alt released any more (v1.6).
+        self.switch = None;
         libnawah::handle_close(self.input);
         self.input = 0;
         self.input_retry = now;
