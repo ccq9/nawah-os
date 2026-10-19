@@ -3439,9 +3439,14 @@ fn login() -> ! {
     let user_ok = t_user
         .as_ref()
         .is_some_and(|t| t.uid == 1001 && t.perms == 8);
-    // Wrong password and unknown name: the same refusal, no token.
+    // Wrong password and unknown name: the same refusal, no token, after the same derivation
+    // (auth.md v1.1: the unknown name's refusal is not the quicker one).
+    let t0 = sched::ticks();
     let (r2, t2) = auth_request(&ep, b"LOGIN admin wrong-password", None);
+    let wrong_ticks = sched::ticks() - t0;
+    let t0 = sched::ticks();
     let (r3, t3) = auth_request(&ep, b"LOGIN nobody lab-admin-1", None);
+    let unknown_ticks = sched::ticks() - t0;
     // Four more failures reach the limit; the right password is then delayed.
     let mut refused = 0;
     for _ in 0..4 {
@@ -3451,12 +3456,26 @@ fn login() -> ! {
     }
     let (r_delayed, t_delayed) = auth_request(&ep, b"LOGIN admin lab-admin-1", None);
     let delayed = r_delayed.starts_with("ERR DELAYED ") && t_delayed.is_none();
+    // An unknown name reaches the same limit (v1.1), so the delay does not tell names apart.
+    for _ in 0..4 {
+        auth_request(&ep, b"LOGIN nobody wrong-password", None);
+    }
+    let unknown_delayed = auth_request(&ep, b"LOGIN nobody lab-admin-1", None)
+        .0
+        .starts_with("ERR DELAYED ");
     // The other user is not delayed.
     let (r_other, t_other) = auth_request(&ep, b"LOGIN user lab-user-1", None);
     // After the delay the right password works again.
     let t = sched::ticks() + 2100;
     sched::poll_until(t, || false);
     let (r_after, t_after) = auth_request(&ep, b"LOGIN admin lab-admin-1", None);
+    // A sixth failure doubles the delay (v1.1): the next attempt waits more than 2000 ticks.
+    let sixth = auth_request(&ep, b"LOGIN nobody wrong-password", None).0;
+    let doubled = auth_request(&ep, b"LOGIN nobody wrong-password", None).0;
+    let doubled_wait = doubled
+        .strip_prefix("ERR DELAYED ")
+        .and_then(|t| t.parse::<u64>().ok())
+        .unwrap_or(0);
     let whoami = match &t_after {
         Some(tk) => auth_request(&ep, b"WHOAMI", Some(tk)).0,
         None => String::new(),
@@ -3498,11 +3517,27 @@ fn login() -> ! {
     if !delayed || r_other != "OK 1001 1001 8" || !other_ok {
         fail("the attempt limit did not delay the right name only")
     }
+    kprintln!(
+        "OSX|{}|ktest|login|unknown_delayed={}|sixth={}|doubled_wait_over_2000={}|wrong_ticks={}|unknown_ticks={}|unknown_as_slow={}",
+        BUILD_ID,
+        unknown_delayed,
+        sixth,
+        doubled_wait > 2000 && doubled_wait <= 4000,
+        wrong_ticks,
+        unknown_ticks,
+        unknown_ticks * 2 >= wrong_ticks
+    );
+    if !unknown_delayed || sixth != "ERR ACCESS" || !(2001..=4000).contains(&doubled_wait) {
+        fail("an unknown name was not limited like a user, or the delay did not double")
+    }
+    if unknown_ticks * 2 < wrong_ticks {
+        fail("an unknown name was refused quicker than a wrong password")
+    }
     if r_after != "OK 1000 1000 15" || whoami != "OK 1000 1000 15" || bad != "ERR BAD_REQUEST" {
         fail("login after the delay, WHOAMI or the bad request answer wrong")
     }
     drop((
-        r1, r_user, r2, r3, r_delayed, r_other, r_after, whoami, bad, load,
+        r1, r_user, r2, r3, r_delayed, r_other, r_after, whoami, bad, load, sixth, doubled,
     ));
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")

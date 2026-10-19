@@ -2766,7 +2766,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=login"
         ],
-        "oracle": "the auth service (manifest /SYSTEM/SVC-AUTH.TXT) starts after its known-answer self-test (user|trace auth|kat|fails=0|pbkdf2_80000=1) and loads 2 lab users; through CONNECT auth: LOGIN admin with the right password answers OK 1000 1000 15 with a usable token (uid 1000, all permissions, expiry ahead); LOGIN user answers OK 1001 1001 8; a wrong password and an unknown name both answer ERR ACCESS with no token; after 5 consecutive failures on admin the right password answers ERR DELAYED <ticks> while user still logs in; after the delay admin logs in and WHOAMI with the token answers the identity; an unknown request answers ERR BAD_REQUEST; the manager and the service exit cleanly, no frame leaks; host checks: fsck/fat32.py and both lab passwords absent from the raw image; exit 33",
+        "oracle": "the auth service (manifest /SYSTEM/SVC-AUTH.TXT) starts after its known-answer self-test (user|trace auth|kat|fails=0|pbkdf2_80000=1) and loads 2 lab users; through CONNECT auth: LOGIN admin with the right password answers OK 1000 1000 15 with a usable token (uid 1000, all permissions, expiry ahead); LOGIN user answers OK 1001 1001 8; a wrong password and an unknown name both answer ERR ACCESS with no token; after 5 consecutive failures on admin the right password answers ERR DELAYED <ticks> while user still logs in; an unknown name is refused no quicker than a wrong password and is delayed after 5 failures too, and its sixth failure doubles the delay (more than 2000 ticks, at most 4000; auth.md v1.1); after the delay admin logs in and WHOAMI with the token answers the identity; an unknown request answers ERR BAD_REQUEST; the manager and the service exit cleanly, no frame leaks; host checks: fsck/fat32.py and both lab passwords absent from the raw image; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=login",
@@ -2774,6 +2774,8 @@
           "|text=auth|kat|fails=0|pbkdf2_80000=1",
           "|text=auth|users|schema=1|count=2",
           "|ktest|login|load=OK 1|login=OK 1000 1000 15|token_ok=1|user=OK 1001 1001 8|user_ok=1|wrong=ERR ACCESS|unknown=ERR ACCESS|no_token=1|refused=4|delayed=true|other=OK 1001 1001 8|after_delay=OK 1000 1000 15|whoami=OK 1000 1000 15|bad=ERR BAD_REQUEST|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|login|unknown_delayed=true|sixth=ERR ACCESS|doubled_wait_over_2000=true|",
+          "|unknown_as_slow=true",
           "|ktest|login|frames_delta=0",
           "|ktest|pass|login gives a session token, refuses bad credentials, delays after 5 failures"
         ],
