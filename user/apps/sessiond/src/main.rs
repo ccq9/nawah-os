@@ -16,8 +16,8 @@
 
 use libnawah::display::{Surface, FORMAT_RGBX};
 use libnawah::{
-    Handle, WaitEntry, ERR_PEER_CLOSED, ERR_SHOULD_WAIT, ERR_TIMED_OUT, SIGNAL_PEER_CLOSED,
-    SIGNAL_READABLE,
+    Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_SHOULD_WAIT, ERR_TIMED_OUT,
+    SIGNAL_PEER_CLOSED, SIGNAL_READABLE,
 };
 use libui::{Dialog, Event, Painter, Rect, Role, Text, MAX_ELEMENTS, TEXT_MAX};
 use nawah_text::font::Font;
@@ -1132,6 +1132,14 @@ impl Session {
             Err(ERR_PEER_CLOSED) => {
                 libnawah::handle_close(c);
                 self.clients[k] = 0;
+            }
+            // Larger than any request, or carrying handles no request takes: discarded and
+            // refused, so this client's next request is read and the clients after it are not
+            // starved behind a message that never fits (review 2026-10-19, as svcmgr does).
+            Err(ERR_BUFFER_TOO_SMALL) => {
+                if libnawah::channel_discard(c) {
+                    libnawah::channel_write(c, b"ERR BAD_REQUEST", &[]);
+                }
             }
             Err(_) => {}
         }

@@ -8,8 +8,8 @@
 #![no_main]
 
 use libnawah::{
-    rights, Handle, WaitEntry, ERR_PEER_CLOSED, SIGNAL_PEER_CLOSED, SIGNAL_READABLE,
-    TIMEOUT_FOREVER,
+    rights, Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, SIGNAL_PEER_CLOSED,
+    SIGNAL_READABLE, TIMEOUT_FOREVER,
 };
 use nawah_crypto::{ct_eq, kat, pbkdf2_hmac_sha256};
 
@@ -603,6 +603,14 @@ fn main() -> u64 {
             Err(ERR_PEER_CLOSED) => {
                 libnawah::handle_close(c);
                 clients[ci] = 0;
+            }
+            // Larger than any request, or carrying handles no request takes: discarded and
+            // refused, so this client's next request is read and the clients after it are not
+            // starved behind a message that never fits (review 2026-10-19, as svcmgr does).
+            Err(ERR_BUFFER_TOO_SMALL) => {
+                if libnawah::channel_discard(c) {
+                    libnawah::channel_write(c, b"ERR BAD_REQUEST", &[]);
+                }
             }
             Err(_) => {}
         }

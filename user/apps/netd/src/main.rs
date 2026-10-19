@@ -9,7 +9,8 @@
 #![no_main]
 
 use libnawah::{
-    perm, Handle, WaitEntry, ERR_PEER_CLOSED, ERR_SHOULD_WAIT, SIGNAL_PEER_CLOSED, SIGNAL_READABLE,
+    perm, Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_SHOULD_WAIT,
+    SIGNAL_PEER_CLOSED, SIGNAL_READABLE,
 };
 
 libnawah::entry!(main);
@@ -1906,6 +1907,14 @@ fn main() -> u64 {
                     if st.conns[cn].owner == ci {
                         st.tcp_abort(cn);
                     }
+                }
+            }
+            // Larger than any request, or carrying handles no request takes: discarded and
+            // refused, so this client's next request is read and the clients after it are not
+            // starved behind a message that never fits (review 2026-10-19, as svcmgr does).
+            Err(ERR_BUFFER_TOO_SMALL) => {
+                if libnawah::channel_discard(c) {
+                    libnawah::channel_write(c, b"ERR BAD_REQUEST", &[]);
                 }
             }
             Err(_) => {}

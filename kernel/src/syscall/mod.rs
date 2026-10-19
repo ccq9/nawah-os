@@ -581,32 +581,35 @@ fn dispatch_inner(nr: u64, args: [u64; 6]) -> i64 {
         SYS_PROCESS_SPAWN => flat(sys_process_spawn(args[0], args[1], args[2], args[3])),
         SYS_OBJECT_WAIT_MANY => flat(sys_object_wait_many(args[0], args[1], args[2])),
         SYS_CLOCK_TICKS => sched::ticks() as i64,
-        SYS_PROCESS_STATUS => flat(sys_process_status(args[0] as Handle)),
-        SYS_TOKEN_CREATE => flat(sys_token_create(
-            args[0] as Handle,
-            args[1],
-            args[2],
-            args[3],
-            args[4],
-        )),
-        SYS_TOKEN_INFO => flat(sys_token_info(args[0] as Handle, args[1])),
-        SYS_TOKEN_REVOKE => flat(sys_token_revoke(args[0] as Handle)),
-        SYS_HANDLE_TYPE => flat(sys_handle_type(args[0] as Handle)),
-        SYS_NIC_INFO => flat(sys_nic_info(args[0] as Handle, args[1])),
-        SYS_NIC_SEND => flat(sys_nic_send(args[0] as Handle, args[1], args[2])),
-        SYS_NIC_RECV => flat(sys_nic_recv(args[0] as Handle, args[1], args[2])),
-        SYS_KBD_READ => flat(sys_kbd_read(args[0] as Handle, args[1], args[2])),
-        SYS_SERIAL_READ => flat(sys_serial_read(args[0] as Handle, args[1], args[2])),
-        SYS_SERIAL_WRITE => flat(sys_serial_write(args[0] as Handle, args[1], args[2])),
+        SYS_PROCESS_STATUS => flat(as_handle(args[0]).and_then(sys_process_status)),
+        SYS_TOKEN_CREATE => flat(
+            as_handle(args[0])
+                .and_then(|h| sys_token_create(h, args[1], args[2], args[3], args[4])),
+        ),
+        SYS_TOKEN_INFO => flat(as_handle(args[0]).and_then(|h| sys_token_info(h, args[1]))),
+        SYS_TOKEN_REVOKE => flat(as_handle(args[0]).and_then(sys_token_revoke)),
+        SYS_HANDLE_TYPE => flat(as_handle(args[0]).and_then(sys_handle_type)),
+        SYS_NIC_INFO => flat(as_handle(args[0]).and_then(|h| sys_nic_info(h, args[1]))),
+        SYS_NIC_SEND => flat(as_handle(args[0]).and_then(|h| sys_nic_send(h, args[1], args[2]))),
+        SYS_NIC_RECV => flat(as_handle(args[0]).and_then(|h| sys_nic_recv(h, args[1], args[2]))),
+        SYS_KBD_READ => flat(as_handle(args[0]).and_then(|h| sys_kbd_read(h, args[1], args[2]))),
+        SYS_SERIAL_READ => {
+            flat(as_handle(args[0]).and_then(|h| sys_serial_read(h, args[1], args[2])))
+        }
+        SYS_SERIAL_WRITE => {
+            flat(as_handle(args[0]).and_then(|h| sys_serial_write(h, args[1], args[2])))
+        }
         SYS_SYSTEM_INFO => flat(sys_system_info(args[0], args[1])),
         SYS_DIR_LIST => flat(sys_dir_list(args[0], args[1], args[2], args[3])),
-        SYS_DISPLAY_INFO => flat(sys_display_info(args[0] as Handle, args[1])),
-        SYS_DISPLAY_MAP => flat(sys_display_map(args[0] as Handle)),
-        SYS_VMO_MAP => flat(sys_vmo_map(args[0] as Handle, args[1])),
+        SYS_DISPLAY_INFO => flat(as_handle(args[0]).and_then(|h| sys_display_info(h, args[1]))),
+        SYS_DISPLAY_MAP => flat(as_handle(args[0]).and_then(sys_display_map)),
+        SYS_VMO_MAP => flat(as_handle(args[0]).and_then(|h| sys_vmo_map(h, args[1]))),
         SYS_VMO_UNMAP => flat(sys_vmo_unmap(args[0])),
-        SYS_MOUSE_READ => flat(sys_mouse_read(args[0] as Handle, args[1], args[2])),
-        SYS_VMO_SIZE => flat(sys_vmo_size(args[0] as Handle)),
-        SYS_PROCESS_KILL => flat(sys_process_kill(args[0] as Handle)),
+        SYS_MOUSE_READ => {
+            flat(as_handle(args[0]).and_then(|h| sys_mouse_read(h, args[1], args[2])))
+        }
+        SYS_VMO_SIZE => flat(as_handle(args[0]).and_then(sys_vmo_size)),
+        SYS_PROCESS_KILL => flat(as_handle(args[0]).and_then(sys_process_kill)),
         _ => ERR_NOSYS,
     }
 }
@@ -646,7 +649,11 @@ fn sys_process_spawn(ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64>
     let mut moved: Vec<Entry> = Vec::with_capacity(nh);
     {
         let mut t = table.lock();
-        for &h in &handles {
+        for (i, &h) in handles.iter().enumerate() {
+            // A handle listed twice would be moved once and then fail, closing the first copy.
+            if handles[..i].contains(&h) {
+                return Err(ERR_BAD_HANDLE);
+            }
             t.get(h, Rights::TRANSFER).map_err(handle_err)?;
         }
         for &h in &handles {
