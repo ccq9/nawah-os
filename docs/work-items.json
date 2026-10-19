@@ -2830,7 +2830,9 @@
     "M6: ZWJ/ZWNJ stay inside the Arabic run in layout — test: layout output equals HarfBuzz on the ZWJ/ZWNJ cases",
     "M7: Alt+Tab visits every window in a stable order — test: three windows, three presses visit all three, a minimised one included",
     "M9: the session's own loss — test: drop the session while locked and after unlock; focus cleared, screen held, a new session starts at no_session",
-    "S-5: input reserves the display name for the compositor's manager identity; S-6: after a compositor restart while unlocked the keyboard goes back to it; S-7: per-client window and surface limits — each with a test"
+    "S-5: input reserves the display name for the compositor's manager identity; S-6: after a compositor restart while unlocked the keyboard goes back to it; S-7: per-client window and surface limits — each with a test",
+    "Out of order (OS-EXEC-AR §2.1; arena review م6): M1, M5, M6 and M7 code landed on main in 21a979f9, f74a43c9, 1abd1f94 and 41224c20 while WP-43 was planned and WP-40 active; re-verified on CI when WP-43 is activated. No further WP-43 work is merged before WP-40 is done.",
+    "Wording (arena review ع5; OS-EXEC-AR lines 89 and 154): the commit messages of 1abd1f94 and 41224c20 call separate-context model reviews 'independent review'; they are not independent, and their agreement is not evidence. Later records say 'separate-context review'."
    ],
    "acceptance": "each finding has a test that fails before its fix and passes after on CI; then REQ-M5-002, -004 and -006 return to verified_in_scope",
    "test_ids": [
