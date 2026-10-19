@@ -6,6 +6,7 @@
 //! drawn by the `display` service through the display object (display.md part B).
 
 use alloc::sync::Arc;
+use core::sync::atomic::{AtomicU32, Ordering};
 
 use crate::arch::mmio;
 use crate::bootinfo::Framebuffer;
@@ -66,6 +67,49 @@ pub fn display_object() -> Option<Arc<DisplayObject>> {
         g.get_or_insert_with(|| Arc::new(DisplayObject { info }))
             .clone(),
     )
+}
+
+/// VMOs over the frame that `display_map` handed out and that are still alive (held by a
+/// handle or a mapping). display.md v1.5.
+static FRAME_REFS: AtomicU32 = AtomicU32::new(0);
+/// Times the frame was cleared because nothing held it any more (diagnostics, tests).
+static CLEARS: AtomicU32 = AtomicU32::new(0);
+
+/// A VMO over the frame was created (`display_map`).
+pub fn frame_acquired() {
+    FRAME_REFS.fetch_add(1, Ordering::SeqCst);
+}
+
+/// A VMO over the frame is gone. When it was the last one — the compositor exited, crashed or
+/// was killed, and its process released its handles and mappings — the frame is cleared to
+/// black: the last picture it drew (the user's windows) must not stay on the screen while
+/// nobody draws, for instance while the session locks with the compositor down (display.md
+/// v1.5; M5 pre-gate review, M5). The release runs before the process's exit is published, so
+/// a restarted compositor maps the frame only after this clear. Returns whether it cleared.
+pub fn frame_released() -> bool {
+    if FRAME_REFS.fetch_sub(1, Ordering::SeqCst) != 1 {
+        return false;
+    }
+    let Some(i) = info() else {
+        return false;
+    };
+    fill(&i, 0, 0, i.width, i.height, 0x000000);
+    CLEARS.fetch_add(1, Ordering::SeqCst);
+    true
+}
+
+/// How many times the frame was cleared on release (read by the test kernel).
+#[cfg(feature = "ktest")]
+pub fn clears() -> u32 {
+    CLEARS.load(Ordering::SeqCst)
+}
+
+/// Test kernel only: holds one more reference on the frame for the rest of the test, so a
+/// probe's exit does not clear what the test and the lab's screendump still read
+/// (TST-M5-DISPLAY-BOOT, TST-M5-TEXT-GUEST).
+#[cfg(feature = "ktest")]
+pub fn pin_frame() {
+    frame_acquired();
 }
 
 /// Converts 0x00RRGGBB to the frame's pixel layout.

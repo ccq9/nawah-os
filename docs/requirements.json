@@ -1511,7 +1511,8 @@
    "test_ids": [
     "TST-M5-LOCK-SURVIVES",
     "TST-M5-AUTH-INPUT-ISOLATED",
-    "TST-M5-LOGIN-SCREEN"
+    "TST-M5-LOGIN-SCREEN",
+    "TST-M5-LOCK-DISPLAY-DOWN"
    ],
    "implementation_status": "partial",
    "evidence_refs": [
@@ -1643,13 +1644,14 @@
     "انتظار الجلسة لردّ compositor معلَّق يجمّدها",
     "القفل يُرفع أو الشاشة تكشف التطبيقات أثناء التعليق"
    ],
-   "acceptance": "process_kill + kill_edges + svc_watchdog + lock_hang + session_deadline (each named failure case has its test: a hung service — SVC-WATCHDOG; the session waiting on a hung component — SESSION-DEADLINE; the lock during a hang — LOCK-HANG)",
+   "acceptance": "process_kill + kill_edges + svc_watchdog + lock_hang + session_deadline (each named failure case has its test: a hung service — SVC-WATCHDOG; the session waiting on a hung component — SESSION-DEADLINE; the lock during a hang — LOCK-HANG; the lock with the compositor already down — LOCK-DISPLAY-DOWN)",
    "test_ids": [
     "TST-M5-PROCESS-KILL",
     "TST-M5-KILL-EDGES",
     "TST-M5-SVC-WATCHDOG",
     "TST-M5-LOCK-HANG",
-    "TST-M5-SESSION-DEADLINE"
+    "TST-M5-SESSION-DEADLINE",
+    "TST-M5-LOCK-DISPLAY-DOWN"
    ],
    "implementation_status": "partial",
    "evidence_refs": [
