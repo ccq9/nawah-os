@@ -1458,6 +1458,17 @@
    ]
   },
   {
+   "id": "TST-M5-ALT-TAB-CYCLE",
+   "requirement_ids": [
+    "REQ-M5-008"
+   ],
+   "layer": "guest",
+   "oracle": "REQ-M5-008 display.md v1.6 (M5 pre-gate review, M7): one kernel-side client of the compositor (SVC-DP.TXT) creates three 120×80 surfaces (1, 2, 3) and three windows in order (4, 5, 6); the newest (6) is focused. The lab presses Alt+Tab three times, each after the test has seen the previous move (STATUS focus): the focus goes 6 → 5 → 4 → 6 — every window visited, back to the start — because the cycle runs in a fixed order, from the focused window to the next older one and from the oldest to the newest (display.md v1.6), not in z-order (where each press raised the window it reached and the next press went straight back: 5, 6, 5); clean exit, no frame leaks; exit 33 (M5 pre-gate review, M7)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
    "id": "TST-M5-APP-HANG",
    "requirement_ids": [
     "REQ-M5-003"

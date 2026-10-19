@@ -189,6 +189,7 @@ pub fn run() -> ! {
         "mouse" => mouse(),
         "screen" => screen(),
         "window_states" => window_states(),
+        "alt_tab_cycle" => alt_tab_cycle(),
         "app_hang" => app_hang(),
         "app_oversize" => app_oversize(),
         "text_layer" => text_layer(),
@@ -5085,6 +5086,101 @@ fn screen() -> ! {
 /// TST-M5-WINDOW-STATES (REQ-M5-003): focus by request, by Alt+Tab and by click; z-order
 /// after a raise; resize (the client is told and attaches a new surface); minimise and
 /// restore; close; nothing left behind.
+/// TST-M5-ALT-TAB-CYCLE (REQ-M5-008; M5 pre-gate review, M7): with three windows, three
+/// Alt+Tab presses from the lab visit all three and come back — the cycle runs in a fixed order
+/// (display.md v1.6: from the focused window to the next older one, wrapping to the newest), not
+/// in z-order, where each press raised the window it reached and the next press went straight
+/// back to the one before. One kernel-side client (SVC-DP.TXT) owns windows created in order;
+/// the newest is focused. After each press the test waits for the focus to move (STATUS).
+fn alt_tab_cycle() -> ! {
+    let name = "alt_tab_cycle";
+    let (h, admin, clients, format) = display_env(
+        name,
+        b"/SYSTEM/SVC-DP.TXT",
+        &["auth", "input", "display"],
+        1,
+    );
+    let c = &clients[0];
+    let mut ev = Vec::new();
+    let mut vmos = Vec::new();
+    let mut sids = Vec::new();
+    for colour in [0xD04040, 0x40B060, 0x4060D0] {
+        let (vmo, entry) = kernel_surface(120, 80, format, colour);
+        vmos.push(vmo);
+        let r = drequest(c, b"CREATE_SURFACE 120 80", alloc::vec![entry], &mut ev);
+        sids.push(String::from(r.strip_prefix("OK ").unwrap_or("0")));
+    }
+    let mut wins = Vec::new();
+    for (i, sid) in sids.iter().enumerate() {
+        let r = drequest(
+            c,
+            alloc::format!("CREATE_WINDOW {} w{}", sid, i + 1).as_bytes(),
+            Vec::new(),
+            &mut ev,
+        );
+        wins.push(r);
+    }
+    let focus_of = |ev: &mut Vec<String>| -> String {
+        String::from(status_field(
+            &drequest(c, b"STATUS", Vec::new(), ev),
+            "focus=",
+        ))
+    };
+    let focus0 = focus_of(&mut ev);
+    kprintln!(
+        "OSX|{}|ktest|{}|windows={}|focus0={}|press=1|ready=1",
+        BUILD_ID,
+        name,
+        wins.join("/"),
+        focus0
+    );
+    if wins.iter().any(|w| !w.starts_with("OK ")) {
+        fail("the three windows were not created")
+    }
+    // Three presses: after each the focus moves; the next press waits for the move.
+    let mut visits = Vec::new();
+    let mut last = focus0.clone();
+    for press in 1..=3 {
+        let until = sched::ticks() + 60_000;
+        let mut now_focus = focus_of(&mut ev);
+        while now_focus == last && sched::ticks() < until {
+            let t = sched::ticks() + 20;
+            sched::poll_until(t, || false);
+            now_focus = focus_of(&mut ev);
+        }
+        visits.push(now_focus.clone());
+        last = now_focus;
+        if press < 3 {
+            kprintln!(
+                "OSX|{}|ktest|{}|press={}|ready=1",
+                BUILD_ID,
+                name,
+                press + 1
+            );
+        }
+    }
+    let mut seen: Vec<&String> = visits.iter().collect();
+    seen.sort();
+    seen.dedup();
+    kprintln!(
+        "OSX|{}|ktest|{}|visits={}|distinct={}|back_to_start={}",
+        BUILD_ID,
+        name,
+        visits.join(","),
+        seen.len(),
+        u8::from(visits.last() == Some(&focus0))
+    );
+    if seen.len() != 3 || visits.last() != Some(&focus0) {
+        fail("three Alt+Tab presses did not visit the three windows")
+    }
+    drop((ev, vmos, sids, wins, visits, admin, clients));
+    display_finish(
+        name,
+        h,
+        "three Alt+Tab presses visit all three windows in a fixed order and come back",
+    )
+}
+
 fn window_states() -> ! {
     let (h, admin, clients, format) = display_env(
         "window_states",

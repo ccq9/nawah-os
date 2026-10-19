@@ -1577,7 +1577,8 @@
    ],
    "acceptance": "window_a11y",
    "test_ids": [
-    "TST-M5-WINDOW-A11Y"
+    "TST-M5-WINDOW-A11Y",
+    "TST-M5-ALT-TAB-CYCLE"
    ],
    "implementation_status": "partial",
    "evidence_refs": [
