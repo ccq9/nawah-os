@@ -1,0 +1,9 @@
+$ python3 -I tools/fat32.py expect /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img /PERSIST.TXT NAWAH-FS-PERSIST|a583dfd57daf\n
+expect: /PERSIST.TXT size=30 OK
+
+[exit 0]
+$ fsck.fat -n /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img
+fsck.fat 4.2 (2021-01-31)
+/home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img: 56 files, 3120/128992 clusters
+
+[exit 0]
