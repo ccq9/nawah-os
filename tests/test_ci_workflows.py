@@ -9,6 +9,8 @@ commit, with scratch evidence only. `project.py import-ci-evidence` leaves no te
 the runner's evidence behind."""
 
 import json
+import os
+import shutil
 import pathlib
 import subprocess
 import sys
@@ -131,37 +133,67 @@ class Preflight(unittest.TestCase):
 
 
 class CiEvidenceImport(unittest.TestCase):
-    def test_import_leaves_no_temporary_copy(self):
-        # import-ci-evidence checks the runner's evidence branch out into a temporary directory
-        # and copies the runs from there; the copy goes when the import ends (2026-10-19: 44
-        # left-over copies, 21 GB, filled the workspace's disk).
-        base = pathlib.Path(tempfile.mkdtemp(prefix="nawah-import-"))
-        env = {"PATH": "/usr/bin:/bin", "HOME": str(base), "TMPDIR": str(base / "tmp"),
-               "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
-               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+    """import-ci-evidence checks the runner's evidence branch out into a temporary directory and
+    copies the runs from there: the copy goes when the import ends, whether it succeeds or not
+    (2026-10-19: 44 left-over copies, 21 GB, filled the workspace's disk), and the repository's
+    index is not touched (work the user had staged stays staged)."""
+
+    def setUp(self):
+        self.base = pathlib.Path(tempfile.mkdtemp(prefix="nawah-import-"))
+        self.addCleanup(shutil.rmtree, self.base, True)
+        base = self.base
+        self.env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(base), "TMPDIR": str(base / "tmp"),
+                    "GIT_CONFIG_NOSYSTEM": "1", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+                    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
         (base / "tmp").mkdir()
-        git = lambda cwd, *a: subprocess.run(["git", *a], cwd=cwd, env=env, check=True, capture_output=True)
-        git(base, "init", "-q", "--bare", "origin")
+        self.git(base, "init", "-q", "--bare", "origin")
         work = base / "work"
-        git(base, "init", "-q", "work")
-        run = work / "evidence" / "20260101T000000Z-deadbeef-001"
-        run.mkdir(parents=True)
-        (run / "verdict.json").write_text(json.dumps({"test_id": "TST-X", "verdict": "PASS"}))
-        (run / "run.json").write_text(json.dumps({"run_id": run.name}))
-        git(work, "checkout", "-q", "-b", "ci-evidence/42")
-        git(work, "add", "-A")
-        git(work, "commit", "-q", "-m", "evidence")
-        git(work, "push", "-q", str(base / "origin"), "ci-evidence/42")
-        root = base / "root"
-        git(base, "init", "-q", "root")
-        git(root, "remote", "add", "origin", str(base / "origin"))
-        (root / "evidence").mkdir()
-        r = subprocess.run([sys.executable, "-I", str(ROOT / "tools" / "project.py"), "import-ci-evidence", "--run", "42"],
-                           env={**env, "NAWAH_ROOT": str(root)}, capture_output=True, text=True)
+        self.git(base, "init", "-q", "work")
+        self.run_dir = work / "evidence" / "20260101T000000Z-deadbeef-001"
+        self.run_dir.mkdir(parents=True)
+        (self.run_dir / "verdict.json").write_text(json.dumps({"test_id": "TST-X", "verdict": "PASS"}))
+        (self.run_dir / "run.json").write_text(json.dumps({"run_id": self.run_dir.name}))
+        self.git(work, "checkout", "-q", "-b", "ci-evidence/42")
+        self.git(work, "add", "-A")
+        self.git(work, "commit", "-q", "-m", "evidence")
+        self.git(work, "push", "-q", str(base / "origin"), "ci-evidence/42")
+        # A runner branch without the evidence directory: the import's checkout fails.
+        self.git(work, "checkout", "-q", "--orphan", "ci-evidence/43")
+        self.git(work, "rm", "-q", "-r", "--cached", "evidence")
+        (work / "other").write_text("x")
+        self.git(work, "add", "other")
+        self.git(work, "commit", "-q", "-m", "no evidence")
+        self.git(work, "push", "-q", str(base / "origin"), "ci-evidence/43")
+        self.root = base / "root"
+        self.git(base, "init", "-q", "root")
+        self.git(self.root, "remote", "add", "origin", str(base / "origin"))
+        (self.root / "evidence").mkdir()
+        (self.root / "staged.txt").write_text("the user's work")
+        self.git(self.root, "add", "staged.txt")
+
+    def git(self, cwd, *args):
+        return subprocess.run(["git", *args], cwd=cwd, env=self.env, check=True, capture_output=True, text=True)
+
+    def run_import(self, run):
+        return subprocess.run([sys.executable, "-I", str(ROOT / "tools" / "project.py"), "import-ci-evidence", "--run", run],
+                              env={**self.env, "NAWAH_ROOT": str(self.root)}, capture_output=True, text=True)
+
+    def staged(self):
+        return self.git(self.root, "diff", "--cached", "--name-only").stdout.split()
+
+    def test_import_leaves_no_temporary_copy(self):
+        r = self.run_import("42")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("imported 1 run(s) from CI run 42", r.stdout)
-        self.assertTrue((root / "evidence" / run.name / "verdict.json").exists())
-        self.assertEqual(sorted(p.name for p in (base / "tmp").iterdir()), [])
+        self.assertTrue((self.root / "evidence" / self.run_dir.name / "verdict.json").exists())
+        self.assertEqual(sorted(p.name for p in (self.base / "tmp").iterdir()), [])
+        self.assertEqual(self.staged(), ["staged.txt"])
+
+    def test_failed_import_leaves_no_temporary_copy(self):
+        r = self.run_import("43")
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sorted(p.name for p in (self.base / "tmp").iterdir()), [])
+        self.assertEqual(self.staged(), ["staged.txt"])
 
 
 class MutationHarness(unittest.TestCase):
