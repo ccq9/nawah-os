@@ -2,14 +2,23 @@
 """Acceptance tests for `project.py validate-records` (OS-EXEC-AR 3.2, section 7.1):
 rejects a missing required field, a duplicate id, a missing reference, a dependency cycle,
 an illegal state transition and a stale/mismatched evidence verdict; accepts a valid set."""
-import copy, hashlib, json, os, shutil, subprocess, sys, tempfile, unittest
+import contextlib, copy, hashlib, importlib.util, io, json, os, shutil, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 TMP = Path(tempfile.mkdtemp(prefix="nawah-validate-"))
+# A private copy of project.py rooted at TMP. Under `unittest discover` another module has
+# usually imported `project` already (rooted at the repo), and NAWAH_ROOT must not leak into
+# the environment the other modules' subprocesses inherit.
+_prev_root = os.environ.get("NAWAH_ROOT")
 os.environ["NAWAH_ROOT"] = str(TMP)
-sys.path.insert(0, str(REPO / "tools"))
-import project  # noqa: E402
+_spec = importlib.util.spec_from_file_location("project_validate_tmp", REPO / "tools" / "project.py")
+project = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(project)
+if _prev_root is None:
+    del os.environ["NAWAH_ROOT"]
+else:
+    os.environ["NAWAH_ROOT"] = _prev_root
 
 SV = "1.0.0"
 
@@ -106,6 +115,37 @@ class ValidateRecords(unittest.TestCase):
         # suspended (warning, exit 0) by default and an error under --strict (gates, CI).
         self.assertEqual(project.validate_records(verbose=False), 0)
         self.assertEqual(project.validate_records(verbose=False, strict=True), 50)
+
+    def test_an_earlier_schema_error_does_not_skip_later_evidence(self):
+        # One evidence directory's schema error must not switch off the exit-code, digest and
+        # staleness checks of every directory validated after it.
+        r = base_records(); t2 = copy.deepcopy(r["tests"][0]); t2["id"] = "TST-M0-002"; r["tests"].append(t2)
+        r["requirements"][0]["test_ids"].append("TST-M0-002"); write_all(r)
+        bad = TMP / "evidence" / "20260101T000000Z-deadbeef-009"
+        if bad.exists(): shutil.rmtree(bad)
+        (TMP / make_evidence(r, "TST-M0-001")).rename(bad)
+        v = json.loads((bad / "verdict.json").read_text()); v["verdict"] = "BOGUS"; (bad / "verdict.json").write_text(json.dumps(v))
+        later = make_evidence(r, "TST-M0-002")
+        (TMP / later / "exit_code").write_text("1\n")  # disagrees with run.json
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [f"evidence/{bad.name}"]
+        r["tests"][1]["verdict"] = "PASS"; r["tests"][1]["evidence_refs"] = [later]
+        write_all(r)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(project.validate_records(verbose=True), 50)
+        self.assertIn("schema", out.getvalue())
+        self.assertIn(f"evidence {later}: exit_code file (1) != run.json (0)", out.getvalue())
+
+    def test_environment_failures_are_errors_not_failures(self):
+        # A command missing from the host and a toolchain that could not be downloaded are
+        # environment errors (ERROR), never product failures (FAIL).
+        log = TMP / "env.log"
+        self.assertEqual(project.run_logged(["/nonexistent/nawah-tool"], TMP, log, log, 10), project.E_NOT_FOUND)
+        self.assertIn("NOT_FOUND: /nonexistent/nawah-tool", log.read_text())
+        self.assertTrue(project.env_failed(project.E_NOT_FOUND, ""))
+        self.assertTrue(project.env_failed(1, "error: could not download file from 'https://static.rust-lang.org/x'"))
+        self.assertTrue(project.env_failed(1, "Proxy CONNECT aborted: unsuccessful tunnel"))
+        self.assertFalse(project.env_failed(1, "FAILED (failures=1)\nAssertionError: 2 != 3"))
 
     def test_valid_evidence_accepted_and_done_allowed(self):
         r = base_records(); write_all(r)

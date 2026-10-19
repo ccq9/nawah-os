@@ -42,6 +42,16 @@ def load_json(p: Path):
         return json.load(f)
 
 
+def write_json(p: Path, data):
+    """Write a record atomically: a crash or a concurrent reader never sees half a file
+    (a unique temporary in the same directory, flushed to disk, then renamed over `p`)."""
+    text = json.dumps(data, ensure_ascii=False, indent=1) + "\n"
+    tmp = p.with_name(f".{p.name}.{os.getpid()}.tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text); f.flush(); os.fsync(f.fileno())
+    os.replace(tmp, p)  # atomic on POSIX
+
+
 def safe_rel(rel: str) -> Path:
     """Resolve a repo-relative path; reject escapes and symlinks leaving ROOT."""
     if rel.startswith("/") or ".." in Path(rel).parts:
@@ -128,9 +138,10 @@ def check_evidence_dir(rel, pb: Problems, where, expect_test_id=None, current_di
     if missing:
         pb.err(where, f"evidence {rel} incomplete, missing {missing}"); return None
     run = load_json(p / "run.json"); verdict = load_json(p / "verdict.json")
+    before = len(pb.errors)
     validate_schema("evidence-run", run, pb, f"{rel}/run.json")
     validate_schema("evidence-verdict", verdict, pb, f"{rel}/verdict.json")
-    if pb.errors:
+    if len(pb.errors) > before:  # this directory's own schema errors; earlier ones elsewhere must not skip its checks
         return verdict
     if expect_test_id and verdict["test_id"] != expect_test_id:
         pb.err(where, f"evidence {rel} is for test {verdict['test_id']}, not {expect_test_id}")
@@ -393,6 +404,18 @@ def load_target(name):
     return load_json(p)
 
 
+# A run that never got to exercise the product (a tool missing from the host, a toolchain that
+# could not be downloaded, QEMU killed) is ERROR, never FAIL: a broken environment is not a
+# product defect (§2.2, §19). 127 is the shell's "command not found".
+E_NOT_FOUND = 127
+ENV_FAILURE = re.compile(r"^NOT_FOUND: |unsuccessful tunnel|could not download|failed to download|"
+                         r"error: toolchain '[^']*' is not installed", re.M)
+
+
+def env_failed(rc, text):
+    return rc == E_NOT_FOUND or bool(ENV_FAILURE.search(text))
+
+
 def run_logged(cmd, cwd, log_out, log_err, timeout):
     with open(log_out, "ab") as o, open(log_err, "ab") as e:
         o.write(f"$ {' '.join(cmd)}\n".encode()); o.flush()
@@ -401,6 +424,8 @@ def run_logged(cmd, cwd, log_out, log_err, timeout):
             return r.returncode
         except subprocess.TimeoutExpired:
             e.write(b"TIMEOUT\n"); return 124
+        except OSError as ex:
+            e.write(f"NOT_FOUND: {cmd[0]}: {ex}\n".encode()); return E_NOT_FOUND
 
 
 class HostServices:
@@ -791,6 +816,8 @@ def cmd_build(target_name) -> int:
                 rc = subprocess.run(cmd, cwd=ROOT, stdout=o, stderr=e, env=env, timeout=t["build"]["timeout_s"]).returncode
             except subprocess.TimeoutExpired:
                 e.write(b"TIMEOUT\n"); rc = 124
+            except OSError as ex:
+                e.write(f"NOT_FOUND: {cmd[0]}: {ex}\n".encode()); rc = E_NOT_FOUND
         if rc != 0:
             break
     write_run(d, rid, target_name, "build", cmds, rc, started)
@@ -800,7 +827,8 @@ def cmd_build(target_name) -> int:
     if rc == 0 and safe_rel(art).exists():
         observed += f" artifact={art} sha256={sha256_file(safe_rel(art))}"
         (ROOT / "build" / target_name / "build-id.txt").write_text(build_id + "\n")
-    verdict = "PASS" if rc == 0 and safe_rel(art).exists() else "FAIL"
+    verdict = "PASS" if rc == 0 and safe_rel(art).exists() else \
+        ("ERROR" if env_failed(rc, (d / "stderr.log").read_text(errors="replace")) else "FAIL")
     if verdict == "PASS":
         inputs[keep_artifact(d, rid, safe_rel(art))] = sha256_file(safe_rel(art))
         for extra in t["build"].get("extra_artifacts", []):
@@ -1014,13 +1042,21 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     with open(d / "host-check.log", "w") as hc:
         for check in case.get("host_checks", []):
             cmd = [substitute_host_arg(x, disk_path, build_id, d / "screen.ppm", text, d) for x in check]
-            r = subprocess.run(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            try:
+                r = subprocess.run(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=600)
+            except (OSError, subprocess.TimeoutExpired) as ex:
+                hc.write(f"$ {' '.join(cmd)}\n{ex}\n"); lab_errors.append(f"host_check could not run: {' '.join(cmd)}: {ex}")
+                continue
             hc.write(f"$ {' '.join(cmd)}\n{r.stdout}\n[exit {r.returncode}]\n")
             if r.returncode != 0:
                 missing.append(f"host_check failed: {' '.join(cmd)} -> {r.returncode}")
+    host_check_lab = [x for x in lab_errors if x.startswith("host_check could not run")]
     if rc < 0:
-        verdict, reason = "FAIL", f"LAB_ERROR: qemu died with signal {-rc} twice"
+        verdict, reason = "ERROR", f"LAB_ERROR: qemu died with signal {-rc} twice"
         print(f"LAB_ERROR qemu died with signal {-rc} twice ({case['test_id']})")
+    elif host_check_lab:
+        verdict, reason = "ERROR", "LAB_ERROR: a host check could not run"
+        print(f"LAB_ERROR a host check could not run ({case['test_id']})")
     elif rc == 124:
         verdict, reason = "FAIL", "timeout (hang)"
     elif rc != expected_rc:
@@ -1043,7 +1079,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
 
 HOST_SUITES = {
     "M0": [
-        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 17 cases incl. 6 required rejections and the dependency rule for active and done items",
+        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 19 cases incl. 6 required rejections, the dependency rule for active and done items, an earlier schema error that must not skip later evidence checks, and environment failures recorded as ERROR",
          "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
         {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist",
          "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md"], "input_globs": []},
@@ -1138,7 +1174,7 @@ def cmd_test_host_case(case) -> int:
         out = (d / "stdout.log").read_text(errors="replace") + (d / "stderr.log").read_text(errors="replace")
         # unittest prints "OK" on its own line; a cargo test case names its own marker.
         marker = case.get("pass_marker", "\nOK")
-        verdict = "PASS" if rc == 0 and marker in out else ("ERROR" if rc == 124 else "FAIL")
+        verdict = "PASS" if rc == 0 and marker in out else ("ERROR" if rc == 124 or env_failed(rc, out) else "FAIL")
         write_verdict(d, rid, case["id"], verdict, case["oracle"], f"exit 0 + {marker.strip()!r}", f"exit={rc}; tail={out.strip().splitlines()[-1] if out.strip() else ''}", inputs)
         print(f"{case['id']}: {verdict} run={rid}")
         attach_evidence(case["id"], rid, verdict)
@@ -1174,7 +1210,7 @@ def replace_evidence_ref(old_ref, new_ref, test_id, verdict):
                     if key in r and old_ref in r[key]:
                         r[key] = [new_ref if x == old_ref else x for x in r[key]]; changed = True
         if changed:
-            p.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+            write_json(p, data)
 
 
 def attach_evidence(test_id, rid, verdict):
@@ -1278,10 +1314,7 @@ def cmd_checkpoint(note=None) -> int:
         ps["lease"]["fencing_token"] = ps["checkpoint_generation"]
     seq = append_event("checkpoint", "saved", task_id=ps.get("current_task"), result=note)
     ps["event_sequence"] = seq
-    tmp = p.with_suffix(".json.tmp")
-    data = json.dumps(ps, ensure_ascii=False, indent=1) + "\n"
-    tmp.write_text(data, encoding="utf-8")
-    os.replace(tmp, p)  # atomic on POSIX
+    write_json(p, ps)
     print(f"checkpoint generation={ps['checkpoint_generation']} seq={seq} rev={rev[:8]} dirty={dirty}")
     return E_OK
 
