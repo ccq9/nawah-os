@@ -44,12 +44,15 @@ def load_json(p: Path):
 
 def write_json(p: Path, data):
     """Write a record atomically: a crash or a concurrent reader never sees half a file
-    (a unique temporary in the same directory, flushed to disk, then renamed over `p`)."""
+    (a unique temporary in the same directory, its data flushed, then renamed over `p`)."""
     text = json.dumps(data, ensure_ascii=False, indent=1) + "\n"
     tmp = p.with_name(f".{p.name}.{os.getpid()}.tmp")
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(text); f.flush(); os.fsync(f.fileno())
-    os.replace(tmp, p)  # atomic on POSIX
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(text); f.flush(); os.fsync(f.fileno())
+        os.replace(tmp, p)  # atomic on POSIX
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def safe_rel(rel: str) -> Path:
@@ -408,8 +411,10 @@ def load_target(name):
 # could not be downloaded, QEMU killed) is ERROR, never FAIL: a broken environment is not a
 # product defect (§2.2, §19). 127 is the shell's "command not found".
 E_NOT_FOUND = 127
-ENV_FAILURE = re.compile(r"^NOT_FOUND: |unsuccessful tunnel|could not download|failed to download|"
-                         r"error: toolchain '[^']*' is not installed", re.M)
+# Anchored at the start of a line: a product test's traceback quotes source lines indented, so
+# a test that merely mentions these words never turns its own failure into ERROR.
+ENV_FAILURE = re.compile(r"^(?:NOT_FOUND: |error: (?:could not|failed to) download|"
+                         r"error: toolchain '[^']*' is not installed)", re.M)
 
 
 def env_failed(rc, text):
@@ -1039,36 +1044,46 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     # Host checks (WP-18): commands run on the host against the disk image after the guest
     # run(s) — independent readers (tools/fat32.py, fsck.fat) confirm what the kernel wrote.
     disk_path = ROOT / "build" / target_name / "disk.img"
+    host_failures, host_check_lab = [], []
     with open(d / "host-check.log", "w") as hc:
         for check in case.get("host_checks", []):
             cmd = [substitute_host_arg(x, disk_path, build_id, d / "screen.ppm", text, d) for x in check]
             try:
                 r = subprocess.run(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=600)
-            except (OSError, subprocess.TimeoutExpired) as ex:
-                hc.write(f"$ {' '.join(cmd)}\n{ex}\n"); lab_errors.append(f"host_check could not run: {' '.join(cmd)}: {ex}")
+            except OSError as ex:
+                hc.write(f"$ {' '.join(cmd)}\n{ex}\n"); host_check_lab.append(f"host_check could not run: {' '.join(cmd)}: {ex}")
+                continue
+            except subprocess.TimeoutExpired:
+                hc.write(f"$ {' '.join(cmd)}\nTIMEOUT\n"); host_failures.append(f"host_check timed out: {' '.join(cmd)}")
                 continue
             hc.write(f"$ {' '.join(cmd)}\n{r.stdout}\n[exit {r.returncode}]\n")
             if r.returncode != 0:
-                missing.append(f"host_check failed: {' '.join(cmd)} -> {r.returncode}")
-    host_check_lab = [x for x in lab_errors if x.startswith("host_check could not run")]
+                host_failures.append(f"host_check failed: {' '.join(cmd)} -> {r.returncode}")
+    lab_errors += host_check_lab
+    # The guest's own verdict comes first: a host tool missing never hides a guest failure.
     if rc < 0:
         verdict, reason = "ERROR", f"LAB_ERROR: qemu died with signal {-rc} twice"
         print(f"LAB_ERROR qemu died with signal {-rc} twice ({case['test_id']})")
-    elif host_check_lab:
-        verdict, reason = "ERROR", "LAB_ERROR: a host check could not run"
-        print(f"LAB_ERROR a host check could not run ({case['test_id']})")
+    elif rc == E_NOT_FOUND and env_failed(rc, (d / "stderr.log").read_text(errors="replace")):
+        verdict, reason = "ERROR", "LAB_ERROR: qemu could not be started"
+        print(f"LAB_ERROR qemu could not be started ({case['test_id']})")
     elif rc == 124:
         verdict, reason = "FAIL", "timeout (hang)"
     elif rc != expected_rc:
         verdict, reason = "FAIL", f"exit {rc} != expected {expected_rc}"
     elif missing or present_forbidden:
         verdict, reason = "FAIL", f"missing markers {missing}; forbidden present {present_forbidden}"
+    elif host_check_lab:
+        verdict, reason = "ERROR", "LAB_ERROR: a host check could not run"
+        print(f"LAB_ERROR a host check could not run ({case['test_id']})")
+    elif host_failures:
+        verdict, reason = "FAIL", f"host checks {host_failures}"
     else:
         verdict, reason = "PASS", "exit code and serial markers match oracle"
     if lab_errors:
         reason += "; " + "; ".join(lab_errors)
     write_verdict(d, rid, case["test_id"], verdict, case["oracle"], f"exit={expected_rc}; markers={required}; forbidden={forbidden}; phases={len(phases)}",
-                  f"exit={rc}; serial_lines={len(text.splitlines())}; missing={missing}; forbidden_present={present_forbidden}",
+                  f"exit={rc}; serial_lines={len(text.splitlines())}; missing={missing + host_failures}; forbidden_present={present_forbidden}",
                   inputs, reason=reason)
     attach_evidence(case["test_id"], rid, verdict)
     print(f"{'boot' if plain_boot else case['id']} {target_name}: {verdict} ({reason}) run={rid}")
@@ -1079,7 +1094,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
 
 HOST_SUITES = {
     "M0": [
-        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 19 cases incl. 6 required rejections, the dependency rule for active and done items, an earlier schema error that must not skip later evidence checks, and environment failures recorded as ERROR",
+        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 20 cases incl. 6 required rejections, the dependency rule for active and done items, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL",
          "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
         {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision)",
          "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md"], "input_globs": []},

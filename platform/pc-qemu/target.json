@@ -1906,7 +1906,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=channel_chain"
         ],
-        "oracle": "4096 channels chained (each one's end carried in the next one's queue) tear down when the last end is dropped, with no recursion per link (it used to overflow the 32 KiB kernel stack): no fault, every channel and endpoint freed; exit 33",
+        "oracle": "4096 channels chained (each one's end carried in the next one's queue) tear down when the last end is dropped, with no recursion per link (it used to overflow the kernel stack): no fault, every channel and endpoint freed; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=channel_chain",

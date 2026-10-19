@@ -143,9 +143,21 @@ class ValidateRecords(unittest.TestCase):
         self.assertEqual(project.run_logged(["/nonexistent/nawah-tool"], TMP, log, log, 10), project.E_NOT_FOUND)
         self.assertIn("NOT_FOUND: /nonexistent/nawah-tool", log.read_text())
         self.assertTrue(project.env_failed(project.E_NOT_FOUND, ""))
-        self.assertTrue(project.env_failed(1, "error: could not download file from 'https://static.rust-lang.org/x'"))
-        self.assertTrue(project.env_failed(1, "Proxy CONNECT aborted: unsuccessful tunnel"))
+        self.assertTrue(project.env_failed(1, "info: syncing\nerror: could not download file from 'https://static.rust-lang.org/x'"))
+        self.assertTrue(project.env_failed(1, "error: toolchain '1.97.0-x86_64-unknown-linux-gnu' is not installed"))
         self.assertFalse(project.env_failed(1, "FAILED (failures=1)\nAssertionError: 2 != 3"))
+        # A product test that only quotes the words (a traceback shows its source line indented)
+        # keeps its FAIL.
+        self.assertFalse(project.env_failed(1, '  File "t.py", line 9\n    check("error: could not download")\nAssertionError'))
+
+    def test_a_missing_host_command_is_recorded_as_error(self):
+        r = base_records(); write_all(r)
+        case = {"id": "TST-M0-001", "command": ["/nonexistent/nawah-tool"], "oracle": "o", "inputs": []}
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(project.cmd_test_host_case(case), 1)
+        runs = sorted((TMP / "evidence").glob("*-host-test*")) or sorted(d for d in (TMP / "evidence").iterdir() if d.is_dir())
+        self.assertEqual(json.loads((runs[-1] / "verdict.json").read_text())["verdict"], "ERROR")
+        self.assertEqual(json.loads((TMP / "docs" / "tests.json").read_text())["records"][0]["verdict"], "ERROR")
 
     def test_valid_evidence_accepted_and_done_allowed(self):
         r = base_records(); write_all(r)

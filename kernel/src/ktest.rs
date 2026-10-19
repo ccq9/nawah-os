@@ -1390,7 +1390,8 @@ fn msg(byte: u8) -> Message {
 
 /// A chain of channels, each one's end carried in the next one's queue, tears down with no
 /// more kernel stack than one link: dropping it used to recurse once per link and overflow the
-/// 32 KiB thread stack (review 2026-10-19). Nothing survives the teardown.
+/// kernel stack (32 KiB per thread; 4096 links also overflow the 64 KiB boot stack this case runs
+/// on) (review 2026-10-19). Nothing survives the teardown.
 fn channel_chain() -> ! {
     const LINKS: usize = 4096;
     let obj0 = object::stats();

@@ -8,7 +8,7 @@
     "REQ-M0-005"
    ],
    "layer": "host_unit",
-   "oracle": "unittest exit 0 and 'OK' in output; 17 cases incl. 6 required rejections and the dependency rule for active and done items",
+   "oracle": "unittest exit 0 and 'OK' in output; 20 cases incl. 6 required rejections, the dependency rule for active and done items, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL",
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
@@ -22,7 +22,7 @@
     "REQ-M0-004"
    ],
    "layer": "host_unit",
-   "oracle": "required M0 files exist; boot contract has 8 sections; ADR cites existing evidence",
+   "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision)",
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
@@ -941,7 +941,7 @@
     "REQ-M3-005"
    ],
    "layer": "guest",
-   "oracle": "4096 channels chained (each one's end carried in the next one's queue) tear down when the last end is dropped, with no recursion per link (it used to overflow the 32 KiB kernel stack): no fault, every channel and endpoint freed; exit 33",
+   "oracle": "4096 channels chained (each one's end carried in the next one's queue) tear down when the last end is dropped, with no recursion per link (it used to overflow the kernel stack): no fault, every channel and endpoint freed; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "NOT_RUN",
    "evidence_refs": []
