@@ -1,6 +1,6 @@
 # عقد الـ shell التشخيصي — الإصدار 1.1 (WP-30 v1، WP-31 v1.1؛ ADR-0018؛ فوق services.md v1.3 وauth.md v1 وnet.md v1 وfiles.md v1.1 وsyscall.md v1.7)
 
-مجمَّد (أُغلق WP-30 بدليل CI run 39141804574): أي تغيير في الأوامر أو البروتوكول أو القناة = إصدار جديد مع سجل قرار؛ الإضافات إضافية فقط. الكود: `user/apps/sh` (الخدمة `sh`)، `kernel/src/arch/x86_64/com2.rs` (COM2)، `kernel/src/diag.rs` (الاستطلاع والكتابة)، `kernel/src/object/bytes.rs` (الكائن)، `tools/project.py` (`ConsoleSession`: جلسة المختبر)، `tests/test_console_session.py` (اختبار الأداة على المضيف).
+مجمَّد (أُغلق WP-30 بدليل CI run 39141804574): أي تغيير في الأوامر أو البروتوكول أو القناة = إصدار جديد مع سجل قرار؛ الإضافات إضافية فقط. الكود: `user/apps/sh` (الخدمة `sh`)، `kernel/src/arch/x86_64/serial2.rs` (COM2)، `kernel/src/diag.rs` (الاستطلاع والكتابة)، `kernel/src/object/bytes.rs` (الكائن)، `tools/project.py` (`ConsoleSession`: جلسة المختبر)، `tests/test_console_session.py` (اختبار الأداة على المضيف).
 
 ## 1. النموذج
 

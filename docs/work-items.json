@@ -1982,7 +1982,7 @@
     "docs/contracts/syscall.md",
     "docs/sources.json",
     "kernel/src/arch/mod.rs",
-    "kernel/src/arch/x86_64/com2.rs",
+    "kernel/src/arch/x86_64/serial2.rs",
     "kernel/src/arch/x86_64/irq.rs",
     "kernel/src/arch/x86_64/mod.rs",
     "kernel/src/diag.rs",

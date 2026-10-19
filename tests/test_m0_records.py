@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """TST-M0-002: the M0 documents required by prompt 3.2 section 7 exist and the boot contract carries the sections of section 7 (inputs/outputs, ownership, states, errors, trace contract, timeouts, versioning, enforcement tests)."""
-import unittest
+import re, subprocess, unittest
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = ["docs/ENVIRONMENT.md", "docs/PROJECT.md", "docs/requirements.json", "docs/stages.json", "docs/work-items.json",
@@ -8,6 +8,10 @@ REQUIRED = ["docs/ENVIRONMENT.md", "docs/PROJECT.md", "docs/requirements.json", 
             "docs/risks.json", "docs/reference/windows10.json", "docs/hardware.json", "docs/sources.json",
             "docs/project-state.json", "docs/automation.json", "docs/schemas/requirements.schema.json",
             "docs/prompt-errata.md", "docs/decisions-pending.json", "evidence/automation/events.jsonl", "tools/project.py"]
+# Windows refuses these names (with any extension) and characters, and folds case: a tracked path
+# that breaks one of these rules makes `git clone` fail on Windows (kernel/src/arch/x86_64/com2.rs did).
+WIN_RESERVED = re.compile(r"^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$", re.IGNORECASE)
+WIN_INVALID = re.compile(r'[<>:"|?*\\\x00-\x1f]')
 SECTIONS = ["المدخلات والمخرجات", "الملكية", "الحالات والانتقالات", "الأخطاء", "عقد الأثر", "المهلات", "التوافق والإصدار", "اختبارات الإنفاذ"]
 
 class M0Records(unittest.TestCase):
@@ -22,6 +26,16 @@ class M0Records(unittest.TestCase):
         self.assertIn("evidence/", text)
         for ev in [l.split("evidence/")[1].split(" ")[0].rstrip(")") for l in text.splitlines() if "evidence/" in l]:
             self.assertTrue((ROOT / "evidence" / ev.split("/")[0]).exists(), ev)
+    def test_every_path_checks_out_on_windows(self):
+        paths = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True).stdout.decode().split("\0")
+        paths = [p for p in paths if p]
+        self.assertTrue(paths)
+        bad = [p for p in paths if any(WIN_RESERVED.match(c) or WIN_INVALID.search(c) or c.endswith((".", " ")) for c in p.split("/"))]
+        self.assertEqual(bad, [])
+        folded = {}
+        for p in paths:
+            folded.setdefault(p.lower(), []).append(p)
+        self.assertEqual([v for v in folded.values() if len(v) > 1], [])
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

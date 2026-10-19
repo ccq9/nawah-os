@@ -23,13 +23,13 @@ pub fn serial_object() -> Arc<ByteObject> {
 
 /// Probes COM2 (loopback) and creates the object; true when the UART answered.
 pub fn init() -> bool {
-    let present = crate::arch::com2::init();
+    let present = crate::arch::serial2::init();
     let _ = serial_object();
     present
 }
 
 pub fn present() -> bool {
-    crate::arch::com2::present()
+    crate::arch::serial2::present()
 }
 
 /// Timer tick (CPU 0): up to 16 bytes (the UART FIFO) into the ring; waiters woken when the
@@ -43,7 +43,7 @@ pub fn tick_poll() {
         return;
     };
     for _ in 0..16 {
-        let Some(byte) = crate::arch::com2::poll_byte() else {
+        let Some(byte) = crate::arch::serial2::poll_byte() else {
             break;
         };
         for tid in obj.push(byte) {
@@ -58,7 +58,7 @@ pub fn write(bytes: &[u8]) -> usize {
     let _g = WRITER.lock();
     let mut n = 0;
     for &b in bytes {
-        if !crate::arch::com2::write_byte(b) {
+        if !crate::arch::serial2::write_byte(b) {
             break;
         }
         n += 1;
