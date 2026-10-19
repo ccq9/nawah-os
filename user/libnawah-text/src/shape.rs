@@ -2,8 +2,12 @@
 //! joining types (DerivedJoiningType.txt, Unicode 17.0; ArabicShaping rules R1–R7: a
 //! character joins its neighbour when both sides allow it, transparent characters are
 //! skipped), then the font's `GSUB` features applied in the OpenType order for the Arabic
-//! script: the form features `isol`, `fina`, `medi`, `init` (single substitutions) and the
-//! required ligatures `rlig` (lam-alef); in the form features, chaining contextual lookups of
+//! script: the form features `isol`, `fina`, `medi`, `init` (single substitutions), the
+//! composition `ccmp` (ligatures of two marks: shadda with kasra, hamza with a vowel) and the
+//! required ligatures `rlig` (lam-alef, across marks when the lookup ignores them). `ccmp`
+//! runs after the forms rather than first as in OpenType: the same result for the shipped
+//! font, whose `ccmp` joins marks only, which no form lookup reads. In the form features,
+//! chaining contextual lookups of
 //! format 3 (coverage based) are applied too, the context skipping marks when the lookup says
 //! so (GDEF classes). Contextual formats 1/2 and type 5 are not: the declared limit of
 //! text.md. Verified against HarfBuzz (TST-M5-SHAPING).
@@ -144,36 +148,47 @@ pub fn shape(font: &Font, text: &[u32], glyphs: &mut [u16], clusters: &mut [u16]
             }
         }
     }
-    // Required ligatures (lam-alef). A lookup that ignores marks matches across them (lam,
-    // a vowel, alef): the ligature takes the first component's place and the marks stay
-    // after it, in order (review M6: the ligature did not form with a mark on the lam).
+    // Mark compositions (`ccmp`: two marks drawn as one glyph; review M6), then the required
+    // ligatures (lam-alef). A lookup that ignores marks matches across them (lam, a vowel,
+    // alef): the ligature takes the first component's place and the marks stay after it, in
+    // order (review M6: the ligature did not form with a mark on the lam).
     let mut len = n;
-    let count = font.feature_lookups(b"arab", b"rlig", &mut lookups);
-    for &l in &lookups[..count] {
-        let skip_marks = font.lookup_flag(l) & 0x0008 != 0;
-        let mut at = [0usize; 8];
-        let mut i = 0;
-        while i < len {
-            if let Some((lig, k)) =
-                font.substitute_ligature(l, &glyphs[i..len], skip_marks, &mut at)
-            {
-                glyphs[i] = lig;
-                // Remove the components after the first, keeping what lies between them.
-                let mut w = i + 1;
-                let mut c = 1;
-                for r in i + 1..len {
-                    if c < k && r - i == at[c] {
-                        c += 1;
-                        continue;
-                    }
-                    glyphs[w] = glyphs[r];
-                    clusters[w] = clusters[r];
-                    w += 1;
-                }
-                len = w;
+    for feature in [b"ccmp", b"rlig"] {
+        let count = font.feature_lookups(b"arab", feature, &mut lookups);
+        for &l in &lookups[..count] {
+            if font.lookup_kind(l) == 4 {
+                len = ligatures(font, l, glyphs, clusters, len);
             }
-            i += 1;
         }
+    }
+    len
+}
+
+/// Applies the ligature lookup `l` along `glyphs[..len]` (each position once, left to
+/// right); the new length.
+fn ligatures(font: &Font, l: u16, glyphs: &mut [u16], clusters: &mut [u16], len: usize) -> usize {
+    let skip_marks = font.lookup_flag(l) & 0x0008 != 0;
+    let mut len = len;
+    let mut at = [0usize; 8];
+    let mut i = 0;
+    while i < len {
+        if let Some((lig, k)) = font.substitute_ligature(l, &glyphs[i..len], skip_marks, &mut at) {
+            glyphs[i] = lig;
+            // Remove the components after the first, keeping what lies between them.
+            let mut w = i + 1;
+            let mut c = 1;
+            for r in i + 1..len {
+                if c < k && r - i == at[c] {
+                    c += 1;
+                    continue;
+                }
+                glyphs[w] = glyphs[r];
+                clusters[w] = clusters[r];
+                w += 1;
+            }
+            len = w;
+        }
+        i += 1;
     }
     len
 }

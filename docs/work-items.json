@@ -2819,7 +2819,8 @@
     "WP-40"
    ],
    "inputs": [
-    "M5 pre-gate review 2026-10-19 (M5-gate-review.docx): findings M1–M3, M5–M7, M9, S-5–S-7"
+    "M5 pre-gate review 2026-10-19 (M5-gate-review.docx): findings M1–M3, M5–M7, M9, S-5–S-7",
+    "M6 code review 2026-10-19: lam+mark+alef does not form the lam-alef ligature; two marks the font composes (ccmp) are drawn apart; U+2060, U+00AD and LRM/RLM inside an Arabic word split it into runs"
    ],
    "actions": [
     "تقوية M5 بعد مراجعة ما قبل البوابة (2026-10-19)",
@@ -2830,7 +2831,8 @@
     "M6: ZWJ/ZWNJ stay inside the Arabic run in layout — test: layout output equals HarfBuzz on the ZWJ/ZWNJ cases",
     "M7: Alt+Tab visits every window in a stable order — test: three windows, three presses visit all three, a minimised one included",
     "M9: the session's own loss — test: drop the session while locked and after unlock; focus cleared, screen held, a new session starts at no_session",
-    "S-5: input reserves the display name for the compositor's manager identity; S-6: after a compositor restart while unlocked the keyboard goes back to it; S-7: per-client window and surface limits — each with a test"
+    "S-5: input reserves the display name for the compositor's manager identity; S-6: after a compositor restart while unlocked the keyboard goes back to it; S-7: per-client window and surface limits — each with a test",
+    "M6-b (code review): rlig across marks and ccmp applied — test: lam-mark-alef 216 cases and 192 mark-composition cases equal HarfBuzz; M6-c: invisible format characters (U+2060, U+00AD, LRM, RLM) stay inside the Arabic run — test: layout of a word containing each equals HarfBuzz"
    ],
    "acceptance": "each finding has a test that fails before its fix and passes after on CI; then REQ-M5-002, -004 and -006 return to verified_in_scope",
    "test_ids": [

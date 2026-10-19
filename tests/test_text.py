@@ -247,6 +247,20 @@ class Shaping(unittest.TestCase):
             print(f"shaping {label}: {len(texts) - len(bad)}/{len(texts)} equal to HarfBuzz")
             self.assertEqual(bad[:5], [])
 
+    def test_mark_ligatures(self):
+        # Two marks the font joins into one glyph (its `ccmp`: shadda with kasra, fathatan or
+        # kasratan; hamza above or below with a vowel), in either order where the font has both,
+        # on a letter alone and inside a word: the glyphs equal HarfBuzz's.
+        pairs = ["\u064B\u0654", "\u064B\u0651", "\u0654\u064F", "\u0654\u064C", "\u0654\u064E", "\u0654\u064B",
+                 "\u0654\u0652", "\u0655\u0650", "\u0655\u064D", "\u0650\u0651", "\u064D\u0651", "\u0651\u064B",
+                 "\u0651\u0650", "\u0651\u064D", "\u0651\u064E", "\u0651\u064F"]
+        texts = [p + l + m + s for l in "بسهل" for m in pairs for p, s in (("", ""), ("ب", "ب"), ("", "ا"))]
+        mine = [x.split() for x in textdump(["shape " + hexes(t) for t in texts])]
+        ref = self.harfbuzz(texts)
+        bad = [(t, a, b) for t, a, b in zip(texts, mine, ref) if a != b]
+        print(f"mark ligatures: {len(texts) - len(bad)}/{len(texts)} equal to HarfBuzz")
+        self.assertEqual(bad[:5], [])
+
     def test_lam_alef_with_marks(self):
         # Lam, a vowel mark (or shadda and a vowel), then alef or one of its hamza/madda forms:
         # the required lam-alef ligature still forms, the marks kept after it, as HarfBuzz does
