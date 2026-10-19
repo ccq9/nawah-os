@@ -1008,6 +1008,18 @@
       ],
       "limits": "describes the reference's policy and its purpose, not its implementation; the session design (input moves the focus to the session with the sequence, session.md) is this project's own",
       "verified": true
+    },
+    {
+      "id": "S77",
+      "title": "Microsoft Support — Keyboard shortcuts in Windows",
+      "url": "https://support.microsoft.com/en-us/windows/keyboard-shortcuts-in-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec",
+      "version": "page dated 2026-09-02 (applies to Windows 11 and Windows 10)",
+      "accessed": "2026-10-19",
+      "supports": [
+        "Alt+Tab: Switch between open windows. To cycle through multiple windows, continue to hold the Alt key and press Tab multiple times."
+      ],
+      "limits": "describes the shortcut, not its order: that the walk follows the stacking at the first Tab, most recently used first, is this project's design (ADR-0019 item 12); the reference's switcher overlay is not described here",
+      "verified": true
     }
   ]
 }

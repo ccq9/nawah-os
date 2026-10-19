@@ -67,6 +67,9 @@ const CURSOR_EDGE: u32 = 0x000000;
 const MOD_SHIFT: u32 = 1;
 const MOD_ALT: u32 = 4;
 const KEY_TAB: u32 = 0x0f;
+const KEY_ALT: u32 = 0x38;
+/// Right Alt (E0 38: extended keys carry bit 7, as the arrows do).
+const KEY_ALT_RIGHT: u32 = 0xb8;
 const KEY_F4: u32 = 0x3e;
 const KEY_F9: u32 = 0x43;
 const KEY_UP: u32 = 0xc8;
@@ -480,6 +483,10 @@ struct Compositor {
     /// A key whose press was a shortcut: its release is swallowed too, so no client sees
     /// half of it.
     consumed_key: Option<u32>,
+    /// An Alt+Tab walk in progress (v1.6): the reachable windows' ids as they were stacked at
+    /// the first Tab, the most recently used first, and where the walk is. It ends when Alt
+    /// is released, so the next Alt+Tab starts from the new stacking.
+    switch: Option<Switch>,
     /// The narrator client (display.md v1.1 §ب-1): announcements of the focused window go
     /// to it.
     narrator: Option<usize>,
@@ -495,6 +502,14 @@ struct Compositor {
     input_asked: bool,
     /// When the next `CONNECT input` may go out while the input channel is gone.
     input_retry: u64,
+}
+
+/// An Alt+Tab walk (v1.6): window ids from the top of the stack at the first Tab.
+struct Switch {
+    ids: [u32; MAX_WINDOWS],
+    n: usize,
+    /// The index the walk is at (the focused window when it started), or none.
+    at: Option<usize>,
 }
 
 impl Compositor {
@@ -1150,6 +1165,10 @@ impl Compositor {
             return;
         };
         let down = dir == b"down";
+        // Alt released (or no longer held): an Alt+Tab walk ends there (v1.6).
+        if mods & MOD_ALT == 0 || (!down && (code == KEY_ALT || code == KEY_ALT_RIGHT)) {
+            self.switch = None;
+        }
         if !down && self.consumed_key == Some(code) {
             self.consumed_key = None;
             return;
@@ -1157,23 +1176,56 @@ impl Compositor {
         if down && mods & MOD_ALT != 0 {
             match code {
                 KEY_TAB => {
-                    // The next cyclable window in z-order after the focused one (or the top
-                    // when nothing is focused); a minimised one is restored first (v1.3).
-                    if self.n_order > 0 {
-                        let base = self
-                            .focus
-                            .map(|wi| self.z_of(wi))
-                            .unwrap_or(self.n_order - 1);
-                        for step in 1..=self.n_order {
-                            let wi = self.order[(base + step) % self.n_order];
+                    // As on the reference (v1.6, review M7; Microsoft: "to cycle through
+                    // multiple windows, continue to hold the Alt key and press Tab multiple
+                    // times"): while Alt stays held, each Tab moves on through the windows as
+                    // they were stacked at the first Tab — the most recently used first — so
+                    // every window is reached; a single press goes back to the one used just
+                    // before. Before v1.6 each Tab worked from the stacking its predecessor
+                    // had just changed, so it went straight back and a third window was never
+                    // reached. A minimised one is restored first (v1.3); a held one is never
+                    // reached (v1.2).
+                    if self.switch.is_none() {
+                        let mut s = Switch {
+                            ids: [0; MAX_WINDOWS],
+                            n: 0,
+                            at: None,
+                        };
+                        for k in 0..self.n_order {
+                            let wi = self.order[k];
                             if self.cyclable(wi) {
-                                if self.windows[wi].minimized {
-                                    self.set_minimized(wi, false, now);
-                                } else {
-                                    self.focus_and_raise(wi, now);
+                                if self.focus == Some(wi) {
+                                    s.at = Some(s.n);
                                 }
-                                break;
+                                s.ids[s.n] = self.windows[wi].id;
+                                s.n += 1;
                             }
+                        }
+                        self.switch = Some(s);
+                    }
+                    let mut target = None;
+                    if let Some(s) = self.switch.as_ref() {
+                        for step in 1..=s.n {
+                            let i = match s.at {
+                                Some(a) => (a + step) % s.n,
+                                None => step - 1,
+                            };
+                            if let Some(wi) = self.window_by_id(s.ids[i]) {
+                                if self.cyclable(wi) && self.focus != Some(wi) {
+                                    target = Some((i, wi));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if let Some((i, wi)) = target {
+                        if let Some(s) = self.switch.as_mut() {
+                            s.at = Some(i);
+                        }
+                        if self.windows[wi].minimized {
+                            self.set_minimized(wi, false, now);
+                        } else {
+                            self.focus_and_raise(wi, now);
                         }
                     }
                     self.consumed_key = Some(code);
@@ -1839,6 +1891,7 @@ fn main() -> u64 {
         composed: 0,
         unresponsive: 0,
         consumed_key: None,
+        switch: None,
         narrator: None,
         fonts,
         text,
