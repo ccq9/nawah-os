@@ -1,0 +1,4 @@
+kernel/main.c:32:1: error: function declared 'noreturn' should not return [-Werror,-Winvalid-noreturn]
+   32 | }
+      | ^
+1 error generated.
