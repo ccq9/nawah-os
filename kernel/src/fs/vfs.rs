@@ -53,6 +53,23 @@ impl FileObject {
 impl Drop for FileObject {
     fn drop(&mut self) {
         LIVE_FILES.fetch_sub(1, Ordering::Relaxed);
+        // The last open over a node takes its entry with it (opens upgrade only under the
+        // table's lock, so the count cannot rise meanwhile).
+        let mut nodes = NODES.lock();
+        let last = Arc::strong_count(&self.node) == 1;
+        prune(&mut nodes, last.then_some(&self.node));
+    }
+}
+
+/// Forgets the nodes no open file holds (and `closing`, whose last open is going), and the
+/// table's storage once it is empty: a dead `Weak` keeps its node's allocation, so a closed
+/// file would otherwise leave heap behind (TST-M3-FD-LEAK balances frames).
+fn prune(nodes: &mut Vec<(EntryLoc, Weak<IrqSpinLock<Entry>>)>, closing: Option<&NodeRef>) {
+    nodes.retain(|(_, n)| {
+        n.strong_count() > 0 && closing.is_none_or(|c| n.as_ptr() != Arc::as_ptr(c))
+    });
+    if nodes.is_empty() {
+        *nodes = Vec::new();
     }
 }
 
@@ -127,7 +144,7 @@ pub fn open(path: &[u8], flags: u64) -> Result<FileRef, FsError> {
         }
         Ok(e)
     })?;
-    nodes.retain(|(_, n)| n.strong_count() > 0);
+    prune(&mut nodes, None);
     let node = match nodes
         .iter()
         .find(|(loc, _)| *loc == entry.loc)
@@ -144,7 +161,12 @@ pub fn open(path: &[u8], flags: u64) -> Result<FileRef, FsError> {
         let mut e = node.lock();
         if e.size > 0 {
             // Truncate to empty: free the chain, keep the entry (every open sees it).
-            super::with(|fs| fs.truncate(&mut e))?;
+            if let Err(err) = super::with(|fs| fs.truncate(&mut e)) {
+                drop(e);
+                drop(node);
+                prune(&mut nodes, None);
+                return Err(err);
+            }
         }
     }
     drop(nodes);
@@ -267,7 +289,7 @@ pub fn dir_list(path: &[u8], out: &mut [u8]) -> Result<usize, FsError> {
 pub fn unlink(path: &[u8]) -> Result<(), FsError> {
     check_path(path)?;
     let mut nodes = NODES.lock();
-    nodes.retain(|(_, n)| n.strong_count() > 0);
+    prune(&mut nodes, None);
     super::with(|fs| {
         let e = fs.lookup(path)?;
         if nodes.iter().any(|(loc, _)| *loc == e.loc) {
