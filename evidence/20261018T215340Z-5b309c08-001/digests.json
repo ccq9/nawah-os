@@ -1,0 +1,12 @@
+{
+ "user/libui/Cargo.toml": "563cb41c43f3c4f6bde9fb59e6bea0786fa8025413bfe3a2fd544bf80fdefaf9",
+ "user/libui/src/lib.rs": "15a8bef9c4f5e42183f8ee12a9221315258382251bcf90a3ff7efb66ec6d5c4a",
+ "user/libui/src/tests.rs": "17b4dd2fa7921660b07abb45ef2d085c0a33f062394dfe91975fcf118d705dd1",
+ "user/libnawah-text/src/bidi.rs": "c90c55187eb45e61eb0947fe32ffdf6463c67677d894a39670ec2abb788a1602",
+ "user/libnawah-text/src/font.rs": "be41ee698056131651ee176bf9da4fdaf9534f94959692e07f9031d573417bf6",
+ "user/libnawah-text/src/layout.rs": "484bc412fd8ce37dc2214993688439a1067b934b057fc3ff732624365eaa415e",
+ "user/libnawah-text/src/lib.rs": "d08f77a0142e15b8a2fa2cb5e24242fa8b1a712bdc733416f46c93188c5531cf",
+ "user/libnawah-text/src/raster.rs": "de7bb116c7ff51f0c335dcaa6a08104e35f278e7db6a047da3c1dd850ae6d7dd",
+ "user/libnawah-text/src/shape.rs": "c9e0ff687fbcbf8349e0a4b3cdb11697c29a8869dc55c80006bca978fdef1e43",
+ "user/libnawah-text/src/tables.rs": "136625d6a0be90d42b1347cacb4747f9535cce71195ecf88d6c8baad3d549e3b"
+}
