@@ -2172,6 +2172,41 @@
         ]
       },
       {
+        "id": "TST-M3-FILE-SHARED",
+        "test_id": "TST-M3-FILE-SHARED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=file_shared"
+        ],
+        "oracle": "files.md v1.2 (review 2026-10-19): two opens of /SHARED.TXT share its directory entry. A writes 2000 bytes; B opens with O_TRUNCATE: A sees size 0, B writes 10 bytes, A's write at its stale position 2000 is refused (K_E_FS_RANGE) instead of landing in the freed clusters; unlink while open is refused (K_E_FS_BUSY → ERR_ACCESS at the ABI); /OTHER.TXT created meanwhile holds its 1500 bytes and A reads B's 10 bytes back after a seek; after both closes both files are removed, every cluster is free again and no open file object is left; fsck.fat -n and tools/fat32.py check find the image consistent; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=file_shared",
+          "|ktest|file_shared|wrote_a=2000|size_seen_by_a=0|wrote_b=10|stale_write=K_E_FS_RANGE|busy=K_E_FS_BUSY|wrote_c=1500|shared_ok=1|other_ok=1|removed=1|synced=1|clusters_restored=1|live_files=0",
+          "|ktest|pass|opens of one file share its entry; an open file cannot be removed"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
         "id": "TST-M3-FAT32-PERSIST",
         "test_id": "TST-M3-FAT32-PERSIST",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

@@ -155,6 +155,7 @@ pub fn run() -> ! {
         "blk_persist_read" => blk_persist(false),
         "fat32_read" => fat32_read(),
         "fat32_write" => fat32_write(),
+        "file_shared" => file_shared(),
         "fat32_persist_write" => fat32_persist(true),
         "fat32_persist_read" => fat32_persist(false),
         "file_roundtrip" => file_app("file_roundtrip", crate::apps::FILE_ROUNDTRIP, 0x60),
@@ -2528,6 +2529,80 @@ fn fat32_write() -> ! {
         fail("unlink did not free the chain or the entry")
     }
     pass("FAT32 create/write/overwrite/unlink keep the volume consistent")
+}
+
+/// Two opens of one file share its directory entry (files.md v1.2, review 2026-10-19). A
+/// truncation through the second is seen by the first: its stale position is refused instead of
+/// writing into the freed chain, and after a seek it reads what the second wrote. Removing the
+/// file is refused while it is open. A file created meanwhile takes clusters of its own and the
+/// shared file keeps its content. After both closes the removal works and every cluster comes
+/// back; fsck.fat and tools/fat32.py then find the volume consistent. Before v1.2 each open
+/// kept its own copy of the entry, and a write through the stale one cross-linked the clusters
+/// another file had taken.
+fn file_shared() -> ! {
+    use crate::fs::vfs;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let free0 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    let rw = vfs::O_READ | vfs::O_WRITE;
+    let Ok(a) = vfs::open(b"/SHARED.TXT", rw | vfs::O_CREATE) else {
+        fail("open A failed")
+    };
+    let old = alloc::vec![b'A'; 2000];
+    let wrote_a = vfs::write(&a, &old);
+    let Ok(b) = vfs::open(b"/SHARED.TXT", rw | vfs::O_TRUNCATE) else {
+        fail("open B with truncation failed")
+    };
+    let size_seen_by_a = a.lock().node.lock().size;
+    let wrote_b = vfs::write(&b, b"fresh-data");
+    // A's position (2000) is past the new end: refused, not written into freed clusters.
+    let stale_write = vfs::write(&a, b"stale").err();
+    let busy = vfs::unlink(b"/SHARED.TXT").err();
+    // A file created now takes clusters of its own (the freed ones, very likely).
+    let Ok(c) = vfs::open(b"/OTHER.TXT", rw | vfs::O_CREATE) else {
+        fail("open C failed")
+    };
+    let wrote_c = vfs::write(&c, &alloc::vec![b'C'; 1500]);
+    let _ = vfs::seek(&a, 0);
+    let mut back = [0u8; 32];
+    let read_a = vfs::read(&a, &mut back);
+    let shared_ok = matches!(read_a, Ok(10)) && &back[..10] == b"fresh-data";
+    drop((a, b, c));
+    let mut other = alloc::vec![0u8; 1600];
+    let other_ok = vfs::open(b"/OTHER.TXT", vfs::O_READ)
+        .and_then(|f| vfs::read(&f, &mut other))
+        .is_ok_and(|n| n == 1500 && other[..1500].iter().all(|&x| x == b'C'));
+    let removed = vfs::unlink(b"/SHARED.TXT").is_ok() && vfs::unlink(b"/OTHER.TXT").is_ok();
+    let synced = vfs::sync().is_ok();
+    let free1 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    let live = vfs::live_files();
+    kprintln!(
+        "OSX|{}|ktest|file_shared|wrote_a={}|size_seen_by_a={}|wrote_b={}|stale_write={}|busy={}|wrote_c={}|shared_ok={}|other_ok={}|removed={}|synced={}|clusters_restored={}|live_files={}",
+        BUILD_ID,
+        wrote_a.map_or(-1, |n| n as i64),
+        size_seen_by_a,
+        wrote_b.map_or(-1, |n| n as i64),
+        stale_write.map_or("ok", |e| e.code()),
+        busy.map_or("ok", |e| e.code()),
+        wrote_c.map_or(-1, |n| n as i64),
+        u8::from(shared_ok),
+        u8::from(other_ok),
+        u8::from(removed),
+        u8::from(synced),
+        u8::from(free1 == free0),
+        live
+    );
+    if size_seen_by_a != 0 || stale_write != Some(FsError::Range) || !shared_ok {
+        fail("the first open did not see the truncation through the second")
+    }
+    if busy != Some(FsError::Busy) || !removed {
+        fail("an open file was removable, or a closed one was not")
+    }
+    if !other_ok || free1 != free0 || live != 0 || !synced {
+        fail("the other file's clusters or the volume's accounting were wrong")
+    }
+    pass("opens of one file share its entry; an open file cannot be removed")
 }
 
 /// File-level persistence across a QEMU restart: the write phase creates /PERSIST.TXT with the

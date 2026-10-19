@@ -44,6 +44,8 @@ pub enum FsError {
     DiskFull,
     Corrupt,
     Range,
+    /// The file is open: it cannot be removed (files.md v1.2).
+    Busy,
 }
 
 impl From<BlkError> for FsError {
@@ -66,6 +68,7 @@ impl FsError {
             FsError::DiskFull => "K_E_FS_DISK_FULL",
             FsError::Corrupt => "K_E_FS_CORRUPT",
             FsError::Range => "K_E_FS_RANGE",
+            FsError::Busy => "K_E_FS_BUSY",
         }
     }
 }

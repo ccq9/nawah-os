@@ -2888,7 +2888,7 @@
    ],
    "actions": [
     "صلاحية ملفات النظام (R-43)",
-    "files.md v1.2: /SYSTEM is readable and writable only by holders of a system-files authority the manager hands to system services; user processes open their own paths only",
+    "files.md v1.3: /SYSTEM is readable and writable only by holders of a system-files authority the manager hands to system services; user processes open their own paths only",
     "test: an ordinary process opening /SYSTEM/USERS.DB for reading and /SYSTEM/INPUTD.ELF for writing gets ERR_ACCESS; system services still start"
    ],
    "acceptance": "the file-authority test passes on CI and RSK-008 is closed",

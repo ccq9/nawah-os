@@ -397,6 +397,8 @@ fn fs_err(e: FsError) -> i64 {
         FsError::BadName => ERR_BAD_PATH,
         FsError::DiskFull => ERR_NO_SPACE,
         FsError::Range => ERR_INVALID,
+        // An open file cannot be removed (files.md v1.2), as on Windows.
+        FsError::Busy => ERR_ACCESS,
         FsError::NotMounted | FsError::Io(_) | FsError::BadBpb | FsError::Corrupt => ERR_IO,
     }
 }

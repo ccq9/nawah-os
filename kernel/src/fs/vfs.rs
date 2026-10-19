@@ -3,10 +3,11 @@
 //! the path or the handle first, and the file system (fs::fat32) does the rest. One volume,
 //! absolute paths, 8.3 names.
 
-use alloc::sync::Arc;
+use alloc::sync::{Arc, Weak};
+use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU32, Ordering};
 
-use super::fat32::{Entry, FsError};
+use super::fat32::{Entry, EntryLoc, FsError};
 use crate::sync::IrqSpinLock;
 
 static LIVE_FILES: AtomicU32 = AtomicU32::new(0);
@@ -25,17 +26,27 @@ pub const O_VALID: u64 = O_READ | O_WRITE | O_CREATE | O_TRUNCATE;
 /// Longest path accepted (bytes).
 pub const PATH_MAX: usize = 256;
 
-/// An open file: its directory entry (size and first cluster are refreshed on write) and the
-/// position shared by every handle to it.
+/// The directory entry of an open file, one per file however often it is open (review
+/// 2026-10-19): every open reads and writes through it, so a write or a truncation through one
+/// is seen by all and none writes back a stale size or first cluster — each open used to keep
+/// its own copy, and a write through an old one cross-linked clusters another file had taken.
+pub type NodeRef = Arc<IrqSpinLock<Entry>>;
+
+/// The nodes of the files open now, by the place of their directory entry. Weak: a node goes
+/// with the last open file over it. Lock order: this, then a node, then the volume.
+static NODES: IrqSpinLock<Vec<(EntryLoc, Weak<IrqSpinLock<Entry>>)>> =
+    IrqSpinLock::new("file_nodes", Vec::new());
+
+/// An open file: its file's shared node and the position shared by every handle to this open.
 pub struct FileObject {
-    pub entry: Entry,
+    pub node: NodeRef,
     pub pos: u64,
 }
 
 impl FileObject {
-    fn new(entry: Entry) -> FileObject {
+    fn new(node: NodeRef) -> FileObject {
         LIVE_FILES.fetch_add(1, Ordering::Relaxed);
-        FileObject { entry, pos: 0 }
+        FileObject { node, pos: 0 }
     }
 }
 
@@ -69,13 +80,14 @@ pub fn open(path: &[u8], flags: u64) -> Result<FileRef, FsError> {
     if flags & !O_VALID != 0 || flags & (O_READ | O_WRITE) == 0 {
         return Err(FsError::Range);
     }
+    let mut nodes = NODES.lock();
     let entry = super::with(|fs| {
         let found = match fs.lookup(path) {
             Ok(e) => Some(e),
             Err(FsError::NotFound) => None,
             Err(e) => return Err(e),
         };
-        let mut e = match found {
+        let e = match found {
             Some(e) => e,
             None if flags & O_CREATE != 0 => fs.create(path)?,
             None => return Err(FsError::NotFound),
@@ -83,13 +95,30 @@ pub fn open(path: &[u8], flags: u64) -> Result<FileRef, FsError> {
         if e.is_dir() {
             return Err(FsError::IsADirectory);
         }
-        if flags & O_TRUNCATE != 0 && e.size > 0 {
-            // Truncate to empty: free the chain, keep the entry.
-            fs.truncate(&mut e)?;
-        }
         Ok(e)
     })?;
-    Ok(Arc::new(IrqSpinLock::new("file", FileObject::new(entry))))
+    nodes.retain(|(_, n)| n.strong_count() > 0);
+    let node = match nodes
+        .iter()
+        .find(|(loc, _)| *loc == entry.loc)
+        .and_then(|(_, n)| n.upgrade())
+    {
+        Some(n) => n,
+        None => {
+            let n = Arc::new(IrqSpinLock::new("file_node", entry));
+            nodes.push((entry.loc, Arc::downgrade(&n)));
+            n
+        }
+    };
+    if flags & O_TRUNCATE != 0 {
+        let mut e = node.lock();
+        if e.size > 0 {
+            // Truncate to empty: free the chain, keep the entry (every open sees it).
+            super::with(|fs| fs.truncate(&mut e))?;
+        }
+    }
+    drop(nodes);
+    Ok(Arc::new(IrqSpinLock::new("file", FileObject::new(node))))
 }
 
 /// Reads at the shared position; returns the count (0 at end of file).
@@ -99,7 +128,10 @@ pub fn read(file: &FileRef, buf: &mut [u8]) -> Result<usize, FsError> {
     if pos >= u64::from(u32::MAX) {
         return Ok(0);
     }
-    let n = super::with(|fs| fs.read(&f.entry, pos as u32, buf))?;
+    let n = {
+        let e = f.node.lock();
+        super::with(|fs| fs.read(&e, pos as u32, buf))?
+    };
     f.pos += n as u64;
     Ok(n)
 }
@@ -108,12 +140,13 @@ pub fn read(file: &FileRef, buf: &mut [u8]) -> Result<usize, FsError> {
 pub fn write(file: &FileRef, data: &[u8]) -> Result<usize, FsError> {
     let mut f = file.lock();
     let pos = f.pos;
-    if pos > u64::from(f.entry.size) {
-        return Err(FsError::Range);
-    }
-    let mut entry = f.entry;
-    let n = super::with(|fs| fs.write(&mut entry, pos as u32, data))?;
-    f.entry = entry;
+    let n = {
+        let mut e = f.node.lock();
+        if pos > u64::from(e.size) {
+            return Err(FsError::Range);
+        }
+        super::with(|fs| fs.write(&mut e, pos as u32, data))?
+    };
     f.pos += n as u64;
     Ok(n)
 }
@@ -121,7 +154,7 @@ pub fn write(file: &FileRef, data: &[u8]) -> Result<usize, FsError> {
 /// Moves the shared position (absolute; at most the current size).
 pub fn seek(file: &FileRef, pos: u64) -> Result<u64, FsError> {
     let mut f = file.lock();
-    if pos > u64::from(f.entry.size) {
+    if pos > u64::from(f.node.lock().size) {
         return Err(FsError::Range);
     }
     f.pos = pos;
@@ -200,9 +233,18 @@ pub fn dir_list(path: &[u8], out: &mut [u8]) -> Result<usize, FsError> {
     })
 }
 
+/// Removes a file; refused (`Busy`) while any open file is over it (files.md v1.2).
 pub fn unlink(path: &[u8]) -> Result<(), FsError> {
     check_path(path)?;
-    super::with(|fs| fs.unlink(path).map(|_| ()))
+    let mut nodes = NODES.lock();
+    nodes.retain(|(_, n)| n.strong_count() > 0);
+    super::with(|fs| {
+        let e = fs.lookup(path)?;
+        if nodes.iter().any(|(loc, _)| *loc == e.loc) {
+            return Err(FsError::Busy);
+        }
+        fs.unlink(path).map(|_| ())
+    })
 }
 
 /// Makes everything written so far stable on the device.

@@ -15,7 +15,7 @@ pub const IMAGE_MAX_BYTES: usize = 4 * 1024 * 1024;
 /// Reads a whole file from the volume (for `elf::load`): `Range` when it exceeds the bound.
 pub fn read_image(path: &[u8]) -> Result<Vec<u8>, FsError> {
     let file = vfs::open(path, vfs::O_READ)?;
-    let size = file.lock().entry.size as usize;
+    let size = file.lock().node.lock().size as usize;
     if size > IMAGE_MAX_BYTES {
         return Err(FsError::Range);
     }

@@ -918,7 +918,8 @@
    "test_ids": [
     "TST-M3-FILE-ROUNDTRIP",
     "TST-M3-PATH-INVALID",
-    "TST-M3-FD-LEAK"
+    "TST-M3-FD-LEAK",
+    "TST-M3-FILE-SHARED"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [

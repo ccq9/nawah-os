@@ -973,6 +973,17 @@
    ]
   },
   {
+   "id": "TST-M3-FILE-SHARED",
+   "requirement_ids": [
+    "REQ-M3-008"
+   ],
+   "layer": "guest",
+   "oracle": "files.md v1.2 (review 2026-10-19): two opens of /SHARED.TXT share its directory entry. A writes 2000 bytes; B opens with O_TRUNCATE: A sees size 0, B writes 10 bytes, A's write at its stale position 2000 is refused (K_E_FS_RANGE) instead of landing in the freed clusters; unlink while open is refused (K_E_FS_BUSY → ERR_ACCESS at the ABI); /OTHER.TXT created meanwhile holds its 1500 bytes and A reads B's 10 bytes back after a seek; after both closes both files are removed, every cluster is free again and no open file object is left; fsck.fat -n and tools/fat32.py check find the image consistent; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
    "id": "TST-M3-FAT32-PERSIST",
    "requirement_ids": [
     "REQ-M3-007"
