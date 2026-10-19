@@ -510,13 +510,6 @@ struct Switch {
     n: usize,
     /// The index the walk is at (the focused window when it started), or none.
     at: Option<usize>,
-    /// The whole stacking at the first Tab (slots, top first) and the windows minimised then:
-    /// when Alt is released the walk is undone but for the window it ended on, which goes on
-    /// top — passing over a window does not move it, nor leave it restored.
-    order0: [usize; MAX_WINDOWS],
-    n0: usize,
-    minimized0: [u32; MAX_WINDOWS],
-    n_min0: usize,
 }
 
 impl Compositor {
@@ -1174,7 +1167,7 @@ impl Compositor {
         let down = dir == b"down";
         // Alt released (or no longer held): an Alt+Tab walk ends there (v1.6).
         if mods & MOD_ALT == 0 || (!down && (code == KEY_ALT || code == KEY_ALT_RIGHT)) {
-            self.end_switch(now);
+            self.switch = None;
         }
         if !down && self.consumed_key == Some(code) {
             self.consumed_key = None;
@@ -1197,17 +1190,9 @@ impl Compositor {
                             ids: [0; MAX_WINDOWS],
                             n: 0,
                             at: None,
-                            order0: self.order,
-                            n0: self.n_order,
-                            minimized0: [0; MAX_WINDOWS],
-                            n_min0: 0,
                         };
                         for k in 0..self.n_order {
                             let wi = self.order[k];
-                            if self.windows[wi].used && self.windows[wi].minimized {
-                                s.minimized0[s.n_min0] = self.windows[wi].id;
-                                s.n_min0 += 1;
-                            }
                             if self.cyclable(wi) {
                                 if self.focus == Some(wi) {
                                     s.at = Some(s.n);
@@ -1580,8 +1565,6 @@ impl Compositor {
                     out.put(b"ERR ACCESS");
                     return false;
                 }
-                // A walk in progress is dropped: the screen changes under it (v1.6).
-                self.switch = None;
                 match verb {
                     b"LOCKED" => self.locked = true,
                     b"UNLOCKED" => self.locked = false,
@@ -1758,48 +1741,7 @@ impl Compositor {
 
     /// The input service went away (crash or restart): its channel is dropped and a new one
     /// asked for (display.md v1.2); meanwhile no key or pointer event arrives.
-    /// Ends an Alt+Tab walk (v1.6): the window it ended on goes on top of the stacking as it
-    /// was at the first Tab (windows created since stay just under it), and windows that were
-    /// minimised then and were only passed over are minimised again.
-    fn end_switch(&mut self, now: u64) {
-        let Some(s) = self.switch.take() else {
-            return;
-        };
-        let last = self.focus;
-        let mut order = [0usize; MAX_WINDOWS];
-        let mut k = 0;
-        if let Some(f) = last {
-            order[k] = f;
-            k += 1;
-        }
-        for &wi in &self.order[..self.n_order] {
-            if Some(wi) != last && !s.order0[..s.n0].contains(&wi) {
-                order[k] = wi;
-                k += 1;
-            }
-        }
-        for &wi in &s.order0[..s.n0] {
-            if Some(wi) != last && self.order[..self.n_order].contains(&wi) {
-                order[k] = wi;
-                k += 1;
-            }
-        }
-        if k == self.n_order {
-            self.order[..k].copy_from_slice(&order[..k]);
-        }
-        for &id in &s.minimized0[..s.n_min0] {
-            if let Some(wi) = self.window_by_id(id) {
-                if Some(wi) != last && !self.windows[wi].minimized {
-                    self.set_minimized(wi, true, now);
-                }
-            }
-        }
-        self.damage(self.screen);
-    }
-
     fn input_lost(&mut self, now: u64) {
-        // A walk cannot see its Alt released any more (v1.6).
-        self.switch = None;
         libnawah::handle_close(self.input);
         self.input = 0;
         self.input_retry = now;
