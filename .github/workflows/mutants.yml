@@ -43,8 +43,10 @@ jobs:
           cat build/mutants-report.json || true
           cat build/mutants-m3-report.json || true
           cat build/mutants-m4-report.json || true
+      # A convenience copy, as in verify.yml: the ci-evidence branch below is the record.
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: mutants-${{ github.sha }}
           path: |
@@ -53,7 +55,7 @@ jobs:
             build/mutants-m3-report.json
             build/mutants-m4-report.json
             build/mutants-scratch/
-          retention-days: 90
+          retention-days: 7
       - name: Publish evidence on a ci-evidence branch
         if: always()
         run: |
