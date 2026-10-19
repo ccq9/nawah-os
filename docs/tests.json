@@ -35,7 +35,7 @@
     "REQ-M0-005"
    ],
    "layer": "host_unit",
-   "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged (9 cases, OK)",
+   "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004) (11 cases, OK)",
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1725,7 +1725,7 @@
     "REQ-M5-006"
    ],
    "layer": "security_access_perf",
-   "oracle": "SVC-LH.TXT (the SVC-SS.TXT stack but the compositor and the input service are watchdog-monitored, watchdog=200, on-failure): the lab signs in and presses Ctrl+Alt+Del with the spy focused (its count: the Ctrl and Alt presses, 2); before any freeze both components are ready with restarts=0; while locked the test wedges the live compositor with sched::freeze_named(DISPLAYD.ELF) — its threads are never woken, so it stops answering the watchdog's PING. No RESTART is driven by the test: the manager's watchdog alone misses the PONG, force-kills it (EXIT_KILLED=0x20000) and restarts it once (restarts=1, ready); the session stays locked and reconnects to the new compositor (`session|display=reconnected|n=2|state=locked|window=510,336,260,128`, STATE `OK locked user=admin changes=2 display=2 input=1 focus=session`), which holds two windows (the lock screen and the spy's new one: connections=2). Then the live input service is wedged the same way (INPUTD.ELF): the watchdog kills it (EXIT_KILLED) and restarts it once while the compositor is left alone (its restarts stay 1), and the session takes the keyboard back from the new input service still locked (`session|input=reconnected|n=2|state=locked`, STATE `OK locked user=admin changes=2 display=2 input=2 focus=session`); the spy still counts 2. A wrong password typed through the restarted input service is refused (`unlock=refused|answer=ERR ACCESS`, still locked), the right one unlocks (`OK unlocked user=admin changes=3 display=2 input=2 focus=display`) while the restarted compositor received no key at all (KEYS 0) and the spy still counts 2; `z` then reaches the spy (4) through both new services; the session's and the spy's traces equal platform/pc-qemu/expect/lock-hang.txt stream by stream; DISPLAYD.ELF and INPUTD.ELF are each spawned exactly twice (min and max count: the initial start and the one watchdog restart); the password never appears in the serial log; no frame leaks; exit 33",
+   "oracle": "SVC-LH.TXT (the SVC-SS.TXT stack but the compositor and the input service are watchdog-monitored, watchdog=200, on-failure): the lab signs in and presses Ctrl+Alt+Del with the spy focused (its count: the Ctrl and Alt presses, 2); before any freeze both components are ready with restarts=0; while locked the test wedges the live compositor with sched::freeze_named(DISPLAYD.ELF) — its threads are never woken, so it stops answering the watchdog's PING. No RESTART is driven by the test: the manager's watchdog alone misses the PONG, force-kills it (EXIT_KILLED=0x20000) and restarts it once (restarts=1, ready); the session stays locked and reconnects to the new compositor (`session|display=reconnected|n=2|state=locked|window=510,336,260,128`, STATE `OK locked user=admin changes=2 display=2 input=1 focus=session`), which holds two windows (the lock screen and the spy's new one: connections=2). Then the live input service is wedged the same way (INPUTD.ELF): the watchdog kills it (EXIT_KILLED) and restarts it once while the compositor is left alone (its restarts stay 1), and the session takes the keyboard back from the new input service still locked (`session|input=reconnected|n=2|state=locked`, STATE `OK locked user=admin changes=2 display=2 input=2 focus=session`); the spy still counts 2. A wrong password typed through the restarted input service is refused (`unlock=refused|answer=ERR ACCESS`, still locked), the right one unlocks (`OK unlocked user=admin changes=3 display=2 input=2 focus=display`) while the restarted compositor received no key at all (KEYS 0) and the spy still counts 2; `z` then reaches the spy (4) through both new services; the session's and the spy's traces equal platform/pc-qemu/expect/lock-hang.txt stream by stream; DISPLAYD.ELF and INPUTD.ELF are each spawned exactly twice (min and max count: the initial start and the one watchdog restart); the password never appears in the serial log; no frame leaks; exit 33. It takes no screendump: what the screen shows while a component hangs is TST-M5-SESSION-HANG's (WP-40, arena review ع4).",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1789,6 +1789,131 @@
    "layer": "guest",
    "oracle": "planned (M6): a file with an Arabic and mixed long name is created, listed, read and renamed through the VFS; fsck.fat and the host tool read the same long name back",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-LOCK-AUTH-HANG",
+   "requirement_ids": [
+    "REQ-M5-010",
+    "REQ-M5-006"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (WP-40; arena review ع3; DEC-004): signed in, authd frozen, Ctrl+Alt+Del: the session reaches state=locked within 500 ticks and the screendump shows only the lock screen (before: the session waited on auth with no deadline and the desktop stayed visible); sign-out with auth frozen shows the sign-in screen; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-UNLOCK-AUTH-HANG",
+   "requirement_ids": [
+    "REQ-M5-010",
+    "REQ-M5-006"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (WP-40; DEC-004): locked, authd frozen, the right password typed: the screen stays locked and no key reaches an application while auth does not answer; after authd is released (or restarted) the same password unlocks; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-SESSION-HANG",
+   "requirement_ids": [
+    "REQ-M5-010",
+    "REQ-M5-006"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (WP-40; WP-40's council verdict; arena review ع4): locked, a component frozen while the session's request to it is in flight: the session keeps serving, the lock holds, no key leaks to an application, the screendump shows only the lock screen, only the right password unlocks; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M3-VMO-MAP-RIGHTS",
+   "requirement_ids": [
+    "REQ-M3-005"
+   ],
+   "layer": "negative",
+   "oracle": "planned (WP-32 reopened; arena review K-3; DEC-004): a VMO handle with MAP|WRITE and no READ: vmo_map(prot=2) is refused with ERR_ACCESS (x86 has no write-only page, so a writable mapping is readable); with MAP|READ|WRITE it maps; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M3",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-NARRATOR-AUTHORITY",
+   "requirement_ids": [
+    "REQ-M5-005",
+    "REQ-M5-006"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (WP-43, finding M2): the spy asks NARRATOR and is refused, and hears nothing from the session's window; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-LIST-HASH-HELD",
+   "requirement_ids": [
+    "REQ-M5-006"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (WP-43, finding M3): during the lock the spy's LIST hash does not change while the password is typed; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-SESSION-LOSS",
+   "requirement_ids": [
+    "REQ-M5-006"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (WP-43, finding M9): the session dropped while locked and after unlock: focus cleared, the screen held, a new session starts at no_session; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-INPUT-NAME-RESERVED",
+   "requirement_ids": [
+    "REQ-M5-002"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (WP-43, finding S-5): a service other than the compositor's manager identity cannot register as display with input; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-FOCUS-AFTER-RESTART",
+   "requirement_ids": [
+    "REQ-M5-002"
+   ],
+   "layer": "service_integration",
+   "oracle": "planned (WP-43, finding S-6): after a compositor restart while unlocked the keyboard goes back to it; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-CLIENT-LIMITS",
+   "requirement_ids": [
+    "REQ-M5-003"
+   ],
+   "layer": "negative",
+   "oracle": "planned (WP-43, finding S-7): a client past its window and surface limits is refused and others are unaffected; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M5-FILE-AUTHORITY",
+   "requirement_ids": [
+    "REQ-M5-006"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (WP-44, RSK-008): an ordinary process opening /SYSTEM/USERS.DB for reading and /SYSTEM/INPUTD.ELF for writing gets ERR_ACCESS; system services still start; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   }

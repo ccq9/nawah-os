@@ -2680,15 +2680,20 @@
     "ktest fault: freeze a process by name (test kernel only); process names kept for diagnostics",
     "tests: TST-M5-PROCESS-KILL, TST-M5-KILL-EDGES, TST-M5-SVC-WATCHDOG, TST-M5-LOCK-HANG",
     "Review fixes 2026-10-19 (Docs review K1–K4, S1–S7, R4): kernel — a pending kill refuses a block or sleep under the scheduler lock (K1), a killed process reports EXIT_KILLED whatever its own exit code (K2), a frozen process's timed waits do not expire (ktest only, K3), an atomic pending-kill count spares the lock on the common path and the freeze check is ktest-only (K4); services.md v1.8 — a gone boot channel or an undeliverable PING is a hang, a passed watchdog deadline is always re-armed or cleared, queued PONGs are read before judging, a readiness timeout forces the process after STOP_GRACE, a service being killed is not ready, spaces after watchdog=<n> are separators, and an unsolicited PONG is a declared limit (S1–S7); tests — TST-M5-KILL-EDGES (new), PROCESS-KILL settles each child and checks the refused kill left it alive, PEER_CLOSED and a sleeping child, SVC-WATCHDOG adds a channel closer, an early hanger, a two-space line, a PONG count and a STOP grace lower bound, LOCK-HANG checks restarts=0 before the freezes and caps the spawn counts",
-    "Honesty audit 2026-10-19 (CI run 39189093802): PROCESS-KILL, SVC-WATCHDOG and LOCK-HANG (compositor then input frozen while locked) PASS; REQ-M5-010 stays partial because its named failure case — the session waiting on a hung component's reply — is untested and session.md v1.1 was not written. Council verdict: first establish from the code whether the session can block on a display/input reply; then TST-M5-SESSION-HANG (freeze while the session's request is in flight; session keeps serving, lock holds, no key leaks, screendump shows only the lock screen, only the right password unlocks) and session.md v1.1 either way; the session gets PING only with a test that kills it while locked and proves the ADR-0019 §5 rescue; then amend REQ-M5-010's acceptance and close"
+    "Honesty audit 2026-10-19 (CI run 39189093802): PROCESS-KILL, SVC-WATCHDOG and LOCK-HANG (compositor then input frozen while locked) PASS; REQ-M5-010 stays partial because its named failure case — the session waiting on a hung component's reply — is untested and session.md v1.1 was not written. Council verdict: first establish from the code whether the session can block on a display/input reply; then TST-M5-SESSION-HANG (freeze while the session's request is in flight; session keeps serving, lock holds, no key leaks, screendump shows only the lock screen, only the right password unlocks) and session.md v1.1 either way; the session gets PING only with a test that kills it while locked and proves the ADR-0019 §5 rescue; then amend REQ-M5-010's acceptance and close",
+    "DEC-004 (2026-10-19): closed list above; arena review ع2 (validator: done needs done dependencies — e39bd5dc), ع3 (lock locally first when auth hangs; session.md v1.2), ع4 (TST-M5-SESSION-HANG, REQ-M5-010 text), M64 (moved by 8297708d) and the CI head-commit rule"
    ],
-   "acceptance": "its five tests (PROCESS-KILL, KILL-EDGES, SVC-WATCHDOG, LOCK-HANG, SESSION-DEADLINE) PASS on CI with every earlier suite green; R-40 recorded as RSK-009 (mitigated); what the M5 pre-gate review found beyond it (lock with the compositor already down, a request in flight while locked) is WP-43's",
+   "acceptance": "closed list (DEC-004): its five tests (PROCESS-KILL, KILL-EDGES, SVC-WATCHDOG, LOCK-HANG, SESSION-DEADLINE), TST-M5-LOCK-AUTH-HANG, TST-M5-UNLOCK-AUTH-HANG and TST-M5-SESSION-HANG PASS on CI with every earlier suite green; REQ-M5-010's acceptance states exactly what these cover; mutant M64 applies again and TST-M4-MUTANTS passes with no invalid mutant; R-40 recorded as RSK-009 (mitigated). Anything found after DEC-004 goes to a new work item. (Before DEC-004 this text assigned the lock with the compositor down and a request in flight while locked to WP-43; WP-43's actions never listed them.)",
    "test_ids": [
     "TST-M5-PROCESS-KILL",
     "TST-M5-KILL-EDGES",
     "TST-M5-SVC-WATCHDOG",
     "TST-M5-LOCK-HANG",
-    "TST-M5-SESSION-DEADLINE"
+    "TST-M5-SESSION-DEADLINE",
+    "TST-M5-LOCK-AUTH-HANG",
+    "TST-M5-UNLOCK-AUTH-HANG",
+    "TST-M5-SESSION-HANG",
+    "TST-M4-MUTANTS"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
@@ -2813,7 +2818,8 @@
     "REQ-M5-006",
     "REQ-M5-007",
     "REQ-M5-008",
-    "REQ-M5-010"
+    "REQ-M5-010",
+    "REQ-M5-005"
    ],
    "depends_on": [
     "WP-40"
@@ -2846,7 +2852,13 @@
     "TST-M5-APP-OVERSIZE",
     "TST-M5-SVC-WATCHDOG",
     "TST-M5-LOCK-DISPLAY-DOWN",
-    "TST-M5-ALT-TAB-CYCLE"
+    "TST-M5-ALT-TAB-CYCLE",
+    "TST-M5-NARRATOR-AUTHORITY",
+    "TST-M5-LIST-HASH-HELD",
+    "TST-M5-SESSION-LOSS",
+    "TST-M5-INPUT-NAME-RESERVED",
+    "TST-M5-FOCUS-AFTER-RESTART",
+    "TST-M5-CLIENT-LIMITS"
    ]
   },
   {
@@ -2881,7 +2893,8 @@
    ],
    "acceptance": "the file-authority test passes on CI and RSK-008 is closed",
    "test_ids": [
-    "TST-M5-AUTH-INPUT-ISOLATED"
+    "TST-M5-AUTH-INPUT-ISOLATED",
+    "TST-M5-FILE-AUTHORITY"
    ]
   },
   {
