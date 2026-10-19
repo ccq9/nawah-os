@@ -644,6 +644,14 @@ fn main() -> u64 {
                         }
                     } else if &buf[..n] == b"STOP" {
                         return 0;
+                    } else if &buf[..n] == b"PING" {
+                        // Watchdog (services.md v1.7): answering PONG on the boot channel proves
+                        // the event loop still turns. An input service wedged in
+                        // `object_wait_many` never reaches this, so the manager kills and
+                        // restarts it (TST-M5-LOCK-HANG). A gone channel: the manager stopped us.
+                        if libnawah::channel_write(boot, b"PONG", &[]) == ERR_PEER_CLOSED {
+                            return 0;
+                        }
                     } else if nh == 1 {
                         libnawah::handle_close(hs[0]);
                     }

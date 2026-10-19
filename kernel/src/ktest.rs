@@ -5948,18 +5948,19 @@ fn lock_survives() -> ! {
     )
 }
 
-/// TST-M5-LOCK-HANG (REQ-M5-010, services.md v1.7, §8.7, §20 scenario): the compositor is
-/// watchdog-monitored (`watchdog=50`, `on-failure`). While the session is locked the test wedges
-/// the live compositor — `sched::freeze_named(b"DISPLAYD.ELF")`, after which its threads are
-/// never woken, exactly as a deadlocked or spinning compositor that stops turning its event
-/// loop. The manager's watchdog must miss the PONG, force-kill it (EXIT_KILLED), and restart it
-/// (restarts=1) with no RESTART driven by the test: recovery is autonomous. Throughout, the lock
-/// holds (the session reconnects to the new compositor still locked, `display=2`, `input=1` — the
-/// input service was never touched), the spy focused before the lock gets no key and the
-/// restarted compositor sees none while locked, a wrong password is refused and only the right
-/// one unlocks, and a key after the unlock reaches the spy through the new compositor. The
-/// session's and the spy's traces equal platform/pc-qemu/expect/lock-hang.txt; the password never
-/// reaches the log.
+/// TST-M5-LOCK-HANG (REQ-M5-010, services.md v1.7, §8.7, §20 scenario 8): the compositor and
+/// the input service are watchdog-monitored (`watchdog=200`, `on-failure`). While the session is
+/// locked the test wedges the live compositor — `sched::freeze_named(b"DISPLAYD.ELF")`, after
+/// which its threads are never woken, as a deadlocked compositor that stops turning its event
+/// loop — and, once it is back, the live input service the same way (`INPUTD.ELF`). For each,
+/// the manager's watchdog alone (no RESTART driven by the test) must miss the PONG, force-kill
+/// it (EXIT_KILLED) and restart it once (restarts=1). Throughout, the lock holds: the session
+/// reconnects to the new compositor (`display=2`) and to the new input service (`input=2`) still
+/// locked with the keyboard (`focus=session`), the spy focused before the lock gets no key, the
+/// restarted compositor sees none while locked, a wrong password typed through the restarted
+/// input service is refused and only the right one unlocks, and a key after the unlock reaches
+/// the spy through both new services. The session's and the spy's traces equal
+/// platform/pc-qemu/expect/lock-hang.txt; the password never reaches the log.
 fn lock_hang() -> ! {
     const EXIT_KILLED: u64 = 0x2_0000;
     let name = "lock_hang";
@@ -6001,7 +6002,7 @@ fn lock_hang() -> ! {
         .find(|l| l.name == "display")
         .cloned()
         .unwrap_or_default();
-    // The session reconnects to the new compositor while still locked; input was never touched.
+    // The session reconnects to the new compositor while still locked; input is untouched so far.
     let after = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
         r.contains(" display=2 ") && r.ends_with(" focus=session")
     });
@@ -6035,7 +6036,53 @@ fn lock_hang() -> ! {
             "the watchdog did not force-kill and restart the wedged compositor while the lock held",
         )
     }
-    // The lab: a wrong password (refused: still locked), then the right one.
+    // Now wedge the live input service the same way. While it is frozen no key can be routed;
+    // the watchdog must notice, force-kill it and restart it, and the session must take the
+    // keyboard back from the new input service while still locked.
+    let frozen_in = sched::freeze_named(b"INPUTD.ELF");
+    let lines_in = h.poll_list(sched::ticks() + 120_000, |l| {
+        l.iter()
+            .any(|x| x.name == "input" && x.state == "ready" && x.restarts == 1)
+    });
+    let iline = lines_in
+        .iter()
+        .find(|l| l.name == "input")
+        .cloned()
+        .unwrap_or_default();
+    let dline2 = lines_in
+        .iter()
+        .find(|l| l.name == "display")
+        .cloned()
+        .unwrap_or_default();
+    let after_in = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        r.contains(" input=2 ") && r.ends_with(" focus=session")
+    });
+    let spy_in = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r == "OK keys=2 focus=0 connections=2"
+    });
+    kprintln!(
+        "OSX|{}|ktest|lock_hang|frozen={}|killed=input:{}:{}:{:#x}|display_restarts={}|state={}|spy={}|phase=3|ready=1",
+        BUILD_ID,
+        u8::from(frozen_in),
+        iline.state,
+        iline.restarts,
+        iline.exit.unwrap_or(0),
+        dline2.restarts,
+        after_in,
+        spy_in
+    );
+    if !frozen_in
+        || iline.state != "ready"
+        || iline.restarts != 1
+        || iline.exit != Some(EXIT_KILLED)
+        || dline2.restarts != 1
+        || after_in != "OK locked user=admin changes=2 display=2 input=2 focus=session"
+        || spy_in != "OK keys=2 focus=0 connections=2"
+    {
+        fail("the watchdog did not force-kill and restart the wedged input service while the lock held")
+    }
+    // The lab, through the restarted input service: a wrong password (refused: still locked),
+    // then the right one.
     let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
         state_is(r, "unlocked", 3) && r.ends_with(" focus=display")
     });
@@ -6044,19 +6091,19 @@ fn lock_hang() -> ! {
         r == "OK keys=2 focus=1 connections=2"
     });
     kprintln!(
-        "OSX|{}|ktest|lock_hang|unlocked={}|display_keys={}|spy={}|phase=3|ready=1",
+        "OSX|{}|ktest|lock_hang|unlocked={}|display_keys={}|spy={}|phase=4|ready=1",
         BUILD_ID,
         unlocked,
         keys_locked,
         spy3
     );
-    if unlocked != "OK unlocked user=admin changes=3 display=2 input=1 focus=display"
+    if unlocked != "OK unlocked user=admin changes=3 display=2 input=2 focus=display"
         || keys_locked != 0
         || spy3 != "OK keys=2 focus=1 connections=2"
     {
         fail("the passwords typed on the lock screen reached the compositor or the spy")
     }
-    // The lab types `z`: through the surviving input service and the new compositor to the spy.
+    // The lab types `z`: through the new input service and the new compositor to the spy.
     let spy4 = poll_reply(&spy, b"COUNT", sched::ticks() + 60_000, |r| {
         r.starts_with("OK keys=4 ")
     });
@@ -6065,13 +6112,13 @@ fn lock_hang() -> ! {
         fail("keys did not reach the spy after the unlock")
     }
     drop((
-        locked, spy1, lines, dline, after, spy2, status, windows, ev, unlocked, spy3, spy4,
-        display, spy, session,
+        locked, spy1, lines, dline, after, spy2, status, windows, ev, lines_in, iline, dline2,
+        after_in, spy_in, unlocked, spy3, spy4, display, spy, session,
     ));
     display_finish(
         name,
         h,
-        "the watchdog force-killed and restarted the wedged compositor while the lock held, and only the right password opened it",
+        "the watchdog force-killed and restarted the wedged compositor and input service while the lock held, and only the right password opened it",
     )
 }
 
