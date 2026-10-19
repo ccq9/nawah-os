@@ -183,7 +183,8 @@ impl Layout {
         // of the Latin font, after a non-joining one (an Arabic-Indic digit, an Arabic comma),
         // or after one at another level — belongs to the run of the Arabic letter after it,
         // which it joins, and takes that letter's level (review M6: the letter was drawn
-        // isolated).
+        // isolated). It goes there only if that character can join: a letter, then a joiner,
+        // then a digit keeps the joiner (the letter takes its joining form).
         let mut i = 0;
         while i < n {
             if !is_joiner(self.text[i]) {
@@ -198,7 +199,11 @@ impl Layout {
                 || self.font_of[i - 1] != ARABIC
                 || shape::joining_type(self.text[i - 1]) == JT_U
                 || (j < n && run_level[i - 1] != run_level[j]);
-            if j < n && self.font_of[j] == ARABIC && before_cannot_join {
+            if j < n
+                && self.font_of[j] == ARABIC
+                && shape::joining_type(self.text[j]) != JT_U
+                && before_cannot_join
+            {
                 self.font_of[i..j].fill(ARABIC);
                 let level = run_level[j];
                 run_level[i..j].fill(level);
