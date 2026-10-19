@@ -1,0 +1,537 @@
+{
+ "threshold": 0.95,
+ "target": "pc-qemu",
+ "mutants": [
+  {
+   "id": "M50",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "object_wait_many's timeout never expires",
+   "killers": [
+    "TST-M4-WAIT-TIMEOUT"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-WAIT-TIMEOUT"
+   ],
+   "results": {
+    "TST-M4-WAIT-TIMEOUT": "FAIL"
+   },
+   "seconds": 110.7
+  },
+  {
+   "id": "M51",
+   "file": "kernel/src/object/token.rs",
+   "note": "token_revoke is a no-op",
+   "killers": [
+    "TST-M4-TOKEN-OBJECTS",
+    "TST-M4-SESSION-LOCK"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-TOKEN-OBJECTS",
+    "TST-M4-SESSION-LOCK"
+   ],
+   "results": {
+    "TST-M4-TOKEN-OBJECTS": "FAIL",
+    "TST-M4-SESSION-LOCK": "FAIL"
+   },
+   "seconds": 23.6
+  },
+  {
+   "id": "M52",
+   "file": "kernel/src/object/token.rs",
+   "note": "a token expires 1000 s late",
+   "killers": [
+    "TST-M4-TOKEN-OBJECTS"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-TOKEN-OBJECTS"
+   ],
+   "results": {
+    "TST-M4-TOKEN-OBJECTS": "FAIL"
+   },
+   "seconds": 16.0
+  },
+  {
+   "id": "M53",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "any handle mints tokens (the authority check removed; the waiter app probes it)",
+   "killers": [
+    "TST-M4-WAIT-TIMEOUT"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-WAIT-TIMEOUT"
+   ],
+   "results": {
+    "TST-M4-WAIT-TIMEOUT": "FAIL"
+   },
+   "seconds": 16.0
+  },
+  {
+   "id": "M54",
+   "file": "kernel/src/object/mod.rs",
+   "note": "handle_type reports the interface as a keyboard (the manager misroutes it)",
+   "killers": [
+    "TST-M4-DHCP",
+    "TST-M4-NET-LINK"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-DHCP",
+    "TST-M4-NET-LINK"
+   ],
+   "results": {
+    "TST-M4-DHCP": "FAIL",
+    "TST-M4-NET-LINK": "FAIL"
+   },
+   "seconds": 23.1
+  },
+  {
+   "id": "M55",
+   "file": "kernel/src/drivers/virtio_net.rs",
+   "note": "a full transmit ring drops the frame silently instead of Busy",
+   "killers": [
+    "TST-M4-NET-LIMITS"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-NET-LIMITS"
+   ],
+   "results": {
+    "TST-M4-NET-LIMITS": "FAIL"
+   },
+   "seconds": 16.1
+  },
+  {
+   "id": "M56",
+   "file": "kernel/src/net.rs",
+   "note": "the keyboard is never polled",
+   "killers": [
+    "TST-M4-KBD-SCANCODES"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-KBD-SCANCODES"
+   ],
+   "results": {
+    "TST-M4-KBD-SCANCODES": "FAIL"
+   },
+   "seconds": 36.0
+  },
+  {
+   "id": "M57",
+   "file": "kernel/src/diag.rs",
+   "note": "the console is never polled",
+   "killers": [
+    "TST-M4-SHELL-SVC",
+    "TST-M4-SHELL-LOGIN"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SHELL-SVC",
+    "TST-M4-SHELL-LOGIN"
+   ],
+   "results": {
+    "TST-M4-SHELL-SVC": "FAIL",
+    "TST-M4-SHELL-LOGIN": "FAIL"
+   },
+   "seconds": 195.5
+  },
+  {
+   "id": "M58",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "system_info reports the free frames as the total",
+   "killers": [
+    "TST-M4-SHELL-SVC"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SHELL-SVC"
+   ],
+   "results": {
+    "TST-M4-SHELL-SVC": "FAIL"
+   },
+   "seconds": 17.9
+  },
+  {
+   "id": "M59",
+   "file": "kernel/src/fs/vfs.rs",
+   "note": "dir_list lists directories as files",
+   "killers": [
+    "TST-M4-SHELL-SVC"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SHELL-SVC"
+   ],
+   "results": {
+    "TST-M4-SHELL-SVC": "FAIL"
+   },
+   "seconds": 17.8
+  },
+  {
+   "id": "M60",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "object_wait_many accepts a VMO",
+   "killers": [
+    "TST-M4-WAIT-TIMEOUT"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-WAIT-TIMEOUT"
+   ],
+   "results": {
+    "TST-M4-WAIT-TIMEOUT": "FAIL"
+   },
+   "seconds": 16.0
+  },
+  {
+   "id": "M61",
+   "file": "kernel/src/services.rs",
+   "note": "the console is handed to the manager only when absent",
+   "killers": [
+    "TST-M4-SHELL-SVC",
+    "TST-M1-BOOT"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SHELL-SVC",
+    "TST-M1-BOOT"
+   ],
+   "results": {
+    "TST-M4-SHELL-SVC": "FAIL",
+    "TST-M1-BOOT": "FAIL"
+   },
+   "seconds": 26.9
+  },
+  {
+   "id": "M62",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "the authority is never handed to auth",
+   "killers": [
+    "TST-M4-LOGIN"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-LOGIN"
+   ],
+   "results": {
+    "TST-M4-LOGIN": "FAIL"
+   },
+   "seconds": 16.4
+  },
+  {
+   "id": "M63",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "dependents start before their dependencies are ready",
+   "killers": [
+    "TST-M4-SVC-ORDER"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SVC-ORDER"
+   ],
+   "results": {
+    "TST-M4-SVC-ORDER": "FAIL"
+   },
+   "seconds": 16.1
+  },
+  {
+   "id": "M64",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "a readiness timeout is ignored",
+   "killers": [
+    "TST-M4-SVC-TIMEOUT"
+   ],
+   "status": "invalid",
+   "reason": "M64: pattern occurs 0 times in user/apps/svcmgr/src/main.rs (must be exactly once)"
+  },
+  {
+   "id": "M65",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "the restart limit is ignored (never given up)",
+   "killers": [
+    "TST-M4-SVC-RESTART"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SVC-RESTART"
+   ],
+   "results": {
+    "TST-M4-SVC-RESTART": "FAIL"
+   },
+   "seconds": 17.3
+  },
+  {
+   "id": "M66",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "the backoff does not double",
+   "killers": [
+    "TST-M4-SVC-RESTART"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SVC-RESTART"
+   ],
+   "results": {
+    "TST-M4-SVC-RESTART": "FAIL"
+   },
+   "seconds": 16.4
+  },
+  {
+   "id": "M67",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "a service connects to any service, declared or not",
+   "killers": [
+    "TST-M4-SHELL-SVC"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SHELL-SVC"
+   ],
+   "results": {
+    "TST-M4-SHELL-SVC": "FAIL"
+   },
+   "seconds": 18.5
+  },
+  {
+   "id": "M68",
+   "file": "user/apps/authd/src/main.rs",
+   "note": "any password is accepted",
+   "killers": [
+    "TST-M4-LOGIN",
+    "TST-M4-SHELL-LOGIN"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-LOGIN",
+    "TST-M4-SHELL-LOGIN"
+   ],
+   "results": {
+    "TST-M4-LOGIN": "FAIL",
+    "TST-M4-SHELL-LOGIN": "FAIL"
+   },
+   "seconds": 28.8
+  },
+  {
+   "id": "M69",
+   "file": "user/apps/authd/src/main.rs",
+   "note": "the attempt limit never delays",
+   "killers": [
+    "TST-M4-LOGIN"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-LOGIN"
+   ],
+   "results": {
+    "TST-M4-LOGIN": "FAIL"
+   },
+   "seconds": 19.9
+  },
+  {
+   "id": "M70",
+   "file": "user/apps/authd/src/main.rs",
+   "note": "LOGOUT does not revoke the token",
+   "killers": [
+    "TST-M4-SESSION-LOCK"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SESSION-LOCK"
+   ],
+   "results": {
+    "TST-M4-SESSION-LOCK": "FAIL"
+   },
+   "seconds": 17.1
+  },
+  {
+   "id": "M71",
+   "file": "user/apps/configd/src/main.rs",
+   "note": "the compare-and-set ignores the expected version",
+   "killers": [
+    "TST-M4-CONFIG-CAS"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-CONFIG-CAS"
+   ],
+   "results": {
+    "TST-M4-CONFIG-CAS": "FAIL"
+   },
+   "seconds": 17.5
+  },
+  {
+   "id": "M72",
+   "file": "user/apps/configd/src/main.rs",
+   "note": "a repeated request_id is applied again",
+   "killers": [
+    "TST-M4-CONFIG-RETRY"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-CONFIG-RETRY"
+   ],
+   "results": {
+    "TST-M4-CONFIG-RETRY": "FAIL"
+   },
+   "seconds": 17.3
+  },
+  {
+   "id": "M73",
+   "file": "user/apps/configd/src/main.rs",
+   "note": "any token may write the device store",
+   "killers": [
+    "TST-M4-AUTHZ-DENIED"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-AUTHZ-DENIED"
+   ],
+   "results": {
+    "TST-M4-AUTHZ-DENIED": "FAIL"
+   },
+   "seconds": 17.4
+  },
+  {
+   "id": "M74",
+   "file": "user/apps/configd/src/main.rs",
+   "note": "the user value takes precedence over the policy",
+   "killers": [
+    "TST-M4-POLICY-PRECEDENCE"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-POLICY-PRECEDENCE"
+   ],
+   "results": {
+    "TST-M4-POLICY-PRECEDENCE": "FAIL"
+   },
+   "seconds": 17.4
+  },
+  {
+   "id": "M75",
+   "file": "user/apps/configd/src/main.rs",
+   "note": "subscribers get a truncated CHANGED notification",
+   "killers": [
+    "TST-M4-CONFIG-NOTIFY"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-CONFIG-NOTIFY"
+   ],
+   "results": {
+    "TST-M4-CONFIG-NOTIFY": "FAIL"
+   },
+   "seconds": 17.5
+  },
+  {
+   "id": "M76",
+   "file": "user/apps/netd/src/main.rs",
+   "note": "IPv4 packets go out without a header checksum",
+   "killers": [
+    "TST-M4-DHCP"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-DHCP"
+   ],
+   "results": {
+    "TST-M4-DHCP": "FAIL"
+   },
+   "seconds": 22.5
+  },
+  {
+   "id": "M77",
+   "file": "user/apps/netd/src/main.rs",
+   "note": "the no-internet policy is not applied",
+   "killers": [
+    "TST-M4-NET-NO-INTERNET"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-NET-NO-INTERNET"
+   ],
+   "results": {
+    "TST-M4-NET-NO-INTERNET": "FAIL"
+   },
+   "seconds": 18.6
+  },
+  {
+   "id": "M78",
+   "file": "user/apps/netd/src/main.rs",
+   "note": "the retransmission timer never fires",
+   "killers": [
+    "TST-M4-TCP-RETRANSMIT"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-TCP-RETRANSMIT"
+   ],
+   "results": {
+    "TST-M4-TCP-RETRANSMIT": "FAIL"
+   },
+   "seconds": 103.3
+  },
+  {
+   "id": "M79",
+   "file": "user/apps/netd/src/main.rs",
+   "note": "an RTT sample is taken from a retransmitted segment (Karn's rule dropped)",
+   "killers": [
+    "TST-M4-TCP-RETRANSMIT"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-TCP-RETRANSMIT"
+   ],
+   "results": {
+    "TST-M4-TCP-RETRANSMIT": "FAIL"
+   },
+   "seconds": 19.0
+  },
+  {
+   "id": "M80",
+   "file": "user/apps/sh/src/main.rs",
+   "note": "the shell sends a protected request without the session token",
+   "killers": [
+    "TST-M4-SHELL-LOGIN"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SHELL-LOGIN"
+   ],
+   "results": {
+    "TST-M4-SHELL-LOGIN": "FAIL"
+   },
+   "seconds": 19.2
+  },
+  {
+   "id": "M81",
+   "file": "user/apps/sh/src/main.rs",
+   "note": "the prompt does not show the session's user",
+   "killers": [
+    "TST-M4-SHELL-LOGIN"
+   ],
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-SHELL-LOGIN"
+   ],
+   "results": {
+    "TST-M4-SHELL-LOGIN": "FAIL"
+   },
+   "seconds": 102.5
+  }
+ ],
+ "started": "2026-10-19T09:22:26Z",
+ "valid": 31,
+ "killed": 31,
+ "survived": [],
+ "declared_killers_missed": [],
+ "invalid": [
+  "M64"
+ ],
+ "ratio": 1.0,
+ "finished": "2026-10-19T09:39:47Z"
+}
