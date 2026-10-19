@@ -4988,6 +4988,117 @@
         }
       },
       {
+        "id": "TST-M5-SESSION-HANG",
+        "test_id": "TST-M5-SESSION-HANG",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=session_hang"
+        ],
+        "oracle": "REQ-M5-010, REQ-M5-006 session.md v1.1/v1.2 (arena review ع4; WP-40 council verdict): SVC-SG.TXT (the SVC-SS.TXT stack, but the compositor is watchdog-monitored with watchdog=8000 — longer than the session's REQUEST_DEADLINE of 5000 — and restarts on failure). The lab signs in and presses Ctrl+Alt+Del with the spy focused (its count: 2); the display is ready with restarts=0. The test freezes the live compositor (sched::freeze_named(DISPLAYD.ELF)); the lab types a wrong password: the session redraws its lock screen through the frozen compositor and that request stays unanswered until its deadline (`session|display=timed_out|waited=`), then auth's refusal is shown (`unlock=refused|answer=ERR ACCESS`). Until the watchdog restarts the compositor every STATE is answered within 7000 ticks (one deadline and slack) and says `locked`, and the frame never shows a pixel of the spy's window. The watchdog force-kills the hung compositor (EXIT_KILLED=0x20000) and restarts it once; the session reconnects still locked (`focus=session`), the new compositor holds the lock screen and the spy's window (windows=2) and received no key, the spy still counts 2. The right password then unlocks (changes=3) with no key reaching the spy, and `z` reaches it (keys=4). DISPLAYD.ELF is spawned exactly twice; the password never appears in the serial log; the manager exits 0, no process left, no frame leak; exit 33. The freeze comes before the request is sent: the request is in flight to a component that will not answer.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=session_hang",
+          "|ktest|session_hang|services=5|ready=1",
+          "|ktest|session_hang|display_frozen=1|phase=1|ready=1",
+          "|text=session|display=timed_out|waited=",
+          "|text=session|unlock=refused|answer=ERR ACCESS",
+          "|ktest|session_hang|killed=display:ready:1:0x20000|state_rtt_ok=1|always_locked=1|spy_px_frozen=0|state=OK locked user=admin changes=2 display=",
+          " input=1 focus=session|windows=2|display_keys=0|spy=OK keys=2 focus=0 connections=2|phase=2|ready=1",
+          "|ktest|session_hang|unlocked_ok=1|spy=OK keys=2 focus=1 connections=2|phase=3|ready=1",
+          "|ktest|session_hang|spy=OK keys=4 focus=1 connections=2",
+          "|ktest|session_hang|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|session_hang|frames_delta=0",
+          "|ktest|pass|with its request to the hung compositor in flight the session kept serving and the lock held; only the right password opened it"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1"
+        ],
+        "min_counts": {
+          "|path=/SYSTEM/DISPLAYD.ELF|": 2
+        },
+        "max_counts": {
+          "|path=/SYSTEM/DISPLAYD.ELF|": 2
+        },
+        "timeout_s": 900,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|focus=display|n=1",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|session_hang|display_frozen=1|",
+              "commands": [
+                "sendkey w",
+                "sendkey r",
+                "sendkey o",
+                "sendkey n",
+                "sendkey g",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": " focus=0 connections=2|phase=2|ready=1",
+              "commands": [
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|session_hang|unlocked_ok=1|",
+              "commands": [
+                "sendkey z"
+              ],
+              "gap_s": 1.0
+            }
+          ]
+        }
+      },
+      {
         "id": "TST-M5-LOCK-DISPLAY-DOWN",
         "test_id": "TST-M5-LOCK-DISPLAY-DOWN",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

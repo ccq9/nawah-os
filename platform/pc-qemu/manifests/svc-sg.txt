@@ -1,0 +1,11 @@
+# TST-M5-SESSION-HANG (WP-40, session.md v1.1/v1.2): the session stack of TST-M5-LOCK-SURVIVES, but
+# the compositor is watchdog-monitored with a period (8000) longer than the session's
+# REQUEST_DEADLINE (5000) and restarts on failure. While the session is locked the test wedges the
+# live compositor (sched::freeze_named); the session's next request to it (the lock screen
+# redrawn under the lab's keys) stays unanswered until its deadline, and only then does the
+# manager's watchdog force-kill and restart the compositor.
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 on-failure 3 10 watchdog=8000
+session /SYSTEM/SESSIOND.ELF auth,input,display 5000 never 0 0
+spy /SYSTEM/SPY.ELF display 5000 never 0 0

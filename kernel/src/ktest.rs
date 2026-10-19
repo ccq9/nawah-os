@@ -209,6 +209,7 @@ pub fn run() -> ! {
         "lock_hang" => lock_hang(),
         "lock_auth_hang" => lock_auth_hang(),
         "unlock_auth_hang" => unlock_auth_hang(),
+        "session_hang" => session_hang(),
         "lock_display_down" => lock_display_down(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
@@ -7055,6 +7056,177 @@ fn unlock_auth_hang() -> ! {
         name,
         h,
         "the unlock waited for the frozen auth without holding the session, and the same password opened it once auth was released",
+    )
+}
+
+/// TST-M5-SESSION-HANG (REQ-M5-010, REQ-M5-006; session.md v1.1/v1.2, arena review ع4): a
+/// component hangs with the session's request to it in flight. Locked, the test freezes the live
+/// compositor (SVC-SG.TXT: watchdog=8000, longer than REQUEST_DEADLINE); the lab's wrong password
+/// makes the session redraw its lock screen through it, and that request stays unanswered until
+/// the session's deadline (`session|display=timed_out`). Meanwhile the session keeps answering
+/// STATE (never later than one deadline), the frame keeps the lock screen and no pixel of the
+/// spy's window, and no key reaches the spy. The watchdog then force-kills and restarts the
+/// compositor; the session reconnects still locked, and only the right password opens it.
+fn session_hang() -> ! {
+    const EXIT_KILLED: u64 = 0x2_0000;
+    const SPY_COLOUR: u32 = 0x2E8B57;
+    let name = "session_hang";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SG.TXT",
+        &["auth", "input", "display", "session", "spy"],
+    );
+    let spy = svc_connect(&h, "spy");
+    kprintln!("OSX|{}|ktest|{}|services=5|ready=1", BUILD_ID, name);
+    // The lab signs in, then Ctrl+Alt+Del (the spy, focused, counts the Ctrl and Alt presses).
+    let locked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "locked", 2)
+    });
+    let spy1 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r == "OK keys=2 focus=0 connections=1"
+    });
+    let pre = h.poll_list(sched::ticks(), |_| true);
+    let pd = svc_find(&pre, "display");
+    if !locked.starts_with("OK locked user=admin changes=2 ")
+        || spy1 != "OK keys=2 focus=0 connections=1"
+        || pd.state != "ready"
+        || pd.restarts != 0
+    {
+        kprintln!(
+            "OSX|{}|ktest|{}|locked={}|spy={}|display={}:{}",
+            BUILD_ID,
+            name,
+            locked,
+            spy1,
+            pd.state,
+            pd.restarts
+        );
+        fail("the secure attention sequence did not lock a healthy session")
+    }
+    drop((pre, pd));
+    // Wedge the live compositor; the lab then types a wrong password on the lock screen.
+    let frozen = sched::freeze_named(b"DISPLAYD.ELF");
+    kprintln!(
+        "OSX|{}|ktest|{}|display_frozen={}|phase=1|ready=1",
+        BUILD_ID,
+        name,
+        u8::from(frozen)
+    );
+    if !frozen {
+        fail("no live compositor to freeze")
+    }
+    // Until the watchdog restarts it: every STATE is answered, never later than one request
+    // deadline (5000) plus slack, and always `locked`; the frame keeps the lock screen.
+    let mut max_rtt = 0u64;
+    let mut unlocked_seen = false;
+    let mut spy_px = 0u64;
+    let until = sched::ticks() + 120_000;
+    let restarted = loop {
+        let t0 = sched::ticks();
+        let st = poll_reply(&session, b"STATE", t0 + 10_000, |r| r.starts_with("OK "));
+        max_rtt = max_rtt.max(sched::ticks() - t0);
+        if !st.starts_with("OK locked ") {
+            unlocked_seen = true;
+        }
+        spy_px = spy_px.max(frame_census(SPY_COLOUR).1);
+        let l = h.poll_list(sched::ticks(), |_| true);
+        let d = svc_find(&l, "display");
+        if d.state == "ready" && d.restarts == 1 {
+            break Some(d);
+        }
+        if sched::ticks() >= until {
+            break None;
+        }
+        let t = sched::ticks() + 200;
+        sched::poll_until(t, || false);
+    };
+    let Some(dline) = restarted else {
+        fail("the watchdog did not restart the wedged compositor")
+    };
+    // The session reconnects to the new compositor still locked; it holds the lock screen and
+    // the spy's window, and has received no key.
+    let after = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        state_is(r, "locked", 2) && r.ends_with(" focus=session")
+    });
+    let display = svc_connect(&h, "display");
+    let mut ev = Vec::new();
+    let mut windows = String::new();
+    let until = sched::ticks() + 60_000;
+    while sched::ticks() < until {
+        let status = drequest(&display, b"STATUS", Vec::new(), &mut ev);
+        windows = String::from(status_field(&status, "windows="));
+        if windows == "2" {
+            break;
+        }
+        let t = sched::ticks() + 100;
+        sched::poll_until(t, || false);
+    }
+    let keys_new = display_keys(&display);
+    let spy2 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r.starts_with("OK ")
+    });
+    let in_time = max_rtt <= 7_000;
+    kprintln!(
+        "OSX|{}|ktest|{}|killed=display:{}:{}:{:#x}|state_rtt_ok={}|always_locked={}|spy_px_frozen={}|state={}|windows={}|display_keys={}|spy={}|phase=2|ready=1",
+        BUILD_ID,
+        name,
+        dline.state,
+        dline.restarts,
+        dline.exit.unwrap_or(0),
+        u8::from(in_time),
+        u8::from(!unlocked_seen),
+        spy_px,
+        after,
+        windows,
+        keys_new,
+        spy2
+    );
+    if dline.exit != Some(EXIT_KILLED)
+        || !in_time
+        || unlocked_seen
+        || spy_px != 0
+        || !state_is(&after, "locked", 2)
+        || windows != "2"
+        || keys_new != 0
+        || spy2 != "OK keys=2 focus=0 connections=2"
+    {
+        kprintln!("OSX|{}|ktest|{}|max_rtt={}", BUILD_ID, name, max_rtt);
+        fail("the session did not keep serving and keep the lock while the compositor hung")
+    }
+    // The lab types the right password: the session opens, through the new compositor.
+    let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "unlocked", 3) && r.ends_with(" focus=display")
+    });
+    let spy3 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r == "OK keys=2 focus=1 connections=2"
+    });
+    kprintln!(
+        "OSX|{}|ktest|{}|unlocked_ok={}|spy={}|phase=3|ready=1",
+        BUILD_ID,
+        name,
+        u8::from(unlocked.starts_with("OK unlocked user=admin changes=3 ")),
+        spy3
+    );
+    if !unlocked.starts_with("OK unlocked user=admin changes=3 ")
+        || spy3 != "OK keys=2 focus=1 connections=2"
+    {
+        fail("only the right password was to open the session, and no typed key was to reach the spy")
+    }
+    // The lab types `z`: it reaches the spy through the new compositor.
+    let spy4 = poll_reply(&spy, b"COUNT", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK keys=4 ")
+    });
+    kprintln!("OSX|{}|ktest|{}|spy={}", BUILD_ID, name, spy4);
+    if spy4 != "OK keys=4 focus=1 connections=2" {
+        fail("keys did not reach the spy after the unlock")
+    }
+    drop((
+        locked, spy1, after, display, ev, windows, spy2, unlocked, spy3, spy4, spy, session,
+    ));
+    display_finish(
+        name,
+        h,
+        "with its request to the hung compositor in flight the session kept serving and the lock held; only the right password opened it",
     )
 }
 
