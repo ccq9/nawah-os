@@ -69,6 +69,23 @@ class Workflows(unittest.TestCase):
                     ref = uses.rpartition("@")[2]
                     self.assertRegex(ref, r"^[0-9a-f]{40}$", f"{f.name}: {job} uses {uses}")
 
+    def test_only_the_publish_step_holds_the_token(self):
+        # The code under test runs in the same job: the checkout keeps no credentials in
+        # .git/config, and the token reaches the evidence push alone.
+        for f in sorted(WORKFLOWS.glob("*.yml")):
+            text = (WORKFLOWS / f.name).read_text(encoding="utf-8")
+            for job, body in load(f.name)["jobs"].items():
+                for step in body["steps"]:
+                    if step.get("uses", "").startswith("actions/checkout@"):
+                        self.assertIs(step.get("with", {}).get("persist-credentials"), False,
+                                      f"{f.name}: {job}: checkout keeps the token")
+                holders = [s.get("name") for s in body["steps"] if "github.token" in str(s)
+                           or "secrets." in str(s)]
+                self.assertLessEqual(len(holders), 1, f"{f.name}: {job}: {holders}")
+                if holders:
+                    self.assertTrue(holders[0].startswith("Publish evidence"), holders)
+            self.assertNotIn("secrets.", text, f"{f.name} reads a secret")
+
     def test_mutants_never_on_push(self):
         on = load("mutants.yml")["on"]
         self.assertNotIn("push", on)
