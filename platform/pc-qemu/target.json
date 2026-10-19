@@ -3926,12 +3926,12 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=alt_tab_cycle"
         ],
-        "oracle": "one kernel-side client of the compositor (SVC-DP.TXT) creates three 120×80 surfaces (1, 2, 3) and three windows in order (4, 5, 6; the newest, 6, focused) and minimises the oldest (MINIMIZE 4 → OK). With Alt held — the test types Alt down, three Tab presses and Alt up into the keyboard ring itself (net::inject_keyboard, test kernel only), waiting for the focus to move after each, because the lab's sendkey releases Alt at once — the Tabs walk the windows as they were stacked at the first Tab, the most recently used first: 6 → 5 → 4 (restored from minimised: LIST shows it normal) → 6, every window visited and back to the start (display.md v1.6, as on the Windows 10 reference). Before v1.6 each Tab raised the window it reached and the next went straight back (5, 6, 5) and the minimised window was never reached. Then the lab presses Alt+Tab once (Alt released between presses): the focus goes back to the window used just before, 4. Clean exit, no frame leaks; exit 33 (M5 pre-gate review, M7)",
+        "oracle": "one kernel-side client of the compositor (SVC-DP.TXT) creates three 120×80 surfaces (1, 2, 3) and three windows in order (4, 5, 6; the newest, 6, focused) and minimises the oldest (MINIMIZE 4 → OK). The test types its keys into the keyboard ring itself (net::inject_keyboard, test kernel only), waiting for each focus move, because the lab's sendkey releases Alt at once. (1) Alt held across three Tabs: the focus walks the windows as they were stacked at the first Tab, the most recently used first — 5, 4 (restored from minimised while reached), 6 — and at Alt's release the walk is undone but for the window it ended on: 4 is minimised again and 6 is on top (z 0). Before v1.6 each Tab raised the window it reached and the next went straight back (5, 6, 5) and the minimised window was never reached. (2) Alt held across two Tabs: 5, 4; the walk ends on 4, which stays restored and goes on top. (3) The lab presses Alt+Tab once (Alt released between presses): the focus goes back to the window used before that walk, 6. Clean exit, no frame leaks; exit 33 (display.md v1.6; S77; M5 pre-gate review, M7)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=alt_tab_cycle",
-          "|ktest|alt_tab_cycle|windows=4,5,6|minimize=OK|focus0=6|held_visits=5,4,6|restored=1|quick=1|ready=1",
-          "|ktest|alt_tab_cycle|quick_to=4",
+          "|ktest|alt_tab_cycle|windows=4,5,6|minimize=OK|focus0=6|held_visits=5,4,6|restored=1|rewound=1|partial=5,4|ended_on_top=1|quick=1|ready=1",
+          "|ktest|alt_tab_cycle|quick_to=6",
           "|ktest|alt_tab_cycle|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|alt_tab_cycle|frames_delta=0",
           "|ktest|pass|with Alt held Tab visits every window in most-recent order, and one Alt+Tab goes back to the last one"

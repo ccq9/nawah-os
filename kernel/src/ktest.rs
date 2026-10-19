@@ -5074,16 +5074,17 @@ fn screen() -> ! {
     )
 }
 
-/// TST-M5-ALT-TAB-CYCLE (REQ-M5-008; M5 pre-gate review, M7): Alt+Tab as on the Windows 10
-/// reference (display.md v1.6). One kernel-side client (SVC-DP.TXT) creates three windows in
-/// order (the newest focused) and minimises the oldest. With Alt held, each Tab moves through
-/// the windows as they were stacked when the first Tab came — the most recently used first —
-/// so three Tabs visit the other two, restoring the minimised one, and come back: the test
-/// types them itself into the keyboard ring (Alt down, Tab, Tab, Tab, Alt up), waiting for the
-/// focus to move after each, since the lab's `sendkey` releases Alt at once. Before v1.6 each
-/// Tab raised the window it reached and the next went straight back (5, 6, 5): a third window
-/// was never reached. Then the lab's single Alt+Tab press (Alt released between presses) goes
-/// back to the window used just before, as on the reference.
+/// TST-M5-ALT-TAB-CYCLE (REQ-M5-008; M5 pre-gate review, M7): Alt+Tab with Alt held walks
+/// every window (display.md v1.6; S77). One kernel-side client (SVC-DP.TXT) creates three
+/// windows in order (the newest focused) and minimises the oldest. The test types its keys
+/// into the keyboard ring itself (Alt held across Tabs, which the lab's `sendkey` cannot do),
+/// waiting for each focus move. (1) Three Tabs walk the windows as stacked at the first Tab,
+/// the most recently used first — 5, 4 (restored while reached), 6 — and at Alt's release the
+/// walk is undone but for the window it ended on: the oldest is minimised again, the newest on
+/// top. Before v1.6 each Tab worked from the stacking its predecessor had just changed (5, 6,
+/// 5) and the minimised window was never reached. (2) Two Tabs end the walk on the oldest
+/// window: restored, on top. (3) The lab's single Alt+Tab (Alt released between presses) goes
+/// back to the window used before that walk, the newest.
 fn alt_tab_cycle() -> ! {
     const ALT: u8 = 0x38;
     const TAB: u8 = 0x0F;
@@ -5127,9 +5128,10 @@ fn alt_tab_cycle() -> ! {
             "focus=",
         ))
     };
-    // Waits for the focus to leave `from` (at most 2000 ticks); the focus then.
-    let moved = |from: &str, ev: &mut Vec<String>| -> String {
-        let until = sched::ticks() + 2_000;
+    // Waits for the focus to leave `from` (at most `wait` ticks); the focus then. The test's
+    // own keys are handled within moments; the lab's key gets the suite's 60 s.
+    let moved = |from: &str, wait: u64, ev: &mut Vec<String>| -> String {
+        let until = sched::ticks() + wait;
         let mut f = focus_of(ev);
         while f == from && sched::ticks() < until {
             let t = sched::ticks() + 10;
@@ -5138,46 +5140,99 @@ fn alt_tab_cycle() -> ! {
         }
         f
     };
+    // The window `id` in LIST: (minimised, z), polled until `done` holds (at most 2000 ticks).
+    let window =
+        |id: &str, ev: &mut Vec<String>, done: &dyn Fn(bool, u32) -> bool| -> (bool, u32) {
+            let until = sched::ticks() + 2_000;
+            loop {
+                let list = parse_windows(&drequest(c, b"LIST", Vec::new(), ev));
+                let w = list
+                    .iter()
+                    .find(|w| alloc::format!("{}", w.id) == id)
+                    .map_or((false, u32::MAX), |w| (w.minimized, w.z));
+                if done(w.0, w.1) || sched::ticks() >= until {
+                    return w;
+                }
+                let t = sched::ticks() + 10;
+                sched::poll_until(t, || false);
+            }
+        };
     let focus0 = focus_of(&mut ev);
-    // Alt held across three Tabs.
+    // 1. Alt held across three Tabs: the whole loop, the minimised window restored while it is
+    //    reached; at Alt's release the walk is undone but for its last window (the start), so
+    //    the passed-over window is minimised again and the newest is back on top.
     crate::net::inject_keyboard(&[ALT]);
     let mut visits = Vec::new();
     let mut last = focus0.clone();
-    for _ in 0..3 {
+    let mut restored = false;
+    for k in 0..3 {
         crate::net::inject_keyboard(&[TAB, TAB | RELEASE]);
-        last = moved(&last, &mut ev);
+        last = moved(&last, 2_000, &mut ev);
         visits.push(last.clone());
+        if k == 1 {
+            restored = !window(&wins[0], &mut ev, &|_, _| true).0;
+        }
     }
     crate::net::inject_keyboard(&[ALT | RELEASE]);
-    let list = parse_windows(&drequest(c, b"LIST", Vec::new(), &mut ev));
-    let restored = list
-        .iter()
-        .any(|w| alloc::format!("{}", w.id) == wins[0] && !w.minimized);
+    let (oldest_min, _) = window(&wins[0], &mut ev, &|m, _| m);
+    let (_, newest_z) = window(&wins[2], &mut ev, &|_, z| z == 0);
+    let rewound = oldest_min && newest_z == 0;
+    // 2. Alt held across two Tabs: the walk ends on the oldest window, which stays restored and
+    //    goes on top.
+    crate::net::inject_keyboard(&[ALT]);
+    let mut partial = Vec::new();
+    for _ in 0..2 {
+        crate::net::inject_keyboard(&[TAB, TAB | RELEASE]);
+        last = moved(&last, 2_000, &mut ev);
+        partial.push(last.clone());
+    }
+    crate::net::inject_keyboard(&[ALT | RELEASE]);
+    let (end_min, end_z) = window(&wins[0], &mut ev, &|m, z| !m && z == 0);
+    let ended_on = !end_min && end_z == 0;
     let want: Vec<String> = alloc::vec![wins[1].clone(), wins[0].clone(), wins[2].clone()];
+    let want_partial: Vec<String> = alloc::vec![wins[1].clone(), wins[0].clone()];
     kprintln!(
-        "OSX|{}|ktest|{}|windows={}|minimize={}|focus0={}|held_visits={}|restored={}|quick=1|ready=1",
+        "OSX|{}|ktest|{}|windows={}|minimize={}|focus0={}|held_visits={}|restored={}|rewound={}|partial={}|ended_on_top={}|quick=1|ready=1",
         BUILD_ID,
         name,
         wins.join(","),
         minimize,
         focus0,
         visits.join(","),
-        u8::from(restored)
+        u8::from(restored),
+        u8::from(rewound),
+        partial.join(","),
+        u8::from(ended_on)
     );
     if minimize != "OK" || focus0 != wins[2] || visits != want || !restored {
         fail("with Alt held, three Tabs did not visit every window and come back")
     }
-    // The lab's single Alt+Tab press: back to the window used just before (the oldest, last
-    // restored and raised before the newest).
-    let quick = moved(&last, &mut ev);
+    if !rewound || partial != want_partial || !ended_on {
+        fail("a walk moved or restored the windows it only passed over")
+    }
+    // 3. The lab's single Alt+Tab press: back to the window used before the second walk.
+    let quick = moved(&last, 60_000, &mut ev);
     kprintln!("OSX|{}|ktest|{}|quick_to={}", BUILD_ID, name, quick);
-    if quick != wins[0] {
+    if quick != wins[2] {
         fail("a single Alt+Tab did not go back to the window used just before")
     }
     // Everything the test holds goes before the balance: a test function never returns, so
     // a binding left out stays allocated and its slab page shows as a lost frame.
     drop((
-        ev, vmos, sids, wins, minimize, visits, focus0, last, list, want, quick, admin, clients,
+        ev,
+        vmos,
+        sids,
+        wins,
+        minimize,
+        visits,
+        partial,
+        focus0,
+        last,
+        want,
+        want_partial,
+        quick,
+        admin,
+        clients,
     ));
     display_finish(
         name,
