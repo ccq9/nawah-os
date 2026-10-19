@@ -247,6 +247,18 @@ class Shaping(unittest.TestCase):
             print(f"shaping {label}: {len(texts) - len(bad)}/{len(texts)} equal to HarfBuzz")
             self.assertEqual(bad[:5], [])
 
+    def test_lam_alef_with_marks(self):
+        # Lam, a vowel mark (or shadda and a vowel), then alef or one of its hamza/madda forms:
+        # the required lam-alef ligature still forms, the marks kept after it, as HarfBuzz does
+        # (the rlig lookup ignores marks; review M6 found lam.init + mark + alef.fina instead).
+        marks = self.MARKS + ["ّ" + m for m in "َُِ"]
+        texts = [p + "ل" + m + a + s for p in ("", "ج") for m in marks for a in "اآأإ" for s in ("", "ب", "َ")]
+        mine = [x.split() for x in textdump(["shape " + hexes(t) for t in texts])]
+        ref = self.harfbuzz(texts)
+        bad = [(t, a, b) for t, a, b in zip(texts, mine, ref) if a != b]
+        print(f"lam-mark-alef: {len(texts) - len(bad)}/{len(texts)} equal to HarfBuzz")
+        self.assertEqual(bad[:5], [])
+
     @staticmethod
     def harfbuzz_clusters(texts, direction="rtl"):
         """Per text, {cluster: glyph id} from hb-shape (the first glyph of each cluster)."""

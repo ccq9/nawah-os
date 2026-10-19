@@ -850,8 +850,16 @@ impl<'a> Font<'a> {
     }
 
     /// Ligature substitution (lookup type 4) starting at `glyphs[0]` through lookup
-    /// `index`: `(ligature glyph, components consumed)` for the longest match.
-    pub fn substitute_ligature(&self, index: u16, glyphs: &[u16]) -> Option<(u16, usize)> {
+    /// `index`, skipping marks between the components when `skip_marks` (the lookup's flag,
+    /// as HarfBuzz): `(ligature glyph, component count)` for the longest match, the
+    /// components' positions in `glyphs` written to `at` (`at[0]` is 0).
+    pub fn substitute_ligature(
+        &self,
+        index: u16,
+        glyphs: &[u16],
+        skip_marks: bool,
+        at: &mut [usize; 8],
+    ) -> Option<(u16, usize)> {
         let mut subs = [(0u16, 0usize); 16];
         let n = self.lookup_subtables(index, &mut subs)?;
         let d = self.data;
@@ -875,18 +883,26 @@ impl<'a> Font<'a> {
                 let lig = set + u16_at(d, set + 2 + li * 2)? as usize;
                 let lig_glyph = u16_at(d, lig)?;
                 let comp_count = u16_at(d, lig + 2)? as usize;
-                if comp_count == 0 || comp_count > glyphs.len() {
+                if comp_count == 0 || comp_count > glyphs.len() || comp_count > at.len() {
                     continue;
                 }
+                let mut pos = [0usize; 8];
+                let mut idx = 0;
                 let mut ok = true;
-                for (c, &g) in glyphs.iter().enumerate().take(comp_count).skip(1) {
-                    if u16_at(d, lig + 4 + (c - 1) * 2)? != g {
+                for (c, slot) in pos.iter_mut().enumerate().take(comp_count).skip(1) {
+                    idx += 1;
+                    while skip_marks && idx < glyphs.len() && self.glyph_class(glyphs[idx]) == 3 {
+                        idx += 1;
+                    }
+                    if idx >= glyphs.len() || u16_at(d, lig + 4 + (c - 1) * 2)? != glyphs[idx] {
                         ok = false;
                         break;
                     }
+                    *slot = idx;
                 }
                 if ok && best.is_none_or(|b| comp_count > b.1) {
                     best = Some((lig_glyph, comp_count));
+                    *at = pos;
                 }
             }
             if best.is_some() {

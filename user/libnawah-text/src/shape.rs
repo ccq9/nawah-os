@@ -144,21 +144,33 @@ pub fn shape(font: &Font, text: &[u32], glyphs: &mut [u16], clusters: &mut [u16]
             }
         }
     }
-    // Required ligatures (lam-alef).
+    // Required ligatures (lam-alef). A lookup that ignores marks matches across them (lam,
+    // a vowel, alef): the ligature takes the first component's place and the marks stay
+    // after it, in order (review M6: the ligature did not form with a mark on the lam).
     let mut len = n;
     let count = font.feature_lookups(b"arab", b"rlig", &mut lookups);
     for &l in &lookups[..count] {
+        let skip_marks = font.lookup_flag(l) & 0x0008 != 0;
+        let mut at = [0usize; 8];
         let mut i = 0;
         while i < len {
-            if let Some((lig, consumed)) = font.substitute_ligature(l, &glyphs[i..len]) {
+            if let Some((lig, k)) =
+                font.substitute_ligature(l, &glyphs[i..len], skip_marks, &mut at)
+            {
                 glyphs[i] = lig;
-                // Remove the consumed components after the first.
-                let k = consumed - 1;
-                for j in i + 1..len - k {
-                    glyphs[j] = glyphs[j + k];
-                    clusters[j] = clusters[j + k];
+                // Remove the components after the first, keeping what lies between them.
+                let mut w = i + 1;
+                let mut c = 1;
+                for r in i + 1..len {
+                    if c < k && r - i == at[c] {
+                        c += 1;
+                        continue;
+                    }
+                    glyphs[w] = glyphs[r];
+                    clusters[w] = clusters[r];
+                    w += 1;
                 }
-                len -= k;
+                len = w;
             }
             i += 1;
         }
