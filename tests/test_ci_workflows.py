@@ -192,6 +192,7 @@ class CiEvidenceImport(unittest.TestCase):
     def test_failed_import_leaves_no_temporary_copy(self):
         r = self.run_import("43")
         self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("fetch failed", r.stdout)  # the checkout, not the fetch, failed
         self.assertEqual(sorted(p.name for p in (self.base / "tmp").iterdir()), [])
         self.assertEqual(self.staged(), ["staged.txt"])
 
