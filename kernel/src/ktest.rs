@@ -7221,7 +7221,7 @@ fn session_hang() -> ! {
         fail("keys did not reach the spy after the unlock")
     }
     drop((
-        locked, spy1, after, display, ev, windows, spy2, unlocked, spy3, spy4, spy, session,
+        dline, locked, spy1, after, display, ev, windows, spy2, unlocked, spy3, spy4, spy, session,
     ));
     display_finish(
         name,
