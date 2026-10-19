@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261019T015004Z-b90b4070-002",
+ "started_at": "2026-10-19T01:50:04+00:00",
+ "finished_at": "2026-10-19T01:50:06+00:00",
+ "source_revision": "b90b40702957685ef7d4dfe444f2d34b62ad425f",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M3-FAT32-TOOL",
+ "commands": [
+  "python3 -I tests/test_fat32_tool.py"
+ ],
+ "exit_code": 0
+}

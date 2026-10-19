@@ -1,0 +1,85 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: failed to load Boot0001 "UEFI Non-Block Boot Device" from PciRoot(0x0)/Pci(0x2,0x0): Not Found
+BdsDxe: loading Boot0002 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0002 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+nawah sh 1 (help)
+nawah> >>> help
+commands: help svc cpu mem net [dhcp|policy internet=0|1] cfg get <store> <key>|resolve <key> ls [path] cat <path> login <user> <password> whoami logout exit
+nawah> >>> svc
+auth ready 0 13 13 584 -
+net ready 0 13 13 57 -
+config ready 0 13 13 67 -
+sh ready 0 584 584 586 -
+nawah> >>> cpu
+cpus=4 ticks=829 processes=5 threads=9
+nawah> >>> mem
+frames_total=128925 frames_free=128479 heap_live_bytes=26416 heap_pages=12 handles=22 channels=5
+nawah> >>> net
+OK link=1 configured=0 ip=0.0.0.0 mask=0.0.0.0 gw=0.0.0.0 dns=0.0.0.0 internet=unknown allow_internet=0 rx=0 rx_bad=0 tx=0
+nawah> >>> net dhcp
+OK ip=10.0.2.15 mask=255.255.255.0 gw=10.0.2.2 dns=10.0.2.3
+nawah> >>> net
+OK link=1 configured=1 ip=10.0.2.15 mask=255.255.255.0 gw=10.0.2.2 dns=10.0.2.3 internet=unknown allow_internet=0 rx=2 rx_bad=0 tx=2
+nawah> >>> cfg get device x
+ERR ACCESS
+nawah> >>> cfg
+usage: cfg get <store> <key> | cfg resolve <key>
+nawah> >>> ls /SYSTEM
+D FONTS
+F 41960 AUTHD.ELF
+F 15576 CHILD.ELF
+F 42032 CONFIGD.ELF
+F 106904 DIALOG.ELF
+F 116208 DISPLAYD.ELF
+F 15680 ECHO.ELF
+F 13408 FBPROBE.ELF
+F 13448 FD_LEAK.ELF
+F 13400 HELLO.ELF
+F 13336 IDLE.ELF
+F 28744 INPUTD.ELF
+F 15656 KBDPROBE.ELF
+F 13408 KILLER.ELF
+F 15584 LAUNCH.ELF
+F 19936 NARRATOR.ELF
+F 156520 NETD.ELF
+F 15744 NETPROBE.ELF
+F 136440 SESSIOND.ELF
+F 28768 SH.ELF
+F 13160 SPIN.ELF
+F 32944 SPY.ELF
+F 19872 SVC.ELF
+F 32688 SVCMGR.ELF
+F 13344 WAITER.ELF
+F 24384 WINAPP.ELF
+F 190 SERVICES.TXT
+F 205 SVC-AUTH.TXT
+F 172 SVC-CFG.TXT
+F 271 SVC-DA.TXT
+F 320 SVC-DP.TXT
+F 265 SVC-IN.TXT
+F 639 SVC-LH.TXT
+F 180 SVC-NET.TXT
+F 169 SVC-ORD.TXT
+F 275 SVC-PL.TXT
+F 143 SVC-RST.TXT
+F 538 SVC-SA.TXT
+F 449 SVC-SH.TXT
+F 457 SVC-SS.TXT
+F 157 SVC-TMO.TXT
+F 471 SVC-UI.TXT
+F 421 SVC-WD.TXT
+F 337 USERS.DB
+nawah> >>> ls /
+D DIR
+D SYSTEM
+F 24 HELLO.TXT
+F 20480 PATTERN.BIN
+nawah> >>> cat /DIR/INNER.TXT
+hello from the lab disk
+nawah> >>> cat /NOSUCH.TXT
+ERR NOT_FOUND
+nawah> >>> ls /HELLO.TXT
+ERR NOT_DIR
+nawah> >>> nosuch
+ERR UNKNOWN_COMMAND
+nawah> >>> exit
+bye
