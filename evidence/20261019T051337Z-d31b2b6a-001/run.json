@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261019T051337Z-d31b2b6a-001",
+ "started_at": "2026-10-19T05:13:37+00:00",
+ "finished_at": "2026-10-19T05:13:41+00:00",
+ "source_revision": "d31b2b6a5db82acda02dcb24bf18f67f6dc7b785",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M4-SHELL-TOOL",
+ "commands": [
+  "python3 -I tests/test_console_session.py"
+ ],
+ "exit_code": 0
+}
