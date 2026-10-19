@@ -920,6 +920,7 @@ pub fn kill_process(pid: u32, code: u64) -> bool {
 /// Test-only (WP-40): freezes the live process whose spawn image base name equals `name`
 /// (e.g. `DISPLAYD.ELF`). Returns whether one matched. The test kernel uses it to hang a named
 /// service during the lock (TST-M5-LOCK-HANG).
+#[cfg(feature = "ktest")]
 pub fn freeze_named(name: &[u8]) -> bool {
     with(|s| {
         for p in s.processes.iter_mut() {

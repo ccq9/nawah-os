@@ -18,9 +18,13 @@ struct State {
     exit: Option<u64>,
     /// Threads blocked in `object_wait_many` on this object.
     waiters: Vec<u32>,
-    /// The spawn image's base name (e.g. `DISPLAYD.ELF`), for diagnostics and the test-only
-    /// `freeze_named` (WP-40). Up to 16 bytes; set once at spawn.
+    /// The spawn image's base name (e.g. `DISPLAYD.ELF`), for the test-only `freeze_named`
+    /// (WP-40): the test kernel freezes a named service during the lock. Up to 16 bytes, set
+    /// once at spawn. Test-only — compiled only under `ktest`, since nothing in the production
+    /// kernel reads a process name yet.
+    #[cfg(feature = "ktest")]
     name: [u8; 16],
+    #[cfg(feature = "ktest")]
     name_len: usize,
 }
 
@@ -40,7 +44,9 @@ impl ProcessObject {
                 State {
                     exit: None,
                     waiters: Vec::new(),
+                    #[cfg(feature = "ktest")]
                     name: [0; 16],
+                    #[cfg(feature = "ktest")]
                     name_len: 0,
                 },
             ),
@@ -52,6 +58,8 @@ impl ProcessObject {
     }
 
     /// Records the spawn image's base name (WP-40): the last path component, up to 16 bytes.
+    /// Test-only (`freeze_named`); see the `name` field.
+    #[cfg(feature = "ktest")]
     pub fn set_name(&self, path: &[u8]) {
         let base = match path.iter().rposition(|&c| c == b'/') {
             Some(i) => &path[i + 1..],
@@ -63,7 +71,8 @@ impl ProcessObject {
         s.name_len = n;
     }
 
-    /// Whether this process's recorded name equals `name` (WP-40, `freeze_named`).
+    /// Whether this process's recorded name equals `name` (WP-40, `freeze_named`). Test-only.
+    #[cfg(feature = "ktest")]
     pub fn name_is(&self, name: &[u8]) -> bool {
         let s = self.state.lock();
         &s.name[..s.name_len] == name

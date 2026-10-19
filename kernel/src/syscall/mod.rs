@@ -646,6 +646,8 @@ fn sys_process_spawn(ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64>
         }
     }
     let object = Arc::new(crate::object::process::ProcessObject::new());
+    // Record the image name only in the test kernel; `freeze_named` (WP-40) is its sole reader.
+    #[cfg(feature = "ktest")]
     object.set_name(&buf[..n]);
     let pid = crate::user::spawn_elf_with(&image, 1, moved, object.clone()).map_err(elf_err)?;
     kprintln!(
