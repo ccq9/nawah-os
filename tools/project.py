@@ -180,10 +180,137 @@ def version_tuple(v):
     return tuple(int(x) for x in (v if "." in v else v + ".0").split("."))
 
 
-def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
+# ----------------------------------------------------------------------------- derived state, lease
+LEASE_FILE = ROOT / "state" / "lease.json"
+LEASE_TTL_S = 900
+LEASE_FIELDS = ("holder_id", "acquired_at", "ttl_s", "fencing_token")
+
+
+def utc_now():
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def iso(t):
+    return t.isoformat(timespec="seconds")
+
+
+def parse_time(s):
+    return datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))
+
+
+def host_fingerprint():
+    u = os.uname()
+    return f"{u.sysname.lower()}-{u.release}-{u.machine}-{os.cpu_count()}vcpu"
+
+
+def ready_work_items(wis, decisions=()):
+    """Planned work items whose dependencies are done and that no open decision holds."""
+    done = {w["id"] for w in wis if w["status"] == "done"}
+    held = {t for d in decisions if d["status"] == "open" for t in d["blocked_task_ids"]}
+    return [w["id"] for w in wis if w["status"] == "planned" and w["id"] not in held and all(d in done for d in w["depends_on"])]
+
+
+def derive_state_fields(recs, current_task=None, task_override=None):
+    """The project-state fields that summarise the records (§23), derived so that they cannot
+    drift from them: the state read M2/WP-07 for a day while the records were at M5/WP-40,
+    because checkpoint only advanced its counters (resume audit 2026-10-19).
+    Returns (fields, problem); problem is None when the current task is unambiguous."""
+    wis = recs.get("work-items", [])
+    by_id = {w["id"]: w for w in wis}
+    active = [w["id"] for w in wis if w["status"] == "active"]
+    ready = ready_work_items(wis, recs.get("decisions-pending", []))
+    problem = None
+    if task_override:
+        task = task_override
+        if task not in by_id:
+            problem = f"no work item {task}"
+        elif task not in active and task not in ready:
+            problem = f"{task} is {by_id[task]['status']}: neither active nor ready"
+        elif active and task not in active:
+            problem = f"{task} is not active while {active} are"
+    elif current_task in active:
+        task = current_task
+    elif len(active) == 1:
+        task = active[0]
+    elif active:
+        task, problem = current_task, f"{len(active)} active work items {active}: name the current one (checkpoint --task)"
+    else:
+        task = current_task if current_task in ready else (ready[0] if ready else None)
+    if task in by_id:
+        stage = by_id[task]["stage"]
+    else:
+        stages = recs.get("stages", [])
+        open_stages = [s["id"] for s in stages if s["gate_status"] != "passed"]
+        stage = open_stages[0] if open_stages else (stages[-1]["id"] if stages else "M0")
+    completed = sorted(r["id"] for r in recs.get("requirements", []) if r["implementation_status"] == "verified_in_scope")
+    return {"current_task": task, "current_stage": stage, "completed_requirement_ids": completed}, problem
+
+
+class LeaseHeld(Exception):
+    pass
+
+
+def lease_heartbeat(lease):
+    """The holder's own last sign of life: heartbeat_at, which every checkpoint by the holder
+    refreshes, or acquired_at for a lease written before heartbeat_at existed. Not the last
+    event of the log — that is written by whoever holds the lease now, so it would let one
+    holder's activity keep another holder's expired lease alive (test_report_after_takeover)."""
+    return parse_time(lease.get("heartbeat_at") or lease["acquired_at"])
+
+
+def lease_live(lease, now):
+    return bool(lease) and now < lease_heartbeat(lease) + datetime.timedelta(seconds=lease.get("ttl_s", LEASE_TTL_S))
+
+
+def take_lease(ps, holder, now):
+    """Acquire, renew or take over the single-writer lease (§2.4) for `holder`, in memory.
+    The fencing token is the checkpoint generation at acquisition and stays fixed while the
+    holder renews; a takeover of an expired lease gets the new generation, so every write that
+    still carries the old token is refused. Returns the event to record, or None. Raises
+    LeaseHeld when another holder's lease is live."""
+    lease = ps.get("lease")
+    if lease and lease.get("holder_id") == holder:
+        lease["heartbeat_at"] = iso(now)
+        return None
+    if lease and lease_live(lease, now):
+        raise LeaseHeld(f"lease held by {lease['holder_id']} (token {lease['fencing_token']}) until "
+                        f"{iso(lease_heartbeat(lease) + datetime.timedelta(seconds=lease.get('ttl_s', LEASE_TTL_S)))}")
+    new = {"holder_id": holder, "acquired_at": iso(now), "ttl_s": LEASE_TTL_S, "heartbeat_at": iso(now),
+           "fencing_token": ps["checkpoint_generation"]}
+    ps["lease"] = new
+    if lease:
+        return ("lease_takeover", f"{lease.get('holder_id')} (token {lease.get('fencing_token')}, expired) -> {holder} (token {new['fencing_token']})")
+    return ("lease_acquired", f"{holder} (token {new['fencing_token']})")
+
+
+def check_project_state(st, recs, pb: Problems):
+    """The derived fields and the lease of project-state must agree with the records."""
+    fields, problem = derive_state_fields(recs, st["current_task"])
+    if problem:
+        pb.err("project-state", problem)
+    for k in ("current_task", "current_stage"):
+        if st[k] != fields[k]:
+            pb.err("project-state", f"{k} is {st[k]!r} but the records give {fields[k]!r} (stale; run checkpoint)")
+    have, want = set(st["completed_requirement_ids"]), set(fields["completed_requirement_ids"])
+    if have != want:
+        pb.err("project-state", f"completed_requirement_ids disagree with the verified requirements: missing {sorted(want - have)}, "
+                                f"extra {sorted(have - want)} (stale; run checkpoint)")
+    if st["current_task"] and st["current_task"] not in st["next_action"]:
+        pb.err("project-state", f"next_action does not name the current task {st['current_task']} (stale; run checkpoint)")
+    lease = st.get("lease")
+    if lease:
+        missing = [k for k in LEASE_FIELDS if k not in lease]
+        if missing:
+            pb.err("project-state", f"lease lacks {missing}")
+        elif lease["fencing_token"] > st["checkpoint_generation"]:
+            pb.err("project-state", f"lease fencing_token {lease['fencing_token']} is newer than checkpoint_generation {st['checkpoint_generation']}")
+
+
+def validate_records(stage_scope=None, verbose=True, strict=False, project_state=None, errors_out=None) -> int:
     """Structural and semantic validation. Stale verdicts (inputs changed since the run) are
     warnings — the verdict is suspended, 'needs re-evaluation' — unless strict=True (gates, CI
-    after fresh evidence), where they are errors."""
+    after fresh evidence), where they are errors. `project_state` validates a state about to be
+    written instead of the file; `errors_out` (a list) receives the errors."""
     pb = Problems(strict=strict)
     recs = {}
     for name in RECORD_FILES:
@@ -204,7 +331,7 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
             except json.JSONDecodeError as ex:
                 pb.err(name, f"invalid JSON: {ex}")
     if pb.errors:
-        return report(pb, verbose)
+        return report(pb, verbose, errors_out)
 
     ids = {n: [r["id"] for r in recs.get(n, [])] for n in RECORD_FILES}
     for n, lst in ids.items():
@@ -315,8 +442,13 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
 
     # project-state consistency
     ps = DOCS / "project-state.json"
-    if ps.exists():
-        st = load_json(ps)
+    if project_state is not None or ps.exists():
+        st = project_state if project_state is not None else load_json(ps)
+        if project_state is not None:
+            validate_schema("project-state", st, pb, "project-state")
+            if pb.errors:
+                return report(pb, verbose, errors_out)
+        check_project_state(st, recs, pb)
         prompt = DOCS / "prompt" / f"OS-EXEC-AR-v{st['prompt_version']}.md"
         if not prompt.exists():
             pb.err("project-state", f"prompt file missing for version {st['prompt_version']}")
@@ -329,10 +461,12 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
         rev, dirty = source_identity()
         if st["source_revision"] != rev:
             pb.warn("project-state", f"source_revision {st['source_revision'][:8]} != HEAD {rev[:8]} (checkpoint pending)")
-    return report(pb, verbose)
+    return report(pb, verbose, errors_out)
 
 
-def report(pb: Problems, verbose) -> int:
+def report(pb: Problems, verbose, errors_out=None) -> int:
+    if errors_out is not None:
+        errors_out.extend(pb.errors)
     if verbose:
         for w in pb.warnings: print("WARN", w)
         for e in pb.errors: print("ERROR", e)
@@ -1037,6 +1171,9 @@ HOST_SUITES = {
         {"id": "TST-M0-003", "command": ["python3", "-I", "tests/test_ci_workflows.py"],
          "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch) (5 cases, OK)",
          "inputs": ["tests/test_ci_workflows.py", "tools/project.py"], "input_globs": [".github/workflows/*.yml"]},
+        {"id": "TST-M0-004", "command": ["python3", "-I", "tests/test_orchestrator.py"],
+         "oracle": "the §20 task interface on an isolated trial project (OK, 15 cases): next hands out and activates the ready package under the lease; report accepts a matching result and moves the package, and rejects a corrupt result, a stale fencing token, phantom/unclaimed files and evidence predating the package, moving nothing; a worker interrupted before/after its effect and before the result is reconciled by resume (a found result reported once, a missing one re-handed); flock and the lease exclude a second writer; the retry limit halts a repeatedly failing package; cancel stops the run and only --clear with a new authorisation resumes",
+         "inputs": ["tests/test_orchestrator.py", "tools/project.py", "tools/orchestrator.py"], "input_globs": ["docs/schemas/*.schema.json"]},
     ],
 }
 
@@ -1132,18 +1269,31 @@ def cmd_test_host_case(case) -> int:
         return 0 if verdict == "PASS" else 1
 
 
+def run_dir_test_id(ref, cache):
+    """The test a run-directory ref belongs to (its verdict.json), or None for anything else."""
+    if ref not in cache:
+        try:
+            p = safe_rel(ref)
+            cache[ref] = load_json(p / "verdict.json")["test_id"] if p.is_dir() and (p / "verdict.json").exists() else None
+        except (ValueError, json.JSONDecodeError, KeyError, OSError):
+            cache[ref] = None
+    return cache[ref]
+
+
 def replace_evidence_ref(old_ref, new_ref, test_id, verdict):
     """Set the test's verdict and evidence, and re-point requirement/work-item/stage records that
-    cited the test's previous run directory. A previous ref is only re-pointed when it is a run
-    directory whose verdict belongs to this very test — several tests may share a plain-file ref
-    (e.g. a CI jobs.json) and that must never be rewritten on behalf of one of them."""
-    own_old = False
-    if old_ref:
-        try:
-            op = safe_rel(old_ref)
-            own_old = op.is_dir() and (op / "verdict.json").exists() and load_json(op / "verdict.json")["test_id"] == test_id
-        except (ValueError, json.JSONDecodeError, KeyError):
-            own_old = False
+    cite a previous run directory of this very test. Only run directories whose verdict belongs
+    to the test are re-pointed — several tests may share a plain-file ref (e.g. a CI jobs.json)
+    and that must never be rewritten on behalf of one of them. Any earlier run of the test is
+    re-pointed, not only the one the registry holds: a change that resets a test to NOT_RUN with
+    no evidence left the records citing its last run with nothing to replace them, and the
+    stale ref failed `validate-records --strict` (CI run 39196967624, REQ-M5-010 still citing
+    TST-M5-PROCESS-KILL's run 20261019T022611Z-37bc562e-001). `old_ref` is kept for callers."""
+    cache = {}
+
+    def own(ref):
+        return ref != new_ref and run_dir_test_id(ref, cache) == test_id
+
     for name in RECORD_FILES:
         p = DOCS / f"{name}.json"
         if not p.exists():
@@ -1156,10 +1306,14 @@ def replace_evidence_ref(old_ref, new_ref, test_id, verdict):
                     r["evidence_refs"] = [new_ref]
                     changed = True
                 continue
-            if own_old:
-                for key in ("evidence_refs", "gate_evidence_refs"):
-                    if key in r and old_ref in r[key]:
-                        r[key] = [new_ref if x == old_ref else x for x in r[key]]; changed = True
+            for key in ("evidence_refs", "gate_evidence_refs"):
+                if key in r and any(own(x) for x in r[key]):
+                    out = []
+                    for x in r[key]:
+                        x = new_ref if own(x) else x
+                        if x not in out:
+                            out.append(x)
+                    r[key] = out; changed = True
         if changed:
             p.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
@@ -1212,38 +1366,111 @@ def cmd_test(target_name, suite, only=None) -> int:
 
 
 # ----------------------------------------------------------------------------- checkpoint / events
-def append_event(etype, state, task_id=None, run_id=None, result=None, evidence_ref=None, operation_id=None, inputs_digest=None):
-    ps = load_json(DOCS / "project-state.json")
-    ev = {"schema_version": SCHEMA_VERSION, "project_id": ps["project_id"], "run_id": run_id, "operation_id": operation_id or f"op-{int(time.time())}",
-          "task_id": task_id, "seq": ps["event_sequence"] + 1, "type": etype, "inputs_digest": inputs_digest, "state": state,
-          "result": result, "evidence_ref": evidence_ref, "recorded_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-          "fencing_token": (ps.get("lease") or {}).get("fencing_token", 0)}
-    p = EVIDENCE / "automation" / "events.jsonl"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    with open(p, "a", encoding="utf-8") as f:
+EVENTS_FILE = EVIDENCE / "automation" / "events.jsonl"
+
+
+def last_event():
+    """The last well-formed event of the log, or None."""
+    if not EVENTS_FILE.exists():
+        return None
+    last = None
+    with open(EVENTS_FILE, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    last = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+    return last
+
+
+def append_event(etype, state, task_id=None, run_id=None, result=None, evidence_ref=None, operation_id=None, inputs_digest=None, ps=None):
+    """Append one event. The sequence continues from the log itself as well as from the state,
+    so an interruption between this append and the state write cannot reuse a number. With
+    `ps` (a state about to be written) its event_sequence is advanced in place."""
+    st = ps if ps is not None else load_json(DOCS / "project-state.json")
+    last = last_event()
+    seq = max(st["event_sequence"], (last or {}).get("seq", 0)) + 1
+    ev = {"schema_version": SCHEMA_VERSION, "project_id": st["project_id"], "run_id": run_id, "operation_id": operation_id or f"op-{int(time.time())}",
+          "task_id": task_id, "seq": seq, "type": etype, "inputs_digest": inputs_digest, "state": state,
+          "result": result, "evidence_ref": evidence_ref, "recorded_at": iso(utc_now()),
+          "fencing_token": (st.get("lease") or {}).get("fencing_token", 0)}
+    EVENTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(EVENTS_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(ev, ensure_ascii=False) + "\n")
-    return ev["seq"]
+    if ps is not None:
+        ps["event_sequence"] = seq
+    return seq
 
 
-def cmd_checkpoint(note=None) -> int:
-    rc = validate_records(verbose=False)
-    if rc != 0:
-        print("checkpoint refused: records invalid (run validate-records)"); return E_VALIDATION
+def write_json_atomic(p: Path, data):
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    os.replace(tmp, p)  # atomic on POSIX
+
+
+def load_state_records():
+    names = ("requirements", "stages", "work-items", "tests", "decisions-pending")
+    return {n: load_json(DOCS / f"{n}.json")["records"] for n in names if (DOCS / f"{n}.json").exists()}
+
+
+def checkpoint(note=None, task=None, next_action=None, holder=None, extra_events=(), mutate=None):
+    """Write a checkpoint: apply `mutate` to the loaded state, re-derive the summarising fields
+    from the records, renew or take the lease for `holder` (default: NAWAH_HOLDER, else the
+    current holder), validate the state that would be written, then append the events and
+    replace the file atomically. Returns (exit code, message)."""
     p = DOCS / "project-state.json"
     ps = load_json(p)
+    if mutate:
+        mutate(ps)
+    recs = load_state_records()
+    fields, problem = derive_state_fields(recs, ps.get("current_task"), task)
+    if problem:
+        return E_VALIDATION, f"checkpoint refused: {problem}"
+    events = list(extra_events)
+    now = utc_now()
+    ps["checkpoint_generation"] += 1
+    holder = holder or os.environ.get("NAWAH_HOLDER") or (ps.get("lease") or {}).get("holder_id")
+    if holder:
+        try:
+            ev = take_lease(ps, holder, now)
+        except LeaseHeld as ex:
+            return E_BLOCKED, f"checkpoint refused: {ex}"
+        if ev:
+            events.append(ev)
+    task_changed = fields["current_task"] != ps.get("current_task")
+    ps.update(fields)
+    wi = next((w for w in recs.get("work-items", []) if w["id"] == fields["current_task"]), None)
+    if next_action:
+        ps["next_action"] = next_action
+    elif wi and (task_changed or wi["id"] not in ps.get("next_action", "")):
+        ps["next_action"] = f"{wi['id']} ({wi['status']}): {wi['actions'][0]}"
+    elif not wi and task_changed:
+        ps["next_action"] = "no ready work package: see `project.py next --json` for the reasons"
+    host = host_fingerprint()
+    if ps.get("host_fingerprint") != host or ps.get("project_root") != str(ROOT):
+        events.append(("host_change", f"{ps.get('host_fingerprint')} at {ps.get('project_root')} -> {host} at {ROOT}"))
+        ps["host_fingerprint"], ps["project_root"] = host, str(ROOT)
     rev, dirty = source_identity()
     ps["source_revision"], ps["dirty_state"] = rev, dirty
-    ps["checkpoint_generation"] += 1
+    errors = []
+    if validate_records(verbose=False, project_state=ps, errors_out=errors) != 0:
+        return E_VALIDATION, "checkpoint refused: records invalid:\n  " + "\n  ".join(errors[:20])
+    for etype, result in events:
+        append_event(etype, "recorded", task_id=ps["current_task"], result=result, ps=ps)
+    seq = append_event("checkpoint", "saved", task_id=ps["current_task"], result=note, ps=ps)
     if ps.get("lease"):
-        ps["lease"]["fencing_token"] = ps["checkpoint_generation"]
-    seq = append_event("checkpoint", "saved", task_id=ps.get("current_task"), result=note)
-    ps["event_sequence"] = seq
-    tmp = p.with_suffix(".json.tmp")
-    data = json.dumps(ps, ensure_ascii=False, indent=1) + "\n"
-    tmp.write_text(data, encoding="utf-8")
-    os.replace(tmp, p)  # atomic on POSIX
-    print(f"checkpoint generation={ps['checkpoint_generation']} seq={seq} rev={rev[:8]} dirty={dirty}")
-    return E_OK
+        LEASE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        write_json_atomic(LEASE_FILE, ps["lease"])
+    write_json_atomic(p, ps)
+    return E_OK, f"checkpoint generation={ps['checkpoint_generation']} seq={seq} task={ps['current_task']} rev={rev[:8]} dirty={dirty}"
+
+
+def cmd_checkpoint(note=None, task=None, next_action=None, holder=None) -> int:
+    rc, msg = checkpoint(note, task, next_action, holder)
+    print(msg)
+    return rc
 
 
 # ----------------------------------------------------------------------------- CI evidence import
@@ -1418,6 +1645,16 @@ def cmd_preflight(suite, only) -> int:
                           env=preflight_env(os.environ, scratch, False)).returncode
 
 
+def load_orchestrator():
+    """tools/orchestrator.py (next/report/resume/run/cancel), loaded by path: `python3 -I` does
+    not put this script's directory on sys.path."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("nawah_orchestrator", Path(__file__).resolve().with_name("orchestrator.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="project.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -1431,20 +1668,25 @@ def main(argv=None):
     s = sub.add_parser("preflight", help="build and run a guest suite here before a push (build-std, scratch evidence)")
     s.add_argument("--suite", required=True); s.add_argument("--only", help="comma-separated case ids")
     sub.add_parser("hygiene", help="CI's hygiene step here: the same fmt/clippy/unsafe commands, read from verify.yml")
-    for n in ("next", "report", "checkpoint", "resume", "run"):
-        s = sub.add_parser(n); s.add_argument("--json", action="store_true"); s.add_argument("--result"); s.add_argument("--once", action="store_true"); s.add_argument("--until"); s.add_argument("--note")
+    s = sub.add_parser("checkpoint", help="re-derive the state from the records, renew or take the lease, write atomically")
+    s.add_argument("--note"); s.add_argument("--task", help="the current work item, when several are active")
+    s.add_argument("--next-action", dest="next_action"); s.add_argument("--holder", help="lease holder (default: NAWAH_HOLDER, else the current holder)")
+    orchestrator = load_orchestrator()
+    orchestrator.add_parsers(sub)
     a = ap.parse_args(argv)
+    if a.cmd in orchestrator.COMMANDS:
+        return orchestrator.main(sys.modules[__name__], a)
     if a.cmd == "validate-records": return validate_records(strict=a.strict)
     if a.cmd == "status": return cmd_status(a.json)
     if a.cmd == "build": return cmd_build(a.target)
     if a.cmd == "boot": return cmd_boot(a.target)
     if a.cmd == "test": return cmd_test(a.target, a.suite, a.only.split(",") if a.only else None)
-    if a.cmd == "checkpoint": return cmd_checkpoint(a.note)
+    if a.cmd == "checkpoint": return cmd_checkpoint(a.note, a.task, a.next_action, a.holder)
     if a.cmd == "reverify-host": return cmd_reverify_host()
     if a.cmd == "import-ci-evidence": return cmd_import_ci_evidence(a.run)
     if a.cmd == "preflight": return cmd_preflight(a.suite, a.only)
     if a.cmd == "hygiene": return cmd_hygiene()
-    print(f"{a.cmd}: not implemented yet in this work package (planned: M1); see docs/work-items.json")
+    print(f"{a.cmd}: no handler (internal error)")
     return E_INTERNAL
 
 

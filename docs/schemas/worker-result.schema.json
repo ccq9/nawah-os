@@ -1,0 +1,116 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "task_id",
+  "input_revision",
+  "fencing_token",
+  "changed_files",
+  "command_results",
+  "evidence_refs",
+  "outcome",
+  "blocker",
+  "next_action"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.0\\.0$"
+  },
+  "task_id": {
+   "type": "string",
+   "pattern": "^[A-Z][A-Z0-9]*-[A-Za-z0-9.-]+$"
+  },
+  "input_revision": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{7,40}$"
+  },
+  "fencing_token": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "changed_files": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+   },
+   "uniqueItems": true
+  },
+  "command_results": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "command",
+     "exit_code"
+    ],
+    "properties": {
+     "command": {
+      "type": "string",
+      "minLength": 1
+     },
+     "exit_code": {
+      "type": "integer"
+     },
+     "evidence_ref": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+     }
+    }
+   }
+  },
+  "evidence_refs": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$"
+   },
+   "uniqueItems": true
+  },
+  "outcome": {
+   "enum": [
+    "done",
+    "blocked",
+    "partial",
+    "failed"
+   ]
+  },
+  "blocker": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "next_action": {
+   "type": "string",
+   "minLength": 1
+  },
+  "failure": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "category",
+    "first_location",
+    "command"
+   ],
+   "properties": {
+    "category": {
+     "type": "string",
+     "minLength": 1
+    },
+    "first_location": {
+     "type": "string",
+     "minLength": 1
+    },
+    "command": {
+     "type": "string",
+     "minLength": 1
+    }
+   }
+  }
+ }
+}

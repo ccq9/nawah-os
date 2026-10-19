@@ -141,7 +141,36 @@
    "type": [
     "object",
     "null"
-   ]
+   ],
+   "additionalProperties": false,
+   "required": [
+    "holder_id",
+    "acquired_at",
+    "ttl_s",
+    "fencing_token"
+   ],
+   "properties": {
+    "holder_id": {
+     "type": "string",
+     "minLength": 1
+    },
+    "acquired_at": {
+     "type": "string",
+     "minLength": 1
+    },
+    "ttl_s": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "heartbeat_at": {
+     "type": "string",
+     "minLength": 1
+    },
+    "fencing_token": {
+     "type": "integer",
+     "minimum": 0
+    }
+   }
   },
   "host_fingerprint": {
    "type": "string",
