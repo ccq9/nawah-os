@@ -258,6 +258,20 @@ class Shaping(unittest.TestCase):
         bad = [(t, a, b) for t, a, b in zip(texts, mine, ref) if len(a) != 3 or len(b) != 3 or (a[0], a[2]) != (b[0], b[2])]
         self.assertEqual(bad[:5], [])
 
+    def test_layout_joiners(self):
+        # The line layout — the path every drawn text takes — keeps a joiner inside its Arabic
+        # run, so the forms around it equal HarfBuzz's: ZWJ joins, ZWNJ separates. Review M6:
+        # the joiner took the Latin font and split the run, so a ZWJ pair was drawn isolated.
+        # The joiner itself is removed (X9) and draws nothing, so the line has two glyphs.
+        rng = random.Random(11)
+        texts = [rng.choice(self.LETTERS) + z + rng.choice(self.LETTERS) for z in ("‍", "‌") for _ in range(50)]
+        lines = textdump(["layout rtl 16 " + hexes(t) for t in texts])
+        mine = [[g.split(":")[1] for g in reversed(x.split(" | ")[1].split())] for x in lines]
+        ref = self.harfbuzz(texts)
+        bad = [(t, a, b) for t, a, b in zip(texts, mine, ref) if len(b) != 3 or a != [b[0], b[2]]]
+        print(f"layout joiners: {len(texts) - len(bad)}/{len(texts)} equal to HarfBuzz")
+        self.assertEqual(bad[:5], [])
+
     def test_forms(self):
         # Joining types from DerivedJoiningType.txt: beh is dual-joining, alef right-joining
         # only, hamza non-joining; tatweel (U+0640) joins both sides; marks are transparent.

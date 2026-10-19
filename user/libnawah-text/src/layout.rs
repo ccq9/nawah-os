@@ -146,6 +146,14 @@ impl Layout {
             if shape::joining_type(cp) == JT_T && i > 0 {
                 f = self.font_of[i - 1];
             }
+            // ZWNJ and ZWJ stay in the run of the character before them, whatever font has a
+            // glyph for them: they draw nothing (X9 removes them) and only steer the joining
+            // inside the run. In the Latin font they split an Arabic word in two runs and a
+            // ZWJ pair was shaped isolated (review M6).
+            if matches!(cp, 0x200C | 0x200D) && i > 0 {
+                self.font_of[i] = self.font_of[i - 1];
+                continue;
+            }
             if fonts.get(f).glyph_id(cp) == 0 {
                 let other = if f == ARABIC { LATIN } else { ARABIC };
                 if fonts.get(other).glyph_id(cp) != 0 {
