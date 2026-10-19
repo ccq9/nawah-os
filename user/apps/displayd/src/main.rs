@@ -1913,6 +1913,15 @@ fn main() -> u64 {
                         }
                     } else if &buf[..n] == b"STOP" {
                         return 0;
+                    } else if &buf[..n] == b"PING" {
+                        // Watchdog (services.md v1.7): the manager pings the compositor on the
+                        // boot channel while it is Ready; answering PONG proves the event loop is
+                        // still turning. A compositor wedged in `object_wait_many` never reaches
+                        // this, so the manager kills and restarts it (TST-M5-LOCK-HANG). A gone
+                        // channel means the manager has already stopped us.
+                        if libnawah::channel_write(c.boot, b"PONG", &[]) == ERR_PEER_CLOSED {
+                            return 0;
+                        }
                     } else if c.input_asked && &buf[..n] == b"OK" && nh == 1 {
                         c.input_answer(Some(hs[0]), now);
                     } else if c.input_asked && buf[..n].starts_with(b"ERR") {

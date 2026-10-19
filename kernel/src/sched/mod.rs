@@ -104,6 +104,11 @@ pub struct Process {
     /// Set by `process_kill` (WP-40): every thread of the process exits with this code at its
     /// next safe point (a syscall return, a blocking wait returning, or a timer preemption).
     pub kill: Option<u64>,
+    /// Set by the test-only `freeze_process` (WP-40): the process's blocked threads are left
+    /// blocked — `wake` skips them — so it stops responding (a hang) without spinning. Only
+    /// `process_kill` (which sets Ready directly) can still end it. Not reachable from user
+    /// space; the test kernel uses it to hang a service during the lock (TST-M5-LOCK-HANG).
+    pub frozen: bool,
 }
 
 impl Process {
@@ -416,6 +421,7 @@ pub fn spawn_user_with(
             handles: Arc::new(IrqSpinLock::new("handles", table)),
             object,
             kill: None,
+            frozen: false,
         });
         let cpu = me();
         match new_thread(
@@ -911,6 +917,21 @@ pub fn kill_process(pid: u32, code: u64) -> bool {
     })
 }
 
+/// Test-only (WP-40): freezes the live process whose spawn image base name equals `name`
+/// (e.g. `DISPLAYD.ELF`). Returns whether one matched. The test kernel uses it to hang a named
+/// service during the lock (TST-M5-LOCK-HANG).
+pub fn freeze_named(name: &[u8]) -> bool {
+    with(|s| {
+        for p in s.processes.iter_mut() {
+            if p.exit_code.is_none() && p.object.as_ref().is_some_and(|o| o.name_is(name)) {
+                p.frozen = true;
+                return true;
+            }
+        }
+        false
+    })
+}
+
 /// Whether the current thread's process has been killed (WP-40): a wait loop breaks on this to
 /// run its cleanup before `check_kill` exits the thread.
 pub fn killed() -> bool {
@@ -985,6 +1006,13 @@ fn block_current_with(deadline: Option<u64>) {
 pub fn wake(tid: u32) {
     with(|s| {
         if let Some(i) = index_of(s, tid) {
+            // A frozen process's threads stay blocked (WP-40, test-only hang): the wake-up is
+            // dropped, so it never answers. Only `process_kill` ends it (it sets Ready directly).
+            if let Some(pid) = s.threads[i].process {
+                if s.processes.iter().any(|p| p.id == pid && p.frozen) {
+                    return;
+                }
+            }
             let cpu = usize::from(s.threads[i].cpu);
             let prio = running_prio(s, cpu);
             let t = &mut s.threads[i];

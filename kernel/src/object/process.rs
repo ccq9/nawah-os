@@ -18,6 +18,10 @@ struct State {
     exit: Option<u64>,
     /// Threads blocked in `object_wait_many` on this object.
     waiters: Vec<u32>,
+    /// The spawn image's base name (e.g. `DISPLAYD.ELF`), for diagnostics and the test-only
+    /// `freeze_named` (WP-40). Up to 16 bytes; set once at spawn.
+    name: [u8; 16],
+    name_len: usize,
 }
 
 pub struct ProcessObject {
@@ -36,6 +40,8 @@ impl ProcessObject {
                 State {
                     exit: None,
                     waiters: Vec::new(),
+                    name: [0; 16],
+                    name_len: 0,
                 },
             ),
         }
@@ -43,6 +49,24 @@ impl ProcessObject {
 
     pub fn bind(&self, pid: u32) {
         self.pid.store(pid, Ordering::Relaxed);
+    }
+
+    /// Records the spawn image's base name (WP-40): the last path component, up to 16 bytes.
+    pub fn set_name(&self, path: &[u8]) {
+        let base = match path.iter().rposition(|&c| c == b'/') {
+            Some(i) => &path[i + 1..],
+            None => path,
+        };
+        let n = base.len().min(16);
+        let mut s = self.state.lock();
+        s.name[..n].copy_from_slice(&base[..n]);
+        s.name_len = n;
+    }
+
+    /// Whether this process's recorded name equals `name` (WP-40, `freeze_named`).
+    pub fn name_is(&self, name: &[u8]) -> bool {
+        let s = self.state.lock();
+        &s.name[..s.name_len] == name
     }
 
     /// The process id the scheduler bound, or None before binding (WP-40, for `process_kill`).

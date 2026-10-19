@@ -1,0 +1,21 @@
+# TST-M5-LOCK-HANG (session.md §9, services.md v1.7): the session's and the spy's traces, each
+# stream exact and in order. Unlike TST-M5-LOCK-SURVIVES, only the compositor is restarted (the
+# watchdog force-kills it after it is wedged while locked); the input service is never touched, so
+# there is no input reconnection — the session reconnects to the compositor alone, still locked.
+session|state=no_session|window=510,336,260,128
+session|state=unlocked|user=admin|uid=1000|token=usable
+session|focus=display|n=1
+session|state=locked|user=admin|window=510,336,260,128
+session|display=reconnected|n=2|state=locked|window=510,336,260,128
+session|unlock=refused|answer=ERR ACCESS
+session|state=unlocked|user=admin|uid=1000|token=usable
+session|focus=display|n=2
+spy|window=created|at=100,100,200,120
+spy|focus=1
+spy|key=0x1d,down,-
+spy|key=0x38,down,-
+spy|focus=0
+spy|reconnected|n=2
+spy|focus=1
+spy|key=0x2c,down,z
+spy|key=0x2c,up,z

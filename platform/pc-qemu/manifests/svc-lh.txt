@@ -1,0 +1,9 @@
+# TST-M5-LOCK-HANG (WP-40, services.md v1.7): the session stack of TST-M5-LOCK-SURVIVES, but the
+# compositor is watchdog-monitored and restarts on failure. The test wedges the live compositor
+# while the session is locked (sched::freeze_named); the manager's watchdog must miss its PONG,
+# force-kill it, and restart it — all without the lock dropping or a key reaching the spy.
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 on-failure 3 10 watchdog=50
+session /SYSTEM/SESSIOND.ELF auth,input,display 5000 never 0 0
+spy /SYSTEM/SPY.ELF display 5000 never 0 0
