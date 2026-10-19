@@ -473,10 +473,14 @@ impl Session {
         match d.request(req, handles, reply) {
             Ok(n) => Some(n),
             Err(e) => {
+                let now = libnawah::clock_ticks();
+                self.display_lost(now);
                 if e == ERR_TIMED_OUT {
                     timed_out(b"display", sent);
+                    // A hung component is not asked again at once (v1.2): the clients that
+                    // waited meanwhile are answered first.
+                    self.retry[DISPLAY] = now + RECONNECT;
                 }
-                self.display_lost(libnawah::clock_ticks());
                 None
             }
         }
@@ -488,10 +492,12 @@ impl Session {
         match r {
             Ok(n) => Some(n),
             Err(e) => {
+                let now = libnawah::clock_ticks();
+                self.input_lost(now);
                 if e == ERR_TIMED_OUT {
                     timed_out(b"input", sent);
+                    self.retry[INPUT] = now + RECONNECT;
                 }
-                self.input_lost(libnawah::clock_ticks());
                 None
             }
         }
