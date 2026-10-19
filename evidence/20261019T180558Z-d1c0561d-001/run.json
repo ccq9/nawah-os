@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261019T180558Z-d1c0561d-001",
+ "started_at": "2026-10-19T18:05:57+00:00",
+ "finished_at": "2026-10-19T18:06:06+00:00",
+ "source_revision": "d1c0561decc122c8fae7c2262e5633bfc7ed8bec",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M5-UI-UNIT",
+ "commands": [
+  "cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu"
+ ],
+ "exit_code": 0
+}
