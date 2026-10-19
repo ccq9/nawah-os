@@ -1,0 +1,8 @@
+{
+ "tests/test_m0_records.py": "0f9586c3e80dfe8137af6b77e0106949f986752cb65c8c18b8b4831416cf09a0",
+ "docs/contracts/boot.md": "4b44b86e018d414cf98160e334b9fbb8a305cc69d5627ab3a1fc95207da29a81",
+ "docs/adr/0001-bootstrap.md": "5b861023f83e42c4afb3e66fc798261217f0840c78bab3fd5b7c1f93c0d77f99",
+ "docs/PROJECT.md": "ef755b97a9fca9f4665a787d8111401f17c015f5abec334b639c1ca41479f88f",
+ "docs/ENVIRONMENT.md": "d8516b959d20455b72e4ea667f6fc4815201eee06d76ef5b7fc535fd137dfa6e",
+ "docs/security/threat-model.md": "fb42a7bab271adcda5f67941f810d9453f5cb63454d00c9d498a37497c17a3c2"
+}

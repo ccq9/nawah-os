@@ -1,0 +1,20 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261019T121328Z-c0bec0ee-001",
+ "started_at": "2026-10-19T12:13:28+00:00",
+ "finished_at": "2026-10-19T12:13:29+00:00",
+ "source_revision": "c0bec0ee8722c81e9aa269d8a005eed158724e85",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "virt-qemu-aarch64",
+ "worker": "interactive-agent",
+ "purpose": "build",
+ "commands": [
+  "cargo build --release --offline --manifest-path kernel/Cargo.toml --target aarch64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/cargo",
+  "cp /home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/cargo/aarch64-unknown-uefi/release/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/NAWAH-A64.EFI"
+ ],
+ "exit_code": 0
+}
