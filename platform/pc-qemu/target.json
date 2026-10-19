@@ -4693,6 +4693,32 @@
           "|user_fault|"
         ],
         "timeout_s": 600
+      },
+      {
+        "id": "TST-M5-SVC-WATCHDOG",
+        "test_id": "TST-M5-SVC-WATCHDOG",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=svc_watchdog"
+        ],
+        "oracle": "REQ-M5-010 services.md v1.7: the manager watchdogs Ready services (watchdog=<ticks>, PING/PONG on the boot channel). `hung` (watchdog=50, role hang) answers READY then stops servicing, so a missed PONG period has it force-killed (EXIT_KILLED=131072); with max_restarts=1 it is restarted once, hangs again and is given up (given_up, restarts=1). `pong` (watchdog=50, role ready) answers every PING and stays ready (restarts=0). `stubborn` (no watchdog, role hang) ignores STOP and is force-killed after the STOP grace (stopped, EXIT_KILLED). The manager keeps answering LIST; no frame leak; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=svc_watchdog",
+          "|ktest|svc_watchdog|load=OK 3|",
+          "|hung=given_up:1:131072|pong=ready:0|stop=OK|stubborn=stopped:131072|",
+          "|processes_after=0|clean=1",
+          "|ktest|svc_watchdog|frames_delta=0",
+          "|ktest|pass|the watchdog ends a hung service and gives it up"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600
       }
     ]
   },

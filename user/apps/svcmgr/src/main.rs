@@ -73,11 +73,23 @@ struct Service {
     exit: Option<u64>,
     chan: Option<Handle>,
     process: Option<Handle>,
-    /// `Starting`: the readiness deadline; `Failed` with restarts left: the next start.
+    /// `Starting`: the readiness deadline; `Failed` with restarts left: the next start;
+    /// `Stopping` (v1.7): the force-kill deadline if the process will not exit on STOP.
     deadline: Option<u64>,
     /// `RESTART` (services.md v1.6): started again as soon as the stopped process exits.
     restart_after_stop: bool,
+    /// Watchdog period in ticks (v1.7, `watchdog=<n>` in the manifest; 0 = off): while Ready,
+    /// the manager PINGs every period and the service must answer PONG.
+    watchdog: u64,
+    /// Next watchdog event: send a PING, or — if `awaiting_pong` — kill the hung service.
+    wd_deadline: Option<u64>,
+    /// A PING is outstanding; a second period without a PONG means the service is hung.
+    awaiting_pong: bool,
 }
+
+/// Ticks a stopping service is given to exit on its own before the manager force-kills it
+/// (services.md v1.7): a `STOP`/`RESTART`ed process that will not leave is `process_kill`ed.
+const STOP_GRACE: u64 = 200;
 
 const EMPTY: Service = Service {
     name: [0; NAME_MAX],
@@ -101,6 +113,9 @@ const EMPTY: Service = Service {
     process: None,
     deadline: None,
     restart_after_stop: false,
+    watchdog: 0,
+    wd_deadline: None,
+    awaiting_pong: false,
 };
 
 impl Service {
@@ -293,11 +308,23 @@ impl Manager {
             else {
                 return Err(syntax);
             };
-            let arg = f.rest();
+            // Optional `watchdog=<ticks>` keyword before the arg (v1.7); backward-compatible,
+            // since no existing manifest's arg begins with it.
+            let rest = f.rest();
+            let (watchdog, arg) = if let Some(after) = rest.strip_prefix(b"watchdog=") {
+                let end = after.iter().position(|c| *c == b' ').unwrap_or(after.len());
+                let Some(wd) = parse_u64(&after[..end]) else {
+                    return Err(syntax);
+                };
+                (wd, after.get(end + 1..).unwrap_or(&[]))
+            } else {
+                (0, rest)
+            };
             if arg.len() > ARG_MAX {
                 return Err(syntax);
             }
             let s = &mut table[n];
+            s.watchdog = watchdog;
             s.name[..name.len()].copy_from_slice(name);
             s.name_len = name.len();
             s.path[..path.len()].copy_from_slice(path);
@@ -503,6 +530,12 @@ impl Manager {
                     s.state = State::Ready;
                     s.ready_tick = Some(now);
                     s.deadline = None;
+                    // Start the watchdog clock once it is Ready (v1.7).
+                    s.awaiting_pong = false;
+                    s.wd_deadline = (s.watchdog > 0).then(|| now.saturating_add(s.watchdog));
+                } else if req == b"PONG" {
+                    // The service answered the watchdog PING; it is alive (v1.7).
+                    self.services[i].awaiting_pong = false;
                 } else if req == b"LIST" {
                     let mut out = Out::new();
                     self.list(&mut out);
@@ -562,6 +595,8 @@ impl Manager {
         };
         libnawah::handle_close(p);
         self.services[i].process = None;
+        self.services[i].wd_deadline = None;
+        self.services[i].awaiting_pong = false;
         self.close_chan(i);
         let s = &mut self.services[i];
         s.exit = Some(code);
@@ -587,33 +622,63 @@ impl Manager {
         }
     }
 
-    /// Deadlines that passed: readiness timeouts (final) and restarts.
+    /// Deadlines that passed: readiness timeouts (final), restarts, the stop grace (v1.7), and
+    /// the watchdog (v1.7).
     fn on_time(&mut self, now: u64) {
         for i in 0..self.n {
-            let Some(d) = self.services[i].deadline else {
-                continue;
-            };
-            if d > now {
-                continue;
+            if let Some(d) = self.services[i].deadline {
+                if d <= now {
+                    match self.services[i].state {
+                        State::Starting => {
+                            self.services[i].state = State::Failed;
+                            self.services[i].deadline = None;
+                            self.close_chan(i);
+                        }
+                        State::Failed => {
+                            self.services[i].restarts += 1;
+                            self.services[i].deadline = None;
+                            self.start(i, now);
+                        }
+                        State::Stopping => {
+                            // The grace passed and the process did not exit on STOP: force it
+                            // (v1.7). Its exit then flows through `on_exit` as a stop.
+                            self.services[i].deadline = None;
+                            if let Some(p) = self.services[i].process {
+                                libnawah::process_kill(p);
+                            }
+                        }
+                        _ => self.services[i].deadline = None,
+                    }
+                }
             }
-            match self.services[i].state {
-                State::Starting => {
-                    self.services[i].state = State::Failed;
-                    self.services[i].deadline = None;
-                    self.close_chan(i);
+            // Watchdog: PING a Ready service each period; a second period with no PONG means it
+            // is hung — force it and let `on_exit` apply its restart policy (v1.7).
+            if self.services[i].state == State::Ready {
+                if let Some(d) = self.services[i].wd_deadline {
+                    if d <= now {
+                        if self.services[i].awaiting_pong {
+                            self.services[i].wd_deadline = None;
+                            if let Some(p) = self.services[i].process {
+                                libnawah::process_kill(p);
+                            }
+                            self.close_chan(i);
+                        } else if let Some(c) = self.services[i].chan {
+                            libnawah::channel_write(c, b"PING", &[]);
+                            self.services[i].awaiting_pong = true;
+                            self.services[i].wd_deadline =
+                                Some(now.saturating_add(self.services[i].watchdog));
+                        }
+                    }
                 }
-                State::Failed => {
-                    self.services[i].restarts += 1;
-                    self.services[i].deadline = None;
-                    self.start(i, now);
-                }
-                _ => self.services[i].deadline = None,
             }
         }
     }
 
     fn next_deadline(&self) -> Option<u64> {
-        (0..self.n).filter_map(|i| self.services[i].deadline).min()
+        (0..self.n)
+            .flat_map(|i| [self.services[i].deadline, self.services[i].wd_deadline])
+            .flatten()
+            .min()
     }
 
     fn list(&self, out: &mut Out) {
@@ -706,7 +771,9 @@ impl Manager {
                     }
                     self.close_chan(i);
                     self.services[i].state = State::Stopping;
-                    self.services[i].deadline = None;
+                    // Give it the grace to exit on STOP, then force it (v1.7).
+                    self.services[i].deadline = Some(now.saturating_add(STOP_GRACE));
+                    self.services[i].wd_deadline = None;
                     self.services[i].restart_after_stop = true;
                     out.put(b"OK");
                 }
@@ -722,7 +789,8 @@ impl Manager {
                     self.close_chan(i);
                     if matches!(self.services[i].state, State::Starting | State::Ready) {
                         self.services[i].state = State::Stopping;
-                        self.services[i].deadline = None;
+                        self.services[i].deadline = Some(now.saturating_add(STOP_GRACE));
+                        self.services[i].wd_deadline = None;
                     }
                     out.put(b"OK");
                 }

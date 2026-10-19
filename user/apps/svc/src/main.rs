@@ -4,8 +4,10 @@
 //! exits 1 at once; (WP-31) `serve` answers READY and serves clients the manager connects
 //! (`PING` → `OK served`); `crash_once` serves the same way but dies (exit 3, no reply) on
 //! the first request of its life on this volume — it leaves `/SYSTEM/CRASHED.TXT` behind so
-//! the instance the manager restarts serves normally (TST-M4-PEER-LOSS). Anything else exits
-//! 2; a missing bootstrap handle 0xE0.
+//! the instance the manager restarts serves normally (TST-M4-PEER-LOSS). (WP-40) `ready` also
+//! answers the watchdog's `PING` with `PONG`; `hang` answers READY then stops servicing its
+//! channel, so the watchdog finds it hung and kills it (TST-M5-SVC-WATCHDOG). Anything else
+//! exits 2; a missing bootstrap handle 0xE0.
 
 #![no_std]
 #![no_main]
@@ -129,10 +131,38 @@ fn main() -> u64 {
             loop {
                 match libnawah::channel_read(ch, &mut buf, &mut hs, true) {
                     Ok((n, _)) if &buf[..n] == b"STOP" => return 0,
+                    // Watchdog (services.md v1.7): answer the manager's PING so it knows we
+                    // are alive.
+                    Ok((n, _)) if &buf[..n] == b"PING" => {
+                        if libnawah::channel_write(ch, b"PONG", &[]) == ERR_PEER_CLOSED {
+                            return 0;
+                        }
+                    }
                     Ok(_) => {}
                     Err(ERR_PEER_CLOSED) => return 0,
                     Err(_) => return 0xE3,
                 }
+            }
+        }
+        // Answers READY, then never services its boot channel again — it never PONGs (and never
+        // sees STOP), so the watchdog finds it hung and kills it, and STOP must force it
+        // (services.md v1.7, TST-M5-SVC-WATCHDOG). It blocks on a channel nobody signals rather
+        // than spinning, so it consumes no CPU and does not starve the rest of the system.
+        b"hang" => {
+            if libnawah::channel_write(ch, b"READY", &[]) < 0 {
+                return 0xE2;
+            }
+            let Ok((a, _keep)) = libnawah::channel_create() else {
+                return 0xE3;
+            };
+            loop {
+                let _ = libnawah::object_wait_many(
+                    &[WaitEntry {
+                        handle: a,
+                        signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+                    }],
+                    libnawah::TIMEOUT_FOREVER,
+                );
             }
         }
         b"mute" => loop {

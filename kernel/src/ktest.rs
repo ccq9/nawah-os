@@ -197,6 +197,7 @@ pub fn run() -> ! {
         "a11y_tree" => a11y_tree(),
         "arabic_ui" => arabic_ui(),
         "process_kill" => process_kill(),
+        "svc_watchdog" => svc_watchdog(),
         "login_screen" => login_screen(),
         "auth_input_isolated" => auth_input_isolated(),
         "lock_survives" => lock_survives(),
@@ -2812,6 +2813,9 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         "svc_timeout" => pass(
             "a silent service fails at its timeout, its dependent stays blocked, the manager answers",
         ),
+        "svc_watchdog" => pass(
+            "the watchdog ends a hung service and gives it up, leaves a healthy one, and STOP force-kills a stubborn one",
+        ),
         _ => pass("a crashing service is restarted with backoff up to its limit, then given up"),
     }
 }
@@ -2951,6 +2955,90 @@ fn svc_restart() -> ! {
     }
     drop((lines, x, text, load));
     svc_balance("svc_restart", frames0)
+}
+
+/// TST-M5-SVC-WATCHDOG (REQ-M5-010, services.md v1.7, §8.7): a hung service is detected and
+/// ended, a healthy one is not, and a service that ignores STOP is force-killed after the
+/// grace. `hung` (watchdog=50, role hang) answers READY then stops servicing, so the watchdog
+/// kills it; with max_restarts=1 it is restarted once, hangs again and is given up (restarts=1,
+/// EXIT_KILLED). `pong` (watchdog=50, role ready) answers every PING and stays ready. `stubborn`
+/// (no watchdog, role hang) is force-killed on STOP (the grace then process_kill). The manager
+/// keeps answering LIST throughout.
+fn svc_watchdog() -> ! {
+    const EXIT_KILLED: u64 = 0x2_0000;
+    let h = SvcHarness::start("svc_watchdog", b"/SYSTEM/SVC-WD.TXT");
+    // The watchdog kills the hung service, restarts it once, then gives up — while the healthy
+    // one that answers PING stays ready.
+    let lines = h.poll_list(sched::ticks() + 6000, |l| {
+        l.iter().any(|x| x.name == "hung" && x.state == "given_up")
+    });
+    let hung = lines
+        .iter()
+        .find(|l| l.name == "hung")
+        .cloned()
+        .unwrap_or_default();
+    let pong = lines
+        .iter()
+        .find(|l| l.name == "pong")
+        .cloned()
+        .unwrap_or_default();
+    // The stubborn service (no watchdog) ignores STOP; the grace then force-kills it.
+    let stop = match crate::services::request(&h.m.ctl, b"STOP stubborn", sched::ticks() + 500) {
+        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+        Err(e) => e.into(),
+    };
+    let lines2 = h.poll_list(sched::ticks() + 2000, |l| {
+        l.iter()
+            .any(|x| x.name == "stubborn" && x.state == "stopped")
+    });
+    let stubborn = lines2
+        .iter()
+        .find(|l| l.name == "stubborn")
+        .cloned()
+        .unwrap_or_default();
+    let again = crate::services::request(&h.m.ctl, b"LIST", sched::ticks() + 200).is_ok();
+    let text = SvcHarness::list_text(&lines2);
+    let load = h.load_reply.clone();
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|svc_watchdog|load={}|list={}|hung={}:{}:{}|pong={}:{}|stop={}|stubborn={}:{}|list_after={}|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        load,
+        text,
+        hung.state,
+        hung.restarts,
+        hung.exit.map_or(-1, |e| e as i64),
+        pong.state,
+        pong.restarts,
+        stop,
+        stubborn.state,
+        stubborn.exit.map_or(-1, |e| e as i64),
+        u8::from(again),
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 3"
+        || hung.state != "given_up"
+        || hung.restarts != 1
+        || hung.exit != Some(EXIT_KILLED)
+    {
+        fail("the watchdog did not kill and give up the hung service as services.md v1.7 says")
+    }
+    if pong.state != "ready" || pong.restarts != 0 {
+        fail("a service that answered the watchdog was not left alone")
+    }
+    if stop != "OK" || stubborn.state != "stopped" || stubborn.exit != Some(EXIT_KILLED) {
+        fail("a service that ignored STOP was not force-killed after the grace")
+    }
+    if !again {
+        fail("the manager stopped answering LIST")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    drop((lines, lines2, hung, pong, stubborn, text, load, stop));
+    svc_balance("svc_watchdog", frames0)
 }
 
 // ---- WP-25: tokens, authority, the auth service --------------------------------------------
