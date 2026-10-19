@@ -233,6 +233,17 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
                 pb.err(w, str(ex))
         for e in r["evidence_refs"]:
             check_evidence_dir(e, pb, w)
+            # A requirement's evidence is its tests' evidence. A run its test no longer cites was
+            # left behind when the test was reset or re-run (CI run 39196967624 failed --strict:
+            # REQ-M5-010 still cited three runs its tests had dropped).
+            try:
+                tid = load_json(safe_rel(e) / "verdict.json").get("test_id")
+            except (ValueError, OSError, json.JSONDecodeError):
+                tid = None  # check_evidence_dir has reported it
+            t = by_id["tests"].get(tid)
+            if t is not None and e not in t["evidence_refs"]:
+                pb.err(w, f"cites evidence {e} for {tid}, which that test's record no longer cites "
+                          f"({', '.join(t['evidence_refs']) or 'none'}); refresh it with the test's")
         if r["implementation_status"] == "verified_in_scope" and not r["evidence_refs"]:
             pb.err(w, "verified_in_scope without evidence_refs")
     detect_cycles(idset["requirements"], {r["id"]: r["dependencies"] for r in recs.get("requirements", [])}, "requirements", pb)
@@ -1379,6 +1390,12 @@ def cmd_hygiene() -> int:
 
 
 def cmd_preflight(suite, only) -> int:
+    # The records first: CI's committed-state check runs validate-records, and a record error
+    # (CI run 39196967624: a requirement citing evidence its tests had dropped) fails CI after
+    # every suite has passed. It takes a second.
+    if validate_records(verbose=False) != E_OK:
+        print("preflight: validate-records failed (run `python3 tools/project.py validate-records`)")
+        return E_INTERNAL
     # CI's hygiene gate runs `cargo fmt --all --check` before anything builds, and a formatting
     # miss there fails the whole run before the suites execute (CI run 39175302719). Catch it
     # here first: it needs only rustfmt and finishes in under a second.

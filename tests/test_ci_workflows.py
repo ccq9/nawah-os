@@ -87,6 +87,8 @@ class Preflight(unittest.TestCase):
         import inspect
         src = inspect.getsource(project.cmd_preflight)
         self.assertLess(src.index('"fmt"'), src.index("cmd_hygiene()"))
+        # The records come first (CI run 39196967624 failed on a record error alone).
+        self.assertLess(src.index("validate_records("), src.index('"fmt"'))
         self.assertLess(src.index("cmd_hygiene()"), src.index('"build"'))
         with tempfile.TemporaryDirectory() as d:
             p = pathlib.Path(d) / "w.yml"

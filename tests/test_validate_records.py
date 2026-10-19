@@ -165,5 +165,21 @@ class ValidateRecords(unittest.TestCase):
         write_with_contract("1.1")
         self.assertEqual(project.validate_records(verbose=False), 0)        # the promised version exists
 
+    def test_requirement_evidence_its_test_dropped_is_rejected(self):
+        # CI run 39196967624: the test was reset (NOT_RUN, no evidence) but its requirement kept
+        # citing the old run, which went stale and failed --strict after every suite had passed.
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]
+        r["requirements"][0]["evidence_refs"] = [ev]
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 0)
+        r["tests"][0]["verdict"] = "NOT_RUN"; r["tests"][0]["evidence_refs"] = []
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 50)
+        r["requirements"][0]["evidence_refs"] = []
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 0)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
