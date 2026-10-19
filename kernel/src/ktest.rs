@@ -5174,7 +5174,7 @@ fn alt_tab_cycle() -> ! {
         fail("three Alt+Tab presses did not visit the three windows")
     }
     drop((ev, vmos, sids, wins, visits, admin, clients));
-    display_finish(
+    heap_balance(
         name,
         h,
         "three Alt+Tab presses visit all three windows in a fixed order and come back",
@@ -5556,27 +5556,38 @@ fn app_oversize() -> ! {
     // Everything this test allocated goes before the heap is measured.
     drop((admin, clients, input, k1, k2, ev_a, ev_b, ev_i));
     drop((big, two, b1, b2, a_after, ibig, iafter));
+    heap_balance(
+        "app_oversize",
+        h,
+        "a message too large for the compositor or the input service is refused and stalls nobody",
+    )
+}
+
+/// The end of a display test that is the first to use some allocation sizes: the kernel heap
+/// may take slab pages for them and keeps them for reuse (heap.rs: never returned). Every
+/// frame must come back except exactly those pages (`unaccounted_frames=0`), and every kernel
+/// object (`clean`). Live heap blocks are printed but not judged: every display test ends 2
+/// above its start (APP-HANG and WINDOW-STATES measured the same), so that count is the
+/// harness's own. (TST-M5-APP-OVERSIZE, TST-M5-ALT-TAB-CYCLE.)
+fn heap_balance(name: &'static str, h: SvcHarness, pass_msg: &'static str) -> ! {
     let (slab0, live0) = (h.slab0, h.live0);
     let (mgr_exit, procs, frames0, clean) = h.finish();
-    // The balance. This is the first test to move messages of these sizes, so the kernel heap
-    // may take slab pages for them and keeps them for reuse (heap.rs: never returned): every
-    // frame must come back except exactly those pages, and every kernel object (`clean`).
-    // Live heap blocks are printed but not judged: every display test ends 2 above its start
-    // (APP-HANG and WINDOW-STATES measured the same), so that count is the harness's own.
     let heap1 = crate::mm::heap::stats();
     let frames = SvcHarness::frames_delta(frames0);
     let slab = heap1.slab_pages as i64 - slab0 as i64;
     let live = heap1.live_blocks as i64 - live0 as i64;
     kprintln!(
-        "OSX|{}|ktest|app_oversize|mgr_exit={:#x}|processes_after={}|clean={}",
+        "OSX|{}|ktest|{}|mgr_exit={:#x}|processes_after={}|clean={}",
         BUILD_ID,
+        name,
         mgr_exit,
         procs,
         u8::from(clean)
     );
     kprintln!(
-        "OSX|{}|ktest|app_oversize|frames_delta={}|heap_pages_kept={}|unaccounted_frames={}|live_blocks_delta={}",
+        "OSX|{}|ktest|{}|frames_delta={}|heap_pages_kept={}|unaccounted_frames={}|live_blocks_delta={}",
         BUILD_ID,
+        name,
         frames,
         slab,
         frames - slab,
@@ -5588,7 +5599,7 @@ fn app_oversize() -> ! {
     if frames != slab {
         fail("frames leaked")
     }
-    pass("a message too large for the compositor or the input service is refused and stalls nobody")
+    pass(pass_msg)
 }
 
 /// TST-M5-APP-HANG (REQ-M5-003): a client that stops reading never blocks the compositor;
