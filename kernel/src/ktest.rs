@@ -5173,7 +5173,8 @@ fn alt_tab_cycle() -> ! {
     if seen.len() != 3 || visits.last() != Some(&focus0) {
         fail("three Alt+Tab presses did not visit the three windows")
     }
-    drop((ev, vmos, sids, wins, visits, admin, clients));
+    drop(seen);
+    drop((ev, vmos, sids, wins, visits, focus0, last, admin, clients));
     heap_balance(
         name,
         h,
