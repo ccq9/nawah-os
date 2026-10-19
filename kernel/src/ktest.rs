@@ -190,6 +190,7 @@ pub fn run() -> ! {
         "screen" => screen(),
         "window_states" => window_states(),
         "app_hang" => app_hang(),
+        "app_oversize" => app_oversize(),
         "text_layer" => text_layer(),
         "keyboard_nav" => keyboard_nav("keyboard_nav"),
         "keyboard_nav2" => keyboard_nav("keyboard_nav2"),
@@ -2703,6 +2704,9 @@ struct SvcHarness {
     m: crate::services::Manager,
     obj0: object::Stats,
     frames0: u64,
+    /// Kernel heap slab pages when `frames0` was taken (they are kept once taken, so heap
+    /// growth during a test shows in its frame balance).
+    slab0: u64,
     load_reply: String,
 }
 
@@ -2713,6 +2717,7 @@ impl SvcHarness {
         }
         let obj0 = object::stats();
         let frames0 = pmm::stats().free_frames;
+        let slab0 = crate::mm::heap::stats().slab_pages;
         let m = match crate::services::spawn_manager() {
             Ok(m) => m,
             Err(e) => {
@@ -2734,6 +2739,7 @@ impl SvcHarness {
             m,
             obj0,
             frames0,
+            slab0,
             load_reply,
         }
     }
@@ -3010,6 +3016,7 @@ fn svc_watchdog() -> ! {
     let pong = svc_find(&lines, "pong");
     let closer = svc_find(&lines, "closer");
     let early = svc_find(&lines, "early");
+    let loud = svc_find(&lines, "loud");
     // The stubborn service (no watchdog) ignores STOP; the grace then force-kills it — not
     // before: 150 ticks after the request it is still stopping.
     let t0 = sched::ticks();
@@ -3030,7 +3037,7 @@ fn svc_watchdog() -> ! {
     let (mgr_exit, procs, frames0, clean) = h.finish();
     let code = |l: &SvcLine| l.exit.map_or(-1, |e| e as i64);
     kprintln!(
-        "OSX|{}|ktest|svc_watchdog|load={}|list={}|hung={}:{}:{}|pong={}:{}|closer={}:{}|early={}:{}|early_alive_at_200={}|stop={}|stubborn_at_150={}|stubborn={}:{}|list_after={}|mgr_exit={:#x}|processes_after={}|clean={}",
+        "OSX|{}|ktest|svc_watchdog|load={}|list={}|hung={}:{}:{}|pong={}:{}|closer={}:{}|early={}:{}|early_alive_at_200={}|loud={}:{}|stop={}|stubborn_at_150={}|stubborn={}:{}|list_after={}|mgr_exit={:#x}|processes_after={}|clean={}",
         BUILD_ID,
         load,
         text,
@@ -3044,6 +3051,8 @@ fn svc_watchdog() -> ! {
         early.state,
         code(&early),
         u8::from(early_alive),
+        loud.state,
+        loud.restarts,
         stop,
         mid.state,
         stubborn.state,
@@ -3053,7 +3062,7 @@ fn svc_watchdog() -> ! {
         procs,
         u8::from(clean)
     );
-    if load != "OK 5"
+    if load != "OK 6"
         || hung.state != "given_up"
         || hung.restarts != 1
         || hung.exit != Some(EXIT_KILLED)
@@ -3069,6 +3078,9 @@ fn svc_watchdog() -> ! {
     if !early_alive || early.state != "failed" || early.exit != Some(EXIT_KILLED) {
         fail("a service hung before READY was not forced after the grace (services.md v1.8)")
     }
+    if loud.state != "ready" || loud.restarts != 0 {
+        fail("a message larger than any request kept the manager from reading READY (services.md v1.9)")
+    }
     if stop != "OK"
         || mid.state != "stopping"
         || stubborn.state != "stopped"
@@ -3083,7 +3095,7 @@ fn svc_watchdog() -> ! {
         fail("manager or services left something behind")
     }
     drop((
-        first, lines, lines2, hung, pong, closer, early, mid, stubborn, text, load, stop,
+        first, lines, lines2, hung, pong, closer, early, loud, mid, stubborn, text, load, stop,
     ));
     svc_balance("svc_watchdog", frames0)
 }
@@ -4932,6 +4944,7 @@ fn display_env(
 
 /// Ends a display test: everything the test holds is dropped by the caller first.
 fn display_finish(name: &'static str, h: SvcHarness, pass_msg: &'static str) -> ! {
+    let slab0 = h.slab0;
     let (mgr_exit, procs, frames0, clean) = h.finish();
     kprintln!(
         "OSX|{}|ktest|{}|mgr_exit={:#x}|processes_after={}|clean={}",
@@ -4940,6 +4953,13 @@ fn display_finish(name: &'static str, h: SvcHarness, pass_msg: &'static str) -> 
         mgr_exit,
         procs,
         u8::from(clean)
+    );
+    // Diagnostic (not asserted): heap slab pages taken since the frame balance started.
+    kprintln!(
+        "OSX|{}|ktest|{}|slab_pages_since_start={}",
+        BUILD_ID,
+        name,
+        crate::mm::heap::stats().slab_pages as i64 - slab0 as i64
     );
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
@@ -5362,6 +5382,110 @@ fn window_states() -> ! {
         "window_states",
         h,
         "focus by request, Alt+Tab and click, z-order, resize with a new surface, minimise and restore all follow display.md",
+    )
+}
+
+/// A request and how many ticks its reply took.
+fn timed_request(
+    ep: &Endpoint,
+    req: &[u8],
+    handles: Vec<Entry>,
+    ev: &mut Vec<String>,
+) -> (String, u64) {
+    let t0 = sched::ticks();
+    let r = drequest(ep, req, handles, ev);
+    (r, sched::ticks() - t0)
+}
+
+/// TST-M5-APP-OVERSIZE (REQ-M5-003, display.md v1.4, input.md v2.4; review 2026-10-19, M1):
+/// a message too large for a server's buffer is discarded and answered `ERR BAD_REQUEST` —
+/// never left at the head of the queue, where the server would find it on every wake and
+/// serve no client after it. Client `a` (connected first, the lower slot) sends 2000 bytes,
+/// then a request carrying two handles; after each, client `b` is answered within 500 ticks,
+/// and `a` itself still is. The input service the same, with 300 bytes from the controller.
+fn app_oversize() -> ! {
+    // The kernel heap keeps a slab page once taken, and this test is the first to move
+    // messages of these sizes (a 2000-byte request, a full 4096-byte read): warm those size
+    // classes before the frame balance starts, so the balance measures leaks, not growth.
+    drop(
+        [2000usize, 4096, 1024, 512]
+            .iter()
+            .flat_map(|&n| (0..16).map(move |_| alloc::vec![0u8; n]))
+            .collect::<Vec<_>>(),
+    );
+    let (h, admin, clients, _format) = display_env(
+        "app_oversize",
+        b"/SYSTEM/SVC-DP.TXT",
+        &["auth", "input", "display"],
+        2,
+    );
+    let (a, b) = (&clients[0], &clients[1]);
+    let (mut ev_a, mut ev_b, mut ev_i) = (Vec::new(), Vec::new(), Vec::new());
+    let ok = |r: &str| r.starts_with("OK ");
+    let big = drequest(a, &[b'x'; 2000], Vec::new(), &mut ev_a);
+    let (b1, t1) = timed_request(b, b"STATUS", Vec::new(), &mut ev_b);
+    let entry = |ep: Arc<Endpoint>| Entry {
+        object: Object::Channel(ep),
+        rights: Rights::CHANNEL_DEFAULT,
+    };
+    let (e1, k1) = channel::create();
+    let (e2, k2) = channel::create();
+    let two = drequest(a, b"STATUS", alloc::vec![entry(e1), entry(e2)], &mut ev_a);
+    let (b2, t2) = timed_request(b, b"STATUS", Vec::new(), &mut ev_b);
+    let a_after = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    // The handles moved with the refused request were closed by the compositor.
+    let gone = crate::object::channel::SIGNAL_PEER_CLOSED;
+    let closed = k1.poll(gone, None) == gone && k2.poll(gone, None) == gone;
+    let input = svc_connect(&h, "input");
+    let ibig = drequest(&input, &[b'y'; 300], Vec::new(), &mut ev_i);
+    let iafter = drequest(&input, b"STATUS", Vec::new(), &mut ev_i);
+    kprintln!(
+        "OSX|{}|ktest|app_oversize|took_after_big={}|took_after_two={}",
+        BUILD_ID,
+        t1,
+        t2
+    );
+    kprintln!(
+        "OSX|{}|ktest|app_oversize|big={}|two={}|b_after_big={}|b_after_two={}|a_after={}|handles_closed={}|input_big={}|input_after={}",
+        BUILD_ID,
+        big,
+        two,
+        u8::from(ok(&b1) && t1 < 500),
+        u8::from(ok(&b2) && t2 < 500),
+        u8::from(ok(&a_after)),
+        u8::from(closed),
+        ibig,
+        u8::from(ok(&iafter))
+    );
+    if big != "ERR BAD_REQUEST" || two != "ERR BAD_REQUEST" || ibig != "ERR BAD_REQUEST" {
+        fail("an oversized message was not refused")
+    }
+    if !(ok(&b1) && t1 < 500 && ok(&b2) && t2 < 500) {
+        fail("an oversized message from one client stalled the compositor for another")
+    }
+    if !ok(&a_after) || !ok(&iafter) || !closed {
+        fail("a server stopped serving the sender, or kept the handles of a refused message")
+    }
+    drop((admin, clients, input, k1, k2, ev_a, ev_b, ev_i));
+    let slab0 = h.slab0;
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    // Diagnostic: kernel slab pages taken since the frame balance started (kept for reuse,
+    // never returned), so a frames_delta can be told from a leak.
+    kprintln!(
+        "OSX|{}|ktest|app_oversize|mgr_exit={:#x}|processes_after={}|clean={}|slab_pages_since_start={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean),
+        crate::mm::heap::stats().slab_pages as i64 - slab0 as i64
+    );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    cfg_balance(
+        "app_oversize",
+        frames0,
+        "a message too large for the compositor or the input service is refused and stalls nobody",
     )
 }
 

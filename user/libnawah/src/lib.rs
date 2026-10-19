@@ -199,6 +199,26 @@ pub fn channel_read(
     Ok(((r & 0xFFFF) as usize, ((r >> 16) & 0xFFFF) as usize))
 }
 
+/// Removes the message at the head of channel `h`'s queue whatever its size — up to the
+/// kernel's limits, 4096 bytes and 4 handles (ipc.md §1) — and closes the handles it carried.
+/// A server whose buffer is smaller calls it on `ERR_BUFFER_TOO_SMALL`: the kernel leaves a
+/// message that does not fit at the head of the queue, so a server that only gave up on it
+/// would find it there on every wake and serve nobody after it (review 2026-10-19, M1).
+/// Returns whether a message was removed.
+pub fn channel_discard(h: Handle) -> bool {
+    let mut bytes = [0u8; 4096];
+    let mut handles = [0u32; 4];
+    match channel_read(h, &mut bytes, &mut handles, false) {
+        Ok((_, nh)) => {
+            for &x in &handles[..nh.min(handles.len())] {
+                handle_close(x);
+            }
+            true
+        }
+        Err(_) => false,
+    }
+}
+
 /// One `object_wait_many` entry: a handle and the signals waited for.
 #[repr(C)]
 #[derive(Clone, Copy)]

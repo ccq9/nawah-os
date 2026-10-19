@@ -3,9 +3,11 @@
 # hung one that does not (killed and given up), a service with no watchdog that ignores STOP
 # (force-killed after the grace), a watchdog-monitored one that closes its boot channel (v1.8:
 # hung, killed) and one that hangs before READY (v1.8: failed at the timeout, forced after the
-# grace).
+# grace), and one that first sends a message larger than any request (v1.9: discarded, READY
+# still read).
 pong /SYSTEM/SVC.ELF - 5000 never 0 0 watchdog=50  ready
 hung /SYSTEM/SVC.ELF - 5000 on-failure 1 10 watchdog=50 hang
 stubborn /SYSTEM/SVC.ELF - 5000 never 0 0 hang
 closer /SYSTEM/SVC.ELF - 5000 never 0 0 watchdog=50 closer
 early /SYSTEM/SVC.ELF - 50 never 0 0 early_hang
+loud /SYSTEM/SVC.ELF - 5000 never 0 0 loud

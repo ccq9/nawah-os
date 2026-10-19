@@ -9,7 +9,7 @@
 //! channel, so the watchdog finds it hung and kills it (TST-M5-SVC-WATCHDOG). (Review
 //! 2026-10-19) `closer` answers READY then closes its boot channel and stays alive; `early_hang`
 //! hangs before READY without reading its channel; `ticker` writes `T` every 5 ticks from a timed
-//! wait; `sleeper` sleeps a million ticks; `silent <lo> <hi>` serves clients like `serve` but
+//! wait; `sleeper` sleeps a million ticks; `loud` sends 100 junk bytes, then acts as `ready`; `silent <lo> <hi>` serves clients like `serve` but
 //! never answers (TST-M5-SESSION-DEADLINE). Anything else exits 2; a missing bootstrap handle
 //! 0xE0.
 
@@ -211,7 +211,12 @@ fn main() -> u64 {
         return serve(ch, Mode::Silent { lo, hi });
     }
     match role {
-        b"ready" => {
+        // `loud` (review 2026-10-19, M1): first a message larger than any request the manager
+        // reads, then behaves as `ready` — the manager must discard it and still see READY.
+        b"ready" | b"loud" => {
+            if role == b"loud" && libnawah::channel_write(ch, &[b'x'; 100], &[]) < 0 {
+                return 0xE2;
+            }
             if libnawah::channel_write(ch, b"READY", &[]) < 0 {
                 return 0xE2;
             }

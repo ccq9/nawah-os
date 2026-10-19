@@ -17,7 +17,8 @@
 #![no_main]
 
 use libnawah::{
-    perm, Handle, WaitEntry, ERR_PEER_CLOSED, ERR_SHOULD_WAIT, SIGNAL_PEER_CLOSED, SIGNAL_READABLE,
+    perm, Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_SHOULD_WAIT,
+    SIGNAL_PEER_CLOSED, SIGNAL_READABLE,
 };
 
 libnawah::entry!(main);
@@ -706,6 +707,16 @@ fn main() -> u64 {
                         }
                     }
                     Err(ERR_PEER_CLOSED) => st.forget(ci),
+                    // Larger than a request can be (input.md v2.4): discarded and refused, never
+                    // left at the head of the queue (review 2026-10-19, M1).
+                    Err(ERR_BUFFER_TOO_SMALL) => {
+                        if libnawah::channel_discard(c)
+                            && libnawah::channel_write(c, b"ERR BAD_REQUEST", &[])
+                                == ERR_PEER_CLOSED
+                        {
+                            st.forget(ci);
+                        }
+                    }
                     Err(_) => {}
                 }
             }

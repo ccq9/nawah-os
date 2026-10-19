@@ -18,8 +18,8 @@
 
 use libnawah::display::pixel;
 use libnawah::{
-    Handle, WaitEntry, ERR_PEER_CLOSED, ERR_SHOULD_WAIT, ERR_TIMED_OUT, SIGNAL_PEER_CLOSED,
-    SIGNAL_READABLE,
+    Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_SHOULD_WAIT, ERR_TIMED_OUT,
+    SIGNAL_PEER_CLOSED, SIGNAL_READABLE,
 };
 use nawah_text::bidi::{self, Base};
 use nawah_text::font::Font;
@@ -1651,6 +1651,14 @@ impl Compositor {
                 Err(ERR_PEER_CLOSED) => {
                     self.forget_client(ci);
                     return;
+                }
+                // Larger than a request can be (display.md v1.4): discarded and refused, so it
+                // cannot stay at the head of the queue and starve the clients after this one.
+                Err(ERR_BUFFER_TOO_SMALL) => {
+                    if !libnawah::channel_discard(c) {
+                        return;
+                    }
+                    self.send(ci, b"ERR BAD_REQUEST", now);
                 }
                 Err(_) => return,
             }
