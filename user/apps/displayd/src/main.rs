@@ -1157,25 +1157,23 @@ impl Compositor {
         if down && mods & MOD_ALT != 0 {
             match code {
                 KEY_TAB => {
-                    // A fixed order (v1.6, review M7): from the focused window to the next
-                    // older cyclable one, from the oldest back to the newest (nothing focused:
-                    // the newest). In z-order each press raised the window it reached, so the
-                    // next press went straight back and a third window was never reached. A
-                    // minimised one is restored first (v1.3).
-                    let focus = self.focus;
-                    let pick = |below: Option<u32>| {
-                        (0..MAX_WINDOWS)
-                            .filter(|&wi| self.cyclable(wi) && Some(wi) != focus)
-                            .filter(|&wi| below.is_none_or(|id| self.windows[wi].id < id))
-                            .max_by_key(|&wi| self.windows[wi].id)
-                    };
-                    let current = focus.map(|wi| self.windows[wi].id);
-                    let target = pick(current).or_else(|| pick(None));
-                    if let Some(wi) = target {
-                        if self.windows[wi].minimized {
-                            self.set_minimized(wi, false, now);
-                        } else {
-                            self.focus_and_raise(wi, now);
+                    // The next cyclable window in z-order after the focused one (or the top
+                    // when nothing is focused); a minimised one is restored first (v1.3).
+                    if self.n_order > 0 {
+                        let base = self
+                            .focus
+                            .map(|wi| self.z_of(wi))
+                            .unwrap_or(self.n_order - 1);
+                        for step in 1..=self.n_order {
+                            let wi = self.order[(base + step) % self.n_order];
+                            if self.cyclable(wi) {
+                                if self.windows[wi].minimized {
+                                    self.set_minimized(wi, false, now);
+                                } else {
+                                    self.focus_and_raise(wi, now);
+                                }
+                                break;
+                            }
                         }
                     }
                     self.consumed_key = Some(code);

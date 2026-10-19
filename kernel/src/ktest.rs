@@ -2706,11 +2706,6 @@ struct SvcHarness {
     m: crate::services::Manager,
     obj0: object::Stats,
     frames0: u64,
-    /// Kernel heap slab pages and live blocks when `frames0` was taken: slab pages are kept
-    /// once taken, so heap growth shows in a test's frame balance; live blocks tell that
-    /// growth from a leak.
-    slab0: u64,
-    live0: u64,
     load_reply: String,
 }
 
@@ -2721,8 +2716,6 @@ impl SvcHarness {
         }
         let obj0 = object::stats();
         let frames0 = pmm::stats().free_frames;
-        let heap0 = crate::mm::heap::stats();
-        let (slab0, live0) = (heap0.slab_pages, heap0.live_blocks);
         let m = match crate::services::spawn_manager() {
             Ok(m) => m,
             Err(e) => {
@@ -2744,8 +2737,6 @@ impl SvcHarness {
             m,
             obj0,
             frames0,
-            slab0,
-            live0,
             load_reply,
         }
     }
@@ -5083,16 +5074,20 @@ fn screen() -> ! {
     )
 }
 
-/// TST-M5-WINDOW-STATES (REQ-M5-003): focus by request, by Alt+Tab and by click; z-order
-/// after a raise; resize (the client is told and attaches a new surface); minimise and
-/// restore; close; nothing left behind.
-/// TST-M5-ALT-TAB-CYCLE (REQ-M5-008; M5 pre-gate review, M7): with three windows, three
-/// Alt+Tab presses from the lab visit all three and come back — the cycle runs in a fixed order
-/// (display.md v1.6: from the focused window to the next older one, wrapping to the newest), not
-/// in z-order, where each press raised the window it reached and the next press went straight
-/// back to the one before. One kernel-side client (SVC-DP.TXT) owns windows created in order;
-/// the newest is focused. After each press the test waits for the focus to move (STATUS).
+/// TST-M5-ALT-TAB-CYCLE (REQ-M5-008; M5 pre-gate review, M7): Alt+Tab as on the Windows 10
+/// reference (display.md v1.6). One kernel-side client (SVC-DP.TXT) creates three windows in
+/// order (the newest focused) and minimises the oldest. With Alt held, each Tab moves through
+/// the windows as they were stacked when the first Tab came — the most recently used first —
+/// so three Tabs visit the other two, restoring the minimised one, and come back: the test
+/// types them itself into the keyboard ring (Alt down, Tab, Tab, Tab, Alt up), waiting for the
+/// focus to move after each, since the lab's `sendkey` releases Alt at once. Before v1.6 each
+/// Tab raised the window it reached and the next went straight back (5, 6, 5): a third window
+/// was never reached. Then the lab's single Alt+Tab press (Alt released between presses) goes
+/// back to the window used just before, as on the reference.
 fn alt_tab_cycle() -> ! {
+    const ALT: u8 = 0x38;
+    const TAB: u8 = 0x0F;
+    const RELEASE: u8 = 0x80;
     let name = "alt_tab_cycle";
     let (h, admin, clients, format) = display_env(
         name,
@@ -5118,70 +5113,80 @@ fn alt_tab_cycle() -> ! {
             Vec::new(),
             &mut ev,
         );
-        wins.push(r);
+        wins.push(String::from(r.strip_prefix("OK ").unwrap_or("0")));
     }
+    let minimize = drequest(
+        c,
+        alloc::format!("MINIMIZE {}", wins[0]).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
     let focus_of = |ev: &mut Vec<String>| -> String {
         String::from(status_field(
             &drequest(c, b"STATUS", Vec::new(), ev),
             "focus=",
         ))
     };
+    // Waits for the focus to leave `from` (at most 2000 ticks); the focus then.
+    let moved = |from: &str, ev: &mut Vec<String>| -> String {
+        let until = sched::ticks() + 2_000;
+        let mut f = focus_of(ev);
+        while f == from && sched::ticks() < until {
+            let t = sched::ticks() + 10;
+            sched::poll_until(t, || false);
+            f = focus_of(ev);
+        }
+        f
+    };
     let focus0 = focus_of(&mut ev);
-    kprintln!(
-        "OSX|{}|ktest|{}|windows={}|focus0={}|press=1|ready=1",
-        BUILD_ID,
-        name,
-        wins.join("/"),
-        focus0
-    );
-    if wins.iter().any(|w| !w.starts_with("OK ")) {
-        fail("the three windows were not created")
-    }
-    // Three presses: after each the focus moves; the next press waits for the move.
+    // Alt held across three Tabs.
+    crate::net::inject_keyboard(&[ALT]);
     let mut visits = Vec::new();
     let mut last = focus0.clone();
-    for press in 1..=3 {
-        let until = sched::ticks() + 60_000;
-        let mut now_focus = focus_of(&mut ev);
-        while now_focus == last && sched::ticks() < until {
-            let t = sched::ticks() + 20;
-            sched::poll_until(t, || false);
-            now_focus = focus_of(&mut ev);
-        }
-        visits.push(now_focus.clone());
-        last = now_focus;
-        if press < 3 {
-            kprintln!(
-                "OSX|{}|ktest|{}|press={}|ready=1",
-                BUILD_ID,
-                name,
-                press + 1
-            );
-        }
+    for _ in 0..3 {
+        crate::net::inject_keyboard(&[TAB, TAB | RELEASE]);
+        last = moved(&last, &mut ev);
+        visits.push(last.clone());
     }
-    let mut seen: Vec<&String> = visits.iter().collect();
-    seen.sort();
-    seen.dedup();
+    crate::net::inject_keyboard(&[ALT | RELEASE]);
+    let list = parse_windows(&drequest(c, b"LIST", Vec::new(), &mut ev));
+    let restored = list
+        .iter()
+        .any(|w| alloc::format!("{}", w.id) == wins[0] && !w.minimized);
+    let want: Vec<String> = alloc::vec![wins[1].clone(), wins[0].clone(), wins[2].clone()];
     kprintln!(
-        "OSX|{}|ktest|{}|visits={}|distinct={}|back_to_start={}",
+        "OSX|{}|ktest|{}|windows={}|minimize={}|focus0={}|held_visits={}|restored={}|quick=1|ready=1",
         BUILD_ID,
         name,
+        wins.join(","),
+        minimize,
+        focus0,
         visits.join(","),
-        seen.len(),
-        u8::from(visits.last() == Some(&focus0))
+        u8::from(restored)
     );
-    if seen.len() != 3 || visits.last() != Some(&focus0) {
-        fail("three Alt+Tab presses did not visit the three windows")
+    if minimize != "OK" || focus0 != wins[2] || visits != want || !restored {
+        fail("with Alt held, three Tabs did not visit every window and come back")
     }
-    drop(seen);
-    drop((ev, vmos, sids, wins, visits, focus0, last, admin, clients));
-    heap_balance(
+    // The lab's single Alt+Tab press: back to the window used just before (the oldest, last
+    // restored and raised before the newest).
+    let quick = moved(&last, &mut ev);
+    kprintln!("OSX|{}|ktest|{}|quick_to={}", BUILD_ID, name, quick);
+    if quick != wins[0] {
+        fail("a single Alt+Tab did not go back to the window used just before")
+    }
+    drop((
+        ev, vmos, sids, wins, visits, focus0, last, list, want, quick, admin, clients,
+    ));
+    display_finish(
         name,
         h,
-        "three Alt+Tab presses visit all three windows in a fixed order and come back",
+        "with Alt held Tab visits every window in most-recent order, and one Alt+Tab goes back to the last one",
     )
 }
 
+/// TST-M5-WINDOW-STATES (REQ-M5-003): focus by request, by Alt+Tab and by click; z-order
+/// after a raise; resize (the client is told and attaches a new surface); minimise and
+/// restore; close; nothing left behind.
 fn window_states() -> ! {
     let (h, admin, clients, format) = display_env(
         "window_states",
@@ -5557,50 +5562,11 @@ fn app_oversize() -> ! {
     // Everything this test allocated goes before the heap is measured.
     drop((admin, clients, input, k1, k2, ev_a, ev_b, ev_i));
     drop((big, two, b1, b2, a_after, ibig, iafter));
-    heap_balance(
+    display_finish(
         "app_oversize",
         h,
         "a message too large for the compositor or the input service is refused and stalls nobody",
     )
-}
-
-/// The end of a display test that is the first to use some allocation sizes: the kernel heap
-/// may take slab pages for them and keeps them for reuse (heap.rs: never returned). Every
-/// frame must come back except exactly those pages (`unaccounted_frames=0`), and every kernel
-/// object (`clean`). Live heap blocks are printed but not judged: every display test ends 2
-/// above its start (APP-HANG and WINDOW-STATES measured the same), so that count is the
-/// harness's own. (TST-M5-APP-OVERSIZE, TST-M5-ALT-TAB-CYCLE.)
-fn heap_balance(name: &'static str, h: SvcHarness, pass_msg: &'static str) -> ! {
-    let (slab0, live0) = (h.slab0, h.live0);
-    let (mgr_exit, procs, frames0, clean) = h.finish();
-    let heap1 = crate::mm::heap::stats();
-    let frames = SvcHarness::frames_delta(frames0);
-    let slab = heap1.slab_pages as i64 - slab0 as i64;
-    let live = heap1.live_blocks as i64 - live0 as i64;
-    kprintln!(
-        "OSX|{}|ktest|{}|mgr_exit={:#x}|processes_after={}|clean={}",
-        BUILD_ID,
-        name,
-        mgr_exit,
-        procs,
-        u8::from(clean)
-    );
-    kprintln!(
-        "OSX|{}|ktest|{}|frames_delta={}|heap_pages_kept={}|unaccounted_frames={}|live_blocks_delta={}",
-        BUILD_ID,
-        name,
-        frames,
-        slab,
-        frames - slab,
-        live
-    );
-    if mgr_exit != 0 || procs != 0 || !clean {
-        fail("manager or services left something behind")
-    }
-    if frames != slab {
-        fail("frames leaked")
-    }
-    pass(pass_msg)
 }
 
 /// TST-M5-APP-HANG (REQ-M5-003): a client that stops reading never blocks the compositor;
