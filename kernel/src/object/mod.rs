@@ -132,6 +132,9 @@ pub const VMO_MAX_BYTES: u64 = 1024 * 1024;
 pub struct Vmo {
     frames: Vec<Frame>,
     owned: bool,
+    /// Over the display's frame (`display_map`): the last one gone clears the frame
+    /// (display.md v1.5).
+    frame: bool,
 }
 
 impl Vmo {
@@ -160,20 +163,24 @@ impl Vmo {
         Some(Arc::new(Vmo {
             frames,
             owned: true,
+            frame: false,
         }))
     }
 
-    /// A VMO over the physical range `[base, base + len)` (page aligned, device memory such as
-    /// the frame buffer): mappable like any VMO, its pages are nobody's to free.
-    pub fn physical(base: u64, len: u64) -> Option<Arc<Vmo>> {
+    /// A VMO over the display's frame, the physical range `[base, base + len)` (page aligned,
+    /// device memory): mappable like any VMO, its pages are nobody's to free. Counted, so the
+    /// frame is cleared when the last one goes (`display_map`, display.md v1.5).
+    pub fn frame(base: u64, len: u64) -> Option<Arc<Vmo>> {
         if len == 0 || !base.is_multiple_of(4096) || !len.is_multiple_of(4096) {
             return None;
         }
         let frames = (0..len / 4096).map(|i| Frame(base + i * 4096)).collect();
         LIVE_VMOS.fetch_add(1, Ordering::Relaxed);
+        crate::display::frame_acquired();
         Some(Arc::new(Vmo {
             frames,
             owned: false,
+            frame: true,
         }))
     }
 
@@ -197,6 +204,9 @@ impl Drop for Vmo {
             for f in self.frames.drain(..) {
                 let _ = pmm::free_frame(f);
             }
+        }
+        if self.frame {
+            crate::display::frame_released();
         }
         LIVE_VMOS.fetch_sub(1, Ordering::Relaxed);
     }

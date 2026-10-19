@@ -4735,6 +4735,101 @@
         }
       },
       {
+        "id": "TST-M5-LOCK-DISPLAY-DOWN",
+        "test_id": "TST-M5-LOCK-DISPLAY-DOWN",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=lock_display_down"
+        ],
+        "oracle": "SVC-SS.TXT (the compositor's restart policy is never): the lab signs in and the spy's window is composed onto the frame (the kernel reads back its colour 2E8B57 on 23856 pixels: the 200×120 client area less the compositor's 12×12 resize grip); the test stops the compositor (the manager's STOP: its process ends, display stopped with restarts=0, no restart). Nothing draws any more and the kernel clears the frame when the last VMO over it goes (display.md v1.5): exactly one clear, no pixel lit, none of the spy's. The lab's Ctrl+Alt+Del then locks the session with the input service alone (STATE `OK locked user=admin changes=2 display=1 input=1 focus=session`; the spy got no key) and the frame stays black; the lab's screendump shows black at (2,2), at the spy's place (150,150) and where the lock dialog would be (512,338); a second Ctrl+Alt+Del (the input service counts saks=2) leaves the session locked and the frame black. The compositor is spawned exactly once; the password never appears in the serial log; no frame leaks; exit 33. Without the clear the stopped compositor's last picture — the spy's window — stays on the screen through the lock (M5 pre-gate review, M5)",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=lock_display_down",
+          "|path=/SYSTEM/SESSIOND.ELF|handles=1",
+          "|ktest|lock_display_down|services=5|ready=1",
+          "|ktest|lock_display_down|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|spy=OK keys=0 focus=1 connections=1|lit_before=1|spy_px_before=23856|phase=1",
+          "|ktest|lock_display_down|stopped=OK|display=stopped:0|clears=1|lit=0|spy_px=0|phase=2|ready=1",
+          "|ktest|lock_display_down|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|spy_keys0=1|lit=0|spy_px=0|phase=3|ready=1",
+          "|ktest|lock_display_down|saks2=1|state=OK locked user=admin changes=2 display=1 input=1 focus=session|lit=0|spy_px=0|phase=4",
+          "|ktest|lock_display_down|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|lock_display_down|frames_delta=0",
+          "|ktest|pass|with the compositor stopped the frame went black and the session locked with nothing on the screen"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1"
+        ],
+        "min_counts": {
+          "|path=/SYSTEM/DISPLAYD.ELF|": 1
+        },
+        "timeout_s": 900,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|lock_display_down|stopped=",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|lock_display_down|locked=",
+              "commands": [
+                "screendump ${SCREEN:locked}",
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            }
+          ]
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:locked}",
+            "--pixel",
+            "2,2,000000",
+            "--pixel",
+            "150,150,000000",
+            "--pixel",
+            "512,338,000000"
+          ]
+        ],
+        "max_counts": {
+          "|path=/SYSTEM/DISPLAYD.ELF|": 1
+        }
+      },
+      {
         "id": "TST-M5-SESSION-DEADLINE",
         "test_id": "TST-M5-SESSION-DEADLINE",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

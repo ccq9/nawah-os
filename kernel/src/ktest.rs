@@ -205,6 +205,7 @@ pub fn run() -> ! {
         "auth_input_isolated" => auth_input_isolated(),
         "lock_survives" => lock_survives(),
         "lock_hang" => lock_hang(),
+        "lock_display_down" => lock_display_down(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
@@ -4519,6 +4520,9 @@ fn display_boot() -> ! {
         decoded.push(digit);
     }
     let bar_ok = decoded == BUILD_ID;
+    // The probe's squares must outlive its exit: the test reads them back and the lab's
+    // screendump comes later (display.md v1.5 clears the frame when its last VMO goes).
+    crate::display::pin_frame();
     let o = run_with_object(
         "display_boot",
         crate::apps::FBPROBE,
@@ -5647,6 +5651,8 @@ fn text_layer() -> ! {
         fail("volume did not mount")
     }
     let display = crate::display::display_object().unwrap_or_else(|| fail("no display object"));
+    // The line must outlive the probe's exit for the lab's screendump (display.md v1.5).
+    crate::display::pin_frame();
     let o = run_with_object(
         "text_layer",
         crate::apps::TEXTPROBE,
@@ -6356,6 +6362,166 @@ fn lock_hang() -> ! {
         name,
         h,
         "the watchdog force-killed and restarted the wedged compositor and input service while the lock held, and only the right password opened it",
+    )
+}
+
+/// The frame as the kernel reads it back: (pixels not black, pixels of `rgb`) over the visible
+/// area (the stride's padding is skipped).
+fn frame_census(rgb: u32) -> (u64, u64) {
+    let Some(d) = crate::display::info() else {
+        return (0, 0);
+    };
+    let want = crate::display::pixel(d.pixel_format, rgb) & 0x00FF_FFFF;
+    let (mut lit, mut of) = (0u64, 0u64);
+    for y in 0..d.height {
+        let line = d.virt + u64::from(y) * u64::from(d.pitch_px) * 4;
+        for x in 0..d.width {
+            let v = crate::arch::mmio::read32(line + u64::from(x) * 4) & 0x00FF_FFFF;
+            if v != 0 {
+                lit += 1;
+            }
+            if v == want {
+                of += 1;
+            }
+        }
+    }
+    (lit, of)
+}
+
+/// TST-M5-LOCK-DISPLAY-DOWN (REQ-M5-010, REQ-M5-006; M5 pre-gate review, M5): the session locks
+/// while the compositor is down and never comes back (SVC-SS.TXT: `never`). The lab signs in and
+/// the spy's window is on the frame; the test stops the compositor (the manager's STOP: its
+/// process ends, no restart). Nothing draws any more, and the kernel clears the frame when the
+/// last VMO over it goes (display.md v1.5): no pixel is lit, the spy's window is gone from the
+/// screen. Ctrl+Alt+Del then locks the session — input alone carries it — and the frame stays
+/// black; the lab's screendump shows black at the spy's place and where the lock dialog would be,
+/// and a second Ctrl+Alt+Del (the input service counts it) leaves it locked and black. Without the
+/// clear, the stopped compositor's last picture — the user's windows — stays on the screen
+/// through the lock.
+fn lock_display_down() -> ! {
+    const SPY_COLOUR: u32 = 0x2E8B57;
+    // The spy's 200×120 client area less the compositor's 12×12 resize grip in its corner.
+    const SPY_PIXELS: u64 = 200 * 120 - 12 * 12;
+    let name = "lock_display_down";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SS.TXT",
+        &["auth", "input", "display", "session", "spy"],
+    );
+    let spy = svc_connect(&h, "spy");
+    kprintln!("OSX|{}|ktest|{}|services=5|ready=1", BUILD_ID, name);
+    // The lab signs in; the spy's window takes the focus and is composed onto the frame.
+    let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
+    });
+    let spy1 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r == "OK keys=0 focus=1 connections=1"
+    });
+    let mut census = frame_census(SPY_COLOUR);
+    let until = sched::ticks() + 2_000;
+    while census.1 != SPY_PIXELS && sched::ticks() < until {
+        let t = sched::ticks() + 20;
+        sched::poll_until(t, || false);
+        census = frame_census(SPY_COLOUR);
+    }
+    kprintln!(
+        "OSX|{}|ktest|{}|unlocked={}|spy={}|lit_before={}|spy_px_before={}|phase=1",
+        BUILD_ID,
+        name,
+        unlocked,
+        spy1,
+        u8::from(census.0 > 0),
+        census.1
+    );
+    if !unlocked.starts_with("OK unlocked user=admin changes=1 ")
+        || spy1 != "OK keys=0 focus=1 connections=1"
+        || census.1 != SPY_PIXELS
+    {
+        fail("the spy's window was not on the screen after the sign-in")
+    }
+    // The compositor goes for good: its process ends and the manager does not start it again.
+    let clears0 = crate::display::clears();
+    let r_stop = match crate::services::request(&h.m.ctl, b"STOP display", sched::ticks() + 500) {
+        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+        Err(e) => String::from(e),
+    };
+    let lines = h.poll_list(sched::ticks() + 10_000, |l| {
+        l.iter()
+            .any(|x| x.name == "display" && x.state == "stopped")
+    });
+    let d = svc_find(&lines, "display");
+    let stopped = frame_census(SPY_COLOUR);
+    let clears = crate::display::clears() - clears0;
+    kprintln!(
+        "OSX|{}|ktest|{}|stopped={}|display={}:{}|clears={}|lit={}|spy_px={}|phase=2|ready=1",
+        BUILD_ID,
+        name,
+        r_stop,
+        d.state,
+        d.restarts,
+        clears,
+        stopped.0,
+        stopped.1
+    );
+    if r_stop != "OK" || d.state != "stopped" || clears != 1 || stopped != (0, 0) {
+        fail("the stopped compositor's last picture stayed on the screen")
+    }
+    // The lab: Ctrl+Alt+Del. The input service gives the sequence to the session, which locks
+    // with no compositor to tell; nothing may draw the user's windows again.
+    let locked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "locked", 2)
+    });
+    let spy2 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r.starts_with("OK ")
+    });
+    let at_lock = frame_census(SPY_COLOUR);
+    kprintln!(
+        "OSX|{}|ktest|{}|locked={}|spy_keys0={}|lit={}|spy_px={}|phase=3|ready=1",
+        BUILD_ID,
+        name,
+        locked,
+        u8::from(spy2.starts_with("OK keys=0 ")),
+        at_lock.0,
+        at_lock.1
+    );
+    if !locked.starts_with("OK locked user=admin changes=2 ")
+        || !locked.ends_with(" focus=session")
+        || !spy2.starts_with("OK keys=0 ")
+        || at_lock != (0, 0)
+    {
+        fail("the session did not lock with the compositor down, or the screen showed something")
+    }
+    // The lab's screendump, then Ctrl+Alt+Del once more: the input service counts the second
+    // sequence (`saks=2`), so the screendump is taken; the session stays locked, the frame black.
+    let input = svc_connect(&h, "input");
+    let mut status = cfg_request(&input, b"STATUS", None);
+    let until = sched::ticks() + 600_000;
+    while !status.contains(" saks=2") && sched::ticks() < until {
+        let t = sched::ticks() + 20;
+        sched::poll_until(t, || false);
+        status = cfg_request(&input, b"STATUS", None);
+    }
+    let still = cfg_request(&session, b"STATE", None);
+    let after = frame_census(SPY_COLOUR);
+    kprintln!(
+        "OSX|{}|ktest|{}|saks2={}|state={}|lit={}|spy_px={}|phase=4",
+        BUILD_ID,
+        name,
+        u8::from(status.contains(" saks=2")),
+        still,
+        after.0,
+        after.1
+    );
+    if !status.contains(" saks=2") || still != locked || after != (0, 0) {
+        fail("the lock did not hold with the compositor down, or something drew on the screen")
+    }
+    drop((
+        unlocked, spy1, r_stop, lines, d, locked, spy2, status, still, input, spy, session,
+    ));
+    display_finish(
+        name,
+        h,
+        "with the compositor stopped the frame went black and the session locked with nothing on the screen",
     )
 }
 

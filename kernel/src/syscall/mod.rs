@@ -1154,7 +1154,7 @@ fn sys_display_map(h: Handle) -> Result<i64, i64> {
         d.clone()
     };
     let bytes = d.info.bytes.next_multiple_of(4096);
-    let vmo = Vmo::physical(d.info.base, bytes).ok_or(ERR_INVALID)?;
+    let vmo = Vmo::frame(d.info.base, bytes).ok_or(ERR_INVALID)?;
     let handle = t
         .insert(Entry {
             object: Object::Vmo(vmo),
