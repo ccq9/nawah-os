@@ -315,10 +315,12 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
         for d in wi["depends_on"]:
             if by_id["work-items"].get(d, {}).get("status") == "superseded":
                 pb.err(w, f"depends on superseded {d}; depend on {by_id['work-items'][d].get('superseded_by')} instead")
-        if wi["status"] == "active":
+        # §2.1: active only when every dependency is done, and done likewise (arena review ع2:
+        # a done item with an active dependency passed).
+        if wi["status"] in ("active", "done"):
             for d in wi["depends_on"]:
                 if by_id["work-items"].get(d, {}).get("status") != "done":
-                    pb.err(w, f"active while dependency {d} is not done")
+                    pb.err(w, f"{wi['status']} while dependency {d} is not done")
     detect_cycles(idset["work-items"], {w["id"]: w["depends_on"] for w in recs.get("work-items", [])}, "work-items", pb)
 
     for dp in recs.get("decisions-pending", []):
@@ -1041,7 +1043,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
 
 HOST_SUITES = {
     "M0": [
-        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 10 cases incl. 6 required rejections",
+        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 17 cases incl. 6 required rejections and the dependency rule for active and done items",
          "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
         {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist",
          "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md"], "input_globs": []},

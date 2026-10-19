@@ -115,6 +115,24 @@ class ValidateRecords(unittest.TestCase):
         write_all(r)
         self.assertEqual(project.validate_records(verbose=False), 0)
 
+    def test_active_or_done_needs_done_dependencies(self):
+        # §2.1: a work item becomes active only when its dependencies are done, and so can it
+        # become done (arena review ع2: a done item with an active dependency passed).
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]
+        w0 = r["work-items"][0]; w0["status"] = "active"; w0["status_history"] = ["planned", "active"]
+        w1 = copy.deepcopy(w0); w1["id"] = "WP-01"; w1["depends_on"] = ["WP-00"]
+        r["work-items"].append(w1)
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 50)  # active, dependency active
+        w1["status"] = "done"; w1["status_history"] = ["planned", "active", "done"]; w1["evidence_refs"] = [ev]
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 50)  # done, dependency active
+        w0["status"] = "done"; w0["status_history"] = ["planned", "active", "done"]; w0["evidence_refs"] = [ev]
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 0)  # both done
+
     def test_stale_policy_warn_survives_strict(self):
         r = base_records(); write_all(r)
         ev = make_evidence(r, "TST-M0-001")

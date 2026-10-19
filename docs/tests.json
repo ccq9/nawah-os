@@ -8,7 +8,7 @@
     "REQ-M0-005"
    ],
    "layer": "host_unit",
-   "oracle": "unittest: 10 cases (6 required rejections + acceptance) exit 0",
+   "oracle": "unittest exit 0 and 'OK' in output; 17 cases incl. 6 required rejections and the dependency rule for active and done items",
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
