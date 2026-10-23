@@ -3738,14 +3738,18 @@ fn file_authority() -> ! {
             fail("application did not load")
         }
     };
+    // The authority outlives the run, so its own allocation does not count in the probe's
+    // frame balance (CI run 39294977208: frames -1 when the probe's exit freed it).
+    let authority = Arc::new(crate::object::token::SystemFiles::new());
     let reader = run_with_object(
         name,
         crate::apps::FILEAUTH,
         Entry {
-            object: Object::SystemFiles(Arc::new(crate::object::token::SystemFiles::new())),
+            object: Object::SystemFiles(authority.clone()),
             rights: Rights::READ,
         },
     );
+    drop(authority);
     let obj1 = object::stats();
     let inputd_same = inputd0 > 0 && size(b"/SYSTEM/INPUTD.ELF") == inputd0;
     let users_same = users0 > 0 && size(b"/SYSTEM/USERS.DB") == users0;

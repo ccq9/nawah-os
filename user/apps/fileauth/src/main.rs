@@ -69,8 +69,9 @@ fn main() -> u64 {
         Err(_) => return 33,
     }
     if reader {
-        // READ: /SYSTEM can be read and listed (the bytes are not printed).
-        let mut l = [0u8; 512];
+        // READ: /SYSTEM can be read and listed (the bytes are not printed). The listing takes
+        // the largest buffer dir_list accepts: /SYSTEM holds every service and manifest.
+        let mut l = [0u8; 4096];
         if dir_list(b"/SYSTEM", &mut l).is_err() {
             return 40;
         }
