@@ -3946,7 +3946,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=window_states"
         ],
-        "oracle": "two kernel-side clients a and b of the compositor (SVC-DP.TXT): surfaces 1/2, windows 3/4 at the cascade positions (21,45) and (61,85), the newer focused; RAISE by a gives a the focus and z 0 (events FOCUS/UNFOCUS to both as display.md lists them); the lab's Alt+Tab (QEMU sendkey) moves the focus to b (a sees the Alt press then UNFOCUS 3; b gets FOCUS 4 then the Alt release; the Tab press and release are swallowed; STATUS focus=4); the lab's pointer path to a's title bar and click (mouse_move -470 -368 from the centre, mouse_button 1/0) focuses a again with the pointer at (170,32); RESIZE 200 100 tells a `RESIZED 3 200 100`, a attaches a new 200×100 surface (5) and LIST shows it; MINIMIZE moves the focus to b and RESTORE back to a on top; CLOSE and DESTROY_SURFACE leave windows=0; clean exit, no frame leaks; exit 33",
+        "oracle": "two kernel-side clients a and b of the compositor (SVC-DP.TXT): surfaces 1/2, windows 3/4 at the cascade positions (21,45) and (61,85), the newer focused; RAISE by a gives a the focus and z 0 (events FOCUS/UNFOCUS to both as display.md lists them); the lab's Alt+Tab (QEMU sendkey) moves the focus to b (a sees the Alt press then UNFOCUS 3; b gets FOCUS 4 then the Alt release; the Tab press and release are swallowed; STATUS focus=4); the lab's pointer path to a's title bar and click (mouse_move -470 -368 from the centre, mouse_button 1/0) focuses a again with the pointer at (170,32); RESIZE 200 100 tells a `RESIZED 3 200 100`, a attaches a new 200×100 surface (5) and LIST shows it; MINIMIZE moves the focus to b and RESTORE back to a on top; (WP-42, REQ-M5-003) b raises itself over a (a sees UNFOCUS 3 and its client area hashes differently, covered) and then b's client goes away with no CLOSE: the compositor forgets b's window and surface on its own (windows=1, the focus back to a with FOCUS 3), a's client area hashes exactly as it did alone on top, and the compositor no longer holds b's surface (its references drop to the test's own); a's CLOSE and DESTROY_SURFACE leave windows=0; clean exit, no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=window_states",
@@ -3956,7 +3956,10 @@
           "|ktest|window_states|click_a=FOCUS 3|click_b=UNFOCUS 4|status=OK format=1 screen=1280x800 windows=2 focus=3 pointer=170,32 composed=",
           "|ktest|window_states|resize=OK|resized=RESIZED 3 200 100|surface2=OK 5|attach=OK|destroy=OK|a2=21,45,200,100,Some(5),0|minimize=OK|min_a=UNFOCUS 3|min_b=FOCUS 4|a3=1,0,0|status_b=OK format=1 screen=1280x800 windows=2 focus=4 pointer=170,32 composed=",
           "|restore=OK|res_a=FOCUS 3|res_b=UNFOCUS 4|a4=0,1,0",
-          "|ktest|window_states|close=OK/OK|destroy=OK/OK|status=OK format=1 screen=1280x800 windows=0 focus=- pointer=170,32 composed=",
+          "|ktest|window_states|gone=raise:OK|raise_a=UNFOCUS 3|covered_differs=1|status=OK format=1 screen=1280x800 windows=1 focus=3 pointer=170,32 composed=",
+          "|gone_a=FOCUS 3|uncovered=1|surface_held=",
+          ">1|",
+          "|ktest|window_states|close=OK|destroy=OK|status=OK format=1 screen=1280x800 windows=0 focus=- pointer=170,32 composed=",
           "|ktest|window_states|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|window_states|frames_delta=0",
           "|ktest|pass|focus by request, Alt+Tab and click, z-order, resize with a new surface, minimise and restore all follow display.md"

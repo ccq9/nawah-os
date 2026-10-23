@@ -5701,13 +5701,17 @@ fn alt_tab_cycle() -> ! {
 /// after a raise; resize (the client is told and attaches a new surface); minimise and
 /// restore; close; nothing left behind.
 fn window_states() -> ! {
-    let (h, admin, clients, format) = display_env(
+    let (h, admin, mut clients, format) = display_env(
         "window_states",
         b"/SYSTEM/SVC-DP.TXT",
         &["auth", "input", "display"],
         2,
     );
-    let (a, b) = (&clients[0], &clients[1]);
+    // b is held apart: in step 6 its client goes away without a word.
+    let b_client = clients
+        .pop()
+        .unwrap_or_else(|| fail("the display setting gave fewer than two clients"));
+    let (a, b) = (&clients[0], &b_client);
     let (mut ev_a, mut ev_b) = (Vec::new(), Vec::new());
     let status0 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
     if status_field(&status0, "screen=") != "1280x800" {
@@ -5940,18 +5944,64 @@ fn window_states() -> ! {
     {
         fail("resize, minimise or restore did not do what display.md says")
     }
-    // 6. Close both; nothing remains.
+    // 6. b's client goes away while its window lies over a's (REQ-M5-003: a surface is never
+    // read after its client is gone). b raises itself over a, then its channel closes with
+    // no CLOSE: the compositor forgets the window and the surface on its own — windows=1, the
+    // focus comes back to a, a's client area hashes as it did alone on top (step 5), and the
+    // compositor no longer holds b's surface (only the test's own reference is left).
+    let r_raise_b = drequest(
+        b,
+        alloc::format!("RAISE {}", wb_id).as_bytes(),
+        Vec::new(),
+        &mut ev_b,
+    );
+    let raise_b_a = read_events(a, 1, sched::ticks() + 2_000);
+    let la5 = parse_windows(&drequest(a, b"LIST", Vec::new(), &mut ev_a));
+    let held_before = Arc::strong_count(&vmo_b);
+    drop(b_client);
+    let deadline = sched::ticks() + 5_000;
+    let mut status5 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    while status_field(&status5, "windows=") != "1" && sched::ticks() < deadline {
+        sched::poll_until(sched::ticks() + 20, || false);
+        status5 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    }
+    let mut gone_a = core::mem::take(&mut ev_a);
+    gone_a.extend(read_events(a, 1, sched::ticks() + 500));
+    let la6 = parse_windows(&drequest(a, b"LIST", Vec::new(), &mut ev_a));
+    let held_after = Arc::strong_count(&vmo_b);
+    let hash = |l: &Vec<WinLine>| l.first().map_or(String::new(), |w| w.hash.clone());
+    let covered_differs = la5.len() == 1 && hash(&la5) != hash(&la4);
+    let uncovered = la6.len() == 1 && hash(&la6) == hash(&la4);
+    kprintln!(
+        "OSX|{}|ktest|window_states|gone=raise:{}|raise_a={}|covered_differs={}|status={}|gone_a={}|uncovered={}|surface_held={}>{}|",
+        BUILD_ID,
+        r_raise_b,
+        raise_b_a.join(";"),
+        u8::from(covered_differs),
+        status5,
+        gone_a.join(";"),
+        u8::from(uncovered),
+        held_before,
+        held_after
+    );
+    if r_raise_b != "OK"
+        || raise_b_a != [alloc::format!("UNFOCUS {}", wa_id)]
+        || !covered_differs
+        || status_field(&status5, "windows=") != "1"
+        || status_field(&status5, "focus=") != wa_id
+        || gone_a != [alloc::format!("FOCUS {}", wa_id)]
+        || !uncovered
+        || held_before < 2
+        || held_after != 1
+    {
+        fail("a client's surface was still shown or held after the client was gone")
+    }
+    // 7. a closes; nothing remains.
     let ca = drequest(
         a,
         alloc::format!("CLOSE {}", wa_id).as_bytes(),
         Vec::new(),
         &mut ev_a,
-    );
-    let cb = drequest(
-        b,
-        alloc::format!("CLOSE {}", wb_id).as_bytes(),
-        Vec::new(),
-        &mut ev_b,
     );
     let da = drequest(
         a,
@@ -5959,28 +6009,15 @@ fn window_states() -> ! {
         Vec::new(),
         &mut ev_a,
     );
-    let db = drequest(
-        b,
-        alloc::format!("DESTROY_SURFACE {}", sb_id).as_bytes(),
-        Vec::new(),
-        &mut ev_b,
-    );
     let status4 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
     kprintln!(
-        "OSX|{}|ktest|window_states|close={}/{}|destroy={}/{}|status={}",
+        "OSX|{}|ktest|window_states|close={}|destroy={}|status={}",
         BUILD_ID,
         ca,
-        cb,
         da,
-        db,
         status4
     );
-    if ca != "OK"
-        || cb != "OK"
-        || da != "OK"
-        || db != "OK"
-        || status_field(&status4, "windows=") != "0"
-    {
+    if ca != "OK" || da != "OK" || status_field(&status4, "windows=") != "0" {
         fail("closing did not remove the windows")
     }
     drop((status0, sa, sb, sa_id, sb_id, wa, wb, wa_id, wb_id, r_raise));
@@ -5990,8 +6027,9 @@ fn window_states() -> ! {
     drop((
         r_destroy, la2, r_min, min_a, min_b, la3, status3, r_restore, res_a, res_b, la4,
     ));
+    drop((r_raise_b, raise_b_a, la5, status5, gone_a, la6));
     drop((
-        ca, cb, da, db, status4, ev_a, ev_b, vmo_a, vmo_b, vmo_a2, clients, admin,
+        ca, da, status4, ev_a, ev_b, vmo_a, vmo_b, vmo_a2, clients, admin,
     ));
     display_finish(
         "window_states",
