@@ -24,9 +24,63 @@ const PASSWORD_MAX: usize = 64;
 const DB_MAX: usize = 4096;
 /// A session token lives this long (ticks, 1 kHz): one hour.
 const SESSION_TICKS: u64 = 3_600_000;
-/// Consecutive failures before a name is delayed, and the delay.
+/// Consecutive failures before a name is delayed, and the first delay; each further failure
+/// doubles it, at most `DELAY_DOUBLINGS` times (64 s; auth.md v1.1).
 const MAX_FAILS: u32 = 5;
 const DELAY_TICKS: u64 = 2000;
+const DELAY_DOUBLINGS: u32 = 5;
+/// Unknown names whose failures are counted like a user's, so `ERR DELAYED` does not tell which
+/// names exist (auth.md v1.1); the least recently refused one makes room.
+const STRANGERS: usize = 8;
+/// The cost of an unknown name's refusal when the database is empty.
+const DEFAULT_ITERATIONS: u32 = 80_000;
+
+/// Consecutive failed attempts on one name and the tick of the last one.
+#[derive(Clone, Copy)]
+struct Attempts {
+    fails: u32,
+    last_fail: u64,
+}
+
+const NO_ATTEMPTS: Attempts = Attempts {
+    fails: 0,
+    last_fail: 0,
+};
+
+impl Attempts {
+    /// The ticks still to wait before an attempt on this name counts, if it is delayed.
+    fn wait(&self, now: u64) -> Option<u64> {
+        if self.fails < MAX_FAILS {
+            return None;
+        }
+        let delay = DELAY_TICKS << (self.fails - MAX_FAILS).min(DELAY_DOUBLINGS);
+        let since = now.saturating_sub(self.last_fail);
+        (since < delay).then(|| delay - since)
+    }
+
+    fn record(&mut self, ok: bool, now: u64) {
+        if ok {
+            self.fails = 0;
+        } else {
+            self.fails = self.fails.saturating_add(1);
+            self.last_fail = now;
+        }
+    }
+}
+
+/// An unknown name (its first `NAME_MAX` bytes) and its failures.
+#[derive(Clone, Copy)]
+struct Stranger {
+    name: [u8; NAME_MAX],
+    len: usize,
+    attempts: Attempts,
+}
+
+const NO_STRANGER: Stranger = Stranger {
+    name: [0; NAME_MAX],
+    len: 0,
+    attempts: NO_ATTEMPTS,
+};
 
 #[derive(Clone, Copy)]
 struct User {
@@ -38,9 +92,7 @@ struct User {
     name_len: usize,
     salt: [u8; 16],
     hash: [u8; 32],
-    /// Consecutive failed attempts and the tick of the last one.
-    fails: u32,
-    last_fail: u64,
+    attempts: Attempts,
 }
 
 const NO_USER: User = User {
@@ -52,8 +104,7 @@ const NO_USER: User = User {
     name_len: 0,
     salt: [0; 16],
     hash: [0; 32],
-    fails: 0,
-    last_fail: 0,
+    attempts: NO_ATTEMPTS,
 };
 
 #[derive(Clone, Copy)]
@@ -148,6 +199,7 @@ struct Auth {
     users: [User; MAX_USERS],
     n_users: usize,
     sessions: [Session; MAX_SESSIONS],
+    strangers: [Stranger; STRANGERS],
     authority: Handle,
 }
 
@@ -240,22 +292,58 @@ impl Auth {
     /// Checks `password` for user `i` with the attempt limit (auth.md §4).
     fn verify(&mut self, i: usize, password: &[u8], now: u64) -> Verdict {
         let u = &mut self.users[i];
-        if u.fails >= MAX_FAILS {
-            let since = now.saturating_sub(u.last_fail);
-            if since < DELAY_TICKS {
-                return Verdict::Delayed(DELAY_TICKS - since);
-            }
+        if let Some(t) = u.attempts.wait(now) {
+            return Verdict::Delayed(t);
         }
         let mut dk = [0u8; 32];
         pbkdf2_hmac_sha256(password, &u.salt, u.iterations, &mut dk);
-        if ct_eq(&dk, &u.hash) {
-            u.fails = 0;
+        let ok = ct_eq(&dk, &u.hash);
+        u.attempts.record(ok, now);
+        if ok {
             Verdict::Ok
         } else {
-            u.fails = u.fails.saturating_add(1);
-            u.last_fail = now;
             Verdict::Access
         }
+    }
+
+    /// Refuses a name that is not in the database as a wrong password is refused: after the
+    /// same derivation (at the dearest user's cost, so it takes as long) and under the same
+    /// attempt limit (auth.md v1.1).
+    fn refuse_unknown(&mut self, name: &[u8], password: &[u8], now: u64) -> Verdict {
+        let name = &name[..name.len().min(NAME_MAX)];
+        let slot = match (0..STRANGERS)
+            .find(|&s| &self.strangers[s].name[..self.strangers[s].len] == name)
+        {
+            Some(s) => s,
+            None => {
+                let s = (0..STRANGERS)
+                    .min_by_key(|&s| {
+                        (
+                            self.strangers[s].attempts.fails != 0,
+                            self.strangers[s].attempts.last_fail,
+                        )
+                    })
+                    .unwrap_or(0);
+                let st = &mut self.strangers[s];
+                st.name[..name.len()].copy_from_slice(name);
+                st.len = name.len();
+                st.attempts = NO_ATTEMPTS;
+                s
+            }
+        };
+        if let Some(t) = self.strangers[slot].attempts.wait(now) {
+            return Verdict::Delayed(t);
+        }
+        let iterations = self.users[..self.n_users]
+            .iter()
+            .map(|u| u.iterations)
+            .max()
+            .unwrap_or(DEFAULT_ITERATIONS);
+        let mut dk = [0u8; 32];
+        pbkdf2_hmac_sha256(password, &[0; 16], iterations, &mut dk);
+        core::hint::black_box(ct_eq(&dk, &[0; 32]));
+        self.strangers[slot].attempts.record(false, now);
+        Verdict::Access
     }
 
     /// Mints a session token for user `i`; returns the client's copy (no WRITE) and the slot.
@@ -347,7 +435,12 @@ impl Auth {
                     return None;
                 }
                 let Some(i) = self.find_user(name) else {
-                    out.put(b"ERR ACCESS");
+                    if let Verdict::Delayed(t) = self.refuse_unknown(name, password, now) {
+                        out.put(b"ERR DELAYED ");
+                        out.num(t);
+                    } else {
+                        out.put(b"ERR ACCESS");
+                    }
                     return None;
                 };
                 match self.verify(i, password, now) {
@@ -507,6 +600,7 @@ fn main() -> u64 {
         users: [NO_USER; MAX_USERS],
         n_users: 0,
         sessions: [NO_SESSION; MAX_SESSIONS],
+        strangers: [NO_STRANGER; STRANGERS],
         authority,
     };
     let mut line = Out::new();

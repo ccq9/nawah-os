@@ -19,7 +19,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        # The token stays out of .git/config, where every later step (the code under test
+        # included) could read it; only the publish step below is given it.
+        with:
+          persist-credentials: false
       - name: Durability sentinel (persistent-store test, §7.2)
         run: |
           echo "sentinel seen by fresh runner ${GITHUB_RUN_ID}:"; cat state/durability-sentinel.json
@@ -117,7 +121,7 @@ jobs:
         run: python3 tools/project.py status --json
       # A convenience copy: the evidence of record is the ci-evidence branch below, which
       # import-ci-evidence reads. A full artifact quota must not turn a green run red.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         if: always()
         continue-on-error: true
         with:
@@ -126,6 +130,8 @@ jobs:
           retention-days: 7
       - name: Publish evidence on a ci-evidence branch (readable where artifact download is blocked)
         if: always()
+        env:
+          PUSH_TOKEN: ${{ github.token }}
         run: |
           set -e
           git config user.name "nawah-ci"
@@ -135,4 +141,5 @@ jobs:
           git add -f evidence/ build/pc-qemu/build-id.txt 2>/dev/null || git add -f evidence/
           git add -f build/hygiene.log 2>/dev/null || true
           git commit -qm "CI evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
-          git push -q origin "ci-evidence/${GITHUB_RUN_ID}"
+          auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push -q origin "ci-evidence/${GITHUB_RUN_ID}"

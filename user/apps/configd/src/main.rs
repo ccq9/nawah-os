@@ -575,7 +575,9 @@ impl State {
                     out.put(b"ERR BAD_REQUEST");
                     return None;
                 };
-                let uid = token.map_or(0, |t| t.uid);
+                // Only a usable token names whose session values are read: a revoked or
+                // expired one reads as no token (config.md v1.1).
+                let uid = token.filter(|t| t.usable()).map_or(0, |t| t.uid);
                 match self.store_index(store, false) {
                     Some(i) if self.get(i, key, uid, out) => {}
                     _ => out.put(b"ERR NOT_FOUND"),
@@ -679,7 +681,7 @@ impl State {
                     out.put(b"ERR BAD_REQUEST");
                     return None;
                 };
-                let uid = token.map_or(0, |t| t.uid);
+                let uid = token.filter(|t| t.usable()).map_or(0, |t| t.uid);
                 match self.store_index(store, false) {
                     Some(i) => {
                         out.put(b"OK");
