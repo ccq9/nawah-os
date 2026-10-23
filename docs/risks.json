@@ -90,12 +90,12 @@
    "risk": "أي عملية تفتح أي ملف للقراءة والكتابة: ملف المستخدمين وبرامج النظام وملف الخدمات غير محمية (R-43)",
    "likelihood": "high",
    "impact": "critical",
-   "evidence": "kernel/src/syscall/mod.rs sys_open بلا فحص سلطة؛ مراجعة ما قبل بوابة M5 (2026-10-19)، النتيجة M4",
+   "evidence": "kernel/src/syscall/mod.rs sys_open بلا فحص سلطة؛ مراجعة ما قبل بوابة M5 (2026-10-19)، النتيجة M4؛ أُغلق بـ WP-44 (ADR-0020، files.md v1.3): TST-M5-FILE-AUTHORITY وTST-M4-SHELL-SVC PASS على CI run 39959932767",
    "owner": "agent",
    "warning_signal": "تطبيق يقرأ /SYSTEM/USERS.DB أو يكتب ملفًا في /SYSTEM",
-   "mitigation": "لا تطبيقات من خارج المشروع في الصورة؛ كل البيانات تجريبية",
+   "mitigation": "ملفات /SYSTEM لا تُقرأ ولا تُغيَّر إلا بمقدرة SystemFiles يوزعها المدير مُضيَّقة (auth قراءة، config قراءة وكتابة)؛ الخطوط مقروءة للجميع",
    "response_plan": "WP-44 قبل بوابة M5",
-   "status": "open"
+   "status": "closed"
   },
   {
    "id": "RSK-009",

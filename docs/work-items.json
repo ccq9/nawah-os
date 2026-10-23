@@ -2874,12 +2874,17 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261023T133554Z-31ded138-001",
+    "evidence/20261023T133240Z-31ded138-001",
+    "evidence/20261023T132929Z-31ded138-001"
+   ],
    "blocker": null,
    "id": "WP-44",
    "requirement_ids": [
