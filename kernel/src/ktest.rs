@@ -4694,6 +4694,45 @@ fn display_boot() -> ! {
         decoded.push(digit);
     }
     let bar_ok = decoded == BUILD_ID;
+    // REQ-M5-001: a frame the kernel cannot draw on is refused before anything is mapped or
+    // drawn, and the boot line says there is no display; the frame in use stays the display.
+    let fb = |pixel_format, width, pitch_px, base| crate::bootinfo::Framebuffer {
+        base,
+        width,
+        height: d.height,
+        pitch_px,
+        pixel_format,
+        present: 1,
+    };
+    let refusals = [
+        (fb(2, d.width, d.pitch_px, d.base), "K_E_DISPLAY_FORMAT"), // GOP PixelBitMask
+        (fb(3, d.width, d.pitch_px, d.base), "K_E_DISPLAY_FORMAT"), // GOP PixelBltOnly
+        (fb(1, 0, d.pitch_px, d.base), "K_E_DISPLAY_FORMAT"),
+        (fb(1, d.width, d.width - 1, d.base), "K_E_DISPLAY_FORMAT"),
+        (fb(1, d.width, d.pitch_px, 0), "K_E_DISPLAY_RANGE"),
+        (fb(1, 65_535, 65_535, d.base), "K_E_DISPLAY_RANGE"),
+    ];
+    let before = at(d.width / 2, d.height / 2);
+    let refused = refusals
+        .iter()
+        .filter(|(f, code)| {
+            let r = crate::display::init(f, BUILD_ID);
+            matches!(r, Err(c) if c == *code)
+                && crate::display::boot_line(&r).starts_with("present=0|")
+        })
+        .count();
+    let kept = crate::display::info().is_some_and(|i| i.base == d.base && i.virt == d.virt)
+        && at(d.width / 2, d.height / 2) == before;
+    kprintln!(
+        "OSX|{}|ktest|display_boot|refused={}/{}|kept={}",
+        BUILD_ID,
+        refused,
+        refusals.len(),
+        u8::from(kept)
+    );
+    if refused != refusals.len() || !kept {
+        fail("a frame the kernel cannot draw on was not refused, or it disturbed the display")
+    }
     // The probe's squares must outlive its exit: the test reads them back and the lab's
     // screendump comes later (display.md v1.5 clears the frame when its last VMO goes).
     crate::display::pin_frame();
@@ -4727,7 +4766,9 @@ fn display_boot() -> ! {
     if !corners_ok || !bar_ok {
         fail("the diagnostic pattern is not on the frame")
     }
-    if o.exit_code != 0x75 || !magenta || !cyan || o.frames_delta != 0 {
+    // The probe ends on a write one pixel past the frame's mapping (REQ-M5-001): the page
+    // fault ends it (0x10000 + vector 14) and nothing else is touched.
+    if o.exit_code != 0x1000E || !magenta || !cyan || o.frames_delta != 0 {
         fail("the process could not map and paint the frame through the display object")
     }
     // The lab takes its screendump now and presses Enter when done.

@@ -3744,22 +3744,24 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=display_boot"
         ],
-        "oracle": "the boot stub captures the GOP mode into BootInfo (boot|gop|present=1 with the resolution, stride and 32-bit format), the kernel maps the frame and draws the diagnostic pattern (kernel|display|…|selfcheck=1); the test reads the four corners and decodes the build-id bar back from the frame; the fbprobe process maps the frame through the display object (display_info, display_map, vmo_map read-write and read-only), paints a magenta and a cyan 64×64 square, probes the refusals (write mapping of a read-only handle ERR_ACCESS, bad protection ERR_INVALID, a channel ERR_WRONG_TYPE, unmapping a non-mapping ERR_INVALID) and exits 0x75 with no frame leaked; the lab then takes a QEMU screendump and presses Enter, and tools/screen.py finds the corners, the build id and both squares in the picture; exit 33",
+        "oracle": "the boot stub captures the GOP mode into BootInfo (boot|gop|present=1 with the resolution, stride and 32-bit format), the kernel maps the frame and draws the diagnostic pattern (kernel|display|…|selfcheck=1); the test reads the four corners and decodes the build-id bar back from the frame; the fbprobe process maps the frame through the display object (display_info, display_map, vmo_map read-write and read-only), paints a magenta and a cyan 64×64 square, probes the refusals (write mapping of a read-only handle ERR_ACCESS, bad protection ERR_INVALID, a channel ERR_WRONG_TYPE, unmapping a non-mapping ERR_INVALID); nothing lands past the frame (REQ-M5-001, WP-42): the kernel refuses a frame in an unsupported pixel format (GOP bit mask, blt only) or geometry (no width, stride below width, no base, larger than it maps) before mapping anything, its boot line then reads present=0, and the frame in use is untouched (refused=6/6, kept=1); the probe maps the frame again as its last mapping, the kernel refuses to write a record across its end (ERR_FAULT, the last pixels unchanged), and the probe's own write one pixel past the end faults at exactly that address (one user_fault, vector 14, cr2 = the traced end) and ends it (exit 0x1000E) with no frame leaked; the lab then takes a QEMU screendump and presses Enter, and tools/screen.py finds the corners, the build id and both squares in the picture; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=display_boot",
           "|boot|gop|present=1|w=",
           "|kernel|display|present=1|w=",
           "|ktest|display_boot|w=",
-          "|corners_ok=1|bar=${BUILD_ID}|bar_ok=1|probe_exit=0x75|magenta=1|cyan=1|frames_delta=0|ready=1",
+          "|ktest|display_boot|refused=6/6|kept=1",
+          "|corners_ok=1|bar=${BUILD_ID}|bar_ok=1|probe_exit=0x1000e|magenta=1|cyan=1|frames_delta=0|ready=1",
+          "|text=fbprobe|bounds|kernel_write=refused|end=0x",
+          "|kernel|user_fault|vector=14|",
           "|ktest|display_boot|lab_key=1|byte=0x1c",
           "|ktest|pass|the frame carries the kernel's pattern and a process's paint through the display object"
         ],
         "forbidden_markers": [
           "|ktest|fail|",
           "|kernel|panic|",
-          "|exc|vector",
-          "|user_fault|"
+          "|exc|vector"
         ],
         "timeout_s": 600,
         "monitor": {
@@ -3783,6 +3785,15 @@
             "96,96,FF00FF",
             "--square",
             "192,96,00FFFF"
+          ]
+        ],
+        "max_counts": {
+          "|kernel|user_fault|": 1
+        },
+        "equal_values": [
+          [
+            "text=fbprobe\\|bounds\\|kernel_write=refused\\|end=(0x[0-9a-f]+)",
+            "\\|kernel\\|user_fault\\|vector=14\\|.*?\\|cr2=(0x[0-9a-f]+)\\|"
           ]
         ]
       },

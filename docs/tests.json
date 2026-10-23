@@ -1410,7 +1410,7 @@
     "REQ-M5-001"
    ],
    "layer": "guest",
-   "oracle": "the boot stub captures the GOP mode into BootInfo (present=1, 32-bpp, resolution and stride printed), the kernel maps the frame and draws the diagnostic pattern (kernel|display|…|selfcheck=1), and a monitor screendump taken after boot shows the pattern's colours at the declared corners (tools/screen.py)",
+   "oracle": "the boot stub captures the GOP mode into BootInfo (present=1, 32-bpp, resolution and stride printed), the kernel maps the frame and draws the diagnostic pattern (kernel|display|…|selfcheck=1), and a monitor screendump taken after boot shows the pattern's colours at the declared corners (tools/screen.py); (WP-42, REQ-M5-001) a frame the kernel cannot draw on — GOP bit mask or blt-only format, no width, a stride below the width, no base, larger than it maps — is refused before anything is mapped, its boot line reads present=0, and the frame in use is untouched; nothing lands past the frame: the kernel refuses to write a record across the end of a process's frame mapping (ERR_FAULT, last pixels unchanged) and the process's own write one pixel past it faults at exactly that address and ends it (exit 0x1000E), the only user fault of the run",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [

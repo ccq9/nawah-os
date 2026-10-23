@@ -3,9 +3,13 @@
 //! physical VMO (`display_map` + `vmo_map`), paints a 64×64 magenta square at (96, 96) and a
 //! 64×64 cyan one at (192, 96) straight into the frame, reads them back through the mapping,
 //! probes the refusals (a read-only mapping cannot be written to by the kernel on the
-//! process's behalf, an unmapped address is refused, a channel is not a VMO), unmaps, and
-//! exits with 0x75 on success — the lab's screendump then shows the squares. Failing step
-//! 0xE0...
+//! process's behalf, an unmapped address is refused, a channel is not a VMO) and unmaps. Then
+//! (WP-42, REQ-M5-001) nothing may land past the frame: it maps the frame once more — the last
+//! mapping, so the page after it is not mapped — has the kernel write a record across its end
+//! (refused with ERR_FAULT, the frame's last pixels untouched), traces `fbprobe|bounds|…|end=`
+//! with the first address past the frame, and writes a pixel there: the page fault ends the
+//! process (exit 0x10000 + 14), which the test expects. The lab's screendump then shows the
+//! squares. Failing step 0xE0..0xF3 is the exit code.
 //!
 //! The frame is written through volatile pointer accesses: it is device memory the
 //! compositor will own in WP-34; here the kernel's own pattern stays around the squares.
@@ -13,7 +17,9 @@
 #![no_std]
 #![no_main]
 
-use libnawah::{object_type, ERR_ACCESS, ERR_INVALID, ERR_WRONG_TYPE, PROT_READ, PROT_WRITE};
+use libnawah::{
+    object_type, ERR_ACCESS, ERR_FAULT, ERR_INVALID, ERR_WRONG_TYPE, PROT_READ, PROT_WRITE,
+};
 
 libnawah::entry!(main);
 
@@ -113,6 +119,49 @@ fn main() -> u64 {
         return 0xEF;
     }
     libnawah::handle_close(ro_handle);
-    libnawah::handle_close(vmo);
-    0x75
+    bounds(display, &info, vmo)
+}
+
+/// The frame's end (REQ-M5-001): returns only through a failing step; success is the fault.
+fn bounds(display: libnawah::Handle, info: &libnawah::DisplayInfo, vmo: libnawah::Handle) -> u64 {
+    let Ok(base) = libnawah::vmo_map(vmo, PROT_READ | PROT_WRITE) else {
+        return 0xF0;
+    };
+    let end = base + u64::from(info.stride) * u64::from(info.height) * 4;
+    // The display record is 32 bytes: half of it would land past the frame.
+    let tail = end - 16;
+    let last = |a: u64| {
+        // SAFETY: the last 16 bytes of the mapping; volatile device memory.
+        unsafe { [0, 4, 8, 12].map(|o| ((a + o) as *const u32).read_volatile()) }
+    };
+    let before = last(tail);
+    let r = libnawah::syscall6(
+        libnawah::SYS_DISPLAY_INFO,
+        u64::from(display),
+        tail,
+        0,
+        0,
+        0,
+        0,
+    );
+    if r != ERR_FAULT {
+        return 0xF1;
+    }
+    if last(tail) != before {
+        return 0xF2;
+    }
+    let mut line = [0u8; 64];
+    let head = b"fbprobe|bounds|kernel_write=refused|end=0x";
+    line[..head.len()].copy_from_slice(head);
+    let mut n = head.len();
+    let digits = (64 - end.leading_zeros()).div_ceil(4).max(1);
+    for i in (0..digits).rev() {
+        line[n] = b"0123456789abcdef"[((end >> (i * 4)) & 0xF) as usize];
+        n += 1;
+    }
+    libnawah::trace(&line[..n]);
+    // SAFETY: deliberately the first address past the mapping, which is not mapped: the MMU
+    // refuses the write and the kernel ends this process. Nothing follows.
+    unsafe { (end as *mut u32).write_volatile(pixel(info.pixel_format, MAGENTA)) };
+    0xF3
 }
