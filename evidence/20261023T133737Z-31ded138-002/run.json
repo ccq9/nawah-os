@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261023T133737Z-31ded138-002",
+ "started_at": "2026-10-23T13:37:37+00:00",
+ "finished_at": "2026-10-23T13:37:38+00:00",
+ "source_revision": "31ded138b9617809a8de04c5d2774f5903d68d35",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M0-003",
+ "commands": [
+  "python3 -I tests/test_ci_workflows.py"
+ ],
+ "exit_code": 0
+}
