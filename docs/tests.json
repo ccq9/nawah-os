@@ -78,7 +78,7 @@
    "command": "python3 tools/project.py build --target pc-qemu",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261019T174647Z-d1c0561d-001"
+    "evidence/20261023T131854Z-fa7ee7eb-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -92,7 +92,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261019T174716Z-d1c0561d-001"
+    "evidence/20261023T131924Z-fa7ee7eb-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -445,7 +445,7 @@
    "command": "python3 tools/project.py test --target host --suite M2  (mutants workflow)",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T162631Z-657ed0c3-001"
+    "evidence/20261023T131931Z-fa7ee7eb-001"
    ],
    "stale_policy": "warn"
   },
@@ -877,7 +877,7 @@
    "command": "python3 tools/project.py test --target host --suite M3-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T164330Z-657ed0c3-001"
+    "evidence/20261023T133503Z-fa7ee7eb-001"
    ],
    "stale_policy": "warn"
   },
@@ -1374,7 +1374,7 @@
    "command": "python3 tools/project.py test --target host --suite M4-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261018T165144Z-657ed0c3-001"
+    "evidence/20261023T134611Z-fa7ee7eb-001"
    ],
    "stale_policy": "warn"
   },
