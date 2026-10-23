@@ -1154,7 +1154,7 @@ HOST_SUITES["M5"] = [
      "oracle": "tools/transcript.py takes the narrator lines from trace lines and requires them to equal the expected file exactly in every serial log (a missing, extra or reordered line, or one bad phase, fails); dims accepts only the same origin with the size times the factor; streams (WP-37) checks every stream the file names exactly and in order whatever the interleaving, ignores other streams and non-user lines, and checks every phase (7 cases, OK)",
      "inputs": ["tests/test_transcript_tool.py", "tools/transcript.py"], "input_globs": []},
     {"id": "TST-M5-SCREEN-TOOL", "command": ["python3", "-I", "tests/test_screen_tool.py"],
-     "oracle": "tools/screen.py desktop against a synthetic PPM: a pixel check passes on its colour and fails on another; a window hash equals the FNV-1a 64 of the rectangle's R,G,B bytes and fails when a pixel differs; a rectangle outside the image fails without crashing (2 cases, OK)",
+     "oracle": "tools/screen.py desktop against a synthetic PPM: a pixel check passes on its colour and fails on another; a window hash equals the FNV-1a 64 of the rectangle's R,G,B bytes and fails when a pixel differs; a rectangle outside the image fails without crashing; an ink check finds a field's text against the side asked and fails for the other side, an empty field and a rectangle outside the image (3 cases, OK)",
      "inputs": ["tests/test_screen_tool.py", "tools/screen.py"], "input_globs": []},
 ]
 HOST_SUITES["M3"] = [

@@ -5336,13 +5336,14 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=arabic_ui"
         ],
-        "oracle": "scenario 11 (WP-39): the dialog starts English; the admin sets ui.lang=ar in the config device store (OK 1) and the subscribed dialog turns Arabic and right-to-left in place (new labels, items and direction, the window renamed with TITLE), announcing `lang ar` and its focused element with the Arabic label; the lab toggles the keyboard layout with Alt+Shift (input v2.3) and types the two Arabic letters that the keys d, f give in the ar layout into the field, then Tab to the list and Down move its selection — each announced in Arabic; the narrator's transcript equals platform/pc-qemu/expect/arabic-ui.txt line for line; the lab's screendump shows the dialog's background where it reported it (the RTL layout and direction logic are proven exactly by the libui host unit test, §17: a screenshot does not prove behaviour); Esc ends it with exit 0; exit 33",
+        "oracle": "scenario 11 (WP-39): the dialog starts English; the admin sets ui.lang=ar in the config device store (OK 1) and the subscribed dialog turns Arabic and right-to-left in place (new labels, items and direction, the window renamed with TITLE), announcing `lang ar` and its focused element with the Arabic label; the lab toggles the keyboard layout with Alt+Shift (input v2.3) and types the two Arabic letters that the keys d, f give in the ar layout into the field, then (WP-42, REQ-M5-009) toggles back and types a, 1 and / after them — a mixed Arabic/Latin/digit/separator value typed by keyboard alone, each change announced with the value exactly — then Tab to the list and Down move its selection — each announced in Arabic; the narrator's transcript equals platform/pc-qemu/expect/arabic-ui.txt line for line; the lab's screendump shows the dialog's background where it reported it and the field's text drawn against its right edge, as right-to-left text is (tools/screen.py --ink over the probe_field rectangle the dialog reported; the exact RTL layout and direction logic are proven by the libui host unit test, §17); Esc ends it with exit 0; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=arabic_ui",
           "|text=display|fonts=1",
           "|ktest|arabic_ui|lang=OK 1|ready=1",
           "|text=dialog|theme=4,normal|window=",
+          "|probe_field=",
           "|ktest|arabic_ui|dialog_state=stopped|dialog_exit=0|",
           "|ktest|arabic_ui|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|arabic_ui|frames_delta=0",
@@ -5361,6 +5362,10 @@
             "sendkey alt-shift",
             "sendkey d",
             "sendkey f",
+            "sendkey alt-shift",
+            "sendkey a",
+            "sendkey 1",
+            "sendkey slash",
             "sendkey tab",
             "sendkey down",
             "screendump ${SCREEN}",
@@ -5384,7 +5389,9 @@
             "desktop",
             "${SCREEN}",
             "--pixel",
-            "${SERIAL:probe_bg=},F0F0F0"
+            "${SERIAL:probe_bg=},F0F0F0",
+            "--ink",
+            "${SERIAL:probe_field=},right"
           ]
         ]
       },
