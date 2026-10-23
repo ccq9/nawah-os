@@ -1,0 +1,33 @@
+$ python3 -I tools/screen.py probe /home/runner/work/nawah-os/nawah-os/evidence/20261023T142251Z-8749da68-001/screen.ppm --build-id 8749da680951 --square 96,96,FF00FF --square 192,96,00FFFF
+{
+ "width": 1280,
+ "height": 800,
+ "corners": [
+  "ff0000",
+  "00ff00",
+  "0000ff",
+  "ffffff"
+ ],
+ "corners_ok": true,
+ "bar": "8749da680951",
+ "bar_ok": true,
+ "squares": [
+  {
+   "x": 96,
+   "y": 96,
+   "expected": "ff00ff",
+   "seen": "ff00ff",
+   "ok": true
+  },
+  {
+   "x": 192,
+   "y": 96,
+   "expected": "00ffff",
+   "seen": "00ffff",
+   "ok": true
+  }
+ ],
+ "ok": true
+}
+
+[exit 0]

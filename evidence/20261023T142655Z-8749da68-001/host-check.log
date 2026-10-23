@@ -1,0 +1,5 @@
+$ python3 -I tools/transcript.py streams /home/runner/work/nawah-os/nawah-os/evidence/20261023T142655Z-8749da68-001 platform/pc-qemu/expect/lock-hang.txt
+serial.log: session: 9 lines as expected
+serial.log: spy: 9 lines as expected
+
+[exit 0]
