@@ -2737,7 +2737,7 @@
    "contract_refs": [],
    "actions": [
     "رفع الصلاحية على المسار الموثوق (§8.7، §9)",
-    "session.md v1.2: ELEVATE <service> <request…> from a client; the prompt on the session's surface with the screen held: the requester's manager-vouched name and the request in full; an administrator's name and password checked by auth; the session runs exactly that request with the token, revokes it, answers the reply; Cancel/Esc, refusals, one at a time",
+    "session.md v1.3: ELEVATE <service> <request…> from a client; the prompt on the session's surface with the screen held: the requester's manager-vouched name and the request in full; an administrator's name and password checked by auth; the session runs exactly that request with the token, revokes it, answers the reply; Cancel/Esc, refusals, one at a time",
     "tests: TST-M5-ELEVATE (approve, wrong password, cancel, isolation of the keys, compositor killed and frozen during the prompt, refusals)"
    ],
    "acceptance": "TST-M5-ELEVATE PASS on CI; the M5 suite green",
@@ -2748,9 +2748,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null

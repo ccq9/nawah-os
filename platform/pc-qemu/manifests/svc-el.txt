@@ -1,0 +1,9 @@
+# TST-M5-ELEVATE (WP-41, session.md v1.3): the session with the config service it may reach for
+# an elevation (declared as its dependency), the input service, the compositor and a spy client
+# whose key count proves the prompt's keys reach no application
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 never 0 0
+config /SYSTEM/CONFIGD.ELF - 5000 never 0 0
+session /SYSTEM/SESSIOND.ELF auth,input,display,config 5000 never 0 0
+spy /SYSTEM/SPY.ELF display 5000 never 0 0
