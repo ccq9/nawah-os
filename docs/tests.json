@@ -1685,7 +1685,7 @@
     "REQ-M5-008"
    ],
    "layer": "user_e2e",
-   "oracle": "scenario 7 (WP-39): the sample dialog alone (SVC-UI.TXT) driven by the keyboard — Alt+F9 minimises it (the focus leaves it), Alt+Tab reaches the minimised window and restores it (v1.3), Tab then moves inside it; the narrator's transcript equals platform/pc-qemu/expect/window-a11y.txt line for line: the startup tree and focus, then on the restore `window \"Sign in\" focused` and the dialog re-announcing its focused element (ui.md v1.2), then the focus moving to the list; Esc ends it with exit 0; no frame leaks; exit 33. Not exercised: resizing or moving a window by keyboard and a scale change (REQ-M5-008's 'resize loses focus' case stays open, WP-42)",
+   "oracle": "scenario 7 (WP-39): the sample dialog alone (SVC-UI.TXT) driven by the keyboard — Alt+F9 minimises it (the focus leaves it), Alt+Tab reaches the minimised window and restores it (v1.3), Tab then moves inside it; the narrator's transcript equals platform/pc-qemu/expect/window-a11y.txt line for line: the startup tree and focus, then on the restore `window \"Sign in\" focused` and the dialog re-announcing its focused element (ui.md v1.2), then the focus moving to the list; (WP-42, REQ-M5-008) Alt+Shift+Right widens it by 16 px, announced `window \"Sign in\" resized 276x242` (display.md v1.7), and the next Tab moves the focus to the checkbox inside it — the resize kept the focus and switched no layout; Esc ends it with exit 0; no frame leaks; exit 33. Not exercised: moving a window by keyboard and a scale change",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
