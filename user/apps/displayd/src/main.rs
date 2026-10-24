@@ -880,6 +880,31 @@ impl Compositor {
         }
     }
 
+    /// After a keyboard resize (display.md v1.7) the narrator hears the window's new size, so
+    /// someone who cannot see the frame knows the shortcut acted; the focus stays where it was.
+    /// Nothing is said when the size did not change (at its limit).
+    fn say_size(&mut self, wi: usize, before: (i32, i32), now: u64) {
+        let w = self.windows[wi];
+        if (w.w, w.h) == before {
+            return;
+        }
+        let mut buf = [0u8; 96];
+        let len = {
+            let mut o = Out {
+                buf: &mut buf,
+                len: 0,
+            };
+            o.put(b"SAY window \"");
+            o.put(&w.title[..w.title_len]);
+            o.put(b"\" resized ");
+            o.num(i64::from(w.w));
+            o.put(b"x");
+            o.num(i64::from(w.h));
+            o.len
+        };
+        self.say(&buf[..len], now);
+    }
+
     /// One message to the narrator, if one is registered.
     fn say(&mut self, msg: &[u8], now: u64) {
         if let Some(n) = self.narrator {
@@ -1275,6 +1300,7 @@ impl Compositor {
                         let w = self.windows[wi];
                         if mods & MOD_SHIFT != 0 {
                             self.resize_window(wi, w.w + dx, w.h + dy, now);
+                            self.say_size(wi, (w.w, w.h), now);
                         } else {
                             self.move_window(wi, w.x + dx, w.y + dy);
                         }

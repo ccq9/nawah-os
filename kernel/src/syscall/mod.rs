@@ -403,6 +403,35 @@ fn fs_err(e: FsError) -> i64 {
     }
 }
 
+/// The system-files authority (files.md v1.3, WP-44): under /SYSTEM, reading needs a held
+/// SystemFiles handle with READ (the fonts in /SYSTEM/FONTS excepted) and any change one with
+/// WRITE; elsewhere nothing is needed. Checked after the path is read and before the file
+/// system is touched, so a refused O_CREATE or O_TRUNCATE changes nothing.
+fn fs_authority(path: &[u8], read: bool, write: bool) -> Result<(), i64> {
+    let mut need = 0;
+    match vfs::classify(path) {
+        vfs::PathClass::Open => return Ok(()),
+        vfs::PathClass::Fonts => {}
+        vfs::PathClass::System if read => need |= Rights::READ.0,
+        vfs::PathClass::System => {}
+    }
+    if write {
+        need |= Rights::WRITE.0;
+    }
+    if need == 0 {
+        return Ok(());
+    }
+    let table = table()?;
+    let held = table
+        .lock()
+        .rights_where(|o| matches!(o, Object::SystemFiles(_)));
+    if held.contains(Rights(need)) {
+        Ok(())
+    } else {
+        Err(ERR_ACCESS)
+    }
+}
+
 /// Copies a user path (at most PATH_MAX bytes) into a kernel buffer.
 fn user_path(ptr: u64, len: u64, buf: &mut [u8; vfs::PATH_MAX]) -> Result<usize, i64> {
     if len == 0 || len > vfs::PATH_MAX as u64 {
@@ -425,6 +454,8 @@ fn sys_open(ptr: u64, len: u64, flags: u64) -> Result<i64, i64> {
     if flags & !vfs::O_VALID != 0 || flags & (vfs::O_READ | vfs::O_WRITE) == 0 {
         return Err(ERR_INVALID);
     }
+    let changes = flags & (vfs::O_WRITE | vfs::O_CREATE | vfs::O_TRUNCATE) != 0;
+    fs_authority(&buf[..n], flags & vfs::O_READ != 0, changes)?;
     let table = table()?;
     let file = vfs::open(&buf[..n], flags).map_err(fs_err)?;
     let mut rights = Rights::FILE_BASE;
@@ -472,6 +503,7 @@ fn sys_stat(ptr: u64, len: u64, out: u64) -> Result<i64, i64> {
     let mut buf = [0u8; vfs::PATH_MAX];
     let n = user_path(ptr, len, &mut buf)?;
     user_range_ok(out, 16, true)?;
+    fs_authority(&buf[..n], true, false)?;
     let st = vfs::stat(&buf[..n]).map_err(fs_err)?;
     let mut rec = [0u8; 16];
     rec[..8].copy_from_slice(&st.size.to_le_bytes());
@@ -484,6 +516,7 @@ fn sys_stat(ptr: u64, len: u64, out: u64) -> Result<i64, i64> {
 fn sys_unlink(ptr: u64, len: u64) -> Result<i64, i64> {
     let mut buf = [0u8; vfs::PATH_MAX];
     let n = user_path(ptr, len, &mut buf)?;
+    fs_authority(&buf[..n], false, true)?;
     vfs::unlink(&buf[..n]).map_err(fs_err)?;
     Ok(0)
 }
@@ -642,6 +675,14 @@ fn sys_process_spawn(ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64>
         .chunks_exact(4)
         .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
         .collect();
+    // Starting a program under /SYSTEM needs no authority (the kernel reads the image, the
+    // caller never sees it, and a started program holds only what it is handed); anything
+    // else there is read only with READ, so spawn cannot probe USERS.DB (WP-44).
+    let path = &buf[..n];
+    let is_elf = path.len() >= 4 && path[path.len() - 4..].eq_ignore_ascii_case(b".ELF");
+    if !is_elf {
+        fs_authority(path, true, false)?;
+    }
     let image = crate::loader::read_image(&buf[..n]).map_err(fs_err)?;
     // Validate the image before touching the caller's handles: a rejected file moves nothing.
     crate::loader::elf::parse(&image).map_err(elf_err)?;
@@ -1104,6 +1145,7 @@ pub const DIR_LIST_MAX: usize = 4096;
 fn sys_dir_list(ptr: u64, len: u64, out: u64, cap: u64) -> Result<i64, i64> {
     let mut path = [0u8; vfs::PATH_MAX];
     let n = user_path(ptr, len, &mut path)?;
+    fs_authority(&path[..n], true, false)?;
     let cap = (cap as usize).min(DIR_LIST_MAX);
     if cap == 0 {
         return Err(ERR_INVALID);

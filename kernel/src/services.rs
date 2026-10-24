@@ -55,6 +55,12 @@ pub fn spawn_manager() -> Result<Manager, &'static str> {
             object: Object::Authority(Arc::new(crate::object::token::Authority::new())),
             rights: Rights::AUTHORITY_DEFAULT,
         },
+        // The system-files authority (WP-44, files.md v1.3): the manager reads its manifests
+        // with it and hands narrowed copies to `auth` (READ) and `config` (READ|WRITE).
+        Entry {
+            object: Object::SystemFiles(Arc::new(crate::object::token::SystemFiles::new())),
+            rights: Rights::SYSFILES_DEFAULT,
+        },
     ];
     if crate::net::info().is_some() {
         initial.push(Entry {

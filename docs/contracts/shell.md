@@ -1,4 +1,4 @@
-# عقد الـ shell التشخيصي — الإصدار 1.1 (WP-30 v1، WP-31 v1.1؛ ADR-0018؛ فوق services.md v1.3 وauth.md v1 وnet.md v1 وfiles.md v1.1 وsyscall.md v1.7)
+# عقد الـ shell التشخيصي — الإصدار 1.2 (WP-30 v1، WP-31 v1.1، WP-44 v1.2؛ ADR-0018، ADR-0020؛ فوق services.md v1.3 وauth.md v1 وnet.md v1 وfiles.md v1.1 وsyscall.md v1.7)
 
 مجمَّد (أُغلق WP-30 بدليل CI run 39141804574): أي تغيير في الأوامر أو البروتوكول أو القناة = إصدار جديد مع سجل قرار؛ الإضافات إضافية فقط. الكود: `user/apps/sh` (الخدمة `sh`)، `kernel/src/arch/x86_64/serial2.rs` (COM2)، `kernel/src/diag.rs` (الاستطلاع والكتابة)، `kernel/src/object/bytes.rs` (الكائن)، `tools/project.py` (`ConsoleSession`: جلسة المختبر)، `tests/test_console_session.py` (اختبار الأداة على المضيف).
 
@@ -21,8 +21,8 @@
 | `net dhcp` | `DHCP` من `net` | ردّ الخدمة |
 | `net policy internet=<0/1>` | `POLICY …` + رمز الجلسة إلى `net` | ردّ الخدمة (`OK` / `ERR ACCESS`)؛ بلا جلسة `ERR NO_SESSION` |
 | `cfg get <store> <key>` / `cfg resolve <key>` (v1.1، WP-31) | `GET`/`RESOLVE` إلى `config` (`resolve` برمز الجلسة) — لا تصل إلا إذا أعلن البيان `config` تبعيةً للـ shell، وإلا `ERR ACCESS` من المدير | ردّ الخدمة أو ردّ المدير |
-| `ls [path]` | `dir_list` (الافتراضي `/`) | أسطر files.md §2؛ أخطاء: `ERR NOT_FOUND`/`NOT_DIR`/`BAD_PATH`/`TOO_LARGE` |
-| `cat <path>` | `open`+`read` حتى 4095 بايت | المحتوى (يُلحق LF إن لم ينتهِ به)؛ `ERR NOT_FOUND`/`IS_DIR`/… |
+| `ls [path]` | `dir_list` (الافتراضي `/`) | أسطر files.md §2؛ أخطاء: `ERR NOT_FOUND`/`NOT_DIR`/`BAD_PATH`/`TOO_LARGE`؛ (v1.2) `/SYSTEM` وما تحته `ERR ACCESS` إلا `/SYSTEM/FONTS` (الـ shell لا يحمل مقدرة ملفات النظام — files.md v1.3) |
+| `cat <path>` | `open`+`read` حتى 4095 بايت | المحتوى (يُلحق LF إن لم ينتهِ به)؛ `ERR NOT_FOUND`/`IS_DIR`/…؛ (v1.2) تحت `/SYSTEM` `ERR ACCESS` (مثل `cat /SYSTEM/USERS.DB`) ولو بجلسة |
 | `login <user> <password>` | `LOGIN` إلى `auth` | `logged in as <user>` والمحثّ `<user>@nawah> `؛ `login failed: <ردّ auth>` (مثل `ERR ACCESS`)؛ بجلسة مفتوحة `ERR SESSION_OPEN` |
 | `whoami` | `WHOAMI` + الرمز إلى `auth` | `<user> OK <uid> <gid> <perms>`؛ بلا جلسة `not logged in` |
 | `logout` | `LOGOUT` + الرمز | `logged out`؛ بلا جلسة `not logged in` |

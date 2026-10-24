@@ -171,6 +171,7 @@ pub fn run() -> ! {
         "login" => login(),
         "session_lock" => session_lock(),
         "authz_denied" => authz_denied(),
+        "file_authority" => file_authority(),
         "config_cas" => config_cas(),
         "config_retry" => config_retry(),
         "config_notify" => config_notify(),
@@ -3747,6 +3748,101 @@ fn cfg_env(name: &'static str) -> CfgEnv {
     }
 }
 
+/// TST-M5-FILE-AUTHORITY (REQ-M5-006, RSK-008; files.md v1.3, WP-44): /SYSTEM belongs to the
+/// holders of the system-files authority. `fileauth` with no handle finds every read and every
+/// change under /SYSTEM refused, however the path is spelled, the fonts readable but not
+/// writable, and the rest of the volume as before (exit 0x44); with a READ-only authority it
+/// reads /SYSTEM but still changes nothing (0x45). The kernel reads back that neither run
+/// changed /SYSTEM. The services the manager hands the authority to still work: auth signs the
+/// lab in, and config, holding WRITE, stores an admin setting on /SYSTEM.
+fn file_authority() -> ! {
+    use crate::fs::vfs;
+    let name = "file_authority";
+    if crate::apps::FILEAUTH.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let size = |p: &[u8]| vfs::stat(p).map_or(-1, |s| s.size as i64);
+    let (inputd0, users0) = (size(b"/SYSTEM/INPUTD.ELF"), size(b"/SYSTEM/USERS.DB"));
+    let obj0 = object::stats();
+    let probe = match crate::user::run_elf(crate::apps::FILEAUTH) {
+        Ok((o, _)) => o,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|error={}", BUILD_ID, name, e.code());
+            fail("application did not load")
+        }
+    };
+    // The authority outlives the run, so its own allocation does not count in the probe's
+    // frame balance (CI run 39294977208: frames -1 when the probe's exit freed it).
+    let authority = Arc::new(crate::object::token::SystemFiles::new());
+    let reader = run_with_object(
+        name,
+        crate::apps::FILEAUTH,
+        Entry {
+            object: Object::SystemFiles(authority.clone()),
+            rights: Rights::READ,
+        },
+    );
+    drop(authority);
+    let obj1 = object::stats();
+    let inputd_same = inputd0 > 0 && size(b"/SYSTEM/INPUTD.ELF") == inputd0;
+    let users_same = users0 > 0 && size(b"/SYSTEM/USERS.DB") == users0;
+    let created = vfs::stat(b"/SYSTEM/NEW.TXT").is_ok();
+    kprintln!(
+        "OSX|{}|ktest|{}|probe={:#x}|probe_ro={:#x}|frames={}+{}|inputd_same={}|usersdb_same={}|created={}|objects_same={}",
+        BUILD_ID,
+        name,
+        probe.exit_code,
+        reader.exit_code,
+        probe.frames_delta,
+        reader.frames_delta,
+        u8::from(inputd_same),
+        u8::from(users_same),
+        u8::from(created),
+        u8::from(obj1 == obj0)
+    );
+    if probe.exit_code != 0x44 || reader.exit_code != 0x45 {
+        fail("an ordinary process reached /SYSTEM (exit code = failing step)")
+    }
+    if !inputd_same
+        || !users_same
+        || created
+        || probe.frames_delta != 0
+        || reader.frames_delta != 0
+        || obj1 != obj0
+    {
+        fail("/SYSTEM changed, or the probes left something behind")
+    }
+    // The services the manager hands the authority to: auth reads USERS.DB (the logins of
+    // cfg_env), config writes its store on /SYSTEM.
+    let env = cfg_env(name);
+    let set = cfg_request(
+        &env.cfg,
+        b"SET device lab.fauth 0 201 kept",
+        Some(token_entry(&env.admin)),
+    );
+    let get = cfg_request(&env.cfg, b"GET device lab.fauth", None);
+    kprintln!(
+        "OSX|{}|ktest|{}|services=auth,config|set={}|get={}",
+        BUILD_ID,
+        name,
+        set,
+        get
+    );
+    if set != "OK 1" || get != "OK 1 kept" {
+        fail("a service holding the authority could not use /SYSTEM")
+    }
+    drop((set, get));
+    let frames0 = cfg_close(env, name);
+    cfg_balance(
+        name,
+        frames0,
+        "an ordinary process cannot read or change /SYSTEM; the services holding the authority can",
+    )
+}
+
 /// One config request with an optional token or channel handle; the reply text.
 fn cfg_request(ep: &Endpoint, req: &[u8], handle: Option<Entry>) -> String {
     let handles = handle.map_or_else(Vec::new, |e| alloc::vec![e]);
@@ -4695,6 +4791,45 @@ fn display_boot() -> ! {
         decoded.push(digit);
     }
     let bar_ok = decoded == BUILD_ID;
+    // REQ-M5-001: a frame the kernel cannot draw on is refused before anything is mapped or
+    // drawn, and the boot line says there is no display; the frame in use stays the display.
+    let fb = |pixel_format, width, pitch_px, base| crate::bootinfo::Framebuffer {
+        base,
+        width,
+        height: d.height,
+        pitch_px,
+        pixel_format,
+        present: 1,
+    };
+    let refusals = [
+        (fb(2, d.width, d.pitch_px, d.base), "K_E_DISPLAY_FORMAT"), // GOP PixelBitMask
+        (fb(3, d.width, d.pitch_px, d.base), "K_E_DISPLAY_FORMAT"), // GOP PixelBltOnly
+        (fb(1, 0, d.pitch_px, d.base), "K_E_DISPLAY_FORMAT"),
+        (fb(1, d.width, d.width - 1, d.base), "K_E_DISPLAY_FORMAT"),
+        (fb(1, d.width, d.pitch_px, 0), "K_E_DISPLAY_RANGE"),
+        (fb(1, 65_535, 65_535, d.base), "K_E_DISPLAY_RANGE"),
+    ];
+    let before = at(d.width / 2, d.height / 2);
+    let refused = refusals
+        .iter()
+        .filter(|(f, code)| {
+            let r = crate::display::init(f, BUILD_ID);
+            matches!(r, Err(c) if c == *code)
+                && crate::display::boot_line(&r).starts_with("present=0|")
+        })
+        .count();
+    let kept = crate::display::info().is_some_and(|i| i.base == d.base && i.virt == d.virt)
+        && at(d.width / 2, d.height / 2) == before;
+    kprintln!(
+        "OSX|{}|ktest|display_boot|refused={}/{}|kept={}",
+        BUILD_ID,
+        refused,
+        refusals.len(),
+        u8::from(kept)
+    );
+    if refused != refusals.len() || !kept {
+        fail("a frame the kernel cannot draw on was not refused, or it disturbed the display")
+    }
     // The probe's squares must outlive its exit: the test reads them back and the lab's
     // screendump comes later (display.md v1.5 clears the frame when its last VMO goes).
     crate::display::pin_frame();
@@ -4728,7 +4863,9 @@ fn display_boot() -> ! {
     if !corners_ok || !bar_ok {
         fail("the diagnostic pattern is not on the frame")
     }
-    if o.exit_code != 0x75 || !magenta || !cyan || o.frames_delta != 0 {
+    // The probe ends on a write one pixel past the frame's mapping (REQ-M5-001): the page
+    // fault ends it (0x10000 + vector 14) and nothing else is touched.
+    if o.exit_code != 0x1000E || !magenta || !cyan || o.frames_delta != 0 {
         fail("the process could not map and paint the frame through the display object")
     }
     // The lab takes its screendump now and presses Enter when done.
@@ -5661,13 +5798,17 @@ fn alt_tab_cycle() -> ! {
 /// after a raise; resize (the client is told and attaches a new surface); minimise and
 /// restore; close; nothing left behind.
 fn window_states() -> ! {
-    let (h, admin, clients, format) = display_env(
+    let (h, admin, mut clients, format) = display_env(
         "window_states",
         b"/SYSTEM/SVC-DP.TXT",
         &["auth", "input", "display"],
         2,
     );
-    let (a, b) = (&clients[0], &clients[1]);
+    // b is held apart: in step 6 its client goes away without a word.
+    let b_client = clients
+        .pop()
+        .unwrap_or_else(|| fail("the display setting gave fewer than two clients"));
+    let (a, b) = (&clients[0], &b_client);
     let (mut ev_a, mut ev_b) = (Vec::new(), Vec::new());
     let status0 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
     if status_field(&status0, "screen=") != "1280x800" {
@@ -5900,18 +6041,64 @@ fn window_states() -> ! {
     {
         fail("resize, minimise or restore did not do what display.md says")
     }
-    // 6. Close both; nothing remains.
+    // 6. b's client goes away while its window lies over a's (REQ-M5-003: a surface is never
+    // read after its client is gone). b raises itself over a, then its channel closes with
+    // no CLOSE: the compositor forgets the window and the surface on its own — windows=1, the
+    // focus comes back to a, a's client area hashes as it did alone on top (step 5), and the
+    // compositor no longer holds b's surface (only the test's own reference is left).
+    let r_raise_b = drequest(
+        b,
+        alloc::format!("RAISE {}", wb_id).as_bytes(),
+        Vec::new(),
+        &mut ev_b,
+    );
+    let raise_b_a = read_events(a, 1, sched::ticks() + 2_000);
+    let la5 = parse_windows(&drequest(a, b"LIST", Vec::new(), &mut ev_a));
+    let held_before = Arc::strong_count(&vmo_b);
+    drop(b_client);
+    let deadline = sched::ticks() + 5_000;
+    let mut status5 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    while status_field(&status5, "windows=") != "1" && sched::ticks() < deadline {
+        sched::poll_until(sched::ticks() + 20, || false);
+        status5 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
+    }
+    let mut gone_a = core::mem::take(&mut ev_a);
+    gone_a.extend(read_events(a, 1, sched::ticks() + 500));
+    let la6 = parse_windows(&drequest(a, b"LIST", Vec::new(), &mut ev_a));
+    let held_after = Arc::strong_count(&vmo_b);
+    let hash = |l: &Vec<WinLine>| l.first().map_or(String::new(), |w| w.hash.clone());
+    let covered_differs = la5.len() == 1 && hash(&la5) != hash(&la4);
+    let uncovered = la6.len() == 1 && hash(&la6) == hash(&la4);
+    kprintln!(
+        "OSX|{}|ktest|window_states|gone=raise:{}|raise_a={}|covered_differs={}|status={}|gone_a={}|uncovered={}|surface_held={}>{}|",
+        BUILD_ID,
+        r_raise_b,
+        raise_b_a.join(";"),
+        u8::from(covered_differs),
+        status5,
+        gone_a.join(";"),
+        u8::from(uncovered),
+        held_before,
+        held_after
+    );
+    if r_raise_b != "OK"
+        || raise_b_a != [alloc::format!("UNFOCUS {}", wa_id)]
+        || !covered_differs
+        || status_field(&status5, "windows=") != "1"
+        || status_field(&status5, "focus=") != wa_id
+        || gone_a != [alloc::format!("FOCUS {}", wa_id)]
+        || !uncovered
+        || held_before < 2
+        || held_after != 1
+    {
+        fail("a client's surface was still shown or held after the client was gone")
+    }
+    // 7. a closes; nothing remains.
     let ca = drequest(
         a,
         alloc::format!("CLOSE {}", wa_id).as_bytes(),
         Vec::new(),
         &mut ev_a,
-    );
-    let cb = drequest(
-        b,
-        alloc::format!("CLOSE {}", wb_id).as_bytes(),
-        Vec::new(),
-        &mut ev_b,
     );
     let da = drequest(
         a,
@@ -5919,28 +6106,15 @@ fn window_states() -> ! {
         Vec::new(),
         &mut ev_a,
     );
-    let db = drequest(
-        b,
-        alloc::format!("DESTROY_SURFACE {}", sb_id).as_bytes(),
-        Vec::new(),
-        &mut ev_b,
-    );
     let status4 = drequest(a, b"STATUS", Vec::new(), &mut ev_a);
     kprintln!(
-        "OSX|{}|ktest|window_states|close={}/{}|destroy={}/{}|status={}",
+        "OSX|{}|ktest|window_states|close={}|destroy={}|status={}",
         BUILD_ID,
         ca,
-        cb,
         da,
-        db,
         status4
     );
-    if ca != "OK"
-        || cb != "OK"
-        || da != "OK"
-        || db != "OK"
-        || status_field(&status4, "windows=") != "0"
-    {
+    if ca != "OK" || da != "OK" || status_field(&status4, "windows=") != "0" {
         fail("closing did not remove the windows")
     }
     drop((status0, sa, sb, sa_id, sb_id, wa, wb, wa_id, wb_id, r_raise));
@@ -5950,8 +6124,9 @@ fn window_states() -> ! {
     drop((
         r_destroy, la2, r_min, min_a, min_b, la3, status3, r_restore, res_a, res_b, la4,
     ));
+    drop((r_raise_b, raise_b_a, la5, status5, gone_a, la6));
     drop((
-        ca, cb, da, db, status4, ev_a, ev_b, vmo_a, vmo_b, vmo_a2, clients, admin,
+        ca, da, status4, ev_a, ev_b, vmo_a, vmo_b, vmo_a2, clients, admin,
     ));
     display_finish(
         "window_states",

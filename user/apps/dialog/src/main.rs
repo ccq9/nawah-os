@@ -356,8 +356,10 @@ impl App {
         Some((f.next().and_then(parse_i64)?, f.next().and_then(parse_i64)?))
     }
 
-    /// `dialog|theme=<scale>,<contrast>|window=x,y,w,h|probe_bg=x,y|probe_focus=x,y` for the
-    /// lab: a background pixel and a pixel of the focus ring, on the screen.
+    /// `dialog|theme=<scale>,<contrast>|window=x,y,w,h|probe_bg=x,y|probe_focus=x,y|probe_field=x,y,w,h`
+    /// for the lab: a background pixel, a pixel of the focus ring and the first text field's
+    /// rectangle (WP-42: its text must lie against the reading direction's start), on the
+    /// screen.
     fn report(&mut self) {
         let Some((x, y)) = self.window_origin() else {
             return;
@@ -386,6 +388,19 @@ impl App {
                 .num(x + i64::from(r.x + r.w / 2))
                 .put(b",")
                 .num(y + i64::from(r.y - 1));
+        }
+        if let Some(i) =
+            (0..self.dialog.len()).find(|&i| self.dialog.element(i).role == Role::TextField)
+        {
+            let r = self.rects[i];
+            o.put(b"|probe_field=")
+                .num(x + i64::from(r.x))
+                .put(b",")
+                .num(y + i64::from(r.y))
+                .put(b",")
+                .num(i64::from(r.w))
+                .put(b",")
+                .num(i64::from(r.h));
         }
         libnawah::trace(o.bytes());
     }

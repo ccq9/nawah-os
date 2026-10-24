@@ -34,7 +34,8 @@
       "user/apps/killer/Cargo.toml",
       "user/apps/spin/Cargo.toml",
       "user/apps/idle/Cargo.toml",
-      "user/apps/exiter/Cargo.toml"
+      "user/apps/exiter/Cargo.toml",
+      "user/apps/fileauth/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -74,7 +75,8 @@
       "${OUT}/apps/killer.elf",
       "${OUT}/apps/spin.elf",
       "${OUT}/apps/idle.elf",
-      "${OUT}/apps/exiter.elf"
+      "${OUT}/apps/exiter.elf",
+      "${OUT}/apps/fileauth.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -603,6 +605,24 @@
       [
         "cargo",
         "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/fileauth/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/fileauth",
+        "${OUT}/apps/fileauth.elf"
+      ],
+      [
+        "cargo",
+        "build",
         "--release",
         "--offline",
         "--manifest-path",
@@ -749,7 +769,7 @@
           "|kernel|svcmgr|pid=",
           "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
           "|kernel|spawn|pid=",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -2608,7 +2628,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_order",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_order|load=OK 3|list=A:ready:0:",
           "|all_ready=1|b_after_a=1|c_after_ab=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2654,7 +2674,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_timeout",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_timeout|load=OK 2|list=M:failed:0:",
           "|failed_after_timeout=1|dependent_blocked=1|list_after=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2700,7 +2720,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_restart",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_restart|load=OK 1|list=X:given_up:3:",
           "|state=given_up|restarts=3|exit=1|span=",
@@ -3412,7 +3432,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=shell_svc"
         ],
-        "oracle": "over the lab's console socket (COM2) the shell answers: `svc` lists every service of SVC-SH.TXT with its state from the manager (auth ready, net ready, sh ready); `cpu` and `mem` print the kernel's own counters (cpus and frames_total equal to the values the kernel test printed from the kernel); `net dhcp` configures the service and `net` then shows configured=1 ip=10.0.2.15 from the net service; `cfg get device x` is refused by the manager (ERR ACCESS: config is not a declared dependency of sh); `ls /SYSTEM` lists the images and `cat /DIR/INNER.TXT` prints the lab file; an unknown command is ERR UNKNOWN_COMMAND; `exit` ends the session — the manager sees sh stopped with exit 0, nothing is left behind, no frame leaks; exit 33",
+        "oracle": "over the lab's console socket (COM2) the shell answers: `svc` lists every service of SVC-SH.TXT with its state from the manager (auth ready, net ready, sh ready); `cpu` and `mem` print the kernel's own counters (cpus and frames_total equal to the values the kernel test printed from the kernel); `net dhcp` configures the service and `net` then shows configured=1 ip=10.0.2.15 from the net service; `cfg get device x` is refused by the manager (ERR ACCESS: config is not a declared dependency of sh); `ls /SYSTEM` and `cat /SYSTEM/USERS.DB` are refused with ERR ACCESS (the shell holds no system-files authority: files.md v1.3, WP-44) while `ls /` still lists SYSTEM and `cat /DIR/INNER.TXT` prints the lab file; an unknown command is ERR UNKNOWN_COMMAND; `exit` ends the session — the manager sees sh stopped with exit 0, nothing is left behind, no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=shell_svc",
@@ -3428,7 +3448,8 @@
           "|ktest|fail|",
           "|kernel|panic|",
           "|exc|vector",
-          "|user_fault|"
+          "|user_fault|",
+          "NAWAH-USERS"
         ],
         "timeout_s": 600,
         "console": {
@@ -3514,13 +3535,13 @@
             {
               "send": "ls /SYSTEM",
               "expect": [
-                "F ",
-                " SVCMGR.ELF\n",
-                " AUTHD.ELF\n",
-                " NETD.ELF\n",
-                " SH.ELF\n",
-                " SVC-SH.TXT\n",
-                " USERS.DB\n"
+                "ERR ACCESS"
+              ]
+            },
+            {
+              "send": "cat /SYSTEM/USERS.DB",
+              "expect": [
+                "ERR ACCESS"
               ]
             },
             {
@@ -3744,22 +3765,24 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=display_boot"
         ],
-        "oracle": "the boot stub captures the GOP mode into BootInfo (boot|gop|present=1 with the resolution, stride and 32-bit format), the kernel maps the frame and draws the diagnostic pattern (kernel|display|…|selfcheck=1); the test reads the four corners and decodes the build-id bar back from the frame; the fbprobe process maps the frame through the display object (display_info, display_map, vmo_map read-write and read-only), paints a magenta and a cyan 64×64 square, probes the refusals (write mapping of a read-only handle ERR_ACCESS, bad protection ERR_INVALID, a channel ERR_WRONG_TYPE, unmapping a non-mapping ERR_INVALID) and exits 0x75 with no frame leaked; the lab then takes a QEMU screendump and presses Enter, and tools/screen.py finds the corners, the build id and both squares in the picture; exit 33",
+        "oracle": "the boot stub captures the GOP mode into BootInfo (boot|gop|present=1 with the resolution, stride and 32-bit format), the kernel maps the frame and draws the diagnostic pattern (kernel|display|…|selfcheck=1); the test reads the four corners and decodes the build-id bar back from the frame; the fbprobe process maps the frame through the display object (display_info, display_map, vmo_map read-write and read-only), paints a magenta and a cyan 64×64 square, probes the refusals (write mapping of a read-only handle ERR_ACCESS, bad protection ERR_INVALID, a channel ERR_WRONG_TYPE, unmapping a non-mapping ERR_INVALID); nothing lands past the frame (REQ-M5-001, WP-42): the kernel refuses a frame in an unsupported pixel format (GOP bit mask, blt only) or geometry (no width, stride below width, no base, larger than it maps) before mapping anything, its boot line then reads present=0, and the frame in use is untouched (refused=6/6, kept=1); the probe maps the frame again as its last mapping, the kernel refuses to write a record across its end (ERR_FAULT, the last pixels unchanged), and the probe's own write one pixel past the end faults at exactly that address (one user_fault, vector 14, cr2 = the traced end) and ends it (exit 0x1000E) with no frame leaked; the lab then takes a QEMU screendump and presses Enter, and tools/screen.py finds the corners, the build id and both squares in the picture; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=display_boot",
           "|boot|gop|present=1|w=",
           "|kernel|display|present=1|w=",
           "|ktest|display_boot|w=",
-          "|corners_ok=1|bar=${BUILD_ID}|bar_ok=1|probe_exit=0x75|magenta=1|cyan=1|frames_delta=0|ready=1",
+          "|ktest|display_boot|refused=6/6|kept=1",
+          "|corners_ok=1|bar=${BUILD_ID}|bar_ok=1|probe_exit=0x1000e|magenta=1|cyan=1|frames_delta=0|ready=1",
+          "|text=fbprobe|bounds|kernel_write=refused|end=0x",
+          "|kernel|user_fault|vector=14|",
           "|ktest|display_boot|lab_key=1|byte=0x1c",
           "|ktest|pass|the frame carries the kernel's pattern and a process's paint through the display object"
         ],
         "forbidden_markers": [
           "|ktest|fail|",
           "|kernel|panic|",
-          "|exc|vector",
-          "|user_fault|"
+          "|exc|vector"
         ],
         "timeout_s": 600,
         "monitor": {
@@ -3784,6 +3807,15 @@
             "--square",
             "192,96,00FFFF"
           ]
+        ],
+        "max_counts": {
+          "|kernel|user_fault|": 1
+        },
+        "equal_values": [
+          [
+            "text=fbprobe\\|bounds\\|kernel_write=refused\\|end=(0x[0-9a-f]+)",
+            "\\|kernel\\|user_fault\\|vector=14\\|.*?\\|cr2=(0x[0-9a-f]+)\\|"
+          ]
         ]
       },
       {
@@ -3798,7 +3830,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=input_route",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=7|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
           "|path=/SYSTEM/INPUTD.ELF|handles=3",
           "|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0|phase=1|ready=1",
           "|ktest|input_route|a=KEY 0x1e down 0 a;KEY 0x1e up 0 a;KEY 0x2a down 1 -;KEY 0x30 down 1 B;KEY 0x30 up 1 B;KEY 0x2a up 0 -;KEY 0x1d down 2 -;KEY 0x38 down 6 -|s=SAK;KEY 0x38 up 2 -;KEY 0x1d up 0 -|b=",
@@ -3935,7 +3967,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=window_states"
         ],
-        "oracle": "two kernel-side clients a and b of the compositor (SVC-DP.TXT): surfaces 1/2, windows 3/4 at the cascade positions (21,45) and (61,85), the newer focused; RAISE by a gives a the focus and z 0 (events FOCUS/UNFOCUS to both as display.md lists them); the lab's Alt+Tab (QEMU sendkey) moves the focus to b (a sees the Alt press then UNFOCUS 3; b gets FOCUS 4 then the Alt release; the Tab press and release are swallowed; STATUS focus=4); the lab's pointer path to a's title bar and click (mouse_move -470 -368 from the centre, mouse_button 1/0) focuses a again with the pointer at (170,32); RESIZE 200 100 tells a `RESIZED 3 200 100`, a attaches a new 200×100 surface (5) and LIST shows it; MINIMIZE moves the focus to b and RESTORE back to a on top; CLOSE and DESTROY_SURFACE leave windows=0; clean exit, no frame leaks; exit 33",
+        "oracle": "two kernel-side clients a and b of the compositor (SVC-DP.TXT): surfaces 1/2, windows 3/4 at the cascade positions (21,45) and (61,85), the newer focused; RAISE by a gives a the focus and z 0 (events FOCUS/UNFOCUS to both as display.md lists them); the lab's Alt+Tab (QEMU sendkey) moves the focus to b (a sees the Alt press then UNFOCUS 3; b gets FOCUS 4 then the Alt release; the Tab press and release are swallowed; STATUS focus=4); the lab's pointer path to a's title bar and click (mouse_move -470 -368 from the centre, mouse_button 1/0) focuses a again with the pointer at (170,32); RESIZE 200 100 tells a `RESIZED 3 200 100`, a attaches a new 200×100 surface (5) and LIST shows it; MINIMIZE moves the focus to b and RESTORE back to a on top; (WP-42, REQ-M5-003) b raises itself over a (a sees UNFOCUS 3 and its client area hashes differently, covered) and then b's client goes away with no CLOSE: the compositor forgets b's window and surface on its own (windows=1, the focus back to a with FOCUS 3), a's client area hashes exactly as it did alone on top, and the compositor no longer holds b's surface (its references drop to the test's own); a's CLOSE and DESTROY_SURFACE leave windows=0; clean exit, no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=window_states",
@@ -3945,7 +3977,10 @@
           "|ktest|window_states|click_a=FOCUS 3|click_b=UNFOCUS 4|status=OK format=1 screen=1280x800 windows=2 focus=3 pointer=170,32 composed=",
           "|ktest|window_states|resize=OK|resized=RESIZED 3 200 100|surface2=OK 5|attach=OK|destroy=OK|a2=21,45,200,100,Some(5),0|minimize=OK|min_a=UNFOCUS 3|min_b=FOCUS 4|a3=1,0,0|status_b=OK format=1 screen=1280x800 windows=2 focus=4 pointer=170,32 composed=",
           "|restore=OK|res_a=FOCUS 3|res_b=UNFOCUS 4|a4=0,1,0",
-          "|ktest|window_states|close=OK/OK|destroy=OK/OK|status=OK format=1 screen=1280x800 windows=0 focus=- pointer=170,32 composed=",
+          "|ktest|window_states|gone=raise:OK|raise_a=UNFOCUS 3|covered_differs=1|status=OK format=1 screen=1280x800 windows=1 focus=3 pointer=170,32 composed=",
+          "|gone_a=FOCUS 3|uncovered=1|surface_held=",
+          ">1|",
+          "|ktest|window_states|close=OK|destroy=OK|status=OK format=1 screen=1280x800 windows=0 focus=- pointer=170,32 composed=",
           "|ktest|window_states|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|window_states|frames_delta=0",
           "|ktest|pass|focus by request, Alt+Tab and click, z-order, resize with a new surface, minimise and restore all follow display.md"
@@ -5137,6 +5172,34 @@
         }
       },
       {
+        "id": "TST-M5-FILE-AUTHORITY",
+        "test_id": "TST-M5-FILE-AUTHORITY",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=file_authority"
+        ],
+        "oracle": "REQ-M5-006, RSK-008 files.md v1.3 (WP-44): the fileauth application with no handle: opening /SYSTEM/USERS.DB, /system/users.db and /SYSTEM./USERS.DB for reading, stat and dir_list of /SYSTEM, spawning /SYSTEM/USERS.DB, opening /SYSTEM/INPUTD.ELF for writing, creating /SYSTEM/NEW.TXT, truncating USERS.DB, unlinking SVC-AUTH.TXT, writing or unlinking a font are all refused with ERR_ACCESS; a font reads; a relative path keeps ERR_BAD_PATH; /FAUTH.TXT is created, written and removed as before: exit 0x44. Given a READ-only SystemFiles handle it lists /SYSTEM, stats and reads USERS.DB but every change is still refused: exit 0x45. The kernel reads back INPUTD.ELF's and USERS.DB's sizes unchanged and no NEW.TXT; neither run leaks a frame or an object. Then the SVC-CFG stack (the manager hands the authority READ to auth, READ|WRITE to config): the lab users sign in and an admin SET of device lab.fauth is stored (OK 1, read back OK 1 kept); the manager exits 0, no process left, no frame leak; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=file_authority",
+          "|ktest|file_authority|probe=0x44|probe_ro=0x45|frames=0+0|inputd_same=1|usersdb_same=1|created=0|objects_same=1",
+          "|ktest|file_authority|services=auth,config|set=OK 1|get=OK 1 kept",
+          "|ktest|file_authority|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|file_authority|frames_delta=0",
+          "|ktest|pass|an ordinary process cannot read or change /SYSTEM; the services holding the authority can"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "NAWAH-USERS",
+          "lab-admin-1"
+        ],
+        "timeout_s": 900
+      },
+      {
         "id": "TST-M5-LOCK-DISPLAY-DOWN",
         "test_id": "TST-M5-LOCK-DISPLAY-DOWN",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",
@@ -5422,7 +5485,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=window_a11y"
         ],
-        "oracle": "scenario 7 (WP-39): the sample dialog alone (SVC-UI.TXT) driven by the keyboard — Alt+F9 minimises it (the focus leaves it), Alt+Tab reaches the minimised window and restores it (v1.3), Tab then moves inside it; the narrator's transcript equals platform/pc-qemu/expect/window-a11y.txt line for line: the startup tree and focus, then on the restore `window \"Sign in\" focused` and the dialog re-announcing its focused element (ui.md v1.2), then the focus moving to the list; Esc ends it with exit 0; no frame leaks; exit 33",
+        "oracle": "scenario 7 (WP-39): the sample dialog alone (SVC-UI.TXT) driven by the keyboard — Alt+F9 minimises it (the focus leaves it), Alt+Tab reaches the minimised window and restores it (v1.3), Tab then moves inside it; the narrator's transcript equals platform/pc-qemu/expect/window-a11y.txt line for line: the startup tree and focus, then on the restore `window \"Sign in\" focused` and the dialog re-announcing its focused element (ui.md v1.2), then the focus moving to the list; (WP-42, REQ-M5-008) Alt+Shift+Right widens it by 16 px, announced `window \"Sign in\" resized 276x242` (display.md v1.7), and the next Tab moves the focus to the checkbox inside it — the resize kept the focus and switched no layout; Esc ends it with exit 0; no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=window_a11y",
@@ -5447,6 +5510,8 @@
             "sendkey alt-f9",
             "sendkey alt-tab",
             "sendkey tab",
+            "sendkey shift-alt-right",
+            "sendkey tab",
             "sendkey esc"
           ],
           "gap_s": 0.5
@@ -5470,13 +5535,14 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=arabic_ui"
         ],
-        "oracle": "scenario 11 (WP-39): the dialog starts English; the admin sets ui.lang=ar in the config device store (OK 1) and the subscribed dialog turns Arabic and right-to-left in place (new labels, items and direction, the window renamed with TITLE), announcing `lang ar` and its focused element with the Arabic label; the lab toggles the keyboard layout with Alt+Shift (input v2.3) and types the two Arabic letters that the keys d, f give in the ar layout into the field, then Tab to the list and Down move its selection — each announced in Arabic; the narrator's transcript equals platform/pc-qemu/expect/arabic-ui.txt line for line; the lab's screendump shows the dialog's background where it reported it (the RTL layout and direction logic are proven exactly by the libui host unit test, §17: a screenshot does not prove behaviour); Esc ends it with exit 0; exit 33",
+        "oracle": "scenario 11 (WP-39): the dialog starts English; the admin sets ui.lang=ar in the config device store (OK 1) and the subscribed dialog turns Arabic and right-to-left in place (new labels, items and direction, the window renamed with TITLE), announcing `lang ar` and its focused element with the Arabic label; the lab toggles the keyboard layout with Alt+Shift (input v2.3) and types the two Arabic letters that the keys d, f give in the ar layout into the field, then (WP-42, REQ-M5-009) toggles back and types a, 1 and / after them — a mixed Arabic/Latin/digit/separator value typed by keyboard alone, each change announced with the value exactly — then Tab to the list and Down move its selection — each announced in Arabic; the narrator's transcript equals platform/pc-qemu/expect/arabic-ui.txt line for line; the lab's screendump shows the dialog's background where it reported it and the field's text drawn against its right edge, as right-to-left text is (tools/screen.py --ink over the probe_field rectangle the dialog reported; the exact RTL layout and direction logic are proven by the libui host unit test, §17); Esc ends it with exit 0; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=arabic_ui",
           "|text=display|fonts=1",
           "|ktest|arabic_ui|lang=OK 1|ready=1",
           "|text=dialog|theme=4,normal|window=",
+          "|probe_field=",
           "|ktest|arabic_ui|dialog_state=stopped|dialog_exit=0|",
           "|ktest|arabic_ui|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|arabic_ui|frames_delta=0",
@@ -5495,6 +5561,10 @@
             "sendkey alt-shift",
             "sendkey d",
             "sendkey f",
+            "sendkey alt-shift",
+            "sendkey a",
+            "sendkey 1",
+            "sendkey slash",
             "sendkey tab",
             "sendkey down",
             "screendump ${SCREEN}",
@@ -5518,7 +5588,9 @@
             "desktop",
             "${SCREEN}",
             "--pixel",
-            "${SERIAL:probe_bg=},F0F0F0"
+            "${SERIAL:probe_bg=},F0F0F0",
+            "--ink",
+            "${SERIAL:probe_field=},right"
           ]
         ]
       },

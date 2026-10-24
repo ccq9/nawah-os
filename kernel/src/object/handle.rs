@@ -110,6 +110,20 @@ impl HandleTable {
     }
 
     /// The entry behind `handle`, checked to carry `required` rights.
+    /// The union of the rights of every live entry whose object `matches` (WP-44: what the
+    /// system-files authority the process holds allows, however many copies it has).
+    pub fn rights_where(&self, matches: impl Fn(&Object) -> bool) -> Rights {
+        let mut r = 0;
+        for s in &self.slots {
+            if let Some(e) = &s.entry {
+                if matches(&e.object) {
+                    r |= e.rights.0;
+                }
+            }
+        }
+        Rights(r)
+    }
+
     pub fn get(&self, handle: Handle, required: Rights) -> Result<&Entry, HandleError> {
         let i = self.slot_of(handle)?;
         let e = self.slots[i].entry.as_ref().ok_or(HandleError::BadHandle)?;

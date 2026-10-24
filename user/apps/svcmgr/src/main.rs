@@ -9,7 +9,7 @@
 #![no_main]
 
 use libnawah::{
-    Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_TIMED_OUT, SIGNAL_EXITED,
+    rights, Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_TIMED_OUT, SIGNAL_EXITED,
     SIGNAL_PEER_CLOSED, SIGNAL_READABLE, TIMEOUT_FOREVER,
 };
 
@@ -244,7 +244,13 @@ struct Manager {
     serial: Option<Handle>,
     display: Option<Handle>,
     mouse: Option<Handle>,
+    /// The system-files authority (WP-44, files.md v1.3): read-only to `auth`, read-write to
+    /// `config`, to nobody else.
+    system_files: Option<Handle>,
 }
+
+/// Every right a copy may keep (the source's own rights still bound it).
+const ALL_RIGHTS: u32 = u32::MAX;
 
 enum LoadError {
     Missing,
@@ -454,20 +460,36 @@ impl Manager {
         // Kernel resources go to the service named for them, as copies (the manager keeps
         // the originals for restarts): the authority to `auth`, the interface to `net`, the
         // keyboard then the mouse to `input`, the console to `sh`, the display to `display`.
-        let mut initial = [theirs, 0, 0];
+        // The system-files authority goes narrowed: READ to `auth`, READ|WRITE to `config`
+        // (WP-44); the TRANSFER right lets it travel in the spawn.
+        let mut initial = [theirs, 0, 0, 0];
         let mut n_initial = 1;
-        let resources: [Option<Handle>; 2] = match s.name() {
-            b"auth" => [self.authority, None],
-            b"net" => [self.nic, None],
-            b"input" => [self.keyboard, self.mouse],
-            b"sh" => [self.serial, None],
-            b"display" => [self.display, None],
-            _ => [None, None],
+        let files_read = rights::READ | rights::TRANSFER;
+        let files_write = files_read | rights::WRITE;
+        let resources: [(Option<Handle>, u32); 3] = match s.name() {
+            b"auth" => [
+                (self.authority, ALL_RIGHTS),
+                (self.system_files, files_read),
+                (None, 0),
+            ],
+            b"config" => [(self.system_files, files_write), (None, 0), (None, 0)],
+            b"net" => [(self.nic, ALL_RIGHTS), (None, 0), (None, 0)],
+            b"input" => [
+                (self.keyboard, ALL_RIGHTS),
+                (self.mouse, ALL_RIGHTS),
+                (None, 0),
+            ],
+            b"sh" => [(self.serial, ALL_RIGHTS), (None, 0), (None, 0)],
+            b"display" => [(self.display, ALL_RIGHTS), (None, 0), (None, 0)],
+            _ => [(None, 0), (None, 0), (None, 0)],
         };
-        for r in resources.into_iter().flatten() {
+        for (r, mask) in resources {
+            let Some(r) = r else {
+                continue;
+            };
             let rights = libnawah::handle_rights(r);
             if rights >= 0 {
-                if let Ok(copy) = libnawah::handle_duplicate(r, rights as u32) {
+                if let Ok(copy) = libnawah::handle_duplicate(r, rights as u32 & mask) {
                     initial[n_initial] = copy;
                     n_initial += 1;
                 }
@@ -879,9 +901,11 @@ fn main() -> u64 {
     // control channel, recognised by type (handle_type) whatever their order.
     let (mut authority, mut nic, mut keyboard, mut serial, mut display, mut mouse) =
         (None, None, None, None, None, None);
-    for h in ctl + 1..ctl + 8 {
+    let mut system_files = None;
+    for h in ctl + 1..ctl + 10 {
         match libnawah::handle_type(h) {
             libnawah::object_type::AUTHORITY => authority = Some(h),
+            libnawah::object_type::SYSTEM_FILES => system_files = Some(h),
             libnawah::object_type::NIC => nic = Some(h),
             libnawah::object_type::KEYBOARD => keyboard = Some(h),
             libnawah::object_type::SERIAL => serial = Some(h),
@@ -902,6 +926,7 @@ fn main() -> u64 {
         serial,
         display,
         mouse,
+        system_files,
     };
     // Wait-set slots: 0 = control; then per service (boot channel, process).
     let mut entries = [WaitEntry {
