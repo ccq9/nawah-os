@@ -6681,6 +6681,15 @@ fn session_ask(ep: &Endpoint, req: &[u8], deadline: u64) -> String {
     session_reply(ep, deadline)
 }
 
+/// The `keys=<n>` of a spy `COUNT` reply (its focus and connection counts vary with the
+/// compositor's life; the key count is the leak check).
+fn spy_keys(reply: &str) -> &str {
+    reply
+        .split(' ')
+        .find(|f| f.starts_with("keys="))
+        .unwrap_or(reply)
+}
+
 fn session_reply(ep: &Endpoint, deadline: u64) -> String {
     let mut reply = String::from("error:timeout");
     sched::poll_until(deadline, || match ep.read(256, 0, None) {
@@ -6868,60 +6877,12 @@ fn elevate() -> ! {
     let unavailable = session_reply(&session, long);
     let thawed = sched::thaw_named(b"DISPLAYD.ELF");
     let set3 = cfg_request(&config, b"GET device lab.elev3", None);
-    // 4. The compositor goes while the prompt is up: the elevation ends unanswered too.
     let reconnected = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
         r.contains(" display=") && !r.contains(" display=1 ") && r.ends_with(" focus=display")
     });
-    if session
-        .write(Message {
-            bytes: b"ELEVATE config SET device lab.elev4 0 904 on".to_vec(),
-            handles: Vec::new(),
-        })
-        .is_err()
-    {
-        fail("the session's client channel is closed")
-    }
-    let prompt4 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
-        r.starts_with("OK prompt ")
-    });
-    let r_stop = match crate::services::request(&h.m.ctl, b"STOP display", sched::ticks() + 500) {
-        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
-        Err(e) => String::from(e),
-    };
-    let gone = session_reply(&session, sched::ticks() + 60_000);
-    let set4 = cfg_request(&config, b"GET device lab.elev4", None);
-    let tokens4 = object::stats().tokens;
-    let spy4 = cfg_request(&spy, b"COUNT", None);
-    kprintln!(
-        "OSX|{}|ktest|elevate|frozen_n={}|unavailable={}|thawed={}|set3={}|reconnected={}|prompt4={}|stop={}|gone={}|set4={}|tokens4={}|spy4={}|phase=5",
-        BUILD_ID,
-        frozen,
-        unavailable,
-        thawed,
-        set3,
-        reconnected,
-        prompt4,
-        r_stop,
-        gone,
-        set4,
-        tokens4,
-        spy4
-    );
-    if unavailable != "ERR UNAVAILABLE" || set3 != "ERR NOT_FOUND" {
-        fail("an elevation was approved while the compositor did not answer")
-    }
-    if !prompt4.starts_with("OK prompt ")
-        || r_stop != "OK"
-        || gone != "ERR UNAVAILABLE"
-        || set4 != "ERR NOT_FOUND"
-    {
-        fail("an elevation survived the compositor's end")
-    }
-    if tokens4 != tokens0 || spy4 != spy0 {
-        fail("a token or a key leaked out of a failed elevation")
-    }
-    // 5. A stale answer approves nothing (review C1). `other` asks; auth is frozen; the lab
-    // types an administrator's name and password (the LOGIN waits at auth); `other` closes its
+    // 3b. A stale answer approves nothing (review C1), on the compositor back from its freeze.
+    // `other` asks; auth is frozen; the lab types an administrator's name and password (the
+    // LOGIN waits at auth); `other` closes its
     // channel, which ends its elevation; a new elevation is refused BUSY while that answer is
     // still awaited; auth thaws and answers with an administrator's token — for an elevation
     // that ended: the token is ended at once and nothing runs. Then the same request, asked
@@ -6943,7 +6904,7 @@ fn elevate() -> ! {
     });
     let frozen5 = sched::freeze_named(b"AUTHD.ELF");
     kprintln!(
-        "OSX|{}|ktest|elevate|back5={}|prompt5={}|auth_frozen={}|phase=6|ready=1",
+        "OSX|{}|ktest|elevate|back5={}|prompt5={}|auth_frozen={}|phase=3b|ready=1",
         BUILD_ID,
         back5,
         prompt5,
@@ -6981,7 +6942,7 @@ fn elevate() -> ! {
     let set5 = cfg_request(&config, b"GET device lab.elev5", None);
     let set6 = cfg_request(&config, b"GET device lab.elev6", None);
     kprintln!(
-        "OSX|{}|ktest|elevate|waiting5={}|ended5={}|busy5={}|thawed5={}|settled5={}|tokens5={}|set5={}|set6={}|phase=7|ready=1",
+        "OSX|{}|ktest|elevate|waiting5={}|ended5={}|busy5={}|thawed5={}|settled5={}|tokens5={}|set5={}|set6={}|phase=3c|ready=1",
         BUILD_ID,
         waiting5,
         ended5,
@@ -7019,19 +6980,76 @@ fn elevate() -> ! {
     };
     let spy6 = cfg_request(&spy, b"COUNT", None);
     kprintln!(
-        "OSX|{}|ktest|elevate|approved6={}|set6b={}|tokens6={}|spy6={}|phase=8",
+        "OSX|{}|ktest|elevate|approved6={}|set6b={}|tokens6={}|spy6={}|phase=3d",
         BUILD_ID,
         approved6,
         set6b,
         tokens6,
         spy6
     );
-    if approved6 != "ELEVATED OK 1" || set6b != "OK 1 on" || tokens6 != tokens0 || spy6 != spy0 {
+    if approved6 != "ELEVATED OK 1"
+        || set6b != "OK 1 on"
+        || tokens6 != tokens0
+        || spy_keys(&spy6) != spy_keys(&spy0)
+    {
         fail("the elevation after the stale answer did not run as shown, or leaked")
     }
     drop((
         back5, prompt5, waiting5, ended5, busy5, settled5, set5, set6, approved6, set6b, spy6,
     ));
+    // 4. The compositor goes while the prompt is up: the elevation ends unanswered too.
+    if session
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev4 0 904 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        fail("the session's client channel is closed")
+    }
+    let prompt4 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK prompt ")
+    });
+    let r_stop = match crate::services::request(&h.m.ctl, b"STOP display", sched::ticks() + 500) {
+        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+        Err(e) => String::from(e),
+    };
+    let gone = session_reply(&session, sched::ticks() + 60_000);
+    let set4 = cfg_request(&config, b"GET device lab.elev4", None);
+    let tokens4 = object::stats().tokens;
+    // The spy's window is new on the new compositor: its focus comes back with the
+    // session's handover, within a bound; its key count is what must not have moved.
+    let spy4 = poll_reply(&spy, b"COUNT", sched::ticks() + 60_000, |r| {
+        r.contains(" focus=1 ")
+    });
+    kprintln!(
+        "OSX|{}|ktest|elevate|frozen_n={}|unavailable={}|thawed={}|set3={}|reconnected={}|prompt4={}|stop={}|gone={}|set4={}|tokens4={}|spy4={}|phase=5",
+        BUILD_ID,
+        frozen,
+        unavailable,
+        thawed,
+        set3,
+        reconnected,
+        prompt4,
+        r_stop,
+        gone,
+        set4,
+        tokens4,
+        spy4
+    );
+    if unavailable != "ERR UNAVAILABLE" || set3 != "ERR NOT_FOUND" {
+        fail("an elevation was approved while the compositor did not answer")
+    }
+    if !prompt4.starts_with("OK prompt ")
+        || r_stop != "OK"
+        || gone != "ERR UNAVAILABLE"
+        || set4 != "ERR NOT_FOUND"
+    {
+        fail("an elevation survived the compositor's end")
+    }
+    if tokens4 != tokens0 || spy_keys(&spy4) != spy_keys(&spy0) {
+        fail("a token or a key leaked out of a failed elevation")
+    }
     drop((
         not_ready, opened, spy0, prompt1, busy, approved, set1, back1, spy1, cancelled, set2,
         back2, spy2,
