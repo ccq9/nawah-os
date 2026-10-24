@@ -6920,6 +6920,118 @@ fn elevate() -> ! {
     if tokens4 != tokens0 || spy4 != spy0 {
         fail("a token or a key leaked out of a failed elevation")
     }
+    // 5. A stale answer approves nothing (review C1). `other` asks; auth is frozen; the lab
+    // types an administrator's name and password (the LOGIN waits at auth); `other` closes its
+    // channel, which ends its elevation; a new elevation is refused BUSY while that answer is
+    // still awaited; auth thaws and answers with an administrator's token — for an elevation
+    // that ended: the token is ended at once and nothing runs. Then the same request, asked
+    // again, is approved the ordinary way: the refusal was for the pending answer only.
+    let back5 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK unlocked ") && r.ends_with(" focus=display")
+    });
+    if other
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev5 0 905 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        fail("the other client channel is closed")
+    }
+    let prompt5 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK prompt ")
+    });
+    let frozen5 = sched::freeze_named(b"AUTHD.ELF");
+    kprintln!(
+        "OSX|{}|ktest|elevate|back5={}|prompt5={}|auth_frozen={}|phase=6|ready=1",
+        BUILD_ID,
+        back5,
+        prompt5,
+        frozen5
+    );
+    if !prompt5.starts_with("OK prompt ") || !frozen5 {
+        fail("the fifth prompt did not come up, or auth could not be frozen")
+    }
+    // The administrator's LOGIN is on its way to a frozen auth.
+    let waiting5 = poll_reply(&session, b"AUTH", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK waiting=1 ")
+    });
+    drop(other);
+    let ended5 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK none ")
+    });
+    let busy5 = session_ask(
+        &session,
+        b"ELEVATE config SET device lab.elev6 0 906 on",
+        sched::ticks() + 5_000,
+    );
+    let thawed5 = sched::thaw_named(b"AUTHD.ELF");
+    let settled5 = poll_reply(&session, b"AUTH", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK waiting=0 ")
+    });
+    let tokens5 = {
+        let mut t = object::stats().tokens;
+        let until = sched::ticks() + 10_000;
+        while t != tokens0 && sched::ticks() < until {
+            sched::poll_until(sched::ticks() + 20, || false);
+            t = object::stats().tokens;
+        }
+        t
+    };
+    let set5 = cfg_request(&config, b"GET device lab.elev5", None);
+    let set6 = cfg_request(&config, b"GET device lab.elev6", None);
+    kprintln!(
+        "OSX|{}|ktest|elevate|waiting5={}|ended5={}|busy5={}|thawed5={}|settled5={}|tokens5={}|set5={}|set6={}|phase=7|ready=1",
+        BUILD_ID,
+        waiting5,
+        ended5,
+        busy5,
+        thawed5,
+        settled5,
+        tokens5,
+        set5,
+        set6
+    );
+    if !waiting5.starts_with("OK waiting=1 ") || !ended5.starts_with("OK none ") {
+        fail("the elevation did not end when its client left with the answer pending")
+    }
+    if busy5 != "ERR BUSY" {
+        fail("an elevation was accepted while an administrator's answer was still awaited")
+    }
+    if tokens5 != tokens0 || set5 != "ERR NOT_FOUND" || set6 != "ERR NOT_FOUND" {
+        fail("a stale administrator's answer approved something, or its token survived")
+    }
+    // The same request again, approved on its own prompt by the lab.
+    let approved6 = session_ask(
+        &session,
+        b"ELEVATE config SET device lab.elev6 0 906 on",
+        long,
+    );
+    let set6b = cfg_request(&config, b"GET device lab.elev6", None);
+    let tokens6 = {
+        let mut t = object::stats().tokens;
+        let until = sched::ticks() + 10_000;
+        while t != tokens0 && sched::ticks() < until {
+            sched::poll_until(sched::ticks() + 20, || false);
+            t = object::stats().tokens;
+        }
+        t
+    };
+    let spy6 = cfg_request(&spy, b"COUNT", None);
+    kprintln!(
+        "OSX|{}|ktest|elevate|approved6={}|set6b={}|tokens6={}|spy6={}|phase=8",
+        BUILD_ID,
+        approved6,
+        set6b,
+        tokens6,
+        spy6
+    );
+    if approved6 != "ELEVATED OK 1" || set6b != "OK 1 on" || tokens6 != tokens0 || spy6 != spy0 {
+        fail("the elevation after the stale answer did not run as shown, or leaked")
+    }
+    drop((
+        back5, prompt5, waiting5, ended5, busy5, settled5, set5, set6, approved6, set6b, spy6,
+    ));
     drop((
         not_ready, opened, spy0, prompt1, busy, approved, set1, back1, spy1, cancelled, set2,
         back2, spy2,
@@ -6936,7 +7048,6 @@ fn elevate() -> ! {
         spy4,
         spy,
         config,
-        other,
         session,
     ));
     display_finish(

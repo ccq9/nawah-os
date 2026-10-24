@@ -74,8 +74,12 @@ enum AuthOp {
     Unlock,
     Lock,
     Logout,
-    /// An administrator's name and password for the elevation on the prompt (v1.3).
-    Elevate,
+    /// An administrator's name and password for the elevation on the prompt (v1.3). `n` names
+    /// the elevation it was typed for: an answer that arrives after that elevation ended
+    /// approves nothing, whatever prompt is on the screen by then.
+    Elevate {
+        n: u64,
+    },
 }
 
 /// An elevation a client asked for (session.md v1.3).
@@ -92,6 +96,8 @@ struct Elevation {
     chan: Handle,
     /// The `CONNECT <service>` is still to be sent (the manager answers one request at a time).
     connect: bool,
+    /// This elevation's number (1, 2, …): the auth answer it waits for carries the same one.
+    n: u64,
 }
 
 const NO_ELEVATION: Elevation = Elevation {
@@ -104,6 +110,7 @@ const NO_ELEVATION: Elevation = Elevation {
     request_len: 0,
     chan: 0,
     connect: false,
+    n: 0,
 };
 
 /// Requests to `auth` that may wait for their answers at once.
@@ -420,6 +427,8 @@ struct Session {
     client_names: [([u8; NAME_MAX], usize); MAX_CLIENTS],
     elevation: Option<Elevation>,
     elevations: i64,
+    /// Elevations asked so far; numbers the next one.
+    elevate_seq: u64,
 }
 
 impl Session {
@@ -459,11 +468,18 @@ impl Session {
     }
 
     /// Whether a sign-in or an unlock is waiting for auth's answer (one at a time).
+    /// An administrator's name and password sent for an elevation, not yet answered.
+    fn elevate_answer_pending(&self) -> bool {
+        self.auth_ops
+            .iter()
+            .any(|o| matches!(o, Some(AuthOp::Elevate { .. })))
+    }
+
     fn auth_waiting(&self) -> bool {
         self.auth_ops.iter().any(|o| {
             matches!(
                 o,
-                Some(AuthOp::Login { .. } | AuthOp::Unlock | AuthOp::Elevate)
+                Some(AuthOp::Login { .. } | AuthOp::Unlock | AuthOp::Elevate { .. })
             )
         })
     }
@@ -499,7 +515,7 @@ impl Session {
                     self.show(Screen::Lock, Some(refusal(answer, true)));
                 }
             },
-            AuthOp::Elevate => self.elevate_answer(answer, extra, now),
+            AuthOp::Elevate { n } => self.elevate_answer(n, answer, extra, now),
             // A token auth will not lock ends the session (it is locked here already).
             AuthOp::Lock => {
                 if let Some(h) = extra {
@@ -1140,12 +1156,13 @@ impl Session {
     /// shown at once, then auth is told to lock the token (session.md v1.2: never waited on, so a
     /// hung auth cannot leave the desktop open). A token auth will not lock ends the session.
     fn lock(&mut self, now: u64) {
-        // The secure attention sequence ends a prompt too: nothing is approved (v1.3).
+        // The secure attention sequence ends a prompt too: nothing is approved (v1.3). The
+        // state is locked first, so that ending the prompt never shows the desktop in between.
+        self.state = State::Locked;
         if self.elevation.is_some() {
             self.elevate_end(b"ERR CANCELLED", now);
             self.want_display = false;
         }
-        self.state = State::Locked;
         self.changes += 1;
         let mut r = [0u8; 64];
         self.display_call(b"LOCKED", &[], &mut r);
@@ -1188,7 +1205,10 @@ impl Session {
         if self.state != State::Unlocked {
             return Some(b"ERR NOT_READY");
         }
-        if self.elevation.is_some() {
+        // One at a time: a prompt on the screen, or an administrator's answer still awaited
+        // for an elevation that ended meanwhile (the client left, Esc, the secure attention
+        // sequence) — that answer must not find a new prompt to approve.
+        if self.elevation.is_some() || self.elevate_answer_pending() {
             return Some(b"ERR BUSY");
         }
         let Some(sp) = rest.iter().position(|&c| c == b' ') else {
@@ -1219,6 +1239,8 @@ impl Session {
         e.service_len = service.len();
         e.request[..request.len()].copy_from_slice(request);
         e.request_len = request.len();
+        self.elevate_seq += 1;
+        e.n = self.elevate_seq;
         self.elevation = Some(e);
         let mut t = Out::new();
         t.put(b"session|elevate=asked|from=")
@@ -1243,7 +1265,13 @@ impl Session {
         };
         e.chan = h;
         let e = *e;
-        // The screen is held from here: the prompt is the only thing on it and takes the keys.
+        // The keys first, then the screen: no application hears a key once the prompt is on
+        // its way, and no prompt without the keys (the input lost: ERR UNAVAILABLE).
+        self.take_keyboard();
+        if self.owner != Owner::Session {
+            self.elevate_end(b"ERR UNAVAILABLE", now);
+            return;
+        }
         let mut r = [0u8; 64];
         self.display_call(b"LOCKED", &[], &mut r);
         self.show(Screen::Elevate, None);
@@ -1252,7 +1280,6 @@ impl Session {
             self.elevate_end(b"ERR UNAVAILABLE", now);
             return;
         }
-        self.take_keyboard();
         let mut t = Out::new();
         t.put(b"session|elevate=prompt|from=")
             .put(&e.from[..e.from_len])
@@ -1276,20 +1303,31 @@ impl Session {
         let mut req = Out::new();
         req.put(b"LOGIN ").put(&name[..nn]).put(b" ").put(&pw[..np]);
         wipe(&mut pw);
-        let sent = self.auth_send(req.bytes(), false, AuthOp::Elevate);
+        let n = self.elevation.map_or(0, |e| e.n);
+        let sent = self.auth_send(req.bytes(), false, AuthOp::Elevate { n });
         req.wipe();
         if !sent {
-            self.elevate_answer(b"ERR UNAVAILABLE", None, now);
+            self.elevate_answer(n, b"ERR UNAVAILABLE", None, now);
         }
     }
 
     /// auth's answer to the administrator's name and password.
-    fn elevate_answer(&mut self, answer: &[u8], token: Option<Handle>, now: u64) {
+    fn elevate_answer(&mut self, n: u64, answer: &[u8], token: Option<Handle>, now: u64) {
         let perms = answer
             .strip_prefix(b"OK ")
             .and_then(|r| r.split(|&c| c == b' ').nth(2))
             .and_then(parse_i64);
-        let prompting = self.elevation.is_some() && self.screen == Screen::Elevate;
+        // Only the elevation the password was typed for: an answer to an elevation that ended
+        // (its client left, Esc, the secure attention sequence) approves nothing, and its token
+        // is ended at once — whatever prompt is on the screen now.
+        let same = self.elevation.is_some_and(|e| e.n == n);
+        let prompting = same && self.screen == Screen::Elevate;
+        if !same {
+            let mut tr = Out::new();
+            tr.put(b"session|elevate=stale|n=")
+                .num(i64::try_from(n).unwrap_or(-1));
+            libnawah::trace(tr.bytes());
+        }
         match (token, perms) {
             (Some(t), Some(p)) if prompting && p & PERM_ADMIN != 0 => self.elevate_run(t, now),
             (token, perms) => {
@@ -1298,6 +1336,12 @@ impl Session {
                     self.auth_logout(t);
                 }
                 if !prompting {
+                    return;
+                }
+                // auth did not answer (lost, or the request never left): the elevation ends
+                // with ERR UNAVAILABLE (§0ب) — a prompt that cannot be checked is no prompt.
+                if answer == b"ERR UNAVAILABLE" {
+                    self.elevate_end(b"ERR UNAVAILABLE", now);
                     return;
                 }
                 let mut tr = Out::new();
@@ -1314,6 +1358,12 @@ impl Session {
                     refusal(answer, false)
                 };
                 self.show(Screen::Elevate, Some(message));
+                // The compositor lost while the refusal was drawn: the elevation ended
+                // (display_lost); the screen must not stay `Elevate` with no elevation, or
+                // the keyboard would never return to the desktop (try_handover).
+                if self.elevation.is_none() && self.screen == Screen::Elevate {
+                    self.screen = Screen::None;
+                }
             }
         }
     }
@@ -1329,7 +1379,9 @@ impl Session {
         let copy = u32::try_from(rights)
             .ok()
             .and_then(|r| libnawah::handle_duplicate(token, r).ok());
-        let mut reply = [0u8; 96];
+        // The service's reply, whole: a reply longer than this buffer would fail the read
+        // and report ERR UNAVAILABLE for a request that ran (review S4).
+        let mut reply = [0u8; MSG_MAX - 9];
         let mut got = None;
         if let Some(copy) = copy {
             if libnawah::channel_write(e.chan, &e.request[..e.request_len], &[copy]) == 0 {
@@ -1356,7 +1408,7 @@ impl Session {
             Some(n) => {
                 let mut out = Out::new();
                 out.put(b"ELEVATED ").put(&reply[..n]);
-                let mut a = [0u8; 128];
+                let mut a = [0u8; MSG_MAX];
                 let k = out.bytes().len();
                 a[..k].copy_from_slice(out.bytes());
                 self.elevate_end(&a[..k], now);
@@ -1387,8 +1439,11 @@ impl Session {
             libnawah::channel_write(self.clients[e.client], result, &[]);
         }
         if self.screen == Screen::Elevate {
-            let mut r = [0u8; 64];
-            self.display_call(b"UNLOCKED", &[], &mut r);
+            // The screen is released only to an unlocked desktop; a lock keeps it held.
+            if self.state == State::Unlocked {
+                let mut r = [0u8; 64];
+                self.display_call(b"UNLOCKED", &[], &mut r);
+            }
             self.hide();
         }
         if self.state == State::Unlocked {
@@ -1838,6 +1893,7 @@ fn main() -> u64 {
         client_names: [([0; NAME_MAX], 0); MAX_CLIENTS],
         elevation: None,
         elevations: 0,
+        elevate_seq: 0,
     };
     let now = libnawah::clock_ticks();
     // The keyboard first (nobody gets a key before the sign-in screen exists), then the
