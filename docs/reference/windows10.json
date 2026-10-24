@@ -5,7 +5,7 @@
   "version": "22H2",
   "build_family": "19045",
   "full_build": null,
-  "language": null,
+  "language": "ar-SA (media); installation language to be set at capture",
   "region": null,
   "account_type": null,
   "domain_join": null,
@@ -17,7 +17,24 @@
   "source": "Microsoft Windows 10 release information [S06] for the build family only",
   "media_digest": null,
   "status": "not_captured",
-  "note": "No licensed reference installation was inspected yet. Fields are null, not guessed. Capture protocol: prompt 3.2 section 4; pending decision DEC-002."
+  "note": "Reference media identified 2026-10-24 (see media). No licensed reference installation was inspected yet: screens, settings inventory and policies stay null, not guessed. Capture protocol: prompt 3.2 section 4; pending decision DEC-002 (what remains: a licensed VM installing image [4] Pro from this media, then the capture kit).",
+  "media": {
+   "file": "new project.iso (owner's machine, project folder root; not tracked in Git)",
+   "size_bytes": 5822384128,
+   "filesystem": "ISO 9660 + UDF (906 files; sources/ 5,773.9 MB, efi/ 22.3 MB, boot/ 18.3 MB, support/ 0.3 MB)",
+   "volume_label": "CCCOMA_X64FRE_AR-SA_DV9",
+   "mastered": "2023-05-06 (primary volume descriptor)",
+   "boot_wim": "sources/boot.wim: 2 images, Windows PE / Windows Setup (x64), 10.0.19041.2965, ar-SA",
+   "install_wim": "sources/install.wim (4,859,336,453 bytes, 6 images, 10.0.19041.2965, ar-SA, x64): [1] Home, [2] Home Single Language, [3] Education, [4] Pro (EDITIONID Professional, 103,773 files, 15.5 GB), [5] Pro Education, [6] Pro for Workstations",
+   "ui_languages": "ar-SA (fallback en-US) — sources/lang.ini",
+   "edition_selection": "no sources/ei.cfg: Setup offers the six editions",
+   "uefi_boot_path": "efi/boot/bootx64.efi -> efi/microsoft/boot/bcd -> sources/boot.wim (Windows Setup); legacy: bootmgr + boot/etfsboot.com",
+   "build_note": "the WIM reports base 19041 (2004/20H2/21H1/21H2/22H2 share it); 19041.2965 is the May 2023 cumulative level, the 22H2 media of that date; the 19045 family number appears after the enablement package on an installed system — to be confirmed on the captured installation (winver)",
+   "sha256": null,
+   "inspected_at": "2026-10-24",
+   "how": "headers read in place (pycdlib on the owner's machine): PVD, UDF directory walk, the WIM header and its XML data of both images; nothing extracted; no contents of the file were taken as instructions",
+   "status": "media_identified"
+  }
  },
  "screens": [],
  "differences": [
