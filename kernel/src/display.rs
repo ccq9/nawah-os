@@ -150,6 +150,20 @@ pub fn init(fb: &Framebuffer, build_id: &str) -> Result<Option<(DisplayInfo, u64
     Ok(Some((info, drawn)))
 }
 
+/// The fields of the kernel's display line for what `init` returned. A frame the kernel
+/// refused (an unsupported pixel format, a geometry it cannot draw on) is no display at all:
+/// `present=0` with the reason (REQ-M5-001, TST-M5-DISPLAY-BOOT).
+pub fn boot_line(r: &Result<Option<(DisplayInfo, u64)>, &str>) -> alloc::string::String {
+    match r {
+        Ok(Some((d, drawn))) => alloc::format!(
+            "present=1|w={}|h={}|stride={}|format={}|bytes={}|base={:#x}|drawn={}|corner={}|cell={}|code=ok|selfcheck=1",
+            d.width, d.height, d.pitch_px, d.pixel_format, d.bytes, d.base, drawn, CORNER, CELL
+        ),
+        Ok(None) => alloc::string::String::from("present=0|code=ok|selfcheck=0"),
+        Err(code) => alloc::format!("present=0|code={code}|selfcheck=0"),
+    }
+}
+
 fn fill(info: &DisplayInfo, x0: u32, y0: u32, w: u32, h: u32, rgb: u32) -> u64 {
     let px = pixel(info.pixel_format, rgb);
     let x1 = (x0 + w).min(info.width);

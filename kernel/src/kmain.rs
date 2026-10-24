@@ -381,15 +381,7 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
     );
     // Display (WP-32, ADR-0019): the GOP frame mapped and the diagnostic pattern drawn; the
     // lab reads it back through a screendump (TST-M5-DISPLAY-BOOT).
-    let display_line = match crate::display::init(&bi.fb, build_id) {
-        Ok(Some((d, drawn))) => alloc::format!(
-            "present=1|w={}|h={}|stride={}|format={}|bytes={}|base={:#x}|drawn={}|corner={}|cell={}|code=ok|selfcheck=1",
-            d.width, d.height, d.pitch_px, d.pixel_format, d.bytes, d.base, drawn,
-            crate::display::CORNER, crate::display::CELL
-        ),
-        Ok(None) => alloc::string::String::from("present=0|code=ok|selfcheck=0"),
-        Err(code) => alloc::format!("present=1|code={code}|selfcheck=0"),
-    };
+    let display_line = crate::display::boot_line(&crate::display::init(&bi.fb, build_id));
     kprintln!("OSX|{}|kernel|display|{}", build_id, display_line);
     // Keyboard and mouse (WP-27, WP-33): the i8042 as the firmware left it plus the auxiliary
     // interface; bytes are polled per tick into the two objects.
