@@ -6751,16 +6751,26 @@ fn elevate() -> ! {
         b"ELEVATE config SET device lab.elev 0 901 0123456789abcdef",
         sched::ticks() + 5_000,
     );
+    // Review S7: a name in the manifest's charset but unknown (uppercase `SPY`, the manager
+    // has `spy`) reaches the manager and is refused ERR ACCESS, not rejected here as malformed;
+    // a name outside the charset (`a.b`) is ERR BAD_REQUEST before the manager is asked.
+    let uppercase = session_ask(&session, b"ELEVATE SPY STATUS", sched::ticks() + 10_000);
+    let bad_char = session_ask(&session, b"ELEVATE a.b x", sched::ticks() + 5_000);
     kprintln!(
-        "OSX|{}|ktest|elevate|undeclared={}|too_long={}|",
+        "OSX|{}|ktest|elevate|undeclared={}|too_long={}|uppercase={}|bad_char={}|",
         BUILD_ID,
         undeclared,
-        too_long
+        too_long,
+        uppercase,
+        bad_char
     );
     if undeclared != "ERR ACCESS" || too_long != "ERR BAD_REQUEST" {
         fail("an elevation to an undeclared service or too long to show was not refused")
     }
-    drop((undeclared, too_long));
+    if uppercase != "ERR ACCESS" || bad_char != "ERR BAD_REQUEST" {
+        fail("the service-name charset did not match the manifest (review S7)")
+    }
+    drop((undeclared, too_long, uppercase, bad_char));
     // 1. The approved elevation; a second one meanwhile is refused at once.
     if session
         .write(Message {

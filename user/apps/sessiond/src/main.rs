@@ -1215,9 +1215,15 @@ impl Session {
             return Some(b"ERR BAD_REQUEST");
         };
         let (service, request) = (&rest[..sp], &rest[sp + 1..]);
+        // The manifest's own name charset (services.md §2: [A-Za-z0-9_-], ≤ 15): anything the
+        // manager can name is forwarded to it, so an undeclared one is refused by the manager
+        // (ERR ACCESS) rather than rejected here as malformed (review S7). The reserved names
+        // (the session's own channels) stay case-sensitive, as the manager resolves them.
         let name_ok = !service.is_empty()
             && service.len() < NAME_MAX
-            && service.iter().all(|c| c.is_ascii_lowercase())
+            && service
+                .iter()
+                .all(|&c| c.is_ascii_alphanumeric() || c == b'_' || c == b'-')
             && !DEPS.contains(&service)
             && service != b"session";
         let request_ok = !request.is_empty()
