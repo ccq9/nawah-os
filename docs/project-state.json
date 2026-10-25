@@ -4,8 +4,8 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "1621315043b67a3ac4976f4cb2602055abf110bd",
- "dirty_state": false,
+ "source_revision": "4fcbe05c746fd1be6281cc49a7dbb33cc166804e",
+ "dirty_state": true,
  "current_stage": "M5",
  "current_task": "WP-43",
  "completed_requirement_ids": [
@@ -53,15 +53,16 @@
   "REQ-M5-003",
   "REQ-M5-005",
   "REQ-M5-008",
-  "REQ-M5-009"
+  "REQ-M5-009",
+  "REQ-M5-011"
  ],
- "last_run_id": "20261023T143243Z-05b5a393-001",
+ "last_run_id": "20261025T174124Z-3048b861-001",
  "blockers": [],
- "next_action": "WP-43: M2, M3, M9, S-5, S-6, S-7 — each a test that fails before its fix, then the fix, then CI; then WP-38 (M5 gate: M82+ mutants, M5-GATE suite, M2–M4 mutation re-runs). CI restored 2026-10-25 (repository public): run 40213361352 passed M0–M5 and A64.",
+ "next_action": "WP-43: تقوية M5 بعد مراجعة ما قبل البوابة (2026-10-19)",
  "required_inputs": [],
  "runner_status": "running",
- "checkpoint_generation": 40,
- "event_sequence": 40,
+ "checkpoint_generation": 41,
+ "event_sequence": 41,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 7,
@@ -73,7 +74,7 @@
   "holder_id": "claude-session-015h9GTwLifTZqTMhyRyf9bH",
   "acquired_at": "2026-10-24T14:30:00Z",
   "ttl_s": 900,
-  "fencing_token": 40
+  "fencing_token": 41
  },
  "host_fingerprint": "linux-6.8.0-138-generic-x86_64-2vcpu",
  "errata_version": "1",
