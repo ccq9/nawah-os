@@ -7,7 +7,7 @@
  "source_revision": "1621315043b67a3ac4976f4cb2602055abf110bd",
  "dirty_state": false,
  "current_stage": "M5",
- "current_task": "WP-41",
+ "current_task": "WP-43",
  "completed_requirement_ids": [
   "REQ-M0-001",
   "REQ-M0-002",
@@ -56,13 +56,9 @@
   "REQ-M5-009"
  ],
  "last_run_id": "20261023T143243Z-05b5a393-001",
- "blockers": [
-  "GitHub Actions refuses every job since 2026-10-23T15:20Z: 'recent account payments have failed or your spending limit needs to be increased' (private repository). No verification-runner evidence until the owner fixes billing or makes the repository public."
- ],
- "next_action": "WP-41 is code-complete and merged into the integration tree (82536d48); it and WP-43 need CI to mark done, which gates WP-38 (M5 gate). Pre-gate review (docs/operations/m5-review.md) and the M5 threat-model section are written ahead. Blocked on CI (R-52: GitHub Actions billing).",
- "required_inputs": [
-  "owner: restore GitHub Actions (fix billing / raise the spending limit, or make the repository public) — every verify run since 2026-10-23T15:20Z is refused before its first step"
- ],
+ "blockers": [],
+ "next_action": "WP-43: M2, M3, M9, S-5, S-6, S-7 — each a test that fails before its fix, then the fix, then CI; then WP-38 (M5 gate: M82+ mutants, M5-GATE suite, M2–M4 mutation re-runs). CI restored 2026-10-25 (repository public): run 40213361352 passed M0–M5 and A64.",
+ "required_inputs": [],
  "runner_status": "running",
  "checkpoint_generation": 40,
  "event_sequence": 40,

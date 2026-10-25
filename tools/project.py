@@ -1094,7 +1094,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
 
 HOST_SUITES = {
     "M0": [
-        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 20 cases incl. 6 required rejections, the dependency rule for active and done items, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL",
+        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 21 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL",
          "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
         {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision)",
          "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md"], "input_globs": []},
@@ -1198,16 +1198,31 @@ def cmd_test_host_case(case) -> int:
 
 def replace_evidence_ref(old_ref, new_ref, test_id, verdict):
     """Set the test's verdict and evidence, and re-point requirement/work-item/stage records that
-    cited the test's previous run directory. A previous ref is only re-pointed when it is a run
-    directory whose verdict belongs to this very test — several tests may share a plain-file ref
-    (e.g. a CI jobs.json) and that must never be rewritten on behalf of one of them."""
-    own_old = False
-    if old_ref:
-        try:
-            op = safe_rel(old_ref)
-            own_old = op.is_dir() and (op / "verdict.json").exists() and load_json(op / "verdict.json")["test_id"] == test_id
-        except (ValueError, json.JSONDecodeError, KeyError):
-            own_old = False
+    cited any earlier run directory of this test — not only its immediately previous one (CI run
+    40213361352: done items citing an older run of the same test stayed on it and failed
+    --strict). A ref is only re-pointed when it is a run directory whose verdict belongs to this
+    very test — several tests may share a plain-file ref (e.g. a CI jobs.json) and that must
+    never be rewritten on behalf of one of them. A record left citing the new run twice keeps
+    one."""
+    own_cache = {}
+
+    def own(ref):
+        if ref not in own_cache:
+            try:
+                op = safe_rel(ref)
+                own_cache[ref] = op.is_dir() and (op / "verdict.json").exists() and load_json(op / "verdict.json")["test_id"] == test_id
+            except (ValueError, json.JSONDecodeError, KeyError):
+                own_cache[ref] = False
+        return own_cache[ref]
+
+    def repoint(refs):
+        out = []
+        for x in refs:
+            y = new_ref if x != new_ref and own(x) else x
+            if not (y == new_ref and new_ref in out):
+                out.append(y)
+        return out
+
     for name in RECORD_FILES:
         p = DOCS / f"{name}.json"
         if not p.exists():
@@ -1220,10 +1235,11 @@ def replace_evidence_ref(old_ref, new_ref, test_id, verdict):
                     r["evidence_refs"] = [new_ref]
                     changed = True
                 continue
-            if own_old:
-                for key in ("evidence_refs", "gate_evidence_refs"):
-                    if key in r and old_ref in r[key]:
-                        r[key] = [new_ref if x == old_ref else x for x in r[key]]; changed = True
+            for key in ("evidence_refs", "gate_evidence_refs"):
+                if key in r:
+                    new = repoint(r[key])
+                    if new != r[key]:
+                        r[key] = new; changed = True
         if changed:
             write_json(p, data)
 

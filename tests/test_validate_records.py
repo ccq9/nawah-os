@@ -19,6 +19,10 @@ if _prev_root is None:
     del os.environ["NAWAH_ROOT"]
 else:
     os.environ["NAWAH_ROOT"] = _prev_root
+# The copy writes its records and evidence under TMP. A preflight's NAWAH_SCRATCH_EVIDENCE,
+# inherited from the suite runner, would switch off its evidence registry and fail the cases
+# that check it (2026-10-25: two cases failed under preflight, passed under CI).
+project.SCRATCH = None
 
 SV = "1.0.0"
 
@@ -250,6 +254,37 @@ class ValidateRecords(unittest.TestCase):
         r["requirements"][0]["evidence_refs"] = []
         write_all(r)
         self.assertEqual(project.validate_records(verbose=False), 0)
+
+    def test_a_new_run_repoints_every_older_run_of_the_same_test(self):
+        # CI run 40213361352: every suite passed, then --strict failed with 71 errors. Done work
+        # items still cited runs of 2026-10-23 that were not their test's latest run when the new
+        # verdict arrived, so attach_evidence (which re-pointed only the immediately previous
+        # run) left them on stale evidence forever.
+        r = base_records(); write_all(r)
+
+        def run_named(name):
+            d = TMP / "evidence" / name
+            if d.exists(): shutil.rmtree(d)
+            (TMP / make_evidence(r, "TST-M0-001")).rename(d)
+            for f in ("run.json", "verdict.json"):
+                j = json.loads((d / f).read_text()); j["run_id"] = name; (d / f).write_text(json.dumps(j))
+            return f"evidence/{name}"
+
+        oldest, previous = run_named("20260101T000000Z-aaaaaaaa-001"), run_named("20260102T000000Z-bbbbbbbb-001")
+        other = run_named("20260102T000000Z-cccccccc-001")
+        v = json.loads((TMP / other / "verdict.json").read_text()); v["test_id"] = "TST-M0-002"
+        (TMP / other / "verdict.json").write_text(json.dumps(v))
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [previous]
+        w = r["work-items"][0]; w["status"] = "done"; w["status_history"] = ["planned", "active", "done"]
+        w["evidence_refs"] = [oldest, previous, other, "docs/ENVIRONMENT.md"]
+        write_all(r)
+        newest = run_named("20260103T000000Z-dddddddd-001")
+        project.attach_evidence("TST-M0-001", newest.split("/", 1)[1], "PASS")
+        refs = json.loads((TMP / "docs" / "work-items.json").read_text())["records"][0]["evidence_refs"]
+        # both older runs of this test become the newest, once; another test's run and a plain
+        # file ref are left alone
+        self.assertEqual(refs, [newest, other, "docs/ENVIRONMENT.md"])
+        self.assertEqual(json.loads((TMP / "docs" / "tests.json").read_text())["records"][0]["evidence_refs"], [newest])
 
     def test_checkpoint_position_follows_the_records(self):
         # Review 2026-10-19 (T-8): project-state said M2/WP-07 during M5.
