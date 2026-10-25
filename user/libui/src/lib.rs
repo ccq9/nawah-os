@@ -19,7 +19,7 @@ use nawah_text::layout::{Fonts, Glyph, Layout, RgbCanvas};
 
 pub const MAX_ELEMENTS: usize = 12;
 pub const MAX_ITEMS: usize = 6;
-pub const TEXT_MAX: usize = 32;
+pub const TEXT_MAX: usize = 48;
 
 // Set-1 key codes (input.md §3: extended keys as 0x80 | code).
 pub const KEY_ESC: u32 = 0x01;
@@ -42,6 +42,9 @@ pub enum Role {
     Checkbox,
     /// A text field whose characters are drawn as bullets and never described (v1.1).
     Password,
+    /// Text the application sets and the user only reads (v1.3): drawn like a label, described
+    /// with its value, never focused — the session shows who asks and what is asked with it.
+    Value,
 }
 
 impl Role {
@@ -53,10 +56,11 @@ impl Role {
             Role::List => "list",
             Role::Checkbox => "checkbox",
             Role::Password => "password",
+            Role::Value => "value",
         }
     }
     pub fn focusable(self) -> bool {
-        self != Role::Label
+        !matches!(self, Role::Label | Role::Value)
     }
     /// Roles that hold editable text (the keys of ui.md §2 for fields).
     pub fn is_text(self) -> bool {
@@ -386,10 +390,10 @@ impl Dialog {
         e.cursor = 0;
     }
 
-    /// Puts `text` into text field `i` (not a password: an application never fills one);
-    /// `false` when refused. Characters beyond the field's capacity are dropped.
+    /// Puts `text` into text field or value `i` (not a password: an application never fills
+    /// one); `false` when refused. Characters beyond the field's capacity are dropped.
     pub fn set_value(&mut self, i: usize, text: &str) -> bool {
-        if i >= self.n || self.elements[i].role != Role::TextField {
+        if i >= self.n || !matches!(self.elements[i].role, Role::TextField | Role::Value) {
             return false;
         }
         let e = &mut self.elements[i];
@@ -554,7 +558,7 @@ impl Dialog {
             state(out, b"focused");
         }
         match e.role {
-            Role::Label => state(out, b"static"),
+            Role::Label | Role::Value => state(out, b"static"),
             Role::Checkbox => state(out, if e.checked { b"checked" } else { b"unchecked" }),
             _ => {
                 if !focused {
@@ -572,7 +576,7 @@ impl Dialog {
                 out.num(e.items.len());
             }
             // A password field is described without its value (v1.1).
-            Role::TextField => {
+            Role::TextField | Role::Value => {
                 out.put(b" value=\"");
                 let mut tmp = [0u8; 4];
                 for &cp in &e.text[..e.text_len] {
@@ -589,7 +593,7 @@ impl Dialog {
     fn row_height(&self, e: &Element) -> i32 {
         let t = &self.theme;
         match e.role {
-            Role::Label => t.u(20),
+            Role::Label | Role::Value => t.u(20),
             Role::Button | Role::TextField | Role::Password => t.u(26),
             Role::Checkbox => t.u(22),
             Role::List => t.u(20) * (1 + e.items.len() as i32),
@@ -754,6 +758,23 @@ impl Painter {
                     let n = self.str_chars(e.label);
                     let s = self.text;
                     self.string(fonts, &s[..n], px, r, d.rtl, false, p.fg, buf, w, h);
+                }
+                // The value alone is drawn; its label names it for the narrator (a label
+                // element above it says the same on the screen).
+                Role::Value => {
+                    let s = e.text;
+                    self.string(
+                        fonts,
+                        &s[..e.text_len],
+                        px,
+                        r,
+                        d.rtl,
+                        false,
+                        p.fg,
+                        buf,
+                        w,
+                        h,
+                    );
                 }
                 Role::Button => {
                     fill(buf, w, h, r, p.button);

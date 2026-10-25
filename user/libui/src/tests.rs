@@ -437,3 +437,34 @@ fn relabel_and_set_items_switch_language() {
     assert!(!d.set_items(2, &["x", "  "]));
     assert!(!d.relabel(99, "x"));
 }
+
+/// A value (ui.md v1.3) holds text the application sets and the user only reads: it is never
+/// focused, it is described with its value and as static, and a key cannot change it.
+#[test]
+fn a_value_is_read_only_and_described() {
+    let mut d = Dialog::new("Approve", false);
+    d.add(Role::Label, "Request").unwrap();
+    let v = d.add(Role::Value, "Request").unwrap();
+    let f = d.add(Role::TextField, "Administrator").unwrap();
+    assert!(d.set_value(v, "config SET device lab.elev 0 901 on"));
+    assert_eq!(
+        describe(&d, v),
+        "role=value label=\"Request\" state=static value=\"config SET device lab.elev 0 901 on\""
+    );
+    // The focus skips it: the first focus is the field after it, and Tab never lands on it.
+    assert_eq!(d.start(), Event::Focus(None, f));
+    let mut order = [0usize; MAX_ELEMENTS];
+    assert_eq!(d.focus_order(&mut order), 1);
+    d.key(0x1e, true, 0, Some('a'));
+    assert_eq!(
+        describe(&d, v),
+        "role=value label=\"Request\" state=static value=\"config SET device lab.elev 0 901 on\""
+    );
+    // A request longer than TEXT_MAX characters keeps only the first TEXT_MAX.
+    let long: String = core::iter::repeat_n('x', TEXT_MAX + 5).collect();
+    assert!(d.set_value(v, &long));
+    assert_eq!(d.element(v).text_len, TEXT_MAX);
+    // A password is never filled by the application.
+    let p = d.add(Role::Password, "Password").unwrap();
+    assert!(!d.set_value(p, "secret"));
+}

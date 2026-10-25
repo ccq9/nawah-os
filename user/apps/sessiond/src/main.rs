@@ -10,8 +10,17 @@
 //! waits on `auth` (v1.2): a lock or a sign-out takes effect at once, and a sign-in or unlock
 //! waits for its answer while the session keeps serving.
 //!
-//! Initial handle: the boot channel. Dependencies: `auth`, `input`, `display`. Clients (tests)
-//! ask `STATE`.
+//! (v1.3, WP-41) An application may ask `ELEVATE <service> <request…>`: the session holds the
+//! screen and shows, on its own surface, who asks (the name the manager vouched for when it
+//! connected the client) and the request in full; an administrator's name and password go to
+//! `auth` alone, and only then does the session send exactly that request to the service with the
+//! administrator's token, have auth end the token at once, and answer the application with the
+//! service's reply. The token and the password never reach the application; no approval
+//! happens without the prompt on the screen.
+//!
+//! Initial handle: the boot channel. Dependencies: `auth`, `input`, `display`, and the services
+//! elevations may reach (declared in the manifest). Clients ask `STATE`, `AUTH`, `ELEVATION`
+//! and `ELEVATE`.
 
 #![no_std]
 #![no_main]
@@ -45,6 +54,12 @@ const AUTH: usize = 0;
 const INPUT: usize = 1;
 const DISPLAY: usize = 2;
 const DEPS: [&[u8]; 3] = [b"auth", b"input", b"display"];
+/// `asked` while the manager's answer to an elevation's `CONNECT <service>` is awaited.
+const ELEV: usize = 3;
+/// The longest request an elevation carries (v1.3): it must fit the prompt in full.
+const ELEVATE_REQUEST_MAX: usize = 32;
+/// The administrator permission (auth.md §1, `PERM_ADMIN`).
+const PERM_ADMIN: i64 = 1;
 
 static mut PAINTER: Painter = Painter::new();
 
@@ -52,11 +67,51 @@ static mut PAINTER: Painter = Painter::new();
 /// request in order and sends nothing else, so the answers match these front to back.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum AuthOp {
-    Login { name: [u8; NAME_MAX], len: usize },
+    Login {
+        name: [u8; NAME_MAX],
+        len: usize,
+    },
     Unlock,
     Lock,
     Logout,
+    /// An administrator's name and password for the elevation on the prompt (v1.3). `n` names
+    /// the elevation it was typed for: an answer that arrives after that elevation ended
+    /// approves nothing, whatever prompt is on the screen by then.
+    Elevate {
+        n: u64,
+    },
 }
+
+/// An elevation a client asked for (session.md v1.3).
+#[derive(Clone, Copy)]
+struct Elevation {
+    client: usize,
+    from: [u8; NAME_MAX],
+    from_len: usize,
+    service: [u8; NAME_MAX],
+    service_len: usize,
+    request: [u8; ELEVATE_REQUEST_MAX],
+    request_len: usize,
+    /// The channel to the service, once the manager connected it.
+    chan: Handle,
+    /// The `CONNECT <service>` is still to be sent (the manager answers one request at a time).
+    connect: bool,
+    /// This elevation's number (1, 2, …): the auth answer it waits for carries the same one.
+    n: u64,
+}
+
+const NO_ELEVATION: Elevation = Elevation {
+    client: usize::MAX,
+    from: [0; NAME_MAX],
+    from_len: 0,
+    service: [0; NAME_MAX],
+    service_len: 0,
+    request: [0; ELEVATE_REQUEST_MAX],
+    request_len: 0,
+    chan: 0,
+    connect: false,
+    n: 0,
+};
 
 /// Requests to `auth` that may wait for their answers at once.
 const AUTH_OPS: usize = 4;
@@ -83,6 +138,8 @@ enum Screen {
     None,
     Login,
     Lock,
+    /// The administrator's approval of an elevation (v1.3).
+    Elevate,
 }
 
 /// Who the session last gave the keyboard to (STATE `focus=`).
@@ -366,6 +423,12 @@ struct Session {
     handovers: i64,
     changes: i64,
     clients: [Handle; MAX_CLIENTS],
+    /// The name the manager vouched for with each client (`CONNECT <name>`; `-` for control).
+    client_names: [([u8; NAME_MAX], usize); MAX_CLIENTS],
+    elevation: Option<Elevation>,
+    elevations: i64,
+    /// Elevations asked so far; numbers the next one.
+    elevate_seq: u64,
 }
 
 impl Session {
@@ -405,10 +468,20 @@ impl Session {
     }
 
     /// Whether a sign-in or an unlock is waiting for auth's answer (one at a time).
-    fn auth_waiting(&self) -> bool {
+    /// An administrator's name and password sent for an elevation, not yet answered.
+    fn elevate_answer_pending(&self) -> bool {
         self.auth_ops
             .iter()
-            .any(|o| matches!(o, Some(AuthOp::Login { .. } | AuthOp::Unlock)))
+            .any(|o| matches!(o, Some(AuthOp::Elevate { .. })))
+    }
+
+    fn auth_waiting(&self) -> bool {
+        self.auth_ops.iter().any(|o| {
+            matches!(
+                o,
+                Some(AuthOp::Login { .. } | AuthOp::Unlock | AuthOp::Elevate { .. })
+            )
+        })
     }
 
     /// auth's answer to the oldest request still waiting, with the handle it carried.
@@ -442,6 +515,7 @@ impl Session {
                     self.show(Screen::Lock, Some(refusal(answer, true)));
                 }
             },
+            AuthOp::Elevate { n } => self.elevate_answer(n, answer, extra, now),
             // A token auth will not lock ends the session (it is locked here already).
             AuthOp::Lock => {
                 if let Some(h) = extra {
@@ -541,12 +615,28 @@ impl Session {
         self.wid = 0;
         self.sid = 0;
         self.drop_surface();
+        // No approval without the prompt on the screen (v1.3): the elevation ends unanswered.
+        if self.screen == Screen::Elevate {
+            self.screen = Screen::None;
+            self.elevate_end(b"ERR UNAVAILABLE", now);
+        }
     }
 
     /// Asks the manager for the next missing dependency when it is time (one at a time; the
     /// answer arrives on the boot channel).
     fn ask(&mut self, now: u64) {
         if self.asked.is_some() {
+            return;
+        }
+        if let Some(e) = self.elevation.as_mut().filter(|e| e.connect) {
+            e.connect = false;
+            let mut req = Out::new();
+            req.put(b"CONNECT ").put(&e.service[..e.service_len]);
+            if libnawah::channel_write(self.boot, req.bytes(), &[]) == 0 {
+                self.asked = Some(ELEV);
+            } else {
+                self.elevate_end(b"ERR UNAVAILABLE", now);
+            }
             return;
         }
         for (i, dep) in DEPS.iter().enumerate() {
@@ -572,6 +662,10 @@ impl Session {
             }
             return;
         };
+        if i == ELEV {
+            self.elevate_connected(chan, now);
+            return;
+        }
         let Some(h) = chan else {
             self.retry[i] = now + RECONNECT;
             return;
@@ -604,7 +698,7 @@ impl Session {
             return;
         }
         self.held = [0; 4];
-        if self.state == State::Unlocked {
+        if self.state == State::Unlocked && self.screen != Screen::Elevate {
             self.want_display = true;
             self.focus_retry = now;
             self.release_deadline = now;
@@ -677,7 +771,11 @@ impl Session {
     /// our screen is released (or RELEASE_WAIT passed), retried until the compositor has
     /// registered with the input service.
     fn try_handover(&mut self, now: u64) {
-        if !self.want_display || self.state != State::Unlocked || self.input.is_none() {
+        if !self.want_display
+            || self.state != State::Unlocked
+            || self.screen == Screen::Elevate
+            || self.input.is_none()
+        {
             return;
         }
         if now < self.focus_retry {
@@ -705,10 +803,10 @@ impl Session {
     // ---- the screens -----------------------------------------------------------------
 
     fn build(&mut self, screen: Screen, message: Option<&'static str>) {
-        let title = if screen == Screen::Lock {
-            "Locked"
-        } else {
-            "Sign in"
+        let title = match screen {
+            Screen::Lock => "Locked",
+            Screen::Elevate => "Administrator approval",
+            _ => "Sign in",
         };
         let mut d = Dialog::new(title, false);
         let mut ids = NO_IDS;
@@ -716,7 +814,37 @@ impl Session {
         let add = |d: &mut Dialog, role: Role, label: &'static str| -> usize {
             d.add(role, label).unwrap_or(usize::MAX)
         };
-        if screen == Screen::Lock {
+        if screen == Screen::Elevate {
+            let e = self.elevation.unwrap_or(NO_ELEVATION);
+            add(
+                &mut d,
+                Role::Label,
+                "An application asks to act as an administrator.",
+            );
+            if let Some(m) = message {
+                add(&mut d, Role::Label, m);
+            }
+            add(&mut d, Role::Label, "Requested by:");
+            let from = add(&mut d, Role::Value, "Requested by");
+            let who: &[u8] = if &e.from[..e.from_len] == b"-" {
+                b"control"
+            } else {
+                &e.from[..e.from_len]
+            };
+            d.set_value(from, core::str::from_utf8(who).unwrap_or("?"));
+            add(&mut d, Role::Label, "Request:");
+            let what = add(&mut d, Role::Value, "Request");
+            let mut text = [0u8; NAME_MAX + 1 + ELEVATE_REQUEST_MAX];
+            let n = e.service_len + 1 + e.request_len;
+            text[..e.service_len].copy_from_slice(&e.service[..e.service_len]);
+            text[e.service_len] = b' ';
+            text[e.service_len + 1..n].copy_from_slice(&e.request[..e.request_len]);
+            d.set_value(what, core::str::from_utf8(&text[..n]).unwrap_or("?"));
+            ids.user = add(&mut d, Role::TextField, "Administrator");
+            ids.password = add(&mut d, Role::Password, "Password");
+            ids.submit = add(&mut d, Role::Button, "Allow");
+            ids.sign_out = add(&mut d, Role::Button, "Cancel");
+        } else if screen == Screen::Lock {
             add(&mut d, Role::Label, "This computer is locked.");
             if let Some(m) = message {
                 add(&mut d, Role::Label, m);
@@ -778,7 +906,7 @@ impl Session {
     /// Shows `screen` (a fresh dialog, with the refusal `message` if any) in a new window
     /// in the middle of the screen; the narrator hears its tree and its first focus.
     fn show(&mut self, screen: Screen, message: Option<&'static str>) {
-        let keep_user = if screen == Screen::Login && message.is_some() {
+        let keep_user = if matches!(screen, Screen::Login | Screen::Elevate) && message.is_some() {
             let mut name = [0u8; 4 * TEXT_MAX];
             let n = self.dialog.value(self.ids.user, &mut name);
             Some((name, n))
@@ -850,7 +978,7 @@ impl Session {
             tmp[..k].copy_from_slice(what.bytes());
             self.announce(&tmp[..k], Some(i));
         }
-        let first = if screen == Screen::Login && message.is_some() {
+        let first = if matches!(screen, Screen::Login | Screen::Elevate) && message.is_some() {
             self.dialog.focus_on(self.ids.password)
         } else {
             self.dialog.start()
@@ -1027,8 +1155,14 @@ impl Session {
     /// The secure attention sequence while unlocked: the screen is held and the lock screen
     /// shown at once, then auth is told to lock the token (session.md v1.2: never waited on, so a
     /// hung auth cannot leave the desktop open). A token auth will not lock ends the session.
-    fn lock(&mut self, _now: u64) {
+    fn lock(&mut self, now: u64) {
+        // The secure attention sequence ends a prompt too: nothing is approved (v1.3). The
+        // state is locked first, so that ending the prompt never shows the desktop in between.
         self.state = State::Locked;
+        if self.elevation.is_some() {
+            self.elevate_end(b"ERR CANCELLED", now);
+            self.want_display = false;
+        }
         self.changes += 1;
         let mut r = [0u8; 64];
         self.display_call(b"LOCKED", &[], &mut r);
@@ -1060,6 +1194,293 @@ impl Session {
         self.uid = 0;
         self.show(Screen::Login, None);
         self.trace_state(true);
+    }
+
+    // ---- elevation (v1.3) -------------------------------------------------------------
+
+    /// `ELEVATE <service> <request…>` from client `k`: refused at once (the refusal is
+    /// returned), or accepted (`None`): the service is connected, then the prompt shown, and
+    /// the client is answered when it ends.
+    fn elevate_request(&mut self, k: usize, rest: &[u8], now: u64) -> Option<&'static [u8]> {
+        if self.state != State::Unlocked {
+            return Some(b"ERR NOT_READY");
+        }
+        // One at a time: a prompt on the screen, or an administrator's answer still awaited
+        // for an elevation that ended meanwhile (the client left, Esc, the secure attention
+        // sequence) — that answer must not find a new prompt to approve.
+        if self.elevation.is_some() || self.elevate_answer_pending() {
+            return Some(b"ERR BUSY");
+        }
+        let Some(sp) = rest.iter().position(|&c| c == b' ') else {
+            return Some(b"ERR BAD_REQUEST");
+        };
+        let (service, request) = (&rest[..sp], &rest[sp + 1..]);
+        // The manifest's own name charset (services.md §2: [A-Za-z0-9_-], ≤ 15): anything the
+        // manager can name is forwarded to it, so an undeclared one is refused by the manager
+        // (ERR ACCESS) rather than rejected here as malformed (review S7). The reserved names
+        // (the session's own channels) stay case-sensitive, as the manager resolves them.
+        let name_ok = !service.is_empty()
+            && service.len() < NAME_MAX
+            && service
+                .iter()
+                .all(|&c| c.is_ascii_alphanumeric() || c == b'_' || c == b'-')
+            && !DEPS.contains(&service)
+            && service != b"session";
+        let request_ok = !request.is_empty()
+            && request.len() <= ELEVATE_REQUEST_MAX
+            && request.iter().all(|&c| (0x20..0x7F).contains(&c))
+            && request[0] != b' ';
+        if !name_ok || !request_ok {
+            return Some(b"ERR BAD_REQUEST");
+        }
+        let (from, from_len) = self.client_names[k];
+        let mut e = Elevation {
+            client: k,
+            from,
+            from_len,
+            connect: true,
+            ..NO_ELEVATION
+        };
+        e.service[..service.len()].copy_from_slice(service);
+        e.service_len = service.len();
+        e.request[..request.len()].copy_from_slice(request);
+        e.request_len = request.len();
+        self.elevate_seq += 1;
+        e.n = self.elevate_seq;
+        self.elevation = Some(e);
+        let mut t = Out::new();
+        t.put(b"session|elevate=asked|from=")
+            .put(&from[..from_len])
+            .put(b"|service=")
+            .put(service);
+        libnawah::trace(t.bytes());
+        self.ask(now);
+        None
+    }
+
+    /// The manager's answer to the elevation's `CONNECT <service>`: a refusal (the service is
+    /// not one the manifest lets the session reach) ends it; a channel brings the prompt.
+    fn elevate_connected(&mut self, chan: Option<Handle>, now: u64) {
+        let Some(h) = chan else {
+            self.elevate_end(b"ERR ACCESS", now);
+            return;
+        };
+        let Some(e) = self.elevation.as_mut() else {
+            libnawah::handle_close(h);
+            return;
+        };
+        e.chan = h;
+        let e = *e;
+        // The keys first, then the screen: no application hears a key once the prompt is on
+        // its way, and no prompt without the keys (the input lost: ERR UNAVAILABLE).
+        self.take_keyboard();
+        if self.owner != Owner::Session {
+            self.elevate_end(b"ERR UNAVAILABLE", now);
+            return;
+        }
+        let mut r = [0u8; 64];
+        self.display_call(b"LOCKED", &[], &mut r);
+        self.show(Screen::Elevate, None);
+        if self.screen != Screen::Elevate || self.wid == 0 {
+            self.screen = Screen::None;
+            self.elevate_end(b"ERR UNAVAILABLE", now);
+            return;
+        }
+        let mut t = Out::new();
+        t.put(b"session|elevate=prompt|from=")
+            .put(&e.from[..e.from_len])
+            .put(b"|request=")
+            .put(&e.service[..e.service_len])
+            .put(b" ")
+            .put(&e.request[..e.request_len]);
+        self.put_window(&mut t);
+        libnawah::trace(t.bytes());
+    }
+
+    fn submit_elevate(&mut self, now: u64) {
+        if self.auth_waiting() {
+            return;
+        }
+        let mut name = [0u8; NAME_MAX];
+        let nn = self.dialog.value(self.ids.user, &mut name);
+        let mut pw = [0u8; 4 * TEXT_MAX];
+        let np = self.dialog.value(self.ids.password, &mut pw);
+        self.dialog.clear_value(self.ids.password);
+        let mut req = Out::new();
+        req.put(b"LOGIN ").put(&name[..nn]).put(b" ").put(&pw[..np]);
+        wipe(&mut pw);
+        let n = self.elevation.map_or(0, |e| e.n);
+        let sent = self.auth_send(req.bytes(), false, AuthOp::Elevate { n });
+        req.wipe();
+        if !sent {
+            self.elevate_answer(n, b"ERR UNAVAILABLE", None, now);
+        }
+    }
+
+    /// auth's answer to the administrator's name and password.
+    fn elevate_answer(&mut self, n: u64, answer: &[u8], token: Option<Handle>, now: u64) {
+        let perms = answer
+            .strip_prefix(b"OK ")
+            .and_then(|r| r.split(|&c| c == b' ').nth(2))
+            .and_then(parse_i64);
+        // Only the elevation the password was typed for: an answer to an elevation that ended
+        // (its client left, Esc, the secure attention sequence) approves nothing, and its token
+        // is ended at once — whatever prompt is on the screen now.
+        let same = self.elevation.is_some_and(|e| e.n == n);
+        let prompting = same && self.screen == Screen::Elevate;
+        if !same {
+            let mut tr = Out::new();
+            tr.put(b"session|elevate=stale|n=")
+                .num(i64::try_from(n).unwrap_or(-1));
+            libnawah::trace(tr.bytes());
+        }
+        match (token, perms) {
+            (Some(t), Some(p)) if prompting && p & PERM_ADMIN != 0 => self.elevate_run(t, now),
+            (token, perms) => {
+                // A token that approves nothing is ended at once.
+                if let Some(t) = token {
+                    self.auth_logout(t);
+                }
+                if !prompting {
+                    return;
+                }
+                // auth did not answer (lost, or the request never left): the elevation ends
+                // with ERR UNAVAILABLE (§0ب) — a prompt that cannot be checked is no prompt.
+                if answer == b"ERR UNAVAILABLE" {
+                    self.elevate_end(b"ERR UNAVAILABLE", now);
+                    return;
+                }
+                let mut tr = Out::new();
+                tr.put(b"session|elevate=refused|answer=");
+                if perms.is_some() {
+                    tr.put(b"NOT_ADMIN");
+                } else {
+                    tr.ascii(answer);
+                }
+                libnawah::trace(tr.bytes());
+                let message = if perms.is_some() {
+                    "This account cannot approve."
+                } else {
+                    refusal(answer, false)
+                };
+                self.show(Screen::Elevate, Some(message));
+                // The compositor lost while the refusal was drawn: the elevation ended
+                // (display_lost); the screen must not stay `Elevate` with no elevation, or
+                // the keyboard would never return to the desktop (try_handover).
+                if self.elevation.is_none() && self.screen == Screen::Elevate {
+                    self.screen = Screen::None;
+                }
+            }
+        }
+    }
+
+    /// The approval: exactly the shown request goes to the service with a copy of the
+    /// administrator's token; auth ends the token at once, whatever the reply.
+    fn elevate_run(&mut self, token: Handle, now: u64) {
+        let Some(e) = self.elevation else {
+            self.auth_logout(token);
+            return;
+        };
+        let rights = libnawah::handle_rights(token);
+        let copy = u32::try_from(rights)
+            .ok()
+            .and_then(|r| libnawah::handle_duplicate(token, r).ok());
+        // The service's reply, whole: a reply longer than this buffer would fail the read
+        // and report ERR UNAVAILABLE for a request that ran (review S4).
+        let mut reply = [0u8; MSG_MAX - 9];
+        let mut got = None;
+        if let Some(copy) = copy {
+            if libnawah::channel_write(e.chan, &e.request[..e.request_len], &[copy]) == 0 {
+                let wait = [WaitEntry {
+                    handle: e.chan,
+                    signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+                }];
+                if libnawah::object_wait_many(&wait, REQUEST_DEADLINE).is_ok() {
+                    let mut hs = [0u32; 1];
+                    if let Ok((n, nh)) = libnawah::channel_read(e.chan, &mut reply, &mut hs, false)
+                    {
+                        if nh == 1 {
+                            libnawah::handle_close(hs[0]);
+                        }
+                        got = Some(n);
+                    }
+                }
+            } else {
+                libnawah::handle_close(copy);
+            }
+        }
+        self.auth_logout(token);
+        match got {
+            Some(n) => {
+                let mut out = Out::new();
+                out.put(b"ELEVATED ").put(&reply[..n]);
+                let mut a = [0u8; MSG_MAX];
+                let k = out.bytes().len();
+                a[..k].copy_from_slice(out.bytes());
+                self.elevate_end(&a[..k], now);
+            }
+            None => self.elevate_end(b"ERR UNAVAILABLE", now),
+        }
+    }
+
+    /// The elevation ends with `result` to its client: the service's channel goes, the prompt
+    /// goes and the screen and the keyboard return to the user's windows.
+    fn elevate_end(&mut self, result: &[u8], now: u64) {
+        let Some(e) = self.elevation.take() else {
+            return;
+        };
+        if e.chan != 0 {
+            libnawah::handle_close(e.chan);
+        }
+        // A `CONNECT` still awaited stays `asked`: its answer finds no elevation and its
+        // channel is closed (elevate_connected), never taken for another dependency's.
+        self.elevations += 1;
+        let mut t = Out::new();
+        t.put(b"session|elevate=ended|n=")
+            .num(self.elevations)
+            .put(b"|result=")
+            .ascii(result);
+        libnawah::trace(t.bytes());
+        if e.client < MAX_CLIENTS && self.clients[e.client] != 0 {
+            libnawah::channel_write(self.clients[e.client], result, &[]);
+        }
+        if self.screen == Screen::Elevate {
+            // The screen is released only to an unlocked desktop; a lock keeps it held.
+            if self.state == State::Unlocked {
+                let mut r = [0u8; 64];
+                self.display_call(b"UNLOCKED", &[], &mut r);
+            }
+            self.hide();
+        }
+        if self.state == State::Unlocked {
+            let now = now.max(libnawah::clock_ticks());
+            self.want_display = true;
+            self.focus_retry = now;
+            self.release_deadline = now + RELEASE_WAIT;
+        }
+    }
+
+    /// auth ends `token` (the handle goes with the request).
+    fn auth_logout(&mut self, token: Handle) {
+        let Some(slot) = self.auth_ops.iter().position(Option::is_none) else {
+            libnawah::handle_close(token);
+            return;
+        };
+        if self.auth == 0 || libnawah::channel_write(self.auth, b"LOGOUT", &[token]) != 0 {
+            libnawah::handle_close(token);
+            return;
+        }
+        self.auth_ops[slot] = Some(AuthOp::Logout);
+    }
+
+    /// Client `k` went away: an elevation it asked for ends (nobody to answer).
+    fn client_gone(&mut self, k: usize, now: u64) {
+        libnawah::handle_close(self.clients[k]);
+        self.clients[k] = 0;
+        self.client_names[k] = ([0; NAME_MAX], 0);
+        if self.elevation.is_some_and(|e| e.client == k) {
+            self.elevate_end(b"ERR CANCELLED", now);
+        }
     }
 
     // ---- events ----------------------------------------------------------------------
@@ -1122,6 +1543,10 @@ impl Session {
                 self.announce(b"activate", Some(i));
                 self.activate(i, now);
             }
+            // Esc on the prompt is Cancel (v1.3); the other screens have nothing to cancel.
+            Event::Cancel if self.screen == Screen::Elevate => {
+                self.elevate_end(b"ERR CANCELLED", now)
+            }
             _ => {}
         }
     }
@@ -1138,12 +1563,20 @@ impl Session {
             Screen::Login if i == ids.password || i == ids.submit => self.submit_login(now),
             Screen::Lock if i == ids.password || i == ids.submit => self.submit_unlock(now),
             Screen::Lock if i == ids.sign_out => self.sign_out(now),
+            Screen::Elevate if i == ids.user => {
+                if let Event::Focus(_, to) = self.dialog.focus_on(ids.password) {
+                    self.announce(b"focus", Some(to));
+                    self.repaint();
+                }
+            }
+            Screen::Elevate if i == ids.password || i == ids.submit => self.submit_elevate(now),
+            Screen::Elevate if i == ids.sign_out => self.elevate_end(b"ERR CANCELLED", now),
             _ => {}
         }
     }
 
     /// One request of a client (STATE, session.md §6).
-    fn on_client(&mut self, k: usize) {
+    fn on_client(&mut self, k: usize, now: u64) {
         let c = self.clients[k];
         let mut buf = [0u8; 64];
         let mut hs = [0u32; 1];
@@ -1180,18 +1613,32 @@ impl Session {
                         .num(waiting as i64)
                         .put(b" lock_unsent=")
                         .num(i64::from(self.lock_unsent));
+                } else if &buf[..n] == b"ELEVATION" {
+                    // v1.3: where the elevation in progress is.
+                    out.put(b"OK ").put(match self.elevation {
+                        None => b"none" as &[u8],
+                        Some(_) if self.screen == Screen::Elevate => b"prompt",
+                        Some(_) => b"connecting",
+                    });
+                    out.put(b" done=").num(self.elevations);
+                } else if let Some(rest) = buf[..n].strip_prefix(b"ELEVATE ") {
+                    let mut req = [0u8; 64];
+                    req[..rest.len()].copy_from_slice(rest);
+                    match self.elevate_request(k, &req[..rest.len()], now) {
+                        // Answered once the prompt ends.
+                        None => return,
+                        Some(refusal) => {
+                            out.put(refusal);
+                        }
+                    }
                 } else {
                     out.put(b"ERR BAD_REQUEST");
                 }
                 if libnawah::channel_write(c, out.bytes(), &[]) == ERR_PEER_CLOSED {
-                    libnawah::handle_close(c);
-                    self.clients[k] = 0;
+                    self.client_gone(k, now);
                 }
             }
-            Err(ERR_PEER_CLOSED) => {
-                libnawah::handle_close(c);
-                self.clients[k] = 0;
-            }
+            Err(ERR_PEER_CLOSED) => self.client_gone(k, now),
             // Larger than any request, or carrying handles no request takes: discarded and
             // refused, so this client's next request is read and the clients after it are not
             // starved behind a message that never fits (review 2026-10-19, as svcmgr does).
@@ -1213,7 +1660,16 @@ impl Session {
                 let msg = &buf[..n];
                 if (msg == b"CONNECT" || msg.starts_with(b"CONNECT ")) && nh == 1 {
                     match self.clients.iter().position(|&c| c == 0) {
-                        Some(k) => self.clients[k] = hs[0],
+                        Some(k) => {
+                            self.clients[k] = hs[0];
+                            // The manager vouches for the name (services.md v1.6); `-` is the
+                            // control side, and an old manager's bare CONNECT counts as it.
+                            let name = msg.strip_prefix(b"CONNECT ").unwrap_or(b"-");
+                            let len = name.len().min(NAME_MAX);
+                            let mut n = [0u8; NAME_MAX];
+                            n[..len].copy_from_slice(&name[..len]);
+                            self.client_names[k] = (n, len);
+                        }
                         None => {
                             libnawah::handle_close(hs[0]);
                         }
@@ -1440,6 +1896,10 @@ fn main() -> u64 {
         handovers: 0,
         changes: 0,
         clients: [0; MAX_CLIENTS],
+        client_names: [([0; NAME_MAX], 0); MAX_CLIENTS],
+        elevation: None,
+        elevations: 0,
+        elevate_seq: 0,
     };
     let now = libnawah::clock_ticks();
     // The keyboard first (nobody gets a key before the sign-in screen exists), then the
@@ -1503,7 +1963,7 @@ fn main() -> u64 {
                 101 => s.read_auth(now),
                 102 => s.read_input(now),
                 103 => s.read_display(now),
-                j => s.on_client(j),
+                j => s.on_client(j, now),
             },
             Err(ERR_TIMED_OUT) => {}
             Err(_) => return 0xE6,

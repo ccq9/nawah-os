@@ -213,6 +213,7 @@ pub fn run() -> ! {
         "unlock_auth_hang" => unlock_auth_hang(),
         "session_hang" => session_hang(),
         "lock_display_down" => lock_display_down(),
+        "elevate" => elevate(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
         "kbd_scancodes" => kbd_scancodes(),
@@ -6662,6 +6663,425 @@ fn login_screen() -> ! {
         name,
         h,
         "the sign-in screen came first, refused a wrong password, opened the session, and signing out removed the user's windows",
+    )
+}
+
+/// Writes `req` to a session client and waits until `deadline` for its one reply (an
+/// elevation is answered when its prompt ends).
+fn session_ask(ep: &Endpoint, req: &[u8], deadline: u64) -> String {
+    if ep
+        .write(Message {
+            bytes: req.to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        return String::from("error:K_E_SVC_WRITE");
+    }
+    session_reply(ep, deadline)
+}
+
+/// The `keys=<n>` of a spy `COUNT` reply (its focus and connection counts vary with the
+/// compositor's life; the key count is the leak check).
+fn spy_keys(reply: &str) -> &str {
+    reply
+        .split(' ')
+        .find(|f| f.starts_with("keys="))
+        .unwrap_or(reply)
+}
+
+fn session_reply(ep: &Endpoint, deadline: u64) -> String {
+    let mut reply = String::from("error:timeout");
+    sched::poll_until(deadline, || match ep.read(256, 0, None) {
+        Ok(m) => {
+            reply = String::from_utf8_lossy(&m.bytes).into_owned();
+            true
+        }
+        Err(_) => false,
+    });
+    reply
+}
+
+/// TST-M5-ELEVATE (REQ-M5-011, session.md v1.3): an application's `ELEVATE` is approved only on
+/// the session's own prompt, by an administrator's name and password, and then exactly the
+/// shown request runs with the administrator's token, which no application ever holds and
+/// which auth ends at once. The lab signs in as `user` (no administrator), types on the
+/// prompt — a wrong password, then admin's; then user's own credentials and Esc; and a name
+/// while the compositor is frozen — while the spy, the focused application, counts every key
+/// it receives (none from a prompt). Refusals: before a session, a second request while one is
+/// pending, the compositor frozen or gone during the prompt.
+fn elevate() -> ! {
+    let name = "elevate";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-EL.TXT",
+        &["auth", "input", "display", "config", "session", "spy"],
+    );
+    let spy = svc_connect(&h, "spy");
+    let config = svc_connect(&h, "config");
+    let other = svc_connect(&h, "session");
+    let long = sched::ticks() + 600_000;
+    // 0. No session yet: refused at once.
+    let not_ready = session_ask(
+        &session,
+        b"ELEVATE config SET device lab.elev 0 901 on",
+        sched::ticks() + 5_000,
+    );
+    kprintln!(
+        "OSX|{}|ktest|elevate|not_ready={}|services=6|ready=1",
+        BUILD_ID,
+        not_ready
+    );
+    if not_ready != "ERR NOT_READY" {
+        fail("an elevation was accepted with no session open")
+    }
+    // The lab signs in as `user`; the keyboard goes to the spy.
+    let opened = poll_reply(&session, b"STATE", long, |r| {
+        r.starts_with("OK unlocked user=user changes=1 ") && r.ends_with(" focus=display")
+    });
+    let spy0 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r.contains(" focus=1 ")
+    });
+    let tokens0 = object::stats().tokens;
+    // A service the manifest does not let the session reach, and a request too long to show
+    // in full on the prompt, are refused before any prompt.
+    let undeclared = session_ask(&session, b"ELEVATE net STATUS", sched::ticks() + 10_000);
+    let too_long = session_ask(
+        &session,
+        b"ELEVATE config SET device lab.elev 0 901 0123456789abcdef",
+        sched::ticks() + 5_000,
+    );
+    // Review S7: a name in the manifest's charset but unknown (uppercase `SPY`, the manager
+    // has `spy`) reaches the manager and is refused ERR ACCESS, not rejected here as malformed;
+    // a name outside the charset (`a.b`) is ERR BAD_REQUEST before the manager is asked.
+    let uppercase = session_ask(&session, b"ELEVATE SPY STATUS", sched::ticks() + 10_000);
+    let bad_char = session_ask(&session, b"ELEVATE a.b x", sched::ticks() + 5_000);
+    kprintln!(
+        "OSX|{}|ktest|elevate|undeclared={}|too_long={}|uppercase={}|bad_char={}|",
+        BUILD_ID,
+        undeclared,
+        too_long,
+        uppercase,
+        bad_char
+    );
+    if undeclared != "ERR ACCESS" || too_long != "ERR BAD_REQUEST" {
+        fail("an elevation to an undeclared service or too long to show was not refused")
+    }
+    if uppercase != "ERR ACCESS" || bad_char != "ERR BAD_REQUEST" {
+        fail("the service-name charset did not match the manifest (review S7)")
+    }
+    drop((undeclared, too_long, uppercase, bad_char));
+    // 1. The approved elevation; a second one meanwhile is refused at once.
+    if session
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev 0 901 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        fail("the session's client channel is closed")
+    }
+    let prompt1 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK prompt ")
+    });
+    let busy = session_ask(
+        &other,
+        b"ELEVATE config SET device lab.other 0 990 x",
+        sched::ticks() + 5_000,
+    );
+    kprintln!(
+        "OSX|{}|ktest|elevate|opened={}|spy0={}|prompt={}|busy={}|phase=1|ready=1",
+        BUILD_ID,
+        opened,
+        spy0,
+        prompt1,
+        busy
+    );
+    if !opened.starts_with("OK unlocked user=user ")
+        || !prompt1.starts_with("OK prompt ")
+        || busy != "ERR BUSY"
+    {
+        fail("the prompt did not come up, or a second elevation was not refused")
+    }
+    // The lab: admin with a wrong password (refused on the prompt), then the right one.
+    let approved = session_reply(&session, long);
+    let set1 = cfg_request(&config, b"GET device lab.elev", None);
+    let tokens1 = {
+        let mut t = object::stats().tokens;
+        let until = sched::ticks() + 10_000;
+        while t != tokens0 && sched::ticks() < until {
+            sched::poll_until(sched::ticks() + 20, || false);
+            t = object::stats().tokens;
+        }
+        t
+    };
+    let back1 = poll_reply(&session, b"STATE", sched::ticks() + 10_000, |r| {
+        r.ends_with(" focus=display")
+    });
+    let spy1 = cfg_request(&spy, b"COUNT", None);
+    kprintln!(
+        "OSX|{}|ktest|elevate|approved={}|set={}|tokens={}->{}|back={}|spy1={}|phase=2|ready=1",
+        BUILD_ID,
+        approved,
+        set1,
+        tokens0,
+        tokens1,
+        back1,
+        spy1
+    );
+    if approved != "ELEVATED OK 1" || set1 != "OK 1 on" {
+        fail("the approved request did not run exactly as shown")
+    }
+    if tokens1 != tokens0 {
+        fail("the administrator's token outlived the elevation")
+    }
+    if !back1.ends_with(" focus=display") || spy1 != spy0 {
+        fail("a key typed on the prompt reached an application, or the keyboard did not come back")
+    }
+    // 2. user's own credentials are not an administrator's; Esc cancels.
+    let cancelled = session_ask(
+        &session,
+        b"ELEVATE config SET device lab.elev2 0 902 on",
+        long,
+    );
+    let set2 = cfg_request(&config, b"GET device lab.elev2", None);
+    let back2 = poll_reply(&session, b"STATE", sched::ticks() + 10_000, |r| {
+        r.ends_with(" focus=display")
+    });
+    let spy2 = cfg_request(&spy, b"COUNT", None);
+    kprintln!(
+        "OSX|{}|ktest|elevate|cancelled={}|set2={}|spy2={}|phase=3|ready=1",
+        BUILD_ID,
+        cancelled,
+        set2,
+        spy2
+    );
+    if cancelled != "ERR CANCELLED"
+        || set2 != "ERR NOT_FOUND"
+        || spy2 != spy0
+        || !back2.ends_with(" focus=display")
+    {
+        fail("a refused or cancelled elevation ran, or its keys reached an application")
+    }
+    // 3. The compositor freezes while the prompt is up: the session's next request to it
+    // (the redraw after the lab's first key) waits out its deadline, and the elevation ends
+    // unanswered — nothing runs.
+    if session
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev3 0 903 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        fail("the session's client channel is closed")
+    }
+    let prompt3 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK prompt ")
+    });
+    let frozen = sched::freeze_named(b"DISPLAYD.ELF");
+    kprintln!(
+        "OSX|{}|ktest|elevate|prompt3={}|frozen=1|phase=4|ready=1",
+        BUILD_ID,
+        prompt3
+    );
+    let unavailable = session_reply(&session, long);
+    let thawed = sched::thaw_named(b"DISPLAYD.ELF");
+    let set3 = cfg_request(&config, b"GET device lab.elev3", None);
+    let reconnected = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        r.contains(" display=") && !r.contains(" display=1 ") && r.ends_with(" focus=display")
+    });
+    // 3b. A stale answer approves nothing (review C1), on the compositor back from its freeze.
+    // `other` asks; auth is frozen; the lab types an administrator's name and password (the
+    // LOGIN waits at auth); `other` closes its
+    // channel, which ends its elevation; a new elevation is refused BUSY while that answer is
+    // still awaited; auth thaws and answers with an administrator's token — for an elevation
+    // that ended: the token is ended at once and nothing runs. Then the same request, asked
+    // again, is approved the ordinary way: the refusal was for the pending answer only.
+    let back5 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK unlocked ") && r.ends_with(" focus=display")
+    });
+    if other
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev5 0 905 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        fail("the other client channel is closed")
+    }
+    let prompt5 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK prompt ")
+    });
+    let frozen5 = sched::freeze_named(b"AUTHD.ELF");
+    kprintln!(
+        "OSX|{}|ktest|elevate|back5={}|prompt5={}|auth_frozen={}|phase=3b|ready=1",
+        BUILD_ID,
+        back5,
+        prompt5,
+        frozen5
+    );
+    if !prompt5.starts_with("OK prompt ") || !frozen5 {
+        fail("the fifth prompt did not come up, or auth could not be frozen")
+    }
+    // The administrator's LOGIN is on its way to a frozen auth.
+    let waiting5 = poll_reply(&session, b"AUTH", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK waiting=1 ")
+    });
+    drop(other);
+    let ended5 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK none ")
+    });
+    let busy5 = session_ask(
+        &session,
+        b"ELEVATE config SET device lab.elev6 0 906 on",
+        sched::ticks() + 5_000,
+    );
+    let thawed5 = sched::thaw_named(b"AUTHD.ELF");
+    let settled5 = poll_reply(&session, b"AUTH", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK waiting=0 ")
+    });
+    let tokens5 = {
+        let mut t = object::stats().tokens;
+        let until = sched::ticks() + 10_000;
+        while t != tokens0 && sched::ticks() < until {
+            sched::poll_until(sched::ticks() + 20, || false);
+            t = object::stats().tokens;
+        }
+        t
+    };
+    let set5 = cfg_request(&config, b"GET device lab.elev5", None);
+    let set6 = cfg_request(&config, b"GET device lab.elev6", None);
+    kprintln!(
+        "OSX|{}|ktest|elevate|waiting5={}|ended5={}|busy5={}|thawed5={}|settled5={}|tokens5={}|set5={}|set6={}|phase=3c|ready=1",
+        BUILD_ID,
+        waiting5,
+        ended5,
+        busy5,
+        thawed5,
+        settled5,
+        tokens5,
+        set5,
+        set6
+    );
+    if !waiting5.starts_with("OK waiting=1 ") || !ended5.starts_with("OK none ") {
+        fail("the elevation did not end when its client left with the answer pending")
+    }
+    if busy5 != "ERR BUSY" {
+        fail("an elevation was accepted while an administrator's answer was still awaited")
+    }
+    if tokens5 != tokens0 || set5 != "ERR NOT_FOUND" || set6 != "ERR NOT_FOUND" {
+        fail("a stale administrator's answer approved something, or its token survived")
+    }
+    // The same request again, approved on its own prompt by the lab.
+    let approved6 = session_ask(
+        &session,
+        b"ELEVATE config SET device lab.elev6 0 906 on",
+        long,
+    );
+    let set6b = cfg_request(&config, b"GET device lab.elev6", None);
+    let tokens6 = {
+        let mut t = object::stats().tokens;
+        let until = sched::ticks() + 10_000;
+        while t != tokens0 && sched::ticks() < until {
+            sched::poll_until(sched::ticks() + 20, || false);
+            t = object::stats().tokens;
+        }
+        t
+    };
+    let spy6 = cfg_request(&spy, b"COUNT", None);
+    kprintln!(
+        "OSX|{}|ktest|elevate|approved6={}|set6b={}|tokens6={}|spy6={}|phase=3d",
+        BUILD_ID,
+        approved6,
+        set6b,
+        tokens6,
+        spy6
+    );
+    if approved6 != "ELEVATED OK 1"
+        || set6b != "OK 1 on"
+        || tokens6 != tokens0
+        || spy_keys(&spy6) != spy_keys(&spy0)
+    {
+        fail("the elevation after the stale answer did not run as shown, or leaked")
+    }
+    drop((
+        back5, prompt5, waiting5, ended5, busy5, settled5, set5, set6, approved6, set6b, spy6,
+    ));
+    // 4. The compositor goes while the prompt is up: the elevation ends unanswered too.
+    if session
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev4 0 904 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        fail("the session's client channel is closed")
+    }
+    let prompt4 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK prompt ")
+    });
+    let r_stop = match crate::services::request(&h.m.ctl, b"STOP display", sched::ticks() + 500) {
+        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+        Err(e) => String::from(e),
+    };
+    let gone = session_reply(&session, sched::ticks() + 60_000);
+    let set4 = cfg_request(&config, b"GET device lab.elev4", None);
+    let tokens4 = object::stats().tokens;
+    // The spy's window is new on the new compositor: its focus comes back with the
+    // session's handover, within a bound; its key count is what must not have moved.
+    let spy4 = poll_reply(&spy, b"COUNT", sched::ticks() + 60_000, |r| {
+        r.contains(" focus=1 ")
+    });
+    kprintln!(
+        "OSX|{}|ktest|elevate|frozen_n={}|unavailable={}|thawed={}|set3={}|reconnected={}|prompt4={}|stop={}|gone={}|set4={}|tokens4={}|spy4={}|phase=5",
+        BUILD_ID,
+        frozen,
+        unavailable,
+        thawed,
+        set3,
+        reconnected,
+        prompt4,
+        r_stop,
+        gone,
+        set4,
+        tokens4,
+        spy4
+    );
+    if unavailable != "ERR UNAVAILABLE" || set3 != "ERR NOT_FOUND" {
+        fail("an elevation was approved while the compositor did not answer")
+    }
+    if !prompt4.starts_with("OK prompt ")
+        || r_stop != "OK"
+        || gone != "ERR UNAVAILABLE"
+        || set4 != "ERR NOT_FOUND"
+    {
+        fail("an elevation survived the compositor's end")
+    }
+    if tokens4 != tokens0 || spy_keys(&spy4) != spy_keys(&spy0) {
+        fail("a token or a key leaked out of a failed elevation")
+    }
+    drop((
+        not_ready, opened, spy0, prompt1, busy, approved, set1, back1, spy1, cancelled, set2,
+        back2, spy2,
+    ));
+    drop((
+        prompt3,
+        unavailable,
+        set3,
+        reconnected,
+        prompt4,
+        r_stop,
+        gone,
+        set4,
+        spy4,
+        spy,
+        config,
+        session,
+    ));
+    display_finish(
+        name,
+        h,
+        "an elevation ran only as shown on the session's prompt, after an administrator's password, with a token no application held",
     )
 }
 
