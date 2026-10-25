@@ -61,7 +61,7 @@
  ],
  "next_action": "Owner: restore GitHub Actions (billing or public repository). Then CI on claude/audit-fixes (16213150: WP-40 closed + WP-42 + WP-44), merge PR #2 into main, import evidence; then PR #6 (WP-41 review fixes, C1).",
  "required_inputs": [
-  "rust-std-1.97.0-x86_64-unknown-uefi.tar.xz upload from user (for local Rust builds; CI unaffected)"
+  "owner: restore GitHub Actions (fix billing / raise the spending limit, or make the repository public) — every verify run since 2026-10-23T15:20Z is refused before its first step"
  ],
  "runner_status": "running",
  "checkpoint_generation": 40,
