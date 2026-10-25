@@ -59,7 +59,7 @@
  "blockers": [
   "GitHub Actions refuses every job since 2026-10-23T15:20Z: 'recent account payments have failed or your spending limit needs to be increased' (private repository). No verification-runner evidence until the owner fixes billing or makes the repository public."
  ],
- "next_action": "Owner: restore GitHub Actions (billing or public repository). Then CI on claude/audit-fixes (16213150: WP-40 closed + WP-42 + WP-44), merge PR #2 into main, import evidence; then PR #6 (WP-41 review fixes, C1).",
+ "next_action": "WP-41 is code-complete and merged into the integration tree (82536d48); it and WP-43 need CI to mark done, which gates WP-38 (M5 gate). Pre-gate review (docs/operations/m5-review.md) and the M5 threat-model section are written ahead. Blocked on CI (R-52: GitHub Actions billing).",
  "required_inputs": [
   "owner: restore GitHub Actions (fix billing / raise the spending limit, or make the repository public) — every verify run since 2026-10-23T15:20Z is refused before its first step"
  ],
