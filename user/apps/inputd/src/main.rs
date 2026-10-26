@@ -458,6 +458,13 @@ impl Input {
                     out.put(b"ERR ACCESS");
                     return;
                 }
+                // `display` is the compositor's alone (v2.5, WP-43 finding S-5): `FOCUS
+                // display` — the session's way to hand the keyboard back after a lock — must
+                // never reach a client that registered the name first.
+                if name == b"display" && self.clients[ci].ident() != b"display" {
+                    out.put(b"ERR ACCESS");
+                    return;
+                }
                 let c = &mut self.clients[ci];
                 c.name[..name.len()].copy_from_slice(name);
                 c.name_len = name.len();
