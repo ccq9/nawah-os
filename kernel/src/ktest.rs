@@ -7189,11 +7189,24 @@ fn session_loss() -> ! {
     let spy = svc_connect(&h, "spy");
     let display = svc_connect(&h, "display");
     kprintln!("OSX|{}|ktest|session_loss|services=5|ready=1", BUILD_ID);
-    let restart_session = || -> String {
-        match crate::services::request(&h.m.ctl, b"RESTART session", sched::ticks() + 500) {
+    // The manager's RESTART, then its list until the new session process is ready (a CONNECT
+    // before that is refused with ERR NOT_READY).
+    let restart_session = |n: u64| -> String {
+        let r = match crate::services::request(&h.m.ctl, b"RESTART session", sched::ticks() + 500) {
             Ok(b) => String::from_utf8_lossy(&b).into_owned(),
             Err(e) => e.into(),
+        };
+        let lines = h.poll_list(sched::ticks() + 60_000, |l| {
+            l.iter()
+                .any(|x| x.name == "session" && x.state == "ready" && x.restarts == n)
+        });
+        if !lines
+            .iter()
+            .any(|x| x.name == "session" && x.state == "ready" && x.restarts == n)
+        {
+            fail("the manager did not bring the session service back")
         }
+        r
     };
     // Phase 1: the lab signs in; the session is lost while unlocked.
     let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
@@ -7202,7 +7215,7 @@ fn session_loss() -> ! {
     let spy0 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
         r == "OK keys=0 focus=1 connections=1"
     });
-    let r1 = restart_session();
+    let r1 = restart_session(1);
     drop(session);
     let session = svc_connect(&h, "session");
     let fresh1 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
@@ -7250,7 +7263,7 @@ fn session_loss() -> ! {
         state_is(r, "locked", 2)
     });
     let keys3 = display_keys(&display);
-    let r2 = restart_session();
+    let r2 = restart_session(2);
     drop(session);
     let session = svc_connect(&h, "session");
     let fresh2 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
