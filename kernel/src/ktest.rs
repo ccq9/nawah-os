@@ -212,6 +212,7 @@ pub fn run() -> ! {
         "client_limits" => client_limits(),
         "input_name_reserved" => input_name_reserved(),
         "focus_after_restart" => focus_after_restart(),
+        "session_loss" => session_loss(),
         "lock_hang" => lock_hang(),
         "lock_auth_hang" => lock_auth_hang(),
         "unlock_auth_hang" => unlock_auth_hang(),
@@ -7170,6 +7171,122 @@ fn auth_input_isolated() -> ! {
         name,
         h,
         "the password typed on the lock screen reached the session alone: no client, no compositor, no announcement",
+    )
+}
+
+/// TST-M5-SESSION-LOSS (REQ-M5-006; WP-43 finding M9): the session service itself is lost —
+/// once after the sign-in (unlocked), once while locked (the manager's RESTART: its process
+/// ends and its channels close, as in a crash). Each time the compositor holds the screen (the
+/// spy's window loses the focus), no key reaches the compositor or the spy, and the new session
+/// starts at `no_session` with its own count of changes, never in the state the lost one had.
+fn session_loss() -> ! {
+    let name = "session_loss";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SS.TXT",
+        &["auth", "input", "display", "session", "spy"],
+    );
+    let spy = svc_connect(&h, "spy");
+    let display = svc_connect(&h, "display");
+    kprintln!("OSX|{}|ktest|session_loss|services=5|ready=1", BUILD_ID);
+    let restart_session = || -> String {
+        match crate::services::request(&h.m.ctl, b"RESTART session", sched::ticks() + 500) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => e.into(),
+        }
+    };
+    // Phase 1: the lab signs in; the session is lost while unlocked.
+    let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
+    });
+    let spy0 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r == "OK keys=0 focus=1 connections=1"
+    });
+    let r1 = restart_session();
+    drop(session);
+    let session = svc_connect(&h, "session");
+    let fresh1 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        state_is(r, "no_session", 0)
+    });
+    let spy1 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r == "OK keys=0 focus=0 connections=1"
+    });
+    let keys1 = display_keys(&display);
+    kprintln!(
+        "OSX|{}|ktest|session_loss|unlocked={}|spy={}|restart={}|fresh={}|spy_after={}|phase=2|ready=1",
+        BUILD_ID,
+        unlocked,
+        spy0,
+        r1,
+        fresh1,
+        spy1
+    );
+    if !state_is(&unlocked, "unlocked", 1) || spy0 != "OK keys=0 focus=1 connections=1" {
+        fail("the lab's sign-in did not unlock the session with the spy focused")
+    }
+    if r1 != "OK"
+        || fresh1 != "OK no_session user=- changes=0 display=1 input=1 focus=session"
+        || spy1 != "OK keys=0 focus=0 connections=1"
+    {
+        fail("the session lost while unlocked did not leave a held screen and a fresh session")
+    }
+    // Phase 2: the lab signs in to the new session; every key of it reaches that session alone
+    // (the compositor counts none).
+    let unlocked2 = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
+    });
+    let keys2 = display_keys(&display);
+    kprintln!(
+        "OSX|{}|ktest|session_loss|unlocked2={}|keys_during_signin={}|phase=3|ready=1",
+        BUILD_ID,
+        unlocked2,
+        keys2 - keys1
+    );
+    if !state_is(&unlocked2, "unlocked", 1) || keys2 != keys1 {
+        fail("the sign-in to the new session did not reach it alone")
+    }
+    // Phase 3: the lab presses Ctrl+Alt+Del; the session is lost while locked.
+    let locked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "locked", 2)
+    });
+    let keys3 = display_keys(&display);
+    let r2 = restart_session();
+    drop(session);
+    let session = svc_connect(&h, "session");
+    let fresh2 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        state_is(r, "no_session", 0)
+    });
+    let spy2 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r.contains(" focus=0 ")
+    });
+    let keys4 = display_keys(&display);
+    kprintln!(
+        "OSX|{}|ktest|session_loss|locked={}|restart={}|fresh={}|spy_focus0={}|keys_after_loss={}|phase=4",
+        BUILD_ID,
+        locked,
+        r2,
+        fresh2,
+        u8::from(spy2.contains(" focus=0 ")),
+        keys4 - keys3
+    );
+    if !locked.starts_with("OK locked user=admin changes=2 ") {
+        fail("the new session did not take the lab's Ctrl+Alt+Del")
+    }
+    if r2 != "OK"
+        || fresh2 != "OK no_session user=- changes=0 display=1 input=1 focus=session"
+        || !spy2.contains(" focus=0 ")
+        || keys4 != keys3
+    {
+        fail("the session lost while locked did not leave a held screen and a fresh session")
+    }
+    drop((
+        unlocked, spy0, r1, fresh1, spy1, unlocked2, locked, r2, fresh2, spy2,
+    ));
+    drop((session, display, spy));
+    display_finish(
+        name,
+        h,
+        "a lost session left the screen held and the keyboard with nobody until a fresh session",
     )
 }
 
