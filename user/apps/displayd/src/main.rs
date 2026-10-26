@@ -30,6 +30,12 @@ libnawah::entry!(main);
 const MAX_CLIENTS: usize = 8;
 const MAX_SURFACES: usize = 32;
 const MAX_WINDOWS: usize = 16;
+/// One client's share (v1.9, WP-43 finding S-7): beyond it, `ERR LIMIT`.
+const CLIENT_SURFACES: usize = 8;
+const CLIENT_WINDOWS: usize = 4;
+/// Windows and surfaces only the session may take (v1.9): its sign-in, lock and elevation
+/// screens always find room, whatever the applications hold.
+const SESSION_RESERVE: usize = 2;
 const MAX_PIXELS: usize = 2 * 1024 * 1024;
 const TITLE_MAX: usize = 32;
 const MSG_MAX: usize = 1024;
@@ -1367,6 +1373,16 @@ impl Compositor {
                     out.put(b"ERR INVALID");
                     return false;
                 }
+                let used = |s: &Surface| s.used && s.owner == ci;
+                if self.surfaces.iter().filter(|s| used(s)).count() >= CLIENT_SURFACES {
+                    out.put(b"ERR LIMIT");
+                    return false;
+                }
+                let free = self.surfaces.iter().filter(|s| !s.used).count();
+                if !self.clients[ci].session && free <= SESSION_RESERVE {
+                    out.put(b"ERR FULL");
+                    return false;
+                }
                 let Some(si) = (0..MAX_SURFACES).find(|&i| !self.surfaces[i].used) else {
                     out.put(b"ERR FULL");
                     return false;
@@ -1460,6 +1476,20 @@ impl Compositor {
                 };
                 if self.surfaces[si].owner != ci {
                     out.put(b"ERR UNKNOWN");
+                    return false;
+                }
+                let mine = self
+                    .windows
+                    .iter()
+                    .filter(|w| w.used && w.owner == ci)
+                    .count();
+                if mine >= CLIENT_WINDOWS {
+                    out.put(b"ERR LIMIT");
+                    return false;
+                }
+                let free = self.windows.iter().filter(|w| !w.used).count();
+                if !self.clients[ci].session && free <= SESSION_RESERVE {
+                    out.put(b"ERR FULL");
                     return false;
                 }
                 let title = after_fields(req, 2);
