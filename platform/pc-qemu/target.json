@@ -3869,6 +3869,31 @@
         }
       },
       {
+        "id": "TST-M5-INPUT-NAME-RESERVED",
+        "test_id": "TST-M5-INPUT-NAME-RESERVED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=input_name_reserved"
+        ],
+        "oracle": "SVC-DP.TXT: the compositor holds the input service's name `display` (the setting's FOCUS display with an administrator's token answers OK); the test kernel, which the manager names otherwise, asks the input service for REGISTER display and is refused (ERR ACCESS, input.md v2.5), so FOCUS display cannot reach an impostor; REGISTER lab is still granted (OK <id>); no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=input_name_reserved",
+          "|ktest|input_name_reserved|display=ERR ACCESS|other_ok=1",
+          "|ktest|input_name_reserved|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|input_name_reserved|frames_delta=0",
+          "|ktest|pass|the name display belongs to the compositor alone"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 300
+      },
+      {
         "id": "TST-M5-MOUSE",
         "test_id": "TST-M5-MOUSE",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

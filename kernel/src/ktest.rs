@@ -210,6 +210,7 @@ pub fn run() -> ! {
         "lock_survives" => lock_survives(),
         "narrator_authority" => narrator_authority(),
         "client_limits" => client_limits(),
+        "input_name_reserved" => input_name_reserved(),
         "lock_hang" => lock_hang(),
         "lock_auth_hang" => lock_auth_hang(),
         "unlock_auth_hang" => unlock_auth_hang(),
@@ -7168,6 +7169,41 @@ fn auth_input_isolated() -> ! {
         name,
         h,
         "the password typed on the lock screen reached the session alone: no client, no compositor, no announcement",
+    )
+}
+
+/// TST-M5-INPUT-NAME-RESERVED (REQ-M5-002; WP-43 finding S-5): the input service keeps the
+/// name `display` for the client the manager names `display` (input.md v2.5). The compositor
+/// holds it (the setting's `FOCUS display` answered OK); another client — here the test
+/// kernel — asks for the same name and is refused, so `FOCUS display` can never hand the
+/// keyboard to an impostor; any other name is still granted.
+fn input_name_reserved() -> ! {
+    let (h, admin, clients, _format) = display_env(
+        "input_name_reserved",
+        b"/SYSTEM/SVC-DP.TXT",
+        &["auth", "input", "display"],
+        1,
+    );
+    let input = svc_connect(&h, "input");
+    let taken = cfg_request(&input, b"REGISTER display", None);
+    let other = cfg_request(&input, b"REGISTER lab", None);
+    kprintln!(
+        "OSX|{}|ktest|input_name_reserved|display={}|other_ok={}",
+        BUILD_ID,
+        taken,
+        u8::from(other.starts_with("OK "))
+    );
+    if taken != "ERR ACCESS" {
+        fail("a client the manager does not name display took the name display")
+    }
+    if !other.starts_with("OK ") {
+        fail("the input service refused an ordinary name")
+    }
+    drop((taken, other, input, clients, admin));
+    display_finish(
+        "input_name_reserved",
+        h,
+        "the name display belongs to the compositor alone",
     )
 }
 
