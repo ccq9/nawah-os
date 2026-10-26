@@ -4,7 +4,7 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "fbb7dfe8620263966ce0c6118eb999b221ce099f",
+ "source_revision": "a012aeed635b858c4f7024f44df67eed8c26d5cb",
  "dirty_state": true,
  "current_stage": "M5",
  "current_task": "WP-43",
@@ -56,13 +56,13 @@
   "REQ-M5-009",
   "REQ-M5-011"
  ],
- "last_run_id": "20261026T214123Z-6a6b06bc-002",
+ "last_run_id": "20261026T223855Z-226c95c9-002",
  "blockers": [],
  "next_action": "WP-43: تقوية M5 بعد مراجعة ما قبل البوابة (2026-10-19)",
  "required_inputs": [],
  "runner_status": "running",
- "checkpoint_generation": 45,
- "event_sequence": 45,
+ "checkpoint_generation": 46,
+ "event_sequence": 46,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 7,
@@ -74,7 +74,7 @@
   "holder_id": "claude-session-015h9GTwLifTZqTMhyRyf9bH",
   "acquired_at": "2026-10-24T14:30:00Z",
   "ttl_s": 900,
-  "fencing_token": 45
+  "fencing_token": 46
  },
  "host_fingerprint": "linux-6.8.0-138-generic-x86_64-2vcpu",
  "errata_version": "1",
