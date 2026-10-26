@@ -1,0 +1,24 @@
+$ cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu
+
+running 13 tests
+test tests::a_value_is_read_only_and_described ... ok
+test tests::clear_set_value_and_focus_on ... ok
+test tests::keys_act_on_the_focused_element ... ok
+test tests::focus_order_is_declared_order_without_labels ... ok
+test tests::elements_without_labels_are_refused ... ok
+test tests::password_is_edited_like_a_field_and_never_described ... ok
+test tests::relabel_and_set_items_switch_language ... ok
+test tests::rtl_field_arrows_follow_reading_direction ... ok
+test tests::scale_doubles_the_layout_and_contrast_changes_the_palette ... ok
+test tests::tab_and_shift_tab_cycle ... ok
+test tests::theme_from_config ... ok
+test tests::password_is_drawn_as_bullets ... ok
+test tests::paint_uses_the_theme_and_marks_the_focus ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
