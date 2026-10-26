@@ -24,9 +24,9 @@ jobs:
         # Same guard as verify.yml (2026-10-23: hung downloads ate whole runs).
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2 3; do timeout 240 "$@" && return 0; echo "attempt $i failed: $*"; sleep 10; done; return 1; }
-          retry sudo apt-get update -qq
-          retry sudo apt-get install -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
+          retry() { for i in 1 2; do timeout 420 "$@" && return 0; echo "::warning title=Toolchain::attempt $i of 2 failed or hit 420 s: $*"; sleep 10; done; return 1; }
+          retry sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          retry sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
           retry rustup toolchain install 1.97.0 --profile minimal
           retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; qemu-system-x86_64 --version | head -1

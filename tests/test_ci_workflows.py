@@ -9,6 +9,7 @@ commit, with scratch evidence only. `project.py import-ci-evidence` leaves no te
 the runner's evidence behind."""
 
 import json
+import re
 import os
 import shutil
 import pathlib
@@ -107,6 +108,19 @@ class Workflows(unittest.TestCase):
                 run = step["run"]
                 self.assertRegex(run, r"retry\(\) \{[^}]*timeout \d+ ",
                                  f"{name}: {job}: no retry with a per-attempt timeout")
+                # Run 40362082749's healthy Toolchain step took 5 minutes; in run 40367178852 a
+                # 240 s attempt limit killed one download three times and failed the job. An
+                # attempt must outlast a slow download, all attempts must end inside the step's
+                # limit, and each failed attempt leaves an annotation (the logs may be
+                # unreadable, the check-run annotations are not).
+                m = re.search(r"retry\(\) \{ for i in ([\d ]+); do timeout (\d+) [^}]*sleep (\d+)", run)
+                self.assertIsNotNone(m, f"{name}: {job}: retry() not in the expected form")
+                attempts, limit, pause = len(m.group(1).split()), int(m.group(2)), int(m.group(3))
+                self.assertGreaterEqual(limit, 300, f"{name}: {job}: an attempt dies before a slow download ends")
+                self.assertGreaterEqual(attempts, 2, f"{name}: {job}: no second attempt")
+                self.assertLessEqual(attempts * limit + (attempts - 1) * pause, step["timeout-minutes"] * 60,
+                                     f"{name}: {job}: the attempts outlast the step")
+                self.assertIn("::warning", run, f"{name}: {job}: a failed attempt leaves no annotation")
                 for line in (l.strip() for l in run.splitlines()):
                     if any(d in line for d in downloads) and not line.startswith("retry() {"):
                         self.assertTrue(line.startswith("retry "),
