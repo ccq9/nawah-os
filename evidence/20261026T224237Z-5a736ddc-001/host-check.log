@@ -1,0 +1,34 @@
+$ python3 -I tools/transcript.py check /home/runner/work/nawah-os/nawah-os/evidence/20261026T224237Z-5a736ddc-001 platform/pc-qemu/expect/a11y-tree.txt
+serial.log: 11 narrator lines as expected
+
+[exit 0]
+$ python3 -I tools/transcript.py dims 21,45,260,242 21,45,520,484 2
+before [21, 45, 260, 242] after [21, 45, 520, 484]: same origin, size x2
+
+[exit 0]
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261026T224237Z-5a736ddc-001/screen.ppm --pixel 23,47,000000 --pixel 281,108,FFFF00
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 23,
+   "y": 47,
+   "expected": "000000",
+   "seen": "000000",
+   "ok": true
+  },
+  {
+   "x": 281,
+   "y": 108,
+   "expected": "ffff00",
+   "seen": "ffff00",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
