@@ -1937,7 +1937,7 @@
     "REQ-M5-003"
    ],
    "layer": "negative",
-   "oracle": "planned (WP-43, finding S-7): a client past its window and surface limits is refused and others are unaffected; exit 33",
+   "oracle": "SVC-DP.TXT, four kernel clients of the compositor: one client creates 8 surfaces and is refused a 9th (ERR LIMIT), creates 4 windows and is refused a 5th (ERR LIMIT); three others then take windows until 14 of 16 are used and the next, within its own limit, is refused (ERR FULL: the last 2 are the session's), and surfaces until 30 of 32 and the next is refused (ERR FULL) (display.md v1.9); no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []
