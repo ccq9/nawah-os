@@ -30,17 +30,6 @@ narrator|change role=textfield label="User name" state=focused value="adm"
 narrator|change role=textfield label="User name" state=focused value="admi"
 narrator|change role=textfield label="User name" state=focused value="admin"
 narrator|focus role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
 narrator|activate role=password label="Password" state=focused
 narrator|window "Spy" focused
 narrator|window "Locked" focused
@@ -49,16 +38,5 @@ narrator|tree 2/4 role=password label="Password" state=enabled
 narrator|tree 3/4 role=button label="Unlock" state=enabled
 narrator|tree 4/4 role=button label="Sign out" state=enabled
 narrator|focus role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
-narrator|change role=password label="Password" state=focused
 narrator|activate role=password label="Password" state=focused
 narrator|window "Spy" focused

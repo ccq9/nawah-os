@@ -4744,6 +4744,32 @@
         ]
       },
       {
+        "id": "TST-M5-NARRATOR-AUTHORITY",
+        "test_id": "TST-M5-NARRATOR-AUTHORITY",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=narrator_authority"
+        ],
+        "oracle": "SVC-SS.TXT (no narrator service): the test kernel, which the manager names otherwise, asks the compositor for the narrator role twice and is refused both times (ERR ACCESS, display.md v1.8): only the service the manifest names `narrator` may hear the session's announcements; no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=narrator_authority",
+          "|ktest|narrator_authority|services=5|ready=1",
+          "|ktest|narrator_authority|asked=ERR ACCESS|again=ERR ACCESS",
+          "|ktest|narrator_authority|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|narrator_authority|frames_delta=0",
+          "|ktest|pass|only the service the manifest names narrator may hear the announcements"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 300
+      },
+      {
         "id": "TST-M5-LOCK-HANG",
         "test_id": "TST-M5-LOCK-HANG",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

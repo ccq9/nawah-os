@@ -208,6 +208,7 @@ pub fn run() -> ! {
         "login_screen" => login_screen(),
         "auth_input_isolated" => auth_input_isolated(),
         "lock_survives" => lock_survives(),
+        "narrator_authority" => narrator_authority(),
         "lock_hang" => lock_hang(),
         "lock_auth_hang" => lock_auth_hang(),
         "unlock_auth_hang" => unlock_auth_hang(),
@@ -7166,6 +7167,44 @@ fn auth_input_isolated() -> ! {
         name,
         h,
         "the password typed on the lock screen reached the session alone: no client, no compositor, no announcement",
+    )
+}
+
+/// TST-M5-NARRATOR-AUTHORITY (REQ-M5-005, REQ-M5-006; WP-43 finding M2): the narrator role
+/// belongs to the service the manifest names `narrator` (display.md v1.8). In a manifest with
+/// no narrator, a client the manager names otherwise (here the test kernel) asks for it and is
+/// refused: no application can make itself the listener of the session's announcements. The
+/// other half of M2 (no announcement per keystroke in a password field) is checked by
+/// TST-M5-AUTH-INPUT-ISOLATED's narrator stream.
+fn narrator_authority() -> ! {
+    let name = "narrator_authority";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SS.TXT",
+        &["auth", "input", "display", "session", "spy"],
+    );
+    kprintln!(
+        "OSX|{}|ktest|narrator_authority|services=5|ready=1",
+        BUILD_ID
+    );
+    let display = svc_connect(&h, "display");
+    let mut ev = Vec::new();
+    let asked = drequest(&display, b"NARRATOR", Vec::new(), &mut ev);
+    let again = drequest(&display, b"NARRATOR", Vec::new(), &mut ev);
+    kprintln!(
+        "OSX|{}|ktest|narrator_authority|asked={}|again={}",
+        BUILD_ID,
+        asked,
+        again
+    );
+    if asked != "ERR ACCESS" || again != "ERR ACCESS" {
+        fail("a client the manifest does not name took the narrator role")
+    }
+    drop((display, session));
+    display_finish(
+        name,
+        h,
+        "only the service the manifest names narrator may hear the announcements",
     )
 }
 
