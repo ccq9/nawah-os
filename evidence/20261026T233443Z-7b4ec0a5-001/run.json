@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261026T233443Z-7b4ec0a5-001",
+ "started_at": "2026-10-26T23:34:43+00:00",
+ "finished_at": "2026-10-26T23:34:43+00:00",
+ "source_revision": "7b4ec0a5130a50cac4e89ec944eaa4228fd40eb1",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M5-UI-TOOL",
+ "commands": [
+  "python3 -I tests/test_transcript_tool.py"
+ ],
+ "exit_code": 0
+}
