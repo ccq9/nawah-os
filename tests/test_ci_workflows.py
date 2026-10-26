@@ -113,7 +113,7 @@ class Workflows(unittest.TestCase):
                 # attempt must outlast a slow download, all attempts must end inside the step's
                 # limit, and each failed attempt leaves an annotation (the logs may be
                 # unreadable, the check-run annotations are not).
-                m = re.search(r"retry\(\) \{ for i in ([\d ]+); do timeout (\d+) [^}]*sleep (\d+)", run)
+                m = re.search(r"retry\(\) \{ for i in ([\d ]+); do (?:s=\$SECONDS; )?timeout (\d+) [^}]*sleep (\d+)", run)
                 self.assertIsNotNone(m, f"{name}: {job}: retry() not in the expected form")
                 attempts, limit, pause = len(m.group(1).split()), int(m.group(2)), int(m.group(3))
                 self.assertGreaterEqual(limit, 300, f"{name}: {job}: an attempt dies before a slow download ends")
@@ -123,8 +123,36 @@ class Workflows(unittest.TestCase):
                 self.assertIn("::warning", run, f"{name}: {job}: a failed attempt leaves no annotation")
                 for line in (l.strip() for l in run.splitlines()):
                     if any(d in line for d in downloads) and not line.startswith("retry() {"):
-                        self.assertTrue(line.startswith("retry "),
+                        self.assertTrue(line.startswith(("retry ", "if ! retry ")),
                                         f"{name}: {job}: download not retried: {line}")
+                # Runs 40397445659 and 40397458355 (2026-10-26, 20:38-21:11): `apt-get install`
+                # hit its limit in all four attempts while the same commit's step had taken a
+                # minute at 20:10. Each failed attempt says how it ended and how much it had
+                # fetched; packages are fetched apart from their installation so a second attempt
+                # keeps what the first one got; when the runner's mirror fails twice the packages
+                # come from Canonical's archive; nothing may wait for an answer on a terminal.
+                self.assertRegex(run, r"rc=\$rc", f"{name}: {job}: the annotation omits the exit code")
+                self.assertIn("/var/cache/apt/archives", run,
+                              f"{name}: {job}: the annotation omits how much was fetched")
+                lines = [l.strip() for l in run.splitlines()]
+                fetch = [i for i, l in enumerate(lines) if "apt-get " in l and " install --download-only " in l]
+                install = [i for i, l in enumerate(lines) if "apt-get " in l and " install " in l
+                           and "--download-only" not in l]
+                self.assertTrue(fetch and install and max(fetch) < min(install),
+                                f"{name}: {job}: packages are not fetched before they are installed")
+                self.assertIn("archive.ubuntu.com", run, f"{name}: {job}: no fallback mirror")
+                for i in fetch + install:
+                    self.assertIn("DEBIAN_FRONTEND=noninteractive", lines[i],
+                                  f"{name}: {job}: apt may wait for an answer: {lines[i]}")
+
+    def test_a_rerun_replaces_the_published_evidence(self):
+        # Run 40397458355, attempt 2: the evidence branch of the first attempt already existed and
+        # the plain push was refused, so the step failed. A re-run's evidence replaces it.
+        step = next(s for j in load("verify.yml")["jobs"].values() for s in j["steps"]
+                    if str(s.get("name", "")).startswith("Publish evidence"))
+        push = [l for l in step["run"].splitlines() if " push " in l]
+        self.assertEqual(len(push), 1)
+        self.assertRegex(push[0], r" push (-q )?(-f|--force) ", "a re-run cannot replace the evidence branch")
 
 
 class Preflight(unittest.TestCase):

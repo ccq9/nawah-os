@@ -29,13 +29,22 @@ jobs:
           echo "sentinel seen by fresh runner ${GITHUB_RUN_ID}:"; cat state/durability-sentinel.json
       - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
         # About 80 s normally, 5 min on a slow day; on 2026-10-23 it hung for 34-40 min and three
-        # runs hit the job's 40-min limit. Each download gets 7 min and two tries (apt also drops
-        # a stalled connection after 60 s); a failed try leaves an annotation; the step ends by 15 min.
+        # runs hit the job's 40-min limit; on 2026-10-26 (20:38-21:11) `apt-get install` hit its
+        # limit four times in two runs. Packages are fetched before they are installed (a second
+        # try keeps what the first fetched), from Canonical's archive when the runner's mirror
+        # fails twice; each try gets 5 min (apt also drops a stalled connection after 60 s) and
+        # leaves an annotation with its exit code and how much it fetched; the step ends by 15 min.
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do timeout 420 "$@" && return 0; echo "::warning title=Toolchain::attempt $i of 2 failed or hit 420 s: $*"; sleep 10; done; return 1; }
-          retry sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          retry sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
           retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
           retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; cargo --version
@@ -139,6 +148,7 @@ jobs:
           PUSH_TOKEN: ${{ github.token }}
         run: |
           set -e
+          # -f: a re-run's evidence replaces the earlier attempt's branch (run 40397458355).
           git config user.name "nawah-ci"
           git config user.email "ci@nawah-os.invalid"
           git checkout --orphan "ci-evidence/${GITHUB_RUN_ID}"
@@ -147,4 +157,4 @@ jobs:
           git add -f build/hygiene.log 2>/dev/null || true
           git commit -qm "CI evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
           auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push -q origin "ci-evidence/${GITHUB_RUN_ID}"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push -q -f origin "ci-evidence/${GITHUB_RUN_ID}"
