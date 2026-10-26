@@ -24,9 +24,15 @@ jobs:
         # Same guard as verify.yml (2026-10-23: hung downloads ate whole runs).
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do timeout 420 "$@" && return 0; echo "::warning title=Toolchain::attempt $i of 2 failed or hit 420 s: $*"; sleep 10; done; return 1; }
-          retry sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          retry sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
           retry rustup toolchain install 1.97.0 --profile minimal
           retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; qemu-system-x86_64 --version | head -1
