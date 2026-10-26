@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261026T180030Z-f7cc84ca-002",
+ "started_at": "2026-10-26T18:00:30+00:00",
+ "finished_at": "2026-10-26T18:00:31+00:00",
+ "source_revision": "f7cc84cae51cc5faa003bf912f3e8ff7aabf4b5d",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M0-002",
+ "commands": [
+  "python3 -I tests/test_m0_records.py"
+ ],
+ "exit_code": 0
+}
