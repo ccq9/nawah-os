@@ -7200,7 +7200,8 @@ fn narrator_authority() -> ! {
     if asked != "ERR ACCESS" || again != "ERR ACCESS" {
         fail("a client the manifest does not name took the narrator role")
     }
-    drop((display, session));
+    // Everything the test holds goes before the frame balance (the strings live on the heap).
+    drop((asked, again, ev, display, session));
     display_finish(
         name,
         h,

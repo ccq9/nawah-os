@@ -1659,7 +1659,7 @@
     "REQ-M5-006"
    ],
    "layer": "guest",
-   "oracle": "SVC-SA.TXT (SVC-SS.TXT with the narrator, before which the session starts): the lab signs in at the session's screen, then types `a` and `b`, which reach the focused spy, and Ctrl+Alt+Del: the Ctrl and Alt presses reach the spy, the sequence moves the keyboard to the session (input.md v2.2) and it locks (STATE `OK locked user=admin changes=2 …`); the spy has counted 6 keys and lost the focus, and the compositor has received 6 key events in all (KEYS); the lab types the password and Enter on the lock screen: the session unlocks (`OK unlocked user=admin changes=3 display=1 input=1 focus=display`) while the compositor's count stayed the same (keys_while_locked=0) and the spy's stayed 6 with the focus back; `c` then reaches the spy (8 keys) through the compositor (8); the session's, the spy's and the narrator's traces equal platform/pc-qemu/expect/auth-input-isolated.txt stream by stream — the narrator hears the password field's role, label and state and never a value; the password text appears nowhere in the serial log; no frame leaks; exit 33",
+   "oracle": "SVC-SA.TXT (SVC-SS.TXT with the narrator, before which the session starts): the lab signs in at the session's screen, then types `a` and `b`, which reach the focused spy, and Ctrl+Alt+Del: the Ctrl and Alt presses reach the spy, the sequence moves the keyboard to the session (input.md v2.2) and it locks (STATE `OK locked user=admin changes=2 …`); the spy has counted 6 keys and lost the focus, and the compositor has received 6 key events in all (KEYS); the lab types the password and Enter on the lock screen: the session unlocks (`OK unlocked user=admin changes=3 display=1 input=1 focus=display`) while the compositor's count stayed the same (keys_while_locked=0) and the spy's stayed 6 with the focus back; `c` then reaches the spy (8 keys) through the compositor (8); the session's, the spy's and the narrator's traces equal platform/pc-qemu/expect/auth-input-isolated.txt stream by stream — the narrator hears the password field's role, label and state and never a value, and no announcement per keystroke in a password field (ui.md v1.4); the password text appears nowhere in the serial log; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1880,7 +1880,7 @@
     "REQ-M5-006"
    ],
    "layer": "security_access_perf",
-   "oracle": "planned (WP-43, finding M2): the spy asks NARRATOR and is refused, and hears nothing from the session's window; exit 33",
+   "oracle": "SVC-SS.TXT (no narrator service): the test kernel, which the manager names otherwise, asks the compositor for the narrator role twice and is refused both times (ERR ACCESS, display.md v1.8): only the service the manifest names `narrator` may hear the session's announcements; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []

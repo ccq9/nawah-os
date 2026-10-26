@@ -1536,7 +1536,12 @@ impl Session {
                 self.repaint();
             }
             Event::Edit(i) => {
-                self.announce(b"change", Some(i));
+                // A password field announces no change (ui.md v1.4, WP-43 finding M2): one
+                // announcement per keystroke told the listener the password's length and
+                // the rhythm it was typed in.
+                if self.dialog.element(i).role != Role::Password {
+                    self.announce(b"change", Some(i));
+                }
                 self.repaint();
             }
             Event::Activate(i) => {

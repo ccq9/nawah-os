@@ -254,6 +254,9 @@ struct Client {
     dropped: u64,
     /// The manager's word on who the client is (services.md v1.6); `session` may lock.
     session: bool,
+    /// The manager names it `narrator`: the only client that may take the narrator role
+    /// (v1.8, WP-43 finding M2).
+    narrator: bool,
 }
 
 const NO_CLIENT: Client = Client {
@@ -262,6 +265,7 @@ const NO_CLIENT: Client = Client {
     unresponsive: false,
     dropped: 0,
     session: false,
+    narrator: false,
 };
 
 #[derive(Clone, Copy)]
@@ -1650,9 +1654,12 @@ impl Compositor {
                 out.num(self.keys as i64);
             }
             b"NARRATOR" => {
-                // The first client to ask becomes the narrator (display.md v1.1); the
-                // manifest decides who may connect at all.
-                if self.narrator.is_some_and(|n| n != ci) {
+                // Only the client the manager names `narrator` may hear the announcements
+                // (v1.8, WP-43 finding M2): in v1.1 the first client to ask became the
+                // narrator, so any application could listen to the session's window.
+                if !self.clients[ci].narrator {
+                    out.put(b"ERR ACCESS");
+                } else if self.narrator.is_some_and(|n| n != ci) {
                     out.put(b"ERR BUSY");
                 } else {
                     self.narrator = Some(ci);
@@ -2061,6 +2068,7 @@ fn main() -> u64 {
                                 c.clients[slot] = NO_CLIENT;
                                 c.clients[slot].chan = hs[0];
                                 c.clients[slot].session = &buf[..n] == b"CONNECT session";
+                                c.clients[slot].narrator = &buf[..n] == b"CONNECT narrator";
                             }
                             None => {
                                 libnawah::handle_close(hs[0]);
