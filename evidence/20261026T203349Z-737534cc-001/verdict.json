@@ -1,0 +1,17 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261026T203349Z-737534cc-001",
+ "test_id": "TST-M0-003",
+ "verdict": "PASS",
+ "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004) (14 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "c5ab867af271c4fbcb0fdce85b7d3dba8b41bd2c1feec0d8c2d343937362b185",
+ "inputs": {
+  "tests/test_ci_workflows.py": "7527f8dfedfea313033f9d68cc3c4f0704bb783930e9fa17c364cf28abe39eff",
+  "tools/project.py": "4525c166e0240a1c2faea4b1569d18710e1195ad6ddb85372d5bb2373207abfc",
+  ".github/workflows/mutants.yml": "e99989d0fa56ad1fc61f302d33e7c5702ba08835246580b6fc1b6dd63bfe8998",
+  ".github/workflows/verify.yml": "f8da0e7507863677cbe62cced9a939c12a60ff2e7cb68a5e0cc5edbe5abe7050"
+ },
+ "claim_tag": "source_backed_fact"
+}
