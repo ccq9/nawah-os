@@ -4948,12 +4948,39 @@
             {
               "after": "|ktest|session_loss|unlocked2=",
               "commands": [
+                "screendump ${SCREEN:open}",
                 "sendkey ctrl-alt-delete"
               ],
               "gap_s": 1.0
             }
           ]
-        }
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:open}",
+            "--pixel",
+            "2,2,10141C",
+            "--pixel",
+            "150,150,2E8B57"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:lost}",
+            "--pixel",
+            "2,2,10141C",
+            "--pixel",
+            "150,150,10141C",
+            "--pixel",
+            "512,338,F0F0F0"
+          ]
+        ]
       },
       {
         "id": "TST-M5-NARRATOR-AUTHORITY",
