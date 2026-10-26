@@ -21,11 +21,14 @@ jobs:
         with:
           persist-credentials: false
       - name: Toolchain
+        # Same guard as verify.yml (2026-10-23: hung downloads ate whole runs).
+        timeout-minutes: 15
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
-          rustup toolchain install 1.97.0 --profile minimal
-          rustup target add --toolchain 1.97.0 x86_64-unknown-uefi x86_64-unknown-none
+          retry() { for i in 1 2 3; do timeout 240 "$@" && return 0; echo "attempt $i failed: $*"; sleep 10; done; return 1; }
+          retry sudo apt-get update -qq
+          retry sudo apt-get install -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
+          retry rustup toolchain install 1.97.0 --profile minimal
+          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; qemu-system-x86_64 --version | head -1
       - name: validate-records (committed state)
         run: python3 tools/project.py validate-records

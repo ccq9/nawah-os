@@ -91,6 +91,27 @@ class Workflows(unittest.TestCase):
         self.assertNotIn("push", on)
         self.assertIn("workflow_dispatch", on)
 
+    def test_toolchain_downloads_are_bounded_and_retried(self):
+        # Runs 39960346156, 39966156761 and 39966899234 (2026-10-23): the Toolchain step, about
+        # 80 s on a good day, hung for 34-40 minutes and the job hit its 40-minute limit before
+        # any test ran. A download that hangs must fail fast and be tried again, and the step
+        # must end long before the job's limit.
+        downloads = ("apt-get ", "rustup toolchain install", "rustup target add")
+        for name in ("verify.yml", "mutants.yml"):
+            for job, body in load(name)["jobs"].items():
+                steps = [s for s in body["steps"] if s.get("name", "").startswith("Toolchain")]
+                self.assertEqual(len(steps), 1, f"{name}: {job}: one Toolchain step")
+                step = steps[0]
+                self.assertLessEqual(step.get("timeout-minutes", 10**6), 15,
+                                     f"{name}: {job}: the Toolchain step has no short limit")
+                run = step["run"]
+                self.assertRegex(run, r"retry\(\) \{[^}]*timeout \d+ ",
+                                 f"{name}: {job}: no retry with a per-attempt timeout")
+                for line in (l.strip() for l in run.splitlines()):
+                    if any(d in line for d in downloads) and not line.startswith("retry() {"):
+                        self.assertTrue(line.startswith("retry "),
+                                        f"{name}: {job}: download not retried: {line}")
+
 
 class Preflight(unittest.TestCase):
     def test_preflight_runs_the_ci_hygiene_commands(self):
