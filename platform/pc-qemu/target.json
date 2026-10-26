@@ -4794,6 +4794,75 @@
         ]
       },
       {
+        "id": "TST-M5-FOCUS-AFTER-RESTART",
+        "test_id": "TST-M5-FOCUS-AFTER-RESTART",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=focus_after_restart"
+        ],
+        "oracle": "SVC-SS.TXT: the lab signs in (the keyboard goes to the compositor, `session|focus=display|n=1`); the test restarts the compositor while the session is unlocked (the manager's RESTART: its process ends and every channel of it closes, as in a crash); the session reconnects (`session|display=reconnected|n=2|state=unlocked`) and hands the keyboard back to the new compositor (`session|focus=display|n=2`); the `z` the lab then types reaches the new compositor (KEYS 2) and the spy's new window (`OK keys=2 focus=1 connections=2`); the password never appears in the serial log; no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=focus_after_restart",
+          "|path=/SYSTEM/SESSIOND.ELF|handles=1",
+          "|ktest|focus_after_restart|services=5|ready=1",
+          "|text=session|focus=display|n=1",
+          "|text=session|display=reconnected|n=2|state=unlocked",
+          "|text=session|focus=display|n=2",
+          "|ktest|focus_after_restart|spy=OK keys=2 focus=1 connections=2|display_keys=2",
+          "|ktest|focus_after_restart|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|focus_after_restart|frames_delta=0",
+          "|ktest|pass|the keyboard went back to the restarted compositor"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1"
+        ],
+        "min_counts": {
+          "|path=/SYSTEM/DISPLAYD.ELF|": 2
+        },
+        "timeout_s": 900,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|focus=display|n=2",
+              "commands": [
+                "sendkey z"
+              ],
+              "gap_s": 1.0
+            }
+          ]
+        }
+      },
+      {
         "id": "TST-M5-NARRATOR-AUTHORITY",
         "test_id": "TST-M5-NARRATOR-AUTHORITY",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

@@ -211,6 +211,7 @@ pub fn run() -> ! {
         "narrator_authority" => narrator_authority(),
         "client_limits" => client_limits(),
         "input_name_reserved" => input_name_reserved(),
+        "focus_after_restart" => focus_after_restart(),
         "lock_hang" => lock_hang(),
         "lock_auth_hang" => lock_auth_hang(),
         "unlock_auth_hang" => unlock_auth_hang(),
@@ -7169,6 +7170,81 @@ fn auth_input_isolated() -> ! {
         name,
         h,
         "the password typed on the lock screen reached the session alone: no client, no compositor, no announcement",
+    )
+}
+
+/// TST-M5-FOCUS-AFTER-RESTART (REQ-M5-002; WP-43 finding S-6): the compositor is restarted
+/// while the session is unlocked; the session reconnects and hands the keyboard back to the
+/// new compositor (session.md v1.4), so the key the lab types afterwards reaches the new
+/// compositor and the focused application (the spy's new window) instead of a client that
+/// no longer exists.
+fn focus_after_restart() -> ! {
+    let name = "focus_after_restart";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SS.TXT",
+        &["auth", "input", "display", "session", "spy"],
+    );
+    let spy = svc_connect(&h, "spy");
+    kprintln!(
+        "OSX|{}|ktest|focus_after_restart|services=5|ready=1",
+        BUILD_ID
+    );
+    // The lab signs in; the keyboard goes to the compositor.
+    let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
+    });
+    if !state_is(&unlocked, "unlocked", 1) {
+        kprintln!(
+            "OSX|{}|ktest|focus_after_restart|state={}",
+            BUILD_ID,
+            unlocked
+        );
+        fail("the lab's sign-in did not unlock the session")
+    }
+    let r_display =
+        match crate::services::request(&h.m.ctl, b"RESTART display", sched::ticks() + 500) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => e.into(),
+        };
+    let after = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        r.contains(" display=2 ")
+    });
+    let spy1 = poll_reply(&spy, b"COUNT", sched::ticks() + 60_000, |r| {
+        r.ends_with(" connections=2")
+    });
+    kprintln!(
+        "OSX|{}|ktest|focus_after_restart|restarted={}|state={}|spy={}|phase=2|ready=1",
+        BUILD_ID,
+        r_display,
+        after,
+        spy1
+    );
+    if r_display != "OK" || !after.contains(" display=2 ") {
+        fail("the compositor did not come back to the session")
+    }
+    // The lab types `z` once the session has handed the keyboard back.
+    let spy2 = poll_reply(&spy, b"COUNT", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK keys=2 ")
+    });
+    let display = svc_connect(&h, "display");
+    let keys = display_keys(&display);
+    kprintln!(
+        "OSX|{}|ktest|focus_after_restart|spy={}|display_keys={}",
+        BUILD_ID,
+        spy2,
+        keys
+    );
+    if !spy2.starts_with("OK keys=2 ") || keys != 2 {
+        fail("a key typed after the compositor's restart did not reach it")
+    }
+    drop((
+        unlocked, r_display, after, spy1, spy2, display, spy, session,
+    ));
+    display_finish(
+        name,
+        h,
+        "the keyboard went back to the restarted compositor",
     )
 }
 
