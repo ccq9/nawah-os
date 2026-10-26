@@ -1926,7 +1926,7 @@
     "REQ-M5-002"
    ],
    "layer": "service_integration",
-   "oracle": "planned (WP-43, finding S-6): after a compositor restart while unlocked the keyboard goes back to it; exit 33",
+   "oracle": "SVC-SS.TXT: the lab signs in (the keyboard goes to the compositor, `session|focus=display|n=1`); the test restarts the compositor while the session is unlocked (the manager's RESTART: its process ends and every channel of it closes, as in a crash); the session reconnects (`session|display=reconnected|n=2|state=unlocked`) and hands the keyboard back to the new compositor (`session|focus=display|n=2`); the `z` the lab then types reaches the new compositor (KEYS 2) and the spy's new window (`OK keys=2 focus=1 connections=2`); the password never appears in the serial log; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []

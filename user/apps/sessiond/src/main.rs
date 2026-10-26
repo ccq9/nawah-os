@@ -717,7 +717,7 @@ impl Session {
 
     /// A new channel to `display`: the pixel format and screen size, then the state again
     /// (the compositor started holding the screen; session.md §5).
-    fn display_up(&mut self, h: Handle, _now: u64) {
+    fn display_up(&mut self, h: Handle, now: u64) {
         self.display = Some(Conn::new(h));
         let mut reply = [0u8; MSG_MAX];
         let Some(n) = self.display_call(b"STATUS", &[], &mut reply) else {
@@ -736,6 +736,14 @@ impl Session {
             State::Unlocked => {
                 let mut r = [0u8; 64];
                 self.display_call(b"UNLOCKED", &[], &mut r);
+                // A new compositor (v1.4, WP-43 finding S-6): the input service's focus still
+                // names the one that is gone, so the keyboard is handed over again, retried
+                // until the new one has registered (`try_handover`). The session's own screen
+                // (an elevation prompt) keeps it.
+                if self.conn_n[DISPLAY] > 1 && self.owner == Owner::Display {
+                    self.want_display = true;
+                    self.focus_retry = now;
+                }
             }
             State::Locked => {
                 let mut r = [0u8; 64];
