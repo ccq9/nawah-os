@@ -209,6 +209,7 @@ pub fn run() -> ! {
         "auth_input_isolated" => auth_input_isolated(),
         "lock_survives" => lock_survives(),
         "narrator_authority" => narrator_authority(),
+        "client_limits" => client_limits(),
         "lock_hang" => lock_hang(),
         "lock_auth_hang" => lock_auth_hang(),
         "unlock_auth_hang" => unlock_auth_hang(),
@@ -7167,6 +7168,107 @@ fn auth_input_isolated() -> ! {
         name,
         h,
         "the password typed on the lock screen reached the session alone: no client, no compositor, no announcement",
+    )
+}
+
+/// TST-M5-CLIENT-LIMITS (REQ-M5-003; WP-43 finding S-7): one client holds at most 8 surfaces
+/// and 4 windows (`ERR LIMIT` beyond), and clients other than the session never take the last
+/// 2 windows or the last 2 surfaces of the compositor (`ERR FULL`), so no application can leave
+/// the session without room for its sign-in, lock or elevation screen (display.md v1.9).
+fn client_limits() -> ! {
+    let (h, admin, clients, format) = display_env(
+        "client_limits",
+        b"/SYSTEM/SVC-DP.TXT",
+        &["auth", "input", "display"],
+        4,
+    );
+    let mut ev = Vec::new();
+    let mut vmos = Vec::new();
+    // A new 32x32 surface for client `c`; its id, or the refusal.
+    let mut surface = |c: &Endpoint, ev: &mut Vec<String>| -> String {
+        let (vmo, entry) = kernel_surface(32, 32, format, 0x808080);
+        vmos.push(vmo);
+        let r = drequest(c, b"CREATE_SURFACE 32 32", alloc::vec![entry], ev);
+        String::from(r.strip_prefix("OK ").unwrap_or(&r))
+    };
+    let window = |c: &Endpoint, sid: &str, ev: &mut Vec<String>| -> String {
+        let r = drequest(
+            c,
+            alloc::format!("CREATE_WINDOW {} w", sid).as_bytes(),
+            Vec::new(),
+            ev,
+        );
+        String::from(if r.starts_with("OK ") { "OK" } else { &r })
+    };
+    let (a, b, c, d) = (&clients[0], &clients[1], &clients[2], &clients[3]);
+    // 1. One client: 8 surfaces, then the 9th is refused.
+    let sa: Vec<String> = (0..8).map(|_| surface(a, &mut ev)).collect();
+    let ninth = surface(a, &mut ev);
+    // 2. One client: 4 windows, then the 5th is refused.
+    let wa: Vec<String> = sa[..5].iter().map(|s| window(a, s, &mut ev)).collect();
+    // 3. The window reserve: b and c take 4 windows each, d takes 2 (14 of 16 in all); d's
+    // third, within its own limit, finds only the session's reserve.
+    let mut w_rest = Vec::new();
+    for (cl, k) in [(b, 4), (c, 4), (d, 3)] {
+        for _ in 0..k {
+            let s = surface(cl, &mut ev);
+            w_rest.push(window(cl, &s, &mut ev));
+        }
+    }
+    // 4. The surface reserve: 8 (a) + 4 + 4 + 3 = 19 surfaces so far; b and c take 4 more each,
+    // d 3 more (30 of 32); d's next, its 7th, finds only the session's reserve.
+    let mut s_rest = Vec::new();
+    for (cl, k) in [(b, 4), (c, 4), (d, 4)] {
+        for _ in 0..k {
+            s_rest.push(surface(cl, &mut ev));
+        }
+    }
+    let ok_ids = |v: &[String]| v.iter().filter(|s| s.parse::<u32>().is_ok()).count();
+    let surfaces_a = ok_ids(&sa);
+    let windows_a = wa[..4].iter().filter(|r| *r == "OK").count();
+    let fifth = wa[4].clone();
+    let windows_rest = w_rest[..10].iter().filter(|r| *r == "OK").count();
+    let reserve_window = w_rest[10].clone();
+    let surfaces_rest = ok_ids(&s_rest[..11]);
+    let reserve_surface = s_rest[11].clone();
+    kprintln!(
+        "OSX|{}|ktest|client_limits|surfaces_a={}|ninth={}|windows_a={}|fifth={}|windows_rest={}|reserve_window={}|surfaces_rest={}|reserve_surface={}",
+        BUILD_ID,
+        surfaces_a,
+        ninth,
+        windows_a,
+        fifth,
+        windows_rest,
+        reserve_window,
+        surfaces_rest,
+        reserve_surface
+    );
+    if surfaces_a != 8 || ninth != "ERR LIMIT" || windows_a != 4 || fifth != "ERR LIMIT" {
+        fail("one client went past its own limit of surfaces or windows")
+    }
+    if windows_rest != 10
+        || reserve_window != "ERR FULL"
+        || surfaces_rest != 11
+        || reserve_surface != "ERR FULL"
+    {
+        fail("clients other than the session took the session's reserve")
+    }
+    drop((
+        sa,
+        ninth,
+        wa,
+        fifth,
+        w_rest,
+        s_rest,
+        reserve_window,
+        reserve_surface,
+        ev,
+    ));
+    drop((vmos, clients, admin));
+    display_finish(
+        "client_limits",
+        h,
+        "a client holds a bounded share of windows and surfaces, and the session keeps its reserve",
     )
 }
 

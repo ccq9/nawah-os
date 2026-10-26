@@ -4134,6 +4134,31 @@
         "timeout_s": 600
       },
       {
+        "id": "TST-M5-CLIENT-LIMITS",
+        "test_id": "TST-M5-CLIENT-LIMITS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=client_limits"
+        ],
+        "oracle": "SVC-DP.TXT, four kernel clients of the compositor: one client creates 8 surfaces and is refused a 9th (ERR LIMIT), creates 4 windows and is refused a 5th (ERR LIMIT); three others then take windows until 14 of 16 are used and the next, within its own limit, is refused (ERR FULL: the last 2 are the session's), and surfaces until 30 of 32 and the next is refused (ERR FULL) (display.md v1.9); no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=client_limits",
+          "|ktest|client_limits|surfaces_a=8|ninth=ERR LIMIT|windows_a=4|fifth=ERR LIMIT|windows_rest=10|reserve_window=ERR FULL|surfaces_rest=11|reserve_surface=ERR FULL",
+          "|ktest|client_limits|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|client_limits|frames_delta=0",
+          "|ktest|pass|a client holds a bounded share of windows and surfaces, and the session keeps its reserve"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 300
+      },
+      {
         "id": "TST-M5-TEXT-GUEST",
         "test_id": "TST-M5-TEXT-GUEST",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",
