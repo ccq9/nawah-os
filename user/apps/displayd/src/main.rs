@@ -704,7 +704,11 @@ impl Compositor {
         if !self.cursor_rect.intersect(r).is_empty() {
             self.draw_cursor();
         }
-        self.composed += 1;
+        // Only the open desktop's compositions are counted (v1.10): while the screen is held,
+        // each redraw of the sign-in or lock dialog follows a key, and `STATUS` is anyone's.
+        if !self.locked {
+            self.composed += 1;
+        }
     }
 
     /// Back buffer → frame for `r` (volatile device memory, row by row).
