@@ -2975,7 +2975,8 @@
     "بوابة M5: سيناريوهات الخروج، طفرات M5، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
     "scenario cases 7, 8 and 11 of OS-EXEC-AR §20 across the M5 suite; mutants M82+ for display/input/compositor/text/ui/session (>= 95%)",
     "docs/operations/m5-review.md; stages.json M5 gate; threat-model (display/input/session trust boundaries)",
-    "Review 2026-10-19: M5 mutants (M82+) for the kill, watchdog, request deadline, focus routing and lock state; mutants --stage M5 and an M5-GATE host suite; stale M2–M4 mutation scores re-run (their stale_policy=warn hides the WP-40 kernel changes)"
+    "Review 2026-10-19: M5 mutants (M82+) for the kill, watchdog, request deadline, focus routing and lock state; mutants --stage M5 and an M5-GATE host suite; stale M2–M4 mutation scores re-run (their stale_policy=warn hides the WP-40 kernel changes)",
+    "2026-10-27: activated after WP-43 closed (every dependency done). Phase 1: ten security mutants M82-M91 (one per WP-43/WP-41 fix) in tests/mutants.py, the M5-GATE suite, the fourth mutants.yml step; rule: >= 0.95 over this gate's valid mutants and no surviving security mutant."
    ],
    "acceptance": "M5 gate passed",
    "test_ids": [
@@ -2985,9 +2986,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
