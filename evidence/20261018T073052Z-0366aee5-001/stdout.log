@@ -1,0 +1,8 @@
+$ cargo build --profile app --offline --manifest-path user/apps/hello/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+$ cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/hello /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/hello.elf
+$ cargo build --release --offline --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo
+$ cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo/x86_64-unknown-uefi/release/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/pc-qemu/NAWAH.EFI
+$ cargo build --release --offline --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-neg --features inject_ebs_fail
+$ cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-neg/x86_64-unknown-uefi/release/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/pc-qemu/NAWAH-NEG.EFI
+$ cargo build --profile ktest --offline --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-ktest --features ktest
+$ cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/pc-qemu/NAWAH-KTEST.EFI
