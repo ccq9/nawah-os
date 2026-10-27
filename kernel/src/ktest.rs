@@ -7383,7 +7383,9 @@ fn list_hash_held() -> ! {
     drop((
         covered, cover_own, cb, uncovered, mn, minimized, rs, restored,
     ));
-    drop((ca, da, db, sa_id, wa_id, sb_id, wb_id, status0));
+    drop((
+        ca, da, db, sa_id, wa_id, sb_id, wb_id, status0, before, after,
+    ));
     drop((vmo_a, vmo_b, a, b, session));
     display_finish(
         name,
