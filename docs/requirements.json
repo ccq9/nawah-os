@@ -21,7 +21,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223818Z-226c95c9-001"
+    "evidence/20261027T153942Z-fc295217-002"
    ]
   },
   {
@@ -45,7 +45,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223817Z-226c95c9-001"
+    "evidence/20261027T153942Z-fc295217-001"
    ]
   },
   {
@@ -75,8 +75,8 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222206Z-226c95c9-001",
-    "evidence/20261026T222208Z-226c95c9-001"
+    "evidence/20261027T152017Z-fc295217-001",
+    "evidence/20261027T152021Z-fc295217-001"
    ]
   },
   {
@@ -103,7 +103,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223818Z-226c95c9-001"
+    "evidence/20261027T153942Z-fc295217-002"
    ]
   },
   {
@@ -127,7 +127,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223817Z-226c95c9-001"
+    "evidence/20261027T153942Z-fc295217-001"
    ]
   },
   {
@@ -154,7 +154,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222210Z-226c95c9-001"
+    "evidence/20261027T152024Z-fc295217-001"
    ]
   },
   {
@@ -184,7 +184,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222233Z-226c95c9-001"
+    "evidence/20261027T152048Z-fc295217-001"
    ]
   },
   {
@@ -211,7 +211,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223819Z-226c95c9-001"
+    "evidence/20261027T153944Z-fc295217-001"
    ]
   },
   {
@@ -238,7 +238,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222237Z-226c95c9-001"
+    "evidence/20261027T152053Z-fc295217-001"
    ]
   },
   {
@@ -370,7 +370,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222316Z-226c95c9-001"
+    "evidence/20261027T152144Z-fc295217-001"
    ]
   },
   {
@@ -402,13 +402,13 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222241Z-226c95c9-001",
-    "evidence/20261026T222245Z-226c95c9-001",
-    "evidence/20261026T222248Z-226c95c9-001",
-    "evidence/20261026T222252Z-226c95c9-001",
-    "evidence/20261026T222256Z-226c95c9-001",
-    "evidence/20261026T222300Z-226c95c9-001",
-    "evidence/20261026T222304Z-226c95c9-001"
+    "evidence/20261027T152058Z-fc295217-001",
+    "evidence/20261027T152103Z-fc295217-001",
+    "evidence/20261027T152108Z-fc295217-001",
+    "evidence/20261027T152113Z-fc295217-001",
+    "evidence/20261027T152119Z-fc295217-001",
+    "evidence/20261027T152124Z-fc295217-001",
+    "evidence/20261027T152129Z-fc295217-001"
    ]
   },
   {
@@ -433,7 +433,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222308Z-226c95c9-001"
+    "evidence/20261027T152134Z-fc295217-001"
    ]
   },
   {
@@ -458,7 +458,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222312Z-226c95c9-001"
+    "evidence/20261027T152139Z-fc295217-001"
    ]
   },
   {
@@ -486,7 +486,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222241Z-226c95c9-001"
+    "evidence/20261027T152058Z-fc295217-001"
    ]
   },
   {
@@ -509,7 +509,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222319Z-226c95c9-001"
+    "evidence/20261027T152149Z-fc295217-001"
    ]
   },
   {
@@ -537,9 +537,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222323Z-226c95c9-001",
-    "evidence/20261026T222327Z-226c95c9-001",
-    "evidence/20261026T222331Z-226c95c9-001"
+    "evidence/20261027T152154Z-fc295217-001",
+    "evidence/20261027T152159Z-fc295217-001",
+    "evidence/20261027T152204Z-fc295217-001"
    ]
   },
   {
@@ -569,10 +569,10 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222335Z-226c95c9-001",
-    "evidence/20261026T222339Z-226c95c9-001",
-    "evidence/20261026T222343Z-226c95c9-001",
-    "evidence/20261026T222347Z-226c95c9-001"
+    "evidence/20261027T152210Z-fc295217-001",
+    "evidence/20261027T152215Z-fc295217-001",
+    "evidence/20261027T152220Z-fc295217-001",
+    "evidence/20261027T152225Z-fc295217-001"
    ]
   },
   {
@@ -600,9 +600,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222351Z-226c95c9-001",
-    "evidence/20261026T222355Z-226c95c9-001",
-    "evidence/20261026T222358Z-226c95c9-001"
+    "evidence/20261027T152230Z-fc295217-001",
+    "evidence/20261027T152235Z-fc295217-001",
+    "evidence/20261027T152240Z-fc295217-001"
    ]
   },
   {
@@ -629,9 +629,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222402Z-226c95c9-001",
-    "evidence/20261026T222406Z-226c95c9-001",
-    "evidence/20261026T222410Z-226c95c9-001"
+    "evidence/20261027T152246Z-fc295217-001",
+    "evidence/20261027T152251Z-fc295217-001",
+    "evidence/20261027T152256Z-fc295217-001"
    ]
   },
   {
@@ -685,10 +685,10 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222414Z-226c95c9-001",
-    "evidence/20261026T222418Z-226c95c9-001",
-    "evidence/20261026T222422Z-226c95c9-001",
-    "evidence/20261026T222425Z-226c95c9-001"
+    "evidence/20261027T152301Z-fc295217-001",
+    "evidence/20261027T152306Z-fc295217-001",
+    "evidence/20261027T152311Z-fc295217-001",
+    "evidence/20261027T152317Z-fc295217-001"
    ]
   },
   {
@@ -714,8 +714,8 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223811Z-226c95c9-001",
-    "evidence/20261026T223811Z-226c95c9-002"
+    "evidence/20261027T153935Z-fc295217-001",
+    "evidence/20261027T153936Z-fc295217-001"
    ]
   },
   {
@@ -747,10 +747,10 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222429Z-226c95c9-001",
-    "evidence/20261026T222433Z-226c95c9-001",
-    "evidence/20261026T222437Z-226c95c9-001",
-    "evidence/20261026T222445Z-226c95c9-001"
+    "evidence/20261027T152322Z-fc295217-001",
+    "evidence/20261027T152327Z-fc295217-001",
+    "evidence/20261027T152332Z-fc295217-001",
+    "evidence/20261027T152343Z-fc295217-001"
    ]
   },
   {
@@ -781,10 +781,10 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222449Z-226c95c9-001",
-    "evidence/20261026T222453Z-226c95c9-001",
-    "evidence/20261026T222500Z-226c95c9-001",
-    "evidence/20261026T222504Z-226c95c9-001"
+    "evidence/20261027T152348Z-fc295217-001",
+    "evidence/20261027T152353Z-fc295217-001",
+    "evidence/20261027T152403Z-fc295217-001",
+    "evidence/20261027T152409Z-fc295217-001"
    ]
   },
   {
@@ -819,13 +819,13 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222508Z-226c95c9-001",
-    "evidence/20261026T222512Z-226c95c9-001",
-    "evidence/20261026T222516Z-226c95c9-001",
-    "evidence/20261026T222520Z-226c95c9-001",
-    "evidence/20261026T222524Z-226c95c9-001",
-    "evidence/20261026T222528Z-226c95c9-001",
-    "evidence/20261026T222531Z-226c95c9-001"
+    "evidence/20261027T152414Z-fc295217-001",
+    "evidence/20261027T152419Z-fc295217-001",
+    "evidence/20261027T152424Z-fc295217-001",
+    "evidence/20261027T152429Z-fc295217-001",
+    "evidence/20261027T152434Z-fc295217-001",
+    "evidence/20261027T152439Z-fc295217-001",
+    "evidence/20261027T152444Z-fc295217-001"
    ]
   },
   {
@@ -853,9 +853,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222539Z-226c95c9-001",
-    "evidence/20261026T222543Z-226c95c9-001",
-    "evidence/20261026T222547Z-226c95c9-001"
+    "evidence/20261027T152455Z-fc295217-001",
+    "evidence/20261027T152500Z-fc295217-001",
+    "evidence/20261027T152505Z-fc295217-001"
    ]
   },
   {
@@ -886,13 +886,13 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222551Z-226c95c9-001",
-    "evidence/20261026T222555Z-226c95c9-001",
-    "evidence/20261026T222559Z-226c95c9-001",
-    "evidence/20261026T222604Z-226c95c9-001",
-    "evidence/20261026T222608Z-226c95c9-001",
-    "evidence/20261026T222616Z-226c95c9-001",
-    "evidence/20261026T223820Z-226c95c9-001"
+    "evidence/20261027T152510Z-fc295217-001",
+    "evidence/20261027T152515Z-fc295217-001",
+    "evidence/20261027T152520Z-fc295217-001",
+    "evidence/20261027T152528Z-fc295217-001",
+    "evidence/20261027T152533Z-fc295217-001",
+    "evidence/20261027T152543Z-fc295217-001",
+    "evidence/20261027T153945Z-fc295217-001"
    ]
   },
   {
@@ -923,9 +923,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222622Z-226c95c9-001",
-    "evidence/20261026T222626Z-226c95c9-001",
-    "evidence/20261026T222630Z-226c95c9-001"
+    "evidence/20261027T152550Z-fc295217-001",
+    "evidence/20261027T152555Z-fc295217-001",
+    "evidence/20261027T152601Z-fc295217-001"
    ]
   },
   {
@@ -954,9 +954,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222634Z-226c95c9-001",
-    "evidence/20261026T222638Z-226c95c9-001",
-    "evidence/20261026T222642Z-226c95c9-001"
+    "evidence/20261027T152606Z-fc295217-001",
+    "evidence/20261027T152611Z-fc295217-001",
+    "evidence/20261027T152616Z-fc295217-001"
    ]
   },
   {
@@ -989,9 +989,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222441Z-226c95c9-001",
+    "evidence/20261027T152337Z-fc295217-001",
     "evidence/20261023T142325Z-05b5a393-001",
-    "evidence/20261026T222456Z-226c95c9-001"
+    "evidence/20261027T152358Z-fc295217-001"
    ]
   },
   {
@@ -1024,9 +1024,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222646Z-226c95c9-001",
-    "evidence/20261026T222650Z-226c95c9-001",
-    "evidence/20261026T222654Z-226c95c9-001"
+    "evidence/20261027T152622Z-fc295217-001",
+    "evidence/20261027T152627Z-fc295217-001",
+    "evidence/20261027T152632Z-fc295217-001"
    ]
   },
   {
@@ -1056,9 +1056,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222658Z-226c95c9-001",
-    "evidence/20261026T222702Z-226c95c9-001",
-    "evidence/20261026T222706Z-226c95c9-001"
+    "evidence/20261027T152637Z-fc295217-001",
+    "evidence/20261027T152642Z-fc295217-001",
+    "evidence/20261027T152648Z-fc295217-001"
    ]
   },
   {
@@ -1089,10 +1089,10 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223821Z-226c95c9-001",
-    "evidence/20261026T222710Z-226c95c9-001",
-    "evidence/20261026T222714Z-226c95c9-001",
-    "evidence/20261026T222722Z-226c95c9-001"
+    "evidence/20261027T153947Z-fc295217-001",
+    "evidence/20261027T152653Z-fc295217-001",
+    "evidence/20261027T152658Z-fc295217-001",
+    "evidence/20261027T152708Z-fc295217-001"
    ]
   },
   {
@@ -1120,7 +1120,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222726Z-226c95c9-001"
+    "evidence/20261027T152714Z-fc295217-001"
    ]
   },
   {
@@ -1154,11 +1154,11 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222750Z-226c95c9-001",
-    "evidence/20261026T222731Z-226c95c9-001",
-    "evidence/20261026T222736Z-226c95c9-001",
-    "evidence/20261026T222741Z-226c95c9-001",
-    "evidence/20261026T222745Z-226c95c9-001"
+    "evidence/20261027T152745Z-fc295217-001",
+    "evidence/20261027T152720Z-fc295217-001",
+    "evidence/20261027T152726Z-fc295217-001",
+    "evidence/20261027T152733Z-fc295217-001",
+    "evidence/20261027T152739Z-fc295217-001"
    ]
   },
   {
@@ -1186,9 +1186,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222757Z-226c95c9-001",
-    "evidence/20261026T222801Z-226c95c9-001",
-    "evidence/20261026T222805Z-226c95c9-001"
+    "evidence/20261027T152754Z-fc295217-001",
+    "evidence/20261027T152759Z-fc295217-001",
+    "evidence/20261027T152805Z-fc295217-001"
    ]
   },
   {
@@ -1220,10 +1220,10 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222810Z-226c95c9-001",
-    "evidence/20261026T222815Z-226c95c9-001",
-    "evidence/20261026T222820Z-226c95c9-001",
-    "evidence/20261026T222825Z-226c95c9-001"
+    "evidence/20261027T152811Z-fc295217-001",
+    "evidence/20261027T152817Z-fc295217-001",
+    "evidence/20261027T152823Z-fc295217-001",
+    "evidence/20261027T152830Z-fc295217-001"
    ]
   },
   {
@@ -1251,8 +1251,8 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222830Z-226c95c9-001",
-    "evidence/20261026T222836Z-226c95c9-001"
+    "evidence/20261027T152837Z-fc295217-001",
+    "evidence/20261027T152843Z-fc295217-001"
    ]
   },
   {
@@ -1282,9 +1282,9 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222842Z-226c95c9-001",
-    "evidence/20261026T222848Z-226c95c9-001",
-    "evidence/20261026T223826Z-226c95c9-001"
+    "evidence/20261027T152851Z-fc295217-001",
+    "evidence/20261027T152858Z-fc295217-001",
+    "evidence/20261027T153952Z-fc295217-001"
    ]
   },
   {
@@ -1314,7 +1314,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222854Z-226c95c9-001",
+    "evidence/20261027T152906Z-fc295217-001",
     "evidence/20261023T143243Z-05b5a393-001"
    ]
   },
@@ -1345,7 +1345,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222858Z-226c95c9-001"
+    "evidence/20261027T152911Z-fc295217-001"
    ]
   },
   {
@@ -1376,11 +1376,13 @@
     "TST-M5-INPUT-NAME-RESERVED",
     "TST-M5-FOCUS-AFTER-RESTART"
    ],
-   "implementation_status": "partial",
+   "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222905Z-226c95c9-001",
-    "evidence/20261026T222918Z-226c95c9-001",
-    "evidence/20261026T223830Z-226c95c9-001"
+    "evidence/20261027T152919Z-fc295217-001",
+    "evidence/20261027T152935Z-fc295217-001",
+    "evidence/20261027T153956Z-fc295217-001",
+    "evidence/20261027T152929Z-fc295217-001",
+    "evidence/20261027T153242Z-fc295217-001"
    ]
   },
   {
@@ -1414,11 +1416,11 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T222924Z-226c95c9-001",
-    "evidence/20261026T222932Z-226c95c9-001",
-    "evidence/20261026T222946Z-226c95c9-001",
-    "evidence/20261026T223855Z-226c95c9-002",
-    "evidence/20261026T222958Z-226c95c9-001"
+    "evidence/20261027T152943Z-fc295217-001",
+    "evidence/20261027T152952Z-fc295217-001",
+    "evidence/20261027T153009Z-fc295217-001",
+    "evidence/20261027T154023Z-fc295217-002",
+    "evidence/20261027T153022Z-fc295217-001"
    ]
   },
   {
@@ -1447,12 +1449,12 @@
     "TST-M5-GLYPHS",
     "TST-M5-TEXT-GUEST"
    ],
-   "implementation_status": "partial",
+   "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223839Z-226c95c9-001",
-    "evidence/20261026T223840Z-226c95c9-001",
-    "evidence/20261026T223847Z-226c95c9-001",
-    "evidence/20261026T223007Z-226c95c9-001"
+    "evidence/20261027T154005Z-fc295217-001",
+    "evidence/20261027T154006Z-fc295217-001",
+    "evidence/20261027T154013Z-fc295217-001",
+    "evidence/20261027T153034Z-fc295217-001"
    ]
   },
   {
@@ -1486,10 +1488,10 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223018Z-226c95c9-001",
-    "evidence/20261026T223038Z-226c95c9-001",
-    "evidence/20261026T223849Z-226c95c9-001",
-    "evidence/20261026T223855Z-226c95c9-001"
+    "evidence/20261027T153046Z-fc295217-001",
+    "evidence/20261027T153109Z-fc295217-001",
+    "evidence/20261027T154017Z-fc295217-001",
+    "evidence/20261027T154023Z-fc295217-001"
    ]
   },
   {
@@ -1527,12 +1529,19 @@
     "TST-M5-SESSION-LOSS",
     "TST-M5-FILE-AUTHORITY"
    ],
-   "implementation_status": "partial",
+   "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223138Z-226c95c9-001",
-    "evidence/20261026T223112Z-226c95c9-001",
-    "evidence/20261026T223046Z-226c95c9-001",
-    "evidence/20261026T223459Z-226c95c9-001"
+    "evidence/20261027T153213Z-fc295217-001",
+    "evidence/20261027T153146Z-fc295217-001",
+    "evidence/20261027T153118Z-fc295217-001",
+    "evidence/20261027T153613Z-fc295217-001",
+    "evidence/20261027T153430Z-fc295217-001",
+    "evidence/20261027T153459Z-fc295217-001",
+    "evidence/20261027T153529Z-fc295217-001",
+    "evidence/20261027T153355Z-fc295217-001",
+    "evidence/20261027T153327Z-fc295217-001",
+    "evidence/20261027T153259Z-fc295217-001",
+    "evidence/20261027T153607Z-fc295217-001"
    ]
   },
   {
@@ -1597,7 +1606,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223733Z-226c95c9-001"
+    "evidence/20261027T153851Z-fc295217-001"
    ]
   },
   {
@@ -1631,8 +1640,8 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223741Z-226c95c9-001",
-    "evidence/20261026T223849Z-226c95c9-001"
+    "evidence/20261027T153901Z-fc295217-001",
+    "evidence/20261027T154017Z-fc295217-001"
    ]
   },
   {
@@ -1674,12 +1683,12 @@
    ],
    "implementation_status": "partial",
    "evidence_refs": [
-    "evidence/20261026T223758Z-226c95c9-001",
-    "evidence/20261026T223802Z-226c95c9-001",
-    "evidence/20261026T223254Z-226c95c9-001",
-    "evidence/20261026T223718Z-226c95c9-001",
-    "evidence/20261026T223806Z-226c95c9-001",
-    "evidence/20261026T223459Z-226c95c9-001"
+    "evidence/20261027T153918Z-fc295217-001",
+    "evidence/20261027T153924Z-fc295217-001",
+    "evidence/20261027T153402Z-fc295217-001",
+    "evidence/20261027T153835Z-fc295217-001",
+    "evidence/20261027T153929Z-fc295217-001",
+    "evidence/20261027T153613Z-fc295217-001"
    ]
   },
   {
@@ -1712,7 +1721,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261026T223517Z-226c95c9-001"
+    "evidence/20261027T153633Z-fc295217-001"
    ]
   },
   {
