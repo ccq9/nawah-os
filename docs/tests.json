@@ -1893,7 +1893,7 @@
     "REQ-M5-006"
    ],
    "layer": "security_access_perf",
-   "oracle": "SVC-SS.TXT: LIST gives a client the hash of its window's client area only where those pixels are its own on the screen (display.md v1.10), else `-`. Held: while the sign-in screen holds the display, the test's client a creates a window; its LIST line reads `-`, not a hash of what the screen shows in its place. Shown: after the lab signs in, a's window is on top and LIST gives a 16-digit hash. Covered: client b's window moved over a's client area: a reads `-`, b (on top) gets its own hash; after b closes its window a's hash is the same as before. Minimised: a reads `-`; restored, the same hash as before. The password never appears in the serial log; no frame leaks; exit 33",
+   "oracle": "SVC-SS.TXT: LIST gives a client the hash of its window's client area only where those pixels are its own on the screen (display.md v1.10), else `-`. Held: while the sign-in screen holds the display, the test's client a creates a window; its LIST line reads `-`, not a hash of what the screen shows in its place. While held the lab types the user name (not a secret) into the sign-in dialog: a's STATUS `composed=` does not change, since redraws of the held screen are not counted (v1.10). Shown: after the lab signs in, a's window is on top and LIST gives a 16-digit hash. Covered: client b's window moved over a's client area: a reads `-`, b (on top) gets its own hash; after b closes its window a's hash is the same as before. Minimised: a reads `-`; restored, the same hash as before. The password never appears in the serial log; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "NOT_RUN",
    "evidence_refs": []

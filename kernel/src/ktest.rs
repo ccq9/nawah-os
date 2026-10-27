@@ -7236,6 +7236,28 @@ fn list_hash_held() -> ! {
     if held != "-" {
         fail("LIST gave the hash of a window the lock holds back")
     }
+    // Phase 1b: the lab types the user name (not a secret) into the sign-in dialog; while
+    // the screen is held, its redraws do not show in a client's STATUS (`composed=`).
+    let composed = |ev: &mut Vec<String>| -> String {
+        status_field(&drequest(&a, b"STATUS", Vec::new(), ev), "composed=").into()
+    };
+    let before = composed(&mut ev_a);
+    sched::poll_until(sched::ticks() + 15_000, || false);
+    let after = composed(&mut ev_a);
+    kprintln!(
+        "OSX|{}|ktest|list_hash_held|held_composed_same={}|phase=1b|ready=1",
+        BUILD_ID,
+        u8::from(before == after && !before.is_empty())
+    );
+    if before != after || before.is_empty() {
+        kprintln!(
+            "OSX|{}|ktest|list_hash_held|composed={}>{}",
+            BUILD_ID,
+            before,
+            after
+        );
+        fail("STATUS counted the redraws of the held screen")
+    }
     // Phase 2: the lab signs in; a's window is shown on top and its hash is its own.
     let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
         state_is(r, "unlocked", 1)
