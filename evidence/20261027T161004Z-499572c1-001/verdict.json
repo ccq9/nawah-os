@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261027T161004Z-499572c1-001",
+ "test_id": "TST-M0-002",
+ "verdict": "PASS",
+ "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "00b71fb68abb60ccfacac75010424dff3dd832fb67db77bec9447066fdcce31d",
+ "inputs": {
+  "tests/test_m0_records.py": "4f9ee93b4053cdd9e078d96d413855202f96b843383d3fa75cc0e139f56e6989",
+  "docs/contracts/boot.md": "4b44b86e018d414cf98160e334b9fbb8a305cc69d5627ab3a1fc95207da29a81",
+  "docs/adr/0001-bootstrap.md": "5b861023f83e42c4afb3e66fc798261217f0840c78bab3fd5b7c1f93c0d77f99",
+  "docs/PROJECT.md": "ef755b97a9fca9f4665a787d8111401f17c015f5abec334b639c1ca41479f88f",
+  "docs/ENVIRONMENT.md": "d8516b959d20455b72e4ea667f6fc4815201eee06d76ef5b7fc535fd137dfa6e",
+  "docs/security/threat-model.md": "4389786aaf0d4d091370f22236b3cebeaa6f1bd4b1b93e6b1457cd339c236a35"
+ },
+ "claim_tag": "source_backed_fact"
+}
