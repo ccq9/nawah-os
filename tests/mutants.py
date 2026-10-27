@@ -6,7 +6,11 @@ M3 modules (scheduler, objects, syscalls, ELF loader, MMIO window, TLB shootdown
 virtio-blk, FAT32, VFS) and are killed by M3 cases, including the host checks a case runs on the
 disk image; M50 onwards cover the M4 modules (process/wait syscalls, tokens, device objects and
 polling, system_info, dir_list, and the user-space services svcmgr, authd, configd, netd, sh)
-and are killed by M4 cases, console sessions included (`--stage` selects one group).
+and are killed by M4 cases, console sessions included; M82 onwards cover the M5 modules (displayd,
+inputd, sessiond, libui, libnawah-text; TST-M5-MUTANTS, WP-38) and are killed by M5 cases, the
+host suites included (libui's unit tests, the text conformance suites). `--stage` selects one
+group. A mutant in SECURITY undoes a security fix: the run fails if it survives, whatever the
+ratio.
 
 Each mutant is one deliberate defect (a textual patch that must match exactly once). The runner
 works in a detached git worktree of HEAD so the real checkout, its build/ directory and the
@@ -347,13 +351,65 @@ MUTANTS = [
     ("M81", "user/apps/sh/src/main.rs",
      "            out[n] = b'@';", "            out[n] = b'#';",
      ["TST-M4-SHELL-LOGIN"], "the prompt does not show the session's user"),
+    # ---- M5 gate (WP-38): display, input, session, ui, text. The 2026-10-19 pre-gate review's
+    # findings (WP-43) each get the mutant that removes the fix, so the test that proved the
+    # fix proves it can see the fix gone. `security` names a mutant that must not survive
+    # whatever the ratio (security_of).
+    ("M82", "user/apps/displayd/src/main.rs",
+     "                if !self.clients[ci].narrator {\n                    out.put(b\"ERR ACCESS\");\n                } else if self.narrator.is_some_and(|n| n != ci) {",
+     "                if self.narrator.is_some_and(|n| n != ci) {",
+     ["TST-M5-NARRATOR-AUTHORITY"], "any client may become the narrator (WP-43 M2 undone)"),
+    ("M83", "user/apps/displayd/src/main.rs",
+     "                if self.surfaces.iter().filter(|s| used(s)).count() >= CLIENT_SURFACES {",
+     "                if self.surfaces.iter().filter(|s| used(s)).count() > CLIENT_SURFACES {",
+     ["TST-M5-CLIENT-LIMITS"], "a client gets one surface more than its share (WP-43 S-7, boundary)"),
+    ("M84", "user/apps/displayd/src/main.rs",
+     "                if mine >= CLIENT_WINDOWS {\n                    out.put(b\"ERR LIMIT\");\n                    return false;\n                }",
+     "",
+     ["TST-M5-CLIENT-LIMITS"], "no per-client window limit (WP-43 S-7 undone)"),
+    ("M85", "user/apps/displayd/src/main.rs",
+     "const SESSION_RESERVE: usize = 2;", "const SESSION_RESERVE: usize = 0;",
+     ["TST-M5-CLIENT-LIMITS"], "no surfaces or windows kept for the session (WP-43 S-7)"),
+    ("M86", "user/apps/displayd/src/main.rs",
+     "        if !self.visible(wi) {\n            return false;\n        }\n        let area = w.client().intersect(self.screen);",
+     "        let area = w.client().intersect(self.screen);",
+     ["TST-M5-LIST-HASH-HELD"], "LIST hashes a held or minimised window's place (WP-43 M3 undone)"),
+    ("M87", "user/apps/displayd/src/main.rs",
+     "        if !self.locked {\n            self.composed += 1;\n        }",
+     "        self.composed += 1;",
+     ["TST-M5-LIST-HASH-HELD"], "STATUS counts the held screen's redraws, one per key typed (WP-43 M3 undone)"),
+    ("M88", "user/apps/sessiond/src/main.rs",
+     "                if self.dialog.element(i).role != Role::Password {\n                    self.announce(b\"change\", Some(i));\n                }",
+     "                self.announce(b\"change\", Some(i));",
+     ["TST-M5-AUTH-INPUT-ISOLATED"], "the password field announces every keystroke (WP-43 M2 undone)"),
+    ("M89", "user/apps/sessiond/src/main.rs",
+     "        self.take_keyboard();\n        if self.owner != Owner::Session {\n            self.elevate_end(b\"ERR UNAVAILABLE\", now);\n            return;\n        }\n        let mut r = [0u8; 64];\n        self.display_call(b\"LOCKED\", &[], &mut r);\n        self.show(Screen::Elevate, None);",
+     "        let mut r = [0u8; 64];\n        self.display_call(b\"LOCKED\", &[], &mut r);\n        self.show(Screen::Elevate, None);\n        self.take_keyboard();\n        if self.owner != Owner::Session {\n            self.elevate_end(b\"ERR UNAVAILABLE\", now);\n            return;\n        }",
+     ["TST-M5-ELEVATE"], "the elevation prompt is shown before the keyboard is taken (WP-41 S1 undone, order swapped)"),
+    ("M90", "user/apps/inputd/src/main.rs",
+     "                if name == b\"display\" && self.clients[ci].ident() != b\"display\" {\n                    out.put(b\"ERR ACCESS\");\n                    return;\n                }",
+     "",
+     ["TST-M5-INPUT-NAME-RESERVED"], "any client may register the name `display` (WP-43 S-5 undone)"),
+    ("M91", "user/libui/src/lib.rs",
+     "                        if e.role == Role::Password {\n                            s[..e.text_len].fill(BULLET);\n                        }",
+     "",
+     ["TST-M5-UI-UNIT"], "a password field draws its characters instead of bullets"),
 ]
 
 def stage_of(mid: str) -> str:
     """M01..M29 belong to the M2 gate (TST-M2-MUTANTS), M30..M49 to the M3 gate (TST-M3-MUTANTS),
-    M50.. to the M4 gate (TST-M4-MUTANTS)."""
+    M50..M81 to the M4 gate (TST-M4-MUTANTS), M82.. to the M5 gate (TST-M5-MUTANTS, WP-38)."""
     n = int(mid[1:])
-    return "M2" if n < 30 else ("M3" if n < 50 else "M4")
+    return "M2" if n < 30 else ("M3" if n < 50 else ("M4" if n < 82 else "M5"))
+
+
+# The M5 mutants that undo a security fix of the pre-gate review (WP-43) or of WP-41: the gate
+# fails if any of them survives, whatever the kill ratio (the review's rule 1 of 2026-10-27).
+SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"}
+
+
+def security_of(mid: str) -> bool:
+    return mid in SECURITY
 
 # Applications first (WP-17): the kernel embeds them through NAWAH_APPS_DIR (kernel/build.rs).
 def target_apps():
@@ -424,6 +480,13 @@ def crate_of(rel: str):
     return parts[1].replace("_", "-") if parts[0] == "user" else None
 
 
+def host_suite_of(wt: Path, test_id):
+    """The host suite of tools/project.py that holds `test_id`, or None."""
+    r = subprocess.run(["python3", str(wt / "tools" / "project.py"), "host-suite-of", test_id],
+                       cwd=wt, capture_output=True, text=True)
+    return r.stdout.strip() or None if r.returncode == 0 else None
+
+
 def suite_of(target, test_id):
     t = json.loads((REPO / "platform" / target / "target.json").read_text())
     for suite, cases in t["suites"].items():
@@ -440,7 +503,16 @@ def run_killers(wt: Path, env, target, killers):
     pyproj = ["python3", str(wt / "tools" / "project.py")]
     for tid in killers:
         suite = suite_of(target, tid)
-        r = sh(pyproj + ["test", "--target", target, "--suite", suite, "--only", tid], wt, env)
+        if suite is None:
+            # A host case (M5 gate: libui's unit tests, the text conformance suites) runs on the
+            # worktree through the same driver; project.py knows its suite.
+            host_suite = host_suite_of(wt, tid)
+            if host_suite is None:
+                results[tid] = "SKIPPED"
+                continue
+            r = sh(pyproj + ["test", "--target", "host", "--suite", host_suite, "--only", tid], wt, env)
+        else:
+            r = sh(pyproj + ["test", "--target", target, "--suite", suite, "--only", tid], wt, env)
         if r.returncode == 0:
             results[tid] = "PASS"
         elif r.returncode == 20 or "no artifact" in r.stdout:
@@ -466,7 +538,7 @@ def main():
     ap.add_argument("--target", default="pc-qemu")
     ap.add_argument("--report", default="build/mutants-report.json")
     ap.add_argument("--only", help="comma-separated mutant ids")
-    ap.add_argument("--stage", choices=["M2", "M3", "M4"], help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50.. = M4)")
+    ap.add_argument("--stage", choices=["M2", "M3", "M4", "M5"], help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50-M81 = M4, M82.. = M5)")
     ap.add_argument("--check", action="store_true", help="apply/revert each patch and cargo check on the host target only")
     a = ap.parse_args()
     mutants = [m for m in MUTANTS if (not a.only or m[0] in a.only.split(",")) and (not a.stage or stage_of(m[0]) == a.stage)]
@@ -484,7 +556,7 @@ def main():
         for m in mutants:
             mid, rel, old, new, killers, note = m
             t0 = time.time()
-            entry = {"id": mid, "file": rel, "note": note, "killers": killers}
+            entry = {"id": mid, "file": rel, "note": note, "killers": killers, "security": security_of(mid)}
             reset(wt)
             try:
                 apply(wt, m)
@@ -571,8 +643,9 @@ def main():
         bad = [m["id"] for m in report["mutants"] if m["status"] == "invalid"]
         print(f"\n{'OK' if not bad else 'FAIL'}: {len(report['mutants']) - len(bad)}/{len(report['mutants'])} mutants apply and type-check" + (f"; invalid: {bad}" if bad else ""))
         return 0 if not bad else 1
-    verdict = ratio >= THRESHOLD and valid
-    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; invalid={report['invalid']}; declared_killers_missed={report['declared_killers_missed']}; report={a.report}")
+    report["surviving_security"] = [m for m in report["survived"] if security_of(m)]
+    verdict = ratio >= THRESHOLD and valid and not report["surviving_security"]
+    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; surviving_security={report['surviving_security']}; invalid={report['invalid']}; declared_killers_missed={report['declared_killers_missed']}; report={a.report}")
     return 0 if verdict else 1
 
 

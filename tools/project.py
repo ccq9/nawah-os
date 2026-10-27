@@ -1124,6 +1124,14 @@ HOST_SUITES["M4-GATE"] = [
      "oracle": "every seeded M4 defect that compiles (process/wait syscalls, tokens, device objects and polling, system_info, dir_list, svcmgr ordering/timeouts/restarts/authority, authd verification and sessions, configd CAS/retry/precedence/notify/authorization, netd checksums/policy/retransmission, sh token hand-over and prompt) is killed by at least one M4 case, console sessions included; kill ratio >= 0.95",
      "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"], "timeout_s": 10800},
 ]
+# The M5 gate's mutation run (WP-38): M82 onwards against the M5 suite (guest cases and the host
+# suites: libui's unit tests, the text conformance suites); a surviving mutant that undoes a
+# security fix fails the run whatever the ratio (tests/mutants.py SECURITY).
+HOST_SUITES["M5-GATE"] = [
+    {"id": "TST-M5-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--stage", "M5", "--report", "build/mutants-m5-report.json"],
+     "oracle": "every seeded M5 defect that compiles (displayd: narrator authority, client limits and the session's reserve, LIST hash and STATUS composed= of a held screen; sessiond: the password field's announcements, the elevation prompt after the keys; inputd: the name `display`; libui: password bullets) is killed by at least one M5 case, host suites included; kill ratio >= 0.95 and no surviving security mutant; report build/mutants-m5-report.json",
+     "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"], "timeout_s": 10800},
+]
 HOST_SUITES["M4"] = [
     {"id": "TST-M4-HASH-VECTORS", "command": ["cargo", "test", "--offline", "--release", "-p", "nawah-crypto", "--target", "x86_64-unknown-linux-gnu"],
      "oracle": "nawah-crypto's SHA-256 (FIPS 180-4 examples incl. the two-block message and the empty message, incremental = one-shot), HMAC-SHA-256 (RFC 4231 test cases 1, 2, 6, 7) and PBKDF2-HMAC-SHA-256 (RFC 7914 §11, 1 and 80000 iterations) known answers pass on the host (4 tests, 0 failed); the guest repeats them in the auth service (TST-M4-LOGIN)",
@@ -1169,11 +1177,18 @@ HOST_SUITES["M1"] = [
 ]
 
 
-def cmd_test_host(suite) -> int:
+def cmd_test_host(suite, only=None) -> int:
     if suite not in HOST_SUITES:
         print(f"host suite {suite} is not implemented; implemented: {sorted(HOST_SUITES)}"); return E_INTERNAL
+    cases = HOST_SUITES[suite]
+    if only:
+        wanted = set(only)
+        cases = [c for c in cases if c["id"] in wanted]
+        missing = wanted - {c["id"] for c in cases}
+        if missing:
+            print(f"unknown case ids for host suite {suite}: {sorted(missing)}"); return E_INTERNAL
     rc_all = 0
-    for case in HOST_SUITES[suite]:
+    for case in cases:
         rc_all |= cmd_test_host_case(case)
     print(f"host suite {suite}: {'PASS' if rc_all == 0 else 'FAIL'}")
     return rc_all
@@ -1271,7 +1286,7 @@ def cmd_reverify_host() -> int:
 
 def cmd_test(target_name, suite, only=None) -> int:
     if target_name == "host":
-        return cmd_test_host(suite)
+        return cmd_test_host(suite, only)
     t = load_target(target_name)
     suites = t.get("suites", {})
     if suite not in suites:
@@ -1572,7 +1587,9 @@ def main(argv=None):
     for n in ("build", "boot"):
         s = sub.add_parser(n); s.add_argument("--target", required=True)
     s = sub.add_parser("test"); s.add_argument("--target", required=True); s.add_argument("--suite", required=True)
-    s.add_argument("--only", help="comma-separated case ids (guest suites)")
+    s.add_argument("--only", help="comma-separated case ids")
+    s = sub.add_parser("host-suite-of", help="print the host suite that holds a case id (tests/mutants.py asks)")
+    s.add_argument("test_id")
     s = sub.add_parser("preflight", help="build and run a guest suite here before a push (build-std, scratch evidence)")
     s.add_argument("--suite", required=True); s.add_argument("--only", help="comma-separated case ids")
     sub.add_parser("hygiene", help="CI's hygiene step here: the same fmt/clippy/unsafe commands, read from verify.yml")
@@ -1584,6 +1601,11 @@ def main(argv=None):
     if a.cmd == "build": return cmd_build(a.target)
     if a.cmd == "boot": return cmd_boot(a.target)
     if a.cmd == "test": return cmd_test(a.target, a.suite, a.only.split(",") if a.only else None)
+    if a.cmd == "host-suite-of":
+        found = [name for name, cases in HOST_SUITES.items() if any(c["id"] == a.test_id for c in cases)]
+        if not found:
+            return 1
+        print(found[0]); return 0
     if a.cmd == "checkpoint": return cmd_checkpoint(a.note)
     if a.cmd == "reverify-host": return cmd_reverify_host()
     if a.cmd == "import-ci-evidence": return cmd_import_ci_evidence(a.run)

@@ -1804,10 +1804,11 @@
     "REQ-M5-007"
    ],
    "layer": "host_unit",
-   "oracle": "seeded defects in the M5 modules (display, input, compositor, text, ui, session) are killed by the M5 suite (>= 95%)",
+   "oracle": "seeded defects M82 onwards in the M5 modules (displayd, inputd, sessiond, libui, libnawah-text) are killed by the M5 suite, host suites included (libui's unit tests, the text conformance suites): kill ratio >= 0.95 over the valid mutants of this gate alone, and no surviving mutant that undoes a security fix of WP-43 or WP-41 (tests/mutants.py SECURITY); report build/mutants-m5-report.json",
    "command": "python3 tools/project.py test --target host --suite M5-GATE",
    "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "evidence_refs": [],
+   "stale_policy": "warn"
   },
   {
    "id": "TST-M6-LFN",

@@ -1,6 +1,7 @@
 # Mutation testing of the kernel and the system services: TST-M2-MUTANTS (REQ-M2-014, M01-M29
 # against the M1/M2 suites), TST-M3-MUTANTS (REQ-M3-010, M30-M49 against the M3 suite) and
-# TST-M4-MUTANTS (REQ-M4-010, M50 onwards against the M4 suite). Manual/scheduled (each mutant
+# TST-M4-MUTANTS (REQ-M4-010, M50-M81 against the M4 suite) and TST-M5-MUTANTS (REQ-M5-007, M82
+# onwards against the M5 suite, WP-38). Manual/scheduled (each mutant
 # rebuilds the kernel and the applications), evidence published like the verify workflow so it
 # can be imported with `project.py import-ci-evidence --run mutants-<run id>`.
 name: mutants
@@ -47,15 +48,19 @@ jobs:
       - name: "Mutation run, M3 gate (TST-M3-MUTANTS, M30-M49, WP-22)"
         if: always()
         run: python3 tools/project.py test --target host --suite M3-GATE
-      - name: "Mutation run, M4 gate (TST-M4-MUTANTS, M50 onwards, WP-31)"
+      - name: "Mutation run, M4 gate (TST-M4-MUTANTS, M50-M81, WP-31)"
         if: always()
         run: python3 tools/project.py test --target host --suite M4-GATE
+      - name: "Mutation run, M5 gate (TST-M5-MUTANTS, M82 onwards, WP-38)"
+        if: always()
+        run: python3 tools/project.py test --target host --suite M5-GATE
       - name: Report
         if: always()
         run: |
           cat build/mutants-report.json || true
           cat build/mutants-m3-report.json || true
           cat build/mutants-m4-report.json || true
+          cat build/mutants-m5-report.json || true
       # A convenience copy, as in verify.yml: the ci-evidence branch below is the record.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         if: always()
@@ -67,6 +72,7 @@ jobs:
             build/mutants-report.json
             build/mutants-m3-report.json
             build/mutants-m4-report.json
+            build/mutants-m5-report.json
             build/mutants-scratch/
           retention-days: 7
       - name: Publish evidence on a ci-evidence branch
