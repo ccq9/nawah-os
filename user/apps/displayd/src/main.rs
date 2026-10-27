@@ -663,6 +663,22 @@ impl Compositor {
         !w.minimized && (!self.locked || self.clients[w.owner].session)
     }
 
+    /// Whether the client area of the window at stack position `k` is all its owner's on the
+    /// screen (v1.10): shown, and no shown window of another client above it overlaps it.
+    fn owns_client_area(&self, k: usize) -> bool {
+        let wi = self.order[k];
+        let w = &self.windows[wi];
+        if !self.visible(wi) {
+            return false;
+        }
+        let area = w.client().intersect(self.screen);
+        (0..k).all(|j| {
+            let o = self.order[j];
+            let ow = &self.windows[o];
+            ow.owner == w.owner || !self.visible(o) || ow.outer().intersect(area).is_empty()
+        })
+    }
+
     /// Reachable by Alt+Tab (v1.3): shown or minimised, but never a window held back by the
     /// lock. A minimised one the caller restores before focusing it.
     fn cyclable(&self, wi: usize) -> bool {
@@ -1633,8 +1649,14 @@ impl Compositor {
                     } else {
                         b" 0 "
                     });
-                    let h = self.hash_window(wi);
-                    out.hex64(h);
+                    // Only pixels the client owns on the screen (v1.10): a window held back
+                    // by the lock, minimised or under another client's window reads `-`.
+                    if self.owns_client_area(k) {
+                        let h = self.hash_window(wi);
+                        out.hex64(h);
+                    } else {
+                        out.put(b"-");
+                    }
                 }
             }
             b"LOCKED" | b"UNLOCKED" | b"LOGOUT" => {
