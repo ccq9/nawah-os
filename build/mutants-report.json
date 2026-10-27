@@ -1,0 +1,534 @@
+{
+ "threshold": 0.95,
+ "target": "pc-qemu",
+ "mutants": [
+  {
+   "id": "M01",
+   "file": "kernel/src/arch/x86_64/gdt.rs",
+   "note": "IST1 points at the base of the #DF stack instead of its top",
+   "killers": [
+    "TST-M2-EXC-DF"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-DF"
+   ],
+   "results": {
+    "TST-M2-EXC-DF": "FAIL"
+   },
+   "seconds": 25.5
+  },
+  {
+   "id": "M02",
+   "file": "kernel/src/arch/x86_64/idt.rs",
+   "note": "#DF gate loses its IST (the const assertion on Gate::interrupt still holds)",
+   "killers": [
+    "TST-M2-IDT-LAYOUT",
+    "TST-M2-EXC-DF"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-IDT-LAYOUT",
+    "TST-M2-EXC-DF"
+   ],
+   "results": {
+    "TST-M2-IDT-LAYOUT": "FAIL",
+    "TST-M2-EXC-DF": "FAIL"
+   },
+   "seconds": 23.7
+  },
+  {
+   "id": "M03",
+   "file": "kernel/src/arch/x86_64/trap.rs",
+   "note": "error code left on the stack before iretq",
+   "killers": [
+    "TST-M2-EXC-BP"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-BP"
+   ],
+   "results": {
+    "TST-M2-EXC-BP": "FAIL"
+   },
+   "seconds": 16.7
+  },
+  {
+   "id": "M04",
+   "file": "kernel/src/arch/x86_64/trap.rs",
+   "note": "nesting limit effectively removed",
+   "killers": [
+    "TST-M2-EXC-NESTED"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-NESTED"
+   ],
+   "results": {
+    "TST-M2-EXC-NESTED": "FAIL"
+   },
+   "seconds": 17.8
+  },
+  {
+   "id": "M05",
+   "file": "kernel/src/mm/pmm.rs",
+   "note": "free counter not decremented on allocation",
+   "killers": [
+    "TST-M2-PMM-COUNTS"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-PMM-COUNTS"
+   ],
+   "results": {
+    "TST-M2-PMM-COUNTS": "FAIL"
+   },
+   "seconds": 16.7
+  },
+  {
+   "id": "M06",
+   "file": "kernel/src/mm/pmm.rs",
+   "note": "double-free detection removed",
+   "killers": [
+    "TST-M2-PMM-DOUBLE-FREE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-PMM-DOUBLE-FREE"
+   ],
+   "results": {
+    "TST-M2-PMM-DOUBLE-FREE": "FAIL"
+   },
+   "seconds": 17.0
+  },
+  {
+   "id": "M07",
+   "file": "kernel/src/mm/pmm.rs",
+   "note": "first MiB handed out",
+   "killers": [
+    "TST-M1-BOOT",
+    "TST-M2-PMM-EXHAUST"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT",
+    "TST-M2-PMM-EXHAUST"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL",
+    "TST-M2-PMM-EXHAUST": "FAIL"
+   },
+   "seconds": 27.4
+  },
+  {
+   "id": "M08",
+   "file": "kernel/src/arch/x86_64/paging.rs",
+   "note": "enable_wp a no-op (WP bit constant zeroed); the test clears WP first, so firmware state cannot mask it",
+   "killers": [
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-WP": "FAIL",
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 23.7
+  },
+  {
+   "id": "M09",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": ".data/.bss executable (NX dropped)",
+   "killers": [
+    "TST-M2-VMM-NX",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-NX",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-NX": "FAIL",
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 23.6
+  },
+  {
+   "id": "M10",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "image headers writable",
+   "killers": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 16.9
+  },
+  {
+   "id": "M11",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": ".text writable",
+   "killers": [
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-WP": "FAIL",
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 23.6
+  },
+  {
+   "id": "M12",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "null page identity-mapped",
+   "killers": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 16.9
+  },
+  {
+   "id": "M13",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "guard page mapped as stack",
+   "killers": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 16.9
+  },
+  {
+   "id": "M14",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "boot-services memory never reclaimed",
+   "killers": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 16.8
+  },
+  {
+   "id": "M15",
+   "file": "kernel/src/arch/x86_64/apic.rs",
+   "note": "EOI never written",
+   "killers": [
+    "TST-M2-IRQ-EOI",
+    "TST-M2-TIMER-TICKS"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-IRQ-EOI",
+    "TST-M2-TIMER-TICKS"
+   ],
+   "results": {
+    "TST-M2-IRQ-EOI": "FAIL",
+    "TST-M2-TIMER-TICKS": "FAIL"
+   },
+   "seconds": 196.8
+  },
+  {
+   "id": "M16",
+   "file": "kernel/src/arch/x86_64/apic.rs",
+   "note": "timer one-shot instead of periodic",
+   "killers": [
+    "TST-M2-TIMER-TICKS"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-TIMER-TICKS"
+   ],
+   "results": {
+    "TST-M2-TIMER-TICKS": "FAIL"
+   },
+   "seconds": 103.5
+  },
+  {
+   "id": "M17",
+   "file": "kernel/src/arch/x86_64/apic.rs",
+   "note": "calibration off by 10x",
+   "killers": [
+    "TST-M2-TIMER-TICKS"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-TIMER-TICKS"
+   ],
+   "results": {
+    "TST-M2-TIMER-TICKS": "FAIL"
+   },
+   "seconds": 17.0
+  },
+  {
+   "id": "M18",
+   "file": "kernel/src/arch/x86_64/apic.rs",
+   "note": "wrong spurious vector programmed",
+   "killers": [
+    "TST-M2-SPURIOUS"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-SPURIOUS"
+   ],
+   "results": {
+    "TST-M2-SPURIOUS": "FAIL"
+   },
+   "seconds": 17.0
+  },
+  {
+   "id": "M19",
+   "file": "kernel/src/arch/x86_64/irq.rs",
+   "note": "depth counter never decremented",
+   "killers": [
+    "TST-M2-TIMER-TICKS",
+    "TST-M2-IRQ-EOI"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-TIMER-TICKS",
+    "TST-M2-IRQ-EOI"
+   ],
+   "results": {
+    "TST-M2-TIMER-TICKS": "FAIL",
+    "TST-M2-IRQ-EOI": "FAIL"
+   },
+   "seconds": 23.8
+  },
+  {
+   "id": "M20",
+   "file": "kernel/src/arch/x86_64/pic.rs",
+   "note": "IRQ0 left unmasked on the PIC",
+   "killers": [
+    "TST-M1-BOOT"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL"
+   },
+   "seconds": 20.8
+  },
+  {
+   "id": "M21",
+   "file": "kernel/src/sync.rs",
+   "note": "IF not restored when the guard drops",
+   "killers": [
+    "TST-M2-LOCK-IRQSAVE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-LOCK-IRQSAVE"
+   ],
+   "results": {
+    "TST-M2-LOCK-IRQSAVE": "FAIL"
+   },
+   "seconds": 16.8
+  },
+  {
+   "id": "M22",
+   "file": "kernel/src/sync.rs",
+   "note": "lock taken without disabling interrupts",
+   "killers": [
+    "TST-M2-LOCK-IRQSAVE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-LOCK-IRQSAVE"
+   ],
+   "results": {
+    "TST-M2-LOCK-IRQSAVE": "FAIL"
+   },
+   "seconds": 17.0
+  },
+  {
+   "id": "M23",
+   "file": "kernel/src/sync.rs",
+   "note": "re-entry detection removed (hangs; killed by timeout)",
+   "killers": [
+    "TST-M2-LOCK-REENTRY"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-LOCK-REENTRY"
+   ],
+   "results": {
+    "TST-M2-LOCK-REENTRY": "FAIL"
+   },
+   "seconds": 104.0
+  },
+  {
+   "id": "M24",
+   "file": "kernel/src/arch/x86_64/acpi.rs",
+   "note": "RSDP checksum test inverted",
+   "killers": [
+    "TST-M1-BOOT",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL",
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 27.2
+  },
+  {
+   "id": "M25",
+   "file": "kernel/src/arch/x86_64/acpi.rs",
+   "note": "I/O APIC entries ignored",
+   "killers": [
+    "TST-M1-BOOT"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL"
+   },
+   "seconds": 20.7
+  },
+  {
+   "id": "M26",
+   "file": "kernel/src/arch/x86_64/gdt.rs",
+   "note": "stack diagnostics never name the #DF stack",
+   "killers": [
+    "TST-M2-EXC-DF",
+    "TST-M2-VMM-GUARD"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-DF",
+    "TST-M2-VMM-GUARD"
+   ],
+   "results": {
+    "TST-M2-EXC-DF": "FAIL",
+    "TST-M2-VMM-GUARD": "FAIL"
+   },
+   "seconds": 23.6
+  },
+  {
+   "id": "M27",
+   "file": "kernel/src/boot/stub.rs",
+   "note": "RSDP never handed to the kernel",
+   "killers": [
+    "TST-M1-BOOT"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL"
+   },
+   "seconds": 20.5
+  },
+  {
+   "id": "M28",
+   "file": "kernel/src/arch/x86_64/ioapic.rs",
+   "note": "I/O APIC entries unmasked instead of masked",
+   "killers": [
+    "TST-M1-BOOT"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL"
+   },
+   "seconds": 20.8
+  },
+  {
+   "id": "M29",
+   "file": "kernel/src/arch/x86_64/trap.rs",
+   "note": "#BP made fatal",
+   "killers": [
+    "TST-M2-EXC-BP"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-BP"
+   ],
+   "results": {
+    "TST-M2-EXC-BP": "FAIL"
+   },
+   "seconds": 17.0
+  }
+ ],
+ "started": "2026-10-27T18:08:55Z",
+ "valid": 29,
+ "killed": 29,
+ "survived": [],
+ "declared_killers_missed": [],
+ "invalid": [],
+ "ratio": 1.0,
+ "finished": "2026-10-27T18:24:28Z"
+}

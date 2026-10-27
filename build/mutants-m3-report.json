@@ -1,0 +1,371 @@
+{
+ "threshold": 0.95,
+ "target": "pc-qemu",
+ "mutants": [
+  {
+   "id": "M30",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "time slice never expires (no preemption)",
+   "killers": [
+    "TST-M3-PREEMPT",
+    "TST-M3-LOCK-CONTENTION"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-PREEMPT"
+   ],
+   "results": {
+    "TST-M3-PREEMPT": "FAIL",
+    "TST-M3-LOCK-CONTENTION": "PASS"
+   },
+   "seconds": 120.5
+  },
+  {
+   "id": "M31",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "priorities ignored by pick_next (round-robin only)",
+   "killers": [
+    "TST-M3-PRIORITY-ORDER"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-PRIORITY-ORDER"
+   ],
+   "results": {
+    "TST-M3-PRIORITY-ORDER": "FAIL"
+   },
+   "seconds": 17.1
+  },
+  {
+   "id": "M32",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "a process never finishes (thread count not decremented)",
+   "killers": [
+    "TST-M1-BOOT",
+    "TST-M3-USER-SYSCALL"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT",
+    "TST-M3-USER-SYSCALL"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL",
+    "TST-M3-USER-SYSCALL": "FAIL"
+   },
+   "seconds": 201.0
+  },
+  {
+   "id": "M33",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "a wake-up before the block is lost (no token)",
+   "killers": [
+    "TST-M3-BLOCK-WAKE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-BLOCK-WAKE"
+   ],
+   "results": {
+    "TST-M3-BLOCK-WAKE": "FAIL"
+   },
+   "seconds": 16.9
+  },
+  {
+   "id": "M34",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "channel_write ignores the WRITE right",
+   "killers": [
+    "TST-M3-RIGHTS-DENIED"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-RIGHTS-DENIED"
+   ],
+   "results": {
+    "TST-M3-RIGHTS-DENIED": "FAIL"
+   },
+   "seconds": 16.9
+  },
+  {
+   "id": "M35",
+   "file": "kernel/src/object/handle.rs",
+   "note": "a closed handle's slot keeps its generation (stale handle accepted)",
+   "killers": [
+    "TST-M3-CLOSED-HANDLE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-CLOSED-HANDLE"
+   ],
+   "results": {
+    "TST-M3-CLOSED-HANDLE": "FAIL"
+   },
+   "seconds": 16.9
+  },
+  {
+   "id": "M36",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "oversize message accepted by channel_write",
+   "killers": [
+    "TST-M3-IPC-OVERSIZE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-IPC-OVERSIZE"
+   ],
+   "results": {
+    "TST-M3-IPC-OVERSIZE": "FAIL"
+   },
+   "seconds": 16.8
+  },
+  {
+   "id": "M37",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "a syscall may write into a read-only user page (WRITE bit not checked)",
+   "killers": [
+    "TST-M3-PATH-INVALID"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-PATH-INVALID"
+   ],
+   "results": {
+    "TST-M3-PATH-INVALID": "FAIL"
+   },
+   "seconds": 17.0
+  },
+  {
+   "id": "M38",
+   "file": "kernel/src/loader/elf.rs",
+   "note": "W^X not enforced on PT_LOAD segments",
+   "killers": [
+    "TST-M3-ELF-WX"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-ELF-WX"
+   ],
+   "results": {
+    "TST-M3-ELF-WX": "FAIL"
+   },
+   "seconds": 17.0
+  },
+  {
+   "id": "M39",
+   "file": "kernel/src/loader/elf.rs",
+   "note": "overlapping segments accepted",
+   "killers": [
+    "TST-M3-ELF-MALFORMED"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-ELF-MALFORMED"
+   ],
+   "results": {
+    "TST-M3-ELF-MALFORMED": "FAIL"
+   },
+   "seconds": 16.9
+  },
+  {
+   "id": "M40",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "MMIO mapped at its physical address again (CI run 39110182649 regression)",
+   "killers": [
+    "TST-M1-BOOT",
+    "TST-M3-BLK-USER-CR3"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT",
+    "TST-M3-BLK-USER-CR3"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL",
+    "TST-M3-BLK-USER-CR3": "FAIL"
+   },
+   "seconds": 27.5
+  },
+  {
+   "id": "M41",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "unmap_page does not tell the other CPUs",
+   "killers": [
+    "TST-M3-TLB-SHOOTDOWN"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-TLB-SHOOTDOWN"
+   ],
+   "results": {
+    "TST-M3-TLB-SHOOTDOWN": "FAIL"
+   },
+   "seconds": 16.9
+  },
+  {
+   "id": "M42",
+   "file": "kernel/src/arch/x86_64/tlb.rs",
+   "note": "a served shootdown request flushes nothing",
+   "killers": [
+    "TST-M3-TLB-SHOOTDOWN"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-TLB-SHOOTDOWN"
+   ],
+   "results": {
+    "TST-M3-TLB-SHOOTDOWN": "FAIL"
+   },
+   "seconds": 17.0
+  },
+  {
+   "id": "M43",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "spawn_on places the thread on the caller's CPU",
+   "killers": [
+    "TST-M3-SMP-ONLINE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-SMP-ONLINE"
+   ],
+   "results": {
+    "TST-M3-SMP-ONLINE": "FAIL"
+   },
+   "seconds": 17.0
+  },
+  {
+   "id": "M44",
+   "file": "kernel/src/arch/x86_64/mod.rs",
+   "note": "every CPU believes it is CPU 0",
+   "killers": [
+    "TST-M3-SMP-ONLINE",
+    "TST-M3-LOCK-CONTENTION"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-SMP-ONLINE",
+    "TST-M3-LOCK-CONTENTION"
+   ],
+   "results": {
+    "TST-M3-SMP-ONLINE": "FAIL",
+    "TST-M3-LOCK-CONTENTION": "FAIL"
+   },
+   "seconds": 24.6
+  },
+  {
+   "id": "M45",
+   "file": "kernel/src/drivers/virtio_blk.rs",
+   "note": "reads past the capacity accepted",
+   "killers": [
+    "TST-M3-BLK-READ"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-BLK-READ"
+   ],
+   "results": {
+    "TST-M3-BLK-READ": "FAIL"
+   },
+   "seconds": 16.9
+  },
+  {
+   "id": "M46",
+   "file": "kernel/src/fs/fat32.rs",
+   "note": "only the first FAT is updated (fsck on an image with files left: FATs differ)",
+   "killers": [
+    "TST-M3-FILE-ROUNDTRIP",
+    "TST-M3-FD-LEAK",
+    "TST-M3-FAT32-PERSIST"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FILE-ROUNDTRIP",
+    "TST-M3-FD-LEAK",
+    "TST-M3-FAT32-PERSIST"
+   ],
+   "results": {
+    "TST-M3-FILE-ROUNDTRIP": "FAIL",
+    "TST-M3-FD-LEAK": "FAIL",
+    "TST-M3-FAT32-PERSIST": "FAIL"
+   },
+   "seconds": 33.5
+  },
+  {
+   "id": "M47",
+   "file": "kernel/src/fs/fat32.rs",
+   "note": "unlink leaks the cluster chain",
+   "killers": [
+    "TST-M3-FAT32-WRITE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FAT32-WRITE"
+   ],
+   "results": {
+    "TST-M3-FAT32-WRITE": "FAIL"
+   },
+   "seconds": 17.3
+  },
+  {
+   "id": "M48",
+   "file": "kernel/src/fs/vfs.rs",
+   "note": "relative paths accepted",
+   "killers": [
+    "TST-M3-PATH-INVALID"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-PATH-INVALID"
+   ],
+   "results": {
+    "TST-M3-PATH-INVALID": "FAIL"
+   },
+   "seconds": 17.0
+  },
+  {
+   "id": "M49",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "every open handle gets the WRITE right (read-only open can write)",
+   "killers": [
+    "TST-M3-FILE-ROUNDTRIP"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FILE-ROUNDTRIP"
+   ],
+   "results": {
+    "TST-M3-FILE-ROUNDTRIP": "FAIL"
+   },
+   "seconds": 17.0
+  }
+ ],
+ "started": "2026-10-27T18:24:34Z",
+ "valid": 20,
+ "killed": 20,
+ "survived": [],
+ "declared_killers_missed": [],
+ "invalid": [],
+ "ratio": 1.0,
+ "finished": "2026-10-27T18:35:40Z"
+}
