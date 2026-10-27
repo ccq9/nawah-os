@@ -4,7 +4,7 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "034d5d2502f9b4e06e12a87df78f8ed7dbd84f79",
+ "source_revision": "4459ea6b5759ac6fe699aab59f4e6231074ad142",
  "dirty_state": true,
  "current_stage": "M5",
  "current_task": "WP-38",
@@ -64,8 +64,8 @@
  "next_action": "WP-38: بوابة M5: سيناريوهات الخروج، طفرات M5، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
  "required_inputs": [],
  "runner_status": "running",
- "checkpoint_generation": 48,
- "event_sequence": 48,
+ "checkpoint_generation": 49,
+ "event_sequence": 49,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 7,
@@ -77,7 +77,7 @@
   "holder_id": "claude-session-015h9GTwLifTZqTMhyRyf9bH",
   "acquired_at": "2026-10-24T14:30:00Z",
   "ttl_s": 900,
-  "fencing_token": 48
+  "fencing_token": 49
  },
  "host_fingerprint": "linux-6.8.0-138-generic-x86_64-2vcpu",
  "errata_version": "1",
