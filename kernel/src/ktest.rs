@@ -213,6 +213,7 @@ pub fn run() -> ! {
         "input_name_reserved" => input_name_reserved(),
         "focus_after_restart" => focus_after_restart(),
         "session_loss" => session_loss(),
+        "list_hash_held" => list_hash_held(),
         "lock_hang" => lock_hang(),
         "lock_auth_hang" => lock_auth_hang(),
         "unlock_auth_hang" => unlock_auth_hang(),
@@ -7171,6 +7172,201 @@ fn auth_input_isolated() -> ! {
         name,
         h,
         "the password typed on the lock screen reached the session alone: no client, no compositor, no announcement",
+    )
+}
+
+/// TST-M5-LIST-HASH-HELD (REQ-M5-006; WP-43 finding M3): `LIST` gives a client the hash of
+/// its window's client area only where those pixels are its own on the screen (display.md
+/// v1.10); held by the lock, minimised, or under another client's window it reads `-`, so no
+/// client learns what the screen shows in its place.
+fn list_hash_held() -> ! {
+    let name = "list_hash_held";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SS.TXT",
+        &["auth", "input", "display", "session", "spy"],
+    );
+    let a = svc_connect(&h, "display");
+    let b = svc_connect(&h, "display");
+    let (mut ev_a, mut ev_b) = (Vec::new(), Vec::new());
+    let status0 = drequest(&a, b"STATUS", Vec::new(), &mut ev_a);
+    let format: u32 = status_field(&status0, "format=").parse().unwrap_or(99);
+    if format > 1 {
+        kprintln!("OSX|{}|ktest|{}|status={}", BUILD_ID, name, status0);
+        fail("the display service did not report its pixel format")
+    }
+    kprintln!("OSX|{}|ktest|list_hash_held|services=5|ready=1", BUILD_ID);
+    let own_hash = |c: &Arc<Endpoint>, ev: &mut Vec<String>| -> String {
+        parse_windows(&drequest(c, b"LIST", Vec::new(), ev))
+            .first()
+            .map_or(String::from("none"), |w| w.hash.clone())
+    };
+    let is_hex = |s: &str| s.len() == 16 && s.bytes().all(|c| c.is_ascii_hexdigit());
+    // Phase 1: the sign-in screen holds the display; a's window is created and not shown.
+    let state0 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        state_is(r, "no_session", 0)
+    });
+    let (vmo_a, entry_a) = kernel_surface(200, 100, format, 0xD04040);
+    let sa = drequest(
+        &a,
+        b"CREATE_SURFACE 200 100",
+        alloc::vec![entry_a],
+        &mut ev_a,
+    );
+    let sa_id: String = sa.strip_prefix("OK ").unwrap_or("0").into();
+    let wa = drequest(
+        &a,
+        alloc::format!("CREATE_WINDOW {} a", sa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let wa_id: String = wa.strip_prefix("OK ").unwrap_or("0").into();
+    let held = own_hash(&a, &mut ev_a);
+    kprintln!(
+        "OSX|{}|ktest|list_hash_held|state={}|surface={}|window={}|held_hash={}|phase=1|ready=1",
+        BUILD_ID,
+        state0,
+        sa,
+        wa,
+        held
+    );
+    if !state_is(&state0, "no_session", 0) || !sa.starts_with("OK ") || !wa.starts_with("OK ") {
+        fail("the held screen or a's window was not set up")
+    }
+    if held != "-" {
+        fail("LIST gave the hash of a window the lock holds back")
+    }
+    // Phase 2: the lab signs in; a's window is shown on top and its hash is its own.
+    let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "unlocked", 1)
+    });
+    // The compositor learns of the unlock from the session: until then a's window stays held.
+    let deadline = sched::ticks() + 10_000;
+    let mut open = own_hash(&a, &mut ev_a);
+    while !is_hex(&open) && sched::ticks() < deadline {
+        sched::poll_until(sched::ticks() + 20, || false);
+        open = own_hash(&a, &mut ev_a);
+    }
+    kprintln!(
+        "OSX|{}|ktest|list_hash_held|unlocked={}|open_hex={}|phase=2",
+        BUILD_ID,
+        unlocked,
+        u8::from(is_hex(&open))
+    );
+    if !state_is(&unlocked, "unlocked", 1) || !is_hex(&open) {
+        fail("a's shown window did not get its own hash")
+    }
+    // Phase 3: b's window is moved over a's client area.
+    let la = parse_windows(&drequest(&a, b"LIST", Vec::new(), &mut ev_a));
+    let (ax, ay) = la.first().map_or((0, 0), |w| (w.x, w.y));
+    let (vmo_b, entry_b) = kernel_surface(200, 100, format, 0x40B060);
+    let sb = drequest(
+        &b,
+        b"CREATE_SURFACE 200 100",
+        alloc::vec![entry_b],
+        &mut ev_b,
+    );
+    let sb_id: String = sb.strip_prefix("OK ").unwrap_or("0").into();
+    let wb = drequest(
+        &b,
+        alloc::format!("CREATE_WINDOW {} b", sb_id).as_bytes(),
+        Vec::new(),
+        &mut ev_b,
+    );
+    let wb_id: String = wb.strip_prefix("OK ").unwrap_or("0").into();
+    let mv = drequest(
+        &b,
+        alloc::format!("MOVE {} {} {}", wb_id, ax, ay).as_bytes(),
+        Vec::new(),
+        &mut ev_b,
+    );
+    let covered = own_hash(&a, &mut ev_a);
+    let cover_own = own_hash(&b, &mut ev_b);
+    let cb = drequest(
+        &b,
+        alloc::format!("CLOSE {}", wb_id).as_bytes(),
+        Vec::new(),
+        &mut ev_b,
+    );
+    let uncovered = own_hash(&a, &mut ev_a);
+    kprintln!(
+        "OSX|{}|ktest|list_hash_held|move={}|covered_hash={}|cover_own_hex={}|close={}|uncovered_same={}|phase=3",
+        BUILD_ID,
+        mv,
+        covered,
+        u8::from(is_hex(&cover_own)),
+        cb,
+        u8::from(uncovered == open)
+    );
+    if mv != "OK" || cb != "OK" || covered != "-" || !is_hex(&cover_own) || uncovered != open {
+        fail("LIST gave a the hash of pixels under another client's window")
+    }
+    // Phase 4: a minimises its window, then restores it.
+    let mn = drequest(
+        &a,
+        alloc::format!("MINIMIZE {}", wa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let minimized = own_hash(&a, &mut ev_a);
+    let rs = drequest(
+        &a,
+        alloc::format!("RESTORE {}", wa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let restored = own_hash(&a, &mut ev_a);
+    kprintln!(
+        "OSX|{}|ktest|list_hash_held|minimize={}|minimized_hash={}|restore={}|restored_same={}|phase=4",
+        BUILD_ID,
+        mn,
+        minimized,
+        rs,
+        u8::from(restored == open)
+    );
+    if mn != "OK" || rs != "OK" || minimized != "-" || restored != open {
+        fail("LIST gave the hash of a minimised window's place")
+    }
+    let ca = drequest(
+        &a,
+        alloc::format!("CLOSE {}", wa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let da = drequest(
+        &a,
+        alloc::format!("DESTROY_SURFACE {}", sa_id).as_bytes(),
+        Vec::new(),
+        &mut ev_a,
+    );
+    let db = drequest(
+        &b,
+        alloc::format!("DESTROY_SURFACE {}", sb_id).as_bytes(),
+        Vec::new(),
+        &mut ev_b,
+    );
+    if ca != "OK" || da != "OK" || db != "OK" {
+        kprintln!(
+            "OSX|{}|ktest|list_hash_held|close={}|destroy={},{}",
+            BUILD_ID,
+            ca,
+            da,
+            db
+        );
+        fail("the test's windows and surfaces were not removed")
+    }
+    drop((
+        ev_a, ev_b, state0, sa, wa, held, unlocked, open, la, sb, wb, mv,
+    ));
+    drop((
+        covered, cover_own, cb, uncovered, mn, minimized, rs, restored,
+    ));
+    drop((ca, da, db, sa_id, wa_id, sb_id, wb_id, status0));
+    drop((vmo_a, vmo_b, a, b, session));
+    display_finish(
+        name,
+        h,
+        "a client got the hash of its window only where the pixels were its own",
     )
 }
 

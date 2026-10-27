@@ -4983,6 +4983,65 @@
         ]
       },
       {
+        "id": "TST-M5-LIST-HASH-HELD",
+        "test_id": "TST-M5-LIST-HASH-HELD",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=list_hash_held"
+        ],
+        "oracle": "SVC-SS.TXT: LIST gives a client the hash of its window's client area only where those pixels are its own on the screen (display.md v1.10), else `-`. Held: while the sign-in screen holds the display, the test's client a creates a window; its LIST line reads `-`, not a hash of what the screen shows in its place. Shown: after the lab signs in, a's window is on top and LIST gives a 16-digit hash. Covered: client b's window moved over a's client area: a reads `-`, b (on top) gets its own hash; after b closes its window a's hash is the same as before. Minimised: a reads `-`; restored, the same hash as before. The password never appears in the serial log; no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=list_hash_held",
+          "|path=/SYSTEM/SESSIOND.ELF|handles=1",
+          "|ktest|list_hash_held|services=5|ready=1",
+          "|held_hash=-|phase=1|ready=1",
+          "|open_hex=1|phase=2",
+          "|ktest|list_hash_held|move=OK|covered_hash=-|cover_own_hex=1|close=OK|uncovered_same=1|phase=3",
+          "|ktest|list_hash_held|minimize=OK|minimized_hash=-|restore=OK|restored_same=1|phase=4",
+          "|ktest|list_hash_held|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|list_hash_held|frames_delta=0",
+          "|ktest|pass|a client got the hash of its window only where the pixels were its own"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1"
+        ],
+        "timeout_s": 900,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|ktest|list_hash_held|state=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            }
+          ]
+        }
+      },
+      {
         "id": "TST-M5-NARRATOR-AUTHORITY",
         "test_id": "TST-M5-NARRATOR-AUTHORITY",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",
