@@ -78,7 +78,7 @@
    "command": "python3 tools/project.py build --target pc-qemu",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261027T152024Z-fc295217-001"
+    "evidence/20261027T180813Z-034d5d25-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -92,7 +92,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261027T152048Z-fc295217-001"
+    "evidence/20261027T180842Z-034d5d25-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -445,7 +445,7 @@
    "command": "python3 tools/project.py test --target host --suite M2  (mutants workflow)",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261023T141017Z-05b5a393-001"
+    "evidence/20261027T180849Z-034d5d25-001"
    ],
    "stale_policy": "warn"
   },
@@ -877,7 +877,7 @@
    "command": "python3 tools/project.py test --target host --suite M3-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261023T142325Z-05b5a393-001"
+    "evidence/20261027T182429Z-034d5d25-001"
    ],
    "stale_policy": "warn"
   },
@@ -1374,7 +1374,7 @@
    "command": "python3 tools/project.py test --target host --suite M4-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261023T143243Z-05b5a393-001"
+    "evidence/20261027T183541Z-034d5d25-001"
    ],
    "stale_policy": "warn"
   },
@@ -1806,8 +1806,10 @@
    "layer": "host_unit",
    "oracle": "seeded defects M82 onwards in the M5 modules (displayd, inputd, sessiond, libui, libnawah-text) are killed by the M5 suite, host suites included (libui's unit tests, the text conformance suites): kill ratio >= 0.95 over the valid mutants of this gate alone, and no surviving mutant that undoes a security fix of WP-43 or WP-41 (tests/mutants.py SECURITY); report build/mutants-m5-report.json",
    "command": "python3 tools/project.py test --target host --suite M5-GATE",
-   "verdict": "NOT_RUN",
-   "evidence_refs": [],
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261027T185412Z-034d5d25-001"
+   ],
    "stale_policy": "warn"
   },
   {
