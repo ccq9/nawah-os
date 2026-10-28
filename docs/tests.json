@@ -91,7 +91,7 @@
    "command": "python3 tools/project.py build --target pc-qemu",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261028T061142Z-fb0ebad4-001"
+    "evidence/20261028T081422Z-69dfcad0-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -105,7 +105,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261028T061209Z-fb0ebad4-001"
+    "evidence/20261028T081448Z-69dfcad0-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -458,7 +458,7 @@
    "command": "python3 tools/project.py test --target host --suite M2  (mutants workflow)",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261027T180849Z-034d5d25-001"
+    "evidence/20261028T081453Z-69dfcad0-001"
    ],
    "stale_policy": "warn"
   },
@@ -890,7 +890,7 @@
    "command": "python3 tools/project.py test --target host --suite M3-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261027T182429Z-034d5d25-001"
+    "evidence/20261028T082857Z-69dfcad0-001"
    ],
    "stale_policy": "warn"
   },
@@ -1387,7 +1387,7 @@
    "command": "python3 tools/project.py test --target host --suite M4-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261027T183541Z-034d5d25-001"
+    "evidence/20261028T083909Z-69dfcad0-001"
    ],
    "stale_policy": "warn"
   },
@@ -1821,7 +1821,7 @@
    "command": "python3 tools/project.py test --target host --suite M5-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261027T185412Z-034d5d25-001"
+    "evidence/20261028T085556Z-69dfcad0-001"
    ],
    "stale_policy": "warn"
   },
