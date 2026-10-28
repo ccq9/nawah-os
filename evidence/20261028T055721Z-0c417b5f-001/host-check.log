@@ -1,0 +1,26 @@
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261028T055721Z-0c417b5f-001/screen-prompt.ppm --pixel 2,2,10141C --pixel 150,150,10141C
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 2,
+   "y": 2,
+   "expected": "10141c",
+   "seen": "10141c",
+   "ok": true
+  },
+  {
+   "x": 150,
+   "y": 150,
+   "expected": "10141c",
+   "seen": "10141c",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]

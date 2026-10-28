@@ -1,0 +1,26 @@
+..F
+======================================================================
+FAIL: test_valid_records_pass (__main__.PreMerge.test_valid_records_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_pre_merge.py", line 68, in test_valid_records_pass
+    self.assertEqual(r.returncode, 0, r.stdout[-2000:] + r.stderr[-2000:])
+AssertionError: 50 != 0 : 27T185412Z-034d5d25-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+WARN work-items/WP-12: evidence evidence/20261027T180849Z-034d5d25-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+WARN work-items/WP-22: evidence evidence/20261027T182429Z-034d5d25-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+WARN work-items/WP-31: evidence evidence/20261027T183541Z-034d5d25-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+WARN work-items/WP-40: evidence evidence/20261027T183541Z-034d5d25-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+WARN project-state: source_revision fea5b30e != HEAD unknown (checkpoint pending)
+ERROR requirements/REQ-M4-009: evidence evidence/20261028T050553Z-e4b4f73e-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+ERROR requirements/REQ-M5-002: evidence evidence/20261028T050557Z-e4b4f73e-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+ERROR tests/TST-M4-SHELL-TOOL: evidence evidence/20261028T050553Z-e4b4f73e-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+ERROR tests/TST-M5-LAB-TOOL: evidence evidence/20261028T050557Z-e4b4f73e-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+ERROR work-items/WP-30: evidence evidence/20261028T050553Z-e4b4f73e-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+ERROR work-items/WP-33: evidence evidence/20261028T050557Z-e4b4f73e-001: inputs changed since verdict (tools/project.py); needs re-evaluation (re-run or impact analysis)
+validate-records: 6 error(s), 12 warning(s), 11 stale verdict(s) [strict]
+
+
+----------------------------------------------------------------------
+Ran 3 tests in 55.649s
+
+FAILED (failures=1)
