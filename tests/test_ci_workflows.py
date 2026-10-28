@@ -323,6 +323,28 @@ class CheckCommit(unittest.TestCase):
 
 
 class MutationHarness(unittest.TestCase):
+    def test_mutants_runs_the_gates_in_order_and_publishes_every_report(self):
+        # WP-38 phase 1 (2026-10-28): the M5 step was added but its report was left out of the
+        # evidence branch's `git add`, and no test held the gate order; the records check
+        # before the runs was not strict.
+        steps = next(iter(load("mutants.yml")["jobs"].values()))["steps"]
+        names = [str(s.get("name", "")) for s in steps]
+        gates = [n for n in names if n.startswith("Mutation run, ")]
+        self.assertEqual([g.split(",")[1].strip()[:2] for g in gates], ["M2", "M3", "M4", "M5"],
+                         "the gates run in order M2, M3, M4, M5")
+        runs = [s["run"] for s in steps if str(s.get("name", "")).startswith("Mutation run, ")]
+        self.assertEqual(runs, [f"python3 tools/project.py test --target host --suite {x}" for x in ("M2", "M3-GATE", "M4-GATE", "M5-GATE")])
+        for s in steps[1:]:
+            if str(s.get("name", "")).startswith("Mutation run, ") and not s["name"].startswith("Mutation run, M2"):
+                self.assertEqual(s.get("if"), "always()", f"{s['name']}: a failed gate must not skip the next")
+        validate = [s for s in steps if str(s.get("name", "")).startswith("validate-records")]
+        self.assertEqual(len(validate), 1)
+        self.assertIn("--strict", validate[0]["run"], "the records check before the runs is strict")
+        publish = next(s for s in steps if str(s.get("name", "")).startswith("Publish evidence"))
+        add = next(l for l in publish["run"].splitlines() if l.strip().startswith("git add -f evidence/"))
+        for rep in ("build/mutants-report.json", "build/mutants-m3-report.json", "build/mutants-m4-report.json", "build/mutants-m5-report.json"):
+            self.assertIn(rep, add, f"{rep} is not published on the evidence branch")
+
     def test_mutants_build_every_app_the_kernel_embeds_and_the_build_compiles(self):
         # Review 2026-10-19 (M8): the harness kept its own app list; WP-40 added exiter to the
         # kernel's embedded apps and the list did not follow, so every mutant build would fail.

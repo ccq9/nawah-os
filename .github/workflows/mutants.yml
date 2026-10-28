@@ -37,8 +37,8 @@ jobs:
           retry rustup toolchain install 1.97.0 --profile minimal
           retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; qemu-system-x86_64 --version | head -1
-      - name: validate-records (committed state)
-        run: python3 tools/project.py validate-records
+      - name: validate-records --strict (committed state; a stale verdict fails, warn-policy tests aside)
+        run: python3 tools/project.py validate-records --strict
       - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
         run: |
           python3 tools/project.py build --target pc-qemu
@@ -85,7 +85,7 @@ jobs:
           git config user.email "ci@nawah-os.invalid"
           git checkout --orphan "ci-evidence/mutants-${GITHUB_RUN_ID}"
           git rm -rfq --cached . >/dev/null
-          git add -f evidence/ build/mutants-report.json build/mutants-m3-report.json build/mutants-m4-report.json 2>/dev/null || git add -f evidence/
+          git add -f evidence/ build/mutants-report.json build/mutants-m3-report.json build/mutants-m4-report.json build/mutants-m5-report.json 2>/dev/null || git add -f evidence/
           git add -f build/mutants-scratch 2>/dev/null || true
           git commit -qm "mutation evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
           auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
