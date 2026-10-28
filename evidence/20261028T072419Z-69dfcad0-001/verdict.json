@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261028T072419Z-69dfcad0-001",
+ "test_id": "TST-M5-UI-TOOL",
+ "verdict": "PASS",
+ "oracle": "tools/transcript.py takes the narrator lines from trace lines and requires them to equal the expected file exactly in every serial log (a missing, extra or reordered line, or one bad phase, fails); dims accepts only the same origin with the size times the factor; streams (WP-37) checks every stream the file names exactly and in order whatever the interleaving, ignores other streams and non-user lines, and checks every phase (7 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "2b1c399a5e4773f58d3dcdc5415da4c7dab502b4930dc28579cf5cc48ecdac57",
+ "inputs": {
+  "tests/test_transcript_tool.py": "5ecf12e8399a43fd6434d0125f6b7a3b1eb43adbccb2e717f80e5b7d9ff45bb0",
+  "tools/transcript.py": "d09c12b68112fb0d0cbca55080fad5bc88c2f18948cbe15c0ac2738b97e57ff2"
+ },
+ "claim_tag": "source_backed_fact"
+}
