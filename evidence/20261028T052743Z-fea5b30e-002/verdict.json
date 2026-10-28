@@ -1,0 +1,17 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261028T052743Z-fea5b30e-002",
+ "test_id": "TST-M0-003",
+ "verdict": "PASS",
+ "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; the mutants workflow runs the gates M2, M3, M4, M5 in order, checks the records strictly first and publishes every gate's report (16 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "ba021aaa4c2b26801d68dd5c646ade1558b5f6cfe4fbcb74a25f9b30b1f8e68d",
+ "inputs": {
+  "tests/test_ci_workflows.py": "f0560db38ac9813827aec55b18e1304f626726b598aa3a970a357bc4da712c27",
+  "tools/project.py": "22ebb15c2c7f3cadfb8d08cbadaa97c35db5c4c1b0542ded0bbf704602375eb9",
+  ".github/workflows/mutants.yml": "155cd15e94964a8780c5474dd9574a7f8663340231532b2cbc6c0707fae791c8",
+  ".github/workflows/verify.yml": "a7a651b009a46fb6db167d10075c5f0babd5fa9765ee7a15c0e799f0e107cf54"
+ },
+ "claim_tag": "source_backed_fact"
+}
