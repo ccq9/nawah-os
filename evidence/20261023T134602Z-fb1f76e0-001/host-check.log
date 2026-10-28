@@ -1,0 +1,4 @@
+$ python3 -I tools/fat32.py check /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img
+check: clusters=128992 used=3160 free=125832 label='NAWAHLAB' fstype='FAT32   ' problems=[]
+
+[exit 0]

@@ -1,0 +1,184 @@
+{
+ "threshold": 0.95,
+ "target": "pc-qemu",
+ "mutants": [
+  {
+   "id": "M82",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "any client may become the narrator (WP-43 M2 undone)",
+   "killers": [
+    "TST-M5-NARRATOR-AUTHORITY"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-NARRATOR-AUTHORITY"
+   ],
+   "results": {
+    "TST-M5-NARRATOR-AUTHORITY": "FAIL"
+   },
+   "seconds": 23.7
+  },
+  {
+   "id": "M83",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "a client gets one surface more than its share (WP-43 S-7, boundary)",
+   "killers": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "results": {
+    "TST-M5-CLIENT-LIMITS": "FAIL"
+   },
+   "seconds": 15.6
+  },
+  {
+   "id": "M84",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "no per-client window limit (WP-43 S-7 undone)",
+   "killers": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "results": {
+    "TST-M5-CLIENT-LIMITS": "FAIL"
+   },
+   "seconds": 15.7
+  },
+  {
+   "id": "M85",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "no surfaces or windows kept for the session (WP-43 S-7)",
+   "killers": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "results": {
+    "TST-M5-CLIENT-LIMITS": "FAIL"
+   },
+   "seconds": 15.6
+  },
+  {
+   "id": "M86",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "LIST hashes a held or minimised window's place (WP-43 M3 undone)",
+   "killers": [
+    "TST-M5-LIST-HASH-HELD"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-LIST-HASH-HELD"
+   ],
+   "results": {
+    "TST-M5-LIST-HASH-HELD": "FAIL"
+   },
+   "seconds": 15.9
+  },
+  {
+   "id": "M87",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "STATUS counts the held screen's redraws, one per key typed (WP-43 M3 undone)",
+   "killers": [
+    "TST-M5-LIST-HASH-HELD"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-LIST-HASH-HELD"
+   ],
+   "results": {
+    "TST-M5-LIST-HASH-HELD": "FAIL"
+   },
+   "seconds": 31.2
+  },
+  {
+   "id": "M88",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "the password field announces every keystroke (WP-43 M2 undone)",
+   "killers": [
+    "TST-M5-AUTH-INPUT-ISOLATED"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-AUTH-INPUT-ISOLATED"
+   ],
+   "results": {
+    "TST-M5-AUTH-INPUT-ISOLATED": "FAIL"
+   },
+   "seconds": 36.8
+  },
+  {
+   "id": "M89",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "the elevation prompt is shown before the keyboard is taken (WP-41 S1 undone, order swapped)",
+   "killers": [
+    "TST-M5-ELEVATE"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-ELEVATE"
+   ],
+   "results": {
+    "TST-M5-ELEVATE": "FAIL"
+   },
+   "seconds": 102.0
+  },
+  {
+   "id": "M90",
+   "file": "user/apps/inputd/src/main.rs",
+   "note": "any client may register the name `display` (WP-43 S-5 undone)",
+   "killers": [
+    "TST-M5-INPUT-NAME-RESERVED"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-INPUT-NAME-RESERVED"
+   ],
+   "results": {
+    "TST-M5-INPUT-NAME-RESERVED": "FAIL"
+   },
+   "seconds": 16.6
+  },
+  {
+   "id": "M91",
+   "file": "user/libui/src/lib.rs",
+   "note": "a password field draws its characters instead of bullets",
+   "killers": [
+    "TST-M5-UI-UNIT"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-UI-UNIT"
+   ],
+   "results": {
+    "TST-M5-UI-UNIT": "FAIL"
+   },
+   "seconds": 16.5
+  }
+ ],
+ "started": "2026-10-28T08:56:06Z",
+ "valid": 10,
+ "killed": 10,
+ "survived": [],
+ "declared_killers_missed": [],
+ "invalid": [],
+ "ratio": 1.0,
+ "finished": "2026-10-28T09:01:03Z"
+}
