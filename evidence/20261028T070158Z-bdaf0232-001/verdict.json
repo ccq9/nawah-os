@@ -1,0 +1,23 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261028T070158Z-bdaf0232-001",
+ "test_id": "TST-M5-UI-UNIT",
+ "verdict": "PASS",
+ "oracle": "libui on the host (13 tests): an element without a label (or a list without items) is refused when built; the focus order is the declared order without labels; Tab/Shift+Tab cycle it, Esc cancels, presses only; the text field takes characters (Arabic too), Backspace and the cursor keys, the list moves its selection with the arrows within bounds, Space/Enter toggle the checkbox and activate buttons; the descriptions read role, label, state and value/item exactly; ui.scale/ui.contrast map to the theme; 2x doubles every rectangle and the largest dialog fits one surface VMO; painting uses the theme's background and focus colours; v1.1 (WP-37): the password field edits like a text field, is described by role, label and state without its value, is drawn as one bullet per character (pixel-equal to a field of bullets, unlike the characters), and the application reads, wipes (zeroed slots) and sets values and moves the focus only where it can go; v1.2 (WP-39): in a right-to-left field Left and Right swap direction (set_rtl flips it live), and relabel/set_items switch an element's language in place with the selection clamped and bad arguments refused; v1.3 (WP-41): a value element shows text the application sets, is never focused, is described with its value as static and keeps at most TEXT_MAX (48) characters, and a password is never filled by the application",
+ "expected": "exit 0 + 'test result: ok. 13 passed; 0 failed'",
+ "observed": "exit=0; tail=   Doc-tests libui",
+ "inputs_digest": "e4c91689e9b5a10c82e7225665dca386e1a409fc8bd8bc8945d89e9eb2f33525",
+ "inputs": {
+  "user/libui/Cargo.toml": "563cb41c43f3c4f6bde9fb59e6bea0786fa8025413bfe3a2fd544bf80fdefaf9",
+  "user/libui/src/lib.rs": "b6e2a45b70b7a95e316596f12c610f40d380661433216f8efc81b574b432a78f",
+  "user/libui/src/tests.rs": "677b83fd9cbda3605c5ba5ffd8c3b4d18608f57b0f184ecd27935dac5cc57178",
+  "user/libnawah-text/src/bidi.rs": "c90c55187eb45e61eb0947fe32ffdf6463c67677d894a39670ec2abb788a1602",
+  "user/libnawah-text/src/font.rs": "445836ef820e087cc0091697769b9bdb01653f1529adb955821b4f64d751da83",
+  "user/libnawah-text/src/layout.rs": "35132c882292665f6a80b232222da57ffaca71602d83ecea712aa6b19f8ba3c1",
+  "user/libnawah-text/src/lib.rs": "d08f77a0142e15b8a2fa2cb5e24242fa8b1a712bdc733416f46c93188c5531cf",
+  "user/libnawah-text/src/raster.rs": "de7bb116c7ff51f0c335dcaa6a08104e35f278e7db6a047da3c1dd850ae6d7dd",
+  "user/libnawah-text/src/shape.rs": "ae5c6eeab4d433449fb7c63dfc28448d4caad95618fdaedb198e608bc2730ef0",
+  "user/libnawah-text/src/tables.rs": "136625d6a0be90d42b1347cacb4747f9535cce71195ecf88d6c8baad3d549e3b"
+ },
+ "claim_tag": "source_backed_fact"
+}
