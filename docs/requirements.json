@@ -41,7 +41,8 @@
    ],
    "acceptance": "validate-records يرفض الحالات الست المطلوبة ويقبل مجموعة صالحة",
    "test_ids": [
-    "TST-M0-001"
+    "TST-M0-001",
+    "TST-M0-004"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [

@@ -43,6 +43,17 @@
    ]
   },
   {
+   "id": "TST-M0-004",
+   "requirement_ids": [
+    "REQ-M0-002"
+   ],
+   "layer": "host_unit",
+   "oracle": "tools/pre-merge.sh runs validate-records --strict under set -euo pipefail with no pipe after the validator and exits with its code: on a copy of the repository as committed it exits 0 and prints 'pre-merge: OK'; with one input of a host test edited after its run (a stale verdict) it exits 50 and prints no OK (3 cases, OK)",
+   "command": "python3 tools/project.py test --target host --suite M0",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
    "id": "TST-M0-E0-BUILD",
    "requirement_ids": [
     "REQ-M0-003"

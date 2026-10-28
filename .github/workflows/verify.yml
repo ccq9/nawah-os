@@ -131,6 +131,8 @@ jobs:
           python3 tools/project.py test --target host --suite M5
       - name: "validate-records --strict (after fresh evidence, nothing may be stale)"
         run: python3 tools/project.py validate-records --strict
+      - name: "pre-merge gate (tools/pre-merge.sh: the same strict check through the script a records commit must pass)"
+        run: tools/pre-merge.sh
       - name: Status
         run: python3 tools/project.py status --json
       # A convenience copy: the evidence of record is the ci-evidence branch below, which
