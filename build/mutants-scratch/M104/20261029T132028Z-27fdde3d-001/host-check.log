@@ -1,0 +1,26 @@
+$ python3 -I tools/screen.py desktop /tmp/nawah-mutants-5v0k7la2/scratch-evidence/20261029T132028Z-27fdde3d-001/screen.ppm --window 100,300,640,56,11bb1e28fbf40a75
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [],
+ "windows": [
+  {
+   "x": 100,
+   "y": 300,
+   "w": 640,
+   "h": 56,
+   "expected": "11bb1e28fbf40a75",
+   "seen": "11bb1e28fbf40a75",
+   "ok": true
+  }
+ ],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
+$ python3 -I tools/text_check.py --rect 100,300,640,56 --hash 11bb1e28fbf40a75
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.01s
+guest rect=100,300,640,56 hash=11bb1e28fbf40a75; host rect=100,300,640,56 hash=11bb1e28fbf40a75 (glyphs=39): equal
+
+[exit 0]

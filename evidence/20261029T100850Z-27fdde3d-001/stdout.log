@@ -1,0 +1,23 @@
+$ python3 -I tests/mutants.py --target pc-qemu --stage M3 --report build/mutants-m3-report.json
+M30: killed by TST-M3-PREEMPT [122.3s] (time slice never expires (no preemption))
+M31: killed by TST-M3-PRIORITY-ORDER [18.5s] (priorities ignored by pick_next (round-robin only))
+M32: killed by TST-M1-BOOT,TST-M3-USER-SYSCALL [203.5s] (a process never finishes (thread count not decremented))
+M33: killed by TST-M3-BLOCK-WAKE [19.1s] (a wake-up before the block is lost (no token))
+M34: killed by TST-M3-RIGHTS-DENIED [19.0s] (channel_write ignores the WRITE right)
+M35: killed by TST-M3-CLOSED-HANDLE [19.1s] (a closed handle's slot keeps its generation (stale handle accepted))
+M36: killed by TST-M3-IPC-OVERSIZE [19.2s] (oversize message accepted by channel_write)
+M37: killed by TST-M3-PATH-INVALID [19.3s] (a syscall may write into a read-only user page (WRITE bit not checked))
+M38: killed by TST-M3-ELF-WX [19.2s] (W^X not enforced on PT_LOAD segments)
+M39: killed by TST-M3-ELF-MALFORMED [19.2s] (overlapping segments accepted)
+M40: killed by TST-M1-BOOT,TST-M3-BLK-USER-CR3 [30.7s] (MMIO mapped at its physical address again (CI run 39110182649 regression))
+M41: killed by TST-M3-TLB-SHOOTDOWN [19.2s] (unmap_page does not tell the other CPUs)
+M42: killed by TST-M3-TLB-SHOOTDOWN [19.1s] (a served shootdown request flushes nothing)
+M43: killed by TST-M3-SMP-ONLINE [19.0s] (spawn_on places the thread on the caller's CPU)
+M44: killed by TST-M3-SMP-ONLINE,TST-M3-LOCK-CONTENTION [26.9s] (every CPU believes it is CPU 0)
+M45: killed by TST-M3-BLK-READ [19.0s] (reads past the capacity accepted)
+M46: killed by TST-M3-FILE-ROUNDTRIP,TST-M3-FD-LEAK,TST-M3-FAT32-PERSIST [35.8s] (only the first FAT is updated (fsck on an image with files left: FATs differ))
+M47: killed by TST-M3-FAT32-WRITE [19.4s] (unlink leaks the cluster chain)
+M48: killed by TST-M3-PATH-INVALID [19.2s] (relative paths accepted)
+M49: killed by TST-M3-FILE-ROUNDTRIP [19.1s] (every open handle gets the WRITE right (read-only open can write))
+
+OK: 20/20 valid mutants killed (100.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=[]; declared_killers_missed=[]; report=build/mutants-m3-report.json

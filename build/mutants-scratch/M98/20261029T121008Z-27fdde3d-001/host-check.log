@@ -1,0 +1,5 @@
+$ python3 -I tools/transcript.py check /tmp/nawah-mutants-5v0k7la2/scratch-evidence/20261029T121008Z-27fdde3d-001 platform/pc-qemu/expect/keyboard-nav.txt
+serial-1.log: 19 narrator lines as expected
+serial-2.log: 19 narrator lines as expected
+
+[exit 0]

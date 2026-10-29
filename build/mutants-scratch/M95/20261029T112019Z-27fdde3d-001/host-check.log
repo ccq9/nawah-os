@@ -1,0 +1,14 @@
+$ python3 -I tools/screen.py probe /tmp/nawah-mutants-5v0k7la2/scratch-evidence/20261029T112019Z-27fdde3d-001/screen.ppm --build-id mutm95 --square 96,96,FF00FF --square 192,96,00FFFF
+Traceback (most recent call last):
+  File "/tmp/nawah-mutants-5v0k7la2/wt/tools/screen.py", line 173, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/tmp/nawah-mutants-5v0k7la2/wt/tools/screen.py", line 149, in main
+    img = read_ppm(a.image)
+          ^^^^^^^^^^^^^^^^^
+  File "/tmp/nawah-mutants-5v0k7la2/wt/tools/screen.py", line 30, in read_ppm
+    data = open(path, "rb").read()
+           ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/nawah-mutants-5v0k7la2/scratch-evidence/20261029T112019Z-27fdde3d-001/screen.ppm'
+
+[exit 1]

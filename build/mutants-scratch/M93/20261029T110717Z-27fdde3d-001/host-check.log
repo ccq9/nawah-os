@@ -1,0 +1,4 @@
+$ python3 -I tools/transcript.py check /tmp/nawah-mutants-5v0k7la2/scratch-evidence/20261029T110717Z-27fdde3d-001 platform/pc-qemu/expect/window-a11y.txt
+serial.log: 14 narrator lines as expected
+
+[exit 0]

@@ -1,0 +1,17 @@
+$ python3 -I tools/fat32.py grep /tmp/nawah-mutants-5v0k7la2/wt/build/pc-qemu/disk.img /SYSTEM/CFGDEV.A lab.persist 1 kept-across-reboot\n
+grep: /SYSTEM/CFGDEV.A contains 'lab.persist 1 kept-across-reboot\\n'
+
+[exit 0]
+$ python3 -I tools/fat32.py grep /tmp/nawah-mutants-5v0k7la2/wt/build/pc-qemu/disk.img /SYSTEM/CFGDEV.A NAWAH-CFG 1 1 
+grep: /SYSTEM/CFGDEV.A contains 'NAWAH-CFG 1 1 '
+
+[exit 0]
+$ fsck.fat -n /tmp/nawah-mutants-5v0k7la2/wt/build/pc-qemu/disk.img
+fsck.fat 4.2 (2021-01-31)
+/tmp/nawah-mutants-5v0k7la2/wt/build/pc-qemu/disk.img: 59 files, 3216/128992 clusters
+
+[exit 0]
+$ python3 -I tools/fat32.py check /tmp/nawah-mutants-5v0k7la2/wt/build/pc-qemu/disk.img
+check: clusters=128992 used=3216 free=125776 label='NAWAHLAB' fstype='FAT32   ' problems=[]
+
+[exit 0]

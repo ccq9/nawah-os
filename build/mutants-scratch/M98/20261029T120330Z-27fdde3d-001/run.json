@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261029T120330Z-27fdde3d-001",
+ "started_at": "2026-10-29T12:03:30+00:00",
+ "finished_at": "2026-10-29T12:03:36+00:00",
+ "source_revision": "27fdde3d8f50a4d1df2138d4456dd16b2bf4346d",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "pc-qemu",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M3-FAT32-READ",
+ "commands": [
+  "qemu-system-x86_64 -machine q35 -cpu qemu64 -m 512M -smp 4 -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd -drive if=pflash,format=raw,file=/tmp/nawah-mutants-5v0k7la2/wt/build/pc-qemu/OVMF_VARS.fd -drive format=raw,file=fat:rw:/tmp/nawah-mutants-5v0k7la2/wt/build/pc-qemu/esp -serial file:/tmp/nawah-mutants-5v0k7la2/scratch-evidence/20261029T120330Z-27fdde3d-001/serial.log -serial null -display none -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04 -drive if=none,id=vd0,format=raw,file=/tmp/nawah-mutants-5v0k7la2/wt/build/pc-qemu/disk.img -device virtio-blk-pci,drive=vd0,disable-legacy=on,disable-modern=off -netdev user,id=n0,net=10.0.2.0/24,dhcpstart=10.0.2.15 -device virtio-net-pci,netdev=n0,disable-legacy=on,disable-modern=off -fw_cfg name=opt/nawah/test,string=fat32_read"
+ ],
+ "exit_code": 33
+}

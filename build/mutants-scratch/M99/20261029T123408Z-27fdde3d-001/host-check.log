@@ -1,0 +1,59 @@
+$ python3 -I tools/screen.py desktop /tmp/nawah-mutants-5v0k7la2/scratch-evidence/20261029T123408Z-27fdde3d-001/screen-open.ppm --pixel 2,2,1E2A38 --pixel 150,150,2E8B57
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 2,
+   "y": 2,
+   "expected": "1e2a38",
+   "seen": "1e2a38",
+   "ok": true
+  },
+  {
+   "x": 150,
+   "y": 150,
+   "expected": "2e8b57",
+   "seen": "2e8b57",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
+$ python3 -I tools/screen.py desktop /tmp/nawah-mutants-5v0k7la2/scratch-evidence/20261029T123408Z-27fdde3d-001/screen-lost.ppm --pixel 2,2,10141C --pixel 150,150,10141C --pixel 512,338,F0F0F0
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 2,
+   "y": 2,
+   "expected": "10141c",
+   "seen": "10141c",
+   "ok": true
+  },
+  {
+   "x": 150,
+   "y": 150,
+   "expected": "10141c",
+   "seen": "10141c",
+   "ok": true
+  },
+  {
+   "x": 512,
+   "y": 338,
+   "expected": "f0f0f0",
+   "seen": "f0f0f0",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
