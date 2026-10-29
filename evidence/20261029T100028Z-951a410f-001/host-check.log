@@ -1,0 +1,26 @@
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261029T100028Z-951a410f-001/screen.ppm --pixel 121,33,B03030 --pixel 100,100,4060D0
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 121,
+   "y": 33,
+   "expected": "b03030",
+   "seen": "b03030",
+   "ok": true
+  },
+  {
+   "x": 100,
+   "y": 100,
+   "expected": "4060d0",
+   "seen": "4060d0",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
