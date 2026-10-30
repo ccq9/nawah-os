@@ -1,0 +1,27 @@
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261030T133329Z-33aa7775-001/screen.ppm --window 100,300,640,56,11bb1e28fbf40a75
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [],
+ "windows": [
+  {
+   "x": 100,
+   "y": 300,
+   "w": 640,
+   "h": 56,
+   "expected": "11bb1e28fbf40a75",
+   "seen": "11bb1e28fbf40a75",
+   "ok": true
+  }
+ ],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
+$ python3 -I tools/text_check.py --rect 100,300,640,56 --hash 11bb1e28fbf40a75
+   Compiling nawah-text v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/libnawah-text)
+    Finished `release` profile [optimized + debuginfo] target(s) in 3.17s
+guest rect=100,300,640,56 hash=11bb1e28fbf40a75; host rect=100,300,640,56 hash=11bb1e28fbf40a75 (glyphs=39): equal
+
+[exit 0]

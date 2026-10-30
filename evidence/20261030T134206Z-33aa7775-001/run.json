@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261030T134206Z-33aa7775-001",
+ "started_at": "2026-10-30T13:42:06+00:00",
+ "finished_at": "2026-10-30T13:42:06+00:00",
+ "source_revision": "33aa77753e90f585ce0757c38ac0b83f788854e3",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M1-NOBS",
+ "commands": [
+  "python3 -I tests/test_m1_nobs.py"
+ ],
+ "exit_code": 0
+}
