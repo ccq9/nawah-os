@@ -23,14 +23,144 @@ For each mutant: apply, build only the artifacts its killer tests need, run thos
   survived - every killer test PASSes; the whole M1+M2 suites are then run before the verdict ;
   invalid  - the mutant does not compile (excluded from the ratio; a defect that cannot build is
              not a defect the suite had to catch).
-PASS = kill ratio >= 0.95 over valid mutants. `--check` only applies/reverts the patches and
-type-checks them on the host target (what this sandbox can do without the UEFI toolchain).
+PASS = kill ratio >= 0.95 over valid mutants and no surviving SECURITY mutant. `--check` only
+applies/reverts the patches and type-checks them on the host target (what this sandbox can do
+without the UEFI toolchain).
+
+Watchdog and exit codes (see docs/mutation-policy.md): every mutant has a per-mutant ceiling
+(--watchdog-seconds, 600 s as the preparatory safety net; the final value is derived from the
+measurements as max(300 s, 2 x p95)). A declared killer that exceeds it is `timeout-killed`: the
+hang is the mutated kernel's, so it counts as a kill, not a survivor. A timeout during the build
+or during the fairness sweep is `infra-error` and is never a kill. Exit codes: 0 = the gate
+passes; 1 = a gate failure (a surviving mutant, a surviving SECURITY mutant, or ratio below the
+threshold); 2 = budget/infrastructure (build timeout, fairness timeout, unreadable report, worktree
+or driver failure) — not a gate verdict. Reports are mutants-mN-report.json per gate, written
+partially at every exit, with mutants-mN-progress.jsonl appended after each mutant; a later run
+resumes the terminal entries of the previous partial report.
 """
-import argparse, json, os, subprocess, sys, tempfile, time, shutil
+import argparse, json, os, signal, subprocess, sys, tempfile, time, shutil
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 THRESHOLD = 0.95
+# Preparatory per-mutant safety net (the run of 2026-10-29 hit the 3 h step cap). The final
+# ceiling is derived from that run's measurements as max(300 s, 2 x p95) and set with
+# --watchdog-seconds; 600 s here is only the safety net, never the gate's verdict.
+WATCHDOG_S = 600
+EXIT_OK, EXIT_GATE, EXIT_INFRA = 0, 1, 2
+
+
+class MutantTimeout(Exception):
+    """A test command of the mutant exceeded the per-mutant watchdog (a hang in the mutant)."""
+
+    def __init__(self, tid):
+        self.tid = tid
+        super().__init__(f"watchdog fired during {tid}")
+
+
+class InfraError(Exception):
+    """The run cannot attribute the overrun to the mutated kernel: budget, build or fairness."""
+
+
+class Budget:
+    def __init__(self, seconds):
+        self.seconds = seconds
+        self.deadline = time.monotonic() + seconds
+
+    def remaining(self):
+        return max(0.0, self.deadline - time.monotonic())
+
+
+def run_bounded(cmd, cwd, env, budget, phase, tid=None, hard=1800):
+    """`sh` bounded by both the step's own hard limit and the mutant's watchdog. A timeout in
+    `phase` 'test' is a hang of the mutated kernel (MutantTimeout); in 'build' or between
+    steps it is an infrastructure overrun (InfraError): never a verdict on the mutant."""
+    left = budget.remaining()
+    if left <= 0:
+        raise InfraError(f"watchdog {budget.seconds}s exhausted before {phase} {tid or ''}".strip())
+    try:
+        return sh(cmd, cwd, env, timeout=min(float(hard), left))
+    except subprocess.TimeoutExpired:
+        if phase == "test":
+            raise MutantTimeout(tid)
+        raise InfraError(f"watchdog {budget.seconds}s fired during {phase} {tid or ''}".strip())
+
+
+def report_name(stage):
+    """mutants-mN-report.json for every gate (M2 included; the old bare mutants-report.json is
+    only kept when no gate is selected)."""
+    return f"build/mutants-{stage.lower()}-report.json" if stage else "build/mutants-report.json"
+
+
+def progress_name(report):
+    s = str(report)
+    return s[:-len("-report.json")] + "-progress.jsonl" if s.endswith("-report.json") else s + ".progress.jsonl"
+
+
+def write_report(path, report):
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(p.name + ".tmp")
+    tmp.write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
+    os.replace(tmp, p)
+
+
+def append_progress(path, entry):
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+
+
+DONE = ("killed", "survived", "timeout-killed", "invalid")
+
+
+def previous_entries(progress, report):
+    """Resume: the terminal entries of an earlier partial run, by id (progress lines first,
+    then the partial report). A partially written line is ignored."""
+    out = {}
+    p = Path(progress)
+    if p.exists():
+        for line in p.read_text(encoding="utf-8").splitlines():
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(e, dict) and e.get("id") and e.get("status") in DONE:
+                out[e["id"]] = e
+        return out
+    p = Path(report)
+    if p.exists():
+        try:
+            rep = json.loads(p.read_text(encoding="utf-8"))
+        except ValueError:
+            return out
+        for e in rep.get("mutants", []):
+            if e.get("id") and e.get("status") in DONE:
+                out[e["id"]] = e
+    return out
+
+
+def finalize(report, partial, exit_code=None):
+    ms = report["mutants"]
+    valid = [m for m in ms if m["status"] in ("killed", "timeout-killed", "survived")]
+    killed = [m for m in valid if m["status"] in ("killed", "timeout-killed")]
+    survived = [m["id"] for m in valid if m["status"] == "survived"]
+    report.update(
+        valid=len(valid), killed=len(killed), survived=survived,
+        timeout_killed=[m["id"] for m in ms if m["status"] == "timeout-killed"],
+        invalid=[m["id"] for m in ms if m["status"] == "invalid"],
+        infra_error=[m["id"] for m in ms if m["status"] == "infra-error"],
+        declared_killers_missed=[m["id"] for m in ms if m.get("declared_killers_missed")],
+        ratio=round(len(killed) / len(valid), 4) if valid else 0.0,
+        surviving_security=[m for m in survived if security_of(m)],
+        partial=partial, exit_code=exit_code,
+        finished=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    )
+    return report
+
 
 # (id, file, old, new, killers, note)
 MUTANTS = [
@@ -621,10 +751,12 @@ def suite_of(target, test_id):
     return None
 
 
-def run_killers(wt: Path, env, target, killers):
-    """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED|ERROR}). Every case runs
-    through its suite entry (the strong oracle); a missing artifact (exit 20) is SKIPPED and a
-    lab failure (QEMU died, LAB_ERROR) is ERROR — neither is a kill."""
+def run_killers(wt: Path, env, target, killers, budget, fairness=False):
+    """Returns (killed_by, results, timed_out_tid). Every case runs through its suite entry (the
+    strong oracle); a missing artifact (exit 20) is SKIPPED and a lab failure (QEMU died,
+    LAB_ERROR) is ERROR — neither is a kill. A declared killer that times out is a kill of the
+    mutant (the hang is the mutated kernel's); a timeout in the fairness sweep is an
+    infrastructure overrun, never a kill."""
     results = {}
     pyproj = ["python3", str(wt / "tools" / "project.py")]
     for tid in killers:
@@ -636,9 +768,17 @@ def run_killers(wt: Path, env, target, killers):
             if host_suite is None:
                 results[tid] = "SKIPPED"
                 continue
-            r = sh(pyproj + ["test", "--target", "host", "--suite", host_suite, "--only", tid], wt, env)
+            cmd = pyproj + ["test", "--target", "host", "--suite", host_suite, "--only", tid]
         else:
-            r = sh(pyproj + ["test", "--target", target, "--suite", suite, "--only", tid], wt, env)
+            cmd = pyproj + ["test", "--target", target, "--suite", suite, "--only", tid]
+        try:
+            r = run_bounded(cmd, wt, env, budget, "test", tid)
+        except MutantTimeout as ex:
+            if fairness:
+                raise InfraError(f"watchdog {budget.seconds}s fired in the fairness sweep at {ex.tid}; "
+                                 "the survivor cannot be decided")
+            results[tid] = "TIMEOUT"
+            return [tid], results, tid
         if r.returncode == 0:
             results[tid] = "PASS"
         elif r.returncode == 20 or "no artifact" in r.stdout:
@@ -648,7 +788,9 @@ def run_killers(wt: Path, env, target, killers):
             results[tid] = "ERROR"
         else:
             results[tid] = "FAIL"
-    return [t for t, v in results.items() if v == "FAIL"], results
+            # One failing declared killer is the verdict; no budget is spent on the rest.
+            return [tid], results, None
+    return [t for t, v in results.items() if v == "FAIL"], results, None
 
 
 def all_cases(target):
@@ -659,35 +801,125 @@ def all_cases(target):
     return ids
 
 
+def merge_reports(paths, out):
+    """--merge: combine the reports of the four M5 shards into the gate's one report and verdict.
+    Duplicate ids or an unreadable report are an infrastructure error (exit 2), never a pass."""
+    entries = {}
+    for p in paths:
+        try:
+            rep = json.loads(Path(p).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as ex:
+            print(f"merge: cannot read {p}: {ex}", flush=True)
+            return EXIT_INFRA
+        for m in rep.get("mutants", []):
+            mid = m.get("id")
+            if not mid:
+                print(f"merge: {p}: a mutant has no id", flush=True)
+                return EXIT_INFRA
+            if mid in entries:
+                print(f"merge: {mid} appears in more than one shard", flush=True)
+                return EXIT_INFRA
+            entries[mid] = m
+    report = {"threshold": THRESHOLD, "target": "pc-qemu",
+              "mutants": [entries[k] for k in sorted(entries, key=lambda s: int(s[1:]))],
+              "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "merged": True}
+    finalize(report, partial=False)
+    verdict = bool(report["valid"]) and report["ratio"] >= THRESHOLD and not report["surviving_security"]
+    code = EXIT_INFRA if report["infra_error"] else (EXIT_OK if verdict else EXIT_GATE)
+    report["exit_code"] = code
+    write_report(REPO / Path(out), report)
+    print(f"\n{'OK' if verdict else 'FAIL'}: merged {report['killed']}/{report['valid']} valid mutants killed "
+          f"({report['ratio']:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; "
+          f"surviving_security={report['surviving_security']}; invalid={report['invalid']}; "
+          f"infra_error={report['infra_error']}; timeout_killed={report['timeout_killed']}; "
+          f"report={out}; exit={code}", flush=True)
+    return code
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--target", default="pc-qemu")
-    ap.add_argument("--report", default="build/mutants-report.json")
+    ap.add_argument("--report", default=None, help="default: mutants-mN-report.json for the selected gate")
+    ap.add_argument("--progress", default=None, help="incremental JSONL (default: from the report name)")
     ap.add_argument("--only", help="comma-separated mutant ids")
+    ap.add_argument("--from", dest="from_id", help="first mutant id of a range, inclusive (e.g. M92)")
+    ap.add_argument("--to", dest="to_id", help="last mutant id of a range, inclusive (e.g. M101)")
     ap.add_argument("--stage", choices=["M2", "M3", "M4", "M5"], help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50-M81 = M4, M82.. = M5)")
     ap.add_argument("--check", action="store_true", help="apply/revert each patch and cargo check on the host target only")
+    ap.add_argument("--watchdog-seconds", type=int, default=WATCHDOG_S,
+                    help="per-mutant safety ceiling (preparatory 600 s; final max(300, 2 x p95))")
+    ap.add_argument("--merge", nargs="+", metavar="REPORT", help="merge shard reports and exit")
     a = ap.parse_args()
-    mutants = [m for m in MUTANTS if (not a.only or m[0] in a.only.split(",")) and (not a.stage or stage_of(m[0]) == a.stage)]
+    if a.merge:
+        return merge_reports(a.merge, a.report or "build/mutants-m5-report.json")
+
+    mutants = [m for m in MUTANTS if (not a.only or m[0] in a.only.split(","))
+               and (not a.stage or stage_of(m[0]) == a.stage)]
+    if a.from_id:
+        lo = int(a.from_id[1:])
+        mutants = [m for m in mutants if int(m[0][1:]) >= lo]
+    if a.to_id:
+        hi = int(a.to_id[1:])
+        mutants = [m for m in mutants if int(m[0][1:]) <= hi]
+    if not mutants:
+        print("no mutant selected", flush=True)
+        return EXIT_GATE
+    rp = REPO / Path(a.report or report_name(a.stage))
+    pp = REPO / Path(a.progress or progress_name(rp))
+    previous = {} if a.check else previous_entries(pp, rp)
+
+    def _stop(signum, frame):
+        raise KeyboardInterrupt
+
+    for _sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            signal.signal(_sig, _stop)
+        except (ValueError, OSError):
+            pass
+
     tmp = Path(tempfile.mkdtemp(prefix="nawah-mutants-"))
     wt = tmp / "wt"
     scratch = tmp / "scratch-evidence"
     scratch.mkdir()
-    subprocess.run(["git", "worktree", "add", "-q", "--detach", str(wt), "HEAD"], cwd=REPO, check=True)
-    report = {"threshold": THRESHOLD, "target": a.target, "mutants": [], "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    report = {"threshold": THRESHOLD, "target": a.target, "mutants": [],
+              "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+              "watchdog_s": a.watchdog_seconds, "partial": True}
+
+    def finish_one(entry):
+        report["mutants"].append(entry)
+        finalize(report, partial=True)
+        append_progress(pp, entry)
+        write_report(rp, report)
+
+    infra = False
+    interrupted = False
     try:
+        subprocess.run(["git", "worktree", "add", "-q", "--detach", str(wt), "HEAD"], cwd=REPO, check=True)
         env = dict(os.environ, NAWAH_ROOT=str(wt), NAWAH_SCRATCH_EVIDENCE=str(scratch), NAWAH_QEMU_TIMEOUT_S="90")
         env.setdefault("RUSTUP_TOOLCHAIN", os.environ.get("RUSTUP_TOOLCHAIN", ""))
         if not env["RUSTUP_TOOLCHAIN"]:
             del env["RUSTUP_TOOLCHAIN"]
         for m in mutants:
             mid, rel, old, new, killers, note = m
+            if mid in previous:
+                entry = dict(previous[mid])
+                entry["resumed"] = True
+                report["mutants"].append(entry)
+                finalize(report, partial=True)
+                write_report(rp, report)
+                print(f"{mid}: resumed {entry.get('status')} [{entry.get('seconds', '?')}s]", flush=True)
+                continue
             t0 = time.time()
             entry = {"id": mid, "file": rel, "note": note, "killers": killers, "security": security_of(mid)}
+            print(f"{mid}: start (watchdog {a.watchdog_seconds}s) ({note})", flush=True)
             reset(wt)
             try:
                 apply(wt, m)
             except RuntimeError as ex:
-                entry.update(status="invalid", reason=str(ex)); report["mutants"].append(entry); print(f"{mid}: INVALID ({ex})"); continue
+                entry.update(status="invalid", reason=str(ex), seconds=round(time.time() - t0, 1))
+                finish_one(entry)
+                print(f"{mid}: INVALID [{entry['seconds']}s] ({ex}) ({note})", flush=True)
+                continue
             if a.check:
                 crate = crate_of(rel)
                 if crate is None:
@@ -701,78 +933,124 @@ def main():
                 entry.update(status="compiles" if ok else "invalid", seconds=round(time.time() - t0, 1))
                 if not ok:
                     entry["reason"] = r.stdout[-1500:]
-                report["mutants"].append(entry)
-                print(f"{mid}: {'compiles' if ok else 'DOES NOT COMPILE'} ({note})")
+                finish_one(entry)
+                print(f"{mid}: {'compiles' if ok else 'DOES NOT COMPILE'} [{entry['seconds']}s] ({note})", flush=True)
                 continue
-            benv = dict(env, NAWAH_BUILD_ID=f"mut{mid.lower()}", NAWAH_OUT=str(wt / "build" / a.target),
-                        NAWAH_APPS_DIR=str(wt / "build" / a.target / "apps"))
-            (wt / "build" / a.target / "apps").mkdir(parents=True, exist_ok=True)
-            need_release = "TST-M1-BOOT" in killers
-            build_ok = True
-            steps = [app_step(n) for n in APPS] + [(KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
-            if need_release:
-                steps.append((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"))
-            for step, out, name in steps:
-                r = sh(step, wt, benv, timeout=1800)
-                if r.returncode != 0:
-                    build_ok = False
-                    entry["reason"] = r.stdout[-2000:]
-                    break
-                shutil.copy(wt / out, wt / "build" / a.target / name)
-            if not build_ok:
-                entry.update(status="invalid", seconds=round(time.time() - t0, 1)); report["mutants"].append(entry)
-                print(f"{mid}: INVALID (does not build) ({note})"); continue
-            (wt / "build" / a.target / "build-id.txt").write_text(benv["NAWAH_BUILD_ID"] + "\n")
-            killed_by, results = run_killers(wt, env, a.target, killers)
-            declared_miss = not killed_by
-            if not killed_by:
-                # Be fair before declaring a survivor: build the remaining artifacts and run
-                # everything the suites have.
-                rest = [c for c in all_cases(a.target) if c not in killers]
-                for step, out, name in ((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"), (NEG_STEP, NEG_OUT, "NAWAH-NEG.EFI")):
-                    if (wt / "build" / a.target / name).exists() and name == "NAWAH.EFI" and need_release:
-                        continue
-                    r = sh(step, wt, benv, timeout=1800)
-                    if r.returncode == 0:
-                        shutil.copy(wt / out, wt / "build" / a.target / name)
-                more_killed, more = run_killers(wt, env, a.target, rest)
-                results.update(more); killed_by = more_killed
-            if declared_miss:
-                # Keep the scratch evidence (serial logs) of anything that escaped its declared
-                # killers, so the report can be audited.
-                keep = REPO / "build" / "mutants-scratch" / mid
-                if keep.exists():
-                    shutil.rmtree(keep)
-                shutil.copytree(scratch, keep)
-                entry["declared_killers_missed"] = True
-            for d in scratch.iterdir():
-                shutil.rmtree(d, ignore_errors=True)
-            entry.update(status="killed" if killed_by else "survived", killed_by=killed_by, results=results,
-                         seconds=round(time.time() - t0, 1))
-            report["mutants"].append(entry)
-            print(f"{mid}: {'killed by ' + ','.join(killed_by) if killed_by else 'SURVIVED'} [{entry['seconds']}s] ({note})")
+            budget = Budget(a.watchdog_seconds)
+            try:
+                benv = dict(env, NAWAH_BUILD_ID=f"mut{mid.lower()}", NAWAH_OUT=str(wt / "build" / a.target),
+                            NAWAH_APPS_DIR=str(wt / "build" / a.target / "apps"))
+                (wt / "build" / a.target / "apps").mkdir(parents=True, exist_ok=True)
+                need_release = "TST-M1-BOOT" in killers
+                build_ok = True
+                steps = [app_step(n) for n in APPS] + [(KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
+                if need_release:
+                    steps.append((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"))
+                for step, out, name in steps:
+                    r = run_bounded(step, wt, benv, budget, "build")
+                    if r.returncode != 0:
+                        build_ok = False
+                        entry["reason"] = r.stdout[-2000:]
+                        break
+                    shutil.copy(wt / out, wt / "build" / a.target / name)
+                if not build_ok:
+                    entry.update(status="invalid", seconds=round(time.time() - t0, 1))
+                    finish_one(entry)
+                    print(f"{mid}: INVALID (does not build) [{entry['seconds']}s] ({note})", flush=True)
+                    continue
+                (wt / "build" / a.target / "build-id.txt").write_text(benv["NAWAH_BUILD_ID"] + "\n")
+                killed_by, results, timed = run_killers(wt, env, a.target, killers, budget)
+                declared_miss = not killed_by
+                if not killed_by:
+                    # Be fair before declaring a survivor: build the remaining artifacts and run
+                    # everything the suites have. A watchdog overrun here is infrastructure, not a
+                    # kill: it cannot decide the survivor.
+                    rest = [c for c in all_cases(a.target) if c not in killers]
+                    for step, out, name in ((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"), (NEG_STEP, NEG_OUT, "NAWAH-NEG.EFI")):
+                        if (wt / "build" / a.target / name).exists() and name == "NAWAH.EFI" and need_release:
+                            continue
+                        r = run_bounded(step, wt, benv, budget, "build")
+                        if r.returncode == 0:
+                            shutil.copy(wt / out, wt / "build" / a.target / name)
+                    more_killed, more, more_timed = run_killers(wt, env, a.target, rest, budget, fairness=True)
+                    results.update(more)
+                    killed_by = more_killed
+                    timed = timed or more_timed
+                if declared_miss:
+                    # Keep the scratch evidence (serial logs) of anything that escaped its declared
+                    # killers, so the report can be audited.
+                    keep = REPO / "build" / "mutants-scratch" / mid
+                    if keep.exists():
+                        shutil.rmtree(keep)
+                    shutil.copytree(scratch, keep)
+                    entry["declared_killers_missed"] = True
+                for d in scratch.iterdir():
+                    shutil.rmtree(d, ignore_errors=True)
+                status = "timeout-killed" if timed else ("killed" if killed_by else "survived")
+                entry.update(status=status, killed_by=killed_by, results=results,
+                             timed_out=bool(timed), seconds=round(time.time() - t0, 1))
+            except MutantTimeout as ex:
+                entry.update(status="timeout-killed", timed_out=True, killed_by=[ex.tid] if ex.tid else [],
+                             results={ex.tid: "TIMEOUT"} if ex.tid else {},
+                             reason=f"watchdog {a.watchdog_seconds}s fired during {ex.tid}",
+                             seconds=round(time.time() - t0, 1))
+            except InfraError as ex:
+                infra = True
+                entry.update(status="infra-error", reason=str(ex), seconds=round(time.time() - t0, 1))
+            finish_one(entry)
+            if entry["status"] == "timeout-killed":
+                print(f"{mid}: timeout-killed by {','.join(entry['killed_by']) or '?'} "
+                      f"[{entry['seconds']}s] ({note})", flush=True)
+            elif entry["status"] == "killed":
+                print(f"{mid}: killed by {','.join(entry['killed_by'])} [{entry['seconds']}s] ({note})", flush=True)
+            elif entry["status"] == "survived":
+                print(f"{mid}: SURVIVED [{entry['seconds']}s] ({note})", flush=True)
+            else:
+                print(f"{mid}: {entry['status'].upper()} [{entry['seconds']}s] ({entry.get('reason', '')})", flush=True)
+    except KeyboardInterrupt:
+        interrupted = True
+        infra = True
+        report["status"] = "interrupted"
+    except BaseException as ex:
+        interrupted = True
+        infra = True
+        report["status"] = "error"
+        report["error"] = repr(ex)
     finally:
-        reset(wt)
+        try:
+            reset(wt)
+        except Exception:
+            pass
         subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO)
         shutil.rmtree(tmp, ignore_errors=True)
-    valid = [m for m in report["mutants"] if m["status"] in ("killed", "survived")]
-    killed = [m for m in valid if m["status"] == "killed"]
-    ratio = len(killed) / len(valid) if valid else 0.0
-    report.update(valid=len(valid), killed=len(killed), survived=[m["id"] for m in valid if m["status"] == "survived"],
-                  declared_killers_missed=[m["id"] for m in report["mutants"] if m.get("declared_killers_missed")],
-                  invalid=[m["id"] for m in report["mutants"] if m["status"] == "invalid"], ratio=round(ratio, 4),
-                  finished=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
-    rp = REPO / a.report
-    rp.parent.mkdir(parents=True, exist_ok=True)
-    rp.write_text(json.dumps(report, indent=1) + "\n")
+        selected = {m[0] for m in mutants}
+        done = {e["id"] for e in report["mutants"]}
+        partial = interrupted or done != selected
+        finalize(report, partial=partial)
+        write_report(rp, report)
+
     if a.check:
+        if interrupted:
+            print(f"\nINFRA-ERROR: the check was interrupted; partial report={rp}", flush=True)
+            return EXIT_INFRA
         bad = [m["id"] for m in report["mutants"] if m["status"] == "invalid"]
-        print(f"\n{'OK' if not bad else 'FAIL'}: {len(report['mutants']) - len(bad)}/{len(report['mutants'])} mutants apply and type-check" + (f"; invalid: {bad}" if bad else ""))
-        return 0 if not bad else 1
-    report["surviving_security"] = [m for m in report["survived"] if security_of(m)]
-    verdict = ratio >= THRESHOLD and valid and not report["surviving_security"]
-    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; surviving_security={report['surviving_security']}; invalid={report['invalid']}; declared_killers_missed={report['declared_killers_missed']}; report={a.report}")
-    return 0 if verdict else 1
+        good = len(report["mutants"]) - len(bad)
+        print(f"\n{'OK' if not bad else 'FAIL'}: {good}/{len(report['mutants'])} mutants apply and type-check"
+              + (f"; invalid: {bad}" if bad else ""), flush=True)
+        return EXIT_OK if not bad else EXIT_GATE
+    verdict = bool(report["valid"]) and report["ratio"] >= THRESHOLD and not report["surviving_security"]
+    code = EXIT_INFRA if (infra or report["infra_error"] or report["partial"]) else (EXIT_OK if verdict else EXIT_GATE)
+    report["exit_code"] = code
+    write_report(rp, report)
+    print(f"\n{'OK' if verdict else 'FAIL'}: {report['killed']}/{report['valid']} valid mutants killed "
+          f"({report['ratio']:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; "
+          f"surviving_security={report['surviving_security']}; invalid={report['invalid']}; "
+          f"timeout_killed={report['timeout_killed']}; infra_error={report['infra_error']}; "
+          f"declared_killers_missed={report['declared_killers_missed']}; "
+          f"report={rp}; progress={pp}; exit={code}", flush=True)
+    if report["infra_error"]:
+        print("infra-error: the run is not a gate verdict (exit 2)", flush=True)
+    return code
 
 
 if __name__ == "__main__":
