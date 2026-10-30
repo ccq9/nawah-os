@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261030T161120Z-595dbdd1-001",
+ "started_at": "2026-10-30T16:11:20+00:00",
+ "finished_at": "2026-10-30T16:22:11+00:00",
+ "source_revision": "595dbdd1c697e0340009d79d3c8812376c0b0865",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M2-MUTANTS",
+ "commands": [
+  "python3 -I tests/mutants.py --target pc-qemu --stage M2 --report build/mutants-m2-report.json"
+ ],
+ "exit_code": 0
+}
