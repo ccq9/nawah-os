@@ -1,9 +1,20 @@
 # Mutation testing of the kernel and the system services: TST-M2-MUTANTS (REQ-M2-014, M01-M29
-# against the M1/M2 suites), TST-M3-MUTANTS (REQ-M3-010, M30-M49 against the M3 suite) and
-# TST-M4-MUTANTS (REQ-M4-010, M50-M81 against the M4 suite) and TST-M5-MUTANTS (REQ-M5-007, M82
-# onwards against the M5 suite, WP-38). Manual/scheduled (each mutant
-# rebuilds the kernel and the applications), evidence published like the verify workflow so it
-# can be imported with `project.py import-ci-evidence --run mutants-<run id>`.
+# against the M1/M2 suites), TST-M3-MUTANTS (REQ-M3-010, M30-M49 against the M3 suite),
+# TST-M4-MUTANTS (REQ-M4-010, M50-M81 against the M4 suite) and TST-M5-MUTANTS (REQ-M5-007,
+# M82-M121 against the M5 suite, WP-38). Manual/scheduled (each mutant rebuilds the kernel and
+# the applications), evidence published like the verify workflow so it can be imported with
+# `project.py import-ci-evidence --run mutants-<run id>`.
+#
+# M5 is four shards (M82-M91 / M92-M101 / M102-M111 / M112-M121) so one hung mutant cannot eat
+# the whole gate. Each mutant has a per-mutant watchdog (tests/mutants.py --watchdog-seconds,
+# 600 s as the preparatory safety net; the final value is max(300 s, 2 x p95)). A shard does at
+# most 10 mutants: 10 x 600 s = 6000 s, at most 80% of its 130-minute (7800 s) step limit
+# (6000 <= 0.8 x 7800 = 6240). The merge job combines the four shard reports into
+# build/mutants-m5-report.json.
+#
+# Exit codes of tests/mutants.py (documented in docs/mutation-policy.md):
+#   0 = gate passes; 1 = gate failure (survivor, surviving SECURITY mutant, ratio below 0.95);
+#   2 = budget/infrastructure (build/fairness/watchdog, unreadable report) -- never a verdict.
 name: mutants
 on:
   workflow_dispatch:
@@ -12,13 +23,25 @@ on:
 permissions:
   contents: write
 jobs:
-  mutants:
+  # The records check must pass before anything is mutated (strict: a stale verdict fails).
+  records:
     runs-on: ubuntu-24.04
-    timeout-minutes: 300
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: validate-records --strict (committed state; a stale verdict fails, warn-policy tests aside)
+        run: python3 tools/project.py validate-records --strict
+  # M2-M4 stay sequential: their gates build on the previous one's evidence and fixtures.
+  mutants:
+    needs: records
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         # The token stays out of .git/config, where every later step (the code under test
-        # included) could read it; only the publish step below is given it.
+        # included) could read it; only the publish job below is given it.
         with:
           persist-credentials: false
       - name: Toolchain
@@ -37,8 +60,6 @@ jobs:
           retry rustup toolchain install 1.97.0 --profile minimal
           retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; qemu-system-x86_64 --version | head -1
-      - name: validate-records --strict (committed state; a stale verdict fails, warn-policy tests aside)
-        run: python3 tools/project.py validate-records --strict
       - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
         run: |
           python3 tools/project.py build --target pc-qemu
@@ -51,41 +72,151 @@ jobs:
       - name: "Mutation run, M4 gate (TST-M4-MUTANTS, M50-M81, WP-31)"
         if: always()
         run: python3 tools/project.py test --target host --suite M4-GATE
-      - name: "Mutation run, M5 gate (TST-M5-MUTANTS, M82 onwards, WP-38)"
-        if: always()
-        run: python3 tools/project.py test --target host --suite M5-GATE
-      - name: Report
+      - name: Report (M2-M4)
         if: always()
         run: |
-          cat build/mutants-report.json || true
+          cat build/mutants-m2-report.json || true
           cat build/mutants-m3-report.json || true
           cat build/mutants-m4-report.json || true
-          cat build/mutants-m5-report.json || true
-      # A convenience copy, as in verify.yml: the ci-evidence branch below is the record.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         if: always()
         continue-on-error: true
         with:
-          name: mutants-${{ github.sha }}
+          name: mutants-gates-${{ github.sha }}
           path: |
             evidence/
-            build/mutants-report.json
+            build/mutants-m2-report.json
+            build/mutants-m2-progress.jsonl
             build/mutants-m3-report.json
+            build/mutants-m3-progress.jsonl
             build/mutants-m4-report.json
-            build/mutants-m5-report.json
+            build/mutants-m4-progress.jsonl
+          retention-days: 7
+  # Four independent M5 shards; each writes its own report and progress, and its own exit code.
+  m5:
+    needs: records
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { shard: 1, from: 82, to: 91 }
+          - { shard: 2, from: 92, to: 101 }
+          - { shard: 3, from: 102, to: 111 }
+          - { shard: 4, from: 112, to: 121 }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        timeout-minutes: 15
+        run: |
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
+          retry rustup toolchain install 1.97.0 --profile minimal
+          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi x86_64-unknown-none
+          rustup run 1.97.0 rustc --version; qemu-system-x86_64 --version | head -1
+      - name: "Mutation run, M5 shard ${{ matrix.shard }} (M${{ matrix.from }}-M${{ matrix.to }})"
+        # 10 mutants x the 600 s watchdog = 6000 s <= 80% of this 130 min (7800 s) step.
+        timeout-minutes: 130
+        run: |
+          python3 -I tests/mutants.py --target pc-qemu --stage M5 \
+            --from M${{ matrix.from }} --to M${{ matrix.to }} \
+            --report "build/mutants-m5-shard${{ matrix.shard }}-report.json" \
+            --progress "build/mutants-m5-shard${{ matrix.shard }}-progress.jsonl"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: mutants-m5-shard-${{ matrix.shard }}-${{ github.sha }}
+          path: |
+            build/mutants-m5-shard${{ matrix.shard }}-report.json
+            build/mutants-m5-shard${{ matrix.shard }}-progress.jsonl
             build/mutants-scratch/
           retention-days: 7
+  # One gate verdict from the four disjoint shard reports: the threshold and SECURITY rule are
+  # applied to the gate as a whole, never to a single shard.
+  m5-merge:
+    needs: m5
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        continue-on-error: true
+        with:
+          pattern: mutants-m5-shard-*-${{ github.sha }}
+          path: shards
+      - name: Merge the four shard reports into the gate report
+        run: |
+          set -e
+          files=(shards/*/build/mutants-m5-shard*-report.json)
+          if [ "${#files[@]}" -ne 4 ]; then
+            echo "::error::expected 4 shard reports, found ${#files[@]}"
+            exit 2
+          fi
+          : > build/mutants-m5-progress.jsonl
+          for p in shards/*/build/mutants-m5-shard*-progress.jsonl; do
+            [ -e "$p" ] && cat "$p" >> build/mutants-m5-progress.jsonl || true
+          done
+          python3 -I tests/mutants.py --merge "${files[@]}" --report build/mutants-m5-report.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: mutants-m5-${{ github.sha }}
+          path: |
+            build/mutants-m5-report.json
+            build/mutants-m5-progress.jsonl
+          retention-days: 7
+  # One evidence branch for the whole run; the token is only in this job's publish step.
+  publish:
+    needs: [mutants, m5-merge]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        continue-on-error: true
+        with:
+          path: downloaded
       - name: Publish evidence on a ci-evidence branch
         if: always()
         env:
           PUSH_TOKEN: ${{ github.token }}
         run: |
           set -e
+          mkdir -p evidence build
+          for d in downloaded/*/; do
+            [ -d "$d/evidence" ] && cp -a "$d/evidence/." evidence/ || true
+            for f in "$d"/build/mutants-m*-report.json "$d"/build/mutants-m*-progress.jsonl; do
+              [ -e "$f" ] && cp -a "$f" build/ || true
+            done
+          done
           git config user.name "nawah-ci"
           git config user.email "ci@nawah-os.invalid"
           git checkout --orphan "ci-evidence/mutants-${GITHUB_RUN_ID}"
           git rm -rfq --cached . >/dev/null
-          git add -f evidence/ build/mutants-report.json build/mutants-m3-report.json build/mutants-m4-report.json build/mutants-m5-report.json 2>/dev/null || git add -f evidence/
+          git add -f evidence/ || true
+          for f in build/mutants-m2-report.json build/mutants-m3-report.json build/mutants-m4-report.json \
+                   build/mutants-m5-report.json build/mutants-m2-progress.jsonl build/mutants-m3-progress.jsonl \
+                   build/mutants-m4-progress.jsonl build/mutants-m5-progress.jsonl; do
+            [ -e "$f" ] && git add -f "$f" || true
+          done
           git add -f build/mutants-scratch 2>/dev/null || true
           git commit -qm "mutation evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
           auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)

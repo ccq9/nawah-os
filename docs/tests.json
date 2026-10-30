@@ -454,7 +454,7 @@
     "REQ-M2-014"
    ],
    "layer": "host_unit",
-   "oracle": "tests/mutants.py: 29 seeded defects applied one at a time in a detached worktree, each built and run against its killer M1/M2 cases (full suite before declaring a survivor); PASS when >= 95% of the compiling mutants are killed; report build/mutants-report.json",
+   "oracle": "tests/mutants.py: 29 seeded defects applied one at a time in a detached worktree, each built and run against its killer M1/M2 cases (full suite before declaring a survivor); PASS when >= 95% of the compiling mutants are killed; report build/mutants-m2-report.json",
    "command": "python3 tools/project.py test --target host --suite M2  (mutants workflow)",
    "verdict": "PASS",
    "evidence_refs": [
