@@ -29,14 +29,17 @@ without the UEFI toolchain).
 
 Watchdog and exit codes (see docs/mutation-policy.md): every mutant has a per-mutant ceiling
 (--watchdog-seconds, 600 s as the preparatory safety net; the final value is derived from the
-measurements as max(300 s, 2 x p95)). A declared killer that exceeds it is `timeout-killed`: the
-hang is the mutated kernel's, so it counts as a kill, not a survivor. A timeout during the build
-or during the fairness sweep is `infra-error` and is never a kill. Exit codes: 0 = the gate
+measurements as max(300 s, 2 x p95)). Any watchdog overrun, in a declared killer or in the
+fairness sweep, is a candidate `timeout-killed`: it counts as a kill only when the interrupted
+test's serial log exists and its last recorded line is kernel activity. No log, an empty log, a
+crash line, or a QEMU/lab signal is `infra-error` and is never a kill. Exit codes: 0 = the gate
 passes; 1 = a gate failure (a surviving mutant, a surviving SECURITY mutant, or ratio below the
-threshold); 2 = budget/infrastructure (build timeout, fairness timeout, unreadable report, worktree
-or driver failure) — not a gate verdict. Reports are mutants-mN-report.json per gate, written
-partially at every exit, with mutants-mN-progress.jsonl appended after each mutant; a later run
-resumes the terminal entries of the previous partial report.
+threshold); 2 = budget/infrastructure (build timeout, missing/empty serial evidence, crash or QEMU
+signal, unreadable report, worktree or driver failure) — not a gate verdict. Reports are
+mutants-mN-report.json per gate, written partially at every exit, with
+mutants-mN-progress.jsonl appended after each mutant; every timeout event carries the test id,
+seconds and serial-log path. A later run resumes the terminal entries of the previous partial
+report.
 """
 import argparse, json, os, signal, subprocess, sys, tempfile, time, shutil
 from pathlib import Path
@@ -51,15 +54,19 @@ EXIT_OK, EXIT_GATE, EXIT_INFRA = 0, 1, 2
 
 
 class MutantTimeout(Exception):
-    """A test command of the mutant exceeded the per-mutant watchdog (a hang in the mutant)."""
+    """A test command exceeded the per-mutant watchdog. The serial log, not the exception, decides
+    whether the overrun is a hang of the mutated kernel (`timeout-killed`) or infrastructure."""
 
-    def __init__(self, tid):
+    def __init__(self, tid, started=0.0, output=""):
         self.tid = tid
+        self.started = started
+        self.output = output or ""
         super().__init__(f"watchdog fired during {tid}")
 
 
 class InfraError(Exception):
-    """The run cannot attribute the overrun to the mutated kernel: budget, build or fairness."""
+    """The overrun cannot be attributed to the mutated kernel: build, QEMU signal, missing serial
+    log, or a harness/environment failure. Never a kill."""
 
 
 class Budget:
@@ -73,17 +80,79 @@ class Budget:
 
 def run_bounded(cmd, cwd, env, budget, phase, tid=None, hard=1800):
     """`sh` bounded by both the step's own hard limit and the mutant's watchdog. A timeout in
-    `phase` 'test' is a hang of the mutated kernel (MutantTimeout); in 'build' or between
-    steps it is an infrastructure overrun (InfraError): never a verdict on the mutant."""
+    `phase` 'test' is a candidate hang (MutantTimeout, classified from the serial log); in
+    'build' or between steps it is an infrastructure overrun (InfraError), never a verdict."""
+    started = time.time()
     left = budget.remaining()
     if left <= 0:
         raise InfraError(f"watchdog {budget.seconds}s exhausted before {phase} {tid or ''}".strip())
     try:
         return sh(cmd, cwd, env, timeout=min(float(hard), left))
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as ex:
         if phase == "test":
-            raise MutantTimeout(tid)
+            out = ex.stdout if isinstance(ex.stdout, str) else (ex.stdout or b"").decode("utf-8", "replace")
+            raise MutantTimeout(tid, started, out)
         raise InfraError(f"watchdog {budget.seconds}s fired during {phase} {tid or ''}".strip())
+
+
+# The serial-log safety net (docs/mutation-policy.md): a watchdog overrun is only the mutated
+# kernel's hang when the run it interrupted left a serial log whose last recorded line is kernel
+# activity. No log, an empty log, a crash line or a QEMU/lab error is infrastructure, not a kill.
+SERIAL_ACTIVITY = ("OSX|", "ktest", "session|", "svc|", "display|", "input|", "AUTH", "boot")
+SERIAL_CRASH = ("PANIC", "panic:", "kernel panic", "Kernel panic", "EXCEPTION", "exception:",
+                "unhandled", "fatal", "FATAL")
+QEMU_ERROR = ("qemu died with signal", "LAB_ERROR", "qemu could not be started")
+
+
+def serial_log_since(scratch, since):
+    """The serial log the interrupted test just wrote (newest `*/serial*.log` under the scratch
+    evidence, not older than the test start), or None: without it no kill may be claimed."""
+    best = None
+    for p in Path(scratch).rglob("serial*.log"):
+        try:
+            mtime = p.stat().st_mtime
+        except OSError:
+            continue
+        if mtime + 2.0 >= since and (best is None or mtime > best[0]):
+            best = (mtime, p)
+    return best[1] if best else None
+
+
+def classify_timeout(ex, budget, scratch, fairness):
+    """Turn a watchdog overrun into evidence: `timeout-killed` event only when the interrupted
+    test left a serial log with kernel activity as its last line; otherwise InfraError. The event
+    carries the id, the seconds spent on that test and the serial-log path (reported as-is in the
+    report and the progress JSONL)."""
+    log = serial_log_since(scratch, ex.started)
+    elapsed = round(max(0.0, time.time() - ex.started), 1)
+    where = "sweep" if fairness else "declared"
+    event = {"test": ex.tid, "seconds": elapsed, "phase": where,
+             "serial_log": str(log) if log is not None else None}
+    if log is None:
+        raise InfraError(f"watchdog {budget.seconds}s fired at {ex.tid} ({where}) but no serial "
+                         "log was written since the test started; refusing to classify it as a kill")
+    try:
+        text = log.read_text(encoding="utf-8", errors="replace")
+    except OSError as err:
+        raise InfraError(f"watchdog {budget.seconds}s fired at {ex.tid} ({where}) but its serial "
+                         f"log {log} cannot be read: {err}")
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    event["serial_lines"] = len(lines)
+    event["last_line"] = lines[-1][:300] if lines else ""
+    out = ex.output or ""
+    if any(marker in out for marker in QEMU_ERROR):
+        raise InfraError(f"QEMU/lab error while the watchdog fired at {ex.tid}: {out[-300:]}")
+    if not lines:
+        raise InfraError(f"watchdog {budget.seconds}s fired at {ex.tid} ({where}) but its serial "
+                         f"log {log} is empty; no kernel activity to attribute the hang to")
+    crash = [marker for marker in SERIAL_CRASH if marker in "\n".join(lines)]
+    if crash:
+        raise InfraError(f"watchdog {budget.seconds}s fired at {ex.tid} but the serial log shows a "
+                         f"crash ({crash[0]}); a crash is not a hang")
+    if not any(marker in "\n".join(lines) for marker in SERIAL_ACTIVITY):
+        raise InfraError(f"watchdog {budget.seconds}s fired at {ex.tid} but the serial log has no "
+                         "kernel-activity marker; no evidence that the mutant's kernel hung")
+    return event
 
 
 def report_name(stage):
@@ -154,6 +223,7 @@ def finalize(report, partial, exit_code=None):
         invalid=[m["id"] for m in ms if m["status"] == "invalid"],
         infra_error=[m["id"] for m in ms if m["status"] == "infra-error"],
         declared_killers_missed=[m["id"] for m in ms if m.get("declared_killers_missed")],
+        sweep_timeouts=[ev for m in ms for ev in m.get("sweep_timeouts", [])],
         ratio=round(len(killed) / len(valid), 4) if valid else 0.0,
         surviving_security=[m for m in survived if security_of(m)],
         partial=partial, exit_code=exit_code,
@@ -751,12 +821,12 @@ def suite_of(target, test_id):
     return None
 
 
-def run_killers(wt: Path, env, target, killers, budget, fairness=False):
-    """Returns (killed_by, results, timed_out_tid). Every case runs through its suite entry (the
-    strong oracle); a missing artifact (exit 20) is SKIPPED and a lab failure (QEMU died,
-    LAB_ERROR) is ERROR — neither is a kill. A declared killer that times out is a kill of the
-    mutant (the hang is the mutated kernel's); a timeout in the fairness sweep is an
-    infrastructure overrun, never a kill."""
+def run_killers(wt: Path, env, target, killers, budget, scratch, fairness=False):
+    """Returns (killed_by, results, timeout_event). Every case runs through its suite entry (the
+    strong oracle); a missing artifact (exit 20) is SKIPPED. A watchdog overrun is classified from
+    the interrupted test's serial log: a kernel hang is `timeout-killed` (a kill in either the
+    declared or the fairness sweep), while a missing/empty log, a crash or a QEMU signal is
+    InfraError (never a kill). A checkpoint failure is a kill; LAB_ERROR is infrastructure."""
     results = {}
     pyproj = ["python3", str(wt / "tools" / "project.py")]
     for tid in killers:
@@ -774,18 +844,15 @@ def run_killers(wt: Path, env, target, killers, budget, fairness=False):
         try:
             r = run_bounded(cmd, wt, env, budget, "test", tid)
         except MutantTimeout as ex:
-            if fairness:
-                raise InfraError(f"watchdog {budget.seconds}s fired in the fairness sweep at {ex.tid}; "
-                                 "the survivor cannot be decided")
+            event = classify_timeout(ex, budget, scratch, fairness)
             results[tid] = "TIMEOUT"
-            return [tid], results, tid
+            return [tid], results, event
         if r.returncode == 0:
             results[tid] = "PASS"
         elif r.returncode == 20 or "no artifact" in r.stdout:
             results[tid] = "SKIPPED"
-        elif "LAB_ERROR" in r.stdout:
-            # The emulator died twice: no verdict on the mutant from this case (never a kill).
-            results[tid] = "ERROR"
+        elif "LAB_ERROR" in r.stdout or "qemu died with signal" in r.stdout:
+            raise InfraError(f"QEMU/lab error during {tid}: {r.stdout[-300:].strip()}")
         else:
             results[tid] = "FAIL"
             # One failing declared killer is the verdict; no budget is spent on the rest.
@@ -959,12 +1026,13 @@ def main():
                     print(f"{mid}: INVALID (does not build) [{entry['seconds']}s] ({note})", flush=True)
                     continue
                 (wt / "build" / a.target / "build-id.txt").write_text(benv["NAWAH_BUILD_ID"] + "\n")
-                killed_by, results, timed = run_killers(wt, env, a.target, killers, budget)
+                killed_by, results, timed = run_killers(wt, env, a.target, killers, budget, scratch)
                 declared_miss = not killed_by
                 if not killed_by:
                     # Be fair before declaring a survivor: build the remaining artifacts and run
-                    # everything the suites have. A watchdog overrun here is infrastructure, not a
-                    # kill: it cannot decide the survivor.
+                    # everything the suites have. A watchdog overrun here is classified from the
+                    # interrupted test's serial log exactly like a declared one: a hang is
+                    # timeout-killed (and its sweep-timeout event is recorded below).
                     rest = [c for c in all_cases(a.target) if c not in killers]
                     for step, out, name in ((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"), (NEG_STEP, NEG_OUT, "NAWAH-NEG.EFI")):
                         if (wt / "build" / a.target / name).exists() and name == "NAWAH.EFI" and need_release:
@@ -972,7 +1040,8 @@ def main():
                         r = run_bounded(step, wt, benv, budget, "build")
                         if r.returncode == 0:
                             shutil.copy(wt / out, wt / "build" / a.target / name)
-                    more_killed, more, more_timed = run_killers(wt, env, a.target, rest, budget, fairness=True)
+                    more_killed, more, more_timed = run_killers(wt, env, a.target, rest, budget, scratch,
+                                                               fairness=True)
                     results.update(more)
                     killed_by = more_killed
                     timed = timed or more_timed
@@ -989,18 +1058,28 @@ def main():
                 status = "timeout-killed" if timed else ("killed" if killed_by else "survived")
                 entry.update(status=status, killed_by=killed_by, results=results,
                              timed_out=bool(timed), seconds=round(time.time() - t0, 1))
+                if timed:
+                    # The report and the progress JSONL carry the sweep-timeout event: test id,
+                    # seconds, serial-log path (and phase/last line for auditing).
+                    entry["timeout_event"] = timed
+                    if timed.get("phase") == "sweep":
+                        entry["sweep_timeouts"] = [timed]
             except MutantTimeout as ex:
-                entry.update(status="timeout-killed", timed_out=True, killed_by=[ex.tid] if ex.tid else [],
-                             results={ex.tid: "TIMEOUT"} if ex.tid else {},
-                             reason=f"watchdog {a.watchdog_seconds}s fired during {ex.tid}",
+                # run_killers classifies every watchdog overrun from its serial log; reaching this
+                # catch means the evidence is missing, so it is infrastructure, never a kill.
+                infra = True
+                entry.update(status="infra-error",
+                             reason=f"unclassified watchdog overrun at {ex.tid} (no serial-log verdict)",
                              seconds=round(time.time() - t0, 1))
             except InfraError as ex:
                 infra = True
                 entry.update(status="infra-error", reason=str(ex), seconds=round(time.time() - t0, 1))
             finish_one(entry)
             if entry["status"] == "timeout-killed":
+                ev = entry.get("timeout_event") or {}
                 print(f"{mid}: timeout-killed by {','.join(entry['killed_by']) or '?'} "
-                      f"[{entry['seconds']}s] ({note})", flush=True)
+                      f"[{entry['seconds']}s] test={ev.get('test')} serial={ev.get('serial_log')} ({note})",
+                      flush=True)
             elif entry["status"] == "killed":
                 print(f"{mid}: killed by {','.join(entry['killed_by'])} [{entry['seconds']}s] ({note})", flush=True)
             elif entry["status"] == "survived":
