@@ -10,7 +10,7 @@ makes a run bounded, observable and resumable.
 |------|---------|
 | `0` | the gate passes: the selected mutants were all evaluated, the kill ratio is at least 0.95 over the valid mutants, and no `SECURITY` mutant survived |
 | `1` | a gate failure: a mutant survived (including a surviving `SECURITY` mutant) or the ratio is below the threshold |
-| `2` | budget or infrastructure: a build step, the fairness sweep or the harness itself exceeded the watchdog; a report is unreadable/duplicated in `--merge`; the worktree/driver failed. Never a gate verdict |
+| `2` | budget or infrastructure: a build step, a missing/empty serial log, a crash or QEMU/lab signal, a harness failure, an unreadable/duplicated merge report, or the worktree/driver failed. Never a gate verdict |
 
 A `--check` run (apply + type-check only) keeps its historical codes: `0` when every patch applies
 and type-checks, `1` otherwise.
@@ -20,17 +20,20 @@ and type-checks, `1` otherwise.
 `timeout-killed` is a verdict of its own, written as `status: "timeout-killed"` and counted with
 the kills (`killed`), never with the survivors:
 
-- It is assigned when a **declared killer test** of the mutant exceeds the per-mutant watchdog
-  (or its own bounded timeout) while executing the mutated kernel. The hang is attributed to the
-  mutated code, exactly like a failing assertion: the mutant is killed.
-- It is **not** assigned to a build step, to the fairness sweep, or to an error of the watchdog
-  itself. Those are `infra-error`, are excluded from the ratio and force exit code `2`.
+- It is assigned when **any test of the mutant** (a declared killer or one in the fairness sweep)
+  exceeds the per-mutant watchdog *and* the interrupted test left a serial log whose last recorded
+  line is kernel activity. The overrun is then attributed to the mutated kernel exactly like a
+  failing assertion: the mutant is killed. A sweep overrun records a `sweep_timeouts` event with
+  the test id, the seconds spent on that test and the serial-log path.
+- It is **not** assigned when the serial log is missing or empty, when the log shows a crash, when
+  the child reports a QEMU/lab signal, or when a build step/the harness fails. Those are
+  `infra-error`, are excluded from the ratio and force exit code `2`: no verdict without evidence.
 - A `SECURITY` mutant that is `timeout-killed` is therefore **killed**, not a surviving security
   defect: `surviving_security` only lists `survived` mutants. A run with an `infra-error` on a
   `SECURITY` mutant has no verdict at all (exit `2`), because an infrastructure failure can hide
   either outcome.
-- The report keeps the attribution (`killed_by`, `results[tid] = "TIMEOUT"`, `timed_out: true`) so
-  the verdict can be audited.
+- The report keeps the attribution (`killed_by`, `results[tid] = "TIMEOUT"`, `timed_out: true`,
+  `timeout_event`, and `sweep_timeouts` for a fairness overrun) so the verdict can be audited.
 
 ## Watchdog
 
@@ -41,9 +44,25 @@ s). The final ceiling of a later revision is derived from a preparatory run's me
 - The deadline covers the mutant's whole work: reset/apply, the artifacts its killers need, the
   declared killers and (when they all pass) the fairness sweep.
 - It is passed to every subprocess as `min(step's hard limit, remaining budget)`.
-- `timeout-killed` / `infra-error` as above. The fairness sweep is bounded too; if it cannot finish
-  inside the same budget the survivor is undecidable, so the mutant is `infra-error` (exit `2`),
-  never a false kill.
+- Any overrun in a test is classified from the interrupted test's serial log, declared killer or
+  fairness sweep alike: kernel activity as the last recorded line is a `timeout-killed` (the
+  fairness case also logs a `sweep_timeouts` event); a missing/empty log, a crash line or a
+  QEMU/lab signal is `infra-error` (exit `2`), never a false kill. A build overrun is
+  infrastructure as well.
+
+## Serial-log safety net
+
+Before any overrun becomes `timeout-killed`, the harness reads the serial log the interrupted test
+just wrote (the newest `evidence-run/serial*.log` under the mutation scratch since the test
+started):
+
+- no log written since the test started, or an unreadable/empty log: `infra-error` (no evidence);
+- a crash marker in the log (`PANIC`, `panic:`, `EXCEPTION`, `unhandled`, `fatal`) or a QEMU/lab
+  error in the child output (`qemu died with signal`, `LAB_ERROR`): `infra-error`;
+- otherwise the last non-empty serial line is the kernel activity of the mutated system: the
+  verdict is `timeout-killed`, and the event `{test, seconds, phase, serial_log, last_line}` is
+  written to the mutant's entry (and therefore to the progress JSONL); a fairness overrun also
+  lands in the report's `sweep_timeouts` list.
 
 ## Reports and progress
 

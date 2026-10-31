@@ -161,13 +161,14 @@ jobs:
       - name: Merge the four shard reports into the gate report
         run: |
           set -e
-          files=(shards/*/build/mutants-m5-shard*-report.json)
+          shopt -s nullglob
+          files=(shards/*/mutants-m5-shard*-report.json)
           if [ "${#files[@]}" -ne 4 ]; then
             echo "::error::expected 4 shard reports, found ${#files[@]}"
             exit 2
           fi
           : > build/mutants-m5-progress.jsonl
-          for p in shards/*/build/mutants-m5-shard*-progress.jsonl; do
+          for p in shards/*/mutants-m5-shard*-progress.jsonl; do
             [ -e "$p" ] && cat "$p" >> build/mutants-m5-progress.jsonl || true
           done
           python3 -I tests/mutants.py --merge "${files[@]}" --report build/mutants-m5-report.json
