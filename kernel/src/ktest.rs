@@ -8122,6 +8122,12 @@ fn lock_auth_hang() -> ! {
     const SPY_COLOUR: u32 = 0x2E8B57;
     // The spy's 200×120 client area less the compositor's 12×12 resize grip in its corner.
     const SPY_PIXELS: u64 = 200 * 120 - 12 * 12;
+    // TST-M5-LOCK-AUTH-HANG's waits are a strict ceiling derived from the session's unmutated
+    // REQUEST_DEADLINE (user/apps/sessiond/src/main.rs: 5_000 ticks), not a round number: twice
+    // that value. A broken or hung session therefore fails the test in 2 x the real deadline
+    // instead of parking the mutant run in a 600_000-tick wait.
+    const REQUEST_DEADLINE: u64 = 5_000;
+    const WAIT: u64 = 2 * REQUEST_DEADLINE;
     let name = "lock_auth_hang";
     let (h, session) = session_env(
         name,
@@ -8131,7 +8137,7 @@ fn lock_auth_hang() -> ! {
     let spy = svc_connect(&h, "spy");
     kprintln!("OSX|{}|ktest|{}|services=5|ready=1", BUILD_ID, name);
     // The lab signs in; the spy's window takes the focus and is composed onto the frame.
-    let unlocked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+    let unlocked = poll_reply(&session, b"STATE", sched::ticks() + WAIT, |r| {
         state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
     });
     let mut census = frame_census(SPY_COLOUR);
@@ -8164,7 +8170,7 @@ fn lock_auth_hang() -> ! {
         fail("no live auth service to freeze")
     }
     // The lab: Ctrl+Alt+Del. The session locks without auth's answer.
-    let locked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+    let locked = poll_reply(&session, b"STATE", sched::ticks() + WAIT, |r| {
         state_is(r, "locked", 2)
     });
     let t0 = sched::ticks();
@@ -8200,7 +8206,7 @@ fn lock_auth_hang() -> ! {
         fail("the session did not lock at once while auth hung, or the desktop stayed visible")
     }
     // The lab: Tab, Tab, Enter — Sign out on the lock screen, auth still frozen.
-    let out = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+    let out = poll_reply(&session, b"STATE", sched::ticks() + WAIT, |r| {
         state_is(r, "no_session", 3)
     });
     let waiting2 = poll_reply(&session, b"AUTH", sched::ticks() + 500, |r| {
@@ -8220,7 +8226,7 @@ fn lock_auth_hang() -> ! {
     }
     // Released, auth answers the LOCK and the LOGOUT; the session waits for nothing more.
     let thawed = sched::thaw_named(b"AUTHD.ELF");
-    let drained = poll_reply(&session, b"AUTH", sched::ticks() + 60_000, |r| {
+    let drained = poll_reply(&session, b"AUTH", sched::ticks() + WAIT, |r| {
         r == "OK waiting=0 lock_unsent=0"
     });
     kprintln!(
@@ -8234,7 +8240,7 @@ fn lock_auth_hang() -> ! {
         fail("the released auth did not answer what waited")
     }
     // The lab signs in again through the same auth.
-    let back = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+    let back = poll_reply(&session, b"STATE", sched::ticks() + WAIT, |r| {
         state_is(r, "unlocked", 4) && r.ends_with(" focus=display")
     });
     kprintln!("OSX|{}|ktest|{}|signed_in_again={}", BUILD_ID, name, back);

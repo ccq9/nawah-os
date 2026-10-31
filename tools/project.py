@@ -1109,8 +1109,8 @@ HOST_SUITES = {
 
 
 HOST_SUITES["M2"] = [
-    {"id": "TST-M2-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--stage", "M2", "--report", "build/mutants-report.json"],
-     "oracle": "every seeded defect that compiles is killed by at least one M1/M2 case; kill ratio >= 0.95 (report in stdout and build/mutants-report.json)",
+    {"id": "TST-M2-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--stage", "M2", "--report", "build/mutants-m2-report.json"],
+     "oracle": "every seeded defect that compiles is killed by at least one M1/M2 case; kill ratio >= 0.95 (report in stdout and build/mutants-m2-report.json)",
      "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs"], "timeout_s": 6000},
 ]
 # The M3 gate's mutation run (WP-22) is its own suite so the verify workflow's quick host suite

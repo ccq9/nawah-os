@@ -101,6 +101,9 @@ class Workflows(unittest.TestCase):
         for name in ("verify.yml", "mutants.yml"):
             for job, body in load(name)["jobs"].items():
                 steps = [s for s in body["steps"] if s.get("name", "").startswith("Toolchain")]
+                if not steps:
+                    # The records and publish jobs of mutants.yml need no guest toolchain.
+                    continue
                 self.assertEqual(len(steps), 1, f"{name}: {job}: one Toolchain step")
                 step = steps[0]
                 self.assertLessEqual(step.get("timeout-minutes", 10**6), 15,
@@ -323,27 +326,69 @@ class CheckCommit(unittest.TestCase):
 
 
 class MutationHarness(unittest.TestCase):
-    def test_mutants_runs_the_gates_in_order_and_publishes_every_report(self):
-        # WP-38 phase 1 (2026-10-28): the M5 step was added but its report was left out of the
-        # evidence branch's `git add`, and no test held the gate order; the records check
-        # before the runs was not strict.
-        steps = next(iter(load("mutants.yml")["jobs"].values()))["steps"]
+    def test_records_are_checked_strictly_before_any_mutation_run(self):
+        jobs = load("mutants.yml")["jobs"]
+        validate = [s for s in jobs["records"]["steps"] if str(s.get("name", "")).startswith("validate-records")]
+        self.assertEqual(len(validate), 1)
+        self.assertIn("--strict", validate[0]["run"], "the records check before the runs is strict")
+        self.assertEqual(jobs["mutants"]["needs"], "records")
+        self.assertEqual(jobs["m5"]["needs"], "records")
+
+    def test_m2_m4_run_in_order_and_publish_their_reports(self):
+        steps = load("mutants.yml")["jobs"]["mutants"]["steps"]
         names = [str(s.get("name", "")) for s in steps]
         gates = [n for n in names if n.startswith("Mutation run, ")]
-        self.assertEqual([g.split(",")[1].strip()[:2] for g in gates], ["M2", "M3", "M4", "M5"],
-                         "the gates run in order M2, M3, M4, M5")
+        self.assertEqual([g.split(",")[1].strip()[:2] for g in gates], ["M2", "M3", "M4"],
+                         "the sequential gates run in order M2, M3, M4")
         runs = [s["run"] for s in steps if str(s.get("name", "")).startswith("Mutation run, ")]
-        self.assertEqual(runs, [f"python3 tools/project.py test --target host --suite {x}" for x in ("M2", "M3-GATE", "M4-GATE", "M5-GATE")])
+        self.assertEqual(runs, [f"python3 tools/project.py test --target host --suite {x}" for x in ("M2", "M3-GATE", "M4-GATE")])
         for s in steps[1:]:
             if str(s.get("name", "")).startswith("Mutation run, ") and not s["name"].startswith("Mutation run, M2"):
                 self.assertEqual(s.get("if"), "always()", f"{s['name']}: a failed gate must not skip the next")
-        validate = [s for s in steps if str(s.get("name", "")).startswith("validate-records")]
-        self.assertEqual(len(validate), 1)
-        self.assertIn("--strict", validate[0]["run"], "the records check before the runs is strict")
-        publish = next(s for s in steps if str(s.get("name", "")).startswith("Publish evidence"))
-        add = next(l for l in publish["run"].splitlines() if l.strip().startswith("git add -f evidence/"))
-        for rep in ("build/mutants-report.json", "build/mutants-m3-report.json", "build/mutants-m4-report.json", "build/mutants-m5-report.json"):
-            self.assertIn(rep, add, f"{rep} is not published on the evidence branch")
+        report = next(s for s in steps if str(s.get("name", "")).startswith("Report (M2-M4)"))
+        upload = next(s for s in steps if str(s.get("uses", "")).startswith("actions/upload-artifact@"))
+        for rep in ("build/mutants-m2-report.json", "build/mutants-m3-report.json", "build/mutants-m4-report.json"):
+            self.assertIn(rep, report["run"])
+            self.assertIn(rep, upload["with"]["path"])
+        self.assertEqual(upload["with"]["name"], "mutants-gates-${{ github.sha }}")
+
+    def test_m5_is_four_disjoint_shards_with_a_bounded_step(self):
+        jobs = load("mutants.yml")["jobs"]
+        m5 = jobs["m5"]
+        include = m5["strategy"]["matrix"]["include"]
+        self.assertEqual([(e["from"], e["to"]) for e in include],
+                         [(82, 91), (92, 101), (102, 111), (112, 121)], "the four M5 shard ranges")
+        shard_steps = [s for s in m5["steps"] if str(s.get("name", "")).startswith("Mutation run, M5 shard")]
+        self.assertEqual(len(shard_steps), 1)
+        step = shard_steps[0]
+        self.assertLessEqual(step.get("timeout-minutes", 10**6), 130)
+        for e in include:
+            self.assertEqual(e["to"] - e["from"] + 1, 10, "every shard holds ten mutants")
+        # The documented worst case: ten mutants at the 600 s safety net, at most 80% of the step.
+        self.assertLessEqual(10 * 600, 0.8 * step["timeout-minutes"] * 60,
+                             "the largest shard does not fit 80% of its step limit")
+        self.assertIn("--stage M5", step["run"])
+        self.assertIn("--from M${{ matrix.from }}", step["run"])
+        self.assertIn("--to M${{ matrix.to }}", step["run"])
+        self.assertIn("build/mutants-m5-shard${{ matrix.shard }}-report.json", step["run"])
+        self.assertIn("build/mutants-m5-shard${{ matrix.shard }}-progress.jsonl", step["run"])
+        merge = [s for s in jobs["m5-merge"]["steps"] if str(s.get("name", "")).startswith("Merge the four shard reports")]
+        self.assertEqual(len(merge), 1)
+        self.assertIn("--merge", merge[0]["run"])
+        self.assertIn("build/mutants-m5-report.json", merge[0]["run"])
+        self.assertEqual(jobs["m5-merge"]["needs"], "m5")
+
+    def test_publish_is_one_token_holder_with_every_gate_report(self):
+        publish = load("mutants.yml")["jobs"]["publish"]
+        holders = [s for s in publish["steps"] if "github.token" in str(s) or "secrets." in str(s)]
+        self.assertEqual(len(holders), 1, "only the publish step gets the token")
+        self.assertTrue(holders[0]["name"].startswith("Publish evidence"), holders[0]["name"])
+        run = holders[0]["run"]
+        for rep in ("build/mutants-m2-report.json", "build/mutants-m3-report.json",
+                    "build/mutants-m4-report.json", "build/mutants-m5-report.json"):
+            self.assertIn(rep, run, f"{rep} is not published on the evidence branch")
+        self.assertIn("build/mutants-m5-progress.jsonl", run)
+        self.assertEqual(sorted(publish["needs"]), ["m5-merge", "mutants"])
 
     def test_mutants_build_every_app_the_kernel_embeds_and_the_build_compiles(self):
         # Review 2026-10-19 (M8): the harness kept its own app list; WP-40 added exiter to the

@@ -1,0 +1,12 @@
+test_absent_raw (__main__.Fat32Tool.test_absent_raw) ... ok
+test_fsck (__main__.Fat32Tool.test_fsck) ... ok
+test_geometry_and_listing (__main__.Fat32Tool.test_geometry_and_listing) ... ok
+test_grep (__main__.Fat32Tool.test_grep) ... ok
+test_nested_directory (__main__.Fat32Tool.test_nested_directory) ... ok
+test_pattern_tail (__main__.Fat32Tool.test_pattern_tail) ... ok
+test_read_back (__main__.Fat32Tool.test_read_back) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.308s
+
+OK
