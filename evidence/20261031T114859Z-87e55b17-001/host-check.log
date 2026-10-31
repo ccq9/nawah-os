@@ -1,0 +1,104 @@
+$ python3 -I tools/transcript.py streams /home/runner/work/nawah-os/nawah-os/evidence/20261031T114859Z-87e55b17-001 platform/pc-qemu/expect/login-screen.txt
+serial.log: session: 7 lines as expected
+serial.log: spy: 8 lines as expected
+
+[exit 0]
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261031T114859Z-87e55b17-001/screen-login.ppm --pixel 2,2,10141C --pixel 150,150,10141C --pixel 512,338,F0F0F0
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 2,
+   "y": 2,
+   "expected": "10141c",
+   "seen": "10141c",
+   "ok": true
+  },
+  {
+   "x": 150,
+   "y": 150,
+   "expected": "10141c",
+   "seen": "10141c",
+   "ok": true
+  },
+  {
+   "x": 512,
+   "y": 338,
+   "expected": "f0f0f0",
+   "seen": "f0f0f0",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261031T114859Z-87e55b17-001/screen-desktop.ppm --pixel 150,150,2E8B57 --pixel 2,2,1E2A38 --pixel 700,600,1E2A38
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 150,
+   "y": 150,
+   "expected": "2e8b57",
+   "seen": "2e8b57",
+   "ok": true
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "expected": "1e2a38",
+   "seen": "1e2a38",
+   "ok": true
+  },
+  {
+   "x": 700,
+   "y": 600,
+   "expected": "1e2a38",
+   "seen": "1e2a38",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261031T114859Z-87e55b17-001/screen-locked.ppm --pixel 2,2,10141C --pixel 150,150,10141C --pixel 512,338,F0F0F0
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 2,
+   "y": 2,
+   "expected": "10141c",
+   "seen": "10141c",
+   "ok": true
+  },
+  {
+   "x": 150,
+   "y": 150,
+   "expected": "10141c",
+   "seen": "10141c",
+   "ok": true
+  },
+  {
+   "x": 512,
+   "y": 338,
+   "expected": "f0f0f0",
+   "seen": "f0f0f0",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
