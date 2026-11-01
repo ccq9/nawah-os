@@ -439,10 +439,12 @@ MUTANTS = [
     ("M96", "user/apps/displayd/src/main.rs",
      "const CLIENT_WINDOWS: usize = 4;", "const CLIENT_WINDOWS: usize = 5;",
      ["TST-M5-CLIENT-LIMITS"], "one window over the share (constant)"),
-    ("M97", "user/apps/displayd/src/main.rs",
-     "                        self.locked = true;\n                        let mut told = [false; MAX_CLIENTS];",
-     "                        let mut told = [false; MAX_CLIENTS];",
-     ["TST-M5-LOGIN-SCREEN"], "LOGOUT removes the windows before holding the screen: the hold is dropped (order swap: the hold no longer comes first)"),
+    # M97 was LOGOUT's `self.locked = true;` (order swap: the hold first). It is EQUIVALENT:
+    # the session sends LOGOUT only from the lock screen (both sign_out callers run in
+    # State::Locked), after LOCKED on the same channel (re-sent first on a reconnect), and
+    # displayd starts locked when a session is in its manifest and re-locks when the session is
+    # lost (main.rs 1102). So `locked` is already true whenever LOGOUT arrives and the line is
+    # defence in depth with no reachable effect. Dropped (survived every test, run 41232332567).
     ("M98", "user/apps/sessiond/src/main.rs",
      "        self.state = State::Locked;\n        if self.elevation.is_some() {\n            self.elevate_end(b\"ERR CANCELLED\", now);\n            self.want_display = false;\n        }\n        self.changes += 1;",
      "        if self.elevation.is_some() {\n            self.elevate_end(b\"ERR CANCELLED\", now);\n            self.want_display = false;\n        }\n        self.changes += 1;\n        self.state = State::Locked;",
@@ -550,7 +552,7 @@ def stage_of(mid: str) -> str:
 # The M5 mutants that undo a security fix of the pre-gate review (WP-43) or of WP-41: the gate
 # fails if any of them survives, whatever the kill ratio (the review's rule 1 of 2026-10-27).
 SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91",
-            "M95", "M96", "M97", "M98", "M99", "M100", "M101", "M102", "M105", "M106", "M107", "M112"}
+            "M95", "M96", "M98", "M99", "M100", "M101", "M102", "M105", "M106", "M107", "M112"}
 
 
 def security_of(mid: str) -> bool:

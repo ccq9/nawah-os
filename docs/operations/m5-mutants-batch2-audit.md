@@ -35,11 +35,11 @@ and nothing real killed them:
 
 | id | security | declared killer(s) → verdict | diagnosis |
 |---|---|---|---|
-| M93 | yes | TST-M5-LOCK-SURVIVES → PASS | **equivalent**: `cyclable()`'s lock guard is only reached from the Alt+Tab handler, which runs only when displayd holds the keyboard — i.e. while unlocked, where the guard is always true. No test can distinguish it. → replace. |
-| M94 | no | TST-M5-LIST-HASH-HELD → PASS | **equivalent**: `(0..k)` → `(0..=k)` adds the window itself, for which `ow.owner == w.owner` holds. → replaced with `(1..k)` (skips the topmost window; a covered client area reads as its own). |
-| M97 | yes | TST-M5-LOGIN-SCREEN → PASS | **real test gap**: on LOGOUT without `locked=true` first, `destroy_window` of a focused client calls `top_visible()` → `set_focus` to another client's still-visible window and announces it to the narrator before destroying it. LOGIN-SCREEN checks only the final window count and that the spy stopped, never the transient focus/announce. |
-| M106 | yes | TST-M5-SESSION-LOSS → PASS | **real test gap**: `inputd.forget()` drops the `b"session"` block that clears the keyboard focus when the session dies. The first guard only clears when the *session* held focus; it misses the case where a *non-session* client (a window focused before the crash) held it, leaving it able to receive a password typed for the restarted session. SESSION-LOSS checks the compositor's focus, not inputd's keyboard focus, and types no key during the loss. |
-| M103 | no | FOCUS-AFTER-RESTART, LOCK-DISPLAY-DOWN → PASS | **gap (non-security)**: `RELEASE_WAIT=0` removes the wait for every key to be released before the keyboard is handed to the display after unlock; no test holds a key across the unlock. Pre-registered 2026-10-28 as a possible survivor. |
+| M93 | yes | TST-M5-LOCK-SURVIVES → PASS | **equivalent**: `cyclable()`'s lock guard is reached only from the Alt+Tab handler, which runs only while displayd holds the keyboard — i.e. while unlocked, where the guard is always true. → **dropped**. |
+| M94 | no | TST-M5-LIST-HASH-HELD → PASS | **equivalent**: `(0..k)` → `(0..=k)` adds the window itself, for which `ow.owner == w.owner` holds. → **replaced** with `(1..k)` (skips the topmost window; a covered client area reads as its own). |
+| M97 | yes | TST-M5-LOGIN-SCREEN → PASS | **equivalent** (corrected — a first reading of 2026-11-01 called it a test gap; that was wrong). Every writer of displayd's `locked`: start (`session_in_manifest` → true), session lost (main.rs 1102 → true), `LOCKED`/`UNLOCKED` (session-only verbs), and LOGOUT itself. The session sends LOGOUT only from the lock screen (both `sign_out` callers run in `State::Locked`), after `LOCKED` on the same channel (re-sent first on a reconnect). So `locked` is already true whenever LOGOUT arrives; the removed line is defence in depth with no reachable effect. → **dropped**. |
+| M106 | yes | TST-M5-SESSION-LOSS → PASS | **real test gap**: `inputd.forget()` loses the block that clears the keyboard focus when the session goes. The first guard clears only when the *session* held the focus; while unlocked the *compositor* holds it (`focus=display`), so with the mutant the input service keeps routing to it after the session is gone — a reachable, observable break of input.md v2.2 ("nobody gets keys until it is back"). Phases 1–4 only observe the compositor's focus (the spy's). → **test strengthened**: phase 5 signs in once more, stops the session for good (STOP, no restart; sessiond exits on STOP without touching the keyboard) and requires the input service's own `STATUS` to read `focus=-` once the manager lists the session stopped (`…input_focus_cleared=1|phase=6`). Clean tree: must pass (verify); M106: `focus=<display id>` → fail. |
+| M103 | no | FOCUS-AFTER-RESTART, LOCK-DISPLAY-DOWN → PASS | **gap (non-security)**: `RELEASE_WAIT=0` hands the keyboard to the compositor without waiting for keys still held on the session's screen. It is observable only when a key is held across the auth round-trip and released before 1000 ticks (a timing-sensitive test). Pre-registered 2026-10-28 as a possible survivor; left as the one accepted survivor. |
 
 M104 (non-security) was killed in the sweep by **TST-M5-SESSION-DEADLINE** and
 **TST-M5-SESSION-HANG**, not by its declared LOCK/UNLOCK-AUTH-HANG cases (those stopped
@@ -48,29 +48,17 @@ corrected to the two that bite.
 
 ## Security reading
 
-M93 is equivalent (a dead guard); the lock-holds-windows property is enforced by `visible()`,
-which M86 and M92 already cover. **M97 and M106 are genuine security test-coverage gaps** —
-exactly what mutation testing exists to find. The right response is to strengthen the two tests
-so they kill the mutants, not to reshape the mutants around weak tests.
+Of the three security survivors, two were equivalent mutants (M93, M97): the property each
+seemed to guard is enforced elsewhere (`visible()`; the lock that always precedes LOGOUT), so no
+test can or should kill them. One was a real coverage gap (M106) and the test that owns the
+property (SESSION-LOSS) now checks it directly at the input service.
 
-## Status and the honest limit
+## Status
 
-Landed on the PR-#19 branch and validated where it can be: the harness fix, M94 (equivalent →
-real boundary shift), M104 (declared killers corrected), and TST-M0-005 (6 host cases, run on
-CI by verify). These are host-testable or code-reasoned and CI is their judge.
-
-What cannot be finished from here: M97 and M106 survive their declared killers (evidence), but
-whether each is a genuinely exploitable hole or is already defended elsewhere — and what exact
-observable (a narrator announcement for M97, an inputd `STATUS focus=` read in the no-session
-transient for M106) reliably kills it — cannot be decided without running mutated kernels in
-QEMU, which this container has no bare-metal target for. Writing the two guest security tests
-blind would be guessing, which is the one thing not to do in a security suite.
-
-M93 is a proven equivalent (a dead guard); it is dropped from the active set rather than padded
-with a redundant mutant. M103 (non-security) survives and is pre-registered.
-
-So the gate does not close this turn. The correct next step is the project's own TDD-CI loop,
-one candidate test at a time: draft → verify proves it passes on the clean tree (~25 min) →
-a targeted M5 run proves it kills the mutant. M97, M106 and M103 are recorded as findings for
-that work. No merge of PR #19 before the gate closes, the owner reviews CI, and the random
-challenge is run.
+On the PR-#19 branch: the harness fix and TST-M0-005 (PASS on CI, verify 41277195786), M94
+replaced, M104's killers corrected, M93 and M97 dropped as equivalents (batch 2: 28 mutants, 11
+security; M5 gate: 38), and SESSION-LOSS's phase 5. Expected M5 result: 37/38 killed (97.4 %),
+M103 the only survivor, no surviving security mutant. Next: verify must show SESSION-LOSS still
+PASS on the clean tree; then import that evidence (strict records on the committed state are a
+precondition of the mutants workflow); then one mutants run. No merge of PR #19 before the gate
+closes, the owner reviews CI, and the random challenge is run.

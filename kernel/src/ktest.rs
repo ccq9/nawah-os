@@ -7512,10 +7512,54 @@ fn session_loss() -> ! {
     {
         fail("the session lost while locked did not leave a held screen and a fresh session")
     }
+    // Phase 5 (input.md v2.2; WP-38 mutant M106): the lab signs in once more, so the keyboard
+    // is the compositor's — the input service's focus is `display`, not the session's. The
+    // session is then stopped for good. Its loss must leave the keyboard with nobody, as the
+    // input service itself reports (`STATUS` → `focus=-`). Clearing the focus only when the
+    // lost client held it is not enough here: at this moment the compositor holds it, and a
+    // window it routes to would receive what is typed before a fresh session takes over.
+    // Phases 1–4 observe the compositor's focus (the spy's), never the input service's.
+    kprintln!("OSX|{}|ktest|session_loss|phase=5|ready=1", BUILD_ID);
+    let unlocked3 = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
+    });
+    let input = svc_connect(&h, "input");
+    let r3 = match crate::services::request(&h.m.ctl, b"STOP session", sched::ticks() + 500) {
+        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+        Err(e) => String::from(e),
+    };
+    drop(session);
+    let lines = h.poll_list(sched::ticks() + 60_000, |l| {
+        l.iter()
+            .any(|x| x.name == "session" && x.state == "stopped")
+    });
+    let stopped = lines
+        .iter()
+        .any(|x| x.name == "session" && x.state == "stopped");
+    let input_after = poll_reply(&input, b"STATUS", sched::ticks() + 5_000, |r| {
+        r.starts_with("OK focus=- ")
+    });
+    kprintln!(
+        "OSX|{}|ktest|session_loss|unlocked3={}|stop={}|stopped={}|input_focus_cleared={}|phase=6",
+        BUILD_ID,
+        unlocked3,
+        r3,
+        u8::from(stopped),
+        u8::from(input_after.starts_with("OK focus=- "))
+    );
+    if !state_is(&unlocked3, "unlocked", 1)
+        || !unlocked3.ends_with(" focus=display")
+        || r3 != "OK"
+        || !stopped
+        || !input_after.starts_with("OK focus=- ")
+    {
+        fail("the session lost while the compositor held the keyboard left the keyboard with it")
+    }
     drop((
         unlocked, spy0, r1, fresh1, spy1, unlocked2, locked, r2, fresh2, spy2,
     ));
-    drop((session, display, spy));
+    drop((unlocked3, r3, lines, input_after));
+    drop((input, display, spy));
     display_finish(
         name,
         h,
