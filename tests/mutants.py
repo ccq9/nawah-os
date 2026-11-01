@@ -32,6 +32,21 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 THRESHOLD = 0.95
 
+# The per-case QEMU timeout while a mutant runs. It bounds a mutant that hangs a case, but it
+# must not fail a case that is merely slow: the slowest M5 case on the clean tree is
+# TST-M5-ELEVATE at ~124 s (CI verify 41232334352, 2026-10-31). The old blanket 90 s failed
+# ELEVATE on every mutant in the fairness sweep and counted that infrastructure timeout as a
+# kill (run 41232332567). 180 s clears ELEVATE with margin and still bounds a real hang.
+MUTANT_CASE_TIMEOUT_S = 180
+
+
+def mutant_build_id(mid: str) -> str:
+    """The build identity a mutant's kernel carries. TST-M5-DISPLAY-BOOT decodes the frame's
+    build-id bar one hex digit per cell and compares it to BUILD_ID, so the id must be all hex
+    (`mutm94` decoded to `000094`, bar_ok=0, and the sweep read that failure as a kill). The
+    mutant number in 12 hex digits is unique and decodes cleanly."""
+    return f"{int(mid[1:]):012x}"
+
 # (id, file, old, new, killers, note)
 MUTANTS = [
     ("M01", "kernel/src/arch/x86_64/gdt.rs",
@@ -394,6 +409,137 @@ MUTANTS = [
      "                        if e.role == Role::Password {\n                            s[..e.text_len].fill(BULLET);\n                        }",
      "",
      ["TST-M5-UI-UNIT"], "a password field draws its characters instead of bullets"),
+    # ---- M5 gate, phase 2 (WP-38, owner-approved table of 2026-10-28): 30 mutants over the
+    # six categories (check removal <= 6, condition flip <= 6, boundary shift <= 5, constant
+    # <= 4, assignment drop <= 4, order swap >= 5). Replacements approved for the original
+    # M99, M104, M110, M112, M113 and M120 sites, whose first forms were equivalent, absent
+    # from the code, or would not compile; each stays in its file and category.
+    ("M92", "user/apps/displayd/src/main.rs",
+     "        !w.minimized && (!self.locked || self.clients[w.owner].session)\n    }\n\n    /// Whether the client area",
+     "        w.minimized && (!self.locked || self.clients[w.owner].session)\n    }\n\n    /// Whether the client area",
+     ["TST-M5-WINDOW-STATES"], "visible() inverted: minimised windows shown, shown ones hidden (condition flip)"),
+    # M93 was `cyclable()`'s lock guard (check removal). It is EQUIVALENT: cyclable is reached
+    # only from the Alt+Tab handler in on_key, which runs only while displayd holds the keyboard
+    # -- i.e. while unlocked, where `!self.locked` is already true. No test can distinguish it,
+    # and the lock-holds-windows property is enforced by visible() (M86, M92). Dropped rather
+    # than padded with a redundant mutant (run 41232332567, 2026-10-31).
+    # The first form `(0..k)` -> `(0..=k)` was equivalent: j==k is the window itself, for which
+    # `ow.owner == w.owner` holds, so `.all()` is unchanged (survived every test, run 41232332567,
+    # 2026-10-31). `(1..k)` skips the topmost window instead: a top window of another client that
+    # covers this one is no longer seen, so owns_client_area wrongly reports the area owned and
+    # LIST hashes it rather than `-`.
+    ("M94", "user/apps/displayd/src/main.rs",
+     "        (0..k).all(|j| {\n            let o = self.order[j];",
+     "        (1..k).all(|j| {\n            let o = self.order[j];",
+     ["TST-M5-LIST-HASH-HELD"], "owns_client_area skips the topmost window, so a covered client area reads as its own (boundary shift)"),
+    ("M95", "user/apps/displayd/src/main.rs",
+     "        for si in 0..MAX_SURFACES {\n            if self.surfaces[si].used && self.surfaces[si].owner == ci {\n                self.destroy_surface(si);\n            }\n        }\n        if self.clients[ci].unresponsive {",
+     "        if self.clients[ci].unresponsive {",
+     ["TST-M5-WINDOW-STATES"], "a gone client's surfaces are kept mapped (assignment drop: the destroy loop)"),
+    ("M96", "user/apps/displayd/src/main.rs",
+     "const CLIENT_WINDOWS: usize = 4;", "const CLIENT_WINDOWS: usize = 5;",
+     ["TST-M5-CLIENT-LIMITS"], "one window over the share (constant)"),
+    # M97 was LOGOUT's `self.locked = true;` (order swap: the hold first). It is EQUIVALENT:
+    # the session sends LOGOUT only from the lock screen (both sign_out callers run in
+    # State::Locked), after LOCKED on the same channel (re-sent first on a reconnect), and
+    # displayd starts locked when a session is in its manifest and re-locks when the session is
+    # lost (main.rs 1102). So `locked` is already true whenever LOGOUT arrives and the line is
+    # defence in depth with no reachable effect. Dropped (survived every test, run 41232332567).
+    ("M98", "user/apps/sessiond/src/main.rs",
+     "        self.state = State::Locked;\n        if self.elevation.is_some() {\n            self.elevate_end(b\"ERR CANCELLED\", now);\n            self.want_display = false;\n        }\n        self.changes += 1;",
+     "        if self.elevation.is_some() {\n            self.elevate_end(b\"ERR CANCELLED\", now);\n            self.want_display = false;\n        }\n        self.changes += 1;\n        self.state = State::Locked;",
+     ["TST-M5-LOCK-SURVIVES", "TST-M5-ELEVATE"], "lock(): the state is set after the prompt ends, so ending the prompt releases the desktop in between (order swap)"),
+    ("M99", "user/apps/sessiond/src/main.rs",
+     "        let op = AuthOp::Login { name, len: nn };\n        let sent = self.auth_send(req.bytes(), false, op);",
+     "        let op = AuthOp::Login { name, len: nn };\n        req.wipe();\n        let sent = self.auth_send(req.bytes(), false, op);",
+     ["TST-M5-AUTH-INPUT-ISOLATED", "TST-M5-LOGIN-SCREEN"], "the sign-in request is wiped before it is sent: LOGIN goes out empty (order swap of wipe and send)"),
+    ("M100", "user/apps/sessiond/src/main.rs",
+     "        let same = self.elevation.is_some_and(|e| e.n == n);",
+     "        let same = self.elevation.is_some();",
+     ["TST-M5-ELEVATE"], "an auth answer approves whatever elevation is current, not the one it was typed for (check removal; WP-41 C1 undone)"),
+    ("M101", "user/apps/sessiond/src/main.rs",
+     "        self.state = State::Locked;\n        if self.elevation.is_some() {",
+     "        self.state = State::Locked;\n        if self.elevation.is_none() {",
+     ["TST-M5-ELEVATE"], "the secure attention sequence no longer ends an elevation prompt (condition flip)"),
+    ("M102", "user/apps/sessiond/src/main.rs",
+     "        self.elevate_seq += 1;\n        e.n = self.elevate_seq;",
+     "        e.n = self.elevate_seq;",
+     ["TST-M5-ELEVATE"], "every elevation carries the same number, so a stale answer matches (assignment drop)"),
+    ("M103", "user/apps/sessiond/src/main.rs",
+     "const RELEASE_WAIT: u64 = 1000;", "const RELEASE_WAIT: u64 = 0;",
+     ["TST-M5-FOCUS-AFTER-RESTART", "TST-M5-LOCK-DISPLAY-DOWN"], "no wait before the keyboard is handed over (constant)"),
+    ("M104", "user/apps/sessiond/src/main.rs",
+     "                    if now >= deadline {\n                        return Err(ERR_TIMED_OUT);",
+     "                    if now >= deadline.saturating_add(REQUEST_DEADLINE) {\n                        return Err(ERR_TIMED_OUT);",
+     ["TST-M5-SESSION-DEADLINE", "TST-M5-SESSION-HANG"], "a service request times out after twice its deadline (boundary shift). The declared LOCK/UNLOCK-AUTH-HANG cases do not measure the deadline since auth went async (session.md v1.2); the request deadline is observed by SESSION-DEADLINE (window [4900,6000] ticks) and SESSION-HANG. Confirmed in the sweep of run 41232332567."),
+    ("M105", "user/apps/sessiond/src/main.rs",
+     "            // The screen is released only to an unlocked desktop; a lock keeps it held.\n            if self.state == State::Unlocked {",
+     "            // The screen is released only to an unlocked desktop; a lock keeps it held.\n            if self.state == State::Locked {",
+     ["TST-M5-ELEVATE", "TST-M5-LOCK-SURVIVES"], "ending a prompt releases the screen while locked and keeps it held when unlocked (condition flip)"),
+    ("M106", "user/apps/inputd/src/main.rs",
+     "        if &c.name[..c.name_len] == b\"session\" {\n            self.focus = None;\n        }\n        self.clients[ci] = NO_CLIENT;",
+     "        self.clients[ci] = NO_CLIENT;",
+     ["TST-M5-SESSION-LOSS"], "a lost session leaves the focus with whoever had it (check removal; input.md v2.2 undone)"),
+    ("M107", "user/apps/inputd/src/main.rs",
+     "                if let Some(s) = self.session_client() {\n                    // v2.2: the session owns the keyboard from here (the releases of Ctrl\n                    // and Alt included) until it names another owner — a window that\n                    // imitates the sign-in screen never sees the sequence or what follows.\n                    self.focus = Some(self.clients[s].id);\n                    self.deliver(s, b\"SAK\");\n                }",
+     "                if let Some(s) = self.session_client() {\n                    self.deliver(s, b\"SAK\");\n                }",
+     ["TST-M5-INPUT-ROUTE", "TST-M5-AUTH-INPUT-ISOLATED"], "the secure attention sequence tells the session but leaves the keyboard with the focused client (condition flip: the owner no longer changes)"),
+    ("M108", "user/apps/inputd/src/main.rs",
+     "                self.combo_armed = self.mods == (MOD_SHIFT | MOD_ALT);\n            } else {\n                self.mods &= !bit;",
+     "                self.combo_armed = false;\n                if self.mods == (MOD_SHIFT | MOD_ALT) {\n                    self.toggle_layout();\n                }\n            } else {\n                self.mods &= !bit;",
+     ["TST-M5-ARABIC-UI", "TST-M5-INPUT-ROUTE"], "the layout toggles on the press of the second modifier instead of on the release (order swap)"),
+    ("M109", "user/apps/inputd/src/main.rs",
+     "        } else if down {\n            // A real key press: not a clean Shift+Alt sequence.\n            self.combo_armed = false;\n        }",
+     "        }",
+     ["TST-M5-ARABIC-UI", "TST-M5-INPUT-ROUTE"], "a key pressed between Shift+Alt no longer disarms the toggle (assignment drop)"),
+    ("M110", "user/apps/inputd/src/main.rs",
+     "        let down = b & 0x80 == 0;", "        let down = b & 0x80 != 0;",
+     ["TST-M5-INPUT-ROUTE"], "presses and releases swapped at the 0x80 bit (boundary shift)"),
+    ("M111", "user/libui/src/lib.rs",
+     "            KEY_TAB => return self.step(mods & MOD_SHIFT != 0),",
+     "            KEY_TAB => return self.step(mods & MOD_SHIFT == 0),",
+     ["TST-M5-UI-UNIT"], "Tab goes back and Shift+Tab forward (condition flip)"),
+    ("M112", "user/libui/src/lib.rs",
+     "            // A password field is described without its value (v1.1).\n            Role::TextField | Role::Value => {",
+     "            // A password field is described without its value (v1.1).\n            Role::TextField | Role::Value | Role::Password => {",
+     ["TST-M5-UI-UNIT"], "the narrator's description of a password field carries its value (check removal of the role exclusion)"),
+    ("M113", "user/libui/src/lib.rs",
+     "        let next = if back {\n            (pos + n - 1) % n\n        } else {\n            (pos + 1) % n\n        };",
+     "        let next = if back {\n            (pos + n - 1) % n\n        } else {\n            (pos + 2) % n\n        };",
+     ["TST-M5-UI-UNIT"], "Tab skips one element (boundary shift of the focus step)"),
+    ("M114", "user/libui/src/lib.rs",
+     "                let forward = (code == KEY_RIGHT) != rtl;",
+     "                let forward = (code == KEY_RIGHT) == rtl;",
+     ["TST-M5-UI-UNIT"], "Left and Right swapped between LTR and RTL (order swap of the cursor's direction)"),
+    ("M115", "user/libnawah-text/src/bidi.rs",
+     "                L => return 0,\n                R | AL => return 1,",
+     "                L => return 1,\n                R | AL => return 0,",
+     ["TST-M5-BIDI"], "the first strong character sets the opposite paragraph level (condition flip)"),
+    # The first form (dropping the `u16::MAX` guard in first_strong_level) was equivalent on the
+    # suite: without the guard i becomes 65535, the loop ends at `to` and returns `default`
+    # anyway (survived locally, 2026-10-31).
+    ("M116", "user/libnawah-text/src/bidi.rs",
+     "            if ci == ES && ca == EN && cb == EN {\n                self.cls[i] = EN;\n            } else if ci == CS",
+     "            if ci == CS",
+     ["TST-M5-BIDI"], "rule W4 drops its ES branch: a European separator between digits stays a separator (check removal)"),
+    ("M117", "user/libnawah-text/src/shape.rs",
+     "pub const JT_U: u8 = 0;\npub const JT_R: u8 = 1;", "pub const JT_U: u8 = 1;\npub const JT_R: u8 = 0;",
+     ["TST-M5-SHAPING"], "non-joining and right-joining types swapped (constant)"),
+    ("M118", "user/libnawah-text/src/layout.rs",
+     "                pen += adv;\n                g += 1;", "                g += 1;",
+     ["TST-M5-SHAPING"], "the pen does not advance: every glyph at the same x (assignment drop)"),
+    # The first form (`gid <= end` → `< end` in the glyph-class table) survived locally: no test
+    # vector has a glyph at the last gid of a class range (2026-10-31).
+    ("M119", "user/libnawah-text/src/font.rs",
+     "                    if (u16_at(d, ends + mid * 2)? as u32) < cp {\n                        lo = mid + 1;",
+     "                    if (u16_at(d, ends + mid * 2)? as u32) <= cp {\n                        lo = mid + 1;",
+     ["TST-M5-GLYPHS"], "cmap format 4: a code point equal to a segment's end code falls into the next segment (boundary shift)"),
+    ("M120", "user/libnawah-text/src/raster.rs",
+     "const TOL: i64 = ONE / 64;", "const TOL: i64 = ONE * 64;",
+     ["TST-M5-GLYPHS"], "flattening tolerance of 64 px: every curve becomes one chord (constant)"),
+    ("M121", "user/libnawah-text/src/tables.rs",
+     "    (0x28, 0x29, true),\n    (0x29, 0x28, false),", "    (0x28, 0x29, false),\n    (0x29, 0x28, false),",
+     ["TST-M5-BIDI"], "`(` is no longer an opening bracket: the parenthesis pair never matches in N0 (check removal of the pair; the table keeps its size, [_; 128])"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -405,7 +551,8 @@ def stage_of(mid: str) -> str:
 
 # The M5 mutants that undo a security fix of the pre-gate review (WP-43) or of WP-41: the gate
 # fails if any of them survives, whatever the kill ratio (the review's rule 1 of 2026-10-27).
-SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"}
+SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91",
+            "M95", "M96", "M98", "M99", "M100", "M101", "M102", "M105", "M106", "M107", "M112"}
 
 
 def security_of(mid: str) -> bool:
@@ -471,13 +618,19 @@ def reset(wt: Path) -> None:
 
 
 def crate_of(rel: str):
-    """The cargo package a mutated file belongs to (for `--check`): the kernel, or a user crate."""
+    """The cargo package a mutated file belongs to (for `--check`): the kernel, or a user crate,
+    read from the crate's own Cargo.toml (the directory user/libnawah-text holds the package
+    nawah-text: M115-M121 were INVALID on 2026-10-31 while the name was guessed from the path)."""
     parts = Path(rel).parts
     if parts[0] == "kernel":
         return None
-    if parts[:2] == ("user", "apps"):
-        return parts[2]
-    return parts[1].replace("_", "-") if parts[0] == "user" else None
+    if parts[0] != "user":
+        return None
+    crate_dir = REPO / parts[0] / parts[1] / parts[2] if parts[1] == "apps" else REPO / parts[0] / parts[1]
+    for line in (crate_dir / "Cargo.toml").read_text(encoding="utf-8").splitlines():
+        if line.startswith("name"):
+            return line.split("=", 1)[1].strip().strip('"')
+    return None
 
 
 def host_suite_of(wt: Path, test_id):
@@ -495,10 +648,21 @@ def suite_of(target, test_id):
     return None
 
 
-def run_killers(wt: Path, env, target, killers):
+def _write_report(rel, report):
+    """Write the report as it stands, so a run killed by the gate timeout still leaves every
+    mutant decided so far on disk (the M5 gate hit its 10800 s limit on 2026-10-31 and left no
+    report at all)."""
+    rp = REPO / rel
+    rp.parent.mkdir(parents=True, exist_ok=True)
+    rp.write_text(json.dumps(report, indent=1) + "\n")
+
+
+def run_killers(wt: Path, env, target, killers, early_exit=False):
     """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED|ERROR}). Every case runs
     through its suite entry (the strong oracle); a missing artifact (exit 20) is SKIPPED and a
-    lab failure (QEMU died, LAB_ERROR) is ERROR — neither is a kill."""
+    lab failure (QEMU died, LAB_ERROR) is ERROR — neither is a kill. With early_exit the run
+    stops at the first FAIL (one kill is enough): the fairness sweep over ~140 cases need not
+    finish once a mutant is caught, which is most of a surviving-mutant run's cost."""
     results = {}
     pyproj = ["python3", str(wt / "tools" / "project.py")]
     for tid in killers:
@@ -522,6 +686,8 @@ def run_killers(wt: Path, env, target, killers):
             results[tid] = "ERROR"
         else:
             results[tid] = "FAIL"
+            if early_exit:
+                break
     return [t for t, v in results.items() if v == "FAIL"], results
 
 
@@ -549,7 +715,7 @@ def main():
     subprocess.run(["git", "worktree", "add", "-q", "--detach", str(wt), "HEAD"], cwd=REPO, check=True)
     report = {"threshold": THRESHOLD, "target": a.target, "mutants": [], "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     try:
-        env = dict(os.environ, NAWAH_ROOT=str(wt), NAWAH_SCRATCH_EVIDENCE=str(scratch), NAWAH_QEMU_TIMEOUT_S="90")
+        env = dict(os.environ, NAWAH_ROOT=str(wt), NAWAH_SCRATCH_EVIDENCE=str(scratch), NAWAH_QEMU_TIMEOUT_S=str(MUTANT_CASE_TIMEOUT_S))
         env.setdefault("RUSTUP_TOOLCHAIN", os.environ.get("RUSTUP_TOOLCHAIN", ""))
         if not env["RUSTUP_TOOLCHAIN"]:
             del env["RUSTUP_TOOLCHAIN"]
@@ -578,7 +744,7 @@ def main():
                 report["mutants"].append(entry)
                 print(f"{mid}: {'compiles' if ok else 'DOES NOT COMPILE'} ({note})")
                 continue
-            benv = dict(env, NAWAH_BUILD_ID=f"mut{mid.lower()}", NAWAH_OUT=str(wt / "build" / a.target),
+            benv = dict(env, NAWAH_BUILD_ID=mutant_build_id(mid), NAWAH_OUT=str(wt / "build" / a.target),
                         NAWAH_APPS_DIR=str(wt / "build" / a.target / "apps"))
             (wt / "build" / a.target / "apps").mkdir(parents=True, exist_ok=True)
             need_release = "TST-M1-BOOT" in killers
@@ -609,7 +775,7 @@ def main():
                     r = sh(step, wt, benv, timeout=1800)
                     if r.returncode == 0:
                         shutil.copy(wt / out, wt / "build" / a.target / name)
-                more_killed, more = run_killers(wt, env, a.target, rest)
+                more_killed, more = run_killers(wt, env, a.target, rest, early_exit=True)
                 results.update(more); killed_by = more_killed
             if declared_miss:
                 # Keep the scratch evidence (serial logs) of anything that escaped its declared
@@ -625,6 +791,7 @@ def main():
                          seconds=round(time.time() - t0, 1))
             report["mutants"].append(entry)
             print(f"{mid}: {'killed by ' + ','.join(killed_by) if killed_by else 'SURVIVED'} [{entry['seconds']}s] ({note})")
+            _write_report(a.report, report)
     finally:
         reset(wt)
         subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO)
