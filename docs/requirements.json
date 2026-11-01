@@ -1572,7 +1572,8 @@
    ],
    "acceptance": "scenario + mutants + review",
    "test_ids": [
-    "TST-M5-MUTANTS"
+    "TST-M5-MUTANTS",
+    "TST-M0-005"
    ],
    "implementation_status": "planned",
    "evidence_refs": []

@@ -32,6 +32,21 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 THRESHOLD = 0.95
 
+# The per-case QEMU timeout while a mutant runs. It bounds a mutant that hangs a case, but it
+# must not fail a case that is merely slow: the slowest M5 case on the clean tree is
+# TST-M5-ELEVATE at ~124 s (CI verify 41232334352, 2026-10-31). The old blanket 90 s failed
+# ELEVATE on every mutant in the fairness sweep and counted that infrastructure timeout as a
+# kill (run 41232332567). 180 s clears ELEVATE with margin and still bounds a real hang.
+MUTANT_CASE_TIMEOUT_S = 180
+
+
+def mutant_build_id(mid: str) -> str:
+    """The build identity a mutant's kernel carries. TST-M5-DISPLAY-BOOT decodes the frame's
+    build-id bar one hex digit per cell and compares it to BUILD_ID, so the id must be all hex
+    (`mutm94` decoded to `000094`, bar_ok=0, and the sweep read that failure as a kill). The
+    mutant number in 12 hex digits is unique and decodes cleanly."""
+    return f"{int(mid[1:]):012x}"
+
 # (id, file, old, new, killers, note)
 MUTANTS = [
     ("M01", "kernel/src/arch/x86_64/gdt.rs",
@@ -407,10 +422,15 @@ MUTANTS = [
      "        w.used && (!self.locked || self.clients[w.owner].session)",
      "        w.used",
      ["TST-M5-LOCK-SURVIVES"], "Alt+Tab reaches a window the lock holds back (check removal)"),
+    # The first form `(0..k)` -> `(0..=k)` was equivalent: j==k is the window itself, for which
+    # `ow.owner == w.owner` holds, so `.all()` is unchanged (survived every test, run 41232332567,
+    # 2026-10-31). `(1..k)` skips the topmost window instead: a top window of another client that
+    # covers this one is no longer seen, so owns_client_area wrongly reports the area owned and
+    # LIST hashes it rather than `-`.
     ("M94", "user/apps/displayd/src/main.rs",
      "        (0..k).all(|j| {\n            let o = self.order[j];",
-     "        (0..=k).all(|j| {\n            let o = self.order[j];",
-     ["TST-M5-LIST-HASH-HELD"], "owns_client_area includes the window itself, so a shown window reads `-` (boundary shift)"),
+     "        (1..k).all(|j| {\n            let o = self.order[j];",
+     ["TST-M5-LIST-HASH-HELD"], "owns_client_area skips the topmost window, so a covered client area reads as its own (boundary shift)"),
     ("M95", "user/apps/displayd/src/main.rs",
      "        for si in 0..MAX_SURFACES {\n            if self.surfaces[si].used && self.surfaces[si].owner == ci {\n                self.destroy_surface(si);\n            }\n        }\n        if self.clients[ci].unresponsive {",
      "        if self.clients[ci].unresponsive {",
@@ -448,7 +468,7 @@ MUTANTS = [
     ("M104", "user/apps/sessiond/src/main.rs",
      "                    if now >= deadline {\n                        return Err(ERR_TIMED_OUT);",
      "                    if now >= deadline.saturating_add(REQUEST_DEADLINE) {\n                        return Err(ERR_TIMED_OUT);",
-     ["TST-M5-LOCK-AUTH-HANG", "TST-M5-UNLOCK-AUTH-HANG"], "a service request times out after twice its deadline (boundary shift)"),
+     ["TST-M5-SESSION-DEADLINE", "TST-M5-SESSION-HANG"], "a service request times out after twice its deadline (boundary shift). The declared LOCK/UNLOCK-AUTH-HANG cases do not measure the deadline since auth went async (session.md v1.2); the request deadline is observed by SESSION-DEADLINE (window [4900,6000] ticks) and SESSION-HANG. Confirmed in the sweep of run 41232332567."),
     ("M105", "user/apps/sessiond/src/main.rs",
      "            // The screen is released only to an unlocked desktop; a lock keeps it held.\n            if self.state == State::Unlocked {",
      "            // The screen is released only to an unlocked desktop; a lock keeps it held.\n            if self.state == State::Locked {",
@@ -625,10 +645,21 @@ def suite_of(target, test_id):
     return None
 
 
-def run_killers(wt: Path, env, target, killers):
+def _write_report(rel, report):
+    """Write the report as it stands, so a run killed by the gate timeout still leaves every
+    mutant decided so far on disk (the M5 gate hit its 10800 s limit on 2026-10-31 and left no
+    report at all)."""
+    rp = REPO / rel
+    rp.parent.mkdir(parents=True, exist_ok=True)
+    rp.write_text(json.dumps(report, indent=1) + "\n")
+
+
+def run_killers(wt: Path, env, target, killers, early_exit=False):
     """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED|ERROR}). Every case runs
     through its suite entry (the strong oracle); a missing artifact (exit 20) is SKIPPED and a
-    lab failure (QEMU died, LAB_ERROR) is ERROR — neither is a kill."""
+    lab failure (QEMU died, LAB_ERROR) is ERROR — neither is a kill. With early_exit the run
+    stops at the first FAIL (one kill is enough): the fairness sweep over ~140 cases need not
+    finish once a mutant is caught, which is most of a surviving-mutant run's cost."""
     results = {}
     pyproj = ["python3", str(wt / "tools" / "project.py")]
     for tid in killers:
@@ -652,6 +683,8 @@ def run_killers(wt: Path, env, target, killers):
             results[tid] = "ERROR"
         else:
             results[tid] = "FAIL"
+            if early_exit:
+                break
     return [t for t, v in results.items() if v == "FAIL"], results
 
 
@@ -679,7 +712,7 @@ def main():
     subprocess.run(["git", "worktree", "add", "-q", "--detach", str(wt), "HEAD"], cwd=REPO, check=True)
     report = {"threshold": THRESHOLD, "target": a.target, "mutants": [], "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     try:
-        env = dict(os.environ, NAWAH_ROOT=str(wt), NAWAH_SCRATCH_EVIDENCE=str(scratch), NAWAH_QEMU_TIMEOUT_S="90")
+        env = dict(os.environ, NAWAH_ROOT=str(wt), NAWAH_SCRATCH_EVIDENCE=str(scratch), NAWAH_QEMU_TIMEOUT_S=str(MUTANT_CASE_TIMEOUT_S))
         env.setdefault("RUSTUP_TOOLCHAIN", os.environ.get("RUSTUP_TOOLCHAIN", ""))
         if not env["RUSTUP_TOOLCHAIN"]:
             del env["RUSTUP_TOOLCHAIN"]
@@ -708,7 +741,7 @@ def main():
                 report["mutants"].append(entry)
                 print(f"{mid}: {'compiles' if ok else 'DOES NOT COMPILE'} ({note})")
                 continue
-            benv = dict(env, NAWAH_BUILD_ID=f"mut{mid.lower()}", NAWAH_OUT=str(wt / "build" / a.target),
+            benv = dict(env, NAWAH_BUILD_ID=mutant_build_id(mid), NAWAH_OUT=str(wt / "build" / a.target),
                         NAWAH_APPS_DIR=str(wt / "build" / a.target / "apps"))
             (wt / "build" / a.target / "apps").mkdir(parents=True, exist_ok=True)
             need_release = "TST-M1-BOOT" in killers
@@ -739,7 +772,7 @@ def main():
                     r = sh(step, wt, benv, timeout=1800)
                     if r.returncode == 0:
                         shutil.copy(wt / out, wt / "build" / a.target / name)
-                more_killed, more = run_killers(wt, env, a.target, rest)
+                more_killed, more = run_killers(wt, env, a.target, rest, early_exit=True)
                 results.update(more); killed_by = more_killed
             if declared_miss:
                 # Keep the scratch evidence (serial logs) of anything that escaped its declared
@@ -755,6 +788,7 @@ def main():
                          seconds=round(time.time() - t0, 1))
             report["mutants"].append(entry)
             print(f"{mid}: {'killed by ' + ','.join(killed_by) if killed_by else 'SURVIVED'} [{entry['seconds']}s] ({note})")
+            _write_report(a.report, report)
     finally:
         reset(wt)
         subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO)
