@@ -63,10 +63,8 @@
    "layer": "host_unit",
    "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes, the per-case QEMU timeout exceeds the slowest clean case (~124 s, TST-M5-ELEVATE) instead of a blanket 90 s, and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided (6 cases)",
    "command": "python3 tools/project.py test --target host --suite M0",
-   "verdict": "PASS",
-   "evidence_refs": [
-    "evidence/20261101T050904Z-178f9193-001"
-   ]
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   },
   {
    "id": "TST-M0-E0-BUILD",
