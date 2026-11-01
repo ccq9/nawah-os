@@ -1,0 +1,33 @@
+$ python3 -I tools/screen.py probe /tmp/nawah-mutants-sl7ajcnp/scratch-evidence/20261101T090019Z-8a671c36-001/screen.ppm --build-id 000000000066 --square 96,96,FF00FF --square 192,96,00FFFF
+{
+ "width": 1280,
+ "height": 800,
+ "corners": [
+  "ff0000",
+  "00ff00",
+  "0000ff",
+  "ffffff"
+ ],
+ "corners_ok": true,
+ "bar": "000000000066",
+ "bar_ok": true,
+ "squares": [
+  {
+   "x": 96,
+   "y": 96,
+   "expected": "ff00ff",
+   "seen": "ff00ff",
+   "ok": true
+  },
+  {
+   "x": 192,
+   "y": 96,
+   "expected": "00ffff",
+   "seen": "00ffff",
+   "ok": true
+  }
+ ],
+ "ok": true
+}
+
+[exit 0]
