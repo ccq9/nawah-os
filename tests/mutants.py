@@ -418,10 +418,11 @@ MUTANTS = [
      "        !w.minimized && (!self.locked || self.clients[w.owner].session)\n    }\n\n    /// Whether the client area",
      "        w.minimized && (!self.locked || self.clients[w.owner].session)\n    }\n\n    /// Whether the client area",
      ["TST-M5-WINDOW-STATES"], "visible() inverted: minimised windows shown, shown ones hidden (condition flip)"),
-    ("M93", "user/apps/displayd/src/main.rs",
-     "        w.used && (!self.locked || self.clients[w.owner].session)",
-     "        w.used",
-     ["TST-M5-LOCK-SURVIVES"], "Alt+Tab reaches a window the lock holds back (check removal)"),
+    # M93 was `cyclable()`'s lock guard (check removal). It is EQUIVALENT: cyclable is reached
+    # only from the Alt+Tab handler in on_key, which runs only while displayd holds the keyboard
+    # -- i.e. while unlocked, where `!self.locked` is already true. No test can distinguish it,
+    # and the lock-holds-windows property is enforced by visible() (M86, M92). Dropped rather
+    # than padded with a redundant mutant (run 41232332567, 2026-10-31).
     # The first form `(0..k)` -> `(0..=k)` was equivalent: j==k is the window itself, for which
     # `ow.owner == w.owner` holds, so `.all()` is unchanged (survived every test, run 41232332567,
     # 2026-10-31). `(1..k)` skips the topmost window instead: a top window of another client that
@@ -549,7 +550,7 @@ def stage_of(mid: str) -> str:
 # The M5 mutants that undo a security fix of the pre-gate review (WP-43) or of WP-41: the gate
 # fails if any of them survives, whatever the kill ratio (the review's rule 1 of 2026-10-27).
 SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91",
-            "M93", "M95", "M96", "M97", "M98", "M99", "M100", "M101", "M102", "M105", "M106", "M107", "M112"}
+            "M95", "M96", "M97", "M98", "M99", "M100", "M101", "M102", "M105", "M106", "M107", "M112"}
 
 
 def security_of(mid: str) -> bool:
