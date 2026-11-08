@@ -903,7 +903,7 @@
    "command": "python3 tools/project.py test --target host --suite M3-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261028T082857Z-69dfcad0-001"
+    "evidence/20261108T141215Z-1be5e99e-001"
    ],
    "stale_policy": "warn"
   },
@@ -1400,7 +1400,7 @@
    "command": "python3 tools/project.py test --target host --suite M4-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261028T083909Z-69dfcad0-001"
+    "evidence/20261108T142834Z-1be5e99e-001"
    ],
    "stale_policy": "warn"
   },
@@ -1834,7 +1834,7 @@
    "command": "python3 tools/project.py test --target host --suite M5-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261028T085556Z-69dfcad0-001"
+    "evidence/20261108T145543Z-1be5e99e-001"
    ],
    "stale_policy": "warn"
   },
