@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T204254Z-62d4b9d9-001",
+ "test_id": "TST-M5-UI-TOOL",
+ "verdict": "PASS",
+ "oracle": "tools/transcript.py takes the narrator lines from trace lines and requires them to equal the expected file exactly in every serial log (a missing, extra or reordered line, or one bad phase, fails); dims accepts only the same origin with the size times the factor (4 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "89be693dedd1a2eff29ab7d5250e9b7a49ad7339307831d3ebae57230222c83c",
+ "inputs": {
+  "tests/test_transcript_tool.py": "cf2d50f9e9eb2cbcddbe46cce0df635867c2a927a51dd180dee32082edae6c47",
+  "tools/transcript.py": "240eda54155bd3253e93046b21f2ca91ef3a22da28366fcb1d6743a50b5c6854"
+ },
+ "claim_tag": "source_backed_fact"
+}
