@@ -1,0 +1,6 @@
+$ python3 -I tools/transcript.py streams /tmp/nawah-mutants-kbeqo7u3/scratch-evidence/20261108T134245Z-752f7480-001 platform/pc-qemu/expect/auth-input-isolated.txt
+serial.log: session: 6 lines as expected
+serial.log: spy: 12 lines as expected
+serial.log: narrator: 22 lines as expected
+
+[exit 0]
