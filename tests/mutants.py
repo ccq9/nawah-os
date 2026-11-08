@@ -7,7 +7,8 @@ virtio-blk, FAT32, VFS) and are killed by M3 cases, including the host checks a 
 disk image; M50 onwards cover the M4 modules (process/wait syscalls, tokens, device objects and
 polling, system_info, dir_list, and the user-space services svcmgr, authd, configd, netd, sh)
 and are killed by M4 cases, console sessions included; M82 onwards cover the M5 modules (displayd,
-inputd, sessiond, libui, libnawah-text; TST-M5-MUTANTS, WP-38) and are killed by M5 cases, the
+inputd, sessiond, libui, libnawah-text, and from M92 the kernel's process kill, frame clear and
+mouse path and the manager's watchdog; TST-M5-MUTANTS, WP-38) and are killed by M5 cases, the
 host suites included (libui's unit tests, the text conformance suites). `--stage` selects one
 group. A mutant in SECURITY undoes a security fix: the run fails if it survives, whatever the
 ratio.
@@ -545,6 +546,46 @@ MUTANTS = [
     ("M121", "user/libnawah-text/src/tables.rs",
      "    (0x28, 0x29, true),\n    (0x29, 0x28, false),", "    (0x28, 0x29, false),\n    (0x29, 0x28, false),",
      ["TST-M5-BIDI"], "`(` is no longer an opening bracket: the parenthesis pair never matches in N0 (check removal of the pair; the table keeps its size, [_; 128])"),
+    # The kernel's M5 code and the manager's watchdog (WP-38 action of 2026-10-19: "kill,
+    # watchdog"; PLAN.md asks for every M5 unit). Each killer asserts the effect directly: the
+    # killer app's exit code, KILL-EDGES' per-case exit codes, the frame census after the
+    # compositor stops, the mouse's PTR events and packet count, the watchdog's service states.
+    ("M122", "kernel/src/syscall/mod.rs",
+     "        if !e.rights.contains(Rights::WRITE) {\n            return Err(ERR_ACCESS);\n        }\n        p\n    };\n    if let Some(pid) = obj.pid() {",
+     "        p\n    };\n    if let Some(pid) = obj.pid() {",
+     ["TST-M5-PROCESS-KILL"], "process_kill needs no WRITE: a watcher's read-only duplicate kills (killer exits 0xE4)"),
+    ("M123", "kernel/src/sched/mod.rs",
+     "                State::Blocked | State::BlockedUntil { .. } | State::Sleeping { .. } => {\n                    t.state = State::Ready;",
+     "                State::BlockedUntil { .. } | State::Sleeping { .. } => {\n                    t.state = State::Ready;",
+     ["TST-M5-PROCESS-KILL"], "a kill does not wake a thread blocked without a deadline (ECHO in channel_read never dies: 0xE8)"),
+    # The kill points of TST-M5-KILL-EDGES (d) and (f) make these races deterministic; (a) and
+    # (b) pass under both mutants (ktest.rs says so), so only (d) and (f) see them.
+    ("M124", "kernel/src/sched/mod.rs",
+     "        // ever (review 2026-10-19, K1). The caller's wait loop sees `killed()` and returns.\n        if kill_pending(s, i) {\n            return None;\n        }\n",
+     "        // ever (review 2026-10-19, K1). The caller's wait loop sees `killed()` and returns.\n",
+     ["TST-M5-KILL-EDGES"], "a process killed just before it blocks blocks for ever (K1 undone for blocks: kill_at_block)"),
+    ("M125", "kernel/src/sched/mod.rs",
+     "                    p.exit_code = Some(p.kill.unwrap_or(code));",
+     "                    p.exit_code = Some(code);",
+     ["TST-M5-KILL-EDGES"], "a process killed inside exit reports its own code, read as a clean stop (K2 undone: kill_at_exit=0x55)"),
+    # Zero height rather than no call, so `i` stays used and the mutant builds warning-free.
+    ("M126", "kernel/src/display.rs",
+     "    fill(&i, 0, 0, i.width, i.height, 0x000000);",
+     "    fill(&i, 0, 0, i.width, 0, 0x000000);",
+     ["TST-M5-LOCK-DISPLAY-DOWN"], "the frame is not cleared when the last VMO over it goes: a dead compositor's last picture stays through the lock (display.md v1.5 undone; clears=1 but lit, spy_px != 0)"),
+    # `&& false` rather than `false`, so `mouse` stays used.
+    ("M127", "kernel/src/net.rs",
+     "        let dev = if mouse {\n            MOUSE_OBJECT.lock().clone()",
+     "        let dev = if mouse && false {\n            MOUSE_OBJECT.lock().clone()",
+     ["TST-M5-MOUSE"], "the mouse's bytes go to the keyboard ring (no PTR event, packets=0)"),
+    ("M128", "user/apps/svcmgr/src/main.rs",
+     "                } else if req == b\"PONG\" {\n                    // The service answered the watchdog PING; it is alive (v1.7).\n                    self.services[i].awaiting_pong = false;\n",
+     "                } else if req == b\"PONG\" {\n",
+     ["TST-M5-SVC-WATCHDOG"], "a PONG is ignored: a healthy watchdogged service is killed as hung (pong is not ready:0)"),
+    ("M129", "user/apps/svcmgr/src/main.rs",
+     "                        if hung {\n                            self.services[i].wd_deadline = None;\n                            self.services[i].killing = true;\n                            if let Some(p) = self.services[i].process {\n                                libnawah::process_kill(p);\n                            }\n",
+     "                        if hung {\n                            self.services[i].wd_deadline = None;\n                            self.services[i].killing = true;\n",
+     ["TST-M5-SVC-WATCHDOG"], "the watchdog finds a service hung but never kills it, so it is never restarted (hung is not given_up:1:131072)"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -556,8 +597,12 @@ def stage_of(mid: str) -> str:
 
 # The M5 mutants that undo a security fix of the pre-gate review (WP-43) or of WP-41: the gate
 # fails if any of them survives, whatever the kill ratio (the review's rule 1 of 2026-10-27).
+# M122 (kill authority, syscall.md v1.11 §5), M126 (a dead compositor's pixels left on the
+# frame, display.md v1.5) and M129 (a wedged service never killed nor restarted, services.md
+# v1.7) undo protections of the same rank.
 SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91",
-            "M95", "M96", "M98", "M99", "M100", "M101", "M105", "M106", "M107", "M112"}
+            "M95", "M96", "M98", "M99", "M100", "M101", "M105", "M106", "M107", "M112",
+            "M122", "M126", "M129"}
 
 
 def security_of(mid: str) -> bool:
