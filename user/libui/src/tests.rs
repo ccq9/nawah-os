@@ -468,3 +468,45 @@ fn a_value_is_read_only_and_described() {
     let p = d.add(Role::Password, "Password").unwrap();
     assert!(!d.set_value(p, "secret"));
 }
+
+/// v1.5 (WP-38): `fits` measures a label or value as `paint` lays it out, so an application
+/// can refuse a text the surface would clip instead of showing part of it.
+#[test]
+fn fits_measures_the_row_as_painted() {
+    let fonts = Fonts {
+        latin: Font::parse(LATIN_TTF).unwrap(),
+        arabic: Font::parse(ARABIC_TTF).unwrap(),
+    };
+    let mut p = Box::new(Painter::new());
+    for rtl in [false, true] {
+        let d = Dialog::new("Administrator approval", rtl);
+        // The widest prompt the session's limits allow (15 + 1 + 32 characters), and a
+        // 32-character request of wide letters (279 pixels at 14 px): neither fits 260 units.
+        assert!(!p.fits(
+            &d,
+            &fonts,
+            "WWWWWWWWWWWWWWW WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+        ));
+        assert!(!p.fits(&d, &fonts, "config SET device MMMMMMMM 0 901 off"));
+        // The lab's requests fit, the widest of them (lab.elev2…8, 235 pixels) too.
+        assert!(p.fits(&d, &fonts, "config SET device lab.elev 0 901 on"));
+        assert!(p.fits(&d, &fonts, "config SET device lab.elev7 0 907 on"));
+        assert!(p.fits(&d, &fonts, "config SET device lab.elev8 0 908 on"));
+        // The session's prompt label, split in two rows because it is wider than one.
+        assert!(!p.fits(
+            &d,
+            &fonts,
+            "An application asks to act as an administrator."
+        ));
+        assert!(p.fits(&d, &fonts, "An application asks to act"));
+        assert!(p.fits(&d, &fonts, "as an administrator."));
+        // More characters than a value keeps never fits, however narrow.
+        let long: String = core::iter::repeat_n('.', TEXT_MAX + 1).collect();
+        assert!(!p.fits(&d, &fonts, &long));
+    }
+    // The bound follows the theme: twice the scale, twice the row and the font.
+    let mut d = Dialog::new("Administrator approval", false);
+    d.theme.scale = 8;
+    assert!(p.fits(&d, &fonts, "config SET device lab.elev7 0 907 on"));
+    assert!(!p.fits(&d, &fonts, "config SET device MMMMMMMM 0 901 off"));
+}

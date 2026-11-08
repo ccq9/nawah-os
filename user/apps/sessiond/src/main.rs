@@ -16,7 +16,9 @@
 //! `auth` alone, and only then does the session send exactly that request to the service with the
 //! administrator's token, have auth end the token at once, and answer the application with the
 //! service's reply. The token and the password never reach the application; no approval
-//! happens without the prompt on the screen.
+//! happens without the prompt on the screen. (v1.5, WP-38) A request whose prompt text is
+//! wider than its row on the prompt is refused before anything is asked: what runs is only
+//! ever what was shown in full.
 //!
 //! Initial handle: the boot channel. Dependencies: `auth`, `input`, `display`, and the services
 //! elevations may reach (declared in the manifest). Clients ask `STATE`, `AUTH`, `ELEVATION`
@@ -366,6 +368,32 @@ const NO_IDS: Ids = Ids {
     submit: usize::MAX,
     sign_out: usize::MAX,
 };
+
+/// The prompt's request row (session.md v1.3): `<service> <request>`, into `out`; its length.
+/// The width check before the prompt (v1.5) and the prompt itself both take it from here, so
+/// the text measured is the text shown.
+fn prompt_text(
+    service: &[u8],
+    request: &[u8],
+    out: &mut [u8; NAME_MAX + 1 + ELEVATE_REQUEST_MAX],
+) -> usize {
+    let n = service.len() + 1 + request.len();
+    out[..service.len()].copy_from_slice(service);
+    out[service.len()] = b' ';
+    out[service.len() + 1..n].copy_from_slice(request);
+    n
+}
+
+/// A screen's empty dialog: its title and reading direction (and so its font size, row width
+/// and base direction, which the width check of v1.5 measures with).
+fn screen_dialog(screen: Screen) -> Dialog {
+    let title = match screen {
+        Screen::Lock => "Locked",
+        Screen::Elevate => "Administrator approval",
+        _ => "Sign in",
+    };
+    Dialog::new(title, false)
+}
 
 /// The message of a refusal (session.md §2): the auth service's answer decides.
 fn refusal(answer: &[u8], unlocking: bool) -> &'static str {
@@ -811,24 +839,18 @@ impl Session {
     // ---- the screens -----------------------------------------------------------------
 
     fn build(&mut self, screen: Screen, message: Option<&'static str>) {
-        let title = match screen {
-            Screen::Lock => "Locked",
-            Screen::Elevate => "Administrator approval",
-            _ => "Sign in",
-        };
-        let mut d = Dialog::new(title, false);
+        let mut d = screen_dialog(screen);
         let mut ids = NO_IDS;
-        // Static labels, at most five elements: `add` cannot refuse them.
+        // Static labels, at most eleven elements: `add` cannot refuse them.
         let add = |d: &mut Dialog, role: Role, label: &'static str| -> usize {
             d.add(role, label).unwrap_or(usize::MAX)
         };
         if screen == Screen::Elevate {
             let e = self.elevation.unwrap_or(NO_ELEVATION);
-            add(
-                &mut d,
-                Role::Label,
-                "An application asks to act as an administrator.",
-            );
+            // Two rows (v1.5): the sentence in one (302 pixels at 1×) was wider than the
+            // dialog's 260 units and lost its end to the surface's edge.
+            add(&mut d, Role::Label, "An application asks to act");
+            add(&mut d, Role::Label, "as an administrator.");
             if let Some(m) = message {
                 add(&mut d, Role::Label, m);
             }
@@ -843,10 +865,11 @@ impl Session {
             add(&mut d, Role::Label, "Request:");
             let what = add(&mut d, Role::Value, "Request");
             let mut text = [0u8; NAME_MAX + 1 + ELEVATE_REQUEST_MAX];
-            let n = e.service_len + 1 + e.request_len;
-            text[..e.service_len].copy_from_slice(&e.service[..e.service_len]);
-            text[e.service_len] = b' ';
-            text[e.service_len + 1..n].copy_from_slice(&e.request[..e.request_len]);
+            let n = prompt_text(
+                &e.service[..e.service_len],
+                &e.request[..e.request_len],
+                &mut text,
+            );
             d.set_value(what, core::str::from_utf8(&text[..n]).unwrap_or("?"));
             ids.user = add(&mut d, Role::TextField, "Administrator");
             ids.password = add(&mut d, Role::Password, "Password");
@@ -1239,6 +1262,21 @@ impl Session {
             && request.iter().all(|&c| (0x20..0x7F).contains(&c))
             && request[0] != b' ';
         if !name_ok || !request_ok {
+            return Some(b"ERR BAD_REQUEST");
+        }
+        // v1.5: 32 characters is an upper bound, not a promise — the prompt's row is 260
+        // units wide and the surface clips what passes it without a trace, so a request of
+        // wide letters ("config SET device MMMMMMMM 0 901 off", 279 pixels at 1×) would show
+        // only its start while every byte of it ran. The row is measured as it will be drawn
+        // (same text, same dialog) and a request that does not fit is refused here, before
+        // the service is connected, the screen held or the keyboard taken.
+        let mut text = [0u8; NAME_MAX + 1 + ELEVATE_REQUEST_MAX];
+        let n = prompt_text(service, request, &mut text);
+        let shown = core::str::from_utf8(&text[..n]).is_ok_and(|t| {
+            self.painter
+                .fits(&screen_dialog(Screen::Elevate), &self.fonts, t)
+        });
+        if !shown {
             return Some(b"ERR BAD_REQUEST");
         }
         let (from, from_len) = self.client_names[k];

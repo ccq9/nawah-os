@@ -6808,6 +6808,31 @@ fn elevate() -> ! {
         fail("the service-name charset did not match the manifest (review S7)")
     }
     drop((undeclared, too_long, uppercase, bad_char));
+    // session.md v1.5: a request within 32 characters but wider than the prompt's row (wide
+    // letters: 279 of 241 pixels at 1×) is refused at once, before any prompt — the screen
+    // would have cut it after "0 9" while every byte of it ran. Nothing was set, and the
+    // session is not elevating (`OK none`, no `elevate=prompt` for it: forbidden marker).
+    let wide = session_ask(
+        &session,
+        b"ELEVATE config SET device MMMMMMMM 0 901 off",
+        sched::ticks() + 5_000,
+    );
+    let wide_state = session_ask(&session, b"ELEVATION", sched::ticks() + 5_000);
+    let wide_set = cfg_request(&config, b"GET device MMMMMMMM", None);
+    kprintln!(
+        "OSX|{}|ktest|elevate|wide={}|wide_state={}|wide_set={}|",
+        BUILD_ID,
+        wide,
+        wide_state,
+        wide_set
+    );
+    if wide != "ERR BAD_REQUEST"
+        || !wide_state.starts_with("OK none ")
+        || wide_set != "ERR NOT_FOUND"
+    {
+        fail("a request wider than the prompt shows was not refused before the prompt")
+    }
+    drop((wide, wide_state, wide_set));
     // 1. The approved elevation; a second one meanwhile is refused at once.
     if session
         .write(Message {

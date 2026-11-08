@@ -10,6 +10,9 @@
 //! v1.1 (WP-37, ui.md §3.1): the `password` role — a text field drawn as bullets whose
 //! description never carries its value — and the application's access to a field's value
 //! (`value`, `clear_value`, `set_value`) and to the focus (`focus_on`).
+//!
+//! v1.5 (WP-38, ui.md §3.5): `Painter::fits` — whether a label or value fits its row as
+//! painted, for an application that must not show a text cut by the surface's edge.
 
 #![cfg_attr(not(test), no_std)]
 #![deny(unsafe_code)]
@@ -600,6 +603,12 @@ impl Dialog {
         }
     }
 
+    /// The width of every row (the dialog's width less its padding on both sides).
+    fn row_width(&self) -> i32 {
+        let t = &self.theme;
+        t.u(260) - 2 * t.u(6)
+    }
+
     /// The dialog's size and every element's rectangle (a column with 6-unit padding,
     /// 260 units wide; units scale with the theme).
     pub fn layout(&self, rects: &mut [Rect]) -> (i32, i32) {
@@ -613,7 +622,7 @@ impl Dialog {
                 rects[i] = Rect {
                     x: pad,
                     y,
-                    w: w - 2 * pad,
+                    w: self.row_width(),
                     h,
                 };
             }
@@ -708,9 +717,7 @@ impl Painter {
         w: usize,
         h: usize,
     ) {
-        let base = if rtl { Base::Rtl } else { Base::Ltr };
-        let (n, width) = self.layout.line(fonts, s, base, px, &mut self.glyphs);
-        let tw = (width + 32) / 64;
+        let (n, tw) = self.measure(fonts, s, px, rtl);
         let inset = (px as i32) / 2;
         let x0 = if centred {
             r.x + (r.w - tw) / 2
@@ -724,6 +731,34 @@ impl Painter {
         let glyphs = self.glyphs;
         self.layout
             .draw(fonts, &glyphs[..n], px, x0, baseline, &mut canvas);
+    }
+
+    /// Lays `s` out into the glyph buffer as `string` draws it: the glyph count and the
+    /// width in whole pixels.
+    fn measure(&mut self, fonts: &Fonts, s: &[u32], px: u32, rtl: bool) -> (usize, i32) {
+        let base = if rtl { Base::Rtl } else { Base::Ltr };
+        let (n, width) = self.layout.line(fonts, s, base, px, &mut self.glyphs);
+        (n, (width + 32) / 64)
+    }
+
+    /// Whether `s`, drawn as a label or a value of `d`, fits its row in full (v1.5): measured
+    /// by the same layout `paint` draws with (the dialog's font size and direction), from the
+    /// start inset to no further than the row's other end. The surface drops what falls
+    /// outside it without a trace (`RgbCanvas`), so an application that must show a text in
+    /// full (session.md v1.5: the elevation prompt) asks this before it shows it. The row's
+    /// end, not a second inset, is the bound: the dialog's padding already lies between it
+    /// and the surface's edge, and a second inset would refuse text of which nothing is cut
+    /// (the lab's `config SET device lab.elev2 0 902 on` is 235 of 241 pixels at 1×). More
+    /// than TEXT_MAX characters never fits: a value keeps no more.
+    pub fn fits(&mut self, d: &Dialog, fonts: &Fonts, s: &str) -> bool {
+        let mut chars = [0u32; TEXT_MAX + 1];
+        let n = utf8_chars(s, &mut chars);
+        if n > TEXT_MAX {
+            return false;
+        }
+        let px = d.font_px();
+        let (_, tw) = self.measure(fonts, &chars[..n], px, d.rtl);
+        tw <= d.row_width() - (px as i32) / 2
     }
 
     fn str_chars(&mut self, s: &str) -> usize {
