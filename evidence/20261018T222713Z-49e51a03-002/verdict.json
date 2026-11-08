@@ -1,0 +1,17 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T222713Z-49e51a03-002",
+ "test_id": "TST-M0-003",
+ "verdict": "PASS",
+ "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps); verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch) (5 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "075846875ca9686d6299728a0e91471643ba8a29a67da316106f18c9af8a65aa",
+ "inputs": {
+  "tests/test_ci_workflows.py": "d4f940e7f6d65a0ada3c1575fea2e8bf5e4cce165285f2e9c9ea86af50fb347e",
+  "tools/project.py": "e820f2c80550fc562d0ead55764e6f9730263fd774986b4296f13af95dcb67d5",
+  ".github/workflows/mutants.yml": "d444455f5dab34af929f1d0f06ea2b70424a7f020a4049bf05f025c3a7426080",
+  ".github/workflows/verify.yml": "ddb7f087701b396bce9e073868dd5a87c46ed15bebd4b848001ce9ba491855fb"
+ },
+ "claim_tag": "source_backed_fact"
+}
