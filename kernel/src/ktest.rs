@@ -7124,9 +7124,11 @@ fn elevate() -> ! {
     {
         fail("the secure attention sequence did not end the prompt into the lock, screen held")
     }
-    // M103: the lab holds Enter 700 ms on the unlock, longer than auth takes to answer and
-    // shorter than RELEASE_WAIT: the session keeps the keyboard until the release, so it
-    // reaches no application and the spy's count does not move.
+    // M103: the lab holds Enter 950 ms on the unlock. RELEASE_WAIT (1000 ms) counts from
+    // auth's answer, so the release always comes before it runs out: the session keeps the
+    // keyboard until the release, which reaches no application, and the spy's count does not
+    // move. Without the wait (the mutant) the release reaches the spy whenever auth's PBKDF2
+    // answers within 950 ms (700 ms let it survive on a slower runner, run 42495676178).
     let spy7 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
         r.contains(" focus=1 ")
     });
