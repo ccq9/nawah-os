@@ -1,0 +1,15 @@
+   Compiling hello v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/hello)
+   Compiling libnawah v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/libnawah)
+    Finished `app` profile [optimized] target(s) in 0.15s
+   Compiling file_roundtrip v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/file_roundtrip)
+    Finished `app` profile [optimized] target(s) in 0.12s
+   Compiling path_invalid v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/path_invalid)
+    Finished `app` profile [optimized] target(s) in 0.11s
+   Compiling fd_leak v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/apps/fd_leak)
+    Finished `app` profile [optimized] target(s) in 0.12s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `release` profile [optimized + debuginfo] target(s) in 2.42s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `release` profile [optimized + debuginfo] target(s) in 2.44s
+   Compiling nawah-kernel v0.1.0 (/home/runner/work/nawah-os/nawah-os/kernel)
+    Finished `ktest` profile [optimized + debuginfo] target(s) in 3.48s
