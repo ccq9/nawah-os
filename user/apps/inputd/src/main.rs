@@ -296,8 +296,9 @@ impl Input {
         if !self.sak_undelivered {
             return;
         }
+        // No session client: the debt waits for the next one (v2.6). A fresh session at its
+        // sign-in screen ignores a SAK; a reconnecting one locks before any handover.
         let Some(s) = self.session_client() else {
-            self.sak_undelivered = false;
             return;
         };
         self.deliver(s, b"SAK");
@@ -310,11 +311,6 @@ impl Input {
 
     fn forget(&mut self, ci: usize) {
         let c = self.clients[ci];
-        // An owed SAK goes with the session (v2.6): a restarted one starts at its sign-in
-        // screen, with the keyboard its own.
-        if self.session_client() == Some(ci) {
-            self.sak_undelivered = false;
-        }
         if c.chan != 0 {
             libnawah::handle_close(c.chan);
         }
@@ -331,6 +327,12 @@ impl Input {
     }
 
     fn deliver_to_focus(&mut self, msg: &[u8]) {
+        // While a SAK is owed nobody gets input (v2.6): keys typed after Ctrl+Alt+Del belong
+        // to the lock screen, which the sequence has not reached yet.
+        if self.sak_undelivered {
+            self.dropped += 1;
+            return;
+        }
         match self.focus.and_then(|id| self.client_by_id(id)) {
             Some(ci) => self.deliver(ci, msg),
             None => self.dropped += 1,
@@ -759,6 +761,12 @@ fn main() -> u64 {
                             buf: &mut out_buf,
                             len: 0,
                         };
+                        // An owed SAK goes ahead of the session's own request (v2.6): a
+                        // FOCUS display it sent before hearing the sequence must not move the
+                        // keyboard, nor its reply arrive, before the SAK does.
+                        if st.session_client() == Some(ci) {
+                            st.retry_sak();
+                        }
                         st.request(ci, &req[..n], token, &mut out);
                         if let Some(t) = token {
                             libnawah::handle_close(t);

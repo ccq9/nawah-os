@@ -1234,7 +1234,7 @@ HOST_SUITES["M4-GATE"] = [
 # security fix fails the run whatever the ratio (tests/mutants.py SECURITY).
 HOST_SUITES["M5-GATE"] = [
     {"id": "TST-M5-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--stage", "M5", "--report", "build/mutants-m5-report.json"],
-     "oracle": "every seeded M5 defect that compiles (displayd: narrator authority, client limits and the session's reserve, LIST hash and STATUS composed= of a held screen; sessiond: the password field's announcements, the elevation prompt after the keys; inputd: the name `display`; libui: password bullets) is killed by at least one M5 case, host suites included; kill ratio >= 0.95 and no surviving security mutant; report build/mutants-m5-report.json",
+     "oracle": "every seeded M5 defect that compiles (displayd: narrator authority, client limits and the session's reserve, LIST hash and STATUS composed= of a held screen; sessiond: the password field's announcements, the elevation prompt after the keys; inputd: the name `display`; libui: password bullets; kernel: process_kill authority, kill wake-up, K1 at block, K2 at exit, frame clear on release, mouse routing; svcmgr: PONG and the watchdog's kill) is killed by at least one M5 case, host suites included; kill ratio >= 0.95 and no surviving security mutant; report build/mutants-m5-report.json",
      "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"], "timeout_s": 10800},
 ]
 HOST_SUITES["M4"] = [

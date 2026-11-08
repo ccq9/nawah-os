@@ -439,6 +439,9 @@ struct Session {
     /// auth is back.
     lock_unsent: bool,
     input: Option<Conn>,
+    /// A `SAK` kept on an input connection that was then lost (v1.6): handled by the next
+    /// drain, so a reconnect cannot hand the keyboard to an unlocked desktop instead.
+    sak_carry: bool,
     display: Option<Conn>,
     connected: [bool; 3],
     conn_n: [i64; 3],
@@ -641,6 +644,9 @@ impl Session {
     fn input_lost(&mut self, now: u64) {
         if let Some(c) = self.input.take() {
             libnawah::handle_close(c.chan);
+            // A kept SAK outlives the connection (v1.6): the next drain still locks, before
+            // any handover to the display after the input service comes back.
+            self.sak_carry |= c.sak;
         }
         self.connected[INPUT] = false;
         self.retry[INPUT] = now;
@@ -1841,10 +1847,11 @@ impl Session {
     fn drain(&mut self, now: u64) {
         let mut msg = [0u8; EV_MAX];
         loop {
-            if self
-                .input
-                .as_mut()
-                .is_some_and(|c| core::mem::take(&mut c.sak))
+            if core::mem::take(&mut self.sak_carry)
+                || self
+                    .input
+                    .as_mut()
+                    .is_some_and(|c| core::mem::take(&mut c.sak))
             {
                 self.on_input(b"SAK", now);
                 continue;
@@ -2021,6 +2028,7 @@ fn main() -> u64 {
         auth_ops: [None; AUTH_OPS],
         lock_unsent: false,
         input: None,
+        sak_carry: false,
         display: None,
         connected: [true, true, true],
         conn_n: [1, 0, 0],

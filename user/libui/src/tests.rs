@@ -481,7 +481,7 @@ fn fits_measures_the_row_as_painted() {
     for rtl in [false, true] {
         let d = Dialog::new("Administrator approval", rtl);
         // The widest prompt the session's limits allow (15 + 1 + 32 characters), and a
-        // 32-character request of wide letters (279 pixels at 14 px): neither fits 260 units.
+        // 32-character request of wide letters (279 pixels at 14 px): neither fits the row (241 pixels at 1x).
         assert!(!p.fits(
             &d,
             &fonts,
