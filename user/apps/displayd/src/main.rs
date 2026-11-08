@@ -506,6 +506,8 @@ struct Compositor {
     /// background — from the start when the manifest has a session, while the session says
     /// locked, and whenever the session's channel is gone (rescue).
     locked: bool,
+    /// Releases of the held screen (`UNLOCKED` while held; v1.11 `HOLDS`).
+    releases: u64,
     /// `KEY` events received from the input service since the start (`KEYS`, v1.2).
     keys: u64,
     /// A `CONNECT input` sent to the manager and not answered yet (v1.2 reconnection).
@@ -1673,7 +1675,13 @@ impl Compositor {
                 self.end_switch(now);
                 match verb {
                     b"LOCKED" => self.locked = true,
-                    b"UNLOCKED" => self.locked = false,
+                    b"UNLOCKED" => {
+                        // Each release of a held screen is counted (v1.11, `HOLDS`).
+                        if self.locked {
+                            self.releases += 1;
+                        }
+                        self.locked = false;
+                    }
                     _ => {
                         // Every other client's windows and surfaces go; each client that
                         // had any is told (`LOGGED_OUT`, v1.2) — the hold comes first, so
@@ -1708,6 +1716,16 @@ impl Compositor {
             b"KEYS" => {
                 out.put(b"OK ");
                 out.num(self.keys as i64);
+            }
+            b"HOLDS" => {
+                // v1.11: whether the screen is held, and how many times it was released.
+                out.put(if self.locked {
+                    b"OK locked=1"
+                } else {
+                    b"OK locked=0"
+                });
+                out.put(b" releases=");
+                out.num(self.releases as i64);
             }
             b"NARRATOR" => {
                 // Only the client the manager names `narrator` may hear the announcements
@@ -2053,6 +2071,7 @@ fn main() -> u64 {
         fonts,
         text,
         locked: session_in_manifest(boot),
+        releases: 0,
         keys: 0,
         input_asked: false,
         input_retry: 0,

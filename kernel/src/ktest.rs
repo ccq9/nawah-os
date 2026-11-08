@@ -5031,8 +5031,31 @@ fn input_route() -> ! {
     {
         fail("the Arabic layout or the moved focus did not take effect")
     }
+    // Phase 3 (input.md v2.3, WP-38 mutants M108/M109): Shift+Alt with a third key between
+    // is a shortcut, not the layout chord: the lab presses `shift-alt-x` (Shift, Alt, X down,
+    // then up in reverse), then `a`. The layout stays Arabic, so `a` is still ش — neither the
+    // press of the second modifier nor the release after a third key toggles it.
+    kprintln!(
+        "OSX|{}|ktest|input_route|chord=armed|phase=3|ready=1",
+        BUILD_ID
+    );
+    let ev_b3 = read_events(b, 8, sched::ticks() + 60_000);
+    let status3 = cfg_request(a, b"STATUS", None);
+    kprintln!(
+        "OSX|{}|ktest|input_route|b3={}|status3={}",
+        BUILD_ID,
+        ev_b3.join(";"),
+        status3
+    );
+    if ev_b3.len() != 8
+        || ev_b3[6..] != ["KEY 0x1e down 0 ش", "KEY 0x1e up 0 ش"]
+        || !status3.starts_with("OK focus=2 layout=ar keys=20 ")
+    {
+        fail("a Shift+Alt shortcut with a third key toggled the layout")
+    }
     // Every allocation of the test goes before the balance (CI run 39151988275 counted the
     // page of the user login's reply string, `ru`, as a leaked frame).
+    drop((ev_b3, status3));
     drop((ev_a, ev_s, ev_b, ev_b2, ev_a2, status, status0, ru));
     drop((
         reg_a, reg_b, reg_s, f_none, f_user, f_unknown, l_user, f_a, f_b, l_ar,
@@ -7013,6 +7036,101 @@ fn elevate() -> ! {
     drop((
         back5, prompt5, waiting5, ended5, busy5, settled5, set5, set6, approved6, set6b, spy6,
     ));
+    // The compositor counts every release of its held screen (display.md v1.11 `HOLDS`): a
+    // prompt that ends must never release the screen when the session is not unlocked.
+    let display = svc_connect(&h, "display");
+    let mut dev = Vec::new();
+    let releases = |r: &str| String::from(r.split(" releases=").nth(1).unwrap_or("?"));
+    // 3e (WP-38, mutant M89). The keys before the screen: with the input service frozen the
+    // session cannot take the keyboard, so the elevation ends ERR UNAVAILABLE before any
+    // prompt; the screen is never held for it, so it is never released either.
+    let holds_a = drequest(&display, b"HOLDS", Vec::new(), &mut dev);
+    let frozen_in = sched::freeze_named(b"INPUTD.ELF");
+    let no_keys = session_ask(
+        &session,
+        b"ELEVATE config SET device lab.elev8 0 908 on",
+        sched::ticks() + 30_000,
+    );
+    let thawed_in = sched::thaw_named(b"INPUTD.ELF");
+    let holds_b = drequest(&display, b"HOLDS", Vec::new(), &mut dev);
+    let set8 = cfg_request(&config, b"GET device lab.elev8", None);
+    let back8 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK unlocked ") && !r.contains(" input=1 ") && r.ends_with(" focus=display")
+    });
+    kprintln!(
+        "OSX|{}|ktest|elevate|frozen_in={}|no_keys={}|thawed_in={}|holds={}->{}|set8={}|back8={}|phase=3e",
+        BUILD_ID,
+        frozen_in,
+        no_keys,
+        thawed_in,
+        holds_a,
+        holds_b,
+        set8,
+        back8
+    );
+    if no_keys != "ERR UNAVAILABLE"
+        || holds_b != holds_a
+        || set8 != "ERR NOT_FOUND"
+        || !back8.ends_with(" focus=display")
+    {
+        fail("an elevation without the keyboard showed a prompt or released the screen")
+    }
+    // 3f (WP-38, mutants M98 and M101). The secure attention sequence while the prompt is up:
+    // the elevation ends ERR CANCELLED, the session locks, and the screen stays held from the
+    // prompt to the lock screen — not one release in between. Then the lab unlocks.
+    if session
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev7 0 907 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        fail("the session's client channel is closed")
+    }
+    let prompt7 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK prompt ")
+    });
+    let holds_c = drequest(&display, b"HOLDS", Vec::new(), &mut dev);
+    kprintln!(
+        "OSX|{}|ktest|elevate|prompt7={}|holds_c={}|sak=armed|phase=3f|ready=1",
+        BUILD_ID,
+        prompt7,
+        holds_c
+    );
+    let sak7 = session_reply(&session, long);
+    let locked7 = poll_reply(&session, b"STATE", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK locked ")
+    });
+    let holds_d = drequest(&display, b"HOLDS", Vec::new(), &mut dev);
+    let set7 = cfg_request(&config, b"GET device lab.elev7", None);
+    let back7 = poll_reply(&session, b"STATE", long, |r| {
+        r.starts_with("OK unlocked ") && r.ends_with(" focus=display")
+    });
+    kprintln!(
+        "OSX|{}|ktest|elevate|sak7={}|locked7={}|holds_d={}|set7={}|back7={}|phase=3g",
+        BUILD_ID,
+        sak7,
+        locked7,
+        holds_d,
+        set7,
+        back7
+    );
+    if sak7 != "ERR CANCELLED"
+        || !locked7.starts_with("OK locked user=user ")
+        || !holds_c.starts_with("OK locked=1 ")
+        || !holds_d.starts_with("OK locked=1 ")
+        || releases(&holds_d) != releases(&holds_c)
+        || set7 != "ERR NOT_FOUND"
+    {
+        fail("the secure attention sequence did not end the prompt into the lock, screen held")
+    }
+    if !back7.starts_with("OK unlocked user=user ") {
+        fail("the lab's unlock after the secure attention sequence did not open the session")
+    }
+    drop((
+        holds_a, no_keys, holds_b, set8, back8, prompt7, holds_c, sak7, locked7, holds_d,
+    ));
+    drop((set7, back7, dev, display));
     // 4. The compositor goes while the prompt is up: the elevation ends unanswered too.
     if session
         .write(Message {

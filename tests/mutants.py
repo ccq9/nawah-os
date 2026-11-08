@@ -453,18 +453,23 @@ MUTANTS = [
      "        let op = AuthOp::Login { name, len: nn };\n        let sent = self.auth_send(req.bytes(), false, op);",
      "        let op = AuthOp::Login { name, len: nn };\n        req.wipe();\n        let sent = self.auth_send(req.bytes(), false, op);",
      ["TST-M5-AUTH-INPUT-ISOLATED", "TST-M5-LOGIN-SCREEN"], "the sign-in request is wiped before it is sent: LOGIN goes out empty (order swap of wipe and send)"),
+    # M100's first form dropped the stale-answer check `e.n == n` in elevate_answer. It was
+    # EQUIVALENT: elevate_request refuses ERR BUSY while an administrator's answer is awaited,
+    # so no answer can ever arrive while another elevation is current, and the check is defence
+    # in depth with no reachable effect (survived run 41281612670). The guard that does the work
+    # is mutated instead, same file and category (check removal, security).
     ("M100", "user/apps/sessiond/src/main.rs",
-     "        let same = self.elevation.is_some_and(|e| e.n == n);",
-     "        let same = self.elevation.is_some();",
-     ["TST-M5-ELEVATE"], "an auth answer approves whatever elevation is current, not the one it was typed for (check removal; WP-41 C1 undone)"),
+     "        if self.elevation.is_some() || self.elevate_answer_pending() {\n            return Some(b\"ERR BUSY\");",
+     "        if self.elevation.is_some() {\n            return Some(b\"ERR BUSY\");",
+     ["TST-M5-ELEVATE"], "a new elevation is accepted while an administrator's answer for an ended one is awaited (check removal; WP-41 C1 undone)"),
     ("M101", "user/apps/sessiond/src/main.rs",
      "        self.state = State::Locked;\n        if self.elevation.is_some() {",
      "        self.state = State::Locked;\n        if self.elevation.is_none() {",
      ["TST-M5-ELEVATE"], "the secure attention sequence no longer ends an elevation prompt (condition flip)"),
-    ("M102", "user/apps/sessiond/src/main.rs",
-     "        self.elevate_seq += 1;\n        e.n = self.elevate_seq;",
-     "        e.n = self.elevate_seq;",
-     ["TST-M5-ELEVATE"], "every elevation carries the same number, so a stale answer matches (assignment drop)"),
+    # M102 was `self.elevate_seq += 1;` (assignment drop: every elevation numbered alike). It is
+    # EQUIVALENT for the reason M100's first form was: the number is compared only by an answer
+    # that cannot meet a newer elevation, ERR BUSY having refused it. Dropped (survived run
+    # 41281612670); the BUSY guard is covered by M100.
     ("M103", "user/apps/sessiond/src/main.rs",
      "const RELEASE_WAIT: u64 = 1000;", "const RELEASE_WAIT: u64 = 0;",
      ["TST-M5-FOCUS-AFTER-RESTART", "TST-M5-LOCK-DISPLAY-DOWN"], "no wait before the keyboard is handed over (constant)"),
@@ -552,7 +557,7 @@ def stage_of(mid: str) -> str:
 # The M5 mutants that undo a security fix of the pre-gate review (WP-43) or of WP-41: the gate
 # fails if any of them survives, whatever the kill ratio (the review's rule 1 of 2026-10-27).
 SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91",
-            "M95", "M96", "M98", "M99", "M100", "M101", "M102", "M105", "M106", "M107", "M112"}
+            "M95", "M96", "M98", "M99", "M100", "M101", "M105", "M106", "M107", "M112"}
 
 
 def security_of(mid: str) -> bool:
