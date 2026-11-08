@@ -696,25 +696,39 @@ class QmpLink:
         msg = {"execute": command}
         if arguments is not None:
             msg["arguments"] = arguments
-        self.sock.sendall((json.dumps(msg) + "\n").encode())
-        return self._reply()
+        try:
+            self.sock.sendall((json.dumps(msg) + "\n").encode())
+            return self._reply()
+        except (OSError, ValueError):
+            # A failed exchange leaves the link in an unknown state (a late reply would be read
+            # as the next command's): drop it, so the next command reconnects from scratch.
+            self.close()
+            raise
 
     def key(self, line):
         """`key-down <qcode>` or `key-up <qcode>` (QEMU's QKeyCode names: `ret`, `a`, …)."""
         import socket
         verb, code = line.split(None, 1)
         if self.sock is None:
-            self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.sock.settimeout(5)
-            self.sock.connect(str(self.path))
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(5)
+            try:
+                s.connect(str(self.path))
+            except OSError:
+                s.close()
+                raise
+            self.sock, self.buf = s, b""
             self._execute("qmp_capabilities")
         event = {"type": "key", "data": {"down": verb == "key-down", "key": {"type": "qcode", "data": code.strip()}}}
         self._execute("input-send-event", {"events": [event]})
 
     def close(self):
         if self.sock is not None:
-            self.sock.close()
-            self.sock = None
+            try:
+                self.sock.close()
+            except OSError:
+                pass
+        self.sock, self.buf = None, b""
 
 
 def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions):
@@ -1234,7 +1248,7 @@ HOST_SUITES["M4"] = [
 ]
 HOST_SUITES["M5"] = [
     {"id": "TST-M5-LAB-TOOL", "command": ["python3", "-I", "tests/test_monitor_steps.py"],
-     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on (8 cases, OK)",
+     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect (9 cases, OK)",
      "inputs": ["tests/test_monitor_steps.py", "tools/project.py"], "input_globs": []},
     {"id": "TST-M5-BIDI", "command": ["python3", "-I", "tests/test_text.py", "Bidi"],
      "oracle": "nawah-text's UAX #9 reproduces every line of the Unicode conformance file BidiCharacterTest-17.0.0 (91707 lines: paragraph level, resolved levels with X9-removed characters, visual order after L2), and tables.rs is what tools/unicode_tables.py generates from the UCD files (DerivedBidiClass, DerivedJoiningType, BidiBrackets 17.0.0)",

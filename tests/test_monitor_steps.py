@@ -199,6 +199,38 @@ class MonitorSteps(unittest.TestCase):
             self.assertEqual(rc, 33)
             self.assertIn("monitor:", (d / "err.log").read_text())
 
+    def test_qmp_link_recovers_after_a_failed_connect(self):
+        # Review 2026-11-08: a failed connect or handshake left the socket set and unusable,
+        # so every later key command of the run failed too. The link reconnects instead.
+        import socket, threading
+        with tempfile.TemporaryDirectory() as td:
+            path = pathlib.Path(td) / "q.sock"
+            link = project.QmpLink(path)
+            with self.assertRaises(OSError):
+                link.key("key-down ret")          # nothing listens yet
+            self.assertIsNone(link.sock)
+            got = []
+            srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            srv.bind(str(path)); srv.listen(1)
+            def serve():
+                c, _ = srv.accept()
+                c.sendall(b'{"QMP": {}}\n')
+                buf = b""
+                while len(got) < 2:
+                    d = c.recv(4096)
+                    if not d:
+                        break
+                    buf += d
+                    while b"\n" in buf:
+                        line, buf = buf.split(b"\n", 1)
+                        got.append(json.loads(line)["execute"])
+                        c.sendall(b'{"return": {}}\n')
+                c.close()
+            th = threading.Thread(target=serve, daemon=True); th.start()
+            link.key("key-up ret")
+            th.join(5); link.close(); srv.close()
+            self.assertEqual(got, ["qmp_capabilities", "input-send-event"])
+
     def test_timeout_kills_qemu(self):
         rc, got, _, err = self.drive({"after": "|never|", "commands": ["sendkey a"]}, [("boot", 5.0)], timeout=2)
         self.assertEqual(rc, 124)
