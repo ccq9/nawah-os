@@ -273,6 +273,9 @@ struct Conn {
     pending_len: [usize; PENDING],
     head: usize,
     count: usize,
+    /// A `SAK` arrived while the session was busy (v1.6): never one of the events a full
+    /// buffer drops, and handled before them.
+    sak: bool,
 }
 
 impl Conn {
@@ -283,10 +286,21 @@ impl Conn {
             pending_len: [0; PENDING],
             head: 0,
             count: 0,
+            sak: false,
         }
     }
 
     fn keep(&mut self, msg: &[u8]) {
+        // The secure attention sequence is recorded before the room check (v1.6, WP-38): behind
+        // 32 pointer events it was dropped and the session stayed unlocked. It is idempotent, so
+        // a flag holds any number of them; the events kept before it were for the screen it
+        // replaces and go with it, so the order of what follows is kept.
+        if msg == b"SAK" {
+            self.sak = true;
+            self.head = 0;
+            self.count = 0;
+            return;
+        }
         if self.count < PENDING {
             let slot = (self.head + self.count) % PENDING;
             let k = msg.len().min(EV_MAX);
@@ -822,6 +836,12 @@ impl Session {
         }
         let mut reply = [0u8; 64];
         match self.input_call(b"FOCUS display", &mut reply) {
+            // A SAK that came before the answer was handled by the input service before this
+            // FOCUS (v1.6): the keyboard went to the display after the sequence gave it to us.
+            // It is taken back, and the kept SAK then locks with the keys ours.
+            Some(n) if &reply[..n] == b"OK" && self.input.as_ref().is_some_and(|c| c.sak) => {
+                self.take_keyboard();
+            }
             Some(n) if &reply[..n] == b"OK" => {
                 self.want_display = false;
                 self.owner = Owner::Display;
@@ -1421,7 +1441,12 @@ impl Session {
     }
 
     /// The approval: exactly the shown request goes to the service with a copy of the
-    /// administrator's token; auth ends the token at once, whatever the reply.
+    /// administrator's token; auth ends the token at once, whatever the reply. While the
+    /// service has not answered, the input channel is read too (v1.6, WP-38): its events are
+    /// kept for the main loop, and the secure attention sequence stops the wait — the token is
+    /// ended, the service's channel closed, and the session locks (ERR CANCELLED). Before v1.6
+    /// the wait read nothing else, so the input queue filled behind a slow service and the
+    /// sequence was dropped: the elevation then ended and the desktop came back unlocked.
     fn elevate_run(&mut self, token: Handle, now: u64) {
         let Some(e) = self.elevation else {
             self.auth_logout(token);
@@ -1435,20 +1460,68 @@ impl Session {
         // and report ERR UNAVAILABLE for a request that ran (review S4).
         let mut reply = [0u8; MSG_MAX - 9];
         let mut got = None;
+        let mut sak = false;
         if let Some(copy) = copy {
             if libnawah::channel_write(e.chan, &e.request[..e.request_len], &[copy]) == 0 {
-                let wait = [WaitEntry {
-                    handle: e.chan,
-                    signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
-                }];
-                if libnawah::object_wait_many(&wait, REQUEST_DEADLINE).is_ok() {
-                    let mut hs = [0u32; 1];
-                    if let Ok((n, nh)) = libnawah::channel_read(e.chan, &mut reply, &mut hs, false)
-                    {
-                        if nh == 1 {
-                            libnawah::handle_close(hs[0]);
+                let mut tr = Out::new();
+                tr.put(b"session|elevate=running|n=")
+                    .num(i64::try_from(e.n).unwrap_or(-1));
+                libnawah::trace(tr.bytes());
+                // The deadline runs from the request, whatever input arrives meanwhile.
+                let deadline = libnawah::clock_ticks().saturating_add(REQUEST_DEADLINE);
+                let mut input = self.input.as_ref().map_or(0, |c| c.chan);
+                loop {
+                    let t = libnawah::clock_ticks();
+                    if t >= deadline {
+                        break;
+                    }
+                    let wait = [
+                        WaitEntry {
+                            handle: e.chan,
+                            signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+                        },
+                        WaitEntry {
+                            handle: input,
+                            signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+                        },
+                    ];
+                    let k = if input != 0 { 2 } else { 1 };
+                    match libnawah::object_wait_many(&wait[..k], deadline - t) {
+                        Ok((0, _)) => {
+                            let mut hs = [0u32; 1];
+                            if let Ok((n, nh)) =
+                                libnawah::channel_read(e.chan, &mut reply, &mut hs, false)
+                            {
+                                if nh == 1 {
+                                    libnawah::handle_close(hs[0]);
+                                }
+                                got = Some(n);
+                            }
+                            break;
                         }
-                        got = Some(n);
+                        Ok(_) => {
+                            let mut msg = [0u8; MSG_MAX];
+                            let mut hs = [0u32; 1];
+                            match libnawah::channel_read(input, &mut msg, &mut hs, false) {
+                                Ok((n, nh)) => {
+                                    if nh == 1 {
+                                        libnawah::handle_close(hs[0]);
+                                    }
+                                    if &msg[..n] == b"SAK" {
+                                        sak = true;
+                                        break;
+                                    }
+                                    if let Some(c) = self.input.as_mut() {
+                                        c.keep(&msg[..n]);
+                                    }
+                                }
+                                Err(ERR_SHOULD_WAIT) => {}
+                                // Lost (or unreadable): the main loop finds out; the wait goes
+                                // on for the service alone.
+                                Err(_) => input = 0,
+                            }
+                        }
+                        Err(_) => break,
                     }
                 }
             } else {
@@ -1456,6 +1529,25 @@ impl Session {
             }
         }
         self.auth_logout(token);
+        if sak {
+            // The request may still sit unread at the service: its token is ended above, and
+            // its channel goes now, so no answer is awaited for it.
+            if let Some(el) = self.elevation.as_mut() {
+                libnawah::handle_close(el.chan);
+                el.chan = 0;
+            }
+            let now = now.max(libnawah::clock_ticks());
+            // Handled as a kept SAK (the events kept before it go with it). Unlocked here (an
+            // elevation needs it), so the lock ends the elevation ERR CANCELLED.
+            if let Some(c) = self.input.as_mut() {
+                c.keep(b"SAK");
+            }
+            self.drain(now);
+            if self.elevation.is_some() {
+                self.elevate_end(b"ERR CANCELLED", now);
+            }
+            return;
+        }
         match got {
             Some(n) => {
                 let mut out = Out::new();
@@ -1744,10 +1836,22 @@ impl Session {
         }
     }
 
-    /// Events kept while a request waited, in arrival order.
+    /// Events kept while a request waited, in arrival order; a kept `SAK` first (v1.6), and
+    /// again if handling an event kept another.
     fn drain(&mut self, now: u64) {
         let mut msg = [0u8; EV_MAX];
-        while let Some(n) = self.input.as_mut().and_then(|c| c.next_pending(&mut msg)) {
+        loop {
+            if self
+                .input
+                .as_mut()
+                .is_some_and(|c| core::mem::take(&mut c.sak))
+            {
+                self.on_input(b"SAK", now);
+                continue;
+            }
+            let Some(n) = self.input.as_mut().and_then(|c| c.next_pending(&mut msg)) else {
+                break;
+            };
             self.on_input(&msg[..n], now);
         }
         // Display events (FOCUS, UNFOCUS, CLOSE_REQUESTED, …) need nothing from the session.

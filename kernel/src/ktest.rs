@@ -5027,7 +5027,8 @@ fn input_route() -> ! {
     );
     if ev_b2 != ["KEY 0x1e down 0 ش", "KEY 0x1e up 0 ش"]
         || !ev_a2.is_empty()
-        || status != "OK focus=2 layout=ar keys=12 packets=0 saks=1 dropped=0 buttons=0"
+        || status
+            != "OK focus=2 layout=ar keys=12 packets=0 saks=1 dropped=0 buttons=0 sak_pending=0"
     {
         fail("the Arabic layout or the moved focus did not take effect")
     }
@@ -5108,7 +5109,8 @@ fn mouse() -> ! {
         status
     );
     if ev != ["PTR 10 5 0", "PTR 0 0 1", "PTR 0 0 0"]
-        || status != "OK focus=1 layout=us keys=0 packets=3 saks=0 dropped=0 buttons=0"
+        || status
+            != "OK focus=1 layout=us keys=0 packets=3 saks=0 dropped=0 buttons=0 sak_pending=0"
     {
         fail("pointer events did not carry the lab's motion and button state")
     }
@@ -7194,6 +7196,97 @@ fn elevate() -> ! {
         holds_a, no_keys, holds_b, set8, back8, prompt7, holds_c, sak7, locked7, holds_d,
     ));
     drop((set7, back7, fenced, dev, display));
+    // 3i (WP-38, input.md v2.6, session.md v1.6). The secure attention sequence while an
+    // approved request waits at its service. config is frozen, so once the lab has typed
+    // admin's password the session sits in the wait for config's answer (it traces
+    // `elevate=running`); the lab then floods the pointer (100 packets: more than the input
+    // channel's 64 and the session's 32 kept events) and presses Ctrl+Alt+Del. The sequence is
+    // never lost: the elevation ends ERR CANCELLED, the session locks, and the input service owes
+    // nothing (`sak_pending=0`). auth ends the token before config, thawed, reads the request:
+    // nothing is set. Then the lab unlocks as in 3g, and no key reaches the spy.
+    let input = svc_connect(&h, "input");
+    let frozen9 = sched::freeze_named(b"CONFIGD.ELF");
+    if session
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev9 0 909 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        fail("the session's client channel is closed")
+    }
+    let prompt9 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK prompt ")
+    });
+    kprintln!(
+        "OSX|{}|ktest|elevate|prompt9={}|config_frozen={}|phase=3i|ready=1",
+        BUILD_ID,
+        prompt9,
+        frozen9
+    );
+    if !prompt9.starts_with("OK prompt ") || !frozen9 {
+        fail("the ninth prompt did not come up, or config could not be frozen")
+    }
+    // The session answers nothing while it waits for config: the answer comes when the
+    // sequence ends the wait (without it, REQUEST_DEADLINE later, ERR UNAVAILABLE).
+    let sak9 = session_reply(&session, long);
+    let locked9 = poll_reply(&session, b"STATE", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK locked ")
+    });
+    let status9 = poll_reply(&input, b"STATUS", sched::ticks() + 10_000, |r| {
+        r.ends_with(" sak_pending=0")
+    });
+    // auth has answered the token's LOGOUT (and the LOCK) before config may read the request.
+    let settled9 = poll_reply(&session, b"AUTH", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK waiting=0 ")
+    });
+    let thawed9 = sched::thaw_named(b"CONFIGD.ELF");
+    let tokens9 = {
+        let mut t = object::stats().tokens;
+        let until = sched::ticks() + 10_000;
+        while t != tokens0 && sched::ticks() < until {
+            sched::poll_until(sched::ticks() + 20, || false);
+            t = object::stats().tokens;
+        }
+        t
+    };
+    let set9 = cfg_request(&config, b"GET device lab.elev9", None);
+    let back9 = poll_reply(&session, b"STATE", long, |r| {
+        r.starts_with("OK unlocked ") && r.ends_with(" focus=display")
+    });
+    let spy9 = cfg_request(&spy, b"COUNT", None);
+    kprintln!(
+        "OSX|{}|ktest|elevate|sak9={}|locked9={}|status9={}|settled9={}|thawed9={}|tokens9={}|set9={}|back9={}|spy9={}|phase=3j",
+        BUILD_ID,
+        sak9,
+        locked9,
+        status9,
+        settled9,
+        thawed9,
+        tokens9,
+        set9,
+        back9,
+        spy9
+    );
+    if sak9 != "ERR CANCELLED" || !locked9.starts_with("OK locked user=user ") {
+        fail("the secure attention sequence was lost while an approved request waited")
+    }
+    if !status9.ends_with(" sak_pending=0") {
+        fail("the input service still owes the session its secure attention sequence")
+    }
+    if !settled9.starts_with("OK waiting=0 ")
+        || !thawed9
+        || tokens9 != tokens0
+        || set9 != "ERR NOT_FOUND"
+    {
+        fail("the request cut off by the secure attention sequence ran, or its token survived")
+    }
+    if !back9.starts_with("OK unlocked user=user ") || spy_count(&spy9) != spy_count(&spy7) {
+        fail("the lab's unlock after the sequence failed, or a key reached the application")
+    }
+    drop((
+        prompt9, sak9, locked9, status9, settled9, set9, back9, spy9, input,
+    ));
     // 4. The compositor goes while the prompt is up: the elevation ends unanswered too.
     if session
         .write(Message {

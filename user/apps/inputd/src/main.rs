@@ -9,6 +9,12 @@
 //! `session` (or the controller) may register as `session`, and that service may move the
 //! focus without a token.
 //!
+//! (v2.6, WP-38) The sequence is never lost: a `SAK` the session's full queue refuses stays
+//! owed (`sak_pending=1` in `STATUS`) and is sent again before anything else reaches the
+//! session — every wakeup, and every SAK_RETRY ticks while it is owed — until it lands or the
+//! session goes. Pointer and key events for the session meanwhile are dropped (counted): a
+//! session that missed the sequence would otherwise hand the keyboard back, unlocked.
+//!
 //! Initial handles: the boot channel (rdi), then the keyboard and the mouse objects (any
 //! order, recognised by `handle_type`). Clients arrive through the manager (`CONNECT` on the
 //! boot channel) and speak the requests of input.md §3.
@@ -17,7 +23,7 @@
 #![no_main]
 
 use libnawah::{
-    perm, Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_SHOULD_WAIT,
+    perm, Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_SHOULD_WAIT, ERR_TIMED_OUT,
     SIGNAL_PEER_CLOSED, SIGNAL_READABLE,
 };
 
@@ -26,6 +32,9 @@ libnawah::entry!(main);
 const MAX_CLIENTS: usize = 8;
 const NAME_MAX: usize = 16;
 const MSG_MAX: usize = 256;
+/// Ticks between two attempts to send a `SAK` the session's queue refused (v2.6): a channel
+/// has no writable signal, so the service wakes on its own to try again.
+const SAK_RETRY: u64 = 10;
 
 const MOD_SHIFT: u8 = 1;
 const MOD_CTRL: u8 = 2;
@@ -75,6 +84,9 @@ struct Input {
     extended: bool,
     /// Ctrl+Alt+Del was seen: the Delete break code that follows is swallowed.
     sak_pending: bool,
+    /// A `SAK` the session's queue refused (v2.6, `STATUS` `sak_pending=`): sent again before
+    /// any other event reaches the session, until it lands or the session goes.
+    sak_undelivered: bool,
     /// Shift+Alt are held together with nothing else pressed since: releasing either one then
     /// toggles the layout (v2.3). Any other key press clears it, so a shortcut that carries
     /// Shift+Alt+key never switches the layout.
@@ -256,21 +268,53 @@ impl Input {
     }
 
     /// Delivers one event to client `ci`; a full queue drops it (counted), a closed peer
-    /// forgets the client.
+    /// forgets the client. A `SAK` is never dropped (v2.6): refused, it stays owed, and the
+    /// session gets nothing else until it lands — the events it would miss are counted.
     fn deliver(&mut self, ci: usize, msg: &[u8]) {
         let c = self.clients[ci].chan;
         if c == 0 {
             return;
         }
+        let sak = msg == b"SAK";
+        if !sak && self.sak_undelivered && self.session_client() == Some(ci) {
+            self.dropped += 1;
+            return;
+        }
         match libnawah::channel_write(c, msg, &[]) {
+            0 if sak => self.sak_undelivered = false,
             0 => {}
             ERR_PEER_CLOSED => self.forget(ci),
+            _ if sak => self.sak_undelivered = true,
             _ => self.dropped += 1,
+        }
+    }
+
+    /// Sends an owed `SAK` again (v2.6); called on every wakeup, before any other delivery.
+    /// Once it lands the keyboard is the session's again: a `FOCUS` the session sent before it
+    /// heard the sequence may have handed it away meanwhile.
+    fn retry_sak(&mut self) {
+        if !self.sak_undelivered {
+            return;
+        }
+        let Some(s) = self.session_client() else {
+            self.sak_undelivered = false;
+            return;
+        };
+        self.deliver(s, b"SAK");
+        if !self.sak_undelivered {
+            if let Some(s) = self.session_client() {
+                self.focus = Some(self.clients[s].id);
+            }
         }
     }
 
     fn forget(&mut self, ci: usize) {
         let c = self.clients[ci];
+        // An owed SAK goes with the session (v2.6): a restarted one starts at its sign-in
+        // screen, with the keyboard its own.
+        if self.session_client() == Some(ci) {
+            self.sak_undelivered = false;
+        }
         if c.chan != 0 {
             libnawah::handle_close(c.chan);
         }
@@ -529,6 +573,8 @@ impl Input {
                 out.num(self.dropped as i64);
                 out.put(b" buttons=");
                 out.num(i64::from(self.buttons));
+                out.put(b" sak_pending=");
+                out.num(i64::from(self.sak_undelivered));
             }
             _ => out.put(b"ERR BAD_REQUEST"),
         }
@@ -581,6 +627,7 @@ fn main() -> u64 {
         mods: 0,
         extended: false,
         sak_pending: false,
+        sak_undelivered: false,
         combo_armed: false,
         packet: [0; 3],
         packet_len: 0,
@@ -594,6 +641,7 @@ fn main() -> u64 {
         return 0xE4;
     }
     loop {
+        st.retry_sak();
         let mut entries = [WaitEntry {
             handle: 0,
             signals: 0,
@@ -622,9 +670,16 @@ fn main() -> u64 {
                 k += 1;
             }
         }
-        let Ok((idx, _)) = libnawah::object_wait_many(&entries[..k], libnawah::TIMEOUT_FOREVER)
-        else {
-            return 0xE5;
+        let timeout = if st.sak_undelivered {
+            SAK_RETRY
+        } else {
+            libnawah::TIMEOUT_FOREVER
+        };
+        let idx = match libnawah::object_wait_many(&entries[..k], timeout) {
+            Ok((idx, _)) => idx,
+            // Only while a SAK is owed: the loop sends it again.
+            Err(ERR_TIMED_OUT) => continue,
+            Err(_) => return 0xE5,
         };
         match idx {
             0 => match libnawah::channel_read(boot, &mut buf, &mut hs, false) {
