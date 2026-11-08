@@ -6719,6 +6719,14 @@ fn spy_keys(reply: &str) -> &str {
         .unwrap_or(reply)
 }
 
+/// The key count of a spy `COUNT` reply as a number (-1 when absent).
+fn spy_count(reply: &str) -> i64 {
+    spy_keys(reply)
+        .strip_prefix("keys=")
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(-1)
+}
+
 fn session_reply(ep: &Endpoint, deadline: u64) -> String {
     let mut reply = String::from("error:timeout");
     sched::poll_until(deadline, || match ep.read(256, 0, None) {
@@ -7124,25 +7132,43 @@ fn elevate() -> ! {
     {
         fail("the secure attention sequence did not end the prompt into the lock, screen held")
     }
-    // M103: the lab holds Enter 950 ms on the unlock. RELEASE_WAIT (1000 ms) counts from
-    // auth's answer, so the release always comes before it runs out: the session keeps the
-    // keyboard until the release, which reaches no application, and the spy's count does not
-    // move. Without the wait (the mutant) the release reaches the spy whenever auth's PBKDF2
-    // answers within 950 ms (700 ms let it survive on a slower runner, run 42495676178).
-    let spy7 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
-        r.contains(" focus=1 ")
-    });
-    kprintln!("OSX|{}|ktest|elevate|spy7={}|phase=3h", BUILD_ID, spy7);
+    // M103: the lab's Enter went down with the unlock (QMP `key-down`) and comes up only once
+    // the session's answer is in the serial log, well inside RELEASE_WAIT whatever auth's
+    // PBKDF2 took: the session keeps the keyboard until that release, which reaches no
+    // application. The lab then types `f` as a fence: it travels the same queue after the
+    // release, so once the spy has it, a leaked release would have been counted first. The spy
+    // gets exactly the fence's press and release.
     if !back7.starts_with("OK unlocked user=user ") {
         fail("the lab's unlock after the secure attention sequence did not open the session")
     }
-    if spy_keys(&spy7) != spy_keys(&spy0) {
+    let keys0 = spy_count(&spy0);
+    kprintln!(
+        "OSX|{}|ktest|elevate|fence=armed|phase=3h|ready=1",
+        BUILD_ID
+    );
+    let fenced = poll_reply(&spy, b"COUNT", sched::ticks() + 30_000, |r| {
+        spy_count(r) >= keys0 + 2
+    });
+    // A third key, if any, is the fence's release after a leaked one: give it time to land.
+    let spy7 = poll_reply(&spy, b"COUNT", sched::ticks() + 1_500, |r| {
+        spy_count(r) > keys0 + 2
+    });
+    kprintln!(
+        "OSX|{}|ktest|elevate|fenced={}|spy7={}|phase=3h",
+        BUILD_ID,
+        fenced,
+        spy7
+    );
+    if spy_count(&fenced) < keys0 + 2 {
+        fail("the lab's fence key never reached the application")
+    }
+    if spy_count(&spy7) != keys0 + 2 {
         fail("the release of the key that unlocked reached an application")
     }
     drop((
         holds_a, no_keys, holds_b, set8, back8, prompt7, holds_c, sak7, locked7, holds_d,
     ));
-    drop((set7, back7, spy7, dev, display));
+    drop((set7, back7, fenced, dev, display));
     // 4. The compositor goes while the prompt is up: the elevation ends unanswered too.
     if session
         .write(Message {
@@ -7193,7 +7219,8 @@ fn elevate() -> ! {
     {
         fail("an elevation survived the compositor's end")
     }
-    if tokens4 != tokens0 || spy_keys(&spy4) != spy_keys(&spy0) {
+    // The fence of phase 3h is the only key the spy has had since spy0.
+    if tokens4 != tokens0 || spy_count(&spy4) != spy_count(&spy7) {
         fail("a token or a key leaked out of a failed elevation")
     }
     drop((

@@ -654,6 +654,69 @@ class ConsoleSession:
         return failures
 
 
+def qmp_socket_path(monitor_path):
+    """The QMP socket beside a case's HMP monitor socket (WP-38)."""
+    monitor_path = Path(monitor_path)
+    return monitor_path.with_name(monitor_path.stem + "-qmp.sock")
+
+
+QMP_KEY_COMMANDS = ("key-down ", "key-up ")
+
+
+class QmpLink:
+    """One QMP connection for a whole run (WP-38), opened on the first `key-down`/`key-up`
+    command and kept, so a step that releases a key costs no connect or handshake: HMP's
+    `sendkey` presses and releases on a fixed timer, while a lab step must release a key a
+    bounded time after a marker (the session's RELEASE_WAIT counts from auth's answer, whose
+    PBKDF2 time differs between runners)."""
+
+    def __init__(self, path):
+        self.path, self.sock, self.buf = path, None, b""
+
+    def _reply(self):
+        import time
+        end = time.monotonic() + 5
+        while time.monotonic() < end:
+            while b"\n" in self.buf:
+                line, self.buf = self.buf.split(b"\n", 1)
+                if not line.strip():
+                    continue
+                msg = json.loads(line)
+                if "return" in msg:
+                    return msg
+                if "error" in msg:
+                    raise OSError(f"qmp: {msg['error']}")
+            d = self.sock.recv(4096)
+            if not d:
+                raise OSError("qmp: connection closed")
+            self.buf += d
+        raise OSError("qmp: no reply")
+
+    def _execute(self, command, arguments=None):
+        msg = {"execute": command}
+        if arguments is not None:
+            msg["arguments"] = arguments
+        self.sock.sendall((json.dumps(msg) + "\n").encode())
+        return self._reply()
+
+    def key(self, line):
+        """`key-down <qcode>` or `key-up <qcode>` (QEMU's QKeyCode names: `ret`, `a`, …)."""
+        import socket
+        verb, code = line.split(None, 1)
+        if self.sock is None:
+            self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self.sock.settimeout(5)
+            self.sock.connect(str(self.path))
+            self._execute("qmp_capabilities")
+        event = {"type": "key", "data": {"down": verb == "key-down", "key": {"type": "qcode", "data": code.strip()}}}
+        self._execute("input-send-event", {"events": [event]})
+
+    def close(self):
+        if self.sock is not None:
+            self.sock.close()
+            self.sock = None
+
+
 def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions):
     """`run_logged` for a QEMU case that drives the guest through the monitor (WP-27): once
     `actions["after"]` appears in the serial log, every line of `actions["commands"]` goes to
@@ -661,39 +724,58 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
     several such steps (WP-33: keys after one marker, more keys after a later one):
     `actions["steps"]` is a list of `{after, commands}` sent in order, each once its marker
     has appeared after the previous step was sent. `${SCREEN}` in a command names the run's
-    screendump, `${SCREEN:tag}` one of several (WP-37: `screen-<tag>.ppm`, same directory)."""
+    screendump, `${SCREEN:tag}` one of several (WP-37: `screen-<tag>.ppm`, same directory).
+    `key-down <qcode>` / `key-up <qcode>` go through QMP instead (WP-38, QmpLink): a key held
+    from one step to a later one. A step with `since_previous` matches its marker only in what
+    the serial log gained after the previous step fired (WP-38: a state the guest prints more
+    than once, such as `state=unlocked`, means its next occurrence)."""
     import socket
     import time
     steps = actions.get("steps") or [actions]
+    qmp = QmpLink(qmp_socket_path(monitor_path))
     with open(log_out, "ab") as o, open(log_err, "ab") as e:
         o.write(f"$ {' '.join(cmd)}\n".encode()); o.flush()
         p = subprocess.Popen(cmd, cwd=cwd, stdout=o, stderr=e)
         deadline = time.monotonic() + timeout
         next_step = 0
-        while p.poll() is None and time.monotonic() < deadline:
-            if next_step < len(steps) and serial_path.exists():
-                step = steps[next_step]
-                if step["after"].encode() in serial_path.read_bytes():
-                    try:
-                        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as m:
-                            m.settimeout(5)
-                            m.connect(str(monitor_path))
-                            time.sleep(0.3)
-                            try:
-                                m.recv(4096)
-                            except OSError:
-                                pass
+        fired_at = 0  # the serial log's length when the previous step fired
+        try:
+            while p.poll() is None and time.monotonic() < deadline:
+                if next_step < len(steps) and serial_path.exists():
+                    step = steps[next_step]
+                    text = serial_path.read_bytes()
+                    if step["after"].encode() in (text[fired_at:] if step.get("since_previous") else text):
+                        fired_at = len(text)
+                        m = None
+                        try:
                             for line in step["commands"]:
-                                # `${SCREEN}`: the screendump file of this run (WP-32), kept
-                                # as evidence next to the serial log.
-                                line = screen_paths(line, serial_path.parent / "screen.ppm")
-                                m.sendall((line + "\n").encode())
+                                if line.startswith(QMP_KEY_COMMANDS):
+                                    qmp.key(line)
+                                else:
+                                    if m is None:
+                                        m = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                                        m.settimeout(5)
+                                        m.connect(str(monitor_path))
+                                        time.sleep(0.3)
+                                        try:
+                                            m.recv(4096)
+                                        except OSError:
+                                            pass
+                                    # `${SCREEN}`: the screendump file of this run (WP-32), kept
+                                    # as evidence next to the serial log.
+                                    line = screen_paths(line, serial_path.parent / "screen.ppm")
+                                    m.sendall((line + "\n").encode())
                                 time.sleep(float(step.get("gap_s", actions.get("gap_s", 0.2))))
-                        o.write(f"# monitor: sent {len(step['commands'])} command(s) after {step['after']!r}\n".encode()); o.flush()
-                    except OSError as ex:
-                        e.write(f"monitor: {ex}\n".encode()); e.flush()
-                    next_step += 1
-            time.sleep(0.1)
+                            o.write(f"# monitor: sent {len(step['commands'])} command(s) after {step['after']!r}\n".encode()); o.flush()
+                        except (OSError, ValueError) as ex:
+                            e.write(f"monitor: {ex}\n".encode()); e.flush()
+                        finally:
+                            if m is not None:
+                                m.close()
+                        next_step += 1
+                time.sleep(0.1)
+        finally:
+            qmp.close()
         if p.poll() is None:
             p.kill(); p.wait()
             e.write(b"TIMEOUT\n"); return 124
@@ -867,6 +949,8 @@ def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None, smp=None,
     # A monitor socket when a case drives the guest (keys through `sendkey`, WP-27).
     if monitor is not None:
         disk_args += ["-monitor", f"unix:{monitor},server,nowait"]
+        # QMP beside it (WP-38): `key-down`/`key-up` lab commands hold a key across a marker.
+        disk_args += ["-qmp", f"unix:{qmp_socket_path(monitor)},server,nowait"]
     # The second serial port (COM2) is the diagnostic console (WP-30): a TCP server the lab
     # connects to when the case has a `console` script, otherwise a null sink so the port
     # exists in every run (the kernel probes it at boot: kernel|diag).
@@ -984,6 +1068,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         monitor = (ROOT / "build" / target_name / f"mon{i + 1}.sock") if actions else None
         if monitor is not None:
             monitor.unlink(missing_ok=True)
+            qmp_socket_path(monitor).unlink(missing_ok=True)
         console_spec = ph.get("console", case.get("console"))
         cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")), monitor,
                        console_spec and console_spec["port"])
@@ -1149,7 +1234,7 @@ HOST_SUITES["M4"] = [
 ]
 HOST_SUITES["M5"] = [
     {"id": "TST-M5-LAB-TOOL", "command": ["python3", "-I", "tests/test_monitor_steps.py"],
-     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag} (5 cases, OK)",
+     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on (8 cases, OK)",
      "inputs": ["tests/test_monitor_steps.py", "tools/project.py"], "input_globs": []},
     {"id": "TST-M5-BIDI", "command": ["python3", "-I", "tests/test_text.py", "Bidi"],
      "oracle": "nawah-text's UAX #9 reproduces every line of the Unicode conformance file BidiCharacterTest-17.0.0 (91707 lines: paragraph level, resolved levels with X9-removed characters, visual order after L2), and tables.rs is what tools/unicode_tables.py generates from the UCD files (DerivedBidiClass, DerivedJoiningType, BidiBrackets 17.0.0)",
