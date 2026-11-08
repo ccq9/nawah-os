@@ -85,7 +85,12 @@ jobs:
           git config user.email "ci@nawah-os.invalid"
           git checkout --orphan "ci-evidence/mutants-${GITHUB_RUN_ID}"
           git rm -rfq --cached . >/dev/null
-          git add -f evidence/ build/mutants-report.json build/mutants-m3-report.json build/mutants-m4-report.json build/mutants-m5-report.json 2>/dev/null || git add -f evidence/
+          git add -f evidence/
+          # Each report that exists, one by one: a gate step that was skipped must not drop
+          # the others (run 42481065666 lost the M5 report because M2 had none).
+          for r in build/mutants-report.json build/mutants-m3-report.json build/mutants-m4-report.json build/mutants-m5-report.json; do
+            if [ -f "$r" ]; then git add -f "$r"; fi
+          done
           git add -f build/mutants-scratch 2>/dev/null || true
           git commit -qm "mutation evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
           auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)

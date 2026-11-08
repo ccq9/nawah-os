@@ -7124,13 +7124,23 @@ fn elevate() -> ! {
     {
         fail("the secure attention sequence did not end the prompt into the lock, screen held")
     }
+    // M103: the lab holds Enter 700 ms on the unlock, longer than auth takes to answer and
+    // shorter than RELEASE_WAIT: the session keeps the keyboard until the release, so it
+    // reaches no application and the spy's count does not move.
+    let spy7 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
+        r.contains(" focus=1 ")
+    });
+    kprintln!("OSX|{}|ktest|elevate|spy7={}|phase=3h", BUILD_ID, spy7);
     if !back7.starts_with("OK unlocked user=user ") {
         fail("the lab's unlock after the secure attention sequence did not open the session")
+    }
+    if spy_keys(&spy7) != spy_keys(&spy0) {
+        fail("the release of the key that unlocked reached an application")
     }
     drop((
         holds_a, no_keys, holds_b, set8, back8, prompt7, holds_c, sak7, locked7, holds_d,
     ));
-    drop((set7, back7, dev, display));
+    drop((set7, back7, spy7, dev, display));
     // 4. The compositor goes while the prompt is up: the elevation ends unanswered too.
     if session
         .write(Message {

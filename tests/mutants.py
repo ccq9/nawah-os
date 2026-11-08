@@ -472,7 +472,7 @@ MUTANTS = [
     # 41281612670); the BUSY guard is covered by M100.
     ("M103", "user/apps/sessiond/src/main.rs",
      "const RELEASE_WAIT: u64 = 1000;", "const RELEASE_WAIT: u64 = 0;",
-     ["TST-M5-FOCUS-AFTER-RESTART", "TST-M5-LOCK-DISPLAY-DOWN"], "no wait before the keyboard is handed over (constant)"),
+     ["TST-M5-FOCUS-AFTER-RESTART", "TST-M5-LOCK-DISPLAY-DOWN", "TST-M5-ELEVATE"], "no wait before the keyboard is handed over (constant)"),
     ("M104", "user/apps/sessiond/src/main.rs",
      "                    if now >= deadline {\n                        return Err(ERR_TIMED_OUT);",
      "                    if now >= deadline.saturating_add(REQUEST_DEADLINE) {\n                        return Err(ERR_TIMED_OUT);",
