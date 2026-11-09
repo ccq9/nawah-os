@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Origin: Sol OS (d54f0a5) `tests/mutants.py` (ADR-0002 item 4), adapted here to nawah-os's stages,
+# lab driver and evidence rules; re-verified by TST-M0-005 and by every gate's mutation run.
 """TST-M2-MUTANTS (REQ-M2-014), TST-M3-MUTANTS (REQ-M3-010, WP-22) and TST-M4-MUTANTS
 (REQ-M4-010, WP-31): seeded-defect mutation testing of the kernel and the system services
 against the guest suites — M01..M29 cover arch/, mm/ and sync (M1/M2 suites); M30..M49 cover the

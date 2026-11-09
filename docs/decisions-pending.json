@@ -151,6 +151,19 @@
    "requested_at": "2026-11-09T12:00:00Z",
    "status": "answered",
    "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. DEC-002 (reference Windows 10 capture) stays open and owner-dependent; M6 proceeds clean-room from a behavioural description, never copying Windows assets, icons, fonts or trade dress."
+  },
+  {
+   "id": "DEC-010",
+   "question": "أرشيف Sol OS (S32، sol-os-phase2.zip، commit d54f0a5) غير قابل للوصول من جلسات السحابة: ليس في المستودع ولا في أي مستودع GitHub يصل إليه الحساب ولا في حاوية الجلسة، ومجلد العمل على جهاز المالك مُدرج في Remote Control لكنه غير معروض لها. كل ما سمّاه ADR-0002 §4 نُقل وأُعيد اختباره هنا (docs/operations/sol-os-reuse-ledger.md). هل يُتاح الأرشيف لمراجعة ما لم يُسمَّ (Sol ADR-001..005 و009، أداة بوابته، طريقة الطفرات الأصلية، أدلة phase-0)، أم يُقفل ملف إعادة الاستعمال على ADR-0002 §4؟",
+   "options": [
+    "إتاحة الأرشيف لجلسة سحابية (مستودع GitHub خاص يُضاف إلى الجلسة، أو رفع الملف المضغوط إليها، أو عرض مجلد العمل لجلسات السحابة عبر Remote Control) ثم حزمة مراجعة صغيرة محددة النطاق تُنتج قرارًا مسجَّلًا لكل مادة: يُنقل بعد المراجعة والتكييف وبسطر أصل، أو يُرفض بسبب",
+    "قفل إعادة الاستعمال على ADR-0002 §4 وتعليم S32 مستنفدًا؛ لا مراجعة أخرى"
+   ],
+   "recommendation": "الخيار الأول إن كان الأرشيف في متناول المالك خلال دورة عمل واحدة، وإلا الثاني. في الحالين لا تُعلَّق حزم M6 عليه.",
+   "impact": "لا أثر على بوابة M6 ولا على أي حزمة نشطة. Sol توقّف عند مرحلته الثانية (إقلاع، جداول المعالج، استثناءات، نواة اختبار) وnawah تجاوزت بوابة M5، فالقيمة المتبقية المتوقعة في الطريقة والتوثيق لا في شيفرة النواة؛ الخيار الثاني يترك هذا الاحتمال بلا قياس.",
+   "blocked_task_ids": [],
+   "requested_at": "2026-11-09T10:17:21Z",
+   "status": "open"
   }
  ]
 }

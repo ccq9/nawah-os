@@ -395,7 +395,8 @@
       "supports": [
         "ADR-0002 reuse decision",
         "arch/x86_64 reference implementation and ktest design",
-        "official rust-std component install path and hash verification method"
+        "official rust-std component install path and hash verification method",
+        "docs/operations/sol-os-reuse-ledger.md (ADR-0002 item 4 reconciled against the tree, 2026-11-09)"
       ],
       "limits": "its evidence is not ours; every ported file is re-tested here",
       "verified": true
