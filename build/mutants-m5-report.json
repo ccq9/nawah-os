@@ -1,0 +1,800 @@
+{
+ "threshold": 0.95,
+ "target": "pc-qemu",
+ "mutants": [
+  {
+   "id": "M82",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "any client may become the narrator (WP-43 M2 undone)",
+   "killers": [
+    "TST-M5-NARRATOR-AUTHORITY"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-NARRATOR-AUTHORITY"
+   ],
+   "results": {
+    "TST-M5-NARRATOR-AUTHORITY": "FAIL"
+   },
+   "seconds": 31.4
+  },
+  {
+   "id": "M83",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "a client gets one surface more than its share (WP-43 S-7, boundary)",
+   "killers": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "results": {
+    "TST-M5-CLIENT-LIMITS": "FAIL"
+   },
+   "seconds": 21.7
+  },
+  {
+   "id": "M84",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "no per-client window limit (WP-43 S-7 undone)",
+   "killers": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "results": {
+    "TST-M5-CLIENT-LIMITS": "FAIL"
+   },
+   "seconds": 22.7
+  },
+  {
+   "id": "M85",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "no surfaces or windows kept for the session (WP-43 S-7)",
+   "killers": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "results": {
+    "TST-M5-CLIENT-LIMITS": "FAIL"
+   },
+   "seconds": 21.9
+  },
+  {
+   "id": "M86",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "LIST hashes a held or minimised window's place (WP-43 M3 undone)",
+   "killers": [
+    "TST-M5-LIST-HASH-HELD"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-LIST-HASH-HELD"
+   ],
+   "results": {
+    "TST-M5-LIST-HASH-HELD": "FAIL"
+   },
+   "seconds": 21.5
+  },
+  {
+   "id": "M87",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "STATUS counts the held screen's redraws, one per key typed (WP-43 M3 undone)",
+   "killers": [
+    "TST-M5-LIST-HASH-HELD"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-LIST-HASH-HELD"
+   ],
+   "results": {
+    "TST-M5-LIST-HASH-HELD": "FAIL"
+   },
+   "seconds": 38.6
+  },
+  {
+   "id": "M88",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "the password field announces every keystroke (WP-43 M2 undone)",
+   "killers": [
+    "TST-M5-AUTH-INPUT-ISOLATED"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-AUTH-INPUT-ISOLATED"
+   ],
+   "results": {
+    "TST-M5-AUTH-INPUT-ISOLATED": "FAIL"
+   },
+   "seconds": 44.5
+  },
+  {
+   "id": "M89",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "the elevation prompt is shown before the keyboard is taken (WP-41 S1 undone, order swapped)",
+   "killers": [
+    "TST-M5-ELEVATE"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-ELEVATE"
+   ],
+   "results": {
+    "TST-M5-ELEVATE": "FAIL"
+   },
+   "seconds": 81.9
+  },
+  {
+   "id": "M90",
+   "file": "user/apps/inputd/src/main.rs",
+   "note": "any client may register the name `display` (WP-43 S-5 undone)",
+   "killers": [
+    "TST-M5-INPUT-NAME-RESERVED"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-INPUT-NAME-RESERVED"
+   ],
+   "results": {
+    "TST-M5-INPUT-NAME-RESERVED": "FAIL"
+   },
+   "seconds": 24.2
+  },
+  {
+   "id": "M91",
+   "file": "user/libui/src/lib.rs",
+   "note": "a password field draws its characters instead of bullets",
+   "killers": [
+    "TST-M5-UI-UNIT"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-UI-UNIT"
+   ],
+   "results": {
+    "TST-M5-UI-UNIT": "FAIL"
+   },
+   "seconds": 24.2
+  },
+  {
+   "id": "M92",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "visible() inverted: minimised windows shown, shown ones hidden (condition flip)",
+   "killers": [
+    "TST-M5-WINDOW-STATES"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-WINDOW-STATES"
+   ],
+   "results": {
+    "TST-M5-WINDOW-STATES": "FAIL"
+   },
+   "seconds": 26.2
+  },
+  {
+   "id": "M94",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "owns_client_area skips the topmost window, so a covered client area reads as its own (boundary shift)",
+   "killers": [
+    "TST-M5-LIST-HASH-HELD"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-LIST-HASH-HELD"
+   ],
+   "results": {
+    "TST-M5-LIST-HASH-HELD": "FAIL"
+   },
+   "seconds": 44.5
+  },
+  {
+   "id": "M95",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "a gone client's surfaces are kept mapped (assignment drop: the destroy loop)",
+   "killers": [
+    "TST-M5-WINDOW-STATES"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-WINDOW-STATES"
+   ],
+   "results": {
+    "TST-M5-WINDOW-STATES": "FAIL"
+   },
+   "seconds": 25.0
+  },
+  {
+   "id": "M96",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "one window over the share (constant)",
+   "killers": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-CLIENT-LIMITS"
+   ],
+   "results": {
+    "TST-M5-CLIENT-LIMITS": "FAIL"
+   },
+   "seconds": 23.5
+  },
+  {
+   "id": "M98",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "lock(): the state is set after the prompt ends, so ending the prompt releases the desktop in between (order swap)",
+   "killers": [
+    "TST-M5-LOCK-SURVIVES",
+    "TST-M5-ELEVATE"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-ELEVATE"
+   ],
+   "results": {
+    "TST-M5-LOCK-SURVIVES": "PASS",
+    "TST-M5-ELEVATE": "FAIL"
+   },
+   "seconds": 122.6
+  },
+  {
+   "id": "M99",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "the sign-in request is wiped before it is sent: LOGIN goes out empty (order swap of wipe and send)",
+   "killers": [
+    "TST-M5-AUTH-INPUT-ISOLATED",
+    "TST-M5-LOGIN-SCREEN"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-AUTH-INPUT-ISOLATED",
+    "TST-M5-LOGIN-SCREEN"
+   ],
+   "results": {
+    "TST-M5-AUTH-INPUT-ISOLATED": "FAIL",
+    "TST-M5-LOGIN-SCREEN": "FAIL"
+   },
+   "seconds": 621.6
+  },
+  {
+   "id": "M100",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "a new elevation is accepted while an administrator's answer for an ended one is awaited (check removal; WP-41 C1 undone)",
+   "killers": [
+    "TST-M5-ELEVATE"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-ELEVATE"
+   ],
+   "results": {
+    "TST-M5-ELEVATE": "FAIL"
+   },
+   "seconds": 73.8
+  },
+  {
+   "id": "M101",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "the secure attention sequence no longer ends an elevation prompt (condition flip)",
+   "killers": [
+    "TST-M5-ELEVATE"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-ELEVATE"
+   ],
+   "results": {
+    "TST-M5-ELEVATE": "FAIL"
+   },
+   "seconds": 316.9
+  },
+  {
+   "id": "M103",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "no wait before the keyboard is handed over (constant)",
+   "killers": [
+    "TST-M5-FOCUS-AFTER-RESTART",
+    "TST-M5-LOCK-DISPLAY-DOWN",
+    "TST-M5-ELEVATE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-ELEVATE"
+   ],
+   "results": {
+    "TST-M5-FOCUS-AFTER-RESTART": "PASS",
+    "TST-M5-LOCK-DISPLAY-DOWN": "PASS",
+    "TST-M5-ELEVATE": "FAIL"
+   },
+   "seconds": 94.3
+  },
+  {
+   "id": "M104",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "a service request times out after twice its deadline (boundary shift). The declared LOCK/UNLOCK-AUTH-HANG cases do not measure the deadline since auth went async (session.md v1.2); the request deadline is observed by SESSION-DEADLINE (window [4900,6000] ticks) and SESSION-HANG. Confirmed in the sweep of run 41232332567.",
+   "killers": [
+    "TST-M5-SESSION-DEADLINE",
+    "TST-M5-SESSION-HANG"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-SESSION-DEADLINE",
+    "TST-M5-SESSION-HANG"
+   ],
+   "results": {
+    "TST-M5-SESSION-DEADLINE": "FAIL",
+    "TST-M5-SESSION-HANG": "FAIL"
+   },
+   "seconds": 176.3
+  },
+  {
+   "id": "M105",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "ending a prompt releases the screen while locked and keeps it held when unlocked (condition flip)",
+   "killers": [
+    "TST-M5-ELEVATE",
+    "TST-M5-LOCK-SURVIVES"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-ELEVATE"
+   ],
+   "results": {
+    "TST-M5-ELEVATE": "FAIL",
+    "TST-M5-LOCK-SURVIVES": "PASS"
+   },
+   "seconds": 75.3
+  },
+  {
+   "id": "M106",
+   "file": "user/apps/inputd/src/main.rs",
+   "note": "a lost session leaves the focus with whoever had it (check removal; input.md v2.2 undone)",
+   "killers": [
+    "TST-M5-SESSION-LOSS"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-SESSION-LOSS"
+   ],
+   "results": {
+    "TST-M5-SESSION-LOSS": "FAIL"
+   },
+   "seconds": 58.4
+  },
+  {
+   "id": "M107",
+   "file": "user/apps/inputd/src/main.rs",
+   "note": "the secure attention sequence tells the session but leaves the keyboard with the focused client (condition flip: the owner no longer changes)",
+   "killers": [
+    "TST-M5-INPUT-ROUTE",
+    "TST-M5-AUTH-INPUT-ISOLATED"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-INPUT-ROUTE",
+    "TST-M5-AUTH-INPUT-ISOLATED"
+   ],
+   "results": {
+    "TST-M5-INPUT-ROUTE": "FAIL",
+    "TST-M5-AUTH-INPUT-ISOLATED": "FAIL"
+   },
+   "seconds": 332.4
+  },
+  {
+   "id": "M108",
+   "file": "user/apps/inputd/src/main.rs",
+   "note": "the layout toggles on the press of the second modifier instead of on the release (order swap)",
+   "killers": [
+    "TST-M5-ARABIC-UI",
+    "TST-M5-INPUT-ROUTE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-INPUT-ROUTE"
+   ],
+   "results": {
+    "TST-M5-ARABIC-UI": "PASS",
+    "TST-M5-INPUT-ROUTE": "FAIL"
+   },
+   "seconds": 46.7
+  },
+  {
+   "id": "M109",
+   "file": "user/apps/inputd/src/main.rs",
+   "note": "a key pressed between Shift+Alt no longer disarms the toggle (assignment drop)",
+   "killers": [
+    "TST-M5-ARABIC-UI",
+    "TST-M5-INPUT-ROUTE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-INPUT-ROUTE"
+   ],
+   "results": {
+    "TST-M5-ARABIC-UI": "PASS",
+    "TST-M5-INPUT-ROUTE": "FAIL"
+   },
+   "seconds": 45.8
+  },
+  {
+   "id": "M110",
+   "file": "user/apps/inputd/src/main.rs",
+   "note": "presses and releases swapped at the 0x80 bit (boundary shift)",
+   "killers": [
+    "TST-M5-INPUT-ROUTE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-INPUT-ROUTE"
+   ],
+   "results": {
+    "TST-M5-INPUT-ROUTE": "FAIL"
+   },
+   "seconds": 27.1
+  },
+  {
+   "id": "M111",
+   "file": "user/libui/src/lib.rs",
+   "note": "Tab goes back and Shift+Tab forward (condition flip)",
+   "killers": [
+    "TST-M5-UI-UNIT"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-UI-UNIT"
+   ],
+   "results": {
+    "TST-M5-UI-UNIT": "FAIL"
+   },
+   "seconds": 22.9
+  },
+  {
+   "id": "M112",
+   "file": "user/libui/src/lib.rs",
+   "note": "the narrator's description of a password field carries its value (check removal of the role exclusion)",
+   "killers": [
+    "TST-M5-UI-UNIT"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-UI-UNIT"
+   ],
+   "results": {
+    "TST-M5-UI-UNIT": "FAIL"
+   },
+   "seconds": 22.2
+  },
+  {
+   "id": "M113",
+   "file": "user/libui/src/lib.rs",
+   "note": "Tab skips one element (boundary shift of the focus step)",
+   "killers": [
+    "TST-M5-UI-UNIT"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-UI-UNIT"
+   ],
+   "results": {
+    "TST-M5-UI-UNIT": "FAIL"
+   },
+   "seconds": 22.5
+  },
+  {
+   "id": "M114",
+   "file": "user/libui/src/lib.rs",
+   "note": "Left and Right swapped between LTR and RTL (order swap of the cursor's direction)",
+   "killers": [
+    "TST-M5-UI-UNIT"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-UI-UNIT"
+   ],
+   "results": {
+    "TST-M5-UI-UNIT": "FAIL"
+   },
+   "seconds": 23.1
+  },
+  {
+   "id": "M115",
+   "file": "user/libnawah-text/src/bidi.rs",
+   "note": "the first strong character sets the opposite paragraph level (condition flip)",
+   "killers": [
+    "TST-M5-BIDI"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-BIDI"
+   ],
+   "results": {
+    "TST-M5-BIDI": "FAIL"
+   },
+   "seconds": 21.5
+  },
+  {
+   "id": "M116",
+   "file": "user/libnawah-text/src/bidi.rs",
+   "note": "rule W4 drops its ES branch: a European separator between digits stays a separator (check removal)",
+   "killers": [
+    "TST-M5-BIDI"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-BIDI"
+   ],
+   "results": {
+    "TST-M5-BIDI": "FAIL"
+   },
+   "seconds": 22.1
+  },
+  {
+   "id": "M117",
+   "file": "user/libnawah-text/src/shape.rs",
+   "note": "non-joining and right-joining types swapped (constant)",
+   "killers": [
+    "TST-M5-SHAPING"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-SHAPING"
+   ],
+   "results": {
+    "TST-M5-SHAPING": "FAIL"
+   },
+   "seconds": 21.9
+  },
+  {
+   "id": "M118",
+   "file": "user/libnawah-text/src/layout.rs",
+   "note": "the pen does not advance: every glyph at the same x (assignment drop)",
+   "killers": [
+    "TST-M5-SHAPING"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-SHAPING"
+   ],
+   "results": {
+    "TST-M5-SHAPING": "FAIL"
+   },
+   "seconds": 21.1
+  },
+  {
+   "id": "M119",
+   "file": "user/libnawah-text/src/font.rs",
+   "note": "cmap format 4: a code point equal to a segment's end code falls into the next segment (boundary shift)",
+   "killers": [
+    "TST-M5-GLYPHS"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-GLYPHS"
+   ],
+   "results": {
+    "TST-M5-GLYPHS": "FAIL"
+   },
+   "seconds": 21.7
+  },
+  {
+   "id": "M120",
+   "file": "user/libnawah-text/src/raster.rs",
+   "note": "flattening tolerance of 64 px: every curve becomes one chord (constant)",
+   "killers": [
+    "TST-M5-GLYPHS"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-GLYPHS"
+   ],
+   "results": {
+    "TST-M5-GLYPHS": "FAIL"
+   },
+   "seconds": 21.1
+  },
+  {
+   "id": "M121",
+   "file": "user/libnawah-text/src/tables.rs",
+   "note": "`(` is no longer an opening bracket: the parenthesis pair never matches in N0 (check removal of the pair; the table keeps its size, [_; 128])",
+   "killers": [
+    "TST-M5-BIDI"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-BIDI"
+   ],
+   "results": {
+    "TST-M5-BIDI": "FAIL"
+   },
+   "seconds": 21.0
+  },
+  {
+   "id": "M122",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "process_kill needs no WRITE: a watcher's read-only duplicate kills (killer exits 0xE4)",
+   "killers": [
+    "TST-M5-PROCESS-KILL"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-PROCESS-KILL"
+   ],
+   "results": {
+    "TST-M5-PROCESS-KILL": "FAIL"
+   },
+   "seconds": 22.3
+  },
+  {
+   "id": "M123",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "a kill does not wake a thread blocked without a deadline (ECHO in channel_read never dies: 0xE8)",
+   "killers": [
+    "TST-M5-PROCESS-KILL"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-PROCESS-KILL"
+   ],
+   "results": {
+    "TST-M5-PROCESS-KILL": "FAIL"
+   },
+   "seconds": 24.6
+  },
+  {
+   "id": "M124",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "a process killed just before it blocks blocks for ever (K1 undone for blocks: kill_at_block)",
+   "killers": [
+    "TST-M5-KILL-EDGES"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-KILL-EDGES"
+   ],
+   "results": {
+    "TST-M5-KILL-EDGES": "FAIL"
+   },
+   "seconds": 25.1
+  },
+  {
+   "id": "M125",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "a process killed inside exit reports its own code, read as a clean stop (K2 undone: kill_at_exit=0x55)",
+   "killers": [
+    "TST-M5-KILL-EDGES"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-KILL-EDGES"
+   ],
+   "results": {
+    "TST-M5-KILL-EDGES": "FAIL"
+   },
+   "seconds": 19.6
+  },
+  {
+   "id": "M126",
+   "file": "kernel/src/display.rs",
+   "note": "the frame is not cleared when the last VMO over it goes: a dead compositor's last picture stays through the lock (display.md v1.5 undone; clears=1 but lit, spy_px != 0)",
+   "killers": [
+    "TST-M5-LOCK-DISPLAY-DOWN"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-LOCK-DISPLAY-DOWN"
+   ],
+   "results": {
+    "TST-M5-LOCK-DISPLAY-DOWN": "FAIL"
+   },
+   "seconds": 30.6
+  },
+  {
+   "id": "M127",
+   "file": "kernel/src/net.rs",
+   "note": "the mouse's bytes go to the keyboard ring (no PTR event, packets=0)",
+   "killers": [
+    "TST-M5-MOUSE"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-MOUSE"
+   ],
+   "results": {
+    "TST-M5-MOUSE": "FAIL"
+   },
+   "seconds": 21.7
+  },
+  {
+   "id": "M128",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "a PONG is ignored: a healthy watchdogged service is killed as hung (pong is not ready:0)",
+   "killers": [
+    "TST-M5-SVC-WATCHDOG"
+   ],
+   "security": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-SVC-WATCHDOG"
+   ],
+   "results": {
+    "TST-M5-SVC-WATCHDOG": "FAIL"
+   },
+   "seconds": 20.1
+  },
+  {
+   "id": "M129",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "the watchdog finds a service hung but never kills it, so it is never restarted (hung is not given_up:1:131072)",
+   "killers": [
+    "TST-M5-SVC-WATCHDOG"
+   ],
+   "security": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-SVC-WATCHDOG"
+   ],
+   "results": {
+    "TST-M5-SVC-WATCHDOG": "FAIL"
+   },
+   "seconds": 28.5
+  }
+ ],
+ "started": "2026-11-09T13:00:06Z",
+ "valid": 45,
+ "killed": 45,
+ "survived": [],
+ "declared_killers_missed": [],
+ "invalid": [],
+ "ratio": 1.0,
+ "finished": "2026-11-09T13:48:09Z"
+}
