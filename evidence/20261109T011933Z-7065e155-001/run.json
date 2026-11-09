@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261109T011933Z-7065e155-001",
+ "started_at": "2026-11-09T01:19:33+00:00",
+ "finished_at": "2026-11-09T01:19:40+00:00",
+ "source_revision": "7065e1551c32f2d41cd60456bef10e08196edd10",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M4-HASH-VECTORS",
+ "commands": [
+  "cargo test --offline --release -p nawah-crypto --target x86_64-unknown-linux-gnu"
+ ],
+ "exit_code": 0
+}
