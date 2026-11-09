@@ -709,8 +709,12 @@ def _write_report(rel, report):
     rp.write_text(json.dumps(report, indent=1) + "\n")
 
 
-def run_killers(wt: Path, env, target, killers, early_exit=False):
-    """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED|ERROR}). Every case runs
+def run_killers(wt: Path, env, target, killers, early_exit=False, reasons=None):
+    """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED|ERROR}). `reasons`, when
+    given, gets each FAIL's kind (audit 2026-11-09): "timeout" when the case hung past
+    MUTANT_CASE_TIMEOUT_S (project.py's "timeout (hang)"), else "oracle" (an exit code, marker
+    or host check the mutant broke). Both are kills: the per-case timeout is set above the
+    slowest clean case, so only the mutant can make a case hang. Every case runs
     through its suite entry (the strong oracle); a missing artifact (exit 20) is SKIPPED and a
     lab failure (QEMU died, LAB_ERROR) is ERROR — neither is a kill. With early_exit the run
     stops at the first FAIL (one kill is enough): the fairness sweep over ~140 cases need not
@@ -738,6 +742,8 @@ def run_killers(wt: Path, env, target, killers, early_exit=False):
             results[tid] = "ERROR"
         else:
             results[tid] = "FAIL"
+            if reasons is not None:
+                reasons[tid] = "timeout" if "timeout (hang)" in r.stdout else "oracle"
             if early_exit:
                 break
     return [t for t, v in results.items() if v == "FAIL"], results
@@ -815,7 +821,8 @@ def main():
                 entry.update(status="invalid", seconds=round(time.time() - t0, 1)); report["mutants"].append(entry)
                 print(f"{mid}: INVALID (does not build) ({note})"); continue
             (wt / "build" / a.target / "build-id.txt").write_text(benv["NAWAH_BUILD_ID"] + "\n")
-            killed_by, results = run_killers(wt, env, a.target, killers)
+            reasons = {}
+            killed_by, results = run_killers(wt, env, a.target, killers, reasons=reasons)
             declared_miss = not killed_by
             if not killed_by:
                 # Be fair before declaring a survivor: build the remaining artifacts and run
@@ -827,7 +834,7 @@ def main():
                     r = sh(step, wt, benv, timeout=1800)
                     if r.returncode == 0:
                         shutil.copy(wt / out, wt / "build" / a.target / name)
-                more_killed, more = run_killers(wt, env, a.target, rest, early_exit=True)
+                more_killed, more = run_killers(wt, env, a.target, rest, early_exit=True, reasons=reasons)
                 results.update(more); killed_by = more_killed
             if declared_miss:
                 # Keep the scratch evidence (serial logs) of anything that escaped its declared
@@ -840,9 +847,11 @@ def main():
             for d in scratch.iterdir():
                 shutil.rmtree(d, ignore_errors=True)
             entry.update(status="killed" if killed_by else "survived", killed_by=killed_by, results=results,
+                         kill_reasons={t: reasons.get(t, "oracle") for t in killed_by},
                          seconds=round(time.time() - t0, 1))
             report["mutants"].append(entry)
-            print(f"{mid}: {'killed by ' + ','.join(killed_by) if killed_by else 'SURVIVED'} [{entry['seconds']}s] ({note})")
+            how = ",".join(f"{t}({entry['kill_reasons'][t]})" for t in killed_by)
+            print(f"{mid}: {'killed by ' + how if killed_by else 'SURVIVED'} [{entry['seconds']}s] ({note})")
             _write_report(a.report, report)
     finally:
         reset(wt)

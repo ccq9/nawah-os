@@ -151,6 +151,20 @@
    "requested_at": "2026-11-09T12:00:00Z",
    "status": "answered",
    "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. DEC-002 (reference Windows 10 capture) stays open and owner-dependent; M6 proceeds clean-room from a behavioural description, never copying Windows assets, icons, fonts or trade dress."
+  },
+  {
+   "id": "DEC-010",
+   "question": "شرط «التحدي العشوائي» قبل دمج PR #19 (m5-mutants-batch2-audit.md:64) بلا تعريف ولا معرّف اختبار: يُعرَّف أم يُسقط؟",
+   "options": [
+    "يُعرَّف: عيّنة من ست طفرات M5 يختارها ترتيب sha256(رأس الدمج + معرّف الطفرة) على رأس الدمج 788c772f، فلا يختارها أحد؛ كل طفرة فيها يجب أن تُقتل بنقض الشرط (oracle) لا بالمهلة في تشغيل الطفرات التالي، وتُراجع سجلاتها",
+    "يُسقط الشرط"
+   ],
+   "recommendation": "الخيار الأول",
+   "impact": "قبول بوابة M5 يُراجَع بعيّنة لم يخترها المنفّذ؛ تشغيل الطفرات يسجّل نوع كل قتل (TST-M0-005)",
+   "blocked_task_ids": [],
+   "requested_at": "2026-11-09T03:00:00Z",
+   "status": "answered",
+   "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08, after the owner's reviewer asked for it: option 1. Seed = merge commit 788c772f690b6dd3fee5675fd3223615b6d21f1d; sample (first six of the 45 M5 ids ranked by sha256(seed+id)) = M95, M88, M84, M83, M91, M82. Judged on the next mutants run with kill reasons (tests/mutants.py kill_reasons)."
   }
  ]
 }
