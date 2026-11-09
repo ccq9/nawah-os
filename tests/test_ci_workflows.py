@@ -155,6 +155,35 @@ class Workflows(unittest.TestCase):
         self.assertRegex(push[0], r" push (-q )?(-f|--force) ", "a re-run cannot replace the evidence branch")
 
 
+class Suites(unittest.TestCase):
+    """The lab and the workflow name the same suites (docs/PLAN-ANSWER.md §2.5 D5): every guest
+    suite of platform/pc-qemu/target.json has its verify step and every verify step names a
+    suite that exists; every host suite the workflow does not run by design (the mutation gates,
+    M2 whose host suite is its gate) is excluded by name, every other one is non-empty and run."""
+
+    def steps(self):
+        return [s for job in load("verify.yml")["jobs"].values() for s in job["steps"]]
+
+    def suite_args(self, kind):
+        found = set()
+        for s in self.steps():
+            for line in str(s.get("run", "")).splitlines():
+                m = re.search(rf"--target {kind} --suite (\S+)", line)
+                if m:
+                    found.add(m.group(1))
+        return found
+
+    def test_every_guest_suite_runs_in_verify(self):
+        target = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        self.assertEqual(sorted(target["suites"]), sorted(self.suite_args("pc-qemu")))
+
+    def test_every_host_suite_is_nonempty_and_runs_in_verify(self):
+        excluded = {"M2"}  # its host suite is the M2 mutation gate, run by the mutants workflow
+        expected = {k for k in project.HOST_SUITES if not k.endswith("-GATE") and k not in excluded}
+        self.assertEqual([k for k in expected if not project.HOST_SUITES[k]], [])
+        self.assertEqual(sorted(expected), sorted(self.suite_args("host")))
+
+
 class Preflight(unittest.TestCase):
     def test_preflight_runs_the_ci_hygiene_commands(self):
         # The local gate is CI's hygiene step itself, read from verify.yml (CI run 39185115793
@@ -260,8 +289,20 @@ class CiEvidenceImport(unittest.TestCase):
         self.git(base, "init", "-q", "root")
         self.git(self.root, "remote", "add", "origin", str(base / "origin"))
         (self.root / "evidence").mkdir()
+        (self.root / "base.txt").write_text("the committed base")
+        self.git(self.root, "add", "base.txt")
+        self.git(self.root, "commit", "-q", "-m", "base")
+        head = self.git(self.root, "rev-parse", "HEAD").stdout.strip()
         (self.root / "staged.txt").write_text("the user's work")
         self.git(self.root, "add", "staged.txt")
+        # The checked import (ADR-0026) asks gh for the run: a fake gh on PATH answers success
+        # for a verify run whose head is the root's HEAD.
+        bindir = base / "bin"; bindir.mkdir()
+        gh = bindir / "gh"
+        gh.write_text("#!/bin/sh\ncat <<'JSON'\n" + json.dumps({"status": "completed", "conclusion": "success", "headSha": head,
+                                                                   "event": "pull_request", "workflowName": "verify", "attempt": 1}) + "\nJSON\n")
+        gh.chmod(0o755)
+        self.env["PATH"] = f"{bindir}:{self.env['PATH']}"
 
     def git(self, cwd, *args):
         return subprocess.run(["git", *args], cwd=cwd, env=self.env, check=True, capture_output=True, text=True)

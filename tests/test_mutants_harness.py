@@ -25,8 +25,27 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import mutants  # noqa: E402
 
-# The slowest M5 case measured on the clean tree (CI verify 41232334352, 2026-10-31).
-SLOWEST_CLEAN_CASE_S = 124
+# The slowest M5 case measured on the clean tree (CI verify 42600548943, 2026-11-09: ELEVATE 137 s).
+SLOWEST_CLEAN_CASE_S = 137
+
+
+class Stages(unittest.TestCase):
+    """stage_of maps every mutant id to its gate; M6 opens at M130 (docs/PLAN-ANSWER.md §2.5 D6)."""
+
+    def test_stage_of_m129_is_m5_and_m130_is_m6(self):
+        self.assertEqual(mutants.stage_of("M129"), "M5")
+        self.assertEqual(mutants.stage_of("M130"), "M6")
+
+    def test_every_anchor_occurs_exactly_once_in_its_file(self):
+        """Each mutant's search text is an anchor that must match its file exactly once; a
+        drifted anchor would make the mutant inapplicable, and a duplicated one ambiguous."""
+        bad = []
+        for m in mutants.MUTANTS:
+            text = (ROOT / m[1]).read_text(encoding="utf-8")
+            n = text.count(m[2])
+            if n != 1:
+                bad.append(f"{m[0]} {m[1]}: {n} occurrences")
+        self.assertEqual(bad, [])
 
 
 class BuildId(unittest.TestCase):
