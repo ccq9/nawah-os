@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TST-M0-002: the M0 documents required by prompt 3.2 section 7 exist and the boot contract carries the sections of section 7 (inputs/outputs, ownership, states, errors, trace contract, timeouts, versioning, enforcement tests); every file ADR-0002 item 4 ports from Sol OS names its origin in its header."""
+"""TST-M0-002: the M0 documents required by prompt 3.2 section 7 exist and the boot contract carries the sections of section 7 (inputs/outputs, ownership, states, errors, trace contract, timeouts, versioning, enforcement tests); every file ADR-0002 item 4 ports from Sol OS names its origin in its header; the twelve-role team methodology (docs/policies/team-methodology.md) is in place: its agent definitions, its workflow and the reverse plan it produces."""
 import re, subprocess, unittest
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +21,21 @@ SOL_PORTED = ["kernel/src/arch/x86_64/gdt.rs", "kernel/src/arch/x86_64/idt.rs", 
               "tools/check-unsafe.sh"]
 SOL_ORIGIN = re.compile(r"Sol OS\b.*?\b(d54f0a5|ADR-\d{3})\b", re.S)
 HEADER_LINES = 10
+# The team methodology (docs/policies/team-methodology.md, 2026-11-09): twelve roles the owner fixed —
+# 3 planners, 2 code engineers, 2 security engineers, 2 UI designers, 2 auditors, 1 manager — each an
+# agent definition under .claude/agents/, run by the workflow .claude/workflows/nawah-team.js, whose
+# product is docs/PLAN-REVERSE.md. The method is enforced here so it cannot drift silently.
+TEAM_DOC = "docs/policies/team-methodology.md"
+TEAM_WORKFLOW = ".claude/workflows/nawah-team.js"
+TEAM_PLAN = "docs/PLAN-REVERSE.md"
+TEAM_ENTRY = "CLAUDE.md"  # loaded by every session and sub-agent; it must point at the methodology
+TEAM_AGENTS = ["nawah-manager",
+               "nawah-plan-endstate", "nawah-plan-chain", "nawah-plan-risk",
+               "nawah-code-kernel", "nawah-code-apps",
+               "nawah-sec-threat", "nawah-sec-assurance",
+               "nawah-ui-shell", "nawah-ui-settings",
+               "nawah-audit-plan", "nawah-audit-eng"]
+AGENT_FIELDS = ("name:", "description:", "model:", "tools:")
 SECTIONS = ["المدخلات والمخرجات", "الملكية", "الحالات والانتقالات", "الأخطاء", "عقد الأثر", "المهلات", "التوافق والإصدار", "اختبارات الإنفاذ"]
 
 class M0Records(unittest.TestCase):
@@ -53,6 +68,31 @@ class M0Records(unittest.TestCase):
             if not SOL_ORIGIN.search(head):
                 missing.append(f)
         self.assertEqual(missing, [], "ADR-0002 item 4: a ported file without its Sol OS origin line")
+
+    def test_team_methodology_is_in_place(self):
+        missing = [f for f in (TEAM_DOC, TEAM_WORKFLOW, TEAM_ENTRY) if not (ROOT / f).exists()]
+        self.assertEqual(missing, [], "team methodology files")
+        workflow = (ROOT / TEAM_WORKFLOW).read_text(encoding="utf-8")
+        self.assertTrue(workflow.startswith("export const meta = {"), "the workflow must open with its meta literal")
+        self.assertIn("name: 'nawah-team'", workflow)
+        bad = []
+        for name in TEAM_AGENTS:
+            f = ROOT / ".claude" / "agents" / f"{name}.md"
+            if not f.exists():
+                bad.append(f"{name}: missing"); continue
+            text = f.read_text(encoding="utf-8")
+            if not text.startswith("---\n"):
+                bad.append(f"{name}: no frontmatter"); continue
+            front = text.split("---\n", 2)[1]
+            if f"name: {name}\n" not in front:
+                bad.append(f"{name}: frontmatter name differs from the file name")
+            bad += [f"{name}: {field} missing" for field in AGENT_FIELDS if field not in front]
+        self.assertEqual(bad, [])
+        doc = (ROOT / TEAM_DOC).read_text(encoding="utf-8")
+        self.assertEqual([a for a in TEAM_AGENTS if a not in doc], [], "every role is named in the methodology")
+        self.assertIn(TEAM_WORKFLOW, doc)
+        self.assertIn(TEAM_PLAN, doc)
+        self.assertIn(TEAM_DOC, (ROOT / TEAM_ENTRY).read_text(encoding="utf-8"), "CLAUDE.md points at the methodology")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
