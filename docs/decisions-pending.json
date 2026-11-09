@@ -164,6 +164,20 @@
    "blocked_task_ids": [],
    "requested_at": "2026-11-09T10:17:21Z",
    "status": "open"
+  },
+  {
+   "id": "DEC-011",
+   "question": "تركيبة فريق المنهج الثابت (docs/policies/team-methodology.md §1): هل تبقى اثني عشر دورًا (1 مدير، 3 تخطيط، 2 أكواد، 2 أمن، 2 واجهة، 2 تدقيق) كما ثُبّتت صباح 2026-11-09، أم تُعاد صياغتها؟",
+   "options": [
+    "إبقاء التركيبة الاثني عشرية",
+    "أربعة عشر دورًا: 3 هندسة برمجيات، 3 هندسة أنظمة، 3 أمن سيبراني، 2 تخطيط، 1 تدقيق، 1 مساعد مدير، 1 مدير؛ مهام تصميم الواجهة تُسنَد إلى مهندس برمجيات التطبيقات ويحرسها المدقق"
+   ],
+   "recommendation": "الخيار الثاني بنص المالك",
+   "impact": "تغيير التركيبة يغيّر تعريفات الوكلاء وسير العمل nawah-team والاختبار الحارس TST-M0-002 في إيداع واحد (§6 من المنهج)؛ لا أثر على أي حزمة عمل أو بوابة",
+   "blocked_task_ids": [],
+   "requested_at": "2026-11-09T13:30:00Z",
+   "status": "answered",
+   "answer": "answered by the owner on 2026-11-09 in the session: option 2 — fourteen roles: three software engineers, three systems engineers, three cybersecurity engineers, two planners, one auditor, one assistant manager, one manager; with the brainstorming, engineering, coding and auditing skills activated in every role."
   }
  ]
 }

@@ -1,6 +1,6 @@
 # nawah-os: the standing method for every session and every sub-agent
 
-Read `docs/policies/team-methodology.md` before any work. It fixes the twelve-role team the owner set (1 manager, 3 planners, 2 code engineers, 2 security engineers, 2 UI designers, 2 auditors), the mandatory cycle for every work package (open only when dependencies are done → plan backwards → engineer test-first in parallel with security and UI → audit every claim → close through CI and the records), and the rules no role may lift. The agent definitions live under `.claude/agents/`, the reference workflow is `.claude/workflows/nawah-team.js` (name `nawah-team`), and its product is `docs/PLAN-REVERSE.md`.
+Read `docs/policies/team-methodology.md` before any work. It fixes the fourteen-role team the owner set (DEC-011: 1 manager, 1 assistant manager, 2 planners, 3 software engineers, 3 systems engineers, 3 cybersecurity engineers, 1 auditor), the mandatory cycle for every work package (open only when dependencies are done → plan backwards → engineer test-first in parallel with security and UI → audit every claim → close through CI and the records), and the rules no role may lift. The agent definitions live under `.claude/agents/`, the reference workflow is `.claude/workflows/nawah-team.js` (name `nawah-team`), and its products are `docs/PLAN-ANSWER.md` (the team's execution answer) and `docs/PLAN-REVERSE.md` (the acceptance ladder and dependency chain).
 
 Non-negotiable in every turn:
 

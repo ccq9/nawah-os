@@ -21,20 +21,22 @@ SOL_PORTED = ["kernel/src/arch/x86_64/gdt.rs", "kernel/src/arch/x86_64/idt.rs", 
               "tools/check-unsafe.sh"]
 SOL_ORIGIN = re.compile(r"Sol OS\b.*?\b(d54f0a5|ADR-\d{3})\b", re.S)
 HEADER_LINES = 10
-# The team methodology (docs/policies/team-methodology.md, 2026-11-09): twelve roles the owner fixed —
-# 3 planners, 2 code engineers, 2 security engineers, 2 UI designers, 2 auditors, 1 manager — each an
+# The team methodology (docs/policies/team-methodology.md, 2026-11-09): the roles the owner fixed
+# (DEC-011, fourteen since 2026-11-09 13:30Z), each an
 # agent definition under .claude/agents/, run by the workflow .claude/workflows/nawah-team.js, whose
 # product is docs/PLAN-REVERSE.md. The method is enforced here so it cannot drift silently.
 TEAM_DOC = "docs/policies/team-methodology.md"
 TEAM_WORKFLOW = ".claude/workflows/nawah-team.js"
 TEAM_PLAN = "docs/PLAN-REVERSE.md"
 TEAM_ENTRY = "CLAUDE.md"  # loaded by every session and sub-agent; it must point at the methodology
-TEAM_AGENTS = ["nawah-manager",
-               "nawah-plan-endstate", "nawah-plan-chain", "nawah-plan-risk",
-               "nawah-code-kernel", "nawah-code-apps",
-               "nawah-sec-threat", "nawah-sec-assurance",
-               "nawah-ui-shell", "nawah-ui-settings",
-               "nawah-audit-plan", "nawah-audit-eng"]
+# DEC-011 (2026-11-09): fourteen roles — manager, assistant manager, 2 planners, 3 software
+# engineers, 3 systems engineers, 3 cybersecurity engineers, 1 auditor.
+TEAM_AGENTS = ["nawah-manager", "nawah-assistant-manager",
+               "nawah-plan-ladder", "nawah-plan-chain",
+               "nawah-sw-kernel", "nawah-sw-services", "nawah-sw-apps",
+               "nawah-sys-lab", "nawah-sys-platform", "nawah-sys-release",
+               "nawah-sec-threat", "nawah-sec-assurance", "nawah-sec-redteam",
+               "nawah-auditor"]
 AGENT_FIELDS = ("name:", "description:", "model:", "tools:")
 SECTIONS = ["المدخلات والمخرجات", "الملكية", "الحالات والانتقالات", "الأخطاء", "عقد الأثر", "المهلات", "التوافق والإصدار", "اختبارات الإنفاذ"]
 
