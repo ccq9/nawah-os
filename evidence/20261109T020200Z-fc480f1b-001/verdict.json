@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261109T020200Z-fc480f1b-001",
+ "test_id": "TST-M5-LAB-TOOL",
+ "verdict": "PASS",
+ "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect (9 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "cd6c189dbd979d2ff83693c9331f46cb840499ec023352460cc038c62fc95795",
+ "inputs": {
+  "tests/test_monitor_steps.py": "0bced33c322a629ab10fef173f11c03df7bd87e9d18822a6048f4d13be059eaf",
+  "tools/project.py": "7e9d4b76a55a594d4eaf94441b948ccefce8f6c9a0fe7065f1eaaacacc1f71f4"
+ },
+ "claim_tag": "source_backed_fact"
+}
