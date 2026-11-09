@@ -129,6 +129,26 @@ class RunSchema(unittest.TestCase):
         self.assertEqual(self.validate(done_records(ref)), project.E_OK)  # a warning
         self.assertNotEqual(self.validate_strict(done_records(ref)), project.E_OK)  # an error
 
+    def test_native_evidence_of_the_current_ci_run_needs_no_import_json(self):
+        """On the runner the evidence is produced, not adopted: the strict step of verify runs on the
+        same tree before any import exists. The exemption holds only while GITHUB_RUN_ID equals the
+        run's own ci.run_id; a committed verification-runner PASS without import.json fails on CI,
+        because that CI run has another id."""
+        write_all(base_records())
+        ref = make_evidence(worker="verification-runner", ci=CI)  # ci.run_id "42", no import.json
+        saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", "GITHUB_RUN_ID")}
+        try:
+            os.environ["GITHUB_ACTIONS"] = "true"; os.environ["GITHUB_RUN_ID"] = "42"
+            self.assertEqual(self.validate_strict(done_records(ref)), project.E_OK)
+            os.environ["GITHUB_RUN_ID"] = "43"
+            self.assertNotEqual(self.validate_strict(done_records(ref)), project.E_OK)
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
     def test_import_run_id_must_match_the_runs_ci_identity(self):
         write_all(base_records())
         ref = make_evidence(worker="verification-runner", ci=CI, import_json=dict(IMPORT, ci_run_id="43"))

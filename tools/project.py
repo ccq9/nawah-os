@@ -202,7 +202,13 @@ def check_evidence_dir(rel, pb: Problems, where, expect_test_id=None, current_di
     # provenance (ADR-0026): a PASS from the verification runner is adopted only through the
     # checked import, whose import.json names the same CI run as the run's own identity
     imp_p = p / "import.json"
-    if run.get("worker") == "verification-runner" and verdict["verdict"] == "PASS":
+    # Evidence native to the CI run that is validating (verify's strict step runs on the runner's
+    # own tree before any import exists) is produced, not adopted: no import.json yet. Only the
+    # run whose GITHUB_RUN_ID equals the run's own ci.run_id is native; a committed runner PASS
+    # without import.json meets another run id on CI and stays an error.
+    native = (os.environ.get("GITHUB_ACTIONS") == "true"
+              and str((run.get("ci") or {}).get("run_id", "")) == os.environ.get("GITHUB_RUN_ID", ""))
+    if run.get("worker") == "verification-runner" and verdict["verdict"] == "PASS" and not native:
         if not imp_p.exists():
             msg = f"evidence {rel}: a verification-runner PASS without import.json (not adopted through the checked import)"
             if pb.strict:
@@ -1281,7 +1287,7 @@ HOST_SUITES = {
          "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (~124 s, TST-M5-ELEVATE), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided; stage_of maps M129 to M5 and M130 onwards to M6, and every mutant's anchor occurs exactly once in its file (8 cases, OK)",
          "inputs": ["tests/test_mutants_harness.py", "tests/mutants.py"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"]},
         {"id": "TST-M0-007", "command": ["python3", "-I", "tests/test_evidence_provenance.py"],
-         "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; source_identity ignores evidence/, build/ and state/ and names the dirty paths; a verification-runner PASS without import.json is a strict error and a mismatching ci_run_id an error, 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is malformed, is blocked without gh, and on success writes import.json (naming the importer's worker and identity) beside an untouched run.json; the evaluator-outside-inputs staleness gap is not covered here (WP-66, TST-M6-STALE-GATE) (15 cases, OK)",
+         "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; source_identity ignores evidence/, build/ and state/ and names the dirty paths; a verification-runner PASS without import.json is a strict error unless the evidence is native to the validating CI run (GITHUB_RUN_ID equals its ci.run_id), a mismatching ci_run_id an error, 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is malformed, is blocked without gh, and on success writes import.json (naming the importer's worker and identity) beside an untouched run.json; the evaluator-outside-inputs staleness gap is not covered here (WP-66, TST-M6-STALE-GATE) (16 cases, OK)",
          "inputs": ["tests/test_evidence_provenance.py", "tools/project.py", "docs/schemas/evidence-run.schema.json", "docs/automation.json"], "input_globs": []},
     ],
 }

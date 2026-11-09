@@ -14,7 +14,7 @@
 2. **الكاتب**: `write_run` يستنتج العامل من البيئة (`GITHUB_ACTIONS=true` تعني مشغّل التحقق)، ويحسب `dirty_state` على الملفات المتتبَّعة المعدّلة والملفات الجديدة خارج `evidence/` و`build/` و`state/` (REL-3 B)، ولا يُستعمل `dirty_state` حَكَمًا قبل قياس أول تشغيل CI.
 3. **الاستيراد المفحوص** (REL-2 A): `import-ci-evidence` يسأل GitHub عبر `gh run view` ويرفض كل تشغيل ليس `completed/success`، أو ليس من `verify` أو `mutants`، أو رأسه ليس سلفًا لـHEAD، أو معرّفه لا يطابق `^(mutants-)?[0-9]+$`. غياب gh أو خطأه يعطي `E_BLOCKED` بلا نسخ. لا خيار لقبول تشغيل فاشل.
 4. **ملف جانبي** `evidence/<run>/import.json` يكتبه الاستيراد وحده (ci_run_id, conclusion, head_sha, event, run_attempt, workflow, evidence_branch_commit, imported_at). **لا يُمس `run.json`** بعد إنتاجه (REL-1 C).
-5. **قاعدة المدقق**: حكم PASS من `verification-runner` بلا `import.json` خطأ تحت `--strict` وتحذير دونه؛ `import.json` بمعرّف يخالف `run.ci.run_id` خطأ دائمًا؛ أدلة 1.0.0 بلا `import.json` تحذير واحد مجمَّع (حارس للأحكام الـ149 القديمة).
+5. **قاعدة المدقق**: حكم PASS من `verification-runner` بلا `import.json` خطأ تحت `--strict` وتحذير دونه، إلا الدليل الأصلي لتشغيل CI الجاري نفسه (معرّف `GITHUB_RUN_ID` الحالي يساوي `ci.run_id` في `run.json`): فخطوة verify الصارمة تعمل على شجرة المشغّل قبل أي استيراد، والدليل هناك مُنتَج لا مُعتمَد؛ أي دليل مشغّل مُلتزَم بلا `import.json` يلقى على CI معرّفًا آخر فيبقى خطأً؛ `import.json` بمعرّف يخالف `run.ci.run_id` خطأ دائمًا؛ أدلة 1.0.0 بلا `import.json` تحذير واحد مجمَّع (حارس للأحكام الـ149 القديمة).
 6. **كاتب السجلات واحد** (REL-5 A): العقد `lease` يُجعل null مع السبب في `unknown_fields`، وتنفيذ البند 79 من البرومبت متطلب مؤجل شرطه أن يسبق أي كاتب ثانٍ.
 
 ## البدائل المرفوضة
