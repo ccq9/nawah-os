@@ -609,6 +609,15 @@ MUTANTS = [
      "        if mode.selftest() {",
      "        if mode.selftest() || true {",
      ["TST-M6-INTERACTIVE-BOOT"], "the interactive boot takes the self-test exit: phase 1 prints m1_done (forbidden) and exits 33, not 0 by the lab's quit"),
+    # ---- M6 (WP-67): displayd's start-up hold fails closed (display.md v1.12); SECURITY.
+    # M133-M137 are reserved for WP-64. The mutant keeps every trace line and changes only the
+    # decision: held only for a valid listing naming `session`, so every LIST failure starts
+    # unheld (the pre-v1.12 behaviour) behind a line that still says locked=1. The killer judges
+    # the screen itself: HOLDS answers locked=0 and the injected key (press and release) reaches the window.
+    ("M147", "user/apps/displayd/src/main.rs",
+     "    line.ends_with(b\"locked=1\")",
+     "    line.starts_with(b\"display|hold|source=manifest\") && line.ends_with(b\"locked=1\")",
+     ["TST-M6-HOLD-FAIL-CLOSED"], "a LIST failure starts the screen unheld while the trace says locked=1: case=reply and case=too_long read holds=OK locked=0 (forbidden) and keys=2 (press and release both reach the window), not locked=1 and keys=0"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -630,7 +639,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # M6 (WP-45): the boot-mode gate (boot.md v1.1): without the hypervisor bit no fw_cfg
             # read (M130), only the key 1 selects the self-test (M131), and an interactive boot
             # never takes the self-test exit (M132).
-            "M130", "M131", "M132"}
+            "M130", "M131", "M132",
+            # M6 (WP-67): displayd's start-up hold fails closed on a LIST failure (display.md
+            # v1.12): a fail-open hold lets keys reach a window before the session unlocks.
+            "M147"}
 
 
 def security_of(mid: str) -> bool:

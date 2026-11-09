@@ -77,6 +77,28 @@ class M6Mutants(unittest.TestCase):
         self.assertFalse(mutants.needs_release("pc-qemu", ["TST-M5-TEXT-CONFORMANCE"]))
 
 
+class HoldMutant(unittest.TestCase):
+    """WP-67's mutant (M147: the first id outside PLAN-ANSWER §3.3's table, whose M133-M146 are reserved for WP-64, WP-47, WP-48 and WP-52): displayd's start-up hold opens
+    on a LIST failure while its trace still says locked=1, the pre-v1.12 behaviour behind a
+    truthful-looking line. A SECURITY mutant of the M6 stage, killed by TST-M6-HOLD-FAIL-CLOSED,
+    which boots the test image, so no release build is needed."""
+
+    def test_the_hold_mutant_is_registered(self):
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        self.assertIn("M147", by_id)
+        mid, rel, old, new, killers, _ = by_id["M147"]
+        self.assertEqual(rel, "user/apps/displayd/src/main.rs")
+        self.assertEqual(mutants.stage_of(mid), "M6")
+        self.assertTrue(mutants.security_of(mid))
+        self.assertEqual(killers, ["TST-M6-HOLD-FAIL-CLOSED"])
+        self.assertEqual(mutants.suite_of("pc-qemu", "TST-M6-HOLD-FAIL-CLOSED"), "M6")
+        self.assertFalse(mutants.needs_release("pc-qemu", killers))
+        # The mutant leaves every trace line as it is: only the decision changes, so the case
+        # must judge the held screen (HOLDS, keys=0), not the trace alone.
+        self.assertNotIn("locked=0", new)
+        self.assertNotIn("trace", new)
+
+
 class BuildId(unittest.TestCase):
     def test_build_id_is_all_hex(self):
         for n in (1, 82, 94, 103, 121, 999):

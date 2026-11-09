@@ -1974,16 +1974,42 @@ fn manager(boot: Handle, req: &[u8], reply: &mut [u8]) -> Result<(usize, Option<
     }
 }
 
-/// Whether the manager's listing names a `session` service: then the screen starts held
-/// (display.md v1.2) until the session unlocks it.
+/// Whether the screen starts held: when the manager's listing names a `session` service
+/// (display.md v1.2), until the session unlocks it; and when the listing cannot be had — an
+/// answer that is not a listing naming this service, a closed channel, an answer longer than
+/// the buffer, any other error — for a hold fails closed, never open (v1.12). The decision is
+/// traced `display|hold|source=…|reason=…|locked=…`.
 fn session_in_manifest(boot: Handle) -> bool {
     let mut reply = [0u8; 1024];
-    match manager(boot, b"LIST", &mut reply) {
-        Ok((n, _)) => reply[..n]
-            .split(|&c| c == b'\n')
-            .any(|l| l.starts_with(b"session ")),
-        Err(_) => false,
-    }
+    let line: &[u8] = match manager(boot, b"LIST", &mut reply) {
+        Ok((n, h)) => {
+            if let Some(h) = h {
+                libnawah::handle_close(h);
+            }
+            let names = |name: &[u8]| {
+                reply[..n]
+                    .split(|&c| c == b'\n')
+                    .any(|l| l.strip_prefix(name).is_some_and(|r| r.starts_with(b" ")))
+            };
+            if !names(b"display") {
+                b"display|hold|source=list_failure|reason=reply|locked=1"
+            } else if names(b"session") {
+                b"display|hold|source=manifest|reason=-|locked=1"
+            } else {
+                b"display|hold|source=manifest|reason=-|locked=0"
+            }
+        }
+        Err(ERR_BUFFER_TOO_SMALL) => {
+            // The kernel leaves a message that does not fit at the head of the queue: remove
+            // it, or the boot channel would serve nothing after it.
+            libnawah::channel_discard(boot);
+            b"display|hold|source=list_failure|reason=too_long|locked=1"
+        }
+        Err(ERR_PEER_CLOSED) => b"display|hold|source=list_failure|reason=closed|locked=1",
+        Err(_) => b"display|hold|source=list_failure|reason=error|locked=1",
+    };
+    libnawah::trace(line);
+    line.ends_with(b"locked=1")
 }
 
 fn main() -> u64 {
