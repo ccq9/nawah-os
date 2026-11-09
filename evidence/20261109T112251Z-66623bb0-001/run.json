@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261109T112251Z-66623bb0-001",
+ "started_at": "2026-11-09T11:22:51+00:00",
+ "finished_at": "2026-11-09T11:22:52+00:00",
+ "source_revision": "66623bb015dd86bb22ccee620386cdd671763fe5",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M0-001",
+ "commands": [
+  "python3 -I tests/test_validate_records.py"
+ ],
+ "exit_code": 0
+}

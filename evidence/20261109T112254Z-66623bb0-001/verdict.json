@@ -1,0 +1,16 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261109T112254Z-66623bb0-001",
+ "test_id": "TST-M0-004",
+ "verdict": "PASS",
+ "oracle": "tools/pre-merge.sh runs validate-records --strict under set -euo pipefail with no pipe after the validator and exits with its code: on a copy of the repository as committed it exits 0 and prints 'pre-merge: OK'; with one input of a host test edited after its run (a stale verdict) it exits 50 and prints no OK (3 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "65448f2115029736d1d73d17b59dfca25d1ac72829801cd82e36b4603976e49a",
+ "inputs": {
+  "tests/test_pre_merge.py": "1fb32e463c163c31a4c5794133f3d313aeb8813bf94d33709547867f3d626a3e",
+  "tools/pre-merge.sh": "aec04e29e21f08874ca9f7f32731e2d986f6b2346bd527f2d5b50a90645c68bf",
+  "tools/project.py": "b9b5dc23609b00e7b1511fb446473a4730b5a57c2db3f29c406d844871b50511"
+ },
+ "claim_tag": "source_backed_fact"
+}
