@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T135431Z-c0733e8f-002",
+ "test_id": "TST-M3-FAT32-TOOL",
+ "verdict": "PASS",
+ "oracle": "the host FAT32 tool formats the lab volume (128992 clusters, 44 used), lists DIR/HELLO.TXT/PATTERN.BIN, reads files back exactly (cat/verify/expect), keeps the raw pattern tail, and fsck.fat -n accepts the image",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "8afc492963275f9dbd936d8ca2816fbf4943b8b15ab356f7b1f72033d88c975a",
+ "inputs": {
+  "tests/test_fat32_tool.py": "39f3a9630f8fdbec591049de78da66ef4ffc4d370b346616b3ff8953aea03489",
+  "tools/fat32.py": "e8ee02ee492be868fde2a4cfd437e963a5529294ffb7c07bff238601aa5bcd79"
+ },
+ "claim_tag": "source_backed_fact"
+}

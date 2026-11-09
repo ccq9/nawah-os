@@ -1,0 +1,13 @@
+$ python3 -I tests/mutants.py --target pc-qemu --stage M5 --report build/mutants-m5-report.json
+M82: killed by TST-M5-NARRATOR-AUTHORITY [28.3s] (any client may become the narrator (WP-43 M2 undone))
+M83: killed by TST-M5-CLIENT-LIMITS [19.1s] (a client gets one surface more than its share (WP-43 S-7, boundary))
+M84: killed by TST-M5-CLIENT-LIMITS [19.1s] (no per-client window limit (WP-43 S-7 undone))
+M85: killed by TST-M5-CLIENT-LIMITS [19.1s] (no surfaces or windows kept for the session (WP-43 S-7))
+M86: killed by TST-M5-LIST-HASH-HELD [19.6s] (LIST hashes a held or minimised window's place (WP-43 M3 undone))
+M87: killed by TST-M5-LIST-HASH-HELD [34.8s] (STATUS counts the held screen's redraws, one per key typed (WP-43 M3 undone))
+M88: killed by TST-M5-AUTH-INPUT-ISOLATED [40.9s] (the password field announces every keystroke (WP-43 M2 undone))
+M89: killed by TST-M5-ELEVATE [104.1s] (the elevation prompt is shown before the keyboard is taken (WP-41 S1 undone, order swapped))
+M90: killed by TST-M5-INPUT-NAME-RESERVED [19.3s] (any client may register the name `display` (WP-43 S-5 undone))
+M91: killed by TST-M5-UI-UNIT [19.1s] (a password field draws its characters instead of bullets)
+
+OK: 10/10 valid mutants killed (100.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=[]; declared_killers_missed=[]; report=build/mutants-m5-report.json
