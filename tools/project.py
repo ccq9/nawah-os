@@ -844,7 +844,7 @@ class QmpLink:
         self.sock, self.buf = None, b""
 
 
-def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions):
+def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions, sent=None):
     """`run_logged` for a QEMU case that drives the guest through the monitor (WP-27): once
     `actions["after"]` appears in the serial log, every line of `actions["commands"]` goes to
     the monitor socket (`sendkey a`, …), then QEMU runs to its end as usual. A case may need
@@ -855,7 +855,8 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
     `key-down <qcode>` / `key-up <qcode>` go through QMP instead (WP-38, QmpLink): a key held
     from one step to a later one. A step with `since_previous` matches its marker only in what
     the serial log gained after the previous step fired (WP-38: a state the guest prints more
-    than once, such as `state=unlocked`, means its next occurrence)."""
+    than once, such as `state=unlocked`, means its next occurrence). `sent`, when a list, gets
+    the index of every step whose commands all went out (WP-45: `ends_by_failures`)."""
     import socket
     import time
     steps = actions.get("steps") or [actions]
@@ -894,6 +895,8 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
                                     m.sendall((line + "\n").encode())
                                 time.sleep(float(step.get("gap_s", actions.get("gap_s", 0.2))))
                             o.write(f"# monitor: sent {len(step['commands'])} command(s) after {step['after']!r}\n".encode()); o.flush()
+                            if sent is not None:
+                                sent.append(next_step)
                         except (OSError, ValueError) as ex:
                             e.write(f"monitor: {ex}\n".encode()); e.flush()
                         finally:
@@ -907,6 +910,25 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
             p.kill(); p.wait()
             e.write(b"TIMEOUT\n"); return 124
         return p.returncode
+
+
+def ends_by_failures(ends_by, actions, sent):
+    """How a case that never exits by itself must end (WP-45, PLAN-ANSWER §2.5 D2-Q2):
+    `ends_by: "monitor"` passes only if every monitor step was sent and the last one ends with
+    `quit` — QEMU's status for `quit` (0) is also its status for a guest reset under
+    -no-reboot, so the status alone proves nothing. No `ends_by`: nothing to check."""
+    if ends_by is None:
+        return []
+    if ends_by != "monitor":
+        return [f"ends_by {ends_by!r} is not a known ending (monitor)"]
+    if not actions:
+        return ["ends_by monitor: the case has no monitor steps"]
+    steps = actions.get("steps") or [actions]
+    if not steps[-1].get("commands") or steps[-1]["commands"][-1] != "quit":
+        return ["ends_by monitor: the last monitor step does not end with `quit`"]
+    if list(sent) != list(range(len(steps))):
+        return [f"ends_by monitor: steps sent {list(sent)} of {len(steps)}: the run ended before the lab's `quit`"]
+    return []
 
 
 # The fonts on the system volume (8.3 names): text.md.
@@ -1159,17 +1181,29 @@ def prepare_esp(t, target_name, artifact):
     return esp
 
 
+def select_boot_case(t):
+    """One oracle per boot test (docs/PLAN-ANSWER.md §2.6 D1-A): the suite case carrying the
+    boot test id is the oracle, QEMU arguments included — TST-M1-BOOT runs behind the lab
+    self-test key (WP-45), and skipping it would boot the release image interactively against
+    the weaker `boot_oracle` until the timeout. `boot_oracle` is only the fallback for targets
+    without such a case; two cases with the boot test id are ambiguous and refused."""
+    boot_id = t["boot_oracle"]["test_id"]
+    found = [c for cases in t.get("suites", {}).values() for c in cases if c["test_id"] == boot_id]
+    if len(found) > 1:
+        raise ValueError(f"{len(found)} suite cases carry the boot test {boot_id}: {[c['id'] for c in found]}")
+    return found[0] if found else None
+
+
 def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     begin_run()
     t = load_target(target_name)
     if suite_case is None:
-        # One oracle per boot test: when a suite case carries the boot test id, it is the oracle
-        # (`boot_oracle` is only the fallback for targets without suites).
-        boot_id = t["boot_oracle"]["test_id"]
-        for cases in t.get("suites", {}).values():
-            for c in cases:
-                if c["test_id"] == boot_id and not c.get("qemu_extra"):
-                    suite_case = dict(c, _plain_boot=True)
+        try:
+            c = select_boot_case(t)
+        except ValueError as e:
+            print(f"boot: {e}"); return E_INTERNAL
+        if c is not None:
+            suite_case = dict(c, _plain_boot=True)
     art_rel = (suite_case or {}).get("artifact") or t["build"]["artifact"]
     art = safe_rel(art_rel.replace("${OUT}", f"build/{target_name}"))
     if not art.exists():
@@ -1179,9 +1213,9 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     rid, d = new_run_dir("boot")
     esp = prepare_esp(t, target_name, art)
     # A case may need longer than the target's default (the auth cases derive keys at TCG
-    # speed); the environment variable still overrides everything (mutation runs).
+    # speed), and a phase may carry its own `timeout_s` (WP-45: the step cap bounds the sum of
+    # the phases); the environment variable still overrides everything (mutation runs).
     case_timeout = (suite_case or {}).get("timeout_s", t["qemu"]["boot_timeout_s"])
-    timeout_s = int(os.environ.get("NAWAH_QEMU_TIMEOUT_S", case_timeout))
     plain_boot = suite_case is None or suite_case.get("_plain_boot")
     case = suite_case or t["boot_oracle"]
     # A case is one QEMU run, or several `phases` in sequence on the same disk image (the
@@ -1191,6 +1225,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     cmds, texts, rcs, phase_failures, lab_errors = [], [], [], [], []
     console_failures = []
     for i, ph in enumerate(phases):
+        timeout_s = int(os.environ.get("NAWAH_QEMU_TIMEOUT_S", ph.get("timeout_s", case_timeout)))
         serial = d / ("serial.log" if len(phases) == 1 else f"serial-{i + 1}.log")
         disk = prepare_disk(t, target_name, fresh=(i == 0))
         extra = ph.get("qemu_extra", case.get("qemu_extra", []))
@@ -1204,7 +1239,8 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         console_spec = ph.get("console", case.get("console"))
         cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")), monitor,
                        console_spec and console_spec["port"])
-        run = (lambda: run_qemu_monitored(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s, serial, monitor, actions)) if actions \
+        sent = []
+        run = (lambda: run_qemu_monitored(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s, serial, monitor, actions, sent)) if actions \
             else (lambda: run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s))
         console = ConsoleSession(console_spec, d / "console.log", serial, timeout_s) if console_spec else None
         if console:
@@ -1214,12 +1250,15 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         finally:
             peers.close()
             if console:
-                console_failures = console.finish()
+                # Every phase's console verdict is kept (a later phase's session must not
+                # overwrite an earlier one's failures).
+                console_failures += [f"phase {i + 1}: {f}" if len(phases) > 1 else f for f in console.finish()]
         if rc < 0:
             # QEMU itself died (signal): a lab failure, not a verdict on the kernel. One retry on
             # a fresh image; if it dies again the case fails and says why (LAB_ERROR), so a
             # mutation run never counts it as a kill (mutants run 39116036466: 4 SIGSEGVs).
             lab_errors.append(f"phase {i + 1}: qemu died with signal {-rc}, retried")
+            sent.clear()
             serial.unlink(missing_ok=True)
             disk = prepare_disk(t, target_name, fresh=(i == 0))
             peers = HostServices(ph.get("host_services", case.get("host_services")))
@@ -1229,15 +1268,18 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
                 peers.close()
         text = serial.read_text(errors="replace") if serial.exists() else ""
         cmds.append(" ".join(cmd)); texts.append(text); rcs.append(rc)
+        ended = [f"phase {i + 1}: {f}" for f in ends_by_failures(ph.get("ends_by", case.get("ends_by")), actions, sent)]
         if len(phases) > 1:
             exp = ph.get("expected_exit_code", case["expected_exit_code"])
             req = [m.replace("${BUILD_ID}", build_id) for m in ph.get("required_markers", [])]
             fb = ph.get("forbidden_markers", [])
             miss = [m for m in req if m not in text]
             forb = [m for m in fb if m in text]
-            if rc != exp or miss or forb:
-                phase_failures.append(f"phase {i + 1}: exit {rc} (expected {exp}); missing {miss}; forbidden {forb}")
+            if rc != exp or miss or forb or ended:
+                phase_failures.append(f"phase {i + 1}: exit {rc} (expected {exp}); missing {miss}; forbidden {forb}; {ended}")
                 break
+        else:
+            phase_failures += ended
     if len(phases) > 1:
         (d / "serial.log").write_text("".join(f"=== phase {i + 1} ===\n{t_}" for i, t_ in enumerate(texts)))
     text = "".join(texts)
@@ -1320,8 +1362,8 @@ HOST_SUITES = {
                     "kernel/src/cell.rs", "kernel/src/ktest.rs", "tests/mutants.py", "tools/check-unsafe.sh",
                     "docs/policies/team-methodology.md", ".claude/workflows/nawah-team.js", "CLAUDE.md", "docs/PLAN-REVERSE.md", "docs/PLAN-ANSWER.md"], "input_globs": [".claude/agents/*.md"]},
         {"id": "TST-M0-003", "command": ["python3", "-I", "tests/test_ci_workflows.py"],
-         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; every guest suite of target.json has its verify step and vice versa, and every host suite outside the gates and M2 is non-empty and run (ADR-0026, D5); the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; the mutants workflow runs the gates M2, M3, M4, M5 in order, checks the records strictly first and publishes every gate's report (18 cases, OK)",
-         "inputs": ["tests/test_ci_workflows.py", "tools/project.py", "platform/pc-qemu/target.json", "kernel/build.rs"], "input_globs": [".github/workflows/*.yml"]},
+         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; every guest suite of target.json has its verify step and vice versa, and every host suite outside the gates and M2 is non-empty and run (ADR-0026, D5); the verify job's limit is 55 minutes, the M5 and M6 guest steps carry their own caps (18, 12) and every step cap with a 20 % margin fits the limit (D4-V2), and M6, bounded by its own timeouts, fits its cap in the worst case (the sum of each phase's timeout_s under 12 minutes; M5's cap is a measured hang guard, outside that rule; uncapped steps are not budgeted); the suite case carrying the boot test id is the oracle of `project.py boot` even with QEMU arguments, two such cases are refused, boot_oracle carries the same lab self-test key as TST-M1-BOOT, and a kernel source other than ktest.rs names that key (PLAN-ANSWER §2.6, WP-45); the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; the mutants workflow runs the gates M2, M3, M4, M5 in order, checks the records strictly first and publishes every gate's report (24 cases, OK)",
+         "inputs": ["tests/test_ci_workflows.py", "tools/project.py", "platform/pc-qemu/target.json", "kernel/build.rs"], "input_globs": [".github/workflows/*.yml", "kernel/src/**/*.rs"]},
         {"id": "TST-M0-004", "command": ["python3", "-I", "tests/test_pre_merge.py"],
          "oracle": "tools/pre-merge.sh runs validate-records --strict under set -euo pipefail with no pipe after the validator and exits with its code: on a copy of the repository as committed it exits 0 and prints 'pre-merge: OK'; with one input of a host test edited after its run (a stale verdict) it exits 50 and prints no OK (3 cases, OK)",
          "inputs": ["tests/test_pre_merge.py", "tools/pre-merge.sh", "tools/project.py"], "input_globs": []},
@@ -1373,7 +1415,7 @@ HOST_SUITES["M4"] = [
 ]
 HOST_SUITES["M5"] = [
     {"id": "TST-M5-LAB-TOOL", "command": ["python3", "-I", "tests/test_monitor_steps.py"],
-     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect (9 cases, OK)",
+     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect; a case with ends_by=monitor (WP-45) ends by the lab's `quit` (QEMU status 0): every step sent and the last one ending with `quit`, while a run that ended before the last step (a guest reset is status 0 too), a last step without `quit`, a case without steps or an unknown ending is a failure; driven through cmd_boot itself on the fake QEMU (target, image preparation and records stubbed), a case ending by the monitor passes when the lab quits and fails when the guest exits 0 before the last step, in a single run and in a later phase, each phase's console failures are all reported (a later phase does not overwrite them) and a phase's own timeout_s ends that phase (14 cases, OK)",
      "inputs": ["tests/test_monitor_steps.py", "tools/project.py"], "input_globs": []},
     {"id": "TST-M5-BIDI", "command": ["python3", "-I", "tests/test_text.py", "Bidi"],
      "oracle": "nawah-text's UAX #9 reproduces every line of the Unicode conformance file BidiCharacterTest-17.0.0 (91707 lines: paragraph level, resolved levels with X9-removed characters, visual order after L2), and tables.rs is what tools/unicode_tables.py generates from the UCD files (DerivedBidiClass, DerivedJoiningType, BidiBrackets 17.0.0)",
@@ -1399,6 +1441,13 @@ HOST_SUITES["M3"] = [
     {"id": "TST-M3-FAT32-TOOL", "command": ["python3", "-I", "tests/test_fat32_tool.py"],
      "oracle": "the host FAT32 tool formats the lab volume (128992 clusters, 44 used), lists DIR/HELLO.TXT/PATTERN.BIN, reads files back exactly (cat/verify/expect), keeps the raw pattern tail, makes nested directories in their parent (SYSTEM/FONTS, a missing parent refused), and fsck.fat -n accepts the images",
      "inputs": ["tests/test_fat32_tool.py", "tools/fat32.py"], "input_globs": []},
+]
+# M6's first host case (WP-45, PLAN-ANSWER §2.5 D3: a host suite comes with its first case,
+# never empty): the system manifest and the self-test manifest linted against services.md §2.
+HOST_SUITES["M6"] = [
+    {"id": "TST-M6-MANIFEST-LINT", "command": ["python3", "-I", "tests/test_m6_manifest.py"],
+     "oracle": "a host lint of platform/pc-qemu/manifests/services.txt (services.md v1.11) and the lab manifest selftest.txt: the system manifest is ASCII and parses by services.md §2 (fields, restart policy, decimal numbers, watchdog= before arg, an arg of at most 64 bytes, names of [A-Za-z0-9_-] up to 15 bytes, no duplicate, at most 16 services) and is under MANIFEST_MAX (4096 bytes); by the table of services.md §0.000 it names exactly auth, config, net, input, display, narrator, session, sh in that order, each with exactly the table's dependencies, every one declared on an earlier line, each on-failure, with a readiness timeout no shorter than 60000 for auth and 30000 for session, and watchdog= on input and display; every image path is /SYSTEM/<8.3 name>.ELF of an application the build makes (target.json extra_artifacts); watchdog= only on a service whose source answers PONG; selftest.txt is ASCII, has no service line and its comment names mode=selftest; the lint itself rejects one manifest per rule: a non-ASCII byte, 4096 bytes or more, never instead of on-failure, a timeout below the minimum (auth, session), session without config, a dependency set other than the table's (narrator, sh), no watchdog on input or display, a self-test manifest with a service or without mode=selftest, a line of 6 fields, a non-decimal watchdog, an arg over 64 bytes, a bad name, an unknown restart policy, a non-decimal number, more than 16 services, a service missing, two services swapped, a dependency on a later line, a duplicate, a watchdog on a service that never answers PONG, a non-8.3 image and an image the build does not make (17 cases, OK)",
+     "inputs": ["tests/test_m6_manifest.py", "platform/pc-qemu/target.json"], "input_globs": ["platform/pc-qemu/manifests/*.txt", "user/apps/*/src/main.rs"]},
 ]
 HOST_SUITES["M1"] = [
     {"id": "TST-M1-NOBS", "command": ["python3", "-I", "tests/test_m1_nobs.py"],

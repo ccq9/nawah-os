@@ -6,7 +6,10 @@ appeared, in order, and a later step must not fire on an earlier marker; a singl
 `${SCREEN:tag}` (WP-37) one of several, `screen-<tag>.ppm` beside it, in commands and in
 host-check arguments alike. `key-down`/`key-up` (WP-38) go through QMP on one connection kept
 for the run: a key pressed in one step is released by a later step, within a bounded delay of
-that step's marker."""
+that step's marker. `cmd_boot` itself (WP-45) on the same fake QEMU: a case that ends by the
+lab's `quit` fails when the guest ended first, in a single run and in a later phase; each
+phase's console failures are kept, not overwritten by the next phase; a phase's own
+`timeout_s` bounds that phase."""
 
 import json
 import pathlib
@@ -14,12 +17,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "tools"))
 import project  # noqa: E402
 
 FAKE_QEMU = r'''
-import json, socket, sys, time, threading
+import json, os, socket, sys, time, threading
 serial, mon, record, script = sys.argv[1], sys.argv[2], sys.argv[3], json.loads(sys.argv[4])
 qmp_path = sys.argv[5] if len(sys.argv) > 5 else None
 got = []
@@ -71,10 +75,14 @@ def serve():
         with open(record, "w") as f:
             json.dump(got, f)
         c.close()
+        if "quit" in got:
+            os._exit(0)  # QEMU's monitor `quit` ends the emulator with status 0
 threading.Thread(target=serve, daemon=True).start()
 with open(serial, "ab") as f:
     for line, wait in script:
         time.sleep(wait)
+        if line.startswith("__exit__"):
+            os._exit(int(line[8:]))  # the guest ends by itself (a reset under -no-reboot is status 0)
         f.write((line + "\n").encode()); f.flush()
         marks[line] = round(time.monotonic() - t0, 3)
 time.sleep(1.5)
@@ -86,7 +94,7 @@ sys.exit(33)
 
 
 class MonitorSteps(unittest.TestCase):
-    def drive(self, actions, script, timeout=20):
+    def drive(self, actions, script, timeout=20, sent=None):
         with tempfile.TemporaryDirectory() as td:
             d = pathlib.Path(td)
             serial, mon, record = d / "serial.log", d / "mon.sock", d / "record.json"
@@ -94,7 +102,7 @@ class MonitorSteps(unittest.TestCase):
             fake.write_text(FAKE_QEMU)
             cmd = [sys.executable, "-I", str(fake), str(serial), str(mon), str(record), json.dumps(script),
                    str(project.qmp_socket_path(mon))]
-            rc = project.run_qemu_monitored(cmd, d, d / "out.log", d / "err.log", timeout, serial, mon, actions)
+            rc = project.run_qemu_monitored(cmd, d, d / "out.log", d / "err.log", timeout, serial, mon, actions, sent=sent)
             got = json.loads(record.read_text()) if record.exists() else []
             qmp_record = pathlib.Path(str(record) + ".qmp")
             self.qmp = json.loads(qmp_record.read_text()) if qmp_record.exists() else {"qmp": [], "marks": {}}
@@ -231,11 +239,130 @@ class MonitorSteps(unittest.TestCase):
             th.join(5); link.close(); srv.close()
             self.assertEqual(got, ["qmp_capabilities", "input-send-event"])
 
+    def test_ends_by_monitor_quit(self):
+        # WP-45 (PLAN-ANSWER §2.5 D2-Q2): an interactive case ends by the lab's `quit` (status 0,
+        # also QEMU's status for a guest reset under -no-reboot): it passes only if every step
+        # was sent and the last one ends with `quit`.
+        actions = {"steps": [{"after": "|phase=1|", "commands": ["sendkey a"]},
+                             {"after": "|phase=2|", "commands": ["screendump ${SCREEN:end}", "quit"]}]}
+        sent = []
+        rc, got, out, _ = self.drive(actions, [("OSX|x|k|phase=1|", 0.2), ("OSX|x|k|phase=2|", 0.8), ("tail", 5.0)],
+                                     sent=sent)
+        self.assertEqual(rc, 0)
+        self.assertEqual(sent, [0, 1])
+        self.assertEqual(got[0], "sendkey a")
+        self.assertEqual(got[-1], "quit")
+        self.assertEqual(project.ends_by_failures("monitor", actions, sent), [])
+        # A reset before the last step (status 0 too) is not an end by the lab.
+        self.assertTrue(project.ends_by_failures("monitor", actions, [0]))
+        # The last command must be `quit`; a case without steps cannot end by the monitor.
+        self.assertTrue(project.ends_by_failures("monitor", {"after": "|x|", "commands": ["sendkey a"]}, [0]))
+        self.assertTrue(project.ends_by_failures("monitor", None, []))
+        self.assertTrue(project.ends_by_failures("reset", actions, [0, 1]))
+        self.assertEqual(project.ends_by_failures(None, actions, []), [])
+
     def test_timeout_kills_qemu(self):
         rc, got, _, err = self.drive({"after": "|never|", "commands": ["sendkey a"]}, [("boot", 5.0)], timeout=2)
         self.assertEqual(rc, 124)
         self.assertEqual(got, [])
         self.assertIn("TIMEOUT", err)
+
+
+
+class FakeConsole:
+    """The COM2 session of a phase, reduced to its verdict: `fail` in the spec is what
+    `finish()` reports."""
+
+    def __init__(self, spec, transcript_path, serial_path, timeout):
+        self.spec = spec
+
+    def start(self):
+        pass
+
+    def finish(self):
+        return list(self.spec.get("fail", []))
+
+
+class CmdBoot(unittest.TestCase):
+    """cmd_boot end to end on the fake QEMU: the target, the image preparation and the records
+    are stubbed; the phase loop, the monitor driver, ends_by and the verdict are the real ones.
+    A phase's fake-QEMU script travels in its qemu_extra."""
+
+    QUIT = {"steps": [{"after": "|phase=1|", "commands": ["sendkey a"], "gap_s": 0.1},
+                      {"after": "|phase=2|", "commands": ["quit"], "gap_s": 0.1}]}
+    GOOD = [("OSX|x|k|phase=1|", 0.2), ("OSX|x|k|phase=2|", 0.6), ("tail", 5.0)]
+    RESET = [("OSX|x|k|phase=1|", 0.2), ("__exit__0", 1.0)]   # status 0 before the last step
+
+    def boot(self, case):
+        case = dict({"id": "T", "test_id": "T", "oracle": "o", "required_markers": [], "timeout_s": 20}, **case)
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td).resolve()
+            out = root / "build" / "fake"
+            out.mkdir(parents=True)
+            (out / "build-id.txt").write_text("bid")
+            (out / "K.EFI").write_bytes(b"k")
+            fake = root / "fake_qemu.py"
+            fake.write_text(FAKE_QEMU)
+            run_dir = root / "run"
+            run_dir.mkdir()
+            t = {"build": {"artifact": "${OUT}/K.EFI", "inputs": []}, "qemu": {"boot_timeout_s": 20},
+                 "boot_oracle": {"test_id": "B"}}
+            verdicts = []
+
+            def qemu_cmd(t_, name, esp, serial, extra=(), disk=None, smp=None, monitor=None, console_port=None):
+                mon = monitor or (root / "unused.sock")
+                return [sys.executable, "-I", str(fake), str(serial), str(mon), str(root / f"rec-{serial.stem}.json"),
+                        extra[0], str(project.qmp_socket_path(mon))]
+
+            env = {k: v for k, v in project.os.environ.items() if k != "NAWAH_QEMU_TIMEOUT_S"}
+            with mock.patch.dict(project.os.environ, env, clear=True), \
+                    mock.patch.multiple(project, ROOT=root, load_target=lambda n: t, begin_run=lambda: None,
+                                        prepare_esp=lambda *a: root, prepare_disk=lambda *a, **k: root / "disk.img",
+                                        qemu_cmd=qemu_cmd, new_run_dir=lambda slug: ("rid", run_dir),
+                                        write_run=lambda *a, **k: None, digests_for=lambda *a: {},
+                                        keep_artifact=lambda *a: "k", attach_evidence=lambda *a: None,
+                                        ConsoleSession=FakeConsole,
+                                        write_verdict=lambda d, rid, tid, v, *a, reason=None, **k: verdicts.append((v, reason))):
+                project.cmd_boot("fake", suite_case=case)
+            self.assertEqual(len(verdicts), 1)
+            return verdicts[0]
+
+    def script(self, lines):
+        return [json.dumps(lines)]
+
+    def test_ends_by_monitor_in_one_run(self):
+        case = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT}
+        self.assertEqual(self.boot(dict(case, qemu_extra=self.script(self.GOOD)))[0], "PASS")
+        verdict, reason = self.boot(dict(case, qemu_extra=self.script(self.RESET)))
+        self.assertEqual(verdict, "FAIL")
+        self.assertIn("the run ended before the lab", reason)
+
+    def test_ends_by_monitor_in_a_later_phase(self):
+        case = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT}
+        good = {"qemu_extra": self.script(self.GOOD)}
+        self.assertEqual(self.boot(dict(case, phases=[good, dict(good)]))[0], "PASS")
+        verdict, reason = self.boot(dict(case, phases=[good, {"qemu_extra": self.script(self.RESET)}]))
+        self.assertEqual(verdict, "FAIL")
+        self.assertIn("phase 2", reason)
+        self.assertIn("the run ended before the lab", reason)
+
+    def test_console_failures_of_every_phase_are_kept(self):
+        good = {"qemu_extra": self.script(self.GOOD)}
+        case = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT,
+                "phases": [dict(good, console={"port": 1, "fail": ["console: svc listed 7 services"]}),
+                           dict(good, console={"port": 2})]}
+        verdict, reason = self.boot(case)
+        self.assertEqual(verdict, "FAIL")
+        self.assertIn("phase 1: console: svc listed 7 services", reason)
+
+    def test_a_phase_timeout_bounds_that_phase(self):
+        import time
+        slow = self.script([("boot", 8.0)])           # exits 33 after ~9.5 s
+        case = {"expected_exit_code": 33, "phases": [{"qemu_extra": slow, "timeout_s": 2}]}
+        begin = time.monotonic()
+        verdict, reason = self.boot(case)
+        self.assertEqual((verdict, reason), ("FAIL", "timeout (hang)"))
+        self.assertLess(time.monotonic() - begin, 7)
 
 
 if __name__ == "__main__":

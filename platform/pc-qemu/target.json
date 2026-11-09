@@ -701,6 +701,10 @@
   },
   "boot_oracle": {
     "test_id": "TST-M1-BOOT",
+    "qemu_extra": [
+      "-fw_cfg",
+      "name=opt/nawah/selftest,string=1"
+    ],
     "oracle": "contracts/boot.md v1: boot|start, boot|ebs|ok=1, then kernel|post_ebs with map_key and descriptors emitted from kernel/ after ExitBootServices; QEMU exit 33 (0x10 via isa-debug-exit); no boot|error",
     "expected_exit_code": 33,
     "required_markers": [
@@ -723,12 +727,17 @@
       {
         "id": "TST-M1-BOOT",
         "test_id": "TST-M1-BOOT",
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); WP-30: the second 16550 (COM2, the diagnostic console) answers its loopback probe (kernel|diag|port=0x2f8|present=1|…|selfcheck=1); WP-32: firmware's GOP frame buffer is captured before ExitBootServices (boot|gop|present=1), mapped by the kernel and carries the diagnostic pattern (kernel|display|present=1|…|selfcheck=1); the manager receives 6 initial handles (control, authority, interface, keyboard, console, display)",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/selftest,string=1"
+        ],
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest /SYSTEM/SELFTEST.TXT (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); WP-30: the second 16550 (COM2, the diagnostic console) answers its loopback probe (kernel|diag|port=0x2f8|present=1|…|selfcheck=1); WP-32: firmware's GOP frame buffer is captured before ExitBootServices (boot|gop|present=1), mapped by the kernel and carries the diagnostic pattern (kernel|display|present=1|…|selfcheck=1); the manager receives 6 initial handles (control, authority, interface, keyboard, console, display); WP-45 (boot.md, PLAN-ANSWER §2.1): the lab self-test runs only behind the fw_cfg key opt/nawah/selftest=1 (kernel|boot_mode|mode=selftest|source=fw_cfg|key=ok|)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
           "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
           "OSX|${BUILD_ID}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
+          "OSX|${BUILD_ID}|kernel|boot_mode|mode=selftest|source=fw_cfg|key=ok|",
           "|kernel|pmm|managed_frames=",
           "|selfcheck=1",
           "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
@@ -767,7 +776,7 @@
           "|corner=32|cell=16|code=ok|selfcheck=1",
           "|ring=64|pending=0|overflow=0|mouse=1|mouse_ring=192|code=ok|selfcheck=1",
           "|kernel|svcmgr|pid=",
-          "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
+          "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SELFTEST.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
           "|kernel|spawn|pid=",
           "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
           "|kernel|user|lstar=0x",
@@ -784,7 +793,11 @@
           "|kernel|net|device=none"
         ],
         "max_counts": {
-          "|boot|start|": 1
+          "|boot|start|": 1,
+          "|kernel|boot_mode|": 1
+        },
+        "min_counts": {
+          "|kernel|boot_mode|": 1
         }
       },
       {
@@ -6297,6 +6310,303 @@
         "timeout_s": 600,
         "min_counts": {
           "|user|trace|len=8|text=svc|pong": 3
+        }
+      }
+    ],
+    "M6": [
+      {
+        "id": "TST-M6-INTERACTIVE-BOOT",
+        "test_id": "TST-M6-INTERACTIVE-BOOT",
+        "artifact": "${OUT}/NAWAH.EFI",
+        "oracle": "REQ-M6-002, WP-45 (boot.md boot mode, services.md v1.11 system manifest; PLAN-ANSWER §2.1, §2.2, §2.5 D2-Q2, §2.6): the release image NAWAH.EFI boots without the lab self-test key: one boot-mode line `kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1` (exactly one `|kernel|boot_mode|` line per boot: 6 over the six phases, max_counts and min_counts), the manager answers the real system manifest (`manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok`) with selfcheck=1, and over COM2 the shell's `svc` lists the eight services (auth, config, net, input, display, narrator, session, sh) ready with no restart; the lab signs in as `user` (lab-user-1) at the sign-in screen (screendump: lock background 10141C at (2,2), dialog F0F0F0 at (512,338)), the plain desktop background 1E2A38 follows, Ctrl+Alt+Del locks (the lock screen again), the password unlocks (desktop again); the image never prints m1_done, any ktest line or selfcheck=0 and never exits by itself: every phase ends by the lab's monitor `quit` after every step was sent (ends_by=monitor, exit 0). Negative phases on the same image (240 s for the positive phase, 90 s for each negative one): opt/nawah/selftest=0 and opt/nawah/selftest=10 (key=invalid: only the value 1 selects the self-test), opt/nawah/test=exc_de (the ktest key is not the self-test key: source=none, no ktest line), opt/nawah/selftest=svc-sh (a value never names a manifest: SERVICES.TXT answers OK 8, SVC-SH.TXT is not loaded) and -cpu qemu64,-hypervisor with the key (hv=0: fw_cfg is never read, source=none|key=absent, the boot is interactive and nothing is written to the exit port) each still reach the sign-in screen on the real manifest. The password never appears in the serial log",
+        "expected_exit_code": 0,
+        "ends_by": "monitor",
+        "required_markers": [],
+        "forbidden_markers": [
+          "|kernel|m1_done|",
+          "|ktest|",
+          "selfcheck=0",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|boot|error|",
+          "lab-user-1"
+        ],
+        "phases": [
+          {
+            "required_markers": [
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|selfcheck=1",
+              "|text=session|state=no_session|window=",
+              "|text=session|state=unlocked|user=user|uid=1001|token=usable",
+              "|text=session|focus=display|n=1",
+              "|text=session|state=locked|",
+              "|text=session|focus=display|n=2"
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "screendump ${SCREEN:login}",
+                    "sendkey u",
+                    "sendkey s",
+                    "sendkey e",
+                    "sendkey r",
+                    "sendkey tab",
+                    "sendkey l",
+                    "sendkey a",
+                    "sendkey b",
+                    "sendkey minus",
+                    "sendkey u",
+                    "sendkey s",
+                    "sendkey e",
+                    "sendkey r",
+                    "sendkey minus",
+                    "sendkey 1",
+                    "sendkey ret"
+                  ],
+                  "gap_s": 0.5
+                },
+                {
+                  "after": "|text=session|focus=display|n=1",
+                  "commands": [
+                    "screendump ${SCREEN:desktop}",
+                    "sendkey ctrl-alt-delete"
+                  ],
+                  "gap_s": 1.0
+                },
+                {
+                  "after": "|text=session|state=locked|",
+                  "commands": [
+                    "screendump ${SCREEN:locked}",
+                    "sendkey l",
+                    "sendkey a",
+                    "sendkey b",
+                    "sendkey minus",
+                    "sendkey u",
+                    "sendkey s",
+                    "sendkey e",
+                    "sendkey r",
+                    "sendkey minus",
+                    "sendkey 1",
+                    "sendkey ret"
+                  ],
+                  "gap_s": 0.5
+                },
+                {
+                  "after": "|text=session|focus=display|n=2",
+                  "commands": [
+                    "screendump ${SCREEN:unlocked}",
+                    "quit"
+                  ],
+                  "gap_s": 1.0
+                }
+              ]
+            },
+            "console": {
+              "port": 17060,
+              "after": "|text=session|state=no_session|window=",
+              "script": [
+                {
+                  "send": "svc",
+                  "expect": [
+                    "auth ready 0 ",
+                    "config ready 0 ",
+                    "net ready 0 ",
+                    "input ready 0 ",
+                    "display ready 0 ",
+                    "narrator ready 0 ",
+                    "session ready 0 ",
+                    "sh ready 0 "
+                  ]
+                }
+              ]
+            },
+            "timeout_s": 240
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/selftest,string=0"
+            ],
+            "required_markers": [
+              "|kernel|boot_mode|mode=interactive|",
+              "|key=invalid|",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
+              "|text=session|state=no_session|window="
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "quit"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 90
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=exc_de"
+            ],
+            "required_markers": [
+              "|kernel|boot_mode|mode=interactive|source=none|key=absent|",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
+              "|text=session|state=no_session|window="
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "quit"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 90
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/selftest,string=svc-sh"
+            ],
+            "required_markers": [
+              "|kernel|boot_mode|mode=interactive|",
+              "|key=invalid|",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
+              "|text=session|state=no_session|window="
+            ],
+            "forbidden_markers": [
+              "manifest=/SYSTEM/SVC-SH.TXT",
+              "manifest=/SYSTEM/SELFTEST.TXT"
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "quit"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 90
+          },
+          {
+            "qemu_extra": [
+              "-cpu",
+              "qemu64,-hypervisor",
+              "-fw_cfg",
+              "name=opt/nawah/selftest,string=1"
+            ],
+            "required_markers": [
+              "|kernel|boot_mode|mode=interactive|source=none|",
+              "|key=absent|",
+              "|hv=0",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
+              "|text=session|state=no_session|window="
+            ],
+            "forbidden_markers": [
+              "|key=ok|",
+              "manifest=/SYSTEM/SELFTEST.TXT"
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "quit"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 90
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/selftest,string=10"
+            ],
+            "required_markers": [
+              "|kernel|boot_mode|mode=interactive|",
+              "|key=invalid|",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
+              "|text=session|state=no_session|window="
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "quit"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 90
+          }
+        ],
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:login}",
+            "--pixel",
+            "2,2,10141C",
+            "--pixel",
+            "512,338,F0F0F0"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:desktop}",
+            "--pixel",
+            "2,2,1E2A38",
+            "--pixel",
+            "700,600,1E2A38"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:locked}",
+            "--pixel",
+            "2,2,10141C",
+            "--pixel",
+            "512,338,F0F0F0"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:unlocked}",
+            "--pixel",
+            "2,2,1E2A38",
+            "--pixel",
+            "700,600,1E2A38"
+          ]
+        ],
+        "max_counts": {
+          "|kernel|boot_mode|": 6
+        },
+        "min_counts": {
+          "|kernel|boot_mode|": 6
         }
       }
     ]

@@ -184,6 +184,84 @@ class Suites(unittest.TestCase):
         self.assertEqual(sorted(expected), sorted(self.suite_args("host")))
 
 
+class StepBudget(unittest.TestCase):
+    """The verify job's time budget (docs/PLAN-ANSWER.md §2.5 D4-V2): the guest suites that can
+    hang until the job's limit carry their own cap (M5: 11m34s measured, cap 18; M6: cap 12) and
+    the sum of every step cap with a 20 % margin stays within the job's limit (55: 15+18+12 = 45,
+    x1.2 = 54), so a hung step ends with its own name instead of the job's timeout. A capped
+    suite whose cases are bounded by their own timeouts (M6) must fit its cap in the worst case:
+    the sum over its cases of each phase's timeout_s stays below the cap. M5 is outside that
+    rule: its cap is a hang guard set from a measured run (its worst case is 33 cases of up to
+    300 s each), not a bound on its timeouts. The budget only sees steps that carry a cap: an
+    uncapped step (the build, M1-M4, the host suites) runs until the job's limit (G9)."""
+
+    BOUNDED = ("M6",)
+
+    def caps(self):
+        job = load("verify.yml")["jobs"]["verify"]
+        caps = {}
+        for s in job["steps"]:
+            for line in str(s.get("run", "")).splitlines():
+                m = re.search(r"--target pc-qemu --suite (\S+)", line)
+                if m and s.get("timeout-minutes") is not None:
+                    caps[m.group(1)] = s["timeout-minutes"]
+        return job, caps
+
+    def test_guest_steps_are_capped_within_the_job_limit(self):
+        job, caps = self.caps()
+        self.assertEqual(job["timeout-minutes"], 55)
+        self.assertEqual(caps, {"M5": 18, "M6": 12})
+        total = sum(int(s["timeout-minutes"]) for s in job["steps"] if "timeout-minutes" in s)
+        self.assertLessEqual(total * 1.2, job["timeout-minutes"], f"step caps {total} min + 20 % exceed the job's limit")
+
+    def test_a_bounded_suite_fits_its_cap_in_the_worst_case(self):
+        _, caps = self.caps()
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        default = t["qemu"]["boot_timeout_s"]
+        for suite in self.BOUNDED:
+            worst = sum(p.get("timeout_s", c.get("timeout_s", default))
+                        for c in t["suites"][suite] for p in (c.get("phases") or [{}]))
+            self.assertLess(worst, caps[suite] * 60, f"{suite}: worst case {worst} s, cap {caps[suite]} min")
+
+
+class BootCase(unittest.TestCase):
+    """`project.py boot` and the suite judge one boot test by one oracle (docs/PLAN-ANSWER.md
+    §2.6 D1-A): the suite case carrying the boot test id is the oracle even when it carries
+    QEMU arguments (the lab self-test key, WP-45); two such cases are ambiguous and refused;
+    `boot_oracle` carries the same key; the key's name is the one the kernel reads."""
+
+    KEY = ["-fw_cfg", "name=opt/nawah/selftest,string=1"]
+
+    def target(self):
+        return json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+
+    def test_the_suite_case_with_qemu_args_is_the_boot_oracle(self):
+        t = {"boot_oracle": {"test_id": "B"}, "suites": {"S": [{"id": "x", "test_id": "A"},
+                                                                {"id": "b", "test_id": "B", "qemu_extra": self.KEY}]}}
+        self.assertEqual(project.select_boot_case(t)["id"], "b")
+        self.assertIsNone(project.select_boot_case({"boot_oracle": {"test_id": "B"}}))
+
+    def test_two_cases_of_the_boot_test_are_refused(self):
+        t = {"boot_oracle": {"test_id": "B"}, "suites": {"S": [{"id": "b1", "test_id": "B"}],
+                                                         "T": [{"id": "b2", "test_id": "B", "qemu_extra": self.KEY}]}}
+        with self.assertRaises(ValueError):
+            project.select_boot_case(t)
+
+    def test_boot_oracle_carries_the_suite_cases_key(self):
+        t = self.target()
+        case = project.select_boot_case(t)
+        self.assertEqual(case["test_id"], "TST-M1-BOOT")
+        self.assertEqual(case.get("qemu_extra"), self.KEY)
+        self.assertEqual(t["boot_oracle"].get("qemu_extra"), case["qemu_extra"])
+
+    def test_the_kernel_reads_the_key_the_lab_passes(self):
+        name = self.KEY[1].split(",", 1)[0].split("=", 1)[1]
+        # The test kernel's own sources (ktest.rs) do not count: the release kernel must read it.
+        hits = [p for p in (ROOT / "kernel" / "src").rglob("*.rs")
+                if p.name != "ktest.rs" and name in p.read_text(encoding="utf-8")]
+        self.assertTrue(hits, f"no kernel source outside ktest.rs names the fw_cfg key {name!r}")
+
+
 class Preflight(unittest.TestCase):
     def test_preflight_runs_the_ci_hygiene_commands(self):
         # The local gate is CI's hygiene step itself, read from verify.yml (CI run 39185115793

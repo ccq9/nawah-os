@@ -17,7 +17,9 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    # 55 (WP-45, PLAN-ANSWER §2.5 D4-V2): the run took 28m55s before M6; the capped steps
+    # (Toolchain 15, M5 18, M6 10) with a 20 % margin fit (tests/test_ci_workflows.py StepBudget).
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         # The token stays out of .git/config, where every later step (the code under test
@@ -117,7 +119,12 @@ jobs:
       - name: M4 guest suite (test kernel, processes from the volume)
         run: python3 tools/project.py test --target pc-qemu --suite M4
       - name: M5 guest suite (test kernel, display and input)
+        # 11m34s measured (PLAN-ANSWER §2.5 D4-V2): a hang ends here, under its own name.
+        timeout-minutes: 18
         run: python3 tools/project.py test --target pc-qemu --suite M5
+      - name: M6 guest suite (release image, interactive boot)
+        timeout-minutes: 12
+        run: python3 tools/project.py test --target pc-qemu --suite M6
       - name: A64 early port experiment (build + boot on QEMU virt, ADR-0008)
         run: |
           python3 tools/project.py build --target virt-qemu-aarch64
@@ -129,6 +136,7 @@ jobs:
           python3 tools/project.py test --target host --suite M3
           python3 tools/project.py test --target host --suite M4
           python3 tools/project.py test --target host --suite M5
+          python3 tools/project.py test --target host --suite M6
       - name: "validate-records --strict (after fresh evidence, nothing may be stale)"
         run: python3 tools/project.py validate-records --strict
       - name: "pre-merge gate (tools/pre-merge.sh: the same strict check through the script a records commit must pass)"
