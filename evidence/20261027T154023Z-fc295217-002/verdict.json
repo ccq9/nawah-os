@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261027T154023Z-fc295217-002",
+ "test_id": "TST-M5-SCREEN-TOOL",
+ "verdict": "PASS",
+ "oracle": "tools/screen.py desktop against a synthetic PPM: a pixel check passes on its colour and fails on another; a window hash equals the FNV-1a 64 of the rectangle's R,G,B bytes and fails when a pixel differs; a rectangle outside the image fails without crashing; an ink check finds a field's text against the side asked and fails for the other side, an empty field and a rectangle outside the image (3 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "f9a10c5b313fe4a3d17afd4e1004660df3c42e4acf4d1122779c6c16080238ce",
+ "inputs": {
+  "tests/test_screen_tool.py": "f8991e618bb0593f6d325f68e12d7c6c6978ac1d352e1e4cacc8765b2619c07e",
+  "tools/screen.py": "86126df58a4ca5c38a0a3c7ecdd371aeb794f3bfba3919ed3dae2b01dc02b92a"
+ },
+ "claim_tag": "source_backed_fact"
+}
