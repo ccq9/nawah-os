@@ -53,4 +53,4 @@
 - `tests/test_m0_records.py` (TST-M0-002): حالة جديدة تحرس سطر الأصل في الأحد عشر ملفًا المنقولة؛ فشلت أولًا على `tests/mutants.py` وحده (`Lists differ: ['tests/mutants.py'] != []`) ثم مرّت بعد الإصلاح (5 حالات OK).
 - `tools/project.py` و`docs/tests.json`: وحي TST-M0-002 ومدخلاته تشمل ADR-0002 والملفات المنقولة.
 - ADR-0002: الحالة «مقبول ومنفَّذ» مع إحالة إلى هذا السجل؛ `docs/sources.json` S32: إحالة إلى هذا السجل؛ DEC-010 مفتوح.
-- حكم CI: يُسجَّل بعد تشغيل verify على رأس هذا التغيير عبر `import-ci-evidence` (الفحص المحلي هنا ليس دليلًا).
+- حكم CI: verify run 42600548943 على الرأس f91f4428 أخضر (145 تشغيلًا مستوردًا، TST-M0-002 PASS بالحالة الجديدة)؛ `validate-records --strict` بلا أخطاء، والمتقادم الباقي بوابات الطفرات الأربع (stale_policy warn) لأن `tests/mutants.py` و`tools/project.py` من مدخلاتها ولم يتغير فيهما سلوك.
