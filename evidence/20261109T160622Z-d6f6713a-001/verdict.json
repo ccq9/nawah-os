@@ -1,0 +1,17 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261109T160622Z-d6f6713a-001",
+ "test_id": "TST-M0-007",
+ "verdict": "PASS",
+ "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; source_identity ignores evidence/, build/ and state/ and names the dirty paths; a verification-runner PASS without import.json is a strict error and a mismatching ci_run_id an error, 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is malformed, is blocked without gh, and on success writes import.json beside an untouched run.json (15 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "73620671f397d6b10d723a1259d8d687d09d83d6df725ccdd48662a3b6afee85",
+ "inputs": {
+  "tests/test_evidence_provenance.py": "b128aa77db9ec60e28f155b9a38dc37e455cd99b34e13d543566678b0111cdc6",
+  "tools/project.py": "49374e7d81339f367a3574b65b0ec203f6c2d0451449e74880b40c362ae522c7",
+  "docs/schemas/evidence-run.schema.json": "04b92d139981ad485c5658a907f90800691ab4701d6bc1f87f3b4cab014ee3c1",
+  "docs/automation.json": "732e96c066765a6b6055e33fe450222442851f4391c846db75506db36a665981"
+ },
+ "claim_tag": "source_backed_fact"
+}

@@ -1,0 +1,20 @@
+test_a_cancelled_or_failed_run_imports_nothing (__main__.CheckedImport.test_a_cancelled_or_failed_run_imports_nothing) ... ok
+test_a_head_that_is_not_an_ancestor_of_HEAD_imports_nothing (__main__.CheckedImport.test_a_head_that_is_not_an_ancestor_of_HEAD_imports_nothing) ... ok
+test_a_malformed_run_id_imports_nothing (__main__.CheckedImport.test_a_malformed_run_id_imports_nothing) ... ok
+test_a_successful_verify_run_is_imported_with_import_json_and_an_untouched_run_json (__main__.CheckedImport.test_a_successful_verify_run_is_imported_with_import_json_and_an_untouched_run_json) ... ok
+test_another_workflow_imports_nothing (__main__.CheckedImport.test_another_workflow_imports_nothing) ... ok
+test_without_gh_the_import_is_blocked (__main__.CheckedImport.test_without_gh_the_import_is_blocked) ... ok
+test_1_0_0_run_stays_valid (__main__.RunSchema.test_1_0_0_run_stays_valid) ... ok
+test_1_1_0_run_with_ci_object_is_valid (__main__.RunSchema.test_1_1_0_run_with_ci_object_is_valid) ... ok
+test_import_run_id_must_match_the_runs_ci_identity (__main__.RunSchema.test_import_run_id_must_match_the_runs_ci_identity) ... ok
+test_runner_pass_without_import_json_is_a_strict_error (__main__.RunSchema.test_runner_pass_without_import_json_is_a_strict_error) ... ok
+test_worker_outside_the_enumeration_is_rejected (__main__.RunSchema.test_worker_outside_the_enumeration_is_rejected) ... ok
+test_write_run_off_the_runner_is_the_interactive_agent (__main__.RunWriter.test_write_run_off_the_runner_is_the_interactive_agent) ... ok
+test_write_run_on_github_actions_records_the_runner_and_its_ci_identity (__main__.RunWriter.test_write_run_on_github_actions_records_the_runner_and_its_ci_identity) ... ok
+test_a_modified_tracked_file_or_a_new_source_file_is_dirty_and_named (__main__.SourceIdentity.test_a_modified_tracked_file_or_a_new_source_file_is_dirty_and_named) ... ok
+test_untracked_evidence_does_not_make_the_tree_dirty (__main__.SourceIdentity.test_untracked_evidence_does_not_make_the_tree_dirty) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 1.089s
+
+OK
