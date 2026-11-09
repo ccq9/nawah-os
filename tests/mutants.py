@@ -591,6 +591,24 @@ MUTANTS = [
      "                        if hung {\n                            self.services[i].wd_deadline = None;\n                            self.services[i].killing = true;\n                            if let Some(p) = self.services[i].process {\n                                libnawah::process_kill(p);\n                            }\n",
      "                        if hung {\n                            self.services[i].wd_deadline = None;\n                            self.services[i].killing = true;\n",
      ["TST-M5-SVC-WATCHDOG"], "the watchdog finds a service hung but never kills it, so it is never restarted (hung is not given_up:1:131072)"),
+    # ---- M6 (WP-45 red team): the boot-mode gate (boot.md v1.1); SECURITY, killer is the
+    # release image's TST-M6-INTERACTIVE-BOOT. No M6 gate runs them yet (TST-M6-MUTANTS is a
+    # WP-66 proposal); the anchor guard of TST-M0-005 keeps each anchor unique meanwhile.
+    # `|| true` rather than `true`, so `ecx` stays used and the mutant builds warning-free.
+    ("M130", "kernel/src/arch/x86_64/fwcfg.rs",
+     "    ecx & CPUID_ECX_HYPERVISOR != 0",
+     "    ecx & CPUID_ECX_HYPERVISOR != 0 || true",
+     ["TST-M6-INTERACTIVE-BOOT"], "hypervisor_present forced true: without the hypervisor bit fw_cfg is still read, so phase 5 (-cpu qemu64,-hypervisor with the key) prints hv=1|key=ok, m1_done and exits 33 (its line requires hv=0, exit 0)"),
+    ("M131", "kernel/src/bootmode.rs",
+     "        Some(_) => Key::Invalid,",
+     "        Some(_) => Key::Ok,",
+     ["TST-M6-INTERACTIVE-BOOT"], "any key value selects the self-test: phases 2 (selftest=0) and 6 (selftest=10) print key=ok and m1_done (forbidden) and exit 33, not 0"),
+    # `|| true` rather than `true`, so the code after the diverging block stays reachable for
+    # the compiler and the mutant builds warning-free.
+    ("M132", "kernel/src/kmain.rs",
+     "        if mode.selftest() {",
+     "        if mode.selftest() || true {",
+     ["TST-M6-INTERACTIVE-BOOT"], "the interactive boot takes the self-test exit: phase 1 prints m1_done (forbidden) and exits 33, not 0 by the lab's quit"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -608,7 +626,11 @@ def stage_of(mid: str) -> str:
 # v1.7) undo protections of the same rank.
 SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91",
             "M95", "M96", "M98", "M99", "M100", "M101", "M105", "M106", "M107", "M112",
-            "M122", "M126", "M129"}
+            "M122", "M126", "M129",
+            # M6 (WP-45): the boot-mode gate (boot.md v1.1): without the hypervisor bit no fw_cfg
+            # read (M130), only the key 1 selects the self-test (M131), and an interactive boot
+            # never takes the self-test exit (M132).
+            "M130", "M131", "M132"}
 
 
 def security_of(mid: str) -> bool:
@@ -713,6 +735,17 @@ def _write_report(rel, report):
     rp.write_text(json.dumps(report, indent=1) + "\n")
 
 
+def needs_release(target, killers):
+    """Whether a declared killer boots the release image NAWAH.EFI (a case without its own
+    artifact boots the build's, NAWAH.EFI): then the mutant's release kernel is built before
+    the killers run. Keyed on TST-M1-BOOT alone, TST-M6-INTERACTIVE-BOOT found no artifact
+    (SKIPPED) and, being declared, was left out of the fairness sweep too."""
+    t = json.loads((REPO / "platform" / target / "target.json").read_text())
+    default = t["build"]["artifact"]
+    cases = {c["id"]: c for cs in t["suites"].values() for c in cs}
+    return any(k in cases and cases[k].get("artifact", default) == "${OUT}/NAWAH.EFI" for k in killers)
+
+
 def run_killers(wt: Path, env, target, killers, early_exit=False):
     """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED|ERROR}). Every case runs
     through its suite entry (the strong oracle); a missing artifact (exit 20) is SKIPPED and a
@@ -803,7 +836,7 @@ def main():
             benv = dict(env, NAWAH_BUILD_ID=mutant_build_id(mid), NAWAH_OUT=str(wt / "build" / a.target),
                         NAWAH_APPS_DIR=str(wt / "build" / a.target / "apps"))
             (wt / "build" / a.target / "apps").mkdir(parents=True, exist_ok=True)
-            need_release = "TST-M1-BOOT" in killers
+            need_release = needs_release(a.target, killers)
             build_ok = True
             steps = [app_step(n) for n in APPS] + [(KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
             if need_release:

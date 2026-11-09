@@ -50,6 +50,33 @@ class Stages(unittest.TestCase):
         self.assertEqual(bad, [])
 
 
+class M6Mutants(unittest.TestCase):
+    """WP-45's red-team mutants (M130-M132): each undoes one step of the boot-mode gate, is a
+    SECURITY mutant of the M6 stage and names TST-M6-INTERACTIVE-BOOT as its killer. No M6 gate
+    runs them yet (WP-66 proposal); the anchor guard above keeps them applicable meanwhile."""
+
+    WANT = {"M130": "kernel/src/arch/x86_64/fwcfg.rs", "M131": "kernel/src/bootmode.rs", "M132": "kernel/src/kmain.rs"}
+
+    def test_the_boot_mode_mutants_are_registered(self):
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        for mid, rel in self.WANT.items():
+            self.assertIn(mid, by_id)
+            self.assertEqual(by_id[mid][1], rel)
+            self.assertEqual(mutants.stage_of(mid), "M6")
+            self.assertTrue(mutants.security_of(mid), mid)
+            self.assertIn("TST-M6-INTERACTIVE-BOOT", by_id[mid][4])
+
+    def test_a_killer_on_the_release_image_gets_it_built(self):
+        """A mutant is built for the image its killers boot: TST-M6-INTERACTIVE-BOOT runs
+        NAWAH.EFI, so the release kernel is built before the declared killers run (otherwise
+        the case is SKIPPED, the fairness sweep excludes it as a declared killer, and M131/M132
+        would be reported as survivors)."""
+        self.assertTrue(mutants.needs_release("pc-qemu", ["TST-M6-INTERACTIVE-BOOT"]))
+        self.assertTrue(mutants.needs_release("pc-qemu", ["TST-M1-BOOT"]))
+        self.assertFalse(mutants.needs_release("pc-qemu", ["TST-M5-SVC-WATCHDOG"]))
+        self.assertFalse(mutants.needs_release("pc-qemu", ["TST-M5-TEXT-CONFORMANCE"]))
+
+
 class BuildId(unittest.TestCase):
     def test_build_id_is_all_hex(self):
         for n in (1, 82, 94, 103, 121, 999):
