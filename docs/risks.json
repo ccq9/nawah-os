@@ -132,6 +132,42 @@
    "mitigation": "الحالتان تحتاجان حقن أعطال حتمي (مدير غير جاهز، LOGOUT يفشل) لا توفّره نواة الاختبار؛ السلوك الحالي مقيّد بمهلة الطلب وبطاقة الرمز المنسوخة بلا WRITE",
    "response_plan": "نقاط حقن أعطال في ktest للمدير وauth، ثم اختباران يحكمان الحالتين — قبل Beta",
    "status": "open"
+  },
+  {
+   "id": "RSK-017",
+   "risk": "قرص المختبر يحمل حسابات معروفة (lab-user-1) وملحًا ثابتًا، والإقلاع التفاعلي الافتراضي (WP-45، boot.md v1.1) يجعل هذه الصورة تقلع إلى شاشة دخول تعرف كلماتها كل من قرأ المستودع؛ صورة release بلا حسابات المختبر غير موجودة بعد",
+   "likelihood": "high",
+   "impact": "medium",
+   "evidence": "docs/contracts/boot.md «حدّ معلن (قرص المختبر)»؛ docs/PLAN-ANSWER.md §3.4 البند 1 و§5.3 البند 3؛ platform/pc-qemu/target.json (prepare_disk، lab.users)",
+   "owner": "agent",
+   "warning_signal": "أي هدف أو صورة توزَّع خارج pc-qemu تُبنى بمدخلات lab.users نفسها، أو حالة اختبار تدخل بحساب مختبر على صورة تُسمى release",
+   "mitigation": "الحد معلن في العقد ونموذج التهديد؛ لا هدف release بعد؛ الحسابات والملح لا يُستعملان إلا في المختبر",
+   "response_plan": "أول هدف release يبني القرص بلا lab.users وبملح من مولّد المضيف، وحارس في TST-M0-003 يرفض lab.users في أي هدف غير pc-qemu — قبل Beta",
+   "status": "open"
+  },
+  {
+   "id": "RSK-018",
+   "risk": "تبعيتا session الصلبتان config وnarrator في بيان النظام (services.md v1.11 §0.000): فشل أيٍّ منهما نهائيًا (given_up) يترك session blocked فلا شاشة دخول، مع أن الجلسة قادرة نظريًا على العمل بلا قارئ",
+   "likelihood": "low",
+   "impact": "high",
+   "evidence": "docs/contracts/services.md v1.11 §0.000 (تبعيات session)؛ docs/PLAN-ANSWER.md §2.2 D3 و§5.3 البند 13؛ §5 من services.md (blocked)",
+   "owner": "agent",
+   "warning_signal": "LIST يعرض narrator أو config given_up وsession blocked في إقلاع تفاعلي؛ إعادات narrator تتجاوز الصفر على CI",
+   "mitigation": "سياسة on-failure بثلاث إعادات لكل منهما؛ الهامش يُقاس في WP-64؛ INTERACTIVE-BOOT يشترط restarts=0 للثماني",
+   "response_plan": "إن تكررت إعادات narrator أو config على CI: تبعية لينة لـnarrator بإصدار services.md لاحق (الجلسة تبدأ بلا قارئ وتعلن ذلك) — يقرَّر في WP-64",
+   "status": "open"
+  },
+  {
+   "id": "RSK-019",
+   "risk": "config تملك حق WRITE غير مقيد بمسار على /SYSTEM كله (svcmgr main.rs:469-485، token.rs:110-113)، فخطأ ذاكرة واحد في configd يكفي لإعادة كتابة SERVICES.TXT أو صورة ELF؛ وبيان النظام صار خريطة السلطة في الإقلاع الافتراضي (WP-45)",
+   "likelihood": "low",
+   "impact": "critical",
+   "evidence": "مراجعة الفريق الأحمر لـWP-45 (2026-11-09)؛ docs/security/threat-model.md قسم M6 الخصم 3؛ user/apps/configd/src/main.rs:239-253 (أسماء ملفات ثابتة، فلا مسار مباشر اليوم)",
+   "owner": "agent",
+   "warning_signal": "أي مسار في configd يأخذ اسم ملف من عميل؛ أو تغيير في SERVICES.TXT على القرص لا يطابق الملف المودَع (بصمة البيان)",
+   "mitigation": "أسماء ملفات configd ثابتة؛ البيان ضمن مدخلات كل حكم ضيف فيُكشف تغييره في المستودع لا على القرص الحي",
+   "response_plan": "تقييد سلطة config بمسار (/SYSTEM/CFG*) مع حالة ktest تفتح SERVICES.TXT بـO_WRITE من مقبض config فتُرفض، وطفرة SECURITY تزيل القيد — WP-67 أو ما بعدها، لأنه تغيير في files.md",
+   "status": "open"
   }
  ]
 }

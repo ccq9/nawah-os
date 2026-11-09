@@ -4080,7 +4080,8 @@
     "services.md (additive): a manifest larger than 4096 bytes or a read error mid-file rejects the whole manifest with a named error (ERR MANIFEST_TOO_LARGE / MANIFEST_IO), never a truncated OK <n>; ktest with a 4097-byte manifest; register the LOAD-outside-/SYSTEM ERR ACCESS ktest id",
     "the manager-failure branch of the interactive boot (selfcheck=0 then halt) gets a lab phase with a corrupt manifest disk, if the lab can prepare one",
     "verify.yml: the M6 step cap must grow with the HOLD case (690 s + 180 s > 720 s): raise the cap or open the V3 parallel-jobs decision (PLAN-ANSWER §2.5)",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; split point: displayd first, svcmgr second"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; split point: displayd first, svcmgr second",
+    "2026-11-09 red-team items taken here (nawah-sec-redteam on 84266a323): svcmgr answers ERR MANIFEST_TOO_LARGE at the 4096-byte limit and ERR MANIFEST_IO on a read error, and the kernel's interactive mode requires n >= 1 in OK n; a visible halt message and an interactive LOAD timeout (svcmgr replies before advance, or the kernel waits longer than 2000 ticks); name_ok on dependency names and escaping of | and control characters in the kernel|svcmgr line; the password forbidden-marker check on console.log as well as serial.log; the config WRITE path restriction (RSK-019) if files.md allows it here, else the package after"
    ],
    "acceptance": "TST-M6-HOLD-FAIL-CLOSED PASS on CI; the M5 cases on svc-da, svc-dp and svc-ui re-run and PASS (no regression); TST-M6-MANIFEST-LINT PASS; validate-records --strict 0 errors",
    "test_ids": [
