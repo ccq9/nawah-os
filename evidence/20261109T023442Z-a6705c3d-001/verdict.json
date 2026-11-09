@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261109T023442Z-a6705c3d-001",
+ "test_id": "TST-M0-005",
+ "verdict": "PASS",
+ "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (~124 s, TST-M5-ELEVATE), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided; each kill records its kind, timeout (a hang) or oracle (audit 2026-11-09) (7 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "9ec0a0cdafd1d2e628c1613a12f182f1bd1bb92a521f2a0abdec269c878af049",
+ "inputs": {
+  "tests/test_mutants_harness.py": "2077d9d5592ab5133ff746c4bf741b5f0d39b07b278876b97bc8e05adcf9ec9a",
+  "tests/mutants.py": "cc0c6311bf7960396eb0a20a62a06a353531ecd4438314620b39c09a96705847"
+ },
+ "claim_tag": "source_backed_fact"
+}
