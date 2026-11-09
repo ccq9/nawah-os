@@ -1,7 +1,9 @@
 """TST-M6-MANIFEST-LINT (host, REQ-M6-002, WP-45): the system manifest
 platform/pc-qemu/manifests/services.txt (/SYSTEM/SERVICES.TXT, services.md §2 v1.11) and the lab
 self-test manifest selftest.txt (/SYSTEM/SELFTEST.TXT) checked on the host before any guest
-boots them (docs/PLAN-ANSWER.md §2.2 D1/D2): ASCII text and the grammar of services.md §2; by
+boots them (docs/PLAN-ANSWER.md §2.2 D1/D2): ASCII text read as svcmgr reads it (only bytes
+0x20-0x7E and newline, Tab and CR refused by name, a `#` anywhere starts a comment) and the
+grammar of services.md §2; by
 the table of services.md §0.000, the eight services in that order, each with exactly the
 table's dependencies (every one declared on an earlier line), all on-failure, the minimum
 readiness timeouts of auth and session, watchdog= on input and display and nowhere a service
@@ -34,42 +36,64 @@ def built_apps():
     return {s for s in stems if len(s) <= 8}
 
 
+# The PONG bytes as the second argument of channel_write: a reply on a channel (inputd, displayd,
+# the svc lab service), not a compare with a received request (svcmgr).
+PONG_REPLY = re.compile(r'channel_write\(\s*[^,()]+,\s*b"PONG"')
+
+
 def answers_pong(stem):
+    """Textual (see AnswersPong): the source sends PONG through channel_write somewhere."""
     src = ROOT / "user" / "apps" / stem / "src" / "main.rs"
-    return src.exists() and 'b"PONG"' in src.read_text(encoding="utf-8")
+    return src.exists() and PONG_REPLY.search(src.read_text(encoding="utf-8")) is not None
+
+
+# The first seven fields of a service line, each a run of non-space bytes after spaces (the
+# manager's Fields::next); what follows is `[watchdog=<n>] [arg]` (Fields::rest).
+SEVEN = re.compile(r" *(?:[^ ]+ +){6}[^ ]+")
+NAMED = {0x09: "Tab (0x09)", 0x0D: "CR (0x0D)"}
 
 
 def parse(text):
-    """(services, errors) by services.md §2."""
+    """(services, errors) by services.md §2, read the way svcmgr's `load` reads it
+    (user/apps/svcmgr/src/main.rs): lines split on `\\n` only, each cut at its first `#`, fields
+    split on spaces only; any byte outside 0x20-0x7E other than `\\n` is refused by name."""
     services, errors = [], []
     if len(text.encode()) >= MANIFEST_MAX:
         errors.append(f"{len(text.encode())} bytes, the manager reads < {MANIFEST_MAX}")
-    for n, line in enumerate(text.splitlines(), 1):
-        if not line.strip() or line.lstrip().startswith("#"):
+    for n, line in enumerate(text.split("\n"), 1):
+        for col, ch in enumerate(line, 1):
+            if not 0x20 <= ord(ch) <= 0x7E:
+                what = NAMED.get(ord(ch), f"byte 0x{ord(ch):02X} outside 0x20-0x7E")
+                errors.append(f"line {n}: {what} at column {col}: the manager splits on spaces and \\n only")
+        body = line.split("#", 1)[0]
+        f = [x for x in body.split(" ") if x]
+        if not f:
             continue
-        f = line.split()
         if len(f) < 7:
             errors.append(f"line {n}: {len(f)} fields, 7 needed"); continue
         name, path, deps, timeout, restart, max_restarts, backoff = f[:7]
-        rest = f[7:]
-        watchdog = 0
-        if rest and rest[0].startswith("watchdog="):
-            if not rest[0][9:].isdigit():
-                errors.append(f"line {n}: {rest[0]}")
+        rest = body[SEVEN.match(body).end():].strip(" ")
+        watchdog, arg = 0, rest
+        if rest.startswith("watchdog="):
+            end = rest.find(" ") if " " in rest else len(rest)
+            value = rest[9:end]
+            if not (value.isascii() and value.isdigit()):
+                errors.append(f"line {n}: {rest[:end]}")
             else:
-                watchdog = int(rest[0][9:])
-            rest = rest[1:]
-        if len(" ".join(rest).encode()) > 64:
+                watchdog = int(value)
+            arg = rest[end:].lstrip(" ")
+        if len(arg.encode()) > 64:
             errors.append(f"line {n}: arg longer than 64 bytes")
         if not NAME.fullmatch(name):
             errors.append(f"line {n}: name {name!r}")
         if restart not in ("never", "on-failure"):
             errors.append(f"line {n}: restart {restart!r}")
         for v in (timeout, max_restarts, backoff):
-            if not v.isdigit():
+            if not (v.isascii() and v.isdigit()):
                 errors.append(f"line {n}: {v!r} is not a decimal number")
         services.append({"line": n, "name": name, "path": path, "deps": [] if deps == "-" else deps.split(","),
-                         "timeout": int(timeout) if timeout.isdigit() else -1, "restart": restart, "watchdog": watchdog})
+                         "timeout": int(timeout) if timeout.isascii() and timeout.isdigit() else -1,
+                         "restart": restart, "watchdog": watchdog})
     return services, errors
 
 
@@ -193,6 +217,24 @@ class LintRejects(unittest.TestCase):
         self.assertTrue(any("not an application the build makes" in e for e in lint_system(bad, APPS, PONG)))
 
 
+class AnswersPong(unittest.TestCase):
+    """answers_pong is a textual check of the image's source, not a run: it finds the PONG
+    bytes passed to channel_write (a reply), so a source that only compares with PONG (svcmgr
+    itself, which receives it) does not count. Its limits: whether that write sits on the path
+    that answers the manager's PING is not checked (a PONG sent elsewhere would be a false
+    acceptance; the guest case TST-M5-LOCK-HANG is the behavioural check for inputd and
+    displayd), and a reply sent through a helper or another call would be missed (a false
+    rejection). svcmgr is not a service of any manifest, so the old substring check gave no
+    false positive either."""
+
+    def test_a_reply_counts_and_a_compare_does_not(self):
+        self.assertTrue(answers_pong("inputd"))
+        self.assertTrue(answers_pong("displayd"))
+        self.assertIn('b"PONG"', (ROOT / "user" / "apps" / "svcmgr" / "src" / "main.rs").read_text(encoding="utf-8"))
+        self.assertFalse(answers_pong("svcmgr"))
+        self.assertFalse(answers_pong("authd"))
+
+
 def swap(text, old, new):
     assert text.count(old) == 1, old
     return text.replace(old, new)
@@ -255,6 +297,26 @@ class EveryRuleRejects(unittest.TestCase):
 
     def test_a_selftest_manifest_without_its_mode(self):
         self.assertRejects(lint_selftest("# no service\n", APPS, PONG), "mode=selftest")
+
+    def test_only_printable_ascii_and_newline(self):
+        """svcmgr splits lines on `\\n` and fields on spaces only (user/apps/svcmgr/src/main.rs:
+        Fields, load): a Tab glues two fields into one, a CR ends up inside the last field (or
+        the arg), so the lint accepts only 0x20-0x7E and `\\n` and names the byte it refuses."""
+        tab = swap(GOOD, "\nnet      /SYSTEM/NETD.ELF", "\nnet\t/SYSTEM/NETD.ELF")
+        self.assertRejects(self.system(tab), "line 4: Tab (0x09)")
+        self.assertRejects(self.system(GOOD.replace("\n", "\r\n")), "line 2: CR (0x0D)")
+        self.assertRejects(self.system(swap(GOOD, "# a sample", "# a\x01sample")), "line 1: byte 0x01 outside 0x20-0x7E")
+
+    def test_a_hash_inside_a_line_starts_a_comment(self):
+        """svcmgr cuts every line at its first `#` (load: `position(|c| *c == b'#')`), not only
+        a line that starts with one: what follows is never a field, nor part of the arg."""
+        cut = swap(GOOD, "5000 on-failure 3 100\nnet", "5000 on-failure 3 #100\nnet")
+        self.assertRejects(self.system(cut), "line 3: 6 fields, 7 needed")
+        noted = swap(GOOD, "auth,net                            5000 on-failure 3 100",
+                     "auth,net                            5000 on-failure 3 100 # " + "c" * 80)
+        self.assertEqual(self.system(noted), [])
+        wd = swap(GOOD, "3 10 watchdog=2000\ndisplay", "3 10 #watchdog=2000\ndisplay")
+        self.assertRejects(self.system(wd), "input: no watchdog=")
 
     def test_the_grammar(self):
         cases = {
