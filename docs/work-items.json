@@ -356,8 +356,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261108T215636Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001",
+    "evidence/20261108T223829Z-2cbdeaad-001",
+    "evidence/20261108T223902Z-2cbdeaad-001",
     "evidence/20261108T215714Z-25ac22b8-001",
     "evidence/20261108T222026Z-25ac22b8-001"
    ],
@@ -559,7 +559,7 @@
     "evidence/20261108T215901Z-25ac22b8-001",
     "evidence/20261108T215908Z-25ac22b8-001",
     "evidence/20261108T215914Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -639,7 +639,7 @@
     "evidence/20261108T215921Z-25ac22b8-001",
     "evidence/20261108T215928Z-25ac22b8-001",
     "evidence/20261108T215934Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001",
+    "evidence/20261108T223902Z-2cbdeaad-001",
     "evidence/20261108T215821Z-25ac22b8-001"
    ],
    "blocker": null
@@ -758,7 +758,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261108T185257Z-93006ffd-001"
+    "evidence/20261108T223908Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -822,7 +822,7 @@
     "evidence/20261108T220008Z-25ac22b8-001",
     "evidence/20261108T220015Z-25ac22b8-001",
     "evidence/20261108T220022Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -954,7 +954,7 @@
     "evidence/20261108T220035Z-25ac22b8-001",
     "evidence/20261108T220041Z-25ac22b8-001",
     "evidence/20261108T220055Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -1028,7 +1028,7 @@
     "evidence/20261108T220108Z-25ac22b8-001",
     "evidence/20261108T220122Z-25ac22b8-001",
     "evidence/20261108T220128Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -1104,7 +1104,7 @@
     "evidence/20261108T220202Z-25ac22b8-001",
     "evidence/20261108T220208Z-25ac22b8-001",
     "evidence/20261108T220215Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -1177,7 +1177,7 @@
     "evidence/20261108T220229Z-25ac22b8-001",
     "evidence/20261108T220235Z-25ac22b8-001",
     "evidence/20261108T220242Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -1263,7 +1263,7 @@
     "evidence/20261108T220318Z-25ac22b8-001",
     "evidence/20261108T220332Z-25ac22b8-001",
     "evidence/20261108T222026Z-25ac22b8-002",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -1334,7 +1334,7 @@
     "evidence/20261108T220341Z-25ac22b8-001",
     "evidence/20261108T220348Z-25ac22b8-001",
     "evidence/20261108T220355Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -1410,7 +1410,7 @@
     "evidence/20261108T220402Z-25ac22b8-001",
     "evidence/20261108T220408Z-25ac22b8-001",
     "evidence/20261108T220415Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001",
+    "evidence/20261108T223902Z-2cbdeaad-001",
     "evidence/20261108T220102Z-25ac22b8-001",
     "evidence/20261108T220122Z-25ac22b8-001"
    ],
@@ -1470,9 +1470,9 @@
    ],
    "evidence_refs": [
     "evidence/20261108T220048Z-25ac22b8-001",
-    "evidence/20261108T191526Z-93006ffd-001",
+    "evidence/20261108T230914Z-2cbdeaad-001",
     "evidence/20261108T220115Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -1611,7 +1611,7 @@
     "evidence/20261108T220442Z-25ac22b8-001",
     "evidence/20261108T220449Z-25ac22b8-001",
     "evidence/20261108T220456Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -1837,7 +1837,7 @@
     "evidence/20261108T220623Z-25ac22b8-001",
     "evidence/20261108T220629Z-25ac22b8-001",
     "evidence/20261108T220636Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -2038,7 +2038,7 @@
     "evidence/20261108T220735Z-25ac22b8-001",
     "evidence/20261108T220744Z-25ac22b8-001",
     "evidence/20261108T222036Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -2100,7 +2100,7 @@
    ],
    "evidence_refs": [
     "evidence/20261108T220754Z-25ac22b8-001",
-    "evidence/20261108T193135Z-93006ffd-001",
+    "evidence/20261108T233109Z-2cbdeaad-001",
     "evidence/20261108T220735Z-25ac22b8-001",
     "evidence/20261108T220521Z-25ac22b8-001",
     "evidence/20261108T220429Z-25ac22b8-001"
@@ -2714,7 +2714,7 @@
     "evidence/20261108T221414Z-25ac22b8-001",
     "evidence/20261108T221445Z-25ac22b8-001",
     "evidence/20261108T221517Z-25ac22b8-001",
-    "evidence/20261108T193135Z-93006ffd-001"
+    "evidence/20261108T233109Z-2cbdeaad-001"
    ],
    "blocker": null
   },
@@ -2976,7 +2976,8 @@
     "scenario cases 7, 8 and 11 of OS-EXEC-AR §20 across the M5 suite; mutants M82+ for display/input/compositor/text/ui/session (>= 95%)",
     "docs/operations/m5-review.md; stages.json M5 gate; threat-model (display/input/session trust boundaries)",
     "Review 2026-10-19: M5 mutants (M82+) for the kill, watchdog, request deadline, focus routing and lock state; mutants --stage M5 and an M5-GATE host suite; stale M2–M4 mutation scores re-run (their stale_policy=warn hides the WP-40 kernel changes)",
-    "2026-10-27: activated after WP-43 closed (every dependency done). Phase 1: ten security mutants M82-M91 (one per WP-43/WP-41 fix) in tests/mutants.py, the M5-GATE suite, the fourth mutants.yml step; rule: >= 0.95 over this gate's valid mutants and no surviving security mutant."
+    "2026-10-27: activated after WP-43 closed (every dependency done). Phase 1: ten security mutants M82-M91 (one per WP-43/WP-41 fix) in tests/mutants.py, the M5-GATE suite, the fourth mutants.yml step; rule: >= 0.95 over this gate's valid mutants and no surviving security mutant.",
+    "2026-11-09: closed. Mutants run 42531135332: M2 29/29, M3 20/20, M4 32/32, M5 45/45 (M82-M129, 23 security), no survivor; verify 42527203772 green with the review fixes R-54 (session.md v1.5, ui.md v1.5), R-55 (input.md v2.6, session.md v1.6), R-56 (QmpLink); named review docs/operations/m5-review.md."
    ],
    "acceptance": "M5 gate passed",
    "test_ids": [
@@ -2986,12 +2987,18 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261108T223908Z-2cbdeaad-001",
+    "evidence/20261108T230914Z-2cbdeaad-001",
+    "evidence/20261108T233109Z-2cbdeaad-001",
+    "evidence/20261109T000029Z-2cbdeaad-001"
+   ],
    "blocker": null
   }
  ]

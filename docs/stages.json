@@ -39,8 +39,8 @@
    ],
    "gate_status": "passed",
    "gate_evidence_refs": [
-    "evidence/20261108T215636Z-25ac22b8-001",
-    "evidence/20261108T215707Z-25ac22b8-001",
+    "evidence/20261108T223829Z-2cbdeaad-001",
+    "evidence/20261108T223902Z-2cbdeaad-001",
     "evidence/20261108T215714Z-25ac22b8-001",
     "evidence/20261108T222026Z-25ac22b8-001"
    ]
@@ -64,7 +64,7 @@
    ],
    "gate_status": "passed",
    "gate_evidence_refs": [
-    "evidence/20261108T185257Z-93006ffd-001",
+    "evidence/20261108T223908Z-2cbdeaad-001",
     "evidence/20261108T215721Z-25ac22b8-001",
     "evidence/20261108T215727Z-25ac22b8-001",
     "evidence/20261108T215734Z-25ac22b8-001",
@@ -143,7 +143,7 @@
     "evidence/20261108T220402Z-25ac22b8-001",
     "evidence/20261108T220408Z-25ac22b8-001",
     "evidence/20261108T220415Z-25ac22b8-001",
-    "evidence/20261108T191526Z-93006ffd-001",
+    "evidence/20261108T230914Z-2cbdeaad-001",
     "evidence/20261108T220015Z-25ac22b8-001",
     "evidence/20261108T220128Z-25ac22b8-001",
     "evidence/20261108T220208Z-25ac22b8-001",
@@ -152,7 +152,7 @@
     "evidence/20261108T220318Z-25ac22b8-001",
     "evidence/20261108T220332Z-25ac22b8-001",
     "evidence/20261108T222026Z-25ac22b8-002",
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ]
   },
   {
@@ -178,7 +178,7 @@
    ],
    "gate_status": "passed",
    "gate_evidence_refs": [
-    "evidence/20261108T215707Z-25ac22b8-001",
+    "evidence/20261108T223902Z-2cbdeaad-001",
     "evidence/20261108T220530Z-25ac22b8-001",
     "evidence/20261108T220435Z-25ac22b8-001",
     "evidence/20261108T220538Z-25ac22b8-001",
@@ -190,7 +190,7 @@
     "evidence/20261108T220652Z-25ac22b8-001",
     "evidence/20261108T220636Z-25ac22b8-001",
     "evidence/20261108T220509Z-25ac22b8-001",
-    "evidence/20261108T193135Z-93006ffd-001",
+    "evidence/20261108T233109Z-2cbdeaad-001",
     "evidence/20261108T220629Z-25ac22b8-001",
     "evidence/20261108T220623Z-25ac22b8-001",
     "evidence/20261108T220709Z-25ac22b8-001",
@@ -221,9 +221,63 @@
     "بوابة M4 ناجحة ضمن التفويض (2026-10-18)"
    ],
    "exit_conditions": [
-    "وفق البند 20 من OS-EXEC-AR 3.2"
+    "النوافذ تتعامل مع الحجم والتركيز وتوقف تطبيق (WINDOW-STATES، APP-HANG، WINDOW-A11Y، ALT-TAB-CYCLE)",
+    "تبقى الجلسة مقفلة عند تعطل مكونات العرض (LOCK-SURVIVES، LOCK-HANG، LOCK-DISPLAY-DOWN، LOCK-AUTH-HANG، UNLOCK-AUTH-HANG، SESSION-HANG، SESSION-DEADLINE)",
+    "لا يتسرب إدخال المصادقة إلى تطبيق (AUTH-INPUT-ISOLATED، ELEVATE: عدّاد الجاسوس، إفلات مفتاح الفتح عبر QMP والسياج، Ctrl+Alt+Del لا يضيع تحت سيل أحداث المؤشر R-55)",
+    "رفع الصلاحية على المسار الموثوق يعرض ما يُنفَّذ كاملًا (ELEVATE: wide=ERR BAD_REQUEST، R-54؛ UI-UNIT Painter::fits)",
+    "النص العربي والمختلط والتنقل بلوحة المفاتيح (BIDI، SHAPING، GLYPHS، ARABIC-UI، KEYBOARD-NAV، A11Y-TREE، UI-UNIT، INPUT-ROUTE)",
+    "الإنهاء القسري والحيوية (PROCESS-KILL، KILL-EDGES، SVC-WATCHDOG؛ REQ-M5-010 بحدّه المعلن: الجلسة لا تجيب PING)",
+    "اختبار طفرات ≥95% بلا طفرة أمنية حية: M5 45/45 (M82–M129، 23 أمنية) مع إعادة M2 29/29 وM3 20/20 وM4 32/32 (mutants-42531135332)",
+    "استثناءات ظاهرة: السيناريو 7 «الشاشات» لا ينطبق (ADR-0019)، وأسماء الملفات المختلطة على القرص في السيناريو 11 مؤجلة إلى REQ-M6-001",
+    "مراجعة مسماة docs/operations/m5-review.md (مراجعة ذاتية؛ المراجعة المستقلة RSK-006 قبل Beta)"
    ],
-   "gate_status": "open"
+   "gate_status": "passed",
+   "gate_evidence_refs": [
+    "evidence/20261108T220801Z-25ac22b8-001",
+    "evidence/20261108T220841Z-25ac22b8-001",
+    "evidence/20261108T220811Z-25ac22b8-001",
+    "evidence/20261108T220831Z-25ac22b8-001",
+    "evidence/20261108T222040Z-25ac22b8-001",
+    "evidence/20261108T220853Z-25ac22b8-001",
+    "evidence/20261108T220904Z-25ac22b8-001",
+    "evidence/20261108T220913Z-25ac22b8-001",
+    "evidence/20261108T220928Z-25ac22b8-001",
+    "evidence/20261108T222120Z-25ac22b8-001",
+    "evidence/20261108T222057Z-25ac22b8-001",
+    "evidence/20261108T222058Z-25ac22b8-001",
+    "evidence/20261108T222107Z-25ac22b8-001",
+    "evidence/20261108T220945Z-25ac22b8-001",
+    "evidence/20261108T221000Z-25ac22b8-001",
+    "evidence/20261108T221024Z-25ac22b8-001",
+    "evidence/20261108T222111Z-25ac22b8-001",
+    "evidence/20261108T222119Z-25ac22b8-001",
+    "evidence/20261108T221135Z-25ac22b8-001",
+    "evidence/20261108T221106Z-25ac22b8-001",
+    "evidence/20261108T221037Z-25ac22b8-001",
+    "evidence/20261108T221921Z-25ac22b8-001",
+    "evidence/20261108T221933Z-25ac22b8-001",
+    "evidence/20261108T221953Z-25ac22b8-001",
+    "evidence/20261108T221959Z-25ac22b8-001",
+    "evidence/20261108T222007Z-25ac22b8-001",
+    "evidence/20261108T221344Z-25ac22b8-001",
+    "evidence/20261108T221605Z-25ac22b8-001",
+    "evidence/20261108T221902Z-25ac22b8-001",
+    "evidence/20261108T221627Z-25ac22b8-001",
+    "evidence/20261109T000029Z-2cbdeaad-001",
+    "evidence/20261108T221414Z-25ac22b8-001",
+    "evidence/20261108T221445Z-25ac22b8-001",
+    "evidence/20261108T221517Z-25ac22b8-001",
+    "evidence/20261108T221335Z-25ac22b8-001",
+    "evidence/20261108T221305Z-25ac22b8-001",
+    "evidence/20261108T221225Z-25ac22b8-001",
+    "evidence/20261108T220823Z-25ac22b8-001",
+    "evidence/20261108T221206Z-25ac22b8-001",
+    "evidence/20261108T220937Z-25ac22b8-001",
+    "evidence/20261108T221557Z-25ac22b8-001",
+    "evidence/20261108T223908Z-2cbdeaad-001",
+    "evidence/20261108T230914Z-2cbdeaad-001",
+    "evidence/20261108T233109Z-2cbdeaad-001"
+   ]
   },
   {
    "id": "M6",

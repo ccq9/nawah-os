@@ -155,7 +155,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261108T215636Z-25ac22b8-001"
+    "evidence/20261108T223829Z-2cbdeaad-001"
    ]
   },
   {
@@ -185,7 +185,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ]
   },
   {
@@ -657,7 +657,7 @@
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
-    "evidence/20261108T185257Z-93006ffd-001"
+    "evidence/20261108T223908Z-2cbdeaad-001"
    ]
   },
   {
@@ -991,7 +991,7 @@
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
     "evidence/20261108T220048Z-25ac22b8-001",
-    "evidence/20261108T191526Z-93006ffd-001",
+    "evidence/20261108T230914Z-2cbdeaad-001",
     "evidence/20261108T220115Z-25ac22b8-001"
    ]
   },
@@ -1316,7 +1316,7 @@
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
     "evidence/20261108T220754Z-25ac22b8-001",
-    "evidence/20261108T193135Z-93006ffd-001"
+    "evidence/20261108T233109Z-2cbdeaad-001"
    ]
   },
   {
@@ -1575,8 +1575,11 @@
     "TST-M5-MUTANTS",
     "TST-M0-005"
    ],
-   "implementation_status": "planned",
-   "evidence_refs": []
+   "implementation_status": "verified_in_scope",
+   "evidence_refs": [
+    "evidence/20261109T000029Z-2cbdeaad-001",
+    "evidence/20261108T222025Z-25ac22b8-001"
+   ]
   },
   {
    "id": "REQ-M5-008",
@@ -1671,7 +1674,7 @@
     "انتظار الجلسة لردّ compositor معلَّق يجمّدها",
     "القفل يُرفع أو الشاشة تكشف التطبيقات أثناء التعليق"
    ],
-   "acceptance": "process_kill + kill_edges + svc_watchdog + lock_hang + session_deadline + lock_display_down + lock_auth_hang + unlock_auth_hang + session_hang, all PASS on CI run 39296590376 with every earlier suite green. Covered: a hung service is killed and restarted by its policy (SVC-WATCHDOG, PROCESS-KILL, KILL-EDGES); a hung display or input at session start (SESSION-DEADLINE); the compositor and input hung after the lock, keys and unlock (LOCK-HANG); the compositor already down when locking (LOCK-DISPLAY-DOWN); a request to display or input in flight when it hangs: the session keeps serving, reconnects after a back-off, the lock holds, no key leaks, only the lock screen shows and only the right password unlocks (SESSION-HANG); auth hung: the lock and sign-out happen locally first and the unlock waits without blocking the session (LOCK-AUTH-HANG, UNLOCK-AUTH-HANG; session.md v1.2). Declared limit: the session itself answers no PING (session.md §8; designed with the real boot manifest, M6)",
+   "acceptance": "process_kill + kill_edges + svc_watchdog + lock_hang + session_deadline + lock_display_down + lock_auth_hang + unlock_auth_hang + session_hang, all PASS on CI run 39296590376 with every earlier suite green. Covered: a hung service is killed and restarted by its policy (SVC-WATCHDOG, PROCESS-KILL, KILL-EDGES); a hung display or input at session start (SESSION-DEADLINE); the compositor and input hung after the lock, keys and unlock (LOCK-HANG); the compositor already down when locking (LOCK-DISPLAY-DOWN); a request to display or input in flight when it hangs: the session keeps serving, reconnects after a back-off, the lock holds, no key leaks, only the lock screen shows and only the right password unlocks (SESSION-HANG); auth hung: the lock and sign-out happen locally first and the unlock waits without blocking the session (LOCK-AUTH-HANG, UNLOCK-AUTH-HANG; session.md v1.2). Declared limit: the session itself answers no PING (session.md §8; designed with the real boot manifest, M6)؛ حدّ معلن مقبول عند بوابة M5 (2026-11-09): الجلسة لا تجيب PING المدير، فلا يكشف المراقب تعليقها؛ تُغطيه مهلة الطلب ومسار القفل (m5-review.md §1)",
    "test_ids": [
     "TST-M5-PROCESS-KILL",
     "TST-M5-KILL-EDGES",
@@ -1683,14 +1686,17 @@
     "TST-M5-UNLOCK-AUTH-HANG",
     "TST-M5-SESSION-HANG"
    ],
-   "implementation_status": "partial",
+   "implementation_status": "verified_in_scope",
    "evidence_refs": [
     "evidence/20261108T221953Z-25ac22b8-001",
     "evidence/20261108T221959Z-25ac22b8-001",
+    "evidence/20261108T222007Z-25ac22b8-001",
     "evidence/20261108T221344Z-25ac22b8-001",
     "evidence/20261108T221902Z-25ac22b8-001",
-    "evidence/20261108T222007Z-25ac22b8-001",
-    "evidence/20261108T221605Z-25ac22b8-001"
+    "evidence/20261108T221605Z-25ac22b8-001",
+    "evidence/20261108T221414Z-25ac22b8-001",
+    "evidence/20261108T221445Z-25ac22b8-001",
+    "evidence/20261108T221517Z-25ac22b8-001"
    ]
   },
   {

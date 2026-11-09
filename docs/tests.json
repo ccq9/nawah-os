@@ -104,7 +104,7 @@
    "command": "python3 tools/project.py build --target pc-qemu",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215636Z-25ac22b8-001"
+    "evidence/20261108T223829Z-2cbdeaad-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -118,7 +118,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215707Z-25ac22b8-001"
+    "evidence/20261108T223902Z-2cbdeaad-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -471,7 +471,7 @@
    "command": "python3 tools/project.py test --target host --suite M2  (mutants workflow)",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T185257Z-93006ffd-001"
+    "evidence/20261108T223908Z-2cbdeaad-001"
    ],
    "stale_policy": "warn"
   },
@@ -903,7 +903,7 @@
    "command": "python3 tools/project.py test --target host --suite M3-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T191526Z-93006ffd-001"
+    "evidence/20261108T230914Z-2cbdeaad-001"
    ],
    "stale_policy": "warn"
   },
@@ -1400,7 +1400,7 @@
    "command": "python3 tools/project.py test --target host --suite M4-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T193135Z-93006ffd-001"
+    "evidence/20261108T233109Z-2cbdeaad-001"
    ],
    "stale_policy": "warn"
   },
@@ -1834,7 +1834,7 @@
    "command": "python3 tools/project.py test --target host --suite M5-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T195819Z-93006ffd-001"
+    "evidence/20261109T000029Z-2cbdeaad-001"
    ],
    "stale_policy": "warn"
   },
