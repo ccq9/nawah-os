@@ -227,12 +227,13 @@ def check_evidence_dir(rel, pb: Problems, where, expect_test_id=None, current_di
         # A present receipt is checked for every worker and verdict: its own schema, then its
         # identity against the run's (id, attempt, head sha, workflow). A malformed file is a
         # named error, not a crash of the validator.
+        readable = True
         try:
-            receipt = load_json(imp_p)
+            receipt = load_json(imp_p)  # may be null or any JSON value: the schema decides, never this code
         except ValueError as ex:
-            receipt = None
+            readable = False
             pb.err(where, f"evidence {rel}: import.json is not valid JSON ({str(ex)[:80]})")
-        if receipt is not None:
+        if readable:
             before_imp = len(pb.errors)
             validate_schema("evidence-import", receipt, pb, f"{rel}/import.json")
             if len(pb.errors) == before_imp:

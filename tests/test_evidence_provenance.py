@@ -232,11 +232,16 @@ class RunSchema(unittest.TestCase):
             ref = make_evidence(worker="verification-runner", ci=CI, import_json=imp)
             self.assertNotEqual(self.validate(done_records(ref)), project.E_OK, json.dumps(imp))
 
-    def test_a_malformed_import_json_is_a_named_error_not_a_crash(self):
-        write_all(base_records())
-        ref = make_evidence(worker="verification-runner", ci=CI)
-        (TMP / ref / "import.json").write_text("{")
-        self.assertEqual(self.validate(done_records(ref)), project.E_VALIDATION)
+    def test_a_malformed_or_non_object_import_json_is_a_named_error_not_a_crash(self):
+        """A file that is not a receipt must not stand in for one: broken JSON, and JSON that is
+        not an object (null above all, which a naive 'is not None' check would wave through and
+        thereby exempt a non-native PASS from the missing-receipt rule)."""
+        for text in ("{", "null", "[]", '"x"', "1"):
+            write_all(base_records())
+            ref = make_evidence(worker="verification-runner", ci=CI)
+            (TMP / ref / "import.json").write_text(text)
+            self.assertEqual(self.validate(done_records(ref)), project.E_VALIDATION, text)
+            self.assertEqual(self.validate_strict(done_records(ref)), project.E_VALIDATION, text)
 
     def test_runner_pass_without_import_json_is_a_strict_error(self):
         write_all(base_records())
