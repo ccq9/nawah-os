@@ -153,8 +153,8 @@
    "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. DEC-002 (reference Windows 10 capture) stays open and owner-dependent; M6 proceeds clean-room from a behavioural description, never copying Windows assets, icons, fonts or trade dress."
   },
   {
-   "id": "DEC-010",
-   "question": "أرشيف Sol OS (S32، sol-os-phase2.zip، commit d54f0a5) غير قابل للوصول من جلسات السحابة: ليس في المستودع ولا في أي مستودع GitHub يصل إليه الحساب ولا في حاوية الجلسة، ومجلد العمل على جهاز المالك مُدرج في Remote Control لكنه غير معروض لها. كل ما سمّاه ADR-0002 §4 نُقل وأُعيد اختباره هنا (docs/operations/sol-os-reuse-ledger.md). هل يُتاح الأرشيف لمراجعة ما لم يُسمَّ (Sol ADR-001..005 و009، أداة بوابته، طريقة الطفرات الأصلية، أدلة phase-0)، أم يُقفل ملف إعادة الاستعمال على ADR-0002 §4؟",
+   "id": "DEC-023",
+   "question": "(كان DEC-010 حتى 2026-11-09؛ أُعيد ترقيمه إلى DEC-023 لأن PR #22 يستعمل DEC-010 لقرار «التحدي العشوائي») أرشيف Sol OS (S32، sol-os-phase2.zip، commit d54f0a5) غير قابل للوصول من جلسات السحابة: ليس في المستودع ولا في أي مستودع GitHub يصل إليه الحساب ولا في حاوية الجلسة، ومجلد العمل على جهاز المالك مُدرج في Remote Control لكنه غير معروض لها. كل ما سمّاه ADR-0002 §4 نُقل وأُعيد اختباره هنا (docs/operations/sol-os-reuse-ledger.md). هل يُتاح الأرشيف لمراجعة ما لم يُسمَّ (Sol ADR-001..005 و009، أداة بوابته، طريقة الطفرات الأصلية، أدلة phase-0)، أم يُقفل ملف إعادة الاستعمال على ADR-0002 §4؟",
    "options": [
     "إتاحة الأرشيف لجلسة سحابية (مستودع GitHub خاص يُضاف إلى الجلسة، أو رفع الملف المضغوط إليها، أو عرض مجلد العمل لجلسات السحابة عبر Remote Control) ثم حزمة مراجعة صغيرة محددة النطاق تُنتج قرارًا مسجَّلًا لكل مادة: يُنقل بعد المراجعة والتكييف وبسطر أصل، أو يُرفض بسبب",
     "قفل إعادة الاستعمال على ADR-0002 §4 وتعليم S32 مستنفدًا؛ لا مراجعة أخرى"

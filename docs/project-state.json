@@ -80,7 +80,7 @@
  "errata_version": "1",
  "pending_decision_ids": [
   "DEC-002",
-  "DEC-010"
+  "DEC-023"
  ],
  "unknown_fields": {
   "budget_counters.tool_calls_session": "no API exposes the session's tool-call or token budget",

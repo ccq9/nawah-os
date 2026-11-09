@@ -1,5 +1,7 @@
 # إجابة الفريق على الخطة: ما نبنيه أولًا وكيف
 
+> ملاحظة ترقيم (2026-11-09): قرار أرشيف Sol OS كان DEC-010 في هذه الوثيقة وأُعيد ترقيمه إلى DEC-023؛ DEC-010 هو قرار «التحدي العشوائي» في PR #22 (فرع claude/m5-audit-followup). استُبدل المعرّف في النص دون تغيير آخر.
+
 > **بيان الإنتاج والتحقق (المدير التنفيذي: نموذج الجلسة، 2026-11-09).**
 > أُنتجت هذه الإجابة بتشغيل `.claude/workflows/nawah-team.js` (التشغيل wf_f3217895-e75) بالأدوار الأربعة عشر التي قررها المالك في DEC-011 على النموذج opus: مخطِّطان، ثلاثة مهندسي برمجيات، ثلاثة مهندسي أنظمة، ثلاثة مهندسي أمن، مدقق، مساعد مدير، مدير دامج؛ 369 استدعاء أداة على المستودع، 66 دقيقة، نحو 3.3 مليون رمز، وكيلان متزامنان بحكم أربعة أنوية. كل وكيل قدّم لكل قرار خيارين أو ثلاثة بمفاضلاتها وأنماط فشلها وقابلية عكسها (قاعدة 5 من تعريفات الوكلاء).
 > التدقيق: سجل المدقق الخام 67 حكمًا: 55 مؤكَّد، 8 مردود، 4 غير قابل للتحقق، و19 فجوة (جدول المدير في البند 0 يذكر 63: 52/7/4؛ الفرق أربعة أحكام جمعها المدير). مساعد المدير: 17 تغييرًا في السجلات و17 تناقضًا بين الأدوار حسمها المدير في البند 5.3. المردود مُدرج في البند 5 وأُشير إليه حيث ذُكر خارجه.
@@ -66,7 +68,7 @@
   - `checkpoint_generation=58`
   - `dirty_state=true`
   - العقد `lease` منتهٍ (acquired_at 2026-10-24T14:30:00Z، ttl_s 900)
-  - `pending_decision_ids=[DEC-002]`، مع أن `DEC-010` حالته open
+  - `pending_decision_ids=[DEC-002]`، مع أن `DEC-023` حالته open
 - `WP-45` هي الحزمة الوحيدة الجاهزة بقاعدة الاعتماد: `WP-38` في حالة done (`tools/project.py:332-337`). أما نتيجة CI على `5f48703c` نفسه فلم تُقرأ.
 
 **النتيجة:**
@@ -766,7 +768,7 @@ sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failu
 
 | السجل | التغيير | السبب | الحاجب |
 |---|---|---|---|
-| `docs/project-state.json` | `pending_decision_ids=[DEC-002, DEC-010]`، و`lease=null` مع سبب في `unknown_fields` | DEC-010 open وغائب، والعقد منتهٍ ولا أداة تكتسبه | لا شيء بعد القسم 5.3 البند 1 |
+| `docs/project-state.json` | `pending_decision_ids=[DEC-002, DEC-023]`، و`lease=null` مع سبب في `unknown_fields` | DEC-023 open وغائب، والعقد منتهٍ ولا أداة تكتسبه | لا شيء بعد القسم 5.3 البند 1 |
 | `docs/automation.json` | `lease_policy`: «غير منفذ؛ كاتب واحد» | لا ملف `state/lease.json` | لا شيء. هل هو مدخل لدليل M0؟ غير متحقق |
 | WP-45 | `test_ids`: `[TST-M6-INTERACTIVE-BOOT, TST-M6-MANIFEST-LINT, TST-M6-HOLD-FAIL-CLOSED, TST-M1-BOOT, TST-M1-NEG, TST-M1-NOBS, TST-M0-003, TST-M0-005, TST-M5-LAB-TOOL]`. `contract_refs`: `[services.md, boot.md]`. تُحذف `actions[2]` والشق العربي من `[3]` و`[4]`. يُضاف سطر مؤرخ 2026-11-09: «split per actions[5] and ADR-0019:48; watchdog and Arabic screens moved to WP-64». يبقى `[5]`، ويُضاف إليه: «إن تجاوز التقدير عند التفعيل، يخرج أولًا HOLD-FAIL-CLOSED وإصلاح displayd إلى حزمة قبل WP-47». القبول: «TST-M6-INTERACTIVE-BOOT PASS on CI; TST-M1-BOOT PASS under the self-test key; TST-M1-NEG and TST-M1-NOBS re-run unchanged and PASS». تُحذف عبارة M5، لأن أحكام M5 تتقادم بتعديل النواة فيفرضها `--strict` عند الإغلاق (`project.py:169-175`). ويُضاف حد قرص المختبر. تبقى planned | القسمة، والقبول الحالي يدّعي ما لا ينطبق على NEG وNOBS (مؤكد) | لا شيء |
 | WP-64 (جديد، في آخر records) | stage M6، و`requirement_ids=[REQ-M6-002]`، و`depends_on=[WP-45]`، و`contract_refs=[session.md, config.md, input.md, services.md, ui.md, auth.md]`. `actions`: البنود المنقولة حرفيًا من WP-45، وسطر قسمة، وسطر ميزانية بنقطة قسمة ثانية (المراقب والتطهير والإلغاء / الشاشات العربية)، والشروط المؤكدة في القسم 2.3. `test_ids`: `[TST-M6-SESSION-WATCHDOG, TST-M6-SESSION-AR, TST-M6-SESSION-STRINGS, TST-M6-INTERACTIVE-BOOT, TST-M5-ELEVATE, TST-M5-SVC-WATCHDOG, TST-M5-UI-UNIT, TST-M5-ARABIC-UI, TST-M5-LOGIN-SCREEN, TST-M5-AUTH-INPUT-ISOLATED, TST-M5-LOCK-SURVIVES, TST-M5-LOCK-HANG, TST-M5-SESSION-HANG]`. status planned، و`status_history=[planned]`، و`evidence_refs=[]`، و`blocker=""` | المعرّف غير مستعمل، والإلحاق في الآخر لا يغيّر `derive_position` (`project.py:1436-1442`) | لا شيء |
@@ -870,7 +872,7 @@ sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failu
 | كاتب `5f48703c` | K0 | يذكر من أي جلسة صدر `5f48703c`، ويوقف أي كتابة سجلات خارج دور المدير حتى ينفَّذ prompt:79 |
 | مصادقة gh للاستيراد | W3 وC6 بعد فحص الاستيراد | يوفّر `gh` مصادقًا في الجلسة التي تستورد، وإلا يعطي الاستيراد `E_BLOCKED` |
 | `DEC-002` | M7، وMVP، وأحكام «مطابقة للمرجع» | يثبّت Windows 10 Pro 22H2 مرخصًا في VM ويشغّل عدة الالتقاط وفق ADR-0022 قبل فتح M7، أو يوقّع استثناءً بصيغة 22.1 يسمي المتطلب والسبب والأثر والتعويض ومدة الصلاحية |
-| `DEC-010` | لا حزمة | يكتب «اقفل على ADR-0002 §4»، أو يتيح `sol-os-phase2.zip` لجلسة سحابية |
+| `DEC-023` | لا حزمة | يكتب «اقفل على ADR-0002 §4»، أو يتيح `sol-os-phase2.zip` لجلسة سحابية |
 | تفويض 2026-11-08 | WP-47، 48، 51، 53، 55، 62، 63 | يسجّل نص التفويض ونطاقه وصاحبه في ملف تحت `docs/operations/`، أو يمليه ليُنسخ حرفيًا |
 | `DEC-007` (S5) | WP-51، M6، Beta | يحدد مرحلة ACPI S5 (المقترح M8)، والتعويض (إعادة تشغيل منظمة تحفظ البيانات، ولا عنصر إيقاف في القائمة)، ومدة الصلاحية |
 | `DEC-009` | WP-48، WP-62، M7 | يحدد صلاحية الاستثناء حتى نهاية M6 وتعويضه، مثل «لا ادعاء مطابقة في أي نص منتج» |
