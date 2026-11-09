@@ -3826,16 +3826,17 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=input_route"
         ],
-        "oracle": "the input service (SVC-IN.TXT: auth, input) receives the keyboard and the mouse from the manager; three clients register (a, b, session → OK 1/2/3); FOCUS without a token, with a user's token or for an unknown client is refused (ERR ACCESS / ERR ACCESS / ERR UNKNOWN), LAYOUT with a user's token is refused, FOCUS 1 with the admin's token is OK and STATUS reports it; the lab then presses `a`, `shift-b` and `ctrl-alt-delete` through the QEMU monitor: client a receives exactly the eight key events up to the Alt press `KEY 0x1e down 0 a`, `KEY 0x1e up 0 a`, `KEY 0x2a down 1 -`, `KEY 0x30 down 1 B`, `KEY 0x30 up 1 B`, `KEY 0x2a up 0 -`, `KEY 0x1d down 2 -`, `KEY 0x38 down 6 -` (set-1 codes, modifiers, US layout; QEMU presses in order and releases in reverse), then the focus moves to the session client with the sequence (input.md v2.2) and it receives exactly `SAK`, `KEY 0x38 up 2 -`, `KEY 0x1d up 0 -` (the Delete make and break codes are never reported), client b receives nothing; the admin moves the focus to b and selects the Arabic layout, the lab presses `a` again and b receives `KEY 0x1e down 0 ش` and `KEY 0x1e up 0 ش` while a receives nothing more; STATUS counts 12 keys, 1 SAK, 0 dropped; the manager and services exit cleanly, no frame leaks; exit 33",
+        "oracle": "the input service (SVC-IN.TXT: auth, input) receives the keyboard and the mouse from the manager; three clients register (a, b, session → OK 1/2/3); FOCUS without a token, with a user's token or for an unknown client is refused (ERR ACCESS / ERR ACCESS / ERR UNKNOWN), LAYOUT with a user's token is refused, FOCUS 1 with the admin's token is OK and STATUS reports it; the lab then presses `a`, `shift-b` and `ctrl-alt-delete` through the QEMU monitor: client a receives exactly the eight key events up to the Alt press `KEY 0x1e down 0 a`, `KEY 0x1e up 0 a`, `KEY 0x2a down 1 -`, `KEY 0x30 down 1 B`, `KEY 0x30 up 1 B`, `KEY 0x2a up 0 -`, `KEY 0x1d down 2 -`, `KEY 0x38 down 6 -` (set-1 codes, modifiers, US layout; QEMU presses in order and releases in reverse), then the focus moves to the session client with the sequence (input.md v2.2) and it receives exactly `SAK`, `KEY 0x38 up 2 -`, `KEY 0x1d up 0 -` (the Delete make and break codes are never reported), client b receives nothing; the admin moves the focus to b and selects the Arabic layout, the lab presses `a` again and b receives `KEY 0x1e down 0 ش` and `KEY 0x1e up 0 ش` while a receives nothing more; STATUS counts 12 keys, 1 SAK, 0 dropped; the manager and services exit cleanly, no frame leaks; exit 33 Phase 3 (WP-38, input.md v2.3): the lab presses shift-alt-x then a; Shift+Alt with a third key between is a shortcut, so the layout stays Arabic and a is still ش (keys=20)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=input_route",
           "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
           "|path=/SYSTEM/INPUTD.ELF|handles=3",
-          "|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0|phase=1|ready=1",
+          "|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0 sak_pending=0|phase=1|ready=1",
           "|ktest|input_route|a=KEY 0x1e down 0 a;KEY 0x1e up 0 a;KEY 0x2a down 1 -;KEY 0x30 down 1 B;KEY 0x30 up 1 B;KEY 0x2a up 0 -;KEY 0x1d down 2 -;KEY 0x38 down 6 -|s=SAK;KEY 0x38 up 2 -;KEY 0x1d up 0 -|b=",
           "|ktest|input_route|focus_b=OK|layout_ar=OK|phase=2|ready=1",
           "|ktest|input_route|b2=KEY 0x1e down 0 ش;KEY 0x1e up 0 ش|a2=|status=OK focus=2 layout=ar keys=12 packets=0 saks=1 dropped=0 buttons=0",
+          ";KEY 0x1e down 0 ش;KEY 0x1e up 0 ش|status3=OK focus=2 layout=ar keys=20 ",
           "|ktest|input_route|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|input_route|frames_delta=0",
           "|ktest|pass|key events reach the focus owner only, with the layout applied, and the secure attention sequence reaches the session alone"
@@ -3861,6 +3862,14 @@
             {
               "after": "|phase=2|ready=1",
               "commands": [
+                "sendkey a"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|chord=armed|phase=3|ready=1",
+              "commands": [
+                "sendkey shift-alt-x",
                 "sendkey a"
               ],
               "gap_s": 0.5
@@ -4870,7 +4879,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=session_loss"
         ],
-        "oracle": "SVC-SS.TXT: the session service itself is lost twice (the manager's RESTART: its process ends and every channel of it closes, as in a crash). Unlocked: the lab signs in with the spy focused (`OK keys=0 focus=1 connections=1`); after the loss the input service has taken the keyboard from the compositor (the spy: `OK keys=0 focus=0 connections=1`), the lab's screendump shows the new session's sign-in dialog only (10141C at (2,2) and at the spy's place (150,150), the dialog's F0F0F0 at (512,338)), and the new session starts from nothing (`OK no_session user=- changes=0 display=1 input=1 focus=session`). The lab signs in again: every key reaches the new session and none the compositor (KEYS unchanged); the open desktop's screendump shows the desktop (1E2A38 at (2,2)) and the spy's window (2E8B57 at (150,150)). Locked: after Ctrl+Alt+Del the session is lost again; the next session again starts at no_session, the spy has no focus and the compositor received no key; the password never appears in the serial log; no frame leaks; exit 33",
+        "oracle": "SVC-SS.TXT: the session service itself is lost twice (the manager's RESTART: its process ends and every channel of it closes, as in a crash). Unlocked: the lab signs in with the spy focused (`OK keys=0 focus=1 connections=1`); after the loss the input service has taken the keyboard from the compositor (the spy: `OK keys=0 focus=0 connections=1`), the lab's screendump shows the new session's sign-in dialog only (10141C at (2,2) and at the spy's place (150,150), the dialog's F0F0F0 at (512,338)), and the new session starts from nothing (`OK no_session user=- changes=0 display=1 input=1 focus=session`). The lab signs in again: every key reaches the new session and none the compositor (KEYS unchanged); the open desktop's screendump shows the desktop (1E2A38 at (2,2)) and the spy's window (2E8B57 at (150,150)). Locked: after Ctrl+Alt+Del the session is lost again; the next session again starts at no_session, the spy has no focus and the compositor received no key; then (WP-38 mutant M106, input.md v2.2) the lab signs in once more, so the input service's focus is the compositor's (`display`), and the test stops the session for good (the manager's STOP, no restart): once the manager lists it stopped, the input service's own STATUS reads `focus=-` — the keyboard is with nobody even though the session did not hold it when it was lost (`unlocked3=… focus=display|stop=OK|stopped=1|input_focus_cleared=1|phase=6`); the password never appears in the serial log; no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=session_loss",
@@ -4879,6 +4888,7 @@
           "|ktest|session_loss|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|spy=OK keys=0 focus=1 connections=1|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|spy_after=OK keys=0 focus=0 connections=1|phase=2|ready=1",
           "|ktest|session_loss|unlocked2=OK unlocked user=admin changes=1 display=1 input=1 focus=display|keys_during_signin=0|phase=3|ready=1",
           "|ktest|session_loss|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|spy_focus0=1|keys_after_loss=0|phase=4",
+          "|ktest|session_loss|unlocked3=OK unlocked user=admin changes=1 display=1 input=1 focus=display|stop=OK|stopped=1|input_focus_cleared=1|phase=6",
           "|ktest|session_loss|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|session_loss|frames_delta=0",
           "|ktest|pass|a lost session left the screen held and the keyboard with nobody until a fresh session"
@@ -4952,6 +4962,30 @@
                 "sendkey ctrl-alt-delete"
               ],
               "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|session_loss|phase=5|ready=1",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
             }
           ]
         },
@@ -5633,12 +5667,14 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=elevate"
         ],
-        "oracle": "REQ-M5-011, session.md v1.3 (WP-41): SVC-EL.TXT (auth, input, display, config, session — config declared as the session's dependency — and the spy). Before any session ELEVATE is refused ERR NOT_READY. The lab signs in as `user` (no administrator) and the keyboard goes to the spy. A service the manifest does not let the session reach (net) is refused ERR ACCESS and a request longer than the prompt shows in full (32 characters) ERR BAD_REQUEST, both before any prompt. The client (the control side, vouched as `-`, shown as `control`) asks ELEVATE config SET device lab.elev 0 901 on: the session holds the screen (screendump: the lock background where the spy's window is) and shows on its own surface who asks and the request in full; a second ELEVATE meanwhile is refused ERR BUSY. The lab types admin and a wrong password (auth refuses it on the prompt: `elevate=refused|answer=ERR ACCESS`), then admin's password: exactly the shown request runs at config with admin's token (the client gets `ELEVATED OK 1`, GET shows `OK 1 on`), auth ends the token at once (the live token count returns to what it was), and the keyboard returns to the spy, whose key count never moved. user's own credentials are refused on the prompt (`NOT_ADMIN`) and Esc cancels: ERR CANCELLED, nothing set. The compositor frozen while the prompt is up: the redraw after the lab's key waits out its deadline and the elevation ends ERR UNAVAILABLE with nothing set; after the thaw the session reconnects. The compositor stopped while the prompt is up: ERR UNAVAILABLE, nothing set. No token or key leaks; neither password appears in the serial log; no frame leaks; exit 33 (Review C1, 2026-10-24; between the compositor's freeze and its stop) An elevation from another client: auth frozen, the lab types an administrator's name and password (the LOGIN waits), the client closes its channel (the elevation ends, ERR CANCELLED); while that answer is awaited a new ELEVATE is refused ERR BUSY; auth thawed answers with an administrator's token for an elevation that ended: the session traces elevate=stale|n=<its number>, ends the token (the count returns to its baseline) and runs nothing (lab.elev5 and lab.elev6 ERR NOT_FOUND); the same request asked again is approved on its own prompt (ELEVATED OK 1, set6b=OK 1 on), with the keys and the token leaking nowhere. (Review S7) An uppercase service name in the manifest's charset (SPY) is refused ERR ACCESS by the manager, not ERR BAD_REQUEST locally; a name with a char outside [A-Za-z0-9_-] (a.b) is ERR BAD_REQUEST before the manager is asked.",
+        "oracle": "REQ-M5-011, session.md v1.3 (WP-41): SVC-EL.TXT (auth, input, display, config, session — config declared as the session's dependency — and the spy). Before any session ELEVATE is refused ERR NOT_READY. The lab signs in as `user` (no administrator) and the keyboard goes to the spy. A service the manifest does not let the session reach (net) is refused ERR ACCESS and a request longer than 32 characters ERR BAD_REQUEST, both before any prompt. The client (the control side, vouched as `-`, shown as `control`) asks ELEVATE config SET device lab.elev 0 901 on: the session holds the screen (screendump: the lock background where the spy's window is) and shows on its own surface who asks and the request in full; a second ELEVATE meanwhile is refused ERR BUSY. The lab types admin and a wrong password (auth refuses it on the prompt: `elevate=refused|answer=ERR ACCESS`), then admin's password: exactly the shown request runs at config with admin's token (the client gets `ELEVATED OK 1`, GET shows `OK 1 on`), auth ends the token at once (the live token count returns to what it was), and the keyboard returns to the spy, whose key count never moved. user's own credentials are refused on the prompt (`NOT_ADMIN`) and Esc cancels: ERR CANCELLED, nothing set. The compositor frozen while the prompt is up: the redraw after the lab's key waits out its deadline and the elevation ends ERR UNAVAILABLE with nothing set; after the thaw the session reconnects. The compositor stopped while the prompt is up: ERR UNAVAILABLE, nothing set. No token or key leaks; neither password appears in the serial log; no frame leaks; exit 33 (Review C1, 2026-10-24; between the compositor's freeze and its stop) An elevation from another client: auth frozen, the lab types an administrator's name and password (the LOGIN waits), the client closes its channel (the elevation ends, ERR CANCELLED); while that answer is awaited a new ELEVATE is refused ERR BUSY; auth thawed answers with an administrator's token for an elevation that ended: the session traces elevate=stale|n=<its number>, ends the token (the count returns to its baseline) and runs nothing (lab.elev5 and lab.elev6 ERR NOT_FOUND); the same request asked again is approved on its own prompt (ELEVATED OK 1, set6b=OK 1 on), with the keys and the token leaking nowhere. (Review S7) An uppercase service name in the manifest's charset (SPY) is refused ERR ACCESS by the manager, not ERR BAD_REQUEST locally; a name with a char outside [A-Za-z0-9_-] (a.b) is ERR BAD_REQUEST before the manager is asked. WP-38 (mutants M89, M98, M101, M103): with the input service frozen an elevation ends ERR UNAVAILABLE before any prompt and the compositor's held screen is never released for it (display.md v1.11 HOLDS unchanged, nothing set); the lab's Ctrl+Alt+Del with a prompt up ends it ERR CANCELLED and locks the session with the screen held throughout (HOLDS: locked=1, releases unchanged, nothing set), then the lab unlocks with user's password; the lab presses Enter on that unlock through QMP (`key-down ret`) and releases it (`key-up ret`) only once the session's unlocked state is in the serial log, inside RELEASE_WAIT (1000 ms, counted from auth's answer) whatever auth's PBKDF2 took; then the lab types f as a fence: the spy gets exactly the fence's press and release (phase 3h: keys = spy0 + 2), so the unlock's release reached no application, and phase 5 compares with that count: the session keeps the keyboard until the release, so the spy's key count does not move. (session.md v1.5, WP-38) A request within 32 characters but wider than the prompt's row (config SET device MMMMMMMM 0 901 off, 279 of 241 pixels at 1x) is refused ERR BAD_REQUEST at once, before any prompt (ELEVATION stays OK none, no elevate=prompt for it) and nothing is set (GET device MMMMMMMM ERR NOT_FOUND). WP-38 (input.md v2.6, session.md v1.6; phase 3i, after the fence): with config frozen the client asks ELEVATE config SET device lab.elev9 0 909 on and the lab approves it with admin's password, so the session waits for config's answer (`elevate=running`); the lab then sends 100 pointer moves (more than the input channel's 64 messages and the session's 32 kept events) and Ctrl+Alt+Del: the sequence is never dropped — the session reads its input while it waits and the input service owes a refused SAK until it lands — so the elevation ends ERR CANCELLED (not ERR UNAVAILABLE at REQUEST_DEADLINE), the session locks, the input service's STATUS ends sak_pending=0, auth has answered the token's LOGOUT before config is thawed, the token count returns to its baseline and nothing is set (lab.elev9 ERR NOT_FOUND); the lab unlocks with user's password as in 3g (QMP key-down ret, key-up after the unlocked state) and the spy's key count stays that of phase 3h.",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=elevate",
           "|ktest|elevate|not_ready=ERR NOT_READY|services=6|ready=1",
           "|ktest|elevate|undeclared=ERR ACCESS|too_long=ERR BAD_REQUEST|uppercase=ERR ACCESS|bad_char=ERR BAD_REQUEST|",
+          "|ktest|elevate|wide=ERR BAD_REQUEST|wide_state=OK none done=",
+          "|wide_set=ERR NOT_FOUND|",
           "|text=session|elevate=asked|from=-|service=config",
           "|text=session|elevate=prompt|from=-|request=config SET device lab.elev 0 901 on|window=",
           "|busy=ERR BUSY|phase=1|ready=1",
@@ -5653,10 +5689,21 @@
           "|text=session|elevate=stale|n=",
           "|set5=ERR NOT_FOUND|set6=ERR NOT_FOUND|phase=3c|ready=1",
           "|ktest|elevate|approved6=ELEVATED OK 1|set6b=OK 1 on|",
+          "|no_keys=ERR UNAVAILABLE|",
+          "|set8=ERR NOT_FOUND|back8=OK unlocked user=user ",
+          "|ktest|elevate|sak7=ERR CANCELLED|locked7=OK locked user=user ",
+          "|set7=ERR NOT_FOUND|back7=OK unlocked user=user ",
           "|stop=OK|gone=ERR UNAVAILABLE|set4=ERR NOT_FOUND|",
           "|ktest|elevate|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|elevate|frames_delta=0",
-          "|ktest|pass|an elevation ran only as shown on the session's prompt, after an administrator's password, with a token no application held"
+          "|ktest|pass|an elevation ran only as shown on the session's prompt, after an administrator's password, with a token no application held",
+          "|ktest|elevate|fence=armed|phase=3h|ready=1",
+          "|config_frozen=true|phase=3i|ready=1",
+          "|text=session|elevate=running|n=",
+          "|ktest|elevate|sak9=ERR CANCELLED|locked9=OK locked user=user ",
+          " sak_pending=0|settled9=OK waiting=0 ",
+          "|thawed9=true|",
+          "|set9=ERR NOT_FOUND|back9=OK unlocked user=user "
         ],
         "forbidden_markers": [
           "|ktest|fail|",
@@ -5664,7 +5711,8 @@
           "|exc|vector",
           "|user_fault|",
           "lab-admin-1",
-          "lab-user-1"
+          "lab-user-1",
+          "|elevate=prompt|from=-|request=config SET device MMMMMMMM"
         ],
         "timeout_s": 900,
         "monitor": {
@@ -5811,6 +5859,203 @@
                 "sendkey ret"
               ],
               "gap_s": 0.5
+            },
+            {
+              "after": "|sak=armed|phase=3f|ready=1",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|state=locked|",
+              "commands": [
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey u",
+                "sendkey s",
+                "sendkey e",
+                "sendkey r",
+                "sendkey minus",
+                "sendkey 1",
+                "key-down ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|state=unlocked|user=user|",
+              "commands": [
+                "key-up ret"
+              ],
+              "gap_s": 0.5,
+              "since_previous": true
+            },
+            {
+              "after": "|fence=armed|phase=3h|ready=1",
+              "commands": [
+                "sendkey f"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|phase=3i|ready=1",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|text=session|elevate=running|",
+              "commands": [
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "mouse_move 3 3",
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 0.01,
+              "since_previous": true
+            },
+            {
+              "after": "|text=session|state=locked|",
+              "commands": [
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey u",
+                "sendkey s",
+                "sendkey e",
+                "sendkey r",
+                "sendkey minus",
+                "sendkey 1",
+                "key-down ret"
+              ],
+              "gap_s": 0.5,
+              "since_previous": true
+            },
+            {
+              "after": "|text=session|state=unlocked|user=user|",
+              "commands": [
+                "key-up ret"
+              ],
+              "gap_s": 0.5,
+              "since_previous": true
             }
           ]
         },

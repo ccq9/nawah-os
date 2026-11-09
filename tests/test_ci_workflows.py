@@ -341,9 +341,15 @@ class MutationHarness(unittest.TestCase):
         self.assertEqual(len(validate), 1)
         self.assertIn("--strict", validate[0]["run"], "the records check before the runs is strict")
         publish = next(s for s in steps if str(s.get("name", "")).startswith("Publish evidence"))
-        add = next(l for l in publish["run"].splitlines() if l.strip().startswith("git add -f evidence/"))
+        run = publish["run"]
+        self.assertIn("git add -f evidence/", run)
+        # Run 42481065666: one `git add` of every report failed when M2 had none, and the M5
+        # report was lost with it; each report is added on its own, if it exists.
+        self.assertNotRegex(run, r"git add -f evidence/ build/", "one missing report must not drop the others")
+        loop = next(l for l in run.splitlines() if l.strip().startswith("for r in "))
+        self.assertIn('if [ -f "$r" ]; then git add -f "$r"; fi', run)
         for rep in ("build/mutants-report.json", "build/mutants-m3-report.json", "build/mutants-m4-report.json", "build/mutants-m5-report.json"):
-            self.assertIn(rep, add, f"{rep} is not published on the evidence branch")
+            self.assertIn(rep, loop, f"{rep} is not published on the evidence branch")
 
     def test_mutants_build_every_app_the_kernel_embeds_and_the_build_compiles(self):
         # Review 2026-10-19 (M8): the harness kept its own app list; WP-40 added exiter to the

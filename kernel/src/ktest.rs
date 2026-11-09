@@ -5027,12 +5027,36 @@ fn input_route() -> ! {
     );
     if ev_b2 != ["KEY 0x1e down 0 ش", "KEY 0x1e up 0 ش"]
         || !ev_a2.is_empty()
-        || status != "OK focus=2 layout=ar keys=12 packets=0 saks=1 dropped=0 buttons=0"
+        || status
+            != "OK focus=2 layout=ar keys=12 packets=0 saks=1 dropped=0 buttons=0 sak_pending=0"
     {
         fail("the Arabic layout or the moved focus did not take effect")
     }
+    // Phase 3 (input.md v2.3, WP-38 mutants M108/M109): Shift+Alt with a third key between
+    // is a shortcut, not the layout chord: the lab presses `shift-alt-x` (Shift, Alt, X down,
+    // then up in reverse), then `a`. The layout stays Arabic, so `a` is still ش — neither the
+    // press of the second modifier nor the release after a third key toggles it.
+    kprintln!(
+        "OSX|{}|ktest|input_route|chord=armed|phase=3|ready=1",
+        BUILD_ID
+    );
+    let ev_b3 = read_events(b, 8, sched::ticks() + 60_000);
+    let status3 = cfg_request(a, b"STATUS", None);
+    kprintln!(
+        "OSX|{}|ktest|input_route|b3={}|status3={}",
+        BUILD_ID,
+        ev_b3.join(";"),
+        status3
+    );
+    if ev_b3.len() != 8
+        || ev_b3[6..] != ["KEY 0x1e down 0 ش", "KEY 0x1e up 0 ش"]
+        || !status3.starts_with("OK focus=2 layout=ar keys=20 ")
+    {
+        fail("a Shift+Alt shortcut with a third key toggled the layout")
+    }
     // Every allocation of the test goes before the balance (CI run 39151988275 counted the
     // page of the user login's reply string, `ru`, as a leaked frame).
+    drop((ev_b3, status3));
     drop((ev_a, ev_s, ev_b, ev_b2, ev_a2, status, status0, ru));
     drop((
         reg_a, reg_b, reg_s, f_none, f_user, f_unknown, l_user, f_a, f_b, l_ar,
@@ -5085,7 +5109,8 @@ fn mouse() -> ! {
         status
     );
     if ev != ["PTR 10 5 0", "PTR 0 0 1", "PTR 0 0 0"]
-        || status != "OK focus=1 layout=us keys=0 packets=3 saks=0 dropped=0 buttons=0"
+        || status
+            != "OK focus=1 layout=us keys=0 packets=3 saks=0 dropped=0 buttons=0 sak_pending=0"
     {
         fail("pointer events did not carry the lab's motion and button state")
     }
@@ -6696,6 +6721,14 @@ fn spy_keys(reply: &str) -> &str {
         .unwrap_or(reply)
 }
 
+/// The key count of a spy `COUNT` reply as a number (-1 when absent).
+fn spy_count(reply: &str) -> i64 {
+    spy_keys(reply)
+        .strip_prefix("keys=")
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(-1)
+}
+
 fn session_reply(ep: &Endpoint, deadline: u64) -> String {
     let mut reply = String::from("error:timeout");
     sched::poll_until(deadline, || match ep.read(256, 0, None) {
@@ -6777,6 +6810,31 @@ fn elevate() -> ! {
         fail("the service-name charset did not match the manifest (review S7)")
     }
     drop((undeclared, too_long, uppercase, bad_char));
+    // session.md v1.5: a request within 32 characters but wider than the prompt's row (wide
+    // letters: 279 of 241 pixels at 1×) is refused at once, before any prompt — the screen
+    // would have cut it after "0 9" while every byte of it ran. Nothing was set, and the
+    // session is not elevating (`OK none`, no `elevate=prompt` for it: forbidden marker).
+    let wide = session_ask(
+        &session,
+        b"ELEVATE config SET device MMMMMMMM 0 901 off",
+        sched::ticks() + 5_000,
+    );
+    let wide_state = session_ask(&session, b"ELEVATION", sched::ticks() + 5_000);
+    let wide_set = cfg_request(&config, b"GET device MMMMMMMM", None);
+    kprintln!(
+        "OSX|{}|ktest|elevate|wide={}|wide_state={}|wide_set={}|",
+        BUILD_ID,
+        wide,
+        wide_state,
+        wide_set
+    );
+    if wide != "ERR BAD_REQUEST"
+        || !wide_state.starts_with("OK none ")
+        || wide_set != "ERR NOT_FOUND"
+    {
+        fail("a request wider than the prompt shows was not refused before the prompt")
+    }
+    drop((wide, wide_state, wide_set));
     // 1. The approved elevation; a second one meanwhile is refused at once.
     if session
         .write(Message {
@@ -7013,6 +7071,222 @@ fn elevate() -> ! {
     drop((
         back5, prompt5, waiting5, ended5, busy5, settled5, set5, set6, approved6, set6b, spy6,
     ));
+    // The compositor counts every release of its held screen (display.md v1.11 `HOLDS`): a
+    // prompt that ends must never release the screen when the session is not unlocked.
+    let display = svc_connect(&h, "display");
+    let mut dev = Vec::new();
+    let releases = |r: &str| String::from(r.split(" releases=").nth(1).unwrap_or("?"));
+    // 3e (WP-38, mutant M89). The keys before the screen: with the input service frozen the
+    // session cannot take the keyboard, so the elevation ends ERR UNAVAILABLE before any
+    // prompt; the screen is never held for it, so it is never released either.
+    let holds_a = drequest(&display, b"HOLDS", Vec::new(), &mut dev);
+    let frozen_in = sched::freeze_named(b"INPUTD.ELF");
+    let no_keys = session_ask(
+        &session,
+        b"ELEVATE config SET device lab.elev8 0 908 on",
+        sched::ticks() + 30_000,
+    );
+    let thawed_in = sched::thaw_named(b"INPUTD.ELF");
+    let holds_b = drequest(&display, b"HOLDS", Vec::new(), &mut dev);
+    let set8 = cfg_request(&config, b"GET device lab.elev8", None);
+    let back8 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK unlocked ") && !r.contains(" input=1 ") && r.ends_with(" focus=display")
+    });
+    kprintln!(
+        "OSX|{}|ktest|elevate|frozen_in={}|no_keys={}|thawed_in={}|holds={}->{}|set8={}|back8={}|phase=3e",
+        BUILD_ID,
+        frozen_in,
+        no_keys,
+        thawed_in,
+        holds_a,
+        holds_b,
+        set8,
+        back8
+    );
+    if no_keys != "ERR UNAVAILABLE"
+        || holds_b != holds_a
+        || set8 != "ERR NOT_FOUND"
+        || !back8.ends_with(" focus=display")
+    {
+        fail("an elevation without the keyboard showed a prompt or released the screen")
+    }
+    // 3f (WP-38, mutants M98 and M101). The secure attention sequence while the prompt is up:
+    // the elevation ends ERR CANCELLED, the session locks, and the screen stays held from the
+    // prompt to the lock screen — not one release in between. Then the lab unlocks.
+    if session
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev7 0 907 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        fail("the session's client channel is closed")
+    }
+    let prompt7 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK prompt ")
+    });
+    let holds_c = drequest(&display, b"HOLDS", Vec::new(), &mut dev);
+    kprintln!(
+        "OSX|{}|ktest|elevate|prompt7={}|holds_c={}|sak=armed|phase=3f|ready=1",
+        BUILD_ID,
+        prompt7,
+        holds_c
+    );
+    let sak7 = session_reply(&session, long);
+    let locked7 = poll_reply(&session, b"STATE", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK locked ")
+    });
+    let holds_d = drequest(&display, b"HOLDS", Vec::new(), &mut dev);
+    let set7 = cfg_request(&config, b"GET device lab.elev7", None);
+    let back7 = poll_reply(&session, b"STATE", long, |r| {
+        r.starts_with("OK unlocked ") && r.ends_with(" focus=display")
+    });
+    kprintln!(
+        "OSX|{}|ktest|elevate|sak7={}|locked7={}|holds_d={}|set7={}|back7={}|phase=3g",
+        BUILD_ID,
+        sak7,
+        locked7,
+        holds_d,
+        set7,
+        back7
+    );
+    if sak7 != "ERR CANCELLED"
+        || !locked7.starts_with("OK locked user=user ")
+        || !holds_c.starts_with("OK locked=1 ")
+        || !holds_d.starts_with("OK locked=1 ")
+        || releases(&holds_d) != releases(&holds_c)
+        || set7 != "ERR NOT_FOUND"
+    {
+        fail("the secure attention sequence did not end the prompt into the lock, screen held")
+    }
+    // M103: the lab's Enter went down with the unlock (QMP `key-down`) and comes up only once
+    // the session's answer is in the serial log, well inside RELEASE_WAIT whatever auth's
+    // PBKDF2 took: the session keeps the keyboard until that release, which reaches no
+    // application. The lab then types `f` as a fence: it travels the same queue after the
+    // release, so once the spy has it, a leaked release would have been counted first. The spy
+    // gets exactly the fence's press and release.
+    if !back7.starts_with("OK unlocked user=user ") {
+        fail("the lab's unlock after the secure attention sequence did not open the session")
+    }
+    let keys0 = spy_count(&spy0);
+    kprintln!(
+        "OSX|{}|ktest|elevate|fence=armed|phase=3h|ready=1",
+        BUILD_ID
+    );
+    let fenced = poll_reply(&spy, b"COUNT", sched::ticks() + 30_000, |r| {
+        spy_count(r) >= keys0 + 2
+    });
+    // A third key, if any, is the fence's release after a leaked one: give it time to land.
+    let spy7 = poll_reply(&spy, b"COUNT", sched::ticks() + 1_500, |r| {
+        spy_count(r) > keys0 + 2
+    });
+    kprintln!(
+        "OSX|{}|ktest|elevate|fenced={}|spy7={}|phase=3h",
+        BUILD_ID,
+        fenced,
+        spy7
+    );
+    if spy_count(&fenced) < keys0 + 2 {
+        fail("the lab's fence key never reached the application")
+    }
+    if spy_count(&spy7) != keys0 + 2 {
+        fail("the release of the key that unlocked reached an application")
+    }
+    drop((
+        holds_a, no_keys, holds_b, set8, back8, prompt7, holds_c, sak7, locked7, holds_d,
+    ));
+    drop((set7, back7, fenced, dev, display));
+    // 3i (WP-38, input.md v2.6, session.md v1.6). The secure attention sequence while an
+    // approved request waits at its service. config is frozen, so once the lab has typed
+    // admin's password the session sits in the wait for config's answer (it traces
+    // `elevate=running`); the lab then floods the pointer (100 packets: more than the input
+    // channel's 64 and the session's 32 kept events) and presses Ctrl+Alt+Del. The sequence is
+    // never lost: the elevation ends ERR CANCELLED, the session locks, and the input service owes
+    // nothing (`sak_pending=0`). auth ends the token before config, thawed, reads the request:
+    // nothing is set. Then the lab unlocks as in 3g, and no key reaches the spy.
+    let input = svc_connect(&h, "input");
+    let frozen9 = sched::freeze_named(b"CONFIGD.ELF");
+    if session
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev9 0 909 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_err()
+    {
+        fail("the session's client channel is closed")
+    }
+    let prompt9 = poll_reply(&session, b"ELEVATION", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK prompt ")
+    });
+    kprintln!(
+        "OSX|{}|ktest|elevate|prompt9={}|config_frozen={}|phase=3i|ready=1",
+        BUILD_ID,
+        prompt9,
+        frozen9
+    );
+    if !prompt9.starts_with("OK prompt ") || !frozen9 {
+        fail("the ninth prompt did not come up, or config could not be frozen")
+    }
+    // The session answers nothing while it waits for config: the answer comes when the
+    // sequence ends the wait (without it, REQUEST_DEADLINE later, ERR UNAVAILABLE).
+    let sak9 = session_reply(&session, long);
+    let locked9 = poll_reply(&session, b"STATE", sched::ticks() + 30_000, |r| {
+        r.starts_with("OK locked ")
+    });
+    let status9 = poll_reply(&input, b"STATUS", sched::ticks() + 10_000, |r| {
+        r.ends_with(" sak_pending=0")
+    });
+    // auth has answered the token's LOGOUT (and the LOCK) before config may read the request.
+    let settled9 = poll_reply(&session, b"AUTH", sched::ticks() + 60_000, |r| {
+        r.starts_with("OK waiting=0 ")
+    });
+    let thawed9 = sched::thaw_named(b"CONFIGD.ELF");
+    let tokens9 = {
+        let mut t = object::stats().tokens;
+        let until = sched::ticks() + 10_000;
+        while t != tokens0 && sched::ticks() < until {
+            sched::poll_until(sched::ticks() + 20, || false);
+            t = object::stats().tokens;
+        }
+        t
+    };
+    let set9 = cfg_request(&config, b"GET device lab.elev9", None);
+    let back9 = poll_reply(&session, b"STATE", long, |r| {
+        r.starts_with("OK unlocked ") && r.ends_with(" focus=display")
+    });
+    let spy9 = cfg_request(&spy, b"COUNT", None);
+    kprintln!(
+        "OSX|{}|ktest|elevate|sak9={}|locked9={}|status9={}|settled9={}|thawed9={}|tokens9={}|set9={}|back9={}|spy9={}|phase=3j",
+        BUILD_ID,
+        sak9,
+        locked9,
+        status9,
+        settled9,
+        thawed9,
+        tokens9,
+        set9,
+        back9,
+        spy9
+    );
+    if sak9 != "ERR CANCELLED" || !locked9.starts_with("OK locked user=user ") {
+        fail("the secure attention sequence was lost while an approved request waited")
+    }
+    if !status9.ends_with(" sak_pending=0") {
+        fail("the input service still owes the session its secure attention sequence")
+    }
+    if !settled9.starts_with("OK waiting=0 ")
+        || !thawed9
+        || tokens9 != tokens0
+        || set9 != "ERR NOT_FOUND"
+    {
+        fail("the request cut off by the secure attention sequence ran, or its token survived")
+    }
+    if !back9.starts_with("OK unlocked user=user ") || spy_count(&spy9) != spy_count(&spy7) {
+        fail("the lab's unlock after the sequence failed, or a key reached the application")
+    }
+    drop((
+        prompt9, sak9, locked9, status9, settled9, set9, back9, spy9, input,
+    ));
     // 4. The compositor goes while the prompt is up: the elevation ends unanswered too.
     if session
         .write(Message {
@@ -7063,7 +7337,8 @@ fn elevate() -> ! {
     {
         fail("an elevation survived the compositor's end")
     }
-    if tokens4 != tokens0 || spy_keys(&spy4) != spy_keys(&spy0) {
+    // The fence of phase 3h is the only key the spy has had since spy0.
+    if tokens4 != tokens0 || spy_count(&spy4) != spy_count(&spy7) {
         fail("a token or a key leaked out of a failed elevation")
     }
     drop((
@@ -7512,10 +7787,54 @@ fn session_loss() -> ! {
     {
         fail("the session lost while locked did not leave a held screen and a fresh session")
     }
+    // Phase 5 (input.md v2.2; WP-38 mutant M106): the lab signs in once more, so the keyboard
+    // is the compositor's — the input service's focus is `display`, not the session's. The
+    // session is then stopped for good. Its loss must leave the keyboard with nobody, as the
+    // input service itself reports (`STATUS` → `focus=-`). Clearing the focus only when the
+    // lost client held it is not enough here: at this moment the compositor holds it, and a
+    // window it routes to would receive what is typed before a fresh session takes over.
+    // Phases 1–4 observe the compositor's focus (the spy's), never the input service's.
+    kprintln!("OSX|{}|ktest|session_loss|phase=5|ready=1", BUILD_ID);
+    let unlocked3 = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
+        state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
+    });
+    let input = svc_connect(&h, "input");
+    let r3 = match crate::services::request(&h.m.ctl, b"STOP session", sched::ticks() + 500) {
+        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+        Err(e) => String::from(e),
+    };
+    drop(session);
+    let lines = h.poll_list(sched::ticks() + 60_000, |l| {
+        l.iter()
+            .any(|x| x.name == "session" && x.state == "stopped")
+    });
+    let stopped = lines
+        .iter()
+        .any(|x| x.name == "session" && x.state == "stopped");
+    let input_after = poll_reply(&input, b"STATUS", sched::ticks() + 5_000, |r| {
+        r.starts_with("OK focus=- ")
+    });
+    kprintln!(
+        "OSX|{}|ktest|session_loss|unlocked3={}|stop={}|stopped={}|input_focus_cleared={}|phase=6",
+        BUILD_ID,
+        unlocked3,
+        r3,
+        u8::from(stopped),
+        u8::from(input_after.starts_with("OK focus=- "))
+    );
+    if !state_is(&unlocked3, "unlocked", 1)
+        || !unlocked3.ends_with(" focus=display")
+        || r3 != "OK"
+        || !stopped
+        || !input_after.starts_with("OK focus=- ")
+    {
+        fail("the session lost while the compositor held the keyboard left the keyboard with it")
+    }
     drop((
         unlocked, spy0, r1, fresh1, spy1, unlocked2, locked, r2, fresh2, spy2,
     ));
-    drop((session, display, spy));
+    drop((unlocked3, r3, lines, input_after));
+    drop((input, display, spy));
     display_finish(
         name,
         h,

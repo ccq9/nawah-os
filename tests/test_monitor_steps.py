@@ -4,7 +4,9 @@ a monitor socket the way QEMU does: every step's commands must be sent once its 
 appeared, in order, and a later step must not fire on an earlier marker; a single-step
 `{after, commands}` case still works; `${SCREEN}` names the run's screendump and
 `${SCREEN:tag}` (WP-37) one of several, `screen-<tag>.ppm` beside it, in commands and in
-host-check arguments alike."""
+host-check arguments alike. `key-down`/`key-up` (WP-38) go through QMP on one connection kept
+for the run: a key pressed in one step is released by a later step, within a bounded delay of
+that step's marker."""
 
 import json
 import pathlib
@@ -19,7 +21,36 @@ import project  # noqa: E402
 FAKE_QEMU = r'''
 import json, socket, sys, time, threading
 serial, mon, record, script = sys.argv[1], sys.argv[2], sys.argv[3], json.loads(sys.argv[4])
+qmp_path = sys.argv[5] if len(sys.argv) > 5 else None
 got = []
+qmp_got = []
+marks = {}
+t0 = time.monotonic()
+def serve_qmp():
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.bind(qmp_path); s.listen(4)
+    while True:
+        c, _ = s.accept()
+        c.sendall(b'{"QMP": {"version": {}, "capabilities": []}}\n')
+        buf = b""
+        while True:
+            try:
+                d = c.recv(4096)
+            except OSError:
+                break
+            if not d:
+                break
+            buf += d
+            while b"\n" in buf:
+                line, buf = buf.split(b"\n", 1)
+                msg = json.loads(line)
+                qmp_got.append([round(time.monotonic() - t0, 3), msg])
+                c.sendall(b'{"event": "NOISE"}\n{"return": {}}\n')
+                with open(record + ".qmp", "w") as f:
+                    json.dump({"qmp": qmp_got, "marks": marks}, f)
+        c.close()
+if qmp_path:
+    threading.Thread(target=serve_qmp, daemon=True).start()
 def serve():
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.bind(mon); s.listen(4)
@@ -45,7 +76,11 @@ with open(serial, "ab") as f:
     for line, wait in script:
         time.sleep(wait)
         f.write((line + "\n").encode()); f.flush()
+        marks[line] = round(time.monotonic() - t0, 3)
 time.sleep(1.5)
+if qmp_path:
+    with open(record + ".qmp", "w") as f:
+        json.dump({"qmp": qmp_got, "marks": marks}, f)
 sys.exit(33)
 '''
 
@@ -57,9 +92,12 @@ class MonitorSteps(unittest.TestCase):
             serial, mon, record = d / "serial.log", d / "mon.sock", d / "record.json"
             fake = d / "fake_qemu.py"
             fake.write_text(FAKE_QEMU)
-            cmd = [sys.executable, "-I", str(fake), str(serial), str(mon), str(record), json.dumps(script)]
+            cmd = [sys.executable, "-I", str(fake), str(serial), str(mon), str(record), json.dumps(script),
+                   str(project.qmp_socket_path(mon))]
             rc = project.run_qemu_monitored(cmd, d, d / "out.log", d / "err.log", timeout, serial, mon, actions)
             got = json.loads(record.read_text()) if record.exists() else []
+            qmp_record = pathlib.Path(str(record) + ".qmp")
+            self.qmp = json.loads(qmp_record.read_text()) if qmp_record.exists() else {"qmp": [], "marks": {}}
             return rc, got, (d / "out.log").read_text(), (d / "err.log").read_text()
 
     def test_single_step(self):
@@ -109,6 +147,89 @@ class MonitorSteps(unittest.TestCase):
         self.assertEqual(project.substitute_host_arg("${SERIAL_FIRST:window=} ${SERIAL:window=}", "/d", "b", "/s", two),
                          "21,45,260,242 21,45,520,484")
         self.assertEqual(project.substitute_host_arg("${EVIDENCE}/x", "/d", "b", "/s", two, "/ev/1"), "/ev/1/x")
+
+    def test_key_held_across_steps_through_qmp(self):
+        # WP-38 (M103): Enter goes down with the unlock and comes up only once the session's
+        # answer is in the serial log, within RELEASE_WAIT of it, whatever auth's PBKDF2 took.
+        # The answer was printed once before (the first login): `since_previous` waits for the
+        # next one, after the press.
+        actions = {"steps": [{"after": "|phase=1|", "commands": ["sendkey a", "key-down ret"], "gap_s": 0.1},
+                             {"after": "|answer|", "since_previous": True, "commands": ["key-up ret"]},
+                             {"after": "|phase=3|", "commands": ["sendkey f"]}]}
+        rc, got, out, err = self.drive(actions, [("OSX|x|session|answer|", 0.1),
+                                                 ("OSX|x|ktest|t|phase=1|ready=1", 0.2),
+                                                 ("OSX|x|session|answer|", 1.5),
+                                                 ("OSX|x|ktest|t|phase=3|ready=1", 0.5)])
+        self.assertEqual(rc, 33)
+        self.assertEqual(err.strip(), "")
+        self.assertEqual(got, ["sendkey a", "sendkey f"])
+        msgs = [m for _, m in self.qmp["qmp"]]
+        down = {"execute": "input-send-event", "arguments": {"events": [
+            {"type": "key", "data": {"down": True, "key": {"type": "qcode", "data": "ret"}}}]}}
+        up = {"execute": "input-send-event", "arguments": {"events": [
+            {"type": "key", "data": {"down": False, "key": {"type": "qcode", "data": "ret"}}}]}}
+        # One connection for the run: the handshake once, then the press and the release.
+        self.assertEqual(msgs, [{"execute": "qmp_capabilities"}, down, up])
+        t_down, t_up = self.qmp["qmp"][1][0], self.qmp["qmp"][2][0]
+        t_answer = self.qmp["marks"]["OSX|x|session|answer|"]
+        self.assertLess(t_down, t_answer, "the key goes down before the answer")
+        self.assertGreaterEqual(t_up, t_answer, "the key comes up only after the answer")
+        self.assertLess(t_up - t_answer, 0.5, "the release follows its marker well inside RELEASE_WAIT (1 s)")
+        self.assertEqual(out.count("# monitor: sent"), 3)
+
+    def test_since_previous_ignores_an_earlier_marker(self):
+        actions = {"steps": [{"after": "|phase=1|", "commands": ["sendkey a"]},
+                             {"after": "|answer|", "since_previous": True, "commands": ["sendkey b"]}]}
+        rc, got, out, _ = self.drive(actions, [("OSX|x|session|answer|", 0.1), ("OSX|x|ktest|t|phase=1|ready=1", 0.2)])
+        self.assertEqual(rc, 33)
+        self.assertEqual(got, ["sendkey a"], "an answer printed before the previous step must not fire the next")
+        self.assertEqual(out.count("# monitor: sent"), 1)
+
+    def test_qmp_without_server_is_reported(self):
+        # No QMP socket: the step's failure is logged, the run goes on to its end.
+        with tempfile.TemporaryDirectory() as td:
+            d = pathlib.Path(td)
+            serial, mon, record = d / "serial.log", d / "mon.sock", d / "record.json"
+            fake = d / "fake_qemu.py"
+            fake.write_text(FAKE_QEMU)
+            cmd = [sys.executable, "-I", str(fake), str(serial), str(mon), str(record),
+                   json.dumps([("OSX|x|ktest|t|phase=1|ready=1", 0.2)])]
+            rc = project.run_qemu_monitored(cmd, d, d / "out.log", d / "err.log", 20, serial, mon,
+                                            {"after": "|phase=1|", "commands": ["key-down ret"]})
+            self.assertEqual(rc, 33)
+            self.assertIn("monitor:", (d / "err.log").read_text())
+
+    def test_qmp_link_recovers_after_a_failed_connect(self):
+        # Review 2026-11-08: a failed connect or handshake left the socket set and unusable,
+        # so every later key command of the run failed too. The link reconnects instead.
+        import socket, threading
+        with tempfile.TemporaryDirectory() as td:
+            path = pathlib.Path(td) / "q.sock"
+            link = project.QmpLink(path)
+            with self.assertRaises(OSError):
+                link.key("key-down ret")          # nothing listens yet
+            self.assertIsNone(link.sock)
+            got = []
+            srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            srv.bind(str(path)); srv.listen(1)
+            def serve():
+                c, _ = srv.accept()
+                c.sendall(b'{"QMP": {}}\n')
+                buf = b""
+                while len(got) < 2:
+                    d = c.recv(4096)
+                    if not d:
+                        break
+                    buf += d
+                    while b"\n" in buf:
+                        line, buf = buf.split(b"\n", 1)
+                        got.append(json.loads(line)["execute"])
+                        c.sendall(b'{"return": {}}\n')
+                c.close()
+            th = threading.Thread(target=serve, daemon=True); th.start()
+            link.key("key-up ret")
+            th.join(5); link.close(); srv.close()
+            self.assertEqual(got, ["qmp_capabilities", "input-send-event"])
 
     def test_timeout_kills_qemu(self):
         rc, got, _, err = self.drive({"after": "|never|", "commands": ["sendkey a"]}, [("boot", 5.0)], timeout=2)

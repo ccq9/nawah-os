@@ -654,6 +654,83 @@ class ConsoleSession:
         return failures
 
 
+def qmp_socket_path(monitor_path):
+    """The QMP socket beside a case's HMP monitor socket (WP-38)."""
+    monitor_path = Path(monitor_path)
+    return monitor_path.with_name(monitor_path.stem + "-qmp.sock")
+
+
+QMP_KEY_COMMANDS = ("key-down ", "key-up ")
+
+
+class QmpLink:
+    """One QMP connection for a whole run (WP-38), opened on the first `key-down`/`key-up`
+    command and kept, so a step that releases a key costs no connect or handshake: HMP's
+    `sendkey` presses and releases on a fixed timer, while a lab step must release a key a
+    bounded time after a marker (the session's RELEASE_WAIT counts from auth's answer, whose
+    PBKDF2 time differs between runners)."""
+
+    def __init__(self, path):
+        self.path, self.sock, self.buf = path, None, b""
+
+    def _reply(self):
+        import time
+        end = time.monotonic() + 5
+        while time.monotonic() < end:
+            while b"\n" in self.buf:
+                line, self.buf = self.buf.split(b"\n", 1)
+                if not line.strip():
+                    continue
+                msg = json.loads(line)
+                if "return" in msg:
+                    return msg
+                if "error" in msg:
+                    raise OSError(f"qmp: {msg['error']}")
+            d = self.sock.recv(4096)
+            if not d:
+                raise OSError("qmp: connection closed")
+            self.buf += d
+        raise OSError("qmp: no reply")
+
+    def _execute(self, command, arguments=None):
+        msg = {"execute": command}
+        if arguments is not None:
+            msg["arguments"] = arguments
+        try:
+            self.sock.sendall((json.dumps(msg) + "\n").encode())
+            return self._reply()
+        except (OSError, ValueError):
+            # A failed exchange leaves the link in an unknown state (a late reply would be read
+            # as the next command's): drop it, so the next command reconnects from scratch.
+            self.close()
+            raise
+
+    def key(self, line):
+        """`key-down <qcode>` or `key-up <qcode>` (QEMU's QKeyCode names: `ret`, `a`, …)."""
+        import socket
+        verb, code = line.split(None, 1)
+        if self.sock is None:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(5)
+            try:
+                s.connect(str(self.path))
+            except OSError:
+                s.close()
+                raise
+            self.sock, self.buf = s, b""
+            self._execute("qmp_capabilities")
+        event = {"type": "key", "data": {"down": verb == "key-down", "key": {"type": "qcode", "data": code.strip()}}}
+        self._execute("input-send-event", {"events": [event]})
+
+    def close(self):
+        if self.sock is not None:
+            try:
+                self.sock.close()
+            except OSError:
+                pass
+        self.sock, self.buf = None, b""
+
+
 def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions):
     """`run_logged` for a QEMU case that drives the guest through the monitor (WP-27): once
     `actions["after"]` appears in the serial log, every line of `actions["commands"]` goes to
@@ -661,39 +738,58 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
     several such steps (WP-33: keys after one marker, more keys after a later one):
     `actions["steps"]` is a list of `{after, commands}` sent in order, each once its marker
     has appeared after the previous step was sent. `${SCREEN}` in a command names the run's
-    screendump, `${SCREEN:tag}` one of several (WP-37: `screen-<tag>.ppm`, same directory)."""
+    screendump, `${SCREEN:tag}` one of several (WP-37: `screen-<tag>.ppm`, same directory).
+    `key-down <qcode>` / `key-up <qcode>` go through QMP instead (WP-38, QmpLink): a key held
+    from one step to a later one. A step with `since_previous` matches its marker only in what
+    the serial log gained after the previous step fired (WP-38: a state the guest prints more
+    than once, such as `state=unlocked`, means its next occurrence)."""
     import socket
     import time
     steps = actions.get("steps") or [actions]
+    qmp = QmpLink(qmp_socket_path(monitor_path))
     with open(log_out, "ab") as o, open(log_err, "ab") as e:
         o.write(f"$ {' '.join(cmd)}\n".encode()); o.flush()
         p = subprocess.Popen(cmd, cwd=cwd, stdout=o, stderr=e)
         deadline = time.monotonic() + timeout
         next_step = 0
-        while p.poll() is None and time.monotonic() < deadline:
-            if next_step < len(steps) and serial_path.exists():
-                step = steps[next_step]
-                if step["after"].encode() in serial_path.read_bytes():
-                    try:
-                        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as m:
-                            m.settimeout(5)
-                            m.connect(str(monitor_path))
-                            time.sleep(0.3)
-                            try:
-                                m.recv(4096)
-                            except OSError:
-                                pass
+        fired_at = 0  # the serial log's length when the previous step fired
+        try:
+            while p.poll() is None and time.monotonic() < deadline:
+                if next_step < len(steps) and serial_path.exists():
+                    step = steps[next_step]
+                    text = serial_path.read_bytes()
+                    if step["after"].encode() in (text[fired_at:] if step.get("since_previous") else text):
+                        fired_at = len(text)
+                        m = None
+                        try:
                             for line in step["commands"]:
-                                # `${SCREEN}`: the screendump file of this run (WP-32), kept
-                                # as evidence next to the serial log.
-                                line = screen_paths(line, serial_path.parent / "screen.ppm")
-                                m.sendall((line + "\n").encode())
+                                if line.startswith(QMP_KEY_COMMANDS):
+                                    qmp.key(line)
+                                else:
+                                    if m is None:
+                                        m = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                                        m.settimeout(5)
+                                        m.connect(str(monitor_path))
+                                        time.sleep(0.3)
+                                        try:
+                                            m.recv(4096)
+                                        except OSError:
+                                            pass
+                                    # `${SCREEN}`: the screendump file of this run (WP-32), kept
+                                    # as evidence next to the serial log.
+                                    line = screen_paths(line, serial_path.parent / "screen.ppm")
+                                    m.sendall((line + "\n").encode())
                                 time.sleep(float(step.get("gap_s", actions.get("gap_s", 0.2))))
-                        o.write(f"# monitor: sent {len(step['commands'])} command(s) after {step['after']!r}\n".encode()); o.flush()
-                    except OSError as ex:
-                        e.write(f"monitor: {ex}\n".encode()); e.flush()
-                    next_step += 1
-            time.sleep(0.1)
+                            o.write(f"# monitor: sent {len(step['commands'])} command(s) after {step['after']!r}\n".encode()); o.flush()
+                        except (OSError, ValueError) as ex:
+                            e.write(f"monitor: {ex}\n".encode()); e.flush()
+                        finally:
+                            if m is not None:
+                                m.close()
+                        next_step += 1
+                time.sleep(0.1)
+        finally:
+            qmp.close()
         if p.poll() is None:
             p.kill(); p.wait()
             e.write(b"TIMEOUT\n"); return 124
@@ -867,6 +963,8 @@ def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None, smp=None,
     # A monitor socket when a case drives the guest (keys through `sendkey`, WP-27).
     if monitor is not None:
         disk_args += ["-monitor", f"unix:{monitor},server,nowait"]
+        # QMP beside it (WP-38): `key-down`/`key-up` lab commands hold a key across a marker.
+        disk_args += ["-qmp", f"unix:{qmp_socket_path(monitor)},server,nowait"]
     # The second serial port (COM2) is the diagnostic console (WP-30): a TCP server the lab
     # connects to when the case has a `console` script, otherwise a null sink so the port
     # exists in every run (the kernel probes it at boot: kernel|diag).
@@ -984,6 +1082,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         monitor = (ROOT / "build" / target_name / f"mon{i + 1}.sock") if actions else None
         if monitor is not None:
             monitor.unlink(missing_ok=True)
+            qmp_socket_path(monitor).unlink(missing_ok=True)
         console_spec = ph.get("console", case.get("console"))
         cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")), monitor,
                        console_spec and console_spec["port"])
@@ -1104,6 +1203,9 @@ HOST_SUITES = {
         {"id": "TST-M0-004", "command": ["python3", "-I", "tests/test_pre_merge.py"],
          "oracle": "tools/pre-merge.sh runs validate-records --strict under set -euo pipefail with no pipe after the validator and exits with its code: on a copy of the repository as committed it exits 0 and prints 'pre-merge: OK'; with one input of a host test edited after its run (a stale verdict) it exits 50 and prints no OK (3 cases, OK)",
          "inputs": ["tests/test_pre_merge.py", "tools/pre-merge.sh", "tools/project.py"], "input_globs": []},
+        {"id": "TST-M0-005", "command": ["python3", "-I", "tests/test_mutants_harness.py"],
+         "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (~124 s, TST-M5-ELEVATE), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided (6 cases, OK)",
+         "inputs": ["tests/test_mutants_harness.py", "tests/mutants.py"], "input_globs": []},
     ],
 }
 
@@ -1132,7 +1234,7 @@ HOST_SUITES["M4-GATE"] = [
 # security fix fails the run whatever the ratio (tests/mutants.py SECURITY).
 HOST_SUITES["M5-GATE"] = [
     {"id": "TST-M5-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--stage", "M5", "--report", "build/mutants-m5-report.json"],
-     "oracle": "every seeded M5 defect that compiles (displayd: narrator authority, client limits and the session's reserve, LIST hash and STATUS composed= of a held screen; sessiond: the password field's announcements, the elevation prompt after the keys; inputd: the name `display`; libui: password bullets) is killed by at least one M5 case, host suites included; kill ratio >= 0.95 and no surviving security mutant; report build/mutants-m5-report.json",
+     "oracle": "every seeded M5 defect that compiles (displayd: narrator authority, client limits and the session's reserve, LIST hash and STATUS composed= of a held screen; sessiond: the password field's announcements, the elevation prompt after the keys; inputd: the name `display`; libui: password bullets; kernel: process_kill authority, kill wake-up, K1 at block, K2 at exit, frame clear on release, mouse routing; svcmgr: PONG and the watchdog's kill) is killed by at least one M5 case, host suites included; kill ratio >= 0.95 and no surviving security mutant; report build/mutants-m5-report.json",
      "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"], "timeout_s": 10800},
 ]
 HOST_SUITES["M4"] = [
@@ -1146,7 +1248,7 @@ HOST_SUITES["M4"] = [
 ]
 HOST_SUITES["M5"] = [
     {"id": "TST-M5-LAB-TOOL", "command": ["python3", "-I", "tests/test_monitor_steps.py"],
-     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag} (5 cases, OK)",
+     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect (9 cases, OK)",
      "inputs": ["tests/test_monitor_steps.py", "tools/project.py"], "input_globs": []},
     {"id": "TST-M5-BIDI", "command": ["python3", "-I", "tests/test_text.py", "Bidi"],
      "oracle": "nawah-text's UAX #9 reproduces every line of the Unicode conformance file BidiCharacterTest-17.0.0 (91707 lines: paragraph level, resolved levels with X9-removed characters, visual order after L2), and tables.rs is what tools/unicode_tables.py generates from the UCD files (DerivedBidiClass, DerivedJoiningType, BidiBrackets 17.0.0)",
@@ -1158,8 +1260,8 @@ HOST_SUITES["M5"] = [
      "oracle": "the OpenType reader equals fontTools on both shipped fonts: every cmap entry (2840 + 1161 code points, absent ones .notdef), every glyph's advance and left side bearing (3748 + 1661), every glyph's outline points, on-curve flags and contour ends with composites resolved; the rasteriser against the reference in the test (same 4×4 non-zero sampling, independent contour walk and flattening) on 22 glyphs × 4 sizes: no pixel full in one and empty in the other, at most 4/16 apart on edge pixels, total ink within 1%",
      "inputs": ["tests/test_text.py", "platform/assets/fonts/NotoSans-Regular.ttf", "platform/assets/fonts/NotoSansArabic-Regular.ttf"], "input_globs": ["user/libnawah-text/src/*.rs", "user/libnawah-text/examples/*.rs"]},
     {"id": "TST-M5-UI-UNIT", "command": ["cargo", "test", "--offline", "--release", "-p", "libui", "--target", "x86_64-unknown-linux-gnu"],
-     "oracle": "libui on the host (13 tests): an element without a label (or a list without items) is refused when built; the focus order is the declared order without labels; Tab/Shift+Tab cycle it, Esc cancels, presses only; the text field takes characters (Arabic too), Backspace and the cursor keys, the list moves its selection with the arrows within bounds, Space/Enter toggle the checkbox and activate buttons; the descriptions read role, label, state and value/item exactly; ui.scale/ui.contrast map to the theme; 2x doubles every rectangle and the largest dialog fits one surface VMO; painting uses the theme's background and focus colours; v1.1 (WP-37): the password field edits like a text field, is described by role, label and state without its value, is drawn as one bullet per character (pixel-equal to a field of bullets, unlike the characters), and the application reads, wipes (zeroed slots) and sets values and moves the focus only where it can go; v1.2 (WP-39): in a right-to-left field Left and Right swap direction (set_rtl flips it live), and relabel/set_items switch an element's language in place with the selection clamped and bad arguments refused; v1.3 (WP-41): a value element shows text the application sets, is never focused, is described with its value as static and keeps at most TEXT_MAX (48) characters, and a password is never filled by the application",
-     "pass_marker": "test result: ok. 13 passed; 0 failed",
+     "oracle": "libui on the host (14 tests): an element without a label (or a list without items) is refused when built; the focus order is the declared order without labels; Tab/Shift+Tab cycle it, Esc cancels, presses only; the text field takes characters (Arabic too), Backspace and the cursor keys, the list moves its selection with the arrows within bounds, Space/Enter toggle the checkbox and activate buttons; the descriptions read role, label, state and value/item exactly; ui.scale/ui.contrast map to the theme; 2x doubles every rectangle and the largest dialog fits one surface VMO; painting uses the theme's background and focus colours; v1.1 (WP-37): the password field edits like a text field, is described by role, label and state without its value, is drawn as one bullet per character (pixel-equal to a field of bullets, unlike the characters), and the application reads, wipes (zeroed slots) and sets values and moves the focus only where it can go; v1.2 (WP-39): in a right-to-left field Left and Right swap direction (set_rtl flips it live), and relabel/set_items switch an element's language in place with the selection clamped and bad arguments refused; v1.3 (WP-41): a value element shows text the application sets, is never focused, is described with its value as static and keeps at most TEXT_MAX (48) characters, and a password is never filled by the application; v1.5 (WP-38): Painter::fits measures a label or value through the painter's own line layout (font size, direction) against its row and refuses the 15+1+32 W prompt and config SET device MMMMMMMM 0 901 off but keeps the lab's requests (lab.elev, lab.elev7, lab.elev8), in both directions and at 2x, and never fits more than TEXT_MAX characters",
+     "pass_marker": "test result: ok. 14 passed; 0 failed",
      "inputs": ["user/libui/Cargo.toml"], "input_globs": ["user/libui/src/*.rs", "user/libnawah-text/src/*.rs"]},
     {"id": "TST-M5-UI-TOOL", "command": ["python3", "-I", "tests/test_transcript_tool.py"],
      "oracle": "tools/transcript.py takes the narrator lines from trace lines and requires them to equal the expected file exactly in every serial log (a missing, extra or reordered line, or one bad phase, fails); dims accepts only the same origin with the size times the factor; streams (WP-37) checks every stream the file names exactly and in order whatever the interleaving, ignores other streams and non-user lines, and checks every phase (7 cases, OK)",
