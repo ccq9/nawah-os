@@ -286,12 +286,28 @@
     "M5"
    ],
    "entry_conditions": [
-    "بوابة M5 ناجحة ضمن التفويض"
+    "بوابة M5 ناجحة ضمن التفويض (2026-11-09، الدمج 788c772f، mutants-42531135332، verify 42527203772)"
    ],
    "exit_conditions": [
-    "وفق البند 20 من OS-EXEC-AR 3.2"
+    "تشغيل تطبيق بعملية فعلية يسمسرها المدير، من ابدأ والتشغيل التلقائي، والخروج ينهي مهمة الجلسة (APP-LAUNCH، START-LAUNCH، LAUNCH-DENIED، LOGOUT-KILLS؛ DEC-005)",
+    "إدارة نافذة من شريط المهام ولوحة المفاتيح وسطح المكتب بدور صدفة موثق (TASKBAR-WINDOW، SHELL-EVENTS، SHELL-AUTHORITY؛ اختبارات M5 للنوافذ بلا انحدار)",
+    "إنشاء ملف ونسخه وإعادة تسميته وحذفه واستعادته ضمن العقد، بأسماء عربية ومختلطة على القرص (FILES-CHAIN، TRASH-RESTORE-REBOOT، LFN، RENAME؛ REQ-M6-001)",
+    "السيناريو 4: إنشاء ملف وتعديله وإعادة التشغيل ثم التحقق من محتواه وأذوناته (EDITOR-MODIFY-REBOOT، RESTART-PERSIST؛ DEC-008)",
+    "عرض بيانات موارد حقيقية بلا قيم مصطنعة (TASKMGR-DATA، DEVICE-LIST، SVC-TOOL-LIVE، LOG-PERSIST، SHELL-PS)",
+    "السيناريو 6: امتلاء القرص ونفاد الذاكرة وتعطل خدمة بخطأ واضح بلا نجاح زائف (DISK-FULL، FILES-DISK-FULL، EDITOR-SAVE-FAIL، START-FAIL، NOTIFY-SERVICE-FAILURE، RENAME-CRASH، TRASH-CRASH)",
+    "الصلاحيات تُرفض عند طبقة السلطة لا عند الواجهة، والسيناريو 3: حسابان معزولان (HOME-ISOLATION، DIR-ESCAPE، LAUNCH-DENIED، POWER-DENIED، END-TASK-DENIED، SVC-TOOL-DENIED، LOG-AUTHORITY، FILES-DENIED، CLIPBOARD-ISOLATION، NOTIFY-SPOOF؛ DEC-006)",
+    "التعارضات (FILES-CONFLICT، TRASH-CONFLICT، RENAME: ERR_EXISTS، EDITOR-UNSAVED)",
+    "الاستمرار بعد إعادة التشغيل (RESTART-PERSIST، TRASH-RESTORE-REBOOT، LOG-PERSIST، EDITOR-MODIFY-REBOOT)",
+    "السيناريو 1: إقلاع تفاعلي إلى شاشة الدخول ببيان النظام الحقيقي، والفحص الذاتي للمختبر بمفتاح منفصل، ومراقبة الجلسة (INTERACTIVE-BOOT، SESSION-WATCHDOG؛ TST-M1-BOOT/NEG/NOBS باقية)",
+    "السيناريو 8: القفل مع مكونات سطح المكتب (NOTIFY-LOCKED، CLIPBOARD-ISOLATION، SHELL-CRASH؛ اختبارات القفل في M5 بلا انحدار)",
+    "السيناريو 11: الواجهة العربية والإنجليزية والتنقل الكامل بلوحة المفاتيح (E2E-AR، SESSION-AR، START-ARABIC، LISTVIEW-RTL، FILES-A11Y-AR)",
+    "سلسلة الاستعمال الكاملة داخل النظام على صورة الإصدار (E2E-SCENARIO: السيناريوهات 1، 3، 4، 6، 7، 8، 11)",
+    "غرفة نظيفة: كل أصل بصري من عمل المشروع أو بترخيص مسجل (ASSET-PROVENANCE؛ ADR-0022، DEC-009)",
+    "اختبار طفرات ≥95% بلا طفرة أمنية حية على وحدات M6 مع إعادة M2–M5 (TST-M6-MUTANTS)",
+    "استثناءات ظاهرة: الإيقاف الكامل ACPI S5 مؤجل (DEC-007)؛ مطابقة المرجع REQ-SCOPE-003 غير محكومة ما دام DEC-002 مفتوحًا (DEC-009)؛ «الشاشات» في السيناريو 7 لا تنطبق (ADR-0019)",
+    "مراجعة مسماة docs/operations/m6-review.md ونموذج التهديد (دور الصدفة، سمسار التشغيل، الحافظة، السجلات)"
    ],
-   "gate_status": "not_started"
+   "gate_status": "open"
   },
   {
    "id": "M7",

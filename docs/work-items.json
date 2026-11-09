@@ -3000,6 +3000,899 @@
     "evidence/20261109T000029Z-2cbdeaad-001"
    ],
    "blocker": null
+  },
+  {
+   "id": "WP-45",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "depends_on": [
+    "WP-38"
+   ],
+   "inputs": [
+    "docs/adr/0019-graphics-platform.md:48",
+    "docs/contracts/session.md §8 (lines 98, 104, 105)",
+    "docs/operations/m5-review.md:25",
+    "docs/contracts/boot.md",
+    "ux-design priority 7 (session screens)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/session.md",
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "إقلاع تفاعلي إلى شاشة الدخول ببيان النظام الحقيقي، ومراقبة الجلسة، وشاشات الجلسة بالعربية",
+    "services.md v1.11: the system manifest SERVICES.TXT (auth, config, net, input, display, session, narrator, sh) and the boot-mode switch: an fw_cfg key selects the lab self-test, so TST-M1-* keep their oracle; record the split as a decision in boot.md, not as a weakened test",
+    "session.md v1.7: session watchdog=<ticks> > REQUEST_DEADLINE (closes the §8 v1.1 limit); the sign-in, lock and elevation screens read ui.lang/ui.scale/ui.contrast (config GET + SUBSCRIBE device) with whole-sentence string tables in both languages and an input-language indicator next to the user and password fields (closes the §8 'screens in English' limit)",
+    "scenario at the end: power on, sign-in screen, sign in as user, plain desktop background, Ctrl+Alt+Del locks, unlock; the same in Arabic",
+    "risk: a watchdog period too short kills a session legitimately waiting on auth (session.md v1.2); the test covers both sides",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (watchdog and Arabic screens can split off the boot-mode change)"
+   ],
+   "acceptance": "TST-M6-INTERACTIVE-BOOT, SESSION-WATCHDOG and SESSION-AR PASS on CI; TST-M1-BOOT/NEG/NOBS still PASS under the self-test key; the M5 suite unregressed",
+   "test_ids": [
+    "TST-M6-INTERACTIVE-BOOT",
+    "TST-M6-SESSION-WATCHDOG",
+    "TST-M6-SESSION-AR",
+    "TST-M1-BOOT",
+    "TST-M1-NEG",
+    "TST-M1-NOBS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-46",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-003"
+   ],
+   "depends_on": [
+    "WP-45"
+   ],
+   "inputs": [
+    "docs/contracts/syscall.md (system_info, process_kill)",
+    "docs/contracts/ipc.md",
+    "docs/contracts/shell.md",
+    "kernel/src/object/mod.rs",
+    "kernel/src/sched/mod.rs"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/shell.md"
+   ],
+   "actions": [
+    "مهام النواة والمحاسبة لكل عملية وprocess_list (ABI v1.13)",
+    "syscall.md v1.13: Object::Job (process group), process_spawn into the caller's job or an explicit one, job_create, job_kill, per-process cpu_ticks, frames, threads and handles, per-CPU idle ticks in system_info v2, process_list(cursor) -> pid, job, image name, state, cpu_ticks, frames, threads, handles",
+    "ipc.md: the Job object type and its rights (WRITE = kill); shell.md v1.3: ps",
+    "open question decided here before the ABI freezes: process visibility across users (recommendation: one's own session job in full; other users' processes only with an administrator token; totals for everyone from system_info v2)",
+    "accounting charged on the context switch under the run-queue lock (SMP); new M6 mutant ids for job_kill and accounting",
+    "scenario at the end: in the shell, `ps` shows the real services and a spinning app's cpu_ticks growing",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-JOB-KILL, PROC-ACCOUNTING, PROC-LIST-REFUSALS and SHELL-PS PASS on CI; M3 and M5 suites unregressed",
+   "test_ids": [
+    "TST-M6-JOB-KILL",
+    "TST-M6-PROC-ACCOUNTING",
+    "TST-M6-PROC-LIST-REFUSALS",
+    "TST-M6-SHELL-PS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-47",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-46"
+   ],
+   "inputs": [
+    "DEC-005",
+    "docs/contracts/session.md §8 (line 102)",
+    "docs/adr/0019-graphics-platform.md:49",
+    "user/apps/svcmgr/src/main.rs:18 (MAX_SERVICES=16)",
+    "docs/contracts/services.md (CONNECT, vouching)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/session.md"
+   ],
+   "actions": [
+    "سجل التطبيقات وتشغيلها عبر المدير والتشغيل التلقائي، والخروج ينهي مهمة الجلسة",
+    "docs/adr/0023-desktop-shell-and-app-model.md: apps are not services; the manager spawns them from /APPS/<ID>.APP (id, ELF path, ar/en names, declared deps such as display, config, clipboard) into the session's job with a bootstrap channel and vouches app:<id>#<n> on CONNECT (DEC-005); the ADR also settles whether desktop, taskbar, Start and toasts are one process (desktopd) or several (open question) and whether maximize/snap and an Alt+Tab panel are in M6 (open question; the frozen display.md v1.3/v1.6 semantics change only with an ADR-0019 entry and updated expectations reviewed separately)",
+    "services.md v1.12: LAUNCH/APPS accepted only from vouched session or desktop; an app's CONNECT limited to its declared deps; MAX_SERVICES raised or an apps table kept apart; apps.md (new): registry format",
+    "session.md v1.8: a job per session, autostart from the config user store session.autostart, job_kill at Sign out (closes the §8 limit)",
+    "risk: the manager handles one request at a time (sessiond main.rs:97 comment) and can stall launches; the registry is untrusted input: host fuzz",
+    "scenario at the end: sign in, the autostart app opens a window, sign out, the app's processes are gone even if it ignores CLOSE",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-APP-LAUNCH, LOGOUT-KILLS, LAUNCH-DENIED and APP-REGISTRY-FUZZ PASS on CI; ADR-0023 accepted",
+   "test_ids": [
+    "TST-M6-APP-LAUNCH",
+    "TST-M6-LOGOUT-KILLS",
+    "TST-M6-LAUNCH-DENIED",
+    "TST-M6-APP-REGISTRY-FUZZ"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target host --suite M6",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-48",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-005",
+    "REQ-M6-020"
+   ],
+   "depends_on": [
+    "WP-47"
+   ],
+   "inputs": [
+    "docs/contracts/display.md (line 35 limits; v1.3 frozen semantics)",
+    "docs/contracts/input.md v2.5 (reserved name pattern)",
+    "user/apps/displayd/src/main.rs:35-48, 262 (CLIENT_WINDOWS, SESSION_RESERVE, cascade, session flag)",
+    "ux-design priorities 1-2 and rtl_and_a11y_rules",
+    "docs/adr/0022-reference-media-clean-room.md",
+    "DEC-009"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/display.md"
+   ],
+   "actions": [
+    "دور الصدفة في الـ compositor وdesktopd v1: الخلفية وشريط المهام",
+    "display.md v1.12 (additive): SHELL registered only by the manager-vouched `desktop`; bands desktop < app windows < shell chrome < session/lock < cursor; LAYER, WORKAREA, WINDOWS and window events (ADDED/REMOVED/TITLE/STATE/FOCUS/UNRESPONSIVE with app id and pid) for the shell only; ACTIVATE, MINIMIZE, RESTORE, CLOSE_REQUEST on any window; cascade relative to the work area; limits raised from 8 clients, 16 windows, 32 surfaces with SHELL_RESERVE",
+    "desktop.md (new): the taskbar (one button per window in stable order, click activates or minimises the focused one, unresponsive marker as state and text, keyboard path Super+T/F6, arrows mirrored in RTL, Shift+F10 window menu), states and errors; original palette and metrics (ux-design), no reference trade dress",
+    "the desktop service has restart-on-failure; the compositor works without it; the shell is hidden while locked",
+    "clean room: the visual identity and icons are the project's own and recorded in docs/sources.json (open question: who designs them and under which licence; TST-M6-ASSET-PROVENANCE)",
+    "scenario at the end: two apps open, switch, minimise and restore from the taskbar, close one from its window menu, the hung app is marked",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split display.md v1.12 from desktopd if needed)"
+   ],
+   "acceptance": "TST-M6-SHELL-EVENTS, SHELL-AUTHORITY, TASKBAR-WINDOW, SHELL-CRASH and ASSET-PROVENANCE PASS on CI; TST-M5-WINDOW-STATES, APP-HANG and LOCK-SURVIVES unregressed",
+   "test_ids": [
+    "TST-M6-SHELL-EVENTS",
+    "TST-M6-SHELL-AUTHORITY",
+    "TST-M6-TASKBAR-WINDOW",
+    "TST-M6-SHELL-CRASH",
+    "TST-M6-ASSET-PROVENANCE",
+    "TST-M5-WINDOW-STATES",
+    "TST-M5-APP-HANG",
+    "TST-M5-LOCK-SURVIVES"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target host --suite M6",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-49",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "depends_on": [
+    "WP-45"
+   ],
+   "inputs": [
+    "docs/contracts/ui.md (line 13: keyboard only)",
+    "user/libui/src/lib.rs:20-22, 605-622",
+    "ux-design priority 8"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/ui.md"
+   ],
+   "actions": [
+    "libui v2a: الفأرة والقوائم المنبثقة وحوار التأكيد",
+    "ui.md v1.6 (additive): POINTER hit-testing for every element (focus and activate, double-click), popup and context menus (Shift+F10, menu key, right click; separators, disabled items, wrap, Esc returns focus), a modal confirm dialog (Yes/No/Cancel with a default), narrator roles menu and menuitem; menus mirror in RTL",
+    "pointer focus keeps the frozen keyboard focus-order rules",
+    "scenario at the end: the sample dialog app driven entirely by mouse and by keyboard, with a context menu on a list item",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-UI-UNIT and UI-POINTER PASS on CI; TST-M5-KEYBOARD-NAV, A11Y-TREE and ARABIC-UI unregressed",
+   "test_ids": [
+    "TST-M6-UI-UNIT",
+    "TST-M6-UI-POINTER",
+    "TST-M5-KEYBOARD-NAV",
+    "TST-M5-A11Y-TREE",
+    "TST-M5-ARABIC-UI"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target host --suite M6",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-50",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "depends_on": [
+    "WP-49"
+   ],
+   "inputs": [
+    "docs/contracts/ui.md (line 7: 6 items, 12 elements)",
+    "docs/contracts/display.md:35 (1 MiB surface cap)",
+    "ux-design priority 8 (Table, Split, TEXT_MAX)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/ui.md"
+   ],
+   "actions": [
+    "libui v2b: عرض قائمة بأعمدة وتمرير",
+    "ui.md v1.7: a virtualised multi-column list view (the app supplies rows by callback, libui holds no data; sort by column, single and multi selection, Home/End/PgUp/PgDn, type-ahead including Arabic, scroll bar by mouse and wheel), a toolbar, a status bar, a two-pane split layout with F6, TEXT_MAX raised for paths with LRI-isolated runs; narrator `row k/n` plus column values; columns and scroll bar mirror in RTL; empty and access-denied states as text",
+    "the 1 MiB per-surface cap: render in tiles or raise it with a memory budget, decided and recorded here",
+    "scenario at the end: a 500-row list browsed by keyboard and mouse with the exact narrator transcript",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-LISTVIEW-UNIT, LISTVIEW-A11Y and LISTVIEW-RTL PASS on CI",
+   "test_ids": [
+    "TST-M6-LISTVIEW-UNIT",
+    "TST-M6-LISTVIEW-A11Y",
+    "TST-M6-LISTVIEW-RTL"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target host --suite M6",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-51",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-007"
+   ],
+   "depends_on": [
+    "WP-48",
+    "WP-50"
+   ],
+   "inputs": [
+    "DEC-007",
+    "docs/contracts/input.md v2.6",
+    "docs/contracts/session.md",
+    "docs/contracts/syscall.md",
+    "ACPI 6.5 §5.2.9 (FADT RESET_REG, CENTURY)",
+    "ux-design priority 3"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/input.md",
+    "docs/contracts/session.md",
+    "docs/contracts/syscall.md"
+   ],
+   "actions": [
+    "قائمة ابدأ وساعة الشريط والقفل والخروج وإعادة التشغيل",
+    "desktop.md v1.1 (Start): Super tap or Ctrl+Esc or the Start button opens it; apps by ui.lang name, type-to-filter (Arabic and Latin), Enter or click LAUNCHes through the manager, a refused launch shown as text and announced; pinned apps in the config user store",
+    "input.md v2.7: LWin/RWin reserved and delivered as START to the shell, never to apps, never while locked; session.md v1.9: LOCK and LOGOUT requested by the vouched desktop",
+    "syscall.md v1.14: rtc_read (CMOS RTC, FADT CENTURY) and system_reset (administrator token; orderly manager stop, sync, then FADT RESET_REG); Restart only (DEC-007); Shut down via ACPI S5 is deferred and not shown as working",
+    "open question decided here: the taskbar clock before the M7 time settings (recommendation: the RTC shown as UTC and labelled so)",
+    "scenario at the end: Super, type a name, the app opens; pin it; Restart; after sign-in the pin is still there",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-START-LAUNCH, START-ARABIC, START-FAIL, RESTART-PERSIST and POWER-DENIED PASS on CI",
+   "test_ids": [
+    "TST-M6-START-LAUNCH",
+    "TST-M6-START-ARABIC",
+    "TST-M6-START-FAIL",
+    "TST-M6-RESTART-PERSIST",
+    "TST-M6-POWER-DENIED"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-52",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-001",
+    "REQ-M6-008"
+   ],
+   "depends_on": [
+    "WP-51"
+   ],
+   "inputs": [
+    "docs/contracts/files.md:11-12 (8.3 ASCII, no mkdir)",
+    "Microsoft FAT32 File System Specification (LFN, checksum)",
+    "tools/fat32.py",
+    "docs/contracts/shell.md"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/files.md",
+    "docs/contracts/syscall.md",
+    "docs/contracts/shell.md"
+   ],
+   "actions": [
+    "نظام الملفات v1.4: أسماء يونيكود طويلة ومجلدات وإعادة تسمية ومساحة حرة وأزمنة تعديل",
+    "files.md v1.4: UTF-8 paths <-> VFAT LFN UTF-16 (checksum, unique short-name generation), mkdir and rmdir, rename and move within the volume crash-ordered (new entry, sync, old entry freed), ERR_EXISTS enforced, fs_info (total and free bytes), mtime from the RTC; the frozen 8.3 names keep resolving",
+    "syscall.md v1.15: mkdir, rmdir, rename, fs_info; shell.md v1.4: mkdir, mv, df",
+    "host fuzz of LFN and short names against tools/fat32.py; an independent fsck.vfat reads the same names",
+    "scenario at the end: in the shell, a folder with an Arabic name, a file moved into it, reboot, names and contents intact",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-LFN, RENAME, RENAME-CRASH, DISK-FULL and FAT-FUZZ PASS on CI; REQ-M6-001 verified in scope",
+   "test_ids": [
+    "TST-M6-LFN",
+    "TST-M6-RENAME",
+    "TST-M6-RENAME-CRASH",
+    "TST-M6-DISK-FULL",
+    "TST-M6-FAT-FUZZ"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target host --suite M6",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-53",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-009"
+   ],
+   "depends_on": [
+    "WP-52"
+   ],
+   "inputs": [
+    "DEC-006",
+    "docs/contracts/files.md:3 (only /SYSTEM protected)",
+    "docs/contracts/auth.md:25 (accounts admin and user)",
+    "docs/adr/0020-system-files-authority.md"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/files.md",
+    "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/session.md"
+   ],
+   "actions": [
+    "منازل المستخدمين وصلاحية ملفاتهم",
+    "docs/adr/0024-user-file-authority.md: /USERS/<name> created at first sign-in; a directory capability (Dir object, *_at calls relative to it) the session hands to launched apps; an app reaches nothing outside its capability; admin reaches other homes only by ELEVATE; FAT has no owners on disk, so ownership comes from the path under /USERS (declared limit)",
+    "files.md v1.5, syscall.md v1.16 (Dir object, *_at calls), ipc.md (Dir rights), session.md v1.10 (the home capability handed to apps)",
+    "the retrofit touches every file call: mutation coverage for each refusal",
+    "scenario at the end: admin and user each sign in and each sees only their own home (critical scenario 3)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split the kernel Dir object from the session hand-off if needed)"
+   ],
+   "acceptance": "TST-M6-HOME-ISOLATION and DIR-ESCAPE PASS on CI; TST-M5-FILE-AUTHORITY unregressed; ADR-0024 accepted",
+   "test_ids": [
+    "TST-M6-HOME-ISOLATION",
+    "TST-M6-DIR-ESCAPE",
+    "TST-M5-FILE-AUTHORITY"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-54",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-010"
+   ],
+   "depends_on": [
+    "WP-48",
+    "WP-49"
+   ],
+   "inputs": [
+    "OS-EXEC-AR §9 (clipboard and drag-and-drop contracts)",
+    "docs/adr/0019-graphics-platform.md:47",
+    "docs/contracts/display.md"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/display.md"
+   ],
+   "actions": [
+    "الحافظة والسحب والإفلات: العقد وخدمة clipd",
+    "clipboard.md (new): typed payloads (text/utf8, file-list), copy only from the focused client, paste only on a user gesture through a one-shot compositor grant bound to one request id and an expiry, cleared on lock and sign-out, size cap",
+    "display.md v1.13: the paste grant and compositor-mediated drag-and-drop of a file-list between windows of the same session",
+    "scenario at the end: copy Arabic text from one app's field and paste it into another's; a background app's read is refused; nothing is readable while locked",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-CLIPBOARD-ROUNDTRIP, CLIPBOARD-ISOLATION and DND-FILELIST PASS on CI",
+   "test_ids": [
+    "TST-M6-CLIPBOARD-ROUNDTRIP",
+    "TST-M6-CLIPBOARD-ISOLATION",
+    "TST-M6-DND-FILELIST"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-55",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-011"
+   ],
+   "depends_on": [
+    "WP-50",
+    "WP-53",
+    "WP-54"
+   ],
+   "inputs": [
+    "docs/contracts/files.md v1.5",
+    "docs/contracts/ui.md v1.7",
+    "ux-design priority 8 (empty and access-denied states)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "مستكشف الملفات: تصفح وإنشاء ونسخ وإعادة تسمية وتعارضات",
+    "apps/files.md (new tool contract: states, errors, keys): an app run by LAUNCH whose root is the home capability; list view (name, size, type, modified) by keyboard and mouse; New folder, New empty file; copy and paste (clipboard file-list or Copy to...) in chunks with progress and sync; inline rename; conflicts Replace / Keep both / Cancel; errors from the kernel codes",
+    "decided and tested here: what a killed or failed copy leaves behind (copy cannot be atomic)",
+    "scenario at the end: create a folder and a file, copy it, rename the copy to an Arabic name; the host image read confirms it",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split browse and create from copy and conflicts if needed)"
+   ],
+   "acceptance": "TST-M6-FILES-CHAIN, FILES-CONFLICT, FILES-DISK-FULL, FILES-DENIED and FILES-A11Y-AR PASS on CI",
+   "test_ids": [
+    "TST-M6-FILES-CHAIN",
+    "TST-M6-FILES-CONFLICT",
+    "TST-M6-FILES-DISK-FULL",
+    "TST-M6-FILES-DENIED",
+    "TST-M6-FILES-A11Y-AR"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-56",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-012"
+   ],
+   "depends_on": [
+    "WP-55"
+   ],
+   "inputs": [
+    "docs/contracts/files.md",
+    "apps/files.md v1 (WP-55)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "الحذف إلى سلة المهملات والاستعادة عبر إعادة التشغيل",
+    "files.md section or trash.md: a per-user trash under the home with an index (original path, time); delete = index entry, sync, rename into the trash; restore = rename back with a conflict prompt on an occupied target; Empty trash with confirmation; start-up reconciles a crash between the steps (every case of index and directory disagreeing covered)",
+    "apps/files.md v1.1: the Recycle view in the explorer and on the desktop",
+    "scenario at the end: delete a file, reboot, restore it, the content unchanged",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-TRASH-RESTORE-REBOOT, TRASH-CONFLICT, TRASH-CRASH and TRASH-ISOLATION PASS on CI",
+   "test_ids": [
+    "TST-M6-TRASH-RESTORE-REBOOT",
+    "TST-M6-TRASH-CONFLICT",
+    "TST-M6-TRASH-CRASH",
+    "TST-M6-TRASH-ISOLATION"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-57",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-013"
+   ],
+   "depends_on": [
+    "WP-48",
+    "WP-55"
+   ],
+   "inputs": [
+    "docs/contracts/services.md (state events)",
+    "ux-design priority 6"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/services.md"
+   ],
+   "actions": [
+    "الإشعارات: notifyd والإشعارات المنبثقة ومركز الإشعارات",
+    "notify.md (new): POST from vouched services and apps (sender identity from the manager, never self-declared), per-sender rate limit, capped history, dismiss and clear all",
+    "services.md v1.13: service state events (failed, given_up) pushed to notifyd; desktop.md v1.2: toasts that never take focus and a notification centre, announced politely to the narrator; while locked only a count",
+    "real sources: the manager (service failure), the explorer (copy done or failed), an fs_info watcher (disk low)",
+    "scenario at the end: kill a service until it gives up, a toast names it, the centre lists it, dismiss it",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-NOTIFY-SERVICE-FAILURE, NOTIFY-SPOOF, NOTIFY-LOCKED and NOTIFY-NO-FOCUS-STEAL PASS on CI",
+   "test_ids": [
+    "TST-M6-NOTIFY-SERVICE-FAILURE",
+    "TST-M6-NOTIFY-SPOOF",
+    "TST-M6-NOTIFY-LOCKED",
+    "TST-M6-NOTIFY-NO-FOCUS-STEAL"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-58",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-014",
+    "REQ-M6-020"
+   ],
+   "depends_on": [
+    "WP-46",
+    "WP-47",
+    "WP-50"
+   ],
+   "inputs": [
+    "docs/contracts/syscall.md v1.13 (process_list, system_info v2)",
+    "docs/contracts/session.md v1.3 (ELEVATE)",
+    "docs/contracts/services.md"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/session.md"
+   ],
+   "actions": [
+    "مدير المهام: العمليات وإنهاء المهمة والأداء",
+    "apps/taskmgr.md: an app over process_list and system_info v2, no cached or simulated values: CPU % per process and total, memory as frames, threads, handles, disk free, net counters",
+    "services.md v1.14: KILL <pid> with the check that the pid is in the caller's session job; ending a system process goes through ELEVATE with the manager as target",
+    "CPU % asserted as ranges against the kernel counters, never exact numbers (sampling jitter)",
+    "scenario at the end: start the spin app, it tops CPU; the hung app is ended; ending `net` as user is refused and approved as admin",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-TASKMGR-DATA, END-TASK and END-TASK-DENIED PASS on CI",
+   "test_ids": [
+    "TST-M6-TASKMGR-DATA",
+    "TST-M6-END-TASK",
+    "TST-M6-END-TASK-DENIED"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-59",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-015",
+    "REQ-M6-020"
+   ],
+   "depends_on": [
+    "WP-47",
+    "WP-50",
+    "WP-57"
+   ],
+   "inputs": [
+    "docs/contracts/services.md (LIST, line 54)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/services.md"
+   ],
+   "actions": [
+    "أداة الخدمات",
+    "services.md v1.15: START/STOP/RESTART accepted from an administrator token holder only, checked in the manager; protected services (decided here, at least session and display) refused",
+    "apps/services.md: a list from LIST with live state events (state, restarts, exit code, dependencies); a user goes through ELEVATE",
+    "scenario at the end: stop `net` with elevation, the state changes, start it again; as user it is refused",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-SVC-TOOL-CONTROL, SVC-TOOL-DENIED and SVC-TOOL-LIVE PASS on CI",
+   "test_ids": [
+    "TST-M6-SVC-TOOL-CONTROL",
+    "TST-M6-SVC-TOOL-DENIED",
+    "TST-M6-SVC-TOOL-LIVE"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-60",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-016",
+    "REQ-M6-020"
+   ],
+   "depends_on": [
+    "WP-47",
+    "WP-50"
+   ],
+   "inputs": [
+    "docs/adr/0017-m4-drivers.md (DMA trust)",
+    "PCI Code and ID Assignment Specification (class codes)",
+    "virtio 1.3 (device ids)",
+    "docs/contracts/syscall.md"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/syscall.md"
+   ],
+   "actions": [
+    "الأجهزة: device_list وأداة الأجهزة",
+    "syscall.md v1.17: device_list: PCI BDF, vendor:device and class codes, bound driver, IRQ, DMA-trust state (ADR-0017), and the i8042 keyboard and mouse, GOP display and virtio-blk/net with their counters",
+    "apps/devices.md: a tree by class with Properties and Refresh; no disable action unless a driver supports it; names only from PCI class codes and virtio ids (no third-party ID database)",
+    "scenario at the end: the tool lists the QEMU devices with properties",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-DEVICE-LIST and DEVICES-APP PASS on CI",
+   "test_ids": [
+    "TST-M6-DEVICE-LIST",
+    "TST-M6-DEVICES-APP"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-61",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-017"
+   ],
+   "depends_on": [
+    "WP-47",
+    "WP-50"
+   ],
+   "inputs": [
+    "docs/adr/0020-system-files-authority.md (narrowed SystemFiles, WP-44 pattern)",
+    "docs/contracts/services.md",
+    "docs/contracts/syscall.md"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/syscall.md",
+    "docs/contracts/services.md",
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "السجلات: حلقة النواة وحفظ logd وعارض السجلات",
+    "logs.md (new); syscall.md v1.18: a kernel ring of trace lines with sequence numbers, level and source, read through a LogRead capability (new object type); services.md v1.16: LogRead handed to logd only",
+    "logd persists the current and previous boot under /SYSTEM/LOGS with a narrowed SystemFiles capability, rotation and a dropped count; the viewer filters by source, level and boot; Clear needs an administrator token",
+    "logging must not slow the hot paths or deadlock with the serial lock",
+    "scenario at the end: a failure in boot 1 is visible in the viewer after reboot",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-LOG-PERSIST, LOG-AUTHORITY, LOG-OVERFLOW and LOG-NO-SECRETS PASS on CI",
+   "test_ids": [
+    "TST-M6-LOG-PERSIST",
+    "TST-M6-LOG-AUTHORITY",
+    "TST-M6-LOG-OVERFLOW",
+    "TST-M6-LOG-NO-SECRETS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-63",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-018"
+   ],
+   "depends_on": [
+    "WP-50",
+    "WP-53"
+   ],
+   "inputs": [
+    "DEC-008",
+    "OS-EXEC-AR §19 (4)",
+    "docs/contracts/ui.md v1.7",
+    "docs/contracts/files.md v1.5"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/ui.md",
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "محرر نصوص أدنى متعدد الأسطر (السيناريو الحرج 4)",
+    "ui.md v1.8: a multi-line text area (lines broken at the last space that fits, caret by line and character in mixed Arabic and Latin, UTF-8 boundaries kept, narrator `line k/n` without the whole text)",
+    "apps/editor.md (new tool contract): open, save and save as inside the home capability; a modified marker; close with unsaved changes asks Save / Don't save / Cancel; save writes a temporary name, syncs and renames over the old file, so a failed save keeps the previous content",
+    "scenario at the end: create a file, save, reopen, modify, save, Restart, the content equals the last save and another user's app is refused",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "TST-M6-EDITOR-UNIT, EDITOR-MODIFY-REBOOT, EDITOR-UNSAVED and EDITOR-SAVE-FAIL PASS on CI",
+   "test_ids": [
+    "TST-M6-EDITOR-UNIT",
+    "TST-M6-EDITOR-MODIFY-REBOOT",
+    "TST-M6-EDITOR-UNSAVED",
+    "TST-M6-EDITOR-SAVE-FAIL"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target host --suite M6",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-62",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-019",
+    "REQ-M6-020",
+    "REQ-M6-021"
+   ],
+   "depends_on": [
+    "WP-56",
+    "WP-57",
+    "WP-58",
+    "WP-59",
+    "WP-60",
+    "WP-61",
+    "WP-63"
+   ],
+   "inputs": [
+    "docs/prompt/OS-EXEC-AR-v3.2.md:596-601 (M6)",
+    "docs/prompt/OS-EXEC-AR-v3.2.md §19 (critical scenarios)",
+    "docs/stages.json M6 exit_conditions",
+    "DEC-002",
+    "DEC-009"
+   ],
+   "files": [],
+   "contract_refs": [],
+   "actions": [
+    "بوابة M6: سلاسل الخروج، طفرات M6، مراجعة مسماة، تحديث PLAN/ENVIRONMENT/threat-model",
+    "end-to-end in-system chains (OS-EXEC-AR line 601): boot, sign in, Start launches an app, window management, the file chain create / copy / rename / delete / restore, editor modify, Restart, persistence, real resource data, logs; failures, permissions, conflicts and persistence after reboot; the full Arabic run, keyboard only; event-driven waits on trace lines, never sleeps",
+    "mutants for the M6 modules (>= 95%, no surviving security mutant) with M2-M5 re-run; an M6-GATE host suite and a mutants.yml step",
+    "docs/operations/m6-review.md; threat model (shell role, launch broker, clipboard, logs); PLAN and ENVIRONMENT; REQ-SCOPE-003 status against DEC-002 (reference conformance stays unjudged while DEC-002 is open; DEC-009)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+   ],
+   "acceptance": "M6 gate passed: every stages.json M6 exit condition met with CI evidence or a visible, recorded exception",
+   "test_ids": [
+    "TST-M6-E2E-SCENARIO",
+    "TST-M6-E2E-AR",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6-GATE"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
   }
  ]
 }

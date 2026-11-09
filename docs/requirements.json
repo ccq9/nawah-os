@@ -1752,9 +1752,676 @@
    "failure_cases": [
     "اسم عربي يُرفض أو يُحرَّف على القرص"
    ],
-   "acceptance": "lfn",
+   "acceptance": "lfn + fat_fuzz (WP-52)",
    "test_ids": [
-    "TST-M6-LFN"
+    "TST-M6-LFN",
+    "TST-M6-FAT-FUZZ"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-002",
+   "statement": "إقلاع تفاعلي: صورة الإصدار تقلع ببيان النظام الحقيقي (SERVICES.TXT) وتبقى على شاشة الدخول لا تخرج؛ الفحص الذاتي للمختبر بمفتاح fw_cfg؛ مراقبة الجلسة بنبضة حياة أطول من REQUEST_DEADLINE؛ شاشات الدخول والقفل والرفع تتبع ui.lang والتكبير والتباين وتُظهر لغة الإدخال النشطة",
+   "rationale": "ADR-0019:48 (الإقلاع التفاعلي أول حزمة في M6)؛ session.md §8 (الجلسة لا تجيب PING، الشاشتان بالإنجليزية)؛ m5-review.md:25؛ OS-EXEC-AR §19 (1)",
+   "source": "OS-EXEC-AR 3.2 §19 (1)، ADR-0019",
+   "origin": "derived",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M5-006",
+    "REQ-M5-010",
+    "REQ-M5-009"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/session.md",
+    "docs/contracts/boot.md"
+   ],
+   "failure_cases": [
+    "الصورة تخرج بعد الفحص الذاتي بدل البقاء على شاشة الدخول",
+    "اختبارات M1 تُضعف بدل فصل نمط الإقلاع",
+    "جلسة معلقة لا تُكتشف أبدًا",
+    "مراقب قصير يقتل جلسة تنتظر auth انتظارًا مشروعًا",
+    "شاشة الدخول بالإنجليزية لمستخدم عربي أو كلمة مرور تُكتب بتخطيط غير ظاهر"
+   ],
+   "acceptance": "interactive_boot + session_watchdog + session_ar؛ TST-M1-BOOT/NEG/NOBS تبقى PASS بمفتاح الفحص الذاتي",
+   "test_ids": [
+    "TST-M6-INTERACTIVE-BOOT",
+    "TST-M6-SESSION-WATCHDOG",
+    "TST-M6-SESSION-AR"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-003",
+   "statement": "مهام (jobs) في النواة ومحاسبة لكل عملية وتعداد العمليات: job_create/job_kill، زمن المعالج والإطارات والخيوط والمقابض لكل عملية، زمن الخمول لكل معالج، process_list بمؤشر؛ وأمر ps في الـ shell التشخيصي",
+   "rationale": "OS-EXEC-AR §20 M6 (أدوات العمليات ببيانات موارد حقيقية)؛ النواة لا تملك اليوم إلا عدادات إجمالية (syscall.md system_info) وprocess_kill يحتاج مقبضًا",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "derived",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M5-010",
+    "REQ-M3-004",
+    "REQ-M3-009"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/shell.md"
+   ],
+   "failure_cases": [
+    "عملية تبقى بعد job_kill أو إطارات لا تعود",
+    "محاسبة متسابقة على SMP تعطي أرقامًا مستحيلة",
+    "process_list يقرأ ذاكرة نواة بمؤشر خاطئ",
+    "مستخدم يرى أو ينهي ما لا يحق له"
+   ],
+   "acceptance": "job_kill + proc_accounting + proc_list_refusals + shell_ps",
+   "test_ids": [
+    "TST-M6-JOB-KILL",
+    "TST-M6-PROC-ACCOUNTING",
+    "TST-M6-PROC-LIST-REFUSALS",
+    "TST-M6-SHELL-PS"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-004",
+   "statement": "نموذج التطبيقات: سجل تطبيقات /APPS، ومدير الخدمات وحده يشغّل التطبيق (LAUNCH) في مهمة الجلسة ويشهد بهويته app:<id>#<n>، وLAUNCH يُقبل من session وdesktop الموثقتين فقط، والتطبيق لا يتصل إلا بما أعلنه، والتشغيل التلقائي للمستخدم، والخروج ينهي مهمة الجلسة",
+   "rationale": "DEC-005 (المدير يسمسر التشغيل والهوية)؛ session.md §8 (الخروج لا ينهي عمليات المستخدم)؛ ADR-0019:49؛ OS-EXEC-AR §20 M6 (اربط كل زر بعملية فعلية)",
+   "source": "OS-EXEC-AR 3.2 §20 M6، DEC-005",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-003",
+    "REQ-M4-002",
+    "REQ-M4-004"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/session.md"
+   ],
+   "failure_cases": [
+    "عميل عادي يشغّل تطبيقًا أو ينتحل هوية تطبيق",
+    "تطبيق يتصل بخدمة لم يعلنها",
+    "تطبيق يتجاهل الإغلاق يبقى بعد الخروج",
+    "سجل تالف يُسقط المدير"
+   ],
+   "acceptance": "app_launch + logout_kills + launch_denied + app_registry_fuzz",
+   "test_ids": [
+    "TST-M6-APP-LAUNCH",
+    "TST-M6-LOGOUT-KILLS",
+    "TST-M6-LAUNCH-DENIED",
+    "TST-M6-APP-REGISTRY-FUZZ"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-005",
+   "statement": "سطح المكتب وشريط المهام: دور صدفة (shell) في الـ compositor لخدمة desktop التي يشهد بها المدير، بطبقات خلفية ولوحة ومنطقة عمل تستثني الشريط وأحداث النوافذ؛ زر لكل نافذة يفعّل ويصغّر ويستعيد ويطلب الإغلاق، ومسار لوحة مفاتيح لكل فعل، وعلامة التطبيق المتوقف ليست لونًا فقط",
+   "rationale": "OS-EXEC-AR §20 M6 (سطح المكتب وشريط المهام)؛ §11 (2: سطح المكتب والخلفية)؛ §17 (الوصول)",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-004",
+    "REQ-M5-003",
+    "REQ-M5-008"
+   ],
+   "contract_refs": [
+    "docs/contracts/display.md"
+   ],
+   "failure_cases": [
+    "عميل غير desktop يأخذ دور الصدفة أو يرى نوافذ غيره",
+    "شريط المهام تغطيه نافذة أو يدخل Alt+Tab",
+    "انهيار الصدفة يفتح القفل أو يكشف عناوين النوافذ",
+    "تغيير دلالات display.md v1.3 المجمَّدة"
+   ],
+   "acceptance": "shell_events + shell_authority + taskbar_window + shell_crash؛ اختبارات M5 للنوافذ والقفل بلا انحدار",
+   "test_ids": [
+    "TST-M6-SHELL-EVENTS",
+    "TST-M6-SHELL-AUTHORITY",
+    "TST-M6-TASKBAR-WINDOW",
+    "TST-M6-SHELL-CRASH"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-006",
+   "statement": "libui الإصدار 2: الفأرة لكل عنصر، وقوائم منبثقة وسياقية، وحوار تأكيد، وعرض قائمة افتراضي بأعمدة وتمرير وفرز وتحديد، مع إعلانات القارئ وعكس الاتجاه في RTL؛ دون كسر ترتيب التركيز المجمَّد",
+   "rationale": "ui.md:7 و:13 (6 عناصر قائمة و12 عنصرًا، لوحة مفاتيح فقط)؛ أدوات M6 تعرض مئات الصفوف؛ §17",
+   "source": "OS-EXEC-AR 3.2 §20 M6، §17",
+   "origin": "derived",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M5-005",
+    "REQ-M5-009"
+   ],
+   "contract_refs": [
+    "docs/contracts/ui.md"
+   ],
+   "failure_cases": [
+    "مسار الفأرة يصل حالة لا يصلها مسار لوحة المفاتيح أو العكس",
+    "قائمة طويلة تتجاوز سطحها أو تفقد التحديد عند التمرير",
+    "الأعمدة لا تنعكس في RTL",
+    "إعلان القارئ يختلف بين إقلاعين"
+   ],
+   "acceptance": "ui_unit + ui_pointer + listview_unit + listview_a11y + listview_rtl؛ KEYBOARD-NAV/A11Y-TREE/ARABIC-UI بلا انحدار",
+   "test_ids": [
+    "TST-M6-UI-UNIT",
+    "TST-M6-UI-POINTER",
+    "TST-M6-LISTVIEW-UNIT",
+    "TST-M6-LISTVIEW-A11Y",
+    "TST-M6-LISTVIEW-RTL"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-007",
+   "statement": "قائمة ابدأ: تفتح بمفتاح Super أو الزر، تصفية بالعربية واللاتينية، تشغيل عبر المدير مع خطأ ظاهر عند الفشل، تثبيت التطبيقات، وقائمة الطاقة: قفل وخروج وإعادة تشغيل منظمة (FADT reset) تحتاج سلطة مدير؛ وساعة الشريط من RTC",
+   "rationale": "OS-EXEC-AR §20 M6 (ابدأ)؛ DEC-007 (إعادة التشغيل فقط في M6، الإيقاف الكامل ACPI S5 مؤجل)؛ §19 (6)",
+   "source": "OS-EXEC-AR 3.2 §20 M6، DEC-007",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-005",
+    "REQ-M6-006",
+    "REQ-M4-005"
+   ],
+   "contract_refs": [
+    "docs/contracts/input.md",
+    "docs/contracts/session.md",
+    "docs/contracts/syscall.md"
+   ],
+   "failure_cases": [
+    "تشغيل يفشل بصمت أو يُعلن نجاحًا بلا نافذة",
+    "Super يصل تطبيقًا أو يفتح ابدأ أثناء القفل",
+    "system_reset بلا رمز مدير",
+    "التثبيت أو الملفات تضيع بعد إعادة التشغيل"
+   ],
+   "acceptance": "start_launch + start_arabic + start_fail + restart_persist + power_denied",
+   "test_ids": [
+    "TST-M6-START-LAUNCH",
+    "TST-M6-START-ARABIC",
+    "TST-M6-START-FAIL",
+    "TST-M6-RESTART-PERSIST",
+    "TST-M6-POWER-DENIED"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-008",
+   "statement": "نظام الملفات v1.4: مجلدات (mkdir/rmdir)، وإعادة تسمية ونقل داخل الحجم بترتيب يحتمل الانقطاع، وERR_EXISTS، والمساحة الحرة (fs_info)، وأزمنة التعديل من RTC، وامتلاء القرص بخطأ واضح بلا ملف جزئي",
+   "rationale": "files.md:11-12 (8.3 ASCII ولا إنشاء مجلدات)؛ OS-EXEC-AR §20 M6 (إنشاء ونسخ وإعادة تسمية)؛ §19 (6: امتلاء القرص)",
+   "source": "OS-EXEC-AR 3.2 §20 M6، §19 (6)",
+   "origin": "derived",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-001",
+    "REQ-M3-007",
+    "REQ-M3-008"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md",
+    "docs/contracts/syscall.md",
+    "docs/contracts/shell.md"
+   ],
+   "failure_cases": [
+    "انقطاع بين خطوات إعادة التسمية يفقد الملف أو يربط سلسلتين",
+    "اسم موجود يُستبدل بصمت",
+    "امتلاء القرص يترك ملفًا جزئيًا ظاهرًا أو يعلن نجاحًا",
+    "أسماء 8.3 القديمة لا تعود تُحل"
+   ],
+   "acceptance": "rename + rename_crash + disk_full + fat_fuzz",
+   "test_ids": [
+    "TST-M6-RENAME",
+    "TST-M6-RENAME-CRASH",
+    "TST-M6-DISK-FULL",
+    "TST-M6-FAT-FUZZ"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-009",
+   "statement": "عزل ملفات كل مستخدم: /USERS/<name> يُنشأ عند أول دخول، ومقدرة مجلد (Dir) تعطيها الجلسة للتطبيقات، فلا يصل تطبيق إلى منزل مستخدم آخر ولا إلى خارج مقدرته؛ والمدير لا يصل إلى منازل غيره إلا برفع الصلاحية",
+   "rationale": "DEC-006 (العزل لكل مستخدم في M6)؛ OS-EXEC-AR §19 (3: عزل حسابين ورفض عملية إدارية غير مخولة)؛ files.md:3 (/SYSTEM وحده محمي)",
+   "source": "OS-EXEC-AR 3.2 §19 (3)، DEC-006",
+   "origin": "derived",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-008",
+    "REQ-M5-006",
+    "REQ-M5-011"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md",
+    "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md",
+    "docs/contracts/session.md"
+   ],
+   "failure_cases": [
+    "مستخدم يفتح ملف مستخدم آخر",
+    "الرفض في الواجهة لا في النواة",
+    "`..` أو مسار طويل يخرج من المقدرة",
+    "المدير يصل منزل غيره بلا رفع"
+   ],
+   "acceptance": "home_isolation + dir_escape؛ FILE-AUTHORITY بلا انحدار",
+   "test_ids": [
+    "TST-M6-HOME-ISOLATION",
+    "TST-M6-DIR-ESCAPE"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-010",
+   "statement": "الحافظة والسحب والإفلات: حمولات نوعية (نص UTF-8، قائمة ملفات)، النسخ من العميل المركَّز وحده، اللصق بإيماءة مستخدم فقط (منحة لصق لمرة واحدة من الـ compositor)، مسح عند القفل والخروج، وسقف حجم؛ والسحب بوساطة الـ compositor داخل الجلسة",
+   "rationale": "OS-EXEC-AR §9 (عقد الحافظة والسحب)؛ ADR-0019:47 (أُجِّلا إلى M6)",
+   "source": "OS-EXEC-AR 3.2 §9",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-005",
+    "REQ-M6-006"
+   ],
+   "contract_refs": [
+    "docs/contracts/display.md"
+   ],
+   "failure_cases": [
+    "تطبيق في الخلفية يقرأ الحافظة",
+    "منحة لصق تُعاد أو تُستعمل بعد انتهائها",
+    "محتوى الحافظة يبقى بعد القفل أو الخروج",
+    "إفلات يصل جلسة أخرى"
+   ],
+   "acceptance": "clipboard_roundtrip + clipboard_isolation + dnd_filelist",
+   "test_ids": [
+    "TST-M6-CLIPBOARD-ROUNDTRIP",
+    "TST-M6-CLIPBOARD-ISOLATION",
+    "TST-M6-DND-FILELIST"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-011",
+   "statement": "مستكشف الملفات: تصفح منزل المستخدم بعرض القائمة، مجلد وملف جديدان، نسخ ولصق بتقدم ومزامنة، إعادة تسمية مضمّنة، تعارضات (استبدال/الإبقاء على الاثنين/إلغاء)، أسماء عربية، وأخطاء من رموز النواة؛ امتلاء القرص يزيل النسخة الجزئية",
+   "rationale": "OS-EXEC-AR §20 M6 (مستكشف الملفات؛ إنشاء ملف ونسخه وإعادة تسميته؛ التعارضات)",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-006",
+    "REQ-M6-009",
+    "REQ-M6-010"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "failure_cases": [
+    "نسخ يعلن نجاحًا بعد امتلاء القرص",
+    "تعارض يستبدل بلا سؤال",
+    "خطأ صلاحية يظهر قائمة فارغة بدل الخطأ",
+    "اسم مختلط يُعرض بترتيب خاطئ"
+   ],
+   "acceptance": "files_chain + files_conflict + files_disk_full + files_denied + files_a11y_ar",
+   "test_ids": [
+    "TST-M6-FILES-CHAIN",
+    "TST-M6-FILES-CONFLICT",
+    "TST-M6-FILES-DISK-FULL",
+    "TST-M6-FILES-DENIED",
+    "TST-M6-FILES-A11Y-AR"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-012",
+   "statement": "الحذف إلى سلة المهملات والاستعادة عبر إعادة التشغيل: سلة لكل مستخدم بفهرس (المسار الأصلي والزمن)، استعادة بسؤال التعارض، تفريغ بتأكيد، ومصالحة عند البدء لانقطاع بين الخطوات",
+   "rationale": "OS-EXEC-AR §20 M6 (حذفه واستعادته ضمن العقد؛ الاستمرار بعد إعادة التشغيل)",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-011"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "failure_cases": [
+    "ملف يضيع بانقطاع بين الفهرس والنقل",
+    "استعادة تستبدل ملفًا قائمًا بلا سؤال",
+    "سلة مستخدم آخر مقروءة"
+   ],
+   "acceptance": "trash_restore_reboot + trash_conflict + trash_crash + trash_isolation",
+   "test_ids": [
+    "TST-M6-TRASH-RESTORE-REBOOT",
+    "TST-M6-TRASH-CONFLICT",
+    "TST-M6-TRASH-CRASH",
+    "TST-M6-TRASH-ISOLATION"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-013",
+   "statement": "الإشعارات: خدمة notifyd تقبل من الخدمات والتطبيقات الموثقة بهوية يشهد بها المدير، بحد معدل لكل مرسل وتاريخ محدود؛ إشعارات منبثقة لا تأخذ التركيز ومركز إشعارات يُعلن للقارئ؛ أثناء القفل عدد فقط بلا محتوى؛ مصادر حقيقية (فشل خدمة، نسخ، قرص ممتلئ)",
+   "rationale": "OS-EXEC-AR §20 M6 (الإشعارات)؛ §19 (6: تعطل خدمة بخطأ واضح، 8: القفل)",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-005",
+    "REQ-M6-004"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md"
+   ],
+   "failure_cases": [
+    "تطبيق ينتحل اسم خدمة",
+    "سيل إشعارات بلا حد",
+    "محتوى إشعار يظهر على شاشة القفل",
+    "إشعار يسرق التركيز من الكتابة"
+   ],
+   "acceptance": "notify_service_failure + notify_spoof + notify_locked + notify_no_focus_steal",
+   "test_ids": [
+    "TST-M6-NOTIFY-SERVICE-FAILURE",
+    "TST-M6-NOTIFY-SPOOF",
+    "TST-M6-NOTIFY-LOCKED",
+    "TST-M6-NOTIFY-NO-FOCUS-STEAL"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-014",
+   "statement": "مدير المهام: العمليات وزمن المعالج والذاكرة والخيوط والمقابض والقرص والشبكة من process_list وsystem_info بلا قيم مخبأة أو مصطنعة؛ إنهاء مهمة في مهمة جلسة المستخدم عبر المدير، وإنهاء عملية نظام يحتاج رفع الصلاحية",
+   "rationale": "OS-EXEC-AR §20 M6 (أدوات العمليات؛ عرض بيانات موارد حقيقية؛ الصلاحيات)",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-003",
+    "REQ-M6-004",
+    "REQ-M6-006"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/session.md"
+   ],
+   "failure_cases": [
+    "قيم معروضة لا تطابق عدادات النواة",
+    "مستخدم ينهي خدمة نظام بلا رفع",
+    "الرفض في الواجهة لا في المدير"
+   ],
+   "acceptance": "taskmgr_data + end_task + end_task_denied",
+   "test_ids": [
+    "TST-M6-TASKMGR-DATA",
+    "TST-M6-END-TASK",
+    "TST-M6-END-TASK-DENIED"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-015",
+   "statement": "أداة الخدمات: قائمة من LIST المدير بتحديث حي (الحالة وإعادات التشغيل ورمز الخروج والتبعيات)، وبدء وإيقاف وإعادة تشغيل يفحص المدير فيها رمز المدير الإداري، مع خدمات محمية لا تُوقف من الأداة",
+   "rationale": "OS-EXEC-AR §20 M6 (أدوات الخدمات)؛ REQ-M4-004 (الرفض عند طبقة السلطة)",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-004",
+    "REQ-M6-006",
+    "REQ-M6-013"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md"
+   ],
+   "failure_cases": [
+    "زر رمادي بدل رفض في المدير",
+    "إيقاف session أو display من الأداة",
+    "فشل خدمة لا يظهر بلا تحديث يدوي"
+   ],
+   "acceptance": "svc_tool_control + svc_tool_denied + svc_tool_live",
+   "test_ids": [
+    "TST-M6-SVC-TOOL-CONTROL",
+    "TST-M6-SVC-TOOL-DENIED",
+    "TST-M6-SVC-TOOL-LIVE"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-016",
+   "statement": "الأجهزة: device_list في النواة (BDF والمعرّفات والصنف والتعريف المرتبط وIRQ وحالة ثقة DMA، ولوحة المفاتيح والفأرة والعرض وvirtio بعداداتها) وأداة أجهزة شجرية بخصائص وتحديث؛ الأسماء من رموز صنف PCI ومعرفات virtio فقط",
+   "rationale": "OS-EXEC-AR §20 M6 (أدوات الأجهزة)؛ ADR-0017 (ثقة DMA)",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-004",
+    "REQ-M6-006",
+    "REQ-M4-006"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md"
+   ],
+   "failure_cases": [
+    "قائمة لا تطابق ما يراه QEMU",
+    "جدول أسماء من طرف ثالث بلا ترخيص",
+    "زر تعطيل لا يدعمه التعريف"
+   ],
+   "acceptance": "device_list + devices_app",
+   "test_ids": [
+    "TST-M6-DEVICE-LIST",
+    "TST-M6-DEVICES-APP"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-017",
+   "statement": "السجلات: حلقة سجل في النواة بأرقام تسلسل ومستوى ومصدر تُقرأ بمقدرة LogRead يعطيها المدير لـ logd وحدها؛ logd تحفظ الإقلاع الحالي والسابق تحت /SYSTEM/LOGS بتدوير وعدّاد مفقود؛ عارض بتصفية؛ المسح يحتاج رمز مدير؛ لا أسرار في السجل",
+   "rationale": "OS-EXEC-AR §20 M6 (أدوات السجلات)؛ لا مرفق سجل اليوم (الأثر إلى المنفذ التسلسلي فقط)",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-004",
+    "REQ-M6-006",
+    "REQ-M5-006"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md",
+    "docs/contracts/services.md",
+    "docs/contracts/files.md"
+   ],
+   "failure_cases": [
+    "تطبيق يقرأ الحلقة الخام أو يمسح السجل",
+    "كلمة مرور تصل السجل",
+    "سيل يجمّد النظام أو يفقد بلا عدّاد",
+    "سجل الإقلاع السابق يضيع"
+   ],
+   "acceptance": "log_persist + log_authority + log_overflow + log_no_secrets",
+   "test_ids": [
+    "TST-M6-LOG-PERSIST",
+    "TST-M6-LOG-AUTHORITY",
+    "TST-M6-LOG-OVERFLOW",
+    "TST-M6-LOG-NO-SECRETS"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-018",
+   "statement": "محرر نصوص أدنى متعدد الأسطر: فتح وحفظ وحفظ باسم داخل منزل المستخدم، نص عربي ومختلط، سؤال عند الإغلاق بتغييرات غير محفوظة، وحفظ آمن (اسم مؤقت ثم مزامنة ثم إعادة تسمية) يُبقي المحتوى السابق عند الفشل",
+   "rationale": "DEC-008 (المحرر ضمن M6)؛ OS-EXEC-AR §19 (4: إنشاء ملف وتعديله وإعادة التشغيل ثم التحقق من محتواه وأذوناته)",
+   "source": "OS-EXEC-AR 3.2 §19 (4)، DEC-008",
+   "origin": "derived",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-006",
+    "REQ-M6-008",
+    "REQ-M6-009"
+   ],
+   "contract_refs": [
+    "docs/contracts/ui.md",
+    "docs/contracts/files.md"
+   ],
+   "failure_cases": [
+    "حفظ يفشل فيُتلف المحتوى السابق",
+    "إغلاق يفقد تغييرات بلا سؤال",
+    "ملف مستخدم يقرؤه تطبيق مستخدم آخر بلا رفع",
+    "حرف UTF-8 يُقسم عند التحرير"
+   ],
+   "acceptance": "editor_unit + editor_modify_reboot + editor_unsaved + editor_save_fail",
+   "test_ids": [
+    "TST-M6-EDITOR-UNIT",
+    "TST-M6-EDITOR-MODIFY-REBOOT",
+    "TST-M6-EDITOR-UNSAVED",
+    "TST-M6-EDITOR-SAVE-FAIL"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-019",
+   "statement": "سلاسل استعمال كاملة داخل النظام: تشغيل تطبيق، إدارة نافذة، إنشاء ملف ونسخه وإعادة تسميته وحذفه واستعادته وتعديله، عرض بيانات موارد حقيقية، مع فحص الفشل والصلاحيات والتعارضات والاستمرار بعد إعادة التشغيل؛ بالعربية وبلوحة المفاتيح وحدها",
+   "rationale": "OS-EXEC-AR §20 M6 (اختبر واخرج عندما)، §19 (1، 3، 4، 6، 7، 8، 11)",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-007",
+    "REQ-M6-011",
+    "REQ-M6-012",
+    "REQ-M6-014",
+    "REQ-M6-017",
+    "REQ-M6-018"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "سلسلة تنجح بخطوات محاكاة لا بعمليات فعلية",
+    "انتظار بزمن ثابت يجعل الحكم متقلبًا",
+    "مسار عربي أو لوحة مفاتيح ناقص"
+   ],
+   "acceptance": "e2e_scenario + e2e_ar",
+   "test_ids": [
+    "TST-M6-E2E-SCENARIO",
+    "TST-M6-E2E-AR"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-020",
+   "statement": "كل زر مربوط بعملية أو خدمة فعلية وكل قيمة معروضة من مصدرها الحقيقي بلا محاكاة؛ وغرفة نظيفة: كل أيقونة ونص وخط وأصل بصري من عمل المشروع أو بترخيص مسجل، والسلوك من وصف سلوكي لا من أصول المرجع",
+   "rationale": "OS-EXEC-AR §20 M6 (اربط كل زر بعملية أو خدمة فعلية؛ استخدم جرد المرجع لتثبيت السلوك)؛ DEC-009؛ ADR-0022؛ PROJECT.md الهدف 4 (هوية بصرية وأصول أصلية)",
+   "source": "OS-EXEC-AR 3.2 §20 M6، DEC-009",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-004"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "زر بلا أثر أو قيمة ثابتة مصطنعة",
+    "أصل منسوخ من النظام المرجعي أو بلا ترخيص مسجل"
+   ],
+   "acceptance": "asset_provenance + taskmgr_data + svc_tool_live + device_list + e2e_scenario",
+   "test_ids": [
+    "TST-M6-ASSET-PROVENANCE",
+    "TST-M6-TASKMGR-DATA",
+    "TST-M6-SVC-TOOL-LIVE",
+    "TST-M6-DEVICE-LIST",
+    "TST-M6-E2E-SCENARIO"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M6-021",
+   "statement": "بوابة M6: سلاسل الخروج بأدلتها واستثناءاتها الظاهرة، طفرات ≥95% بلا طفرة أمنية حية على وحدات M6 مع إعادة M2–M5، مراجعة مسماة docs/operations/m6-review.md، ونموذج التهديد (دور الصدفة، سمسار التشغيل، الحافظة، السجلات)",
+   "rationale": "OS-EXEC-AR §20 M6",
+   "source": "OS-EXEC-AR 3.2 §20 M6",
+   "origin": "user_requirement",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M6",
+   "dependencies": [
+    "REQ-M6-001",
+    "REQ-M6-002",
+    "REQ-M6-003",
+    "REQ-M6-004",
+    "REQ-M6-005",
+    "REQ-M6-006",
+    "REQ-M6-007",
+    "REQ-M6-008",
+    "REQ-M6-009",
+    "REQ-M6-010",
+    "REQ-M6-011",
+    "REQ-M6-012",
+    "REQ-M6-013",
+    "REQ-M6-014",
+    "REQ-M6-015",
+    "REQ-M6-016",
+    "REQ-M6-017",
+    "REQ-M6-018",
+    "REQ-M6-019",
+    "REQ-M6-020"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "ادعاء سلسلة أو عزل بلا اختبار",
+    "طفرة أمنية حية"
+   ],
+   "acceptance": "scenario + mutants + review",
+   "test_ids": [
+    "TST-M6-MUTANTS"
    ],
    "implementation_status": "planned",
    "evidence_refs": []
