@@ -28,6 +28,7 @@ HEADER_LINES = 10
 TEAM_DOC = "docs/policies/team-methodology.md"
 TEAM_WORKFLOW = ".claude/workflows/nawah-team.js"
 TEAM_PLAN = "docs/PLAN-REVERSE.md"
+TEAM_ANSWER = "docs/PLAN-ANSWER.md"  # the team's execution answer to the plan (DEC-011 run)
 TEAM_ENTRY = "CLAUDE.md"  # loaded by every session and sub-agent; it must point at the methodology
 # DEC-011 (2026-11-09): fourteen roles — manager, assistant manager, 2 planners, 3 software
 # engineers, 3 systems engineers, 3 cybersecurity engineers, 1 auditor.
@@ -72,7 +73,7 @@ class M0Records(unittest.TestCase):
         self.assertEqual(missing, [], "ADR-0002 item 4: a ported file without its Sol OS origin line")
 
     def test_team_methodology_is_in_place(self):
-        missing = [f for f in (TEAM_DOC, TEAM_WORKFLOW, TEAM_ENTRY, TEAM_PLAN) if not (ROOT / f).exists()]
+        missing = [f for f in (TEAM_DOC, TEAM_WORKFLOW, TEAM_ENTRY, TEAM_PLAN, TEAM_ANSWER) if not (ROOT / f).exists()]
         self.assertEqual(missing, [], "team methodology files")
         workflow = (ROOT / TEAM_WORKFLOW).read_text(encoding="utf-8")
         self.assertTrue(workflow.startswith("export const meta = {"), "the workflow must open with its meta literal")
@@ -99,6 +100,9 @@ class M0Records(unittest.TestCase):
         for heading in ("## 0.", "## 1.", "## 2.", "## 3.", "## 4.", "## 5.", "## 6."):
             self.assertIn(heading, plan, f"the reverse plan carries its section {heading}")
         self.assertIn("## 5.", plan)  # refuted and unverified claims are listed openly, never dropped
+        answer = (ROOT / TEAM_ANSWER).read_text(encoding="utf-8")
+        for heading in ("## 0.", "## 1.", "## 2.", "## 3.", "## 4.", "## 5.", "## 6.", "## 7."):
+            self.assertIn(heading, answer, f"the plan answer carries its section {heading}")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
