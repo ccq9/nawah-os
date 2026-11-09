@@ -3978,23 +3978,27 @@
     "tools/project.py",
     "docs/schemas/evidence-run.schema.json",
     "tests/mutants.py",
-    "tests/test_validate_records.py",
     "tests/test_ci_workflows.py",
     "tests/test_mutants_harness.py",
-    "docs/adr/0026-evidence-provenance.md"
+    "docs/adr/0026-evidence-provenance.md",
+    "tests/test_evidence_provenance.py",
+    "docs/schemas/evidence-import.schema.json",
+    "docs/tests.json",
+    "docs/requirements.json"
    ],
    "contract_refs": [],
    "actions": [
     "حزمة ضمان قصيرة في حلقة verify واحدة قبل تفعيل WP-45 (PLAN-ANSWER §5.3 item 2)",
-    "import-ci-evidence verifies the GitHub run before adopting anything: conclusion=success, workflow=verify, head is an ancestor of the current HEAD, run id well-formed; a cancelled or failed run is refused (two cancelled runs had published evidence branches: PLAN-ANSWER §2.8)",
+    "import-ci-evidence verifies the GitHub run before adopting anything: conclusion=success, workflow verify or mutants, head is an ancestor of the current HEAD, run id well-formed; a cancelled or failed run is refused (two cancelled runs had published evidence branches: PLAN-ANSWER §2.8)",
     "evidence provenance 1.1.0: a side file import.json per imported run (run id, conclusion, workflow, head sha, importer, import time); run.json is never rewritten; worker from the enumeration (verification-runner per automation.json) (§5.3 item 4, option REL-1 C)",
-    "dirty_state and dirty_paths recorded truthfully by the runner and the importer",
-    "tests/mutants.py: stage_of(n) gains M6 (M130 onwards), --stage M6 accepted, docstring line 24 corrected; SLOWEST_CLEAN_CASE_S=137",
+    "dirty_state and dirty_paths recorded truthfully by the runner, taken once when the run begins (the importer records none: run.json is never rewritten)",
+    "tests/mutants.py: stage_of(n) gains M6 (M130 onwards), --stage M6 accepted, docstring line 24 corrected; SLOWEST_CLEAN_CASE_S=156 (start to finish of the slowest committed ELEVATE run)",
     "guards (D5): test_every_anchor_occurs_once, test_every_guest_suite_runs_in_verify, test_every_host_suite_is_nonempty_and_runs_in_verify",
     "ADR-0026 (evidence provenance and the import check); oracles of TST-M0-003 and TST-M0-005 updated; TST-M0-007 new",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; split point if exceeded: import check and provenance first, mutants stage and guards second",
     "2026-11-09 activation estimate against the budget line (90 min or 120 tool calls, prompt:71): about 300 changed lines in tools/project.py, one schema, one ADR, three test files; one verify cycle; counters carried, not reset (prompt:73)",
-    "2026-11-09 audit correction: import.json names the importer (worker and identity); REQ-M0-006 names both accepted workflows (verify, mutants) as the design does (PLAN-ANSWER §2.8 REL-2); the evaluator-outside-inputs staleness check is WP-66's (§2.8), not promised here (§5.3 item 14 read against §2.8)"
+    "2026-11-09 audit correction: import.json names the importer (worker and identity); REQ-M0-006 names both accepted workflows (verify, mutants) as the design does (PLAN-ANSWER §2.8 REL-2); the evaluator-outside-inputs staleness check is WP-66's (§2.8), not promised here (§5.3 item 14 read against §2.8)",
+    "2026-11-09 audit correction 2 (the team's auditor on 77d48c91: 50 claims, 36 confirmed, 11 refuted, 3 unverifiable): the provenance rule binds every 1.1.0 PASS, not the worker's self-declaration (REL-1 B was rejected for that reason); a present import.json is validated against docs/schemas/evidence-import.schema.json and matched on run id, attempt, head sha and workflow for every worker and verdict, a malformed receipt is a named error; evidence-run if/then: ci required for the runner, forbidden at 1.0.0; begin_run takes the tree identity once so the records attach_evidence writes do not dirty the run; git status -z names paths with spaces or non-ASCII letters as they are; the run id is matched whole; the gh-absence test removes gh from PATH; the enumeration test has a 1.0.0 case; TST-M0-003/005/007 inputs name every file they read; SLOWEST_CLEAN_CASE_S=156 from committed evidence (137 cited a run outside the records); WP-66 and TST-M6-STALE-GATE are proposals of PLAN-ANSWER §1.3, not records; PLAN-ANSWER §2.5 'the import accepts any name' corrected"
    ],
    "acceptance": "TST-M0-001, TST-M0-003, TST-M0-005 and TST-M0-007 PASS on CI; the run's evidence is imported with the new checked importer; validate-records --strict reports 0 errors",
    "test_ids": [

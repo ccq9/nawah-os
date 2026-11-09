@@ -25,8 +25,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import mutants  # noqa: E402
 
-# The slowest M5 case measured on the clean tree (CI verify 42600548943, 2026-11-09: ELEVATE 137 s).
-SLOWEST_CLEAN_CASE_S = 137
+# The slowest M5 case on the clean tree, start to finish of its committed run (a number in a test
+# cites a record, not a run outside the records): TST-M5-ELEVATE,
+# evidence/20261109T104517Z-dece70c2-001, 2026-11-09, 156 s.
+SLOWEST_CLEAN_CASE_S = 156
 
 
 class Stages(unittest.TestCase):

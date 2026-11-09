@@ -79,15 +79,19 @@ def git(*args) -> str:
 def dirty_paths(limit=50):
     """Tracked files changed and untracked files outside evidence/, build/ and state/, sorted, at
     most `limit` of them (ADR-0026, REL-3 B): the evidence a run writes, the build it produces and
-    the lab's state must not make the run dirty; a changed source file must."""
-    r = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], cwd=ROOT, capture_output=True, text=True)
-    out = []
-    for line in r.stdout.splitlines():
-        if len(line) < 4:
+    the lab's state must not make the run dirty; a changed source file must. Files .gitignore
+    hides (target/, build/) are not seen at all. Read with -z, so a path with a space or a
+    non-ASCII letter comes as it is, never quoted or octal-escaped."""
+    r = subprocess.run(["git", "status", "--porcelain", "-z", "--untracked-files=all"], cwd=ROOT, capture_output=True, text=True)
+    fields = r.stdout.split("\0")
+    out, i = [], 0
+    while i < len(fields):
+        entry = fields[i]; i += 1
+        if len(entry) < 4:
             continue
-        path = line[3:]  # porcelain v1: two status letters, a space, the path (never strip: the first letter may be a space)
-        if " -> " in path:
-            path = path.split(" -> ")[-1]
+        xy, path = entry[:2], entry[3:]  # porcelain v1: two status letters, a space, the path (the first letter may be a space)
+        if "R" in xy or "C" in xy:
+            i += 1  # a rename or copy: the original path follows as a field of its own
         if path.startswith(DIRTY_EXCLUDED):
             continue
         out.append(path)
@@ -97,6 +101,20 @@ def dirty_paths(limit=50):
 def source_identity():
     rev = git("rev-parse", "HEAD") or "unknown"
     return rev, bool(dirty_paths(limit=1))
+
+
+# The tree identity of the run in progress: (revision, dirty paths), taken once when a build, a
+# boot or a suite begins (ADR-0026 rule 2). attach_evidence rewrites docs/tests.json,
+# requirements.json and work-items.json while a suite runs, so a tree clean at the start would
+# read dirty from the second case on if every run.json measured afresh.
+RUN_TREE = None
+
+
+def begin_run():
+    global RUN_TREE
+    if RUN_TREE is None:
+        RUN_TREE = (git("rev-parse", "HEAD") or "unknown", dirty_paths())
+    return RUN_TREE
 
 
 def runner_identity():
@@ -199,37 +217,50 @@ def check_evidence_dir(rel, pb: Problems, where, expect_test_id=None, current_di
     ec = (p / "exit_code").read_text().strip()
     if str(run["exit_code"]) != ec:
         pb.err(where, f"evidence {rel}: exit_code file ({ec}) != run.json ({run['exit_code']})")
-    # provenance (ADR-0026): a PASS from the verification runner is adopted only through the
-    # checked import, whose import.json names the same CI run as the run's own identity
+    # provenance (ADR-0026): a 1.1.0 PASS is adopted only through the checked import, whose
+    # import.json is a complete receipt naming the same CI run as the run's own identity. The rule
+    # binds the evidence, not the worker's own word: a run.json saying interactive-agent or test
+    # is a self-claim (REL-1 B, rejected), so it earns no exemption (audit of 77d48c91).
     imp_p = p / "import.json"
-    # Evidence native to the CI run that is validating (verify's strict step runs on the runner's
-    # own tree before any import exists) is produced, not adopted: no import.json yet. Native means
-    # the run's own identity equals this run's: id, attempt and commit all match and none is empty
-    # (an empty string is no identity). The exemption covers only a missing receipt: a present
-    # import.json is always checked, inside the native run too (audit of 68d72a5e, 2026-11-09).
     ci = run.get("ci") or {}
-    env = os.environ
-
-    def same(a, b):
-        return bool(a) and bool(b) and str(a) == str(b)
-
-    native = (env.get("GITHUB_ACTIONS") == "true" and same(ci.get("run_id"), env.get("GITHUB_RUN_ID"))
-              and same(ci.get("run_attempt"), env.get("GITHUB_RUN_ATTEMPT")) and same(ci.get("sha"), env.get("GITHUB_SHA")))
-    if run.get("worker") == "verification-runner" and verdict["verdict"] == "PASS":
-        if not imp_p.exists():
-            if not native:
-                msg = f"evidence {rel}: a verification-runner PASS without import.json (not adopted through the checked import)"
-                if pb.strict:
-                    pb.err(where, msg)
-                else:
-                    pb.warn(where, msg)
-        else:
-            ci_id = str(ci.get("run_id", "") or "")
-            imp_id = str(load_json(imp_p).get("ci_run_id", "") or "")
-            if not ci_id or imp_id != ci_id:
-                pb.err(where, f"evidence {rel}: import.json names CI run {imp_id!r} but run.json names {ci_id!r}")
-    if run.get("schema_version") == "1.0.0" and not imp_p.exists():
+    if imp_p.exists():
+        # A present receipt is checked for every worker and verdict: its own schema, then its
+        # identity against the run's (id, attempt, head sha, workflow). A malformed file is a
+        # named error, not a crash of the validator.
+        try:
+            receipt = load_json(imp_p)
+        except ValueError as ex:
+            receipt = None
+            pb.err(where, f"evidence {rel}: import.json is not valid JSON ({str(ex)[:80]})")
+        if receipt is not None:
+            before_imp = len(pb.errors)
+            validate_schema("evidence-import", receipt, pb, f"{rel}/import.json")
+            if len(pb.errors) == before_imp:
+                for key, ci_key in (("ci_run_id", "run_id"), ("run_attempt", "run_attempt"), ("head_sha", "head_sha"), ("workflow", "workflow")):
+                    have, want = receipt.get(key), ci.get(ci_key)
+                    if not want or str(have) != str(want):
+                        pb.err(where, f"evidence {rel}: import.json {key} {have!r} does not match run.json ci.{ci_key} {want!r}")
+    elif run.get("schema_version") == "1.0.0":
         pb.legacy_runs.add(rel)
+    elif verdict["verdict"] == "PASS":
+        # Evidence native to the CI run that is validating (verify's strict step runs on the
+        # runner's own tree before any import exists) is produced, not adopted: no import.json
+        # yet. Native means the run's own identity equals this run's: id, attempt and commit all
+        # match and none is empty (an empty string is no identity). The exemption covers only a
+        # missing receipt (audit of 68d72a5e, 2026-11-09).
+        env = os.environ
+
+        def same(a, b):
+            return bool(a) and bool(b) and str(a) == str(b)
+
+        native = (env.get("GITHUB_ACTIONS") == "true" and same(ci.get("run_id"), env.get("GITHUB_RUN_ID"))
+                  and same(ci.get("run_attempt"), env.get("GITHUB_RUN_ATTEMPT")) and same(ci.get("sha"), env.get("GITHUB_SHA")))
+        if not native:
+            msg = f"evidence {rel}: a {run.get('schema_version')} PASS by {run.get('worker')} without import.json (not adopted through the checked import)"
+            if pb.strict:
+                pb.err(where, msg)
+            else:
+                pb.warn(where, msg)
     # staleness: recompute digests of declared inputs
     stale = []
     for inp, dig in verdict["inputs"].items():
@@ -933,11 +964,11 @@ def new_run_dir(purpose_slug):
 
 
 def write_run(d, rid, target, purpose, commands, exit_code, started, worker=None, notes=None):
-    rev, dirty = source_identity()
+    rev, paths = RUN_TREE or (git("rev-parse", "HEAD") or "unknown", dirty_paths())
     env_worker, ci = runner_identity()
     run = {"schema_version": RUN_SCHEMA_VERSION, "run_id": rid, "started_at": started,
            "finished_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-           "source_revision": rev, "dirty_state": dirty, "dirty_paths": dirty_paths(),
+           "source_revision": rev, "dirty_state": bool(paths), "dirty_paths": paths,
            "host": {"os": os.uname().sysname + " " + os.uname().release, "machine": os.uname().machine},
            "target": target, "worker": worker or env_worker, "purpose": purpose, "commands": commands, "exit_code": exit_code}
     if ci:
@@ -982,6 +1013,7 @@ def write_verdict(d, rid, test_id, verdict, oracle, expected, observed, inputs, 
 
 
 def cmd_build(target_name) -> int:
+    begin_run()
     t = load_target(target_name)
     started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     rid, d = new_run_dir("build")
@@ -1127,6 +1159,7 @@ def prepare_esp(t, target_name, artifact):
 
 
 def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
+    begin_run()
     t = load_target(target_name)
     if suite_case is None:
         # One oracle per boot test: when a suite case carries the boot test id, it is the oracle
@@ -1287,16 +1320,16 @@ HOST_SUITES = {
                     "docs/policies/team-methodology.md", ".claude/workflows/nawah-team.js", "CLAUDE.md", "docs/PLAN-REVERSE.md", "docs/PLAN-ANSWER.md"], "input_globs": [".claude/agents/*.md"]},
         {"id": "TST-M0-003", "command": ["python3", "-I", "tests/test_ci_workflows.py"],
          "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; every guest suite of target.json has its verify step and vice versa, and every host suite outside the gates and M2 is non-empty and run (ADR-0026, D5); the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; the mutants workflow runs the gates M2, M3, M4, M5 in order, checks the records strictly first and publishes every gate's report (18 cases, OK)",
-         "inputs": ["tests/test_ci_workflows.py", "tools/project.py"], "input_globs": [".github/workflows/*.yml"]},
+         "inputs": ["tests/test_ci_workflows.py", "tools/project.py", "platform/pc-qemu/target.json", "kernel/build.rs"], "input_globs": [".github/workflows/*.yml"]},
         {"id": "TST-M0-004", "command": ["python3", "-I", "tests/test_pre_merge.py"],
          "oracle": "tools/pre-merge.sh runs validate-records --strict under set -euo pipefail with no pipe after the validator and exits with its code: on a copy of the repository as committed it exits 0 and prints 'pre-merge: OK'; with one input of a host test edited after its run (a stale verdict) it exits 50 and prints no OK (3 cases, OK)",
          "inputs": ["tests/test_pre_merge.py", "tools/pre-merge.sh", "tools/project.py"], "input_globs": []},
         {"id": "TST-M0-005", "command": ["python3", "-I", "tests/test_mutants_harness.py"],
-         "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (~124 s, TST-M5-ELEVATE), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided; stage_of maps M129 to M5 and M130 onwards to M6, and every mutant's anchor occurs exactly once in its file (8 cases, OK)",
-         "inputs": ["tests/test_mutants_harness.py", "tests/mutants.py"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"]},
+         "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (156 s start to finish in the slowest committed TST-M5-ELEVATE run, evidence 20261109T104517Z-dece70c2-001), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided; stage_of maps M129 to M5 and M130 onwards to M6, and every mutant's anchor occurs exactly once in its file (8 cases, OK)",
+         "inputs": ["tests/test_mutants_harness.py", "tests/mutants.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"]},
         {"id": "TST-M0-007", "command": ["python3", "-I", "tests/test_evidence_provenance.py"],
-         "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; source_identity ignores evidence/, build/ and state/ and names the dirty paths; a verification-runner PASS without import.json is a strict error unless the evidence is native to the validating CI run (run id, attempt and sha all equal its ci identity, none empty); a present import.json is checked even inside the native run and a mismatching or missing ci_run_id is an error; 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is malformed, is blocked without gh, and on success writes import.json (naming the importer's worker and identity) beside an untouched run.json; the evaluator-outside-inputs staleness gap is not covered here (WP-66, TST-M6-STALE-GATE) (18 cases, OK)",
-         "inputs": ["tests/test_evidence_provenance.py", "tools/project.py", "docs/schemas/evidence-run.schema.json", "docs/automation.json"], "input_globs": []},
+         "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity (required for verification-runner, forbidden at 1.0.0) and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; the run's tree identity is taken once when the run begins, so the records attach_evidence writes never make it dirty; source_identity ignores evidence/, build/ and state/ and names the dirty paths as they are, spaces and non-ASCII letters included; a 1.1.0 PASS without import.json is a strict error whatever worker run.json declares, unless the evidence is native to the validating CI run (run id, attempt and sha all equal its ci identity, none empty); a present import.json is checked for every worker and verdict against its own schema (evidence-import: every field required, conclusion success, workflow verify or mutants, importer from the enumeration) and must match the run's ci identity on run id, attempt, head sha and workflow, and a malformed receipt is a named error; 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is not <digits> or mutants-<digits> matched whole, is blocked when gh is not on PATH, and on success writes import.json (naming the importer's worker and identity) beside an untouched run.json; the evaluator-outside-inputs staleness gap is not covered here (WP-66 and TST-M6-STALE-GATE are proposals of PLAN-ANSWER §1.3, not records yet) (26 cases, OK)",
+         "inputs": ["tests/test_evidence_provenance.py", "tools/project.py", "docs/automation.json"], "input_globs": ["docs/schemas/*.schema.json"]},
     ],
 }
 
@@ -1374,6 +1407,7 @@ HOST_SUITES["M1"] = [
 
 
 def cmd_test_host(suite, only=None) -> int:
+    begin_run()
     if suite not in HOST_SUITES:
         print(f"host suite {suite} is not implemented; implemented: {sorted(HOST_SUITES)}"); return E_INTERNAL
     cases = HOST_SUITES[suite]
@@ -1481,6 +1515,7 @@ def cmd_reverify_host() -> int:
 
 
 def cmd_test(target_name, suite, only=None) -> int:
+    begin_run()
     if target_name == "host":
         return cmd_test_host(suite, only)
     t = load_target(target_name)
@@ -1627,7 +1662,7 @@ def cmd_import_ci_evidence(run_id: str) -> int:
     # come from verify or mutants and start from a head that is an ancestor of HEAD; two
     # cancelled runs of 2026-11-09 had published evidence branches this importer would have
     # adopted. Without gh the import is blocked, never guessed.
-    if not RUN_ID_RE.match(run_id):
+    if not RUN_ID_RE.fullmatch(run_id):
         print(f"import refused: run id {run_id!r} is not <digits> or mutants-<digits>"); return E_VALIDATION
     info, why = github_run(run_id)
     if info is None:

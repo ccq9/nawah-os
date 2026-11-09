@@ -39,9 +39,10 @@ THRESHOLD = 0.95
 # must not fail a case that is merely slow: the slowest M5 case on the clean tree is
 # TST-M5-ELEVATE at ~124 s (CI verify 41232334352, 2026-10-31). The old blanket 90 s failed
 # ELEVATE on every mutant in the fairness sweep and counted that infrastructure timeout as a
-# kill (run 41232332567). 180 s cleared it then; by 2026-11-08 ELEVATE took 137 s (verify
-# 42508871862) and WP-38 adds phase 3i (a frozen service, a pointer flood, a second unlock),
-# so 300 s keeps the margin and still bounds a real hang.
+# kill (run 41232332567). 180 s cleared it then; the slowest committed ELEVATE run takes 156 s
+# start to finish (evidence/20261109T104517Z-dece70c2-001, 2026-11-09) and WP-38 adds phase 3i
+# (a frozen service, a pointer flood, a second unlock), so 300 s keeps the margin and still
+# bounds a real hang.
 MUTANT_CASE_TIMEOUT_S = 300
 
 

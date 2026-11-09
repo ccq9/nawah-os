@@ -9,9 +9,15 @@ dirty_state=true, and two cancelled verify runs had published evidence branches 
     `dirty_paths`; 1.0.0 stays valid (the 149 existing verdicts);
   - write_run under GITHUB_ACTIONS=true records worker=verification-runner and the run's `ci`
     identity; source_identity ignores evidence/, build/ and state/ and names the dirty paths;
-  - the validator: a PASS verdict from the verification runner without import.json, or with a
-    mismatching ci_run_id, is an error under --strict (a warning otherwise); 1.0.0 evidence
-    without import.json is one aggregated warning, never an error;
+  - the validator: a 1.1.0 PASS verdict without import.json is an error under --strict (a warning
+    otherwise) whatever worker the run declares, unless the evidence is native to the validating
+    CI run; a present import.json is a complete receipt (its own schema) matching the run's ci
+    identity on run id, attempt, head sha and workflow, for every worker and verdict, and a
+    malformed receipt is a named error; 1.0.0 evidence without import.json is one aggregated
+    warning, never an error;
+  - the writer: dirty_state and dirty_paths are taken once when the run begins, so the records a
+    run writes while attaching its own verdicts never make it dirty; paths with spaces or
+    non-ASCII letters are named as they are;
   - the import: the GitHub run must be completed/success, from verify or mutants, with a head
     that is an ancestor of HEAD, and the id well-formed; anything else, or a missing gh, imports
     nothing and leaves no directory; a successful import writes import.json beside an
@@ -87,8 +93,8 @@ def make_evidence(run_sv=RUN_SV, worker="test", ci=None, import_json=None, verdi
 
 
 CI = {"run_id": "42", "run_attempt": 1, "workflow": "verify", "event": "pull_request", "sha": "cafe", "head_sha": "deadbeef", "ref": "refs/pull/1/merge"}
-IMPORT = {"ci_run_id": "42", "conclusion": "success", "head_sha": "deadbeef", "event": "pull_request", "run_attempt": 1,
-          "evidence_branch_commit": "feed", "imported_at": "2026-01-02T00:00:00+00:00"}
+IMPORT = {"ci_run_id": "42", "conclusion": "success", "head_sha": "deadbeef", "event": "pull_request", "run_attempt": 1, "workflow": "verify",
+          "evidence_branch_commit": "feed", "imported_at": "2026-01-02T00:00:00+00:00", "importer": {"worker": "test", "identity": "t"}}
 
 
 import contextlib
@@ -123,6 +129,13 @@ def done_records(ref):
     return recs
 
 
+def cited_records(ref, verdict):
+    """The test cites the run with the given verdict; the work item stays planned."""
+    recs = base_records()
+    recs["tests"][0].update(verdict=verdict, evidence_refs=[ref])
+    return recs
+
+
 class RunSchema(unittest.TestCase):
     def validate(self, recs):
         write_all(recs)
@@ -137,6 +150,19 @@ class RunSchema(unittest.TestCase):
         ref = make_evidence(worker="verification-runner", ci=CI, import_json=IMPORT)
         self.assertEqual(self.validate(done_records(ref)), project.E_OK)
 
+    def test_the_schema_ties_ci_to_the_runner_and_to_1_1_0(self):
+        """PLAN-ANSWER §2.8 REL-1 promised the version pattern with if/then (the audit of 77d48c91
+        found none): a verification-runner run must carry ci, and a 1.0.0 run cannot."""
+        write_all(base_records())
+        ref = make_evidence(worker="verification-runner", import_json=IMPORT)  # the runner, no ci
+        self.assertNotEqual(self.validate(done_records(ref)), project.E_OK)
+        write_all(base_records())
+        ref = make_evidence(run_sv=SV, worker="interactive-agent", ci=CI)  # 1.0.0 with ci
+        self.assertNotEqual(self.validate(done_records(ref)), project.E_OK)
+        write_all(base_records())
+        ref = make_evidence(worker="interactive-agent")  # 1.1.0 off the runner: ci optional
+        self.assertEqual(self.validate(done_records(ref)), project.E_OK)
+
     def test_1_0_0_run_stays_valid(self):
         write_all(base_records())
         ref = make_evidence(run_sv=SV, worker="interactive-agent")
@@ -146,6 +172,71 @@ class RunSchema(unittest.TestCase):
         write_all(base_records())
         ref = make_evidence(worker="somebody")
         self.assertNotEqual(self.validate(done_records(ref)), project.E_OK)
+        # at 1.0.0 too, where nothing but the enumeration can reject it (at 38df3fe2 this test
+        # passed because 1.1.0 itself was rejected; the audit of 77d48c91 found it never red
+        # for its own reason)
+        ref = make_evidence(run_sv=SV, worker="somebody")
+        self.assertNotEqual(self.validate(done_records(ref)), project.E_OK)
+        ref = make_evidence(run_sv=SV, worker="interactive-agent")
+        self.assertEqual(self.validate(done_records(ref)), project.E_OK)
+
+    def test_a_1_1_0_pass_from_any_worker_without_import_json_is_a_strict_error(self):
+        """The rule binds the evidence, not the worker's own word (ADR-0026 rejected REL-1 B, the
+        self-claim): a 1.1.0 PASS that was not adopted through the checked import is a strict
+        error whether run.json says interactive-agent, test or verification-runner. Local runs
+        belong in scratch evidence; a committed one must come through the import."""
+        for worker in ("interactive-agent", "test"):
+            write_all(base_records())
+            ref = make_evidence(worker=worker)
+            self.assertEqual(self.validate(done_records(ref)), project.E_OK, worker)  # a warning
+            self.assertNotEqual(self.validate_strict(done_records(ref)), project.E_OK, worker)  # an error
+            self.assertNotEqual(self.validate_strict(cited_records(ref, "PASS")), project.E_OK, worker)
+        # a FAIL needs no receipt: it adopts nothing
+        write_all(base_records())
+        ref = make_evidence(worker="interactive-agent", verdict="FAIL")
+        self.assertEqual(self.validate_strict(cited_records(ref, "FAIL")), project.E_OK)
+
+    def test_a_mismatching_receipt_is_an_error_for_any_worker_and_verdict(self):
+        """A present import.json is checked whatever the worker and the verdict (the audit of
+        77d48c91: an interactive-agent run with ci.run_id 42 and a receipt naming 99, and a
+        runner FAIL with the same receipt, both passed)."""
+        write_all(base_records())
+        ref = make_evidence(worker="interactive-agent", ci=CI, import_json=dict(IMPORT, ci_run_id="99"))
+        self.assertNotEqual(self.validate(cited_records(ref, "PASS")), project.E_OK)
+        write_all(base_records())
+        ref = make_evidence(worker="verification-runner", ci=CI, import_json=dict(IMPORT, ci_run_id="99"), verdict="FAIL")
+        self.assertNotEqual(self.validate(cited_records(ref, "FAIL")), project.E_OK)
+        write_all(base_records())
+        ref = make_evidence(worker="interactive-agent", import_json=IMPORT)  # a receipt for a run with no ci identity
+        self.assertNotEqual(self.validate(cited_records(ref, "PASS")), project.E_OK)
+
+    def test_a_receipt_is_a_complete_record_matching_the_runs_attempt_head_and_workflow(self):
+        """import.json has a schema of its own (docs/schemas/evidence-import.schema.json): every field
+        the importer writes is required, the conclusion is success, the workflow is verify or
+        mutants, and the attempt, head sha and workflow equal the run's ci identity."""
+        write_all(base_records())
+        good = make_evidence(worker="verification-runner", ci=CI, import_json=IMPORT)
+        self.assertEqual(self.validate_strict(done_records(good)), project.E_OK)
+        bad = [
+            {k: v for k, v in IMPORT.items() if k != "importer"},
+            {k: v for k, v in IMPORT.items() if k != "workflow"},
+            dict(IMPORT, conclusion="cancelled"),
+            dict(IMPORT, workflow="release"),
+            dict(IMPORT, run_attempt=2),
+            dict(IMPORT, head_sha="beef"),
+            dict(IMPORT, importer={"worker": "somebody", "identity": "t"}),
+            {"ci_run_id": "42"},
+        ]
+        for imp in bad:
+            write_all(base_records())
+            ref = make_evidence(worker="verification-runner", ci=CI, import_json=imp)
+            self.assertNotEqual(self.validate(done_records(ref)), project.E_OK, json.dumps(imp))
+
+    def test_a_malformed_import_json_is_a_named_error_not_a_crash(self):
+        write_all(base_records())
+        ref = make_evidence(worker="verification-runner", ci=CI)
+        (TMP / ref / "import.json").write_text("{")
+        self.assertEqual(self.validate(done_records(ref)), project.E_VALIDATION)
 
     def test_runner_pass_without_import_json_is_a_strict_error(self):
         write_all(base_records())
@@ -182,7 +273,7 @@ class RunSchema(unittest.TestCase):
         """GITHUB_ACTIONS=true with no run id, and a run.json with no ci: two empty strings are not
         a match, so the runner PASS without import.json stays a strict error."""
         write_all(base_records())
-        ref = make_evidence(worker="verification-runner")  # no ci object
+        ref = make_evidence(worker="verification-runner", ci=dict(CI, run_id=""))  # an empty run id
         with ci_env():
             self.assertNotEqual(self.validate_strict(done_records(ref)), project.E_OK)
         with ci_env(GITHUB_RUN_ID=""):
@@ -251,9 +342,46 @@ class SourceIdentity(unittest.TestCase):
 
     def tearDown(self):
         project.ROOT = self.old_root
+        project.RUN_TREE = None
 
     def git(self, *args):
         subprocess.run(["git", *args], cwd=self.root, env=self.env, check=True, capture_output=True)
+
+    def test_a_run_is_not_dirty_on_the_records_it_writes_itself(self):
+        """attach_evidence rewrites docs/tests.json, requirements.json and work-items.json while a
+        suite runs, so a tree clean at the start would read dirty from the second case on (the
+        audit of 77d48c91, gap 3). The run's identity is taken once, when the run begins."""
+        (self.root / "docs").mkdir(); (self.root / "docs" / "tests.json").write_text("{}\n")
+        self.git("add", "-A"); self.git("commit", "-q", "-m", "records")
+        d = TMP / "runs" / "baseline"
+        if d.exists():
+            shutil.rmtree(d)
+        d.mkdir(parents=True)
+        project.RUN_TREE = None
+        project.begin_run()
+        (self.root / "docs" / "tests.json").write_text('{"verdict": "PASS"}\n')  # what attach_evidence does
+        project.write_run(d, "rid", "host", "unit", ["x"], 0, "2026-01-01T00:00:00+00:00")
+        run = json.loads((d / "run.json").read_text())
+        self.assertFalse(run["dirty_state"])
+        self.assertEqual(run["dirty_paths"], [])
+        # a source change before the run begins is dirty and named
+        project.RUN_TREE = None
+        (self.root / "kernel" / "a.rs").write_text("fn a() { b() }\n")
+        project.begin_run()
+        project.write_run(d, "rid", "host", "unit", ["x"], 0, "2026-01-01T00:00:00+00:00")
+        run = json.loads((d / "run.json").read_text())
+        self.assertTrue(run["dirty_state"])
+        self.assertEqual(run["dirty_paths"], ["docs/tests.json", "kernel/a.rs"])
+
+    def test_paths_with_spaces_or_arabic_letters_are_named_unquoted(self):
+        """git status without -z quotes such paths ("kernel/a b.rs", octal escapes for Arabic), so
+        the exclusion and the names were wrong for them (the audit of 77d48c91, gap 10)."""
+        (self.root / "kernel" / "a b.rs").write_text("fn b() {}\n")
+        (self.root / "kernel" / "ملف.rs").write_text("fn c() {}\n")
+        (self.root / "evidence" / "a b").mkdir(parents=True); (self.root / "evidence" / "a b" / "run.json").write_text("{}")
+        self.assertEqual(project.dirty_paths(), ["kernel/a b.rs", "kernel/ملف.rs"])
+        self.git("mv", "kernel/a.rs", "kernel/renamed.rs")
+        self.assertEqual(project.dirty_paths(), ["kernel/a b.rs", "kernel/renamed.rs", "kernel/ملف.rs"])
 
     def test_untracked_evidence_does_not_make_the_tree_dirty(self):
         (self.root / "evidence" / "r1").mkdir(parents=True); (self.root / "evidence" / "r1" / "run.json").write_text("{}")
@@ -360,8 +488,22 @@ class CheckedImport(unittest.TestCase):
         self.assertFalse(self.imported())
 
     def test_without_gh_the_import_is_blocked(self):
+        """PATH holds git alone (the audit of 77d48c91: the system's gh stayed on PATH and the test
+        passed through the 'gh run view failed' branch, not the one it names)."""
+        only_git = self.base / "only-git"; only_git.mkdir()
+        os.symlink(shutil.which("git", path=os.environ.get("PATH", "/usr/bin:/bin")), only_git / "git")
+        self.env["PATH"] = str(only_git)
         r = self.run_import()
         self.assertEqual(r.returncode, project.E_BLOCKED, r.stdout + r.stderr)
+        self.assertIn("gh is not on PATH", r.stdout)
+        self.assertFalse(self.imported())
+
+    def test_a_run_id_with_a_trailing_newline_is_refused(self):
+        """re.match with $ accepts '42\\n' (the audit of 77d48c91, gap 6); the id must match whole."""
+        self.fake_gh()
+        r = self.run_import("42\n")
+        self.assertEqual(r.returncode, project.E_VALIDATION, r.stdout + r.stderr)
+        self.assertIn("not <digits>", r.stdout)
         self.assertFalse(self.imported())
 
 

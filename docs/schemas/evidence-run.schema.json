@@ -118,5 +118,44 @@
     }
    }
   }
- }
+ },
+ "$comment": "evidence/<run>/run.json (ADR-0026). A verification-runner run carries its CI identity in ci; a 1.0.0 run has none.",
+ "allOf": [
+  {
+   "if": {
+    "properties": {
+     "worker": {
+      "const": "verification-runner"
+     }
+    },
+    "required": [
+     "worker"
+    ]
+   },
+   "then": {
+    "required": [
+     "ci"
+    ]
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "schema_version": {
+      "const": "1.0.0"
+     }
+    },
+    "required": [
+     "schema_version"
+    ]
+   },
+   "then": {
+    "not": {
+     "required": [
+      "ci"
+     ]
+    }
+   }
+  }
+ ]
 }
