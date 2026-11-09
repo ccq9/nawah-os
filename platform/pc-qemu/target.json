@@ -731,13 +731,13 @@
           "-fw_cfg",
           "name=opt/nawah/selftest,string=1"
         ],
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest /SYSTEM/SELFTEST.TXT (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); WP-30: the second 16550 (COM2, the diagnostic console) answers its loopback probe (kernel|diag|port=0x2f8|present=1|…|selfcheck=1); WP-32: firmware's GOP frame buffer is captured before ExitBootServices (boot|gop|present=1), mapped by the kernel and carries the diagnostic pattern (kernel|display|present=1|…|selfcheck=1); the manager receives 6 initial handles (control, authority, interface, keyboard, console, display); WP-45 (boot.md, PLAN-ANSWER §2.1): the lab self-test runs only behind the fw_cfg key opt/nawah/selftest=1 (kernel|boot_mode|mode=selftest|source=fw_cfg|key=ok|)",
+        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest /SYSTEM/SELFTEST.TXT (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); WP-30: the second 16550 (COM2, the diagnostic console) answers its loopback probe (kernel|diag|port=0x2f8|present=1|…|selfcheck=1); WP-32: firmware's GOP frame buffer is captured before ExitBootServices (boot|gop|present=1), mapped by the kernel and carries the diagnostic pattern (kernel|display|present=1|…|selfcheck=1); the manager receives 6 initial handles (control, authority, interface, keyboard, console, display); WP-45 (boot.md, PLAN-ANSWER §2.1): the lab self-test runs only behind the fw_cfg key opt/nawah/selftest=1 (the whole line OSX|<build id>|kernel|boot_mode|mode=selftest|source=fw_cfg|key=ok|hv=1)",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
           "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
           "OSX|${BUILD_ID}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
-          "OSX|${BUILD_ID}|kernel|boot_mode|mode=selftest|source=fw_cfg|key=ok|",
+          "OSX|${BUILD_ID}|kernel|boot_mode|mode=selftest|source=fw_cfg|key=ok|hv=1",
           "|kernel|pmm|managed_frames=",
           "|selfcheck=1",
           "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
@@ -6318,7 +6318,7 @@
         "id": "TST-M6-INTERACTIVE-BOOT",
         "test_id": "TST-M6-INTERACTIVE-BOOT",
         "artifact": "${OUT}/NAWAH.EFI",
-        "oracle": "REQ-M6-002, WP-45 (boot.md boot mode, services.md v1.11 system manifest; PLAN-ANSWER §2.1, §2.2, §2.5 D2-Q2, §2.6): the release image NAWAH.EFI boots without the lab self-test key: one boot-mode line `kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1` (exactly one `|kernel|boot_mode|` line per boot: 6 over the six phases, max_counts and min_counts), the manager answers the real system manifest (`manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok`) with selfcheck=1, and over COM2 the shell's `svc` lists the eight services (auth, config, net, input, display, narrator, session, sh) ready with no restart; the lab signs in as `user` (lab-user-1) at the sign-in screen (screendump: lock background 10141C at (2,2), dialog F0F0F0 at (512,338)), the plain desktop background 1E2A38 follows, Ctrl+Alt+Del locks (the lock screen again), the password unlocks (desktop again); the image never prints m1_done, any ktest line or selfcheck=0 and never exits by itself: every phase ends by the lab's monitor `quit` after every step was sent (ends_by=monitor, exit 0). Negative phases on the same image (240 s for the positive phase, 90 s for each negative one): opt/nawah/selftest=0 and opt/nawah/selftest=10 (key=invalid: only the value 1 selects the self-test), opt/nawah/test=exc_de (the ktest key is not the self-test key: source=none, no ktest line), opt/nawah/selftest=svc-sh (a value never names a manifest: SERVICES.TXT answers OK 8, SVC-SH.TXT is not loaded) and -cpu qemu64,-hypervisor with the key (hv=0: fw_cfg is never read, source=none|key=absent, the boot is interactive and nothing is written to the exit port) each still reach the sign-in screen on the real manifest. The password never appears in the serial log",
+        "oracle": "REQ-M6-002, WP-45 (boot.md boot mode, services.md v1.11 system manifest; PLAN-ANSWER §2.1, §2.2, §2.5 D2-Q2, §2.6): the release image NAWAH.EFI boots without the lab self-test key: one boot-mode line `kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1` (exactly one `|kernel|boot_mode|` line per boot: 6 over the six phases, max_counts and min_counts), the manager answers the real system manifest (`manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok`) with selfcheck=1, and over COM2 the shell's `svc` lists the eight services (auth, config, net, input, display, narrator, session, sh) ready with no restart; the lab signs in as `user` (lab-user-1) at the sign-in screen (screendump: lock background 10141C at (2,2), dialog F0F0F0 at (512,338)), the plain desktop background 1E2A38 follows, Ctrl+Alt+Del locks (the lock screen again), the password unlocks (desktop again); the image never prints m1_done, any ktest line or selfcheck=0 and never exits by itself: every phase ends by the lab's monitor `quit` after every step was sent (ends_by=monitor, exit 0). Negative phases on the same image (240 s for the positive phase, 90 s for each negative one): opt/nawah/selftest=0 and opt/nawah/selftest=10 (key=invalid: only the value 1 selects the self-test), opt/nawah/test=exc_de (the ktest key is not the self-test key: source=none, no ktest line), opt/nawah/selftest=svc-sh (a value never names a manifest: SERVICES.TXT answers OK 8, SVC-SH.TXT is not loaded) and -cpu qemu64,-hypervisor with the key (hv=0: fw_cfg is never read, source=none|key=absent, the boot is interactive and nothing is written to the exit port) each still reach the sign-in screen on the real manifest. Every phase requires the kernel's whole boot-mode line with the build id (OSX|<build id>|kernel|boot_mode|mode=…|source=…|key=…|hv=…: source=none whenever the mode is interactive, an invalid key included), never a fragment a process could print through SYS_TRACE; a traced copy of the whole line is a seventh `|kernel|boot_mode|` and fails max_counts. The password never appears in the serial log",
         "expected_exit_code": 0,
         "ends_by": "monitor",
         "required_markers": [],
@@ -6431,8 +6431,7 @@
               "name=opt/nawah/selftest,string=0"
             ],
             "required_markers": [
-              "|kernel|boot_mode|mode=interactive|",
-              "|key=invalid|",
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=invalid|hv=1",
               "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
               "|text=session|state=no_session|window="
             ],
@@ -6455,7 +6454,7 @@
               "name=opt/nawah/test,string=exc_de"
             ],
             "required_markers": [
-              "|kernel|boot_mode|mode=interactive|source=none|key=absent|",
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1",
               "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
               "|text=session|state=no_session|window="
             ],
@@ -6478,8 +6477,7 @@
               "name=opt/nawah/selftest,string=svc-sh"
             ],
             "required_markers": [
-              "|kernel|boot_mode|mode=interactive|",
-              "|key=invalid|",
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=invalid|hv=1",
               "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
               "|text=session|state=no_session|window="
             ],
@@ -6508,9 +6506,7 @@
               "name=opt/nawah/selftest,string=1"
             ],
             "required_markers": [
-              "|kernel|boot_mode|mode=interactive|source=none|",
-              "|key=absent|",
-              "|hv=0",
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=0",
               "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
               "|text=session|state=no_session|window="
             ],
@@ -6537,8 +6533,7 @@
               "name=opt/nawah/selftest,string=10"
             ],
             "required_markers": [
-              "|kernel|boot_mode|mode=interactive|",
-              "|key=invalid|",
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=invalid|hv=1",
               "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
               "|text=session|state=no_session|window="
             ],

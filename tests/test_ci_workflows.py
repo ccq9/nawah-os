@@ -261,6 +261,92 @@ class BootCase(unittest.TestCase):
                 if p.name != "ktest.rs" and name in p.read_text(encoding="utf-8")]
         self.assertTrue(hits, f"no kernel source outside ktest.rs names the fw_cfg key {name!r}")
 
+    # The boot-mode line as the kernel prints it (kernel/src/kmain.rs: `OSX|<build id>|kernel|
+    # boot_mode|<BootMode>`; kernel/src/bootmode.rs Display: source=fw_cfg only for selftest,
+    # so an invalid key and a missing signature both print source=none).
+    LINE = "OSX|${BUILD_ID}|kernel|boot_mode|mode=%s|source=%s|key=%s|hv=%d"
+    PHASES = [("interactive", "none", "absent", 1),    # 1: no key
+              ("interactive", "none", "invalid", 1),   # 2: selftest=0
+              ("interactive", "none", "absent", 1),    # 3: the ktest key alone
+              ("interactive", "none", "invalid", 1),   # 4: selftest=svc-sh
+              ("interactive", "none", "absent", 0),    # 5: -hypervisor with the key
+              ("interactive", "none", "invalid", 1)]   # 6: selftest=10
+
+    def test_every_boot_requires_its_whole_boot_mode_line(self):
+        """Anti-spoofing (WP-45 red team): SYS_TRACE needs no right, so a process can print any
+        fragment (`|key=invalid|`, `|hv=0`). Each phase requires the kernel's whole line with the
+        build id instead, and the case caps `|kernel|boot_mode|` at one per boot: a traced copy of
+        the whole line contains that marker, so it makes a seventh occurrence and fails the case
+        (a traced line cannot hold a newline either: syscall/mod.rs prints 0x0A as '?')."""
+        t = self.target()
+        case = next(c for c in t["suites"]["M6"] if c["id"] == "TST-M6-INTERACTIVE-BOOT")
+        self.assertEqual(len(case["phases"]), len(self.PHASES))
+        for i, (ph, want) in enumerate(zip(case["phases"], self.PHASES), 1):
+            line = self.LINE % want
+            mode_markers = [m for m in ph["required_markers"] if "boot_mode" in m or "|key=" in m or "|hv=" in m]
+            self.assertEqual(mode_markers, [line], f"phase {i}")
+        self.assertEqual(case["max_counts"].get("|kernel|boot_mode|"), len(self.PHASES))
+        self.assertEqual(case["min_counts"].get("|kernel|boot_mode|"), len(self.PHASES))
+        boot = project.select_boot_case(t)
+        mode_markers = [m for m in boot["required_markers"] if "boot_mode" in m]
+        self.assertEqual(mode_markers, [self.LINE % ("selftest", "fw_cfg", "ok", 1)])
+        # The lab resolves ${BUILD_ID} in a phase's markers and in the case's (cmd_boot).
+        src = (ROOT / "tools" / "project.py").read_text(encoding="utf-8")
+        self.assertIn('req = [m.replace("${BUILD_ID}", build_id) for m in ph.get("required_markers", [])]', src)
+        self.assertIn('required = [m.replace("${BUILD_ID}", build_id) for m in case["required_markers"]]', src)
+
+
+# PLAN-ANSWER §3.4 item 3: fw_cfg is host-controlled input, so the only kernel code that may
+# reach it is the boot-mode decision (bootmode.rs), the test kernel's case selector (ktest.rs)
+# and the driver itself (fwcfg.rs). A new caller would widen what the host can steer on a
+# release boot; this guard makes that a reviewed change of the allowed set, not a silent one.
+FWCFG_CALLERS = {"kernel/src/bootmode.rs", "kernel/src/ktest.rs", "kernel/src/arch/x86_64/fwcfg.rs"}
+# Files that may name the module (declare or re-export it) without calling into it.
+FWCFG_DECLARERS = {"kernel/src/arch/mod.rs", "kernel/src/arch/x86_64/mod.rs"}
+FWCFG_FILE = "kernel/src/arch/x86_64/fwcfg.rs"
+
+
+def fwcfg_violations(root):
+    """Kernel sources that reach fw_cfg outside the allowed set: an exact identifier match
+    (word boundaries, so `read_file_x` or `my_read_file` do not count) on every public entry of
+    fwcfg.rs (read_file, hypervisor_present, any later one), on the module name `fwcfg`, and on
+    the fw_cfg ports 0x510/0x511 (a second driver poking the ports directly)."""
+    root = pathlib.Path(root)
+    entries = re.findall(r"^pub fn (\w+)", (root / FWCFG_FILE).read_text(encoding="utf-8"), re.M)
+    bad = []
+    for p in sorted((root / "kernel" / "src").rglob("*.rs")):
+        rel = p.relative_to(root).as_posix()
+        if rel in FWCFG_CALLERS:
+            continue
+        text = p.read_text(encoding="utf-8")
+        for ident in entries:
+            if re.search(rf"\b{ident}\b", text):
+                bad.append(f"{rel}: {ident}")
+        if rel not in FWCFG_DECLARERS and re.search(r"\bfwcfg\b", text):
+            bad.append(f"{rel}: fwcfg")
+        if re.search(r"\b0x51[01]\b", text, re.I):
+            bad.append(f"{rel}: fw_cfg port")
+    return entries, bad
+
+
+class FwCfgCallers(unittest.TestCase):
+    def test_fw_cfg_is_reached_only_from_the_boot_mode_and_the_test_kernel(self):
+        entries, bad = fwcfg_violations(ROOT)
+        self.assertIn("read_file", entries)
+        self.assertEqual(bad, [])
+
+    def test_the_guard_sees_a_new_caller(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = pathlib.Path(d)
+            for rel in FWCFG_CALLERS | FWCFG_DECLARERS:
+                (d / rel).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(ROOT / rel, d / rel)
+            (d / "kernel/src/net.rs").write_text("use crate::arch::fwcfg::read_file as rf;\nfn x() { rf(\"a\", &mut []); }\n")
+            (d / "kernel/src/disk.rs").write_text("fn y() { unsafe { outw(0x510, 0) } }\n")
+            (d / "kernel/src/vfs.rs").write_text("fn read_file_at() {}\n")
+            self.assertEqual(fwcfg_violations(d)[1], ["kernel/src/disk.rs: fw_cfg port",
+                                                      "kernel/src/net.rs: read_file", "kernel/src/net.rs: fwcfg"])
+
 
 class Preflight(unittest.TestCase):
     def test_preflight_runs_the_ci_hygiene_commands(self):
