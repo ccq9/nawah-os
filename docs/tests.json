@@ -2753,7 +2753,7 @@
     "REQ-M6-002"
    ],
    "layer": "negative",
-   "oracle": "planned (M6, WP-45): when the session service is missing from the manifest or fails to start, display keeps the screen held (held=1) and no key reaches any application: the hold fails closed, never open (PLAN-ANSWER §2.1, §3.4)",
+   "oracle": "planned (M6, WP-67): a LIST failure in displayd (an error, a closed channel or a reply longer than its 1024-byte buffer) keeps the screen held (HOLDS reports locked=1, releases=0) and no key reaches any application (spy keys=0): the hold fails closed, never open; a manifest without a session line stays unheld as display.md v1.2 says and the M5 lab manifests rely on (PLAN-ANSWER §2.1, §3.2 line 684, §3.4)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []

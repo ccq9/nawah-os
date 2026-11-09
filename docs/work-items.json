@@ -3016,7 +3016,32 @@
     "docs/contracts/boot.md",
     "docs/PLAN-ANSWER.md §1-2 (the team's answer, 2026-11-09)"
    ],
-   "files": [],
+   "files": [
+    "docs/contracts/services.md",
+    "docs/contracts/boot.md",
+    "docs/adr/0019-graphics-platform.md",
+    "docs/adr/0003-cpu-tables-exceptions-test-kernel.md",
+    "docs/security/threat-model.md",
+    "docs/PLAN-REVERSE.md",
+    "platform/pc-qemu/manifests/services.txt",
+    "platform/pc-qemu/manifests/selftest.txt",
+    "platform/pc-qemu/target.json",
+    ".github/workflows/verify.yml",
+    "tools/project.py",
+    "tests/test_ci_workflows.py",
+    "tests/test_monitor_steps.py",
+    "tests/test_m6_manifest.py",
+    "kernel/src/bootmode.rs",
+    "kernel/src/kmain.rs",
+    "kernel/src/main.rs",
+    "kernel/src/services.rs",
+    "kernel/src/arch/mod.rs",
+    "kernel/src/arch/x86_64/mod.rs",
+    "kernel/src/arch/x86_64/fwcfg.rs",
+    "kernel/src/arch/x86_64/port.rs",
+    "docs/tests.json",
+    "docs/work-items.json"
+   ],
    "contract_refs": [
     "docs/contracts/services.md",
     "docs/contracts/boot.md"
@@ -3026,13 +3051,14 @@
     "services.md v1.11: the system manifest SERVICES.TXT (auth, config, net, input, display, session, narrator, sh) and the boot-mode switch: an fw_cfg key selects the lab self-test, so TST-M1-* keep their oracle; record the split as a decision in boot.md, not as a weakened test",
     "scenario at the end: power on, sign-in screen, sign in as user, plain desktop background, Ctrl+Alt+Del locks, unlock",
     "2026-11-09: split per actions[5] and ADR-0019:48 (PLAN-ANSWER §1.2, option B); the session watchdog and the Arabic screens moved to WP-64",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (watchdog and Arabic screens can split off the boot-mode change); if the estimate at activation still exceeds it, TST-M6-HOLD-FAIL-CLOSED and the displayd fail-closed fix split off first into a package before WP-47 (PLAN-ANSWER §4 C1)"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (watchdog and Arabic screens can split off the boot-mode change); if the estimate at activation still exceeds it, TST-M6-HOLD-FAIL-CLOSED and the displayd fail-closed fix split off first into a package before WP-47 (PLAN-ANSWER §4 C1)",
+    "2026-11-09 activation estimate against the budget line (90 min or 120 tool calls, prompt:71), measured in an isolated worktree before activation by the fourteen-role team: C3 contracts about 30 min and 25 tool calls (services engineer), C4 lab plumbing about 55 min and 44 calls plus a 20 min / 25 call fix-up after audit (lab engineer), C5 kernel about 45 min and 34 calls (kernel engineer), three read-only audits; the line is exceeded, so the split point of actions[4] is applied: TST-M6-HOLD-FAIL-CLOSED, the displayd fail-closed hold (a later display.md version, WP-67's) and the svcmgr manifest-size error leave for WP-67 (planned, before WP-47); the session readiness margin check (services.md v1.11) is measured in WP-64; one verify cycle expected; counters carried, not reset (prompt:73)",
+    "2026-11-09 audit corrections before activation (team auditor, three reports): the provenance of every rule in services.md v1.11 and boot.md v1.1 traced to PLAN-ANSWER lines; the `held=1` display field was a phantom and left the INTERACTIVE-BOOT case; the svc-sh phase discriminates by the manifest marker (SERVICES.TXT, OK 8), not by the absence of a shell on COM2 (the system manifest itself runs sh there); phase timeouts 240 s + 5 x 90 s under a 12-minute M6 step (StepBudget guard, M5 exempt as a measured hang guard); the hypervisor bit under TCG is measured by the boot_mode line itself on CI (hv=1 required), not by a ktest case; the manager-failure halt branch has no lab case (WP-67)"
    ],
-   "acceptance": "TST-M6-INTERACTIVE-BOOT PASS on CI; TST-M1-BOOT PASS under the self-test key; TST-M1-NEG and TST-M1-NOBS re-run unchanged and PASS; TST-M6-MANIFEST-LINT and TST-M6-HOLD-FAIL-CLOSED PASS on CI",
+   "acceptance": "TST-M6-INTERACTIVE-BOOT PASS on CI (six phases, exit 0 through the monitor); TST-M1-BOOT PASS under the self-test key with the boot_mode line and SELFTEST.TXT; TST-M1-NEG and TST-M1-NOBS re-run unchanged and PASS; TST-M6-MANIFEST-LINT PASS on CI; TST-M0-003, TST-M0-005 and TST-M5-LAB-TOOL PASS with their new cases; check-unsafe 186 (baseline 186)",
    "test_ids": [
     "TST-M6-INTERACTIVE-BOOT",
     "TST-M6-MANIFEST-LINT",
-    "TST-M6-HOLD-FAIL-CLOSED",
     "TST-M1-BOOT",
     "TST-M1-NEG",
     "TST-M1-NOBS",
@@ -3044,9 +3070,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -3108,7 +3135,8 @@
    ],
    "depends_on": [
     "WP-46",
-    "WP-64"
+    "WP-64",
+    "WP-67"
    ],
    "inputs": [
     "DEC-005",
@@ -4022,6 +4050,55 @@
     "evidence/20261109T174326Z-d2fabb84-001",
     "evidence/20261109T174326Z-d2fabb84-002"
    ],
+   "blocker": null
+  },
+  {
+   "id": "WP-67",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "depends_on": [
+    "WP-45"
+   ],
+   "inputs": [
+    "docs/PLAN-ANSWER.md §2.1, §2.2 (D2 limits), §3.2 (line 684), §3.4",
+    "docs/contracts/display.md:42 (v1.2 hold rule)",
+    "user/apps/displayd/src/main.rs session_in_manifest (1977-1987)",
+    "user/apps/svcmgr/src/main.rs 271-283 (4096-byte read)",
+    "the HOLD-FAIL-CLOSED lab case drafted for WP-45 (team audit 2026-11-09)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/display.md",
+    "docs/contracts/services.md"
+   ],
+   "actions": [
+    "الإخفاق المغلق في displayd وsvcmgr (مفصولة من WP-45 بنقطة القسمة في سجلها، 2026-11-09)",
+    "display.md v1.12 (additive): a LIST failure (an error, a closed channel or a reply longer than displayd's 1024-byte buffer) means a held start; the hold trace line is defined here; a manifest without a session line stays unheld as v1.2 says (the M5 lab manifests svc-da, svc-dp, svc-ui rely on it)",
+    "displayd: session_in_manifest fails closed; ktest hold_fail_closed with manifest svc-hf.txt (a session line after the first 1024 bytes of LIST, a spy app); TST-M6-HOLD-FAIL-CLOSED as drafted (exit 33; locked=1, releases=0, keys=0)",
+    "services.md (additive): a manifest larger than 4096 bytes or a read error mid-file rejects the whole manifest with a named error (ERR MANIFEST_TOO_LARGE / MANIFEST_IO), never a truncated OK <n>; ktest with a 4097-byte manifest; register the LOAD-outside-/SYSTEM ERR ACCESS ktest id",
+    "the manager-failure branch of the interactive boot (selfcheck=0 then halt) gets a lab phase with a corrupt manifest disk, if the lab can prepare one",
+    "verify.yml: the M6 step cap must grow with the HOLD case (690 s + 180 s > 720 s): raise the cap or open the V3 parallel-jobs decision (PLAN-ANSWER §2.5)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; split point: displayd first, svcmgr second"
+   ],
+   "acceptance": "TST-M6-HOLD-FAIL-CLOSED PASS on CI; the M5 cases on svc-da, svc-dp and svc-ui re-run and PASS (no regression); TST-M6-MANIFEST-LINT PASS; validate-records --strict 0 errors",
+   "test_ids": [
+    "TST-M6-HOLD-FAIL-CLOSED",
+    "TST-M6-MANIFEST-LINT",
+    "TST-M5-SCREEN",
+    "TST-M5-WINDOW-STATES"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
    "blocker": null
   }
  ]
