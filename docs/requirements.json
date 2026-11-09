@@ -1778,7 +1778,8 @@
     "docs/contracts/services.md",
     "docs/contracts/session.md",
     "docs/contracts/boot.md",
-    "docs/contracts/display.md"
+    "docs/contracts/display.md",
+    "docs/contracts/auth.md"
    ],
    "failure_cases": [
     "الصورة تخرج بعد الفحص الذاتي بدل البقاء على شاشة الدخول",
@@ -1787,7 +1788,7 @@
     "مراقب قصير يقتل جلسة تنتظر auth انتظارًا مشروعًا",
     "شاشة الدخول بالإنجليزية لمستخدم عربي أو كلمة مرور تُكتب بتخطيط غير ظاهر"
    ],
-   "acceptance": "interactive_boot + session_watchdog + session_ar؛ TST-M1-BOOT/NEG/NOBS تبقى PASS بمفتاح الفحص الذاتي؛ TST-M6-MANIFEST-LINT وTST-M6-SESSION-STRINGS؛ الإخفاق المغلق: TST-M6-HOLD-FAIL-CLOSED (WP-67)، وTST-M6-MANIFEST-TOO-LARGE وTST-M6-LOAD-OUTSIDE-SYSTEM وTST-M6-CONFIG-WRITE-SCOPE (WP-68)، كلها PASS على CI",
+   "acceptance": "interactive_boot + session_watchdog + session_ar؛ TST-M1-BOOT/NEG/NOBS تبقى PASS بمفتاح الفحص الذاتي؛ TST-M6-MANIFEST-LINT وTST-M6-SESSION-STRINGS؛ الإخفاق المغلق: TST-M6-HOLD-FAIL-CLOSED (WP-67)، وTST-M6-MANIFEST-TOO-LARGE وTST-M6-LOAD-OUTSIDE-SYSTEM وTST-M6-CONFIG-WRITE-SCOPE (WP-68)، كلها PASS على CI؛ مراقبة الجلسة وتطهيرها وشاشاتها في ثلاث حزم (قسمة WP-64، 2026-11-09): WP-64 التطهير عند الإعادة وإلغاء الرموز (TST-M6-TOKEN-REVOKE، وTST-M5-SESSION-LOSS بأوراكل session.md v1.7)، وWP-71 المراقب وrestart=always (TST-M6-SESSION-WATCHDOG)، وWP-72 الشاشات العربية والشارة (TST-M6-SESSION-AR، TST-M6-SESSION-STRINGS)",
    "test_ids": [
     "TST-M6-INTERACTIVE-BOOT",
     "TST-M6-SESSION-WATCHDOG",
@@ -1798,7 +1799,8 @@
     "TST-M6-MANIFEST-TOO-LARGE",
     "TST-M6-LOAD-OUTSIDE-SYSTEM",
     "TST-M6-CONFIG-WRITE-SCOPE",
-    "TST-M6-DISPLAYD-BOOT-LOOP"
+    "TST-M6-DISPLAYD-BOOT-LOOP",
+    "TST-M6-TOKEN-REVOKE"
    ],
    "implementation_status": "partial",
    "evidence_refs": [

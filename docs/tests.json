@@ -2013,7 +2013,7 @@
     "REQ-M6-002"
    ],
    "layer": "negative",
-   "oracle": "planned (M6, WP-64; closes session.md §8 v1.1 limit): the session has watchdog=<ticks> longer than REQUEST_DEADLINE; a session frozen by the test kernel is killed by the manager and restarted into no_session with the screen held (no application pixel in the screendump) and no key reaching an application; a session legitimately waiting on a hung auth is not killed before the watchdog period; strengthened 2026-11-09 (PLAN-ANSWER §2.3): a session legitimately waiting while display, input and auth are frozen is not killed; the kill lands between W and 2W; after the restart no pixel of the previous user is in the screendump and sak_pending=0",
+   "oracle": "planned (M6, WP-71 from the split of WP-64 on 2026-11-09; closes session.md §8 v1.1 limit): the session has watchdog=<ticks> longer than REQUEST_DEADLINE; a session frozen by the test kernel is killed by the manager and restarted into no_session with the screen held (no application pixel in the screendump) and no key reaching an application; a session legitimately waiting on a hung auth is not killed before the watchdog period; strengthened 2026-11-09 (PLAN-ANSWER §2.3): a session legitimately waiting while display, input and auth are frozen is not killed; the kill lands between W and 2W; after the restart no pixel of the previous user is in the screendump and sak_pending=0; 2026-11-09 (WP-71): the judge is max_restarts+1 direct kills of the session followed by a successful sign-in (restart=always, BACKOFF_MAX 2000) instead of five kills, each phase prints its own verdict line",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2024,7 +2024,7 @@
     "REQ-M6-002"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-64; session.md §8 limit 'screens in English'): with ui.lang=ar the sign-in, lock and elevation screens are Arabic and right-to-left from the first frame and switch live on SUBSCRIBE device; the input-language indicator next to the user and password fields shows the active layout and changes on Alt+Shift; the narrator transcript equals the expected file and never carries the password; strengthened 2026-11-09 (PLAN-ANSWER §2.4): explicit and escaped leak markers (the \\u{XXXX} form) never appear in the narrator transcript; the elevation request text is drawn in its byte order",
+   "oracle": "planned (M6, WP-72 from the split of WP-64 on 2026-11-09; session.md §8 limit 'screens in English'): with ui.lang=ar the sign-in, lock and elevation screens are Arabic and right-to-left from the first frame and switch live on SUBSCRIBE device; the input-language indicator next to the user and password fields shows the active layout and changes on Alt+Shift; the narrator transcript equals the expected file and never carries the password; strengthened 2026-11-09 (PLAN-ANSWER §2.4): explicit and escaped leak markers (the \\u{XXXX} form) never appear in the narrator transcript; the elevation request text is drawn in its byte order",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2035,7 +2035,7 @@
     "REQ-M6-003"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-46; ktest job_kill_all): three processes spawned into one job; job_kill leaves none in process_list, every handle to them reports exit, and the free-frame count after equals the count before",
+   "oracle": "planned (M6, WP-46; ktest job_kill_all; syscall.md v1.13): four processes in one job, one of them a grandchild spawned by syscall 20 from a member, which inherits the job; a READ-only job handle cannot kill (ERR_ACCESS); job_kill ends all four with EXIT_KILLED and every channel to them reports PEER_CLOSED; process_spawn_in and job_create into the killed job are refused ERR_PEER_CLOSED; a second job_kill is a no-op; killing the root job (a job containing the caller) is ERR_INVALID; the process count and the free-frame count return to their baseline (rewritten 2026-11-09 for the split of WP-46: no process_list in this package)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2046,7 +2046,7 @@
     "REQ-M6-003"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-46; ktest process_accounting, -smp 4): a spinning app's cpu_ticks rise while the per-CPU idle ticks fall; the sum of all processes' cpu_ticks plus idle stays within a declared tolerance of ticks x cpus; frames, threads and handles per process match the counts the test itself created",
+   "oracle": "planned (M6, WP-70, from the split of WP-46 on 2026-11-09; ktest process_accounting, -smp 4): a spinning app's cpu_ticks rise while the per-CPU idle ticks fall; the sum of all processes' cpu_ticks plus idle stays within a declared tolerance of ticks x cpus; frames, threads and handles per process match the counts the test itself created",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2057,7 +2057,7 @@
     "REQ-M6-003"
    ],
    "layer": "negative",
-   "oracle": "planned (M6, WP-46; ktest process_list_bad_ptr, cursor_overflow): process_list with an invalid user pointer, an over-long buffer or a cursor past the end is refused with the syscall.md error codes, never a panic or a kernel-memory read; job_kill without WRITE on the job is refused ERR_ACCESS",
+   "oracle": "planned (M6, WP-69; process_list, syscall 46, handle-scoped): with a READ job handle the listing holds that job's subtree only, in 64-byte records whose reserved bytes are zero; refused: an invalid handle (ERR_BAD_HANDLE), a handle that is not a job (ERR_WRONG_TYPE), a job handle without READ (ERR_ACCESS), a bad cap (ERR_INVALID), a bad or over-long user buffer (ERR_RANGE or ERR_FAULT), a cursor past next_pid (ERR_RANGE); on every refusal the buffer is left unwritten (no partial write); never a panic or a kernel-memory read (rewritten 2026-11-09: the job_kill-without-WRITE refusal moved to TST-M6-JOB-KILL)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2068,7 +2068,7 @@
     "REQ-M6-003"
    ],
    "layer": "service_integration",
-   "oracle": "planned (M6, WP-46; shell.md v1.3): the diagnostic shell's `ps` lists the real services with pid, job, image name, state and cpu_ticks; a spinning app's cpu_ticks grow between two `ps` calls",
+   "oracle": "planned (M6, WP-70, from the split of WP-46 on 2026-11-09; shell.md v1.3): the diagnostic shell's `ps` lists the real services with pid, job, image name, state and cpu_ticks; a spinning app's cpu_ticks grow between two `ps` calls",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2803,7 +2803,7 @@
     "REQ-M6-002"
    ],
    "layer": "host_unit",
-   "oracle": "planned (M6, WP-64): the session's string tables are whole sentences in Arabic and English with the same keys, no missing or extra key, every string fits its row at scale 1x and 2x through Painter::fits, no string carries a password placeholder, and the badge strings name every supported layout (PLAN-ANSWER §2.4)",
+   "oracle": "planned (M6, WP-72 from the split of WP-64 on 2026-11-09): the session's string tables are whole sentences in Arabic and English with the same keys, no missing or extra key, every string fits its row at scale 1x and 2x through Painter::fits, no string carries a password placeholder, and the badge strings name every supported layout (PLAN-ANSWER §2.4)",
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2839,6 +2839,17 @@
    ],
    "layer": "negative",
    "oracle": "planned (M6, WP-68): a manager message longer than displayd's 64-byte boot-channel read buffer, or a STOP arriving before the LIST reply, neither spins displayd's main loop nor is swallowed: the compositor keeps serving CONNECT and answers STOP within the stop timeout (today the loop reads 64 bytes and ignores every error, user/apps/displayd/src/main.rs around 2036 and 2201; found while fixing the hold in WP-67)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-TOKEN-REVOKE",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-64; auth.md v1.2 revocation V2): a test service holds a copy of a token the session obtained; when the session dies, authd revokes the sessions opened by the client `session`: WHOAMI on the held copy is refused and authd's live_tokens return to their baseline; a token opened by a client that is not the manager-vouched `session` (an sh-like client that opens and closes its auth channel per request) is not revoked by that close and still answers WHOAMI (the negative control that kills a revoke-on-any-close regression)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []

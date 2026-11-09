@@ -178,6 +178,22 @@
    "requested_at": "2026-11-09T13:30:00Z",
    "status": "answered",
    "answer": "answered by the owner on 2026-11-09 in the session: option 2 — fourteen roles: three software engineers, three systems engineers, three cybersecurity engineers, two planners, one auditor, one assistant manager, one manager; with the brainstorming, engineering, coding and auditing skills activated in every role."
+  },
+  {
+   "id": "DEC-027",
+   "question": "ظهور العمليات بين المستخدمين قبل تجميد ABI النداء process_list (syscall 46، WP-69): من يرى أي عملية؟",
+   "options": [
+    "A: الظهور يتبع المقبض. النواة لا تعرف المستخدمين؛ مقبض مهمة بحق READ يسرد شجرتها وحدها: المدير يرى الكل (مقبض المهمة الجذر)، والجلسة ترى مهمتها؛ عمليات المستخدمين الآخرين عبر المدير وحده برمز مدير في WP-58؛ المجاميع للجميع من system_info",
+    "B: كل عملية ترى pid واسم الصورة والحالة لكل العمليات. الأبسط لمدير المهام، لكنه يسرّب أسماء تطبيقات المستخدمين الآخرين، والعودة إلى A لاحقًا تكسر الـABI",
+    "C: النواة تخزن uid لكل مهمة وتصفّي برمز يُمرَّر في النداء. تدخل هوية المستخدم النواة، ووسيط ABI إضافي، وتكرار لدور المدير"
+   ],
+   "recommendation": "A: لا تدخل هوية المستخدم النواة، والصلاحية مقبض كسائر الكائنات، وهو قابل للتوسيع إلى B بإعطاء مقبض أوسع دون كسر الـABI، بخلاف العكس",
+   "impact": "يحدد شكل ABI النداء process_list ورفضه في WP-69 (TST-M6-PROC-LIST-REFUSALS) قبل تجميده، ومسار مدير المهام في WP-58 لعرض عمليات الآخرين وإنهائها؛ WP-46 لا تتأثر (لا process_list فيها)",
+   "blocked_task_ids": [
+    "WP-69"
+   ],
+   "requested_at": "2026-11-09T23:00:00Z",
+   "status": "open"
   }
  ]
 }

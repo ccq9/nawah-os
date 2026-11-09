@@ -1,1026 +1,1054 @@
 {
-  "schema_version": "1.0.0",
-  "records": [
-    {
-      "id": "S01",
-      "title": "Microsoft: Overview of Windows Components",
-      "url": "https://learn.microsoft.com/windows-hardware/drivers/kernel/overview-of-windows-components",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "component separation user/kernel"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S02",
-      "title": "Microsoft: User Mode and Kernel Mode",
-      "url": "https://learn.microsoft.com/windows-hardware/drivers/gettingstarted/user-mode-and-kernel-mode",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "execution modes"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S03",
-      "title": "Microsoft: Windows Kernel-Mode Executive Support Library",
-      "url": "https://learn.microsoft.com/windows-hardware/drivers/kernel/windows-kernel-mode-executive-support-library",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "executive responsibilities"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S04",
-      "title": "Microsoft: Windows Kernel-Mode HAL Library",
-      "url": "https://learn.microsoft.com/windows-hardware/drivers/kernel/windows-kernel-mode-hal-library",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "HAL boundary"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S05",
-      "title": "Microsoft: Launch Windows Settings (ms-settings URIs)",
-      "url": "https://learn.microsoft.com/windows/apps/develop/launch/launch-settings",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "settings pages identification"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S06",
-      "title": "Microsoft: Windows 10 release information",
-      "url": "https://learn.microsoft.com/windows/release-health/release-information",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "22H2 build family 19045"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S07",
-      "title": "Microsoft: Windows 10 Home and Pro lifecycle",
-      "url": "https://learn.microsoft.com/lifecycle/products/windows-10-home-and-pro",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "EOL 2025-10-14"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S08",
-      "title": "Microsoft Support: Understand and explore Windows Settings",
-      "url": "https://support.microsoft.com/windows",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "settings organization"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S09",
-      "title": "NIST SP 800-218 SSDF 1.1",
-      "url": "https://csrc.nist.gov/pubs/sp/800/218/final",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "secure development practices"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S10",
-      "title": "The Update Framework: Security",
-      "url": "https://theupdateframework.io/security/",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "update threat model"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S11",
-      "title": "UEFI Specification 2.11: Secure Boot and Driver Signing",
-      "url": "https://uefi.org/specs/UEFI/2.11/index.html",
-      "version": "UEFI 2.11 HTML (page publish date 2024-12-04)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "secure boot"
-      ],
-      "limits": "Index and chapter 7 fetched; Secure Boot chapter not yet read",
-      "verified": true
-    },
-    {
-      "id": "S12",
-      "title": "QEMU: System Emulation; GDB usage",
-      "url": "https://qemu.googlesource.com/qemu/+/refs/tags/v9.0.0/hw/misc/debugexit.c",
-      "version": "QEMU v9.0.0 source (lab uses 8.2.2 Debian package)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "isa-debug-exit: exit((val << 1) | 1)",
-        "default iobase 0x501 iosize 2; lab passes iobase=0xf4,iosize=4 explicitly"
-      ],
-      "limits": "source file read; QEMU 8.2.2 behaviour confirmed empirically by E0/M1 exit codes 33/97",
-      "verified": true
-    },
-    {
-      "id": "S13",
-      "title": "Microsoft: PE Format",
-      "url": "https://learn.microsoft.com/windows/win32/debug/pe-format",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "PE/COFF"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S14",
-      "title": "Microsoft: Manage connections from Windows components to Microsoft services",
-      "url": "https://learn.microsoft.com/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "service connections"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S15",
-      "title": "WineHQ: About Wine",
-      "url": "https://www.winehq.org/about",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "compatibility layer design"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S16",
-      "title": "Wayland: Overview",
-      "url": "https://wayland.freedesktop.org/docs/html/",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "compositor separation"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S17",
-      "title": "ReactOS: Repository README",
-      "url": "https://github.com/reactos/reactos",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "NT compatibility reference"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S18",
-      "title": "UEFI 2.11 §7.4.6 Boot Services: ExitBootServices / GetMemoryMap",
-      "url": "https://uefi.org/specs/UEFI/2.11/07_Services_Boot_Services.html#efi-boot-services-exitbootservices",
-      "version": "UEFI 2.11 HTML §7.4.6 / §7.2.3 (publish date 2024-12-04)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "wrong MapKey -> EFI_INVALID_PARAMETER; GetMemoryMap+ExitBootServices must be called again",
-        "after first EBS call, only Memory Allocation Services may be called among boot services",
-        "GetMemoryMap EFI_BUFFER_TOO_SMALL returns needed size; allocating the buffer may enlarge the map",
-        "after EBS only runtime services",
-        "Table 7.6 'Memory Type Usage after ExitBootServices()': EfiBootServicesCode/Data = 'Memory available for general use'; EfiRuntimeServices*/EfiACPIMemoryNVS preserved; EfiACPIReclaimMemory preserved until ACPI is enabled; EfiReservedMemoryType 'Not usable'; EfiMemoryMappedIO not used by the OS (verified 2026-10-18 from the HTML text)"
-      ],
-      "limits": "verified from fetched official text",
-      "verified": true
-    },
-    {
-      "id": "S19",
-      "title": "Microsoft: Kernel DMA Protection",
-      "url": "https://learn.microsoft.com/windows/security/hardware-security/kernel-dma-protection-for-thunderbolt",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "IOMMU role"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S20",
-      "title": "Zephyr: Porting / Architecture / Board porting",
-      "url": "https://docs.zephyrproject.org/latest/hardware/porting/",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "arch/SoC/board boundaries"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S21",
-      "title": "NASA: Technical Requirements Definition; Requirements Management",
-      "url": "https://www.nasa.gov/reference/",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "requirements traceability"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S22",
-      "title": "Temporal: Retry Policies / Error Handling",
-      "url": "https://docs.temporal.io/encyclopedia/retry-policies",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "retry classification"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S23",
-      "title": "JSON Schema: Object",
-      "url": "https://json-schema.org/understanding-json-schema/reference/object",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "required/additionalProperties"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S24",
-      "title": "TianoCore EDK2 / OVMF",
-      "url": "https://github.com/tianocore/edk2",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "OVMF pflash usage"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S25",
-      "title": "Rust Platform Support: x86_64-unknown-uefi",
-      "url": "https://doc.rust-lang.org/rustc/platform-support/unknown-uefi.html",
-      "version": "rustc stable docs",
-      "accessed": "2026-10-18",
-      "supports": [
-        "x86_64-unknown-uefi is Tier 2; PE32+ output; lld link flavor; entry efi_main; subsystem EFI_APPLICATION",
-        "efiapi calling convention required (extern C is wrong on Intel)",
-        "no_std works; std incomplete; MMX/SSE disabled by default",
-        "rustup target add x86_64-unknown-uefi"
-      ],
-      "limits": "page read in full",
-      "verified": true
-    },
-    {
-      "id": "S26",
-      "title": "Intel SDM / AMD APM",
-      "url": "https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html",
-      "version": "SDM revision 093; page updated 2026-10-09; Vol.3A content ID 671190, combined 3A-3D 671447",
-      "accessed": "2026-10-18",
-      "supports": [
-        "download identities for Vol.3 System Programming Guide"
-      ],
-      "limits": "landing page only; PDF content to be cited per section when used (Sol OS evidence cites 325384-093US, Sept 2026, sha256 77919be3…)",
-      "verified": true
-    },
-    {
-      "id": "S27",
-      "title": "ACPI Specification",
-      "url": "https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#multiple-apic-description-table-madt",
-      "version": "ACPI 6.5 HTML",
-      "accessed": "2026-10-18",
-      "supports": [
-        "MADT, RSDP, XSDT are in chapter 5 (anchors confirmed)"
-      ],
-      "limits": "index fetched; MADT body to be read in WP-10",
-      "verified": true
-    },
-    {
-      "id": "S28",
-      "title": "Virtio Specification (OASIS)",
-      "url": "https://docs.oasis-open.org/virtio/virtio/v1.3/virtio-v1.3.html",
-      "version": "Virtio 1.3 CSD01, 2023-10-06",
-      "accessed": "2026-10-18",
-      "supports": [
-        "§4.1 PCI transport",
-        "§5.2 block device",
-        "§5.1 net",
-        "§5.7 gpu",
-        "§5.8 input",
-        "§2.7 split virtqueues"
-      ],
-      "limits": "table of contents verified; bodies to be read per driver",
-      "verified": true
-    },
-    {
-      "id": "S29",
-      "title": "PCI Express Base Specification",
-      "url": "https://pcisig.com/specifications",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "enumeration, BARs"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S30",
-      "title": "Unicode UAX #9 Bidirectional Algorithm; Arabic shaping; OpenType GSUB",
-      "url": "https://unicode.org/reports/tr9/",
-      "version": "unpinned",
-      "accessed": null,
-      "supports": [
-        "bidi, shaping"
-      ],
-      "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
-      "verified": false
-    },
-    {
-      "id": "S31",
-      "title": "UEFI 2.11: GPT, ESP, EFI application subsystem",
-      "url": "https://uefi.org/specs/UEFI/2.11/05_GUID_Partition_Table_Format.html",
-      "version": "UEFI 2.11 HTML chapter 5",
-      "accessed": "2026-10-18",
-      "supports": [
-        "image format, partitions"
-      ],
-      "limits": "URL confirmed from index; chapter body not read yet",
-      "verified": false
-    },
-    {
-      "id": "S32",
-      "title": "Sol OS phase-2 archive (user's prior project, sol-os-phase2.zip)",
-      "url": "local upload sha256 7ba31066b2704db440eb74fc2e436d40824f03cacee374b0120f9523952e2b73",
-      "version": "commit d54f0a5 (2026-10-07)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "ADR-0002 reuse decision",
-        "arch/x86_64 reference implementation and ktest design",
-        "official rust-std component install path and hash verification method",
-        "docs/operations/sol-os-reuse-ledger.md (ADR-0002 item 4 reconciled against the tree, 2026-11-09)"
-      ],
-      "limits": "its evidence is not ours; every ported file is re-tested here",
-      "verified": true
-    },
-    {
-      "id": "S33",
-      "title": "ACPI Specification 6.5 §5.2 (RSDP, DESCRIPTION_HEADER, XSDT, MADT)",
-      "url": "https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html",
-      "version": "ACPI 6.5 HTML (uefi.org), read 2026-10-18",
-      "accessed": "2026-10-18",
-      "supports": [
-        "§5.2.5.2: the RSDP pointer lives in the EFI configuration table (ACPI 2.0 GUID, else ACPI 1.0 GUID)",
-        "Table 5.3 RSDP: Revision at 15, RsdtAddress at 16, Length at 20, XsdtAddress at 24; bytes 0..20 sum to zero; extended checksum over the whole table",
-        "Table 5.4 DESCRIPTION_HEADER 36 bytes, Length at 4, whole table sums to zero; XSDT 8-byte entries from 36, must be used when present",
-        "§5.2.12 MADT: LAPIC address at 36, Flags at 40 (bit 0 PCAT_COMPAT: 8259 must be masked); Table 5.22 LAPIC (APIC ID at 3, Flags at 4: bit0 Enabled, bit1 Online Capable); Table 5.24 I/O APIC (ID 2, address 4, GSI base 8); Table 5.25 ISO (source 3, GSI 4, MPS INTI flags 8); Table 5.29 LAPIC address override (u64 at 4); Table 5.34 x2APIC (ID at 4, Flags at 8)"
-      ],
-      "limits": "HTML rendering of the specification; table numbers follow the 6.5 HTML edition",
-      "verified": true
-    },
-    {
-      "id": "S34",
-      "title": "Intel I/O Controller Hub 9 (ICH9) Family Datasheet (doc 316972): 8259 PIC, 8254 timer, NMI_SC (61h), I/O APIC",
-      "url": "https://www.intel.com/content/dam/doc/datasheet/io-controller-hub-9-datasheet.pdf",
-      "version": "ICH9 datasheet rev. 2008 (chipset QEMU q35 models)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "8259 master/slave at 20h/21h, A0h/A1h; ICW1..ICW4 init; OCW1 mask",
-        "8254 at 40h-43h, 1.193 MHz, mode 0",
-        "NMI_SC 61h: bit 0 TIM_CNT2_EN, bit 1 SPKR_DAT_EN, bit 5 TMR2_OUT_STS",
-        "I/O APIC indirect IOREGSEL/IOWIN, IOAPICVER max redirection entry, IOREDTBL mask bit 16"
-      ],
-      "limits": "register semantics cited from memory of the datasheet; the QEMU models (S35) are the executable reference the lab runs on",
-      "verified": false
-    },
-    {
-      "id": "S35",
-      "title": "QEMU 8.2.2 device models: hw/audio/pcspk.c (port 61h), hw/timer/i8254.c (PIT), hw/intc/apic.c and apic_common.c (local APIC timer)",
-      "url": "https://raw.githubusercontent.com/qemu/qemu/v8.2.2/hw/intc/apic_common.c",
-      "version": "v8.2.2 tag",
-      "accessed": "2026-10-18",
-      "supports": [
-        "pcspk_io_read: bit 0 = PIT ch2 gate, bit 1 = data, bit 4 refresh toggle, bit 5 = PIT ch2 OUT (verified from source 2026-10-18)",
-        "APIC timer: QEMU_CLOCK_VIRTUAL nanoseconds shifted by count_shift (divide config) -> 1 GHz input at divide-by-1 (apic_get_current_count, verified 2026-10-18)",
-        "apic_eoi: clears the highest ISR bit; SVR write keeps bits 0..8"
-      ],
-      "limits": "lab behaviour only; real hardware frequencies differ, hence PIT calibration",
-      "verified": true
-    },
-    {
-      "id": "S36",
-      "title": "Intel 82093AA I/O Advanced Programmable Interrupt Controller (IOAPIC) datasheet",
-      "url": "https://web.archive.org/web/2020/https://pdos.csail.mit.edu/6.828/2018/readings/ia32/ioapic.pdf",
-      "version": "1996 datasheet (archived copy)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "IOREGSEL at base+00h, IOWIN at base+10h",
-        "IOAPICVER bits 16-23 maximum redirection entry",
-        "IOREDTBL 10h+2n, bit 16 interrupt mask"
-      ],
-      "limits": "archived copy; same interface documented in S34",
-      "verified": false
-    },
-    {
-      "id": "S37",
-      "title": "System V Application Binary Interface — AMD64 Architecture Processor Supplement (x86-64 psABI)",
-      "url": "https://gitlab.com/x86-psABIs/x86-64-ABI",
-      "version": "official repository (gitlab x86-psABIs/x86-64-ABI); §3.2.1 Registers, §3.2.2 The Stack Frame",
-      "accessed": "2026-10-18",
-      "supports": [
-        "callee-saved registers rbx, rbp, r12-r15 (and rsp): a context switch that saves these plus RSP preserves what compiled callers expect",
-        "the stack is 16-byte aligned just before a call instruction (so RSP+8 is 16-aligned at entry)"
-      ],
-      "limits": "the built PDF is not reachable from the sandbox (robots/404 on refspecs and mirrors); the two statements were cross-checked against the OSDev System_V_ABI summary (secondary) and are consistent with the compiler's behaviour observed in CI",
-      "verified": false
-    },
-    {
-      "id": "S38",
-      "title": "The Rust Reference — Inline assembly — Options",
-      "url": "https://doc.rust-lang.org/reference/inline-assembly.html",
-      "version": "online edition, read 2026-10-18 (toolchain 1.97.0)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "nomem: 'The assembly code does not read from or write to any memory accessible outside of the assembly code. This allows the compiler to cache the values of modified global variables in registers across execution of the assembly code' — hence sti/cli/hlt blocks that bracket interrupt handlers must not carry nomem",
-        "nostack: the block does not push to the stack or write the red zone",
-        "preserves_flags: the block does not modify the flags register"
-      ],
-      "limits": "normative for the language; the kernel's use is ADR-0010 item 10",
-      "verified": true
-    },
-    {
-      "id": "S39",
-      "title": "Fuchsia / Zircon kernel concepts — Handles",
-      "url": "https://fuchsia.dev/fuchsia-src/concepts/kernel/handles",
-      "version": "fuchsia.dev, read 2026-10-18",
-      "accessed": "2026-10-18",
-      "supports": [
-        "a handle is a per-process 32-bit value naming a kernel object together with rights; 0 is ZX_HANDLE_INVALID",
-        "rights belong to the handle, not the object: two handles to one object may differ; duplication may reduce rights",
-        "kernel objects are reference counted, each handle holds a reference; the kernel may reuse the integer values of closed handles"
-      ],
-      "limits": "design reference only (no code reuse); nawah adds a generation to the value so stale handles are refused deterministically",
-      "verified": true
-    },
-    {
-      "id": "S40",
-      "title": "Fuchsia / Zircon syscall reference — zx_channel_write",
-      "url": "https://fuchsia.dev/reference/syscalls/channel_write",
-      "version": "fuchsia.dev, read 2026-10-18",
-      "accessed": "2026-10-18",
-      "supports": [
-        "channel handle needs ZX_RIGHT_WRITE; each transferred handle needs ZX_RIGHT_TRANSFER",
-        "limits ZX_CHANNEL_MAX_MSG_BYTES 65536 and ZX_CHANNEL_MAX_MSG_HANDLES 64 (nawah: 4096 and 4 per PLAN §4)",
-        "ZX_ERR_PEER_CLOSED when the other end is closed; ZX_ERR_NOT_SUPPORTED when the channel's own handle is in the handle array; duplicates in the array are ZX_ERR_BAD_HANDLE"
-      ],
-      "limits": "Zircon discards sent handles on failure too; nawah's contract keeps the sender's table untouched on failure (two-phase write)",
-      "verified": true
-    },
-    {
-      "id": "S41",
-      "title": "System V gABI — ELF header (ch4) and program header (ch5)",
-      "url": "https://www.sco.com/developers/gabi/latest/ch5.pheader.html",
-      "version": "gABI 'latest' edition (sco.com), read 2026-10-18; also ch4.eheader.html",
-      "accessed": "2026-10-18",
-      "supports": [
-        "Elf64_Ehdr field order: e_ident[16], e_type, e_machine, e_version, e_entry, e_phoff, e_shoff, e_flags, e_ehsize, e_phentsize, e_phnum, e_shentsize, e_shnum, e_shstrndx (offsets 16/18/24/32/54/56 used by the loader)",
-        "EI_MAG 0x7f 'E' 'L' 'F'; EI_CLASS ELFCLASS64 = 2; EI_DATA ELFDATA2LSB = 1; ET_EXEC = 2, ET_DYN = 3; EM_X86_64 = 62",
-        "Elf64_Phdr: p_type, p_flags, p_offset, p_vaddr, p_paddr, p_filesz, p_memsz, p_align; PT_LOAD = 1; PF_X = 1, PF_W = 2, PF_R = 4",
-        "PT_LOAD: file bytes mapped to the beginning of the segment, extra bytes zero, 'the file size may not be larger than the memory size'"
-      ],
-      "limits": "normative text fetched from the SCO mirror of the gABI; the Linux Foundation refspecs copy refused automated access",
-      "verified": true
-    },
-    {
-      "id": "S42",
-      "title": "Virtio 1.3 specification sources (OASIS virtio-spec repository): transport-pci.tex, split-ring.tex, content.tex, device-types/blk/description.tex",
-      "url": "https://github.com/oasis-tcs/virtio-spec",
-      "version": "master LaTeX sources (the 1.3 release), read 2026-10-18 via raw.githubusercontent.com",
-      "accessed": "2026-10-18",
-      "supports": [
-        "PCI Vendor 0x1AF4; Device ID 0x1040 + Virtio Device ID (block = 2); transitional 0x1000..0x103F",
-        "struct virtio_pci_cap {u8 cap_vndr, cap_next, cap_len, cfg_type, bar, id, padding[2]; le32 offset, length}; cfg_type COMMON 1, NOTIFY 2 (+ le32 notify_off_multiplier), ISR 3, DEVICE 4, PCI_CFG 5",
-        "struct virtio_pci_common_cfg field order: device_feature_select, device_feature, driver_feature_select, driver_feature, config_msix_vector, num_queues, device_status, config_generation, queue_select, queue_size, queue_msix_vector, queue_enable, queue_notify_off, queue_desc, queue_driver, queue_device, ...; all fields little-endian, 64-bit fields written as two 32-bit halves",
-        "queue notification address = cap.offset + queue_notify_off * notify_off_multiplier",
-        "device status ACKNOWLEDGE 1, DRIVER 2, DRIVER_OK 4, FEATURES_OK 8, DEVICE_NEEDS_RESET 64, FAILED 128; initialization order reset/ACK/DRIVER/features/FEATURES_OK re-read/queues/DRIVER_OK; VIRTIO_F_VERSION_1 = 32",
-        "split virtqueue: virtq_desc {le64 addr, le32 len, le16 flags, le16 next}, NEXT 1, WRITE 2; virtq_avail {le16 flags, le16 idx, le16 ring[]}; virtq_used {le16 flags, le16 idx, {le32 id, le32 len} ring[]}; alignment 16/2/4; the driver writes descriptors, ring entry, barrier, idx, barrier, notify",
-        "block: device id 2, virtqueue 0 requestq; VIRTIO_BLK_F_FLUSH (9); virtio_blk_config.capacity le64 sectors of 512 bytes; virtio_blk_req {le32 type, le32 flags, le64 sector, data[], u8 status}; T_IN 0, T_OUT 1, T_FLUSH 4; status OK 0, IOERR 1, UNSUPP 2; a write becomes stable once a FLUSH sent after it completes"
-      ],
-      "limits": "the rendered OASIS HTML exceeds the fetch window; the LaTeX sources of the same text were read instead",
-      "verified": true
-    },
-    {
-      "id": "S43",
-      "title": "PCI Express ECAM address mapping and PCI 3.0 configuration header (type 0)",
-      "url": "https://wiki.osdev.org/PCI_Express",
-      "version": "secondary summary read 2026-10-18 (PCIe Base Specification §7.2.2 and PCI Local Bus 3.0 §6.1/§6.7 are PCI-SIG member documents)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "ECAM: configuration space of (bus, device, function) at MCFG base + (bus << 20 | device << 15 | function << 12), 4 KiB per function",
-        "header: Vendor ID 0, Device ID 2, Command 4 (bit 1 memory space, bit 2 bus master, bit 10 INTx disable), Status 6 (bit 4 capabilities list), Class Code 9..11, Header Type 0xE (bit 7 multi-function), BAR0..5 at 0x10 (bit 0 I/O; bits 2:1 = 10b 64-bit; bit 3 prefetchable; size by writing all ones), Capabilities Pointer 0x34; capability ID at +0, next at +1",
-        "MCFG entry layout (PCI Firmware Specification): base address u64, segment u16, start bus u8, end bus u8, reserved u32, 16 bytes each after the 36-byte header plus 8 reserved bytes"
-      ],
-      "limits": "primary specifications are not publicly fetchable; the layout is the one every OS (Linux acpi/actbl1.h, EDK2) implements and is confirmed by the lab (ECAM base 0xB0000000, devices enumerated and driven)",
-      "verified": false
-    },
-    {
-      "id": "S44",
-      "title": "Microsoft Extensible Firmware Initiative FAT32 File System Specification (fatgen103)",
-      "url": "https://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/fatgen103.doc",
-      "version": "version 1.03 (Microsoft .doc); field layout cross-read from the ELM Chan 'FAT Filesystem' page (elm-chan.org/docs/fat_e.html) on 2026-10-18",
-      "accessed": "2026-10-18",
-      "supports": [
-        "BPB offsets: BytsPerSec 11, SecPerClus 13, RsvdSecCnt 14, NumFATs 16, RootEntCnt 17 (0 on FAT32), TotSec16 19 (0), FATSz16 22 (0), TotSec32 32, FATSz32 36, ExtFlags 40, FSVer 42, RootClus 44, FSInfo 48, BkBootSec 50, BootSig 66 = 0x29, VolLab 71, FilSysType 82, signature 0x55AA at 510",
-        "FirstDataSector = RsvdSecCnt + NumFATs * FATSz32; FirstSectorOfCluster(N) = (N-2) * SecPerClus + FirstDataSector; FAT type by cluster count (FAT32 >= 65525)",
-        "FAT32 entries: low 28 bits (free 0, chain 2..0x0FFFFFF6, bad 0x0FFFFFF7, EOC >= 0x0FFFFFF8), high 4 bits preserved; FAT[0] low byte = media, FAT[1] EOC; FSInfo signatures 0x41615252 / 0x61417272 / 0xAA550000 with free count and next-free hints (0xFFFFFFFF = unknown)",
-        "directory entry: Name 0..11, Attr 11 (READ_ONLY 1, HIDDEN 2, SYSTEM 4, VOLUME_ID 8, DIRECTORY 0x10, ARCHIVE 0x20, LONG_NAME 0x0F), FstClusHI 20, FstClusLO 26, FileSize 28; 0xE5 free, 0x00 end, 0x05 for a real 0xE5"
-      ],
-      "limits": "the Microsoft .doc is not readable through the fetch tool; the ELM Chan page restates the same tables and the result is validated by dosfstools' fsck.fat and mtools on every lab image",
-      "verified": true
-    },
-    {
-      "id": "S45",
-      "title": "FIPS PUB 180-4, Secure Hash Standard (SHS)",
-      "url": "https://csrc.nist.gov/pubs/fips/180-4/upd1/final",
-      "version": "August 2015 (final; NIST planning note 2023-03-07 announces a revision)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "SHA-256: 64 rounds with constants K[0..63], initial hash H0, message schedule W[t] with sigma functions, padding 0x80 + zeros + 64-bit big-endian bit length (§5.1.1, §6.2)",
-        "digest of \"abc\" = ba7816bf…f20015ad and of the 56-byte two-block message abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq = 248d6a61…19db06c1 (NIST SHS examples); the empty message = e3b0c442…7852b855"
-      ],
-      "limits": "landing page fetched (title, date, status); the PDF itself was not fetched in this session (provenance gate), so the algorithm text is cited by section number and the example digests are the NIST example values as reproduced by the implementation's known-answer tests (user/nawah-crypto)",
-      "verified": true
-    },
-    {
-      "id": "S46",
-      "title": "RFC 2104 — HMAC: Keyed-Hashing for Message Authentication",
-      "url": "https://rfc-editor.org/rfc/rfc2104",
-      "version": "February 1997 (Krawczyk, Bellare, Canetti)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "HMAC = H(K XOR opad, H(K XOR ipad, text)); ipad = 0x36 × B, opad = 0x5C × B, B = 64 for SHA-256-class block sizes; keys longer than B are hashed first (§2)",
-        "truncation keeps the leftmost t bits, t ≥ max(L/2, 80) (§5)"
-      ],
-      "limits": "B = 64 for SHA-256 follows FIPS 180-4's block size; RFC 4231 supplies the SHA-256 vectors",
-      "verified": true
-    },
-    {
-      "id": "S47",
-      "title": "RFC 4231 — Identifiers and Test Vectors for HMAC-SHA-224/256/384/512",
-      "url": "https://www.rfc-editor.org/rfc/rfc4231",
-      "version": "December 2005 (Nystrom)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "HMAC-SHA-256 test cases 1–7 (§4): TC1 key 0x0b×20 / \"Hi There\" → b0344c61…2e32cff7; TC2 \"Jefe\" / \"what do ya want for nothing?\" → 5bdcc146…64ec3843; TC6 key 0xaa×131 → 60e43159…0ee37f54; TC7 key 0xaa×131 long data → 9b09ffa7…5c3a35e2"
-      ],
-      "limits": "TC5 is a truncated (128-bit) output and is not used; TC3/TC4 (0xaa/0xdd and 0x01..0x19/0xcd patterns) are not in the self-test",
-      "verified": true
-    },
-    {
-      "id": "S48",
-      "title": "RFC 8018 — PKCS #5: Password-Based Cryptography Specification Version 2.1",
-      "url": "https://rfc-editor.org/rfc/rfc8018",
-      "version": "January 2017 (Moriarty, Kaliski, Rusch)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "PBKDF2 (§5.2): l = CEIL(dkLen/hLen), T_i = F(P,S,c,i) = U_1 XOR … XOR U_c, U_1 = PRF(P, S || INT(i)), U_j = PRF(P, U_{j-1}), INT(i) four-octet big-endian, DK = T_1 || … || T_l truncated to dkLen",
-        "salt at least 8 octets (§4.1); iteration count minimum 1000 following SP 800-132, as large as acceptable (§4.2); HMAC-SHA-256 as PRF (appendix B.1.2, id-hmacWithSHA256)"
-      ],
-      "limits": "the RFC carries no PBKDF2-HMAC-SHA-256 vectors; RFC 7914 §11 supplies them",
-      "verified": true
-    },
-    {
-      "id": "S49",
-      "title": "RFC 7914 — The scrypt Password-Based Key Derivation Function, §11 test vectors for PBKDF2-HMAC-SHA-256",
-      "url": "https://www.rfc-editor.org/rfc/rfc7914",
-      "version": "August 2016 (Percival, Josefsson)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "PBKDF2-HMAC-SHA-256(\"passwd\", \"salt\", c=1, dkLen=64) = 55ac046e…d3a19783",
-        "PBKDF2-HMAC-SHA-256(\"Password\", \"NaCl\", c=80000, dkLen=64) = 4ddcd8f6…97f33c8d"
-      ],
-      "limits": "only the two PBKDF2 vectors are used; scrypt itself is not implemented",
-      "verified": true
-    },
-    {
-      "id": "S50",
-      "title": "NIST SP 800-132 — Recommendation for Password-Based Key Derivation, Part 1: Storage Applications",
-      "url": "https://csrc.nist.gov/pubs/sp/800/132/final",
-      "version": "December 2010 (final; NIST planning note 2023-05-11 announces a revision)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "salt: the randomly generated portion shall be at least 128 bits, from an approved RBG (§5.1)",
-        "iteration count: a minimum of 1,000 is recommended; 10,000,000 may be appropriate for critical keys (§5.2)",
-        "PBKDF2 with HMAC and any approved hash function is the approved PBKDF (§5.3); kLen at least 112 bits (§5)"
-      ],
-      "limits": "PDF fetched for §5; the lab uses a smaller iteration count than the product default so that guest tests finish in seconds (policy value, services' config)",
-      "verified": true
-    },
-    {
-      "id": "S51",
-      "title": "Virtio 1.3 — network device (device-types/net/description.tex)",
-      "url": "https://raw.githubusercontent.com/oasis-tcs/virtio-spec/master/device-types/net/description.tex",
-      "version": "master LaTeX source (the 1.3 release), read 2026-10-18",
-      "accessed": "2026-10-18",
-      "supports": [
-        "Device ID 1; receiveq1 = 0, transmitq1 = 1, controlq only with VIRTIO_NET_F_CTRL_VQ",
-        "feature bits: CSUM 0, GUEST_CSUM 1, MTU 3, MAC 5, GSO 6, MRG_RXBUF 15, STATUS 16, CTRL_VQ 17",
-        "config: u8 mac[6] (valid with MAC), le16 status (with STATUS), le16 max_virtqueue_pairs, le16 mtu",
-        "struct virtio_net_hdr: flags, gso_type, hdr_len, gso_size, csum_start, csum_offset, num_buffers — 12 bytes without HASH_REPORT; the device MUST set num_buffers to 1 without MRG_RXBUF; a legacy driver without MRG_RXBUF used a 10-byte header",
-        "transmit without offloads: flags 0, gso_type NONE; receive buffers of at least 1526 bytes and a single descriptor per packet without MRG_RXBUF"
-      ],
-      "limits": "only the fields and rules the driver uses were extracted",
-      "verified": true
-    },
-    {
-      "id": "S52",
-      "title": "8042 PS/2 controller register model (ports 60h/64h, status bits, command A7h)",
-      "url": "https://wiki.osdev.org/%228042%22_PS/2_Controller",
-      "version": "secondary summary (OSDev wiki) read 2026-10-18; the original IBM PC/AT Technical Reference and Intel 8042 datasheet are not publicly fetchable",
-      "accessed": "2026-10-18",
-      "supports": [
-        "data port 60h (read: output buffer; write: input buffer), status/command port 64h",
-        "status bit 0 output buffer full (data readable), bit 1 input buffer full, bit 5 auxiliary (mouse) output on PS/2 controllers",
-        "command A7h disables the second (auxiliary) PS/2 port; QEMU's i8042 implements the same registers (hw/input/pckbd.c)",
-        "translation to scancode set 1 is the default on PC-compatible controllers (QEMU: `a` 1E/9E, `b` 30/B0, Enter 1C/9C)"
-      ],
-      "limits": "secondary source; confirmed by the lab (TST-M4-KBD-SCANCODES)",
-      "verified": false
-    },
-    {
-      "id": "S53",
-      "title": "RFC 826 — An Ethernet Address Resolution Protocol",
-      "url": "https://www.rfc-editor.org/rfc/rfc826",
-      "version": "November 1982 (Plummer)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "packet: ar$hrd u16, ar$pro u16, ar$hln u8, ar$pln u8, ar$op u16, ar$sha, ar$spa, ar$tha, ar$tpa with no padding; Ethernet hardware type 1 with 6-byte addresses; REQUEST 1, REPLY 2",
-        "the reply swaps sender/target fields and is sent unicast to the requester; EtherType 0x0806 for ARP and 0x0800 for IPv4 are the IANA IEEE 802 numbers"
-      ],
-      "limits": "the RFC names the EtherTypes symbolically; the numeric values are IANA's",
-      "verified": true
-    },
-    {
-      "id": "S54",
-      "title": "QEMU monitor — `sendkey` (human monitor command) and the unix-socket monitor",
-      "url": "https://qemu.googlesource.com/qemu/+/c0e705c6800a1f98c8cb3795ce66f5a48d4e33aa/docs/system/devices/net.rst",
-      "version": "QEMU documentation tree, read 2026-10-18 (sendkey semantics from the QEMU HMP: press then release after a hold time, default 100 ms)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "`-monitor unix:PATH,server,nowait` exposes the human monitor on a socket",
-        "`sendkey keys [hold-ms]` injects a key press and release (QEMU HMP)"
-      ],
-      "limits": "the sendkey page itself was not fetched (the net.rst page was); confirmed by the lab run",
-      "verified": false
-    },
-    {
-      "id": "S55",
-      "title": "QEMU — Using the user mode network stack (SLIRP)",
-      "url": "https://qemu.googlesource.com/qemu/+/c0e705c6800a1f98c8cb3795ce66f5a48d4e33aa/docs/system/devices/net.rst",
-      "version": "QEMU documentation tree, read 2026-10-18",
-      "accessed": "2026-10-18",
-      "supports": [
-        "router/gateway 10.0.2.2, DNS 10.0.2.3, SMB 10.0.2.4, DHCP from 10.0.2.15; the VM behaves as if behind a firewall blocking incoming connections",
-        "ping to the local router 10.0.2.2 works; ICMP to the Internet needs unprivileged ping sockets on the host",
-        "hostfwd redirects TCP/UDP connections from the host to the guest"
-      ],
-      "limits": "the gateway MAC 52:55:0a:00:02:02 is SLIRP's implementation choice (net/slirp.c special_ethaddr), confirmed by the lab",
-      "verified": true
-    },
-    {
-      "id": "S56",
-      "title": "RFC 791 — Internet Protocol (STD 5)",
-      "url": "https://rfc-editor.org/rfc/rfc791",
-      "version": "September 1981 (Postel)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "header: Version/IHL, Type of Service, Total Length; Identification, Flags (bit 1 DF, bit 2 MF), Fragment Offset; TTL, Protocol, Header Checksum; Source, Destination",
-        "\"The checksum field is the 16 bit one's complement of the one's complement sum of all 16 bit words in the header\""
-      ],
-      "limits": "fragmentation is not implemented (fragments are dropped and counted)",
-      "verified": true
-    },
-    {
-      "id": "S57",
-      "title": "IANA ICMP Parameters (RFC 792 types): Echo Reply 0, Echo 8",
-      "url": "https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml",
-      "version": "registry read 2026-10-18",
-      "accessed": "2026-10-18",
-      "supports": [
-        "type 0 Echo Reply and type 8 Echo, code 0, per RFC 792",
-        "echo message layout (type, code, checksum, identifier, sequence, data) and the checksum over the ICMP message are RFC 792's; the RFC text itself was not fetched this session"
-      ],
-      "limits": "RFC 792 cited through the registry; confirmed by the lab (TST-M4-ICMP-ECHO)",
-      "verified": true
-    },
-    {
-      "id": "S58",
-      "title": "RFC 768 — User Datagram Protocol (STD 6)",
-      "url": "https://www.rfc-editor.org/rfc/rfc768",
-      "version": "28 August 1980 (Postel)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "header: Source Port, Destination Port, Length (header + data, minimum 8), Checksum",
-        "checksum: one's complement of the one's complement sum over the pseudo header (source, destination, zero, protocol 17, UDP length), header and data, zero-padded; a computed zero is sent as all ones; an all-zero checksum means none"
-      ],
-      "limits": "only IPv4 pseudo headers; the sender always computes the checksum",
-      "verified": true
-    },
-    {
-      "id": "S59",
-      "title": "RFC 2131 — Dynamic Host Configuration Protocol",
-      "url": "https://www.rfc-editor.org/rfc/rfc2131.txt",
-      "version": "March 1997 (Droms)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "message: op(1) htype(1) hlen(1) hops(1) xid(4) secs(2) flags(2) ciaddr(4) yiaddr(4) siaddr(4) giaddr(4) chaddr(16) sname(64) file(128) options — 236 fixed octets; BOOTREQUEST 1, BOOTREPLY 2; client port 68, server port 67; the leftmost flags bit is BROADCAST",
-        "DISCOVER→OFFER→REQUEST→ACK; in REQUEST the client sets the server identifier and the requested IP address (= yiaddr of the OFFER), ciaddr 0",
-        "options begin with the magic cookie 99.130.83.99; retransmission with randomized exponential backoff (4 s, doubling to 64 s)"
-      ],
-      "limits": "the lab client retries 3 times with a fixed 1500-tick wait (no randomized backoff: a lab simplification recorded in net.md)",
-      "verified": true
-    },
-    {
-      "id": "S60",
-      "title": "RFC 2132 — DHCP Options and BOOTP Vendor Extensions",
-      "url": "https://rfc-editor.org/rfc/rfc2132",
-      "version": "March 1997",
-      "accessed": "2026-10-18",
-      "supports": [
-        "Subnet Mask 1 (4), Router 3 (4n), DNS 6 (4n), Requested IP Address 50 (4), Lease Time 51 (4), Message Type 53 (1: DISCOVER 1, OFFER 2, REQUEST 3, ACK 5, NAK 6), Server Identifier 54 (4), Parameter Request List 55, Pad 0, End 255"
-      ],
-      "limits": "only the options the client sends or reads are listed",
-      "verified": true
-    },
-    {
-      "id": "S61",
-      "title": "RFC 9293 — Transmission Control Protocol (TCP)",
-      "url": "https://rfc-editor.org/rfc/rfc9293",
-      "version": "August 2022 (Internet Standard 7)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "header: source/destination port, sequence, acknowledgment, data offset, flags (FIN SYN RST PSH ACK), window, checksum over the pseudo-header, urgent pointer (§3.1); MSS option kind 2 length 4, a default send MSS of 536 assumed when none is received (§3.7.1)",
-        "three-way handshake (§3.5): SYN consumes one sequence number, SYN+ACK acknowledges ISN+1, the ACK completes; FIN consumes one sequence number and all segments up to it are retransmitted until acknowledged (§3.6)",
-        "states LISTEN, SYN-SENT, SYN-RECEIVED, ESTABLISHED, FIN-WAIT-1, FIN-WAIT-2, CLOSE-WAIT, CLOSING, LAST-ACK, TIME-WAIT and the fictional CLOSED (§3.3.2); segment processing per state (§3.10.7 SEGMENT ARRIVES)",
-        "reset generation (§3.5.2): when the connection does not exist, any incoming segment except a reset is answered with RST; a reset aborts the connection (a refused port yields RST)",
-        "retransmission timeout per RFC 6298 (§3.8.1); connection failures (§3.8.3): thresholds R1 and R2 per segment, R2 at least 100 s for data (SHLD-11), the application may set R2"
-      ],
-      "limits": "the service implements a stop-and-wait client (one segment in flight, in-order receive only, no listen, no urgent data, no window scaling or SACK); congestion control (RFC 5681) is moot with one segment in flight; R1 is not surfaced; R2 for data is six retransmissions (about 123 s with the doubling RTO); the connect timeout is the client's explicit parameter (default 5 s) rather than the 3-minute SYN R2 of MUST-23",
-      "verified": true
-    },
-    {
-      "id": "S62",
-      "title": "RFC 6298 — Computing TCP's Retransmission Timer",
-      "url": "https://rfc-editor.org/rfc/rfc6298",
-      "version": "June 2011 (Proposed Standard)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "(2.1) initial RTO 1 second; (2.2) first sample SRTT = R, RTTVAR = R/2, RTO = SRTT + max(G, K·RTTVAR) with K = 4; (2.3) later RTTVAR = (1−β)·RTTVAR + β·|SRTT−R'| and SRTT = (1−α)·SRTT + α·R' with α = 1/8, β = 1/4",
-        "(2.4) RTO rounded up to 1 second when smaller; (2.5) a maximum may be placed on RTO if at least 60 seconds",
-        "§3 Karn's algorithm: no RTT sample from a retransmitted segment",
-        "§5 timer management: (5.1) start when data is sent, (5.2) stop when all data is acknowledged, (5.4) on expiry retransmit the earliest unacknowledged segment, (5.5) RTO = RTO·2 (back-off), (5.6) restart the timer, (5.7) after a retransmitted SYN the RTO for data is re-initialised to 3 seconds when below it"
-      ],
-      "limits": "clock granularity G = 1 tick (1 ms); the backed-off RTO stays until a new RTT sample recomputes it",
-      "verified": true
-    },
-    {
-      "id": "S63",
-      "title": "PC16550D Universal Asynchronous Receiver/Transmitter with FIFOs (datasheet) — register map at COM2 0x2F8",
-      "url": "https://www.ti.com/lit/ds/symlink/pc16550d.pdf",
-      "version": "Texas Instruments SNLS378B (1995, rev. 2015)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "register offsets: RBR/THR 0 (DLL with DLAB), IER 1 (DLM with DLAB), FCR 2, LCR 3 (bit 7 DLAB; 0x03 = 8 data bits, 1 stop, no parity), MCR 4 (bit 4 loopback), LSR 5 (bit 0 data ready, bit 5 THR empty)",
-        "FIFO mode: FCR bit 0 enables, bits 1–2 clear the receiver/transmitter FIFOs; 16-byte receiver FIFO",
-        "loopback (MCR bit 4): the transmitter output is looped to the receiver input, used here as the presence probe at boot",
-        "PC convention: COM1 at 0x3F8, COM2 at 0x2F8 (QEMU isa-serial index 1)"
-      ],
-      "limits": "the kernel polls LSR (no interrupts, no modem status); baud divisor 1 (115200) is nominal — QEMU's chardev ignores the line speed",
-      "verified": false
-    },
-    {
-      "id": "S64",
-      "title": "QEMU: Invocation — `-serial dev` character devices (`tcp:[host]:port,server=on,wait=off`, `null`)",
-      "url": "https://www.qemu.org/docs/master/system/invocation.html",
-      "version": "QEMU documentation (master; the lab runs 8.2.2)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "`tcp:[host]:port[,server=on|off][,wait=on|off][,nodelay=on|off][,reconnect-ms=…]`: the TCP net console either sends the serial I/O to a location or waits for a connection; example `-serial tcp:192.168.0.100:4444,server=on,wait=off` to listen and not wait",
-        "`-chardev socket`: `server=on|off` makes a listening socket; `wait=on|off` says whether QEMU blocks for a client before starting",
-        "`null`: the guest sees the UART as present, all output is discarded and there is no input (so COM2 exists in every lab run and the boot probe sees it)",
-        "the PC machines attach successive `-serial` backends to COM1, COM2, … (the second `-serial` is COM2 at 0x2F8: confirmed by the kernel's loopback probe on CI)"
-      ],
-      "limits": "bytes the guest writes before a client connects are dropped; the lab connects as soon as QEMU listens and waits for the shell's prompt; the deprecated `server,nowait` spellings still work on 8.2.2 (the monitor uses them) but the console uses `server=on,wait=off`",
-      "verified": true
-    },
-    {
-      "id": "S65",
-      "title": "UEFI Specification 2.11 — §12.9 Graphics Output Protocol (EFI_GRAPHICS_OUTPUT_PROTOCOL, _MODE, _MODE_INFORMATION, PixelFormat), §7.3.16 LocateProtocol",
-      "url": "https://uefi.org/specs/UEFI/2.11/12_Protocols_Console_Support.html#graphics-output-protocol",
-      "version": "UEFI 2.11 (2024)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "GUID 9042a9de-23dc-4a38-96fb-7aded080516a; the protocol's Mode pointer gives MaxMode, Mode, Info, SizeOfInfo, FrameBufferBase, FrameBufferSize",
-        "EFI_GRAPHICS_OUTPUT_MODE_INFORMATION: Version, HorizontalResolution, VerticalResolution, PixelFormat (PixelRedGreenBlueReserved8BitPerColor = 0, PixelBlueGreenRedReserved8BitPerColor = 1, PixelBitMask = 2, PixelBltOnly = 3), PixelInformation, PixelsPerScanLine",
-        "the linear frame buffer is usable after ExitBootServices as the firmware left it (no further GOP calls are needed to write pixels)"
-      ],
-      "limits": "structure layout cited from the specification text as remembered and matched against OVMF's behaviour in the lab (boot|gop line); PixelBitMask and BltOnly modes are reported absent by the kernel",
-      "verified": false
-    },
-    {
-      "id": "S66",
-      "title": "QEMU monitor — `screendump filename` (saves the screen of the current display as a PPM image)",
-      "url": "https://www.qemu.org/docs/master/system/monitor.html",
-      "version": "QEMU documentation (master; the lab runs 8.2.2)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "`screendump filename [device=…] [head=…] [format=png|ppm]`: writes the current screen; the default format is PPM (binary P6, 8-bit samples)",
-        "works with `-display none`: the VGA console still renders into guest-visible memory, which is what the dump reads"
-      ],
-      "limits": "the picture is the emulated VGA's view of the frame at the moment of the command; the kernel's own read-back and the dump are two independent witnesses",
-      "verified": false
-    },
-    {
-      "id": "S67",
-      "title": "Keyboard scancodes (A. Brouwer) — §13 The PS/2 mouse: default 3-byte protocol, mouse commands F4h/F6h, FAh acknowledgement",
-      "url": "https://aeb.win.tue.nl/linux/kbd/scancodes-13.html",
-      "version": "secondary reference (the Linux keyboard/mouse documentation by Andries Brouwer), read 2026-10-18; the IBM PS/2 Hardware Interface Technical Reference is not publicly fetchable",
-      "accessed": "2026-10-18",
-      "supports": [
-        "packet byte 0: Yovfl Xovfl dy8 dx8 1 Middle Right Left (bit 3 literal 1; dx8/dy8 are the ninth sign bits; X/Y movement 9-bit two's complement), bytes 1–2 the X and Y movement; positive Y is upwards",
-        "every command or data byte sent to the mouse (except resend FEh) is acknowledged with FAh",
-        "F4h enables stream-mode reporting (disabled after reset and after F5h); F6h sets the defaults (a reset without diagnostics)"
-      ],
-      "limits": "the controller-side commands A8h (enable auxiliary interface) and D4h (write to the auxiliary device) are in S52",
-      "verified": true
-    },
-    {
-      "id": "S68",
-      "title": "QEMU monitor — `mouse_move dx dy [dz]` and `mouse_button val` (human monitor commands)",
-      "url": "https://www.qemu.org/docs/master/system/monitor.html",
-      "version": "QEMU documentation (master; the lab runs 8.2.2), read 2026-10-18",
-      "accessed": "2026-10-18",
-      "supports": [
-        "`mouse_move dx dy [dz]`: moves the active mouse by the given relative offsets (positive dy = downwards on the screen; the PS/2 device inverts it in its packet)",
-        "`mouse_button val`: changes the button state (1 left, 2 right, 4 middle; 0 releases)"
-      ],
-      "limits": "the emulated PS/2 mouse reports one packet per monitor command (one `sync` each); the sign of the PS/2 Y byte is verified by TST-M5-MOUSE, not assumed",
-      "verified": true
-    },
-    {
-      "id": "S69",
-      "title": "QEMU source — ui/input.c `qmp_send_key`: keys of one `sendkey` are pressed in the given order and released in reverse order",
-      "url": "https://raw.githubusercontent.com/qemu/qemu/master/ui/input.c",
-      "version": "QEMU master, read 2026-10-18 (the loop `for (p = keys; …)` presses; `while (count) { count--; … false }` releases)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "`sendkey shift-b` yields shift down, b down, b up, shift up; `sendkey ctrl-alt-delete` yields ctrl, alt, delete down then delete, alt, ctrl up",
-        "the hold time between press and release defaults to 100 ms (S54)"
-      ],
-      "limits": "QEMU emulates no typematic repeat for the PS/2 keyboard",
-      "verified": true
-    },
-    {
-      "id": "S70",
-      "title": "The FNV Non-Cryptographic Hash Algorithm (draft-eastlake-fnv) — FNV-1a 64-bit: offset basis 0xcbf29ce484222325, prime 0x100000001b3, xor then multiply per octet",
-      "url": "https://datatracker.ietf.org/doc/html/draft-eastlake-fnv",
-      "version": "IETF Internet-Draft (Eastlake, Hansen, Fowler, Noll, Vo), read 2026-10-18",
-      "accessed": "2026-10-18",
-      "supports": [
-        "the compositor's window hash (display.md §ب LIST) and tools/screen.py's recomputation use FNV-1a 64 over the R, G, B octets of the client area, row by row"
-      ],
-      "limits": "a non-cryptographic hash: it ties the lab's picture to the compositor's pixels, not to any adversary",
-      "verified": true
-    },
-    {
-      "id": "S71",
-      "title": "OpenType specification 1.9.1 — tables 'head', 'hhea', 'hmtx', 'maxp', 'cmap' (formats 4, 12), 'loca', 'glyf' (simple and composite glyphs), 'GSUB' (lookup types 1, 4, 6 format 3, 7), 'GDEF' (GlyphClassDef), common table formats (Coverage, ClassDef, LookupFlag)",
-      "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/",
-      "version": "OpenType 1.9.1 (Microsoft Typography), read 2026-10-18",
-      "accessed": "2026-10-18",
-      "supports": [
-        "table directory, the required tables and their field offsets",
-        "cmap format 4 segment search with idDelta/idRangeOffset, format 12 groups",
-        "glyf flags (on-curve, x/y short, repeat), composite flags (ARGS_ARE_WORDS, ARGS_ARE_XY_VALUES, scales, MORE_COMPONENTS)",
-        "GSUB feature/lookup lists, lookup flag IgnoreMarks (0x0008), chaining context format 3 records"
-      ],
-      "limits": "hinting instructions, CFF outlines and GPOS are outside text.md v1",
-      "verified": true
-    },
-    {
-      "id": "S72",
-      "title": "Unicode Character Database 17.0.0 — DerivedBidiClass.txt, DerivedJoiningType.txt, BidiBrackets.txt, BidiCharacterTest.txt; UAX #9 Unicode Bidirectional Algorithm; Unicode Standard §9.2 Arabic (cursive joining)",
-      "url": "https://www.unicode.org/Public/17.0.0/ucd/",
-      "version": "Unicode 17.0.0 (files dated 2025-06..08), taken from github.com/unicode-org/unicodetools unicodetools/data/ucd/17.0.0 (unicode.org itself was unreachable from the lab)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "bidi classes with the @missing defaults for unassigned code points",
-        "joining types R, L, D, C, T",
-        "bracket pairs (bpb, bpt) for rule N0",
-        "the conformance data for rules P2–L2: 91707 lines"
-      ],
-      "limits": "the data files are under the Unicode License v3; P1, L3 and L4 are not covered by BidiCharacterTest",
-      "verified": true
-    },
-    {
-      "id": "S73",
-      "title": "Noto Sans and Noto Sans Arabic, Regular, unhinted TTF — googlefonts/noto-fonts at ffebf8c1ee449e544955a7e813c54f9b73848eac; SIL Open Font License 1.1",
-      "url": "https://github.com/googlefonts/noto-fonts",
-      "version": "commit ffebf8c1ee449e544955a7e813c54f9b73848eac (2023-01-25): unhinted/ttf/NotoSans/NotoSans-Regular.ttf (393200 bytes, 3748 glyphs), unhinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf (170196 bytes, 1661 glyphs), LICENSE",
-      "accessed": "2026-10-18",
-      "supports": [
-        "the fonts shipped under /SYSTEM/FONTS with their licence (OFL.txt)",
-        "TrueType outlines (glyf), cmap format 4, GSUB arab features isol/fina/medi/init/rlig/ccmp"
-      ],
-      "limits": "the repository is archived; the fonts are redistributed unmodified under the OFL",
-      "verified": true
-    },
-    {
-      "id": "S74",
-      "title": "fontTools (Python library) — independent OpenType reader used as the reference in TST-M5-GLYPHS",
-      "url": "https://github.com/fonttools/fonttools",
-      "version": "4.46.0 on the CI runner (Ubuntu 24.04 python3-fonttools, recorded by tests/test_text.py in CI run 39160436412), 4.65.0 locally",
-      "accessed": "2026-10-18",
-      "supports": [
-        "getBestCmap, hmtx, glyf getCoordinates with composites resolved, DecomposingRecordingPen and decomposeQuadraticSegment for the reference rasteriser's contour walk"
-      ],
-      "limits": "a reference implementation, not a specification",
-      "verified": true
-    },
-    {
-      "id": "S75",
-      "title": "HarfBuzz text shaping engine (hb-shape) — the reference shaper in TST-M5-SHAPING and for the guest sample",
-      "url": "https://harfbuzz.github.io/",
-      "version": "8.3.0 on the CI runner and locally (Ubuntu 24.04 libharfbuzz-bin, recorded by tests/test_text.py in CI run 39160436412)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "Arabic shaping with the font's GSUB: feature stages isol, fina, medi, init (each its own stage), then rlig; output of glyph ids per run"
-      ],
-      "limits": "HarfBuzz shows default-ignorable characters (ZWJ/ZWNJ) as an invisible space glyph; the comparison skips those positions",
-      "verified": true
-    },
-    {
-      "id": "S76",
-      "title": "Microsoft Learn — Interactive logon: Do not require CTRL+ALT+DEL (Windows 10 security policy settings)",
-      "url": "https://learn.microsoft.com/fr-fr/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/interactive-logon-do-not-require-ctrl-alt-del",
-      "version": "page dated 2017-04-19 (applies to Windows 10 and Windows 11)",
-      "accessed": "2026-10-18",
-      "supports": [
-        "Requiring CTRL+ALT+DELETE before users sign in ensures that users are communicating through a trusted path when entering their passwords",
-        "the threat it answers: malware that looks like the standard sign-in dialog box captures a user's password"
-      ],
-      "limits": "describes the reference's policy and its purpose, not its implementation; the session design (input moves the focus to the session with the sequence, session.md) is this project's own",
-      "verified": true
-    },
-    {
-      "id": "S77",
-      "title": "Microsoft Support — Keyboard shortcuts in Windows",
-      "url": "https://support.microsoft.com/en-us/windows/keyboard-shortcuts-in-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec",
-      "version": "page dated 2026-09-02 (applies to Windows 11 and Windows 10)",
-      "accessed": "2026-10-19",
-      "supports": [
-        "Alt+Tab: Switch between open windows. To cycle through multiple windows, continue to hold the Alt key and press Tab multiple times."
-      ],
-      "limits": "describes the shortcut, not its order: that the walk follows the stacking at the first Tab, most recently used first, is this project's design (ADR-0019 item 12); the reference's switcher overlay is not described here",
-      "verified": true
-    }
-  ]
+ "schema_version": "1.0.0",
+ "records": [
+  {
+   "id": "S01",
+   "title": "Microsoft: Overview of Windows Components",
+   "url": "https://learn.microsoft.com/windows-hardware/drivers/kernel/overview-of-windows-components",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "component separation user/kernel"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S02",
+   "title": "Microsoft: User Mode and Kernel Mode",
+   "url": "https://learn.microsoft.com/windows-hardware/drivers/gettingstarted/user-mode-and-kernel-mode",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "execution modes"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S03",
+   "title": "Microsoft: Windows Kernel-Mode Executive Support Library",
+   "url": "https://learn.microsoft.com/windows-hardware/drivers/kernel/windows-kernel-mode-executive-support-library",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "executive responsibilities"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S04",
+   "title": "Microsoft: Windows Kernel-Mode HAL Library",
+   "url": "https://learn.microsoft.com/windows-hardware/drivers/kernel/windows-kernel-mode-hal-library",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "HAL boundary"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S05",
+   "title": "Microsoft: Launch Windows Settings (ms-settings URIs)",
+   "url": "https://learn.microsoft.com/windows/apps/develop/launch/launch-settings",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "settings pages identification"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S06",
+   "title": "Microsoft: Windows 10 release information",
+   "url": "https://learn.microsoft.com/windows/release-health/release-information",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "22H2 build family 19045"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S07",
+   "title": "Microsoft: Windows 10 Home and Pro lifecycle",
+   "url": "https://learn.microsoft.com/lifecycle/products/windows-10-home-and-pro",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "EOL 2025-10-14"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S08",
+   "title": "Microsoft Support: Understand and explore Windows Settings",
+   "url": "https://support.microsoft.com/windows",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "settings organization"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S09",
+   "title": "NIST SP 800-218 SSDF 1.1",
+   "url": "https://csrc.nist.gov/pubs/sp/800/218/final",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "secure development practices"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S10",
+   "title": "The Update Framework: Security",
+   "url": "https://theupdateframework.io/security/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "update threat model"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S11",
+   "title": "UEFI Specification 2.11: Secure Boot and Driver Signing",
+   "url": "https://uefi.org/specs/UEFI/2.11/index.html",
+   "version": "UEFI 2.11 HTML (page publish date 2024-12-04)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "secure boot"
+   ],
+   "limits": "Index and chapter 7 fetched; Secure Boot chapter not yet read",
+   "verified": true
+  },
+  {
+   "id": "S12",
+   "title": "QEMU: System Emulation; GDB usage",
+   "url": "https://qemu.googlesource.com/qemu/+/refs/tags/v9.0.0/hw/misc/debugexit.c",
+   "version": "QEMU v9.0.0 source (lab uses 8.2.2 Debian package)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "isa-debug-exit: exit((val << 1) | 1)",
+    "default iobase 0x501 iosize 2; lab passes iobase=0xf4,iosize=4 explicitly"
+   ],
+   "limits": "source file read; QEMU 8.2.2 behaviour confirmed empirically by E0/M1 exit codes 33/97",
+   "verified": true
+  },
+  {
+   "id": "S13",
+   "title": "Microsoft: PE Format",
+   "url": "https://learn.microsoft.com/windows/win32/debug/pe-format",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "PE/COFF"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S14",
+   "title": "Microsoft: Manage connections from Windows components to Microsoft services",
+   "url": "https://learn.microsoft.com/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "service connections"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S15",
+   "title": "WineHQ: About Wine",
+   "url": "https://www.winehq.org/about",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "compatibility layer design"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S16",
+   "title": "Wayland: Overview",
+   "url": "https://wayland.freedesktop.org/docs/html/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "compositor separation"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S17",
+   "title": "ReactOS: Repository README",
+   "url": "https://github.com/reactos/reactos",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "NT compatibility reference"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S18",
+   "title": "UEFI 2.11 §7.4.6 Boot Services: ExitBootServices / GetMemoryMap",
+   "url": "https://uefi.org/specs/UEFI/2.11/07_Services_Boot_Services.html#efi-boot-services-exitbootservices",
+   "version": "UEFI 2.11 HTML §7.4.6 / §7.2.3 (publish date 2024-12-04)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "wrong MapKey -> EFI_INVALID_PARAMETER; GetMemoryMap+ExitBootServices must be called again",
+    "after first EBS call, only Memory Allocation Services may be called among boot services",
+    "GetMemoryMap EFI_BUFFER_TOO_SMALL returns needed size; allocating the buffer may enlarge the map",
+    "after EBS only runtime services",
+    "Table 7.6 'Memory Type Usage after ExitBootServices()': EfiBootServicesCode/Data = 'Memory available for general use'; EfiRuntimeServices*/EfiACPIMemoryNVS preserved; EfiACPIReclaimMemory preserved until ACPI is enabled; EfiReservedMemoryType 'Not usable'; EfiMemoryMappedIO not used by the OS (verified 2026-10-18 from the HTML text)"
+   ],
+   "limits": "verified from fetched official text",
+   "verified": true
+  },
+  {
+   "id": "S19",
+   "title": "Microsoft: Kernel DMA Protection",
+   "url": "https://learn.microsoft.com/windows/security/hardware-security/kernel-dma-protection-for-thunderbolt",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "IOMMU role"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S20",
+   "title": "Zephyr: Porting / Architecture / Board porting",
+   "url": "https://docs.zephyrproject.org/latest/hardware/porting/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "arch/SoC/board boundaries"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S21",
+   "title": "NASA: Technical Requirements Definition; Requirements Management",
+   "url": "https://www.nasa.gov/reference/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "requirements traceability"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S22",
+   "title": "Temporal: Retry Policies / Error Handling",
+   "url": "https://docs.temporal.io/encyclopedia/retry-policies",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "retry classification"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S23",
+   "title": "JSON Schema: Object",
+   "url": "https://json-schema.org/understanding-json-schema/reference/object",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "required/additionalProperties"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S24",
+   "title": "TianoCore EDK2 / OVMF",
+   "url": "https://github.com/tianocore/edk2",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "OVMF pflash usage"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S25",
+   "title": "Rust Platform Support: x86_64-unknown-uefi",
+   "url": "https://doc.rust-lang.org/rustc/platform-support/unknown-uefi.html",
+   "version": "rustc stable docs",
+   "accessed": "2026-10-18",
+   "supports": [
+    "x86_64-unknown-uefi is Tier 2; PE32+ output; lld link flavor; entry efi_main; subsystem EFI_APPLICATION",
+    "efiapi calling convention required (extern C is wrong on Intel)",
+    "no_std works; std incomplete; MMX/SSE disabled by default",
+    "rustup target add x86_64-unknown-uefi"
+   ],
+   "limits": "page read in full",
+   "verified": true
+  },
+  {
+   "id": "S26",
+   "title": "Intel SDM / AMD APM",
+   "url": "https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html",
+   "version": "SDM revision 093; page updated 2026-10-09; Vol.3A content ID 671190, combined 3A-3D 671447",
+   "accessed": "2026-10-18",
+   "supports": [
+    "download identities for Vol.3 System Programming Guide"
+   ],
+   "limits": "landing page only; PDF content to be cited per section when used (Sol OS evidence cites 325384-093US, Sept 2026, sha256 77919be3…)",
+   "verified": true
+  },
+  {
+   "id": "S27",
+   "title": "ACPI Specification",
+   "url": "https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#multiple-apic-description-table-madt",
+   "version": "ACPI 6.5 HTML",
+   "accessed": "2026-10-18",
+   "supports": [
+    "MADT, RSDP, XSDT are in chapter 5 (anchors confirmed)"
+   ],
+   "limits": "index fetched; MADT body to be read in WP-10",
+   "verified": true
+  },
+  {
+   "id": "S28",
+   "title": "Virtio Specification (OASIS)",
+   "url": "https://docs.oasis-open.org/virtio/virtio/v1.3/virtio-v1.3.html",
+   "version": "Virtio 1.3 CSD01, 2023-10-06",
+   "accessed": "2026-10-18",
+   "supports": [
+    "§4.1 PCI transport",
+    "§5.2 block device",
+    "§5.1 net",
+    "§5.7 gpu",
+    "§5.8 input",
+    "§2.7 split virtqueues"
+   ],
+   "limits": "table of contents verified; bodies to be read per driver",
+   "verified": true
+  },
+  {
+   "id": "S29",
+   "title": "PCI Express Base Specification",
+   "url": "https://pcisig.com/specifications",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "enumeration, BARs"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S30",
+   "title": "Unicode UAX #9 Bidirectional Algorithm; Arabic shaping; OpenType GSUB",
+   "url": "https://unicode.org/reports/tr9/",
+   "version": "unpinned",
+   "accessed": null,
+   "supports": [
+    "bidi, shaping"
+   ],
+   "limits": "URL recorded from the prompt/standard location; NOT fetched or verified in this session (no claim relies on fetched text yet)",
+   "verified": false
+  },
+  {
+   "id": "S31",
+   "title": "UEFI 2.11: GPT, ESP, EFI application subsystem",
+   "url": "https://uefi.org/specs/UEFI/2.11/05_GUID_Partition_Table_Format.html",
+   "version": "UEFI 2.11 HTML chapter 5",
+   "accessed": "2026-10-18",
+   "supports": [
+    "image format, partitions"
+   ],
+   "limits": "URL confirmed from index; chapter body not read yet",
+   "verified": false
+  },
+  {
+   "id": "S32",
+   "title": "Sol OS phase-2 archive (user's prior project, sol-os-phase2.zip)",
+   "url": "local upload sha256 7ba31066b2704db440eb74fc2e436d40824f03cacee374b0120f9523952e2b73",
+   "version": "commit d54f0a5 (2026-10-07)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "ADR-0002 reuse decision",
+    "arch/x86_64 reference implementation and ktest design",
+    "official rust-std component install path and hash verification method",
+    "docs/operations/sol-os-reuse-ledger.md (ADR-0002 item 4 reconciled against the tree, 2026-11-09)"
+   ],
+   "limits": "its evidence is not ours; every ported file is re-tested here",
+   "verified": true
+  },
+  {
+   "id": "S33",
+   "title": "ACPI Specification 6.5 §5.2 (RSDP, DESCRIPTION_HEADER, XSDT, MADT)",
+   "url": "https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html",
+   "version": "ACPI 6.5 HTML (uefi.org), read 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "§5.2.5.2: the RSDP pointer lives in the EFI configuration table (ACPI 2.0 GUID, else ACPI 1.0 GUID)",
+    "Table 5.3 RSDP: Revision at 15, RsdtAddress at 16, Length at 20, XsdtAddress at 24; bytes 0..20 sum to zero; extended checksum over the whole table",
+    "Table 5.4 DESCRIPTION_HEADER 36 bytes, Length at 4, whole table sums to zero; XSDT 8-byte entries from 36, must be used when present",
+    "§5.2.12 MADT: LAPIC address at 36, Flags at 40 (bit 0 PCAT_COMPAT: 8259 must be masked); Table 5.22 LAPIC (APIC ID at 3, Flags at 4: bit0 Enabled, bit1 Online Capable); Table 5.24 I/O APIC (ID 2, address 4, GSI base 8); Table 5.25 ISO (source 3, GSI 4, MPS INTI flags 8); Table 5.29 LAPIC address override (u64 at 4); Table 5.34 x2APIC (ID at 4, Flags at 8)"
+   ],
+   "limits": "HTML rendering of the specification; table numbers follow the 6.5 HTML edition",
+   "verified": true
+  },
+  {
+   "id": "S34",
+   "title": "Intel I/O Controller Hub 9 (ICH9) Family Datasheet (doc 316972): 8259 PIC, 8254 timer, NMI_SC (61h), I/O APIC",
+   "url": "https://www.intel.com/content/dam/doc/datasheet/io-controller-hub-9-datasheet.pdf",
+   "version": "ICH9 datasheet rev. 2008 (chipset QEMU q35 models)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "8259 master/slave at 20h/21h, A0h/A1h; ICW1..ICW4 init; OCW1 mask",
+    "8254 at 40h-43h, 1.193 MHz, mode 0",
+    "NMI_SC 61h: bit 0 TIM_CNT2_EN, bit 1 SPKR_DAT_EN, bit 5 TMR2_OUT_STS",
+    "I/O APIC indirect IOREGSEL/IOWIN, IOAPICVER max redirection entry, IOREDTBL mask bit 16"
+   ],
+   "limits": "register semantics cited from memory of the datasheet; the QEMU models (S35) are the executable reference the lab runs on",
+   "verified": false
+  },
+  {
+   "id": "S35",
+   "title": "QEMU 8.2.2 device models: hw/audio/pcspk.c (port 61h), hw/timer/i8254.c (PIT), hw/intc/apic.c and apic_common.c (local APIC timer)",
+   "url": "https://raw.githubusercontent.com/qemu/qemu/v8.2.2/hw/intc/apic_common.c",
+   "version": "v8.2.2 tag",
+   "accessed": "2026-10-18",
+   "supports": [
+    "pcspk_io_read: bit 0 = PIT ch2 gate, bit 1 = data, bit 4 refresh toggle, bit 5 = PIT ch2 OUT (verified from source 2026-10-18)",
+    "APIC timer: QEMU_CLOCK_VIRTUAL nanoseconds shifted by count_shift (divide config) -> 1 GHz input at divide-by-1 (apic_get_current_count, verified 2026-10-18)",
+    "apic_eoi: clears the highest ISR bit; SVR write keeps bits 0..8"
+   ],
+   "limits": "lab behaviour only; real hardware frequencies differ, hence PIT calibration",
+   "verified": true
+  },
+  {
+   "id": "S36",
+   "title": "Intel 82093AA I/O Advanced Programmable Interrupt Controller (IOAPIC) datasheet",
+   "url": "https://web.archive.org/web/2020/https://pdos.csail.mit.edu/6.828/2018/readings/ia32/ioapic.pdf",
+   "version": "1996 datasheet (archived copy)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "IOREGSEL at base+00h, IOWIN at base+10h",
+    "IOAPICVER bits 16-23 maximum redirection entry",
+    "IOREDTBL 10h+2n, bit 16 interrupt mask"
+   ],
+   "limits": "archived copy; same interface documented in S34",
+   "verified": false
+  },
+  {
+   "id": "S37",
+   "title": "System V Application Binary Interface — AMD64 Architecture Processor Supplement (x86-64 psABI)",
+   "url": "https://gitlab.com/x86-psABIs/x86-64-ABI",
+   "version": "official repository (gitlab x86-psABIs/x86-64-ABI); §3.2.1 Registers, §3.2.2 The Stack Frame",
+   "accessed": "2026-10-18",
+   "supports": [
+    "callee-saved registers rbx, rbp, r12-r15 (and rsp): a context switch that saves these plus RSP preserves what compiled callers expect",
+    "the stack is 16-byte aligned just before a call instruction (so RSP+8 is 16-aligned at entry)"
+   ],
+   "limits": "the built PDF is not reachable from the sandbox (robots/404 on refspecs and mirrors); the two statements were cross-checked against the OSDev System_V_ABI summary (secondary) and are consistent with the compiler's behaviour observed in CI",
+   "verified": false
+  },
+  {
+   "id": "S38",
+   "title": "The Rust Reference — Inline assembly — Options",
+   "url": "https://doc.rust-lang.org/reference/inline-assembly.html",
+   "version": "online edition, read 2026-10-18 (toolchain 1.97.0)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "nomem: 'The assembly code does not read from or write to any memory accessible outside of the assembly code. This allows the compiler to cache the values of modified global variables in registers across execution of the assembly code' — hence sti/cli/hlt blocks that bracket interrupt handlers must not carry nomem",
+    "nostack: the block does not push to the stack or write the red zone",
+    "preserves_flags: the block does not modify the flags register"
+   ],
+   "limits": "normative for the language; the kernel's use is ADR-0010 item 10",
+   "verified": true
+  },
+  {
+   "id": "S39",
+   "title": "Fuchsia / Zircon kernel concepts — Handles",
+   "url": "https://fuchsia.dev/fuchsia-src/concepts/kernel/handles",
+   "version": "fuchsia.dev, read 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "a handle is a per-process 32-bit value naming a kernel object together with rights; 0 is ZX_HANDLE_INVALID",
+    "rights belong to the handle, not the object: two handles to one object may differ; duplication may reduce rights",
+    "kernel objects are reference counted, each handle holds a reference; the kernel may reuse the integer values of closed handles"
+   ],
+   "limits": "design reference only (no code reuse); nawah adds a generation to the value so stale handles are refused deterministically",
+   "verified": true
+  },
+  {
+   "id": "S40",
+   "title": "Fuchsia / Zircon syscall reference — zx_channel_write",
+   "url": "https://fuchsia.dev/reference/syscalls/channel_write",
+   "version": "fuchsia.dev, read 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "channel handle needs ZX_RIGHT_WRITE; each transferred handle needs ZX_RIGHT_TRANSFER",
+    "limits ZX_CHANNEL_MAX_MSG_BYTES 65536 and ZX_CHANNEL_MAX_MSG_HANDLES 64 (nawah: 4096 and 4 per PLAN §4)",
+    "ZX_ERR_PEER_CLOSED when the other end is closed; ZX_ERR_NOT_SUPPORTED when the channel's own handle is in the handle array; duplicates in the array are ZX_ERR_BAD_HANDLE"
+   ],
+   "limits": "Zircon discards sent handles on failure too; nawah's contract keeps the sender's table untouched on failure (two-phase write)",
+   "verified": true
+  },
+  {
+   "id": "S41",
+   "title": "System V gABI — ELF header (ch4) and program header (ch5)",
+   "url": "https://www.sco.com/developers/gabi/latest/ch5.pheader.html",
+   "version": "gABI 'latest' edition (sco.com), read 2026-10-18; also ch4.eheader.html",
+   "accessed": "2026-10-18",
+   "supports": [
+    "Elf64_Ehdr field order: e_ident[16], e_type, e_machine, e_version, e_entry, e_phoff, e_shoff, e_flags, e_ehsize, e_phentsize, e_phnum, e_shentsize, e_shnum, e_shstrndx (offsets 16/18/24/32/54/56 used by the loader)",
+    "EI_MAG 0x7f 'E' 'L' 'F'; EI_CLASS ELFCLASS64 = 2; EI_DATA ELFDATA2LSB = 1; ET_EXEC = 2, ET_DYN = 3; EM_X86_64 = 62",
+    "Elf64_Phdr: p_type, p_flags, p_offset, p_vaddr, p_paddr, p_filesz, p_memsz, p_align; PT_LOAD = 1; PF_X = 1, PF_W = 2, PF_R = 4",
+    "PT_LOAD: file bytes mapped to the beginning of the segment, extra bytes zero, 'the file size may not be larger than the memory size'"
+   ],
+   "limits": "normative text fetched from the SCO mirror of the gABI; the Linux Foundation refspecs copy refused automated access",
+   "verified": true
+  },
+  {
+   "id": "S42",
+   "title": "Virtio 1.3 specification sources (OASIS virtio-spec repository): transport-pci.tex, split-ring.tex, content.tex, device-types/blk/description.tex",
+   "url": "https://github.com/oasis-tcs/virtio-spec",
+   "version": "master LaTeX sources (the 1.3 release), read 2026-10-18 via raw.githubusercontent.com",
+   "accessed": "2026-10-18",
+   "supports": [
+    "PCI Vendor 0x1AF4; Device ID 0x1040 + Virtio Device ID (block = 2); transitional 0x1000..0x103F",
+    "struct virtio_pci_cap {u8 cap_vndr, cap_next, cap_len, cfg_type, bar, id, padding[2]; le32 offset, length}; cfg_type COMMON 1, NOTIFY 2 (+ le32 notify_off_multiplier), ISR 3, DEVICE 4, PCI_CFG 5",
+    "struct virtio_pci_common_cfg field order: device_feature_select, device_feature, driver_feature_select, driver_feature, config_msix_vector, num_queues, device_status, config_generation, queue_select, queue_size, queue_msix_vector, queue_enable, queue_notify_off, queue_desc, queue_driver, queue_device, ...; all fields little-endian, 64-bit fields written as two 32-bit halves",
+    "queue notification address = cap.offset + queue_notify_off * notify_off_multiplier",
+    "device status ACKNOWLEDGE 1, DRIVER 2, DRIVER_OK 4, FEATURES_OK 8, DEVICE_NEEDS_RESET 64, FAILED 128; initialization order reset/ACK/DRIVER/features/FEATURES_OK re-read/queues/DRIVER_OK; VIRTIO_F_VERSION_1 = 32",
+    "split virtqueue: virtq_desc {le64 addr, le32 len, le16 flags, le16 next}, NEXT 1, WRITE 2; virtq_avail {le16 flags, le16 idx, le16 ring[]}; virtq_used {le16 flags, le16 idx, {le32 id, le32 len} ring[]}; alignment 16/2/4; the driver writes descriptors, ring entry, barrier, idx, barrier, notify",
+    "block: device id 2, virtqueue 0 requestq; VIRTIO_BLK_F_FLUSH (9); virtio_blk_config.capacity le64 sectors of 512 bytes; virtio_blk_req {le32 type, le32 flags, le64 sector, data[], u8 status}; T_IN 0, T_OUT 1, T_FLUSH 4; status OK 0, IOERR 1, UNSUPP 2; a write becomes stable once a FLUSH sent after it completes"
+   ],
+   "limits": "the rendered OASIS HTML exceeds the fetch window; the LaTeX sources of the same text were read instead",
+   "verified": true
+  },
+  {
+   "id": "S43",
+   "title": "PCI Express ECAM address mapping and PCI 3.0 configuration header (type 0)",
+   "url": "https://wiki.osdev.org/PCI_Express",
+   "version": "secondary summary read 2026-10-18 (PCIe Base Specification §7.2.2 and PCI Local Bus 3.0 §6.1/§6.7 are PCI-SIG member documents)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "ECAM: configuration space of (bus, device, function) at MCFG base + (bus << 20 | device << 15 | function << 12), 4 KiB per function",
+    "header: Vendor ID 0, Device ID 2, Command 4 (bit 1 memory space, bit 2 bus master, bit 10 INTx disable), Status 6 (bit 4 capabilities list), Class Code 9..11, Header Type 0xE (bit 7 multi-function), BAR0..5 at 0x10 (bit 0 I/O; bits 2:1 = 10b 64-bit; bit 3 prefetchable; size by writing all ones), Capabilities Pointer 0x34; capability ID at +0, next at +1",
+    "MCFG entry layout (PCI Firmware Specification): base address u64, segment u16, start bus u8, end bus u8, reserved u32, 16 bytes each after the 36-byte header plus 8 reserved bytes"
+   ],
+   "limits": "primary specifications are not publicly fetchable; the layout is the one every OS (Linux acpi/actbl1.h, EDK2) implements and is confirmed by the lab (ECAM base 0xB0000000, devices enumerated and driven)",
+   "verified": false
+  },
+  {
+   "id": "S44",
+   "title": "Microsoft Extensible Firmware Initiative FAT32 File System Specification (fatgen103)",
+   "url": "https://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/fatgen103.doc",
+   "version": "version 1.03 (Microsoft .doc); field layout cross-read from the ELM Chan 'FAT Filesystem' page (elm-chan.org/docs/fat_e.html) on 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "BPB offsets: BytsPerSec 11, SecPerClus 13, RsvdSecCnt 14, NumFATs 16, RootEntCnt 17 (0 on FAT32), TotSec16 19 (0), FATSz16 22 (0), TotSec32 32, FATSz32 36, ExtFlags 40, FSVer 42, RootClus 44, FSInfo 48, BkBootSec 50, BootSig 66 = 0x29, VolLab 71, FilSysType 82, signature 0x55AA at 510",
+    "FirstDataSector = RsvdSecCnt + NumFATs * FATSz32; FirstSectorOfCluster(N) = (N-2) * SecPerClus + FirstDataSector; FAT type by cluster count (FAT32 >= 65525)",
+    "FAT32 entries: low 28 bits (free 0, chain 2..0x0FFFFFF6, bad 0x0FFFFFF7, EOC >= 0x0FFFFFF8), high 4 bits preserved; FAT[0] low byte = media, FAT[1] EOC; FSInfo signatures 0x41615252 / 0x61417272 / 0xAA550000 with free count and next-free hints (0xFFFFFFFF = unknown)",
+    "directory entry: Name 0..11, Attr 11 (READ_ONLY 1, HIDDEN 2, SYSTEM 4, VOLUME_ID 8, DIRECTORY 0x10, ARCHIVE 0x20, LONG_NAME 0x0F), FstClusHI 20, FstClusLO 26, FileSize 28; 0xE5 free, 0x00 end, 0x05 for a real 0xE5"
+   ],
+   "limits": "the Microsoft .doc is not readable through the fetch tool; the ELM Chan page restates the same tables and the result is validated by dosfstools' fsck.fat and mtools on every lab image",
+   "verified": true
+  },
+  {
+   "id": "S45",
+   "title": "FIPS PUB 180-4, Secure Hash Standard (SHS)",
+   "url": "https://csrc.nist.gov/pubs/fips/180-4/upd1/final",
+   "version": "August 2015 (final; NIST planning note 2023-03-07 announces a revision)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "SHA-256: 64 rounds with constants K[0..63], initial hash H0, message schedule W[t] with sigma functions, padding 0x80 + zeros + 64-bit big-endian bit length (§5.1.1, §6.2)",
+    "digest of \"abc\" = ba7816bf…f20015ad and of the 56-byte two-block message abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq = 248d6a61…19db06c1 (NIST SHS examples); the empty message = e3b0c442…7852b855"
+   ],
+   "limits": "landing page fetched (title, date, status); the PDF itself was not fetched in this session (provenance gate), so the algorithm text is cited by section number and the example digests are the NIST example values as reproduced by the implementation's known-answer tests (user/nawah-crypto)",
+   "verified": true
+  },
+  {
+   "id": "S46",
+   "title": "RFC 2104 — HMAC: Keyed-Hashing for Message Authentication",
+   "url": "https://rfc-editor.org/rfc/rfc2104",
+   "version": "February 1997 (Krawczyk, Bellare, Canetti)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "HMAC = H(K XOR opad, H(K XOR ipad, text)); ipad = 0x36 × B, opad = 0x5C × B, B = 64 for SHA-256-class block sizes; keys longer than B are hashed first (§2)",
+    "truncation keeps the leftmost t bits, t ≥ max(L/2, 80) (§5)"
+   ],
+   "limits": "B = 64 for SHA-256 follows FIPS 180-4's block size; RFC 4231 supplies the SHA-256 vectors",
+   "verified": true
+  },
+  {
+   "id": "S47",
+   "title": "RFC 4231 — Identifiers and Test Vectors for HMAC-SHA-224/256/384/512",
+   "url": "https://www.rfc-editor.org/rfc/rfc4231",
+   "version": "December 2005 (Nystrom)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "HMAC-SHA-256 test cases 1–7 (§4): TC1 key 0x0b×20 / \"Hi There\" → b0344c61…2e32cff7; TC2 \"Jefe\" / \"what do ya want for nothing?\" → 5bdcc146…64ec3843; TC6 key 0xaa×131 → 60e43159…0ee37f54; TC7 key 0xaa×131 long data → 9b09ffa7…5c3a35e2"
+   ],
+   "limits": "TC5 is a truncated (128-bit) output and is not used; TC3/TC4 (0xaa/0xdd and 0x01..0x19/0xcd patterns) are not in the self-test",
+   "verified": true
+  },
+  {
+   "id": "S48",
+   "title": "RFC 8018 — PKCS #5: Password-Based Cryptography Specification Version 2.1",
+   "url": "https://rfc-editor.org/rfc/rfc8018",
+   "version": "January 2017 (Moriarty, Kaliski, Rusch)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "PBKDF2 (§5.2): l = CEIL(dkLen/hLen), T_i = F(P,S,c,i) = U_1 XOR … XOR U_c, U_1 = PRF(P, S || INT(i)), U_j = PRF(P, U_{j-1}), INT(i) four-octet big-endian, DK = T_1 || … || T_l truncated to dkLen",
+    "salt at least 8 octets (§4.1); iteration count minimum 1000 following SP 800-132, as large as acceptable (§4.2); HMAC-SHA-256 as PRF (appendix B.1.2, id-hmacWithSHA256)"
+   ],
+   "limits": "the RFC carries no PBKDF2-HMAC-SHA-256 vectors; RFC 7914 §11 supplies them",
+   "verified": true
+  },
+  {
+   "id": "S49",
+   "title": "RFC 7914 — The scrypt Password-Based Key Derivation Function, §11 test vectors for PBKDF2-HMAC-SHA-256",
+   "url": "https://www.rfc-editor.org/rfc/rfc7914",
+   "version": "August 2016 (Percival, Josefsson)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "PBKDF2-HMAC-SHA-256(\"passwd\", \"salt\", c=1, dkLen=64) = 55ac046e…d3a19783",
+    "PBKDF2-HMAC-SHA-256(\"Password\", \"NaCl\", c=80000, dkLen=64) = 4ddcd8f6…97f33c8d"
+   ],
+   "limits": "only the two PBKDF2 vectors are used; scrypt itself is not implemented",
+   "verified": true
+  },
+  {
+   "id": "S50",
+   "title": "NIST SP 800-132 — Recommendation for Password-Based Key Derivation, Part 1: Storage Applications",
+   "url": "https://csrc.nist.gov/pubs/sp/800/132/final",
+   "version": "December 2010 (final; NIST planning note 2023-05-11 announces a revision)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "salt: the randomly generated portion shall be at least 128 bits, from an approved RBG (§5.1)",
+    "iteration count: a minimum of 1,000 is recommended; 10,000,000 may be appropriate for critical keys (§5.2)",
+    "PBKDF2 with HMAC and any approved hash function is the approved PBKDF (§5.3); kLen at least 112 bits (§5)"
+   ],
+   "limits": "PDF fetched for §5; the lab uses a smaller iteration count than the product default so that guest tests finish in seconds (policy value, services' config)",
+   "verified": true
+  },
+  {
+   "id": "S51",
+   "title": "Virtio 1.3 — network device (device-types/net/description.tex)",
+   "url": "https://raw.githubusercontent.com/oasis-tcs/virtio-spec/master/device-types/net/description.tex",
+   "version": "master LaTeX source (the 1.3 release), read 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "Device ID 1; receiveq1 = 0, transmitq1 = 1, controlq only with VIRTIO_NET_F_CTRL_VQ",
+    "feature bits: CSUM 0, GUEST_CSUM 1, MTU 3, MAC 5, GSO 6, MRG_RXBUF 15, STATUS 16, CTRL_VQ 17",
+    "config: u8 mac[6] (valid with MAC), le16 status (with STATUS), le16 max_virtqueue_pairs, le16 mtu",
+    "struct virtio_net_hdr: flags, gso_type, hdr_len, gso_size, csum_start, csum_offset, num_buffers — 12 bytes without HASH_REPORT; the device MUST set num_buffers to 1 without MRG_RXBUF; a legacy driver without MRG_RXBUF used a 10-byte header",
+    "transmit without offloads: flags 0, gso_type NONE; receive buffers of at least 1526 bytes and a single descriptor per packet without MRG_RXBUF"
+   ],
+   "limits": "only the fields and rules the driver uses were extracted",
+   "verified": true
+  },
+  {
+   "id": "S52",
+   "title": "8042 PS/2 controller register model (ports 60h/64h, status bits, command A7h)",
+   "url": "https://wiki.osdev.org/%228042%22_PS/2_Controller",
+   "version": "secondary summary (OSDev wiki) read 2026-10-18; the original IBM PC/AT Technical Reference and Intel 8042 datasheet are not publicly fetchable",
+   "accessed": "2026-10-18",
+   "supports": [
+    "data port 60h (read: output buffer; write: input buffer), status/command port 64h",
+    "status bit 0 output buffer full (data readable), bit 1 input buffer full, bit 5 auxiliary (mouse) output on PS/2 controllers",
+    "command A7h disables the second (auxiliary) PS/2 port; QEMU's i8042 implements the same registers (hw/input/pckbd.c)",
+    "translation to scancode set 1 is the default on PC-compatible controllers (QEMU: `a` 1E/9E, `b` 30/B0, Enter 1C/9C)"
+   ],
+   "limits": "secondary source; confirmed by the lab (TST-M4-KBD-SCANCODES)",
+   "verified": false
+  },
+  {
+   "id": "S53",
+   "title": "RFC 826 — An Ethernet Address Resolution Protocol",
+   "url": "https://www.rfc-editor.org/rfc/rfc826",
+   "version": "November 1982 (Plummer)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "packet: ar$hrd u16, ar$pro u16, ar$hln u8, ar$pln u8, ar$op u16, ar$sha, ar$spa, ar$tha, ar$tpa with no padding; Ethernet hardware type 1 with 6-byte addresses; REQUEST 1, REPLY 2",
+    "the reply swaps sender/target fields and is sent unicast to the requester; EtherType 0x0806 for ARP and 0x0800 for IPv4 are the IANA IEEE 802 numbers"
+   ],
+   "limits": "the RFC names the EtherTypes symbolically; the numeric values are IANA's",
+   "verified": true
+  },
+  {
+   "id": "S54",
+   "title": "QEMU monitor — `sendkey` (human monitor command) and the unix-socket monitor",
+   "url": "https://qemu.googlesource.com/qemu/+/c0e705c6800a1f98c8cb3795ce66f5a48d4e33aa/docs/system/devices/net.rst",
+   "version": "QEMU documentation tree, read 2026-10-18 (sendkey semantics from the QEMU HMP: press then release after a hold time, default 100 ms)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "`-monitor unix:PATH,server,nowait` exposes the human monitor on a socket",
+    "`sendkey keys [hold-ms]` injects a key press and release (QEMU HMP)"
+   ],
+   "limits": "the sendkey page itself was not fetched (the net.rst page was); confirmed by the lab run",
+   "verified": false
+  },
+  {
+   "id": "S55",
+   "title": "QEMU — Using the user mode network stack (SLIRP)",
+   "url": "https://qemu.googlesource.com/qemu/+/c0e705c6800a1f98c8cb3795ce66f5a48d4e33aa/docs/system/devices/net.rst",
+   "version": "QEMU documentation tree, read 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "router/gateway 10.0.2.2, DNS 10.0.2.3, SMB 10.0.2.4, DHCP from 10.0.2.15; the VM behaves as if behind a firewall blocking incoming connections",
+    "ping to the local router 10.0.2.2 works; ICMP to the Internet needs unprivileged ping sockets on the host",
+    "hostfwd redirects TCP/UDP connections from the host to the guest"
+   ],
+   "limits": "the gateway MAC 52:55:0a:00:02:02 is SLIRP's implementation choice (net/slirp.c special_ethaddr), confirmed by the lab",
+   "verified": true
+  },
+  {
+   "id": "S56",
+   "title": "RFC 791 — Internet Protocol (STD 5)",
+   "url": "https://rfc-editor.org/rfc/rfc791",
+   "version": "September 1981 (Postel)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "header: Version/IHL, Type of Service, Total Length; Identification, Flags (bit 1 DF, bit 2 MF), Fragment Offset; TTL, Protocol, Header Checksum; Source, Destination",
+    "\"The checksum field is the 16 bit one's complement of the one's complement sum of all 16 bit words in the header\""
+   ],
+   "limits": "fragmentation is not implemented (fragments are dropped and counted)",
+   "verified": true
+  },
+  {
+   "id": "S57",
+   "title": "IANA ICMP Parameters (RFC 792 types): Echo Reply 0, Echo 8",
+   "url": "https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml",
+   "version": "registry read 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "type 0 Echo Reply and type 8 Echo, code 0, per RFC 792",
+    "echo message layout (type, code, checksum, identifier, sequence, data) and the checksum over the ICMP message are RFC 792's; the RFC text itself was not fetched this session"
+   ],
+   "limits": "RFC 792 cited through the registry; confirmed by the lab (TST-M4-ICMP-ECHO)",
+   "verified": true
+  },
+  {
+   "id": "S58",
+   "title": "RFC 768 — User Datagram Protocol (STD 6)",
+   "url": "https://www.rfc-editor.org/rfc/rfc768",
+   "version": "28 August 1980 (Postel)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "header: Source Port, Destination Port, Length (header + data, minimum 8), Checksum",
+    "checksum: one's complement of the one's complement sum over the pseudo header (source, destination, zero, protocol 17, UDP length), header and data, zero-padded; a computed zero is sent as all ones; an all-zero checksum means none"
+   ],
+   "limits": "only IPv4 pseudo headers; the sender always computes the checksum",
+   "verified": true
+  },
+  {
+   "id": "S59",
+   "title": "RFC 2131 — Dynamic Host Configuration Protocol",
+   "url": "https://www.rfc-editor.org/rfc/rfc2131.txt",
+   "version": "March 1997 (Droms)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "message: op(1) htype(1) hlen(1) hops(1) xid(4) secs(2) flags(2) ciaddr(4) yiaddr(4) siaddr(4) giaddr(4) chaddr(16) sname(64) file(128) options — 236 fixed octets; BOOTREQUEST 1, BOOTREPLY 2; client port 68, server port 67; the leftmost flags bit is BROADCAST",
+    "DISCOVER→OFFER→REQUEST→ACK; in REQUEST the client sets the server identifier and the requested IP address (= yiaddr of the OFFER), ciaddr 0",
+    "options begin with the magic cookie 99.130.83.99; retransmission with randomized exponential backoff (4 s, doubling to 64 s)"
+   ],
+   "limits": "the lab client retries 3 times with a fixed 1500-tick wait (no randomized backoff: a lab simplification recorded in net.md)",
+   "verified": true
+  },
+  {
+   "id": "S60",
+   "title": "RFC 2132 — DHCP Options and BOOTP Vendor Extensions",
+   "url": "https://rfc-editor.org/rfc/rfc2132",
+   "version": "March 1997",
+   "accessed": "2026-10-18",
+   "supports": [
+    "Subnet Mask 1 (4), Router 3 (4n), DNS 6 (4n), Requested IP Address 50 (4), Lease Time 51 (4), Message Type 53 (1: DISCOVER 1, OFFER 2, REQUEST 3, ACK 5, NAK 6), Server Identifier 54 (4), Parameter Request List 55, Pad 0, End 255"
+   ],
+   "limits": "only the options the client sends or reads are listed",
+   "verified": true
+  },
+  {
+   "id": "S61",
+   "title": "RFC 9293 — Transmission Control Protocol (TCP)",
+   "url": "https://rfc-editor.org/rfc/rfc9293",
+   "version": "August 2022 (Internet Standard 7)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "header: source/destination port, sequence, acknowledgment, data offset, flags (FIN SYN RST PSH ACK), window, checksum over the pseudo-header, urgent pointer (§3.1); MSS option kind 2 length 4, a default send MSS of 536 assumed when none is received (§3.7.1)",
+    "three-way handshake (§3.5): SYN consumes one sequence number, SYN+ACK acknowledges ISN+1, the ACK completes; FIN consumes one sequence number and all segments up to it are retransmitted until acknowledged (§3.6)",
+    "states LISTEN, SYN-SENT, SYN-RECEIVED, ESTABLISHED, FIN-WAIT-1, FIN-WAIT-2, CLOSE-WAIT, CLOSING, LAST-ACK, TIME-WAIT and the fictional CLOSED (§3.3.2); segment processing per state (§3.10.7 SEGMENT ARRIVES)",
+    "reset generation (§3.5.2): when the connection does not exist, any incoming segment except a reset is answered with RST; a reset aborts the connection (a refused port yields RST)",
+    "retransmission timeout per RFC 6298 (§3.8.1); connection failures (§3.8.3): thresholds R1 and R2 per segment, R2 at least 100 s for data (SHLD-11), the application may set R2"
+   ],
+   "limits": "the service implements a stop-and-wait client (one segment in flight, in-order receive only, no listen, no urgent data, no window scaling or SACK); congestion control (RFC 5681) is moot with one segment in flight; R1 is not surfaced; R2 for data is six retransmissions (about 123 s with the doubling RTO); the connect timeout is the client's explicit parameter (default 5 s) rather than the 3-minute SYN R2 of MUST-23",
+   "verified": true
+  },
+  {
+   "id": "S62",
+   "title": "RFC 6298 — Computing TCP's Retransmission Timer",
+   "url": "https://rfc-editor.org/rfc/rfc6298",
+   "version": "June 2011 (Proposed Standard)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "(2.1) initial RTO 1 second; (2.2) first sample SRTT = R, RTTVAR = R/2, RTO = SRTT + max(G, K·RTTVAR) with K = 4; (2.3) later RTTVAR = (1−β)·RTTVAR + β·|SRTT−R'| and SRTT = (1−α)·SRTT + α·R' with α = 1/8, β = 1/4",
+    "(2.4) RTO rounded up to 1 second when smaller; (2.5) a maximum may be placed on RTO if at least 60 seconds",
+    "§3 Karn's algorithm: no RTT sample from a retransmitted segment",
+    "§5 timer management: (5.1) start when data is sent, (5.2) stop when all data is acknowledged, (5.4) on expiry retransmit the earliest unacknowledged segment, (5.5) RTO = RTO·2 (back-off), (5.6) restart the timer, (5.7) after a retransmitted SYN the RTO for data is re-initialised to 3 seconds when below it"
+   ],
+   "limits": "clock granularity G = 1 tick (1 ms); the backed-off RTO stays until a new RTT sample recomputes it",
+   "verified": true
+  },
+  {
+   "id": "S63",
+   "title": "PC16550D Universal Asynchronous Receiver/Transmitter with FIFOs (datasheet) — register map at COM2 0x2F8",
+   "url": "https://www.ti.com/lit/ds/symlink/pc16550d.pdf",
+   "version": "Texas Instruments SNLS378B (1995, rev. 2015)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "register offsets: RBR/THR 0 (DLL with DLAB), IER 1 (DLM with DLAB), FCR 2, LCR 3 (bit 7 DLAB; 0x03 = 8 data bits, 1 stop, no parity), MCR 4 (bit 4 loopback), LSR 5 (bit 0 data ready, bit 5 THR empty)",
+    "FIFO mode: FCR bit 0 enables, bits 1–2 clear the receiver/transmitter FIFOs; 16-byte receiver FIFO",
+    "loopback (MCR bit 4): the transmitter output is looped to the receiver input, used here as the presence probe at boot",
+    "PC convention: COM1 at 0x3F8, COM2 at 0x2F8 (QEMU isa-serial index 1)"
+   ],
+   "limits": "the kernel polls LSR (no interrupts, no modem status); baud divisor 1 (115200) is nominal — QEMU's chardev ignores the line speed",
+   "verified": false
+  },
+  {
+   "id": "S64",
+   "title": "QEMU: Invocation — `-serial dev` character devices (`tcp:[host]:port,server=on,wait=off`, `null`)",
+   "url": "https://www.qemu.org/docs/master/system/invocation.html",
+   "version": "QEMU documentation (master; the lab runs 8.2.2)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "`tcp:[host]:port[,server=on|off][,wait=on|off][,nodelay=on|off][,reconnect-ms=…]`: the TCP net console either sends the serial I/O to a location or waits for a connection; example `-serial tcp:192.168.0.100:4444,server=on,wait=off` to listen and not wait",
+    "`-chardev socket`: `server=on|off` makes a listening socket; `wait=on|off` says whether QEMU blocks for a client before starting",
+    "`null`: the guest sees the UART as present, all output is discarded and there is no input (so COM2 exists in every lab run and the boot probe sees it)",
+    "the PC machines attach successive `-serial` backends to COM1, COM2, … (the second `-serial` is COM2 at 0x2F8: confirmed by the kernel's loopback probe on CI)"
+   ],
+   "limits": "bytes the guest writes before a client connects are dropped; the lab connects as soon as QEMU listens and waits for the shell's prompt; the deprecated `server,nowait` spellings still work on 8.2.2 (the monitor uses them) but the console uses `server=on,wait=off`",
+   "verified": true
+  },
+  {
+   "id": "S65",
+   "title": "UEFI Specification 2.11 — §12.9 Graphics Output Protocol (EFI_GRAPHICS_OUTPUT_PROTOCOL, _MODE, _MODE_INFORMATION, PixelFormat), §7.3.16 LocateProtocol",
+   "url": "https://uefi.org/specs/UEFI/2.11/12_Protocols_Console_Support.html#graphics-output-protocol",
+   "version": "UEFI 2.11 (2024)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "GUID 9042a9de-23dc-4a38-96fb-7aded080516a; the protocol's Mode pointer gives MaxMode, Mode, Info, SizeOfInfo, FrameBufferBase, FrameBufferSize",
+    "EFI_GRAPHICS_OUTPUT_MODE_INFORMATION: Version, HorizontalResolution, VerticalResolution, PixelFormat (PixelRedGreenBlueReserved8BitPerColor = 0, PixelBlueGreenRedReserved8BitPerColor = 1, PixelBitMask = 2, PixelBltOnly = 3), PixelInformation, PixelsPerScanLine",
+    "the linear frame buffer is usable after ExitBootServices as the firmware left it (no further GOP calls are needed to write pixels)"
+   ],
+   "limits": "structure layout cited from the specification text as remembered and matched against OVMF's behaviour in the lab (boot|gop line); PixelBitMask and BltOnly modes are reported absent by the kernel",
+   "verified": false
+  },
+  {
+   "id": "S66",
+   "title": "QEMU monitor — `screendump filename` (saves the screen of the current display as a PPM image)",
+   "url": "https://www.qemu.org/docs/master/system/monitor.html",
+   "version": "QEMU documentation (master; the lab runs 8.2.2)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "`screendump filename [device=…] [head=…] [format=png|ppm]`: writes the current screen; the default format is PPM (binary P6, 8-bit samples)",
+    "works with `-display none`: the VGA console still renders into guest-visible memory, which is what the dump reads"
+   ],
+   "limits": "the picture is the emulated VGA's view of the frame at the moment of the command; the kernel's own read-back and the dump are two independent witnesses",
+   "verified": false
+  },
+  {
+   "id": "S67",
+   "title": "Keyboard scancodes (A. Brouwer) — §13 The PS/2 mouse: default 3-byte protocol, mouse commands F4h/F6h, FAh acknowledgement",
+   "url": "https://aeb.win.tue.nl/linux/kbd/scancodes-13.html",
+   "version": "secondary reference (the Linux keyboard/mouse documentation by Andries Brouwer), read 2026-10-18; the IBM PS/2 Hardware Interface Technical Reference is not publicly fetchable",
+   "accessed": "2026-10-18",
+   "supports": [
+    "packet byte 0: Yovfl Xovfl dy8 dx8 1 Middle Right Left (bit 3 literal 1; dx8/dy8 are the ninth sign bits; X/Y movement 9-bit two's complement), bytes 1–2 the X and Y movement; positive Y is upwards",
+    "every command or data byte sent to the mouse (except resend FEh) is acknowledged with FAh",
+    "F4h enables stream-mode reporting (disabled after reset and after F5h); F6h sets the defaults (a reset without diagnostics)"
+   ],
+   "limits": "the controller-side commands A8h (enable auxiliary interface) and D4h (write to the auxiliary device) are in S52",
+   "verified": true
+  },
+  {
+   "id": "S68",
+   "title": "QEMU monitor — `mouse_move dx dy [dz]` and `mouse_button val` (human monitor commands)",
+   "url": "https://www.qemu.org/docs/master/system/monitor.html",
+   "version": "QEMU documentation (master; the lab runs 8.2.2), read 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "`mouse_move dx dy [dz]`: moves the active mouse by the given relative offsets (positive dy = downwards on the screen; the PS/2 device inverts it in its packet)",
+    "`mouse_button val`: changes the button state (1 left, 2 right, 4 middle; 0 releases)"
+   ],
+   "limits": "the emulated PS/2 mouse reports one packet per monitor command (one `sync` each); the sign of the PS/2 Y byte is verified by TST-M5-MOUSE, not assumed",
+   "verified": true
+  },
+  {
+   "id": "S69",
+   "title": "QEMU source — ui/input.c `qmp_send_key`: keys of one `sendkey` are pressed in the given order and released in reverse order",
+   "url": "https://raw.githubusercontent.com/qemu/qemu/master/ui/input.c",
+   "version": "QEMU master, read 2026-10-18 (the loop `for (p = keys; …)` presses; `while (count) { count--; … false }` releases)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "`sendkey shift-b` yields shift down, b down, b up, shift up; `sendkey ctrl-alt-delete` yields ctrl, alt, delete down then delete, alt, ctrl up",
+    "the hold time between press and release defaults to 100 ms (S54)"
+   ],
+   "limits": "QEMU emulates no typematic repeat for the PS/2 keyboard",
+   "verified": true
+  },
+  {
+   "id": "S70",
+   "title": "The FNV Non-Cryptographic Hash Algorithm (draft-eastlake-fnv) — FNV-1a 64-bit: offset basis 0xcbf29ce484222325, prime 0x100000001b3, xor then multiply per octet",
+   "url": "https://datatracker.ietf.org/doc/html/draft-eastlake-fnv",
+   "version": "IETF Internet-Draft (Eastlake, Hansen, Fowler, Noll, Vo), read 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "the compositor's window hash (display.md §ب LIST) and tools/screen.py's recomputation use FNV-1a 64 over the R, G, B octets of the client area, row by row"
+   ],
+   "limits": "a non-cryptographic hash: it ties the lab's picture to the compositor's pixels, not to any adversary",
+   "verified": true
+  },
+  {
+   "id": "S71",
+   "title": "OpenType specification 1.9.1 — tables 'head', 'hhea', 'hmtx', 'maxp', 'cmap' (formats 4, 12), 'loca', 'glyf' (simple and composite glyphs), 'GSUB' (lookup types 1, 4, 6 format 3, 7), 'GDEF' (GlyphClassDef), common table formats (Coverage, ClassDef, LookupFlag)",
+   "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/",
+   "version": "OpenType 1.9.1 (Microsoft Typography), read 2026-10-18",
+   "accessed": "2026-10-18",
+   "supports": [
+    "table directory, the required tables and their field offsets",
+    "cmap format 4 segment search with idDelta/idRangeOffset, format 12 groups",
+    "glyf flags (on-curve, x/y short, repeat), composite flags (ARGS_ARE_WORDS, ARGS_ARE_XY_VALUES, scales, MORE_COMPONENTS)",
+    "GSUB feature/lookup lists, lookup flag IgnoreMarks (0x0008), chaining context format 3 records"
+   ],
+   "limits": "hinting instructions, CFF outlines and GPOS are outside text.md v1",
+   "verified": true
+  },
+  {
+   "id": "S72",
+   "title": "Unicode Character Database 17.0.0 — DerivedBidiClass.txt, DerivedJoiningType.txt, BidiBrackets.txt, BidiCharacterTest.txt; UAX #9 Unicode Bidirectional Algorithm; Unicode Standard §9.2 Arabic (cursive joining)",
+   "url": "https://www.unicode.org/Public/17.0.0/ucd/",
+   "version": "Unicode 17.0.0 (files dated 2025-06..08), taken from github.com/unicode-org/unicodetools unicodetools/data/ucd/17.0.0 (unicode.org itself was unreachable from the lab)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "bidi classes with the @missing defaults for unassigned code points",
+    "joining types R, L, D, C, T",
+    "bracket pairs (bpb, bpt) for rule N0",
+    "the conformance data for rules P2–L2: 91707 lines"
+   ],
+   "limits": "the data files are under the Unicode License v3; P1, L3 and L4 are not covered by BidiCharacterTest",
+   "verified": true
+  },
+  {
+   "id": "S73",
+   "title": "Noto Sans and Noto Sans Arabic, Regular, unhinted TTF — googlefonts/noto-fonts at ffebf8c1ee449e544955a7e813c54f9b73848eac; SIL Open Font License 1.1",
+   "url": "https://github.com/googlefonts/noto-fonts",
+   "version": "commit ffebf8c1ee449e544955a7e813c54f9b73848eac (2023-01-25): unhinted/ttf/NotoSans/NotoSans-Regular.ttf (393200 bytes, 3748 glyphs), unhinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf (170196 bytes, 1661 glyphs), LICENSE",
+   "accessed": "2026-10-18",
+   "supports": [
+    "the fonts shipped under /SYSTEM/FONTS with their licence (OFL.txt)",
+    "TrueType outlines (glyf), cmap format 4, GSUB arab features isol/fina/medi/init/rlig/ccmp"
+   ],
+   "limits": "the repository is archived; the fonts are redistributed unmodified under the OFL",
+   "verified": true
+  },
+  {
+   "id": "S74",
+   "title": "fontTools (Python library) — independent OpenType reader used as the reference in TST-M5-GLYPHS",
+   "url": "https://github.com/fonttools/fonttools",
+   "version": "4.46.0 on the CI runner (Ubuntu 24.04 python3-fonttools, recorded by tests/test_text.py in CI run 39160436412), 4.65.0 locally",
+   "accessed": "2026-10-18",
+   "supports": [
+    "getBestCmap, hmtx, glyf getCoordinates with composites resolved, DecomposingRecordingPen and decomposeQuadraticSegment for the reference rasteriser's contour walk"
+   ],
+   "limits": "a reference implementation, not a specification",
+   "verified": true
+  },
+  {
+   "id": "S75",
+   "title": "HarfBuzz text shaping engine (hb-shape) — the reference shaper in TST-M5-SHAPING and for the guest sample",
+   "url": "https://harfbuzz.github.io/",
+   "version": "8.3.0 on the CI runner and locally (Ubuntu 24.04 libharfbuzz-bin, recorded by tests/test_text.py in CI run 39160436412)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "Arabic shaping with the font's GSUB: feature stages isol, fina, medi, init (each its own stage), then rlig; output of glyph ids per run"
+   ],
+   "limits": "HarfBuzz shows default-ignorable characters (ZWJ/ZWNJ) as an invisible space glyph; the comparison skips those positions",
+   "verified": true
+  },
+  {
+   "id": "S76",
+   "title": "Microsoft Learn — Interactive logon: Do not require CTRL+ALT+DEL (Windows 10 security policy settings)",
+   "url": "https://learn.microsoft.com/fr-fr/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/interactive-logon-do-not-require-ctrl-alt-del",
+   "version": "page dated 2017-04-19 (applies to Windows 10 and Windows 11)",
+   "accessed": "2026-10-18",
+   "supports": [
+    "Requiring CTRL+ALT+DELETE before users sign in ensures that users are communicating through a trusted path when entering their passwords",
+    "the threat it answers: malware that looks like the standard sign-in dialog box captures a user's password"
+   ],
+   "limits": "describes the reference's policy and its purpose, not its implementation; the session design (input moves the focus to the session with the sequence, session.md) is this project's own",
+   "verified": true
+  },
+  {
+   "id": "S77",
+   "title": "Microsoft Support — Keyboard shortcuts in Windows",
+   "url": "https://support.microsoft.com/en-us/windows/keyboard-shortcuts-in-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec",
+   "version": "page dated 2026-09-02 (applies to Windows 11 and Windows 10)",
+   "accessed": "2026-10-19",
+   "supports": [
+    "Alt+Tab: Switch between open windows. To cycle through multiple windows, continue to hold the Alt key and press Tab multiple times."
+   ],
+   "limits": "describes the shortcut, not its order: that the walk follows the stacking at the first Tab, most recently used first, is this project's design (ADR-0019 item 12); the reference's switcher overlay is not described here",
+   "verified": true
+  },
+  {
+   "id": "S78",
+   "title": "IEEE Std 1003.1-2024 (POSIX.1) — Process groups: setpgid, killpg, kill with a negative pid",
+   "url": "https://pubs.opengroup.org/onlinepubs/9799919799/",
+   "version": "2024 edition",
+   "accessed": null,
+   "supports": [
+    "a process inherits its process group from its parent at creation",
+    "a signal can be sent to every member of a process group in one operation",
+    "a process group identifier outlives no member of the group"
+   ],
+   "limits": "behaviour and vocabulary only (group membership inherited at creation; one operation reaches the whole group); nawah's Job is a kernel object with handle rights, not a pid-addressed group, and nothing is ported from any implementation",
+   "verified": false
+  },
+  {
+   "id": "S79",
+   "title": "Fuchsia documentation — Kernel concepts: jobs, processes and threads (job tree, kill semantics)",
+   "url": "https://fuchsia.dev/fuchsia-src/concepts/kernel/concepts",
+   "version": "page read 2026-11-09",
+   "accessed": null,
+   "supports": [
+    "a job is a container of processes and child jobs forming a tree; killing a job kills everything beneath it",
+    "a process is created inside a job and cannot move to another job",
+    "rights on the job handle govern what a holder may do"
+   ],
+   "limits": "public concept documentation used for semantics only (tree, kill-the-subtree, no migration, handle rights); no Zircon code, names or ABI are ported; nawah's syscall numbers, error codes and record layout are its own (ADR-0022 applies to every external source)",
+   "verified": false
+  }
+ ]
 }

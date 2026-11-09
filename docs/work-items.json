@@ -3098,34 +3098,33 @@
     "WP-45"
    ],
    "inputs": [
-    "docs/contracts/syscall.md (system_info, process_kill)",
+    "docs/contracts/syscall.md (process_spawn, process_kill, object stats)",
     "docs/contracts/ipc.md",
-    "docs/contracts/shell.md",
     "kernel/src/object/mod.rs",
-    "kernel/src/sched/mod.rs"
+    "kernel/src/sched/mod.rs",
+    "kernel/src/ktest.rs"
    ],
    "files": [],
    "contract_refs": [
     "docs/contracts/syscall.md",
-    "docs/contracts/ipc.md",
-    "docs/contracts/shell.md"
+    "docs/contracts/ipc.md"
    ],
    "actions": [
-    "مهام النواة والمحاسبة لكل عملية وprocess_list (ABI v1.13)",
-    "syscall.md v1.13: Object::Job (process group), process_spawn into the caller's job or an explicit one, job_create, job_kill, per-process cpu_ticks, frames, threads and handles, per-CPU idle ticks in system_info v2, process_list(cursor) -> pid, job, image name, state, cpu_ticks, frames, threads, handles",
-    "ipc.md: the Job object type and its rights (WRITE = kill); shell.md v1.3: ps",
-    "open question decided here before the ABI freezes: process visibility across users (recommendation: one's own session job in full; other users' processes only with an administrator token; totals for everyone from system_info v2)",
-    "accounting charged on the context switch under the run-queue lock (SMP); new M6 mutant ids for job_kill and accounting",
-    "scenario at the end: in the shell, `ps` shows the real services and a spinning app's cpu_ticks growing",
+    "مهام النواة: Object::Job وjob_create وjob_kill وprocess_spawn_in (46a1 من قسمة 2026-11-09؛ قائمة العمليات في WP-69 والمحاسبة وps في WP-70)",
+    "syscall.md v1.13 (additive): Object::Job (object type code 13; rights READ|WRITE|DUPLICATE|TRANSFER, WRITE = kill); job_create (syscall 43) under a parent job handle; job_kill (syscall 44); process_spawn_in (syscall 45) spawns into an explicit job, while process_spawn (syscall 20) places the child in the caller's job; the manager receives the root job handle at boot; a live-jobs counter in the object stats; ipc.md (additive): the Job object type and its rights; libnawah wrappers; the `jobs` test app",
+    "2026-11-09 semantics (manager's decision after the kernel engineer's design report): job_kill kills the whole subtree; a job that contains the caller is refused ERR_INVALID (so killing the root job is ERR_INVALID); process_spawn_in or job_create into a killed job answers ERR_PEER_CLOSED; a second job_kill is a no-op; nesting deeper than 8 answers ERR_NO_RESOURCES",
+    "2026-11-09 design J1 (chosen by the manager): upward parent pointers only (a job names its parent, keeps no child list); membership is read under the SCHED lock; job_kill marks the members through the existing process_kill path inside the SCHED lock, so no spawn can race the kill into a dying job",
+    "test first: TST-M6-JOB-KILL (ktest job_kill_all) fails before the code; M3 and M5 suites unregressed",
+    "2026-11-09 mutants M151-M153 (SECURITY): job_kill without the WRITE check; the child of syscall 20 placed in the root job instead of the caller's job; the killed-job check removed from spawn (PLAN-ANSWER §3.3, dated note)",
+    "2026-11-09 clean room (ADR-0022): the job concept follows the public semantics of POSIX process groups and of the Zircon job object (fuchsia.dev); never a Windows Job Object API, its names or its documentation; docs/sources.json holds S39 (Zircon handles) and the channel_write page but no job or process-group source yet: register them before the syscall.md v1.13 text is written",
+    "scenario at the end: the `jobs` test app spawns a small tree into one job and one job_kill ends it whole",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-09 split point for the budget line (nawah-plan-chain): 46a Object::Job, job_create/job_kill, process_list and its refusals with syscall.md v1.13 and ipc.md (TST-M6-JOB-KILL, TST-M6-PROC-LIST-REFUSALS); 46b per-process accounting, per-CPU idle in system_info v2 and shell.md v1.3 ps (TST-M6-PROC-ACCOUNTING, TST-M6-SHELL-PS)"
+    "2026-11-09 split point for the budget line (nawah-plan-chain): 46a Object::Job, job_create/job_kill, process_list and its refusals with the syscall.md and ipc.md additions (TST-M6-JOB-KILL, TST-M6-PROC-LIST-REFUSALS); 46b per-process accounting, per-CPU idle in system_info v2 and the shell's ps (TST-M6-PROC-ACCOUNTING, TST-M6-SHELL-PS) (version numbers dropped from this line on 2026-11-09 after the split, so the record promises only what it delivers)",
+    "2026-11-09 split applied (manager, after the kernel engineer's design report; estimate for 46a above the line): 46a1 here, about 100-120 tool calls (at the line; an estimate, not measured); 46a2 process_list and its refusals -> WP-69 (blocked by DEC-027 on process visibility across users); 46b accounting, system_info v2 and ps -> WP-70; TST-M6-PROC-LIST-REFUSALS, TST-M6-PROC-ACCOUNTING and TST-M6-SHELL-PS left test_ids; the design report's '16 cases' and its syscall numbering are superseded by these records (PLAN-ANSWER, dated note)"
    ],
-   "acceptance": "TST-M6-JOB-KILL, PROC-ACCOUNTING, PROC-LIST-REFUSALS and SHELL-PS PASS on CI; M3 and M5 suites unregressed",
+   "acceptance": "TST-M6-JOB-KILL PASS on CI; M3 and M5 suites unregressed",
    "test_ids": [
-    "TST-M6-JOB-KILL",
-    "TST-M6-PROC-ACCOUNTING",
-    "TST-M6-PROC-LIST-REFUSALS",
-    "TST-M6-SHELL-PS"
+    "TST-M6-JOB-KILL"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
@@ -3165,11 +3164,13 @@
    "actions": [
     "سجل التطبيقات وتشغيلها عبر المدير والتشغيل التلقائي، والخروج ينهي مهمة الجلسة",
     "docs/adr/0023-desktop-shell-and-app-model.md: apps are not services; the manager spawns them from /APPS/<ID>.APP (id, ELF path, ar/en names, declared deps such as display, config, clipboard) into the session's job with a bootstrap channel and vouches app:<id>#<n> on CONNECT (DEC-005); the ADR also settles whether desktop, taskbar, Start and toasts are one process (desktopd) or several (open question) and whether maximize/snap and an Alt+Tab panel are in M6 (open question; the frozen display.md v1.3/v1.6 semantics change only with an ADR-0019 entry and updated expectations reviewed separately)",
-    "services.md v1.12: LAUNCH/APPS accepted only from vouched session or desktop; an app's CONNECT limited to its declared deps; MAX_SERVICES raised or an apps table kept apart; apps.md (new): registry format",
-    "session.md v1.8: a job per session, autostart from the config user store session.autostart, job_kill at Sign out (closes the §8 limit)",
+    "services.md v1.13: LAUNCH/APPS accepted only from vouched session or desktop; an app's CONNECT limited to its declared deps; MAX_SERVICES raised or an apps table kept apart; apps.md (new): registry format",
+    "session.md v1.10: a job per session, autostart from the config user store session.autostart, job_kill at Sign out (closes the §8 limit)",
     "risk: the manager handles one request at a time (sessiond main.rs:97 comment) and can stall launches; the registry is untrusted input: host fuzz",
     "scenario at the end: sign in, the autostart app opens a window, sign out, the app's processes are gone even if it ignores CLOSE",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-09 services.md promise renumbered v1.12 -> v1.13: v1.12 goes to WP-71 (the session line's restart=always); numbers in the records are planning order and a package takes the next free number at merge (PLAN.md:127); the later services.md numbers of WP-57, WP-58, WP-59 and WP-61 are not cascaded now",
+    "2026-11-09 renumbering per docs/PLAN.md:127 after the WP-64 split: session.md v1.8 was taken by WP-71/WP-72 (v1.8, v1.9), so this package's session.md planning number is v1.10; the next free number is assigned at merge"
    ],
    "acceptance": "TST-M6-APP-LAUNCH, LOGOUT-KILLS, LAUNCH-DENIED and APP-REGISTRY-FUZZ PASS on CI; ADR-0023 accepted",
    "test_ids": [
@@ -3252,7 +3253,8 @@
     "REQ-M6-006"
    ],
    "depends_on": [
-    "WP-45"
+    "WP-45",
+    "WP-72"
    ],
    "inputs": [
     "docs/contracts/ui.md (line 13: keyboard only)",
@@ -3270,7 +3272,8 @@
     "scenario at the end: the sample dialog app driven entirely by mouse and by keyboard, with a context menu on a list item",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-09: ui.md v1.6 renumbered to ui.md v1.7; ui.md v1.6 (input-language badge) belongs to WP-64 (PLAN-ANSWER §5.3 item 9, numbering n1)",
-    "2026-11-09 split point for the budget line (proposed by the records steward from this record's own seam, for the planner to confirm): 49a POINTER hit-testing for every element and popup/context menus with narrator roles menu/menuitem (ui.md v1.7; TST-M6-UI-UNIT pointer and menu cases, TST-M6-UI-POINTER, whose scenario needs the context menu); 49b the modal confirm dialog (Yes/No/Cancel with a default; its TST-M6-UI-UNIT cases), the ui.md addition numbered at merge"
+    "2026-11-09 split point for the budget line (proposed by the records steward from this record's own seam, for the planner to confirm): 49a POINTER hit-testing for every element and popup/context menus with narrator roles menu/menuitem (ui.md v1.7; TST-M6-UI-UNIT pointer and menu cases, TST-M6-UI-POINTER, whose scenario needs the context menu); 49b the modal confirm dialog (Yes/No/Cancel with a default; its TST-M6-UI-UNIT cases), the ui.md addition numbered at merge",
+    "2026-11-09 ui.md v1.6 (the input-language badge) moved with the split of WP-64 to WP-72; depends_on gains WP-72 so ui.md v1.7 follows v1.6 in merge order"
    ],
    "acceptance": "TST-M6-UI-UNIT and UI-POINTER PASS on CI; TST-M5-KEYBOARD-NAV, A11Y-TREE and ARABIC-UI unregressed",
    "test_ids": [
@@ -3316,7 +3319,8 @@
     "the 1 MiB per-surface cap: render in tiles or raise it with a memory budget, decided and recorded here",
     "scenario at the end: a 500-row list browsed by keyboard and mouse with the exact narrator transcript",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-09: ui.md v1.7 renumbered to ui.md v1.8; ui.md v1.6 (input-language badge) belongs to WP-64 (PLAN-ANSWER §5.3 item 9, numbering n1)"
+    "2026-11-09: ui.md v1.7 renumbered to ui.md v1.8; ui.md v1.6 (input-language badge) belongs to WP-64 (PLAN-ANSWER §5.3 item 9, numbering n1)",
+    "2026-11-09 ui.md v1.6 (the input-language badge) moved with the split of WP-64 to WP-72"
    ],
    "acceptance": "TST-M6-LISTVIEW-UNIT, LISTVIEW-A11Y and LISTVIEW-RTL PASS on CI",
    "test_ids": [
@@ -3363,11 +3367,12 @@
    "actions": [
     "قائمة ابدأ وساعة الشريط والقفل والخروج وإعادة التشغيل",
     "desktop.md v1.1 (Start): Super tap or Ctrl+Esc or the Start button opens it; apps by ui.lang name, type-to-filter (Arabic and Latin), Enter or click LAUNCHes through the manager, a refused launch shown as text and announced; pinned apps in the config user store",
-    "input.md v2.7: LWin/RWin reserved and delivered as START to the shell, never to apps, never while locked; session.md v1.9: LOCK and LOGOUT requested by the vouched desktop",
+    "input.md v2.7: LWin/RWin reserved and delivered as START to the shell, never to apps, never while locked; session.md v1.11: LOCK and LOGOUT requested by the vouched desktop",
     "syscall.md v1.14: rtc_read (CMOS RTC, FADT CENTURY) and system_reset (administrator token; orderly manager stop, sync, then FADT RESET_REG); Restart only (DEC-007); Shut down via ACPI S5 is deferred and not shown as working",
     "open question decided here: the taskbar clock before the M7 time settings (recommendation: the RTC shown as UTC and labelled so)",
     "scenario at the end: Super, type a name, the app opens; pin it; Restart; after sign-in the pin is still there",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-09 renumbering per docs/PLAN.md:127 after the WP-64 split: session.md v1.9 was taken by WP-71/WP-72 (v1.8, v1.9), so this package's session.md planning number is v1.11; the next free number is assigned at merge"
    ],
    "acceptance": "TST-M6-START-LAUNCH, START-ARABIC, START-FAIL, RESTART-PERSIST and POWER-DENIED PASS on CI",
    "test_ids": [
@@ -3464,10 +3469,11 @@
    "actions": [
     "منازل المستخدمين وصلاحية ملفاتهم",
     "docs/adr/0024-user-file-authority.md: /USERS/<name> created at first sign-in; a directory capability (Dir object, *_at calls relative to it) the session hands to launched apps; an app reaches nothing outside its capability; admin reaches other homes only by ELEVATE; FAT has no owners on disk, so ownership comes from the path under /USERS (declared limit)",
-    "files.md v1.5, syscall.md v1.16 (Dir object, *_at calls), ipc.md (Dir rights), session.md v1.10 (the home capability handed to apps)",
+    "files.md v1.5, syscall.md v1.16 (Dir object, *_at calls), ipc.md (Dir rights), session.md v1.12 (the home capability handed to apps)",
     "the retrofit touches every file call: mutation coverage for each refusal",
     "scenario at the end: admin and user each sign in and each sees only their own home (critical scenario 3)",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split the kernel Dir object from the session hand-off if needed)"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split the kernel Dir object from the session hand-off if needed)",
+    "2026-11-09 renumbering per docs/PLAN.md:127 after the WP-64 split: session.md v1.10 was taken by WP-71/WP-72 (v1.8, v1.9), so this package's session.md planning number is v1.12; the next free number is assigned at merge"
    ],
    "acceptance": "TST-M6-HOME-ISOLATION and DIR-ESCAPE PASS on CI; TST-M5-FILE-AUTHORITY unregressed; ADR-0024 accepted",
    "test_ids": [
@@ -3672,7 +3678,9 @@
    "depends_on": [
     "WP-46",
     "WP-47",
-    "WP-50"
+    "WP-50",
+    "WP-69",
+    "WP-70"
    ],
    "inputs": [
     "docs/contracts/syscall.md v1.13 (process_list, system_info v2)",
@@ -3690,7 +3698,8 @@
     "services.md v1.14: KILL <pid> with the check that the pid is in the caller's session job; ending a system process goes through ELEVATE with the manager as target",
     "CPU % asserted as ranges against the kernel counters, never exact numbers (sampling jitter)",
     "scenario at the end: start the spin app, it tops CPU; the hung app is ended; ending `net` as user is refused and approved as admin",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-09 depends_on gains WP-69 and WP-70 (the split of WP-46): the task manager needs process_list (WP-69) and the per-process accounting with system_info v2 (WP-70)"
    ],
    "acceptance": "TST-M6-TASKMGR-DATA, END-TASK and END-TASK-DENIED PASS on CI",
    "test_ids": [
@@ -3870,7 +3879,8 @@
     "apps/editor.md (new tool contract): open, save and save as inside the home capability; a modified marker; close with unsaved changes asks Save / Don't save / Cancel; save writes a temporary name, syncs and renames over the old file, so a failed save keeps the previous content",
     "scenario at the end: create a file, save, reopen, modify, save, Restart, the content equals the last save and another user's app is refused",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-09: ui.md v1.8 renumbered to ui.md v1.9; ui.md v1.6 (input-language badge) belongs to WP-64 (PLAN-ANSWER §5.3 item 9, numbering n1)"
+    "2026-11-09: ui.md v1.8 renumbered to ui.md v1.9; ui.md v1.6 (input-language badge) belongs to WP-64 (PLAN-ANSWER §5.3 item 9, numbering n1)",
+    "2026-11-09 ui.md v1.6 (the input-language badge) moved with the split of WP-64 to WP-72"
    ],
    "acceptance": "TST-M6-EDITOR-UNIT, EDITOR-MODIFY-REBOOT, EDITOR-UNSAVED and EDITOR-SAVE-FAIL PASS on CI",
    "test_ids": [
@@ -3952,50 +3962,48 @@
     "WP-45"
    ],
    "inputs": [
-    "docs/PLAN-ANSWER.md §1.2, §2.3, §2.4, §5.3 (items 9, 10, 11, 12, 13, 16)",
-    "docs/contracts/session.md §8 (lines 98, 104, 105)",
-    "docs/operations/m5-review.md:25",
-    "ux-design priority 7 (session screens)"
+    "docs/PLAN-ANSWER.md §2.3 (D5-B), §5.3 (items 10, 16)",
+    "docs/contracts/session.md §8",
+    "docs/contracts/auth.md",
+    "docs/contracts/display.md v1.12 (LOGOUT, channel_discard)",
+    "docs/contracts/services.md (LIST)",
+    "user/apps/sessiond/src/main.rs",
+    "user/apps/authd/src/main.rs"
    ],
    "files": [],
    "contract_refs": [
     "docs/contracts/session.md",
-    "docs/contracts/config.md",
-    "docs/contracts/input.md",
+    "docs/contracts/auth.md",
     "docs/contracts/services.md",
-    "docs/contracts/ui.md",
-    "docs/contracts/auth.md"
+    "docs/contracts/display.md"
    ],
    "actions": [
-    "مراقبة الجلسة وتطهيرها عند الإعادة، وشاشات الجلسة بالعربية (منقولة من WP-45 بالقسمة B)",
-    "session.md v1.7: session watchdog=<ticks> > REQUEST_DEADLINE (closes the §8 v1.1 limit); the sign-in, lock and elevation screens read ui.lang/ui.scale/ui.contrast (config GET + SUBSCRIBE device) with whole-sentence string tables in both languages and an input-language indicator next to the user and password fields (closes the §8 'screens in English' limit)",
-    "the same scenario as WP-45's end, in Arabic (ui.lang=ar): sign-in, lock with Ctrl+Alt+Del, unlock",
-    "risk: a watchdog period too short kills a session legitimately waiting on auth (session.md v1.2); the test covers both sides",
-    "confirmed by the audit (PLAN-ANSWER §2.3): PONG answered from the session's main loop; the watchdog period W is written as a rule in session.md v1.7, its value measured (initial 25000 ticks), and the kill lands between W and 2W; purge on restart: LOGOUT to display before the sign-in screen so no window or pixel of the previous user survives (sessiond main.rs:783-801, display.md:42); auth tokens revoked when their client dies; config is a manifest dependency of the session line and an optional connection outside sessiond's DEPS constant",
-    "given_up policy (PLAN-ANSWER §5.3 item 10): a permanent given_up is not acceptable for the session line; retries with the existing policy semantics versus a backoff in svcmgr is decided here after reading svcmgr's retry code; judge: five kills then a successful sign-in",
-    "ui.md v1.6 (additive): the input-language badge next to the user and password fields reads the layout from input STATUS, no new input.md event (§5.3 items 9 and 13); RTL remedy: Value with an LTR base (B1) if the libui host test confirms it, else a shorter limit by amending session.md (§5.3 item 12)",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; second split point if the estimate at activation exceeds it: watchdog, purge and token revocation first, the Arabic screens and the badge second"
+    "تطهير الجلسة عند الإعادة وإلغاء رموز auth بموت عميل الجلسة (64a1 من قسمة 2026-11-09؛ المراقب وسياسة الإعادة في WP-71، والشاشات العربية في WP-72)",
+    "session.md v1.7 (additive), purge on restart P-A: before the first sign-in screen the session reads LIST on its boot channel; restarts>0 on its own line, or a failed read or parse, means LOGOUT to display; a refused or failed LOGOUT exits 0xE4 before READY; the reply buffer is 1024 bytes and an over-long reply is dropped with channel_discard, as in display.md v1.12; trace line `session|purge=logout|restarts=<n>|reason=<restarted|list_failure>`",
+    "auth.md v1.2 (additive), token revocation V2: authd records the manager-vouched client name of every session it opens and revokes only the sessions opened by the client `session` when that client's channel closes or a write to it fails; tokens opened by sh keep today's lifetime",
+    "2026-11-09 TST-M5-SESSION-LOSS is rewritten to the session.md v1.7 contract in this package's test-first commit: after a session restart the spy's window is purged (LOGGED_OUT), so the later phases that need a spy window use a client that reconnects; a deliberate oracle change driven by the contract (PLAN-ANSWER §2.3 D5-B: no window of the previous user survives a restart), not a weakening: the assertions on keys, focus, no_session, the sign-in screen, the password and frames stay; the test keeps its PASS record until that commit re-runs it",
+    "2026-11-09 new test TST-M6-TOKEN-REVOKE (negative, REQ-M6-002): a token held by a test service dies with the session; WHOAMI on the held copy is refused and live_tokens return to the baseline",
+    "2026-11-09 mutants M135 (the purge on restart skipped) and M137 (the revocation on the session client's close removed), from the block PLAN-ANSWER §3.3 reserves for WP-64",
+    "2026-11-09 design flaw found by the services engineer: revocation on any client's close (PLAN-ANSWER §2.3 D5 as written) would also revoke tokens sh holds and break their documented lifetime; hence V2, revocation limited to sessions opened by the client `session`",
+    "2026-11-09 design flaw found by the services engineer: the purge contradicts TST-M5-SESSION-LOSS's oracle, whose later phases rely on the spy's window surviving a session restart; resolved by the oracle rewrite above",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating; second split point if the estimate at activation exceeds it: watchdog, purge and token revocation first, the Arabic screens and the badge second",
+    "2026-11-09 split applied at the second split point and refined (manager, after the services engineer's design report): 64a1 purge and revocation here, about 85-95 tool calls (an estimate, not measured); 64a2 the session watchdog and restart=always -> WP-71 (with TST-M6-SESSION-WATCHDOG); 64b the Arabic sign-in, lock and elevation screens, string tables and the badge -> WP-72 (with TST-M6-SESSION-AR, TST-M6-SESSION-STRINGS and the UI regression cases TST-M5-UI-UNIT, TST-M5-ARABIC-UI, TST-M5-AUTH-INPUT-ISOLATED); the former action lines of this record are carried to WP-71 and WP-72"
    ],
-   "acceptance": "TST-M6-SESSION-WATCHDOG, TST-M6-SESSION-AR and TST-M6-SESSION-STRINGS PASS on CI; TST-M6-INTERACTIVE-BOOT, TST-M5-ELEVATE and TST-M5-SVC-WATCHDOG re-run and PASS; the M5 session, lock and UI cases in test_ids PASS (no regression)",
+   "acceptance": "TST-M5-SESSION-LOSS (oracle rewritten to session.md v1.7) and TST-M6-TOKEN-REVOKE PASS on CI; TST-M6-INTERACTIVE-BOOT, TST-M5-ELEVATE and TST-M5-SVC-WATCHDOG re-run and PASS; the M5 session and lock cases in test_ids PASS (no regression)",
    "test_ids": [
-    "TST-M6-SESSION-WATCHDOG",
-    "TST-M6-SESSION-AR",
-    "TST-M6-SESSION-STRINGS",
+    "TST-M5-SESSION-LOSS",
+    "TST-M6-TOKEN-REVOKE",
     "TST-M6-INTERACTIVE-BOOT",
     "TST-M5-ELEVATE",
     "TST-M5-SVC-WATCHDOG",
-    "TST-M5-UI-UNIT",
-    "TST-M5-ARABIC-UI",
     "TST-M5-LOGIN-SCREEN",
-    "TST-M5-AUTH-INPUT-ISOLATED",
     "TST-M5-LOCK-SURVIVES",
     "TST-M5-LOCK-HANG",
     "TST-M5-SESSION-HANG"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
-    "python3 tools/project.py test --target pc-qemu --suite M6",
-    "python3 tools/project.py test --target host --suite M5"
+    "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
    "status": "planned",
    "status_history": [
@@ -4194,6 +4202,224 @@
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-69",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-003"
+   ],
+   "depends_on": [
+    "WP-46"
+   ],
+   "inputs": [
+    "docs/contracts/syscall.md",
+    "docs/security/threat-model.md",
+    "kernel/src/object/mod.rs",
+    "kernel/src/sched/mod.rs",
+    "docs/decisions-pending.json (DEC-027)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/syscall.md"
+   ],
+   "actions": [
+    "قائمة العمليات process_list بنطاق المقبض ورفضها (46a2 من قسمة WP-46، 2026-11-09)",
+    "process_list (syscall 46), its syscall.md version assigned at merge (PLAN.md:127): handle-scoped, a READ job handle lists that job's subtree; 64-byte zeroed records: pid, job_id, state, threads, name[16] and 32 reserved bytes (for WP-70's accounting); cursor by pid; refusals ERR_BAD_HANDLE, ERR_WRONG_TYPE, ERR_ACCESS, ERR_INVALID for the cap, ERR_RANGE or ERR_FAULT for the buffer, ERR_RANGE for a cursor past next_pid; no partial write on any refusal; the image name is kept in the release kernel too",
+    "blocked by DEC-027 (process visibility across users) before the process_list ABI freezes: the action above is option A (visibility follows the handle; the kernel knows no users); under B or C this record is rewritten before activation (the open question moved here from WP-46 on 2026-11-09)",
+    "docs/security/threat-model.md: the WP-46 entry (who holds which job handle, what a listing reveals, the kill authority)",
+    "test first: TST-M6-PROC-LIST-REFUSALS fails before the code; TST-M6-JOB-KILL re-run",
+    "mutants M154-M156 (SECURITY): the subtree filter removed; the READ check removed; the cursor check removed",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-09 estimate: about 60-80 tool calls (the manager's, after the kernel engineer's design report; an estimate, not measured)"
+   ],
+   "acceptance": "TST-M6-PROC-LIST-REFUSALS PASS on CI; TST-M6-JOB-KILL re-run and PASS; M3 and M5 suites unregressed",
+   "test_ids": [
+    "TST-M6-PROC-LIST-REFUSALS",
+    "TST-M6-JOB-KILL"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-70",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-003"
+   ],
+   "depends_on": [
+    "WP-46",
+    "WP-69"
+   ],
+   "inputs": [
+    "docs/contracts/syscall.md (system_info)",
+    "docs/contracts/shell.md",
+    "kernel/src/sched/mod.rs",
+    "user/apps/sh"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/syscall.md",
+    "docs/contracts/shell.md"
+   ],
+   "actions": [
+    "المحاسبة لكل عملية والخمول لكل معالج وأمر ps (46b من قسمة WP-46، 2026-11-09)",
+    "per-process cpu_ticks, frames, threads and handles, charged on the context switch under the run-queue lock (SMP), filling the reserved bytes of WP-69's process_list record; per-CPU idle ticks in system_info v2 (syscall.md version assigned at merge, PLAN.md:127)",
+    "shell.md v1.3: ps lists pid, job, image name, state and cpu_ticks",
+    "new M6 mutant ids for the accounting, taken from the next free id when this package is activated (PLAN-ANSWER §3.3)",
+    "scenario at the end: in the shell, `ps` shows the real services and a spinning app's cpu_ticks growing",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-09 estimate: none of its own; WP-46's record names this half (46b) at its split point but gives no figure; estimated at activation against the line"
+   ],
+   "acceptance": "TST-M6-PROC-ACCOUNTING and TST-M6-SHELL-PS PASS on CI; TST-M6-JOB-KILL and TST-M6-PROC-LIST-REFUSALS re-run and PASS; M3 and M5 suites unregressed",
+   "test_ids": [
+    "TST-M6-PROC-ACCOUNTING",
+    "TST-M6-SHELL-PS",
+    "TST-M6-JOB-KILL",
+    "TST-M6-PROC-LIST-REFUSALS"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-71",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "depends_on": [
+    "WP-64"
+   ],
+   "inputs": [
+    "docs/PLAN-ANSWER.md §2.3 (D4-A), §5.3 (item 10)",
+    "docs/contracts/session.md §8",
+    "docs/contracts/services.md",
+    "user/apps/sessiond/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "platform/pc-qemu/manifests/services.txt",
+    "tests/test_ci_workflows.py (StepBudget)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/session.md",
+    "docs/contracts/services.md"
+   ],
+   "actions": [
+    "مراقب الجلسة وسياسة restart=always لسطرها (64a2 من قسمة WP-64، 2026-11-09)",
+    "session.md v1.8 (additive), watchdog W-A: watchdog=25000 on the session line; the rule W > (peers 3) x REQUEST_DEADLINE + D written in the contract (a rule, the value measured); PONG from the session's main loop only; a WATCHDOG request answering pongs and worst; the manager's kill lands between W and 2W+1000; the readiness margin measured: ready_tick - last_start < 15000 (closes the session.md §8 v1.1 limit)",
+    "services.md v1.12 (additive): restart=always with BACKOFF_MAX 2000 for the session line (G3; on-failure unchanged); the session line, the set of restart policies and the §5 semantics; the LIST field list corrected to the seven fields svcmgr prints; TST-M6-MANIFEST-LINT's oracle follows",
+    "given_up policy (PLAN-ANSWER §5.3 item 10): a permanent given_up is not acceptable for the session line, settled by restart=always (G3) above",
+    "risk: a watchdog period too short kills a session legitimately waiting on auth (session.md v1.2); the test covers both sides",
+    "test first: TST-M6-SESSION-WATCHDOG; judge: max_restarts+1 direct kills, then a successful sign-in; each phase prints its own verdict line; about 150-180 s",
+    "M6 step cap re-decided here before activation: the M6 guest step holds INTERACTIVE-BOOT's phase timeouts and HOLD-FAIL-CLOSED's 180 s (630 s of the 12-minute cap, WP-67); SESSION-WATCHDOG's 150-180 s exceeds it: raise the cap (TST-M0-003's StepBudget guard and verify.yml follow) or the V3 parallel-jobs decision",
+    "mutants M133 (PONG removed or moved into request()), M134 (W at or below the sum of the deadlines, killed by TST-M6-MANIFEST-LINT), M136 (watchdog= removed from the session line) and M148-M150: restart=always treated as on-failure; the watchdog deadline at 2W; the purge failing open",
+    "2026-11-09 design flaw found by the services engineer: the judge 'five kills, then sign-in works' (PLAN-ANSWER §2.3) does not discriminate between on-failure and always; hence max_restarts+1 direct kills, the first count at which on-failure would give up",
+    "2026-11-09 design flaw found by the services engineer: the case's 150-180 s against the 12-minute M6 cap, hence the cap decision above",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-09 estimate: about 100-115 tool calls (the manager's, after the services engineer's design report; an estimate, not measured)"
+   ],
+   "acceptance": "TST-M6-SESSION-WATCHDOG PASS on CI; TST-M6-MANIFEST-LINT with the session line's policy and W, TST-M6-INTERACTIVE-BOOT and TST-M0-003 (step budget) re-run and PASS; the M5 session, lock and watchdog cases in test_ids PASS (no regression)",
+   "test_ids": [
+    "TST-M6-SESSION-WATCHDOG",
+    "TST-M6-MANIFEST-LINT",
+    "TST-M6-INTERACTIVE-BOOT",
+    "TST-M0-003",
+    "TST-M5-SESSION-LOSS",
+    "TST-M5-SVC-WATCHDOG",
+    "TST-M5-SESSION-HANG",
+    "TST-M5-SESSION-DEADLINE",
+    "TST-M5-LOCK-HANG",
+    "TST-M5-LOCK-AUTH-HANG",
+    "TST-M5-UNLOCK-AUTH-HANG",
+    "TST-M5-ELEVATE",
+    "TST-M5-AUTH-INPUT-ISOLATED"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-72",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "depends_on": [
+    "WP-64",
+    "WP-71"
+   ],
+   "inputs": [
+    "docs/PLAN-ANSWER.md §2.4, §5.3 (items 9, 12, 13)",
+    "docs/contracts/session.md §8",
+    "docs/contracts/ui.md",
+    "docs/contracts/config.md",
+    "docs/contracts/input.md (STATUS)",
+    "ux-design priority 7 (session screens)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/session.md",
+    "docs/contracts/ui.md",
+    "docs/contracts/config.md",
+    "docs/contracts/input.md"
+   ],
+   "actions": [
+    "شاشات الدخول والقفل والرفع بالعربية وشارة لغة الإدخال (64b من قسمة WP-64، 2026-11-09)",
+    "session.md v1.9 (additive): the sign-in, lock and elevation screens read ui.lang/ui.scale/ui.contrast (config GET + SUBSCRIBE device) with whole-sentence string tables in both languages and an input-language indicator next to the user and password fields (closes the §8 'screens in English' limit); config is a manifest dependency of the session line and an optional connection outside sessiond's DEPS constant",
+    "ui.md v1.6 (additive): the input-language badge next to the user and password fields reads the layout from input STATUS, no new input.md event (§5.3 items 9 and 13); RTL remedy: Value with an LTR base (B1) if the libui host test confirms it, else a shorter limit by amending session.md (§5.3 item 12)",
+    "mutants per PLAN-ANSWER §3.3 (not re-decided on 2026-11-09): M138 (ui.lang outside the list accepted) and M139 (Value with the dialog's direction base, conditional on B1)",
+    "scenario at the end: WP-45's scenario in Arabic (ui.lang=ar): sign-in, lock with Ctrl+Alt+Del, unlock",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-09 estimate: not given in the split; estimated at activation against the line"
+   ],
+   "acceptance": "TST-M6-SESSION-AR and TST-M6-SESSION-STRINGS PASS on CI; TST-M6-INTERACTIVE-BOOT re-run and PASS; the M5 UI, sign-in, lock and elevation cases in test_ids PASS (no regression)",
+   "test_ids": [
+    "TST-M6-SESSION-AR",
+    "TST-M6-SESSION-STRINGS",
+    "TST-M6-INTERACTIVE-BOOT",
+    "TST-M5-UI-UNIT",
+    "TST-M5-ARABIC-UI",
+    "TST-M5-LOGIN-SCREEN",
+    "TST-M5-AUTH-INPUT-ISOLATED",
+    "TST-M5-ELEVATE",
+    "TST-M5-LOCK-SURVIVES"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6",
+    "python3 tools/project.py test --target host --suite M5"
    ],
    "status": "planned",
    "status_history": [
