@@ -5,7 +5,7 @@ Exit codes (section 20): 0 ok | 10 no ready work package | 20 recorded blocker |
 30 budget exhausted | 40 cancelled | 50 record validation failure | 60 internal error |
 70 no worker configured.
 """
-import argparse, hashlib, json, os, subprocess, sys, time, datetime, re
+import argparse, shutil, hashlib, json, os, subprocess, sys, time, datetime, re
 from pathlib import Path
 
 ROOT = Path(os.environ.get("NAWAH_ROOT", Path(__file__).resolve().parents[1])).resolve()
@@ -16,6 +16,12 @@ EVIDENCE = ROOT / "evidence"
 # evidence/ and verdicts are never attached to the records.
 SCRATCH = Path(os.environ["NAWAH_SCRATCH_EVIDENCE"]).resolve() if os.environ.get("NAWAH_SCRATCH_EVIDENCE") else None
 SCHEMA_VERSION = "1.0.0"
+# evidence-run 1.1.0 (ADR-0026): a closed worker enumeration, the runner's `ci` identity, dirty_paths.
+RUN_SCHEMA_VERSION = "1.1.0"
+WORKERS = ("verification-runner", "interactive-agent", "test")
+DIRTY_EXCLUDED = ("evidence/", "build/", "state/")
+RUN_ID_RE = re.compile(r"^(mutants-)?[0-9]+$")
+ACCEPTED_WORKFLOWS = ("verify", "mutants")
 RECORD_FILES = ["requirements", "stages", "work-items", "tests", "risks", "sources", "hardware", "decisions-pending"]
 SINGLE_FILES = ["project-state", "automation"]
 LEGAL_TRANSITIONS = {("planned", "active"), ("active", "blocked"), ("active", "done"), ("blocked", "planned"), ("done", "planned"), ("active", "planned"),
@@ -70,10 +76,50 @@ def git(*args) -> str:
     return r.stdout.strip()
 
 
+def dirty_paths(limit=50):
+    """Tracked files changed and untracked files outside evidence/, build/ and state/, sorted, at
+    most `limit` of them (ADR-0026, REL-3 B): the evidence a run writes, the build it produces and
+    the lab's state must not make the run dirty; a changed source file must."""
+    r = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], cwd=ROOT, capture_output=True, text=True)
+    out = []
+    for line in r.stdout.splitlines():
+        if len(line) < 4:
+            continue
+        path = line[3:]  # porcelain v1: two status letters, a space, the path (never strip: the first letter may be a space)
+        if " -> " in path:
+            path = path.split(" -> ")[-1]
+        if path.startswith(DIRTY_EXCLUDED):
+            continue
+        out.append(path)
+    return sorted(out)[:limit]
+
+
 def source_identity():
     rev = git("rev-parse", "HEAD") or "unknown"
-    dirty = bool(git("status", "--porcelain"))
-    return rev, dirty
+    return rev, bool(dirty_paths(limit=1))
+
+
+def runner_identity():
+    """The worker and the run's CI identity from the environment (ADR-0026): on GitHub Actions the
+    verification runner with its run id, attempt, workflow, event, sha, head sha (the pull
+    request's head when the event carries one) and ref; anywhere else the interactive agent and
+    no `ci` object."""
+    e = os.environ
+    if e.get("GITHUB_ACTIONS") != "true":
+        return "interactive-agent", None
+    head = e.get("GITHUB_SHA", "")
+    ev_path = e.get("GITHUB_EVENT_PATH")
+    if ev_path and Path(ev_path).exists():
+        try:
+            head = json.loads(Path(ev_path).read_text(encoding="utf-8")).get("pull_request", {}).get("head", {}).get("sha") or head
+        except (OSError, ValueError, AttributeError):
+            pass
+    try:
+        attempt = int(e.get("GITHUB_RUN_ATTEMPT", "1"))
+    except ValueError:
+        attempt = 1
+    return "verification-runner", {"run_id": e.get("GITHUB_RUN_ID", ""), "run_attempt": attempt, "workflow": e.get("GITHUB_WORKFLOW", ""),
+                                   "event": e.get("GITHUB_EVENT_NAME", ""), "sha": e.get("GITHUB_SHA", ""), "head_sha": head, "ref": e.get("GITHUB_REF", "")}
 
 
 # ----------------------------------------------------------------------------- validation
@@ -83,6 +129,7 @@ class Problems:
         # docs/tests.json): long gate-time runs such as mutation testing, re-run at gates.
         self.warn_only_tests = set()
         self.errors, self.warnings, self.stale = [], [], []
+        self.legacy_runs = set()  # evidence-run 1.0.0 without import.json: one aggregated warning (ADR-0026)
         self.strict = strict
 
     def err(self, where, msg):
@@ -152,6 +199,23 @@ def check_evidence_dir(rel, pb: Problems, where, expect_test_id=None, current_di
     ec = (p / "exit_code").read_text().strip()
     if str(run["exit_code"]) != ec:
         pb.err(where, f"evidence {rel}: exit_code file ({ec}) != run.json ({run['exit_code']})")
+    # provenance (ADR-0026): a PASS from the verification runner is adopted only through the
+    # checked import, whose import.json names the same CI run as the run's own identity
+    imp_p = p / "import.json"
+    if run.get("worker") == "verification-runner" and verdict["verdict"] == "PASS":
+        if not imp_p.exists():
+            msg = f"evidence {rel}: a verification-runner PASS without import.json (not adopted through the checked import)"
+            if pb.strict:
+                pb.err(where, msg)
+            else:
+                pb.warn(where, msg)
+        else:
+            ci_id = str((run.get("ci") or {}).get("run_id", ""))
+            imp_id = str(load_json(imp_p).get("ci_run_id", ""))
+            if ci_id and imp_id != ci_id:
+                pb.err(where, f"evidence {rel}: import.json names CI run {imp_id} but run.json names {ci_id}")
+    if run.get("schema_version") == "1.0.0" and not imp_p.exists():
+        pb.legacy_runs.add(rel)
     # staleness: recompute digests of declared inputs
     stale = []
     for inp, dig in verdict["inputs"].items():
@@ -360,6 +424,9 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
 
 
 def report(pb: Problems, verbose) -> int:
+    if pb.legacy_runs:
+        pb.warnings.append(f"evidence: {len(pb.legacy_runs)} run(s) at evidence-run 1.0.0 without import.json (imported before ADR-0026; provenance not verifiable)")
+        pb.legacy_runs = set()
     if verbose:
         for w in pb.warnings: print("WARN", w)
         for e in pb.errors: print("ERROR", e)
@@ -851,13 +918,16 @@ def new_run_dir(purpose_slug):
         n += 1
 
 
-def write_run(d, rid, target, purpose, commands, exit_code, started, worker="interactive-agent", notes=None):
+def write_run(d, rid, target, purpose, commands, exit_code, started, worker=None, notes=None):
     rev, dirty = source_identity()
-    run = {"schema_version": SCHEMA_VERSION, "run_id": rid, "started_at": started,
+    env_worker, ci = runner_identity()
+    run = {"schema_version": RUN_SCHEMA_VERSION, "run_id": rid, "started_at": started,
            "finished_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-           "source_revision": rev, "dirty_state": dirty,
+           "source_revision": rev, "dirty_state": dirty, "dirty_paths": dirty_paths(),
            "host": {"os": os.uname().sysname + " " + os.uname().release, "machine": os.uname().machine},
-           "target": target, "worker": worker, "purpose": purpose, "commands": commands, "exit_code": exit_code}
+           "target": target, "worker": worker or env_worker, "purpose": purpose, "commands": commands, "exit_code": exit_code}
+    if ci:
+        run["ci"] = ci
     if notes: run["notes"] = notes
     (d / "run.json").write_text(json.dumps(run, ensure_ascii=False, indent=1) + "\n")
     (d / "command.txt").write_text("\n".join(commands) + "\n")
@@ -1202,14 +1272,17 @@ HOST_SUITES = {
                     "kernel/src/cell.rs", "kernel/src/ktest.rs", "tests/mutants.py", "tools/check-unsafe.sh",
                     "docs/policies/team-methodology.md", ".claude/workflows/nawah-team.js", "CLAUDE.md", "docs/PLAN-REVERSE.md", "docs/PLAN-ANSWER.md"], "input_globs": [".claude/agents/*.md"]},
         {"id": "TST-M0-003", "command": ["python3", "-I", "tests/test_ci_workflows.py"],
-         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; the mutants workflow runs the gates M2, M3, M4, M5 in order, checks the records strictly first and publishes every gate's report (16 cases, OK)",
+         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; every guest suite of target.json has its verify step and vice versa, and every host suite outside the gates and M2 is non-empty and run (ADR-0026, D5); the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; the mutants workflow runs the gates M2, M3, M4, M5 in order, checks the records strictly first and publishes every gate's report (18 cases, OK)",
          "inputs": ["tests/test_ci_workflows.py", "tools/project.py"], "input_globs": [".github/workflows/*.yml"]},
         {"id": "TST-M0-004", "command": ["python3", "-I", "tests/test_pre_merge.py"],
          "oracle": "tools/pre-merge.sh runs validate-records --strict under set -euo pipefail with no pipe after the validator and exits with its code: on a copy of the repository as committed it exits 0 and prints 'pre-merge: OK'; with one input of a host test edited after its run (a stale verdict) it exits 50 and prints no OK (3 cases, OK)",
          "inputs": ["tests/test_pre_merge.py", "tools/pre-merge.sh", "tools/project.py"], "input_globs": []},
         {"id": "TST-M0-005", "command": ["python3", "-I", "tests/test_mutants_harness.py"],
-         "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (~124 s, TST-M5-ELEVATE), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided (6 cases, OK)",
-         "inputs": ["tests/test_mutants_harness.py", "tests/mutants.py"], "input_globs": []},
+         "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (~124 s, TST-M5-ELEVATE), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided; stage_of maps M129 to M5 and M130 onwards to M6, and every mutant's anchor occurs exactly once in its file (8 cases, OK)",
+         "inputs": ["tests/test_mutants_harness.py", "tests/mutants.py"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"]},
+        {"id": "TST-M0-007", "command": ["python3", "-I", "tests/test_evidence_provenance.py"],
+         "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; source_identity ignores evidence/, build/ and state/ and names the dirty paths; a verification-runner PASS without import.json is a strict error and a mismatching ci_run_id an error, 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is malformed, is blocked without gh, and on success writes import.json beside an untouched run.json (15 cases, OK)",
+         "inputs": ["tests/test_evidence_provenance.py", "tools/project.py", "docs/schemas/evidence-run.schema.json", "docs/automation.json"], "input_globs": []},
     ],
 }
 
@@ -1501,15 +1574,48 @@ def cmd_check_commit(rev: str = "HEAD") -> int:
 
 
 # ----------------------------------------------------------------------------- CI evidence import
+def github_run(run_id: str):
+    """The GitHub run's state through gh (`gh run view <id> --json ...`): (info, None), or
+    (None, reason) when gh is missing or fails. `mutants-<n>` names run n of the mutants workflow."""
+    gh = shutil.which("gh")
+    if not gh:
+        return None, "gh is not on PATH; the import needs the run's conclusion from GitHub"
+    num = run_id.split("-")[-1]
+    r = subprocess.run([gh, "run", "view", num, "--json", "status,conclusion,headSha,event,workflowName,attempt"], cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        return None, f"gh run view {num} failed: {(r.stderr or r.stdout).strip()[:200]}"
+    try:
+        return json.loads(r.stdout), None
+    except ValueError:
+        return None, "gh returned no JSON"
+
+
 def cmd_import_ci_evidence(run_id: str) -> int:
     """Fetch the ci-evidence/<run> branch pushed by the verification runner and adopt its run
     directories as evidence (their input digests must match the current tree, which
     validate-records checks). Each imported verdict is attached to its test in docs/tests.json."""
     import shutil, tempfile
+    # The checked import (ADR-0026, REL-2 A): the GitHub run must have concluded with success,
+    # come from verify or mutants and start from a head that is an ancestor of HEAD; two
+    # cancelled runs of 2026-11-09 had published evidence branches this importer would have
+    # adopted. Without gh the import is blocked, never guessed.
+    if not RUN_ID_RE.match(run_id):
+        print(f"import refused: run id {run_id!r} is not <digits> or mutants-<digits>"); return E_VALIDATION
+    info, why = github_run(run_id)
+    if info is None:
+        print(f"import blocked: {why}"); return E_BLOCKED
+    if info.get("status") != "completed" or info.get("conclusion") != "success":
+        print(f"import refused: run {run_id} is {info.get('status')}/{info.get('conclusion')}, not completed/success"); return E_VALIDATION
+    if info.get("workflowName") not in ACCEPTED_WORKFLOWS:
+        print(f"import refused: workflow {info.get('workflowName')!r} is not one of {ACCEPTED_WORKFLOWS}"); return E_VALIDATION
+    head = str(info.get("headSha", ""))
+    if not head or subprocess.run(["git", "merge-base", "--is-ancestor", head, "HEAD"], cwd=ROOT, capture_output=True).returncode != 0:
+        print(f"import refused: the run's head {head[:8]!r} is not an ancestor of HEAD"); return E_VALIDATION
     ref = f"refs/heads/ci-evidence/{run_id}"
     r = subprocess.run(["git", "fetch", "-q", "origin", f"{ref}:refs/remotes/ci/{run_id}"], cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
         print(f"fetch failed: {r.stderr.strip()}"); return E_BLOCKED
+    branch_commit = git("rev-parse", f"refs/remotes/ci/{run_id}")
     # The branch is checked out into a temporary copy, removed when the import ends (left
     # behind, 44 copies filled the workspace's disk on 2026-10-19), through an index of its own
     # inside the copy: the repository's index, and what the user has staged in it, stay as
@@ -1527,9 +1633,11 @@ def cmd_import_ci_evidence(run_id: str) -> int:
                 continue
             shutil.copytree(d, dest)
             v = load_json(dest / "verdict.json")
-            run = load_json(dest / "run.json")
-            run["notes"] = (run.get("notes", "") + f" imported from CI run {run_id} (verification runner)").strip()
-            (dest / "run.json").write_text(json.dumps(run, ensure_ascii=False, indent=1) + "\n")
+            # run.json stays exactly as the runner wrote it; the import's own record is import.json
+            imp = {"ci_run_id": run_id.split("-")[-1], "conclusion": info["conclusion"], "head_sha": head, "event": info.get("event"),
+                   "run_attempt": info.get("attempt"), "workflow": info.get("workflowName"), "evidence_branch_commit": branch_commit,
+                   "imported_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
+            (dest / "import.json").write_text(json.dumps(imp, ensure_ascii=False, indent=1) + "\n")
             attach_evidence(v["test_id"], d.name, v["verdict"])
             imported += 1
             print(f"imported {d.name} {v['test_id']} {v['verdict']}")

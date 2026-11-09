@@ -21,7 +21,7 @@ evidence records are never touched: evidence of the mutant runs goes to a scratc
 (NAWAH_SCRATCH_EVIDENCE) and tools/project.py attaches nothing in that mode.
 
 For each mutant: apply, build only the artifacts its killer tests need, run those tests
-(`project.py boot` for TST-M1-BOOT, `project.py test --only` for M2 cases). A mutant is
+(`project.py boot` for TST-M1-BOOT, `project.py test --only` for every other case). A mutant is
   killed   - at least one killer test FAILs (or times out) ;
   survived - every killer test PASSes; the whole M1+M2 suites are then run before the verdict ;
   invalid  - the mutant does not compile (excluded from the ratio; a defect that cannot build is
@@ -594,9 +594,10 @@ MUTANTS = [
 
 def stage_of(mid: str) -> str:
     """M01..M29 belong to the M2 gate (TST-M2-MUTANTS), M30..M49 to the M3 gate (TST-M3-MUTANTS),
-    M50..M81 to the M4 gate (TST-M4-MUTANTS), M82.. to the M5 gate (TST-M5-MUTANTS, WP-38)."""
+    M50..M81 to the M4 gate (TST-M4-MUTANTS), M82..M129 to the M5 gate (TST-M5-MUTANTS, WP-38),
+    M130.. to the M6 gate (TST-M6-MUTANTS; the M6-GATE suite is created with the first M6 mutant)."""
     n = int(mid[1:])
-    return "M2" if n < 30 else ("M3" if n < 50 else ("M4" if n < 82 else "M5"))
+    return "M2" if n < 30 else ("M3" if n < 50 else ("M4" if n < 82 else ("M5" if n < 130 else "M6")))
 
 
 # The M5 mutants that undo a security fix of the pre-gate review (WP-43) or of WP-41: the gate
@@ -758,7 +759,7 @@ def main():
     ap.add_argument("--target", default="pc-qemu")
     ap.add_argument("--report", default="build/mutants-report.json")
     ap.add_argument("--only", help="comma-separated mutant ids")
-    ap.add_argument("--stage", choices=["M2", "M3", "M4", "M5"], help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50-M81 = M4, M82.. = M5)")
+    ap.add_argument("--stage", choices=["M2", "M3", "M4", "M5", "M6"], help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50-M81 = M4, M82-M129 = M5, M130.. = M6)")
     ap.add_argument("--check", action="store_true", help="apply/revert each patch and cargo check on the host target only")
     a = ap.parse_args()
     mutants = [m for m in MUTANTS if (not a.only or m[0] in a.only.split(",")) and (not a.stage or stage_of(m[0]) == a.stage)]
