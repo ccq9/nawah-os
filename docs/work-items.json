@@ -3029,7 +3029,8 @@
     "session.md v1.7: session watchdog=<ticks> > REQUEST_DEADLINE (closes the §8 v1.1 limit); the sign-in, lock and elevation screens read ui.lang/ui.scale/ui.contrast (config GET + SUBSCRIBE device) with whole-sentence string tables in both languages and an input-language indicator next to the user and password fields (closes the §8 'screens in English' limit)",
     "scenario at the end: power on, sign-in screen, sign in as user, plain desktop background, Ctrl+Alt+Del locks, unlock; the same in Arabic",
     "risk: a watchdog period too short kills a session legitimately waiting on auth (session.md v1.2); the test covers both sides",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (watchdog and Arabic screens can split off the boot-mode change)"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (watchdog and Arabic screens can split off the boot-mode change)",
+    "2026-11-09: activated (M6 opened by PR #21, merge d55dc263). Two parallel lanes in one package: (A) boot-mode key, the real SERVICES.TXT and TST-M6-INTERACTIVE-BOOT; (B) the session watchdog (session.md v1.7) and the Arabic session screens with the input-language indicator (TST-M6-SESSION-WATCHDOG, TST-M6-SESSION-AR)."
    ],
    "acceptance": "TST-M6-INTERACTIVE-BOOT, SESSION-WATCHDOG and SESSION-AR PASS on CI; TST-M1-BOOT/NEG/NOBS still PASS under the self-test key; the M5 suite unregressed",
    "test_ids": [
@@ -3044,9 +3045,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
