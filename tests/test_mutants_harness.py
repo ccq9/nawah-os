@@ -83,6 +83,29 @@ class EarlyExit(unittest.TestCase):
         self.assertEqual(calls, ["T1", "T2", "T3"])
 
 
+class KillReasons(unittest.TestCase):
+    # Audit 2026-11-09: the report must show whether a kill was a hang (timeout) or a broken
+    # oracle, so a reviewer can tell the two apart without the scratch logs.
+    def test_each_fail_records_its_kind(self):
+        class R:
+            def __init__(self, rc, out):
+                self.returncode, self.stdout = rc, out
+        outs = {"T1": (1, "case pc-qemu: FAIL (timeout (hang)) run=x"),
+                "T2": (1, "case pc-qemu: FAIL (missing markers ['|ok|']) run=y"),
+                "T3": (0, "case pc-qemu: PASS run=z")}
+        orig_suite, orig_sh = mutants.suite_of, mutants.sh
+        mutants.suite_of = lambda target, tid: "M5"
+        mutants.sh = lambda cmd, cwd, env=None: R(*outs[cmd[-1]])
+        reasons = {}
+        try:
+            killed, results = mutants.run_killers(pathlib.Path("/nonexistent"), {}, "pc-qemu",
+                                                  ["T1", "T2", "T3"], reasons=reasons)
+        finally:
+            mutants.suite_of, mutants.sh = orig_suite, orig_sh
+        self.assertEqual(killed, ["T1", "T2"])
+        self.assertEqual(reasons, {"T1": "timeout", "T2": "oracle"})
+
+
 class PartialReport(unittest.TestCase):
     def test_write_report_persists_what_is_decided(self):
         report = {"threshold": 0.95, "mutants": [{"id": "M82", "status": "killed"}]}
