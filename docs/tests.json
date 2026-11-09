@@ -1844,7 +1844,7 @@
     "REQ-M6-001"
    ],
    "layer": "guest",
-   "oracle": "planned (M6): a file with an Arabic and mixed long name is created, listed, read and renamed through the VFS; fsck.fat and the host tool read the same long name back",
+   "oracle": "planned (M6, WP-52; files.md v1.4): a file with an Arabic and mixed long name is created, listed, read and renamed through the VFS; fsck.fat and the host tool tools/fat32.py read the same long name back; the frozen 8.3 names keep resolving",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -1993,6 +1993,748 @@
    "evidence_refs": [
     "evidence/20261108T221557Z-25ac22b8-001"
    ]
+  },
+  {
+   "id": "TST-M6-INTERACTIVE-BOOT",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-45): the release image boots on the real SERVICES.TXT (auth, config, net, input, display, session, narrator, sh) without the lab self-test key and does not exit within the case's tick window; the manager's LIST shows every manifest service ready; the screendump equals the sign-in screen's expected regions; the lab signs in as user, sees the plain desktop background, Ctrl+Alt+Del locks and user's password unlocks",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-SESSION-WATCHDOG",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-45; closes session.md §8 v1.1 limit): the session has watchdog=<ticks> longer than REQUEST_DEADLINE; a session frozen by the test kernel is killed by the manager and restarted into no_session with the screen held (no application pixel in the screendump) and no key reaching an application; a session legitimately waiting on a hung auth is not killed before the watchdog period",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-SESSION-AR",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-45; session.md §8 limit 'screens in English'): with ui.lang=ar the sign-in, lock and elevation screens are Arabic and right-to-left from the first frame and switch live on SUBSCRIBE device; the input-language indicator next to the user and password fields shows the active layout and changes on Alt+Shift; the narrator transcript equals the expected file and never carries the password",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-JOB-KILL",
+   "requirement_ids": [
+    "REQ-M6-003"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-46; ktest job_kill_all): three processes spawned into one job; job_kill leaves none in process_list, every handle to them reports exit, and the free-frame count after equals the count before",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-PROC-ACCOUNTING",
+   "requirement_ids": [
+    "REQ-M6-003"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-46; ktest process_accounting, -smp 4): a spinning app's cpu_ticks rise while the per-CPU idle ticks fall; the sum of all processes' cpu_ticks plus idle stays within a declared tolerance of ticks x cpus; frames, threads and handles per process match the counts the test itself created",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-PROC-LIST-REFUSALS",
+   "requirement_ids": [
+    "REQ-M6-003"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-46; ktest process_list_bad_ptr, cursor_overflow): process_list with an invalid user pointer, an over-long buffer or a cursor past the end is refused with the syscall.md error codes, never a panic or a kernel-memory read; job_kill without WRITE on the job is refused ERR_ACCESS",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-SHELL-PS",
+   "requirement_ids": [
+    "REQ-M6-003"
+   ],
+   "layer": "service_integration",
+   "oracle": "planned (M6, WP-46; shell.md v1.3): the diagnostic shell's `ps` lists the real services with pid, job, image name, state and cpu_ticks; a spinning app's cpu_ticks grow between two `ps` calls",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-APP-LAUNCH",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "layer": "service_integration",
+   "oracle": "planned (M6, WP-47; DEC-005): two LAUNCH requests for the same registry app from the vouched session give two processes in the session's job and two windows whose identities (app:<id>#<n>) differ in the compositor's LIST; the user's autostart app opens a window after sign-in",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-LOGOUT-KILLS",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-47; closes session.md §8 'sign-out does not end user processes'): an app that ignores CLOSE_REQUESTED is absent from process_list after Sign out (job_kill), its frames are returned, and the next sign-in starts with no process of the previous session",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-LAUNCH-DENIED",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-47): LAUNCH from a plain client (not vouched session or desktop) is refused ERR ACCESS by the manager; an app's CONNECT to a service its registry entry does not declare is refused ERR ACCESS in the manager, not in the app",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-APP-REGISTRY-FUZZ",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-47): the registry parser on the host rejects every malformed entry of a seeded corpus (over-long fields, bad ids, missing ELF path, duplicate ids, non-UTF-8 names) without panicking and accepts the well-formed examples exactly",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-SHELL-EVENTS",
+   "requirement_ids": [
+    "REQ-M6-005"
+   ],
+   "layer": "service_integration",
+   "oracle": "planned (M6, WP-48; display.md v1.12): the desktop service receives ADDED/REMOVED/TITLE/STATE/FOCUS/UNRESPONSIVE events in the order of the lab's window actions, with app id and pid; the screendump of the taskbar matches the expected regions; app windows never overlap the work area's excluded taskbar band",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-SHELL-AUTHORITY",
+   "requirement_ids": [
+    "REQ-M6-005"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-48): SHELL, LAYER, WORKAREA and WINDOWS from any client other than the manager-vouched desktop are refused ERR ACCESS; an app's LIST never shows another client's windows; the shell's surfaces are never in Alt+Tab",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-TASKBAR-WINDOW",
+   "requirement_ids": [
+    "REQ-M6-005"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-48): lab clicks and the taskbar keyboard path (Super+T or F6, arrows, Enter, Shift+F10) activate, minimise and restore windows and request close through the window menu; the compositor's LIST states match after each step; an unresponsive app's button carries the unresponsive state in the description, not colour only",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-SHELL-CRASH",
+   "requirement_ids": [
+    "REQ-M6-005"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-48): the desktop service killed while unlocked is restarted by its policy and the apps' windows stay manageable by keyboard meanwhile; killed while locked, the lock holds, no shell surface or window title shows, and no key reaches an application",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-ASSET-PROVENANCE",
+   "requirement_ids": [
+    "REQ-M6-020"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-48; DEC-009, ADR-0022): every icon, glyph, image and font in the system image is listed in docs/sources.json as the project's own work or under its recorded licence (Noto OFL); a file in the image without such an entry fails the check",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-UI-UNIT",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-49; ui.md v1.6): libui on the host: pointer hit-testing focuses and activates exactly the element under the point (double-click included), popup and context menus open on Shift+F10, the menu key and right click, navigate with wrap, close on Esc and return focus; the confirm dialog answers Yes/No/Cancel with its default; menus mirror in RTL; the keyboard focus order of v1.5 is unchanged",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-UI-POINTER",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-49): the sample dialog driven by lab mouse clicks reaches the same states as the keyboard path, with a context menu on a list item; the narrator transcript of the pointer path equals that of the keyboard path",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-LISTVIEW-UNIT",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-50; ui.md v1.7): the virtualised list view keeps visible rows within bounds for 0, 1 and 10,000 rows, sorts stably by column, keeps single and multi selection across scrolling, and Home/End/PgUp/PgDn and type-ahead (Arabic included) move exactly as specified",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-LISTVIEW-A11Y",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-50): a 500-row list browsed by keyboard and mouse wheel gives narrator lines `row k/n` with column values, byte-identical across two boots, and a screendump hash equal to the expected one",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-LISTVIEW-RTL",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-50): with ui.lang=ar the column order and scroll bar mirror, numeric columns align to the trailing edge, horizontal arrows move visually, and a mixed Arabic and Latin path keeps its separators in order (screendump regions)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-START-LAUNCH",
+   "requirement_ids": [
+    "REQ-M6-007"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-51): Super (tap) or the Start button opens Start; typing a filter and Enter, or a click, LAUNCHes the registry app through the manager; Start closes and focus moves to the new window; Esc closes Start and restores the previous focus; a pinned app is kept in the config user store",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-START-ARABIC",
+   "requirement_ids": [
+    "REQ-M6-007"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-51): with ui.lang=ar, Start opens at the right edge, lists apps by their Arabic names, filters on an Arabic prefix typed with the Arabic layout, and the narrator reads the entries in Arabic",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-START-FAIL",
+   "requirement_ids": [
+    "REQ-M6-007"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-51; scenario 6): a launch the manager refuses (an app whose image does not fit the remaining memory, or a missing ELF) shows `Could not start <app>: <ERR>` in Start and is announced; no window appears and nothing reports success",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-RESTART-PERSIST",
+   "requirement_ids": [
+    "REQ-M6-007"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-51; DEC-007): Restart from the power menu stops the services in order, syncs the volume and resets through the FADT reset register; after the reboot and sign-in the pinned app and a file written before are intact (the M3 BLK-PERSIST oracle on the image)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-POWER-DENIED",
+   "requirement_ids": [
+    "REQ-M6-007"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-51): system_reset without an administrator token is refused ERR_ACCESS in the kernel; an ordinary app's request to restart through the session is refused or goes through ELEVATE; Super never reaches an application and does not open Start while locked",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-RENAME",
+   "requirement_ids": [
+    "REQ-M6-008"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-52; files.md v1.4): rename within a folder and move across folders keep the content; renaming onto an existing name is ERR_EXISTS; renaming an open file follows the contract; a rename under /SYSTEM without the system-files authority is ERR_ACCESS; mkdir/rmdir (a non-empty folder refused) and fs_info agree with the host image",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-RENAME-CRASH",
+   "requirement_ids": [
+    "REQ-M6-008"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-52): a fault injected between the rename steps (new entry written, sync, old entry freed) leaves after reboot either the old or the new name, never both lost, and no cross-linked chain (fsck.fat and tools/fat32.py agree)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-DISK-FULL",
+   "requirement_ids": [
+    "REQ-M6-008"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-52; scenario 6): writing past the free space returns ERR_NO_SPACE with no partly written file left visible and fs_info unchanged after the failed write is cleaned up",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-FAT-FUZZ",
+   "requirement_ids": [
+    "REQ-M6-001",
+    "REQ-M6-008"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-52): LFN encode/decode, the checksum and short-name generation on the host against the oracle tools/fat32.py over a seeded corpus (collisions, 255-unit names, invalid UTF-16 surrogates): every case round-trips or is refused, never a corrupted directory",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-HOME-ISOLATION",
+   "requirement_ids": [
+    "REQ-M6-009"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-53; scenario 3; DEC-006): admin and user each sign in and get /USERS/<name> created at first sign-in; user's app opening a file in admin's home is refused ERR_ACCESS in the kernel (directory capability), not hidden by the UI; admin reaches user's home only through ELEVATE",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-DIR-ESCAPE",
+   "requirement_ids": [
+    "REQ-M6-009"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-53): `..`, absolute paths, over-long paths and names with forbidden characters relative to a directory capability are refused; no call reaches outside the capability",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-CLIPBOARD-ROUNDTRIP",
+   "requirement_ids": [
+    "REQ-M6-010"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-54): Arabic text copied from one app's field is pasted into another app's field by Ctrl+V; the pasted bytes equal the copied UTF-8",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-CLIPBOARD-ISOLATION",
+   "requirement_ids": [
+    "REQ-M6-010"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-54): a background (unfocused) app's copy and read are refused ERR ACCESS; a paste without a user gesture (no compositor grant) is refused; a grant replayed or used after expiry is refused; while locked and after sign-out the clipboard is empty",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-DND-FILELIST",
+   "requirement_ids": [
+    "REQ-M6-010"
+   ],
+   "layer": "service_integration",
+   "oracle": "planned (M6, WP-54; display.md v1.13): a file-list dragged by the lab pointer from one window to another window of the same session arrives as the dropped list; a drop onto a window of another session or while locked delivers nothing",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-FILES-CHAIN",
+   "requirement_ids": [
+    "REQ-M6-011"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-55): in the explorer, by lab keys and clicks: new folder, new empty file, copy, paste, inline rename of the copy to an Arabic name; dir_list in the guest and the host image read show exactly those names and contents",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-FILES-CONFLICT",
+   "requirement_ids": [
+    "REQ-M6-011"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-55): pasting onto an existing name offers Replace / Keep both / Cancel; each choice leaves exactly the contracted result on the image",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-FILES-DISK-FULL",
+   "requirement_ids": [
+    "REQ-M6-011"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-55; scenario 6): a copy that runs out of space shows a clear error, removes the partial copy and never reports success",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-FILES-DENIED",
+   "requirement_ids": [
+    "REQ-M6-011"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-55): copying into /SYSTEM or another user's home shows the kernel's access error and changes nothing on the image",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-FILES-A11Y-AR",
+   "requirement_ids": [
+    "REQ-M6-011"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-55): the explorer operated by keyboard only with ui.lang=ar: the narrator transcript equals the expected file, mixed names keep their order (LRI isolation), and the empty and access-denied states are announced as text",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-TRASH-RESTORE-REBOOT",
+   "requirement_ids": [
+    "REQ-M6-012"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-56): a file deleted to the trash survives a reboot in the trash view and is restored to its original path with unchanged content (host image read)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-TRASH-CONFLICT",
+   "requirement_ids": [
+    "REQ-M6-012"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-56): restoring onto an occupied path asks for the conflict choice; Empty trash asks for confirmation and removes only after Yes",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-TRASH-CRASH",
+   "requirement_ids": [
+    "REQ-M6-012"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-56): a fault between the index write and the rename into the trash is reconciled at start-up per the recovery rules: no file lost, no index entry without its file",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-TRASH-ISOLATION",
+   "requirement_ids": [
+    "REQ-M6-012"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-56): another user's trash is unreachable (ERR_ACCESS) and never listed",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-NOTIFY-SERVICE-FAILURE",
+   "requirement_ids": [
+    "REQ-M6-013"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-57; scenario 6): a service killed until it gives up produces a toast naming it (screendump) and a polite narrator line; the notification centre lists it and dismiss removes it",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-NOTIFY-SPOOF",
+   "requirement_ids": [
+    "REQ-M6-013"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-57): an app cannot post as `net` (the sender name comes from the manager); a flood beyond the per-sender limit is refused ERR LIMIT and counted",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-NOTIFY-LOCKED",
+   "requirement_ids": [
+    "REQ-M6-013"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-57; scenario 8): while locked only a count of new notifications is shown and announced, with no title or body in the screendump or the narrator transcript",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-NOTIFY-NO-FOCUS-STEAL",
+   "requirement_ids": [
+    "REQ-M6-013"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-57): a toast arriving while the user types into an app takes no focus: every key typed during the toast reaches the app",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-TASKMGR-DATA",
+   "requirement_ids": [
+    "REQ-M6-014",
+    "REQ-M6-020"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-58): the task manager's values (CPU % per process and total, frames, threads, handles, disk free, net counters) agree within declared ranges with a process_list and system_info v2 snapshot taken by a probe in the same tick window; the spin app tops CPU",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-END-TASK",
+   "requirement_ids": [
+    "REQ-M6-014"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-58): End task on the user's own app and on a hung app removes them from process_list through the manager's KILL with the session-job check",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-END-TASK-DENIED",
+   "requirement_ids": [
+    "REQ-M6-014"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-58): ending `net` as user is refused in the manager; the same request through ELEVATE with admin's password succeeds and the service restarts by its policy",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-SVC-TOOL-CONTROL",
+   "requirement_ids": [
+    "REQ-M6-015"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-59): with elevation the services tool stops `net`, the state changes in the list, and starts it again; protected services (session, display) cannot be stopped from the tool",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-SVC-TOOL-DENIED",
+   "requirement_ids": [
+    "REQ-M6-015"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-59): START/STOP/RESTART without an administrator token are refused by the manager (services.md v1.15), not only greyed out in the tool",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-SVC-TOOL-LIVE",
+   "requirement_ids": [
+    "REQ-M6-015",
+    "REQ-M6-020"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-59): a service failure appears in the tool's list from the manager's state events without a manual refresh",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-DEVICE-LIST",
+   "requirement_ids": [
+    "REQ-M6-016",
+    "REQ-M6-020"
+   ],
+   "layer": "compat_hw",
+   "oracle": "planned (M6, WP-60; syscall.md v1.17): device_list agrees with the QEMU monitor's `info pci` (BDF, vendor:device, class) as an independent oracle, plus the i8042 keyboard and mouse, the GOP display and the virtio devices with bound driver, IRQ and DMA-trust state",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-DEVICES-APP",
+   "requirement_ids": [
+    "REQ-M6-016"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-60): the devices tool shows the device tree by class with Properties and Refresh (screendump and narrator transcript); names come only from PCI class codes and virtio ids",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-LOG-PERSIST",
+   "requirement_ids": [
+    "REQ-M6-017"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-61): a service failure logged in boot 1 is shown in the log viewer under the previous boot after a reboot, with source, level and sequence number",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-LOG-AUTHORITY",
+   "requirement_ids": [
+    "REQ-M6-017"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-61): an app cannot obtain the LogRead capability or read the raw ring; Clear without an administrator token is refused by logd",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-LOG-OVERFLOW",
+   "requirement_ids": [
+    "REQ-M6-017"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-61): the kernel ring wraps under a flood and reports the dropped count; rotation under /SYSTEM/LOGS keeps the current and previous boot within the size cap",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-LOG-NO-SECRETS",
+   "requirement_ids": [
+    "REQ-M6-017"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "planned (M6, WP-61): after sign-in, lock, unlock and an elevation, neither password appears in the persisted logs or the ring",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-EDITOR-UNIT",
+   "requirement_ids": [
+    "REQ-M6-018"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-63; ui.md v1.8): the multi-line text area on the host: insert and delete across lines, caret movement by line and by character in mixed Arabic and Latin lines, UTF-8 boundaries never split, line breaking at the last space that fits, and the description reads `line k/n` without the whole text",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-EDITOR-MODIFY-REBOOT",
+   "requirement_ids": [
+    "REQ-M6-018"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-63; scenario 4; DEC-008): user creates a text file in the editor, saves, reopens, modifies, saves, restarts; after sign-in the content equals the last save (host image read) and admin's ordinary app (without ELEVATE) is refused ERR_ACCESS opening it",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-EDITOR-UNSAVED",
+   "requirement_ids": [
+    "REQ-M6-018"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-63): closing the editor with unsaved changes asks Save / Don't save / Cancel; Cancel keeps the window and text, Don't save leaves the file unchanged on the image",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-EDITOR-SAVE-FAIL",
+   "requirement_ids": [
+    "REQ-M6-018"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-63; scenario 6): a save that runs out of space keeps the previous content intact (write to a temporary name, sync, rename), shows the error and keeps the modified marker",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-E2E-SCENARIO",
+   "requirement_ids": [
+    "REQ-M6-019",
+    "REQ-M6-020"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-62; OS-EXEC-AR line 601; §19 scenarios 1, 3, 4, 6, 7, 8 and 11): one in-system chain on the release image: boot, sign in, Start launches an app, window management from the taskbar, files create / copy / rename / delete / restore, editor modify, Restart, persistence checked by the host image read, real resource data in the task manager, the previous boot's log; failures, refusals and conflicts on the way; waits are event-driven on trace lines",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-E2E-AR",
+   "requirement_ids": [
+    "REQ-M6-019"
+   ],
+   "layer": "user_e2e",
+   "oracle": "planned (M6, WP-62; scenario 11): the same chain with ui.lang=ar driven by keyboard only, mixed Arabic and Latin file names on disk, with the narrator transcript and screendump regions as oracle",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-MUTANTS",
+   "requirement_ids": [
+    "REQ-M6-021"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-62): seeded defects for the M6 modules (kernel jobs and accounting, launch broker, shell role, libui v2, filesystem v1.4, directory capability, clipboard, notifyd, logd, the tools) are killed by the M6 suite: kill ratio >= 0.95 over this gate's valid mutants and no surviving security mutant, with M2-M5 re-run",
+   "command": "python3 tools/project.py test --target host --suite M6-GATE",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   }
  ]
 }

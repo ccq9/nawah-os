@@ -25,7 +25,7 @@
     "تأجيل الجرد والاكتفاء بمواصفات أولية مع فجوات معلنة"
    ],
    "recommendation": "الخيار الأول قبل M6",
-   "impact": "يمنع أحكام المطابقة في M6/M7 فقط؛ لا يمنع M1–M5",
+   "impact": "يمنع أحكام المطابقة في M6/M7 فقط؛ لا يمنع M1–M5؛ 2026-11-09: يُفتح M6 دونه (DEC-009): غرفة نظيفة من وصف سلوكي، وREQ-SCOPE-003 يبقى غير محكوم",
    "blocked_task_ids": [],
    "requested_at": "2026-10-17T21:00:00Z",
    "status": "open"
@@ -65,6 +65,92 @@
    "requested_at": "2026-10-19T10:20:00Z",
    "status": "answered",
    "answer": "approved by the owner (Nasser) on 2026-10-19: (1) K-3 is fixed now by reopening WP-32, which introduced vmo_map (de5936c6), per OS-EXEC-AR §2.1; (2) CI rejects a head commit whose subject names a work item that is not active or done (only the head commit is visible: checkout depth 1, declared); (3) WP-40's scope is a closed list: its five tests, TST-M5-LOCK-AUTH-HANG, TST-M5-UNLOCK-AUTH-HANG, TST-M5-SESSION-HANG, REQ-M5-010's acceptance text, and mutant M64 restored (8297708d, a WP-40 commit, moved its target line) — anything found later goes to a new work item; (4) WP-43's code already on main stays and is re-verified when WP-43 is activated (M1-partial 21a979f9 and M5 f74a43c9 get a separate-context review then). Correction recorded: the council's framed question misquoted WP-40's acceptance, which assigns the review's further findings to WP-43; the decision rests on the code, git history and WP-40's recorded council verdict instead."
+  },
+  {
+   "id": "DEC-005",
+   "question": "نموذج تشغيل التطبيقات في M6: هل يسمسر مدير الخدمات التشغيل (LAUNCH) وهوية التطبيق، أم يشغّل سطح المكتب التطبيقات بنفسه ممسكًا مقابضها؟",
+   "options": [
+    "المدير يشغّل التطبيق في مهمة الجلسة ويشهد بهويته app:<id>#<n> عند CONNECT؛ LAUNCH من session وdesktop الموثقتين فقط",
+    "desktopd يشغّل التطبيقات مباشرة ويمسك مقابضها"
+   ],
+   "recommendation": "الخيار الأول: الثاني يضعف الهوية ويصعّب تنظيف الخروج",
+   "impact": "يحدد ADR-0023 وservices.md v1.12 وsession.md v1.8 (WP-47) وكل أداة تُشغَّل من ابدأ",
+   "blocked_task_ids": [
+    "WP-47",
+    "WP-48",
+    "WP-51"
+   ],
+   "requested_at": "2026-11-09T12:00:00Z",
+   "status": "answered",
+   "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. App launch is brokered by the service manager (LAUNCH, app identity vouched on CONNECT); the desktop never holds the apps' process handles."
+  },
+  {
+   "id": "DEC-006",
+   "question": "عزل ملفات كل مستخدم (منازل /USERS ومقدرة مجلد) ضمن M6 أم لاحقًا؟",
+   "options": [
+    "ضمن M6 (WP-53): مقدرة Dir وواجهات *_at وتسليم المنزل للتطبيقات",
+    "تأجيله والاكتفاء بحماية /SYSTEM"
+   ],
+   "recommendation": "الخيار الأول: السيناريو الحرج 3 وفحوص صلاحيات M6 تحتاجه",
+   "impact": "يمس كل نداء ملفات (تغطية طفرات)؛ شرط لمستكشف الملفات والسلة والمحرر",
+   "blocked_task_ids": [
+    "WP-53",
+    "WP-55",
+    "WP-63"
+   ],
+   "requested_at": "2026-11-09T12:00:00Z",
+   "status": "answered",
+   "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. Per-user file isolation (homes and file authority) is in M6."
+  },
+  {
+   "id": "DEC-007",
+   "question": "الطاقة في M6: إعادة تشغيل فقط (FADT reset) أم إيقاف كامل ACPI S5 أيضًا (يحتاج مفسر AML أدنى من DSDT)؟",
+   "options": [
+    "إعادة التشغيل فقط في M6، والإيقاف الكامل مؤجل",
+    "الاثنان في M6"
+   ],
+   "recommendation": "الخيار الأول",
+   "impact": "قائمة الطاقة في WP-51 لا تعرض إيقافًا عاملًا؛ الإيقاف الكامل استثناء ظاهر في بوابة M6",
+   "blocked_task_ids": [
+    "WP-51"
+   ],
+   "requested_at": "2026-11-09T12:00:00Z",
+   "status": "answered",
+   "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. Restart only in M6 (orderly stop, sync, FADT RESET_REG); full ACPI S5 shutdown is deferred and not presented as working."
+  },
+  {
+   "id": "DEC-008",
+   "question": "محرر نصوص أدنى متعدد الأسطر ضمن M6 (السيناريو الحرج 4 يحتاج تعديل ملف) أم في أمثلة SDK في M8؟",
+   "options": [
+    "ضمن M6 حزمةً مستقلة (WP-63)",
+    "تأجيله إلى M8"
+   ],
+   "recommendation": "الخيار الأول",
+   "impact": "يضيف WP-63 وREQ-M6-018 وواجهة نص متعدد الأسطر في libui (ui.md v1.8)؛ بوابة M6 (WP-62) تعتمد عليه",
+   "blocked_task_ids": [
+    "WP-63",
+    "WP-62"
+   ],
+   "requested_at": "2026-11-09T12:00:00Z",
+   "status": "answered",
+   "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. A minimal multi-line text editor app is in M6 scope (critical scenario 4 needs a modified file)."
+  },
+  {
+   "id": "DEC-009",
+   "question": "DEC-002 مفتوح وdocs/reference/windows10.json بلا التقاط: هل يمضي M6 على مواصفات المشروع الأولية مع فجوات معلنة، أم ينتظر الالتقاط؟",
+   "options": [
+    "المضي في M6 بغرفة نظيفة من وصف سلوكي، وDEC-002 يبقى مفتوحًا، وREQ-SCOPE-003 غير محكوم",
+    "انتظار الالتقاط قبل M6"
+   ],
+   "recommendation": "الخيار الأول",
+   "impact": "أحكام مطابقة المرجع (REQ-SCOPE-003) تبقى غير محكومة واستثناءً ظاهرًا في بوابة M6؛ لا تُنسخ أصول Windows أو أيقوناته أو خطوطه أو مظهره التجاري (ADR-0022، TST-M6-ASSET-PROVENANCE)",
+   "blocked_task_ids": [
+    "WP-48",
+    "WP-62"
+   ],
+   "requested_at": "2026-11-09T12:00:00Z",
+   "status": "answered",
+   "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. DEC-002 (reference Windows 10 capture) stays open and owner-dependent; M6 proceeds clean-room from a behavioural description, never copying Windows assets, icons, fonts or trade dress."
   }
  ]
 }
