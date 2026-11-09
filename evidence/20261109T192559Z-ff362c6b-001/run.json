@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261109T192559Z-ff362c6b-001",
+ "started_at": "2026-11-09T19:25:59+00:00",
+ "finished_at": "2026-11-09T19:25:59+00:00",
+ "source_revision": "ff362c6bc0534cffc07fa0c5d0941fd209ee80d2",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M5-BIDI",
+ "commands": [
+  "python3 -I tests/test_text.py Bidi"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "42678896231",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "ff362c6bc0534cffc07fa0c5d0941fd209ee80d2",
+  "head_sha": "14176e421a1137b96e80f7dc07840391bdda1cfc",
+  "ref": "refs/pull/23/merge"
+ }
+}
