@@ -91,6 +91,30 @@ IMPORT = {"ci_run_id": "42", "conclusion": "success", "head_sha": "deadbeef", "e
           "evidence_branch_commit": "feed", "imported_at": "2026-01-02T00:00:00+00:00"}
 
 
+import contextlib
+
+
+@contextlib.contextmanager
+def ci_env(**values):
+    """GITHUB_ACTIONS=true plus the given GitHub variables; the others unset. Restored on exit."""
+    keys = ("GITHUB_ACTIONS", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA")
+    saved = {k: os.environ.get(k) for k in keys}
+    for k in keys:
+        os.environ.pop(k, None)
+    os.environ["GITHUB_ACTIONS"] = "true"
+    defaults = {"GITHUB_RUN_ATTEMPT": "1", "GITHUB_SHA": "cafe"} if "GITHUB_RUN_ID" in values and values["GITHUB_RUN_ID"] else {}
+    for k, v in {**defaults, **values}.items():
+        os.environ[k] = v
+    try:
+        yield
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 def done_records(ref):
     recs = base_records()
     recs["tests"][0].update(verdict="PASS", evidence_refs=[ref])
@@ -136,18 +160,33 @@ class RunSchema(unittest.TestCase):
         because that CI run has another id."""
         write_all(base_records())
         ref = make_evidence(worker="verification-runner", ci=CI)  # ci.run_id "42", no import.json
-        saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", "GITHUB_RUN_ID")}
-        try:
-            os.environ["GITHUB_ACTIONS"] = "true"; os.environ["GITHUB_RUN_ID"] = "42"
+        with ci_env(GITHUB_RUN_ID="42"):
             self.assertEqual(self.validate_strict(done_records(ref)), project.E_OK)
-            os.environ["GITHUB_RUN_ID"] = "43"
+        with ci_env(GITHUB_RUN_ID="43"):
             self.assertNotEqual(self.validate_strict(done_records(ref)), project.E_OK)
-        finally:
-            for k, v in saved.items():
-                if v is None:
-                    os.environ.pop(k, None)
-                else:
-                    os.environ[k] = v
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="2"):  # same number, another attempt
+            self.assertNotEqual(self.validate_strict(done_records(ref)), project.E_OK)
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_SHA="beef"):  # same number, another commit
+            self.assertNotEqual(self.validate_strict(done_records(ref)), project.E_OK)
+
+    def test_a_mismatching_receipt_is_an_error_even_inside_the_same_run(self):
+        """A present import.json is always checked: the native exemption covers only its absence
+        (the independent auditor's finding on 68d72a5e: a receipt naming 43 passed under run 42)."""
+        write_all(base_records())
+        ref = make_evidence(worker="verification-runner", ci=CI, import_json=dict(IMPORT, ci_run_id="43"))
+        with ci_env(GITHUB_RUN_ID="42"):
+            self.assertNotEqual(self.validate_strict(done_records(ref)), project.E_OK)
+            self.assertNotEqual(self.validate(done_records(ref)), project.E_OK)
+
+    def test_a_missing_identity_is_never_native(self):
+        """GITHUB_ACTIONS=true with no run id, and a run.json with no ci: two empty strings are not
+        a match, so the runner PASS without import.json stays a strict error."""
+        write_all(base_records())
+        ref = make_evidence(worker="verification-runner")  # no ci object
+        with ci_env():
+            self.assertNotEqual(self.validate_strict(done_records(ref)), project.E_OK)
+        with ci_env(GITHUB_RUN_ID=""):
+            self.assertNotEqual(self.validate_strict(done_records(ref)), project.E_OK)
 
     def test_import_run_id_must_match_the_runs_ci_identity(self):
         write_all(base_records())
