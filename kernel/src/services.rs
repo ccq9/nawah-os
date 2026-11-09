@@ -17,8 +17,13 @@ use crate::sched;
 use crate::sync::IrqSpinLock;
 
 pub const MANAGER_IMAGE: &[u8] = b"/SYSTEM/SVCMGR.ELF";
+/// The two boot manifests (services.md v1.11 §0.000): the system manifest of the interactive
+/// boot and the lab self-test manifest. The boot mode chooses between these two alone; its key
+/// never carries a path (boot.md v1.1).
 #[cfg(not(feature = "ktest"))]
-pub const LAB_MANIFEST: &[u8] = b"/SYSTEM/SERVICES.TXT";
+pub const SYSTEM_MANIFEST: &[u8] = b"/SYSTEM/SERVICES.TXT";
+#[cfg(not(feature = "ktest"))]
+pub const SELFTEST_MANIFEST: &[u8] = b"/SYSTEM/SELFTEST.TXT";
 /// Largest reply the kernel accepts from the manager (a `LIST` of 16 services fits).
 pub const REPLY_MAX: usize = 4096;
 
@@ -140,14 +145,15 @@ pub fn request_with(
     reply.unwrap_or(Err("K_E_SVC_TIMEOUT"))
 }
 
-/// Boot (release kernel, ADR-0016 §1): the manager is the first process; the lab manifest is
-/// loaded and its reply reported. The fields of the `kernel|svcmgr|…` line.
+/// Boot (release kernel, ADR-0016 §1): the manager is the first process; `manifest` (one of the
+/// two boot manifests, chosen by the boot mode) is loaded and its reply reported. Returns
+/// whether the manager answered `OK <n>`, and the fields of the `kernel|svcmgr|…` line.
 #[cfg(not(feature = "ktest"))]
-pub fn start_at_boot(timeout_ticks: u64) -> String {
+pub fn start_at_boot(timeout_ticks: u64, manifest: &[u8]) -> (bool, String) {
     let t0 = sched::ticks();
     let (pid, reply, code) = match spawn_manager() {
         Ok(m) => {
-            let r = request(&m.ctl, &load_request(LAB_MANIFEST), t0 + timeout_ticks);
+            let r = request(&m.ctl, &load_request(manifest), t0 + timeout_ticks);
             let pid = m.pid;
             *BOOT_MANAGER.lock() = Some(m);
             match r {
@@ -159,16 +165,17 @@ pub fn start_at_boot(timeout_ticks: u64) -> String {
     };
     let waited = sched::ticks() - t0;
     let ok = code == "ok" && reply.starts_with("OK ");
-    alloc::format!(
+    let line = alloc::format!(
         "pid={}|image={}|manifest={}|reply={}|code={}|selfcheck={}|wait_ticks={}",
         pid,
         core::str::from_utf8(MANAGER_IMAGE).unwrap_or("?"),
-        core::str::from_utf8(LAB_MANIFEST).unwrap_or("?"),
+        core::str::from_utf8(manifest).unwrap_or("?"),
         reply.replace('\n', ";"),
         code,
         u8::from(ok),
         waited
-    )
+    );
+    (ok, line)
 }
 
 pub fn load_request(manifest: &[u8]) -> Vec<u8> {

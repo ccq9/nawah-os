@@ -559,18 +559,29 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
     crate::ktest::run();
     #[cfg(not(feature = "ktest"))]
     {
+        // WP-45 (boot.md v1.1, boot mode): one line, decided once, before the manager starts.
+        let mode = crate::bootmode::select();
+        kprintln!("OSX|{}|kernel|boot_mode|{}", build_id, mode);
         // WP-24 (ADR-0016 §1): the service manager is the first process — started from the
-        // volume with a control channel; the lab manifest is loaded through it and the reply
-        // reported. The test kernel starts managers of its own inside its cases instead.
-        kprintln!(
-            "OSX|{}|kernel|svcmgr|{}",
-            build_id,
-            crate::services::start_at_boot(2000)
-        );
-        // Nothing waits on the timer yet; stop it so the shutdown is quiet.
-        arch::irq::timer_stop();
-        kprintln!("OSX|{}|kernel|m1_done|exit=0x10", build_id);
-        arch::qemu::exit(arch::qemu::EXIT_OK)
+        // volume with a control channel; the manifest of the boot mode is loaded through it
+        // and the reply reported. The test kernel starts managers of its own inside its cases.
+        let (svc_ok, svc_line) = crate::services::start_at_boot(2000, mode.manifest());
+        kprintln!("OSX|{}|kernel|svcmgr|{}", build_id, svc_line);
+        if mode.selftest() {
+            // Nothing waits on the timer yet; stop it so the shutdown is quiet.
+            arch::irq::timer_stop();
+            kprintln!("OSX|{}|kernel|m1_done|exit=0x10", build_id);
+            arch::qemu::exit(arch::qemu::EXIT_OK)
+        }
+        // Interactive: the timer keeps running and the exit port is never written. A manager
+        // that did not answer `OK <n>` was reported with selfcheck=0 above; stop there.
+        if !svc_ok {
+            arch::halt()
+        }
+        // The boot thread waits for ever at the lowest priority, so the services run.
+        loop {
+            crate::sched::poll_until(u64::MAX, || false);
+        }
     }
 }
 
