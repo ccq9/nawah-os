@@ -27,7 +27,7 @@
 | K0 | تسمية كاتب سجلات واحد، ثم `checkpoint` رقم 59 عند `5f48703c`. الاستيراد C0 أنجزه كاتب آخر أثناء هذا التشغيل. | `validate-records --strict` بلا أخطاء. المسودة المحلية عند `5f48703c` أعطت 0 أخطاء و17 تحذيرًا. |
 | C1 | إيداع سجلات فقط: قسمة WP-45، وإنشاء `WP-64` و`WP-65` بحالة planned، وتصحيح PLAN.md وstages.json وproject-state، وهذه الوثيقة. | `--strict` = 0 في CI |
 | WP-65 | حزمة ضمان (مقترحة) في حلقة verify واحدة: فحص الاستيراد، وهوية الدليل 1.1.0، و`dirty_state`، و`stage_of` للمرحلة M6، وحراس المراسي والأجنحة. تُستورد أدلتها بالأداة الجديدة نفسها. | `TST-M0-001`، `TST-M0-003`، `TST-M0-005`، `TST-M0-007` (مقترح) |
-| WP-45 | C2 تفعيل، ثم C3 العقود، ثم C4 الاختبارات الفاشلة أولًا، ثم C5 الكود، ثم verify كامل، ثم C6 الإغلاق. | `TST-M6-INTERACTIVE-BOOT`، `TST-M6-MANIFEST-LINT` (مقترح)، `TST-M6-HOLD-FAIL-CLOSED` (مقترح)، `TST-M1-BOOT/NEG/NOBS`، `TST-M0-003`، `TST-M0-005`، `TST-M5-LAB-TOOL` |
+| WP-45 | C2 تفعيل، ثم C3 العقود، ثم C4 الاختبارات الفاشلة أولًا، ثم C5 الكود، ثم verify كامل، ثم C6 الإغلاق. | `TST-M6-INTERACTIVE-BOOT`، `TST-M6-MANIFEST-LINT` (مقترح)، `TST-M6-HOLD-FAIL-CLOSED` (مقترح)، `TST-M1-BOOT/NEG/NOBS`، `TST-M0-003`، `TST-M0-005`، `TST-M5-LAB-TOOL` (2026-11-09: انتقل TST-M6-HOLD-FAIL-CLOSED إلى WP-67) |
 | بعدها | تصير `WP-46` و`WP-49` و`WP-64` جاهزة. تُفعَّل `WP-64` قبل `WP-49` بسبب ترقيم `ui.md`. | `TST-M6-SESSION-WATCHDOG`، `TST-M6-SESSION-AR`، `TST-M6-SESSION-STRINGS` (مقترح)، وانحدار M5 |
 | قبل WP-62 | `WP-66` (مقترحة): فصل وظيفة النشر، وبوابة التقادم، والمقيّم داخل مدخلات أحكام الضيف، وعدّ unsafe الواصل إلى الإصدار، وبوابة طفرات M6. | `TST-M0-003`، `TST-M0-008` (مقترح)، `TST-M6-STALE-GATE` (مقترح) |
 
@@ -83,7 +83,7 @@
 - بيان النظام `/SYSTEM/SERVICES.TXT`.
 - البيان المختبري الفارغ `/SYSTEM/SELFTEST.TXT`.
 - `TST-M6-INTERACTIVE-BOOT`، و`TST-M1-BOOT/NEG/NOBS`، و`TST-M0-003`.
-- بقرار المدير (القسم 5.3) يُضاف أيضًا: `TST-M6-MANIFEST-LINT`، و`TST-M6-HOLD-FAIL-CLOSED`، و`TST-M5-LAB-TOOL`، و`TST-M0-005`.
+- بقرار المدير (القسم 5.3) يُضاف أيضًا: `TST-M6-MANIFEST-LINT`، و`TST-M6-HOLD-FAIL-CLOSED`، و`TST-M5-LAB-TOOL`، و`TST-M0-005`. (2026-11-09: انتقل TST-M6-HOLD-FAIL-CLOSED إلى WP-67).
 
 **الحزمة الجديدة `WP-64` (planned، المرحلة M6):**
 - `requirement_ids=[REQ-M6-002]`
@@ -124,7 +124,7 @@
    - W3: «WP-65: close». يُستورد بالأداة الجديدة نفسها، ثم `--strict` = 0، ثم checkpoint.
 3. **C2:** «WP-45: activate (boot mode and the system manifest)». تصير الحالة active، ويُضاف سطر تقدير مؤرخ مقابل الميزانية، ثم checkpoint. يظهر التحذير المتوقع «promises services.md v1.11 but the contract is v1.10» (`project.py:300-309`). أما `boot.md` فلا يُفحص لأن رقم إصداره في السطر 3.
 4. **C3:** «WP-45: services.md v1.11 and the boot-mode decision in boot.md; PLAN-REVERSE §2 refreshed». العقود قبل الكود. تعديل `boot.md` و`PLAN-REVERSE.md` يُقدِم `TST-M0-002` في الحلقة نفسها.
-5. **C4:** «WP-45: failing tests (INTERACTIVE-BOOT, M6 suites, boot-case selection, MANIFEST-LINT, HOLD-FAIL-CLOSED)». لا يُدفع منفردًا (`sys-lab` D4)، ويُعرض فشله من `preflight` مسودة.
+5. **C4:** «WP-45: failing tests (INTERACTIVE-BOOT, M6 suites, boot-case selection, MANIFEST-LINT, HOLD-FAIL-CLOSED)». لا يُدفع منفردًا (`sys-lab` D4)، ويُعرض فشله من `preflight` مسودة. (2026-11-09: انتقل TST-M6-HOLD-FAIL-CLOSED إلى WP-67).
 6. **C5:** «WP-45: interactive boot path; lab self-test behind the fw_cfg key». ثم الفحوص المحلية بالترتيب: `validate-records`، ثم `cargo fmt --all --check`، ثم `hygiene`، ثم `preflight --suite M1`، ثم `preflight --suite M6`. ثم يُدفع C4 وC5 معًا.
 7. **[CI]:** verify كامل أخضر لكل أجنحة الضيف، لأن `kernel/src/**/*.rs` و`platform/pc-qemu/manifests/*.txt` مدخلات لكل حكم ضيف (`target.json` build.input_globs، مؤكد). ثم C6: «WP-45: close». الاستيراد مفحوص، ثم done، ثم `REQ-M6-002` partial، ثم `--strict` = 0، ثم checkpoint.
 8. الدمج إلى `main` قرار المالك.
@@ -681,7 +681,7 @@ sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failu
 
 | الطبقة | الاختبار | الحزمة |
 |---|---|---|
-| الـcompositor | فرع `held=1` من STATUS قبل الدخول في `TST-M6-INTERACTIVE-BOOT`، و`TST-M6-HOLD-FAIL-CLOSED` (مقترح، ktest): LIST أطول من 1024 بايتًا أو قناة مغلقة، والمتوقع بدء محجوب | WP-45 |
+| الـcompositor | فرع `held=1` من STATUS قبل الدخول في `TST-M6-INTERACTIVE-BOOT`، و`TST-M6-HOLD-FAIL-CLOSED` (مقترح، ktest): LIST أطول من 1024 بايتًا أو قناة مغلقة، والمتوقع بدء محجوب | WP-45 (2026-11-09: انتقل TST-M6-HOLD-FAIL-CLOSED إلى WP-67) |
 | النواة (`fs_authority`) | config تفتح `/SYSTEM/SERVICES.TXT` و`/SYSTEM/USERS.DB` للكتابة فتلقى `ERR_ACCESS`، بعد تعديل ADR-0020 | مع تعديل ADR-0020 |
 | المدير | LOAD خارج `/SYSTEM` يلقى ERR ACCESS (ktest)، وسلسلتا البيان في الكود تبدآن بـ`/SYSTEM/` (فحص ثابت) | WP-45 |
 | authd | ELEVATE إلى خدمة تمسك النسخة، ثم قتل الجلسة، ثم WHOAMI بالنسخة يلقى ERR ACCESS، ثم LOGIN بعد عشر عمليات قتل | WP-64 |
@@ -700,7 +700,7 @@ sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failu
 |---|---|---|---|---|
 | M130 | نعم | قيمة مفتاح غائبة أو مجهولة تختار الفحص الذاتي | المراحل السلبية في INTERACTIVE-BOOT | WP-45 |
 | M131 | نعم | حذف بوابة بت المشرف | حالة `-cpu qemu64,-hypervisor` | WP-45 |
-| M132 | نعم | عودة `session_in_manifest` إلى الفشل المفتوح | `TST-M6-HOLD-FAIL-CLOSED` | WP-45 |
+| M132 | نعم | عودة `session_in_manifest` إلى الفشل المفتوح | `TST-M6-HOLD-FAIL-CLOSED` | WP-45 (2026-11-09: الطفرة انتقلت إلى WP-67؛ M130-M132 مسجلة في tests/mutants.py لنمط الإقلاع، وM132 فيها «الإقلاع التفاعلي لا يأخذ خروج الفحص الذاتي»، فتأخذ طفرة الحجز المعرّف الحر التالي في tests/mutants.py عند الدمج؛ M133-M137 في هذا الجدول مخططة لـWP-64، فالحر التالي تخطيطًا M147) |
 | M133 | نعم | حذف PONG أو نقله إلى `request()` | فرع التجميد في SESSION-WATCHDOG | WP-64 |
 | M134 | لا | W ≤ مجموع المهل | `TST-M6-MANIFEST-LINT` | WP-64 |
 | M135 | نعم | تخطي التطهير عند البدء | المرحلة 3 في SESSION-WATCHDOG | WP-64 |
@@ -861,6 +861,7 @@ sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failu
 | 12 | علاج RTL: LRI/PDI، أم B1، أم تقصير الحد | LRI/PDI مردود. B1 إن ثبت بالاختبار. وتقصير الحد (تعديل `session.md`) احتياطي |
 | 13 | config والجلسة | تبعية في سطر session في البيان، تكتبه WP-45. واتصال اختياري خارج `DEPS` في WP-64 |
 | 14 | تصادم المعرّفات المقترحة | WP-64 للمراقب والشاشات، وWP-65 للضمان 1، وWP-66 للضمان 2. الطفرات بحسب الجدول 3.3. `REQ-M0-006` أصل الدليل وفحص الاستيراد. `TST-M0-007` اختباراته، ومنها حالة تقادم المقيّم. `REQ-M0-007` فصل النشر. `TST-M0-008` عدّ unsafe لـ`user/` ولما يصل إلى الإصدار، فلا يُستعمل `TST-M0-009`. `ADR-0023` سجل التطبيقات (محجوز في الخطة)، و`ADR-0025` الشدة، و`ADR-0026` أصل الدليل والاستيراد، و`ADR-0027` فصل النشر، و`ADR-0028` هوية الصورة وSBOM. DEC-012..021 كما في السلّم، و`DEC-022` ترخيص المشروع. RSK-012..016 كما في السلّم، و`RSK-015` يجمع DMA وCOM2، و`RSK-017` قرص المختبر، و`RSK-018` تبعيات الجلسة الصلبة، و`RSK-019` فجوة تعريفات العتاد الحقيقي |
+  - **ملاحظة مؤرخة 2026-11-09:** سُجِّل RSK-019 فعلًا في docs/risks.json بمعنى آخر (سلطة config غير المقيدة على /SYSTEM، من مراجعة الفريق الأحمر لـWP-45)، فالمقترح هنا بمعنى «فجوة تعريفات العتاد الحقيقي» يأخذ المعرّف الحر التالي عند تسجيله (مقترح R2 في docs/proposals/PLAN-R2-PROPOSAL.md يبدأ من RSK-020).
 | 15 | مرحلة حزمة الضمان | M6. المدقق لا يربط مرحلة الحزمة بمرحلة المتطلب، فالقرار تنظيمي. وM6 هي المرحلة المفتوحة |
 | 16 | إلغاء رموز authd: داخل WP-64 أم خارجها | داخلها، لأن المراقب يضيف طريق القتل. ونقطة القسمة الثانية تفصل المراقب والتطهير والإلغاء عن الشاشات |
 | 17 | خطة C1–C6 لا تتضمن stages.json:308 ولا ترقيم ui.md ولا السجلات الجديدة | أُدرجت في C1 (القسم 4) |

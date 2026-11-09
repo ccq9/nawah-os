@@ -63,9 +63,9 @@
 
 | WP | depends_on | blocks | tests | الجاهزية |
 |---|---|---|---|---|
-| WP-45 | WP-38 | WP-46, WP-49 | TST-M6-INTERACTIVE-BOOT, SESSION-WATCHDOG, SESSION-AR, TST-M1-BOOT/NEG/NOBS | المرشحة الوحيدة، وبقاعدة الاعتماد وحدها (project.py:334-337 عند 532b52ce). شروطها المسبقة غير مكتملة (انظر «الخطوة الأولى»). أدلة WP-38 فيها أربعة أحكام طفرات قديمة بسياسة warn. حجمها يتجاوز السقف على الأرجح (تقدير غير مقيس)، ونقطة القسمة مسماة في سجلها. |
+| WP-45 | WP-38 | WP-46, WP-49, WP-64, WP-67, WP-68 | TST-M6-INTERACTIVE-BOOT, MANIFEST-LINT, TST-M1-BOOT/NEG/NOBS (SESSION-WATCHDOG وSESSION-AR انتقلا إلى WP-64، 2026-11-09) | المرشحة الوحيدة، وبقاعدة الاعتماد وحدها (project.py:334-337 عند 532b52ce). شروطها المسبقة غير مكتملة (انظر «الخطوة الأولى»). أدلة WP-38 فيها أربعة أحكام طفرات قديمة بسياسة warn. حجمها يتجاوز السقف على الأرجح (تقدير غير مقيس)، ونقطة القسمة مسماة في سجلها. |
 | WP-46 | WP-45 | WP-47, WP-58 | JOB-KILL, PROC-ACCOUNTING, PROC-LIST-REFUSALS, SHELL-PS | محجوبة بـWP-45. سؤال ظهور العمليات بين المستخدمين يُحسم قبل تجميد ABI (PLAN.md:124). لا نقطة قسمة مسماة. |
-| WP-47 | WP-46 | WP-48, 58, 59, 60, 61 | APP-LAUNCH, LOGOUT-KILLS, LAUNCH-DENIED, APP-REGISTRY-FUZZ | محجوبة. DEC-005 مجاب. ADR-0023 غير موجود. لا نقطة قسمة مسماة. |
+| WP-47 | WP-46, 64, 67, 68 (2026-11-09) | WP-48, 58, 59, 60, 61 | APP-LAUNCH, LOGOUT-KILLS, LAUNCH-DENIED, APP-REGISTRY-FUZZ | محجوبة. DEC-005 مجاب. ADR-0023 غير موجود. لا نقطة قسمة مسماة. |
 | WP-48 | WP-47 | WP-51, 54, 57 | SHELL-EVENTS, SHELL-AUTHORITY, TASKBAR-WINDOW, SHELL-CRASH, ASSET-PROVENANCE, TST-M5-WINDOW-STATES/APP-HANG/LOCK-SURVIVES | محجوبة. القسمة بين display.md v1.12 وdesktopd مسماة. سؤال مصمم الأيقونات وترخيصها لم يُرفع قرارًا (work-items.json:3179). |
 | WP-49 | WP-45 | WP-50, WP-54 | UI-UNIT, UI-POINTER, TST-M5-KEYBOARD-NAV/A11Y-TREE/ARABIC-UI | محجوبة بـWP-45 وحدها. سبب الاعتماد غير مكتوب في السجل. |
 | WP-50 | WP-49 | WP-51, 55, 58, 59, 60, 61, 63 | LISTVIEW-UNIT, LISTVIEW-A11Y, LISTVIEW-RTL | عقدة توزيع تحجب سبع حزم. سقف السطح 1 MiB في display.md:35، والرسم بالبلاطات يبقي التغيير داخل ui.md. |
@@ -83,9 +83,9 @@
 | WP-63 | WP-50, WP-53 | WP-62 | EDITOR-UNIT, EDITOR-MODIFY-REBOOT, EDITOR-UNSAVED, EDITOR-SAVE-FAIL | محجوبة بـWP-53. DEC-008 مجاب. contract_refs تشمل files.md. تعتمد ضمنًا على rename. |
 | WP-62 | WP-56..61, WP-63 | — | E2E-SCENARIO, E2E-AR, MUTANTS | محجوبة بسبع حزم، والتبعية على WP-57 زائدة. جناح M6-GATE غير موجود: mutants.yml فيه خطوة M2 ثم M3-GATE وM4-GATE وM5-GATE (mutants.yml:46-56). |
 
-**المسار الحرج (مصحح بالتدقيق، 11 حزمة):** WP-45 ← WP-46 ← WP-47 ← WP-48 ← WP-51 ← WP-52 ← WP-53 ← WP-55 ← WP-57 ← WP-59 ← WP-62.
+**المسار الحرج (مصحح بالتدقيق، 11 حزمة؛ حُدِّث 2026-11-09):** WP-45 ← (WP-46 ∥ WP-64 ∥ WP-67 ∥ WP-68) ← WP-47 ← WP-48 ← WP-51 ← WP-52 ← WP-53 ← WP-55 ← WP-57 ← WP-59 ← WP-62.
 
-يذكر PLAN.md:122 مسارًا من 10 حزم يمر بـWP-56. هذا خطأ يُصحَّح في PLAN.md، ومعه «مسار النواة الموازي» المذكور فيه، لأن WP-52 تعتمد على WP-51.
+يذكر PLAN.md:122 (اليوم السطر 126 بعد إضافة صفَّي WP-67 وWP-68؛ تصحيح مؤرخ 2026-11-09) مسارًا من 10 حزم يمر بـWP-56. هذا خطأ يُصحَّح في PLAN.md، ومعه «مسار النواة الموازي» المذكور فيه، لأن WP-52 تعتمد على WP-51.
 
 **المسارات المتوازية (من خريطة السلسلة):**
 1. بعد WP-45: WP-46 وWP-49، بلا عقد مشترك.
@@ -113,7 +113,18 @@
    - لا توجد اليوم حالة تنتهي دون خروج يبدؤه الضيف، ولا أمر quit في أي monitor. فيُقاس رمز الخروج محليًا قبل كتابة expected_exit_code.
 8. **السجلات.** يُغيَّر status من planned إلى active مع status_history في أول commit يحمل WP-45 في عنوانه. السبب أن cmd_check_commit (project.py:1481-1500 عند 14d28100) يشترط ذلك.
 
-**تحديث 2026-11-09 (بعد C1 وWP-65 وتحضير C3–C5 في شجرة معزولة):** البنود 1 و2 أُنجزا (checkpoint 59 عند 5f48703c ثم 60). البند 3 نُفذ بالقسمة B: WP-64 (المراقب والشاشات العربية) وWP-65 (حزمة الضمان) سجلان planned ثم WP-65 active؛ ونقطة قسمة ثانية طُبّقت عند تجاوز الميزانية (C3 نحو 30 دقيقة وC4 نحو 55 من 90): TST-M6-HOLD-FAIL-CLOSED وإصلاحا الإخفاق المغلق في displayd وsvcmgr إلى WP-67 (مقترحة، قبل WP-47). البند 4 حُسم كما هو. البند 5 بُني (suites['M6'] وHOST_SUITES['M6'] وخطوتا verify وحارسا D5). البند 6: services.md v1.11 وboot.md v1.1 مكتوبان؛ input.md لم تُضف لأن مؤشر لغة الإدخال في WP-64. البند 7: الحالات مكتوبة؛ رمز خروج QEMU عند `quit` لا يُقاس محليًا لغياب QEMU في بيئة العمل، فيُقاس على CI في أول تشغيل (`expected_exit_code: 0` افتراض معلن). البند 8 ينتظر إغلاق WP-65 (W3) ثم C2.
+**تحديث 2026-11-09 (بعد C1 وWP-65 وتحضير C3–C5 في شجرة معزولة):** البنود 1 و2 أُنجزا (checkpoint 59 عند 5f48703c ثم 60). البند 3 نُفذ بالقسمة B: WP-64 (المراقب والشاشات العربية) وWP-65 (حزمة الضمان) سجلان planned ثم WP-65 active؛ ونقطة قسمة ثانية طُبّقت عند تجاوز الميزانية (C3 نحو 30 دقيقة وC4 نحو 55 من 90): TST-M6-HOLD-FAIL-CLOSED وإصلاحا الإخفاق المغلق في displayd وsvcmgr إلى WP-67 (سجل planned منذ 2026-11-09، قبل WP-47؛ ثم قُسمت عند نقطتها: نصف svcmgr في WP-68). البند 4 حُسم كما هو. البند 5 بُني (suites['M6'] وHOST_SUITES['M6'] وخطوتا verify وحارسا D5). البند 6: services.md v1.11 وboot.md v1.1 مكتوبان؛ input.md لم تُضف لأن مؤشر لغة الإدخال في WP-64. البند 7: الحالات مكتوبة؛ رمز خروج QEMU عند `quit` لا يُقاس محليًا لغياب QEMU في بيئة العمل، فيُقاس على CI في أول تشغيل (`expected_exit_code: 0` افتراض معلن). البند 8 ينتظر إغلاق WP-65 (W3) ثم C2.
+
+**تحديث 2026-11-09 (مساعد المدير، بعد إغلاق WP-45 وتقرير nawah-plan-chain):**
+
+| WP | depends_on | blocks | tests | الجاهزية |
+|---|---|---|---|---|
+| WP-64 | WP-45 | WP-47 | SESSION-WATCHDOG, SESSION-AR, SESSION-STRINGS، وإعادة INTERACTIVE-BOOT وحالات M5 للجلسة | جاهزة بقاعدة الاعتماد (WP-45 done). نقطة القسمة الثانية مسماة في سجلها. |
+| WP-65 | — | — | TST-M0-001, M0-003, M0-005, M0-007 | done (أدلة CI في سجلها). |
+| WP-67 | WP-45 | WP-47 | HOLD-FAIL-CLOSED، وإعادة TST-M5-SCREEN/WINDOW-STATES/KEYBOARD-NAV/WINDOW-A11Y وINTERACTIVE-BOOT وTST-M0-003 | جاهزة بقاعدة الاعتماد؛ الخطوة الأولى بتوصية المخطط. نصف displayd من قسمتها: display.md v1.12 وتقصير مهل مراحل INTERACTIVE-BOOT (56 ثانية مقيسة على CI لست مراحل) لتبقى خطوة M6 تحت 12 دقيقة مع حالة HOLD. تقدير المخطط نحو 70 دقيقة و75 استدعاءً (غير مقيس). |
+| WP-68 | WP-45 | WP-47 | MANIFEST-TOO-LARGE, LOAD-OUTSIDE-SYSTEM, CONFIG-WRITE-SCOPE، وإعادة INTERACTIVE-BOOT | جاهزة بقاعدة الاعتماد؛ نصف svcmgr من قسمة WP-67 وتقييد كتابة config (RSK-019). رقما services.md وfiles.md يُسندان عند الدمج (PLAN.md:127). نقطة قسمتها: أخطاء البيان أولًا، ونطاق config ثانيًا. |
+
+المسار الحرج بعد هذا التحديث: WP-45 ← (WP-46 ∥ WP-64 ∥ WP-67 ∥ WP-68) ← WP-47 ← WP-48 ← WP-51 ← WP-52 ← WP-53 ← WP-55 ← WP-57 ← WP-59 ← WP-62. تصادم الإصدارات: display.md v1.12 لـWP-67، وv1.13 لـWP-48، وv1.14 لـWP-54. WP-46 وWP-49 صار لكل منهما نقطة قسمة مسماة في سجله (WP-49 مقترحة للتأكيد).
 
 ## 3. القرارات والمخاطر الحاكمة
 
