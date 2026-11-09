@@ -274,6 +274,9 @@ class CheckedImport(unittest.TestCase):
         self.assertEqual(imp["head_sha"], self.head)
         for k in ("event", "run_attempt", "evidence_branch_commit", "imported_at"):
             self.assertIn(k, imp)
+        # the importer's identity (REQ-M0-006: who adopted the evidence), never a free string
+        self.assertIn(imp["importer"]["worker"], ("verification-runner", "interactive-agent", "test"))
+        self.assertTrue(imp["importer"]["identity"])
 
     def test_a_cancelled_or_failed_run_imports_nothing(self):
         for conclusion in ("cancelled", "failure"):

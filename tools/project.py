@@ -1281,7 +1281,7 @@ HOST_SUITES = {
          "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (~124 s, TST-M5-ELEVATE), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided; stage_of maps M129 to M5 and M130 onwards to M6, and every mutant's anchor occurs exactly once in its file (8 cases, OK)",
          "inputs": ["tests/test_mutants_harness.py", "tests/mutants.py"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"]},
         {"id": "TST-M0-007", "command": ["python3", "-I", "tests/test_evidence_provenance.py"],
-         "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; source_identity ignores evidence/, build/ and state/ and names the dirty paths; a verification-runner PASS without import.json is a strict error and a mismatching ci_run_id an error, 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is malformed, is blocked without gh, and on success writes import.json beside an untouched run.json (15 cases, OK)",
+         "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; source_identity ignores evidence/, build/ and state/ and names the dirty paths; a verification-runner PASS without import.json is a strict error and a mismatching ci_run_id an error, 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is malformed, is blocked without gh, and on success writes import.json (naming the importer's worker and identity) beside an untouched run.json; the evaluator-outside-inputs staleness gap is not covered here (WP-66, TST-M6-STALE-GATE) (15 cases, OK)",
          "inputs": ["tests/test_evidence_provenance.py", "tools/project.py", "docs/schemas/evidence-run.schema.json", "docs/automation.json"], "input_globs": []},
     ],
 }
@@ -1590,6 +1590,20 @@ def github_run(run_id: str):
         return None, "gh returned no JSON"
 
 
+def importer_identity():
+    """Who adopts the evidence (REQ-M0-006): the importing process's worker from the closed
+    enumeration and the development worker's identity as docs/automation.json records it."""
+    worker, _ = runner_identity()
+    identity = "unknown"
+    auto = DOCS / "automation.json"
+    if auto.exists():
+        try:
+            identity = load_json(auto).get("development_worker", {}).get("identity") or identity
+        except (OSError, ValueError):
+            pass
+    return {"worker": worker, "identity": identity}
+
+
 def cmd_import_ci_evidence(run_id: str) -> int:
     """Fetch the ci-evidence/<run> branch pushed by the verification runner and adopt its run
     directories as evidence (their input digests must match the current tree, which
@@ -1636,7 +1650,8 @@ def cmd_import_ci_evidence(run_id: str) -> int:
             # run.json stays exactly as the runner wrote it; the import's own record is import.json
             imp = {"ci_run_id": run_id.split("-")[-1], "conclusion": info["conclusion"], "head_sha": head, "event": info.get("event"),
                    "run_attempt": info.get("attempt"), "workflow": info.get("workflowName"), "evidence_branch_commit": branch_commit,
-                   "imported_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
+                   "imported_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                   "importer": importer_identity()}
             (dest / "import.json").write_text(json.dumps(imp, ensure_ascii=False, indent=1) + "\n")
             attach_evidence(v["test_id"], d.name, v["verdict"])
             imported += 1

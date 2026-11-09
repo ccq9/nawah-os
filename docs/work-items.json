@@ -3993,7 +3993,8 @@
     "guards (D5): test_every_anchor_occurs_once, test_every_guest_suite_runs_in_verify, test_every_host_suite_is_nonempty_and_runs_in_verify",
     "ADR-0026 (evidence provenance and the import check); oracles of TST-M0-003 and TST-M0-005 updated; TST-M0-007 new",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; split point if exceeded: import check and provenance first, mutants stage and guards second",
-    "2026-11-09 activation estimate against the budget line (90 min or 120 tool calls, prompt:71): about 300 changed lines in tools/project.py, one schema, one ADR, three test files; one verify cycle; counters carried, not reset (prompt:73)"
+    "2026-11-09 activation estimate against the budget line (90 min or 120 tool calls, prompt:71): about 300 changed lines in tools/project.py, one schema, one ADR, three test files; one verify cycle; counters carried, not reset (prompt:73)",
+    "2026-11-09 audit correction: import.json names the importer (worker and identity); REQ-M0-006 names both accepted workflows (verify, mutants) as the design does (PLAN-ANSWER §2.8 REL-2); the evaluator-outside-inputs staleness check is WP-66's (§2.8), not promised here (§5.3 item 14 read against §2.8)"
    ],
    "acceptance": "TST-M0-001, TST-M0-003, TST-M0-005 and TST-M0-007 PASS on CI; the run's evidence is imported with the new checked importer; validate-records --strict reports 0 errors",
    "test_ids": [
