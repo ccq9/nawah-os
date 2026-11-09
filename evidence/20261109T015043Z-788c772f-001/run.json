@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261109T015043Z-788c772f-001",
+ "started_at": "2026-11-09T01:50:42+00:00",
+ "finished_at": "2026-11-09T01:50:43+00:00",
+ "source_revision": "788c772f690b6dd3fee5675fd3223615b6d21f1d",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M0-005",
+ "commands": [
+  "python3 -I tests/test_mutants_harness.py"
+ ],
+ "exit_code": 0
+}
