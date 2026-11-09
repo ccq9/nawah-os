@@ -1790,7 +1790,10 @@
    "test_ids": [
     "TST-M6-INTERACTIVE-BOOT",
     "TST-M6-SESSION-WATCHDOG",
-    "TST-M6-SESSION-AR"
+    "TST-M6-SESSION-AR",
+    "TST-M6-MANIFEST-LINT",
+    "TST-M6-HOLD-FAIL-CLOSED",
+    "TST-M6-SESSION-STRINGS"
    ],
    "implementation_status": "planned",
    "evidence_refs": []
@@ -1961,7 +1964,8 @@
     "TST-M6-START-ARABIC",
     "TST-M6-START-FAIL",
     "TST-M6-RESTART-PERSIST",
-    "TST-M6-POWER-DENIED"
+    "TST-M6-POWER-DENIED",
+    "TST-M6-RTC-READ"
    ],
    "implementation_status": "planned",
    "evidence_refs": []
@@ -2422,6 +2426,33 @@
    "acceptance": "scenario + mutants + review",
    "test_ids": [
     "TST-M6-MUTANTS"
+   ],
+   "implementation_status": "planned",
+   "evidence_refs": []
+  },
+  {
+   "id": "REQ-M0-006",
+   "statement": "أصل الدليل وفحص الاستيراد: لا يُستورد دليل CI إلا من تشغيل verify ناجح رأسه سلف للرأس الحالي، ويحمل كل تشغيل مستورد هوية منشئه (المشغّل، التشغيل، الخلاصة، الرأس، المستورد، الوقت) في ملف جانبي دون المساس بـrun.json، وتُسجَّل dirty_state وdirty_paths بصدق",
+   "rationale": "PLAN-ANSWER §2.8: الأدلة المستوردة من CI تحمل worker=interactive-agent وdirty_state=true، ولتشغيلَين ملغيَين فرعا أدلة منشوران؛ البند 22.6 يشترط تسجيل المنفذ والمراجع بهويتين مختلفتين",
+   "source": "OS-EXEC-AR 3.2 §7.2، §22.6؛ docs/PLAN-ANSWER.md §2.8، §5.3 (4)",
+   "origin": "derived",
+   "priority": "must",
+   "release": "R1",
+   "stage": "M0",
+   "dependencies": [
+    "REQ-M0-002",
+    "REQ-M0-005"
+   ],
+   "contract_refs": [],
+   "failure_cases": [
+    "استيراد دليل من تشغيل ملغى أو فاشل",
+    "دليل بلا هوية منشئ أو بهوية زائفة",
+    "إعادة كتابة run.json بعد إنتاجه",
+    "dirty_state لا يطابق الشجرة"
+   ],
+   "acceptance": "TST-M0-007 PASS على CI؛ validate-records --strict بلا أخطاء بعد الاستيراد بالأداة المفحوصة",
+   "test_ids": [
+    "TST-M0-007"
    ],
    "implementation_status": "planned",
    "evidence_refs": []

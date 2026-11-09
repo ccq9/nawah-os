@@ -2000,7 +2000,7 @@
     "REQ-M6-002"
    ],
    "layer": "user_e2e",
-   "oracle": "planned (M6, WP-45): the release image boots on the real SERVICES.TXT (auth, config, net, input, display, session, narrator, sh) without the lab self-test key and does not exit within the case's tick window; the manager's LIST shows every manifest service ready; the screendump equals the sign-in screen's expected regions; the lab signs in as user, sees the plain desktop background, Ctrl+Alt+Del locks and user's password unlocks",
+   "oracle": "planned (M6, WP-45): the release image boots on the real SERVICES.TXT (auth, config, net, input, display, session, narrator, sh) without the lab self-test key and does not exit within the case's tick window; the manager answers manifest=/SYSTEM/SERVICES.TXT|reply=OK 8 and its LIST shows every manifest service ready; display STATUS reports held=1 before sign-in; tools/screen.py desktop --pixel and --ink checks (not an unimplemented regions command) judge the sign-in screen, the plain desktop background after signing in as user, the lock after Ctrl+Alt+Del and the unlock with user's password; the case ends by an explicit monitor quit after every step was sent (ends_by) and a negative phase boots with an unknown key value and still reaches the sign-in screen (PLAN-ANSWER §2.1, §2.6, §4 C1)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2011,7 +2011,7 @@
     "REQ-M6-002"
    ],
    "layer": "negative",
-   "oracle": "planned (M6, WP-45; closes session.md §8 v1.1 limit): the session has watchdog=<ticks> longer than REQUEST_DEADLINE; a session frozen by the test kernel is killed by the manager and restarted into no_session with the screen held (no application pixel in the screendump) and no key reaching an application; a session legitimately waiting on a hung auth is not killed before the watchdog period",
+   "oracle": "planned (M6, WP-64; closes session.md §8 v1.1 limit): the session has watchdog=<ticks> longer than REQUEST_DEADLINE; a session frozen by the test kernel is killed by the manager and restarted into no_session with the screen held (no application pixel in the screendump) and no key reaching an application; a session legitimately waiting on a hung auth is not killed before the watchdog period; strengthened 2026-11-09 (PLAN-ANSWER §2.3): a session legitimately waiting while display, input and auth are frozen is not killed; the kill lands between W and 2W; after the restart no pixel of the previous user is in the screendump and sak_pending=0",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2022,7 +2022,7 @@
     "REQ-M6-002"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-45; session.md §8 limit 'screens in English'): with ui.lang=ar the sign-in, lock and elevation screens are Arabic and right-to-left from the first frame and switch live on SUBSCRIBE device; the input-language indicator next to the user and password fields shows the active layout and changes on Alt+Shift; the narrator transcript equals the expected file and never carries the password",
+   "oracle": "planned (M6, WP-64; session.md §8 limit 'screens in English'): with ui.lang=ar the sign-in, lock and elevation screens are Arabic and right-to-left from the first frame and switch live on SUBSCRIBE device; the input-language indicator next to the user and password fields shows the active layout and changes on Alt+Shift; the narrator transcript equals the expected file and never carries the password; strengthened 2026-11-09 (PLAN-ANSWER §2.4): explicit and escaped leak markers (the \\u{XXXX} form) never appear in the narrator transcript; the elevation request text is drawn in its byte order",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2733,6 +2733,61 @@
    "layer": "host_unit",
    "oracle": "planned (M6, WP-62): seeded defects for the M6 modules (kernel jobs and accounting, launch broker, shell role, libui v2, filesystem v1.4, directory capability, clipboard, notifyd, logd, the tools) are killed by the M6 suite: kill ratio >= 0.95 over this gate's valid mutants and no surviving security mutant, with M2-M5 re-run",
    "command": "python3 tools/project.py test --target host --suite M6-GATE",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-MANIFEST-LINT",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-45): a host lint of platform/pc-qemu/manifests/services.txt and the lab manifest SELFTEST.TXT: eight services in the system manifest in dependency order with their policies and timeouts, 8.3 names only, no duplicate service, the session line depends on config, the self-test manifest is empty and tagged mode=selftest; the lint fails on a missing or reordered service (PLAN-ANSWER §2.2, §5.3 item 7)",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-HOLD-FAIL-CLOSED",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-45): when the session service is missing from the manifest or fails to start, display keeps the screen held (held=1) and no key reaches any application: the hold fails closed, never open (PLAN-ANSWER §2.1, §3.4)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-SESSION-STRINGS",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-64): the session's string tables are whole sentences in Arabic and English with the same keys, no missing or extra key, every string fits its row at scale 1x and 2x through Painter::fits, no string carries a password placeholder, and the badge strings name every supported layout (PLAN-ANSWER §2.4)",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-RTC-READ",
+   "requirement_ids": [
+    "REQ-M6-007"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-51): rtc_read returns a monotonic calendar time consistent with QEMU's -rtc base within the case's tolerance, reads the CMOS RTC through the documented registers (ICH9 S34) with the FADT CENTURY handling named in boot.md, and refuses the call without the documented authority (PLAN-ANSWER §2.7)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M0-007",
+   "requirement_ids": [
+    "REQ-M0-006"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M0, WP-65): import-ci-evidence refuses a run whose conclusion is not success, whose workflow is not verify or whose head is not an ancestor of HEAD; an imported run carries import.json (run id, conclusion, workflow, head, importer, time) beside an untouched run.json; worker is taken from the automation.json enumeration; dirty_state and dirty_paths are recorded truthfully; a stale evaluator is detected (PLAN-ANSWER §2.8, §5.3 item 4)",
+   "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "NOT_RUN",
    "evidence_refs": []
   }

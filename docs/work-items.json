@@ -3012,33 +3012,33 @@
    ],
    "inputs": [
     "docs/adr/0019-graphics-platform.md:48",
-    "docs/contracts/session.md §8 (lines 98, 104, 105)",
     "docs/operations/m5-review.md:25",
     "docs/contracts/boot.md",
-    "ux-design priority 7 (session screens)"
+    "docs/PLAN-ANSWER.md §1-2 (the team's answer, 2026-11-09)"
    ],
    "files": [],
    "contract_refs": [
     "docs/contracts/services.md",
-    "docs/contracts/session.md",
     "docs/contracts/boot.md"
    ],
    "actions": [
-    "إقلاع تفاعلي إلى شاشة الدخول ببيان النظام الحقيقي، ومراقبة الجلسة، وشاشات الجلسة بالعربية",
+    "إقلاع تفاعلي إلى شاشة الدخول ببيان النظام الحقيقي",
     "services.md v1.11: the system manifest SERVICES.TXT (auth, config, net, input, display, session, narrator, sh) and the boot-mode switch: an fw_cfg key selects the lab self-test, so TST-M1-* keep their oracle; record the split as a decision in boot.md, not as a weakened test",
-    "session.md v1.7: session watchdog=<ticks> > REQUEST_DEADLINE (closes the §8 v1.1 limit); the sign-in, lock and elevation screens read ui.lang/ui.scale/ui.contrast (config GET + SUBSCRIBE device) with whole-sentence string tables in both languages and an input-language indicator next to the user and password fields (closes the §8 'screens in English' limit)",
-    "scenario at the end: power on, sign-in screen, sign in as user, plain desktop background, Ctrl+Alt+Del locks, unlock; the same in Arabic",
-    "risk: a watchdog period too short kills a session legitimately waiting on auth (session.md v1.2); the test covers both sides",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (watchdog and Arabic screens can split off the boot-mode change)"
+    "scenario at the end: power on, sign-in screen, sign in as user, plain desktop background, Ctrl+Alt+Del locks, unlock",
+    "2026-11-09: split per actions[5] and ADR-0019:48 (PLAN-ANSWER §1.2, option B); the session watchdog and the Arabic screens moved to WP-64",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (watchdog and Arabic screens can split off the boot-mode change); if the estimate at activation still exceeds it, TST-M6-HOLD-FAIL-CLOSED and the displayd fail-closed fix split off first into a package before WP-47 (PLAN-ANSWER §4 C1)"
    ],
-   "acceptance": "TST-M6-INTERACTIVE-BOOT, SESSION-WATCHDOG and SESSION-AR PASS on CI; TST-M1-BOOT/NEG/NOBS still PASS under the self-test key; the M5 suite unregressed",
+   "acceptance": "TST-M6-INTERACTIVE-BOOT PASS on CI; TST-M1-BOOT PASS under the self-test key; TST-M1-NEG and TST-M1-NOBS re-run unchanged and PASS; TST-M6-MANIFEST-LINT and TST-M6-HOLD-FAIL-CLOSED PASS on CI",
    "test_ids": [
     "TST-M6-INTERACTIVE-BOOT",
-    "TST-M6-SESSION-WATCHDOG",
-    "TST-M6-SESSION-AR",
+    "TST-M6-MANIFEST-LINT",
+    "TST-M6-HOLD-FAIL-CLOSED",
     "TST-M1-BOOT",
     "TST-M1-NEG",
-    "TST-M1-NOBS"
+    "TST-M1-NOBS",
+    "TST-M0-003",
+    "TST-M0-005",
+    "TST-M5-LAB-TOOL"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
@@ -3107,7 +3107,8 @@
     "REQ-M6-004"
    ],
    "depends_on": [
-    "WP-46"
+    "WP-46",
+    "WP-64"
    ],
    "inputs": [
     "DEC-005",
@@ -3223,10 +3224,11 @@
    ],
    "actions": [
     "libui v2a: الفأرة والقوائم المنبثقة وحوار التأكيد",
-    "ui.md v1.6 (additive): POINTER hit-testing for every element (focus and activate, double-click), popup and context menus (Shift+F10, menu key, right click; separators, disabled items, wrap, Esc returns focus), a modal confirm dialog (Yes/No/Cancel with a default), narrator roles menu and menuitem; menus mirror in RTL",
+    "ui.md v1.7 (additive): POINTER hit-testing for every element (focus and activate, double-click), popup and context menus (Shift+F10, menu key, right click; separators, disabled items, wrap, Esc returns focus), a modal confirm dialog (Yes/No/Cancel with a default), narrator roles menu and menuitem; menus mirror in RTL",
     "pointer focus keeps the frozen keyboard focus-order rules",
     "scenario at the end: the sample dialog app driven entirely by mouse and by keyboard, with a context menu on a list item",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-09: ui.md v1.6 renumbered to ui.md v1.7; ui.md v1.6 (input-language badge) belongs to WP-64 (PLAN-ANSWER §5.3 item 9, numbering n1)"
    ],
    "acceptance": "TST-M6-UI-UNIT and UI-POINTER PASS on CI; TST-M5-KEYBOARD-NAV, A11Y-TREE and ARABIC-UI unregressed",
    "test_ids": [
@@ -3268,10 +3270,11 @@
    ],
    "actions": [
     "libui v2b: عرض قائمة بأعمدة وتمرير",
-    "ui.md v1.7: a virtualised multi-column list view (the app supplies rows by callback, libui holds no data; sort by column, single and multi selection, Home/End/PgUp/PgDn, type-ahead including Arabic, scroll bar by mouse and wheel), a toolbar, a status bar, a two-pane split layout with F6, TEXT_MAX raised for paths with LRI-isolated runs; narrator `row k/n` plus column values; columns and scroll bar mirror in RTL; empty and access-denied states as text",
+    "ui.md v1.8: a virtualised multi-column list view (the app supplies rows by callback, libui holds no data; sort by column, single and multi selection, Home/End/PgUp/PgDn, type-ahead including Arabic, scroll bar by mouse and wheel), a toolbar, a status bar, a two-pane split layout with F6, TEXT_MAX raised for paths with LRI-isolated runs; narrator `row k/n` plus column values; columns and scroll bar mirror in RTL; empty and access-denied states as text",
     "the 1 MiB per-surface cap: render in tiles or raise it with a memory budget, decided and recorded here",
     "scenario at the end: a 500-row list browsed by keyboard and mouse with the exact narrator transcript",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-09: ui.md v1.7 renumbered to ui.md v1.8; ui.md v1.6 (input-language badge) belongs to WP-64 (PLAN-ANSWER §5.3 item 9, numbering n1)"
    ],
    "acceptance": "TST-M6-LISTVIEW-UNIT, LISTVIEW-A11Y and LISTVIEW-RTL PASS on CI",
    "test_ids": [
@@ -3330,7 +3333,8 @@
     "TST-M6-START-ARABIC",
     "TST-M6-START-FAIL",
     "TST-M6-RESTART-PERSIST",
-    "TST-M6-POWER-DENIED"
+    "TST-M6-POWER-DENIED",
+    "TST-M6-RTC-READ"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
@@ -3819,10 +3823,11 @@
    ],
    "actions": [
     "محرر نصوص أدنى متعدد الأسطر (السيناريو الحرج 4)",
-    "ui.md v1.8: a multi-line text area (lines broken at the last space that fits, caret by line and character in mixed Arabic and Latin, UTF-8 boundaries kept, narrator `line k/n` without the whole text)",
+    "ui.md v1.9: a multi-line text area (lines broken at the last space that fits, caret by line and character in mixed Arabic and Latin, UTF-8 boundaries kept, narrator `line k/n` without the whole text)",
     "apps/editor.md (new tool contract): open, save and save as inside the home capability; a modified marker; close with unsaved changes asks Save / Don't save / Cancel; save writes a temporary name, syncs and renames over the old file, so a failed save keeps the previous content",
     "scenario at the end: create a file, save, reopen, modify, save, Restart, the content equals the last save and another user's app is refused",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-09: ui.md v1.8 renumbered to ui.md v1.9; ui.md v1.6 (input-language badge) belongs to WP-64 (PLAN-ANSWER §5.3 item 9, numbering n1)"
    ],
    "acceptance": "TST-M6-EDITOR-UNIT, EDITOR-MODIFY-REBOOT, EDITOR-UNSAVED and EDITOR-SAVE-FAIL PASS on CI",
    "test_ids": [
@@ -3886,6 +3891,118 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M6",
     "python3 tools/project.py test --target host --suite M6-GATE"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-64",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "depends_on": [
+    "WP-45"
+   ],
+   "inputs": [
+    "docs/PLAN-ANSWER.md §1.2, §2.3, §2.4, §5.3 (items 9, 10, 11, 12, 13, 16)",
+    "docs/contracts/session.md §8 (lines 98, 104, 105)",
+    "docs/operations/m5-review.md:25",
+    "ux-design priority 7 (session screens)"
+   ],
+   "files": [],
+   "contract_refs": [
+    "docs/contracts/session.md",
+    "docs/contracts/config.md",
+    "docs/contracts/input.md",
+    "docs/contracts/services.md",
+    "docs/contracts/ui.md",
+    "docs/contracts/auth.md"
+   ],
+   "actions": [
+    "مراقبة الجلسة وتطهيرها عند الإعادة، وشاشات الجلسة بالعربية (منقولة من WP-45 بالقسمة B)",
+    "session.md v1.7: session watchdog=<ticks> > REQUEST_DEADLINE (closes the §8 v1.1 limit); the sign-in, lock and elevation screens read ui.lang/ui.scale/ui.contrast (config GET + SUBSCRIBE device) with whole-sentence string tables in both languages and an input-language indicator next to the user and password fields (closes the §8 'screens in English' limit)",
+    "the same scenario as WP-45's end, in Arabic (ui.lang=ar): sign-in, lock with Ctrl+Alt+Del, unlock",
+    "risk: a watchdog period too short kills a session legitimately waiting on auth (session.md v1.2); the test covers both sides",
+    "confirmed by the audit (PLAN-ANSWER §2.3): PONG answered from the session's main loop; the watchdog period W is written as a rule in session.md v1.7, its value measured (initial 25000 ticks), and the kill lands between W and 2W; purge on restart: LOGOUT to display before the sign-in screen so no window or pixel of the previous user survives (sessiond main.rs:783-801, display.md:42); auth tokens revoked when their client dies; config is a manifest dependency of the session line and an optional connection outside sessiond's DEPS constant",
+    "given_up policy (PLAN-ANSWER §5.3 item 10): a permanent given_up is not acceptable for the session line; retries with the existing policy semantics versus a backoff in svcmgr is decided here after reading svcmgr's retry code; judge: five kills then a successful sign-in",
+    "ui.md v1.6 (additive): the input-language badge next to the user and password fields reads the layout from input STATUS, no new input.md event (§5.3 items 9 and 13); RTL remedy: Value with an LTR base (B1) if the libui host test confirms it, else a shorter limit by amending session.md (§5.3 item 12)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; second split point if the estimate at activation exceeds it: watchdog, purge and token revocation first, the Arabic screens and the badge second"
+   ],
+   "acceptance": "TST-M6-SESSION-WATCHDOG, TST-M6-SESSION-AR and TST-M6-SESSION-STRINGS PASS on CI; TST-M6-INTERACTIVE-BOOT, TST-M5-ELEVATE and TST-M5-SVC-WATCHDOG re-run and PASS; the M5 session, lock and UI cases in test_ids PASS (no regression)",
+   "test_ids": [
+    "TST-M6-SESSION-WATCHDOG",
+    "TST-M6-SESSION-AR",
+    "TST-M6-SESSION-STRINGS",
+    "TST-M6-INTERACTIVE-BOOT",
+    "TST-M5-ELEVATE",
+    "TST-M5-SVC-WATCHDOG",
+    "TST-M5-UI-UNIT",
+    "TST-M5-ARABIC-UI",
+    "TST-M5-LOGIN-SCREEN",
+    "TST-M5-AUTH-INPUT-ISOLATED",
+    "TST-M5-LOCK-SURVIVES",
+    "TST-M5-LOCK-HANG",
+    "TST-M5-SESSION-HANG"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-65",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-006"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "docs/PLAN-ANSWER.md §2.5 (D5-D7), §2.8, §3.5, §4 (W0-W3), §5.3 (items 2, 4, 14)",
+    "docs/schemas/evidence-run.schema.json",
+    "tools/project.py cmd_import_ci_evidence",
+    "tests/mutants.py stage mapping"
+   ],
+   "files": [
+    "tools/project.py",
+    "docs/schemas/evidence-run.schema.json",
+    "tests/mutants.py",
+    "tests/test_validate_records.py",
+    "tests/test_ci_workflows.py",
+    "tests/test_mutants_harness.py",
+    "docs/adr/0026-evidence-provenance.md"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "حزمة ضمان قصيرة في حلقة verify واحدة قبل تفعيل WP-45 (PLAN-ANSWER §5.3 item 2)",
+    "import-ci-evidence verifies the GitHub run before adopting anything: conclusion=success, workflow=verify, head is an ancestor of the current HEAD, run id well-formed; a cancelled or failed run is refused (two cancelled runs had published evidence branches: PLAN-ANSWER §2.8)",
+    "evidence provenance 1.1.0: a side file import.json per imported run (run id, conclusion, workflow, head sha, importer, import time); run.json is never rewritten; worker from the enumeration (verification-runner per automation.json) (§5.3 item 4, option REL-1 C)",
+    "dirty_state and dirty_paths recorded truthfully by the runner and the importer",
+    "tests/mutants.py: stage_of(n) gains M6 (M130 onwards), --stage M6 accepted, docstring line 24 corrected; SLOWEST_CLEAN_CASE_S=137",
+    "guards (D5): test_every_anchor_occurs_once, test_every_guest_suite_runs_in_verify, test_every_host_suite_is_nonempty_and_runs_in_verify",
+    "ADR-0026 (evidence provenance and the import check); oracles of TST-M0-003 and TST-M0-005 updated; TST-M0-007 new",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; split point if exceeded: import check and provenance first, mutants stage and guards second"
+   ],
+   "acceptance": "TST-M0-001, TST-M0-003, TST-M0-005 and TST-M0-007 PASS on CI; the run's evidence is imported with the new checked importer; validate-records --strict reports 0 errors",
+   "test_ids": [
+    "TST-M0-001",
+    "TST-M0-003",
+    "TST-M0-005",
+    "TST-M0-007"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
    ],
    "status": "planned",
    "status_history": [

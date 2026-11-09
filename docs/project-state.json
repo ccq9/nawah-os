@@ -75,18 +75,15 @@
  },
  "next_retry_at": null,
  "cancellation_state": "none",
- "lease": {
-  "holder_id": "claude-session-015h9GTwLifTZqTMhyRyf9bH",
-  "acquired_at": "2026-10-24T14:30:00Z",
-  "ttl_s": 900,
-  "fencing_token": 59
- },
+ "lease": null,
  "host_fingerprint": "linux-6.8.0-138-generic-x86_64-2vcpu",
  "errata_version": "1",
  "pending_decision_ids": [
-  "DEC-002"
+  "DEC-002",
+  "DEC-010"
  ],
  "unknown_fields": {
-  "budget_counters.tool_calls_session": "no API exposes the session's tool-call or token budget"
+  "budget_counters.tool_calls_session": "no API exposes the session's tool-call or token budget",
+  "lease": "no lease tool exists (state/lease.json never written); the records writer is the session manager alone (PLAN-ANSWER §5.3 item 1); the expired lease of 2026-10-24 was removed on 2026-11-09"
  }
 }
