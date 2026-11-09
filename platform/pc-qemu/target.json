@@ -6318,7 +6318,7 @@
         "id": "TST-M6-INTERACTIVE-BOOT",
         "test_id": "TST-M6-INTERACTIVE-BOOT",
         "artifact": "${OUT}/NAWAH.EFI",
-        "oracle": "REQ-M6-002, WP-45 (boot.md boot mode, services.md v1.11 system manifest; PLAN-ANSWER §2.1, §2.2, §2.5 D2-Q2, §2.6): the release image NAWAH.EFI boots without the lab self-test key: one boot-mode line `kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1` (exactly one `|kernel|boot_mode|` line per boot: 6 over the six phases, max_counts and min_counts), the manager answers the real system manifest (`manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok`) with selfcheck=1, and over COM2, once the password has unlocked the desktop again (after `|text=session|focus=display|n=2`; the lab's last monitor step waits 5 s before `quit` so the shell answers first), the shell's `svc` lists the eight services (auth, config, net, input, display, narrator, session, sh) `ready 0`: readiness is judged at the end of the run, not at the sign-in screen, and since svcmgr's restart counter never resets it shows no restart across the whole run (the boot itself is covered by the manifest marker reply=OK 8 and the sign-in pixel checks); the lab signs in as `user` (lab-user-1) at the sign-in screen (screendump: lock background 10141C at (2,2), dialog F0F0F0 at (512,338)), the plain desktop background 1E2A38 follows, Ctrl+Alt+Del locks (the lock screen again), the password unlocks (desktop again); the image never prints m1_done, any ktest line or selfcheck=0 and never exits by itself: every phase ends by the lab's monitor `quit` after every step was sent (ends_by=monitor, exit 0). Negative phases on the same image (240 s for the positive phase, 90 s for each negative one): opt/nawah/selftest=0 and opt/nawah/selftest=10 (key=invalid: only the value 1 selects the self-test), opt/nawah/test=exc_de (the ktest key is not the self-test key: source=none, no ktest line), opt/nawah/selftest=svc-sh (a value never names a manifest: SERVICES.TXT answers OK 8, SVC-SH.TXT is not loaded) and -cpu qemu64,-hypervisor with the key (hv=0: fw_cfg is never read, source=none|key=absent, the boot is interactive and nothing is written to the exit port) each still reach the sign-in screen on the real manifest. Every phase requires the kernel's whole boot-mode line with the build id (OSX|<build id>|kernel|boot_mode|mode=…|source=…|key=…|hv=…: source=none whenever the mode is interactive, an invalid key included), never a fragment a process could print through SYS_TRACE; a traced copy of the whole line is a seventh `|kernel|boot_mode|` and fails max_counts. The password never appears in the serial log",
+        "oracle": "REQ-M6-002, WP-45 (boot.md boot mode, services.md v1.11 system manifest; PLAN-ANSWER §2.1, §2.2, §2.5 D2-Q2, §2.6): the release image NAWAH.EFI boots without the lab self-test key: one boot-mode line `kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1` (exactly one `|kernel|boot_mode|` line per boot: 6 over the six phases, max_counts and min_counts), the manager answers the real system manifest (`manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok`) with selfcheck=1, and over COM2, once the password has unlocked the desktop again (after `|text=session|focus=display|n=2`; the lab's last monitor step waits 5 s before `quit` so the shell answers first), the shell's `svc` lists the eight services (auth, config, net, input, display, narrator, session, sh) `ready 0`: readiness is judged at the end of the run, not at the sign-in screen, and since svcmgr's restart counter never resets it shows no restart across the whole run (the boot itself is covered by the manifest marker reply=OK 8 and the sign-in pixel checks); the lab signs in as `user` (lab-user-1) at the sign-in screen (screendump: lock background 10141C at (2,2), dialog F0F0F0 at (512,338)), the plain desktop background 1E2A38 follows, Ctrl+Alt+Del locks (the lock screen again), the password unlocks (desktop again); the image never prints m1_done, any ktest line or selfcheck=0 and never exits by itself: every phase ends by the lab's monitor `quit` after every step was sent (ends_by=monitor, exit 0). Negative phases on the same image (150 s for the positive phase, 60 s for each negative one: the six phases took 56 s in all on CI, evidence/20261109T184629Z-d63f7ae4-001, and with TST-M6-HOLD-FAIL-CLOSED's 180 s the suite's worst case, 630 s, stays under the M6 step's 12-minute cap): opt/nawah/selftest=0 and opt/nawah/selftest=10 (key=invalid: only the value 1 selects the self-test), opt/nawah/test=exc_de (the ktest key is not the self-test key: source=none, no ktest line), opt/nawah/selftest=svc-sh (a value never names a manifest: SERVICES.TXT answers OK 8, SVC-SH.TXT is not loaded) and -cpu qemu64,-hypervisor with the key (hv=0: fw_cfg is never read, source=none|key=absent, the boot is interactive and nothing is written to the exit port) each still reach the sign-in screen on the real manifest. Every phase requires the kernel's whole boot-mode line with the build id (OSX|<build id>|kernel|boot_mode|mode=…|source=…|key=…|hv=…: source=none whenever the mode is interactive, an invalid key included), never a fragment a process could print through SYS_TRACE; a traced copy of the whole line is a seventh `|kernel|boot_mode|` and fails max_counts. The password never appears in the serial log",
         "expected_exit_code": 0,
         "ends_by": "monitor",
         "required_markers": [],
@@ -6423,7 +6423,7 @@
                 }
               ]
             },
-            "timeout_s": 240
+            "timeout_s": 150
           },
           {
             "qemu_extra": [
@@ -6446,7 +6446,7 @@
                 }
               ]
             },
-            "timeout_s": 90
+            "timeout_s": 60
           },
           {
             "qemu_extra": [
@@ -6469,7 +6469,7 @@
                 }
               ]
             },
-            "timeout_s": 90
+            "timeout_s": 60
           },
           {
             "qemu_extra": [
@@ -6496,7 +6496,7 @@
                 }
               ]
             },
-            "timeout_s": 90
+            "timeout_s": 60
           },
           {
             "qemu_extra": [
@@ -6525,7 +6525,7 @@
                 }
               ]
             },
-            "timeout_s": 90
+            "timeout_s": 60
           },
           {
             "qemu_extra": [
@@ -6548,7 +6548,7 @@
                 }
               ]
             },
-            "timeout_s": 90
+            "timeout_s": 60
           }
         ],
         "host_checks": [
@@ -6603,6 +6603,39 @@
         "min_counts": {
           "|kernel|boot_mode|": 6
         }
+      },
+      {
+        "id": "TST-M6-HOLD-FAIL-CLOSED",
+        "test_id": "TST-M6-HOLD-FAIL-CLOSED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=hold_fail_closed"
+        ],
+        "oracle": "REQ-M6-002, WP-67 (display.md v1.12, services.md §4 v1.3 LIST; mutant M147): the compositor's start-up hold fails closed. A substitute manager inside the test kernel spawns /SYSTEM/DISPLAYD.ELF with a boot channel and the display object and makes its LIST fail in each named branch of the contract: (1) an ERR answer, not a listing naming `display` (reason=reply); (2) an answer longer than displayd's 1024-byte reply buffer (reason=too_long: the kernel refuses it with ERR_BUFFER_TOO_SMALL and displayd discards it so the boot channel keeps serving); (3) a boot channel closed before the answer (reason=closed: displayd cannot say READY and exits 0xE6). In (1) and (2) displayd traces `display|hold|source=list_failure|reason=…|locked=1`, answers HOLDS `OK locked=1 releases=0`, and both events of a key injected meanwhile reach displayd but no window (keys_in=2, keys=0); in (3) the trace says locked=1 before the exit. (4) A valid listing without `session` starts unheld (`source=manifest|reason=-|locked=0`, display.md v1.2, which the M5 lab manifests rely on) and one with `session` held (locked_with_session=1), so the gate is not a constant. The kernel sees the screen (HOLDS, keys at the client), the serial sees displayd's trace; no compositor leaves a process, an object or a frame behind (failed= empty, clean=1, frames_delta=0). The unheld line of a failure branch and any held-open HOLDS answer are forbidden, so a fail-open regression fails the case whatever else it prints; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=hold_fail_closed",
+          "|ktest|hold_fail_closed|case=reply|holds=OK locked=1 releases=0|keys=0|keys_in=2|",
+          "|ktest|hold_fail_closed|case=too_long|holds=OK locked=1 releases=0|keys=0|keys_in=2|",
+          "|ktest|hold_fail_closed|case=closed|holds=none_no_ready|exit=0xe6|ok=1",
+          "|ktest|hold_fail_closed|case=manifest|locked=0|locked_with_session=1|",
+          "|ktest|hold_fail_closed|failed=|processes_after=0|clean=1|frames_delta=0",
+          "display|hold|source=list_failure|reason=reply|locked=1",
+          "display|hold|source=list_failure|reason=too_long|locked=1",
+          "display|hold|source=list_failure|reason=closed|locked=1",
+          "display|hold|source=manifest|reason=-|locked=0",
+          "display|hold|source=manifest|reason=-|locked=1",
+          "|ktest|pass|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "holds=OK locked=0",
+          "|kernel|panic|",
+          "reason=reply|locked=0",
+          "reason=too_long|locked=0"
+        ],
+        "timeout_s": 180
       }
     ]
   },

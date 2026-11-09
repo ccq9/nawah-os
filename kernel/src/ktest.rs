@@ -219,6 +219,7 @@ pub fn run() -> ! {
         "unlock_auth_hang" => unlock_auth_hang(),
         "session_hang" => session_hang(),
         "lock_display_down" => lock_display_down(),
+        "hold_fail_closed" => hold_fail_closed(),
         "elevate" => elevate(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
@@ -5152,6 +5153,17 @@ fn client_origin(k: i64) -> (i64, i64) {
 /// A request to the display service: events that arrive before the reply (the service sends
 /// FOCUS before answering CREATE_WINDOW, say) go to `events`.
 fn drequest(ep: &Endpoint, req: &[u8], handles: Vec<Entry>, events: &mut Vec<String>) -> String {
+    drequest_within(ep, req, handles, events, 30_000)
+}
+
+/// `drequest` with its own deadline (`ticks` from now): `error:K_E_SVC_TIMEOUT` past it.
+fn drequest_within(
+    ep: &Endpoint,
+    req: &[u8],
+    handles: Vec<Entry>,
+    events: &mut Vec<String>,
+    ticks: u64,
+) -> String {
     if ep
         .write(Message {
             bytes: req.to_vec(),
@@ -5161,7 +5173,7 @@ fn drequest(ep: &Endpoint, req: &[u8], handles: Vec<Entry>, events: &mut Vec<Str
     {
         return String::from("error:K_E_SVC_WRITE");
     }
-    let deadline = sched::ticks() + 30_000;
+    let deadline = sched::ticks() + ticks;
     let mut reply: Option<String> = None;
     sched::poll_until(deadline, || loop {
         match ep.read(4096, 4, None) {
@@ -9041,6 +9053,352 @@ fn lock_display_down() -> ! {
         h,
         "with the compositor stopped the frame went black and the session locked with nothing on the screen",
     )
+}
+
+// ---- WP-67: the compositor's hold fails closed ----------------------------------------------
+
+/// What one sub-case of `hold_fail_closed` saw: the `HOLDS` reply (`-` when the compositor
+/// never said READY), the `CREATE_WINDOW` reply, the keys the compositor counted (`KEYS`) and
+/// those that reached the application (-1: not asked), and the exit code — 0 after `STOP`,
+/// EXIT_KILLED when the compositor no longer read its boot channel and had to be killed.
+struct HoldCase {
+    holds: String,
+    window: String,
+    keys_in: i64,
+    keys_at_client: i64,
+    exit: u64,
+}
+
+impl HoldCase {
+    /// Started held: `HOLDS` says so, the window exists, both keys reached the compositor and
+    /// none reached the application, and `STOP` ended it.
+    fn held(&self) -> bool {
+        self.holds == "OK locked=1 releases=0"
+            && self.window.starts_with("OK ")
+            && self.keys_in == 2
+            && self.keys_at_client == 0
+            && self.exit == 0
+    }
+}
+
+/// Reads the next message on `ep` until `deadline`; `None` on a timeout or a closed peer.
+fn hold_recv(ep: &Endpoint, deadline: u64) -> Option<Message> {
+    let mut got = None;
+    sched::poll_until(deadline, || {
+        match ep.read(channel::MSG_MAX_BYTES, channel::MSG_MAX_HANDLES, None) {
+            Ok(m) => {
+                got = Some(m);
+                true
+            }
+            Err(ChannelError::PeerClosed) => true,
+            Err(_) => false,
+        }
+    });
+    got
+}
+
+/// The substitute manager's side of one compositor start-up, up to its `LIST`: a fresh
+/// /SYSTEM/DISPLAYD.ELF with the boot channel and the display as its first two handles (as the
+/// manager hands them, services.md), `START`, then `CONNECT input` answered with a channel the
+/// test keeps (the fake input service, which must see `REGISTER display`). Then `answer` goes
+/// back for `LIST` — or, with `None`, the boot channel is closed instead. When the compositor
+/// says READY, the test connects as an application (`CONNECT app` with the server end, as the
+/// manager hands clients), asks `HOLDS`, creates a window and sends two key events on the fake
+/// input channel; the keys the compositor counted and those that reached the application are
+/// recorded. Last, `STOP`; a compositor that does not end within 5000 ticks is killed.
+fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
+    let stuck = |step: &str| -> ! {
+        kprintln!(
+            "OSX|{}|ktest|hold_fail_closed|case={}|stuck_at={}",
+            BUILD_ID,
+            case,
+            step
+        );
+        fail("the compositor did not reach its LIST request")
+    };
+    let display = crate::display::display_object().unwrap_or_else(|| fail("no display object"));
+    let chan_entry = |ep: Arc<Endpoint>| Entry {
+        object: Object::Channel(ep),
+        rights: Rights::CHANNEL_DEFAULT,
+    };
+    let note = |bytes: &[u8]| Message {
+        bytes: bytes.to_vec(),
+        handles: Vec::new(),
+    };
+    let (ours, theirs) = channel::create();
+    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let initial = alloc::vec![
+        chan_entry(theirs),
+        Entry {
+            object: Object::Display(display),
+            rights: Rights::DISPLAY_DEFAULT,
+        },
+    ];
+    let pid = match crate::user::spawn_elf_with(image, 1, initial, object.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!(
+                "OSX|{}|ktest|hold_fail_closed|case={}|error={}",
+                BUILD_ID,
+                case,
+                e.code()
+            );
+            fail("the compositor did not load")
+        }
+    };
+    if ours.write(note(b"START")).is_err() {
+        stuck("start")
+    }
+    let deadline = sched::ticks() + 30_000;
+    if !hold_recv(&ours, deadline).is_some_and(|m| m.bytes == b"CONNECT input") {
+        stuck("connect_input")
+    }
+    let (input, input_far) = channel::create();
+    let ok = Message {
+        bytes: b"OK".to_vec(),
+        handles: alloc::vec![chan_entry(input_far)],
+    };
+    if ours.write(ok).is_err() {
+        stuck("input_answer")
+    }
+    if !hold_recv(&input, deadline).is_some_and(|m| m.bytes == b"REGISTER display") {
+        stuck("register")
+    }
+    // The fonts load between the registration and LIST (display.md, text.md §1).
+    if !hold_recv(&ours, deadline).is_some_and(|m| m.bytes == b"LIST") {
+        stuck("list")
+    }
+    let Some(answer) = answer else {
+        // Branch (2): the channel closes with LIST unanswered; READY cannot be said (0xE6).
+        drop(ours);
+        sched::poll_until(sched::ticks() + 30_000, || object.exit_code().is_some());
+        if object.exit_code().is_none() {
+            sched::kill_process(pid, crate::syscall::EXIT_KILLED);
+            sched::poll_until(sched::ticks() + 5000, || object.exit_code().is_some());
+        }
+        drop(input);
+        return HoldCase {
+            holds: String::from("-"),
+            window: String::from("-"),
+            keys_in: -1,
+            keys_at_client: -1,
+            exit: object.exit_code().unwrap_or(u64::MAX),
+        };
+    };
+    let mut out = HoldCase {
+        holds: String::from("error:K_E_NO_READY"),
+        window: String::from("-"),
+        keys_in: -1,
+        keys_at_client: -1,
+        exit: u64::MAX,
+    };
+    let ready = ours.write(note(answer)).is_ok()
+        && hold_recv(&ours, sched::ticks() + 30_000).is_some_and(|m| m.bytes == b"READY");
+    let (client, client_far) = channel::create();
+    let mut ev = Vec::new();
+    let mut surface = None;
+    if ready {
+        let connect = Message {
+            bytes: b"CONNECT app".to_vec(),
+            handles: alloc::vec![chan_entry(client_far)],
+        };
+        out.holds = if ours.write(connect).is_ok() {
+            drequest_within(&client, b"HOLDS", Vec::new(), &mut ev, 5000)
+        } else {
+            String::from("error:K_E_SVC_WRITE")
+        };
+    } else {
+        drop(client_far);
+    }
+    if out.holds.starts_with("OK ") {
+        let status = drequest_within(&client, b"STATUS", Vec::new(), &mut ev, 5000);
+        let format: u32 = status_field(&status, "format=").parse().unwrap_or(1);
+        let (vmo, entry) = kernel_surface(64, 48, format, 0x3366CC);
+        surface = Some(vmo);
+        let r = drequest_within(
+            &client,
+            b"CREATE_SURFACE 64 48",
+            alloc::vec![entry],
+            &mut ev,
+            5000,
+        );
+        let sid = String::from(r.strip_prefix("OK ").unwrap_or("0"));
+        out.window = drequest_within(
+            &client,
+            alloc::format!("CREATE_WINDOW {} hold", sid).as_bytes(),
+            Vec::new(),
+            &mut ev,
+            5000,
+        );
+        // Two key events from the fake input service (input.md's `KEY` form). The compositor
+        // forwards a key to the focused window's owner as it counts it, so once `KEYS` says 2
+        // any forwarded key is already queued ahead of that reply on the client's channel.
+        for k in [&b"KEY 0x1e down 0 a"[..], &b"KEY 0x1e up 0 a"[..]] {
+            let _ = input.write(note(k));
+        }
+        for _ in 0..100 {
+            let r = drequest_within(&client, b"KEYS", Vec::new(), &mut ev, 5000);
+            out.keys_in = r
+                .strip_prefix("OK ")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(-1);
+            // An unanswered KEYS ends the wait: each one may take its full 5000 ticks.
+            if out.keys_in >= 2 || !r.starts_with("OK") {
+                break;
+            }
+            sched::poll_until(sched::ticks() + 20, || false);
+        }
+        while let Ok(m) = client.read(channel::MSG_MAX_BYTES, channel::MSG_MAX_HANDLES, None) {
+            ev.push(String::from_utf8_lossy(&m.bytes).into_owned());
+        }
+        out.keys_at_client = ev.iter().filter(|e| e.starts_with("KEY ")).count() as i64;
+    }
+    let _ = ours.write(note(b"STOP"));
+    if !sched::poll_until(sched::ticks() + 5000, || object.exit_code().is_some()) {
+        // A compositor that left an oversized message at the head of its boot channel (the
+        // fault before v1.12) never reads STOP.
+        sched::kill_process(pid, crate::syscall::EXIT_KILLED);
+        sched::poll_until(sched::ticks() + 5000, || object.exit_code().is_some());
+    }
+    out.exit = object.exit_code().unwrap_or(u64::MAX);
+    drop((client, input, ours, ev, surface, object));
+    out
+}
+
+/// TST-M6-HOLD-FAIL-CLOSED (REQ-M6-002, display.md v1.12): the compositor's hold fails
+/// closed. The test kernel plays the service manager for a fresh /SYSTEM/DISPLAYD.ELF per
+/// sub-case and answers its `LIST`: (a) `reply` — with `ERR TEST`; (b) `too_long` — with 2000
+/// bytes (a `display` line, no `session` line) that cannot fit the compositor's 1024-byte
+/// buffer; (c) `closed` — by closing the boot channel; (d) `manifest` — with a listing naming
+/// `display` and no `session` (starts unheld, v1.2, and a key reaches the application, which
+/// shows the key check can see one), then one naming `session` too (starts held). In (a) and
+/// (b) the screen must start held (`HOLDS` → `OK locked=1 releases=0`) and no key may reach
+/// the application; in (c) the compositor exits 0xE6. The compositor's own trace line
+/// (`display|hold|…`) is on the serial log before each sub-case's line; the host checks it.
+/// Every compositor is gone at the end, with the object and frame balance restored.
+fn hold_fail_closed() -> ! {
+    let name = "hold_fail_closed";
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    // The display object is created once and kept by the kernel; take it before the balance.
+    if crate::display::display_object().is_none() {
+        fail("no display object (firmware left no linear frame buffer)")
+    }
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let image = match crate::loader::read_image(b"/SYSTEM/DISPLAYD.ELF") {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
+            fail("the compositor's image is not on the volume")
+        }
+    };
+    // (b): longer than the compositor's 1024-byte buffer, shorter than a message's 4096.
+    let mut long = Vec::from(&b"display ready 0 1 1 - -\n"[..]);
+    let mut k = 0;
+    while long.len() < 2000 {
+        long.extend_from_slice(alloc::format!("fill{:02} ready 0 1 1 - -\n", k).as_bytes());
+        k += 1;
+    }
+    let reply = hold_run("reply", &image, Some(b"ERR TEST"));
+    let reply_ok = reply.held();
+    kprintln!(
+        "OSX|{}|ktest|{}|case=reply|holds={}|keys={}|keys_in={}|window={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        reply.holds,
+        reply.keys_at_client,
+        reply.keys_in,
+        reply.window,
+        reply.exit,
+        u8::from(reply_ok)
+    );
+    drop(reply);
+    let too_long = hold_run("too_long", &image, Some(&long));
+    let too_long_ok = too_long.held();
+    kprintln!(
+        "OSX|{}|ktest|{}|case=too_long|holds={}|keys={}|keys_in={}|window={}|bytes={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        too_long.holds,
+        too_long.keys_at_client,
+        too_long.keys_in,
+        too_long.window,
+        long.len(),
+        too_long.exit,
+        u8::from(too_long_ok)
+    );
+    drop((too_long, long));
+    let closed = hold_run("closed", &image, None);
+    let closed_ok = closed.exit == 0xE6;
+    kprintln!(
+        "OSX|{}|ktest|{}|case=closed|holds=none_no_ready|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        closed.exit,
+        u8::from(closed_ok)
+    );
+    drop(closed);
+    let open = hold_run(
+        "manifest",
+        &image,
+        Some(b"auth ready 0 1 1 - -\ninput ready 0 1 1 - -\ndisplay ready 0 1 1 - -\n"),
+    );
+    let held = hold_run(
+        "manifest_session",
+        &image,
+        Some(b"auth ready 0 1 1 - -\ninput ready 0 1 1 - -\ndisplay ready 0 1 1 - -\nsession starting 0 1 - - -\n"),
+    );
+    let open_ok = open.holds == "OK locked=0 releases=0"
+        && open.window.starts_with("OK ")
+        && open.keys_in == 2
+        && open.keys_at_client == 2
+        && open.exit == 0;
+    let manifest_ok = open_ok && held.held();
+    kprintln!(
+        "OSX|{}|ktest|{}|case=manifest|locked={}|locked_with_session={}|keys={}|keys_with_session={}|exit={:#x}:{:#x}|ok={}",
+        BUILD_ID,
+        name,
+        status_field(&open.holds, "locked="),
+        status_field(&held.holds, "locked="),
+        open.keys_at_client,
+        held.keys_at_client,
+        open.exit,
+        held.exit,
+        u8::from(manifest_ok)
+    );
+    drop((open, held, image));
+    // Every compositor has ended; its handles and the process objects go a few ticks later.
+    let gone = sched::poll_until(sched::ticks() + 2000, || sched::stats().processes == 0);
+    let settled = sched::poll_until(sched::ticks() + 2000, || object::stats() == obj0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|{}|failed={}{}{}{}|processes_after={}|clean={}|frames_delta={}",
+        BUILD_ID,
+        name,
+        if reply_ok { "" } else { "reply," },
+        if too_long_ok { "" } else { "too_long," },
+        if closed_ok { "" } else { "closed," },
+        if manifest_ok { "" } else { "manifest," },
+        procs,
+        u8::from(gone && settled),
+        frames
+    );
+    if !reply_ok || !too_long_ok {
+        fail("the screen did not start held after a failed LIST (display.md v1.12)")
+    }
+    if !closed_ok {
+        fail("the compositor did not exit 0xE6 when its boot channel closed before LIST was answered")
+    }
+    if !manifest_ok {
+        fail("a listing decided the hold wrongly (display.md v1.2: no session, unheld; session, held)")
+    }
+    if !gone || procs != 0 || !settled || frames != 0 {
+        fail("the compositors left a process, an object or a frame behind")
+    }
+    pass("a LIST the compositor cannot have starts the screen held; a listing still decides it as before")
 }
 
 // ---- WP-40: forced termination ---------------------------------------------------------------

@@ -224,6 +224,49 @@ class StepBudget(unittest.TestCase):
             self.assertLess(worst, caps[suite] * 60, f"{suite}: worst case {worst} s, cap {caps[suite]} min")
 
 
+class HoldFailClosed(unittest.TestCase):
+    """WP-67 (display.md v1.12): TST-M6-HOLD-FAIL-CLOSED runs in the M6 verify step on the test
+    image with its ktest key, inside the step's cap (StepBudget), and judges each failure branch
+    of displayd's LIST by the compositor's own trace and by the held screen: every branch named
+    by the contract is required held (locked=1) and its unheld line is forbidden, so a fail-open
+    regression (mutant M147) fails the case."""
+
+    CASE = "TST-M6-HOLD-FAIL-CLOSED"
+    KEY = ["-fw_cfg", "name=opt/nawah/test,string=hold_fail_closed"]
+    HELD = ["display|hold|source=list_failure|reason=reply|locked=1",
+            "display|hold|source=list_failure|reason=too_long|locked=1",
+            "display|hold|source=list_failure|reason=closed|locked=1",
+            "display|hold|source=manifest|reason=-|locked=0",
+            "display|hold|source=manifest|reason=-|locked=1"]
+    # The ktest's own verdict lines (kernel/src/ktest.rs hold_fail_closed): the kernel cannot see
+    # SYS_TRACE output, so these judge the screen (HOLDS, keys at the client) and the trace lines
+    # above judge displayd's decision.
+    VERDICTS = ["|ktest|hold_fail_closed|case=reply|holds=OK locked=1 releases=0|keys=0|keys_in=2|",
+                "|ktest|hold_fail_closed|case=too_long|holds=OK locked=1 releases=0|keys=0|keys_in=2|",
+                "|ktest|hold_fail_closed|case=closed|holds=none_no_ready|exit=0xe6|ok=1",
+                "|ktest|hold_fail_closed|case=manifest|locked=0|locked_with_session=1|",
+                "|ktest|hold_fail_closed|failed=|processes_after=0|clean=1|frames_delta=0"]
+    UNHELD = ["holds=OK locked=0", "reason=reply|locked=0", "reason=too_long|locked=0"]
+
+    def test_the_hold_case_runs_on_the_test_image_in_m6(self):
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        cases = [c for c in t["suites"]["M6"] if c["id"] == self.CASE]
+        self.assertEqual(len(cases), 1, f"{self.CASE} is not one case of suites.M6")
+        c = cases[0]
+        self.assertEqual(c["test_id"], self.CASE)
+        self.assertEqual(c["artifact"], "${OUT}/NAWAH-KTEST.EFI")
+        self.assertEqual(c["qemu_extra"], self.KEY)
+        self.assertEqual(c["expected_exit_code"], 33)
+        self.assertEqual(c["timeout_s"], 180)
+        self.assertIn("OSX|${BUILD_ID}|ktest|start|name=hold_fail_closed", c["required_markers"])
+        for m in self.HELD + self.VERDICTS + ["|ktest|pass|"]:
+            self.assertIn(m, c["required_markers"])
+        for m in self.UNHELD + ["|ktest|fail|", "|kernel|panic|"]:
+            self.assertIn(m, c["forbidden_markers"])
+        # No required marker may also be forbidden (a case that can never pass).
+        self.assertEqual([m for m in c["required_markers"] if any(f in m for f in c["forbidden_markers"])], [])
+
+
 class BootCase(unittest.TestCase):
     """`project.py boot` and the suite judge one boot test by one oracle (docs/PLAN-ANSWER.md
     §2.6 D1-A): the suite case carrying the boot test id is the oracle even when it carries
