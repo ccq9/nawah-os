@@ -70,7 +70,7 @@ class M0Records(unittest.TestCase):
         self.assertEqual(missing, [], "ADR-0002 item 4: a ported file without its Sol OS origin line")
 
     def test_team_methodology_is_in_place(self):
-        missing = [f for f in (TEAM_DOC, TEAM_WORKFLOW, TEAM_ENTRY) if not (ROOT / f).exists()]
+        missing = [f for f in (TEAM_DOC, TEAM_WORKFLOW, TEAM_ENTRY, TEAM_PLAN) if not (ROOT / f).exists()]
         self.assertEqual(missing, [], "team methodology files")
         workflow = (ROOT / TEAM_WORKFLOW).read_text(encoding="utf-8")
         self.assertTrue(workflow.startswith("export const meta = {"), "the workflow must open with its meta literal")
@@ -93,6 +93,10 @@ class M0Records(unittest.TestCase):
         self.assertIn(TEAM_WORKFLOW, doc)
         self.assertIn(TEAM_PLAN, doc)
         self.assertIn(TEAM_DOC, (ROOT / TEAM_ENTRY).read_text(encoding="utf-8"), "CLAUDE.md points at the methodology")
+        plan = (ROOT / TEAM_PLAN).read_text(encoding="utf-8")
+        for heading in ("## 0.", "## 1.", "## 2.", "## 3.", "## 4.", "## 5.", "## 6."):
+            self.assertIn(heading, plan, f"the reverse plan carries its section {heading}")
+        self.assertIn("## 5.", plan)  # refuted and unverified claims are listed openly, never dropped
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

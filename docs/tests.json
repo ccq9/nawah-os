@@ -22,7 +22,7 @@
     "REQ-M0-004"
    ],
    "layer": "host_unit",
-   "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision); every file ADR-0002 item 4 ports from Sol OS names its origin (commit d54f0a5 or the Sol ADR) in its header; the twelve-role team methodology is in place (docs/policies/team-methodology.md names every role, .claude/workflows/nawah-team.js opens with its meta literal, the twelve agent definitions carry name/description/tools/model; docs/PLAN-REVERSE.md is checked once the team has produced it)",
+   "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision); every file ADR-0002 item 4 ports from Sol OS names its origin (commit d54f0a5 or the Sol ADR) in its header; the twelve-role team methodology is in place (docs/policies/team-methodology.md names every role, .claude/workflows/nawah-team.js opens with its meta literal, the twelve agent definitions carry name/description/tools/model; docs/PLAN-REVERSE.md exists with its seven sections, the fifth listing refuted and unverified claims)",
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
