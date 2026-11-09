@@ -9081,10 +9081,36 @@ impl HoldCase {
     }
 }
 
+/// Ticks one sub-case may take up to its `STOP`; then at most `HOLD_STOP` for `STOP` and as
+/// much again for a kill. Five sub-cases: at most 5 × 23 s = 115 s, inside the lab's 180 s.
+const HOLD_BUDGET: u64 = 19_000;
+const HOLD_STOP: u64 = 2000;
+/// The longest any single request waits for its reply (capped by the sub-case's budget).
+const HOLD_REQUEST: u64 = 5000;
+
+/// Waits until `pred` holds or `deadline`, competing at the boot thread's own priority 1, the
+/// compositor's: `sched::poll_until` demotes the waiter to the lowest priority, and a
+/// compositor spinning on a jammed boot channel (the fault before display.md v1.12) then
+/// starves it on their shared CPU for ever (CI run 42685537720 hung in `too_long`). At equal
+/// priority the timer's slices alternate the two (TST-M2-PREEMPT), so every deadline holds.
+fn hold_wait(deadline: u64, mut pred: impl FnMut() -> bool) -> bool {
+    loop {
+        if pred() {
+            return true;
+        }
+        if sched::ticks() >= deadline {
+            return false;
+        }
+        if !sched::yield_now() {
+            context::idle_wait();
+        }
+    }
+}
+
 /// Reads the next message on `ep` until `deadline`; `None` on a timeout or a closed peer.
 fn hold_recv(ep: &Endpoint, deadline: u64) -> Option<Message> {
     let mut got = None;
-    sched::poll_until(deadline, || {
+    hold_wait(deadline, || {
         match ep.read(channel::MSG_MAX_BYTES, channel::MSG_MAX_HANDLES, None) {
             Ok(m) => {
                 got = Some(m);
@@ -9097,25 +9123,50 @@ fn hold_recv(ep: &Endpoint, deadline: u64) -> Option<Message> {
     got
 }
 
-/// The substitute manager's side of one compositor start-up, up to its `LIST`: a fresh
-/// /SYSTEM/DISPLAYD.ELF with the boot channel and the display as its first two handles (as the
-/// manager hands them, services.md), `START`, then `CONNECT input` answered with a channel the
-/// test keeps (the fake input service, which must see `REGISTER display`). Then `answer` goes
-/// back for `LIST` — or, with `None`, the boot channel is closed instead. When the compositor
-/// says READY, the test connects as an application (`CONNECT app` with the server end, as the
-/// manager hands clients), asks `HOLDS`, creates a window and sends two key events on the fake
-/// input channel; the keys the compositor counted and those that reached the application are
-/// recorded. Last, `STOP`; a compositor that does not end within 5000 ticks is killed.
-fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
-    let stuck = |step: &str| -> ! {
-        kprintln!(
-            "OSX|{}|ktest|hold_fail_closed|case={}|stuck_at={}",
-            BUILD_ID,
-            case,
-            step
-        );
-        fail("the compositor did not reach its LIST request")
+/// A request to the compositor as an application, answered by `deadline` (events that come
+/// first go to `events`); `error:K_E_SVC_TIMEOUT` past it.
+fn hold_request(
+    ep: &Endpoint,
+    req: &[u8],
+    handles: Vec<Entry>,
+    events: &mut Vec<String>,
+    deadline: u64,
+) -> String {
+    let msg = Message {
+        bytes: req.to_vec(),
+        handles,
     };
+    if ep.write(msg).is_err() {
+        return String::from("error:K_E_SVC_WRITE");
+    }
+    loop {
+        match hold_recv(ep, deadline) {
+            Some(m) => {
+                let text = String::from_utf8_lossy(&m.bytes).into_owned();
+                if text.starts_with("OK") || text.starts_with("ERR") {
+                    return text;
+                }
+                events.push(text);
+            }
+            None if sched::ticks() >= deadline => return String::from("error:K_E_SVC_TIMEOUT"),
+            None => return String::from("error:K_E_SVC_PEER_CLOSED"),
+        }
+    }
+}
+
+/// The substitute manager's side of one compositor start-up: a fresh /SYSTEM/DISPLAYD.ELF with
+/// the boot channel and the display as its first two handles (as the manager hands them,
+/// services.md), `START`, then `CONNECT input` answered with a channel the test keeps (the
+/// fake input service, which must see `REGISTER display`); then `answer` goes back for `LIST`
+/// — or, with `None`, the boot channel is closed instead. When the compositor says READY, the
+/// test connects as an application (`CONNECT app` with the server end, as the manager hands
+/// clients), asks `HOLDS`, creates a window and sends two key events on the fake input
+/// channel; the keys the compositor counted and those that reached the application are
+/// recorded. Last, `STOP`. Every wait is bounded (`HOLD_BUDGET`, `HOLD_REQUEST`, `HOLD_STOP`):
+/// a step that times out is recorded as `error:K_E_STUCK_<step>` or `error:K_E_SVC_TIMEOUT`,
+/// and a compositor that has not ended after `STOP` is killed (EXIT_KILLED), so a jammed
+/// compositor costs the sub-case its verdict, never the run.
+fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
     let display = crate::display::display_object().unwrap_or_else(|| fail("no display object"));
     let chan_entry = |ep: Arc<Endpoint>| Entry {
         object: Object::Channel(ep),
@@ -9146,89 +9197,94 @@ fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
             fail("the compositor did not load")
         }
     };
-    if ours.write(note(b"START")).is_err() {
-        stuck("start")
-    }
-    let deadline = sched::ticks() + 30_000;
-    if !hold_recv(&ours, deadline).is_some_and(|m| m.bytes == b"CONNECT input") {
-        stuck("connect_input")
-    }
-    let (input, input_far) = channel::create();
-    let ok = Message {
-        bytes: b"OK".to_vec(),
-        handles: alloc::vec![chan_entry(input_far)],
-    };
-    if ours.write(ok).is_err() {
-        stuck("input_answer")
-    }
-    if !hold_recv(&input, deadline).is_some_and(|m| m.bytes == b"REGISTER display") {
-        stuck("register")
-    }
-    // The fonts load between the registration and LIST (display.md, text.md §1).
-    if !hold_recv(&ours, deadline).is_some_and(|m| m.bytes == b"LIST") {
-        stuck("list")
-    }
-    let Some(answer) = answer else {
-        // Branch (2): the channel closes with LIST unanswered; READY cannot be said (0xE6).
-        drop(ours);
-        sched::poll_until(sched::ticks() + 30_000, || object.exit_code().is_some());
-        if object.exit_code().is_none() {
-            sched::kill_process(pid, crate::syscall::EXIT_KILLED);
-            sched::poll_until(sched::ticks() + 5000, || object.exit_code().is_some());
-        }
-        drop(input);
-        return HoldCase {
-            holds: String::from("-"),
-            window: String::from("-"),
-            keys_in: -1,
-            keys_at_client: -1,
-            exit: object.exit_code().unwrap_or(u64::MAX),
-        };
-    };
+    let budget = sched::ticks() + HOLD_BUDGET;
+    let within = |cap: u64| (sched::ticks() + cap).min(budget);
     let mut out = HoldCase {
-        holds: String::from("error:K_E_NO_READY"),
+        holds: String::from("-"),
         window: String::from("-"),
         keys_in: -1,
         keys_at_client: -1,
         exit: u64::MAX,
     };
-    let ready = ours.write(note(answer)).is_ok()
-        && hold_recv(&ours, sched::ticks() + 30_000).is_some_and(|m| m.bytes == b"READY");
+    let (input, input_far) = channel::create();
     let (client, client_far) = channel::create();
     let mut ev = Vec::new();
     let mut surface = None;
-    if ready {
+    // The start-up, up to LIST; the first step that does not happen in time names the sub-case.
+    let stuck = if ours.write(note(b"START")).is_err() {
+        Some("start")
+    } else if !hold_recv(&ours, budget).is_some_and(|m| m.bytes == b"CONNECT input") {
+        Some("connect_input")
+    } else if ours
+        .write(Message {
+            bytes: b"OK".to_vec(),
+            handles: alloc::vec![chan_entry(input_far)],
+        })
+        .is_err()
+    {
+        Some("input_answer")
+    } else if !hold_recv(&input, budget).is_some_and(|m| m.bytes == b"REGISTER display") {
+        Some("register")
+    } else if !hold_recv(&ours, budget).is_some_and(|m| m.bytes == b"LIST") {
+        // The fonts load between the registration and LIST (display.md, text.md §1).
+        Some("list")
+    } else {
+        None
+    };
+    let mut ours = Some(ours);
+    if let Some(step) = stuck {
+        kprintln!(
+            "OSX|{}|ktest|hold_fail_closed|case={}|stuck_at={}",
+            BUILD_ID,
+            case,
+            step
+        );
+        out.holds = alloc::format!("error:K_E_STUCK_{}", step);
+    } else if let Some(answer) = answer {
+        let boot = ours.as_ref().expect("boot channel kept");
+        let ready = boot.write(note(answer)).is_ok()
+            && hold_recv(boot, within(10_000)).is_some_and(|m| m.bytes == b"READY");
         let connect = Message {
             bytes: b"CONNECT app".to_vec(),
             handles: alloc::vec![chan_entry(client_far)],
         };
-        out.holds = if ours.write(connect).is_ok() {
-            drequest_within(&client, b"HOLDS", Vec::new(), &mut ev, 5000)
-        } else {
+        out.holds = if !ready {
+            String::from("error:K_E_STUCK_ready")
+        } else if boot.write(connect).is_err() {
             String::from("error:K_E_SVC_WRITE")
+        } else {
+            hold_request(&client, b"HOLDS", Vec::new(), &mut ev, within(HOLD_REQUEST))
         };
     } else {
-        drop(client_far);
+        // Branch (2): the channel closes with LIST unanswered; READY cannot be said (0xE6).
+        drop(ours.take());
+        hold_wait(budget, || object.exit_code().is_some());
     }
     if out.holds.starts_with("OK ") {
-        let status = drequest_within(&client, b"STATUS", Vec::new(), &mut ev, 5000);
+        let status = hold_request(
+            &client,
+            b"STATUS",
+            Vec::new(),
+            &mut ev,
+            within(HOLD_REQUEST),
+        );
         let format: u32 = status_field(&status, "format=").parse().unwrap_or(1);
         let (vmo, entry) = kernel_surface(64, 48, format, 0x3366CC);
         surface = Some(vmo);
-        let r = drequest_within(
+        let r = hold_request(
             &client,
             b"CREATE_SURFACE 64 48",
             alloc::vec![entry],
             &mut ev,
-            5000,
+            within(HOLD_REQUEST),
         );
         let sid = String::from(r.strip_prefix("OK ").unwrap_or("0"));
-        out.window = drequest_within(
+        out.window = hold_request(
             &client,
             alloc::format!("CREATE_WINDOW {} hold", sid).as_bytes(),
             Vec::new(),
             &mut ev,
-            5000,
+            within(HOLD_REQUEST),
         );
         // Two key events from the fake input service (input.md's `KEY` form). The compositor
         // forwards a key to the focused window's owner as it counts it, so once `KEYS` says 2
@@ -9236,29 +9292,31 @@ fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
         for k in [&b"KEY 0x1e down 0 a"[..], &b"KEY 0x1e up 0 a"[..]] {
             let _ = input.write(note(k));
         }
-        for _ in 0..100 {
-            let r = drequest_within(&client, b"KEYS", Vec::new(), &mut ev, 5000);
+        let keys_by = within(HOLD_REQUEST);
+        loop {
+            let r = hold_request(&client, b"KEYS", Vec::new(), &mut ev, keys_by);
             out.keys_in = r
                 .strip_prefix("OK ")
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(-1);
-            // An unanswered KEYS ends the wait: each one may take its full 5000 ticks.
-            if out.keys_in >= 2 || !r.starts_with("OK") {
+            if out.keys_in >= 2 || !r.starts_with("OK") || sched::ticks() >= keys_by {
                 break;
             }
-            sched::poll_until(sched::ticks() + 20, || false);
+            hold_wait((sched::ticks() + 20).min(keys_by), || false);
         }
         while let Ok(m) = client.read(channel::MSG_MAX_BYTES, channel::MSG_MAX_HANDLES, None) {
             ev.push(String::from_utf8_lossy(&m.bytes).into_owned());
         }
         out.keys_at_client = ev.iter().filter(|e| e.starts_with("KEY ")).count() as i64;
     }
-    let _ = ours.write(note(b"STOP"));
-    if !sched::poll_until(sched::ticks() + 5000, || object.exit_code().is_some()) {
+    if let Some(boot) = ours.as_ref() {
+        let _ = boot.write(note(b"STOP"));
+    }
+    if !hold_wait(sched::ticks() + HOLD_STOP, || object.exit_code().is_some()) {
         // A compositor that left an oversized message at the head of its boot channel (the
-        // fault before v1.12) never reads STOP.
+        // fault before v1.12) never reads STOP; one stuck in its start-up never got that far.
         sched::kill_process(pid, crate::syscall::EXIT_KILLED);
-        sched::poll_until(sched::ticks() + 5000, || object.exit_code().is_some());
+        hold_wait(sched::ticks() + HOLD_STOP, || object.exit_code().is_some());
     }
     out.exit = object.exit_code().unwrap_or(u64::MAX);
     drop((client, input, ours, ev, surface, object));
@@ -9370,8 +9428,8 @@ fn hold_fail_closed() -> ! {
     );
     drop((open, held, image));
     // Every compositor has ended; its handles and the process objects go a few ticks later.
-    let gone = sched::poll_until(sched::ticks() + 2000, || sched::stats().processes == 0);
-    let settled = sched::poll_until(sched::ticks() + 2000, || object::stats() == obj0);
+    let gone = sched::poll_until(sched::ticks() + 1000, || sched::stats().processes == 0);
+    let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
     let procs = sched::stats().processes;
     let frames = frames0 as i64 - pmm::stats().free_frames as i64;
     kprintln!(
