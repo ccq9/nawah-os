@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T064231Z-9570ab04-003",
+ "test_id": "TST-M1-NOBS",
+ "verdict": "PASS",
+ "oracle": "static: kmain.rs is safe-only (no unsafe allowed by main.rs), names no firmware table/efi symbol; boot::efi is private; BootInfo carries no function pointers; kernel_main takes &BootInfo only",
+ "expected": "exit 0 + OK",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "42d5d483bb820adda7bfb3c2ab32aeba90fba4108bbbe8aa7e81c323425d4fd8",
+ "inputs": {
+  "tests/test_m1_nobs.py": "ceceb80b4ec0ca8285308f797a303c41a0ef31c877acbb5641639ae3637aac0b",
+  "kernel/src/main.rs": "393c48c5a9d3e83afe1eaff19d4efb7a46b2f7a4b5c237414b30dd515d115508",
+  "kernel/src/kmain.rs": "10833feea65efe3fd70ff2283c2d98f79c7bd3e4639bb50d1eac3cf522cc1d69",
+  "kernel/src/bootinfo.rs": "1754e069cba821b11498a386127adea49d1eb0f5d125ef5fbc01c8bc4110b3a6",
+  "kernel/src/boot/mod.rs": "ecb0e4d50454565d720d5774843d32b3f279a58ae4569270ffc2e96908402b21",
+  "kernel/src/boot/stub.rs": "01968a9c4ceb77965d9b2e61bbc2b2499b3f663b6c0d98444c060a6f7f7f3539"
+ },
+ "claim_tag": "source_backed_fact"
+}
