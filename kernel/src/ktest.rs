@@ -9644,9 +9644,14 @@ fn token_revoke() -> ! {
         unlocked,
         signed_in
     );
-    // Part 3: the session process is frozen, then killed by the manager's STOP.
-    drop(session);
+    // Part 3: the session process is frozen, then killed by the manager's STOP. The session must
+    // be idle (blocked) when it is frozen: freezing only stops wake-ups (sched::freeze_named), so
+    // nothing may wake it first; the test's own channel to it is closed only after the freeze.
+    // Closing it before woke the session, which then read STOP and exited 0 (CI run 42747260620,
+    // WP-73, 2026-11-10).
+    hold_wait(within(500), || false);
     let frozen = sched::freeze_named(b"SESSIOND.ELF");
+    drop(session);
     let stop = match crate::services::request(&h.m.ctl, b"STOP session", within(500)) {
         Ok(b) => String::from_utf8_lossy(&b).into_owned(),
         Err(e) => String::from(e),
