@@ -1,0 +1,14 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: failed to load Boot0001 "UEFI Non-Block Boot Device" from PciRoot(0x0)/Pci(0x2,0x0): Not Found
+BdsDxe: loading Boot0002 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0002 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+nawah sh 1 (help)
+nawah> >>> svc
+auth ready 0 15 15 1054 -
+config ready 0 15 15 69 -
+net ready 0 15 15 69 -
+input ready 0 15 15 80 -
+display ready 0 80 80 153 -
+narrator ready 0 153 153 185 -
+session ready 0 1054 1054 1098 -
+sh ready 0 1054 1054 1068 -
+nawah> 
