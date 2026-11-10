@@ -220,6 +220,8 @@ pub fn run() -> ! {
         "session_hang" => session_hang(),
         "lock_display_down" => lock_display_down(),
         "hold_fail_closed" => hold_fail_closed(),
+        "token_revoke" => token_revoke(),
+        "purge_fail_closed" => purge_fail_closed(),
         "elevate" => elevate(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
@@ -7681,12 +7683,24 @@ fn list_hash_held() -> ! {
     )
 }
 
-/// TST-M5-SESSION-LOSS (REQ-M5-006; WP-43 finding M9): the session service itself is lost —
-/// once after the sign-in (unlocked), once while locked (the manager's RESTART: its process
-/// ends and its channels close, as in a crash). Each time the compositor holds the screen (the
-/// spy's window loses the focus), no key reaches the compositor or the spy, and the new session
-/// starts at `no_session` with its own count of changes, never in the state the lost one had.
+/// TST-M5-SESSION-LOSS (REQ-M5-006; WP-43 finding M9; rewritten for session.md v1.7, WP-64):
+/// the session service itself is lost — once after the sign-in (unlocked), once while locked
+/// (the manager's RESTART: its process ends and its channels close, as in a crash). Each time
+/// the compositor holds the screen, no key reaches the compositor, and the new session starts
+/// at `no_session` with its own count of changes, never in the state the lost one had. Since
+/// v1.7 the restarted session also ends what the lost one left on the screen before its
+/// sign-in screen (`LOGOUT` to the compositor): the spy's window is gone (`LOGGED_OUT`; the
+/// spy, a well-behaved application, exits) and the compositor counts the sign-in window alone.
+/// The phases after that use a client that connects anew — the test's own window `w` — which
+/// is purged the same way by the second restart. A contract-driven change (session.md v1.7,
+/// PLAN-ANSWER §2.3 D5-B), not a weakening: every assertion of the earlier case is kept except
+/// the spy's own focus after the loss, which the spy's exit makes moot (its window is gone).
 fn session_loss() -> ! {
+    /// The test's window after the first loss: colour and place on the screen (the open
+    /// desktop's screendump finds it at (650,170), and the spy's place (150,150) shows the
+    /// desktop, so no window of the lost session came back).
+    const W_COLOUR: u32 = 0xD04040;
+    const W_AT: (i64, i64) = (600, 100);
     let name = "session_loss";
     let (h, session) = session_env(
         name,
@@ -7728,42 +7742,120 @@ fn session_loss() -> ! {
     let fresh1 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
         state_is(r, "no_session", 0)
     });
-    let spy1 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
-        r == "OK keys=0 focus=0 connections=1"
+    // v1.7: the purge came before the sign-in screen, so the compositor counts one window
+    // (the sign-in dialog), and the spy, told LOGGED_OUT, ended (exit 0, stopped: `never`).
+    let mut ev_d = Vec::new();
+    let windows1 = String::from(status_field(
+        &drequest(&display, b"STATUS", Vec::new(), &mut ev_d),
+        "windows=",
+    ));
+    let spy_lines = h.poll_list(sched::ticks() + 10_000, |l| {
+        svc_find(l, "spy").state == "stopped"
     });
+    let spy_gone = svc_find(&spy_lines, "spy");
+    let spy1 = alloc::format!(
+        "{}:{:#x}",
+        spy_gone.state,
+        spy_gone.exit.unwrap_or(u64::MAX)
+    );
+    drop(spy);
     let keys1 = display_keys(&display);
     kprintln!(
-        "OSX|{}|ktest|session_loss|unlocked={}|spy={}|restart={}|fresh={}|spy_after={}|phase=2|ready=1",
+        "OSX|{}|ktest|session_loss|unlocked={}|spy={}|restart={}|fresh={}|spy_after={}|windows={}|phase=2|ready=1",
         BUILD_ID,
         unlocked,
         spy0,
         r1,
         fresh1,
-        spy1
+        spy1,
+        windows1
     );
     if !state_is(&unlocked, "unlocked", 1) || spy0 != "OK keys=0 focus=1 connections=1" {
         fail("the lab's sign-in did not unlock the session with the spy focused")
     }
-    if r1 != "OK"
-        || fresh1 != "OK no_session user=- changes=0 display=1 input=1 focus=session"
-        || spy1 != "OK keys=0 focus=0 connections=1"
-    {
+    if r1 != "OK" || fresh1 != "OK no_session user=- changes=0 display=1 input=1 focus=session" {
         fail("the session lost while unlocked did not leave a held screen and a fresh session")
     }
-    // Phase 2: the lab signs in to the new session; every key of it reaches that session alone
-    // (the compositor counts none).
+    if spy1 != "stopped:0x0" || windows1 != "1" {
+        fail("the restarted session did not end the lost session's windows before its sign-in screen (session.md v1.7)")
+    }
+    // Phase 2: a client connects anew and makes its window while the screen is held; the lab
+    // signs in to the new session; every key of it reaches that session alone (the compositor
+    // counts none), and the new window is shown and focused.
+    let w = svc_connect(&h, "display");
+    let mut ev_w = Vec::new();
+    let format: u32 = status_field(&drequest(&w, b"STATUS", Vec::new(), &mut ev_w), "format=")
+        .parse()
+        .unwrap_or(99);
+    let (vmo_w, entry_w) = kernel_surface(200, 120, format, W_COLOUR);
+    let sw = drequest(
+        &w,
+        b"CREATE_SURFACE 200 120",
+        alloc::vec![entry_w],
+        &mut ev_w,
+    );
+    let sw_id: String = sw.strip_prefix("OK ").unwrap_or("0").into();
+    let ww = drequest(
+        &w,
+        alloc::format!("CREATE_WINDOW {} w", sw_id).as_bytes(),
+        Vec::new(),
+        &mut ev_w,
+    );
+    let ww_id: String = ww.strip_prefix("OK ").unwrap_or("0").into();
+    let mw = drequest(
+        &w,
+        alloc::format!("MOVE {} {} {}", ww_id, W_AT.0, W_AT.1).as_bytes(),
+        Vec::new(),
+        &mut ev_w,
+    );
+    let cw = drequest(
+        &w,
+        alloc::format!("COMMIT {} 0 0 200 120", sw_id).as_bytes(),
+        Vec::new(),
+        &mut ev_w,
+    );
+    if format > 1 || !sw.starts_with("OK ") || !ww.starts_with("OK ") || mw != "OK" || cw != "OK" {
+        kprintln!(
+            "OSX|{}|ktest|session_loss|format={}|surface={}|window={}|move={}|commit={}",
+            BUILD_ID,
+            format,
+            sw,
+            ww,
+            mw,
+            cw
+        );
+        fail("the reconnecting client's window was not set up")
+    }
     let unlocked2 = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
         state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
     });
     let keys2 = display_keys(&display);
+    let w_focused = {
+        let deadline = sched::ticks() + 10_000;
+        loop {
+            let f = parse_windows(&drequest(&w, b"LIST", Vec::new(), &mut ev_w))
+                .first()
+                .is_some_and(|x| x.focused);
+            if f || sched::ticks() >= deadline {
+                break f;
+            }
+            sched::poll_until(sched::ticks() + 20, || false);
+        }
+    };
+    // Past the blit period, the composed picture is on the frame for the lab's screendump.
+    sched::poll_until(sched::ticks() + 40, || false);
     kprintln!(
-        "OSX|{}|ktest|session_loss|unlocked2={}|keys_during_signin={}|phase=3|ready=1",
+        "OSX|{}|ktest|session_loss|unlocked2={}|keys_during_signin={}|w_focused={}|phase=3|ready=1",
         BUILD_ID,
         unlocked2,
-        keys2 - keys1
+        keys2 - keys1,
+        u8::from(w_focused)
     );
     if !state_is(&unlocked2, "unlocked", 1) || keys2 != keys1 {
         fail("the sign-in to the new session did not reach it alone")
+    }
+    if !w_focused {
+        fail("the reconnecting client's window was not focused after the sign-in")
     }
     // Phase 3: the lab presses Ctrl+Alt+Del; the session is lost while locked.
     let locked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
@@ -7776,17 +7868,20 @@ fn session_loss() -> ! {
     let fresh2 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
         state_is(r, "no_session", 0)
     });
-    let spy2 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
-        r.contains(" focus=0 ")
-    });
+    // v1.7: the second restart purged again: `w` was told LOGGED_OUT (queued before the reply
+    // to its LIST) and has no window left.
+    let w_list = drequest(&w, b"LIST", Vec::new(), &mut ev_w);
+    let w_windows = parse_windows(&w_list).len();
+    let w_logged_out = ev_w.iter().any(|e| e == "LOGGED_OUT");
     let keys4 = display_keys(&display);
     kprintln!(
-        "OSX|{}|ktest|session_loss|locked={}|restart={}|fresh={}|spy_focus0={}|keys_after_loss={}|phase=4",
+        "OSX|{}|ktest|session_loss|locked={}|restart={}|fresh={}|w_logged_out={}|w_windows={}|keys_after_loss={}|phase=4",
         BUILD_ID,
         locked,
         r2,
         fresh2,
-        u8::from(spy2.contains(" focus=0 ")),
+        u8::from(w_logged_out),
+        w_windows,
         keys4 - keys3
     );
     if !locked.starts_with("OK locked user=admin changes=2 ") {
@@ -7794,10 +7889,12 @@ fn session_loss() -> ! {
     }
     if r2 != "OK"
         || fresh2 != "OK no_session user=- changes=0 display=1 input=1 focus=session"
-        || !spy2.contains(" focus=0 ")
         || keys4 != keys3
     {
         fail("the session lost while locked did not leave a held screen and a fresh session")
+    }
+    if !w_logged_out || w_windows != 0 || !w_list.starts_with("OK") {
+        fail("the session restarted while locked did not end the open windows before its sign-in screen (session.md v1.7)")
     }
     // Phase 5 (input.md v2.2; WP-38 mutant M106): the lab signs in once more, so the keyboard
     // is the compositor's — the input service's focus is `display`, not the session's. The
@@ -7805,7 +7902,8 @@ fn session_loss() -> ! {
     // input service itself reports (`STATUS` → `focus=-`). Clearing the focus only when the
     // lost client held it is not enough here: at this moment the compositor holds it, and a
     // window it routes to would receive what is typed before a fresh session takes over.
-    // Phases 1–4 observe the compositor's focus (the spy's), never the input service's.
+    // Phases 1–4 observe the compositor's side (the spy's focus, then `w`), never the input
+    // service's.
     kprintln!("OSX|{}|ktest|session_loss|phase=5|ready=1", BUILD_ID);
     let unlocked3 = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
         state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
@@ -7842,11 +7940,30 @@ fn session_loss() -> ! {
     {
         fail("the session lost while the compositor held the keyboard left the keyboard with it")
     }
+    // Phase 7 (display.md v1.2 rescue): stopped for good, no session restarts and none purges,
+    // so what holds the screen now is the compositor's own reaction to the session's loss.
+    let holds = poll_reply(&display, b"HOLDS", sched::ticks() + 5_000, |r| {
+        r.starts_with("OK locked=1 ")
+    });
+    let held_after_stop = holds.starts_with("OK locked=1 ");
+    kprintln!(
+        "OSX|{}|ktest|session_loss|holds={}|held_after_stop={}|phase=7",
+        BUILD_ID,
+        holds,
+        u8::from(held_after_stop)
+    );
+    if !held_after_stop {
+        fail("the compositor did not hold the screen once the session was gone")
+    }
+    drop(holds);
     drop((
-        unlocked, spy0, r1, fresh1, spy1, unlocked2, locked, r2, fresh2, spy2,
+        unlocked, spy0, r1, fresh1, spy1, windows1, unlocked2, locked, r2, fresh2,
+    ));
+    drop((
+        spy_lines, spy_gone, ev_d, ev_w, sw, sw_id, ww, ww_id, mw, cw, w_list,
     ));
     drop((unlocked3, r3, lines, input_after));
-    drop((input, display, spy));
+    drop((vmo_w, w, input, display));
     display_finish(
         name,
         h,
@@ -9082,8 +9199,10 @@ impl HoldCase {
 }
 
 /// Ticks one sub-case may take up to its `STOP`; then at most `HOLD_STOP` for `STOP` and as
-/// much again for a kill. Five sub-cases: at most 5 × 23 s = 115 s, inside the lab's 180 s.
-const HOLD_BUDGET: u64 = 19_000;
+/// much again for a kill. Five sub-cases: at most 5 × 9 s = 45 s, inside the lab's 60 s
+/// (WP-64, 2026-11-10: 23 s -> 9 s per sub-case with the lab's 180 s -> 60 s; the whole case
+/// took 8 s on CI run 42696067096; a hang guard of a done test, no oracle change).
+const HOLD_BUDGET: u64 = 5000;
 const HOLD_STOP: u64 = 2000;
 /// The longest any single request waits for its reply (capped by the sub-case's budget).
 const HOLD_REQUEST: u64 = 5000;
@@ -9457,6 +9576,447 @@ fn hold_fail_closed() -> ! {
         fail("the compositors left a process, an object or a frame behind")
     }
     pass("a LIST the compositor cannot have starts the screen held; a listing still decides it as before")
+}
+
+/// TST-M6-TOKEN-REVOKE (negative; auth.md v1.2, session.md v1.7 §5, WP-73): the session's
+/// auth token dies with the session service. SVC-SS.TXT; the test first logs `user` in on its
+/// own connection to `auth` and closes that connection at once, as `sh` does
+/// (user/apps/sh/src/main.rs:362-374), keeping the token; the lab then signs in to the session
+/// (`admin`). The live session process is frozen and the manager's STOP finds it unresponsive
+/// and kills it (`process_kill` → `sched::kill_process`, EXIT_KILLED): a crash, no code of the
+/// session runs after the freeze. Then `auth` must have revoked and closed the token it minted
+/// for the client named `session` — the kernel's count of live tokens returns to its value
+/// before the lab's sign-in (the session's handles died with its process; only `auth`'s could
+/// keep it alive) — while the sh-like token, whose connection closed long before, still
+/// answers `WHOAMI` with its identity. Each part prints its verdict and the case goes on after
+/// a failed one, so a red run shows every part; waits are bounded and compete at the test
+/// thread's own priority (`hold_wait`).
+fn token_revoke() -> ! {
+    const EXIT_KILLED: u64 = 0x2_0000;
+    let name = "token_revoke";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SS.TXT",
+        &["auth", "input", "display", "session", "spy"],
+    );
+    let tokens = || i64::from(object::stats().tokens);
+    let base = tokens();
+    kprintln!("OSX|{}|ktest|token_revoke|services=5|ready=1", BUILD_ID);
+    let within = |t: u64| sched::ticks() + t;
+    // Bounded so that a red run still prints every verdict inside the lab's 85 s: the sh-like
+    // login and the lab's sign-in share 35 s, then at most 5 s each for the kill, the count
+    // and WHOAMI (WP-73 audit #11).
+    let unlock_by = within(35_000);
+    let mut ev = Vec::new();
+    // Part 1: an sh-like client logs in, keeps the token, and closes its connection.
+    let sh_auth = svc_connect(&h, "auth");
+    let (sh_login, sh_token) = auth_request(&sh_auth, b"LOGIN user lab-user-1", None);
+    drop(sh_auth);
+    let sh_ok = sh_login == "OK 1001 1001 8" && sh_token.is_some();
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|sh_login={}|sh_token={}|phase=1",
+        BUILD_ID,
+        sh_login,
+        u8::from(sh_token.is_some())
+    );
+    // Part 2: the lab signs in to the session; its token is minted by `auth` for `session`.
+    let unlocked = loop {
+        let r = hold_request(
+            &session,
+            b"STATE",
+            Vec::new(),
+            &mut ev,
+            within(5000).min(unlock_by),
+        );
+        if (state_is(&r, "unlocked", 1) && r.ends_with(" focus=display"))
+            || sched::ticks() >= unlock_by
+        {
+            break r;
+        }
+        hold_wait(within(20).min(unlock_by), || false);
+    };
+    let signed_in = tokens() - base;
+    let unlocked_ok = state_is(&unlocked, "unlocked", 1) && unlocked.ends_with(" focus=display");
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|unlocked={}|tokens={}|phase=2",
+        BUILD_ID,
+        unlocked,
+        signed_in
+    );
+    // Part 3: the session process is frozen, then killed by the manager's STOP.
+    drop(session);
+    let frozen = sched::freeze_named(b"SESSIOND.ELF");
+    let stop = match crate::services::request(&h.m.ctl, b"STOP session", within(500)) {
+        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+        Err(e) => String::from(e),
+    };
+    let mut lines = Vec::new();
+    let stopped = hold_wait(within(5000), || {
+        lines = match crate::services::request(&h.m.ctl, b"LIST", within(200)) {
+            Ok(b) => parse_list(&b),
+            Err(_) => Vec::new(),
+        };
+        svc_find(&lines, "session").state == "stopped"
+    });
+    let gone = svc_find(&lines, "session");
+    let killed = stopped && gone.exit == Some(EXIT_KILLED);
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|frozen={}|stop={}|session={}:{:#x}|killed={}|phase=3",
+        BUILD_ID,
+        u8::from(frozen),
+        stop,
+        gone.state,
+        gone.exit.unwrap_or(u64::MAX),
+        u8::from(killed)
+    );
+    // Verdict (a): the session's token is gone — revoked and closed by `auth` — so the live
+    // count is back to the sh-like token alone. Before auth.md v1.2 `auth` kept the session
+    // (and its handle) until SESSION_TICKS, and the count stays one higher.
+    let back = hold_wait(within(5000), || tokens() - base == 1);
+    let after = tokens() - base;
+    let revoked_ok = killed && signed_in == 2 && back && after == 1;
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|case=session_token|tokens_before={}|tokens_after={}|revoked={}",
+        BUILD_ID,
+        signed_in,
+        after,
+        u8::from(back && after == 1)
+    );
+    // Verdict (b): the sh-like token survives the session's death (auth.md v1.2, V2).
+    let whoami = match &sh_token {
+        Some(t) => {
+            let a = svc_connect(&h, "auth");
+            let r = hold_request(
+                &a,
+                b"WHOAMI",
+                alloc::vec![token_entry(t)],
+                &mut ev,
+                within(5000),
+            );
+            drop(a);
+            r
+        }
+        None => String::from("-"),
+    };
+    let kept = whoami == "OK 1001 1001 8";
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|case=sh_token|whoami={}|kept={}",
+        BUILD_ID,
+        whoami,
+        u8::from(kept)
+    );
+    let failed = alloc::format!(
+        "{}{}{}{}{}",
+        if sh_ok { "" } else { "sh_login," },
+        if unlocked_ok { "" } else { "unlocked," },
+        if killed { "" } else { "kill," },
+        if revoked_ok { "" } else { "session_token," },
+        if kept { "" } else { "sh_token," }
+    );
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|failed={}",
+        BUILD_ID,
+        if failed.is_empty() { "none" } else { &failed }
+    );
+    drop((sh_login, sh_token, unlocked, stop, lines, gone, whoami, ev));
+    if !failed.is_empty() {
+        fail("the session's token outlived the session, or another client's token did not (auth.md v1.2)")
+    }
+    drop(failed);
+    display_finish(
+        name,
+        h,
+        "the token of a killed session was revoked; a token another client held survived",
+    )
+}
+
+/// What one sub-case of `purge_fail_closed` saw: the answer the substitute compositor gave to
+/// the session's `LOGOUT` (`-`: never asked), where it came against the sign-in screen
+/// (`logout_first`: before the first `CREATE_SURFACE`; `logout_only`: no screen after it;
+/// `screen_only`: a screen with no `LOGOUT` before it; `none`), whether the session said
+/// READY, and its exit code (0 after `STOP`; EXIT_KILLED when it had to be killed).
+struct PurgeCase {
+    logout: String,
+    order: &'static str,
+    ready: bool,
+    exit: u64,
+}
+
+impl PurgeCase {
+    /// Purged, then the sign-in screen, READY, and `STOP` ended it.
+    fn purged(&self) -> bool {
+        self.logout == "OK" && self.order == "logout_first" && self.ready && self.exit == 0
+    }
+
+    /// No sign-in screen after a refused or failed `LOGOUT`: exit 0xE4 before READY.
+    fn closed(&self, answer: &str) -> bool {
+        self.logout == answer && self.order == "logout_only" && !self.ready && self.exit == 0xE4
+    }
+}
+
+/// One `purge_fail_closed` sub-case: its name, the answer to `LIST` (`None`: the boot channel
+/// closes), the compositor's answer to `LOGOUT` (empty: its channel closes), what must happen.
+type PurgeSpec<'a> = (&'a str, Option<&'a [u8]>, &'a [u8], &'a str);
+
+/// Ticks one `purge_fail_closed` sub-case may take up to its `STOP`; then at most
+/// `PURGE_STOP` for `STOP` and as much again for a kill. Eight sub-cases: at most
+/// 8 × 10 s = 80 s, inside the lab's 100 s.
+const PURGE_BUDGET: u64 = 8000;
+const PURGE_STOP: u64 = 1000;
+
+/// The substitute manager's side of one session start-up (session.md v1.7): a fresh
+/// /SYSTEM/SESSIOND.ELF with the boot channel as its only handle, `START`, then every
+/// `CONNECT` answered with a channel the test keeps — `auth` silent, `input` and `display`
+/// played by the test: the input service answers `REGISTER` with `OK 1` and the rest with
+/// `OK`; the compositor answers `STATUS` with a 1280×800 screen, `LOGOUT` with `logout` (empty:
+/// its channel closes instead), `CREATE_SURFACE`/`CREATE_WINDOW` with `OK 1` and the rest with
+/// `OK`, and logs each verb in order. The session's `LIST` is answered with `list` — or, with
+/// `None`, the boot channel closes instead. On READY, `STOP`. Every wait is bounded
+/// (`PURGE_BUDGET`, `PURGE_STOP`); a session still alive after `STOP` is killed.
+fn purge_run(case: &str, image: &[u8], list: Option<&[u8]>, logout: &[u8]) -> PurgeCase {
+    let chan_entry = |ep: Arc<Endpoint>| Entry {
+        object: Object::Channel(ep),
+        rights: Rights::CHANNEL_DEFAULT,
+    };
+    let note = |bytes: &[u8]| Message {
+        bytes: bytes.to_vec(),
+        handles: Vec::new(),
+    };
+    let (ours, theirs) = channel::create();
+    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let pid = match crate::user::spawn_elf_with(
+        image,
+        1,
+        alloc::vec![chan_entry(theirs)],
+        object.clone(),
+    ) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!(
+                "OSX|{}|ktest|purge_fail_closed|case={}|error={}",
+                BUILD_ID,
+                case,
+                e.code()
+            );
+            fail("the session's image did not load")
+        }
+    };
+    let mut boot = Some(ours);
+    let mut auth: Option<Arc<Endpoint>> = None;
+    let mut input: Option<Arc<Endpoint>> = None;
+    let mut display: Option<Arc<Endpoint>> = None;
+    let mut verbs: Vec<String> = Vec::new();
+    let mut answered = String::from("-");
+    let mut ready = false;
+    if let Some(b) = boot.as_ref() {
+        let _ = b.write(note(b"START"));
+    }
+    let read = |ep: &Arc<Endpoint>| ep.read(channel::MSG_MAX_BYTES, channel::MSG_MAX_HANDLES, None);
+    hold_wait(sched::ticks() + PURGE_BUDGET, || {
+        let mut close_boot = false;
+        if let Some(b) = boot.as_ref() {
+            while let Ok(m) = read(b) {
+                let req = m.bytes.as_slice();
+                if let Some(name) = req.strip_prefix(b"CONNECT ") {
+                    let (mine, far) = channel::create();
+                    match name {
+                        b"input" => input = Some(mine),
+                        b"display" => display = Some(mine),
+                        _ => auth = Some(mine),
+                    }
+                    let _ = b.write(Message {
+                        bytes: b"OK".to_vec(),
+                        handles: alloc::vec![chan_entry(far)],
+                    });
+                } else if req == b"LIST" {
+                    match list {
+                        Some(a) => {
+                            let _ = b.write(note(a));
+                        }
+                        None => {
+                            close_boot = true;
+                            break;
+                        }
+                    }
+                } else if req == b"READY" {
+                    ready = true;
+                }
+            }
+        }
+        if close_boot {
+            boot = None;
+        }
+        if let Some(i) = input.as_ref() {
+            while let Ok(m) = read(i) {
+                let r: &[u8] = if m.bytes.starts_with(b"REGISTER") {
+                    b"OK 1"
+                } else {
+                    b"OK"
+                };
+                let _ = i.write(note(r));
+            }
+        }
+        let mut close_display = false;
+        if let Some(d) = display.as_ref() {
+            while let Ok(m) = read(d) {
+                let text = String::from_utf8_lossy(&m.bytes).into_owned();
+                let verb: String = text.split(' ').next().unwrap_or("").into();
+                let r: &[u8] = match verb.as_str() {
+                    "STATUS" => b"OK format=1 screen=1280x800 windows=0 focus=- pointer=0,0 composed=0 dropped=0 unresponsive=0",
+                    "LOGOUT" if logout.is_empty() => {
+                        answered = String::from("closed");
+                        close_display = true;
+                        b""
+                    }
+                    "LOGOUT" => {
+                        answered = String::from_utf8_lossy(logout).into_owned();
+                        logout
+                    }
+                    "CREATE_SURFACE" | "CREATE_WINDOW" => b"OK 1",
+                    _ => b"OK",
+                };
+                verbs.push(verb);
+                if close_display {
+                    break;
+                }
+                let _ = d.write(note(r));
+            }
+        }
+        if close_display {
+            display = None;
+        }
+        ready || object.exit_code().is_some()
+    });
+    if let Some(b) = boot.as_ref() {
+        let _ = b.write(note(b"STOP"));
+    }
+    if !hold_wait(sched::ticks() + PURGE_STOP, || object.exit_code().is_some()) {
+        sched::kill_process(pid, crate::syscall::EXIT_KILLED);
+        hold_wait(sched::ticks() + PURGE_STOP, || object.exit_code().is_some());
+    }
+    let logout_at = verbs.iter().position(|v| v == "LOGOUT");
+    let screen_at = verbs.iter().position(|v| v == "CREATE_SURFACE");
+    let order = match (logout_at, screen_at) {
+        (Some(l), Some(s)) if l < s => "logout_first",
+        (Some(_), None) => "logout_only",
+        (_, Some(_)) => "screen_only",
+        (None, None) => "none",
+    };
+    let out = PurgeCase {
+        logout: answered,
+        order,
+        ready,
+        exit: object.exit_code().unwrap_or(u64::MAX),
+    };
+    drop((boot, auth, input, display, verbs, object));
+    out
+}
+
+/// TST-M6-PURGE-FAIL-CLOSED (session.md v1.7, WP-64): a session that cannot tell whether it
+/// was restarted purges anyway, and one whose purge is refused shows no sign-in screen. The
+/// test kernel plays the service manager, the input service and the compositor for a fresh
+/// /SYSTEM/SESSIOND.ELF per sub-case (`purge_run`) and answers its `LIST`: (a) `reply` — `ERR
+/// TEST`; (b) `no_session_line` — a listing without `session`; (c) `bad_count` — a `session`
+/// line whose restart count is not a number; (d) `too_long` — 2000 bytes, more than the
+/// session's 1024-byte buffer; (e) `closed` — the boot channel closes instead: each of (a)–(d)
+/// must send `LOGOUT` before the sign-in screen and then say READY; (e) purges and then cannot
+/// say READY (0xE5). (f) `refused` — restarted (`restarts=1`) and the compositor answers
+/// `LOGOUT` with `ERR ACCESS`; (g) `logout_closed` — the compositor's channel closes on
+/// `LOGOUT`: no sign-in screen, exit 0xE4 before READY. (h) `first_start` — `restarts=0`, the
+/// control: no `LOGOUT`, the screen, READY. The serial log must carry the list_failure trace
+/// five times and the restarted one never (target.json). Each sub-case prints its verdict and
+/// the case goes on after a failed one.
+fn purge_fail_closed() -> ! {
+    let name = "purge_fail_closed";
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let image = match crate::loader::read_image(b"/SYSTEM/SESSIOND.ELF") {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
+            fail("the session's image is not on the volume")
+        }
+    };
+    let deps: &[u8] = b"auth ready 0 1 1 1 -\ninput ready 0 1 1 1 -\ndisplay ready 0 1 1 1 -\n";
+    let with = |session: &[u8]| {
+        let mut v = Vec::from(deps);
+        v.extend_from_slice(session);
+        v
+    };
+    let mut long = with(b"session starting 1 1 1 - -\n");
+    let mut k = 0;
+    while long.len() < 2000 {
+        long.extend_from_slice(alloc::format!("fill{:02} ready 0 1 1 1 -\n", k).as_bytes());
+        k += 1;
+    }
+    let bad = with(b"session starting x 1 1 - -\n");
+    let restarted = with(b"session starting 1 1 1 - -\n");
+    let first = with(b"session starting 0 1 - - -\n");
+    let cases: [PurgeSpec; 8] = [
+        ("reply", Some(b"ERR TEST"), b"OK", "purged"),
+        ("no_session_line", Some(deps), b"OK", "purged"),
+        ("bad_count", Some(&bad), b"OK", "purged"),
+        ("too_long", Some(&long), b"OK", "purged"),
+        ("closed", None, b"OK", "no_ready"),
+        ("refused", Some(&restarted), b"ERR ACCESS", "closed"),
+        ("logout_closed", Some(&restarted), b"", "closed"),
+        ("first_start", Some(&first), b"OK", "control"),
+    ];
+    let mut failed = String::new();
+    for (case, list, logout, expect) in cases {
+        let r = purge_run(case, &image, list, logout);
+        let ok = match expect {
+            "purged" => r.purged(),
+            "no_ready" => {
+                r.logout == "OK" && r.order == "logout_first" && !r.ready && r.exit == 0xE5
+            }
+            "closed" => r.closed(if logout.is_empty() {
+                "closed"
+            } else {
+                "ERR ACCESS"
+            }),
+            _ => r.logout == "-" && r.order == "screen_only" && r.ready && r.exit == 0,
+        };
+        kprintln!(
+            "OSX|{}|ktest|{}|case={}|logout={}|order={}|ready={}|exit={:#x}|ok={}",
+            BUILD_ID,
+            name,
+            case,
+            r.logout,
+            r.order,
+            u8::from(r.ready),
+            r.exit,
+            u8::from(ok)
+        );
+        if !ok {
+            failed.push_str(case);
+            failed.push(',');
+        }
+    }
+    drop((image, long, bad, restarted, first));
+    let gone = sched::poll_until(sched::ticks() + 1000, || sched::stats().processes == 0);
+    let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|{}|failed={}|processes_after={}|clean={}|frames_delta={}",
+        BUILD_ID,
+        name,
+        if failed.is_empty() { "none" } else { &failed },
+        procs,
+        u8::from(gone && settled),
+        frames
+    );
+    if !failed.is_empty() {
+        fail("a session that could not tell it was restarted showed its sign-in screen without LOGOUT, or showed it after a refused LOGOUT (session.md v1.7)")
+    }
+    if !gone || procs != 0 || !settled || frames != 0 {
+        fail("the sessions left a process, an object or a frame behind")
+    }
+    pass("a session purges whenever it cannot tell it was not restarted, and shows no sign-in screen when the purge fails")
 }
 
 // ---- WP-40: forced termination ---------------------------------------------------------------

@@ -4892,16 +4892,20 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=session_loss"
         ],
-        "oracle": "SVC-SS.TXT: the session service itself is lost twice (the manager's RESTART: its process ends and every channel of it closes, as in a crash). Unlocked: the lab signs in with the spy focused (`OK keys=0 focus=1 connections=1`); after the loss the input service has taken the keyboard from the compositor (the spy: `OK keys=0 focus=0 connections=1`), the lab's screendump shows the new session's sign-in dialog only (10141C at (2,2) and at the spy's place (150,150), the dialog's F0F0F0 at (512,338)), and the new session starts from nothing (`OK no_session user=- changes=0 display=1 input=1 focus=session`). The lab signs in again: every key reaches the new session and none the compositor (KEYS unchanged); the open desktop's screendump shows the desktop (1E2A38 at (2,2)) and the spy's window (2E8B57 at (150,150)). Locked: after Ctrl+Alt+Del the session is lost again; the next session again starts at no_session, the spy has no focus and the compositor received no key; then (WP-38 mutant M106, input.md v2.2) the lab signs in once more, so the input service's focus is the compositor's (`display`), and the test stops the session for good (the manager's STOP, no restart): once the manager lists it stopped, the input service's own STATUS reads `focus=-` — the keyboard is with nobody even though the session did not hold it when it was lost (`unlocked3=… focus=display|stop=OK|stopped=1|input_focus_cleared=1|phase=6`); the password never appears in the serial log; no frame leaks; exit 33",
+        "oracle": "SVC-SS.TXT: the session service itself is lost twice (the manager's RESTART: its process ends and every channel of it closes, as in a crash). Rewritten for session.md v1.7 (WP-64; PLAN-ANSWER §2.3 D5-B): a contract-driven change, not a weakening — the restarted session now ends what the lost one left on the screen before its sign-in screen, so the spy (whose focus the earlier case read after the loss) is logged out and exits; every other assertion is kept. Unlocked: the lab signs in with the spy focused (`OK keys=0 focus=1 connections=1`); after the loss the new session traces `session|purge=logout|restarts=1|reason=restarted`, the spy is told LOGGED_OUT with no window left (`spy|logged_out|windows=0`) and ends (the manager lists it `stopped:0x0`), the compositor counts one window — the sign-in dialog (`windows=1`) — the lab's screendump shows the new session's sign-in dialog only (10141C at (2,2) and at the spy's place (150,150), the dialog's F0F0F0 at (512,338)), and the new session starts from nothing (`OK no_session user=- changes=0 display=1 input=1 focus=session`). A client then connects anew (the test's own window `w`, D04040 at (600,100)) while the screen is held. The lab signs in again: every key reaches the new session and none the compositor (KEYS unchanged), `w` is focused; the open desktop's screendump shows the desktop (1E2A38 at (2,2)) and, where the spy's window was, the desktop again (1E2A38 at (150,150): no window of the lost session came back), and `w` at (650,170) (D04040). Locked: after Ctrl+Alt+Del the session is lost again; the next session again starts at no_session after `session|purge=logout|restarts=2|reason=restarted`, `w` was told LOGGED_OUT and has no window left, and the compositor received no key; then (WP-38 mutant M106, input.md v2.2) the lab signs in once more, so the input service's focus is the compositor's (`display`), and the test stops the session for good (the manager's STOP, no restart): once the manager lists it stopped, the input service's own STATUS reads `focus=-` — the keyboard is with nobody even though the session did not hold it when it was lost (`unlocked3=… focus=display|stop=OK|stopped=1|input_focus_cleared=1|phase=6`); stopped for good (no restart, so no purge), the compositor still holds the screen on its own (display.md v1.2 rescue: HOLDS `OK locked=1 …`, `held_after_stop=1|phase=7`); the password never appears in the serial log; no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=session_loss",
           "|path=/SYSTEM/SESSIOND.ELF|handles=1",
           "|ktest|session_loss|services=5|ready=1",
-          "|ktest|session_loss|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|spy=OK keys=0 focus=1 connections=1|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|spy_after=OK keys=0 focus=0 connections=1|phase=2|ready=1",
-          "|ktest|session_loss|unlocked2=OK unlocked user=admin changes=1 display=1 input=1 focus=display|keys_during_signin=0|phase=3|ready=1",
-          "|ktest|session_loss|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|spy_focus0=1|keys_after_loss=0|phase=4",
+          "|text=session|purge=logout|restarts=1|reason=restarted",
+          "|text=spy|logged_out|windows=0",
+          "|ktest|session_loss|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|spy=OK keys=0 focus=1 connections=1|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|spy_after=stopped:0x0|windows=1|phase=2|ready=1",
+          "|ktest|session_loss|unlocked2=OK unlocked user=admin changes=1 display=1 input=1 focus=display|keys_during_signin=0|w_focused=1|phase=3|ready=1",
+          "|text=session|purge=logout|restarts=2|reason=restarted",
+          "|ktest|session_loss|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|w_logged_out=1|w_windows=0|keys_after_loss=0|phase=4",
           "|ktest|session_loss|unlocked3=OK unlocked user=admin changes=1 display=1 input=1 focus=display|stop=OK|stopped=1|input_focus_cleared=1|phase=6",
+          "|held_after_stop=1|phase=7",
           "|ktest|session_loss|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|session_loss|frames_delta=0",
           "|ktest|pass|a lost session left the screen held and the keyboard with nobody until a fresh session"
@@ -4911,7 +4915,8 @@
           "|kernel|panic|",
           "|exc|vector",
           "|user_fault|",
-          "lab-admin-1"
+          "lab-admin-1",
+          "reason=list_failure"
         ],
         "min_counts": {
           "|path=/SYSTEM/SESSIOND.ELF|": 3
@@ -5012,7 +5017,9 @@
             "--pixel",
             "2,2,1E2A38",
             "--pixel",
-            "150,150,2E8B57"
+            "150,150,1E2A38",
+            "--pixel",
+            "650,170,D04040"
           ],
           [
             "python3",
@@ -6330,7 +6337,8 @@
           "|exc|vector",
           "|user_fault|",
           "|boot|error|",
-          "lab-user-1"
+          "lab-user-1",
+          "reason=list_failure"
         ],
         "phases": [
           {
@@ -6635,7 +6643,108 @@
           "reason=reply|locked=0",
           "reason=too_long|locked=0"
         ],
-        "timeout_s": 180
+        "timeout_s": 60
+      },
+      {
+        "id": "TST-M6-TOKEN-REVOKE",
+        "test_id": "TST-M6-TOKEN-REVOKE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=token_revoke"
+        ],
+        "oracle": "SVC-SS.TXT (auth.md v1.2, session.md v1.7 §5; negative): the test logs `user` in on its own connection to auth and closes it at once, as sh does (user/apps/sh/src/main.rs:362-374), keeping the token (`sh_login=OK 1001 1001 8|sh_token=1`); the lab signs in to the session as admin (two live tokens above the baseline). The session process is frozen and the manager's STOP kills it (`session=stopped:0x20000|killed=1`): auth traces `auth|session_lost|revoked=1`, and the kernel's live-token count returns to what it was before the session's sign-in (the sh-like token alone) (`tokens_before=2|tokens_after=1|revoked=1`) — before auth.md v1.2 auth kept the dead session's token until SESSION_TICKS and the count stays at 2. The sh-like token, whose connection closed long before, still answers WHOAMI (`OK 1001 1001 8`). Every part prints its verdict and the case goes on after a failed one (`failed=` lists them, `none` when green); no password in the serial log; no process, object or frame left; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=token_revoke",
+          "|path=/SYSTEM/SESSIOND.ELF|handles=1",
+          "|ktest|token_revoke|services=5|ready=1",
+          "|ktest|token_revoke|sh_login=OK 1001 1001 8|sh_token=1|phase=1",
+          "|ktest|token_revoke|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|tokens=2|phase=2",
+          "|ktest|token_revoke|frozen=1|stop=OK|session=stopped:0x20000|killed=1|phase=3",
+          "|text=auth|session_lost|revoked=1",
+          "|ktest|token_revoke|case=session_token|tokens_before=2|tokens_after=1|revoked=1",
+          "|ktest|token_revoke|case=sh_token|whoami=OK 1001 1001 8|kept=1",
+          "|ktest|token_revoke|failed=none",
+          "|ktest|token_revoke|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|token_revoke|frames_delta=0",
+          "|ktest|pass|the token of a killed session was revoked; a token another client held survived"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1",
+          "lab-user-1"
+        ],
+        "timeout_s": 85,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            }
+          ]
+        }
+      },
+      {
+        "id": "TST-M6-PURGE-FAIL-CLOSED",
+        "test_id": "TST-M6-PURGE-FAIL-CLOSED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=purge_fail_closed"
+        ],
+        "oracle": "session.md v1.7 (WP-64): the test kernel plays the service manager, the input service and the compositor for a fresh /SYSTEM/SESSIOND.ELF per sub-case and logs the compositor's requests in order. A LIST the session cannot read — (a) `ERR TEST`, (b) a listing without `session`, (c) a restart count that is not a number, (d) 2000 bytes against the session's 1024-byte buffer, (e) the boot channel closed — makes it send LOGOUT before its sign-in screen (`logout=OK|order=logout_first`), then READY (a–d; exit 0 after STOP) or, with no boot channel, exit 0xE5 (e); the trace `session|purge=logout|restarts=-|reason=list_failure` appears exactly five times. Restarted (`restarts=1`) with LOGOUT refused (f, `ERR ACCESS`) or its channel closed (g): no sign-in screen (`order=logout_only`), no READY, exit 0xE4, and no `reason=restarted` trace (it is printed only after the compositor's OK). (h) `restarts=0`, the control: no LOGOUT, the screen, READY. Every sub-case prints its verdict; `failed=none`; no process, object or frame left; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=purge_fail_closed",
+          "|ktest|purge_fail_closed|case=reply|logout=OK|order=logout_first|ready=1|exit=0x0|ok=1",
+          "|ktest|purge_fail_closed|case=no_session_line|logout=OK|order=logout_first|ready=1|exit=0x0|ok=1",
+          "|ktest|purge_fail_closed|case=bad_count|logout=OK|order=logout_first|ready=1|exit=0x0|ok=1",
+          "|ktest|purge_fail_closed|case=too_long|logout=OK|order=logout_first|ready=1|exit=0x0|ok=1",
+          "|ktest|purge_fail_closed|case=closed|logout=OK|order=logout_first|ready=0|exit=0xe5|ok=1",
+          "|ktest|purge_fail_closed|case=refused|logout=ERR ACCESS|order=logout_only|ready=0|exit=0xe4|ok=1",
+          "|ktest|purge_fail_closed|case=logout_closed|logout=closed|order=logout_only|ready=0|exit=0xe4|ok=1",
+          "|ktest|purge_fail_closed|case=first_start|logout=-|order=screen_only|ready=1|exit=0x0|ok=1",
+          "|ktest|purge_fail_closed|failed=none|processes_after=0|clean=1|frames_delta=0",
+          "|ktest|pass|a session purges whenever it cannot tell it was not restarted, and shows no sign-in screen when the purge fails"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|reason=restarted"
+        ],
+        "min_counts": {
+          "|text=session|purge=logout|restarts=-|reason=list_failure": 5
+        },
+        "max_counts": {
+          "|text=session|purge=logout|restarts=-|reason=list_failure": 5
+        },
+        "timeout_s": 100
       }
     ]
   },

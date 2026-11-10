@@ -186,8 +186,8 @@ class Suites(unittest.TestCase):
 
 class StepBudget(unittest.TestCase):
     """The verify job's time budget (docs/PLAN-ANSWER.md §2.5 D4-V2): the guest suites that can
-    hang until the job's limit carry their own cap (M5: 11m34s measured, cap 18; M6: cap 12) and
-    the sum of every step cap with a 20 % margin stays within the job's limit (55: 15+18+12 = 45,
+    hang until the job's limit carry their own cap (M5: 11m34s measured, cap 18; M6: cap 15 since WP-64) and
+    the sum of every step cap with a 20 % margin stays within the job's limit (55: 12+18+15 = 45,
     x1.2 = 54), so a hung step ends with its own name instead of the job's timeout. A capped
     suite whose cases are bounded by their own timeouts (M6) must fit its cap in the worst case:
     the sum over its cases of each phase's timeout_s stays below the cap. M5 is outside that
@@ -210,7 +210,9 @@ class StepBudget(unittest.TestCase):
     def test_guest_steps_are_capped_within_the_job_limit(self):
         job, caps = self.caps()
         self.assertEqual(job["timeout-minutes"], 55)
-        self.assertEqual(caps, {"M5": 18, "M6": 12})
+        # M6 12 -> 15 (WP-64, 2026-11-10): PURGE-FAIL-CLOSED, TOKEN-REVOKE and WP-46's JOB-KILL
+        # bring its worst case to 755 s (test_a_bounded_suite_fits_its_cap_in_the_worst_case).
+        self.assertEqual(caps, {"M5": 18, "M6": 15})
         total = sum(int(s["timeout-minutes"]) for s in job["steps"] if "timeout-minutes" in s)
         self.assertLessEqual(total * 1.2, job["timeout-minutes"], f"step caps {total} min + 20 % exceed the job's limit")
 
@@ -257,7 +259,7 @@ class HoldFailClosed(unittest.TestCase):
         self.assertEqual(c["artifact"], "${OUT}/NAWAH-KTEST.EFI")
         self.assertEqual(c["qemu_extra"], self.KEY)
         self.assertEqual(c["expected_exit_code"], 33)
-        self.assertEqual(c["timeout_s"], 180)
+        self.assertEqual(c["timeout_s"], 60)  # measured 8 s on CI; WP-64 moved 120 s of the M6 cap to PURGE-FAIL-CLOSED
         self.assertIn("OSX|${BUILD_ID}|ktest|start|name=hold_fail_closed", c["required_markers"])
         for m in self.HELD + self.VERDICTS + ["|ktest|pass|"]:
             self.assertIn(m, c["required_markers"])
