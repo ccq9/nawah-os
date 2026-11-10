@@ -10556,15 +10556,75 @@ fn jobs_phases_ok(code: u64) -> u32 {
     }
 }
 
-/// TST-M6-JOB-KILL (REQ-M6-003, WP-46, syscall.md v1.13 §5) — test-first variant: `/SYSTEM/JOBS.ELF` from the volume, started with a
-/// channel as its bootstrap handle only (no job API here, so this compiles on a kernel without
-/// jobs; the app's phase 1 then fails on its first job call),
+/// Part 1 of TST-M6-JOB-KILL (mutant M153): the locked dead-job check in `spawn_user_with`
+/// (sched/mod.rs:429), which `process_spawn_in`'s early check hides from user space. A process
+/// object in a killed job must not start: the spawn is refused (`AsError::Spawn`), the object is
+/// never bound and learns the stillborn exit (u64::MAX), the initial handle is closed (its peer
+/// sees PEER_CLOSED), and nothing leaks.
+fn job_spawn_dead() -> bool {
+    use crate::object::job::{self, Job};
+    use crate::object::process::ProcessObject;
+    let image = match crate::loader::read_image(b"/SYSTEM/IDLE.ELF") {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!(
+                "OSX|{}|ktest|job_spawn_dead|image_error={}",
+                BUILD_ID,
+                e.code()
+            );
+            fail("IDLE.ELF is not on the volume")
+        }
+    };
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let dead = match Job::new_child(&job::root()) {
+        Ok(j) => j,
+        Err(_) => fail("job_spawn_dead: no child job of the root"),
+    };
+    // No member yet: the pass only marks the job.
+    let marked = sched::kill_job(&dead, crate::syscall::EXIT_KILLED);
+    let (keep, give) = channel::create();
+    let object = Arc::new(ProcessObject::new_in(dead.clone()));
+    let r = crate::user::spawn_elf_with(
+        &image,
+        1,
+        alloc::vec![Entry {
+            object: Object::Channel(give),
+            rights: Rights::CHANNEL_DEFAULT,
+        }],
+        object.clone(),
+    );
+    let refused = matches!(r, Err(ElfError::Space(addrspace::AsError::Spawn)));
+    let closed = matches!(keep.read(16, 4, None), Err(ChannelError::PeerClosed));
+    let unbound = object.pid().is_none() && object.exit_code() == Some(u64::MAX);
+    drop((keep, object, dead));
+    let frames_delta = frames0 as i64 - pmm::stats().free_frames as i64;
+    let clean = object::stats() == obj0;
+    let ok = marked && refused && closed && unbound && clean && frames_delta == 0;
+    kprintln!(
+        "OSX|{}|ktest|job_spawn_dead|marked={}|refused={}|peer_closed={}|unbound={}|clean={}|frames_delta={}|ok={}",
+        BUILD_ID,
+        u8::from(marked),
+        u8::from(refused),
+        u8::from(closed),
+        u8::from(unbound),
+        u8::from(clean),
+        frames_delta,
+        u8::from(ok)
+    );
+    ok
+}
+
+/// TST-M6-JOB-KILL (REQ-M6-003, WP-46, syscall.md v1.13 §5; mutants M151-M153). Part 1:
+/// `job_spawn_dead` (the locked check). Part 2: `/SYSTEM/JOBS.ELF` from the volume, started with a
+/// channel as its bootstrap handle and the root job (JOB_DEFAULT) right after it,
 /// proves the contract from user space in seven phases and exits 0x4A. The test checks its
 /// exit, that every process it started is gone, and that no frame and no object is left.
 fn job_kill_all() -> ! {
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
     }
+    let dead_ok = job_spawn_dead();
     let image = match crate::loader::read_image(b"/SYSTEM/JOBS.ELF") {
         Ok(i) => i,
         Err(e) => {
@@ -10581,10 +10641,15 @@ fn job_kill_all() -> ! {
     let procs0 = sched::stats().processes;
     // Our end stays open and silent: the app reads no role mark on it, so it runs as the parent.
     let (keep, give) = channel::create();
-    let initial = alloc::vec![Entry {
+    let mut initial = alloc::vec![Entry {
         object: Object::Channel(give),
         rights: Rights::CHANNEL_DEFAULT,
     }];
+    // Slot 1: the root job (initial handles are consecutive, syscall.md §5).
+    initial.push(Entry {
+        object: Object::Job(crate::object::job::root()),
+        rights: Rights::JOB_DEFAULT,
+    });
     let object = Arc::new(crate::object::process::ProcessObject::new());
     let pid = match crate::user::spawn_elf_with(&image, 1, initial, object.clone()) {
         Ok(p) => p,
@@ -10602,7 +10667,7 @@ fn job_kill_all() -> ! {
     let processes_after = sched::stats().processes.saturating_sub(procs0);
     let frames_delta = frames0 as i64 - pmm::stats().free_frames as i64;
     let clean = object::stats() == obj0;
-    let ok = code == 0x4A && processes_after == 0 && frames_delta == 0 && clean;
+    let ok = dead_ok && code == 0x4A && processes_after == 0 && frames_delta == 0 && clean;
     kprintln!(
         "OSX|{}|ktest|job_kill_all|exit={:#x}|phases={}|processes_after={}|frames_delta={}|clean={}|ok={}",
         BUILD_ID,
@@ -10613,6 +10678,9 @@ fn job_kill_all() -> ! {
         u8::from(clean),
         u8::from(ok)
     );
+    if !dead_ok {
+        fail("a process entered a killed job (the locked check in spawn_user_with)")
+    }
     if code != 0x4A {
         fail("the job contract did not hold (see exit and the jobs|phase lines)")
     }

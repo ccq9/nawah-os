@@ -37,6 +37,7 @@ use crate::arch::smp::MAX_CPUS;
 use crate::mm::addrspace::UserSpace;
 use crate::mm::vmm::{self, StackInfo};
 use crate::object::handle::Entry;
+use crate::object::job::Job;
 use crate::object::process::ProcessObject;
 use crate::object::HandleTable;
 use crate::sync::IrqSpinLock;
@@ -411,23 +412,31 @@ pub fn spawn_user_with(
             }
         }
     }
+    let process = Process {
+        id: 0,
+        space,
+        threads: 1,
+        exit_code: None,
+        handles: Arc::new(IrqSpinLock::new("handles", table)),
+        object,
+        kill: None,
+        #[cfg(feature = "ktest")]
+        frozen: false,
+    };
     let (result, failed) = with(|s| {
+        // A process never enters a dead job (WP-46): `kill_job` marks the job and its members
+        // under this same lock, so a spawn is either seen by that pass or refused here.
+        if process.object.as_ref().is_some_and(|o| o.job().dead()) {
+            return (Err(SpawnError), Some(process));
+        }
+        let mut process = process;
         let pid = s.next_pid;
         s.next_pid += 1;
-        if let Some(o) = &object {
+        process.id = pid;
+        if let Some(o) = &process.object {
             o.bind(pid);
         }
-        s.processes.push(Process {
-            id: pid,
-            space,
-            threads: 1,
-            exit_code: None,
-            handles: Arc::new(IrqSpinLock::new("handles", table)),
-            object,
-            kill: None,
-            #[cfg(feature = "ktest")]
-            frozen: false,
-        });
+        s.processes.push(process);
         let cpu = me();
         match new_thread(
             s,
@@ -902,10 +911,6 @@ fn wait_process_loop(pid: u32) -> Option<u64> {
     }
 }
 
-/// Marks process `pid` to be killed with `code` (WP-40, ADR-0016 §2 / §8.7): every thread of
-/// it is made runnable and asked to reschedule, and each exits at its next safe point
-/// (`check_kill`: a syscall return, a blocking wait returning, or a timer preemption). An
-/// unknown or already-exited process is ignored. Returns whether a live process was marked.
 /// Processes marked killed whose last thread has not exited yet (K4 fast path).
 static KILLS_PENDING: AtomicUsize = AtomicUsize::new(0);
 
@@ -916,29 +921,35 @@ fn kill_pending(s: &Sched, i: usize) -> bool {
         .is_some_and(|pid| s.processes.iter().any(|p| p.id == pid && p.kill.is_some()))
 }
 
+/// Marks process `pid` to be killed with `code` (WP-40, ADR-0016 §2 / §8.7): every thread of
+/// it is made runnable and asked to reschedule, and each exits at its next safe point
+/// (`check_kill`: a syscall return, a blocking wait returning, or a timer preemption). An
+/// unknown or already-exited process is ignored. Returns whether a live process was marked.
 pub fn kill_process(pid: u32, code: u64) -> bool {
-    with(|s| {
-        let Some(p) = s.processes.iter_mut().find(|p| p.id == pid) else {
-            return false;
-        };
-        if p.exit_code.is_some() {
-            return false; // its last thread already exited; nothing to kill
-        }
-        if p.kill.is_none() {
-            p.kill = Some(code);
-            // Counted before any thread can look (we hold the lock); `exit_current` uncounts
-            // it when the last thread goes. Lets every safe point skip the lock when no kill is
-            // pending anywhere (review 2026-10-19, K4).
-            KILLS_PENDING.fetch_add(1, Ordering::SeqCst);
-        }
-        // Wake every thread of the process so it reaches a safe point, and nudge the CPUs
-        // running them. A thread blocked/sleeping becomes Ready (its wait returns, then
-        // `check_kill` exits it); a running one gets a reschedule to its preemption point.
-        let mut cpus = [false; MAX_CPUS];
-        for t in s.threads.iter_mut() {
-            if t.process != Some(pid) {
-                continue;
-            }
+    with(|s| mark_killed(s, pid, code))
+}
+
+/// `kill_process` under the scheduler lock: the one kill machinery, shared by `kill_job`.
+fn mark_killed(s: &mut Sched, pid: u32, code: u64) -> bool {
+    let Some(p) = s.processes.iter_mut().find(|p| p.id == pid) else {
+        return false;
+    };
+    if p.exit_code.is_some() {
+        return false; // its last thread already exited; nothing to kill
+    }
+    if p.kill.is_none() {
+        p.kill = Some(code);
+        // Counted before any thread can look (we hold the lock); `exit_current` uncounts
+        // it when the last thread goes. Lets every safe point skip the lock when no kill is
+        // pending anywhere (review 2026-10-19, K4).
+        KILLS_PENDING.fetch_add(1, Ordering::SeqCst);
+    }
+    // Wake every thread of the process so it reaches a safe point, and nudge the CPUs
+    // running them. A thread blocked/sleeping becomes Ready (its wait returns, then
+    // `check_kill` exits it); a running one gets a reschedule to its preemption point.
+    let mut cpus = [false; MAX_CPUS];
+    for t in s.threads.iter_mut() {
+        if t.process == Some(pid) {
             match t.state {
                 State::Blocked | State::BlockedUntil { .. } | State::Sleeping { .. } => {
                     t.state = State::Ready;
@@ -947,13 +958,53 @@ pub fn kill_process(pid: u32, code: u64) -> bool {
             }
             cpus[usize::from(t.cpu)] = true;
         }
-        for (c, &want) in cpus.iter().enumerate() {
-            if want {
-                request_resched(s, c);
+    }
+    for (c, &want) in cpus.iter().enumerate() {
+        if want {
+            request_resched(s, c);
+        }
+    }
+    true
+}
+
+/// Kills `job` and everything in it (WP-46, syscall.md v1.13 §5): in one pass under the
+/// scheduler lock the job is marked killed and every live process whose job lies within it is
+/// marked as `kill_process` marks one. A process without a process object belongs to the root,
+/// which no caller can kill (it contains the caller). Spawns check `Job::dead` under the same
+/// lock before a process enters the table, so none slips in after this pass. Returns whether
+/// the job was not killed before (an already killed job is left as it is).
+pub fn kill_job(job: &Job, code: u64) -> bool {
+    with(|s| {
+        if !job.mark_killed() {
+            return false;
+        }
+        for i in 0..s.processes.len() {
+            let p = &s.processes[i];
+            let member = match &p.object {
+                Some(o) => o.job().within(job),
+                None => job.is_root(),
+            };
+            if member && p.exit_code.is_none() {
+                let pid = p.id;
+                mark_killed(s, pid, code);
             }
         }
         true
     })
+}
+
+/// The job of the current thread's process (WP-46): `process_spawn` places the child there.
+/// A process without a process object, and a kernel thread, belong to the root.
+pub fn current_job() -> Arc<Job> {
+    let job = with(|s| {
+        let i = index_of(s, s.current[me()])?;
+        let pid = s.threads[i].process?;
+        s.processes
+            .iter()
+            .find(|p| p.id == pid)
+            .and_then(|p| p.object.as_ref().map(|o| o.job().clone()))
+    });
+    job.unwrap_or_else(crate::object::job::root)
 }
 
 /// Test-only (WP-40): freezes live process `pid` — its threads are never woken again, neither

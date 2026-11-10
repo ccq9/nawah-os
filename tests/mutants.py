@@ -637,6 +637,24 @@ MUTANTS = [
      "            None => (None, b\"list_failure\"),",
      "            None => return true,",
      ["TST-M6-PURGE-FAIL-CLOSED"], "a LIST the session cannot read skips the purge: sub-cases reply, no_session_line, bad_count, too_long and closed read logout=-|order=screen_only|ok=0 (closed: exit 0xe5, no LOGOUT), the list_failure trace appears 0 times, not 5, and failed= names those five"),
+    # ---- M6 (WP-46): jobs (syscall.md v1.13 §5); SECURITY, killer TST-M6-JOB-KILL. M151 drops the
+    # WRITE check every job call shares (job_of): `contains(NONE)` is always true, so the check
+    # never fires and the line stays warning-free. M152 places syscall 20's child in the root
+    # instead of the caller's job. M153 removes the locked dead-job check in spawn_user_with
+    # (`if false`, so `process` stays used); process_spawn_in's early check hides it from user
+    # space, so its killer is part 1 of the case (ktest job_spawn_dead).
+    ("M151", "kernel/src/syscall/mod.rs",
+     "    if !Rights::contains(e.rights, Rights::WRITE) {",
+     "    if !Rights::contains(e.rights, Rights::NONE) {",
+     ["TST-M6-JOB-KILL"], "a job handle without WRITE creates, kills and spawns into its job: the app's read-only duplicate is not refused, so phase 1 fails (jobs|phase=1|types=fail, exit 0xe4), not exit=0x4a"),
+    ("M152", "kernel/src/syscall/mod.rs",
+     "    let job = job.unwrap_or_else(sched::current_job);",
+     "    let job = job.unwrap_or_else(crate::object::job::root);",
+     ["TST-M6-JOB-KILL"], "process_spawn puts the child in the root, not the caller's job: the grandchild started inside job A escapes job_kill(A), so phase 5 fails (jobs|phase=5|kill=fail, exit 0xf4), not exit=0x4a"),
+    ("M153", "kernel/src/sched/mod.rs",
+     "        if process.object.as_ref().is_some_and(|o| o.job().dead()) {",
+     "        if false {",
+     ["TST-M6-JOB-KILL"], "a process enters a killed job when a kill lands after spawn's early check: job_spawn_dead's spawn starts (refused=0|…|ok=0, |ktest|fail|), not refused=1|ok=1"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -666,7 +684,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # v1.12): a fail-open hold lets keys reach a window before the session unlocks.
             "M147",
             # M6 (WP-64): the purge fails closed when the listing cannot be read (session.md v1.7).
-            "M150"}
+            "M150",
+            # M6 (WP-46): jobs (syscall.md v1.13 §5): WRITE gates every job call (M151), a child
+            # inherits the caller's job so job_kill reaches what a member starts (M152), and no
+            # process enters a killed job (M153).
+            "M151", "M152", "M153"}
 
 
 def security_of(mid: str) -> bool:

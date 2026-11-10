@@ -77,6 +77,11 @@ pub const SYS_VMO_SIZE: u64 = 41;
 /// v1.11 (WP-40, §8.7): end a process the holder created. The handle needs WRITE (the
 /// creator's; a duplicate may drop it), so no one kills a process it only watches.
 pub const SYS_PROCESS_KILL: u64 = 42;
+/// v1.13 (WP-46, §5): jobs — make a child job, kill a job with everything in it, spawn into a
+/// named job. Each needs WRITE on the job handle.
+pub const SYS_JOB_CREATE: u64 = 43;
+pub const SYS_JOB_KILL: u64 = 44;
+pub const SYS_PROCESS_SPAWN_IN: u64 = 45;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -645,6 +650,12 @@ fn dispatch_inner(nr: u64, args: [u64; 6]) -> i64 {
         }
         SYS_VMO_SIZE => flat(as_handle(args[0]).and_then(sys_vmo_size)),
         SYS_PROCESS_KILL => flat(as_handle(args[0]).and_then(sys_process_kill)),
+        SYS_JOB_CREATE => flat(as_handle(args[0]).and_then(sys_job_create)),
+        SYS_JOB_KILL => flat(as_handle(args[0]).and_then(sys_job_kill)),
+        SYS_PROCESS_SPAWN_IN => flat(
+            as_handle(args[0])
+                .and_then(|h| sys_process_spawn_in(h, args[1], args[2], args[3], args[4])),
+        ),
         _ => ERR_NOSYS,
     }
 }
@@ -660,9 +671,35 @@ fn elf_err(e: crate::loader::elf::ElfError) -> i64 {
 
 /// `process_spawn(path, len, handles_ptr, nhandles)`: loads the ELF at `path` from the volume,
 /// moves the named handles (TRANSFER right) into the new process's table in order — the first
-/// one's value is the program's `rdi` — and returns a process handle (WAIT|DUPLICATE|TRANSFER).
+/// one's value is the program's `rdi` — and returns a process handle with `PROCESS_OWNER`
+/// (WAIT|WRITE|DUPLICATE|TRANSFER, v1.11).
 /// Nothing is moved when the file is missing, unreadable, too large or not a valid image.
+/// The child joins the caller's job (v1.13).
 fn sys_process_spawn(ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64> {
+    spawn_into(None, ptr, len, hptr, nh)
+}
+
+/// `process_spawn_in(job_h, path, len, handles_ptr, nhandles)` (v1.13, §5): the job handle
+/// first — handle, type, WRITE, then a dead job is `ERR_PEER_CLOSED` — before the path is read
+/// or a handle touched; then exactly `process_spawn`'s rules, the child joining that job.
+fn sys_process_spawn_in(jh: Handle, ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64> {
+    let job = job_of(jh)?;
+    if job.dead() {
+        return Err(ERR_PEER_CLOSED);
+    }
+    spawn_into(Some(job), ptr, len, hptr, nh)
+}
+
+/// The spawn both calls share; `job` None is the caller's own job. A kill of the job landing
+/// after the checks is seen when the process enters the scheduler's table: the spawn then
+/// fails with `ERR_NO_RESOURCES` and the moved handles are closed with the stillborn process.
+fn spawn_into(
+    job: Option<Arc<crate::object::job::Job>>,
+    ptr: u64,
+    len: u64,
+    hptr: u64,
+    nh: u64,
+) -> Result<i64, i64> {
     let mut buf = [0u8; vfs::PATH_MAX];
     let n = user_path(ptr, len, &mut buf)?;
     let nh = nh as usize;
@@ -703,7 +740,8 @@ fn sys_process_spawn(ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64>
             moved.push(t.remove(h).map_err(handle_err)?);
         }
     }
-    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let job = job.unwrap_or_else(sched::current_job);
+    let object = Arc::new(crate::object::process::ProcessObject::new_in(job));
     // Record the image name only in the test kernel; `freeze_named` (WP-40) is its sole reader.
     #[cfg(feature = "ktest")]
     object.set_name(&buf[..n]);
@@ -874,6 +912,58 @@ fn sys_process_kill(h: Handle) -> Result<i64, i64> {
     Ok(0)
 }
 
+// ---- v1.13: jobs (WP-46) -------------------------------------------------------------------
+
+/// The job a handle names, after the handle, type, rights order of ipc.md §1: a bad handle is
+/// `ERR_BAD_HANDLE`, another object `ERR_WRONG_TYPE` whatever its rights, a job without WRITE
+/// `ERR_ACCESS`.
+fn job_of(h: Handle) -> Result<Arc<crate::object::job::Job>, i64> {
+    let table = table()?;
+    let t = table.lock();
+    let e = t.get(h, Rights::NONE).map_err(handle_err)?;
+    let job = match &e.object {
+        Object::Job(j) => j.clone(),
+        _ => return Err(ERR_WRONG_TYPE),
+    };
+    if !Rights::contains(e.rights, Rights::WRITE) {
+        return Err(ERR_ACCESS);
+    }
+    Ok(job)
+}
+
+/// `job_create(parent_h)` (v1.13): a child job of the one the handle names, returned with
+/// `JOB_DEFAULT`. A dead parent is `ERR_PEER_CLOSED`; a child deeper than 8 below the root, or
+/// a full handle table, `ERR_NO_RESOURCES`.
+fn sys_job_create(ph: Handle) -> Result<i64, i64> {
+    use crate::object::job::{CreateError, Job};
+    let parent = job_of(ph)?;
+    let job = Job::new_child(&parent).map_err(|e| match e {
+        CreateError::Dead => ERR_PEER_CLOSED,
+        CreateError::TooDeep => ERR_NO_RESOURCES,
+    })?;
+    let h = table()?
+        .lock()
+        .insert(Entry {
+            object: Object::Job(job),
+            rights: Rights::JOB_DEFAULT,
+        })
+        .map_err(handle_err)?;
+    Ok(i64::from(h))
+}
+
+/// `job_kill(h)` (v1.13): kills every live process in the job and below it, as `process_kill`
+/// does (`EXIT_KILLED`, at each thread's next safe point). A job that contains the caller — its
+/// own job or an ancestor, the root always — is `ERR_INVALID` with no effect; a job killed
+/// before is a no-op (`0`).
+fn sys_job_kill(h: Handle) -> Result<i64, i64> {
+    let job = job_of(h)?;
+    if sched::current_job().within(&job) {
+        return Err(ERR_INVALID);
+    }
+    sched::kill_job(&job, EXIT_KILLED);
+    Ok(0)
+}
+
 // ---- v1.5: tokens and authority (WP-25) -------------------------------------------------------
 
 /// `token_create(authority_h, uid, gid, perms, expires)`: mints a token; the handle must be
@@ -951,7 +1041,7 @@ fn sys_token_revoke(h: Handle) -> Result<i64, i64> {
 // ---- v1.6: object types, the network interface, the keyboard (WP-27) --------------------
 
 /// `handle_type(h)`: the object's type code (ipc.md §1: 1 channel, 2 VMO, 3 file, 4 process,
-/// 5 token, 6 authority, 7 network interface, 8 keyboard).
+/// 5 token, 6 authority, 7 network interface, 8 keyboard, …, 13 job).
 fn sys_handle_type(h: Handle) -> Result<i64, i64> {
     let table = table()?;
     let t = table.lock();

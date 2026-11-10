@@ -42,8 +42,9 @@ static BOOT_MANAGER: IrqSpinLock<Option<Manager>> = IrqSpinLock::new("svcmgr", N
 
 /// Loads the manager image from the volume and starts it with the far end of a fresh control
 /// channel as its bootstrap handle and a fresh token authority as its second initial handle
-/// (auth.md §1: the manager hands the authority to the `auth` service alone); the near end of
-/// the channel comes back in the `Manager`.
+/// (auth.md §1: the manager hands the authority to the `auth` service alone), then the other
+/// kernel resources and last the root job (syscall.md v1.13); the near end of the channel comes
+/// back in the `Manager`.
 pub fn spawn_manager() -> Result<Manager, &'static str> {
     let image = crate::loader::read_image(MANAGER_IMAGE).map_err(|e| e.code())?;
     let (ours, theirs) = channel::create();
@@ -97,6 +98,12 @@ pub fn spawn_manager() -> Result<Manager, &'static str> {
             rights: Rights::DISPLAY_DEFAULT,
         });
     }
+    // The root job (WP-46, syscall.md v1.13): last, so the order of everything before it is
+    // unchanged; the manager finds it by type like the rest.
+    initial.push(Entry {
+        object: Object::Job(crate::object::job::root()),
+        rights: Rights::JOB_DEFAULT,
+    });
     let n_initial = initial.len();
     let pid =
         crate::user::spawn_elf_with(&image, 1, initial, object.clone()).map_err(|e| e.code())?;

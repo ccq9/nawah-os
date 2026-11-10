@@ -8,6 +8,7 @@
 pub mod bytes;
 pub mod channel;
 pub mod handle;
+pub mod job;
 pub mod nic;
 pub mod process;
 pub mod token;
@@ -72,6 +73,10 @@ impl Rights {
     /// it; copies for services drop what they do not need.
     pub const SYSFILES_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of a fresh job handle (WP-46, syscall.md v1.13 §5): WRITE kills the job,
+    /// creates a child job in it and spawns into it; READ is reserved for listing it (WP-69).
+    pub const JOB_DEFAULT: Rights =
+        Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
 
     pub const fn contains(self, other: Rights) -> bool {
         self.0 & other.0 == other.0
@@ -110,6 +115,8 @@ pub enum Object {
     /// The system-files authority (WP-44, files.md v1.3): held, never read; its rights gate
     /// the file calls under /SYSTEM.
     SystemFiles(#[allow(dead_code)] Arc<token::SystemFiles>),
+    /// A job (WP-46, syscall.md v1.13 §5): a group of processes and of child jobs.
+    Job(Arc<job::Job>),
 }
 
 impl Object {
@@ -128,6 +135,7 @@ impl Object {
             Object::Display(_) => 10,
             Object::Mouse(_) => 11,
             Object::SystemFiles(_) => 12,
+            Object::Job(_) => 13,
         }
     }
 }
@@ -235,6 +243,8 @@ pub struct Stats {
     pub authorities: u32,
     /// System-files authorities (WP-44).
     pub system_files: u32,
+    /// Live jobs other than the root (WP-46).
+    pub jobs: u32,
 }
 
 pub fn stats() -> Stats {
@@ -248,5 +258,6 @@ pub fn stats() -> Stats {
         tokens: token::live_tokens(),
         authorities: token::live_authorities(),
         system_files: token::live_system_files(),
+        jobs: job::live(),
     }
 }

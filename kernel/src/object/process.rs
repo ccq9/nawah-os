@@ -2,9 +2,11 @@
 //! its exit (the `EXITED` signal and the code) once the scheduler has finished it. The
 //! scheduler owns the process itself; this object is the waitable view of it.
 
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU32, Ordering};
 
+use super::job::{self, Job};
 use crate::sched;
 use crate::sync::IrqSpinLock;
 
@@ -31,14 +33,23 @@ struct State {
 pub struct ProcessObject {
     /// 0 until the scheduler binds the object to the process it created.
     pid: AtomicU32,
+    /// The job the process belongs to (WP-46), fixed at creation.
+    job: Arc<Job>,
     state: IrqSpinLock<State>,
 }
 
 impl ProcessObject {
+    /// A process object in the root job (the kernel's and the test kernel's own spawns).
     pub fn new() -> Self {
+        Self::new_in(job::root())
+    }
+
+    /// A process object whose process will belong to `job` (WP-46).
+    pub fn new_in(job: Arc<Job>) -> Self {
         LIVE.fetch_add(1, Ordering::Relaxed);
         ProcessObject {
             pid: AtomicU32::new(0),
+            job,
             state: IrqSpinLock::new(
                 "process",
                 State {
@@ -51,6 +62,11 @@ impl ProcessObject {
                 },
             ),
         }
+    }
+
+    /// The process's job (WP-46).
+    pub fn job(&self) -> &Arc<Job> {
+        &self.job
     }
 
     pub fn bind(&self, pid: u32) {

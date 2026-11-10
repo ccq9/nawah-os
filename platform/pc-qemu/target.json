@@ -798,7 +798,7 @@
           "|kernel|svcmgr|pid=",
           "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SELFTEST.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
           "|kernel|spawn|pid=",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -2661,7 +2661,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_order",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_order|load=OK 3|list=A:ready:0:",
           "|all_ready=1|b_after_a=1|c_after_ab=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2707,7 +2707,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_timeout",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_timeout|load=OK 2|list=M:failed:0:",
           "|failed_after_timeout=1|dependent_blocked=1|list_after=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2753,7 +2753,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_restart",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_restart|load=OK 1|list=X:given_up:3:",
           "|state=given_up|restarts=3|exit=1|span=",
@@ -3863,7 +3863,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=input_route",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel",
           "|path=/SYSTEM/INPUTD.ELF|handles=3",
           "|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0 sak_pending=0|phase=1|ready=1",
           "|ktest|input_route|a=KEY 0x1e down 0 a;KEY 0x1e up 0 a;KEY 0x2a down 1 -;KEY 0x30 down 1 B;KEY 0x30 up 1 B;KEY 0x2a up 0 -;KEY 0x1d down 2 -;KEY 0x38 down 6 -|s=SAK;KEY 0x38 up 2 -;KEY 0x1d up 0 -|b=",
