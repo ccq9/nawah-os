@@ -82,7 +82,10 @@
  "pending_decision_ids": [
   "DEC-002",
   "DEC-023",
-  "DEC-027"
+  "DEC-027",
+  "DEC-012",
+  "DEC-019",
+  "DEC-028"
  ],
  "unknown_fields": {
   "budget_counters.tool_calls_session": "no API exposes the session's tool-call or token budget",

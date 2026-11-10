@@ -4000,7 +4000,10 @@
     "WP-59",
     "WP-60",
     "WP-61",
-    "WP-63"
+    "WP-63",
+    "WP-71",
+    "WP-72",
+    "WP-79"
    ],
    "inputs": [
     "docs/prompt/OS-EXEC-AR-v3.2.md:596-601 (M6)",
@@ -4016,7 +4019,8 @@
     "end-to-end in-system chains (OS-EXEC-AR line 601): boot, sign in, Start launches an app, window management, the file chain create / copy / rename / delete / restore, editor modify, Restart, persistence, real resource data, logs; failures, permissions, conflicts and persistence after reboot; the full Arabic run, keyboard only; event-driven waits on trace lines, never sleeps",
     "mutants for the M6 modules (>= 95%, no surviving security mutant) with M2-M5 re-run; an M6-GATE host suite and a mutants.yml step",
     "docs/operations/m6-review.md; threat model (shell role, launch broker, clipboard, logs); PLAN and ENVIRONMENT; REQ-SCOPE-003 status against DEC-002 (reference conformance stays unjudged while DEC-002 is open; DEC-009)",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10 (steward round D, planners' reports): depends on WP-71, WP-72 and WP-79 too: the exit conditions name TST-M6-SESSION-WATCHDOG (stages.json:301) and TST-M6-SESSION-AR (stages.json:303), and REQ-M6-006 lists TST-M6-UI-POINTER; the gate must not become ready while they are planned"
    ],
    "acceptance": "M6 gate passed: every stages.json M6 exit condition met with CI evidence or a visible, recorded exception",
    "test_ids": [
@@ -4967,7 +4971,7 @@
     "تطبيق الحوار بالمؤشر وحالة الضيف TST-M6-UI-POINTER وملف التوقع (49a2، مفصولة من WP-49 في 2026-11-10)",
     "the dialog app's POINTER branch and the menu on the list in both languages",
     "the guest case: phase 1 by keyboard, phase 2 by pointer (QEMU monitor mouse_move/mouse_button, the right button value unverified), both equal to platform/pc-qemu/expect/ui-pointer.txt through tools/transcript.py",
-    "needs the M6 cap of WP-81's per-job budget (today's headroom 145 s is unmeasured for this case)",
+    "needs the M6 cap of WP-83's per-job budget (today's headroom 145 s is unmeasured for this case)",
     "mutant M170 SECURITY (the dialog app acts on a POINTER press while unfocused)",
     "flag (RSK-020): displayd delivers POINTER to a window that is not focused and focuses only on a left press (displayd main.rs:1189, 1210-1216), so a right click reaches a background window: a display.md semantics question to settle before this item",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
@@ -5125,7 +5129,7 @@
    "inputs": [
     "docs/work-items.json WP-68 (2026-11-09 actions) and WP-77 (2026-11-10 split)",
     "kernel/src/kmain.rs:560-585 (the interactive path: poll_until, selfcheck=0 -> halt at :579, the 2000-tick LOAD budget at :568)",
-    "tools/project.py:1291-1293 (forbidden markers on serial.log)",
+    "tools/project.py:1286-1306 (forbidden markers on serial.log, per phase and per case; refreshed 2026-11-10 from :1291-1293)",
     "evidence/20261109T184629Z-d63f7ae4-001 (TST-M6-INTERACTIVE-BOOT, ci.run_id 42673693676): serial.log carries wait_ticks 806, 809, 811, 826, 828, 836 (checked 2026-11-10); TST-M1-BOOT of the same run (evidence/20261109T182722Z-d63f7ae4-001) shows wait_ticks=4"
    ],
    "files": [
@@ -5134,7 +5138,9 @@
     "platform/pc-qemu/target.json",
     "docs/contracts/boot.md",
     "docs/tests.json",
-    "tests/test_monitor_steps.py"
+    "tests/test_monitor_steps.py",
+    "tests/test_ci_workflows.py",
+    "tests/mutants.py"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
@@ -5148,7 +5154,8 @@
     "test first (82a): forbidden markers applied to the received console transcript (console.log) as to serial.log, host test first in tests/test_monitor_steps.py on a new FakeConsole.received attribute (tests/test_monitor_steps.py:272-283 has none today) (TST-M5-LAB-TOOL); then TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT re-run; mutants M174 and M175 (planned ids; wording at activation, not in tests/mutants.py yet)",
     "2026-11-10 split (steward round B): the halt message (serial line and screen band), its lab phase with a corrupt manifest disk and TST-M6-BOOT-HALT -> WP-84; readable on-screen halt text -> WP-85 (proposed, not scheduled); this item keeps the console.log check and the LOAD budget",
     "2026-11-10 (steward round B): depends on WP-68 and WP-77 too (both done): WP-68 touched kernel/src/services.rs (not kmain.rs), WP-77 touched neither file, and both re-ran TST-M6-INTERACTIVE-BOOT, which this item changes again",
-    "flag (out of scope, for the manager): tools/project.py:1245 builds a ConsoleSession per phase on the same d / \"console.log\" and :741 writes it with write_bytes, so a multi-phase case keeps only its last phase's transcript; the console.log forbidden check of this item sees only that phase until it is fixed",
+    "flag (out of scope, for the manager): tools/project.py:1256 (was :1245) builds a ConsoleSession per phase on the same d / \"console.log\" and :741 writes it with write_bytes, so a multi-phase case keeps only its last phase's transcript; the console.log forbidden check of this item sees only that phase until it is fixed",
+    "2026-11-10 (steward round D, planners' reports): files add tests/test_ci_workflows.py (the LOAD_BUDGET_TICKS check of TST-M0-003) and tests/mutants.py (M174, M175); line references refreshed (forbidden markers :1286-1306, ConsoleSession :1256, write_bytes :741)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 estimate (82a, unmeasured): about 50 tool calls / 45 min; under the budget line"
    ],
@@ -5210,6 +5217,7 @@
     "moved from WP-81 on 2026-11-10 (steward round B), the V3 text in PLAN-ANSWER is written here: the V3 trigger at PLAN-ANSWER.md:420 is amended here: opened on 2026-11-10 (as WP-74, whose parallel-jobs half is this item since the same day's split)",
     "flag (steward round B, from the WP-81 review; can wait): adopt-native copies even in scratch mode, and its copy is not atomic (a failure mid-copy can leave a partial run dir); decide here before the merge job relies on it",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "split point to be named by the lab engineer's design before activation (the estimate 60-90 min sits at the time line)",
     "2026-11-10 estimate (systems lab engineer, unmeasured): 70-100 tool calls / 60-90 min; under the budget line, at its edge in time"
    ],
    "acceptance": "TST-M0-003 PASS with the per-job StepBudget; TST-M0-001 and TST-M0-007 PASS; a verify run completes with three test jobs and a merge job that adopts their evidence through adopt-native and publishes one ci-evidence/<run> branch that import-ci-evidence adopts with strict 0; the PLAN-ANSWER V3 text amended",
@@ -5239,7 +5247,8 @@
    "depends_on": [
     "WP-68",
     "WP-77",
-    "WP-82"
+    "WP-82",
+    "WP-83"
    ],
    "inputs": [
     "kernel/src/kmain.rs:577-580 (the interactive !svc_ok branch: halt after selfcheck=0)",
@@ -5255,7 +5264,8 @@
     "platform/pc-qemu/target.json",
     "platform/pc-qemu/lab/services-bad.txt",
     "docs/contracts/boot.md",
-    "docs/tests.json"
+    "docs/tests.json",
+    "tests/mutants.py"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
@@ -5268,6 +5278,7 @@
     "mutants M172 and M173 (SECURITY): planned ids, wording at activation (not in tests/mutants.py yet)",
     "boot.md additive: what the halt prints and where (the serial line, then the band)",
     "M6 budget note: a 30 s phase does not fit the M6 guest step's cap today while TST-M6-INTERACTIVE-BOOT's phases measure 56-63 s against their 60 s (lab engineer's measurement; run ids not in the records, unverified); wait for WP-83's per-job budget or tighten the INTERACTIVE-BOOT phases 60 -> 54 s; decision at activation",
+    "2026-11-10 (steward round D, planners' reports): depends on WP-83 too: its 30 s phase needs WP-83's per-job M6 budget; tightening the TST-M6-INTERACTIVE-BOOT phases 60 -> 54 s stays the recorded alternative if WP-83 is not done first; tests/mutants.py added to files (M172, M173)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 estimate (unmeasured): about 65 tool calls / 70 min; under the budget line"
    ],

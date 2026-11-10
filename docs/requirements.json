@@ -1946,8 +1946,11 @@
     "TST-M6-LISTVIEW-A11Y",
     "TST-M6-LISTVIEW-RTL"
    ],
-   "implementation_status": "planned",
-   "evidence_refs": []
+   "implementation_status": "partial",
+   "evidence_refs": [
+    "evidence/20261110T105358Z-bd43461d-001",
+    "evidence/20261110T105358Z-bd43461d-002"
+   ]
   },
   {
    "id": "REQ-M6-007",

@@ -154,7 +154,7 @@
    "owner": "agent",
    "warning_signal": "LIST يعرض narrator أو config given_up وsession blocked في إقلاع تفاعلي؛ إعادات narrator تتجاوز الصفر على CI",
    "mitigation": "سياسة on-failure بثلاث إعادات لكل منهما؛ الهامش يُقاس في WP-64؛ INTERACTIVE-BOOT يشترط restarts=0 للثماني",
-   "response_plan": "إن تكررت إعادات narrator أو config على CI: تبعية لينة لـnarrator بإصدار services.md لاحق (الجلسة تبدأ بلا قارئ وتعلن ذلك) — يقرَّر في WP-64",
+   "response_plan": "إن تكررت إعادات narrator أو config على CI: تبعية لينة لـnarrator بإصدار services.md لاحق (الجلسة تبدأ بلا قارئ وتعلن ذلك) — يقرَّر في WP-71 (سطر الجلسة restart=always)؛ التبعية اللينة لـnarrator ما زالت مفتوحة بلا حزمة تحسمها (2026-11-10: WP-64 أُغلقت بلا قرار في narrator)؛ لا حزمة تملك التبعية اللينة لـnarrator بعد، ويُقترح بندًا مرشحًا للتخطيط القادم (لا حزمة جديدة الآن)",
    "status": "open"
   },
   {
@@ -175,9 +175,9 @@
    "likelihood": "medium",
    "impact": "medium",
    "evidence": "تقرير تصميم مهندس التطبيقات لـWP-49 (2026-11-10، قراءة فقط)؛ user/apps/displayd/src/main.rs:1189، :1210-1216؛ docs/contracts/display.md (سؤال دلالات يُحسم قبل WP-79)",
-   "owner": "WP-79",
+   "owner": "agent",
    "warning_signal": "تطبيق يتصرف على ضغطة POINTER وهو غير مركّز؛ نجاة الطفرة M170 في WP-79",
-   "mitigation": "WP-79 لا تُفعَّل قبل حسم دلالات display.md؛ الطفرة M170 (SECURITY) تقتلها TST-M6-UI-POINTER",
+   "mitigation": "WP-79 لا تُفعَّل قبل حسم دلالات display.md؛ الطفرة M170 (SECURITY) تقتلها TST-M6-UI-POINTER؛ المسؤول: مهندس البرمجيات للتطبيقات، والتصعيد إلى المدير",
    "response_plan": "قرار دلالات POINTER في display.md (التسليم للنافذة المركّزة وحدها، أو التركيز بأي ضغطة) قبل تفعيل WP-79، ثم إصلاح displayd أو تطبيق الحوار بحسب القرار",
    "status": "open"
   }
