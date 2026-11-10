@@ -4913,12 +4913,17 @@
     "python3 tools/project.py test --target pc-qemu --suite M5",
     "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261110T075459Z-dd9e4626-001",
+    "evidence/20261110T073908Z-dd9e4626-001",
+    "evidence/20261110T074842Z-dd9e4626-001"
+   ],
    "blocker": null
   },
   {
