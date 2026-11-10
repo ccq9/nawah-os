@@ -5157,7 +5157,8 @@
     "flag (out of scope, for the manager): tools/project.py:1256 (was :1245) builds a ConsoleSession per phase on the same d / \"console.log\" and :741 writes it with write_bytes, so a multi-phase case keeps only its last phase's transcript; the console.log forbidden check of this item sees only that phase until it is fixed",
     "2026-11-10 (steward round D, planners' reports): files add tests/test_ci_workflows.py (the LOAD_BUDGET_TICKS check of TST-M0-003) and tests/mutants.py (M174, M175); line references refreshed (forbidden markers :1286-1306, ConsoleSession :1256, write_bytes :741)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 estimate (82a, unmeasured): about 50 tool calls / 45 min; under the budget line"
+    "2026-11-10 estimate (82a, unmeasured): about 50 tool calls / 45 min; under the budget line",
+    "2026-11-10 activation estimate (kernel and lab engineers; the kernel part prepared and designed in three options: LOAD_BUDGET_TICKS = 10_000 ticks = 10 s at TIMER_HZ 1000, about 9x the measured 1096; the tooling part, the received-transcript check and the TST-M0-003 guard, in preparation): about 50 calls / 45 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls)"
    ],
    "acceptance": "the host monitor test (TST-M5-LAB-TOOL) PASS with the console.log forbidden check; TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT PASS on CI; TST-M0-003 PASS with the LOAD_BUDGET_TICKS check; M174 and M175 killed; boot.md states the LOAD budget and its measured basis",
    "test_ids": [
@@ -5172,9 +5173,10 @@
     "python3 tools/project.py test --target host --suite M0",
     "python3 tools/project.py test --target host --suite M5"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
