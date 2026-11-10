@@ -21,6 +21,8 @@ const PATH_MAX: usize = 64;
 const ARG_MAX: usize = 64;
 /// The raw dependency list of one manifest line (`A,B,C`).
 const DEPS_MAX: usize = 64;
+/// The manifest buffer (services.md v1.13, WP-68): a file that fills it is refused whole with
+/// `ERR MANIFEST_TOO_LARGE`, so 4095 bytes is the largest manifest accepted.
 const MANIFEST_MAX: usize = 4096;
 const MSG_MAX: usize = 4096;
 
@@ -198,6 +200,18 @@ fn name_ok(s: &[u8]) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || *c == b'_' || *c == b'-')
 }
 
+/// `LOAD` reads only under `/SYSTEM/` (services.md v1.13, WP-68): the prefix byte for byte, then
+/// no empty, `.` or `..` component, so `/SYSTEM/../X` cannot climb out of it. Checked before the
+/// file is opened.
+fn system_path(p: &[u8]) -> bool {
+    match p.strip_prefix(b"/SYSTEM/") {
+        Some(rest) => rest
+            .split(|c| *c == b'/')
+            .all(|c| !c.is_empty() && c != b"." && c != b".."),
+        None => false,
+    }
+}
+
 /// Splits on spaces; `at_most` fields, the last one taking the rest of the line (the `arg`).
 struct Fields<'a> {
     line: &'a [u8],
@@ -258,6 +272,10 @@ enum LoadError {
     UnknownDep([u8; NAME_MAX], usize),
     Cycle,
     TooMany,
+    /// v1.13: the file fills the manifest buffer (4096 bytes or more).
+    TooLarge,
+    /// v1.13: a read failed before the end of the file.
+    Io,
 }
 
 impl Manager {
@@ -270,14 +288,20 @@ impl Manager {
         let f = libnawah::open(path, libnawah::O_READ).map_err(|_| LoadError::Missing)?;
         let mut text = [0u8; MANIFEST_MAX];
         let mut len = 0;
+        // v1.13: nothing is parsed unless the whole file was read; before, the first 4096 bytes
+        // or whatever came before a read error were parsed and answered `OK <n>`.
         loop {
+            if len == MANIFEST_MAX {
+                libnawah::handle_close(f);
+                return Err(LoadError::TooLarge);
+            }
             match libnawah::read(f, &mut text[len..]) {
                 Ok(0) => break,
                 Ok(n) => len += n,
-                Err(_) => break,
-            }
-            if len == MANIFEST_MAX {
-                break;
+                Err(_) => {
+                    libnawah::handle_close(f);
+                    return Err(LoadError::Io);
+                }
             }
         }
         libnawah::handle_close(f);
@@ -310,6 +334,11 @@ impl Manager {
             };
             if path.is_empty() || path.len() > PATH_MAX || path[0] != b'/' || deps.len() > DEPS_MAX
             {
+                return Err(syntax);
+            }
+            // v1.13: every dependency is a name by the grammar of names, so an unknown one is
+            // echoed in `ERR MANIFEST_UNKNOWN_DEP` only with the bytes a name may hold.
+            if deps != b"-" && !deps.split(|c| *c == b',').all(name_ok) {
                 return Err(syntax);
             }
             let restart_on_failure = match restart {
@@ -803,6 +832,9 @@ impl Manager {
         if let Some(path) = req.strip_prefix(b"LOAD ") {
             if self.loaded {
                 out.put(b"ERR LOADED");
+            } else if !system_path(path) {
+                // v1.13: refused before anything is read; the LOAD does not count.
+                out.put(b"ERR ACCESS");
             } else {
                 match self.load(path) {
                     Ok(count) => {
@@ -821,6 +853,8 @@ impl Manager {
                     }
                     Err(LoadError::Cycle) => out.put(b"ERR MANIFEST_CYCLE"),
                     Err(LoadError::TooMany) => out.put(b"ERR TOO_MANY"),
+                    Err(LoadError::TooLarge) => out.put(b"ERR MANIFEST_TOO_LARGE"),
+                    Err(LoadError::Io) => out.put(b"ERR MANIFEST_IO"),
                 }
             }
         } else if req == b"LIST" {

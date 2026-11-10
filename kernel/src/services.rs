@@ -187,15 +187,27 @@ pub fn start_at_boot(timeout_ticks: u64, manifest: &[u8]) -> (bool, String) {
 /// The boot verdict on the manager's `LOAD` reply (services.md §3, v1.13): `OK <n>` with a
 /// number, and for the interactive (system) manifest n >= 1: a system with no service is not up.
 pub fn boot_reply_ok(interactive: bool, reply: &str) -> bool {
-    let _ = interactive;
-    reply.starts_with("OK ")
+    match reply.strip_prefix("OK ").map(str::parse::<u64>) {
+        Some(Ok(n)) => !interactive || n >= 1,
+        _ => false,
+    }
 }
 
 /// The manager's reply as one field of a `|`-separated trace line (v1.13): a newline becomes
 /// `;` as before, and `|`, `\` and every other control byte become `\xNN`, so no reply can
 /// end the field or forge one after it.
 pub fn reply_field(reply: &str) -> String {
-    reply.replace('\n', ";")
+    let mut s = String::with_capacity(reply.len());
+    for c in reply.chars() {
+        match c {
+            '\n' => s.push(';'),
+            c if c == '|' || c == '\\' || c.is_control() => {
+                s.push_str(&alloc::format!("\\x{:02x}", c as u32))
+            }
+            c => s.push(c),
+        }
+    }
+    s
 }
 
 pub fn load_request(manifest: &[u8]) -> Vec<u8> {

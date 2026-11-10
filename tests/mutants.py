@@ -655,6 +655,22 @@ MUTANTS = [
      "        if process.object.as_ref().is_some_and(|o| o.job().dead()) {",
      "        if false {",
      ["TST-M6-JOB-KILL"], "a process enters a killed job when a kill lands after spawn's early check: job_spawn_dead's spawn starts (refused=0|…|ok=0, |ktest|fail|), not refused=1|ok=1"),
+    # ---- M6 (WP-68): the manifest errors (services.md v1.13); M157 and M159 SECURITY. M157 and
+    # M158 turn the refusal back into the pre-v1.13 `break`: the file is closed (a second close
+    # follows, harmless) and what was read is parsed, so the manager answers OK 1. M159 keeps
+    # system_path referenced (`false &&`), so the mutant builds warning-free.
+    ("M157", "user/apps/svcmgr/src/main.rs",
+     "                return Err(LoadError::TooLarge);",
+     "                break;",
+     ["TST-M6-MANIFEST-TOO-LARGE"], "a manifest of 4096 bytes or more is truncated and accepted: case=4097 and case=4096 read reply=OK 1 (forbidden), list=A:… and again=ERR LOADED (forbidden), ok=0, failed=4097,4096,"),
+    ("M158", "user/apps/svcmgr/src/main.rs",
+     "                    return Err(LoadError::Io);",
+     "                    break;",
+     ["TST-M6-MANIFEST-TOO-LARGE"], "a manifest whose read fails at byte 1024 is accepted from what was read: case=io reads reply=OK 1 (forbidden), fired=1, again=ERR LOADED (forbidden), ok=0, failed=io,"),
+    ("M159", "user/apps/svcmgr/src/main.rs",
+     "            } else if !system_path(path) {",
+     "            } else if false && !system_path(path) {",
+     ["TST-M6-LOAD-OUTSIDE-SYSTEM"], "LOAD reads outside /SYSTEM/: case=outside reads reply=OK 1|started=1|ok=0 (forbidden reply=OK), the later LOADs answer ERR LOADED (forbidden), failed=outside,dotdot,dep_name,system,"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -688,7 +704,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # M6 (WP-46): jobs (syscall.md v1.13 §5): WRITE gates every job call (M151), a child
             # inherits the caller's job so job_kill reaches what a member starts (M152), and no
             # process enters a killed job (M153).
-            "M151", "M152", "M153"}
+            "M151", "M152", "M153",
+            # M6 (WP-68): the manifest is read whole or refused (services.md v1.13, M157) and LOAD
+            # reads only under /SYSTEM/ (M159). M158 (MANIFEST_IO) is not SECURITY.
+            "M157", "M159"}
 
 
 def security_of(mid: str) -> bool:
