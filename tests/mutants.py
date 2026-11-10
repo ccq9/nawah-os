@@ -628,8 +628,8 @@ MUTANTS = [
     # unheld (the pre-v1.12 behaviour) behind a line that still says locked=1. The killer judges
     # the screen itself: HOLDS answers locked=0 and the injected key (press and release) reaches the window.
     ("M147", "user/apps/displayd/src/main.rs",
-     "    line.ends_with(b\"locked=1\")",
-     "    line.starts_with(b\"display|hold|source=manifest\") && line.ends_with(b\"locked=1\")",
+     "    Some(line.ends_with(b\"locked=1\"))",
+     "    Some(line.starts_with(b\"display|hold|source=manifest\") && line.ends_with(b\"locked=1\"))",
      ["TST-M6-HOLD-FAIL-CLOSED"], "a LIST failure starts the screen unheld while the trace says locked=1: case=reply and case=too_long read holds=OK locked=0 (forbidden) and keys=2 (press and release both reach the window), not locked=1 and keys=0"),
     # ---- M6 (WP-64): the purge fails closed (session.md v1.7); SECURITY. A listing the
     # session cannot read is taken as "not restarted": the sign-in screen comes without LOGOUT.
@@ -671,6 +671,19 @@ MUTANTS = [
      "            } else if !system_path(path) {",
      "            } else if false && !system_path(path) {",
      ["TST-M6-LOAD-OUTSIDE-SYSTEM"], "LOAD reads outside /SYSTEM/: case=outside reads reply=OK 1|started=1|ok=0 (forbidden reply=OK), the later LOADs answer ERR LOADED (forbidden), failed=outside,dotdot,dep_name,system,"),
+    # ---- M6 (WP-77): displayd's boot channel keeps serving (display.md v1.13); killer
+    # TST-M6-DISPLAYD-BOOT-LOOP; neither is SECURITY. M160 puts back the pre-v1.13 `Err(_) => {}`
+    # for the discard only (`Err(ERR_BUFFER_TOO_SMALL) | Err(ERR_SHOULD_WAIT) => {}`, the 0xE8 arm
+    # kept, so it builds warning-free). M161
+    # removes the STOP arm of session_in_manifest: STOPPED falls to reason=error.
+    ("M160", "user/apps/displayd/src/main.rs",
+     "                Err(ERR_BUFFER_TOO_SMALL) => {\n                    if !libnawah::channel_discard(c.boot) {\n                        return EXIT_BOOT_READ;\n                    }\n                    libnawah::trace(b\"display|boot|discard=too_long\");\n                }\n                Err(ERR_SHOULD_WAIT) => {}\n",
+     "                Err(ERR_BUFFER_TOO_SMALL) | Err(ERR_SHOULD_WAIT) => {}\n",
+     ["TST-M6-DISPLAYD-BOOT-LOOP"], "a boot message longer than 64 bytes stays at the head of the queue and the loop spins on it: case=too_long_msg reads pong=0|holds=error:K_E_SVC_TIMEOUT|exit=0x20000|ok=0, the trace display|boot|discard=too_long is missing, failed=too_long_msg,"),
+    ("M161", "user/apps/displayd/src/main.rs",
+     "        Err(STOPPED) => {\n            libnawah::trace(b\"display|boot|stop=before_ready\");\n            return None;\n        }\n",
+     "",
+     ["TST-M6-DISPLAYD-BOOT-LOOP"], "a STOP before the LIST answer is read as a failed LIST: case=stop_first reads ready=1|exit=0x20000|ok=0, display|hold|source=list_failure|reason=error|locked=1 appears (forbidden), display|boot|stop=before_ready is missing, failed=stop_first,"),
     # ---- M6 (WP-49): libui pointer hit-testing and the context menu (ui.md v1.6 §3.6); killer
     # TST-M6-UI-UNIT (user/libui/tests/pointer_menu.rs). SECURITY set: M168 (a disabled item is
     # how an application withholds an action, so choosing it must be impossible).
