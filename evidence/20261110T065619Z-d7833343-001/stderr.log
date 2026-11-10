@@ -1,0 +1,899 @@
+   Compiling libui v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/libui)
+error[E0425]: cannot find value `BUTTON_LEFT` in this scope
+ --> user/libui/tests/pointer_menu.rs:8:19
+  |
+8 | const LEFT: u32 = BUTTON_LEFT;
+  |                   ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `BUTTON_RIGHT` in this scope
+ --> user/libui/tests/pointer_menu.rs:9:20
+  |
+9 | const RIGHT: u32 = BUTTON_RIGHT;
+  |                    ^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `MenuItem` in this scope
+  --> user/libui/tests/pointer_menu.rs:11:15
+   |
+11 | static MENU: [MenuItem; 4] = [
+   |               ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `MenuItem` in this scope
+  --> user/libui/tests/pointer_menu.rs:17:18
+   |
+17 | static MENU_AR: [MenuItem; 2] = [
+   |                  ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `DOUBLE_CLICK_MS` in this scope
+   --> user/libui/tests/pointer_menu.rs:162:47
+    |
+162 |         d.click(row_mid(&d, 3, 2), LEFT, T0 + DOUBLE_CLICK_MS),
+    |                                               ^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `DOUBLE_CLICK_MS` in this scope
+   --> user/libui/tests/pointer_menu.rs:169:46
+    |
+169 |         d.click(row_mid(&d, 3, 1), LEFT, t + DOUBLE_CLICK_MS + 1).1,
+    |                                              ^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `DOUBLE_CLICK_MS` in this scope
+   --> user/libui/tests/pointer_menu.rs:189:16
+    |
+189 |     assert_eq!(DOUBLE_CLICK_MS, 400);
+    |                ^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `MenuItem` in this scope
+   --> user/libui/tests/pointer_menu.rs:218:19
+    |
+218 |     static NINE: [MenuItem; 9] = [MenuItem::item("One choice", true); 9];
+    |                   ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `MenuItem` in this scope
+   --> user/libui/tests/pointer_menu.rs:219:20
+    |
+219 |     static BLANK: [MenuItem; 1] = [MenuItem::item("  ", true)];
+    |                    ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `MenuItem` in this scope
+   --> user/libui/tests/pointer_menu.rs:220:19
+    |
+220 |     static SEPS: [MenuItem; 1] = [MenuItem::SEPARATOR];
+    |                   ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_F10` in this scope
+   --> user/libui/tests/pointer_menu.rs:227:22
+    |
+227 |     assert_eq!(d.key(KEY_F10, true, MOD_SHIFT, None), Event::None);
+    |                      ^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_MENU` in this scope
+   --> user/libui/tests/pointer_menu.rs:229:22
+    |
+229 |     assert_eq!(d.key(KEY_MENU, true, 0, None), Event::None);
+    |                      ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_F10` in this scope
+   --> user/libui/tests/pointer_menu.rs:239:22
+    |
+239 |     assert_eq!(d.key(KEY_F10, true, MOD_SHIFT, None), Event::None);
+    |                      ^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_F10` in this scope
+   --> user/libui/tests/pointer_menu.rs:250:22
+    |
+250 |     assert_eq!(d.key(KEY_F10, true, 0, None), Event::None);
+    |                      ^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_MENU` in this scope
+   --> user/libui/tests/pointer_menu.rs:253:16
+    |
+253 |     assert_eq!(KEY_MENU, 0xdd);
+    |                ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_MENU` in this scope
+   --> user/libui/tests/pointer_menu.rs:254:22
+    |
+254 |     assert_eq!(d.key(KEY_MENU, true, 0, None), Event::None);
+    |                      ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_MENU` in this scope
+   --> user/libui/tests/pointer_menu.rs:288:11
+    |
+288 |     d.key(KEY_MENU, true, 0, None);
+    |           ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_MENU` in this scope
+   --> user/libui/tests/pointer_menu.rs:317:11
+    |
+317 |     d.key(KEY_MENU, true, 0, None);
+    |           ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_F10` in this scope
+   --> user/libui/tests/pointer_menu.rs:344:11
+    |
+344 |     d.key(KEY_F10, true, MOD_SHIFT, None);
+    |           ^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_F10` in this scope
+   --> user/libui/tests/pointer_menu.rs:358:11
+    |
+358 |     d.key(KEY_F10, true, MOD_SHIFT, None);
+    |           ^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_MENU` in this scope
+   --> user/libui/tests/pointer_menu.rs:382:15
+    |
+382 |         d.key(KEY_MENU, true, 0, None);
+    |               ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `MenuItem` in this scope
+   --> user/libui/tests/pointer_menu.rs:427:20
+    |
+427 |     static EIGHT: [MenuItem; 8] = [MenuItem::item("One choice", true); 8];
+    |                    ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `KEY_MENU` in this scope
+   --> user/libui/tests/pointer_menu.rs:436:11
+    |
+436 |     d.key(KEY_MENU, true, 0, None);
+    |           ^^^^^^^^ not found in this scope
+
+error[E0433]: cannot find type `MenuItem` in this scope
+  --> user/libui/tests/pointer_menu.rs:12:5
+   |
+12 |     MenuItem::item("Open the file", true),
+   |     ^^^^^^^^ use of undeclared type `MenuItem`
+
+error[E0433]: cannot find type `MenuItem` in this scope
+  --> user/libui/tests/pointer_menu.rs:13:5
+   |
+13 |     MenuItem::item("Rename the file", true),
+   |     ^^^^^^^^ use of undeclared type `MenuItem`
+
+error[E0433]: cannot find type `MenuItem` in this scope
+  --> user/libui/tests/pointer_menu.rs:14:5
+   |
+14 |     MenuItem::SEPARATOR,
+   |     ^^^^^^^^ use of undeclared type `MenuItem`
+
+error[E0433]: cannot find type `MenuItem` in this scope
+  --> user/libui/tests/pointer_menu.rs:15:5
+   |
+15 |     MenuItem::item("Delete the file", false),
+   |     ^^^^^^^^ use of undeclared type `MenuItem`
+
+error[E0433]: cannot find type `MenuItem` in this scope
+  --> user/libui/tests/pointer_menu.rs:18:5
+   |
+18 |     MenuItem::item("افتح الملف", true),
+   |     ^^^^^^^^ use of undeclared type `MenuItem`
+
+error[E0433]: cannot find type `MenuItem` in this scope
+  --> user/libui/tests/pointer_menu.rs:19:5
+   |
+19 |     MenuItem::item("احذف الملف", false),
+   |     ^^^^^^^^ use of undeclared type `MenuItem`
+
+error[E0599]: no method named `pointer` found for mutable reference `&mut libui::Dialog` in the current scope
+  --> user/libui/tests/pointer_menu.rs:53:22
+   |
+53 |         let p = self.pointer(x, y, b, t);
+   |                      ^^^^^^^ method not found in `&mut libui::Dialog`
+
+error[E0599]: no method named `pointer` found for mutable reference `&mut libui::Dialog` in the current scope
+  --> user/libui/tests/pointer_menu.rs:54:22
+   |
+54 |         let r = self.pointer(x, y, 0, t);
+   |                      ^^^^^^^ method not found in `&mut libui::Dialog`
+
+error[E0599]: no method named `describe_menu_item` found for reference `&libui::Dialog` in the current scope
+  --> user/libui/tests/pointer_menu.rs:67:15
+   |
+67 |     let n = d.describe_menu_item(k, &mut t).expect("an entry in range");
+   |               ^^^^^^^^^^^^^^^^^^ method not found in `&libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+  --> user/libui/tests/pointer_menu.rs:79:11
+   |
+79 |         d.pointer(mid(r[4]).0, mid(r[4]).1, LEFT, T0),
+   |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+  --> user/libui/tests/pointer_menu.rs:84:11
+   |
+84 |         d.pointer(mid(r[4]).0 + 3, mid(r[4]).1, LEFT, T0),
+   |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+  --> user/libui/tests/pointer_menu.rs:88:11
+   |
+88 |         d.pointer(mid(r[4]).0, mid(r[4]).1, 0, T0),
+   |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+  --> user/libui/tests/pointer_menu.rs:93:11
+   |
+93 |         d.pointer(mid(r[2]).0, mid(r[2]).1, LEFT, T0),
+   |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+  --> user/libui/tests/pointer_menu.rs:98:11
+   |
+98 |         d.pointer(mid(r[2]).0, mid(r[2]).1, 0, T0),
+   |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:117:11
+    |
+117 |         d.pointer(mid(r[1]).0, mid(r[1]).1, LEFT, T0),
+    |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:120:18
+    |
+120 |     assert_eq!(d.pointer(mid(r[1]).0, mid(r[1]).1, 0, T0), Event::None);
+    |                  ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:131:11
+    |
+131 |         d.pointer(mid(r[4]).0, mid(r[4]).1, LEFT, T0),
+    |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:135:18
+    |
+135 |     assert_eq!(d.pointer(mid(r[5]).0, mid(r[5]).1, 0, T0), Event::None);
+    |                  ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:138:7
+    |
+138 |     d.pointer(mid(r[2]).0, mid(r[2]).1, LEFT, T0);
+    |       ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:139:18
+    |
+139 |     assert_eq!(d.pointer(-5, -5, 0, T0), Event::None);
+    |                  ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:142:18
+    |
+142 |     assert_eq!(d.pointer(mid(r[4]).0, mid(r[4]).1, 0, T0), Event::None);
+    |                  ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:184:11
+    |
+184 |         d.pointer(row_mid(&d, 3, 2).0, row_mid(&d, 3, 2).1, LEFT, t + 50_000),
+    |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `set_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:221:16
+    |
+221 |     assert!(!d.set_menu(&[]));
+    |                ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `set_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:222:16
+    |
+222 |     assert!(!d.set_menu(&NINE));
+    |                ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `set_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:223:16
+    |
+223 |     assert!(!d.set_menu(&BLANK));
+    |                ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `set_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:224:16
+    |
+224 |     assert!(!d.set_menu(&SEPS));
+    |                ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:228:18
+    |
+228 |     assert_eq!(d.take_menu_event(), None);
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:230:18
+    |
+230 |     assert_eq!(d.take_menu_event(), None);
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:233:18
+    |
+233 |     assert_eq!(d.take_menu_event(), None);
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:235:15
+    |
+235 |     assert!(d.menu_rect().is_none());
+    |               ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `set_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:236:15
+    |
+236 |     assert!(d.set_menu(&MENU));
+    |               ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_len` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:237:18
+    |
+237 |     assert_eq!(d.menu_len(), 3);
+    |                  ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:240:18
+    |
+240 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Open(3)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:240:42
+    |
+240 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Open(3)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `menu_focused` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:241:18
+    |
+241 |     assert_eq!(d.menu_focused(), Some(0));
+    |                  ^^^^^^^^^^^^
+    |
+help: there is a method `focused` with a similar name
+    |
+241 -     assert_eq!(d.menu_focused(), Some(0));
+241 +     assert_eq!(d.focused(), Some(0));
+    |
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:248:18
+    |
+248 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Close(3)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:248:42
+    |
+248 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Close(3)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:251:18
+    |
+251 |     assert_eq!(d.take_menu_event(), None);
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:255:18
+    |
+255 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Open(3)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:255:42
+    |
+255 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Open(3)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:257:7
+    |
+257 |     d.take_menu_event();
+    |       ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:261:18
+    |
+261 |     assert_eq!(d.pointer(x, y, RIGHT, T0), Event::None);
+    |                  ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:262:18
+    |
+262 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Open(4)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:262:42
+    |
+262 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Open(4)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:263:15
+    |
+263 |     let m = d.menu_rect().unwrap();
+    |               ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:268:18
+    |
+268 |     assert_eq!(d.pointer(x, y, 0, T0), Event::None);
+    |                  ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:269:18
+    |
+269 |     assert_eq!(d.take_menu_event(), None);
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:270:15
+    |
+270 |     assert!(d.menu_rect().is_some());
+    |               ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:272:18
+    |
+272 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Close(4)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:272:42
+    |
+272 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Close(4)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:276:18
+    |
+276 |     assert_eq!(d.take_menu_event(), None);
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `open_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:278:15
+    |
+278 |     assert!(d.open_menu(5));
+    |               ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:279:18
+    |
+279 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Open(5)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:279:42
+    |
+279 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Open(5)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `open_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:280:16
+    |
+280 |     assert!(!d.open_menu(0));
+    |                ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuItem` in this scope
+   --> user/libui/tests/pointer_menu.rs:218:35
+    |
+218 |     static NINE: [MenuItem; 9] = [MenuItem::item("One choice", true); 9];
+    |                                   ^^^^^^^^ use of undeclared type `MenuItem`
+
+error[E0433]: cannot find type `MenuItem` in this scope
+   --> user/libui/tests/pointer_menu.rs:219:36
+    |
+219 |     static BLANK: [MenuItem; 1] = [MenuItem::item("  ", true)];
+    |                                    ^^^^^^^^ use of undeclared type `MenuItem`
+
+error[E0433]: cannot find type `MenuItem` in this scope
+   --> user/libui/tests/pointer_menu.rs:220:35
+    |
+220 |     static SEPS: [MenuItem; 1] = [MenuItem::SEPARATOR];
+    |                                   ^^^^^^^^ use of undeclared type `MenuItem`
+
+error[E0599]: no method named `set_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:286:15
+    |
+286 |     assert!(d.set_menu(&MENU));
+    |               ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:289:7
+    |
+289 |     d.take_menu_event();
+    |       ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for mutable reference `&mut libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:292:11
+    |
+292 |         d.take_menu_event()
+    |           ^^^^^^^^^^^^^^^ method not found in `&mut libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:294:45
+    |
+294 |     assert_eq!(down(&mut d, KEY_DOWN), Some(MenuEvent::Focus(1)));
+    |                                             ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:296:45
+    |
+296 |     assert_eq!(down(&mut d, KEY_DOWN), Some(MenuEvent::Focus(3)));
+    |                                             ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `menu_focused` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:307:18
+    |
+307 |     assert_eq!(d.menu_focused(), Some(3));
+    |                  ^^^^^^^^^^^^
+    |
+help: there is a method `focused` with a similar name
+    |
+307 -     assert_eq!(d.menu_focused(), Some(3));
+307 +     assert_eq!(d.focused(), Some(3));
+    |
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:309:45
+    |
+309 |     assert_eq!(down(&mut d, KEY_DOWN), Some(MenuEvent::Focus(0)));
+    |                                             ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:310:43
+    |
+310 |     assert_eq!(down(&mut d, KEY_UP), Some(MenuEvent::Focus(3)));
+    |                                           ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:311:43
+    |
+311 |     assert_eq!(down(&mut d, KEY_UP), Some(MenuEvent::Focus(1)));
+    |                                           ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:313:46
+    |
+313 |     assert_eq!(down(&mut d, KEY_ENTER), Some(MenuEvent::Choose(3, 1)));
+    |                                              ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:314:15
+    |
+314 |     assert!(d.menu_rect().is_none());
+    |               ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:318:7
+    |
+318 |     d.take_menu_event();
+    |       ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_item_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:319:17
+    |
+319 |     let dis = d.menu_item_rect(3).unwrap();
+    |                 ^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:320:18
+    |
+320 |     assert_eq!(d.pointer(mid(dis).0, mid(dis).1, LEFT, T0), Event::None);
+    |                  ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:321:18
+    |
+321 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Focus(3)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:321:42
+    |
+321 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Focus(3)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:322:18
+    |
+322 |     assert_eq!(d.pointer(mid(dis).0, mid(dis).1, 0, T0), Event::None);
+    |                  ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:323:18
+    |
+323 |     assert_eq!(d.take_menu_event(), None);
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:324:15
+    |
+324 |     assert!(d.menu_rect().is_some());
+    |               ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_item_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:326:17
+    |
+326 |     let sep = d.menu_item_rect(2).unwrap();
+    |                 ^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:328:18
+    |
+328 |     assert_eq!(d.take_menu_event(), None);
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_focused` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:329:18
+    |
+329 |     assert_eq!(d.menu_focused(), Some(3));
+    |                  ^^^^^^^^^^^^
+    |
+help: there is a method `focused` with a similar name
+    |
+329 -     assert_eq!(d.menu_focused(), Some(3));
+329 +     assert_eq!(d.focused(), Some(3));
+    |
+
+error[E0599]: no method named `menu_item_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:331:19
+    |
+331 |     let first = d.menu_item_rect(0).unwrap();
+    |                   ^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:332:7
+    |
+332 |     d.pointer(mid(first).0, mid(first).1, LEFT, T0);
+    |       ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:333:18
+    |
+333 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Focus(0)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:333:42
+    |
+333 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Focus(0)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:334:7
+    |
+334 |     d.pointer(mid(first).0, mid(first).1, 0, T0);
+    |       ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:335:18
+    |
+335 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Choose(3, 0)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:335:42
+    |
+335 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Choose(3, 0)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `set_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:342:15
+    |
+342 |     assert!(d.set_menu(&MENU));
+    |               ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:345:7
+    |
+345 |     d.take_menu_event();
+    |       ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:348:18
+    |
+348 |     assert_eq!(d.take_menu_event(), None);
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_focused` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:349:18
+    |
+349 |     assert_eq!(d.menu_focused(), Some(0));
+    |                  ^^^^^^^^^^^^
+    |
+help: there is a method `focused` with a similar name
+    |
+349 -     assert_eq!(d.menu_focused(), Some(0));
+349 +     assert_eq!(d.focused(), Some(0));
+    |
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:352:18
+    |
+352 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Close(3)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:352:42
+    |
+352 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Close(3)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:354:15
+    |
+354 |     assert!(d.menu_rect().is_none());
+    |               ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_focused` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:355:18
+    |
+355 |     assert_eq!(d.menu_focused(), None);
+    |                  ^^^^^^^^^^^^
+    |
+help: there is a method `focused` with a similar name
+    |
+355 -     assert_eq!(d.menu_focused(), None);
+355 +     assert_eq!(d.focused(), None);
+    |
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:359:7
+    |
+359 |     d.take_menu_event();
+    |       ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:361:15
+    |
+361 |     let m = d.menu_rect().unwrap();
+    |               ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:364:18
+    |
+364 |     assert_eq!(d.pointer(x, y, LEFT, T0), Event::None);
+    |                  ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `take_menu_event` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:365:18
+    |
+365 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Close(3)));
+    |                  ^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuEvent` in this scope
+   --> user/libui/tests/pointer_menu.rs:365:42
+    |
+365 |     assert_eq!(d.take_menu_event(), Some(MenuEvent::Close(3)));
+    |                                          ^^^^^^^^^ use of undeclared type `MenuEvent`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:367:18
+    |
+367 |     assert_eq!(d.pointer(x, y, 0, T0), Event::None);
+    |                  ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `set_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:377:19
+    |
+377 |         assert!(d.set_menu(&MENU_AR));
+    |                   ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:383:19
+    |
+383 |         let m = d.menu_rect().unwrap();
+    |                   ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:399:11
+    |
+399 |         d.pointer(near_start, y, RIGHT, T0);
+    |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:400:11
+    |
+400 |         d.pointer(near_start, y, 0, T0);
+    |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:401:19
+    |
+401 |         let m = d.menu_rect().unwrap();
+    |                   ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:408:11
+    |
+408 |         d.pointer(near_end, y, RIGHT, T0);
+    |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:409:11
+    |
+409 |         d.pointer(near_end, y, 0, T0);
+    |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:410:19
+    |
+410 |         let m = d.menu_rect().unwrap();
+    |                   ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:419:11
+    |
+419 |         d.pointer(sw / 2, low, RIGHT, T0);
+    |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `pointer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:420:11
+    |
+420 |         d.pointer(sw / 2, low, 0, T0);
+    |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:421:19
+    |
+421 |         let m = d.menu_rect().unwrap();
+    |                   ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `set_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:435:15
+    |
+435 |     assert!(d.set_menu(&EIGHT));
+    |               ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:438:15
+    |
+438 |     let m = d.menu_rect().unwrap();
+    |               ^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `menu_item_rect` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:445:20
+    |
+445 |         let ir = d.menu_item_rect(k).unwrap();
+    |                    ^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `MenuItem` in this scope
+   --> user/libui/tests/pointer_menu.rs:427:36
+    |
+427 |     static EIGHT: [MenuItem; 8] = [MenuItem::item("One choice", true); 8];
+    |                                    ^^^^^^^^ use of undeclared type `MenuItem`
+
+error[E0599]: no method named `describe_menu_item` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:455:18
+    |
+455 |     assert_eq!(d.describe_menu_item(0, &mut t), None);
+    |                  ^^^^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `set_menu` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:456:15
+    |
+456 |     assert!(d.set_menu(&MENU));
+    |               ^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `describe_menu_item` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:457:18
+    |
+457 |     assert_eq!(d.describe_menu_item(MENU.len(), &mut t), None);
+    |                  ^^^^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `describe_menu_item` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:458:18
+    |
+458 |     assert_eq!(d.describe_menu_item(usize::MAX, &mut t), None);
+    |                  ^^^^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `describe_menu_item` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/pointer_menu.rs:461:15
+    |
+461 |     assert!(d.describe_menu_item(3, &mut t).is_some());
+    |               ^^^^^^^^^^^^^^^^^^ method not found in `libui::Dialog`
+
+Some errors have detailed explanations: E0425, E0433, E0599.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `libui` (test "pointer_menu") due to 144 previous errors
+warning: build failed, waiting for other jobs to finish...
