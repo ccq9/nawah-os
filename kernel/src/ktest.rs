@@ -202,6 +202,7 @@ pub fn run() -> ! {
         "a11y_tree" => a11y_tree(),
         "arabic_ui" => arabic_ui(),
         "process_kill" => process_kill(),
+        "job_kill_all" => job_kill_all(),
         "kill_edges" => kill_edges(),
         "svc_watchdog" => svc_watchdog(),
         "session_deadline" => session_deadline(),
@@ -10535,4 +10536,88 @@ fn fd_leak() -> ! {
         fail("frames or process records leaked")
     }
     pass("a process exiting with 44 open file handles leaks nothing")
+}
+
+// ---- WP-46: jobs ---------------------------------------------------------------------------
+
+/// The exit code of the `jobs` app (user/apps/jobs) mapped to the number of its phases that
+/// passed (it prints `jobs|phase=<n>|<name>=ok` for each; 0x4A = all seven).
+fn jobs_phases_ok(code: u64) -> u32 {
+    match code {
+        0x4A => 7,
+        0xE0..=0xE7 | 0xDE => 0,
+        0xE8 => 1,
+        0xE9..=0xEA => 2,
+        0xEB..=0xF2 | 0xDD | 0xDF => 3,
+        0xF3..=0xF7 => 4,
+        0xF8..=0xFC => 5,
+        0xFD..=0xFF => 6,
+        _ => 0,
+    }
+}
+
+/// TST-M6-JOB-KILL (REQ-M6-003, WP-46, syscall.md v1.13 §5) — test-first variant: `/SYSTEM/JOBS.ELF` from the volume, started with a
+/// channel as its bootstrap handle only (no job API here, so this compiles on a kernel without
+/// jobs; the app's phase 1 then fails on its first job call),
+/// proves the contract from user space in seven phases and exits 0x4A. The test checks its
+/// exit, that every process it started is gone, and that no frame and no object is left.
+fn job_kill_all() -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let image = match crate::loader::read_image(b"/SYSTEM/JOBS.ELF") {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!(
+                "OSX|{}|ktest|job_kill_all|image_error={}",
+                BUILD_ID,
+                e.code()
+            );
+            fail("JOBS.ELF is not on the volume")
+        }
+    };
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let procs0 = sched::stats().processes;
+    // Our end stays open and silent: the app reads no role mark on it, so it runs as the parent.
+    let (keep, give) = channel::create();
+    let initial = alloc::vec![Entry {
+        object: Object::Channel(give),
+        rights: Rights::CHANNEL_DEFAULT,
+    }];
+    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let pid = match crate::user::spawn_elf_with(&image, 1, initial, object.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|job_kill_all|error={}", BUILD_ID, e.code());
+            fail("jobs did not load")
+        }
+    };
+    let code = sched::wait_process(pid).unwrap_or(u64::MAX);
+    drop((object, keep));
+    // Its children were all awaited by the app; give the reaper time to finish them anyway.
+    let _ = sched::poll_until(sched::ticks() + 1000, || {
+        sched::stats().processes == procs0 && object::stats() == obj0
+    });
+    let processes_after = sched::stats().processes.saturating_sub(procs0);
+    let frames_delta = frames0 as i64 - pmm::stats().free_frames as i64;
+    let clean = object::stats() == obj0;
+    let ok = code == 0x4A && processes_after == 0 && frames_delta == 0 && clean;
+    kprintln!(
+        "OSX|{}|ktest|job_kill_all|exit={:#x}|phases={}|processes_after={}|frames_delta={}|clean={}|ok={}",
+        BUILD_ID,
+        code,
+        jobs_phases_ok(code),
+        processes_after,
+        frames_delta,
+        u8::from(clean),
+        u8::from(ok)
+    );
+    if code != 0x4A {
+        fail("the job contract did not hold (see exit and the jobs|phase lines)")
+    }
+    if processes_after != 0 || frames_delta != 0 || !clean {
+        fail("job_kill left a process, a frame or an object behind")
+    }
+    pass("job_kill ends every process in a job and below it, a killed job admits nothing, and a job containing the caller cannot be killed")
 }

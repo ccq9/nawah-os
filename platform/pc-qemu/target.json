@@ -35,7 +35,8 @@
       "user/apps/spin/Cargo.toml",
       "user/apps/idle/Cargo.toml",
       "user/apps/exiter/Cargo.toml",
-      "user/apps/fileauth/Cargo.toml"
+      "user/apps/fileauth/Cargo.toml",
+      "user/apps/jobs/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -76,7 +77,8 @@
       "${OUT}/apps/spin.elf",
       "${OUT}/apps/idle.elf",
       "${OUT}/apps/exiter.elf",
-      "${OUT}/apps/fileauth.elf"
+      "${OUT}/apps/fileauth.elf",
+      "${OUT}/apps/jobs.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -619,6 +621,24 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/fileauth",
         "${OUT}/apps/fileauth.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/jobs/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/jobs",
+        "${OUT}/apps/jobs.elf"
       ],
       [
         "cargo",
@@ -6745,6 +6765,39 @@
           "|text=session|purge=logout|restarts=-|reason=list_failure": 5
         },
         "timeout_s": 100
+      },
+      {
+        "id": "TST-M6-JOB-KILL",
+        "test_id": "TST-M6-JOB-KILL",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=job_kill_all"
+        ],
+        "oracle": "REQ-M6-003, WP-46 (syscall.md v1.13 §5, ipc.md §1 type 13; mutants M151-M153): jobs as process groups. Part 1 (job_spawn_dead, M153): inside the test kernel a process object placed in a killed child job of the root is refused at the scheduler's locked check (AsError::Spawn), never bound, told the stillborn exit, its initial channel closed (the peer reads PEER_CLOSED), nothing leaked. Part 2: /SYSTEM/JOBS.ELF, started in the root with a channel as its bootstrap handle and the root job (READ|WRITE|DUPLICATE|TRANSFER) right after it, proves in seven phases, each traced jobs|phase=<n>|<name>=ok: (1 types) job_create on the bootstrap channel is ERR_WRONG_TYPE (probed before the job handle is touched, so a kernel without jobs fails here: ERR_NOSYS, exit 0xe2) and the next handle is a job; a duplicate without WRITE can neither create, kill nor spawn into (ERR_ACCESS, M151) and the handle a refused spawn named stays the caller's; process_spawn_in on a channel is ERR_WRONG_TYPE; (2 contain) job_kill on the root, which contains the caller, is ERR_INVALID; (3 tree) job A under the root, B under A; (4 spawn) IDLE into A and into B with process_spawn_in, a copy of the app into A in its child role, where job_kill(A) — a non-root job containing the caller — is ERR_INVALID and plain process_spawn places its IDLE grandchild in A (the caller's job, M152), and an outsider IDLE in the root, all alive after 20 ticks; (5 kill) job_kill(A) is 0, the IDLEs in A and B, the child and the grandchild end with EXIT_KILLED=0x20000 within 5000 ticks, the app's ends of the killed IDLEs' channels see PEER_CLOSED, the outsider is still alive 20 ticks later, a second job_kill(A) is 0; (6 dead) job_create on A and on B is ERR_PEER_CLOSED, process_spawn_in into A and into B is ERR_PEER_CLOSED and the named handle stays the caller's; (7 depth) eight nested jobs below the root are made and a ninth level is ERR_NO_RESOURCES; then the outsider is killed with process_kill. The app exits 0x4A; no process, frame or object (live jobs included) is left (processes_after=0, frames_delta=0, clean=1). Any phase's =fail line is forbidden; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=job_kill_all",
+          "|ktest|job_spawn_dead|marked=1|refused=1|peer_closed=1|unbound=1|clean=1|frames_delta=0|ok=1",
+          "|kernel|spawn|pid=",
+          "|text=jobs|phase=1|types=ok",
+          "|text=jobs|phase=2|contain=ok",
+          "|text=jobs|phase=3|tree=ok",
+          "|text=jobs|phase=4|spawn=ok",
+          "|text=jobs|phase=5|kill=ok",
+          "|text=jobs|phase=6|dead=ok",
+          "|text=jobs|phase=7|depth=ok",
+          "|ktest|job_kill_all|exit=0x4a|phases=7|processes_after=0|frames_delta=0|clean=1|ok=1",
+          "|ktest|pass|job_kill ends every process in a job and below it, a killed job admits nothing, and a job containing the caller cannot be killed"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "=fail",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 60
       }
     ]
   },
