@@ -1,0 +1,633 @@
+   Compiling libui v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/libui)
+error[E0425]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:24:32
+   |
+24 | fn confirm(rtl: bool, default: Answer) -> (Dialog, Event) {
+   |                                ^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `TEXT_PAINT` in this scope
+   --> user/libui/tests/confirm.rs:337:35
+    |
+337 |     let many: String = "n".repeat(TEXT_PAINT + 6);
+    |                                   ^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `TEXT_PAINT` in this scope
+   --> user/libui/tests/confirm.rs:341:19
+    |
+341 |         w(&mut p, TEXT_PAINT),
+    |                   ^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `TEXT_PAINT` in this scope
+   --> user/libui/tests/confirm.rs:342:19
+    |
+342 |         w(&mut p, TEXT_PAINT + 6),
+    |                   ^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `TEXT_PAINT` in this scope
+   --> user/libui/tests/confirm.rs:344:16
+    |
+344 |     assert_eq!(TEXT_PAINT, 64);
+    |                ^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `TEXT_PAINT` in this scope
+   --> user/libui/tests/confirm.rs:345:36
+    |
+345 |     assert!(w64 > w49, "{w64} for {TEXT_PAINT} characters, {w49} for 49");
+    |                                    ^^^^^^^^^^ not found in this scope
+
+error[E0599]: no method named `confirm` found for struct `libui::Dialog` in the current scope
+  --> user/libui/tests/confirm.rs:26:16
+   |
+26 |     let ev = d.confirm(PROMPT, YES, NO, CANCEL, default).unwrap();
+   |                ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:56:38
+   |
+56 |     let (mut d, ev) = confirm(false, Answer::No);
+   |                                      ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:61:10
+   |
+61 |         (Answer::Yes, YES),
+   |          ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:62:10
+   |
+62 |         (Answer::No, NO),
+   |          ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:63:10
+   |
+63 |         (Answer::Cancel, CANCEL),
+   |          ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:68:17
+   |
+68 |     assert_eq!((Answer::Yes.element(), Answer::No.element()), (1, 2));
+   |                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:68:40
+   |
+68 |     assert_eq!((Answer::Yes.element(), Answer::No.element()), (1, 2));
+   |                                        ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:69:16
+   |
+69 |     assert_eq!(Answer::Cancel.element(), 3);
+   |                ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:71:39
+   |
+71 |     assert_eq!(ev, Event::Focus(None, Answer::No.element()));
+   |                                       ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+  --> user/libui/tests/confirm.rs:73:18
+   |
+73 |     assert_eq!(d.answer(), None);
+   |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+  --> user/libui/tests/confirm.rs:85:32
+   |
+85 |     assert_eq!((d.focused(), d.answer()), (Some(2), None));
+   |                                ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+  --> user/libui/tests/confirm.rs:88:18
+   |
+88 |     assert_eq!(d.answer(), Some(Answer::No));
+   |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:88:33
+   |
+88 |     assert_eq!(d.answer(), Some(Answer::No));
+   |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+  --> user/libui/tests/confirm.rs:93:18
+   |
+93 |     assert_eq!(d.answer(), Some(Answer::No));
+   |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:93:33
+   |
+93 |     assert_eq!(d.answer(), Some(Answer::No));
+   |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+  --> user/libui/tests/confirm.rs:96:37
+   |
+96 |     let (mut d, _) = confirm(false, Answer::Yes);
+   |                                     ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:110:18
+    |
+110 |     assert_eq!(d.answer(), Some(Answer::No));
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:110:33
+    |
+110 |     assert_eq!(d.answer(), Some(Answer::No));
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:114:41
+    |
+114 |         let (mut d, _) = confirm(false, Answer::Yes);
+    |                                         ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:120:22
+    |
+120 |         assert_eq!(d.answer(), Some(Answer::Cancel), "focus on {}", 1 + k);
+    |                      ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:120:37
+    |
+120 |         assert_eq!(d.answer(), Some(Answer::Cancel), "focus on {}", 1 + k);
+    |                                     ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:123:20
+    |
+123 |     for (k, a) in [Answer::Yes, Answer::No, Answer::Cancel]
+    |                    ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:123:33
+    |
+123 |     for (k, a) in [Answer::Yes, Answer::No, Answer::Cancel]
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:123:45
+    |
+123 |     for (k, a) in [Answer::Yes, Answer::No, Answer::Cancel]
+    |                                             ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:127:41
+    |
+127 |         let (mut d, _) = confirm(false, Answer::Cancel);
+    |                                         ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:133:22
+    |
+133 |         assert_eq!(d.answer(), Some(a));
+    |                      ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `confirm` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:145:22
+    |
+145 |         assert_eq!(d.confirm(p, y, n, c, Answer::No), Err(UiError::NoLabel));
+    |                      ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:145:42
+    |
+145 |         assert_eq!(d.confirm(p, y, n, c, Answer::No), Err(UiError::NoLabel));
+    |                                          ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:147:22
+    |
+147 |         assert_eq!(d.answer(), None);
+    |                      ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `confirm` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:152:11
+    |
+152 |         d.confirm(PROMPT, YES, NO, CANCEL, Answer::No),
+    |           ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:152:44
+    |
+152 |         d.confirm(PROMPT, YES, NO, CANCEL, Answer::No),
+    |                                            ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no variant, associated function, or constant named `Confirm` found for enum `libui::UiError` in the current scope
+   --> user/libui/tests/confirm.rs:153:22
+    |
+153 |         Err(UiError::Confirm)
+    |                      ^^^^^^^ variant, associated function, or constant not found in `libui::UiError`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:156:37
+    |
+156 |     let (mut d, _) = confirm(false, Answer::No);
+    |                                     ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no variant, associated function, or constant named `Confirm` found for enum `libui::UiError` in the current scope
+   --> user/libui/tests/confirm.rs:157:62
+    |
+157 |     assert_eq!(d.add(Role::Button, "One more"), Err(UiError::Confirm));
+    |                                                              ^^^^^^^ variant, associated function, or constant not found in `libui::UiError`
+
+error[E0599]: no variant, associated function, or constant named `Confirm` found for enum `libui::UiError` in the current scope
+   --> user/libui/tests/confirm.rs:158:62
+    |
+158 |     assert_eq!(d.add_list("Files", &["a.txt"]), Err(UiError::Confirm));
+    |                                                              ^^^^^^^ variant, associated function, or constant not found in `libui::UiError`
+
+error[E0599]: no method named `confirm` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:164:7
+    |
+164 |     d.confirm(PROMPT, YES, NO, CANCEL, Answer::No).unwrap();
+    |       ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:164:40
+    |
+164 |     d.confirm(PROMPT, YES, NO, CANCEL, Answer::No).unwrap();
+    |                                        ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:174:18
+    |
+174 |     assert_eq!(p.answer(), None);
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:179:38
+    |
+179 |     let (mut d, ev) = confirm(false, Answer::No);
+    |                                      ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `describe_confirm` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:184:40
+    |
+184 |         line("confirm ", |t| assert!(d.describe_confirm(t))),
+    |                                        ^^^^^^^^^^^^^^^^
+    |
+help: there is a method `describe` with a similar name, but with different arguments
+   --> user/libui/src/lib.rs:637:5
+    |
+637 |     pub fn describe(&self, i: usize, out: &mut Text) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:200:15
+    |
+200 |     let a = d.answer().unwrap();
+    |               ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:206:10
+    |
+206 |         [Answer::Yes.name(), Answer::No.name(), Answer::Cancel.name()],
+    |          ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:206:30
+    |
+206 |         [Answer::Yes.name(), Answer::No.name(), Answer::Cancel.name()],
+    |                              ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:206:49
+    |
+206 |         [Answer::Yes.name(), Answer::No.name(), Answer::Cancel.name()],
+    |                                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `confirm` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:213:10
+    |
+212 |       let ev = d
+    |  ______________-
+213 | |         .confirm(PROMPT_AR, YES_AR, NO_AR, CANCEL_AR, Answer::Yes)
+    | |         -^^^^^^^ method not found in `libui::Dialog`
+    | |_________|
+    |
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:213:55
+    |
+213 |         .confirm(PROMPT_AR, YES_AR, NO_AR, CANCEL_AR, Answer::Yes)
+    |                                                       ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `describe_confirm` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:217:40
+    |
+217 |         line("confirm ", |t| assert!(d.describe_confirm(t))),
+    |                                        ^^^^^^^^^^^^^^^^
+    |
+help: there is a method `describe` with a similar name, but with different arguments
+   --> user/libui/src/lib.rs:637:5
+    |
+637 |     pub fn describe(&self, i: usize, out: &mut Text) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:225:15
+    |
+225 |     let a = d.answer().unwrap();
+    |               ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `describe_confirm` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:235:16
+    |
+235 |     assert!(!p.describe_confirm(&mut t));
+    |                ^^^^^^^^^^^^^^^^
+    |
+help: there is a method `describe` with a similar name, but with different arguments
+   --> user/libui/src/lib.rs:637:5
+    |
+637 |     pub fn describe(&self, i: usize, out: &mut Text) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:241:33
+    |
+241 |     let (l, _) = confirm(false, Answer::No);
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:242:32
+    |
+242 |     let (r, _) = confirm(true, Answer::No);
+    |                                ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:246:22
+    |
+246 |     let [y, n, c] = [Answer::Yes, Answer::No, Answer::Cancel].map(|a| a.element());
+    |                      ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:246:35
+    |
+246 |     let [y, n, c] = [Answer::Yes, Answer::No, Answer::Cancel].map(|a| a.element());
+    |                                   ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:246:47
+    |
+246 |     let [y, n, c] = [Answer::Yes, Answer::No, Answer::Cancel].map(|a| a.element());
+    |                                               ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:264:36
+    |
+264 |     let (mut r, _) = confirm(true, Answer::Yes);
+    |                                    ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:268:37
+    |
+268 |     let (mut l, _) = confirm(false, Answer::No);
+    |                                     ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:286:33
+    |
+286 |     let (d, _) = confirm(false, Answer::No);
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `text_width` found for struct `Box<libui::Painter>` in the current scope
+   --> user/libui/tests/confirm.rs:292:15
+    |
+292 |     assert!(p.text_width(&d, &fonts, longer) > bound);
+    |               ^^^^^^^^^^ method not found in `Box<libui::Painter>`
+
+error[E0599]: no method named `confirm` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:303:15
+    |
+303 |             d.confirm(q, y, n, c, Answer::No).unwrap();
+    |               ^^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:303:35
+    |
+303 |             d.confirm(q, y, n, c, Answer::No).unwrap();
+    |                                   ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `text_width` found for struct `Box<libui::Painter>` in the current scope
+   --> user/libui/tests/confirm.rs:306:24
+    |
+306 |             let qw = p.text_width(&d, &fonts, q);
+    |                        ^^^^^^^^^^ method not found in `Box<libui::Painter>`
+
+error[E0599]: no method named `text_width` found for struct `Box<libui::Painter>` in the current scope
+   --> user/libui/tests/confirm.rs:312:28
+    |
+312 |                 let tw = p.text_width(&d, &fonts, label);
+    |                            ^^^^^^^^^^ method not found in `Box<libui::Painter>`
+
+error[E0689]: can't call method `abs` on ambiguous numeric type `{integer}`
+   --> user/libui/tests/confirm.rs:331:64
+    |
+331 |                 assert!(widest > at1.1 && (widest - 2 * at1.1).abs() <= 2);
+    |                                                                ^^^
+
+error[E0599]: no method named `text_width` found for mutable reference `&mut libui::Painter` in the current scope
+   --> user/libui/tests/confirm.rs:338:43
+    |
+338 |     let w = |p: &mut Painter, k: usize| p.text_width(&d, &fonts, &many[..k]);
+    |                                           ^^^^^^^^^^ method not found in `&mut libui::Painter`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:352:37
+    |
+352 |     let (mut d, _) = confirm(false, Answer::No);
+    |                                     ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:354:24
+    |
+354 |     let (x, y) = mid(r[Answer::Yes.element()]);
+    |                        ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:356:18
+    |
+356 |     assert_eq!(d.answer(), None);
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:358:18
+    |
+358 |     assert_eq!(d.answer(), Some(Answer::Yes));
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:358:33
+    |
+358 |     assert_eq!(d.answer(), Some(Answer::Yes));
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:360:26
+    |
+360 |     let (cx, cy) = mid(r[Answer::Cancel.element()]);
+    |                          ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:363:18
+    |
+363 |     assert_eq!(d.answer(), Some(Answer::Yes));
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:363:33
+    |
+363 |     assert_eq!(d.answer(), Some(Answer::Yes));
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:368:37
+    |
+368 |     let (mut d, _) = confirm(false, Answer::No);
+    |                                     ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:373:32
+    |
+373 |     assert_eq!((d.focused(), d.answer()), (Some(2), None));
+    |                                ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:380:32
+    |
+380 |     assert_eq!((d.focused(), d.answer()), (Some(2), None));
+    |                                ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:387:18
+    |
+387 |     assert_eq!(d.answer(), Some(Answer::No));
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:387:33
+    |
+387 |     assert_eq!(d.answer(), Some(Answer::No));
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:391:37
+    |
+391 |     let (mut d, _) = confirm(false, Answer::No);
+    |                                     ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:396:32
+    |
+396 |     assert_eq!((d.focused(), d.answer()), (Some(3), None));
+    |                                ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:401:32
+    |
+401 |     assert_eq!((d.focused(), d.answer()), (Some(3), None));
+    |                                ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:406:32
+    |
+406 |     assert_eq!((d.focused(), d.answer()), (Some(2), None));
+    |                                ^^^^^^ method not found in `libui::Dialog`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:408:18
+    |
+408 |     assert_eq!(d.answer(), Some(Answer::No));
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:408:33
+    |
+408 |     assert_eq!(d.answer(), Some(Answer::No));
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:411:37
+    |
+411 |     let (mut d, _) = confirm(false, Answer::No);
+    |                                     ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:414:18
+    |
+414 |     assert_eq!(d.answer(), Some(Answer::Yes));
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:414:33
+    |
+414 |     assert_eq!(d.answer(), Some(Answer::Yes));
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:416:18
+    |
+416 |     assert_eq!(d.answer(), Some(Answer::Yes));
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:416:33
+    |
+416 |     assert_eq!(d.answer(), Some(Answer::Yes));
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:418:37
+    |
+418 |     let (mut d, _) = confirm(false, Answer::No);
+    |                                     ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:422:18
+    |
+422 |     assert_eq!(d.answer(), Some(Answer::Cancel));
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:422:33
+    |
+422 |     assert_eq!(d.answer(), Some(Answer::Cancel));
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:425:36
+    |
+425 |     let (mut d, _) = confirm(true, Answer::No);
+    |                                    ^^^^^^ use of undeclared type `Answer`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:428:21
+    |
+428 |     assert_eq!(low, Answer::Cancel.element());
+    |                     ^^^^^^ use of undeclared type `Answer`
+
+error[E0599]: no method named `answer` found for struct `libui::Dialog` in the current scope
+   --> user/libui/tests/confirm.rs:432:18
+    |
+432 |     assert_eq!(d.answer(), Some(Answer::Cancel));
+    |                  ^^^^^^ method not found in `libui::Dialog`
+
+error[E0433]: cannot find type `Answer` in this scope
+   --> user/libui/tests/confirm.rs:432:33
+    |
+432 |     assert_eq!(d.answer(), Some(Answer::Cancel));
+    |                                 ^^^^^^ use of undeclared type `Answer`
+
+Some errors have detailed explanations: E0425, E0433, E0599, E0689.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `libui` (test "confirm") due to 101 previous errors
+warning: build failed, waiting for other jobs to finish...
