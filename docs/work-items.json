@@ -4035,7 +4035,8 @@
     "2026-11-10 session.md v1.7 declared limit (audit): the purge is display's LOGOUT, which removes the lost session's windows and surfaces; the lost user's processes keep running and one that ignores LOGGED_OUT can open a new window that the next user sees; ending them is WP-47 (PLAN-ANSWER:748)",
     "2026-11-10 the fail-closed branches (list_failure -> LOGOUT; a refused or failed LOGOUT -> exit 0xE4 before READY) are measured by TST-M6-PURGE-FAIL-CLOSED with a substitute manager and a substitute display in the test kernel (the real displayd refuses LOGOUT only to a client not named session, so the 0xE4 branch is reachable only with the substitute: declared)",
     "2026-11-10 M6 step budget: TST-M6-HOLD-FAIL-CLOSED's timeout 180 s -> 60 s (measured 8 s on CI run 42696067096; a hang guard, not an oracle change) so that PURGE-FAIL-CLOSED (100 s) fits: 150+300+60+85+100 = 695 s, and 755 s with WP-46's JOB-KILL (60 s), under the cap raised from 12 to 15 min (900 s) in verify.yml and TST-M0-003's StepBudget; the Toolchain cap 15 -> 12 min keeps the job-limit guard (12+18+15 = 45 min x 1.2 <= 55)",
-    "2026-11-10 SESSION-LOSS keeps the compositor's own hold observation: after the phase-6 STOP (no restart, no purge) HOLDS must report locked=1 (audit: the purge otherwise hides a rescue regression)"
+    "2026-11-10 SESSION-LOSS keeps the compositor's own hold observation: after the phase-6 STOP (no restart, no purge) HOLDS must report locked=1 (audit: the purge otherwise hides a rescue regression)",
+    "2026-11-10 activated after the two audit rounds (dependency WP-45 done; the estimate against the budget line is recorded above)"
    ],
    "acceptance": "TST-M5-SESSION-LOSS (oracle rewritten to session.md v1.7) and TST-M6-PURGE-FAIL-CLOSED PASS on CI; TST-M6-INTERACTIVE-BOOT (with reason=list_failure forbidden) and TST-M6-HOLD-FAIL-CLOSED (timeout 60 s) re-run and PASS; TST-M0-003 PASS with the M6 step budget 695 s; the M5 session and lock cases in test_ids PASS",
    "test_ids": [
@@ -4056,9 +4057,10 @@
     "python3 tools/project.py test --target pc-qemu --suite M6",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
