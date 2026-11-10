@@ -4797,7 +4797,8 @@
     "moved from WP-68 on 2026-11-10: the password forbidden-marker check on console.log as well as serial.log",
     "moved from WP-68 on 2026-11-10: 2026-11-09 latent liveness defect found while fixing the hold (services engineer): displayd's main loop reads the boot channel with a 64-byte buffer and swallows errors (Err(_) => {}), so any manager message longer than 64 bytes spins the loop forever and no client is accepted; and a STOP arriving before the LIST reply is consumed as a failed LIST (held start, STOP lost, the manager kills after the stop timeout): fix both with a regression ktest",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 estimate (services engineer, unmeasured): about 60 tool calls / 60 min; under the line"
+    "2026-11-10 estimate (services engineer, unmeasured): about 60 tool calls / 60 min; under the line",
+    "2026-11-10 activated after the services engineer's design report (the displayd boot-loop defects, moved from WP-68); dependency WP-45 done; the estimate against the budget line is recorded above (about 60 calls / 60 min)"
    ],
    "acceptance": "TST-M6-DISPLAYD-BOOT-LOOP PASS on CI (case=too_long_msg and case=stop_first exit=0x0 with the discard trace); TST-M6-INTERACTIVE-BOOT (password marker checked on console.log too) and TST-M6-HOLD-FAIL-CLOSED re-run and PASS; M160 and M161 killed",
    "test_ids": [
@@ -4809,9 +4810,10 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
