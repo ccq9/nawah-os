@@ -13,6 +13,13 @@
 //!
 //! v1.5 (WP-38, ui.md §3.5): `Painter::fits` — whether a label or value fits its row as
 //! painted, for an application that must not show a text cut by the surface's edge.
+//!
+//! v1.6 (WP-49, ui.md §3.6): the pointer (`Dialog::pointer`: hit-testing every element from
+//! the layout, press focuses, release over the same element activates, a list row selects and
+//! a second click within `DOUBLE_CLICK_MS` activates) and one context menu per dialog
+//! (`set_menu`, `open_menu`; Shift+F10, the menu key or a right press), drawn as an overlay in
+//! the dialog's own surface. Menu outcomes come from `take_menu_event` so that `Event` keeps
+//! its v1 variants. Behaviour follows the W3C WAI-ARIA Authoring Practices menu pattern.
 
 #![cfg_attr(not(test), no_std)]
 #![deny(unsafe_code)]
@@ -35,6 +42,18 @@ pub const KEY_DOWN: u32 = 0xd0;
 pub const KEY_LEFT: u32 = 0xcb;
 pub const KEY_RIGHT: u32 = 0xcd;
 pub const MOD_SHIFT: u32 = 1;
+/// F10 (Shift+F10 opens the context menu, v1.6).
+pub const KEY_F10: u32 = 0x44;
+/// The menu key: extended scancode 0x5d, sent by inputd as 0x80 | 0x5d (v1.6).
+pub const KEY_MENU: u32 = 0xdd;
+/// Pointer buttons as input.md `PTR` sends them: bit 0 left, bit 1 right (v1.6).
+pub const BUTTON_LEFT: u32 = 1;
+pub const BUTTON_RIGHT: u32 = 2;
+/// At most this many menu entries, separators included (v1.6).
+pub const MAX_MENU: usize = 8;
+/// Two left clicks on the same list row this close (ms, release to release) activate the list
+/// (v1.6). nawah's own value, not taken from any reference system (ui.md §3.6).
+pub const DOUBLE_CLICK_MS: u64 = 400;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Role {
@@ -93,6 +112,54 @@ pub enum Event {
     Select(usize, usize),
     Edit(usize),
     Cancel,
+}
+
+/// One entry of a context menu (v1.6): a labelled item, enabled or not, or a separator.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct MenuItem {
+    pub label: &'static str,
+    pub enabled: bool,
+    pub separator: bool,
+}
+
+impl MenuItem {
+    pub const SEPARATOR: MenuItem = MenuItem {
+        label: "",
+        enabled: false,
+        separator: true,
+    };
+    pub const fn item(label: &'static str, enabled: bool) -> MenuItem {
+        MenuItem {
+            label,
+            enabled,
+            separator: false,
+        }
+    }
+}
+
+/// What a key or pointer event did to the context menu (v1.6), read with `take_menu_event`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum MenuEvent {
+    /// The menu opened for this element; its first item has the focus.
+    Open(usize),
+    /// The focus moved to this menu entry.
+    Focus(usize),
+    /// The menu closed without a choice; the focus is back on this element.
+    Close(usize),
+    /// The element's menu entry was chosen; the menu closed and the focus is back on it.
+    Choose(usize, usize),
+}
+
+#[derive(Clone, Copy)]
+struct OpenMenu {
+    owner: usize,
+    focus: usize,
+    ax: i32,
+    ay: i32,
+}
+
+fn contains(r: Rect, x: i32, y: i32) -> bool {
+    x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h
 }
 
 #[derive(Clone, Copy)]
@@ -254,6 +321,13 @@ pub struct Dialog {
     focus: Option<usize>,
     pub rtl: bool,
     pub theme: Theme,
+    menu: &'static [MenuItem],
+    open: Option<OpenMenu>,
+    buttons: u32,
+    press: Option<(usize, Option<usize>)>,
+    menu_press: Option<usize>,
+    last_click: Option<(usize, usize, u64)>,
+    pending: Option<MenuEvent>,
 }
 
 fn utf8_chars(s: &str, out: &mut [u32]) -> usize {
@@ -277,6 +351,13 @@ impl Dialog {
             focus: None,
             rtl,
             theme: Theme::DEFAULT,
+            menu: &[],
+            open: None,
+            buttons: 0,
+            press: None,
+            menu_press: None,
+            last_click: None,
+            pending: None,
         }
     }
 
@@ -353,7 +434,7 @@ impl Dialog {
 
     /// Moves the focus to element `i` if it can take it (v1.1).
     pub fn focus_on(&mut self, i: usize) -> Event {
-        if i >= self.n || !self.elements[i].role.focusable() {
+        if self.open.is_some() || i >= self.n || !self.elements[i].role.focusable() {
             return Event::None;
         }
         self.move_focus(i)
@@ -476,8 +557,20 @@ impl Dialog {
     /// One key event (input.md: the code, down or up, the modifiers, the character if any);
     /// only presses act.
     pub fn key(&mut self, code: u32, down: bool, mods: u32, ch: Option<char>) -> Event {
+        self.pending = None;
         if !down {
             return Event::None;
+        }
+        if self.open.is_some() {
+            self.menu_key(code);
+            return Event::None;
+        }
+        if (code == KEY_F10 && mods & MOD_SHIFT != 0) || code == KEY_MENU {
+            if let Some(i) = self.focus {
+                if self.open_menu(i) {
+                    return Event::None;
+                }
+            }
         }
         match code {
             KEY_TAB => return self.step(mods & MOD_SHIFT != 0),
@@ -628,11 +721,393 @@ impl Dialog {
             }
             y += h + pad;
         }
+        // v1.6: the surface holds the dialog's menu, which is drawn inside it.
+        if !self.menu.is_empty() {
+            y = y.max(self.menu_height() + 2 * pad);
+        }
         (w, y)
     }
 
     pub fn font_px(&self) -> u32 {
         14 * self.theme.scale / 4
+    }
+
+    // ---- v1.6: the pointer -------------------------------------------------------------
+
+    /// The element under `(x, y)` (surface coordinates), from the layout.
+    fn hit(&self, x: i32, y: i32) -> Option<usize> {
+        let mut rects = [Rect::default(); MAX_ELEMENTS];
+        self.layout(&mut rects);
+        (0..self.n).find(|&i| contains(rects[i], x, y))
+    }
+
+    /// The list row under `y` in list `i`; `None` for the header and for other roles.
+    fn list_row(&self, i: usize, y: i32) -> Option<usize> {
+        let e = &self.elements[i];
+        if e.role != Role::List {
+            return None;
+        }
+        let mut rects = [Rect::default(); MAX_ELEMENTS];
+        self.layout(&mut rects);
+        let k = (y - rects[i].y) / self.theme.u(20);
+        if k >= 1 && ((k - 1) as usize) < e.items.len() {
+            Some((k - 1) as usize)
+        } else {
+            None
+        }
+    }
+
+    /// One pointer report (v1.6): the position in the surface, the buttons held (bit 0 left,
+    /// bit 1 right) and the time. Only changes of the buttons act: a left press focuses the
+    /// focusable element under it (a list row is selected, the header selects nothing), a left
+    /// release over the element pressed activates a button, toggles a checkbox, and on the
+    /// same list row a second time within `DOUBLE_CLICK_MS` activates the list; a right press
+    /// on a focusable element opens the context menu there. While the menu is open every
+    /// press and release is the menu's (see `take_menu_event`).
+    pub fn pointer(&mut self, x: i32, y: i32, buttons: u32, now_ms: u64) -> Event {
+        self.pending = None;
+        let pressed = buttons & !self.buttons;
+        let released = self.buttons & !buttons;
+        self.buttons = buttons;
+        if self.open.is_some() {
+            if pressed & (BUTTON_LEFT | BUTTON_RIGHT) != 0 {
+                self.menu_press = None;
+                if !self.menu_rect().is_some_and(|m| contains(m, x, y)) {
+                    self.close_menu();
+                    return Event::None;
+                }
+                if let Some(k) = self.menu_hit(x, y) {
+                    if pressed & BUTTON_LEFT != 0 {
+                        self.menu_press = Some(k);
+                    }
+                    self.menu_focus(k);
+                }
+            } else if released & BUTTON_LEFT != 0 {
+                if let Some(k) = self.menu_press.take() {
+                    if self.menu_hit(x, y) == Some(k) {
+                        self.choose(k);
+                    }
+                }
+            }
+            return Event::None;
+        }
+        if pressed & BUTTON_LEFT != 0 {
+            return self.press_left(x, y);
+        }
+        if released & BUTTON_LEFT != 0 {
+            return self.release_left(x, y, now_ms);
+        }
+        if pressed & BUTTON_RIGHT != 0 {
+            self.press_right(x, y);
+        }
+        Event::None
+    }
+
+    fn press_left(&mut self, x: i32, y: i32) -> Event {
+        self.press = None;
+        let Some(i) = self
+            .hit(x, y)
+            .filter(|&i| self.elements[i].role.focusable())
+        else {
+            return Event::None;
+        };
+        let row = self.list_row(i, y);
+        if self
+            .last_click
+            .is_some_and(|(j, k, _)| (j, Some(k)) != (i, row))
+        {
+            self.last_click = None;
+        }
+        self.press = Some((i, row));
+        let ev = if self.focus != Some(i) {
+            self.move_focus(i)
+        } else {
+            Event::None
+        };
+        if let Some(k) = row {
+            let e = &mut self.elements[i];
+            if e.selected != k {
+                e.selected = k;
+                if ev == Event::None {
+                    return Event::Select(i, k);
+                }
+            }
+        }
+        ev
+    }
+
+    fn release_left(&mut self, x: i32, y: i32, now_ms: u64) -> Event {
+        let Some((i, row)) = self.press.take() else {
+            return Event::None;
+        };
+        if self.hit(x, y) != Some(i) || self.list_row(i, y) != row {
+            return Event::None;
+        }
+        match self.elements[i].role {
+            Role::Button => Event::Activate(i),
+            Role::Checkbox => {
+                let e = &mut self.elements[i];
+                e.checked = !e.checked;
+                Event::Toggle(i, e.checked)
+            }
+            Role::List => {
+                let Some(k) = row else {
+                    return Event::None;
+                };
+                if let Some((j, kk, t)) = self.last_click.take() {
+                    if (j, kk) == (i, k) && now_ms.saturating_sub(t) <= DOUBLE_CLICK_MS {
+                        return Event::Activate(i);
+                    }
+                }
+                self.last_click = Some((i, k, now_ms));
+                Event::None
+            }
+            _ => Event::None,
+        }
+    }
+
+    fn press_right(&mut self, x: i32, y: i32) {
+        let Some(i) = self.hit(x, y) else {
+            return;
+        };
+        if !self.elements[i].role.focusable() || self.menu.is_empty() {
+            return;
+        }
+        // A right press on a list row is a context menu for that row.
+        if let Some(k) = self.list_row(i, y) {
+            self.elements[i].selected = k;
+        }
+        self.open_at(i, x, y);
+    }
+
+    // ---- v1.6: the context menu --------------------------------------------------------
+
+    /// Sets the dialog's context menu (v1.6): 1 to `MAX_MENU` entries with at least one item;
+    /// every item has a non-blank label. `false` when refused. An open menu keeps open with
+    /// the focus on its first item (an application switching language).
+    pub fn set_menu(&mut self, items: &'static [MenuItem]) -> bool {
+        if items.is_empty()
+            || items.len() > MAX_MENU
+            || items.iter().all(|m| m.separator)
+            || items
+                .iter()
+                .any(|m| !m.separator && m.label.trim().is_empty())
+        {
+            return false;
+        }
+        self.menu = items;
+        let first = self.first_item();
+        if let Some(m) = self.open.as_mut() {
+            m.focus = first;
+        }
+        true
+    }
+
+    fn first_item(&self) -> usize {
+        self.menu.iter().position(|m| !m.separator).unwrap_or(0)
+    }
+
+    /// Opens the context menu for focusable element `i` below it, from its start edge (the
+    /// left in LTR, the right in RTL). `false` without a menu, for a label or a value, or
+    /// when a menu is already open.
+    pub fn open_menu(&mut self, i: usize) -> bool {
+        if i >= self.n
+            || !self.elements[i].role.focusable()
+            || self.menu.is_empty()
+            || self.open.is_some()
+        {
+            return false;
+        }
+        let mut rects = [Rect::default(); MAX_ELEMENTS];
+        self.layout(&mut rects);
+        let r = rects[i];
+        let ax = if self.rtl { r.x + r.w } else { r.x };
+        self.open_at(i, ax, r.y + r.h);
+        true
+    }
+
+    fn open_at(&mut self, owner: usize, ax: i32, ay: i32) {
+        self.press = None;
+        self.menu_press = None;
+        self.open = Some(OpenMenu {
+            owner,
+            focus: self.first_item(),
+            ax,
+            ay,
+        });
+        self.focus = None;
+        self.pending = Some(MenuEvent::Open(owner));
+    }
+
+    /// Closes the menu; the focus returns to the element it was opened for.
+    fn close_menu(&mut self) -> usize {
+        let Some(m) = self.open.take() else {
+            return 0;
+        };
+        let owner = m.owner;
+        self.focus = Some(owner);
+        self.pending = Some(MenuEvent::Close(owner));
+        owner
+    }
+
+    /// Chooses entry `k` if it is an enabled item; a disabled item is never chosen.
+    fn choose(&mut self, k: usize) {
+        let it = self.menu[k];
+        if it.separator || !it.enabled {
+            return;
+        }
+        let owner = self.close_menu();
+        self.pending = Some(MenuEvent::Choose(owner, k));
+    }
+
+    fn menu_focus(&mut self, k: usize) {
+        if let Some(m) = self.open.as_mut() {
+            if m.focus != k {
+                m.focus = k;
+                self.pending = Some(MenuEvent::Focus(k));
+            }
+        }
+    }
+
+    /// Keys while the menu is open: Up/Down move (wrapping, over separators), Enter chooses,
+    /// Esc closes; every other key (Tab included) is ignored.
+    fn menu_key(&mut self, code: u32) {
+        let Some(m) = self.open else {
+            return;
+        };
+        let n = self.menu.len();
+        match code {
+            KEY_ESC => {
+                self.close_menu();
+            }
+            KEY_ENTER => self.choose(m.focus),
+            KEY_UP | KEY_DOWN => {
+                let mut k = m.focus;
+                for _ in 0..n {
+                    k = if code == KEY_UP {
+                        (k + n - 1) % n
+                    } else {
+                        (k + 1) % n
+                    };
+                    if !self.menu[k].separator {
+                        break;
+                    }
+                }
+                self.menu_focus(k);
+            }
+            _ => {}
+        }
+    }
+
+    /// What the last `key` or `pointer` call did to the menu, once (v1.6).
+    pub fn take_menu_event(&mut self) -> Option<MenuEvent> {
+        self.pending.take()
+    }
+
+    /// The focused menu entry while the menu is open.
+    pub fn menu_focused(&self) -> Option<usize> {
+        self.open.map(|m| m.focus)
+    }
+
+    /// The number of menu items (separators not counted): the `n` of `index=k/n`.
+    pub fn menu_len(&self) -> usize {
+        self.menu.iter().filter(|m| !m.separator).count()
+    }
+
+    fn menu_width(&self) -> i32 {
+        self.theme.u(160)
+    }
+
+    fn menu_entry_h(&self, m: &MenuItem) -> i32 {
+        if m.separator {
+            self.theme.u(8)
+        } else {
+            self.theme.u(20)
+        }
+    }
+
+    fn menu_height(&self) -> i32 {
+        2 * self.theme.u(2) + self.menu.iter().map(|m| self.menu_entry_h(m)).sum::<i32>()
+    }
+
+    /// The open menu's rectangle in the dialog's surface. It opens toward the reading
+    /// direction from its anchor (rightwards in LTR, leftwards in RTL), flips to the other
+    /// side when it would cross the surface's edge, and is clamped inside the surface.
+    pub fn menu_rect(&self) -> Option<Rect> {
+        let m = self.open?;
+        let (sw, sh) = self.layout(&mut []);
+        let (w, h) = (self.menu_width(), self.menu_height());
+        let x = if self.rtl {
+            let opened = m.ax - w;
+            if opened < 0 {
+                m.ax
+            } else {
+                opened
+            }
+        } else if m.ax + w > sw {
+            m.ax - w
+        } else {
+            m.ax
+        };
+        Some(Rect {
+            x: x.min(sw - w).max(0),
+            y: m.ay.min(sh - h).max(0),
+            w,
+            h,
+        })
+    }
+
+    /// Entry `k`'s rectangle while the menu is open.
+    pub fn menu_item_rect(&self, k: usize) -> Option<Rect> {
+        let m = self.menu_rect()?;
+        if k >= self.menu.len() {
+            return None;
+        }
+        let y = m.y
+            + self.theme.u(2)
+            + self.menu[..k]
+                .iter()
+                .map(|e| self.menu_entry_h(e))
+                .sum::<i32>();
+        Some(Rect {
+            x: m.x + 1,
+            y,
+            w: m.w - 2,
+            h: self.menu_entry_h(&self.menu[k]),
+        })
+    }
+
+    /// The menu item (not a separator) under `(x, y)`.
+    fn menu_hit(&self, x: i32, y: i32) -> Option<usize> {
+        (0..self.menu.len()).find(|&k| {
+            !self.menu[k].separator && self.menu_item_rect(k).is_some_and(|r| contains(r, x, y))
+        })
+    }
+
+    /// Menu entry `k`'s description (ui.md §3.6):
+    /// `role=menuitem label="<label>" state=<focused|enabled>[,disabled] index=<k>/<n>`;
+    /// the number of bytes written, or `None` (nothing written) when `k` is no entry of the
+    /// menu (no menu set, or `k` out of range).
+    pub fn describe_menu_item(&self, k: usize, out: &mut Text) -> Option<usize> {
+        let it = self.menu.get(k)?;
+        let start = out.len;
+        out.put(b"role=menuitem label=\"");
+        out.put(it.label.as_bytes());
+        out.put(b"\" state=");
+        let focused = self.menu_focused() == Some(k);
+        if focused {
+            out.put(b"focused");
+            if !it.enabled {
+                out.put(b",disabled");
+            }
+        } else {
+            out.put(if it.enabled { b"enabled" } else { b"disabled" });
+        }
+        out.put(b" index=");
+        out.num(self.menu[..k].iter().filter(|m| !m.separator).count() + 1);
+        out.put(b"/");
+        out.num(self.menu_len());
+        Some(out.len - start)
     }
 }
 
@@ -952,6 +1427,46 @@ impl Painter {
                     h: r.h + 2 * ring,
                 };
                 frame(buf, w, h, fr, ring, p.focus);
+            }
+        }
+        // v1.6: the open context menu, over the elements in the same surface.
+        if let Some(m) = d.menu_rect() {
+            fill(buf, w, h, m, p.control);
+            frame(buf, w, h, m, 1, p.border);
+            let inset = t.u(6);
+            for (k, it) in d.menu.iter().enumerate() {
+                let Some(ir) = d.menu_item_rect(k) else {
+                    continue;
+                };
+                if it.separator {
+                    let line = Rect {
+                        x: ir.x + inset,
+                        y: ir.y + ir.h / 2,
+                        w: ir.w - 2 * inset,
+                        h: 1,
+                    };
+                    fill(buf, w, h, line, p.border);
+                    continue;
+                }
+                let focused = d.menu_focused() == Some(k);
+                if focused {
+                    fill(buf, w, h, ir, p.selected_bg);
+                }
+                let fg = if !it.enabled {
+                    p.placeholder
+                } else if focused {
+                    p.selected_fg
+                } else {
+                    p.fg
+                };
+                let tr = Rect {
+                    x: ir.x + inset,
+                    w: ir.w - 2 * inset,
+                    ..ir
+                };
+                let n = self.str_chars(it.label);
+                let s = self.text;
+                self.string(fonts, &s[..n], px, tr, d.rtl, false, fg, buf, w, h);
             }
         }
     }

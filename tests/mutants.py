@@ -671,6 +671,29 @@ MUTANTS = [
      "            } else if !system_path(path) {",
      "            } else if false && !system_path(path) {",
      ["TST-M6-LOAD-OUTSIDE-SYSTEM"], "LOAD reads outside /SYSTEM/: case=outside reads reply=OK 1|started=1|ok=0 (forbidden reply=OK), the later LOADs answer ERR LOADED (forbidden), failed=outside,dotdot,dep_name,system,"),
+    # ---- M6 (WP-49): libui pointer hit-testing and the context menu (ui.md v1.6 §3.6); killer
+    # TST-M6-UI-UNIT (user/libui/tests/pointer_menu.rs). SECURITY set: M168 (a disabled item is
+    # how an application withholds an action, so choosing it must be impossible).
+    ("M165", "user/libui/src/lib.rs",
+     "    x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h",
+     "    x >= r.x && x <= r.x + r.w && y >= r.y && y < r.y + r.h",
+     ["TST-M6-UI-UNIT"], "the hit-test takes the column after an element's right edge as inside it: pointer_focuses_and_activates_the_element_under_it fails (a press at r.x + r.w focuses and activates the button), test result FAILED. 7 passed; 1 failed"),
+    ("M166", "user/libui/src/lib.rs",
+     "            .filter(|&i| self.elements[i].role.focusable())",
+     "            .filter(|_| true)",
+     ["TST-M6-UI-UNIT"], "a left press focuses a label: pointer_focuses_and_activates_the_element_under_it fails (Focus to the label instead of None), test result FAILED. 7 passed; 1 failed"),
+    ("M167", "user/libui/src/lib.rs",
+     "        self.focus = Some(owner);",
+     "        let _ = owner;",
+     ["TST-M6-UI-UNIT"], "Esc (and an outside press or a choice) closes the menu without returning the focus to its opener: focused() stays None; esc_and_outside_click_close_and_return_focus, context_menu_opens_by_three_ways and menu_wraps_skips_separators_and_disabled_never_chooses fail, test result FAILED. 5 passed; 3 failed"),
+    ("M168", "user/libui/src/lib.rs",
+     "        if it.separator || !it.enabled {",
+     "        if it.separator {",
+     ["TST-M6-UI-UNIT"], "SECURITY: Enter on a disabled menu item emits Choose: menu_wraps_skips_separators_and_disabled_never_chooses fails (Some(Choose(3, 3)) instead of None), test result FAILED. 7 passed; 1 failed"),
+    ("M169", "user/libui/src/lib.rs",
+     "            let opened = m.ax - w;",
+     "            let opened = m.ax;",
+     ["TST-M6-UI-UNIT"], "in RTL the menu is anchored by its left edge and opens rightwards: menu_mirrors_in_rtl fails (the right edge is not the element's start edge), test result FAILED. 7 passed; 1 failed"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -707,7 +730,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M151", "M152", "M153",
             # M6 (WP-68): the manifest is read whole or refused (services.md v1.13, M157) and LOAD
             # reads only under /SYSTEM/ (M159). M158 (MANIFEST_IO) is not SECURITY.
-            "M157", "M159"}
+            "M157", "M159",
+            # M6 (WP-49): libui menus (ui.md v1.6 §3.6): a disabled menu item is never chosen
+            # (M168).
+            "M168"}
 
 
 def security_of(mid: str) -> bool:
