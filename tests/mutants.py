@@ -609,8 +609,17 @@ MUTANTS = [
      "        if mode.selftest() {",
      "        if mode.selftest() || true {",
      ["TST-M6-INTERACTIVE-BOOT"], "the interactive boot takes the self-test exit: phase 1 prints m1_done (forbidden) and exits 33, not 0 by the lab's quit"),
+    # ---- M6 (WP-64 purge, M135; WP-73's M137 lands with authd): a restarted session ends the lost one's windows before its sign-in
+    # screen (session.md v1.7), and auth revokes the sessions of a lost `session` client (auth.md
+    # v1.2); SECURITY. M133, M134 and M136 stay reserved for WP-71. M135 skips the purge (the
+    # condition never holds, `purge_restarted` stays referenced so the mutant builds
+    # warning-free). M137 keeps the count and its trace line but no longer closes the session.
+    ("M135", "user/apps/sessiond/src/main.rs",
+     "                if self.conn_n[DISPLAY] == 1 && !self.purge_restarted() {",
+     "                if self.conn_n[DISPLAY] == 0 && !self.purge_restarted() {",
+     ["TST-M5-SESSION-LOSS"], "the restarted session shows its sign-in screen without LOGOUT to the compositor: no session|purge line, the spy keeps its window and is not told LOGGED_OUT, so phase 2 reads spy_after=ready:… and windows=2, not stopped:0x0 and windows=1"),
     # ---- M6 (WP-67): displayd's start-up hold fails closed (display.md v1.12); SECURITY.
-    # M133-M137 are reserved for WP-64. The mutant keeps every trace line and changes only the
+    # M133, M134 and M136 are reserved for WP-71. The mutant keeps every trace line and changes only the
     # decision: held only for a valid listing naming `session`, so every LIST failure starts
     # unheld (the pre-v1.12 behaviour) behind a line that still says locked=1. The killer judges
     # the screen itself: HOLDS answers locked=0 and the injected key (press and release) reaches the window.
@@ -618,6 +627,12 @@ MUTANTS = [
      "    line.ends_with(b\"locked=1\")",
      "    line.starts_with(b\"display|hold|source=manifest\") && line.ends_with(b\"locked=1\")",
      ["TST-M6-HOLD-FAIL-CLOSED"], "a LIST failure starts the screen unheld while the trace says locked=1: case=reply and case=too_long read holds=OK locked=0 (forbidden) and keys=2 (press and release both reach the window), not locked=1 and keys=0"),
+    # ---- M6 (WP-64): the purge fails closed (session.md v1.7); SECURITY. A listing the
+    # session cannot read is taken as "not restarted": the sign-in screen comes without LOGOUT.
+    ("M150", "user/apps/sessiond/src/main.rs",
+     "            None => (None, b\"list_failure\"),",
+     "            None => return true,",
+     ["TST-M6-PURGE-FAIL-CLOSED"], "a LIST the session cannot read skips the purge: sub-cases reply, no_session_line, bad_count, too_long and closed read logout=-|order=screen_only|ok=0 (closed: exit 0xe5, no LOGOUT), the list_failure trace appears 0 times, not 5, and failed= names those five"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -640,9 +655,14 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # read (M130), only the key 1 selects the self-test (M131), and an interactive boot
             # never takes the self-test exit (M132).
             "M130", "M131", "M132",
+            # M6 (WP-64, WP-73): a restarted session purges the lost one's windows (session.md v1.7,
+            # M135).
+            "M135",
             # M6 (WP-67): displayd's start-up hold fails closed on a LIST failure (display.md
             # v1.12): a fail-open hold lets keys reach a window before the session unlocks.
-            "M147"}
+            "M147",
+            # M6 (WP-64): the purge fails closed when the listing cannot be read (session.md v1.7).
+            "M150"}
 
 
 def security_of(mid: str) -> bool:

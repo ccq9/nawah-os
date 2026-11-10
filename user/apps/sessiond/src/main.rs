@@ -798,7 +798,14 @@ impl Session {
                 self.display_call(b"LOCKED", &[], &mut r);
                 self.show(Screen::Lock, None);
             }
-            State::NoSession => self.show(Screen::Login, None),
+            State::NoSession => {
+                // (v1.7) A restarted session first ends what the lost one left on the screen;
+                // if that fails there is no sign-in screen (main exits 0xE4 before READY).
+                if self.conn_n[DISPLAY] == 1 && !self.purge_restarted() {
+                    return;
+                }
+                self.show(Screen::Login, None)
+            }
         }
         if self.conn_n[DISPLAY] > 1 {
             let mut t = Out::new();
@@ -809,6 +816,35 @@ impl Session {
             self.put_window(&mut t);
             libnawah::trace(t.bytes());
         }
+    }
+
+    /// (v1.7) Before the first sign-in screen: a session the manager restarted — or one that
+    /// cannot tell (its `LIST` failed or did not parse) — ends what the lost one left on the
+    /// screen: `LOGOUT` to the compositor removes every other client's windows and surfaces and
+    /// tells each `LOGGED_OUT`. Traced only when it purges. False when the compositor refused
+    /// or failed the `LOGOUT`: then no sign-in screen is shown (fail-closed).
+    fn purge_restarted(&mut self) -> bool {
+        let (restarts, reason): (Option<u64>, &[u8]) = match manager_restarts(self.boot) {
+            Some(0) => return true,
+            Some(n) => (Some(n), b"restarted"),
+            None => (None, b"list_failure"),
+        };
+        let mut r = [0u8; 64];
+        if !self
+            .display_call(b"LOGOUT", &[], &mut r)
+            .is_some_and(|n| &r[..n] == b"OK")
+        {
+            return false;
+        }
+        let mut t = Out::new();
+        t.put(b"session|purge=logout|restarts=");
+        match restarts {
+            Some(n) => t.num(n as i64),
+            None => t.put(b"-"),
+        };
+        t.put(b"|reason=").put(reason);
+        libnawah::trace(t.bytes());
+        true
     }
 
     /// The keyboard to the session itself (sign-in and lock screens).
@@ -1974,6 +2010,37 @@ fn manager_connect(boot: Handle, name: &[u8]) -> Option<Handle> {
     match libnawah::channel_read(boot, &mut buf, &mut hs, true) {
         Ok((2, 1)) if &buf[..2] == b"OK" => Some(hs[0]),
         _ => None,
+    }
+}
+
+/// (v1.7) This service's restart count from the manager's `LIST` (services.md §4 v1.3), asked
+/// before READY so the first message back is the answer. `None` when the listing cannot be had
+/// or read: no `session` line or a count that is not a number (`ERR …` among them), a closed
+/// channel, an answer longer than the 1024-byte buffer (removed from the head of the queue, as
+/// display.md v1.12 does, so the boot channel is not jammed behind it), any other error.
+fn manager_restarts(boot: Handle) -> Option<u64> {
+    if libnawah::channel_write(boot, b"LIST", &[]) != 0 {
+        return None;
+    }
+    let mut reply = [0u8; 1024];
+    let mut hs = [0u32; 1];
+    match libnawah::channel_read(boot, &mut reply, &mut hs, true) {
+        Ok((n, nh)) => {
+            if nh == 1 {
+                libnawah::handle_close(hs[0]);
+            }
+            reply[..n]
+                .split(|&c| c == b'\n')
+                .find_map(|l| l.strip_prefix(b"session "))
+                .and_then(|rest| rest.split(|&c| c == b' ').nth(1))
+                .and_then(parse_i64)
+                .and_then(|v| u64::try_from(v).ok())
+        }
+        Err(ERR_BUFFER_TOO_SMALL) => {
+            libnawah::channel_discard(boot);
+            None
+        }
+        Err(_) => None,
     }
 }
 
