@@ -3928,6 +3928,42 @@ fn config_write_scope() -> ! {
     {
         fail("/SYSTEM changed, or the probe left something behind")
     }
+    // The matcher over the spellings a path can take (compared as the volume's short names).
+    let table: [(&[u8], bool); 8] = [
+        (b"/SYSTEM/CFGDEV.A", true),
+        (b"/system/cfgdev.a", true),
+        (b"/SYSTEM./CFGU1000.B", true),
+        (b"/SYSTEM/CFGPOL.C", false),
+        (b"/SYSTEM/AUTHD.A", false),
+        (b"/SYSTEM/FONTS/CFGDEV.A", false),
+        (b"/SYSTEM/../SYSTEM/CFGDEV.A", false),
+        (b"/SYSTEM/SERVICES.TXT", false),
+    ];
+    let mut right = 0;
+    for (path, want) in table {
+        let got = vfs::is_config_store(path);
+        if got == want {
+            right += 1;
+        } else {
+            kprintln!(
+                "OSX|{}|ktest|{}|path={}|got={}",
+                BUILD_ID,
+                name,
+                String::from_utf8_lossy(path),
+                u8::from(got)
+            );
+        }
+    }
+    kprintln!(
+        "OSX|{}|ktest|{}|table={}/{}",
+        BUILD_ID,
+        name,
+        right,
+        table.len()
+    );
+    if right != table.len() {
+        fail("the store matcher answered a spelling wrongly")
+    }
     // Config itself still writes its stores through the same authority.
     let env = cfg_env(name);
     let set = cfg_request(

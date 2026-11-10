@@ -684,6 +684,21 @@ MUTANTS = [
      "        Err(STOPPED) => {\n            libnawah::trace(b\"display|boot|stop=before_ready\");\n            return None;\n        }\n",
      "",
      ["TST-M6-DISPLAYD-BOOT-LOOP"], "a STOP before the LIST answer is read as a failed LIST: case=stop_first reads ready=1|exit=0x20000|ok=0, display|hold|source=list_failure|reason=error|locked=1 appears (forbidden), display|boot|stop=before_ready is missing, failed=stop_first,"),
+    # ---- M6 (WP-78): config's WRITE scope at the authority layer (files.md v1.4, RSK-019); all
+    # SECURITY (each reopens a write under /SYSTEM outside config's stores); killer
+    # TST-M6-CONFIG-WRITE-SCOPE (the fileauth probe with config's mask READ|WRITE|TRANSFER).
+    ("M162", "kernel/src/syscall/mod.rs",
+     "    if write && !vfs::is_config_store(path) {",
+     "    if false && write && !vfs::is_config_store(path) {",
+     ["TST-M6-CONFIG-WRITE-SCOPE"], "SECURITY: WRITE alone decides again: step 40 opens /SYSTEM/SERVICES.TXT for writing, probe=0x28, then |ktest|fail| (forbidden)"),
+    ("M163", "kernel/src/fs/vfs.rs",
+     "        Ok(n) => n.starts_with(b\"CFG\") && matches!(&n[8..], b\"A  \" | b\"B  \"),",
+     "        Ok(n) => matches!(&n[8..], b\"A  \" | b\"B  \"),",
+     ["TST-M6-CONFIG-WRITE-SCOPE"], "SECURITY: any .A or .B in /SYSTEM is writable: step 46 creates /SYSTEM/AUTHD.A, probe=0x2e, created=1, then |ktest|fail| (forbidden)"),
+    ("M164", "kernel/src/fs/vfs.rs",
+     "        Ok(n) => n.starts_with(b\"CFG\") && matches!(&n[8..], b\"A  \" | b\"B  \"),",
+     "        Ok(n) => n.starts_with(b\"CFG\"),",
+     ["TST-M6-CONFIG-WRITE-SCOPE"], "SECURITY: any CFG* name in /SYSTEM is writable: step 47 creates /SYSTEM/CFGPRB.C, probe=0x2f, created=1, then |ktest|fail| (forbidden)"),
     # ---- M6 (WP-49): libui pointer hit-testing and the context menu (ui.md v1.6 §3.6); killer
     # TST-M6-UI-UNIT (user/libui/tests/pointer_menu.rs). SECURITY set: M168 (a disabled item is
     # how an application withholds an action, so choosing it must be impossible).
@@ -744,6 +759,8 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # M6 (WP-68): the manifest is read whole or refused (services.md v1.13, M157) and LOAD
             # reads only under /SYSTEM/ (M159). M158 (MANIFEST_IO) is not SECURITY.
             "M157", "M159",
+            # M6 (WP-78): the config WRITE scope at the authority layer (files.md v1.4, M162-M164).
+            "M162", "M163", "M164",
             # M6 (WP-49): libui menus (ui.md v1.6 §3.6): a disabled menu item is never chosen
             # (M168).
             "M168"}

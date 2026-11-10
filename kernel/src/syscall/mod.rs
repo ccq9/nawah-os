@@ -408,10 +408,13 @@ fn fs_err(e: FsError) -> i64 {
     }
 }
 
-/// The system-files authority (files.md v1.3, WP-44): under /SYSTEM, reading needs a held
-/// SystemFiles handle with READ (the fonts in /SYSTEM/FONTS excepted) and any change one with
-/// WRITE; elsewhere nothing is needed. Checked after the path is read and before the file
-/// system is touched, so a refused O_CREATE or O_TRUNCATE changes nothing.
+/// The system-files authority (files.md v1.4, WP-44, WP-78): under /SYSTEM, reading needs a
+/// held SystemFiles handle with READ (the fonts in /SYSTEM/FONTS excepted) and a change one with
+/// WRITE, and only config's stores can change (`vfs::is_config_store`): any other change there,
+/// the fonts included, is refused whatever the holder holds, so the WRITE right config is
+/// handed cannot rewrite SERVICES.TXT, USERS.DB or an image (RSK-019); elsewhere nothing is
+/// needed. Checked after the path is read and before the file system is touched, so a refused
+/// O_CREATE or O_TRUNCATE changes nothing.
 fn fs_authority(path: &[u8], read: bool, write: bool) -> Result<(), i64> {
     let mut need = 0;
     match vfs::classify(path) {
@@ -419,6 +422,9 @@ fn fs_authority(path: &[u8], read: bool, write: bool) -> Result<(), i64> {
         vfs::PathClass::Fonts => {}
         vfs::PathClass::System if read => need |= Rights::READ.0,
         vfs::PathClass::System => {}
+    }
+    if write && !vfs::is_config_store(path) {
+        return Err(ERR_ACCESS);
     }
     if write {
         need |= Rights::WRITE.0;

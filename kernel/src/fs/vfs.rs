@@ -113,6 +113,28 @@ pub fn classify(path: &[u8]) -> PathClass {
     }
 }
 
+/// Whether `path` names one of config's stores (files.md v1.4, config.md v1.2, WP-78): a file
+/// directly in /SYSTEM whose 8.3 base starts with CFG and whose extension is A or B. Compared as
+/// the short names the volume resolves, as `classify` does (`/system/cfgdev.a` is a store; `.`,
+/// `..`, an empty component or a trailing `/` make no store), so no spelling reaches another
+/// file through it. The only change under /SYSTEM the authority allows.
+pub fn is_config_store(path: &[u8]) -> bool {
+    if check_path(path).is_err() {
+        return false;
+    }
+    let mut parts = path[1..].split(|&c| c == b'/');
+    let (Some(dir), Some(file), None) = (parts.next(), parts.next(), parts.next()) else {
+        return false;
+    };
+    if super::fat32::short_name(dir).ok() != Some(*b"SYSTEM     ") {
+        return false;
+    }
+    match super::fat32::short_name(file) {
+        Ok(n) => n.starts_with(b"CFG") && matches!(&n[8..], b"A  " | b"B  "),
+        Err(_) => false,
+    }
+}
+
 fn check_path(path: &[u8]) -> Result<(), FsError> {
     if path.is_empty() || path.len() > PATH_MAX || path[0] != b'/' || !path.is_ascii() {
         return Err(FsError::BadName);
