@@ -3486,11 +3486,12 @@
    ],
    "actions": [
     "نظام الملفات v1.4: أسماء يونيكود طويلة ومجلدات وإعادة تسمية ومساحة حرة وأزمنة تعديل",
-    "files.md v1.4: UTF-8 paths <-> VFAT LFN UTF-16 (checksum, unique short-name generation), mkdir and rmdir, rename and move within the volume crash-ordered (new entry, sync, old entry freed), ERR_EXISTS enforced, fs_info (total and free bytes), mtime from the RTC; the frozen 8.3 names keep resolving",
+    "files.md v1.5: UTF-8 paths <-> VFAT LFN UTF-16 (checksum, unique short-name generation), mkdir and rmdir, rename and move within the volume crash-ordered (new entry, sync, old entry freed), ERR_EXISTS enforced, fs_info (total and free bytes), mtime from the RTC; the frozen 8.3 names keep resolving",
     "syscall.md v1.15: mkdir, rmdir, rename, fs_info; shell.md v1.4: mkdir, mv, df",
     "host fuzz of LFN and short names against tools/fat32.py; an independent fsck.vfat reads the same names",
     "scenario at the end: in the shell, a folder with an Arabic name, a file moved into it, reboot, names and contents intact",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10: files.md v1.4 renumbered to files.md v1.5: WP-78 takes files.md v1.4 at merge per PLAN.md:132"
    ],
    "acceptance": "TST-M6-LFN, RENAME, RENAME-CRASH, DISK-FULL and FAT-FUZZ PASS on CI; REQ-M6-001 verified in scope",
    "test_ids": [
@@ -3537,11 +3538,12 @@
    "actions": [
     "منازل المستخدمين وصلاحية ملفاتهم",
     "docs/adr/0024-user-file-authority.md: /USERS/<name> created at first sign-in; a directory capability (Dir object, *_at calls relative to it) the session hands to launched apps; an app reaches nothing outside its capability; admin reaches other homes only by ELEVATE; FAT has no owners on disk, so ownership comes from the path under /USERS (declared limit)",
-    "files.md v1.5, syscall.md v1.16 (Dir object, *_at calls), ipc.md (Dir rights), session.md v1.10 (the home capability handed to apps)",
+    "files.md v1.6, syscall.md v1.16 (Dir object, *_at calls), ipc.md (Dir rights), session.md v1.10 (the home capability handed to apps)",
     "the retrofit touches every file call: mutation coverage for each refusal",
     "scenario at the end: admin and user each sign in and each sees only their own home (critical scenario 3)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split the kernel Dir object from the session hand-off if needed)",
-    "2026-11-10 the 2026-11-09 renumbering (session.md v1.10 -> v1.12) reverted per docs/PLAN.md:132: this package is on the critical path and keeps its planning number session.md v1.10; the parallel WP-71 and WP-72 take theirs at merge"
+    "2026-11-10 the 2026-11-09 renumbering (session.md v1.10 -> v1.12) reverted per docs/PLAN.md:132: this package is on the critical path and keeps its planning number session.md v1.10; the parallel WP-71 and WP-72 take theirs at merge",
+    "2026-11-10: files.md v1.5 renumbered to files.md v1.6 (WP-78 took files.md v1.4, WP-52 v1.5)"
    ],
    "acceptance": "TST-M6-HOME-ISOLATION and DIR-ESCAPE PASS on CI; TST-M5-FILE-AUTHORITY unregressed; ADR-0024 accepted",
    "test_ids": [
@@ -3617,7 +3619,7 @@
     "WP-54"
    ],
    "inputs": [
-    "docs/contracts/files.md v1.5",
+    "docs/contracts/files.md v1.6",
     "docs/contracts/ui.md v1.7",
     "ux-design priority 8 (empty and access-denied states)"
    ],
@@ -3630,7 +3632,8 @@
     "apps/files.md (new tool contract: states, errors, keys): an app run by LAUNCH whose root is the home capability; list view (name, size, type, modified) by keyboard and mouse; New folder, New empty file; copy and paste (clipboard file-list or Copy to...) in chunks with progress and sync; inline rename; conflicts Replace / Keep both / Cancel; errors from the kernel codes",
     "decided and tested here: what a killed or failed copy leaves behind (copy cannot be atomic)",
     "scenario at the end: create a folder and a file, copy it, rename the copy to an Arabic name; the host image read confirms it",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split browse and create from copy and conflicts if needed)"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split browse and create from copy and conflicts if needed)",
+    "2026-11-10: files.md v1.5 renumbered to files.md v1.6 (WP-78 took files.md v1.4, WP-52 v1.5)"
    ],
    "acceptance": "TST-M6-FILES-CHAIN, FILES-CONFLICT, FILES-DISK-FULL, FILES-DENIED and FILES-A11Y-AR PASS on CI",
    "test_ids": [
@@ -3935,7 +3938,7 @@
     "DEC-008",
     "OS-EXEC-AR §19 (4)",
     "docs/contracts/ui.md v1.7",
-    "docs/contracts/files.md v1.5"
+    "docs/contracts/files.md v1.6"
    ],
    "files": [],
    "contract_refs": [
@@ -3948,7 +3951,8 @@
     "apps/editor.md (new tool contract): open, save and save as inside the home capability; a modified marker; close with unsaved changes asks Save / Don't save / Cancel; save writes a temporary name, syncs and renames over the old file, so a failed save keeps the previous content",
     "scenario at the end: create a file, save, reopen, modify, save, Restart, the content equals the last save and another user's app is refused",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10: the 2026-11-09 renumbering of ui.md for the input-language badge is reverted (the badge is WP-72's and takes its ui.md number at merge, PLAN.md:132); this item's ui.md version is v1.8 again"
+    "2026-11-10: the 2026-11-09 renumbering of ui.md for the input-language badge is reverted (the badge is WP-72's and takes its ui.md number at merge, PLAN.md:132); this item's ui.md version is v1.8 again",
+    "2026-11-10: files.md v1.5 renumbered to files.md v1.6 (WP-78 took files.md v1.4, WP-52 v1.5)"
    ],
    "acceptance": "TST-M6-EDITOR-UNIT, EDITOR-MODIFY-REBOOT, EDITOR-UNSAVED and EDITOR-SAVE-FAIL PASS on CI",
    "test_ids": [
@@ -4846,7 +4850,8 @@
     "docs/adr/0020-system-files-authority.md",
     "docs/security/threat-model.md",
     "docs/risks.json",
-    "docs/tests.json"
+    "docs/tests.json",
+    "kernel/src/fs/vfs.rs"
    ],
    "contract_refs": [
     "docs/contracts/files.md",
@@ -4860,13 +4865,14 @@
     "the control A-min: a kernel allowlist in fs_authority: a change under /SYSTEM succeeds only for a file directly in /SYSTEM whose 8.3 base starts with CFG and whose extension is A or B, compared as short names; everything else ERR_ACCESS before the volume is touched; no new ABI, handles stay 9",
     "option B (configd-side checks plus a denylist) rejected: not at the authority layer and fail-open; the per-handle scope (A-scoped) deferred to WP-61/M8 with its ABI change",
     "residual for the owner: config can still read USERS.DB",
-    "contracts: files.md narrowing (additive; its number assigned at merge, PLAN.md:132) with an ADR-0020 item 5 as its decision record; config.md (number assigned at merge, PLAN.md:132) fixes the store names CFGDEV/CFGPOL/CFGU<1..9999>.A|B; the services.md §4 note shares WP-68's bump",
+    "contracts: files.md v1.4 narrowing (taken at merge on 2026-11-10, PLAN.md:132) with an ADR-0020 item 5 as its decision record; config.md v1.2 (taken at merge on 2026-11-10) fixes the store names CFGDEV/CFGPOL/CFGU<1..9999>.A|B; the services.md §4 note shares WP-68's bump",
     "test first: TST-M6-CONFIG-WRITE-SCOPE as a ktest config_write_scope on the fileauth probe (steps 40-49 all ERR_ACCESS, then the positive control CFGPRB.A, exit 0x46; red today probe=0x28; timeout 30 s); required lines: `|ktest|config_write_scope|probe=0x46|services_same=1|usersdb_same=1|inputd_same=1|created=0|frames=0|objects_same=1`, `|ktest|config_write_scope|table=8/8`, `|ktest|config_write_scope|services=auth,config|set=OK 1|get=OK 1 kept`, `|ktest|config_write_scope|mgr_exit=0x0|processes_after=0|clean=1`, `|ktest|config_write_scope|frames_delta=0`, `|ktest|pass|config's authority changes only its own stores`",
     "mutants M162 (the allowlist branch `if false`), M163 (the CFG prefix test dropped), M164 (the A|B extension test dropped), all SECURITY",
     "docs/security/threat-model.md:102 and RSK-019 (docs/risks.json) updated when this item closes",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 estimate (security engineer, unmeasured): about 55-70 tool calls / 60-75 min; under the line",
-    "2026-11-10 activated after the security engineer's design report (the A-min allowlist in fs_authority); dependency WP-45 done; the estimate against the budget line is recorded above (about 55-70 calls / 60-75 min)"
+    "2026-11-10 activated after the security engineer's design report (the A-min allowlist in fs_authority); dependency WP-45 done; the estimate against the budget line is recorded above (about 55-70 calls / 60-75 min)",
+    "2026-11-10 numbers taken at merge (audit): files.md v1.4 (a narrowing, ADR-0020 item 5 its decision record) and config.md v1.2; WP-52 moves to files.md v1.5 and WP-53, WP-55, WP-63 to v1.6; WP-52 must route mkdir and rename (both paths) through the same matcher once long file names arrive"
    ],
    "acceptance": "TST-M6-CONFIG-WRITE-SCOPE PASS on CI (exit 0x46 with its six required lines); TST-M4-CONFIG-PERSIST and TST-M5-FILE-AUTHORITY re-run and PASS; M162-M164 killed; validate-records --strict 0 errors",
    "test_ids": [

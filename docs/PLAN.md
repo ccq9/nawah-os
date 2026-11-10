@@ -115,8 +115,8 @@
 | WP-49 libui v2a | الفأرة لكل عنصر وقوائم منبثقة وسياقية في libui باختبارات مضيف (ui.md v1.6)؛ حالة الضيف UI-POINTER في WP-79 وحوار التأكيد في WP-80 (قسمة 2026-11-10) | UI-UNIT (M6، مضيف) | WP-45 |
 | WP-50 libui v2b | عرض قائمة افتراضي بأعمدة وتمرير، شريط أدوات وحالة، تخطيط بلوحين (ui.md v1.7) | LISTVIEW-UNIT، LISTVIEW-A11Y، LISTVIEW-RTL | WP-49 |
 | WP-51 ابدأ والطاقة | ابدأ (desktop.md v1.1)، Super محجوز (input.md v2.7)، قفل وخروج من الصدفة (session.md v1.9)، rtc_read وsystem_reset (syscall.md v1.14) | START-LAUNCH، START-ARABIC، START-FAIL، RESTART-PERSIST، POWER-DENIED | WP-48، WP-50 |
-| WP-52 نظام الملفات v1.4 | LFN يونيكود، مجلدات، إعادة تسمية ونقل بترتيب يحتمل الانقطاع، fs_info، mtime (files.md v1.4، syscall.md v1.15، shell.md v1.4) | LFN، RENAME، RENAME-CRASH، DISK-FULL، FAT-FUZZ | WP-51 |
-| WP-53 منازل المستخدمين | ADR-0024، /USERS/<name> ومقدرة Dir وواجهات *_at (files.md v1.5، syscall.md v1.16، session.md v1.10) | HOME-ISOLATION، DIR-ESCAPE | WP-52 |
+| WP-52 نظام الملفات v1.4 | LFN يونيكود، مجلدات، إعادة تسمية ونقل بترتيب يحتمل الانقطاع، fs_info، mtime (files.md v1.5؛ v1.4 لـWP-78 منذ 2026-11-10، syscall.md v1.15، shell.md v1.4) | LFN، RENAME، RENAME-CRASH، DISK-FULL، FAT-FUZZ | WP-51 |
+| WP-53 منازل المستخدمين | ADR-0024، /USERS/<name> ومقدرة Dir وواجهات *_at (files.md v1.6، syscall.md v1.16، session.md v1.10) | HOME-ISOLATION، DIR-ESCAPE | WP-52 |
 | WP-54 الحافظة والسحب | clipboard.md، منحة لصق لمرة واحدة، السحب بوساطة الـ compositor (display.md v1.15) | CLIPBOARD-ROUNDTRIP، CLIPBOARD-ISOLATION، DND-FILELIST | WP-48، WP-49 |
 | WP-55 مستكشف الملفات | apps/files.md: تصفح وإنشاء ونسخ وإعادة تسمية وتعارضات وأخطاء النواة | FILES-CHAIN، FILES-CONFLICT، FILES-DISK-FULL، FILES-DENIED، FILES-A11Y-AR | WP-50، WP-53، WP-54 |
 | WP-56 سلة المهملات | فهرس لكل مستخدم، حذف واستعادة ومصالحة عند البدء | TRASH-RESTORE-REBOOT، TRASH-CONFLICT، TRASH-CRASH، TRASH-ISOLATION | WP-55 |
