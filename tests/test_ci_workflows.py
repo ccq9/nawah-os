@@ -187,8 +187,8 @@ class Suites(unittest.TestCase):
 class StepBudget(unittest.TestCase):
     """The verify job's time budget (docs/PLAN-ANSWER.md §2.5 D4-V2): the guest suites that can
     hang until the job's limit carry their own cap (M5: 11m34s measured, cap 18; M6: cap 15 since WP-64) and
-    the sum of every step cap with a 20 % margin stays within the job's limit (55: 12+18+15 = 45,
-    x1.2 = 54), so a hung step ends with its own name instead of the job's timeout. A capped
+    the sum of every step cap with a 20 % margin stays within the job's limit (58: Toolchain 15 +
+    M5 18 + M6 15 = 48, x1.2 = 57.6; WP-74), so a hung step ends with its own name instead of the job's timeout. A capped
     suite whose cases are bounded by their own timeouts (M6) must fit its cap in the worst case:
     the sum over its cases of each phase's timeout_s stays below the cap. M5 is outside that
     rule: its cap is a hang guard set from a measured run (its worst case is 33 cases of up to
@@ -209,7 +209,11 @@ class StepBudget(unittest.TestCase):
 
     def test_guest_steps_are_capped_within_the_job_limit(self):
         job, caps = self.caps()
-        self.assertEqual(job["timeout-minutes"], 55)
+        # 55 -> 58 and Toolchain 12 -> 15 (WP-74, 2026-11-10): the Toolchain step measured 11m12s
+        # on run 42754423494 against its 12-min cap; 15 is a hang guard and 58 keeps the 20 % margin.
+        self.assertEqual(job["timeout-minutes"], 58)
+        toolchain = [s for s in job["steps"] if str(s.get("name", "")).startswith("Toolchain")]
+        self.assertEqual([s.get("timeout-minutes") for s in toolchain], [15])
         # M6 12 -> 15 (WP-64, 2026-11-10): PURGE-FAIL-CLOSED, TOKEN-REVOKE and WP-46's JOB-KILL
         # bring its worst case to 755 s (test_a_bounded_suite_fits_its_cap_in_the_worst_case).
         self.assertEqual(caps, {"M5": 18, "M6": 15})

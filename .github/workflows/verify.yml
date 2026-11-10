@@ -17,9 +17,9 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    # 55 (WP-45, PLAN-ANSWER §2.5 D4-V2): the run took 28m55s before M6; the capped steps
-    # (Toolchain 15, M5 18, M6 12) with a 20 % margin fit (tests/test_ci_workflows.py StepBudget).
-    timeout-minutes: 55
+    # 58 (WP-45, PLAN-ANSWER §2.5 D4-V2; 55 -> 58 WP-74, 2026-11-10): the run took 28m55s before M6;
+    # the capped steps (Toolchain 15, M5 18, M6 15) with a 20 % margin fit (tests/test_ci_workflows.py StepBudget).
+    timeout-minutes: 58
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         # The token stays out of .git/config, where every later step (the code under test
@@ -35,10 +35,11 @@ jobs:
         # limit four times in two runs. Packages are fetched before they are installed (a second
         # try keeps what the first fetched), from Canonical's archive when the runner's mirror
         # fails twice; each try gets 5 min (apt also drops a stalled connection after 60 s) and
-        # leaves an annotation with its exit code and how much it fetched; the step ends by 12 min
-        # (WP-64, 2026-11-10: 15 -> 12 so the step caps, M6 now 15, keep the 20 % margin under 55; the step
-        # measured 56 s on CI (run 42705914484, 21:52:13-21:53:09Z), so 12 min is a hang guard, not the bound of its retry loops).
-        timeout-minutes: 12
+        # leaves an annotation with its exit code and how much it fetched; the step ends by 15 min
+        # (WP-74, 2026-11-10: 12 -> 15; the step measured 11m12s on run 42754423494 against the 12-min cap
+        # set that day (WP-64) from a 56 s measurement; 15 is a hang guard, not the bound of its retry loops,
+        # and the job limit 55 -> 58 keeps the 20 % margin over the step caps 15+18+15).
+        timeout-minutes: 15
         run: |
           retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
           retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
