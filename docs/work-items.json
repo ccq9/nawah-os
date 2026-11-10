@@ -5022,7 +5022,8 @@
     "test first: user/libui/tests/confirm.rs, its own host test TST-M6-UI-CONFIRM (HOST_SUITES M6, `cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu --test confirm`, marker `test result: ok. 5 passed; 0 failed`): confirm_default_esc_enter, confirm_narrator_lines, confirm_rtl_order, confirm_labels_fit, confirm_pointer; this replaces the earlier plan of one case in pointer_menu.rs (2026-11-10 round B); TST-M6-UI-UNIT keeps its nine cases and stays in test_ids because user/libui/src/lib.rs is its input",
     "mutant M171 SECURITY (user/libui/src/lib.rs): Esc answers Yes, so a cancel becomes consent; killer TST-M6-UI-CONFIRM (confirm_default_esc_enter and confirm_narrator_lines expected to fail; not run yet); added to tests/mutants.py and its SECURITY set in the FIX commit, not the test commit (TST-M0-006 requires every mutant's anchor to occur exactly once, and in the red commit the anchor does not exist yet)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 estimate (apps engineer, unmeasured): about 45 tool calls / 55 min; under the line"
+    "2026-11-10 estimate (apps engineer, unmeasured): about 45 tool calls / 55 min; under the line",
+    "2026-11-10 activation estimate (records steward, from the prepared wp80 worktree: lib.rs, confirm.rs with 5 tests, ui.md §3.7 and the HOST_SUITES entry prepared and audited twice; M171 not yet in tests/mutants.py; remaining unmeasured): earlier estimate 45 calls / 55 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls)"
    ],
    "acceptance": "TST-M6-UI-CONFIRM PASS on CI (5 passed) and TST-M6-UI-UNIT still PASS (9 passed); ui.md at v1.7 with §3.7; M171 killed",
    "test_ids": [
@@ -5032,9 +5033,10 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
