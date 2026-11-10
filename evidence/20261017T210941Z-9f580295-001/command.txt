@@ -1,0 +1,5 @@
+clang -target x86_64-unknown-windows -ffreestanding -fshort-wchar -mno-red-zone -fno-stack-protector -fno-builtin -nostdlib -O2 -Wall -Wextra -Werror -DBUILD_ID=9f58029599e8 -c boot/stub/main.c -o /home/claude/nawah-os/build/pc-qemu/stub.o
+clang -target x86_64-unknown-windows -ffreestanding -fshort-wchar -mno-red-zone -fno-stack-protector -fno-builtin -nostdlib -O2 -Wall -Wextra -Werror -DBUILD_ID=9f58029599e8 -DNAWAH_INJECT_EBS_FAIL=1 -c boot/stub/main.c -o /home/claude/nawah-os/build/pc-qemu/stub-neg.o
+clang -target x86_64-unknown-windows -ffreestanding -fshort-wchar -mno-red-zone -fno-stack-protector -fno-builtin -nostdlib -O2 -Wall -Wextra -Werror -c kernel/main.c -o /home/claude/nawah-os/build/pc-qemu/kernel.o
+lld-link /subsystem:efi_application /entry:efi_main /nodefaultlib /home/claude/nawah-os/build/pc-qemu/stub.o /home/claude/nawah-os/build/pc-qemu/kernel.o /out:/home/claude/nawah-os/build/pc-qemu/KERNEL.EFI
+lld-link /subsystem:efi_application /entry:efi_main /nodefaultlib /home/claude/nawah-os/build/pc-qemu/stub-neg.o /home/claude/nawah-os/build/pc-qemu/kernel.o /out:/home/claude/nawah-os/build/pc-qemu/KERNEL-NEG.EFI
