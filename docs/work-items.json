@@ -3269,13 +3269,14 @@
    ],
    "actions": [
     "دور الصدفة في الـ compositor وdesktopd v1: الخلفية وشريط المهام",
-    "display.md v1.13 (additive): SHELL registered only by the manager-vouched `desktop`; bands desktop < app windows < shell chrome < session/lock < cursor; LAYER, WORKAREA, WINDOWS and window events (ADDED/REMOVED/TITLE/STATE/FOCUS/UNRESPONSIVE with app id and pid) for the shell only; ACTIVATE, MINIMIZE, RESTORE, CLOSE_REQUEST on any window; cascade relative to the work area; limits raised from 8 clients, 16 windows, 32 surfaces with SHELL_RESERVE",
+    "display.md v1.14 (additive): SHELL registered only by the manager-vouched `desktop`; bands desktop < app windows < shell chrome < session/lock < cursor; LAYER, WORKAREA, WINDOWS and window events (ADDED/REMOVED/TITLE/STATE/FOCUS/UNRESPONSIVE with app id and pid) for the shell only; ACTIVATE, MINIMIZE, RESTORE, CLOSE_REQUEST on any window; cascade relative to the work area; limits raised from 8 clients, 16 windows, 32 surfaces with SHELL_RESERVE",
     "desktop.md (new): the taskbar (one button per window in stable order, click activates or minimises the focused one, unresponsive marker as state and text, keyboard path Super+T/F6, arrows mirrored in RTL, Shift+F10 window menu), states and errors; original palette and metrics (ux-design), no reference trade dress",
     "the desktop service has restart-on-failure; the compositor works without it; the shell is hidden while locked",
     "clean room: the visual identity and icons are the project's own and recorded in docs/sources.json (open question: who designs them and under which licence; TST-M6-ASSET-PROVENANCE)",
     "scenario at the end: two apps open, switch, minimise and restore from the taskbar, close one from its window menu, the hung app is marked",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split display.md v1.13 from desktopd if needed)",
-    "2026-11-09: display.md v1.12 is WP-67's (the hold rule, before WP-47); this package's shell role renumbered v1.12 -> v1.13; parallel packages take the next free number at merge and correct their record (docs/PLAN.md:132)"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split display.md v1.14 from desktopd if needed)",
+    "2026-11-09: display.md v1.12 is WP-67's (the hold rule, before WP-47); this package's shell role renumbered v1.12 -> v1.13; parallel packages take the next free number at merge and correct their record (docs/PLAN.md:132)",
+    "2026-11-10: display.md v1.13 renumbered to display.md v1.14: WP-77 (the displayd boot-loop fixes, on the critical path's parallel track) takes display.md v1.13 at merge per PLAN.md:132"
    ],
    "acceptance": "TST-M6-SHELL-EVENTS, SHELL-AUTHORITY, TASKBAR-WINDOW, SHELL-CRASH and ASSET-PROVENANCE PASS on CI; TST-M5-WINDOW-STATES, APP-HANG and LOCK-SURVIVES unregressed",
    "test_ids": [
@@ -3581,10 +3582,11 @@
    "actions": [
     "الحافظة والسحب والإفلات: العقد وخدمة clipd",
     "clipboard.md (new): typed payloads (text/utf8, file-list), copy only from the focused client, paste only on a user gesture through a one-shot compositor grant bound to one request id and an expiry, cleared on lock and sign-out, size cap",
-    "display.md v1.14: the paste grant and compositor-mediated drag-and-drop of a file-list between windows of the same session",
+    "display.md v1.15: the paste grant and compositor-mediated drag-and-drop of a file-list between windows of the same session",
     "scenario at the end: copy Arabic text from one app's field and paste it into another's; a background app's read is refused; nothing is readable while locked",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-09: display.md v1.12 went to WP-67 and v1.13 to WP-48; the paste grant renumbered v1.13 -> v1.14; the number is assigned at merge (docs/PLAN.md:132)"
+    "2026-11-09: display.md v1.12 went to WP-67 and v1.13 to WP-48; the paste grant renumbered v1.13 -> v1.14; the number is assigned at merge (docs/PLAN.md:132)",
+    "2026-11-10: display.md v1.14 renumbered to display.md v1.15: WP-77 (the displayd boot-loop fixes, on the critical path's parallel track) takes display.md v1.14 at merge per PLAN.md:132"
    ],
    "acceptance": "TST-M6-CLIPBOARD-ROUNDTRIP, CLIPBOARD-ISOLATION and DND-FILELIST PASS on CI",
    "test_ids": [

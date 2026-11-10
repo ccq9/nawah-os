@@ -111,13 +111,13 @@
 | WP-69 قائمة العمليات | process_list بنطاق مقبض المهمة وسجلات 64 بايت ورفضها بلا كتابة جزئية؛ رقم syscall.md عند الدمج؛ محجوبة بـDEC-027 | PROC-LIST-REFUSALS | WP-46 |
 | WP-70 المحاسبة وps | زمن المعالج والإطارات والخيوط والمقابض لكل عملية، الخمول لكل معالج في system_info v2، `ps` (shell.md v1.3) | PROC-ACCOUNTING، SHELL-PS | WP-46، WP-69 |
 | WP-47 التطبيقات والتشغيل | ADR-0023، سجل /APPS، LAUNCH عبر المدير وهوية app:<id>#<n> (services.md v1.14، أُعيد ترقيمه 2026-11-09 و2026-11-10)، مهمة لكل جلسة والتشغيل التلقائي وjob_kill عند الخروج (session.md v1.8) | APP-LAUNCH، LOGOUT-KILLS، LAUNCH-DENIED، APP-REGISTRY-FUZZ | WP-46، WP-64، WP-73، WP-67، WP-68، WP-77، WP-78 |
-| WP-48 الصدفة وشريط المهام | دور الصدفة والطبقات ومنطقة العمل والأحداث (display.md v1.13)، desktopd: الخلفية وشريط المهام (desktop.md)، هوية بصرية أصلية | SHELL-EVENTS، SHELL-AUTHORITY، TASKBAR-WINDOW، SHELL-CRASH، ASSET-PROVENANCE | WP-47 |
+| WP-48 الصدفة وشريط المهام | دور الصدفة والطبقات ومنطقة العمل والأحداث (display.md v1.14؛ v1.13 لـWP-77 منذ 2026-11-10)، desktopd: الخلفية وشريط المهام (desktop.md)، هوية بصرية أصلية | SHELL-EVENTS، SHELL-AUTHORITY، TASKBAR-WINDOW، SHELL-CRASH، ASSET-PROVENANCE | WP-47 |
 | WP-49 libui v2a | الفأرة لكل عنصر وقوائم منبثقة وسياقية في libui باختبارات مضيف (ui.md v1.6)؛ حالة الضيف UI-POINTER في WP-79 وحوار التأكيد في WP-80 (قسمة 2026-11-10) | UI-UNIT (M6، مضيف) | WP-45 |
 | WP-50 libui v2b | عرض قائمة افتراضي بأعمدة وتمرير، شريط أدوات وحالة، تخطيط بلوحين (ui.md v1.7) | LISTVIEW-UNIT، LISTVIEW-A11Y، LISTVIEW-RTL | WP-49 |
 | WP-51 ابدأ والطاقة | ابدأ (desktop.md v1.1)، Super محجوز (input.md v2.7)، قفل وخروج من الصدفة (session.md v1.9)، rtc_read وsystem_reset (syscall.md v1.14) | START-LAUNCH، START-ARABIC، START-FAIL، RESTART-PERSIST، POWER-DENIED | WP-48، WP-50 |
 | WP-52 نظام الملفات v1.4 | LFN يونيكود، مجلدات، إعادة تسمية ونقل بترتيب يحتمل الانقطاع، fs_info، mtime (files.md v1.4، syscall.md v1.15، shell.md v1.4) | LFN، RENAME، RENAME-CRASH، DISK-FULL، FAT-FUZZ | WP-51 |
 | WP-53 منازل المستخدمين | ADR-0024، /USERS/<name> ومقدرة Dir وواجهات *_at (files.md v1.5، syscall.md v1.16، session.md v1.10) | HOME-ISOLATION، DIR-ESCAPE | WP-52 |
-| WP-54 الحافظة والسحب | clipboard.md، منحة لصق لمرة واحدة، السحب بوساطة الـ compositor (display.md v1.14) | CLIPBOARD-ROUNDTRIP، CLIPBOARD-ISOLATION، DND-FILELIST | WP-48، WP-49 |
+| WP-54 الحافظة والسحب | clipboard.md، منحة لصق لمرة واحدة، السحب بوساطة الـ compositor (display.md v1.15) | CLIPBOARD-ROUNDTRIP، CLIPBOARD-ISOLATION، DND-FILELIST | WP-48، WP-49 |
 | WP-55 مستكشف الملفات | apps/files.md: تصفح وإنشاء ونسخ وإعادة تسمية وتعارضات وأخطاء النواة | FILES-CHAIN، FILES-CONFLICT، FILES-DISK-FULL، FILES-DENIED، FILES-A11Y-AR | WP-50، WP-53، WP-54 |
 | WP-56 سلة المهملات | فهرس لكل مستخدم، حذف واستعادة ومصالحة عند البدء | TRASH-RESTORE-REBOOT، TRASH-CONFLICT، TRASH-CRASH، TRASH-ISOLATION | WP-55 |
 | WP-57 الإشعارات | notifyd (notify.md)، أحداث المدير (services.md، الرقم عند الدمج)، منبثقات ومركز إشعارات (desktop.md v1.2) | NOTIFY-SERVICE-FAILURE، NOTIFY-SPOOF، NOTIFY-LOCKED، NOTIFY-NO-FOCUS-STEAL | WP-48، WP-55 |
