@@ -166,7 +166,19 @@
    "owner": "agent",
    "warning_signal": "أي مسار في configd يأخذ اسم ملف من عميل؛ أو تغيير في SERVICES.TXT على القرص لا يطابق الملف المودَع (بصمة البيان)",
    "mitigation": "أسماء ملفات configd ثابتة؛ البيان ضمن مدخلات كل حكم ضيف فيُكشف تغييره في المستودع لا على القرص الحي",
-   "response_plan": "تقييد سلطة config بمسار (/SYSTEM/CFG*) مع حالة ktest تفتح SERVICES.TXT بـO_WRITE من مقبض config فتُرفض، وطفرة SECURITY تزيل القيد — WP-67 أو ما بعدها، لأنه تغيير في files.md",
+   "response_plan": "WP-78 (A-min): قائمة سماح في fs_authority بالنواة: تغيير تحت /SYSTEM ينجح فقط لملف مباشر في /SYSTEM يبدأ اسمه القصير 8.3 بـCFG وامتداده A أو B، وكل ما عداه ERR_ACCESS قبل لمس القرص؛ بلا ABI جديد والمقابض تبقى 9؛ حالة TST-M6-CONFIG-WRITE-SCOPE والطفرات M162-M164 (SECURITY)؛ النطاق لكل مقبض (A-scoped) مؤجل إلى WP-61/M8؛ يبقى للمالك أن config تقرأ USERS.DB",
+   "status": "open"
+  },
+  {
+   "id": "RSK-020",
+   "risk": "displayd يسلّم أحداث POINTER إلى نافذة غير مركّزة ولا ينقل التركيز إلا بضغطة الزر الأيسر (user/apps/displayd/src/main.rs:1189، :1210-1216)، فتصل نقرة يمنى إلى نافذة في الخلفية فتتصرف عليها",
+   "likelihood": "medium",
+   "impact": "medium",
+   "evidence": "تقرير تصميم مهندس التطبيقات لـWP-49 (2026-11-10، قراءة فقط)؛ user/apps/displayd/src/main.rs:1189، :1210-1216؛ docs/contracts/display.md (سؤال دلالات يُحسم قبل WP-79)",
+   "owner": "WP-79",
+   "warning_signal": "تطبيق يتصرف على ضغطة POINTER وهو غير مركّز؛ نجاة الطفرة M170 في WP-79",
+   "mitigation": "WP-79 لا تُفعَّل قبل حسم دلالات display.md؛ الطفرة M170 (SECURITY) تقتلها TST-M6-UI-POINTER",
+   "response_plan": "قرار دلالات POINTER في display.md (التسليم للنافذة المركّزة وحدها، أو التركيز بأي ضغطة) قبل تفعيل WP-79، ثم إصلاح displayd أو تطبيق الحوار بحسب القرار",
    "status": "open"
   }
  ]

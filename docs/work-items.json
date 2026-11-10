@@ -3053,7 +3053,8 @@
     "2026-11-09: split per actions[5] and ADR-0019:48 (PLAN-ANSWER §1.2, option B); the session watchdog and the Arabic screens moved to WP-64",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (watchdog and Arabic screens can split off the boot-mode change); if the estimate at activation still exceeds it, TST-M6-HOLD-FAIL-CLOSED and the displayd fail-closed fix split off first into a package before WP-47 (PLAN-ANSWER §4 C1)",
     "2026-11-09 activation estimate against the budget line (90 min or 120 tool calls, prompt:71), measured in an isolated worktree before activation by the fourteen-role team: C3 contracts about 30 min and 25 tool calls (services engineer), C4 lab plumbing about 55 min and 44 calls plus a 20 min / 25 call fix-up after audit (lab engineer), C5 kernel about 45 min and 34 calls (kernel engineer), three read-only audits; the line is exceeded, so the split point of actions[4] is applied: TST-M6-HOLD-FAIL-CLOSED, the displayd fail-closed hold (a later display.md version, WP-67's) and the svcmgr manifest-size error leave for WP-67 (planned, before WP-47); the session readiness margin check (services.md v1.11) is measured in WP-64; one verify cycle expected; counters carried, not reset (prompt:73)",
-    "2026-11-09 audit corrections before activation (team auditor, three reports): the provenance of every rule in services.md v1.11 and boot.md v1.1 traced to PLAN-ANSWER lines; the `held=1` display field was a phantom and left the INTERACTIVE-BOOT case; the svc-sh phase discriminates by the manifest marker (SERVICES.TXT, OK 8), not by the absence of a shell on COM2 (the system manifest itself runs sh there); phase timeouts 240 s + 5 x 90 s under a 12-minute M6 step (StepBudget guard, M5 exempt as a measured hang guard); the hypervisor bit under TCG is measured by the boot_mode line itself on CI (hv=1 required), not by a ktest case; the manager-failure halt branch has no lab case (WP-67)"
+    "2026-11-09 audit corrections before activation (team auditor, three reports): the provenance of every rule in services.md v1.11 and boot.md v1.1 traced to PLAN-ANSWER lines; the `held=1` display field was a phantom and left the INTERACTIVE-BOOT case; the svc-sh phase discriminates by the manifest marker (SERVICES.TXT, OK 8), not by the absence of a shell on COM2 (the system manifest itself runs sh there); phase timeouts 240 s + 5 x 90 s under a 12-minute M6 step (StepBudget guard, M5 exempt as a measured hang guard); the hypervisor bit under TCG is measured by the boot_mode line itself on CI (hv=1 required), not by a ktest case; the manager-failure halt branch has no lab case (WP-67)",
+    "2026-11-10 defect found in WP-68's design: services.md v1.11 promised LOAD outside /SYSTEM -> ERR ACCESS without code behind it (svcmgr main.rs:803-826); honoured by WP-68"
    ],
    "acceptance": "TST-M6-INTERACTIVE-BOOT PASS on CI (six phases, exit 0 through the monitor); TST-M1-BOOT PASS under the self-test key with the boot_mode line and SELFTEST.TXT; TST-M1-NEG and TST-M1-NOBS re-run unchanged and PASS; TST-M6-MANIFEST-LINT PASS on CI; TST-M0-003, TST-M0-005 and TST-M5-LAB-TOOL PASS with their new cases; check-unsafe 186 (baseline 186)",
    "test_ids": [
@@ -3195,7 +3196,9 @@
     "WP-64",
     "WP-73",
     "WP-67",
-    "WP-68"
+    "WP-68",
+    "WP-77",
+    "WP-78"
    ],
    "inputs": [
     "DEC-005",
@@ -3212,14 +3215,15 @@
    "actions": [
     "سجل التطبيقات وتشغيلها عبر المدير والتشغيل التلقائي، والخروج ينهي مهمة الجلسة",
     "docs/adr/0023-desktop-shell-and-app-model.md: apps are not services; the manager spawns them from /APPS/<ID>.APP (id, ELF path, ar/en names, declared deps such as display, config, clipboard) into the session's job with a bootstrap channel and vouches app:<id>#<n> on CONNECT (DEC-005); the ADR also settles whether desktop, taskbar, Start and toasts are one process (desktopd) or several (open question) and whether maximize/snap and an Alt+Tab panel are in M6 (open question; the frozen display.md v1.3/v1.6 semantics change only with an ADR-0019 entry and updated expectations reviewed separately)",
-    "services.md v1.13: LAUNCH/APPS accepted only from vouched session or desktop; an app's CONNECT limited to its declared deps; MAX_SERVICES raised or an apps table kept apart; apps.md (new): registry format",
+    "services.md v1.14: LAUNCH/APPS accepted only from vouched session or desktop; an app's CONNECT limited to its declared deps; MAX_SERVICES raised or an apps table kept apart; apps.md (new): registry format",
     "session.md v1.8: a job per session, autostart from the config user store session.autostart, job_kill at Sign out (closes the §8 limit)",
     "risk: the manager handles one request at a time (sessiond main.rs:97 comment) and can stall launches; the registry is untrusted input: host fuzz",
     "scenario at the end: sign in, the autostart app opens a window, sign out, the app's processes are gone even if it ignores CLOSE",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-09 services.md promise renumbered v1.12 -> v1.13: v1.12 goes to WP-71 (the session line's restart=always); numbers in the records are planning order and a package takes the next free number at merge (PLAN.md:127); the later services.md numbers of WP-57, WP-58, WP-59 and WP-61 are not cascaded now",
+    "2026-11-09 services.md promise renumbered v1.12 -> v1.13: v1.12 goes to WP-71 (the session line's restart=always); numbers in the records are planning order and a package takes the next free number at merge (PLAN.md:132); the later services.md numbers of WP-57, WP-58, WP-59 and WP-61 are not cascaded now",
     "2026-11-10 the 2026-11-09 renumbering (session.md v1.8 -> v1.10) reverted per docs/PLAN.md:132: this package is on the critical path and keeps its planning number session.md v1.8; the parallel WP-71 and WP-72 take theirs at merge",
-    "2026-11-10 services.md: v1.12 is WP-46's (the manager's ninth initial handle, the root job); WP-71's services.md number is assigned at merge; this package keeps v1.13"
+    "2026-11-10 services.md: v1.12 is WP-46's (the manager's ninth initial handle, the root job); WP-71's services.md number is assigned at merge; this package keeps v1.13",
+    "2026-11-10 services.md renumbered v1.13 -> v1.14: v1.13 is WP-68's, on the critical path since WP-46, WP-64 and WP-73 closed (PLAN.md:132)"
    ],
    "acceptance": "TST-M6-APP-LAUNCH, LOGOUT-KILLS, LAUNCH-DENIED and APP-REGISTRY-FUZZ PASS on CI; ADR-0023 accepted",
    "test_ids": [
@@ -3270,7 +3274,7 @@
     "clean room: the visual identity and icons are the project's own and recorded in docs/sources.json (open question: who designs them and under which licence; TST-M6-ASSET-PROVENANCE)",
     "scenario at the end: two apps open, switch, minimise and restore from the taskbar, close one from its window menu, the hung app is marked",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split display.md v1.13 from desktopd if needed)",
-    "2026-11-09: display.md v1.12 is WP-67's (the hold rule, before WP-47); this package's shell role renumbered v1.12 -> v1.13; parallel packages take the next free number at merge and correct their record (docs/PLAN.md:127)"
+    "2026-11-09: display.md v1.12 is WP-67's (the hold rule, before WP-47); this package's shell role renumbered v1.12 -> v1.13; parallel packages take the next free number at merge and correct their record (docs/PLAN.md:132)"
    ],
    "acceptance": "TST-M6-SHELL-EVENTS, SHELL-AUTHORITY, TASKBAR-WINDOW, SHELL-CRASH and ASSET-PROVENANCE PASS on CI; TST-M5-WINDOW-STATES, APP-HANG and LOCK-SURVIVES unregressed",
    "test_ids": [
@@ -3309,36 +3313,51 @@
     "user/libui/src/lib.rs:20-22, 605-622",
     "ux-design priority 8"
    ],
-   "files": [],
+   "files": [
+    "docs/contracts/ui.md",
+    "user/libui/src/lib.rs",
+    "user/libui/tests/pointer_menu.rs",
+    "tools/project.py",
+    "tests/mutants.py",
+    "docs/tests.json"
+   ],
    "contract_refs": [
     "docs/contracts/ui.md"
    ],
    "actions": [
-    "libui v2a: الفأرة والقوائم المنبثقة وحوار التأكيد",
-    "ui.md v1.6 (additive): POINTER hit-testing for every element (focus and activate, double-click), popup and context menus (Shift+F10, menu key, right click; separators, disabled items, wrap, Esc returns focus), a modal confirm dialog (Yes/No/Cancel with a default), narrator roles menu and menuitem; menus mirror in RTL",
+    "libui v2a (49a1): الفأرة لكل عنصر والقوائم المنبثقة والسياقية؛ الحالة الضيفية في WP-79 وحوار التأكيد في WP-80 (قسمة 2026-11-10)",
+    "ui.md v1.6 (additive): libui pointer hit-testing: per-element rects from layout, a press focuses a focusable element, activation on release inside the same rect, a checkbox toggles on release, list row selection, double-click within a nawah-chosen window",
+    "the menu element: MenuItem {label, enabled, separator}, at most 8; opened by Shift+F10, the menu key or a right press; Up/Down wrap and skip separators; disabled items focusable, announced disabled, never Activate; Enter or left release chooses; Esc or an outside press closes and returns the focus; Tab ignored while open; RTL: opens toward the reading direction, flips or clamps at the surface edge",
+    "narrator lines `menu open … items=<n>`, `role=menuitem label=\"…\" state=focused[,disabled] index=k/n`, `menu close`, `choose …`",
+    "test first: the host tests in a separate target user/libui/tests/pointer_menu.rs registered as TST-M6-UI-UNIT in HOST_SUITES[\"M6\"] (so TST-M5-UI-UNIT's frozen \"14 passed\" marker stays): pointer_focuses_and_activates_the_element_under_it, release_outside_cancels, list_click_selects_the_row_and_double_click_activates, focus_order_unchanged_after_pointer, context_menu_opens_by_three_ways, menu_wraps_skips_separators_and_disabled_never_chooses, esc_and_outside_click_close_and_return_focus, menu_mirrors_in_rtl (the ninth, confirm_default_esc_enter, moved to WP-80)",
+    "mutants M165 (hit-test boundary `<` -> `<=`), M166 (focusable check dropped), M167 (Esc does not restore the opener), M168 SECURITY (a disabled item emits Choose), M169 (RTL anchor uses the left edge)",
+    "clean room: behaviour from the W3C WAI-ARIA APG menu pattern; no Windows item sets, metrics, timings or glyphs",
     "pointer focus keeps the frozen keyboard focus-order rules",
-    "scenario at the end: the sample dialog app driven entirely by mouse and by keyboard, with a context menu on a list item",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-09 split point for the budget line (proposed by the records steward from this record's own seam, for the planner to confirm): 49a POINTER hit-testing for every element and popup/context menus with narrator roles menu/menuitem (ui.md v1.6; TST-M6-UI-UNIT pointer and menu cases, TST-M6-UI-POINTER, whose scenario needs the context menu); 49b the modal confirm dialog (Yes/No/Cancel with a default; its TST-M6-UI-UNIT cases), the ui.md addition numbered at merge",
     "2026-11-10 the edge WP-49 -> WP-72 dropped (manager, after the audit): it existed only to order ui.md numbers, and the parallel WP-72 now takes its ui.md number at merge; WP-49 keeps [WP-45]; the critical path is unchanged (the longest open chain stays the one through WP-46/WP-47/WP-48, ten packages to WP-62; with the edge it would have been 12 through WP-64→71→72→49→…→62)",
-    "2026-11-10: the 2026-11-09 renumbering of ui.md for the input-language badge is reverted (the badge is WP-72's and takes its ui.md number at merge, PLAN.md:132); this item's ui.md version is v1.6 again"
+    "2026-11-10: the 2026-11-09 renumbering of ui.md for the input-language badge is reverted (the badge is WP-72's and takes its ui.md number at merge, PLAN.md:132); this item's ui.md version is v1.6 again",
+    "2026-11-10 split (manager, after the apps engineer's design report): 49a1 stays here; the dialog app's POINTER branch and the guest case TST-M6-UI-POINTER -> WP-79; the confirm dialog -> WP-80; the former ui.md v1.6 line (pointer, menus and the confirm dialog) and the end scenario (mouse and keyboard on the sample dialog) are narrowed accordingly",
+    "2026-11-10 estimate (apps engineer, unmeasured): about 60 tool calls / 55 min; under the line",
+    "2026-11-10 activated after the apps engineer's design report; the estimate against the budget line is recorded above (about 60 calls / 55 min); the guest case is WP-79 and the confirm dialog WP-80"
    ],
-   "acceptance": "TST-M6-UI-UNIT and UI-POINTER PASS on CI; TST-M5-KEYBOARD-NAV, A11Y-TREE and ARABIC-UI unregressed",
+   "acceptance": "TST-M6-UI-UNIT (the eight tests of user/libui/tests/pointer_menu.rs) PASS on CI; TST-M5-UI-UNIT (14 passed, unchanged), TST-M5-KEYBOARD-NAV and TST-M5-ARABIC-UI unregressed; M165-M169 killed",
    "test_ids": [
     "TST-M6-UI-UNIT",
-    "TST-M6-UI-POINTER",
+    "TST-M5-UI-UNIT",
     "TST-M5-KEYBOARD-NAV",
-    "TST-M5-A11Y-TREE",
     "TST-M5-ARABIC-UI"
    ],
    "commands": [
-    "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target host --suite M6",
-    "python3 tools/project.py test --target pc-qemu --suite M6"
+    "python3 tools/project.py test --target host --suite M5",
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -3564,7 +3583,7 @@
     "display.md v1.14: the paste grant and compositor-mediated drag-and-drop of a file-list between windows of the same session",
     "scenario at the end: copy Arabic text from one app's field and paste it into another's; a background app's read is refused; nothing is readable while locked",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-09: display.md v1.12 went to WP-67 and v1.13 to WP-48; the paste grant renumbered v1.13 -> v1.14; the number is assigned at merge (docs/PLAN.md:127)"
+    "2026-11-09: display.md v1.12 went to WP-67 and v1.13 to WP-48; the paste grant renumbered v1.13 -> v1.14; the number is assigned at merge (docs/PLAN.md:132)"
    ],
    "acceptance": "TST-M6-CLIPBOARD-ROUNDTRIP, CLIPBOARD-ISOLATION and DND-FILELIST PASS on CI",
    "test_ids": [
@@ -3742,7 +3761,7 @@
    "actions": [
     "مدير المهام: العمليات وإنهاء المهمة والأداء",
     "apps/taskmgr.md: an app over process_list and system_info v2, no cached or simulated values: CPU % per process and total, memory as frames, threads, handles, disk free, net counters",
-    "services.md v1.14: KILL <pid> with the check that the pid is in the caller's session job; ending a system process goes through ELEVATE with the manager as target",
+    "services.md (version assigned at merge, PLAN.md:132; v1.14 is WP-47's since 2026-11-10): KILL <pid> with the check that the pid is in the caller's session job; ending a system process goes through ELEVATE with the manager as target",
     "CPU % asserted as ranges against the kernel counters, never exact numbers (sampling jitter)",
     "scenario at the end: start the spin app, it tops CPU; the hung app is ended; ending `net` as user is refused and approved as admin",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
@@ -4248,41 +4267,59 @@
     "user/apps/svcmgr/src/main.rs:271-283 (MANIFEST_MAX 4096-byte read)",
     "kernel/src/services.rs (the kernel's LOAD and its OK n check in interactive mode)",
     "docs/contracts/services.md:27, :80 (LOAD outside /SYSTEM/ answers ERR ACCESS, v1.11)",
-    "docs/contracts/files.md v1.3 (/SYSTEM authority)",
-    "RSK-019",
-    "nawah-sec-redteam on 84266a323 (2026-11-09); nawah-plan-chain report 2026-11-09"
+    "nawah-sec-redteam on 84266a323 (2026-11-09); nawah-plan-chain report 2026-11-09",
+    "user/apps/svcmgr/src/main.rs:803-826 (on_control passes any path to load())",
+    "the services engineer's design report (2026-11-10, read-only)"
    ],
-   "files": [],
-   "contract_refs": [
+   "files": [
     "docs/contracts/services.md",
-    "docs/contracts/files.md"
+    "user/apps/svcmgr/src/main.rs",
+    "kernel/src/services.rs",
+    "kernel/src/fs/vfs.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md"
    ],
    "actions": [
-    "الإخفاق المغلق في svcmgr والنواة وتقييد كتابة config (النصف الثاني من نقطة قسمة WP-67، 2026-11-09)",
-    "services.md (additive; its number is assigned at merge per docs/PLAN.md:127, not promised here): svcmgr answers ERR MANIFEST_TOO_LARGE for a manifest that fills its 4096-byte buffer and ERR MANIFEST_IO on a read error mid-file, never a truncated OK <n> (user/apps/svcmgr/src/main.rs:271-283); the kernel's interactive mode requires n >= 1 in OK n (kernel/src/services.rs); ktest with a 4097-byte manifest (TST-M6-MANIFEST-TOO-LARGE)",
+    "أخطاء البيان (68a1؛ قُسمت WP-68 في 2026-11-10: حلقة displayd ورسالة التوقف ومهلة LOAD وعلامة console.log في WP-77، ونطاق كتابة config في WP-78)",
+    "services.md v1.13 (additive; a planning number since 2026-11-10, when this item came onto the critical path, PLAN.md:132; before: assigned at merge): svcmgr answers ERR MANIFEST_TOO_LARGE for a manifest that fills its 4096-byte buffer and ERR MANIFEST_IO on a read error mid-file, never a truncated OK <n> (user/apps/svcmgr/src/main.rs:271-283); the kernel's interactive mode requires n >= 1 in OK n (kernel/src/services.rs); ktest with a 4097-byte manifest (TST-M6-MANIFEST-TOO-LARGE)",
     "the LOAD-outside-/SYSTEM rule of services.md v1.11 (ERR ACCESS, nothing read, nothing started) gets its ktest (TST-M6-LOAD-OUTSIDE-SYSTEM)",
     "name_ok on dependency names, and escaping of | and control characters in the kernel|svcmgr trace line",
-    "a visible halt message on manager failure (selfcheck=0 then halt) and an interactive LOAD timeout: svcmgr replies before advance, or the kernel waits longer than 2000 ticks (806-836 ticks measured on CI per the red-team report; the run id is not in the records); a lab phase with a corrupt manifest disk if the lab can prepare one",
-    "the password forbidden-marker check on console.log as well as serial.log",
-    "config WRITE path restriction (RSK-019): files.md change (additive; number assigned at merge per docs/PLAN.md:127); a ktest opening /SYSTEM/SERVICES.TXT for write through config's SystemFiles handle must be refused ERR_ACCESS at the authority layer (TST-M6-CONFIG-WRITE-SCOPE); a SECURITY mutant dropping the restriction, its id the next free in tests/mutants.py at merge",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; split point: manifest errors first (MANIFEST_TOO_LARGE/IO, n >= 1, LOAD outside /SYSTEM, name_ok and escaping, halt message and LOAD timeout, console.log marker), config scope second (RSK-019, files.md, CONFIG-WRITE-SCOPE)",
-    "2026-11-09 latent liveness defect found while fixing the hold (services engineer): displayd's main loop reads the boot channel with a 64-byte buffer and swallows errors (Err(_) => {}), so any manager message longer than 64 bytes spins the loop forever and no client is accepted; and a STOP arriving before the LIST reply is consumed as a failed LIST (held start, STOP lost, the manager kills after the stop timeout): fix both with a regression ktest"
+    "a manifest of 4096 bytes or more -> ERR MANIFEST_TOO_LARGE (option A: len == MANIFEST_MAX refuses, the largest accepted file 4095 bytes, matching services.md:31 and the lint); a read error at any offset -> ERR MANIFEST_IO; nothing parsed and the LOAD does not count",
+    "the ktest writes /SYSTEM/BIGMAN.TXT at run time and runs the real svcmgr through SvcHarness (sub-cases 4097, 4096, 4095, io); the io case uses a cfg(feature=\"ktest\") one-shot read fault hook in kernel/src/fs/vfs.rs, which must never ship in release (check that the release image's no-ktest rule covers vfs)",
+    "LOAD outside /SYSTEM: a byte-exact `/SYSTEM/` prefix check plus refusal of empty, `.` and `..` components before load() (TST-M6-LOAD-OUTSIDE-SYSTEM: /OUTSIDE.TXT -> ERR ACCESS with LIST empty, /SYSTEM/../OUTSIDE.TXT -> ERR ACCESS, then LOAD /SYSTEM/SVC-ORD.TXT -> OK 3)",
+    "dependency names checked with name_ok, and `|` and control bytes escaped in the kernel's reply field (kernel/src/services.rs:177-185); the interactive n >= 1 check in kernel/src/services.rs:174",
+    "the contract sentence replaces the \"declared defect\" sentence at services.md:31 (services.md v1.13, PLAN.md:132)",
+    "mutants M157 (TooLarge return -> break, SECURITY), M158 (Io return -> break), M159 (the prefix check -> if false, SECURITY)",
+    "red today: case=4097 reply=OK <n>, case=outside reply=OK 1 started=1",
+    "2026-11-10 defect recorded: services.md v1.11 (WP-45) promised ERR ACCESS for LOAD outside /SYSTEM (services.md:33, :86) while svcmgr on_control (main.rs:803-826) passes any path to load(); the promise is honoured here",
+    "2026-11-10 split (manager, after the services and security engineers' design reports): the displayd boot-loop defects, the halt message, the LOAD timeout and the console.log marker -> WP-77; the config write scope (RSK-019) -> WP-78",
+    "2026-11-10 estimate (services engineer, unmeasured): about 65 tool calls / 65 min; under the line",
+    "2026-11-10 activated after the services engineer's design report; the estimate against the budget line is recorded above (about 65 calls / 65 min); the displayd and config halves are WP-77 and WP-78"
    ],
-   "acceptance": "TST-M6-MANIFEST-TOO-LARGE, TST-M6-LOAD-OUTSIDE-SYSTEM and TST-M6-CONFIG-WRITE-SCOPE PASS on CI; TST-M6-INTERACTIVE-BOOT re-run and PASS (password marker checked on console.log); the SECURITY mutant killed; validate-records --strict 0 errors",
+   "acceptance": "TST-M6-MANIFEST-TOO-LARGE and TST-M6-LOAD-OUTSIDE-SYSTEM PASS on CI; TST-M6-MANIFEST-LINT, TST-M6-INTERACTIVE-BOOT and TST-M4-SVC-ORDER re-run and PASS; M157-M159 killed; validate-records --strict 0 errors",
    "test_ids": [
     "TST-M6-MANIFEST-TOO-LARGE",
     "TST-M6-LOAD-OUTSIDE-SYSTEM",
-    "TST-M6-CONFIG-WRITE-SCOPE",
+    "TST-M6-MANIFEST-LINT",
     "TST-M6-INTERACTIVE-BOOT",
-    "TST-M6-DISPLAYD-BOOT-LOOP"
+    "TST-M4-SVC-ORDER"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
-    "python3 tools/project.py test --target pc-qemu --suite M6"
+    "python3 tools/project.py test --target pc-qemu --suite M4",
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -4309,7 +4346,7 @@
    ],
    "actions": [
     "قائمة العمليات process_list بنطاق المقبض ورفضها (46a2 من قسمة WP-46، 2026-11-09)",
-    "process_list (syscall 46), its syscall.md version assigned at merge (PLAN.md:127): handle-scoped, a READ job handle lists that job's subtree; 64-byte zeroed records: pid, job_id, state, threads, name[16] and 32 reserved bytes (for WP-70's accounting); cursor by pid; refusals ERR_BAD_HANDLE, ERR_WRONG_TYPE, ERR_ACCESS, ERR_INVALID for the cap, ERR_RANGE or ERR_FAULT for the buffer, ERR_RANGE for a cursor past next_pid; no partial write on any refusal; the image name is kept in the release kernel too",
+    "process_list (syscall 46), its syscall.md version assigned at merge (PLAN.md:132): handle-scoped, a READ job handle lists that job's subtree; 64-byte zeroed records: pid, job_id, state, threads, name[16] and 32 reserved bytes (for WP-70's accounting); cursor by pid; refusals ERR_BAD_HANDLE, ERR_WRONG_TYPE, ERR_ACCESS, ERR_INVALID for the cap, ERR_RANGE or ERR_FAULT for the buffer, ERR_RANGE for a cursor past next_pid; no partial write on any refusal; the image name is kept in the release kernel too",
     "blocked by DEC-027 (process visibility across users) before the process_list ABI freezes: the action above is option A (visibility follows the handle; the kernel knows no users); under B or C this record is rewritten before activation (the open question moved here from WP-46 on 2026-11-09)",
     "docs/security/threat-model.md: the WP-46 entry (who holds which job handle, what a listing reveals, the kill authority)",
     "test first: TST-M6-PROC-LIST-REFUSALS fails before the code; TST-M6-JOB-KILL re-run",
@@ -4331,7 +4368,7 @@
     "planned"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": "DEC-027"
   },
   {
    "id": "WP-70",
@@ -4356,7 +4393,7 @@
    ],
    "actions": [
     "المحاسبة لكل عملية والخمول لكل معالج وأمر ps (46b من قسمة WP-46، 2026-11-09)",
-    "per-process cpu_ticks, frames, threads and handles, charged on the context switch under the run-queue lock (SMP), filling the reserved bytes of WP-69's process_list record; per-CPU idle ticks in system_info v2 (syscall.md version assigned at merge, PLAN.md:127)",
+    "per-process cpu_ticks, frames, threads and handles, charged on the context switch under the run-queue lock (SMP), filling the reserved bytes of WP-69's process_list record; per-CPU idle ticks in system_info v2 (syscall.md version assigned at merge, PLAN.md:132)",
     "shell.md v1.3: ps lists pid, job, image name, state and cpu_ticks",
     "new M6 mutant ids for the accounting, taken from the next free id when this package is activated (PLAN-ANSWER §3.3)",
     "scenario at the end: in the shell, `ps` shows the real services and a spinning app's cpu_ticks growing",
@@ -4388,7 +4425,8 @@
     "REQ-M6-002"
    ],
    "depends_on": [
-    "WP-64"
+    "WP-64",
+    "WP-81"
    ],
    "inputs": [
     "docs/PLAN-ANSWER.md §2.3 (D4-A), §5.3 (item 10)",
@@ -4411,13 +4449,14 @@
     "given_up policy (PLAN-ANSWER §5.3 item 10): a permanent given_up is not acceptable for the session line, settled by restart=always (G3) above",
     "risk: a watchdog period too short kills a session legitimately waiting on auth (session.md v1.2); the test covers both sides",
     "test first: TST-M6-SESSION-WATCHDOG; judge: max_restarts+1 direct kills, then a successful sign-in; each phase prints its own verdict line; about 150-180 s",
-    "M6 step cap re-decided here before activation (2026-11-10): 695 s after WP-64 and WP-73 (INTERACTIVE-BOOT 450, HOLD 60, TOKEN-REVOKE 85, PURGE-FAIL-CLOSED 100); SESSION-WATCHDOG's 150-180 s exceeds the 900 s cap (15 min since WP-64, 2026-11-10; the worst case is 755 s before this package): raise the cap (TST-M0-003's StepBudget guard and verify.yml) or decide V3 before activation",
+    "M6 step cap re-decided here before activation (2026-11-10): 755 s with JOB-KILL (INTERACTIVE-BOOT 450, HOLD 60, TOKEN-REVOKE 85, PURGE-FAIL-CLOSED 100, JOB-KILL 60); SESSION-WATCHDOG's 150-180 s exceeds the 900 s cap (15 min since WP-64, 2026-11-10; the worst case is 755 s before this package): raise the cap (TST-M0-003's StepBudget guard and verify.yml) or decide V3 before activation",
     "mutants M133 (PONG removed or moved into request()), M134 (W at or below the sum of the deadlines, killed by TST-M6-MANIFEST-LINT), M136 (watchdog= removed from the session line) and M148-M149: restart=always treated as on-failure; the watchdog deadline at 3W (the upper bound 2W+1000 kills it; at 2W it would survive) (2026-11-10: M149 re-anchored from 2W; M150, the purge failing open, moved to WP-64)",
     "2026-11-09 design flaw found by the services engineer: the judge 'five kills, then sign-in works' (PLAN-ANSWER §2.3) does not discriminate between on-failure and always; hence max_restarts+1 direct kills, the first count at which on-failure would give up",
     "2026-11-09 design flaw found by the services engineer: the case's 150-180 s against the 12-minute M6 cap, hence the cap decision above",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-09 estimate: about 100-115 tool calls (the manager's, after the services engineer's design report; an estimate, not measured)",
-    "2026-11-10 the held-copy WHOAMI check of token revocation (WP-73) is measured here: mechanism a ktest-only helper returning the session's token, or a holder app in the elevation path (session.md:14)"
+    "2026-11-10 the held-copy WHOAMI check of token revocation (WP-73) is measured here: mechanism a ktest-only helper returning the session's token, or a holder app in the elevation path (session.md:14)",
+    "2026-11-10 the M6 step cap is raised by WP-81's per-job budget: M6 18 min (1080 s), so 755 + 180 = 935 s fits; this item depends on WP-81"
    ],
    "acceptance": "TST-M6-SESSION-WATCHDOG PASS on CI; TST-M6-MANIFEST-LINT with the session line's policy and W, TST-M6-INTERACTIVE-BOOT and TST-M0-003 (step budget) re-run and PASS; the M5 session, lock and watchdog cases in test_ids PASS (no regression)",
    "test_ids": [
@@ -4574,6 +4613,429 @@
     "evidence/20261110T043306Z-0111d8b6-001",
     "evidence/20261110T044336Z-0111d8b6-001"
    ],
+   "blocker": null
+  },
+  {
+   "id": "WP-74",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-005",
+    "REQ-M0-006"
+   ],
+   "depends_on": [
+    "WP-64",
+    "WP-65"
+   ],
+   "inputs": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py (StepBudget)",
+    "CI run 42754423494 (the Toolchain step 11m12s against its 12-min cap)",
+    "the lab engineer's design report (2026-11-10, read-only)"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "تصحيح سقف Toolchain وحد المهمة (74a؛ الوظائف المتوازية 74b صارت WP-81 في 2026-11-10)",
+    "74a: the Toolchain step cap back to 15 min and the job limit 55 -> 58 (the step measured 11m12s on run 42754423494 against the 12-min cap set on 2026-11-10 from a 56 s measurement; StepBudget asserts job == 58 and the Toolchain cap 15, red first, then verify.yml)",
+    "2026-11-10 estimate (lab engineer, unmeasured): 74a about 8 calls / 20 min; 74b about 22 calls / 60 min; total under the line; split point if exceeded at activation: 74a alone first, 74b as its own item",
+    "2026-11-10 split at this record's own split point (manager, after the lab engineer's refined estimate for 74b: 40-55 calls, 75-110 min, over the line): 74a stays here; 74b (the parallel jobs, the merge job, adopt-native, the run slot, the per-job StepBudget and the V3 trigger amendment) -> WP-81",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10: 74a measured 7 tool calls (lab engineer); under the line",
+    "2026-11-10 activated: dependencies WP-64 and WP-65 done; the estimate against the budget line is recorded above (74a measured 7 tool calls); 74b is WP-81 since the same day's split"
+   ],
+   "acceptance": "TST-M0-003 PASS on CI with the new caps (Toolchain 15, job limit 58); TST-M0-001 PASS",
+   "test_ids": [
+    "TST-M0-003",
+    "TST-M0-001"
+   ],
+   "commands": [
+    "python3 -I tests/test_ci_workflows.py",
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "active",
+   "status_history": [
+    "planned",
+    "active"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-75",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-006"
+   ],
+   "depends_on": [
+    "WP-81"
+   ],
+   "inputs": [
+    "tools/project.py (import-ci-evidence)",
+    "docs/adr/0026-evidence-provenance.md",
+    "tests/test_evidence_provenance.py (ImportCiEvidence)",
+    "WP-81's merge job (one ci-evidence/<run> branch with -a/-b/-c dirs)",
+    "the lab engineer's design report (2026-11-10, read-only)"
+   ],
+   "files": [
+    "tools/project.py",
+    "tests/test_evidence_provenance.py",
+    "docs/adr/0026-evidence-provenance.md",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/adr/0026-evidence-provenance.md"
+   ],
+   "actions": [
+    "مصدر الأدلة عبر الوظائف المتوازية: رفض المستورد لتشغيل أو محاولة أجنبية؛ تعديل ADR-0026؛ أوراكل TST-M0-007",
+    "the importer refuses a dir whose run.json ci.run_id or run_attempt differs from gh's answer (today it would receive this run's receipt and fail the validator later)",
+    "ADR-0026 amendment: one branch per run holding only that run's dirs, adopt-native, attempt mixing refused",
+    "test first: the ImportCiEvidence fixture fabricates a merged branch with -a/-b/-c dirs (3 runs adopted) and a branch with a foreign run or attempt (refused, no temporary copy left)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10 estimate (lab engineer, unmeasured): about 10 tool calls / 30 min; under the line"
+   ],
+   "acceptance": "TST-M0-007 PASS on CI with the merged-branch case (3 runs adopted) and the foreign run or attempt refused with no temporary copy left; validate-records --strict 0 errors",
+   "test_ids": [
+    "TST-M0-007"
+   ],
+   "commands": [
+    "python3 -I tests/test_evidence_provenance.py",
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-76",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-005"
+   ],
+   "depends_on": [
+    "WP-81"
+   ],
+   "inputs": [
+    "tools/project.py:1084-1089, :1288 (keep_artifact)",
+    "tools/screen.py",
+    ".github/workflows/verify.yml (evidence upload and publish)",
+    "the lab engineer's design report (2026-11-10, read-only)"
+   ],
+   "files": [
+    "tools/project.py",
+    "tools/screen.py",
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "تقليم الأدلة: مخزن محتوى واحد لنواة الاختبار (evidence/blobs/<sha256>/<name>)، ضغط لقطات PPM بعد الحكم، رفع ونشر أدلة التشغيل وحدها",
+    "measured by the lab engineer (2026-11-10): 4.4 GB of the 6.2 GB evidence tree are 6,031 copies of artifact/NAWAH-KTEST.EFI (keep_artifact, tools/project.py:1084-1089, :1288); the .ppm files 1.2 GB",
+    "content-addressed blobs evidence/blobs/<sha256>/<name> written once and referenced from inputs (the validator unchanged: the path exists and its digest matches)",
+    "screen.ppm written raw for the pixel oracles, then gzipped after the verdict (tools/screen.py reads .gz)",
+    "existing evidence stays immutable (a migration is the owner's decision)",
+    "upload and publish only this run's dirs",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10 estimate (lab engineer, unmeasured): about 22 tool calls / 65 min; under the line"
+   ],
+   "acceptance": "TST-M0-001 and TST-M0-003 PASS on CI; a verify run's evidence references the test kernel through evidence/blobs/<sha256>/<name> and keeps its screens gzipped after the verdict; validate-records --strict 0 errors",
+   "test_ids": [
+    "TST-M0-001",
+    "TST-M0-003"
+   ],
+   "commands": [
+    "python3 -I tests/test_ci_workflows.py",
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-77",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "depends_on": [
+    "WP-45"
+   ],
+   "inputs": [
+    "user/apps/displayd/src/main.rs:2036 (64-byte boot-channel buffer), :2201 (Err(_) => {}), :1956 (manager())",
+    "WP-68's actions before 2026-11-10 (the halt message, the LOAD timeout, the console.log marker)",
+    "the services engineer's design report (2026-11-10, read-only)"
+   ],
+   "files": [
+    "user/apps/displayd/src/main.rs",
+    "kernel/src/services.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/contracts/display.md",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/display.md"
+   ],
+   "actions": [
+    "عيبا حلقة displayd عند الإقلاع، رسالة التوقف، مهلة LOAD، إعادة علامة console.log (68a2، مفصولة من WP-68 في 2026-11-10)",
+    "defect 1: a boot-channel message over the 64-byte buffer (displayd main.rs:2036) gets ERR_BUFFER_TOO_SMALL, stays at the head of the queue, object_wait_many fires at once and `Err(_) => {}` (:2201) ignores it: the loop spins and no CONNECT, PING or STOP behind it is ever read (in production watchdog=2000 restarts it and it is given_up after 3); fix A: channel_discard on ERR_BUFFER_TOO_SMALL with the trace display|boot|discard=too_long, any other error exits with a new code",
+    "defect 2: manager() (:1956) takes the first boot message as the LIST reply, so an early STOP is read as list_failure and lost, READY is sent and the manager kills displayd after STOP_GRACE; fix: a third outcome \"stop\" exits 0 and PING is ignored while waiting for LIST",
+    "test first: TST-M6-DISPLAYD-BOOT-LOOP reusing hold_run with an injected message (red today: case=too_long_msg exit=0x20000 and case=stop_first exit=0x20000; green: exit=0x0 with the discard trace)",
+    "mutants M160 (discard removed) and M161 (the STOP branch removed), neither SECURITY",
+    "moved from WP-68 on 2026-11-10: a visible halt message on manager failure (selfcheck=0 then halt) and an interactive LOAD timeout: svcmgr replies before advance, or the kernel waits longer than 2000 ticks (806-836 ticks measured on CI per the red-team report; the run id is not in the records); a lab phase with a corrupt manifest disk if the lab can prepare one",
+    "moved from WP-68 on 2026-11-10: the password forbidden-marker check on console.log as well as serial.log",
+    "moved from WP-68 on 2026-11-10: 2026-11-09 latent liveness defect found while fixing the hold (services engineer): displayd's main loop reads the boot channel with a 64-byte buffer and swallows errors (Err(_) => {}), so any manager message longer than 64 bytes spins the loop forever and no client is accepted; and a STOP arriving before the LIST reply is consumed as a failed LIST (held start, STOP lost, the manager kills after the stop timeout): fix both with a regression ktest",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10 estimate (services engineer, unmeasured): about 60 tool calls / 60 min; under the line"
+   ],
+   "acceptance": "TST-M6-DISPLAYD-BOOT-LOOP PASS on CI (case=too_long_msg and case=stop_first exit=0x0 with the discard trace); TST-M6-INTERACTIVE-BOOT (password marker checked on console.log too) and TST-M6-HOLD-FAIL-CLOSED re-run and PASS; M160 and M161 killed",
+   "test_ids": [
+    "TST-M6-DISPLAYD-BOOT-LOOP",
+    "TST-M6-INTERACTIVE-BOOT",
+    "TST-M6-HOLD-FAIL-CLOSED"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-78",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "depends_on": [
+    "WP-45"
+   ],
+   "inputs": [
+    "kernel/src/syscall/mod.rs:415-438 (fs_authority)",
+    "user/apps/fileauth/src/main.rs (the probe)",
+    "RSK-019",
+    "docs/security/threat-model.md:102",
+    "the security engineer's design report (2026-11-10, read-only)"
+   ],
+   "files": [
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/ktest.rs",
+    "user/apps/fileauth/src/main.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/contracts/files.md",
+    "docs/contracts/config.md",
+    "docs/contracts/services.md",
+    "docs/adr/0020-system-files-authority.md",
+    "docs/security/threat-model.md",
+    "docs/risks.json",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md",
+    "docs/contracts/config.md",
+    "docs/contracts/services.md",
+    "docs/adr/0020-system-files-authority.md"
+   ],
+   "actions": [
+    "نطاق كتابة config في طبقة السلطة (A-min): RSK-019 (68b)",
+    "the threat: fs_authority (kernel/src/syscall/mod.rs:415-438) checks only that the holder has WRITE on some SystemFiles handle, never the path; configd's copy is READ|WRITE|TRANSFER; a rewritten SERVICES.TXT re-assigns capabilities on the next boot",
+    "the control A-min: a kernel allowlist in fs_authority: a change under /SYSTEM succeeds only for a file directly in /SYSTEM whose 8.3 base starts with CFG and whose extension is A or B, compared as short names; everything else ERR_ACCESS before the volume is touched; no new ABI, handles stay 9",
+    "option B (configd-side checks plus a denylist) rejected: not at the authority layer and fail-open; the per-handle scope (A-scoped) deferred to WP-61/M8 with its ABI change",
+    "residual for the owner: config can still read USERS.DB",
+    "contracts: files.md narrowing (additive; its number assigned at merge, PLAN.md:132) with an ADR-0020 item 5 as its decision record; config.md (number assigned at merge, PLAN.md:132) fixes the store names CFGDEV/CFGPOL/CFGU<1..9999>.A|B; the services.md §4 note shares WP-68's bump",
+    "test first: TST-M6-CONFIG-WRITE-SCOPE as a ktest config_write_scope on the fileauth probe (steps 40-49 all ERR_ACCESS, then the positive control CFGPRB.A, exit 0x46; red today probe=0x28; timeout 30 s); required lines: `|ktest|config_write_scope|probe=0x46|services_same=1|usersdb_same=1|inputd_same=1|created=0|frames=0|objects_same=1`, `|ktest|config_write_scope|table=8/8`, `|ktest|config_write_scope|services=auth,config|set=OK 1|get=OK 1 kept`, `|ktest|config_write_scope|mgr_exit=0x0|processes_after=0|clean=1`, `|ktest|config_write_scope|frames_delta=0`, `|ktest|pass|config's authority changes only its own stores`",
+    "mutants M162 (the allowlist branch `if false`), M163 (the CFG prefix test dropped), M164 (the A|B extension test dropped), all SECURITY",
+    "docs/security/threat-model.md:102 and RSK-019 (docs/risks.json) updated when this item closes",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10 estimate (security engineer, unmeasured): about 55-70 tool calls / 60-75 min; under the line"
+   ],
+   "acceptance": "TST-M6-CONFIG-WRITE-SCOPE PASS on CI (exit 0x46 with its six required lines); TST-M4-CONFIG-PERSIST and TST-M5-FILE-AUTHORITY re-run and PASS; M162-M164 killed; validate-records --strict 0 errors",
+   "test_ids": [
+    "TST-M6-CONFIG-WRITE-SCOPE",
+    "TST-M4-CONFIG-PERSIST",
+    "TST-M5-FILE-AUTHORITY"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M4",
+    "python3 tools/project.py test --target pc-qemu --suite M5",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-79",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "depends_on": [
+    "WP-49",
+    "WP-81"
+   ],
+   "inputs": [
+    "user/apps/dialog/src/main.rs",
+    "user/apps/displayd/src/main.rs:1189, :1210-1216 (POINTER delivery and focus)",
+    "tools/transcript.py",
+    "RSK-020",
+    "the apps engineer's design report (2026-11-10, read-only)"
+   ],
+   "files": [
+    "user/apps/dialog/src/main.rs",
+    "platform/pc-qemu/target.json",
+    "platform/pc-qemu/expect/ui-pointer.txt",
+    "tests/mutants.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/ui.md",
+    "docs/contracts/display.md"
+   ],
+   "actions": [
+    "تطبيق الحوار بالمؤشر وحالة الضيف TST-M6-UI-POINTER وملف التوقع (49a2، مفصولة من WP-49 في 2026-11-10)",
+    "the dialog app's POINTER branch and the menu on the list in both languages",
+    "the guest case: phase 1 by keyboard, phase 2 by pointer (QEMU monitor mouse_move/mouse_button, the right button value unverified), both equal to platform/pc-qemu/expect/ui-pointer.txt through tools/transcript.py",
+    "needs the M6 cap of WP-81's per-job budget (today's headroom 145 s is unmeasured for this case)",
+    "mutant M170 SECURITY (the dialog app acts on a POINTER press while unfocused)",
+    "flag (RSK-020): displayd delivers POINTER to a window that is not focused and focuses only on a left press (displayd main.rs:1189, 1210-1216), so a right click reaches a background window: a display.md semantics question to settle before this item",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10 estimate (apps engineer, unmeasured): about 55 tool calls / 75 min; under the line"
+   ],
+   "acceptance": "TST-M6-UI-POINTER PASS on CI: the keyboard phase and the pointer phase both equal platform/pc-qemu/expect/ui-pointer.txt through tools/transcript.py; M170 killed; the display.md question of RSK-020 settled before activation",
+   "test_ids": [
+    "TST-M6-UI-POINTER"
+   ],
+   "commands": [
+    "python3 tools/project.py build --target pc-qemu",
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-80",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "depends_on": [
+    "WP-49"
+   ],
+   "inputs": [
+    "user/libui/src/lib.rs",
+    "user/libui/tests/pointer_menu.rs (WP-49)",
+    "the apps engineer's design report (2026-11-10, read-only)"
+   ],
+   "files": [
+    "docs/contracts/ui.md",
+    "user/libui/src/lib.rs",
+    "user/libui/tests/pointer_menu.rs",
+    "tests/mutants.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/ui.md"
+   ],
+   "actions": [
+    "حوار التأكيد (49b، مفصولة من WP-49 في 2026-11-10)",
+    "Dialog::confirm(prompt, yes, no, cancel, default) as a composition of Label + three Buttons; the default takes the first focus, Enter answers the focused button, Esc answers Cancel, Tab cycles the three",
+    "narrator lines `confirm role=dialog label=\"…\"` then `focus <default>`, `answer yes|no|cancel`; strings nawah's own in both languages",
+    "test first: confirm_default_esc_enter in user/libui/tests/pointer_menu.rs (TST-M6-UI-UNIT), moved from WP-49's nine",
+    "mutant M171 SECURITY (Esc -> Answer(Yes))",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10 estimate (apps engineer, unmeasured): about 45 tool calls / 55 min; under the line"
+   ],
+   "acceptance": "TST-M6-UI-UNIT PASS on CI with confirm_default_esc_enter; M171 killed",
+   "test_ids": [
+    "TST-M6-UI-UNIT"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-81",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-005",
+    "REQ-M0-006"
+   ],
+   "depends_on": [
+    "WP-74"
+   ],
+   "inputs": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py (StepBudget)",
+    "docs/adr/0026-evidence-provenance.md (rule 5: the native exemption)",
+    "docs/PLAN-ANSWER.md §2.5 D4-V2 (the V3 trigger, line 420)",
+    "CI runs 42754423494 and 42743814734 (a red M5 hid M6)",
+    "the lab engineer's design report (2026-11-10, read-only)"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py",
+    "tools/project.py",
+    "docs/adr/0026-evidence-provenance.md",
+    "docs/PLAN-ANSWER.md",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/adr/0026-evidence-provenance.md"
+   ],
+   "actions": [
+    "verify في وظائف متوازية بفرع أدلة واحد للتشغيل (74b، مفصولة من WP-74 في 2026-11-10)",
+    "74b: verify in three test jobs (A: records, check-commit, hygiene, E0, build, M1-M4, aarch64, host suites; B: toolchain, build, M5; C: toolchain, build, M6) plus a merge job needs:[A,B,C] if: always() that downloads the three evidence artifacts (pinned download-artifact), adopts them with a new `project.py adopt-native --from <dir>` (the importer's attach loop without gh or receipt: ADR-0026 rule 5's native exemption, same run id, attempt and sha across jobs; it never writes import.json), re-runs validate-records --strict and tools/pre-merge.sh, and publishes ONE ci-evidence/<run> branch holding only this run's dirs plus build-id.txt and hygiene.log; run dir ids get a job slot (env NAWAH_RUN_SLOT -> `-a|-b|-c`) so two runners never collide; the merge job refuses a duplicate id or a dir whose ci.run_id/attempt differs; per-job StepBudget (B: Toolchain 15 + M5 18, limit 40; C: Toolchain 15 + M6 18, limit 40; A limit 40; merge 20), so M6 gets 1080 s and WP-71's 935 s fits; cancel-in-progress stays true; images rebuilt per job (26-32 s measured); expected critical path about T+20 min against 42m11s today (unverified until measured)",
+    "the V3 trigger at PLAN-ANSWER.md:420 is amended here: opened on 2026-11-10 (as WP-74, whose parallel-jobs half is this item since the same day's split)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10 (lab engineer, unmeasured): about 40-55 calls and 75-110 min; at the line's edge; split point if exceeded at activation: the three jobs + merge first, adopt-native + rid slot second"
+   ],
+   "acceptance": "TST-M0-003 PASS with the per-job budgets; TST-M0-001 and TST-M0-007 PASS; a verify run completes with the merge job publishing one evidence branch that import-ci-evidence adopts with strict 0",
+   "test_ids": [
+    "TST-M0-001",
+    "TST-M0-003",
+    "TST-M0-007"
+   ],
+   "commands": [
+    "python3 -I tests/test_ci_workflows.py",
+    "python3 -I tests/test_evidence_provenance.py",
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
    "blocker": null
   }
  ]
