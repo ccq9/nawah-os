@@ -3357,12 +3357,18 @@
     "python3 tools/project.py build --target pc-qemu",
     "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261110T075631Z-dd9e4626-002",
+    "evidence/20261110T075620Z-dd9e4626-001",
+    "evidence/20261110T074249Z-dd9e4626-001",
+    "evidence/20261110T075214Z-dd9e4626-001"
+   ],
    "blocker": null
   },
   {
