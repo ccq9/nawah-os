@@ -221,6 +221,7 @@ pub fn run() -> ! {
         "session_hang" => session_hang(),
         "lock_display_down" => lock_display_down(),
         "hold_fail_closed" => hold_fail_closed(),
+        "displayd_boot_loop" => displayd_boot_loop(),
         "manifest_too_large" => manifest_too_large(),
         "load_outside_system" => load_outside_system(),
         "token_revoke" => token_revoke(),
@@ -9187,7 +9188,38 @@ struct HoldCase {
     keys_in: i64,
     keys_at_client: i64,
     exit: u64,
+    /// Whether the compositor said READY after the `LIST` answer (WP-77).
+    ready: bool,
+    /// Whether a `PING` sent after READY was answered `PONG` (-1: not asked; WP-77).
+    pong: i64,
 }
+
+/// What a sub-case of `hold_run` adds to the plain start-up (WP-77, display.md v1.13), and the
+/// test whose lines it prints: `before_answer` goes on the boot channel after `LIST` and before
+/// its answer; with `answer_ends` the answer is the manager's last message (a `STOP` in place
+/// of the listing), and the sub-case only waits for the compositor to end, seeing whether it
+/// said READY first; `after_ready` goes on the boot channel once READY has come, and with
+/// `ping` a `PING` follows, whose `PONG` must come back before the application connects.
+struct HoldInject<'a> {
+    test: &'a str,
+    before_answer: Option<&'a [u8]>,
+    answer_ends: bool,
+    after_ready: Option<&'a [u8]>,
+    ping: bool,
+    /// `STOP` in place of the answer to `CONNECT input`; the sub-case then only waits for the
+    /// compositor to end, seeing whether it said READY first.
+    stop_at_connect: bool,
+}
+
+/// `hold_fail_closed`'s sub-cases: the start-up as the manager runs it, nothing added.
+const HOLD_PLAIN: HoldInject<'static> = HoldInject {
+    test: "hold_fail_closed",
+    before_answer: None,
+    answer_ends: false,
+    after_ready: None,
+    ping: false,
+    stop_at_connect: false,
+};
 
 impl HoldCase {
     /// Started held: `HOLDS` says so, the window exists, both keys reached the compositor and
@@ -9287,8 +9319,9 @@ fn hold_request(
 /// recorded. Last, `STOP`. Every wait is bounded (`HOLD_BUDGET`, `HOLD_REQUEST`, `HOLD_STOP`):
 /// a step that times out is recorded as `error:K_E_STUCK_<step>` or `error:K_E_SVC_TIMEOUT`,
 /// and a compositor that has not ended after `STOP` is killed (EXIT_KILLED), so a jammed
-/// compositor costs the sub-case its verdict, never the run.
-fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
+/// compositor costs the sub-case its verdict, never the run. `inj` adds WP-77's injections
+/// (`HoldInject`; `HOLD_PLAIN` for none) and names the test whose lines are printed.
+fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>, inj: &HoldInject) -> HoldCase {
     let display = crate::display::display_object().unwrap_or_else(|| fail("no display object"));
     let chan_entry = |ep: Arc<Endpoint>| Entry {
         object: Object::Channel(ep),
@@ -9311,8 +9344,9 @@ fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
         Ok(p) => p,
         Err(e) => {
             kprintln!(
-                "OSX|{}|ktest|hold_fail_closed|case={}|error={}",
+                "OSX|{}|ktest|{}|case={}|error={}",
                 BUILD_ID,
+                inj.test,
                 case,
                 e.code()
             );
@@ -9327,6 +9361,8 @@ fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
         keys_in: -1,
         keys_at_client: -1,
         exit: u64::MAX,
+        ready: false,
+        pong: -1,
     };
     let (input, input_far) = channel::create();
     let (client, client_far) = channel::create();
@@ -9337,6 +9373,8 @@ fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
         Some("start")
     } else if !hold_recv(&ours, budget).is_some_and(|m| m.bytes == b"CONNECT input") {
         Some("connect_input")
+    } else if inj.stop_at_connect {
+        None
     } else if ours
         .write(Message {
             bytes: b"OK".to_vec(),
@@ -9356,21 +9394,46 @@ fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
     let mut ours = Some(ours);
     if let Some(step) = stuck {
         kprintln!(
-            "OSX|{}|ktest|hold_fail_closed|case={}|stuck_at={}",
+            "OSX|{}|ktest|{}|case={}|stuck_at={}",
             BUILD_ID,
+            inj.test,
             case,
             step
         );
         out.holds = alloc::format!("error:K_E_STUCK_{}", step);
+    } else if inj.stop_at_connect {
+        // STOP in place of the CONNECT input answer: no READY may follow, only the end.
+        let boot = ours.as_ref().expect("boot channel kept");
+        out.ready = boot.write(note(b"STOP")).is_ok()
+            && hold_recv(boot, budget).is_some_and(|m| m.bytes == b"READY");
     } else if let Some(answer) = answer {
         let boot = ours.as_ref().expect("boot channel kept");
-        let ready = boot.write(note(answer)).is_ok()
-            && hold_recv(boot, within(10_000)).is_some_and(|m| m.bytes == b"READY");
+        let sent = inj
+            .before_answer
+            .is_none_or(|m| boot.write(note(m)).is_ok())
+            && boot.write(note(answer)).is_ok();
+        let ready = sent && hold_recv(boot, within(10_000)).is_some_and(|m| m.bytes == b"READY");
+        out.ready = ready;
+        if ready && !inj.answer_ends {
+            // After READY: the injected message, then the watchdog's PING (services.md v1.7).
+            let injected = inj.after_ready.is_none_or(|m| boot.write(note(m)).is_ok());
+            if inj.ping {
+                out.pong = i64::from(
+                    injected
+                        && boot.write(note(b"PING")).is_ok()
+                        && hold_recv(boot, within(HOLD_REQUEST))
+                            .is_some_and(|m| m.bytes == b"PONG"),
+                );
+            }
+        }
         let connect = Message {
             bytes: b"CONNECT app".to_vec(),
             handles: alloc::vec![chan_entry(client_far)],
         };
-        out.holds = if !ready {
+        out.holds = if inj.answer_ends {
+            // The answer was the last word: no CONNECT, no STOP; the compositor ends by itself.
+            String::from("-")
+        } else if !ready {
             String::from("error:K_E_STUCK_ready")
         } else if boot.write(connect).is_err() {
             String::from("error:K_E_SVC_WRITE")
@@ -9431,7 +9494,10 @@ fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>) -> HoldCase {
         }
         out.keys_at_client = ev.iter().filter(|e| e.starts_with("KEY ")).count() as i64;
     }
-    if let Some(boot) = ours.as_ref() {
+    if let Some(boot) = ours
+        .as_ref()
+        .filter(|_| !inj.answer_ends && !inj.stop_at_connect)
+    {
         let _ = boot.write(note(b"STOP"));
     }
     if !hold_wait(sched::ticks() + HOLD_STOP, || object.exit_code().is_some()) {
@@ -9481,7 +9547,7 @@ fn hold_fail_closed() -> ! {
         long.extend_from_slice(alloc::format!("fill{:02} ready 0 1 1 - -\n", k).as_bytes());
         k += 1;
     }
-    let reply = hold_run("reply", &image, Some(b"ERR TEST"));
+    let reply = hold_run("reply", &image, Some(b"ERR TEST"), &HOLD_PLAIN);
     let reply_ok = reply.held();
     kprintln!(
         "OSX|{}|ktest|{}|case=reply|holds={}|keys={}|keys_in={}|window={}|exit={:#x}|ok={}",
@@ -9495,7 +9561,7 @@ fn hold_fail_closed() -> ! {
         u8::from(reply_ok)
     );
     drop(reply);
-    let too_long = hold_run("too_long", &image, Some(&long));
+    let too_long = hold_run("too_long", &image, Some(&long), &HOLD_PLAIN);
     let too_long_ok = too_long.held();
     kprintln!(
         "OSX|{}|ktest|{}|case=too_long|holds={}|keys={}|keys_in={}|window={}|bytes={}|exit={:#x}|ok={}",
@@ -9510,7 +9576,7 @@ fn hold_fail_closed() -> ! {
         u8::from(too_long_ok)
     );
     drop((too_long, long));
-    let closed = hold_run("closed", &image, None);
+    let closed = hold_run("closed", &image, None, &HOLD_PLAIN);
     let closed_ok = closed.exit == 0xE6;
     kprintln!(
         "OSX|{}|ktest|{}|case=closed|holds=none_no_ready|exit={:#x}|ok={}",
@@ -9524,11 +9590,13 @@ fn hold_fail_closed() -> ! {
         "manifest",
         &image,
         Some(b"auth ready 0 1 1 - -\ninput ready 0 1 1 - -\ndisplay ready 0 1 1 - -\n"),
+        &HOLD_PLAIN,
     );
     let held = hold_run(
         "manifest_session",
         &image,
         Some(b"auth ready 0 1 1 - -\ninput ready 0 1 1 - -\ndisplay ready 0 1 1 - -\nsession starting 0 1 - - -\n"),
+        &HOLD_PLAIN,
     );
     let open_ok = open.holds == "OK locked=0 releases=0"
         && open.window.starts_with("OK ")
@@ -9579,6 +9647,193 @@ fn hold_fail_closed() -> ! {
         fail("the compositors left a process, an object or a frame behind")
     }
     pass("a LIST the compositor cannot have starts the screen held; a listing still decides it as before")
+}
+
+// ---- WP-77: the compositor's boot channel keeps serving ---------------------------------------
+
+/// TST-M6-DISPLAYD-BOOT-LOOP (REQ-M6-002, display.md v1.13): the compositor's boot channel
+/// keeps serving the manager. As in `hold_fail_closed`, the test kernel plays the manager for a
+/// fresh /SYSTEM/DISPLAYD.ELF per sub-case and answers `LIST` with a listing naming `display`
+/// and no `session` (unheld): (a) `control` — nothing injected; after READY a `PING` is answered
+/// `PONG`, an application connects (`HOLDS` → `OK locked=0 releases=0`) and `STOP` ends it 0;
+/// (b) `too_long_msg` — after READY a 200-byte message, longer than the compositor's 64-byte
+/// boot buffer: it must be discarded (`display|boot|discard=too_long`) and the `PING`, the
+/// `CONNECT` and the `STOP` behind it still served; before v1.13 the message stayed at the head
+/// of the queue and the loop spun on it, so nothing behind it was read and the compositor had
+/// to be killed (EXIT_KILLED); (c) `stop_first` — `STOP` in place of the listing: the compositor
+/// exits 0 without READY (`display|boot|stop=before_ready`); before v1.13 it took the STOP for a
+/// failed LIST, said READY and never ended; (d) `ping_first` — a `PING` before the listing: it
+/// is ignored while LIST waits (no PONG before READY) and the listing still decides the hold
+/// (locked=0); before v1.13 the PING was taken for the LIST answer and the screen held; (e)
+/// `stop_at_connect` — `STOP` in place of the `CONNECT input` answer: the compositor exits 0
+/// without READY (the same stop trace); before v1.13 it exited 0xE5. Every
+/// compositor is gone at the end, with the object and frame balance restored.
+fn displayd_boot_loop() -> ! {
+    let name = "displayd_boot_loop";
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    if crate::display::display_object().is_none() {
+        fail("no display object (firmware left no linear frame buffer)")
+    }
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let image = match crate::loader::read_image(b"/SYSTEM/DISPLAYD.ELF") {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
+            fail("the compositor's image is not on the volume")
+        }
+    };
+    let listing = &b"auth ready 0 1 1 - -\ninput ready 0 1 1 - -\ndisplay ready 0 1 1 - -\n"[..];
+    let plain = HoldInject {
+        test: name,
+        before_answer: None,
+        answer_ends: false,
+        after_ready: None,
+        ping: true,
+        stop_at_connect: false,
+    };
+    let unheld = |c: &HoldCase| c.holds == "OK locked=0 releases=0" && c.exit == 0;
+    let control = hold_run("control", &image, Some(listing), &plain);
+    let control_ok = control.ready && control.pong == 1 && unheld(&control);
+    kprintln!(
+        "OSX|{}|ktest|{}|case=control|ready={}|pong={}|holds={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        u8::from(control.ready),
+        control.pong,
+        control.holds,
+        control.exit,
+        u8::from(control_ok)
+    );
+    drop(control);
+    // (b): longer than the boot buffer (64 bytes), far shorter than a message's 4096.
+    let mut long = Vec::from(&b"NOTICE "[..]);
+    long.resize(200, b'x');
+    let too_long = hold_run(
+        "too_long_msg",
+        &image,
+        Some(listing),
+        &HoldInject {
+            after_ready: Some(&long),
+            ..plain
+        },
+    );
+    let too_long_ok = too_long.ready && too_long.pong == 1 && unheld(&too_long);
+    kprintln!(
+        "OSX|{}|ktest|{}|case=too_long_msg|bytes={}|ready={}|pong={}|holds={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        long.len(),
+        u8::from(too_long.ready),
+        too_long.pong,
+        too_long.holds,
+        too_long.exit,
+        u8::from(too_long_ok)
+    );
+    drop((too_long, long));
+    let stop_first = hold_run(
+        "stop_first",
+        &image,
+        Some(b"STOP"),
+        &HoldInject {
+            answer_ends: true,
+            ping: false,
+            ..plain
+        },
+    );
+    let stop_first_ok = !stop_first.ready && stop_first.exit == 0;
+    kprintln!(
+        "OSX|{}|ktest|{}|case=stop_first|ready={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        u8::from(stop_first.ready),
+        stop_first.exit,
+        u8::from(stop_first_ok)
+    );
+    drop(stop_first);
+    let ping_first = hold_run(
+        "ping_first",
+        &image,
+        Some(listing),
+        &HoldInject {
+            before_answer: Some(b"PING"),
+            ping: false,
+            ..plain
+        },
+    );
+    let ping_first_ok = ping_first.ready && unheld(&ping_first);
+    kprintln!(
+        "OSX|{}|ktest|{}|case=ping_first|ready={}|holds={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        u8::from(ping_first.ready),
+        ping_first.holds,
+        ping_first.exit,
+        u8::from(ping_first_ok)
+    );
+    drop(ping_first);
+    let stop_at_connect = hold_run(
+        "stop_at_connect",
+        &image,
+        None,
+        &HoldInject {
+            ping: false,
+            stop_at_connect: true,
+            ..plain
+        },
+    );
+    let stop_at_connect_ok = !stop_at_connect.ready && stop_at_connect.exit == 0;
+    kprintln!(
+        "OSX|{}|ktest|{}|case=stop_at_connect|ready={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        u8::from(stop_at_connect.ready),
+        stop_at_connect.exit,
+        u8::from(stop_at_connect_ok)
+    );
+    drop((stop_at_connect, image));
+    let gone = sched::poll_until(sched::ticks() + 1000, || sched::stats().processes == 0);
+    let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|{}|failed={}{}{}{}{}|processes_after={}|frames_delta={}|clean={}",
+        BUILD_ID,
+        name,
+        if control_ok { "" } else { "control," },
+        if too_long_ok { "" } else { "too_long_msg," },
+        if stop_first_ok { "" } else { "stop_first," },
+        if ping_first_ok { "" } else { "ping_first," },
+        if stop_at_connect_ok {
+            ""
+        } else {
+            "stop_at_connect,"
+        },
+        procs,
+        frames,
+        u8::from(gone && settled)
+    );
+    if !control_ok {
+        fail("the compositor did not serve PING, CONNECT and STOP on its boot channel")
+    }
+    if !too_long_ok {
+        fail("a boot message longer than the buffer stopped the compositor's boot channel (display.md v1.13)")
+    }
+    if !stop_first_ok {
+        fail("a STOP before the LIST answer did not end the compositor without READY (display.md v1.13)")
+    }
+    if !ping_first_ok {
+        fail("a PING before the LIST answer was taken for the answer (display.md v1.13)")
+    }
+    if !stop_at_connect_ok {
+        fail("a STOP before the CONNECT input answer did not end the compositor without READY (display.md v1.13)")
+    }
+    if !gone || procs != 0 || !settled || frames != 0 {
+        fail("the compositors left a process, an object or a frame behind")
+    }
+    pass("the compositor's boot channel discards what does not fit, and STOP or PING before LIST are not taken for its answer")
 }
 
 /// Writes `data` as the whole of `path` on the volume (the test kernel writes through the VFS

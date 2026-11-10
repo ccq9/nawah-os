@@ -6666,6 +6666,40 @@
         "timeout_s": 60
       },
       {
+        "id": "TST-M6-DISPLAYD-BOOT-LOOP",
+        "test_id": "TST-M6-DISPLAYD-BOOT-LOOP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=displayd_boot_loop"
+        ],
+        "oracle": "REQ-M6-002, WP-77 (display.md v1.13; mutants M160, M161): the compositor's boot channel keeps serving the manager. As in TST-M6-HOLD-FAIL-CLOSED, a substitute manager inside the test kernel spawns /SYSTEM/DISPLAYD.ELF per sub-case and answers its LIST with a listing naming `display` and no `session`: (a) control: after READY a PING is answered PONG, an application connects (HOLDS `OK locked=0 releases=0`) and STOP ends it with exit 0; (b) too_long_msg: after READY a 200-byte boot message, longer than displayd's 64-byte boot buffer: displayd discards it (trace `display|boot|discard=too_long`) and the PING, the CONNECT and the STOP behind it are still served (before v1.13 the message stayed at the head of the queue, the loop spun on it and displayd had to be killed: exit 0x20000, ok=0); (c) stop_first: STOP in place of the LIST answer: displayd exits 0 without READY (trace `display|boot|stop=before_ready`; before v1.13 it took STOP for a failed LIST, traced source=list_failure, said READY and was killed: 0x20000); (d) ping_first: a PING before the listing is ignored (no PONG before READY) and the listing still decides the hold (locked=0, judged by the kernel's HOLDS and by displayd's own trace `display|hold|source=manifest|reason=-|locked=0`, required 3 times: control, too_long_msg, ping_first; before v1.13 the PING was the LIST answer and the screen held); (e) stop_at_connect: STOP in place of the CONNECT input answer: displayd exits 0 without READY (the stop trace, required twice with stop_first; before v1.13 it exited 0xe5). No compositor leaves a process, an object or a frame behind (failed= empty, processes_after=0, frames_delta=0, clean=1); any list_failure trace is forbidden, since every sub-case answers LIST with a valid listing or a STOP; 50 s (five sub-cases of at most 9 s each); exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=displayd_boot_loop",
+          "|ktest|displayd_boot_loop|case=control|ready=1|pong=1|holds=OK locked=0 releases=0|exit=0x0|ok=1",
+          "|ktest|displayd_boot_loop|case=too_long_msg|bytes=200|ready=1|pong=1|holds=OK locked=0 releases=0|exit=0x0|ok=1",
+          "|ktest|displayd_boot_loop|case=stop_first|ready=0|exit=0x0|ok=1",
+          "|ktest|displayd_boot_loop|case=ping_first|ready=1|holds=OK locked=0 releases=0|exit=0x0|ok=1",
+          "|ktest|displayd_boot_loop|case=stop_at_connect|ready=0|exit=0x0|ok=1",
+          "|ktest|displayd_boot_loop|failed=|processes_after=0|frames_delta=0|clean=1",
+          "display|boot|discard=too_long",
+          "display|boot|stop=before_ready",
+          "display|hold|source=manifest|reason=-|locked=0",
+          "|ktest|pass|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "display|hold|source=list_failure"
+        ],
+        "min_counts": {
+          "display|boot|stop=before_ready": 2,
+          "display|hold|source=manifest|reason=-|locked=0": 3
+        },
+        "timeout_s": 50
+      },
+      {
         "id": "TST-M6-MANIFEST-TOO-LARGE",
         "test_id": "TST-M6-MANIFEST-TOO-LARGE",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",
