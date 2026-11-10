@@ -1937,12 +1937,13 @@
     "الأعمدة لا تنعكس في RTL",
     "إعلان القارئ يختلف بين إقلاعين"
    ],
-   "acceptance": "ui_unit + ui_confirm (TST-M6-UI-CONFIRM، WP-80) + ui_pointer + listview_unit + listview_a11y + listview_rtl؛ KEYBOARD-NAV/A11Y-TREE/ARABIC-UI بلا انحدار",
+   "acceptance": "ui_unit + ui_confirm (TST-M6-UI-CONFIRM، WP-80) + ui_pointer + listview_unit + ui_panes (TST-M6-UI-PANES، WP-86) + listview_a11y + listview_rtl؛ KEYBOARD-NAV/A11Y-TREE/ARABIC-UI بلا انحدار",
    "test_ids": [
     "TST-M6-UI-UNIT",
     "TST-M6-UI-CONFIRM",
     "TST-M6-UI-POINTER",
     "TST-M6-LISTVIEW-UNIT",
+    "TST-M6-UI-PANES",
     "TST-M6-LISTVIEW-A11Y",
     "TST-M6-LISTVIEW-RTL"
    ],

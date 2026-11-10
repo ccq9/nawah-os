@@ -1063,6 +1063,20 @@
    ],
    "limits": "behaviour only for libui's menu navigation (WP-49, ui.md v1.6); the opening gestures (Shift+F10, the menu key, a right press), the double-click window and ignoring Tab while a menu is open are nawah's own; no text, metrics or assets are taken (ADR-0022)",
    "verified": false
+  },
+  {
+   "id": "S81",
+   "title": "W3C WAI-ARIA Authoring Practices Guide — Grid and Listbox patterns (keyboard interaction: Home/End/PageUp/PageDown, type-ahead, single and multiple selection)",
+   "url": "https://www.w3.org/WAI/ARIA/apg/patterns/grid/ ; https://www.w3.org/WAI/ARIA/apg/patterns/listbox/",
+   "version": "not read: www.w3.org is not in this session's allowed hosts (2026-11-10)",
+   "accessed": null,
+   "supports": [
+    "Home and End move to the first and last row; PageUp and PageDown move by a page",
+    "type-ahead moves the focus to the next row whose text starts with the typed characters",
+    "single and multiple selection with a focused row distinct from the selection"
+   ],
+   "limits": "behaviour only for libui's list view (WP-50, ui.md v1.8); key codes, narrator wording, the selection bitset and limits are nawah's own; no text, metrics or assets are taken (ADR-0022)",
+   "verified": false
   }
  ]
 }

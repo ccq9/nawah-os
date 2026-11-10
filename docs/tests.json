@@ -2228,7 +2228,18 @@
     "REQ-M6-006"
    ],
    "layer": "host_unit",
-   "oracle": "planned (M6, WP-50; ui.md v1.8): the virtualised list view keeps visible rows within bounds for 0, 1 and 10,000 rows, sorts stably by column, keeps single and multi selection across scrolling, and Home/End/PgUp/PgDn and type-ahead (Arabic included) move exactly as specified",
+   "oracle": "planned (M6, WP-50 = 50a; ui.md v1.8 §3.8): user/libui/tests/listview.rs on the host through the host runner (`cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu --test listview`, 9 tests): the visible rows stay within bounds for 0, 1 and 10,000 rows; Home/End/PgUp/PgDn move exactly and clamp at n; a stable sort by column keeps the selection on the same row ids; single and multi selection; type-ahead in Latin and Arabic moves the focus and never activates; the narrator lines `role=list …`, `row k/n <col>=\"<v>\" … state=…`, `select count=<m>` byte-exact in English and Arabic, trailing columns dropped whole with ` more=<j>` and never cut mid-character; `rows=0 state=empty` and `state=denied` distinct; in RTL the column order mirrors and numeric columns align to the trailing edge; bidi control characters in cells are shown, not obeyed (9 passed)",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-UI-PANES",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-86 = 50b; the next ui.md version at merge): user/libui/tests/panes.rs on the host (7 tests): F6 and Shift+F6 move between the two panes in order and keys reach only the focused pane; the toolbar is one tab stop, arrows move within it and it mirrors in RTL; the status bar's description bytes are exact (role=status, announced on request); TEXT_MAX 255 accepts 255 characters and refuses the 256th; mixed Arabic and Latin paths keep their separators in order (LRI-isolated segments); a header click sorts and a second click toggles the direction; a scroll-bar drag maps to top exactly and paint_into never indexes out of range (7 passed)",
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2239,7 +2250,7 @@
     "REQ-M6-006"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-50): a 500-row list browsed by keyboard and mouse wheel gives narrator lines `row k/n` with column values, byte-identical across two boots, and a screendump hash equal to the expected one",
+   "oracle": "planned (M6, WP-87 = 50c, moved from WP-50 on 2026-11-10): user/apps/listdemo's 500-row list browsed by keyboard and by scroll-bar clicks (mouse_move/mouse_button) gives narrator lines `row k/n` with column values equal to platform/pc-qemu/expect/listview-a11y.txt through tools/transcript.py, and a screendump hash equal to the expected one",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2250,7 +2261,7 @@
     "REQ-M6-006"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-50): with ui.lang=ar the column order and scroll bar mirror, numeric columns align to the trailing edge, horizontal arrows move visually, and a mixed Arabic and Latin path keeps its separators in order (screendump regions)",
+   "oracle": "planned (M6, WP-87 = 50c, moved from WP-50 on 2026-11-10): with ui.lang=ar the column order and scroll bar mirror, numeric columns align to the trailing edge, horizontal arrows move visually, and a mixed Arabic and Latin path keeps its separators in order (screendump regions)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
