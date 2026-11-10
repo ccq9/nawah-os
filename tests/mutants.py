@@ -609,7 +609,7 @@ MUTANTS = [
      "        if mode.selftest() {",
      "        if mode.selftest() || true {",
      ["TST-M6-INTERACTIVE-BOOT"], "the interactive boot takes the self-test exit: phase 1 prints m1_done (forbidden) and exits 33, not 0 by the lab's quit"),
-    # ---- M6 (WP-64 purge, M135; WP-73's M137 lands with authd): a restarted session ends the lost one's windows before its sign-in
+    # ---- M6 (WP-64 purge, M135; WP-73 revocation, M137): a restarted session ends the lost one's windows before its sign-in
     # screen (session.md v1.7), and auth revokes the sessions of a lost `session` client (auth.md
     # v1.2); SECURITY. M133, M134 and M136 stay reserved for WP-71. M135 skips the purge (the
     # condition never holds, `purge_restarted` stays referenced so the mutant builds
@@ -618,6 +618,10 @@ MUTANTS = [
      "                if self.conn_n[DISPLAY] == 1 && !self.purge_restarted() {",
      "                if self.conn_n[DISPLAY] == 0 && !self.purge_restarted() {",
      ["TST-M5-SESSION-LOSS"], "the restarted session shows its sign-in screen without LOGOUT to the compositor: no session|purge line, the spy keeps its window and is not told LOGGED_OUT, so phase 2 reads spy_after=ready:… and windows=2, not stopped:0x0 and windows=1"),
+    ("M137", "user/apps/authd/src/main.rs",
+     "                self.close_session(s);",
+     "                let _ = s;",
+     ["TST-M6-TOKEN-REVOKE"], "auth forgets nothing when the session client is lost (the trace still says revoked=1): the dead session's token stays alive under auth's handle, so tokens_after=2|revoked=0 and failed=session_token, not tokens_after=1|revoked=1|failed=none"),
     # ---- M6 (WP-67): displayd's start-up hold fails closed (display.md v1.12); SECURITY.
     # M133, M134 and M136 are reserved for WP-71. The mutant keeps every trace line and changes only the
     # decision: held only for a valid listing naming `session`, so every LIST failure starts
@@ -656,8 +660,8 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # never takes the self-test exit (M132).
             "M130", "M131", "M132",
             # M6 (WP-64, WP-73): a restarted session purges the lost one's windows (session.md v1.7,
-            # M135).
-            "M135",
+            # M135); auth revokes the tokens of a lost session client (auth.md v1.2, M137).
+            "M135", "M137",
             # M6 (WP-67): displayd's start-up hold fails closed on a LIST failure (display.md
             # v1.12): a fail-open hold lets keys reach a window before the session unlocks.
             "M147",
