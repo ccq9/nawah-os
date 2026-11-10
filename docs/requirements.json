@@ -1842,8 +1842,10 @@
     "TST-M6-PROC-LIST-REFUSALS",
     "TST-M6-SHELL-PS"
    ],
-   "implementation_status": "planned",
-   "evidence_refs": []
+   "implementation_status": "partial",
+   "evidence_refs": [
+    "evidence/20261110T044848Z-0111d8b6-001"
+   ]
   },
   {
    "id": "REQ-M6-004",
