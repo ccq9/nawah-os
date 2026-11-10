@@ -1,0 +1,52 @@
+cargo build --profile app --offline --manifest-path user/apps/hello/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/hello /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/hello.elf
+cargo build --profile app --offline --manifest-path user/apps/file_roundtrip/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/file_roundtrip /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/file_roundtrip.elf
+cargo build --profile app --offline --manifest-path user/apps/path_invalid/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/path_invalid /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/path_invalid.elf
+cargo build --profile app --offline --manifest-path user/apps/fd_leak/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/fd_leak /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/fd_leak.elf
+cargo build --profile app --offline --manifest-path user/apps/echo/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/echo /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/echo.elf
+cargo build --profile app --offline --manifest-path user/apps/launch/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/launch /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/launch.elf
+cargo build --profile app --offline --manifest-path user/apps/child/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/child /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/child.elf
+cargo build --profile app --offline --manifest-path user/apps/waiter/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/waiter /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/waiter.elf
+cargo build --profile app --offline --manifest-path user/apps/svcmgr/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/svcmgr /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/svcmgr.elf
+cargo build --profile app --offline --manifest-path user/apps/svc/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/svc /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/svc.elf
+cargo build --profile app --offline --manifest-path user/apps/authd/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/authd /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/authd.elf
+cargo build --profile app --offline --manifest-path user/apps/configd/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/configd /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/configd.elf
+cargo build --profile app --offline --manifest-path user/apps/netprobe/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/netprobe /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/netprobe.elf
+cargo build --profile app --offline --manifest-path user/apps/kbdprobe/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/kbdprobe /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/kbdprobe.elf
+cargo build --profile app --offline --manifest-path user/apps/netd/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/netd /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/netd.elf
+cargo build --profile app --offline --manifest-path user/apps/sh/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/sh /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/sh.elf
+cargo build --profile app --offline --manifest-path user/apps/fbprobe/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/fbprobe /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/fbprobe.elf
+cargo build --profile app --offline --manifest-path user/apps/inputd/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/inputd /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/inputd.elf
+cargo build --profile app --offline --manifest-path user/apps/displayd/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/displayd /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/displayd.elf
+cargo build --profile app --offline --manifest-path user/apps/winapp/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/winapp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/winapp.elf
+cargo build --profile app --offline --manifest-path user/apps/textprobe/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/textprobe /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/textprobe.elf
+cargo build --profile app --offline --manifest-path user/apps/narrator/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/narrator /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/narrator.elf
+cargo build --profile app --offline --manifest-path user/apps/dialog/Cargo.toml --target x86_64-unknown-none --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-user/x86_64-unknown-none/app/dialog /home/runner/work/nawah-os/nawah-os/build/pc-qemu/apps/dialog.elf
+cargo build --release --offline --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo/x86_64-unknown-uefi/release/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/pc-qemu/NAWAH.EFI
+cargo build --release --offline --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-neg --features inject_ebs_fail
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-neg/x86_64-unknown-uefi/release/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/pc-qemu/NAWAH-NEG.EFI
+cargo build --profile ktest --offline --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-ktest --features ktest
+cp /home/runner/work/nawah-os/nawah-os/build/pc-qemu/cargo-ktest/x86_64-unknown-uefi/ktest/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/pc-qemu/NAWAH-KTEST.EFI
