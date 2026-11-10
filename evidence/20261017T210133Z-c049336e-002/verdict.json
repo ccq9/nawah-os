@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261017T210133Z-c049336e-002",
+ "test_id": "TST-M0-E0-BOOT",
+ "verdict": "PASS",
+ "oracle": "UEFI 2.11 image entry + QEMU isa-debug-exit ((v<<1)|1): app writes 0x10 -> QEMU exit 33; serial carries OSX|<build_id>|e0|start, conout ok=1, done",
+ "expected": "exit=33; markers=['OSX|c049336ef977|e0|start|arch=x86_64|boot=uefi', 'OSX|c049336ef977|e0|conout|ok=1', 'OSX|c049336ef977|e0|done|exit=0x10']; forbidden=['|e0|conout|ok=0']",
+ "observed": "exit=33; serial_lines=7; missing=[]; forbidden_present=[]",
+ "inputs_digest": "f2bbdc7967534b7377e0942806eec26eb09fde88a6f18cbd02c194023e5f2805",
+ "inputs": {
+  "boot/e0/main.c": "3c4fcd65b04f783de7322208667e59b84a8a2fb72c737394580d221f3195bea3",
+  "boot/common/efi.h": "0ec0e776b6697f1853c2329f077a02748681b39c491647bca14e1ef826dc849e",
+  "boot/common/serial.h": "2c14bf0fb167ccf7fb5ccb1a6106a123485abe08ae0d84ec4437197d9819c7c2",
+  "platform/pc-qemu-e0/target.json": "4efc8957425bdc92eedcfecbecfbde8d536a7eee9e1f9209d019517af72f54ad",
+  "evidence/20261017T210133Z-c049336e-002/artifact/E0.EFI": "3902ebd78891e54b7c8929ebb59e07601eaef9f1e1989c11ffddba2bba43887b"
+ },
+ "claim_tag": "source_backed_fact",
+ "reason": "exit code and serial markers match oracle"
+}
