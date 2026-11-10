@@ -974,12 +974,23 @@ def substitute_host_arg(arg, disk_path, build_id, screen_path, serial_text, evid
     return out
 
 
+RUN_SLOT_RE = re.compile(r"[a-z]")
+
+
 def new_run_dir(purpose_slug):
+    """A fresh run directory <UTC second>-<rev[:8]>-<nnn>[-<slot>]. The slot (env NAWAH_RUN_SLOT,
+    one lowercase letter, WP-81) names the CI job that wrote the run: three jobs building the same
+    revision in the same second would otherwise each write <stamp>-<rev>-001, and their evidence
+    collides when the merge job adopts it."""
     rev, _ = source_identity()
     ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    slot = os.environ.get("NAWAH_RUN_SLOT", "")
+    if slot and not RUN_SLOT_RE.fullmatch(slot):
+        raise ValueError(f"NAWAH_RUN_SLOT {slot!r} is not one lowercase letter")
+    suffix = f"-{slot}" if slot else ""
     n = 1
     while True:
-        rid = f"{ts}-{rev[:8]}-{n:03d}"
+        rid = f"{ts}-{rev[:8]}-{n:03d}{suffix}"
         d = (SCRATCH or EVIDENCE) / rid
         if not d.exists():
             d.mkdir(parents=True); return rid, d
@@ -1353,7 +1364,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
 
 HOST_SUITES = {
     "M0": [
-        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 21 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL",
+        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 22 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, two runners in the same second getting distinct run ids through the job slot NAWAH_RUN_SLOT (one lowercase letter appended as -<slot>, anything else refused, no slot the id as before) that the evidence schemas accept, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL",
          "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
         {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision); every file ADR-0002 item 4 ports from Sol OS names its origin (commit d54f0a5 or the Sol ADR) in its header; the twelve-role team methodology is in place (docs/policies/team-methodology.md names every role, .claude/workflows/nawah-team.js opens with its meta literal, the twelve agent definitions carry name/description/tools/model; docs/PLAN-REVERSE.md exists with its seven sections, the fifth listing refuted and unverified claims; docs/PLAN-ANSWER.md exists with its eight sections)",
          "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md",
@@ -1362,7 +1373,7 @@ HOST_SUITES = {
                     "kernel/src/cell.rs", "kernel/src/ktest.rs", "tests/mutants.py", "tools/check-unsafe.sh",
                     "docs/policies/team-methodology.md", ".claude/workflows/nawah-team.js", "CLAUDE.md", "docs/PLAN-REVERSE.md", "docs/PLAN-ANSWER.md"], "input_globs": [".claude/agents/*.md"]},
         {"id": "TST-M0-003", "command": ["python3", "-I", "tests/test_ci_workflows.py"],
-         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; every guest suite of target.json has its verify step and vice versa, and every host suite outside the gates and M2 is non-empty and run (ADR-0026, D5); the verify job's limit is 55 minutes and its Toolchain step's cap 12, the M5 and M6 guest steps carry their own caps {M5 18, M6 15} and every step cap with a 20 % margin fits the limit (D4-V2), and M6, bounded by its own timeouts, fits its cap in the worst case (the sum of each phase's timeout_s under 15 minutes: 450 + 60 + 85 + 100 + 60 = 755 s; WP-74 and WP-81 change these values; M5's cap is a measured hang guard, outside that rule; uncapped steps are not budgeted); the suite case carrying the boot test id is the oracle of `project.py boot` even with QEMU arguments, two such cases are refused, boot_oracle carries the same lab self-test key as TST-M1-BOOT, and a kernel source other than ktest.rs names that key (PLAN-ANSWER §2.6, WP-45); every phase of TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT require the kernel's whole boot-mode line with the build id (OSX|${BUILD_ID}|kernel|boot_mode|mode=…|source=…|key=…|hv=…, the values per phase), never a fragment a process could print through SYS_TRACE, and the case caps `|kernel|boot_mode|` at one per boot (6); fw_cfg is reached only from bootmode.rs, ktest.rs and fwcfg.rs itself (exact identifiers of fwcfg.rs's public entries, the module name outside its two declaring files, the ports 0x510/0x511), and the guard reports a planted caller, an aliased import and a direct port write while ignoring a lookalike name (PLAN-ANSWER §3.4 item 3); the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; TST-M6-HOLD-FAIL-CLOSED is one case of the M6 suite on NAWAH-KTEST.EFI with the ktest key hold_fail_closed, exit 33 and 180 s, requires the ktest start line, its five verdict lines (reply and too_long held with keys=0 of keys_in=2, closed exit 0xe6, manifest locked=0 and locked_with_session=1, nothing left behind), displayd's held trace for each LIST failure branch (reply, too_long, closed) and both manifest decisions, forbids `holds=OK locked=0` and the unheld line of the reply and too_long branches, and no required marker of it is forbidden (WP-67); the mutants workflow runs the gates M2, M3, M4, M5 in order, checks the records strictly first and publishes every gate's report (28 cases) (28 cases, OK)",
+         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; every guest suite of target.json has its verify step and vice versa, and every host suite outside the gates and M2 is non-empty and run (ADR-0026, D5); the verify job's limit is 55 minutes and its Toolchain step's cap 12, the M5 and M6 guest steps carry their own caps {M5 18, M6 15} and every step cap with a 20 % margin fits the limit (D4-V2), and M6, bounded by its own timeouts, fits its cap in the worst case (the sum of each phase's timeout_s under 15 minutes: 450 + 60 + 85 + 100 + 60 = 755 s; WP-74 and WP-81 change these values; M5's cap is a measured hang guard, outside that rule; uncapped steps are not budgeted); the suite case carrying the boot test id is the oracle of `project.py boot` even with QEMU arguments, two such cases are refused, boot_oracle carries the same lab self-test key as TST-M1-BOOT, and a kernel source other than ktest.rs names that key (PLAN-ANSWER §2.6, WP-45); every phase of TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT require the kernel's whole boot-mode line with the build id (OSX|${BUILD_ID}|kernel|boot_mode|mode=…|source=…|key=…|hv=…, the values per phase), never a fragment a process could print through SYS_TRACE, and the case caps `|kernel|boot_mode|` at one per boot (6); fw_cfg is reached only from bootmode.rs, ktest.rs and fwcfg.rs itself (exact identifiers of fwcfg.rs's public entries, the module name outside its two declaring files, the ports 0x510/0x511), and the guard reports a planted caller, an aliased import and a direct port write while ignoring a lookalike name (PLAN-ANSWER §3.4 item 3); the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's new runs, skips a committed directory without ci identity already under evidence/ (no refusal, no receipt) and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; TST-M6-HOLD-FAIL-CLOSED is one case of the M6 suite on NAWAH-KTEST.EFI with the ktest key hold_fail_closed, exit 33 and 180 s, requires the ktest start line, its five verdict lines (reply and too_long held with keys=0 of keys_in=2, closed exit 0xe6, manifest locked=0 and locked_with_session=1, nothing left behind), displayd's held trace for each LIST failure branch (reply, too_long, closed) and both manifest decisions, forbids `holds=OK locked=0` and the unheld line of the reply and too_long branches, and no required marker of it is forbidden (WP-67); the mutants workflow runs the gates M2, M3, M4, M5 in order, checks the records strictly first and publishes every gate's report (28 cases) (28 cases, OK)",
          "inputs": ["tests/test_ci_workflows.py", "tools/project.py", "platform/pc-qemu/target.json", "kernel/build.rs"], "input_globs": [".github/workflows/*.yml", "kernel/src/**/*.rs"]},
         {"id": "TST-M0-004", "command": ["python3", "-I", "tests/test_pre_merge.py"],
          "oracle": "tools/pre-merge.sh runs validate-records --strict under set -euo pipefail with no pipe after the validator and exits with its code: on a copy of the repository as committed it exits 0 and prints 'pre-merge: OK'; with one input of a host test edited after its run (a stale verdict) it exits 50 and prints no OK (3 cases, OK)",
@@ -1371,7 +1382,7 @@ HOST_SUITES = {
          "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (156 s start to finish in the slowest committed TST-M5-ELEVATE run, evidence 20261109T104517Z-dece70c2-001), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided; stage_of maps M129 to M5 and M130 onwards to M6, and every mutant's anchor occurs exactly once in its file; WP-45's boot-mode mutants M130 (hypervisor_present forced true), M131 (any key value is ok) and M132 (the interactive boot takes the self-test exit) are registered as SECURITY mutants of the M6 stage killed by TST-M6-INTERACTIVE-BOOT (no M6 gate runs them yet: WP-66 proposal), and a mutant whose declared killer boots the release image NAWAH.EFI gets that image built before its killers run; WP-67's mutant M147 (displayd's start-up hold held only for a listing naming `session`, so every LIST failure starts unheld while the trace still says locked=1) is a SECURITY mutant of the M6 stage on displayd killed by TST-M6-HOLD-FAIL-CLOSED, a case of the M6 suite on the test image, and changes the decision only, never a trace line (11 cases, OK)",
          "inputs": ["tests/test_mutants_harness.py", "tests/mutants.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"]},
         {"id": "TST-M0-007", "command": ["python3", "-I", "tests/test_evidence_provenance.py"],
-         "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity (required for verification-runner, forbidden at 1.0.0) and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; the run's tree identity is taken once when the run begins, so the records attach_evidence writes never make it dirty; source_identity ignores evidence/, build/ and state/ and names the dirty paths as they are, spaces and non-ASCII letters included; a 1.1.0 PASS without import.json is a strict error whatever worker run.json declares, unless the evidence is native to the validating CI run (run id, attempt and sha all equal its ci identity, none empty); a present import.json is checked for every worker and verdict against its own schema (evidence-import: every field required, conclusion success, workflow verify or mutants, importer from the enumeration) and must match the run's ci identity on run id, attempt, head sha and workflow, and a malformed receipt is a named error; 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is not <digits> or mutants-<digits> matched whole, is blocked when gh is not on PATH, and on success writes import.json (naming the importer's worker and identity) beside an untouched run.json; the evaluator-outside-inputs staleness gap is not covered here (WP-66 and TST-M6-STALE-GATE are proposals of PLAN-ANSWER §1.3, not records yet) (26 cases, OK)",
+         "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity (required for verification-runner, forbidden at 1.0.0) and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; the run's tree identity is taken once when the run begins, so the records attach_evidence writes never make it dirty; source_identity ignores evidence/, build/ and state/ and names the dirty paths as they are, spaces and non-ASCII letters included; a 1.1.0 PASS without import.json is a strict error whatever worker run.json declares, unless the evidence is native to the validating CI run (run id, attempt and sha all equal its ci identity, none empty); a present import.json is checked for every worker and verdict against its own schema (evidence-import: every field required, conclusion success, workflow verify or mutants, importer from the enumeration) and must match the run's ci identity on run id, attempt, head sha and workflow, and a malformed receipt is a named error; 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is not <digits> or mutants-<digits> matched whole, is blocked when gh is not on PATH, skips every directory of the branch already under evidence/ whatever its identity (the branch holds the whole committed tree: older 1.0.0 directories without a ci object and directories of other runs are skipped, never checked, never given a receipt), refuses the whole run, writing nothing and leaving no temporary copy, when any NEW run directory's run.json carries no ci identity or a ci run id or attempt that differs from gh's answer for the run (the directory named; committed directories beside it stay untouched), and on success writes import.json (naming the importer's worker and identity) beside an untouched run.json of each new directory only; adopt-native --from <dir> (repeatable; WP-81, rule 5's native exemption) adopts a set of run directories without gh and without import.json, re-pointing their tests' verdicts as a native run does, skipping and counting every directory already under evidence/ (each job's artifact holds the whole committed tree; a skipped directory is never re-attached and is no duplicate, also when it repeats across sources) and failing closed like the validator's native rule: only with GITHUB_ACTIONS=true and GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT and GITHUB_SHA all non-empty, every NEW directory carrying a ci identity equal to them on run id, attempt and sha, every --from holding at least one run directory, no new run id repeating across the sources, and at least one new directory; off the runner or with any of the three unset, a set mixing another run, attempt or sha, a set whose sha differs from GITHUB_SHA, an environment naming another run or attempt, a new directory without ci identity, a new directory of another run next to committed ones, a duplicate, an empty set (named) or nothing new to adopt adopts nothing and leaves docs/tests.json unchanged; a set of three slots -a/-b/-c passes strict validation inside its own run, and a set mixing committed older directories (no ci identity, or another run's) with this run's slots adopts the slots alone; the evaluator-outside-inputs staleness gap is not covered here (WP-66 and TST-M6-STALE-GATE are proposals of PLAN-ANSWER §1.3, not records yet) (46 cases, OK)",
          "inputs": ["tests/test_evidence_provenance.py", "tools/project.py", "docs/automation.json"], "input_globs": ["docs/schemas/*.schema.json"]},
     ],
 }
@@ -1746,12 +1757,23 @@ def cmd_import_ci_evidence(run_id: str) -> int:
     try:
         subprocess.run(["git", f"--work-tree={tmp}", "checkout", "-q", f"ci/{run_id}", "--", "evidence"], cwd=ROOT, check=True,
                        env={**os.environ, "GIT_INDEX_FILE": str(tmp / ".index")})
-        for d in sorted((tmp / "evidence").iterdir()):
-            if not (d / "verdict.json").exists():
-                continue
+        dirs = [d for d in sorted((tmp / "evidence").iterdir()) if (d / "verdict.json").exists()]
+        # The branch holds the whole committed evidence tree (verify.yml, mutants.yml: `git add -f
+        # evidence/` on the full checkout): a directory already under evidence/ is skipped as before,
+        # whatever its identity. Every NEW directory must be this run's, attempt included, before
+        # anything is written (WP-81): one of another run or attempt would receive this run's
+        # receipt and fail the validator only later.
+        new = [d for d in dirs if not (EVIDENCE / d.name).exists()]
+        want = (run_id.split("-")[-1], str(info.get("attempt")))
+        for d in new:
+            have = run_ci_identity(d)
+            if have is None or have[:2] != want:
+                print(f"import refused: {d.name} names run/attempt {have[:2] if have else None}, not {want} as gh reports for run {run_id}; nothing imported")
+                return E_VALIDATION
+        if len(dirs) > len(new):
+            print(f"skipped {len(dirs) - len(new)} run(s) already under evidence/")
+        for d in new:
             dest = EVIDENCE / d.name
-            if dest.exists():
-                continue
             shutil.copytree(d, dest)
             v = load_json(dest / "verdict.json")
             # run.json stays exactly as the runner wrote it; the import's own record is import.json
@@ -1768,6 +1790,76 @@ def cmd_import_ci_evidence(run_id: str) -> int:
         if tmp.exists():
             print(f"warning: the temporary copy {tmp} could not be removed")
     print(f"imported {imported} run(s) from CI run {run_id}")
+    return E_OK
+
+
+def run_ci_identity(d):
+    """(run id, attempt, sha) as strings from <d>/run.json's ci object, or None when the file is
+    unreadable or carries no ci identity (an empty value is no identity)."""
+    try:
+        ci = load_json(d / "run.json").get("ci")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(ci, dict):
+        return None
+    ident = tuple(str(ci.get(k) if ci.get(k) is not None else "") for k in ("run_id", "run_attempt", "sha"))
+    return ident if all(ident) else None
+
+
+def cmd_adopt_native(sources) -> int:
+    """Adopt the run directories the verify jobs of this very CI run wrote (WP-81, ADR-0026 rule 5:
+    native evidence carries no import.json). No gh, no receipt. Each job's evidence/ artifact holds
+    the whole committed tree too: a directory already under evidence/ is skipped and counted, never
+    adopted again, whatever its identity. It fails closed like the validator's native rule: only on
+    GitHub Actions with GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT and GITHUB_SHA all set, every NEW
+    directory naming exactly that run id, attempt and sha, every --from holding at least one run
+    directory, no new run id repeating across the sources, and at least one new directory.
+    Anything else adopts nothing. Each verdict is attached like a native run's."""
+    import shutil
+    found, seen, skipped = [], {}, 0
+    for src in sources:
+        src = Path(src)
+        if not src.is_dir():
+            print(f"adopt refused: {src} is not a directory"); return E_VALIDATION
+        runs = [d for d in sorted(src.iterdir()) if (d / "verdict.json").exists()]
+        if not runs:
+            print(f"adopt refused: {src} holds no run directory (an empty artifact adopts nothing)"); return E_VALIDATION
+        for d in runs:
+            if (EVIDENCE / d.name).exists():
+                skipped += 1
+                continue
+            if d.name in seen:
+                print(f"adopt refused: run id {d.name} appears in {seen[d.name]} and {src}"); return E_VALIDATION
+            seen[d.name] = src
+            found.append(d)
+    if skipped:
+        print(f"skipped {skipped} run(s) already under evidence/")
+    if not found:
+        print("adopt refused: nothing new to adopt (every run directory is already under evidence/)"); return E_VALIDATION
+    env = os.environ
+    names = ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA")
+    expect = [env.get(k, "") for k in names]
+    if env.get("GITHUB_ACTIONS") != "true" or not all(expect):
+        print(f"adopt refused: not inside a CI run (GITHUB_ACTIONS=true and {', '.join(names)} all set); native evidence is adopted only by its own run")
+        return E_VALIDATION
+    first = None
+    for d in found:
+        have = run_ci_identity(d)
+        if have is None:
+            print(f"adopt refused: {d.name} carries no ci identity (run id, attempt, sha)"); return E_VALIDATION
+        first = first or (have, d.name)
+        if have != first[0]:
+            print(f"adopt refused: {d.name} names run/attempt/sha {have}, {first[1]} names {first[0]}"); return E_VALIDATION
+        for name, want, got in zip(("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA"), expect, have):
+            if want != got:
+                print(f"adopt refused: {d.name} names {got!r} where {name} is {want!r}"); return E_VALIDATION
+    for d in found:
+        dest = EVIDENCE / d.name
+        shutil.copytree(d, dest)
+        v = load_json(dest / "verdict.json")
+        attach_evidence(v["test_id"], d.name, v["verdict"])
+        print(f"adopted {d.name} {v['test_id']} {v['verdict']}")
+    print(f"adopted {len(found)} run(s) of CI run {first[0][0] if first else '-'} attempt {first[0][1] if first else '-'}")
     return E_OK
 
 
@@ -1921,6 +2013,8 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("validate-records"); s.add_argument("--strict", action="store_true"); sub.add_parser("reverify-host")
     s = sub.add_parser("import-ci-evidence"); s.add_argument("--run", required=True)
+    s = sub.add_parser("adopt-native", help="adopt this CI run's own run directories (merge job; no gh, no import.json)")
+    s.add_argument("--from", dest="sources", action="append", required=True, help="a directory of run directories; repeatable")
     s = sub.add_parser("check-commit", help="the head commit names only an active or done work item (DEC-004)"); s.add_argument("--rev", default="HEAD")
     s = sub.add_parser("status"); s.add_argument("--json", action="store_true")
     for n in ("build", "boot"):
@@ -1948,6 +2042,7 @@ def main(argv=None):
     if a.cmd == "checkpoint": return cmd_checkpoint(a.note)
     if a.cmd == "reverify-host": return cmd_reverify_host()
     if a.cmd == "import-ci-evidence": return cmd_import_ci_evidence(a.run)
+    if a.cmd == "adopt-native": return cmd_adopt_native(a.sources)
     if a.cmd == "check-commit": return cmd_check_commit(a.rev)
     if a.cmd == "preflight": return cmd_preflight(a.suite, a.only)
     if a.cmd == "hygiene": return cmd_hygiene()
