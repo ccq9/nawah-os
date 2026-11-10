@@ -74,7 +74,7 @@
     "desktopd يشغّل التطبيقات مباشرة ويمسك مقابضها"
    ],
    "recommendation": "الخيار الأول: الثاني يضعف الهوية ويصعّب تنظيف الخروج",
-   "impact": "يحدد ADR-0023 وservices.md v1.12 وsession.md v1.8 (WP-47) وكل أداة تُشغَّل من ابدأ",
+   "impact": "يحدد ADR-0023 وservices.md v1.13 وsession.md v1.8 (WP-47) وكل أداة تُشغَّل من ابدأ",
    "blocked_task_ids": [
     "WP-47",
     "WP-48",
@@ -190,9 +190,10 @@
    "recommendation": "A: لا تدخل هوية المستخدم النواة، والصلاحية مقبض كسائر الكائنات، وهو قابل للتوسيع إلى B بإعطاء مقبض أوسع دون كسر الـABI، بخلاف العكس",
    "impact": "يحدد شكل ABI النداء process_list ورفضه في WP-69 (TST-M6-PROC-LIST-REFUSALS) قبل تجميده، ومسار مدير المهام في WP-58 لعرض عمليات الآخرين وإنهائها؛ WP-46 لا تتأثر (لا process_list فيها)",
    "blocked_task_ids": [
-    "WP-69"
+    "WP-69",
+    "WP-70"
    ],
-   "requested_at": "2026-11-09T23:00:00Z",
+   "requested_at": "2026-11-09T21:47:00Z",
    "status": "open"
   }
  ]

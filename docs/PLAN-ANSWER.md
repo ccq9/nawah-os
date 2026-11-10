@@ -314,7 +314,7 @@ sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failu
 - **انحدار M5 بآثار مطابقة:** `TST-M5-ELEVATE`، و`LOGIN-SCREEN`، و`LOCK-SURVIVES`، و`LOCK-HANG`، و`SESSION-HANG`، و`SESSION-DEADLINE`، و`AUTH-INPUT-ISOLATED`، و`LOCK-AUTH-HANG`، و`UNLOCK-AUTH-HANG`، و`SVC-WATCHDOG`.
 
 **تحديث 2026-11-09 (قرار المدير بعد تقرير تصميم مهندس الخدمات؛ السجلات حاكمة):**
-- قُسمت WP-64. بقي فيها 64a1: التطهير P-A (`session.md` v1.7) وإلغاء الرموز V2 (`auth.md` v1.2). انتقل المراقب W-A وrestart=always (G3) إلى WP-71 (`session.md` v1.8، `services.md` v1.12)، والشاشات العربية إلى WP-72 (`session.md` v1.9، `ui.md` v1.6).
+- قُسمت WP-64. بقي فيها التطهير P-A (`session.md` v1.7). **تصحيح 2026-11-10:** إلغاء الرموز V2 (`auth.md` v1.2) صار WP-73 لخط الميزانية؛ انتقل المراقب W-A وrestart=always (G3) إلى WP-71 والشاشات العربية إلى WP-72، وأرقام إصداراتهما تُعيَّن عند الدمج (PLAN.md:132) لأنهما خارج المسار الحرج.
 - إلغاء الرموز عند موت **أي** عميل، كما كُتب في D5 أعلاه، يُبطل رموز sh. لذلك اختير V2: يُلغى فقط ما فتحه العميل `session`.
 - التطهير (D5-B) يناقض أوراكل `TST-M5-SESSION-LOSS`، فمراحله اللاحقة تفترض بقاء نافذة spy بعد الإعادة. يُعاد كتابة الأوراكل في WP-64 بعميل يعيد الاتصال، وهذا تغيير يفرضه العقد، لا إضعاف.
 - الحَكَم «خمس عمليات قتل» لا يميّز بين on-failure وalways. صار max_restarts+1 قتلًا مباشرًا.
@@ -593,7 +593,7 @@ sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failu
 - **WP-69 (46a2):** process_list (46) بنطاق المقبض. محجوبة بـDEC-027 (ظهور العمليات بين المستخدمين، التوصية A).
 - **WP-70 (46b):** المحاسبة، وsystem_info v2، و`ps`.
 - **ما نُسخ:** «16 حالة» وترقيم النداءات الواردان في تقرير التصميم تحل محلهما هذه السجلات (`docs/work-items.json`: WP-46 وWP-69 وWP-70؛ `docs/tests.json`: TST-M6-JOB-KILL وTST-M6-PROC-LIST-REFUSALS).
-- **الغرفة النظيفة:** مفهوم المهمة يتبع الدلالات المنشورة لمجموعات العمليات في POSIX ولكائن job في Zircon، لا واجهة Job Object في Windows ولا أسماءها. مصدرا المفهومين غير مسجلين بعد في `docs/sources.json` (فيه S39 للمقابض وحده).
+- **الغرفة النظيفة:** مفهوم المهمة يتبع الدلالات المنشورة لمجموعات العمليات في POSIX ولكائن job في Zircon، لا واجهة Job Object في Windows ولا أسماءها. مصدرا المفهومين سُجّلا في 2026-11-09 في `docs/sources.json`: S78 (مجموعات العمليات في POSIX) وS79 (مهام Zircon)، بجانب S39 للمقابض، وتُحقِّق منهما المدير في 2026-11-10 بقراءة صفحاتهما بعد فتح المضيفَين في بيئة الجلسة (sources.json: verified).
 
 ---
 
@@ -699,8 +699,8 @@ sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failu
 | الـcompositor | فرع `held=1` من STATUS قبل الدخول في `TST-M6-INTERACTIVE-BOOT`، و`TST-M6-HOLD-FAIL-CLOSED` (مقترح، ktest): LIST أطول من 1024 بايتًا أو قناة مغلقة، والمتوقع بدء محجوب | WP-45 (2026-11-09: انتقل TST-M6-HOLD-FAIL-CLOSED إلى WP-67) |
 | النواة (`fs_authority`) | config تفتح `/SYSTEM/SERVICES.TXT` و`/SYSTEM/USERS.DB` للكتابة فتلقى `ERR_ACCESS`، بعد تعديل ADR-0020 | مع تعديل ADR-0020 |
 | المدير | LOAD خارج `/SYSTEM` يلقى ERR ACCESS (ktest)، وسلسلتا البيان في الكود تبدآن بـ`/SYSTEM/` (فحص ثابت) | WP-45 |
-| authd | ELEVATE إلى خدمة تمسك النسخة، ثم قتل الجلسة، ثم WHOAMI بالنسخة يلقى ERR ACCESS، ثم LOGIN بعد عشر عمليات قتل | WP-64 |
-| sessiond | مراحل `TST-M6-SESSION-WATCHDOG` (القسم 2.3)، وكلمة PONG في دالة الحلقة الرئيسية وحدها (فحص ثابت) | WP-64 |
+| authd | ELEVATE إلى خدمة تمسك النسخة، ثم قتل الجلسة، ثم WHOAMI بالنسخة يلقى ERR ACCESS، ثم LOGIN بعد عشر عمليات قتل | WP-73 (عدّ الرموز الحية) ثم WP-71 (WHOAMI بالنسخة؛ صُحّح 2026-11-10) |
+| sessiond | مراحل `TST-M6-SESSION-WATCHDOG` (القسم 2.3)، وكلمة PONG في دالة الحلقة الرئيسية وحدها (فحص ثابت) | WP-71 (صُحّح 2026-11-10) |
 | المدير | فروع `TST-M6-LAUNCH-DENIED`: id=session/desktop/narrator، وdep=auth، والكتابة إلى `/SYSTEM/APPS` | WP-47 |
 | الـcompositor | فرع `TST-M6-SHELL-AUTHORITY`: لا حدث إلى الصدفة أثناء الحجب، وACTIVATE على نافذة الجلسة يلقى ERR ACCESS | WP-48 |
 | النواة | `TST-M6-POWER-DENIED` | WP-51 |
@@ -716,20 +716,20 @@ sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failu
 | M130 | نعم | قيمة مفتاح غائبة أو مجهولة تختار الفحص الذاتي | المراحل السلبية في INTERACTIVE-BOOT | WP-45 |
 | M131 | نعم | حذف بوابة بت المشرف | حالة `-cpu qemu64,-hypervisor` | WP-45 |
 | M132 | نعم | عودة `session_in_manifest` إلى الفشل المفتوح | `TST-M6-HOLD-FAIL-CLOSED` | WP-45 (2026-11-09: الطفرة انتقلت إلى WP-67؛ M130-M132 مسجلة في tests/mutants.py لنمط الإقلاع، وM132 فيها «الإقلاع التفاعلي لا يأخذ خروج الفحص الذاتي»، فتأخذ طفرة الحجز المعرّف الحر التالي في tests/mutants.py عند الدمج؛ M133-M137 في هذا الجدول مخططة لـWP-64، فالحر التالي تخطيطًا M147) |
-| M133 | نعم | حذف PONG أو نقله إلى `request()` | فرع التجميد في SESSION-WATCHDOG | WP-64 |
-| M134 | لا | W ≤ مجموع المهل | `TST-M6-MANIFEST-LINT` | WP-64 |
-| M135 | نعم | تخطي التطهير عند البدء | المرحلة 3 في SESSION-WATCHDOG | WP-64 |
-| M136 | نعم | حذف `watchdog=` من سطر session | SESSION-WATCHDOG | WP-64 |
-| M137 | نعم | حذف الإلغاء عند `PEER_CLOSED` في authd | حالة ktest في 3.2 | WP-64 |
-| M138 | لا | قبول `ui.lang` خارج القائمة | SESSION-AR | WP-64 |
-| M139 | نعم | Value بأساس اتجاه الحوار (مشروط بـB1) | اختبار libui المضيف | WP-64 |
+| M133 | نعم | حذف PONG أو نقله إلى `request()` | فرع التجميد في SESSION-WATCHDOG | WP-71 |
+| M134 | لا | W ≤ مجموع المهل | `TST-M6-MANIFEST-LINT` | WP-71 |
+| M135 | نعم | تخطي التطهير عند البدء | `TST-M5-SESSION-LOSS` المرحلة 2 (صُحّح 2026-11-10) | WP-64 |
+| M136 | نعم | حذف `watchdog=` من سطر session | SESSION-WATCHDOG | WP-71 |
+| M137 | نعم | حذف الإلغاء عند `PEER_CLOSED` في authd | حالة ktest في 3.2 | WP-73 |
+| M138 | لا | قبول `ui.lang` خارج القائمة | SESSION-AR | WP-72 |
+| M139 | نعم | Value بأساس اتجاه الحوار (مشروط بـB1) | اختبار libui المضيف | WP-72 |
 | M140–M142 | نعم | حذف البادئة `app:`، وحذف `job_kill` عند الخروج، وحذف القائمة البيضاء | LAUNCH-DENIED، LOGOUT-KILLS | WP-47 |
 | M143–M144 | نعم | حذف فحص تسجيل SHELL، وإرسال الأحداث أثناء الحجب | SHELL-AUTHORITY | WP-48 |
 | M145–M146 | نعم | classify بالنص بعد LFN، وحذف فحص وجهة rename | FAT-FUZZ، RENAME-AUTHORITY | WP-52 |
 
 **تحديث 2026-11-09 (قرار المدير؛ السجلات حاكمة، والمعرّف يُثبَّت في tests/mutants.py عند الدمج):**
-- WP-64 تأخذ M135 (تخطي التطهير) وM137 (حذف الإلغاء)، والإلغاء صار مقصورًا على عميل `session` (V2).
-- WP-71 تأخذ M133 وM134 وM136، ومعها M148-M150: always تُعامَل on-failure، وموعد المراقب عند 2W، والتطهير يفشل مفتوحًا.
+- WP-64 تأخذ M135 (تخطي التطهير) وM137 (حذف الإلغاء)، والإلغاء صار مقصورًا على عميل `session` (V2). 2026-11-10: M137 انتقلت مع الإلغاء إلى WP-73، وM150 (التطهير يفشل مفتوحًا) انتقلت من WP-71 إلى WP-64.
+- WP-71 تأخذ M133 وM134 وM136، ومعها M148 وM149: always تُعامَل on-failure، وموعد المراقب عند 3W (الحد الأعلى 2W+1000 يقتلها، وعند 2W كانت تنجو؛ صُحّح 2026-11-10). M150 (التطهير يفشل مفتوحًا) انتقلت إلى WP-64 في 2026-11-10.
 - WP-46 تأخذ M151-M153: job_kill بلا WRITE، وابن النداء 20 في المهمة الجذر، وحذف فحص المهمة المقتولة من spawn.
 - WP-69 تأخذ M154-M156: حذف مرشّح الشجرة، وحذف فحص READ، وحذف فحص المؤشر.
 - M147 لـWP-67، وM138-M139 تتبعان الشاشات إلى WP-72 ولم يُعَد قرارهما.
@@ -745,8 +745,8 @@ sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failu
 | 1 | قرص الإصدار هو قرص المختبر: admin/lab-admin-1، وكل ELF، و`SVC-SH.TXT` (`project.py:980-1031`) | demonstrated | حد معلن في WP-45، وصورة release بلا حسابات بحارس يُكتب فاشلًا في أول هدف release (القسم 5.3، البند 3) | `TST-M9-RELEASE-NO-LAB-USERS` (NOT_RUN) |
 | 2 | مفتاح fw_cfg يصير اسم بيان أو اختبار | hypothesis | قيمة ثابتة وثابتان مترجمان، وجدول ktest لا يُربط في الإصدار | مراحل INTERACTIVE-BOOT السلبية، M130 |
 | 3 | لمس 0x510 و0xF4 على عتاد حقيقي | hypothesis | بوابة CPUID قبل fw_cfg في WP-45، وحراسة 0xF4 قبل Beta | حالة `-hypervisor`، وفحص ثابت لا يستدعي fwcfg خارج البوابة |
-| 4 | الجلسة المعادة تكشف نوافذ المستخدم السابق | hypothesis (الآلية مؤكدة: `sessiond:783-801`؛ `display.md:42`) | تطهير عند البدء (WP-64)، وقتل مهمة الجلسة (WP-47) | SESSION-WATCHDOG المرحلة 3، M135 |
-| 5 | رموز auth تبقى بعد موت الجلسة | hypothesis (الآلية مؤكدة: `authd:110-117` و`697-700`) | الإلغاء عند `PEER_CLOSED` | ktest في 3.2، M137 |
+| 4 | الجلسة المعادة تكشف نوافذ المستخدم السابق | hypothesis (الآلية مؤكدة: `sessiond:783-801`؛ `display.md:42`) | تطهير عند البدء (WP-64)، وقتل مهمة الجلسة (WP-47) | `TST-M5-SESSION-LOSS` المرحلة 2 (صُحّح 2026-11-10)، M135 |
+| 5 | رموز auth تبقى بعد موت الجلسة | hypothesis (الآلية مؤكدة: `authd:110-117` و`697-700`) | الإلغاء عند `PEER_CLOSED` | ktest في 3.2، M137 (WP-73 منذ 2026-11-10) |
 | 6 | W قصير يقتل جلسة سليمة | hypothesis (المبدأ مؤكد) | قاعدة W في `session.md` | SESSION-WATCHDOG المرحلة 1 |
 | 7 | PONG من الحلقات الداخلية يعطّل المراقب | hypothesis | PONG من الحلقة الرئيسية وحدها | فحص ثابت، M133 |
 | 8 | given_up يحجب الدخول دائمًا | hypothesis | لا given_up دائم لسطر الجلسة (القسم 5.3، البند 10) | خمس عمليات قتل متتالية |

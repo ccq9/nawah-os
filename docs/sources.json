@@ -1024,31 +1024,31 @@
   },
   {
    "id": "S78",
-   "title": "IEEE Std 1003.1-2024 (POSIX.1) — Process groups: setpgid, killpg, kill with a negative pid",
+   "title": "IEEE Std 1003.1-2024 (POSIX.1, Issue 8) — Process groups: Base Definitions 3 (Process Group, Process Group Lifetime), setpgid, killpg, kill with a negative pid",
    "url": "https://pubs.opengroup.org/onlinepubs/9799919799/",
-   "version": "2024 edition",
-   "accessed": null,
+   "version": "The Open Group Base Specifications Issue 8, IEEE Std 1003.1-2024 (basedefs/V1_chap03.html §3.280, §3.283; functions/killpg.html; functions/setpgid.html), read 2026-11-10",
+   "accessed": "2026-11-10",
    "supports": [
-    "a process inherits its process group from its parent at creation",
-    "a signal can be sent to every member of a process group in one operation",
-    "a process group identifier outlives no member of the group"
+    "a newly created process joins the process group of its creator (Base Definitions 3.280 Process Group)",
+    "a process group permits the signaling of related processes: killpg(pgrp, sig) sends sig to the whole group and equals kill(-pgrp, sig) (3.280; killpg)",
+    "a process group's lifetime begins when it is created and ends when the last remaining process leaves it (3.283 Process Group Lifetime)"
    ],
    "limits": "behaviour and vocabulary only (group membership inherited at creation; one operation reaches the whole group); nawah's Job is a kernel object with handle rights, not a pid-addressed group, and nothing is ported from any implementation",
-   "verified": false
+   "verified": true
   },
   {
    "id": "S79",
-   "title": "Fuchsia documentation — Kernel concepts: jobs, processes and threads (job tree, kill semantics)",
+   "title": "Fuchsia documentation — Zircon kernel concepts (jobs, processes), zx_task_kill, process and job objects",
    "url": "https://fuchsia.dev/fuchsia-src/concepts/kernel/concepts",
-   "version": "page read 2026-11-09",
-   "accessed": null,
+   "version": "pages read 2026-11-10 (CC BY 4.0): fuchsia-src/concepts/kernel/concepts, fuchsia-src/reference/syscalls/task_kill, fuchsia-src/reference/kernel_objects/process and /job; no document version shown",
+   "accessed": "2026-11-10",
    "supports": [
-    "a job is a container of processes and child jobs forming a tree; killing a job kills everything beneath it",
-    "a process is created inside a job and cannot move to another job",
-    "rights on the job handle govern what a holder may do"
+    "processes are owned by jobs and jobs by parent jobs up to the root job created by the kernel at boot (a tree); without a job handle a thread cannot create another process or job (kernel concepts)",
+    "killing a job kills it and its children recursively until the entire task tree rooted at the handle is dead, and a killed job can no longer be used to create new processes (zx_task_kill)",
+    "a process is created within a job and owned by it, for resource and permission limits and lifetime control (process and job objects); no statement about moving a process between jobs was found, so nawah states its own rule"
    ],
-   "limits": "public concept documentation used for semantics only (tree, kill-the-subtree, no migration, handle rights); no Zircon code, names or ABI are ported; nawah's syscall numbers, error codes and record layout are its own (ADR-0022 applies to every external source)",
-   "verified": false
+   "limits": "public concept documentation used for semantics only (tree, kill-the-subtree, the pages state no rule about moving a process between jobs, so nawah's rule is its own, handle rights); no Zircon code, names or ABI are ported; nawah's syscall numbers, error codes and record layout are its own (ADR-0022 applies to every external source)",
+   "verified": true
   }
  ]
 }
