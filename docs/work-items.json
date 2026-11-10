@@ -4865,7 +4865,8 @@
     "mutants M162 (the allowlist branch `if false`), M163 (the CFG prefix test dropped), M164 (the A|B extension test dropped), all SECURITY",
     "docs/security/threat-model.md:102 and RSK-019 (docs/risks.json) updated when this item closes",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 estimate (security engineer, unmeasured): about 55-70 tool calls / 60-75 min; under the line"
+    "2026-11-10 estimate (security engineer, unmeasured): about 55-70 tool calls / 60-75 min; under the line",
+    "2026-11-10 activated after the security engineer's design report (the A-min allowlist in fs_authority); dependency WP-45 done; the estimate against the budget line is recorded above (about 55-70 calls / 60-75 min)"
    ],
    "acceptance": "TST-M6-CONFIG-WRITE-SCOPE PASS on CI (exit 0x46 with its six required lines); TST-M4-CONFIG-PERSIST and TST-M5-FILE-AUTHORITY re-run and PASS; M162-M164 killed; validate-records --strict 0 errors",
    "test_ids": [
@@ -4879,9 +4880,10 @@
     "python3 tools/project.py test --target pc-qemu --suite M5",
     "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
