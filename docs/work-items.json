@@ -3199,7 +3199,8 @@
     "WP-73",
     "WP-77",
     "WP-78",
-    "WP-82"
+    "WP-82",
+    "WP-84"
    ],
    "inputs": [
     "DEC-005",
@@ -3224,7 +3225,8 @@
     "2026-11-09 services.md promise renumbered v1.12 -> v1.13: v1.12 goes to WP-71 (the session line's restart=always); numbers in the records are planning order and a package takes the next free number at merge (PLAN.md:132); the later services.md numbers of WP-57, WP-58, WP-59 and WP-61 are not cascaded now",
     "2026-11-10 the 2026-11-09 renumbering (session.md v1.8 -> v1.10) reverted per docs/PLAN.md:132: this package is on the critical path and keeps its planning number session.md v1.8; the parallel WP-71 and WP-72 take theirs at merge",
     "2026-11-10 services.md: v1.12 is WP-46's (the manager's ninth initial handle, the root job); WP-71's services.md number is assigned at merge; this package keeps v1.13",
-    "2026-11-10 services.md renumbered v1.13 -> v1.14: v1.13 is WP-68's, on the critical path since WP-46, WP-64 and WP-73 closed (PLAN.md:132)"
+    "2026-11-10 services.md renumbered v1.13 -> v1.14: v1.13 is WP-68's, on the critical path since WP-46, WP-64 and WP-73 closed (PLAN.md:132)",
+    "2026-11-10 (steward round B): depends on WP-84 too (the halt line and band split from WP-82)"
    ],
    "acceptance": "TST-M6-APP-LAUNCH, LOGOUT-KILLS, LAUNCH-DENIED and APP-REGISTRY-FUZZ PASS on CI; ADR-0023 accepted",
    "test_ids": [
@@ -3391,11 +3393,12 @@
    ],
    "actions": [
     "libui v2b: عرض قائمة بأعمدة وتمرير",
-    "ui.md v1.7: a virtualised multi-column list view (the app supplies rows by callback, libui holds no data; sort by column, single and multi selection, Home/End/PgUp/PgDn, type-ahead including Arabic, scroll bar by mouse and wheel), a toolbar, a status bar, a two-pane split layout with F6, TEXT_MAX raised for paths with LRI-isolated runs; narrator `row k/n` plus column values; columns and scroll bar mirror in RTL; empty and access-denied states as text",
+    "ui.md v1.8: a virtualised multi-column list view (the app supplies rows by callback, libui holds no data; sort by column, single and multi selection, Home/End/PgUp/PgDn, type-ahead including Arabic, scroll bar by mouse and wheel), a toolbar, a status bar, a two-pane split layout with F6, TEXT_MAX raised for paths with LRI-isolated runs; narrator `row k/n` plus column values; columns and scroll bar mirror in RTL; empty and access-denied states as text",
     "the 1 MiB per-surface cap: render in tiles or raise it with a memory budget, decided and recorded here",
     "scenario at the end: a 500-row list browsed by keyboard and mouse with the exact narrator transcript",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10: the 2026-11-09 renumbering of ui.md for the input-language badge is reverted (the badge is WP-72's and takes its ui.md number at merge, PLAN.md:132); this item's ui.md version is v1.7 again"
+    "2026-11-10: the 2026-11-09 renumbering of ui.md for the input-language badge is reverted (the badge is WP-72's and takes its ui.md number at merge, PLAN.md:132); this item's ui.md version is v1.7 again",
+    "2026-11-10 (steward round B): WP-80 takes ui.md v1.7 (the confirm dialog); this item's ui.md version is v1.8"
    ],
    "acceptance": "TST-M6-LISTVIEW-UNIT, LISTVIEW-A11Y and LISTVIEW-RTL PASS on CI",
    "test_ids": [
@@ -3627,7 +3630,7 @@
    ],
    "inputs": [
     "docs/contracts/files.md v1.6",
-    "docs/contracts/ui.md v1.7",
+    "docs/contracts/ui.md v1.8",
     "ux-design priority 8 (empty and access-denied states)"
    ],
    "files": [],
@@ -3640,7 +3643,8 @@
     "decided and tested here: what a killed or failed copy leaves behind (copy cannot be atomic)",
     "scenario at the end: create a folder and a file, copy it, rename the copy to an Arabic name; the host image read confirms it",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating (split browse and create from copy and conflicts if needed)",
-    "2026-11-10: files.md v1.5 renumbered to files.md v1.6 (WP-78 took files.md v1.4, WP-52 v1.5)"
+    "2026-11-10: files.md v1.5 renumbered to files.md v1.6 (WP-78 took files.md v1.4, WP-52 v1.5)",
+    "2026-11-10 (steward round B): the list view's ui.md version is v1.8 (WP-80 took v1.7)"
    ],
    "acceptance": "TST-M6-FILES-CHAIN, FILES-CONFLICT, FILES-DISK-FULL, FILES-DENIED and FILES-A11Y-AR PASS on CI",
    "test_ids": [
@@ -3944,7 +3948,7 @@
    "inputs": [
     "DEC-008",
     "OS-EXEC-AR §19 (4)",
-    "docs/contracts/ui.md v1.7",
+    "docs/contracts/ui.md v1.8",
     "docs/contracts/files.md v1.6"
    ],
    "files": [],
@@ -3954,12 +3958,13 @@
    ],
    "actions": [
     "محرر نصوص أدنى متعدد الأسطر (السيناريو الحرج 4)",
-    "ui.md v1.8: a multi-line text area (lines broken at the last space that fits, caret by line and character in mixed Arabic and Latin, UTF-8 boundaries kept, narrator `line k/n` without the whole text)",
+    "ui.md v1.9: a multi-line text area (lines broken at the last space that fits, caret by line and character in mixed Arabic and Latin, UTF-8 boundaries kept, narrator `line k/n` without the whole text)",
     "apps/editor.md (new tool contract): open, save and save as inside the home capability; a modified marker; close with unsaved changes asks Save / Don't save / Cancel; save writes a temporary name, syncs and renames over the old file, so a failed save keeps the previous content",
     "scenario at the end: create a file, save, reopen, modify, save, Restart, the content equals the last save and another user's app is refused",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10: the 2026-11-09 renumbering of ui.md for the input-language badge is reverted (the badge is WP-72's and takes its ui.md number at merge, PLAN.md:132); this item's ui.md version is v1.8 again",
-    "2026-11-10: files.md v1.5 renumbered to files.md v1.6 (WP-78 took files.md v1.4, WP-52 v1.5)"
+    "2026-11-10: files.md v1.5 renumbered to files.md v1.6 (WP-78 took files.md v1.4, WP-52 v1.5)",
+    "2026-11-10 (steward round B): WP-80 takes ui.md v1.7, so the list view (WP-50) is v1.8 and this item's text area v1.9"
    ],
    "acceptance": "TST-M6-EDITOR-UNIT, EDITOR-MODIFY-REBOOT, EDITOR-UNSAVED and EDITOR-SAVE-FAIL PASS on CI",
    "test_ids": [
@@ -4448,7 +4453,7 @@
    ],
    "depends_on": [
     "WP-64",
-    "WP-81"
+    "WP-83"
    ],
    "inputs": [
     "docs/PLAN-ANSWER.md §2.3 (D4-A), §5.3 (item 10)",
@@ -4478,7 +4483,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-09 estimate: about 100-115 tool calls (the manager's, after the services engineer's design report; an estimate, not measured)",
     "2026-11-10 the held-copy WHOAMI check of token revocation (WP-73) is measured here: mechanism a ktest-only helper returning the session's token, or a holder app in the elevation path (session.md:14)",
-    "2026-11-10 the M6 step cap is raised by WP-81's per-job budget: M6 18 min (1080 s), so 755 + 180 = 935 s fits; this item depends on WP-81"
+    "2026-11-10 the M6 step cap is raised by WP-81's per-job budget: M6 18 min (1080 s), so 755 + 180 = 935 s fits; this item depends on WP-81",
+    "2026-11-10 (steward round B): depends on WP-83 instead of WP-81 (WP-81 split: the tooling stays in WP-81, the parallel jobs and per-job budgets are WP-83)"
    ],
    "acceptance": "TST-M6-SESSION-WATCHDOG PASS on CI; TST-M6-MANIFEST-LINT with the session line's policy and W, TST-M6-INTERACTIVE-BOOT and TST-M0-003 (step budget) re-run and PASS; the M5 session, lock and watchdog cases in test_ids PASS (no regression)",
    "test_ids": [
@@ -4697,13 +4703,13 @@
     "REQ-M0-006"
    ],
    "depends_on": [
-    "WP-81"
+    "WP-83"
    ],
    "inputs": [
     "tools/project.py (import-ci-evidence)",
     "docs/adr/0026-evidence-provenance.md",
     "tests/test_evidence_provenance.py (ImportCiEvidence)",
-    "WP-81's merge job (one ci-evidence/<run> branch with -a/-b/-c dirs)",
+    "WP-83's merge job (one ci-evidence/<run> branch with -a/-b/-c dirs)",
     "the lab engineer's design report (2026-11-10, read-only)"
    ],
    "files": [
@@ -4716,14 +4722,15 @@
     "docs/adr/0026-evidence-provenance.md"
    ],
    "actions": [
-    "مصدر الأدلة عبر الوظائف المتوازية: رفض المستورد لتشغيل أو محاولة أجنبية؛ تعديل ADR-0026؛ أوراكل TST-M0-007",
-    "the importer refuses a dir whose run.json ci.run_id or run_attempt differs from gh's answer (today it would receive this run's receipt and fail the validator later)",
-    "ADR-0026 amendment: one branch per run holding only that run's dirs, adopt-native, attempt mixing refused",
-    "test first: the ImportCiEvidence fixture fabricates a merged branch with -a/-b/-c dirs (3 runs adopted) and a branch with a foreign run or attempt (refused, no temporary copy left)",
+    "مصدر الأدلة عبر الوظائف المتوازية: فحص محتوى مجلد موجود بلا إيصال، وسياسة التحذير المجمَّع لأدلة 1.0.0؛ أوراكل TST-M0-007 (رفض المجلدات الجديدة بالهوية صار لـWP-81 في 2026-11-10)",
+    "ADR-0026 amendment (2026-11-10, trimmed by the manager): only the rule for an existing run directory without an import.json receipt (its content compared by digest with the incoming copy; a difference is a named refusal, an identical copy is accepted); adopt-native and attempt mixing are WP-81's, one branch per run and publishing only the run's own directories are WP-76's and WP-83's",
+    "test first (2026-11-10, trimmed by the manager): in tests/test_evidence_provenance.py, an existing run directory without a receipt whose content differs from the incoming copy is refused by name, and an identical one is accepted (TST-M0-007); the merged -a/-b/-c fixture and the foreign run or attempt refusals are WP-81's tests",
+    "scope kept here (2026-11-10, manager after the code audit): the content check of an existing run directory without an import.json receipt (its files' digests compared with the incoming copy; today import-ci-evidence skips it unchecked, the old gap) and the aggregated warning policy for evidence-run 1.0.0 without import.json; the refusal of NEW directories by ci identity is WP-81's (decision C1) and was removed from this item",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 estimate (lab engineer, unmeasured): about 10 tool calls / 30 min; under the line"
+    "2026-11-10 estimate (lab engineer, unmeasured): about 10 tool calls / 30 min; under the line",
+    "2026-11-10 (steward round B): depends on WP-83 instead of WP-81 (WP-81 split: the tooling stays in WP-81, the parallel jobs and per-job budgets are WP-83)"
    ],
-   "acceptance": "TST-M0-007 PASS on CI with the merged-branch case (3 runs adopted) and the foreign run or attempt refused with no temporary copy left; validate-records --strict 0 errors",
+   "acceptance": "TST-M0-007 PASS on CI with an existing run directory without a receipt whose content differs refused (named) and an identical one accepted, and the 1.0.0 warning policy as decided here; validate-records --strict 0 errors",
    "test_ids": [
     "TST-M0-007"
    ],
@@ -4745,7 +4752,7 @@
     "REQ-M0-005"
    ],
    "depends_on": [
-    "WP-81"
+    "WP-83"
    ],
    "inputs": [
     "tools/project.py:1084-1089, :1288 (keep_artifact)",
@@ -4769,7 +4776,9 @@
     "existing evidence stays immutable (a migration is the owner's decision)",
     "upload and publish only this run's dirs",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 estimate (lab engineer, unmeasured): about 22 tool calls / 65 min; under the line"
+    "2026-11-10 estimate (lab engineer, unmeasured): about 22 tool calls / 65 min; under the line",
+    "2026-11-10 (steward round B): depends on WP-83 instead of WP-81 (WP-81 split: the tooling stays in WP-81, the parallel jobs and per-job budgets are WP-83)",
+    "2026-11-10 (manager, decision C2): \"upload and publish only this run's dirs\" is this item's scope; until it lands, WP-83's merge job relies on adopt-native skipping directories already under evidence/"
    ],
    "acceptance": "TST-M0-001 and TST-M0-003 PASS on CI; a verify run's evidence references the test kernel through evidence/blobs/<sha256>/<name> and keeps its screens gzipped after the verdict; validate-records --strict 0 errors",
    "test_ids": [
@@ -4934,7 +4943,7 @@
    ],
    "depends_on": [
     "WP-49",
-    "WP-81"
+    "WP-83"
    ],
    "inputs": [
     "user/apps/dialog/src/main.rs",
@@ -4962,7 +4971,8 @@
     "mutant M170 SECURITY (the dialog app acts on a POINTER press while unfocused)",
     "flag (RSK-020): displayd delivers POINTER to a window that is not focused and focuses only on a left press (displayd main.rs:1189, 1210-1216), so a right click reaches a background window: a display.md semantics question to settle before this item",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 estimate (apps engineer, unmeasured): about 55 tool calls / 75 min; under the line"
+    "2026-11-10 estimate (apps engineer, unmeasured): about 55 tool calls / 75 min; under the line",
+    "2026-11-10 (steward round B): depends on WP-83 instead of WP-81 (WP-81 split: the tooling stays in WP-81, the parallel jobs and per-job budgets are WP-83)"
    ],
    "acceptance": "TST-M6-UI-POINTER PASS on CI: the keyboard phase and the pointer phase both equal platform/pc-qemu/expect/ui-pointer.txt through tools/transcript.py; M170 killed; the display.md question of RSK-020 settled before activation",
    "test_ids": [
@@ -4996,24 +5006,27 @@
    "files": [
     "docs/contracts/ui.md",
     "user/libui/src/lib.rs",
-    "user/libui/tests/pointer_menu.rs",
+    "user/libui/tests/confirm.rs",
     "tests/mutants.py",
-    "docs/tests.json"
+    "docs/tests.json",
+    "tools/project.py"
    ],
    "contract_refs": [
     "docs/contracts/ui.md"
    ],
    "actions": [
     "حوار التأكيد (49b، مفصولة من WP-49 في 2026-11-10)",
+    "ui.md v1.7 (additive, §3.7): the confirm dialog as a composition of v1 elements (Dialog::confirm, Answer, answer(), describe_confirm, UiError::Confirm, Painter::text_width); no change to the roles, keys or description format of v1-v1.6; renumbered 2026-11-10 (steward round B): WP-50's list view moves to the next ui.md version (1.8) and WP-63's text area to the one after (1.9)",
     "Dialog::confirm(prompt, yes, no, cancel, default) as a composition of Label + three Buttons; the default takes the first focus, Enter answers the focused button, Esc answers Cancel, Tab cycles the three",
     "narrator lines `confirm role=dialog label=\"…\"` then `focus <default>`, `answer yes|no|cancel`; strings nawah's own in both languages",
-    "test first: confirm_default_esc_enter in user/libui/tests/pointer_menu.rs (TST-M6-UI-UNIT), moved from WP-49's nine",
-    "mutant M171 SECURITY (Esc -> Answer(Yes))",
+    "test first: user/libui/tests/confirm.rs, its own host test TST-M6-UI-CONFIRM (HOST_SUITES M6, `cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu --test confirm`, marker `test result: ok. 5 passed; 0 failed`): confirm_default_esc_enter, confirm_narrator_lines, confirm_rtl_order, confirm_labels_fit, confirm_pointer; this replaces the earlier plan of one case in pointer_menu.rs (2026-11-10 round B); TST-M6-UI-UNIT keeps its nine cases and stays in test_ids because user/libui/src/lib.rs is its input",
+    "mutant M171 SECURITY (user/libui/src/lib.rs): Esc answers Yes, so a cancel becomes consent; killer TST-M6-UI-CONFIRM (confirm_default_esc_enter and confirm_narrator_lines expected to fail; not run yet); added to tests/mutants.py and its SECURITY set in the FIX commit, not the test commit (TST-M0-006 requires every mutant's anchor to occur exactly once, and in the red commit the anchor does not exist yet)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 estimate (apps engineer, unmeasured): about 45 tool calls / 55 min; under the line"
    ],
-   "acceptance": "TST-M6-UI-UNIT PASS on CI with confirm_default_esc_enter; M171 killed",
+   "acceptance": "TST-M6-UI-CONFIRM PASS on CI (5 passed) and TST-M6-UI-UNIT still PASS (9 passed); ui.md at v1.7 with §3.7; M171 killed",
    "test_ids": [
+    "TST-M6-UI-CONFIRM",
     "TST-M6-UI-UNIT"
    ],
    "commands": [
@@ -5037,36 +5050,39 @@
     "WP-74"
    ],
    "inputs": [
-    ".github/workflows/verify.yml",
-    "tests/test_ci_workflows.py (StepBudget)",
     "docs/adr/0026-evidence-provenance.md (rule 5: the native exemption)",
-    "docs/PLAN-ANSWER.md §2.5 D4-V2 (the V3 trigger, line 420)",
     "CI runs 42754423494 and 42743814734 (a red M5 hid M6)",
-    "the lab engineer's design report (2026-11-10, read-only)"
+    "the lab engineer's design report (2026-11-10, read-only)",
+    "the prepared wp81 worktree diff (tools/project.py, tests/test_validate_records.py, tests/test_evidence_provenance.py, tests/test_ci_workflows.py)"
    ],
    "files": [
-    ".github/workflows/verify.yml",
-    "tests/test_ci_workflows.py",
     "tools/project.py",
+    "tests/test_validate_records.py",
+    "tests/test_evidence_provenance.py",
+    "tests/test_ci_workflows.py",
     "docs/adr/0026-evidence-provenance.md",
-    "docs/PLAN-ANSWER.md",
     "docs/tests.json"
    ],
    "contract_refs": [
     "docs/adr/0026-evidence-provenance.md"
    ],
    "actions": [
-    "verify في وظائف متوازية بفرع أدلة واحد للتشغيل (74b، مفصولة من WP-74 في 2026-11-10)",
-    "74b: verify in three test jobs (A: records, check-commit, hygiene, E0, build, M1-M4, aarch64, host suites; B: toolchain, build, M5; C: toolchain, build, M6) plus a merge job needs:[A,B,C] if: always() that downloads the three evidence artifacts (pinned download-artifact), adopts them with a new `project.py adopt-native --from <dir>` (the importer's attach loop without gh or receipt: ADR-0026 rule 5's native exemption, same run id, attempt and sha across jobs; it never writes import.json), re-runs validate-records --strict and tools/pre-merge.sh, and publishes ONE ci-evidence/<run> branch holding only this run's dirs plus build-id.txt and hygiene.log; run dir ids get a job slot (env NAWAH_RUN_SLOT -> `-a|-b|-c`) so two runners never collide; the merge job refuses a duplicate id or a dir whose ci.run_id/attempt differs; per-job StepBudget (B: Toolchain 15 + M5 18, limit 40; C: Toolchain 15 + M6 18, limit 40; A limit 40; merge 20), so M6 gets 1080 s and WP-71's 935 s fits; cancel-in-progress stays true; images rebuilt per job (26-32 s measured); expected critical path about T+20 min against 42m11s today (unverified until measured)",
-    "the V3 trigger at PLAN-ANSWER.md:420 is amended here: opened on 2026-11-10 (as WP-74, whose parallel-jobs half is this item since the same day's split)",
+    "أدوات الأدلة لتقسيم CI: فتحة التشغيل وadopt-native ورفض المستورد (81؛ الوظائف المتوازية ووظيفة الدمج انتقلت إلى WP-83 في 2026-11-10)",
+    "tooling half (split 2026-11-10, steward round B): run dir ids carry a job slot (RUN_SLOT_RE `[a-z]`; env NAWAH_RUN_SLOT appended as `-<slot>` in new_run_dir, anything else refused, no slot the id as before); `project.py adopt-native --from <dir>` (repeatable) adopts native run dirs without gh and without import.json, fail-closed off the runner (GITHUB_ACTIONS=true and GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT, GITHUB_SHA all non-empty); it skips directories already under evidence/ (counted, never re-adopted), requires this run's ci identity (run id, attempt, sha) only of the new ones, and refuses whole a new directory of another run, attempt or sha or without identity, a duplicate among the new ones, or an empty set of new directories (decision C2); import-ci-evidence refuses the whole run only when a NEW run directory (not yet under evidence/) carries no ci identity or another run id or attempt than gh's answer, while existing directories are skipped as before (decision C1)",
+    "ADR-0026 rule 5, minimal sentence in this item's contract commit: the slot in run ids and adopt-native as the native exemption's only adoption path (same run id, attempt and sha); the per-job wording and the merge job are WP-83's amendment",
+    "case counts: the HOST_SUITES oracles of TST-M0-001 and TST-M0-007 and their docs/tests.json oracles change in the FIX commit, not before (the PASS records would otherwise claim counts their evidence did not run); the prepared worktree had 22 and 41 before the audit fixes; final counts follow the fix commit",
+    "the three parallel jobs, the merge job, the per-job StepBudget and the V3 text moved to WP-83 on 2026-11-10 (steward round B); the old 74b line is kept there verbatim",
+    "2026-11-10 (steward round B, audit): the inputs .github/workflows/verify.yml, tests/test_ci_workflows.py (StepBudget) and PLAN-ANSWER.md §2.5 D4-V2 (the V3 trigger, line 420) are WP-83's and were removed here",
+    "2026-11-10 decision C1 (manager, code audit of the prepared worktree): the import refusal by ci identity applies only to NEW run directories (not yet under evidence/); directories already committed are skipped as before, because the evidence branch holds the whole committed tree (7367 dirs on run 42775276374, the oldest at evidence-run 1.0.0 without a ci object), so the first version of the refusal would have refused every real import; a regression test covers an old directory without identity beside a new one with it",
+    "2026-11-10 decision C2 (manager, code audit): adopt-native skips directories already under evidence/ (counted, never re-adopted) and requires this run's identity only of the new ones; an empty set of new directories is a refusal; publishing only the run's own directories stays WP-76's",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 (lab engineer, unmeasured): about 40-55 calls and 75-110 min; at the line's edge; split point if exceeded at activation: the three jobs + merge first, adopt-native + rid slot second"
+    "2026-11-10 estimate (lab engineer, measured on the prepared wp81 worktree): 21 tool calls spent, about 6 to go, about 8 min; under the budget line (the earlier 40-55 calls / 75-110 min covered the whole of 74b, whose parallel-jobs half is now WP-83)"
    ],
-   "acceptance": "TST-M0-003 PASS with the per-job budgets; TST-M0-001 and TST-M0-007 PASS; a verify run completes with the merge job publishing one evidence branch that import-ci-evidence adopts with strict 0",
+   "acceptance": "TST-M0-001, TST-M0-007 and TST-M0-003 PASS on CI (final counts follow the fix commit), with the regression cases of decisions C1 and C2; ADR-0026 rule 5 names the run slot and adopt-native",
    "test_ids": [
     "TST-M0-001",
-    "TST-M0-003",
-    "TST-M0-007"
+    "TST-M0-007",
+    "TST-M0-003"
    ],
    "commands": [
     "python3 -I tests/test_ci_workflows.py",
@@ -5087,13 +5103,15 @@
     "REQ-M6-002"
    ],
    "depends_on": [
-    "WP-45"
+    "WP-45",
+    "WP-68",
+    "WP-77"
    ],
    "inputs": [
     "docs/work-items.json WP-68 (2026-11-09 actions) and WP-77 (2026-11-10 split)",
     "kernel/src/kmain.rs:560-585 (the interactive path: poll_until, selfcheck=0 -> halt at :579, the 2000-tick LOAD budget at :568)",
     "tools/project.py:1291-1293 (forbidden markers on serial.log)",
-    "evidence of TST-M1-BOOT and TST-M6-INTERACTIVE-BOOT (806-836 ticks measured on CI run 42673693676)"
+    "evidence/20261109T184629Z-d63f7ae4-001 (TST-M6-INTERACTIVE-BOOT, ci.run_id 42673693676): serial.log carries wait_ticks 806, 809, 811, 826, 828, 836 (checked 2026-11-10); TST-M1-BOOT of the same run (evidence/20261109T182722Z-d63f7ae4-001) shows wait_ticks=4"
    ],
    "files": [
     "kernel/src/kmain.rs",
@@ -5107,26 +5125,184 @@
     "docs/contracts/boot.md"
    ],
    "actions": [
-    "رسالة توقف مرئية عند إخفاق المدير، ومهلة LOAD التفاعلية، وفحص علامة كلمة المرور على console.log (من WP-68 عبر WP-77، 2026-11-10)",
-    "moved from WP-68 on 2026-11-10: a visible halt message on manager failure (selfcheck=0 then halt) and an interactive LOAD timeout: svcmgr replies before advance, or the kernel waits longer than 2000 ticks (806-836 ticks measured on CI per the red-team report; the run id is not in the records); a lab phase with a corrupt manifest disk if the lab can prepare one",
+    "مهلة LOAD التفاعلية وفحص العلامات الممنوعة على console.log (82a؛ رسالة التوقف المرئية وحالة القرص التالف انتقلت إلى WP-84 في 2026-11-10)",
+    "[2026-11-10, steward round B: the halt message and the corrupt-manifest lab phase in this line moved on to WP-84; the interactive LOAD timeout stays here] moved from WP-68 on 2026-11-10: a visible halt message on manager failure (selfcheck=0 then halt) and an interactive LOAD timeout: svcmgr replies before advance, or the kernel waits longer than 2000 ticks (806-836 ticks measured on CI run 42673693676, evidence/20261109T184629Z-d63f7ae4-001/serial.log; the run id was added 2026-11-10 by the steward after checking that evidence); a lab phase with a corrupt manifest disk if the lab can prepare one",
     "moved from WP-68 on 2026-11-10: the password forbidden-marker check on console.log as well as serial.log",
-    "the manager-failure branch of the interactive boot (selfcheck=0 then halt) gets a lab phase with a corrupt manifest disk, if the lab can prepare one (from WP-68's 2026-11-09 actions)",
-    "boot.md additive (version per PLAN.md:132): what the halt prints and where (serial and the screen), and the LOAD budget rule (a reply before advance, or a budget above 2000 ticks with the measured 806-836 as the basis)",
-    "test first: a ktest or lab phase for the halt message; TST-M6-INTERACTIVE-BOOT re-run with the console.log forbidden marker (tools/project.py applies forbidden markers to console.log too; host test in tests/test_monitor_steps.py first)",
+    "[2026-11-10, steward round B: moved on to WP-84] the manager-failure branch of the interactive boot (selfcheck=0 then halt) gets a lab phase with a corrupt manifest disk, if the lab can prepare one (from WP-68's 2026-11-09 actions)",
+    "boot.md additive (82a): the interactive LOAD budget, LOAD_BUDGET_TICKS = 10_000 replacing the literal 2000 at kernel/src/kmain.rs:568 (option chosen: a larger budget, not a reply before advance), with its basis: the measured maximum wait 1096 ticks on CI run 42696067096 and 558-836 ticks on other runs (lab engineer's reading; only run 42696067096 is named); TST-M0-003 checks the constant",
+    "test first (82a): forbidden markers applied to the received console transcript (console.log) as to serial.log, host test first in tests/test_monitor_steps.py on a new FakeConsole.received attribute (tests/test_monitor_steps.py:272-283 has none today) (TST-M5-LAB-TOOL); then TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT re-run; mutants M174 and M175 (planned ids; wording at activation, not in tests/mutants.py yet)",
+    "2026-11-10 split (steward round B): the halt message (serial line and screen band), its lab phase with a corrupt manifest disk and TST-M6-BOOT-HALT -> WP-84; readable on-screen halt text -> WP-85 (proposed, not scheduled); this item keeps the console.log check and the LOAD budget",
+    "2026-11-10 (steward round B): depends on WP-68 and WP-77 too (both done): WP-68 touched kernel/src/services.rs (not kmain.rs), WP-77 touched neither file, and both re-ran TST-M6-INTERACTIVE-BOOT, which this item changes again",
+    "flag (out of scope, for the manager): tools/project.py:1245 builds a ConsoleSession per phase on the same d / \"console.log\" and :741 writes it with write_bytes, so a multi-phase case keeps only its last phase's transcript; the console.log forbidden check of this item sees only that phase until it is fixed",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 estimate: none yet; estimated at activation against the line (the LOAD timeout needs a decision between the two options recorded in the moved action)"
+    "2026-11-10 estimate (82a, unmeasured): about 50 tool calls / 45 min; under the budget line"
    ],
-   "acceptance": "the halt-message test PASS on CI; TST-M6-INTERACTIVE-BOOT PASS with the console.log marker; the host monitor tests PASS; boot.md states the halt and the LOAD budget",
+   "acceptance": "the host monitor test (TST-M5-LAB-TOOL) PASS with the console.log forbidden check; TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT PASS on CI; TST-M0-003 PASS with the LOAD_BUDGET_TICKS check; M174 and M175 killed; boot.md states the LOAD budget and its measured basis",
    "test_ids": [
     "TST-M6-INTERACTIVE-BOOT",
     "TST-M1-BOOT",
-    "TST-M0-003"
+    "TST-M0-003",
+    "TST-M5-LAB-TOOL"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M1",
     "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M0",
+    "python3 tools/project.py test --target host --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-83",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-005",
+    "REQ-M0-006"
+   ],
+   "depends_on": [
+    "WP-81"
+   ],
+   "inputs": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py (StepBudget)",
+    "docs/adr/0026-evidence-provenance.md (rule 5 as WP-81 amends it)",
+    "docs/PLAN-ANSWER.md §2.5 D4-V2 (the V3 trigger, line 420)",
+    "CI runs 42754423494 and 42743814734 (a red M5 hid M6)",
+    "WP-81's run slot and adopt-native (tools/project.py)",
+    "the lab engineer's design report (2026-11-10, read-only)"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py",
+    "tools/project.py",
+    "docs/adr/0026-evidence-provenance.md",
+    "docs/PLAN-ANSWER.md",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/adr/0026-evidence-provenance.md"
+   ],
+   "actions": [
+    "verify في ثلاث وظائف متوازية ووظيفة دمج بفرع أدلة واحد للتشغيل (74b تابع، مفصولة من WP-81 في 2026-11-10)",
+    "moved from WP-81 on 2026-11-10 (steward round B), verbatim: 74b: verify in three test jobs (A: records, check-commit, hygiene, E0, build, M1-M4, aarch64, host suites; B: toolchain, build, M5; C: toolchain, build, M6) plus a merge job needs:[A,B,C] if: always() that downloads the three evidence artifacts (pinned download-artifact), adopts them with a new `project.py adopt-native --from <dir>` (the importer's attach loop without gh or receipt: ADR-0026 rule 5's native exemption, same run id, attempt and sha across jobs; it never writes import.json), re-runs validate-records --strict and tools/pre-merge.sh, and publishes ONE ci-evidence/<run> branch holding only this run's dirs plus build-id.txt and hygiene.log; run dir ids get a job slot (env NAWAH_RUN_SLOT -> `-a|-b|-c`) so two runners never collide; the merge job refuses a duplicate id or a dir whose ci.run_id/attempt differs; per-job StepBudget (B: Toolchain 15 + M5 18, limit 40; C: Toolchain 15 + M6 18, limit 40; A limit 40; merge 20), so M6 gets 1080 s and WP-71's 935 s fits; cancel-in-progress stays true; images rebuilt per job (26-32 s measured); expected critical path about T+20 min against 42m11s today (unverified until measured)",
+    "pointer: the ADR-0026 rule-5 amendment (run slot, adopt-native) is WP-81's (2026-11-10, after the code audit); this item keeps the three jobs, the merge job, the per-job StepBudget and the artifact flow",
+    "2026-11-10 decision C2 (manager): adopt-native coexists with full-tree artifacts by skipping directories already under evidence/ (counted, never re-adopted) until WP-76 uploads only the run's own directories",
+    "moved from WP-81 on 2026-11-10 (steward round B), the V3 text in PLAN-ANSWER is written here: the V3 trigger at PLAN-ANSWER.md:420 is amended here: opened on 2026-11-10 (as WP-74, whose parallel-jobs half is this item since the same day's split)",
+    "flag (steward round B, from the WP-81 review; can wait): adopt-native copies even in scratch mode, and its copy is not atomic (a failure mid-copy can leave a partial run dir); decide here before the merge job relies on it",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10 estimate (systems lab engineer, unmeasured): 70-100 tool calls / 60-90 min; under the budget line, at its edge in time"
+   ],
+   "acceptance": "TST-M0-003 PASS with the per-job StepBudget; TST-M0-001 and TST-M0-007 PASS; a verify run completes with three test jobs and a merge job that adopts their evidence through adopt-native and publishes one ci-evidence/<run> branch that import-ci-evidence adopts with strict 0; the PLAN-ANSWER V3 text amended",
+   "test_ids": [
+    "TST-M0-001",
+    "TST-M0-003",
+    "TST-M0-007"
+   ],
+   "commands": [
+    "python3 -I tests/test_ci_workflows.py",
+    "python3 -I tests/test_evidence_provenance.py",
     "python3 tools/project.py test --target host --suite M0"
    ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-84",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "depends_on": [
+    "WP-68",
+    "WP-77",
+    "WP-82"
+   ],
+   "inputs": [
+    "kernel/src/kmain.rs:577-580 (the interactive !svc_ok branch: halt after selfcheck=0)",
+    "kernel/src/display.rs",
+    "tools/project.py prepare_disk",
+    "docs/contracts/boot.md:38 (the halt branch has no lab case yet)",
+    "docs/work-items.json WP-82 (2026-11-10 split)"
+   ],
+   "files": [
+    "kernel/src/display.rs",
+    "kernel/src/kmain.rs",
+    "tools/project.py",
+    "platform/pc-qemu/target.json",
+    "platform/pc-qemu/lab/services-bad.txt",
+    "docs/contracts/boot.md",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "شريط توقف مرئي وسطر توقف عند إخفاق المدير، وحالة مختبر بقرص بيان تالف (82b، مفصولة من WP-82 في 2026-11-10)",
+    "kernel: display::halt_banner(code) draws a band and the code's digit cells; the kernel prints `OSX|${BUILD_ID}|kernel|halt|reason=svcmgr|code=<n>` (<n> the numeric halt code the band draws as digit cells, fixed by this item's boot.md amendment) before arch::halt in the interactive !svc_ok branch; serial first, then the screen; behaviour and organisation only, no wording, layout or colours taken from another system's stop screen (ADR-0022)",
+    "lab: a disk_files key in prepare_disk places platform/pc-qemu/lab/services-bad.txt as the manifest of the case's disk",
+    "test first: TST-M6-BOOT-HALT (guest, 30 s; requires the halt line; forbidden m1_done, no_session, ktest, panic; screendump pixel C00000 inside the band); `|kernel|halt|` added to the forbidden markers of TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT",
+    "mutants M172 and M173 (SECURITY): planned ids, wording at activation (not in tests/mutants.py yet)",
+    "boot.md additive: what the halt prints and where (the serial line, then the band)",
+    "M6 budget note: a 30 s phase does not fit the M6 guest step's cap today while TST-M6-INTERACTIVE-BOOT's phases measure 56-63 s against their 60 s (lab engineer's measurement; run ids not in the records, unverified); wait for WP-83's per-job budget or tighten the INTERACTIVE-BOOT phases 60 -> 54 s; decision at activation",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-10 estimate (unmeasured): about 65 tool calls / 70 min; under the budget line"
+   ],
+   "acceptance": "TST-M6-BOOT-HALT PASS on CI; TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT PASS with `|kernel|halt|` forbidden; M172 and M173 killed; boot.md states the halt line and the band",
+   "test_ids": [
+    "TST-M6-BOOT-HALT",
+    "TST-M6-INTERACTIVE-BOOT",
+    "TST-M1-BOOT"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target pc-qemu --suite M1"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-85",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "depends_on": [
+    "WP-84"
+   ],
+   "inputs": [
+    "WP-84's display::halt_banner (band and digit cells only)",
+    "kernel/src/display.rs"
+   ],
+   "files": [
+    "kernel/src/display.rs",
+    "docs/contracts/boot.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "نص توقف مقروء على الشاشة بالعربية والإنجليزية (عرض نص في النواة) — مقترحة، غير مجدولة (من قسمة WP-82 في 2026-11-10)",
+    "proposed, not scheduled: readable on-screen halt text in Arabic and English, which needs text rendering in the kernel (WP-84 draws only a band and digit cells); the planner names the options and their trade-offs before any estimate; behaviour only, no wording or layout from another system's stop screen (ADR-0022)",
+    "no test yet: REQ-M6-002 is a placeholder reference; a test record is defined when the item is scheduled",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "estimate: none (not scheduled)"
+   ],
+   "acceptance": "to be defined when scheduled (placeholder): the halt screen states the reason readably in the boot language",
+   "test_ids": [],
+   "commands": [],
    "status": "planned",
    "status_history": [
     "planned"

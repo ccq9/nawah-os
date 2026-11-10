@@ -2008,6 +2008,17 @@
    ]
   },
   {
+   "id": "TST-M6-BOOT-HALT",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-84; boot.md halt rule): the release image booted with the lab's corrupt manifest disk (platform/pc-qemu/lab/services-bad.txt, placed by prepare_disk's disk_files key) reports the manager's failure with selfcheck=0, prints `OSX|${BUILD_ID}|kernel|halt|reason=svcmgr|code=<n>` before arch::halt, where <n> is the numeric halt code that display::halt_banner(code) draws as digit cells in its band (the number is fixed by WP-84's boot.md amendment, not here; the reason token stays svcmgr), and a screendump pixel inside the band is C00000; the case never exits by itself, so it ends by the lab's rule for such cases (tools/project.py:915-931): ends_by monitor, the last monitor step a screendump followed by `quit`, within its 30 s timeout, and no exit-port write; forbidden: m1_done, no_session, ktest, panic; mutants M172 and M173 (SECURITY) planned",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
    "id": "TST-M6-SESSION-WATCHDOG",
    "requirement_ids": [
     "REQ-M6-002"
@@ -2188,6 +2199,17 @@
    ]
   },
   {
+   "id": "TST-M6-UI-CONFIRM",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "layer": "host_unit",
+   "oracle": "libui v1.7 (WP-80, ui.md §3.7) on the host, user/libui/tests/confirm.rs (5 tests): Dialog::confirm(prompt, yes, no, cancel, default) on an empty dialog builds the prompt label (element 0) and three buttons (1 yes, 2 no, 3 cancel), refuses a blank prompt or label (NoLabel, nothing built), a non-empty dialog and any later element (Confirm); the default button takes the first focus and start() returns to it; Enter or Space answers the focused button (Activate and answer()), Esc answers Cancel (Event::Cancel, answer() = Cancel) whatever has the focus, the default Yes included; Tab/Shift+Tab cycle only the three buttons; characters, arrows, Backspace, Shift+F10 and the menu key do nothing and set_menu is refused; an answer is final (later keys and clicks return None and leave it); the narrator strings are exactly confirm role=dialog label=\"<prompt>\", focus <default button description>, answer yes|no|cancel, in English and in Arabic (the tokens English), and a plain dialog writes no confirm line and has no answer; the layout is the column: the prompt's row then each button a full row, yes-no-cancel from the top, every row its own mirror so RTL equals LTR (also after set_rtl) and Tab order stays logical; the prompt fits its row (Painter::fits) and every button label is narrower than its button (Painter::text_width) in English and Arabic at 1x and 2x, and a longer question does not fit; a left press and release on a button answers it through the v1.6 pointer path, a release elsewhere answers nothing and gives the focus back to the default so the next Enter answers the default, a click on the prompt and a right click answer nothing (5 passed)",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
    "id": "TST-M6-UI-POINTER",
    "requirement_ids": [
     "REQ-M6-006"
@@ -2204,7 +2226,7 @@
     "REQ-M6-006"
    ],
    "layer": "host_unit",
-   "oracle": "planned (M6, WP-50; ui.md v1.7): the virtualised list view keeps visible rows within bounds for 0, 1 and 10,000 rows, sorts stably by column, keeps single and multi selection across scrolling, and Home/End/PgUp/PgDn and type-ahead (Arabic included) move exactly as specified",
+   "oracle": "planned (M6, WP-50; ui.md v1.8): the virtualised list view keeps visible rows within bounds for 0, 1 and 10,000 rows, sorts stably by column, keeps single and multi selection across scrolling, and Home/End/PgUp/PgDn and type-ahead (Arabic included) move exactly as specified",
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2670,7 +2692,7 @@
     "REQ-M6-018"
    ],
    "layer": "host_unit",
-   "oracle": "planned (M6, WP-63; ui.md v1.8): the multi-line text area on the host: insert and delete across lines, caret movement by line and by character in mixed Arabic and Latin lines, UTF-8 boundaries never split, line breaking at the last space that fits, and the description reads `line k/n` without the whole text",
+   "oracle": "planned (M6, WP-63; ui.md v1.9): the multi-line text area on the host: insert and delete across lines, caret movement by line and by character in mixed Arabic and Latin lines, UTF-8 boundaries never split, line breaking at the last space that fits, and the description reads `line k/n` without the whole text",
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []

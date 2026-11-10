@@ -1788,9 +1788,10 @@
     "مراقب قصير يقتل جلسة تنتظر auth انتظارًا مشروعًا",
     "شاشة الدخول بالإنجليزية لمستخدم عربي أو كلمة مرور تُكتب بتخطيط غير ظاهر"
    ],
-   "acceptance": "interactive_boot + session_watchdog + session_ar؛ TST-M1-BOOT/NEG/NOBS تبقى PASS بمفتاح الفحص الذاتي؛ TST-M6-MANIFEST-LINT وTST-M6-SESSION-STRINGS؛ الإخفاق المغلق: TST-M6-HOLD-FAIL-CLOSED (WP-67)، وTST-M6-MANIFEST-TOO-LARGE وTST-M6-LOAD-OUTSIDE-SYSTEM وTST-M6-CONFIG-WRITE-SCOPE (WP-68)، كلها PASS على CI؛ مراقبة الجلسة وتطهيرها وشاشاتها في ثلاث حزم (قسمة WP-64، 2026-11-09): WP-64 التطهير عند الإعادة وإلغاء الرموز (TST-M6-TOKEN-REVOKE، وTST-M5-SESSION-LOSS بأوراكل session.md v1.7)، وWP-71 المراقب وrestart=always (TST-M6-SESSION-WATCHDOG)، وWP-72 الشاشات العربية والشارة (TST-M6-SESSION-AR، TST-M6-SESSION-STRINGS)؛ قسمة 2026-11-10 لخط الميزانية: WP-64 التطهير وإخفاقه المغلق (TST-M5-SESSION-LOSS، TST-M6-PURGE-FAIL-CLOSED)، وWP-73 إلغاء الرموز (TST-M6-TOKEN-REVOKE)",
+   "acceptance": "interactive_boot + session_watchdog + session_ar؛ TST-M1-BOOT/NEG/NOBS تبقى PASS بمفتاح الفحص الذاتي؛ TST-M6-MANIFEST-LINT وTST-M6-SESSION-STRINGS؛ الإخفاق المغلق: TST-M6-HOLD-FAIL-CLOSED (WP-67)، وTST-M6-MANIFEST-TOO-LARGE وTST-M6-LOAD-OUTSIDE-SYSTEM وTST-M6-CONFIG-WRITE-SCOPE (WP-68)، كلها PASS على CI؛ مراقبة الجلسة وتطهيرها وشاشاتها في ثلاث حزم (قسمة WP-64، 2026-11-09): WP-64 التطهير عند الإعادة وإلغاء الرموز (TST-M6-TOKEN-REVOKE، وTST-M5-SESSION-LOSS بأوراكل session.md v1.7)، وWP-71 المراقب وrestart=always (TST-M6-SESSION-WATCHDOG)، وWP-72 الشاشات العربية والشارة (TST-M6-SESSION-AR، TST-M6-SESSION-STRINGS)؛ قسمة 2026-11-10 لخط الميزانية: WP-64 التطهير وإخفاقه المغلق (TST-M5-SESSION-LOSS، TST-M6-PURGE-FAIL-CLOSED)، وWP-73 إلغاء الرموز (TST-M6-TOKEN-REVOKE)؛ قسمة WP-82 في 2026-11-10: فرع إخفاق المدير في الإقلاع التفاعلي (سطر التوقف والشريط بقرص بيان تالف) في WP-84 (TST-M6-BOOT-HALT)",
    "test_ids": [
     "TST-M6-INTERACTIVE-BOOT",
+    "TST-M6-BOOT-HALT",
     "TST-M6-SESSION-WATCHDOG",
     "TST-M6-SESSION-AR",
     "TST-M6-MANIFEST-LINT",
@@ -1936,9 +1937,10 @@
     "الأعمدة لا تنعكس في RTL",
     "إعلان القارئ يختلف بين إقلاعين"
    ],
-   "acceptance": "ui_unit + ui_pointer + listview_unit + listview_a11y + listview_rtl؛ KEYBOARD-NAV/A11Y-TREE/ARABIC-UI بلا انحدار",
+   "acceptance": "ui_unit + ui_confirm (TST-M6-UI-CONFIRM، WP-80) + ui_pointer + listview_unit + listview_a11y + listview_rtl؛ KEYBOARD-NAV/A11Y-TREE/ARABIC-UI بلا انحدار",
    "test_ids": [
     "TST-M6-UI-UNIT",
+    "TST-M6-UI-CONFIRM",
     "TST-M6-UI-POINTER",
     "TST-M6-LISTVIEW-UNIT",
     "TST-M6-LISTVIEW-A11Y",
