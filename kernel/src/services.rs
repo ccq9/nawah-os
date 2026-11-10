@@ -3,7 +3,6 @@
 //! and keeps the control endpoint (the diagnostic shell of WP-30 talks through it). The test
 //! kernel starts managers of its own with the same functions.
 
-#[cfg(not(feature = "ktest"))]
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -171,18 +170,32 @@ pub fn start_at_boot(timeout_ticks: u64, manifest: &[u8]) -> (bool, String) {
         Err(e) => (0, String::new(), e),
     };
     let waited = sched::ticks() - t0;
-    let ok = code == "ok" && reply.starts_with("OK ");
+    let ok = code == "ok" && boot_reply_ok(manifest == SYSTEM_MANIFEST, &reply);
     let line = alloc::format!(
         "pid={}|image={}|manifest={}|reply={}|code={}|selfcheck={}|wait_ticks={}",
         pid,
         core::str::from_utf8(MANAGER_IMAGE).unwrap_or("?"),
         core::str::from_utf8(manifest).unwrap_or("?"),
-        reply.replace('\n', ";"),
+        reply_field(&reply),
         code,
         u8::from(ok),
         waited
     );
     (ok, line)
+}
+
+/// The boot verdict on the manager's `LOAD` reply (services.md §3, v1.13): `OK <n>` with a
+/// number, and for the interactive (system) manifest n >= 1: a system with no service is not up.
+pub fn boot_reply_ok(interactive: bool, reply: &str) -> bool {
+    let _ = interactive;
+    reply.starts_with("OK ")
+}
+
+/// The manager's reply as one field of a `|`-separated trace line (v1.13): a newline becomes
+/// `;` as before, and `|`, `\` and every other control byte become `\xNN`, so no reply can
+/// end the field or forge one after it.
+pub fn reply_field(reply: &str) -> String {
+    reply.replace('\n', ";")
 }
 
 pub fn load_request(manifest: &[u8]) -> Vec<u8> {

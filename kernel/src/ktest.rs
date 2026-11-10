@@ -221,6 +221,8 @@ pub fn run() -> ! {
         "session_hang" => session_hang(),
         "lock_display_down" => lock_display_down(),
         "hold_fail_closed" => hold_fail_closed(),
+        "manifest_too_large" => manifest_too_large(),
+        "load_outside_system" => load_outside_system(),
         "token_revoke" => token_revoke(),
         "purge_fail_closed" => purge_fail_closed(),
         "elevate" => elevate(),
@@ -9577,6 +9579,294 @@ fn hold_fail_closed() -> ! {
         fail("the compositors left a process, an object or a frame behind")
     }
     pass("a LIST the compositor cannot have starts the screen held; a listing still decides it as before")
+}
+
+/// Writes `data` as the whole of `path` on the volume (the test kernel writes through the VFS
+/// directly; the system-files authority is checked at the syscall layer, not here).
+fn manifest_write(path: &[u8], data: &[u8]) -> bool {
+    use crate::fs::vfs;
+    vfs::open(path, vfs::O_WRITE | vfs::O_CREATE | vfs::O_TRUNCATE)
+        .and_then(|f| vfs::write(&f, data))
+        .is_ok_and(|n| n == data.len())
+}
+
+/// A manifest of exactly `size` bytes: one service line (`A`, the test service) and comment
+/// lines up to the size, so a prefix of it still parses as one service.
+fn manifest_of(size: usize) -> Vec<u8> {
+    let mut v = Vec::from(&b"A /SYSTEM/SVC.ELF - 200 never 0 0 ready\n"[..]);
+    while v.len() < size {
+        v.extend_from_slice(b"# padding to the manifest limit (services.md v1.13, WP-68) ......\n");
+    }
+    v.truncate(size);
+    if let Some(last) = v.last_mut() {
+        *last = b'\n';
+    }
+    v
+}
+
+/// TST-M6-MANIFEST-TOO-LARGE (negative; services.md v1.13, WP-68): a manifest the manager cannot
+/// read whole is refused whole. The test kernel writes /SYSTEM/BIGMAN.TXT at run time and a real
+/// manager (SvcHarness) loads it: 4097 and 4096 bytes answer `ERR MANIFEST_TOO_LARGE`, 4095 bytes
+/// (the largest accepted) `OK 1`; a read that fails midway (the ktest read hook in fs/vfs.rs, armed
+/// for one file size) answers `ERR MANIFEST_IO`. A refused file starts nothing (LIST empty) and
+/// the refused LOAD does not count (a second LOAD is answered on its own, not `ERR LOADED`).
+fn manifest_too_large() -> ! {
+    use crate::fs::vfs;
+    let name = "manifest_too_large";
+    const PATH: &[u8] = b"/SYSTEM/BIGMAN.TXT";
+    const IO_SIZE: usize = 3001;
+    const IO_AT: u64 = 1024;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    // The largest file first, so the balance below is taken after the volume code warmed up.
+    if !manifest_write(PATH, &manifest_of(4097)) {
+        fail("could not write /SYSTEM/BIGMAN.TXT")
+    }
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    // A verdict per sub-case, no string: the frame balance below must not see the test's own heap.
+    let mut verdict = [false; 4];
+    for (k, (case, size)) in [
+        ("4097", 4097usize),
+        ("4096", 4096),
+        ("4095", 4095),
+        ("io", IO_SIZE),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if size != 4097 && !manifest_write(PATH, &manifest_of(size)) {
+            fail("could not rewrite /SYSTEM/BIGMAN.TXT")
+        }
+        if case == "io" {
+            vfs::arm_read_fault(IO_SIZE as u32, IO_AT);
+        }
+        let h = SvcHarness::start(name, PATH);
+        let fired = case == "io" && !vfs::read_fault_armed();
+        vfs::disarm_read_fault();
+        let reply = h.load_reply.clone();
+        let (line, ok) = if case == "4095" {
+            let lines = h.poll_list(sched::ticks() + 1000, |l| {
+                l.len() == 1 && l[0].state == "ready"
+            });
+            let ready = lines.len() == 1 && lines[0].name == "A" && lines[0].state == "ready";
+            let ok = reply == "OK 1" && ready;
+            (
+                alloc::format!(
+                    "case={}|reply={}|ready={}",
+                    case,
+                    crate::services::reply_field(&reply),
+                    u8::from(ready)
+                ),
+                ok,
+            )
+        } else {
+            let lines = h.poll_list(sched::ticks(), |_| true);
+            let list = SvcHarness::list_text(&lines);
+            let again = match crate::services::request(
+                &h.m.ctl,
+                b"LOAD /SYSTEM/NONE.TXT",
+                sched::ticks() + 500,
+            ) {
+                Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+                Err(e) => e.into(),
+            };
+            let want = if case == "io" {
+                "ERR MANIFEST_IO"
+            } else {
+                "ERR MANIFEST_TOO_LARGE"
+            };
+            let ok = reply == want
+                && lines.is_empty()
+                && again == "ERR MANIFEST_MISSING"
+                && (case != "io" || fired);
+            (
+                alloc::format!(
+                    "case={}|reply={}|list={}|again={}|fired={}",
+                    case,
+                    crate::services::reply_field(&reply),
+                    list,
+                    crate::services::reply_field(&again),
+                    u8::from(fired)
+                ),
+                ok,
+            )
+        };
+        let (mgr_exit, procs, _, clean) = h.finish();
+        let ok = ok && mgr_exit == 0 && procs == 0 && clean;
+        kprintln!(
+            "OSX|{}|ktest|{}|{}|bytes={}|mgr_exit={:#x}|ok={}",
+            BUILD_ID,
+            name,
+            line,
+            size,
+            mgr_exit,
+            u8::from(ok)
+        );
+        verdict[k] = ok;
+    }
+    let removed = vfs::unlink(PATH).is_ok();
+    let gone = sched::poll_until(sched::ticks() + 1000, || sched::stats().processes == 0);
+    let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|{}|failed={}{}{}{}|processes_after={}|frames_delta={}|clean={}|removed={}",
+        BUILD_ID,
+        name,
+        if verdict[0] { "" } else { "4097," },
+        if verdict[1] { "" } else { "4096," },
+        if verdict[2] { "" } else { "4095," },
+        if verdict[3] { "" } else { "io," },
+        procs,
+        frames,
+        u8::from(gone && settled),
+        u8::from(removed)
+    );
+    if verdict.contains(&false) {
+        fail(
+            "a manifest the manager could not read whole was not refused whole (services.md v1.13)",
+        )
+    }
+    if !gone || procs != 0 || !settled || frames != 0 || !removed {
+        fail("the managers left a process, an object or a frame behind, or the file stayed")
+    }
+    pass("a manifest of 4096 bytes or more, or one whose read fails, is refused whole; 4095 bytes load")
+}
+
+/// TST-M6-LOAD-OUTSIDE-SYSTEM (negative; services.md v1.13, WP-68): `LOAD` reads only under
+/// `/SYSTEM/`. One real manager: `LOAD /OUTSIDE.TXT` (a valid manifest written at run time) and
+/// `LOAD /SYSTEM/../OUTSIDE.TXT` answer `ERR ACCESS` and start nothing; a dependency name the
+/// grammar refuses (`a|b`) is a syntax error, not an echoed name; none of the three counts, so
+/// `LOAD /SYSTEM/SVC-ORD.TXT` then answers `OK 3`. The kernel's boot verdict wants `OK <n>` with
+/// n >= 1 for the interactive manifest and escapes `|`, `\` and control bytes in its trace field.
+fn load_outside_system() -> ! {
+    use crate::fs::vfs;
+    let name = "load_outside_system";
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    if !manifest_write(
+        b"/OUTSIDE.TXT",
+        b"A /SYSTEM/SVC.ELF - 200 never 0 0 ready\n",
+    ) || !manifest_write(
+        b"/SYSTEM/BADDEP.TXT",
+        b"A /SYSTEM/SVC.ELF a|b 200 never 0 0 ready\n",
+    ) {
+        fail("could not write the test manifests")
+    }
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let h = SvcHarness::start(name, b"/OUTSIDE.TXT");
+    let lines = h.poll_list(sched::ticks() + 100, |l| !l.is_empty());
+    let outside = h.load_reply.clone();
+    let outside_ok = outside == "ERR ACCESS" && lines.is_empty();
+    kprintln!(
+        "OSX|{}|ktest|{}|case=outside|reply={}|started={}|ok={}",
+        BUILD_ID,
+        name,
+        crate::services::reply_field(&outside),
+        lines.len(),
+        u8::from(outside_ok)
+    );
+    drop(lines);
+    let load = |path: &[u8]| -> String {
+        match crate::services::request(
+            &h.m.ctl,
+            &crate::services::load_request(path),
+            sched::ticks() + 500,
+        ) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => e.into(),
+        }
+    };
+    let dotdot = load(b"/SYSTEM/../OUTSIDE.TXT");
+    let lines = h.poll_list(sched::ticks(), |_| true);
+    let dotdot_ok = dotdot == "ERR ACCESS" && lines.is_empty();
+    kprintln!(
+        "OSX|{}|ktest|{}|case=dotdot|reply={}|started={}|ok={}",
+        BUILD_ID,
+        name,
+        crate::services::reply_field(&dotdot),
+        lines.len(),
+        u8::from(dotdot_ok)
+    );
+    drop(lines);
+    let dep = load(b"/SYSTEM/BADDEP.TXT");
+    let dep_ok = dep == "ERR MANIFEST_SYNTAX 1";
+    kprintln!(
+        "OSX|{}|ktest|{}|case=dep_name|reply={}|ok={}",
+        BUILD_ID,
+        name,
+        crate::services::reply_field(&dep),
+        u8::from(dep_ok)
+    );
+    let ord = load(b"/SYSTEM/SVC-ORD.TXT");
+    let lines = h.poll_list(sched::ticks() + 1000, |l| {
+        l.len() == 3 && l.iter().all(|x| x.state == "ready")
+    });
+    let ord_ok = ord == "OK 3" && lines.len() == 3 && lines.iter().all(|x| x.state == "ready");
+    kprintln!(
+        "OSX|{}|ktest|{}|case=system|reply={}|ready={}|ok={}",
+        BUILD_ID,
+        name,
+        crate::services::reply_field(&ord),
+        lines.iter().filter(|x| x.state == "ready").count(),
+        u8::from(ord_ok)
+    );
+    drop(lines);
+    let (mgr_exit, procs, _, clean) = h.finish();
+    // The kernel's boot verdict and trace field (services.rs), on fixed replies.
+    use crate::services::{boot_reply_ok, reply_field};
+    let interactive_ok0 = boot_reply_ok(true, "OK 0");
+    let selftest_ok0 = boot_reply_ok(false, "OK 0");
+    let interactive_ok8 = boot_reply_ok(true, "OK 8");
+    let bad_ok = boot_reply_ok(false, "OK x") || boot_reply_ok(true, "OK ");
+    let escaped = reply_field("ERR MANIFEST_UNKNOWN_DEP a|b\\\u{1b}\n")
+        == "ERR MANIFEST_UNKNOWN_DEP a\\x7cb\\x5c\\x1b;";
+    let boot_ok = !interactive_ok0 && selftest_ok0 && interactive_ok8 && !bad_ok && escaped;
+    kprintln!(
+        "OSX|{}|ktest|{}|case=boot_reply|interactive_ok0={}|selftest_ok0={}|interactive_ok8={}|bad_ok={}|escaped={}|ok={}",
+        BUILD_ID,
+        name,
+        u8::from(interactive_ok0),
+        u8::from(selftest_ok0),
+        u8::from(interactive_ok8),
+        u8::from(bad_ok),
+        u8::from(escaped),
+        u8::from(boot_ok)
+    );
+    let all_ok = outside_ok && dotdot_ok && dep_ok && ord_ok && boot_ok;
+    let manager_ok = mgr_exit == 0 && procs == 0 && clean;
+    drop((outside, dotdot, dep, ord));
+    let removed =
+        vfs::unlink(b"/OUTSIDE.TXT").is_ok() && vfs::unlink(b"/SYSTEM/BADDEP.TXT").is_ok();
+    let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|{}|failed={}{}{}{}{}|processes_after={}|frames_delta={}|clean={}|mgr_exit={:#x}|removed={}",
+        BUILD_ID,
+        name,
+        if outside_ok { "" } else { "outside," },
+        if dotdot_ok { "" } else { "dotdot," },
+        if dep_ok { "" } else { "dep_name," },
+        if ord_ok { "" } else { "system," },
+        if boot_ok { "" } else { "boot_reply," },
+        procs,
+        frames,
+        u8::from(manager_ok && settled),
+        mgr_exit,
+        u8::from(removed)
+    );
+    if !all_ok {
+        fail("LOAD read or started something outside /SYSTEM/, or a refused LOAD counted (services.md v1.13)")
+    }
+    if !manager_ok || !settled || procs != 0 || frames != 0 || !removed {
+        fail("the manager left a process, an object or a frame behind, or a file stayed")
+    }
+    pass("LOAD outside /SYSTEM/ is refused with ERR ACCESS and starts nothing; LOAD under /SYSTEM/ still loads")
 }
 
 /// TST-M6-TOKEN-REVOKE (negative; auth.md v1.2, session.md v1.7 §5, WP-73): the session's

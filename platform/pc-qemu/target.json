@@ -6666,6 +6666,64 @@
         "timeout_s": 60
       },
       {
+        "id": "TST-M6-MANIFEST-TOO-LARGE",
+        "test_id": "TST-M6-MANIFEST-TOO-LARGE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=manifest_too_large"
+        ],
+        "oracle": "REQ-M6-002, WP-68 (services.md v1.13 §0.00000, §2; mutants M157, M158): a manifest the manager cannot read whole is refused whole. The test kernel writes /SYSTEM/BIGMAN.TXT at run time (one service line `A` and comment lines up to the size) and a real /SYSTEM/SVCMGR.ELF, started per sub-case through SvcHarness, loads it: 4097 and 4096 bytes answer `ERR MANIFEST_TOO_LARGE` (MANIFEST_MAX = 4096 is refused, not truncated), 4095 bytes answer `OK 1` and `A` becomes ready (the boundary is not over-tight); a read that fails midway (the test kernel's one-shot read hook in kernel/src/fs/vfs.rs, armed for files of 3001 bytes, stops reads at byte 1024 and fails the next one; fired=1) answers `ERR MANIFEST_IO`. A refused manifest starts nothing (list= empty) and the refused LOAD does not count (a second LOAD is answered ERR MANIFEST_MISSING, not ERR LOADED); every manager exits 0 and leaves nothing (failed= empty, processes_after=0, frames_delta=0, clean=1), and the file is removed. Before v1.13 the manager parsed the first 4096 bytes or what it read before the error and answered `OK 1`, which is forbidden here; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=manifest_too_large",
+          "|ktest|manifest_too_large|case=4097|reply=ERR MANIFEST_TOO_LARGE|list=|again=ERR MANIFEST_MISSING|fired=0|bytes=4097|mgr_exit=0x0|ok=1",
+          "|ktest|manifest_too_large|case=4096|reply=ERR MANIFEST_TOO_LARGE|list=|again=ERR MANIFEST_MISSING|fired=0|bytes=4096|mgr_exit=0x0|ok=1",
+          "|ktest|manifest_too_large|case=4095|reply=OK 1|ready=1|bytes=4095|mgr_exit=0x0|ok=1",
+          "|ktest|manifest_too_large|case=io|reply=ERR MANIFEST_IO|list=|again=ERR MANIFEST_MISSING|fired=1|bytes=3001|mgr_exit=0x0|ok=1",
+          "|ktest|manifest_too_large|failed=|processes_after=0|frames_delta=0|clean=1|removed=1",
+          "|ktest|pass|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|ktest|manifest_too_large|case=4097|reply=OK",
+          "|ktest|manifest_too_large|case=4096|reply=OK",
+          "|ktest|manifest_too_large|case=io|reply=OK",
+          "again=ERR LOADED"
+        ],
+        "timeout_s": 30
+      },
+      {
+        "id": "TST-M6-LOAD-OUTSIDE-SYSTEM",
+        "test_id": "TST-M6-LOAD-OUTSIDE-SYSTEM",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=load_outside_system"
+        ],
+        "oracle": "REQ-M6-002, WP-68 (services.md v1.13 §0.00000, §3; mutant M159): LOAD reads only under /SYSTEM/. The test kernel writes a valid one-service manifest at /OUTSIDE.TXT and starts a real /SYSTEM/SVCMGR.ELF through SvcHarness with `LOAD /OUTSIDE.TXT`: the answer is `ERR ACCESS` and LIST stays empty (started=0); `LOAD /SYSTEM/../OUTSIDE.TXT` (a `..` component after the byte-exact `/SYSTEM/` prefix) is `ERR ACCESS` too; a manifest whose dependency field is `a|b` (/SYSTEM/BADDEP.TXT, written at run time) is `ERR MANIFEST_SYNTAX 1`, not an echo of the name; none of these counts as the LOAD, so `LOAD /SYSTEM/SVC-ORD.TXT` then answers `OK 3` and its three services become ready. The kernel's boot verdict (services.rs boot_reply_ok) refuses `OK 0` for the interactive manifest and a reply without a number, accepts `OK 0` for the self-test manifest, and its trace field (reply_field) escapes `|`, `\\` and control bytes. The manager exits 0 and nothing is left (failed= empty, processes_after=0, frames_delta=0, clean=1); both files are removed. Before v1.13 `/OUTSIDE.TXT` loaded (`OK 1`, started=1), which is forbidden here; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=load_outside_system",
+          "|ktest|load_outside_system|case=outside|reply=ERR ACCESS|started=0|ok=1",
+          "|ktest|load_outside_system|case=dotdot|reply=ERR ACCESS|started=0|ok=1",
+          "|ktest|load_outside_system|case=dep_name|reply=ERR MANIFEST_SYNTAX 1|ok=1",
+          "|ktest|load_outside_system|case=system|reply=OK 3|ready=3|ok=1",
+          "|ktest|load_outside_system|case=boot_reply|interactive_ok0=0|selftest_ok0=1|interactive_ok8=1|bad_ok=0|escaped=1|ok=1",
+          "|ktest|load_outside_system|failed=|processes_after=0|frames_delta=0|clean=1|mgr_exit=0x0|removed=1",
+          "|ktest|pass|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|ktest|load_outside_system|case=outside|reply=OK",
+          "|ktest|load_outside_system|case=dotdot|reply=OK",
+          "ERR LOADED"
+        ],
+        "timeout_s": 30
+      },
+      {
         "id": "TST-M6-TOKEN-REVOKE",
         "test_id": "TST-M6-TOKEN-REVOKE",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",
