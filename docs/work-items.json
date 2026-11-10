@@ -3146,7 +3146,8 @@
     "2026-11-10 services.md v1.12 (additive): the manager's initial handles are 9, the root job handle (type 13, JOB_DEFAULT rights) last; §0.00's frozen `handles=8` stays as frozen text; the five lab cases that assert handles=8 (TST-M1-BOOT, TST-M4-SVC-ORDER, TST-M4-SVC-TIMEOUT, TST-M4-SVC-RESTART, TST-M5-INPUT-ROUTE) move to 9 as a contract-driven change",
     "2026-11-10 mutant anchors re-decided to match M151-M153 as recorded: M151 the WRITE check in job_of (shared by syscalls 43, 44 and 45); M152 the syscall-20 child placed in the root job instead of the caller's; M153 the locked dead-job check in spawn_user_with, killed by the ktest unit case job_spawn_dead (spawn_elf_with into a killed job must fail), not by the jobs app",
     "2026-11-10 test-first order: TST-M6-JOB-KILL (ktest job_kill_all drives /SYSTEM/JOBS.ELF and judges its exit 0x4A, the PEER_CLOSED on the killed processes' channels, processes_after=0 and frames_delta=0) is the failing-first test and compiles on the old kernel (the app's syscalls 43-45 are refused there); job_spawn_dead needs the Job API and lands with the kernel code",
-    "2026-11-10 activation estimate against the budget line: round 1 measured 55 tool calls (minutes not fully timed; the writing phase 21:39:58Z-21:48:07Z) plus the audit fix-up 9 calls; the lab round estimated 45; about 110, under the line, no reserve beyond it"
+    "2026-11-10 activation estimate against the budget line: round 1 measured 55 tool calls (minutes not fully timed; the writing phase 21:39:58Z-21:48:07Z) plus the audit fix-up 9 calls; the lab round estimated 45; about 110, under the line, no reserve beyond it",
+    "2026-11-10 activated after the two audit rounds (dependency WP-45 done; the estimate against the budget line is recorded above)"
    ],
    "acceptance": "TST-M6-JOB-KILL PASS on CI; TST-M1-BOOT, the three M4 service cases and TST-M5-INPUT-ROUTE re-run with handles=9 and PASS; the M3 and M5 suites unregressed",
    "test_ids": [
@@ -3166,9 +3167,10 @@
     "python3 tools/project.py test --target pc-qemu --suite M6",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
