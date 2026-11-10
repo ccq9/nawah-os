@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044902Z-0111d8b6-002"
+    "evidence/20261110T075516Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044902Z-0111d8b6-001"
+    "evidence/20261110T075515Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042501Z-0111d8b6-001",
-    "evidence/20261110T042504Z-0111d8b6-001"
+    "evidence/20261110T072918Z-dd9e4626-001",
+    "evidence/20261110T072921Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044902Z-0111d8b6-002"
+    "evidence/20261110T075516Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -356,10 +356,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042507Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001",
-    "evidence/20261110T042546Z-0111d8b6-001",
-    "evidence/20261110T044907Z-0111d8b6-001"
+    "evidence/20261110T072925Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001",
+    "evidence/20261110T073006Z-dd9e4626-001",
+    "evidence/20261110T075521Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -429,17 +429,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042552Z-0111d8b6-001",
-    "evidence/20261110T042558Z-0111d8b6-001",
-    "evidence/20261110T042604Z-0111d8b6-001",
-    "evidence/20261110T042610Z-0111d8b6-001",
-    "evidence/20261110T042616Z-0111d8b6-001",
-    "evidence/20261110T042623Z-0111d8b6-001",
-    "evidence/20261110T042629Z-0111d8b6-001",
-    "evidence/20261110T042635Z-0111d8b6-001",
-    "evidence/20261110T042641Z-0111d8b6-001",
-    "evidence/20261110T042647Z-0111d8b6-001",
-    "evidence/20261110T042654Z-0111d8b6-001"
+    "evidence/20261110T073013Z-dd9e4626-001",
+    "evidence/20261110T073020Z-dd9e4626-001",
+    "evidence/20261110T073027Z-dd9e4626-001",
+    "evidence/20261110T073033Z-dd9e4626-001",
+    "evidence/20261110T073040Z-dd9e4626-001",
+    "evidence/20261110T073047Z-dd9e4626-001",
+    "evidence/20261110T073054Z-dd9e4626-001",
+    "evidence/20261110T073100Z-dd9e4626-001",
+    "evidence/20261110T073107Z-dd9e4626-001",
+    "evidence/20261110T073114Z-dd9e4626-001",
+    "evidence/20261110T073121Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -490,9 +490,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042700Z-0111d8b6-001",
-    "evidence/20261110T042706Z-0111d8b6-001",
-    "evidence/20261110T042712Z-0111d8b6-001"
+    "evidence/20261110T073128Z-dd9e4626-001",
+    "evidence/20261110T073135Z-dd9e4626-001",
+    "evidence/20261110T073142Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -555,11 +555,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042718Z-0111d8b6-001",
-    "evidence/20261110T042725Z-0111d8b6-001",
-    "evidence/20261110T042731Z-0111d8b6-001",
-    "evidence/20261110T042737Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073148Z-dd9e4626-001",
+    "evidence/20261110T073155Z-dd9e4626-001",
+    "evidence/20261110T073202Z-dd9e4626-001",
+    "evidence/20261110T073209Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -636,11 +636,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042743Z-0111d8b6-001",
-    "evidence/20261110T042749Z-0111d8b6-001",
-    "evidence/20261110T042756Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001",
-    "evidence/20261110T042647Z-0111d8b6-001"
+    "evidence/20261110T073215Z-dd9e4626-001",
+    "evidence/20261110T073222Z-dd9e4626-001",
+    "evidence/20261110T073229Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001",
+    "evidence/20261110T073114Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -704,9 +704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042802Z-0111d8b6-001",
-    "evidence/20261110T042808Z-0111d8b6-001",
-    "evidence/20261110T042814Z-0111d8b6-001"
+    "evidence/20261110T073236Z-dd9e4626-001",
+    "evidence/20261110T073243Z-dd9e4626-001",
+    "evidence/20261110T073249Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -818,11 +818,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042821Z-0111d8b6-001",
-    "evidence/20261110T042827Z-0111d8b6-001",
-    "evidence/20261110T042833Z-0111d8b6-001",
-    "evidence/20261110T042839Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073257Z-dd9e4626-001",
+    "evidence/20261110T073303Z-dd9e4626-001",
+    "evidence/20261110T073310Z-dd9e4626-001",
+    "evidence/20261110T073317Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -883,8 +883,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044854Z-0111d8b6-001",
-    "evidence/20261110T044855Z-0111d8b6-001"
+    "evidence/20261110T075507Z-dd9e4626-001",
+    "evidence/20261110T075508Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -950,11 +950,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042845Z-0111d8b6-001",
-    "evidence/20261110T042852Z-0111d8b6-001",
-    "evidence/20261110T042858Z-0111d8b6-001",
-    "evidence/20261110T042910Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073324Z-dd9e4626-001",
+    "evidence/20261110T073331Z-dd9e4626-001",
+    "evidence/20261110T073338Z-dd9e4626-001",
+    "evidence/20261110T073351Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1024,11 +1024,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042916Z-0111d8b6-001",
-    "evidence/20261110T042922Z-0111d8b6-001",
-    "evidence/20261110T042935Z-0111d8b6-001",
-    "evidence/20261110T042941Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073358Z-dd9e4626-001",
+    "evidence/20261110T073405Z-dd9e4626-001",
+    "evidence/20261110T073419Z-dd9e4626-001",
+    "evidence/20261110T073425Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1097,14 +1097,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042947Z-0111d8b6-001",
-    "evidence/20261110T042954Z-0111d8b6-001",
-    "evidence/20261110T043000Z-0111d8b6-001",
-    "evidence/20261110T043006Z-0111d8b6-001",
-    "evidence/20261110T043012Z-0111d8b6-001",
-    "evidence/20261110T043018Z-0111d8b6-001",
-    "evidence/20261110T043025Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073432Z-dd9e4626-001",
+    "evidence/20261110T073439Z-dd9e4626-001",
+    "evidence/20261110T073446Z-dd9e4626-001",
+    "evidence/20261110T073453Z-dd9e4626-001",
+    "evidence/20261110T073500Z-dd9e4626-001",
+    "evidence/20261110T073507Z-dd9e4626-001",
+    "evidence/20261110T073513Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1174,10 +1174,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043037Z-0111d8b6-001",
-    "evidence/20261110T043043Z-0111d8b6-001",
-    "evidence/20261110T043050Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073527Z-dd9e4626-001",
+    "evidence/20261110T073534Z-dd9e4626-001",
+    "evidence/20261110T073540Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1256,14 +1256,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043056Z-0111d8b6-001",
-    "evidence/20261110T043102Z-0111d8b6-001",
-    "evidence/20261110T043108Z-0111d8b6-001",
-    "evidence/20261110T043117Z-0111d8b6-001",
-    "evidence/20261110T043123Z-0111d8b6-001",
-    "evidence/20261110T043136Z-0111d8b6-001",
-    "evidence/20261110T044907Z-0111d8b6-002",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073547Z-dd9e4626-001",
+    "evidence/20261110T073554Z-dd9e4626-001",
+    "evidence/20261110T073601Z-dd9e4626-001",
+    "evidence/20261110T073610Z-dd9e4626-001",
+    "evidence/20261110T073617Z-dd9e4626-001",
+    "evidence/20261110T073632Z-dd9e4626-001",
+    "evidence/20261110T075522Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1331,10 +1331,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043145Z-0111d8b6-001",
-    "evidence/20261110T043151Z-0111d8b6-001",
-    "evidence/20261110T043157Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073641Z-dd9e4626-001",
+    "evidence/20261110T073648Z-dd9e4626-001",
+    "evidence/20261110T073655Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1407,12 +1407,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043203Z-0111d8b6-001",
-    "evidence/20261110T043210Z-0111d8b6-001",
-    "evidence/20261110T043216Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001",
-    "evidence/20261110T042916Z-0111d8b6-001",
-    "evidence/20261110T042935Z-0111d8b6-001"
+    "evidence/20261110T073702Z-dd9e4626-001",
+    "evidence/20261110T073708Z-dd9e4626-001",
+    "evidence/20261110T073715Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001",
+    "evidence/20261110T073358Z-dd9e4626-001",
+    "evidence/20261110T073419Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1469,10 +1469,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T042904Z-0111d8b6-001",
+    "evidence/20261110T073344Z-dd9e4626-001",
     "evidence/20261108T230914Z-2cbdeaad-001",
-    "evidence/20261110T042929Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073412Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1542,9 +1542,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043222Z-0111d8b6-001",
-    "evidence/20261110T043229Z-0111d8b6-001",
-    "evidence/20261110T043235Z-0111d8b6-001"
+    "evidence/20261110T073722Z-dd9e4626-001",
+    "evidence/20261110T073729Z-dd9e4626-001",
+    "evidence/20261110T073736Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1608,10 +1608,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043241Z-0111d8b6-001",
-    "evidence/20261110T043248Z-0111d8b6-001",
-    "evidence/20261110T043254Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073743Z-dd9e4626-001",
+    "evidence/20261110T073750Z-dd9e4626-001",
+    "evidence/20261110T073757Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1684,10 +1684,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044909Z-0111d8b6-001",
-    "evidence/20261110T043300Z-0111d8b6-001",
-    "evidence/20261110T043306Z-0111d8b6-001",
-    "evidence/20261110T043317Z-0111d8b6-001"
+    "evidence/20261110T075524Z-dd9e4626-001",
+    "evidence/20261110T073804Z-dd9e4626-001",
+    "evidence/20261110T073811Z-dd9e4626-001",
+    "evidence/20261110T073822Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1747,12 +1747,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043323Z-0111d8b6-001",
-    "evidence/20261110T043358Z-0111d8b6-001",
-    "evidence/20261110T043330Z-0111d8b6-001",
-    "evidence/20261110T043337Z-0111d8b6-001",
-    "evidence/20261110T043344Z-0111d8b6-001",
-    "evidence/20261110T043351Z-0111d8b6-001"
+    "evidence/20261110T073830Z-dd9e4626-001",
+    "evidence/20261110T073908Z-dd9e4626-001",
+    "evidence/20261110T073837Z-dd9e4626-001",
+    "evidence/20261110T073845Z-dd9e4626-001",
+    "evidence/20261110T073853Z-dd9e4626-001",
+    "evidence/20261110T073900Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1834,10 +1834,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043409Z-0111d8b6-001",
-    "evidence/20261110T043415Z-0111d8b6-001",
-    "evidence/20261110T043421Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T073919Z-dd9e4626-001",
+    "evidence/20261110T073926Z-dd9e4626-001",
+    "evidence/20261110T073933Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1897,10 +1897,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043429Z-0111d8b6-001",
-    "evidence/20261110T043436Z-0111d8b6-001",
-    "evidence/20261110T043443Z-0111d8b6-001",
-    "evidence/20261110T043450Z-0111d8b6-001"
+    "evidence/20261110T073941Z-dd9e4626-001",
+    "evidence/20261110T073949Z-dd9e4626-001",
+    "evidence/20261110T073956Z-dd9e4626-001",
+    "evidence/20261110T074004Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -1951,8 +1951,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043458Z-0111d8b6-001",
-    "evidence/20261110T043505Z-0111d8b6-001"
+    "evidence/20261110T074012Z-dd9e4626-001",
+    "evidence/20261110T074020Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2035,10 +2035,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043513Z-0111d8b6-001",
-    "evidence/20261110T043522Z-0111d8b6-001",
-    "evidence/20261110T044916Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001"
+    "evidence/20261110T074029Z-dd9e4626-001",
+    "evidence/20261110T074038Z-dd9e4626-001",
+    "evidence/20261110T075530Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2099,11 +2099,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043530Z-0111d8b6-001",
+    "evidence/20261110T074047Z-dd9e4626-001",
     "evidence/20261108T233109Z-2cbdeaad-001",
-    "evidence/20261110T043513Z-0111d8b6-001",
-    "evidence/20261110T043317Z-0111d8b6-001",
-    "evidence/20261110T043229Z-0111d8b6-001"
+    "evidence/20261110T074029Z-dd9e4626-001",
+    "evidence/20261110T073822Z-dd9e4626-001",
+    "evidence/20261110T073729Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2177,7 +2177,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043536Z-0111d8b6-001"
+    "evidence/20261110T074054Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2251,9 +2251,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043546Z-0111d8b6-001",
-    "evidence/20261110T043604Z-0111d8b6-001",
-    "evidence/20261110T044920Z-0111d8b6-001"
+    "evidence/20261110T074104Z-dd9e4626-001",
+    "evidence/20261110T074124Z-dd9e4626-001",
+    "evidence/20261110T075535Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2326,10 +2326,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043613Z-0111d8b6-001",
-    "evidence/20261110T043624Z-0111d8b6-001",
-    "evidence/20261110T043642Z-0111d8b6-001",
-    "evidence/20261110T045013Z-0111d8b6-001"
+    "evidence/20261110T074133Z-dd9e4626-001",
+    "evidence/20261110T074145Z-dd9e4626-001",
+    "evidence/20261110T074204Z-dd9e4626-001",
+    "evidence/20261110T075630Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2412,10 +2412,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044952Z-0111d8b6-001",
-    "evidence/20261110T044953Z-0111d8b6-001",
-    "evidence/20261110T045001Z-0111d8b6-001",
-    "evidence/20261110T043710Z-0111d8b6-001"
+    "evidence/20261110T075607Z-dd9e4626-001",
+    "evidence/20261110T075608Z-dd9e4626-001",
+    "evidence/20261110T075616Z-dd9e4626-001",
+    "evidence/20261110T074234Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2486,10 +2486,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043725Z-0111d8b6-001",
-    "evidence/20261110T043748Z-0111d8b6-001",
-    "evidence/20261110T045004Z-0111d8b6-001",
-    "evidence/20261110T045012Z-0111d8b6-001"
+    "evidence/20261110T074249Z-dd9e4626-001",
+    "evidence/20261110T074313Z-dd9e4626-001",
+    "evidence/20261110T075620Z-dd9e4626-001",
+    "evidence/20261110T075629Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2580,9 +2580,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043855Z-0111d8b6-001",
-    "evidence/20261110T043827Z-0111d8b6-001",
-    "evidence/20261110T043759Z-0111d8b6-001"
+    "evidence/20261110T074423Z-dd9e4626-001",
+    "evidence/20261110T074354Z-dd9e4626-001",
+    "evidence/20261110T074325Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2649,9 +2649,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044627Z-0111d8b6-001",
-    "evidence/20261110T044638Z-0111d8b6-001",
-    "evidence/20261110T045004Z-0111d8b6-001"
+    "evidence/20261110T075203Z-dd9e4626-001",
+    "evidence/20261110T075214Z-dd9e4626-001",
+    "evidence/20261110T075620Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2706,14 +2706,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044657Z-0111d8b6-001",
-    "evidence/20261110T044703Z-0111d8b6-001",
-    "evidence/20261110T044709Z-0111d8b6-001",
-    "evidence/20261110T044058Z-0111d8b6-001",
-    "evidence/20261110T044610Z-0111d8b6-001",
-    "evidence/20261110T044128Z-0111d8b6-001",
-    "evidence/20261110T044157Z-0111d8b6-001",
-    "evidence/20261110T044229Z-0111d8b6-001",
+    "evidence/20261110T075234Z-dd9e4626-001",
+    "evidence/20261110T075240Z-dd9e4626-001",
+    "evidence/20261110T075247Z-dd9e4626-001",
+    "evidence/20261110T074629Z-dd9e4626-001",
+    "evidence/20261110T075145Z-dd9e4626-001",
+    "evidence/20261110T074659Z-dd9e4626-001",
+    "evidence/20261110T074729Z-dd9e4626-001",
+    "evidence/20261110T074801Z-dd9e4626-001",
     "evidence/20261108T233109Z-2cbdeaad-001"
    ],
    "blocker": null
@@ -2755,7 +2755,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044336Z-0111d8b6-001"
+    "evidence/20261110T074910Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2803,15 +2803,15 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043536Z-0111d8b6-001",
-    "evidence/20261110T043613Z-0111d8b6-001",
-    "evidence/20261110T043624Z-0111d8b6-001",
-    "evidence/20261110T043642Z-0111d8b6-001",
-    "evidence/20261110T043656Z-0111d8b6-001",
-    "evidence/20261110T044627Z-0111d8b6-001",
-    "evidence/20261110T044638Z-0111d8b6-001",
-    "evidence/20261110T045004Z-0111d8b6-001",
-    "evidence/20261110T045013Z-0111d8b6-001"
+    "evidence/20261110T074054Z-dd9e4626-001",
+    "evidence/20261110T074133Z-dd9e4626-001",
+    "evidence/20261110T074145Z-dd9e4626-001",
+    "evidence/20261110T074204Z-dd9e4626-001",
+    "evidence/20261110T074219Z-dd9e4626-001",
+    "evidence/20261110T075203Z-dd9e4626-001",
+    "evidence/20261110T075214Z-dd9e4626-001",
+    "evidence/20261110T075620Z-dd9e4626-001",
+    "evidence/20261110T075630Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -2830,23 +2830,23 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044315Z-0111d8b6-001",
-    "evidence/20261110T043642Z-0111d8b6-001",
-    "evidence/20261110T043827Z-0111d8b6-001",
-    "evidence/20261110T043855Z-0111d8b6-001",
-    "evidence/20261110T044058Z-0111d8b6-001",
-    "evidence/20261110T044953Z-0111d8b6-001",
-    "evidence/20261110T044627Z-0111d8b6-001",
-    "evidence/20261110T043546Z-0111d8b6-001",
-    "evidence/20261110T043656Z-0111d8b6-001",
-    "evidence/20261110T044709Z-0111d8b6-001",
-    "evidence/20261110T043634Z-0111d8b6-001",
-    "evidence/20261110T044051Z-0111d8b6-001",
-    "evidence/20261110T044022Z-0111d8b6-001",
-    "evidence/20261110T043943Z-0111d8b6-001",
-    "evidence/20261110T043557Z-0111d8b6-001",
-    "evidence/20261110T043925Z-0111d8b6-001",
-    "evidence/20261110T043703Z-0111d8b6-001"
+    "evidence/20261110T074849Z-dd9e4626-001",
+    "evidence/20261110T074204Z-dd9e4626-001",
+    "evidence/20261110T074354Z-dd9e4626-001",
+    "evidence/20261110T074423Z-dd9e4626-001",
+    "evidence/20261110T074629Z-dd9e4626-001",
+    "evidence/20261110T075608Z-dd9e4626-001",
+    "evidence/20261110T075203Z-dd9e4626-001",
+    "evidence/20261110T074104Z-dd9e4626-001",
+    "evidence/20261110T074219Z-dd9e4626-001",
+    "evidence/20261110T075247Z-dd9e4626-001",
+    "evidence/20261110T074155Z-dd9e4626-001",
+    "evidence/20261110T074621Z-dd9e4626-001",
+    "evidence/20261110T074551Z-dd9e4626-001",
+    "evidence/20261110T074512Z-dd9e4626-001",
+    "evidence/20261110T074116Z-dd9e4626-001",
+    "evidence/20261110T074453Z-dd9e4626-001",
+    "evidence/20261110T074227Z-dd9e4626-001"
    ],
    "blocker": null,
    "id": "WP-43",
@@ -2921,9 +2921,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044308Z-0111d8b6-001",
-    "evidence/20261110T043827Z-0111d8b6-001",
-    "evidence/20261110T043513Z-0111d8b6-001"
+    "evidence/20261110T074842Z-dd9e4626-001",
+    "evidence/20261110T074354Z-dd9e4626-001",
+    "evidence/20261110T074029Z-dd9e4626-001"
    ],
    "blocker": null,
    "id": "WP-44",
@@ -3078,14 +3078,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044716Z-0111d8b6-001",
-    "evidence/20261110T045014Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001",
-    "evidence/20261110T042546Z-0111d8b6-001",
-    "evidence/20261110T044907Z-0111d8b6-001",
-    "evidence/20261110T044903Z-0111d8b6-001",
-    "evidence/20261110T044905Z-0111d8b6-001",
-    "evidence/20261110T044920Z-0111d8b6-001"
+    "evidence/20261110T075255Z-dd9e4626-001",
+    "evidence/20261110T075631Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001",
+    "evidence/20261110T073006Z-dd9e4626-001",
+    "evidence/20261110T075521Z-dd9e4626-001",
+    "evidence/20261110T075516Z-dd9e4626-002",
+    "evidence/20261110T075518Z-dd9e4626-002",
+    "evidence/20261110T075535Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -3176,12 +3176,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044848Z-0111d8b6-001",
-    "evidence/20261110T042540Z-0111d8b6-001",
-    "evidence/20261110T043241Z-0111d8b6-001",
-    "evidence/20261110T043248Z-0111d8b6-001",
-    "evidence/20261110T043254Z-0111d8b6-001",
-    "evidence/20261110T043546Z-0111d8b6-001"
+    "evidence/20261110T075452Z-dd9e4626-001",
+    "evidence/20261110T072959Z-dd9e4626-001",
+    "evidence/20261110T073743Z-dd9e4626-001",
+    "evidence/20261110T073750Z-dd9e4626-001",
+    "evidence/20261110T073757Z-dd9e4626-001",
+    "evidence/20261110T074104Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -3341,7 +3341,8 @@
     "2026-11-10: the 2026-11-09 renumbering of ui.md for the input-language badge is reverted (the badge is WP-72's and takes its ui.md number at merge, PLAN.md:132); this item's ui.md version is v1.6 again",
     "2026-11-10 split (manager, after the apps engineer's design report): 49a1 stays here; the dialog app's POINTER branch and the guest case TST-M6-UI-POINTER -> WP-79; the confirm dialog -> WP-80; the former ui.md v1.6 line (pointer, menus and the confirm dialog) and the end scenario (mouse and keyboard on the sample dialog) are narrowed accordingly",
     "2026-11-10 estimate (apps engineer, unmeasured): about 60 tool calls / 55 min; under the line",
-    "2026-11-10 activated after the apps engineer's design report; the estimate against the budget line is recorded above (about 60 calls / 55 min); the guest case is WP-79 and the confirm dialog WP-80"
+    "2026-11-10 activated after the apps engineer's design report; the estimate against the budget line is recorded above (about 60 calls / 55 min); the guest case is WP-79 and the confirm dialog WP-80",
+    "2026-11-10 CI record: red observed on run 42769555412 as the host suite M5 failing: TST-M5-UI-UNIT (cargo test -p libui compiles every test target) stopped with 'could not compile libui (test pointer_menu) due to 144 previous errors'; the M6 host case did not run after that failure (the host step stops at the first failing suite), so TST-M6-UI-UNIT's own red was not observed on CI; green on run 42772371395 (host suites PASS) and on 42775276374 which closes the item"
    ],
    "acceptance": "TST-M6-UI-UNIT (the eight tests of user/libui/tests/pointer_menu.rs) PASS on CI; TST-M5-UI-UNIT (14 passed, unchanged), TST-M5-KEYBOARD-NAV and TST-M5-ARABIC-UI unregressed; M165-M169 killed",
    "test_ids": [
@@ -4102,16 +4103,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T043943Z-0111d8b6-001",
-    "evidence/20261110T044839Z-0111d8b6-001",
-    "evidence/20261110T044716Z-0111d8b6-001",
-    "evidence/20261110T044815Z-0111d8b6-001",
-    "evidence/20261110T044903Z-0111d8b6-001",
-    "evidence/20261110T043759Z-0111d8b6-001",
-    "evidence/20261110T043855Z-0111d8b6-001",
-    "evidence/20261110T044058Z-0111d8b6-001",
-    "evidence/20261110T044229Z-0111d8b6-001",
-    "evidence/20261110T044709Z-0111d8b6-001"
+    "evidence/20261110T074512Z-dd9e4626-001",
+    "evidence/20261110T075443Z-dd9e4626-001",
+    "evidence/20261110T075255Z-dd9e4626-001",
+    "evidence/20261110T075355Z-dd9e4626-001",
+    "evidence/20261110T075516Z-dd9e4626-002",
+    "evidence/20261110T074325Z-dd9e4626-001",
+    "evidence/20261110T074423Z-dd9e4626-001",
+    "evidence/20261110T074629Z-dd9e4626-001",
+    "evidence/20261110T074801Z-dd9e4626-001",
+    "evidence/20261110T075247Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -4171,10 +4172,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044902Z-0111d8b6-001",
-    "evidence/20261110T044903Z-0111d8b6-001",
-    "evidence/20261110T044905Z-0111d8b6-001",
-    "evidence/20261110T044905Z-0111d8b6-002"
+    "evidence/20261110T075515Z-dd9e4626-001",
+    "evidence/20261110T075516Z-dd9e4626-002",
+    "evidence/20261110T075518Z-dd9e4626-002",
+    "evidence/20261110T075519Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -4250,14 +4251,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044815Z-0111d8b6-001",
-    "evidence/20261110T043613Z-0111d8b6-001",
-    "evidence/20261110T043624Z-0111d8b6-001",
-    "evidence/20261110T043725Z-0111d8b6-001",
-    "evidence/20261110T044627Z-0111d8b6-001",
-    "evidence/20261110T044716Z-0111d8b6-001",
-    "evidence/20261110T044903Z-0111d8b6-001",
-    "evidence/20261110T044905Z-0111d8b6-001"
+    "evidence/20261110T075355Z-dd9e4626-001",
+    "evidence/20261110T074133Z-dd9e4626-001",
+    "evidence/20261110T074145Z-dd9e4626-001",
+    "evidence/20261110T074249Z-dd9e4626-001",
+    "evidence/20261110T075203Z-dd9e4626-001",
+    "evidence/20261110T075255Z-dd9e4626-001",
+    "evidence/20261110T075516Z-dd9e4626-002",
+    "evidence/20261110T075518Z-dd9e4626-002"
    ],
    "blocker": null
   },
@@ -4307,7 +4308,8 @@
     "2026-11-10 defect recorded: services.md v1.11 (WP-45) promised ERR ACCESS for LOAD outside /SYSTEM (services.md:33, :86) while svcmgr on_control (main.rs:803-826) passes any path to load(); the promise is honoured here",
     "2026-11-10 split (manager, after the services and security engineers' design reports): the displayd boot-loop defects, the halt message, the LOAD timeout and the console.log marker -> WP-77; the config write scope (RSK-019) -> WP-78",
     "2026-11-10 estimate (services engineer, unmeasured): about 65 tool calls / 65 min; under the line",
-    "2026-11-10 activated after the services engineer's design report; the estimate against the budget line is recorded above (about 65 calls / 65 min); the displayd and config halves are WP-77 and WP-78"
+    "2026-11-10 activated after the services engineer's design report; the estimate against the budget line is recorded above (about 65 calls / 65 min); the displayd and config halves are WP-77 and WP-78",
+    "2026-11-10 CI record: red run 42765251742 on 8419dfb15 (the tests alone): TST-M6-MANIFEST-TOO-LARGE case=4097 and 4096 reply=OK 1 … again=ERR LOADED, case=io fired=1 reply=OK 1 (4095 accepted); TST-M6-LOAD-OUTSIDE-SYSTEM case=outside reply=OK 1|started=1, dotdot/dep_name/system ERR LOADED, boot_reply bad_ok=1 escaped=0, as predicted; green on run 42769555412 (ERR MANIFEST_TOO_LARGE, ERR MANIFEST_IO, ERR ACCESS with started=0, dep_name ERR MANIFEST_SYNTAX 1, system OK 3 ready=3, boot_reply escaped=1) and on 42775276374 which closes the item"
    ],
    "acceptance": "TST-M6-MANIFEST-TOO-LARGE and TST-M6-LOAD-OUTSIDE-SYSTEM PASS on CI; TST-M6-MANIFEST-LINT, TST-M6-INTERACTIVE-BOOT and TST-M4-SVC-ORDER re-run and PASS; M157-M159 killed; validate-records --strict 0 errors",
    "test_ids": [
@@ -4615,10 +4617,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T044822Z-0111d8b6-001",
-    "evidence/20261110T043317Z-0111d8b6-001",
-    "evidence/20261110T043306Z-0111d8b6-001",
-    "evidence/20261110T044336Z-0111d8b6-001"
+    "evidence/20261110T075426Z-dd9e4626-001",
+    "evidence/20261110T073822Z-dd9e4626-001",
+    "evidence/20261110T073811Z-dd9e4626-001",
+    "evidence/20261110T074910Z-dd9e4626-001"
    ],
    "blocker": null
   },
@@ -4651,7 +4653,8 @@
     "2026-11-10 split at this record's own split point (manager, after the lab engineer's refined estimate for 74b: 40-55 calls, 75-110 min, over the line): 74a stays here; 74b (the parallel jobs, the merge job, adopt-native, the run slot, the per-job StepBudget and the V3 trigger amendment) -> WP-81",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10: 74a measured 7 tool calls (lab engineer); under the line",
-    "2026-11-10 activated: dependencies WP-64 and WP-65 done; the estimate against the budget line is recorded above (74a measured 7 tool calls); 74b is WP-81 since the same day's split"
+    "2026-11-10 activated: dependencies WP-64 and WP-65 done; the estimate against the budget line is recorded above (74a measured 7 tool calls); 74b is WP-81 since the same day's split",
+    "2026-11-10 CI record: the Toolchain cap 15 and the job limit 58 ran on every verify since 3411c3f2d; TST-M0-003 (StepBudget with the new caps) PASS on green run 42775276374; the run on 3411c3f2d itself was cancelled by the next push, as the concurrency policy does"
    ],
    "acceptance": "TST-M0-003 PASS on CI with the new caps (Toolchain 15, job limit 58); TST-M0-001 PASS",
    "test_ids": [
@@ -4802,7 +4805,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 estimate (services engineer, unmeasured): about 60 tool calls / 60 min; under the line",
     "2026-11-10 activated after the services engineer's design report (the displayd boot-loop defects, moved from WP-68); dependency WP-45 done; the estimate against the budget line is recorded above (about 60 calls / 60 min)",
-    "2026-11-10 split at implementation (services engineer's report): the visible halt message (kmain.rs:579, outside this item's files), the interactive LOAD timeout decision (kmain.rs:568) and the console.log password marker check (tools/project.py:1291-1293 applies forbidden markers to serial.log only) move to WP-82; a fourth sub-case ping_first (PING before the listing) was added because no other test covered the ignored PING"
+    "2026-11-10 split at implementation (services engineer's report): the visible halt message (kmain.rs:579, outside this item's files), the interactive LOAD timeout decision (kmain.rs:568) and the console.log password marker check (tools/project.py:1291-1293 applies forbidden markers to serial.log only) move to WP-82; a fourth sub-case ping_first (PING before the listing) was added because no other test covered the ignored PING",
+    "2026-11-10 CI record: red run 42772371395 on f3c94f22e (the test alone): TST-M6-DISPLAYD-BOOT-LOOP control ok=1, too_long_msg pong=0|holds=error:K_E_SVC_TIMEOUT|exit=0x20000, stop_first exit=0x20000, ping_first holds=error:K_E_SVC_TIMEOUT|exit=0x20000, stop_at_connect ready=0|exit=0xe5, as predicted; green on run 42775276374 which closes the item (M147 re-anchored on the equivalent decision line after the session_in_manifest change, meaning and killer unchanged)"
    ],
    "acceptance": "TST-M6-DISPLAYD-BOOT-LOOP PASS on CI (control, too_long_msg, stop_first and ping_first exit=0x0 with the discard and stop traces); TST-M6-INTERACTIVE-BOOT and TST-M6-HOLD-FAIL-CLOSED re-run and PASS (the hold_run generalisation changes no HOLD line); M160 and M161 killed",
    "test_ids": [
@@ -4872,7 +4876,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 estimate (security engineer, unmeasured): about 55-70 tool calls / 60-75 min; under the line",
     "2026-11-10 activated after the security engineer's design report (the A-min allowlist in fs_authority); dependency WP-45 done; the estimate against the budget line is recorded above (about 55-70 calls / 60-75 min)",
-    "2026-11-10 numbers taken at merge (audit): files.md v1.4 (a narrowing, ADR-0020 item 5 its decision record) and config.md v1.2; WP-52 moves to files.md v1.5 and WP-53, WP-55, WP-63 to v1.6; WP-52 must route mkdir and rename (both paths) through the same matcher once long file names arrive"
+    "2026-11-10 numbers taken at merge (audit): files.md v1.4 (a narrowing, ADR-0020 item 5 its decision record) and config.md v1.2; WP-52 moves to files.md v1.5 and WP-53, WP-55, WP-63 to v1.6; WP-52 must route mkdir and rename (both paths) through the same matcher once long file names arrive",
+    "2026-11-10 CI record: red run 42772371395 on f3c94f22e (the test alone): TST-M6-CONFIG-WRITE-SCOPE probe=0x28 (step 40 opened /SYSTEM/SERVICES.TXT for writing) with services_same=1 usersdb_same=1 inputd_same=1 created=0, as predicted; green on run 42775276374 which closes the item; the residual (config can still read USERS.DB) stays declared in ADR-0020 item 5 and RSK-019 stays open as reduced"
    ],
    "acceptance": "TST-M6-CONFIG-WRITE-SCOPE PASS on CI (exit 0x46 with its six required lines); TST-M4-CONFIG-PERSIST and TST-M5-FILE-AUTHORITY re-run and PASS; M162-M164 killed; validate-records --strict 0 errors",
    "test_ids": [
