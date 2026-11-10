@@ -4520,7 +4520,8 @@
     "test first: TST-M6-TOKEN-REVOKE (negative, REQ-M6-002) fails before the authd change; what the case measures: after the session client dies authd's live_tokens return to the count before the session's sign-in, i.e. the sh-like token alone; the trace line `auth|session_lost|revoked=1`; the sh negative control (a token opened by a client not named `session`, which opens and closes its auth channel per request, is not revoked by that close and still answers WHOAMI)",
     "2026-11-10 the held-copy WHOAMI check (a service holds a token copy during a REQUEST, session.md:14) is deferred to WP-71 with its mechanism (a ktest-only helper or a holder app)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 estimate against the budget line (90 min or 120 tool calls, OS-EXEC-AR §2.3 line 44): about 37 tool calls and 47 min, reconstructed from the services engineer's call sequence (the common reading and checks halved), not timed"
+    "2026-11-10 estimate against the budget line (90 min or 120 tool calls, OS-EXEC-AR §2.3 line 44): about 37 tool calls and 47 min, reconstructed from the services engineer's call sequence (the common reading and checks halved), not timed",
+    "2026-11-10 activated after the two audit rounds (dependency WP-45 done; the estimate against the budget line is recorded above)"
    ],
    "acceptance": "TST-M6-TOKEN-REVOKE PASS on CI; TST-M4-SESSION-LOCK and TST-M4-LOGIN re-run and PASS (sh-like tokens keep their lifetime); TST-M5-ELEVATE PASS",
    "test_ids": [
@@ -4536,9 +4537,10 @@
     "python3 tools/project.py test --target pc-qemu --suite M6",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
