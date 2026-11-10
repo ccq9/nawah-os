@@ -286,6 +286,48 @@ class ValidateRecords(unittest.TestCase):
         self.assertEqual(refs, [newest, other, "docs/ENVIRONMENT.md"])
         self.assertEqual(json.loads((TMP / "docs" / "tests.json").read_text())["records"][0]["evidence_refs"], [newest])
 
+    def test_two_runners_in_the_same_second_get_distinct_run_ids(self):
+        # WP-81: three verify jobs build the same revision; two of them starting a run in the same
+        # second wrote the same <stamp>-<rev>-001 and their evidence collided when merged. The
+        # job slot (NAWAH_RUN_SLOT) is appended to the id; the schemas still accept it.
+        from unittest import mock
+        fixed = project.datetime.datetime(2026, 1, 1, tzinfo=project.datetime.timezone.utc)
+        saved_scratch, saved_slot = project.SCRATCH, os.environ.get("NAWAH_RUN_SLOT")
+        ids = []
+        try:
+            with mock.patch.object(project, "datetime") as dt:
+                dt.datetime.now.return_value = fixed
+                for slot in ("a", "b"):
+                    project.SCRATCH = TMP / f"runner-{slot}"
+                    if project.SCRATCH.exists(): shutil.rmtree(project.SCRATCH)
+                    os.environ["NAWAH_RUN_SLOT"] = slot
+                    rid, d = project.new_run_dir("unit")
+                    self.assertTrue(d.is_dir()); self.assertEqual(d.name, rid)
+                    ids.append(rid)
+                for bad in ("A", "a/b", "..", "a b", "ab"):
+                    os.environ["NAWAH_RUN_SLOT"] = bad
+                    with self.assertRaises(ValueError, msg=bad):
+                        project.new_run_dir("unit")
+                os.environ.pop("NAWAH_RUN_SLOT")
+                rid, _ = project.new_run_dir("unit")
+                self.assertTrue(rid.endswith("-001"), rid)  # no slot: the id as before
+        finally:
+            project.SCRATCH = saved_scratch
+            if saved_slot is None: os.environ.pop("NAWAH_RUN_SLOT", None)
+            else: os.environ["NAWAH_RUN_SLOT"] = saved_slot
+        self.assertNotEqual(ids[0], ids[1])
+        self.assertEqual([i[-2:] for i in ids], ["-a", "-b"])
+        # the slotted id is a valid evidence run (evidence-run and evidence-verdict run_id)
+        r = base_records(); write_all(r)
+        d = TMP / "evidence" / ids[0]
+        if d.exists(): shutil.rmtree(d)
+        (TMP / make_evidence(r, "TST-M0-001")).rename(d)
+        for f in ("run.json", "verdict.json"):
+            j = json.loads((d / f).read_text()); j["run_id"] = ids[0]; (d / f).write_text(json.dumps(j))
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [f"evidence/{ids[0]}"]
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 0)
+
     def test_checkpoint_position_follows_the_records(self):
         # Review 2026-10-19 (T-8): project-state said M2/WP-07 during M5.
         r = base_records()

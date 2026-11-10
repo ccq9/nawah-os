@@ -23,7 +23,7 @@ dirty_state=true, and two cancelled verify runs had published evidence branches 
     nothing and leaves no directory; a successful import writes import.json beside an
     untouched run.json.
 """
-import copy, hashlib, importlib.util, json, os, shutil, stat, subprocess, sys, tempfile, unittest
+import contextlib, copy, hashlib, importlib.util, io, json, os, shutil, stat, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -503,6 +503,101 @@ class CheckedImport(unittest.TestCase):
         self.assertIn("gh is not on PATH", r.stdout)
         self.assertFalse(self.imported())
 
+    def add_foreign_dir(self, run_id="41", attempt=1):
+        """The evidence branch also holds a run directory of another run or attempt (WP-81: three
+        jobs' evidence merged; a stray directory would receive this run's receipt and fail the
+        validator only later)."""
+        work = self.base / "work"
+        foreign = work / "evidence" / "20260101T000000Z-deadbeef-001-b"
+        foreign.mkdir(parents=True)
+        (foreign / "verdict.json").write_text(json.dumps({"test_id": "TST-Y", "verdict": "PASS"}))
+        (foreign / "run.json").write_text(json.dumps({"run_id": foreign.name, "worker": "verification-runner",
+                                                      "ci": {"run_id": run_id, "run_attempt": attempt, "workflow": "verify", "event": "pull_request",
+                                                             "sha": "cafe", "head_sha": self.head, "ref": "x"}}))
+        self.git(work, "add", "-A"); self.git(work, "commit", "-q", "-m", "foreign")
+        self.git(work, "push", "-q", "-f", str(self.base / "origin"), "ci-evidence/42")
+        return foreign.name
+
+    def assert_refused_whole(self, r, name):
+        self.assertEqual(r.returncode, project.E_VALIDATION, r.stdout + r.stderr)
+        self.assertIn(name, r.stdout)
+        self.assertEqual(sorted(p.name for p in (self.root / "evidence").iterdir()), [])
+        self.assertEqual(list((self.base / "tmp").iterdir()), [], "a temporary copy was left behind")
+
+    def test_a_run_dir_of_another_run_is_refused_and_nothing_is_imported(self):
+        name = self.add_foreign_dir(run_id="41")
+        self.fake_gh()
+        self.assert_refused_whole(self.run_import(), name)
+
+    def test_a_run_dir_of_another_attempt_is_refused_and_nothing_is_imported(self):
+        name = self.add_foreign_dir(attempt=2)
+        self.fake_gh()
+        self.assert_refused_whole(self.run_import(), name)
+
+    def test_a_run_dir_without_ci_identity_is_refused_and_nothing_is_imported(self):
+        work = self.base / "work"
+        bare = work / "evidence" / "20260101T000000Z-deadbeef-001-c"
+        bare.mkdir(parents=True)
+        (bare / "verdict.json").write_text(json.dumps({"test_id": "TST-Z", "verdict": "PASS"}))
+        (bare / "run.json").write_text(json.dumps({"run_id": bare.name, "worker": "verification-runner"}))
+        self.git(work, "add", "-A"); self.git(work, "commit", "-q", "-m", "no ci")
+        self.git(work, "push", "-q", "-f", str(self.base / "origin"), "ci-evidence/42")
+        self.fake_gh()
+        self.assert_refused_whole(self.run_import(), bare.name)
+
+    def add_committed_dirs(self):
+        """The real evidence branch holds the whole committed evidence tree (verify.yml, mutants.yml:
+        `git add -f evidence/` on the full checkout): older directories, 1.0.0 without a ci object or
+        naming other runs, that HEAD already carries under evidence/. They are skipped, never checked
+        against this run's identity (the audit of WP-81, C1: refs/remotes/ci/42775276374 holds 7367
+        such directories)."""
+        work = self.base / "work"
+        names = []
+        for name, ci in (("20251017T210133Z-c049336e-001", None), ("20251018T000000Z-c049336e-001", {"run_id": "41", "run_attempt": 1, "sha": "beef"})):
+            run = {"run_id": name, "worker": "test"}
+            if ci:
+                run["ci"] = ci
+            for parent in (work / "evidence", self.root / "evidence"):
+                d = parent / name
+                d.mkdir(parents=True)
+                (d / "verdict.json").write_text(json.dumps({"test_id": "TST-OLD", "verdict": "PASS"}))
+                (d / "run.json").write_text(json.dumps(run))
+            names.append(name)
+        self.git(work, "add", "-A"); self.git(work, "commit", "-q", "-m", "committed tree")
+        self.git(work, "push", "-q", "-f", str(self.base / "origin"), "ci-evidence/42")
+        self.git(self.root, "add", "-A"); self.git(self.root, "commit", "-q", "-m", "committed evidence")
+        self.head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.root, env=self.env, capture_output=True, text=True, check=True).stdout.strip()
+        return names
+
+    def test_committed_dirs_without_this_runs_identity_are_skipped_and_this_runs_imported(self):
+        old = self.add_committed_dirs()
+        before = {n: (self.root / "evidence" / n / "run.json").read_text() for n in old}
+        self.fake_gh()
+        r = self.run_import()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("imported 1 run(s) from CI run 42", r.stdout)
+        self.assertTrue((self.root / "evidence" / self.run_dir.name / "import.json").exists())
+        for n in old:
+            self.assertFalse((self.root / "evidence" / n / "import.json").exists(), n)
+            self.assertEqual((self.root / "evidence" / n / "run.json").read_text(), before[n], n)
+        self.assertEqual(list((self.base / "tmp").iterdir()), [], "a temporary copy was left behind")
+
+    def test_a_new_foreign_dir_next_to_committed_ones_is_refused_and_nothing_is_written(self):
+        old = self.add_committed_dirs()
+        name = self.add_foreign_dir(run_id="41")
+        self.fake_gh()
+        r = self.run_import()
+        self.assertEqual(r.returncode, project.E_VALIDATION, r.stdout + r.stderr)
+        self.assertIn(name, r.stdout)
+        self.assertEqual(sorted(p.name for p in (self.root / "evidence").iterdir()), sorted(old))
+        for n in old:
+            self.assertFalse((self.root / "evidence" / n / "import.json").exists(), n)
+        self.assertEqual(list((self.base / "tmp").iterdir()), [], "a temporary copy was left behind")
+
+    def test_gh_naming_another_attempt_than_the_run_dirs_is_refused(self):
+        self.fake_gh(attempt=2)
+        self.assert_refused_whole(self.run_import(), self.run_dir.name)
+
     def test_a_run_id_with_a_trailing_newline_is_refused(self):
         """re.match with $ accepts '42\\n' (the audit of 77d48c91, gap 6); the id must match whole."""
         self.fake_gh()
@@ -511,6 +606,197 @@ class CheckedImport(unittest.TestCase):
         self.assertIn("not <digits>", r.stdout)
         self.assertFalse(self.imported())
 
+
+def native_dir(parent, name, test_id, run_id="42", attempt=1, sha_="cafe", with_ci=True):
+    """A run directory as a verify job writes it (worker verification-runner, ci identity), named
+    with its job slot, valid against the records written by write_all."""
+    d = parent / name
+    d.mkdir(parents=True)
+    inputs = {"docs/ENVIRONMENT.md": sha((TMP / "docs/ENVIRONMENT.md").read_bytes())}
+    combined = sha("\n".join(f"{k}={v}" for k, v in sorted(inputs.items())).encode())
+    run = {"schema_version": RUN_SV, "run_id": name, "started_at": "2026-01-01T00:00:00+00:00", "finished_at": "2026-01-01T00:00:01+00:00",
+           "source_revision": "deadbeef", "dirty_state": False, "dirty_paths": [], "host": {}, "target": "host", "worker": "verification-runner",
+           "purpose": "unit", "commands": ["x"], "exit_code": 0}
+    if with_ci:
+        run["ci"] = {**CI, "run_id": run_id, "run_attempt": attempt, "sha": sha_}
+    v = {"schema_version": SV, "run_id": name, "test_id": test_id, "verdict": "PASS", "oracle": "o", "expected": "e", "observed": "o",
+         "inputs_digest": combined, "inputs": inputs, "claim_tag": "source_backed_fact"}
+    (d / "run.json").write_text(json.dumps(run)); (d / "verdict.json").write_text(json.dumps(v)); (d / "digests.json").write_text(json.dumps(inputs))
+    for f in ("command.txt", "stdout.log", "stderr.log"):
+        (d / f).write_text("")
+    (d / "exit_code").write_text("0\n")
+    return d
+
+
+class AdoptNative(unittest.TestCase):
+    """`adopt-native --from <dir>` (WP-81, ADR-0026 rule 5): the merge job adopts the run
+    directories its own verify jobs wrote, without gh and without import.json, only when every
+    directory carries the same run id and attempt (and the environment's, when present)."""
+    STAMP = "20260101T000000Z-deadbeef-001"
+
+    def setUp(self):
+        recs = base_records()
+        for n in ("002", "003"):
+            t = copy.deepcopy(recs["tests"][0]); t["id"] = f"TST-M0-{n}"; recs["tests"].append(t)
+        write_all(recs)
+        for sub in ("evidence", "artifacts", "artifacts2"):
+            if (TMP / sub).exists():
+                shutil.rmtree(TMP / sub)
+        (TMP / "evidence").mkdir()
+        self.src = TMP / "artifacts"
+        for slot, n in zip("abc", ("001", "002", "003")):
+            native_dir(self.src, f"{self.STAMP}-{slot}", f"TST-M0-{n}")
+        self.tests_before = (TMP / "docs" / "tests.json").read_bytes()
+        self.saved = {k: os.environ.pop(k) for k in ("GITHUB_ACTIONS", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA") if k in os.environ}
+        self.addCleanup(os.environ.update, self.saved)
+
+    def adopt(self, *dirs):
+        args = ["adopt-native"]
+        for d in dirs or (self.src,):
+            args += ["--from", str(d)]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = project.main(args)
+        return rc, out.getvalue()
+
+    def assert_unchanged(self, rc, out):
+        self.assertEqual(rc, project.E_VALIDATION, out)
+        self.assertEqual(list((TMP / "evidence").iterdir()), [])
+        self.assertEqual((TMP / "docs" / "tests.json").read_bytes(), self.tests_before)
+
+    def test_three_slots_of_one_run_are_adopted_and_their_verdicts_re_pointed(self):
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt()
+            self.assertEqual(rc, project.E_OK, out)
+            names = sorted(p.name for p in (TMP / "evidence").iterdir())
+            self.assertEqual(names, [f"{self.STAMP}-{s}" for s in "abc"])
+            for n in names:
+                self.assertFalse((TMP / "evidence" / n / "import.json").exists(), n)
+            tests = {t["id"]: t for t in json.loads((TMP / "docs" / "tests.json").read_text())["records"]}
+            for slot, n in zip("abc", ("001", "002", "003")):
+                self.assertEqual(tests[f"TST-M0-{n}"]["verdict"], "PASS")
+                self.assertEqual(tests[f"TST-M0-{n}"]["evidence_refs"], [f"evidence/{self.STAMP}-{slot}"])
+            # native to this very run: strict validation accepts them without a receipt
+            self.assertEqual(project.validate_records(verbose=False, strict=True), project.E_OK)
+        self.assertIn("adopted 3 run(s)", out)
+
+    def test_off_the_runner_nothing_is_adopted(self):
+        """Fail closed like the validator's native rule: no GITHUB_ACTIONS, or any of the run id,
+        attempt and sha missing from the environment, and nothing is native."""
+        self.assert_unchanged(*self.adopt())
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1", GITHUB_SHA=""):
+            self.assert_unchanged(*self.adopt())
+        with ci_env(GITHUB_RUN_ID="", GITHUB_RUN_ATTEMPT="1", GITHUB_SHA="cafe"):
+            self.assert_unchanged(*self.adopt())
+
+    def test_a_set_mixing_another_sha_is_refused_whole(self):
+        native_dir(self.src, f"{self.STAMP}-d", "TST-M0-001", sha_="beef")
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1", GITHUB_SHA="cafe"):
+            rc, out = self.adopt()
+        self.assert_unchanged(rc, out)
+        self.assertIn(f"{self.STAMP}-d", out)
+
+    def test_a_set_of_another_sha_than_the_environments_is_refused(self):
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1", GITHUB_SHA="beef"):
+            self.assert_unchanged(*self.adopt())
+
+    def test_an_empty_set_is_refused(self):
+        empty = TMP / "artifacts2"; empty.mkdir()
+        (empty / "stray").mkdir()  # a directory with no verdict.json is no run
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt(empty)
+            self.assert_unchanged(rc, out)
+            self.assertIn("no run director", out)
+            rc, out = self.adopt(self.src, empty)  # one --from holding no run dir
+            self.assert_unchanged(rc, out)
+            self.assertIn(str(empty), out)
+
+    def test_a_set_mixing_another_attempt_is_refused_whole(self):
+        native_dir(self.src, f"{self.STAMP}-d", "TST-M0-001", attempt=2)
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt()
+        self.assert_unchanged(rc, out)
+        self.assertIn(f"{self.STAMP}-d", out)
+
+    def test_a_set_mixing_another_run_is_refused_whole(self):
+        native_dir(self.src, f"{self.STAMP}-d", "TST-M0-001", run_id="41")
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt()
+        self.assert_unchanged(rc, out)
+        self.assertIn(f"{self.STAMP}-d", out)
+
+    def test_a_set_of_another_run_than_the_environments_is_refused(self):
+        with ci_env(GITHUB_RUN_ID="43", GITHUB_RUN_ATTEMPT="1"):
+            self.assert_unchanged(*self.adopt())
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="2"):
+            self.assert_unchanged(*self.adopt())
+
+    def test_a_dir_without_ci_identity_is_refused(self):
+        native_dir(self.src, f"{self.STAMP}-d", "TST-M0-001", with_ci=False)
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            self.assert_unchanged(*self.adopt())
+
+    def test_a_duplicate_run_id_is_refused(self):
+        other = TMP / "artifacts2"
+        native_dir(other, f"{self.STAMP}-a", "TST-M0-001")
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt(self.src, other)
+        self.assert_unchanged(rc, out)
+        self.assertIn(f"{self.STAMP}-a", out)
+
+    def test_a_run_id_already_in_evidence_is_skipped_and_the_new_ones_adopted(self):
+        """Each job's evidence/ artifact and the merge job's checkout hold every committed directory
+        (verify.yml upload-artifact path: evidence/): a directory already under evidence/ is skipped
+        and counted, never adopted again (the audit of WP-81, C2)."""
+        native_dir(TMP / "evidence", f"{self.STAMP}-a", "TST-M0-001")
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt()
+        self.assertEqual(rc, project.E_OK, out)
+        self.assertEqual(sorted(p.name for p in (TMP / "evidence").iterdir()), [f"{self.STAMP}-{s}" for s in "abc"])
+        tests = {t["id"]: t for t in json.loads((TMP / "docs" / "tests.json").read_text())["records"]}
+        before = {t["id"]: t for t in json.loads(self.tests_before)["records"]}
+        self.assertEqual(tests["TST-M0-001"], before["TST-M0-001"])  # the skipped one is not re-attached
+        self.assertEqual(tests["TST-M0-002"]["evidence_refs"], [f"evidence/{self.STAMP}-b"])
+        self.assertIn("skipped 1 run(s) already under evidence/", out)
+        self.assertIn("adopted 2 run(s)", out)
+
+    def test_committed_dirs_of_other_runs_are_skipped_and_this_runs_adopted(self):
+        """The mixed artifact: older committed directories (no ci identity, or another run's) next
+        to this run's slots, in one source and repeated in a second source: the old ones are
+        skipped wherever they appear (a skipped directory is no duplicate), the new ones adopted."""
+        old = ["20251017T210133Z-c049336e-001", "20251018T000000Z-c049336e-001"]
+        other = TMP / "artifacts2"
+        for parent in (TMP / "evidence", self.src, other):
+            native_dir(parent, old[0], "TST-M0-001", with_ci=False)
+            native_dir(parent, old[1], "TST-M0-002", run_id="41", sha_="beef")
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt(self.src, other)
+            self.assertEqual(rc, project.E_OK, out)
+            self.assertEqual(sorted(p.name for p in (TMP / "evidence").iterdir()), sorted(old + [f"{self.STAMP}-{s}" for s in "abc"]))
+            tests = {t["id"]: t for t in json.loads((TMP / "docs" / "tests.json").read_text())["records"]}
+            for slot, n in zip("abc", ("001", "002", "003")):
+                self.assertEqual(tests[f"TST-M0-{n}"]["evidence_refs"], [f"evidence/{self.STAMP}-{slot}"])
+        self.assertIn("skipped 4 run(s) already under evidence/", out)
+        self.assertIn("adopted 3 run(s)", out)
+
+    def test_a_new_dir_of_another_run_next_to_committed_ones_is_refused_whole(self):
+        native_dir(TMP / "evidence", f"{self.STAMP}-a", "TST-M0-001")
+        native_dir(self.src, f"{self.STAMP}-d", "TST-M0-001", run_id="41")
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt()
+        self.assertEqual(rc, project.E_VALIDATION, out)
+        self.assertIn(f"{self.STAMP}-d", out)
+        self.assertEqual(sorted(p.name for p in (TMP / "evidence").iterdir()), [f"{self.STAMP}-a"])
+        self.assertEqual((TMP / "docs" / "tests.json").read_bytes(), self.tests_before)
+
+    def test_nothing_new_to_adopt_is_refused(self):
+        for slot, n in zip("abc", ("001", "002", "003")):
+            native_dir(TMP / "evidence", f"{self.STAMP}-{slot}", f"TST-M0-{n}")
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt()
+        self.assertEqual(rc, project.E_VALIDATION, out)
+        self.assertIn("nothing new to adopt", out)
+        self.assertEqual((TMP / "docs" / "tests.json").read_bytes(), self.tests_before)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

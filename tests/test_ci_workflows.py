@@ -487,6 +487,14 @@ class CiEvidenceImport(unittest.TestCase):
         self.run_dir.mkdir(parents=True)
         (self.run_dir / "verdict.json").write_text(json.dumps({"test_id": "TST-X", "verdict": "PASS"}))
         (self.run_dir / "run.json").write_text(json.dumps({"run_id": self.run_dir.name}))
+        # The branch holds the whole committed evidence tree (verify.yml: `git add -f evidence/`):
+        # the directory above, without ci identity, is already under the root's evidence/ and is
+        # skipped; this run's own directory carries the runner's identity and is imported (WP-81).
+        self.new_dir = work / "evidence" / "20260102T000000Z-deadbeef-001"
+        self.new_dir.mkdir(parents=True)
+        (self.new_dir / "verdict.json").write_text(json.dumps({"test_id": "TST-X", "verdict": "PASS"}))
+        (self.new_dir / "run.json").write_text(json.dumps({"run_id": self.new_dir.name, "worker": "verification-runner",
+                                                           "ci": {"run_id": "42", "run_attempt": 1, "sha": "cafe"}}))
         self.git(work, "checkout", "-q", "-b", "ci-evidence/42")
         self.git(work, "add", "-A")
         self.git(work, "commit", "-q", "-m", "evidence")
@@ -501,9 +509,9 @@ class CiEvidenceImport(unittest.TestCase):
         self.root = base / "root"
         self.git(base, "init", "-q", "root")
         self.git(self.root, "remote", "add", "origin", str(base / "origin"))
-        (self.root / "evidence").mkdir()
+        shutil.copytree(self.run_dir, self.root / "evidence" / self.run_dir.name)
         (self.root / "base.txt").write_text("the committed base")
-        self.git(self.root, "add", "base.txt")
+        self.git(self.root, "add", "base.txt", "evidence")
         self.git(self.root, "commit", "-q", "-m", "base")
         head = self.git(self.root, "rev-parse", "HEAD").stdout.strip()
         (self.root / "staged.txt").write_text("the user's work")
@@ -531,7 +539,9 @@ class CiEvidenceImport(unittest.TestCase):
         r = self.run_import("42")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("imported 1 run(s) from CI run 42", r.stdout)
-        self.assertTrue((self.root / "evidence" / self.run_dir.name / "verdict.json").exists())
+        self.assertTrue((self.root / "evidence" / self.new_dir.name / "import.json").exists())
+        # the committed directory without ci identity neither refused the import nor got a receipt
+        self.assertFalse((self.root / "evidence" / self.run_dir.name / "import.json").exists())
         self.assertEqual(sorted(p.name for p in (self.base / "tmp").iterdir()), [])
         self.assertEqual(self.staged(), ["staged.txt"])
 
