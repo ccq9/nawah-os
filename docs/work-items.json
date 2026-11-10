@@ -5098,12 +5098,17 @@
     "python3 -I tests/test_evidence_provenance.py",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261110T105253Z-bd43461d-001",
+    "evidence/20261110T105256Z-bd43461d-002",
+    "evidence/20261110T105254Z-bd43461d-002"
+   ],
    "blocker": null
   },
   {
