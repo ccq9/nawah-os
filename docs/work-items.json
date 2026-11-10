@@ -5078,7 +5078,8 @@
     "2026-11-10 decision C1 (manager, code audit of the prepared worktree): the import refusal by ci identity applies only to NEW run directories (not yet under evidence/); directories already committed are skipped as before, because the evidence branch holds the whole committed tree (7367 dirs on run 42775276374, the oldest at evidence-run 1.0.0 without a ci object), so the first version of the refusal would have refused every real import; a regression test covers an old directory without identity beside a new one with it",
     "2026-11-10 decision C2 (manager, code audit): adopt-native skips directories already under evidence/ (counted, never re-adopted) and requires this run's identity only of the new ones; an empty set of new directories is a refusal; publishing only the run's own directories stays WP-76's",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 estimate (lab engineer, measured on the prepared wp81 worktree): 21 tool calls spent, about 6 to go, about 8 min; under the budget line (the earlier 40-55 calls / 75-110 min covered the whole of 74b, whose parallel-jobs half is now WP-83)"
+    "2026-11-10 estimate (lab engineer, measured on the prepared wp81 worktree): 21 tool calls spent, about 6 to go, about 8 min; under the budget line (the earlier 40-55 calls / 75-110 min covered the whole of 74b, whose parallel-jobs half is now WP-83)",
+    "2026-11-10 activation estimate (release engineer, measured on the prepared wp81 worktree: 21 calls spent, about 6 to go, about 8 min; the audit's C1/C2 corrections applied, 46 provenance cases): under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls)"
    ],
    "acceptance": "TST-M0-001, TST-M0-007 and TST-M0-003 PASS on CI (final counts follow the fix commit), with the regression cases of decisions C1 and C2; ADR-0026 rule 5 names the run slot and adopt-native",
    "test_ids": [
@@ -5091,9 +5092,10 @@
     "python3 -I tests/test_evidence_provenance.py",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
