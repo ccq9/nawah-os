@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261110T031855Z-c6ba22e2-001",
+ "started_at": "2026-11-10T03:18:54+00:00",
+ "finished_at": "2026-11-10T03:19:03+00:00",
+ "source_revision": "c6ba22e2f9bf18cba967c30cc078dc5080e41aaf",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "pc-qemu",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M5-TEXT-GUEST",
+ "commands": [
+  "qemu-system-x86_64 -machine q35 -cpu qemu64 -m 512M -smp 4 -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd -drive if=pflash,format=raw,file=/home/runner/work/nawah-os/nawah-os/build/pc-qemu/OVMF_VARS.fd -drive format=raw,file=fat:rw:/home/runner/work/nawah-os/nawah-os/build/pc-qemu/esp -serial file:/home/runner/work/nawah-os/nawah-os/evidence/20261110T031855Z-c6ba22e2-001/serial.log -serial null -display none -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04 -drive if=none,id=vd0,format=raw,file=/home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img -device virtio-blk-pci,drive=vd0,disable-legacy=on,disable-modern=off -netdev user,id=n0,net=10.0.2.0/24,dhcpstart=10.0.2.15 -device virtio-net-pci,netdev=n0,disable-legacy=on,disable-modern=off -monitor unix:/home/runner/work/nawah-os/nawah-os/build/pc-qemu/mon1.sock,server,nowait -qmp unix:/home/runner/work/nawah-os/nawah-os/build/pc-qemu/mon1-qmp.sock,server,nowait -fw_cfg name=opt/nawah/test,string=text_layer"
+ ],
+ "exit_code": 33,
+ "ci": {
+  "run_id": "42747260620",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "c6ba22e2f9bf18cba967c30cc078dc5080e41aaf",
+  "head_sha": "c4e7ad1dcfa34c52a85d13e43375a937761a99da",
+  "ref": "refs/pull/23/merge"
+ }
+}
