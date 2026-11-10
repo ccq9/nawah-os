@@ -172,6 +172,7 @@ pub fn run() -> ! {
         "session_lock" => session_lock(),
         "authz_denied" => authz_denied(),
         "file_authority" => file_authority(),
+        "config_write_scope" => config_write_scope(),
         "config_cas" => config_cas(),
         "config_retry" => config_retry(),
         "config_notify" => config_notify(),
@@ -3853,6 +3854,104 @@ fn file_authority() -> ! {
         name,
         frames0,
         "an ordinary process cannot read or change /SYSTEM; the services holding the authority can",
+    )
+}
+
+/// TST-M6-CONFIG-WRITE-SCOPE (REQ-M6-002, RSK-019; files.md v1.4, config.md v1.2, WP-78):
+/// config's authority, READ|WRITE|TRANSFER, changes only config's stores. `fileauth` given
+/// that mask finds every other change under /SYSTEM refused (SERVICES.TXT in three spellings,
+/// USERS.DB, INPUTD.ELF, a new file, a non-CFG `.A`, a CFG name with another extension, an
+/// unlink, the fonts) and then creates, writes and removes /SYSTEM/CFGPRB.A (exit 0x46; else the
+/// failing step). The kernel reads back SERVICES.TXT, USERS.DB and INPUTD.ELF unchanged and none
+/// of the probe's names left behind; config still stores a device setting; the matcher's table.
+fn config_write_scope() -> ! {
+    use crate::fs::vfs;
+    let name = "config_write_scope";
+    if crate::apps::FILEAUTH.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let size = |p: &[u8]| vfs::stat(p).map_or(-1, |s| s.size as i64);
+    let (svc0, users0, inputd0) = (
+        size(b"/SYSTEM/SERVICES.TXT"),
+        size(b"/SYSTEM/USERS.DB"),
+        size(b"/SYSTEM/INPUTD.ELF"),
+    );
+    let obj0 = object::stats();
+    // The authority outlives the run (as in file_authority: its block is not the probe's).
+    let authority = Arc::new(crate::object::token::SystemFiles::new());
+    let probe = run_with_object(
+        name,
+        crate::apps::FILEAUTH,
+        Entry {
+            object: Object::SystemFiles(authority.clone()),
+            rights: Rights(Rights::READ.0 | Rights::WRITE.0 | Rights::TRANSFER.0),
+        },
+    );
+    drop(authority);
+    let obj1 = object::stats();
+    let services_same = svc0 > 0 && size(b"/SYSTEM/SERVICES.TXT") == svc0;
+    let users_same = users0 > 0 && size(b"/SYSTEM/USERS.DB") == users0;
+    let inputd_same = inputd0 > 0 && size(b"/SYSTEM/INPUTD.ELF") == inputd0;
+    let created = [
+        &b"/SYSTEM/NEW.TXT"[..],
+        b"/SYSTEM/AUTHD.A",
+        b"/SYSTEM/CFGPRB.C",
+        b"/SYSTEM/CFGPRB.A",
+        b"/SYSTEM/FONTS/CFGPRB.A",
+    ]
+    .iter()
+    .any(|p| vfs::stat(p).is_ok());
+    kprintln!(
+        "OSX|{}|ktest|{}|probe={:#x}|services_same={}|usersdb_same={}|inputd_same={}|created={}|frames={}|objects_same={}",
+        BUILD_ID,
+        name,
+        probe.exit_code,
+        u8::from(services_same),
+        u8::from(users_same),
+        u8::from(inputd_same),
+        u8::from(created),
+        probe.frames_delta,
+        u8::from(obj1 == obj0)
+    );
+    if probe.exit_code != 0x46 {
+        fail("config's authority changed /SYSTEM outside its stores (exit code = failing step)")
+    }
+    if !services_same
+        || !users_same
+        || !inputd_same
+        || created
+        || probe.frames_delta != 0
+        || obj1 != obj0
+    {
+        fail("/SYSTEM changed, or the probe left something behind")
+    }
+    // Config itself still writes its stores through the same authority.
+    let env = cfg_env(name);
+    let set = cfg_request(
+        &env.cfg,
+        b"SET device lab.cwscope 0 201 kept",
+        Some(token_entry(&env.admin)),
+    );
+    let get = cfg_request(&env.cfg, b"GET device lab.cwscope", None);
+    kprintln!(
+        "OSX|{}|ktest|{}|services=auth,config|set={}|get={}",
+        BUILD_ID,
+        name,
+        set,
+        get
+    );
+    if set != "OK 1" || get != "OK 1 kept" {
+        fail("config could not write its own store")
+    }
+    drop((set, get));
+    let frames0 = cfg_close(env, name);
+    cfg_balance(
+        name,
+        frames0,
+        "config's authority changes only its own stores",
     )
 }
 

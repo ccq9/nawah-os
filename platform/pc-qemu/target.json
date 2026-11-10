@@ -6890,6 +6890,35 @@
           "|user_fault|"
         ],
         "timeout_s": 60
+      },
+      {
+        "id": "TST-M6-CONFIG-WRITE-SCOPE",
+        "test_id": "TST-M6-CONFIG-WRITE-SCOPE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=config_write_scope"
+        ],
+        "oracle": "REQ-M6-002, RSK-019, WP-78 (files.md v1.4 §2, config.md v1.2, ADR-0020 item 5; mutants M162-M164): config's copy of the system-files authority, READ|WRITE|TRANSFER, changes only config's stores (a file directly in /SYSTEM whose 8.3 base starts with CFG and whose extension is A or B, compared as short names). The fileauth application given that mask: opening for writing /SYSTEM/SERVICES.TXT (step 40), /system/services.txt (41) and /SYSTEM./SERVICES.TXT (42), USERS.DB for reading and writing (43), INPUTD.ELF for writing (44), creating /SYSTEM/NEW.TXT (45), /SYSTEM/AUTHD.A (46, not a CFG base) and /SYSTEM/CFGPRB.C (47, not A or B), unlinking SVC-AUTH.TXT (48), writing a font or creating /SYSTEM/FONTS/CFGPRB.A (49) are all refused with ERR_ACCESS; none truncates, so a kernel without the rule fails at step 40 (probe=0x28) having changed nothing; then /SYSTEM/CFGPRB.A is created, written and removed: exit 0x46. The kernel reads back SERVICES.TXT's, USERS.DB's and INPUTD.ELF's sizes unchanged and none of the probe's names left; no frame or object leaks. The matcher answers 8 spellings as the volume resolves them (/SYSTEM/CFGDEV.A, /system/cfgdev.a, /SYSTEM./CFGU1000.B yes; CFGPOL.C, AUTHD.A, /SYSTEM/FONTS/CFGDEV.A, /SYSTEM/../SYSTEM/CFGDEV.A, SERVICES.TXT no). Then the SVC-CFG stack: the lab users sign in and an admin SET of device lab.cwscope is stored on /SYSTEM/CFGDEV.A (OK 1, read back OK 1 kept); the manager exits 0, no process left, no frame leak. Residual (declared): the READ right still reads USERS.DB. Timeout 30 s: the M6 suite's worst case becomes 815 + 45 (WP-77) + 30 = 890 s, under 900; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=config_write_scope",
+          "|ktest|config_write_scope|probe=0x46|services_same=1|usersdb_same=1|inputd_same=1|created=0|frames=0|objects_same=1",
+          "|ktest|config_write_scope|table=8/8",
+          "|ktest|config_write_scope|services=auth,config|set=OK 1|get=OK 1 kept",
+          "|ktest|config_write_scope|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|config_write_scope|frames_delta=0",
+          "|ktest|pass|config's authority changes only its own stores"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "NAWAH-USERS",
+          "lab-admin-1"
+        ],
+        "timeout_s": 30
       }
     ]
   },
