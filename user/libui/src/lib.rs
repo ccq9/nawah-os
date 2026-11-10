@@ -30,6 +30,9 @@ use nawah_text::layout::{Fonts, Glyph, Layout, RgbCanvas};
 pub const MAX_ELEMENTS: usize = 12;
 pub const MAX_ITEMS: usize = 6;
 pub const TEXT_MAX: usize = 48;
+/// (v1.7) The most characters `Painter` draws (and `Painter::text_width` measures) of one
+/// string; the rest is dropped.
+pub const TEXT_PAINT: usize = 64;
 
 // Set-1 key codes (input.md §3: extended keys as 0x80 | code).
 pub const KEY_ESC: u32 = 0x01;
@@ -100,6 +103,8 @@ pub enum UiError {
     /// A list without items.
     NoItems,
     Full,
+    /// (v1.7) A confirm is built on an empty dialog only and takes no other element after.
+    Confirm,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -148,6 +153,43 @@ pub enum MenuEvent {
     Close(usize),
     /// The element's menu entry was chosen; the menu closed and the focus is back on it.
     Choose(usize, usize),
+}
+
+/// The answer of a confirm dialog (v1.7, `Dialog::confirm`): which of its three buttons.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Answer {
+    Yes,
+    No,
+    Cancel,
+}
+
+impl Answer {
+    /// The machine token of the narrator line `answer <name>` (English, ui.md §3).
+    pub fn name(self) -> &'static str {
+        match self {
+            Answer::Yes => "yes",
+            Answer::No => "no",
+            Answer::Cancel => "cancel",
+        }
+    }
+
+    /// The element index of this answer's button in a confirm dialog (0 is the prompt).
+    pub fn element(self) -> usize {
+        match self {
+            Answer::Yes => 1,
+            Answer::No => 2,
+            Answer::Cancel => 3,
+        }
+    }
+
+    fn of(i: usize) -> Option<Answer> {
+        match i {
+            1 => Some(Answer::Yes),
+            2 => Some(Answer::No),
+            3 => Some(Answer::Cancel),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -328,6 +370,11 @@ pub struct Dialog {
     menu_press: Option<usize>,
     last_click: Option<(usize, usize, u64)>,
     pending: Option<MenuEvent>,
+    /// v1.7: `Some(default)` for a confirm dialog, and its final answer once given.
+    confirm: Option<Answer>,
+    answered: Option<Answer>,
+    /// v1.7: on a confirm, the focus before the held left press.
+    press_from: Option<usize>,
 }
 
 fn utf8_chars(s: &str, out: &mut [u32]) -> usize {
@@ -358,6 +405,9 @@ impl Dialog {
             menu_press: None,
             last_click: None,
             pending: None,
+            confirm: None,
+            answered: None,
+            press_from: None,
         }
     }
 
@@ -408,6 +458,9 @@ impl Dialog {
     }
 
     fn push(&mut self, e: Element) -> Result<usize, UiError> {
+        if self.confirm.is_some() {
+            return Err(UiError::Confirm);
+        }
         if self.n == MAX_ELEMENTS {
             return Err(UiError::Full);
         }
@@ -521,8 +574,84 @@ impl Dialog {
         true
     }
 
-    /// Puts the focus on the first focusable element.
+    // ---- v1.7: the confirm dialog ------------------------------------------------------
+
+    /// Makes this empty dialog a confirm (v1.7): element 0 the prompt (a label), then the
+    /// buttons `yes`, `no`, `cancel` (elements 1, 2, 3, `Answer::element`). The `default`
+    /// button takes the first focus (the returned `Event::Focus`). Enter or Space answers the
+    /// focused button, Esc answers Cancel whatever has the focus, Tab cycles the three; the
+    /// context menu never opens. A blank prompt or label is refused (`NoLabel`) and a dialog
+    /// that already has an element too (`Confirm`); nothing is built then.
+    pub fn confirm(
+        &mut self,
+        prompt: &'static str,
+        yes: &'static str,
+        no: &'static str,
+        cancel: &'static str,
+        default: Answer,
+    ) -> Result<Event, UiError> {
+        if [prompt, yes, no, cancel]
+            .iter()
+            .any(|l| l.trim().is_empty())
+        {
+            return Err(UiError::NoLabel);
+        }
+        if self.n != 0 || self.confirm.is_some() {
+            return Err(UiError::Confirm);
+        }
+        self.add(Role::Label, prompt)?;
+        for l in [yes, no, cancel] {
+            self.add(Role::Button, l)?;
+        }
+        self.menu = &[];
+        self.confirm = Some(default);
+        self.answered = None;
+        Ok(self.move_focus(default.element()))
+    }
+
+    /// The confirm's answer (v1.7), `None` until given and for any other dialog. An answer is
+    /// final: once given, every later key and pointer event returns `Event::None`.
+    pub fn answer(&self) -> Option<Answer> {
+        self.answered
+    }
+
+    /// The confirm's description `role=dialog label="<prompt>"` (the narrator line is
+    /// `confirm <description>`); `false`, writing nothing, for a dialog that is not a confirm.
+    pub fn describe_confirm(&self, out: &mut Text) -> bool {
+        if self.confirm.is_none() {
+            return false;
+        }
+        out.put(b"role=dialog label=\"");
+        out.put(self.elements[0].label.as_bytes());
+        out.put(b"\"");
+        true
+    }
+
+    fn give(&mut self, a: Answer, ev: Event) -> Event {
+        self.answered = Some(a);
+        ev
+    }
+
+    fn confirm_key(&mut self, code: u32, mods: u32) -> Event {
+        if self.answered.is_some() {
+            return Event::None;
+        }
+        match code {
+            KEY_TAB => self.step(mods & MOD_SHIFT != 0),
+            KEY_ESC => self.give(Answer::Cancel, Event::Cancel),
+            KEY_ENTER | KEY_SPACE => match self.focus.and_then(Answer::of) {
+                Some(a) => self.give(a, Event::Activate(a.element())),
+                None => Event::None,
+            },
+            _ => Event::None,
+        }
+    }
+
+    /// Puts the focus on the first focusable element (on a confirm, its default button).
     pub fn start(&mut self) -> Event {
+        if let Some(a) = self.confirm {
+            return self.move_focus(a.element());
+        }
         let mut order = [0usize; MAX_ELEMENTS];
         if self.focus_order(&mut order) == 0 {
             return Event::None;
@@ -560,6 +689,9 @@ impl Dialog {
         self.pending = None;
         if !down {
             return Event::None;
+        }
+        if self.confirm.is_some() {
+            return self.confirm_key(code, mods);
         }
         if self.open.is_some() {
             self.menu_key(code);
@@ -709,6 +841,8 @@ impl Dialog {
         let pad = t.u(6);
         let w = t.u(260);
         let mut y = pad;
+        // v1.7: a confirm is this column too: the prompt's row, then each button a full row,
+        // so no label shares its width with another (every row is its own mirror in RTL).
         for i in 0..self.n {
             let h = self.row_height(&self.elements[i]);
             if i < rects.len() {
@@ -769,6 +903,9 @@ impl Dialog {
         let pressed = buttons & !self.buttons;
         let released = self.buttons & !buttons;
         self.buttons = buttons;
+        if self.answered.is_some() {
+            return Event::None;
+        }
         if self.open.is_some() {
             if pressed & (BUTTON_LEFT | BUTTON_RIGHT) != 0 {
                 self.menu_press = None;
@@ -792,10 +929,33 @@ impl Dialog {
             return Event::None;
         }
         if pressed & BUTTON_LEFT != 0 {
-            return self.press_left(x, y);
+            let before = self.focus;
+            let ev = self.press_left(x, y);
+            if self.confirm.is_some() {
+                self.press_from = before;
+            }
+            return ev;
         }
         if released & BUTTON_LEFT != 0 {
-            return self.release_left(x, y, now_ms);
+            let pressed_on = self.press.map(|(i, _)| i);
+            let ev = self.release_left(x, y, now_ms);
+            if self.confirm.is_some() {
+                // v1.7: on a confirm, a click on a button answers it; a press released
+                // elsewhere gives the focus back to what it was before the press if the press
+                // moved it (and nothing moved it since), so a deliberate Tab survives a
+                // slipped click and the next Enter never answers a button only pressed.
+                if let Event::Activate(i) = ev {
+                    if let Some(a) = Answer::of(i) {
+                        return self.give(a, ev);
+                    }
+                }
+                if let (Some(i), Some(b)) = (pressed_on, self.press_from.take()) {
+                    if b != i && self.focus == Some(i) {
+                        return self.move_focus(b);
+                    }
+                }
+            }
+            return ev;
         }
         if pressed & BUTTON_RIGHT != 0 {
             self.press_right(x, y);
@@ -886,7 +1046,9 @@ impl Dialog {
     /// every item has a non-blank label. `false` when refused. An open menu keeps open with
     /// the focus on its first item (an application switching language).
     pub fn set_menu(&mut self, items: &'static [MenuItem]) -> bool {
-        if items.is_empty()
+        // v1.7: a confirm has no context menu.
+        if self.confirm.is_some()
+            || items.is_empty()
             || items.len() > MAX_MENU
             || items.iter().all(|m| m.separator)
             || items
@@ -1114,8 +1276,8 @@ impl Dialog {
 /// Drawing state (the text layout and its glyph buffer), owned by the application.
 pub struct Painter {
     pub layout: Layout,
-    glyphs: [Glyph; 64],
-    text: [u32; 64],
+    glyphs: [Glyph; TEXT_PAINT],
+    text: [u32; TEXT_PAINT],
 }
 
 impl Default for Painter {
@@ -1171,8 +1333,8 @@ impl Painter {
                 x: 0,
                 advance: 0,
                 cluster: 0,
-            }; 64],
-            text: [0; 64],
+            }; TEXT_PAINT],
+            text: [0; TEXT_PAINT],
         }
     }
 
@@ -1234,6 +1396,16 @@ impl Painter {
         let px = d.font_px();
         let (_, tw) = self.measure(fonts, &chars[..n], px, d.rtl);
         tw <= d.row_width() - (px as i32) / 2
+    }
+
+    /// The width in whole pixels of `s` drawn in `d` (v1.7): the dialog's font size and
+    /// direction, the layout `paint` draws with, of the same first `TEXT_PAINT` characters
+    /// `paint` draws (the rest is dropped by both). A confirm's application checks its prompt
+    /// with `fits` and every button label against its button's rectangle with this.
+    pub fn text_width(&mut self, d: &Dialog, fonts: &Fonts, s: &str) -> i32 {
+        let n = self.str_chars(s);
+        let chars = self.text;
+        self.measure(fonts, &chars[..n], d.font_px(), d.rtl).1
     }
 
     fn str_chars(&mut self, s: &str) -> usize {

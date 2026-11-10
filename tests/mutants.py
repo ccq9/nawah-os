@@ -722,6 +722,12 @@ MUTANTS = [
      "            let opened = m.ax - w;",
      "            let opened = m.ax;",
      ["TST-M6-UI-UNIT"], "in RTL the menu is anchored by its left edge and opens rightwards: menu_mirrors_in_rtl fails (the right edge is not the element's start edge), test result FAILED. 7 passed; 1 failed"),
+    # ---- M6 (WP-80): the confirm dialog (ui.md v1.7 §3.7); killer TST-M6-UI-CONFIRM
+    # (user/libui/tests/confirm.rs). SECURITY: M171 (a cancel becomes consent).
+    ("M171", "user/libui/src/lib.rs",
+     "            KEY_ESC => self.give(Answer::Cancel, Event::Cancel),",
+     "            KEY_ESC => self.give(Answer::Yes, Event::Cancel),",
+     ["TST-M6-UI-CONFIRM"], "SECURITY: Esc answers Yes, so a cancel becomes consent: confirm_default_esc_enter (answer() Some(Yes) instead of Some(Cancel)) and confirm_narrator_lines (\"answer yes\" instead of \"answer cancel\") fail, test result: FAILED. 3 passed; 2 failed"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -763,7 +769,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M162", "M163", "M164",
             # M6 (WP-49): libui menus (ui.md v1.6 §3.6): a disabled menu item is never chosen
             # (M168).
-            "M168"}
+            "M168",
+            # M6 (WP-80): libui confirm (ui.md v1.7 §3.7): Esc answers Cancel, never consent (M171).
+            "M171"}
 
 
 def security_of(mid: str) -> bool:
