@@ -1,0 +1,2 @@
+$ cargo build --release --offline --manifest-path kernel/Cargo.toml --target aarch64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/cargo
+$ cp /home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/cargo/aarch64-unknown-uefi/release/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/NAWAH-A64.EFI

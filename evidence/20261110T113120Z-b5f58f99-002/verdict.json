@@ -1,0 +1,26 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261110T113120Z-b5f58f99-002",
+ "test_id": "TST-M6-UI-CONFIRM",
+ "verdict": "PASS",
+ "oracle": "libui v1.7 (WP-80, ui.md §3.7) on the host, user/libui/tests/confirm.rs (5 tests): Dialog::confirm(prompt, yes, no, cancel, default) on an empty dialog builds the prompt label (element 0) and three buttons (1 yes, 2 no, 3 cancel), refuses a blank prompt or label (NoLabel, nothing built), a non-empty dialog and any later element (Confirm), and drops a menu set before it (menu_len() 0, set_menu false after); the default button takes the first focus and start() returns to it; Enter or Space answers the focused button (Activate and answer()), also while a left press is held on it, Esc answers Cancel (Event::Cancel, answer() = Cancel) whatever has the focus, the default Yes included; Tab/Shift+Tab cycle only the three buttons; characters, arrows, Backspace, Shift+F10 and the menu key do nothing and set_menu is refused; an answer is final (later keys and clicks return None and leave it); the narrator strings are exactly confirm role=dialog label=\"<prompt>\", focus <default button description>, answer yes|no|cancel, in English and in Arabic (the tokens English), and a plain dialog writes no confirm line and has no answer; the layout is the column: the prompt's row then each button a full row, yes-no-cancel from the top, every row its own mirror so RTL equals LTR (also after set_rtl) and Tab order stays logical; the prompt fits its row (Painter::fits) and every button label is narrower than its button (Painter::text_width) in English and Arabic at 1x and 2x; text_width agrees with fits (the prompt at most 241 px at 1x, a longer question over 241 and not fitting), gives the exact 1x widths (English prompt 184 and widest label 128, Arabic 218 and 79), about double at 2x, every label above 0, and measures as many characters as paint draws (TEXT_PAINT 64: 64 characters wider than 49, 70 the same as 64); a left press and release on a button answers it through the v1.6 pointer path, a release elsewhere answers nothing and gives the focus back to what it was before the press only if the press moved it and it is still on the pressed button (Tab to Cancel, press Cancel, release elsewhere keeps Cancel; press No from Cancel, release elsewhere returns to Cancel; a Tab while held stands), so the next Enter never answers a button only pressed, a click on the prompt and a right click answer nothing (5 passed)",
+ "expected": "exit 0 + 'test result: ok. 5 passed; 0 failed'",
+ "observed": "exit=0; tail=     Running tests/confirm.rs (target/x86_64-unknown-linux-gnu/release/deps/confirm-31ea6f62aa94db21)",
+ "inputs_digest": "d0c566896f717232607baf6746b43b3bee0e17a49ff0843318a67f342996458e",
+ "inputs": {
+  "user/libui/Cargo.toml": "563cb41c43f3c4f6bde9fb59e6bea0786fa8025413bfe3a2fd544bf80fdefaf9",
+  "user/libui/tests/confirm.rs": "08c3985b2b3dbda88f6835dae3afc0f785d30e58d68ce89a94d0ddfd3f3fd1a6",
+  "platform/assets/fonts/NotoSans-Regular.ttf": "2118e60a3c88075064261fd7ba82c973a01673d3eb44d58a8a983ae0b9a465ed",
+  "platform/assets/fonts/NotoSansArabic-Regular.ttf": "95952171cbc85c19cbb7b22684c595b521e780134d45ea508c34ba872681731d",
+  "user/libui/src/lib.rs": "79f6b2d67c2625794880daaf037414e80620dbbf5f08b3ceb8da62f6bfb2a1e2",
+  "user/libui/src/tests.rs": "b16c8ad6f9777c5e6de813a3b4f1d2bb449af58268aa3a70b36cb248c85bb60c",
+  "user/libnawah-text/src/bidi.rs": "c90c55187eb45e61eb0947fe32ffdf6463c67677d894a39670ec2abb788a1602",
+  "user/libnawah-text/src/font.rs": "445836ef820e087cc0091697769b9bdb01653f1529adb955821b4f64d751da83",
+  "user/libnawah-text/src/layout.rs": "35132c882292665f6a80b232222da57ffaca71602d83ecea712aa6b19f8ba3c1",
+  "user/libnawah-text/src/lib.rs": "d08f77a0142e15b8a2fa2cb5e24242fa8b1a712bdc733416f46c93188c5531cf",
+  "user/libnawah-text/src/raster.rs": "de7bb116c7ff51f0c335dcaa6a08104e35f278e7db6a047da3c1dd850ae6d7dd",
+  "user/libnawah-text/src/shape.rs": "ae5c6eeab4d433449fb7c63dfc28448d4caad95618fdaedb198e608bc2730ef0",
+  "user/libnawah-text/src/tables.rs": "136625d6a0be90d42b1347cacb4747f9535cce71195ecf88d6c8baad3d549e3b"
+ },
+ "claim_tag": "source_backed_fact"
+}
