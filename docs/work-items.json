@@ -4665,12 +4665,16 @@
     "python3 -I tests/test_ci_workflows.py",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261110T075516Z-dd9e4626-002",
+    "evidence/20261110T075515Z-dd9e4626-001"
+   ],
    "blocker": null
   },
   {
@@ -4876,7 +4880,7 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 estimate (security engineer, unmeasured): about 55-70 tool calls / 60-75 min; under the line",
     "2026-11-10 activated after the security engineer's design report (the A-min allowlist in fs_authority); dependency WP-45 done; the estimate against the budget line is recorded above (about 55-70 calls / 60-75 min)",
-    "2026-11-10 numbers taken at merge (audit): files.md v1.4 (a narrowing, ADR-0020 item 5 its decision record) and config.md v1.2; WP-52 moves to files.md v1.5 and WP-53, WP-55, WP-63 to v1.6; WP-52 must route mkdir and rename (both paths) through the same matcher once long file names arrive",
+    "2026-11-10 numbers taken at merge (audit): files.md v1.4 (a narrowing, ADR-0020 item 5 its decision record) and config.md v1.2; WP-52 moves to the files.md version after 1.4 (1.5) and WP-53, WP-55, WP-63 to the one after that (1.6); those are their promises, not WP-78's; WP-52 must route mkdir and rename (both paths) through the same matcher once long file names arrive",
     "2026-11-10 CI record: red run 42772371395 on f3c94f22e (the test alone): TST-M6-CONFIG-WRITE-SCOPE probe=0x28 (step 40 opened /SYSTEM/SERVICES.TXT for writing) with services_same=1 usersdb_same=1 inputd_same=1 created=0, as predicted; green on run 42775276374 which closes the item; the residual (config can still read USERS.DB) stays declared in ADR-0020 item 5 and RSK-019 stays open as reduced"
    ],
    "acceptance": "TST-M6-CONFIG-WRITE-SCOPE PASS on CI (exit 0x46 with its six required lines); TST-M4-CONFIG-PERSIST and TST-M5-FILE-AUTHORITY re-run and PASS; M162-M164 killed; validate-records --strict 0 errors",
