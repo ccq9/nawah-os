@@ -1049,6 +1049,20 @@
    ],
    "limits": "public concept documentation used for semantics only (tree, kill-the-subtree, the pages state no rule about moving a process between jobs, so nawah's rule is its own, handle rights); no Zircon code, names or ABI are ported; nawah's syscall numbers, error codes and record layout are its own (ADR-0022 applies to every external source)",
    "verified": true
+  },
+  {
+   "id": "S80",
+   "title": "W3C WAI-ARIA Authoring Practices Guide — Menu and Menubar pattern (keyboard interaction: Up/Down wrap, Esc closes and returns focus, disabled items focusable)",
+   "url": "https://www.w3.org/WAI/ARIA/apg/patterns/menubar/",
+   "version": "not read: www.w3.org is not in this session's allowed hosts (2026-11-10)",
+   "accessed": null,
+   "supports": [
+    "menu items are navigated with Up and Down, wrapping at the ends",
+    "Escape closes the menu and returns the focus to the element that opened it",
+    "disabled menu items may take the focus and are announced as disabled but cannot be activated"
+   ],
+   "limits": "behaviour only for libui's menu navigation (WP-49, ui.md v1.6); the opening gestures (Shift+F10, the menu key, a right press), the double-click window and ignoring Tab while a menu is open are nawah's own; no text, metrics or assets are taken (ADR-0022)",
+   "verified": false
   }
  ]
 }
