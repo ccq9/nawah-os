@@ -5283,7 +5283,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 (steward round F, WP-83 split into 83a/83b by the manager, decisions D1-D8): split point: after the merge job's first green on CI; the import, tests.json and follow-up fixes are the second half",
     "2026-11-14 implementation state (lab engineer, local scratch): 83a rebased on the final WP-82 tooling; tests/test_ci_workflows.py 45 cases; the adopt step loops over the expected slots and fails closed, the build copy uses the if-form, the slot upload must be exactly evidence/*-<slot>/, Publish is hardened (identity passed with -c, no config written). Mutants M185-M190 are NOT registrable with the present harness (they mutate tools/project.py and .github/workflows/verify.yml, outside what reset() restores); their killer tests stand as the guard until the harness item in WP-90. Note for WP-89: -c cannot remove keys repository code may have planted in .git/config (url.*.insteadOf, credential.helper, http.*); only a publish job running no repository code closes that",
-    "2026-11-10 estimate (lab engineer, partly measured): 55-70 tool calls / 60-75 min, about 30 spent; under the budget line"
+    "2026-11-10 estimate (lab engineer, partly measured): 55-70 tool calls / 60-75 min, about 30 spent; under the budget line",
+    "2026-11-14 activation estimate (lab engineer, measured: about 40 calls spent on tests, workflow, rebase and hardening; about 20-25 to go for the oracle sync, two CI runs, the import and what the merge job's first run shows): 60-65 calls / 60-75 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls); split point: after the merge job's first green on CI"
    ],
    "acceptance": "TST-M0-003 PASS on CI (35 cases) with MergeJob and the per-job StepBudget {a: 58, merge: 20}; TST-M0-001 and TST-M0-007 PASS; a verify run where job a uploads evidence-a and the merge job adopts it (adopt-native), validates strictly with 0 errors, passes pre-merge and publishes the evidence branch, which import-ci-evidence then adopts locally with strict 0; the missing-slot fail-closed rule and the masked, config-free git push asserted by TST-M0-003; ADR-0026 rule 5 carries the 83a amendment; M185-M190 registered (executed once WP-90 exists)",
    "test_ids": [
@@ -5296,9 +5297,10 @@
     "python3 -I tests/test_evidence_provenance.py",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
