@@ -2791,8 +2791,7 @@
    "verdict": "PASS",
    "evidence_refs": [
     "evidence/20261114T162741Z-8191a574-001"
-   ],
-   "stale_policy": "warn"
+   ]
   },
   {
    "id": "TST-M6-MANIFEST-LINT",
