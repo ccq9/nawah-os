@@ -87,9 +87,13 @@ pub struct Thread {
     owns_stack: bool,
     /// The CPU this thread runs on (WP-20: never migrates).
     pub cpu: u8,
-    /// Inside `join`/`wait_process`: competes at the lowest priority until it returns, so a
+    /// Inside `join`/`wait_process`/`poll_until`: competes at the lowest priority, so a
     /// waiter never starves what it may be waiting for (WP-22, ADR-0010 amendment).
     waiting: bool,
+    /// The tick at which a `poll_until` wait ends (`u64::MAX` for a wait without a deadline and
+    /// outside a wait). From that tick on the waiter competes at the best priority instead of
+    /// the lowest, so it is run and returns whatever spins beside it (WP-99, RSK-024).
+    wait_deadline: u64,
     /// True from the moment the thread is picked until a later scheduling decision on its CPU
     /// shows its stack is no longer in use; an Exited thread is reaped only when false.
     on_cpu: bool,
@@ -192,19 +196,23 @@ fn me() -> usize {
     arch::cpu_id() as usize
 }
 
-/// The priority a thread competes with: its own, or the lowest while it waits.
-fn effective_prio(t: &Thread) -> u8 {
-    if t.waiting {
-        PRIORITIES - 1
-    } else {
+/// The priority a thread competes with at tick `now`: its own; the lowest while it waits; the
+/// best once its wait's deadline has come (WP-99: a deadline the kernel set is kept whatever
+/// else is runnable; the waiter then only returns from its wait, which ends the boost).
+fn effective_prio(t: &Thread, now: u64) -> u8 {
+    if !t.waiting {
         t.priority
+    } else if now >= t.wait_deadline {
+        0
+    } else {
+        PRIORITIES - 1
     }
 }
 
 /// Effective priority of the thread running on `cpu` (PRIORITIES when unknown).
 fn running_prio(s: &Sched, cpu: usize) -> u8 {
     index_of(s, s.current[cpu])
-        .map(|i| effective_prio(&s.threads[i]))
+        .map(|i| effective_prio(&s.threads[i], s.ticks))
         .unwrap_or(PRIORITIES)
 }
 
@@ -232,6 +240,7 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         owns_stack: false,
         cpu: 0,
         waiting: false,
+        wait_deadline: u64::MAX,
         on_cpu: true,
     };
     // Capacities up front, so spawns within the reserve never grow the tables: a growth keeps
@@ -281,6 +290,7 @@ pub fn adopt_ap(cpu: usize, stack: StackInfo) {
             owns_stack: false,
             cpu: cpu as u8,
             waiting: false,
+            wait_deadline: u64::MAX,
             on_cpu: true,
         });
         s.current[cpu] = id;
@@ -322,6 +332,7 @@ fn new_thread(
         owns_stack: true,
         cpu: cpu as u8,
         waiting: false,
+        wait_deadline: u64::MAX,
         on_cpu: false,
     });
     // A new thread of better or equal priority runs at its CPU's next preemption point or yield.
@@ -465,7 +476,8 @@ fn index_of(s: &Sched, tid: u32) -> Option<usize> {
 }
 
 /// The thread to run next on `cpu`: one of its threads, Ready (or the Running current), with
-/// the smallest effective priority value (a waiting thread counts as the lowest), ties broken
+/// the smallest effective priority value (a waiting thread counts as the lowest until its
+/// wait's deadline, as the best from then on), ties broken
 /// by the smallest `last_pick`, then by position.
 fn pick_next(s: &Sched, cpu: usize) -> usize {
     let mut best: Option<(usize, u8)> = None;
@@ -479,7 +491,7 @@ fn pick_next(s: &Sched, cpu: usize) -> usize {
         if !runnable {
             continue;
         }
-        let prio = effective_prio(t);
+        let prio = effective_prio(t, s.ticks);
         best = match best {
             None => Some((i, prio)),
             Some((b, bp)) => {
@@ -764,11 +776,14 @@ pub fn yield_now() -> bool {
 /// priority, so it never starves what it waits for (CI run 39118752606: a priority-1 waiter
 /// starved a priority-3 spinner; CI run 39119679600: two waiters at priority 1 kept handing
 /// the CPU to each other — the demotion must be visible to every decision, not only the
-/// waiter's own).
-fn set_waiting(waiting: bool) {
+/// waiter's own). `deadline` is the tick the wait ends at (`u64::MAX` for none): from that tick
+/// the waiter competes at the best priority instead (WP-99), at the latest when the running
+/// thread's slice ends, so a thread that spins beside it cannot keep it from returning.
+fn set_waiting(waiting: bool, deadline: u64) {
     with(|s| {
         if let Some(i) = index_of(s, s.current[me()]) {
             s.threads[i].waiting = waiting;
+            s.threads[i].wait_deadline = if waiting { deadline } else { u64::MAX };
         }
     });
 }
@@ -837,9 +852,9 @@ pub fn exit_current(code: u64) -> ! {
 /// Waits until kernel thread `tid` has exited and returns its code (None for an unknown thread
 /// or a process thread, which is waited for through its process).
 pub fn join(tid: u32) -> Option<u64> {
-    set_waiting(true);
+    set_waiting(true, u64::MAX);
     let r = join_loop(tid);
-    set_waiting(false);
+    set_waiting(false, u64::MAX);
     r
 }
 
@@ -866,8 +881,11 @@ fn join_loop(tid: u32) -> Option<u64> {
 /// Polls `ready` with the cooperative wait of `join`/`wait_process` (yield to a ready thread,
 /// else idle until an interrupt) until it answers true or the clock reaches `deadline`
 /// (ticks); usable from the boot thread, which cannot block. Returns whether `ready` held.
+/// Until the deadline the caller competes at the lowest priority; from the deadline on at the
+/// best, so it returns within a time slice of it even beside a thread that never yields
+/// (WP-99: a service manager that spins must not keep the boot from its `LOAD` deadline).
 pub fn poll_until(deadline: u64, mut ready: impl FnMut() -> bool) -> bool {
-    set_waiting(true);
+    set_waiting(true, deadline);
     let held = loop {
         if ready() {
             break true;
@@ -879,15 +897,15 @@ pub fn poll_until(deadline: u64, mut ready: impl FnMut() -> bool) -> bool {
             context::idle_wait();
         }
     };
-    set_waiting(false);
+    set_waiting(false, u64::MAX);
     held
 }
 
 /// Waits until process `pid` has exited (its last thread) and returns its exit code.
 pub fn wait_process(pid: u32) -> Option<u64> {
-    set_waiting(true);
+    set_waiting(true, u64::MAX);
     let r = wait_process_loop(pid);
-    set_waiting(false);
+    set_waiting(false, u64::MAX);
     r
 }
 
