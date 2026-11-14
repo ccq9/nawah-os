@@ -1,0 +1,43 @@
+test_a_cancelled_or_failed_run_imports_nothing (__main__.CheckedImport.test_a_cancelled_or_failed_run_imports_nothing) ... ok
+test_a_head_that_is_not_an_ancestor_of_HEAD_imports_nothing (__main__.CheckedImport.test_a_head_that_is_not_an_ancestor_of_HEAD_imports_nothing) ... ok
+test_a_malformed_run_id_imports_nothing (__main__.CheckedImport.test_a_malformed_run_id_imports_nothing) ... ok
+test_a_run_id_with_a_trailing_newline_is_refused (__main__.CheckedImport.test_a_run_id_with_a_trailing_newline_is_refused)
+re.match with $ accepts '42\n' (the audit of 77d48c91, gap 6); the id must match whole. ... ok
+test_a_successful_verify_run_is_imported_with_import_json_and_an_untouched_run_json (__main__.CheckedImport.test_a_successful_verify_run_is_imported_with_import_json_and_an_untouched_run_json) ... ok
+test_another_workflow_imports_nothing (__main__.CheckedImport.test_another_workflow_imports_nothing) ... ok
+test_without_gh_the_import_is_blocked (__main__.CheckedImport.test_without_gh_the_import_is_blocked)
+PATH holds git alone (the audit of 77d48c91: the system's gh stayed on PATH and the test ... ok
+test_1_0_0_run_stays_valid (__main__.RunSchema.test_1_0_0_run_stays_valid) ... ok
+test_1_1_0_run_with_ci_object_is_valid (__main__.RunSchema.test_1_1_0_run_with_ci_object_is_valid) ... ok
+test_a_1_1_0_pass_from_any_worker_without_import_json_is_a_strict_error (__main__.RunSchema.test_a_1_1_0_pass_from_any_worker_without_import_json_is_a_strict_error)
+The rule binds the evidence, not the worker's own word (ADR-0026 rejected REL-1 B, the ... ok
+test_a_malformed_or_non_object_import_json_is_a_named_error_not_a_crash (__main__.RunSchema.test_a_malformed_or_non_object_import_json_is_a_named_error_not_a_crash)
+A file that is not a receipt must not stand in for one: broken JSON, and JSON that is ... ok
+test_a_mismatching_receipt_is_an_error_even_inside_the_same_run (__main__.RunSchema.test_a_mismatching_receipt_is_an_error_even_inside_the_same_run)
+A present import.json is always checked: the native exemption covers only its absence ... ok
+test_a_mismatching_receipt_is_an_error_for_any_worker_and_verdict (__main__.RunSchema.test_a_mismatching_receipt_is_an_error_for_any_worker_and_verdict)
+A present import.json is checked whatever the worker and the verdict (the audit of ... ok
+test_a_missing_identity_is_never_native (__main__.RunSchema.test_a_missing_identity_is_never_native)
+GITHUB_ACTIONS=true with no run id, and a run.json with no ci: two empty strings are not ... ok
+test_a_receipt_is_a_complete_record_matching_the_runs_attempt_head_and_workflow (__main__.RunSchema.test_a_receipt_is_a_complete_record_matching_the_runs_attempt_head_and_workflow)
+import.json has a schema of its own (docs/schemas/evidence-import.schema.json): every field ... ok
+test_import_run_id_must_match_the_runs_ci_identity (__main__.RunSchema.test_import_run_id_must_match_the_runs_ci_identity) ... ok
+test_native_evidence_of_the_current_ci_run_needs_no_import_json (__main__.RunSchema.test_native_evidence_of_the_current_ci_run_needs_no_import_json)
+On the runner the evidence is produced, not adopted: the strict step of verify runs on the ... ok
+test_runner_pass_without_import_json_is_a_strict_error (__main__.RunSchema.test_runner_pass_without_import_json_is_a_strict_error) ... ok
+test_the_schema_ties_ci_to_the_runner_and_to_1_1_0 (__main__.RunSchema.test_the_schema_ties_ci_to_the_runner_and_to_1_1_0)
+PLAN-ANSWER §2.8 REL-1 promised the version pattern with if/then (the audit of 77d48c91 ... ok
+test_worker_outside_the_enumeration_is_rejected (__main__.RunSchema.test_worker_outside_the_enumeration_is_rejected) ... ok
+test_write_run_off_the_runner_is_the_interactive_agent (__main__.RunWriter.test_write_run_off_the_runner_is_the_interactive_agent) ... ok
+test_write_run_on_github_actions_records_the_runner_and_its_ci_identity (__main__.RunWriter.test_write_run_on_github_actions_records_the_runner_and_its_ci_identity) ... ok
+test_a_modified_tracked_file_or_a_new_source_file_is_dirty_and_named (__main__.SourceIdentity.test_a_modified_tracked_file_or_a_new_source_file_is_dirty_and_named) ... ok
+test_a_run_is_not_dirty_on_the_records_it_writes_itself (__main__.SourceIdentity.test_a_run_is_not_dirty_on_the_records_it_writes_itself)
+attach_evidence rewrites docs/tests.json, requirements.json and work-items.json while a ... ok
+test_paths_with_spaces_or_arabic_letters_are_named_unquoted (__main__.SourceIdentity.test_paths_with_spaces_or_arabic_letters_are_named_unquoted)
+git status without -z quotes such paths ("kernel/a b.rs", octal escapes for Arabic), so ... ok
+test_untracked_evidence_does_not_make_the_tree_dirty (__main__.SourceIdentity.test_untracked_evidence_does_not_make_the_tree_dirty) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 1.155s
+
+OK

@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261114T152118Z-b50f6c58-001-a",
+ "test_id": "TST-M5-LAB-TOOL",
+ "verdict": "PASS",
+ "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect; a case with ends_by=monitor (WP-45) ends by the lab's `quit` (QEMU status 0): every step sent and the last one ending with `quit`, while a run that ended before the last step (a guest reset is status 0 too), a last step without `quit`, a case without steps or an unknown ending is a failure; driven through cmd_boot itself on the fake QEMU (target, image preparation and records stubbed), a case ending by the monitor passes when the lab quits and fails when the guest exits 0 before the last step, in a single run and in a later phase, each phase's console failures are all reported (a later phase does not overwrite them) and a phase's own timeout_s ends that phase; a forbidden marker of the case, or of a phase in a multi-phase case, fails it when it appears only in the guest's received console transcript (named in the reason by its file) and the case passes when it is absent, and the real ConsoleSession's received transcript holds every byte read from the guest while the session runs (output after the last step or the socket's close is not checked), a guest line starting `>>> ` included (provenance, not prefix), and none of the lab's own `>>> ` lines, which stay in console.log (WP-82); a case of several phases writes console-<i>.log per phase (as serial-<i>.log), so both transcripts of a two-phase case stay on disk and a forbidden marker's reason names the file it was found in, while a single-phase case keeps console.log; when QEMU dies by a signal and the phase is retried, the retry gets its own console session, so neither the dead attempt's transcript nor its console failures judge the case (19 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "6603fe6fe8ec90292c2a0141c22276b0b0d7b4d0d8a3327b75a34023bde4c7b5",
+ "inputs": {
+  "tests/test_monitor_steps.py": "3033e2148bad7adc5d0a5064676b94eed31806b9d7e1091c0274768d38c1a823",
+  "tools/project.py": "5214dfeb96c8902c6df4d4682f470914b77c8526fe18a04dedf7f2f60485ceb7"
+ },
+ "claim_tag": "source_backed_fact"
+}

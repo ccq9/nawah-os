@@ -1,0 +1,6 @@
+{
+ "tests/test_ci_workflows.py": "9063a39bf7e2a1b3b8f5d7d656d9d169a8778df78d514953693986ef222a695d",
+ "tools/project.py": "4525c166e0240a1c2faea4b1569d18710e1195ad6ddb85372d5bb2373207abfc",
+ ".github/workflows/mutants.yml": "5f88565e19c5da9483db986dd9d2cf719eac78c934ca67958c41a2d519fb32c9",
+ ".github/workflows/verify.yml": "fe0159f2332d4e7db3d59266d34e6d88010567e0bf67a8313294b6afd5b4d9d1"
+}
