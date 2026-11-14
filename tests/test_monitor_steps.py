@@ -485,6 +485,9 @@ class PrepareDiskFiles(unittest.TestCase):
         apps.mkdir(parents=True)
         (apps / "svcmgr.elf").write_bytes(b"svcmgr image")
         (apps / "idle.elf").write_bytes(b"idle image")
+        # A file inside the tree that is a link to one outside it (the audit of WP-84).
+        (root / "platform" / "t" / "lab" / "leak.txt").symlink_to("/etc/hostname")
+        self.image = root / "build" / "t" / "disk.img"
         t = {"qemu": {"disk": {"size_mib": 64}}}
         with mock.patch.object(project, "ROOT", root):
             img = project.prepare_disk(t, "t", fresh=True, files=files)
@@ -514,9 +517,21 @@ class PrepareDiskFiles(unittest.TestCase):
                       {"SYSTEM/SERVICES.TXT": "/etc/hostname"},
                       {"SYSTEM/SERVICES.TXT": "../outside.txt"},
                       {"../SERVICES.TXT": "platform/t/lab/bad.txt"},
-                      {"/SYSTEM/SERVICES.TXT": "platform/t/lab/bad.txt"}):
-            with self.subTest(files=files), self.assertRaises(SystemExit):
-                self.make(files)
+                      {"/SYSTEM/SERVICES.TXT": "platform/t/lab/bad.txt"},
+                      # The audit of WP-84: an empty component, a backslash, a drive letter and a
+                      # dot component are no plain volume path; a source that is a link out of
+                      # the tree is no file under it; one volume file is named once, whatever
+                      # the case of its letters.
+                      {"SYSTEM//X.TXT": "platform/t/lab/bad.txt"},
+                      {"SYSTEM\\X.TXT": "platform/t/lab/bad.txt"},
+                      {"C:X.TXT": "platform/t/lab/bad.txt"},
+                      {"SYSTEM/./X.TXT": "platform/t/lab/bad.txt"},
+                      {"X.TXT": "platform/t/lab/leak.txt"},
+                      {"SYSTEM/SERVICES.TXT": "platform/t/lab/bad.txt", "system/services.txt": "platform/t/lab/bad.txt"}):
+            with self.subTest(files=files):
+                with self.assertRaises(SystemExit):
+                    self.make(files)
+                self.assertFalse(self.image.exists(), "an image was made before the entry was refused")
 
 
 class ConsoleReceived(unittest.TestCase):
