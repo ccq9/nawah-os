@@ -1,0 +1,11 @@
+test_adr_cites_e0_evidence (__main__.M0Records.test_adr_cites_e0_evidence) ... ok
+test_boot_contract_sections (__main__.M0Records.test_boot_contract_sections) ... ok
+test_every_path_checks_out_on_windows (__main__.M0Records.test_every_path_checks_out_on_windows) ... ok
+test_required_files_exist (__main__.M0Records.test_required_files_exist) ... ok
+test_sol_os_ported_files_name_their_origin (__main__.M0Records.test_sol_os_ported_files_name_their_origin) ... ok
+test_team_methodology_is_in_place (__main__.M0Records.test_team_methodology_is_in_place) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.154s
+
+OK
