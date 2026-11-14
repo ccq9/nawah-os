@@ -1068,15 +1068,17 @@
    "id": "S81",
    "title": "W3C WAI-ARIA Authoring Practices Guide — Grid and Listbox patterns (keyboard interaction: Home/End/PageUp/PageDown, type-ahead, single and multiple selection)",
    "url": "https://www.w3.org/WAI/ARIA/apg/patterns/grid/ ; https://www.w3.org/WAI/ARIA/apg/patterns/listbox/",
-   "version": "not read: www.w3.org is not in this session's allowed hosts (2026-11-10)",
-   "accessed": null,
+   "version": "read 2026-11-14 as the keyboard-interaction sections returned by a fetch service (www.w3.org is not in this session's allowed hosts); the service's copies were acquired 2026-10-29 (listbox) and 2026-11-13 (grid); excerpts, not the whole pages",
+   "accessed": "2026-11-14",
    "supports": [
-    "Home and End move to the first and last row; PageUp and PageDown move by a page",
-    "type-ahead moves the focus to the next row whose text starts with the typed characters",
-    "single and multiple selection with a focused row distinct from the selection"
+    "Home and End move to the first and last option (listbox); Page Up and Page Down move by an author-determined number of rows (grid)",
+    "in a data grid the focus does not move past the first or last row (no wrap)",
+    "type-ahead moves the focus to the next item whose name starts with the typed character or the characters typed in rapid succession",
+    "the focus is distinct from the selected state; single and multiple selection",
+    "the alternative multi-select model: moving the focus without Shift or Control unselects all but the focused option, Control+Arrow moves the focus without changing selection, Control+Space changes the focused option's selection, Shift+Arrow moves the focus and changes the selection of the next option"
    ],
-   "limits": "behaviour only for libui's list view (WP-50, ui.md v1.8); key codes, narrator wording, the selection bitset and limits are nawah's own; no text, metrics or assets are taken (ADR-0022)",
-   "verified": false
+   "limits": "behaviour only for libui's list view (WP-50, ui.md v1.8); the anchor-based contiguous range of Shift, Space selecting the focused row alone, the 1000 ms type-ahead window, key codes, narrator wording, the selection bitset and limits are nawah's own; no text, metrics or assets are taken (ADR-0022)",
+   "verified": true
   },
   {
    "id": "S82",

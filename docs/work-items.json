@@ -5749,9 +5749,15 @@
    ],
    "files": [
     "tools/project.py",
+    "tools/schemas_gen.py",
+    "docs/schemas/tests.schema.json",
     "tests/test_validate_records.py",
+    "tests/test_pre_merge.py",
+    "tests/test_evidence_provenance.py",
+    "platform/pc-qemu/target.json",
+    "platform/virt-qemu-aarch64/target.json",
     "docs/tests.json",
-    "docs/policies/team-methodology.md"
+    "docs/operations/wp92-oracle-reconciliation-2026-11-14.md"
    ],
    "contract_refs": [],
    "actions": [
@@ -5760,9 +5766,13 @@
     "design options to decide in the package: (a) a `sync-oracles` command writes each record's oracle from its source and validate-records errors on a difference, with dated notes moved to a separate optional field; (b) the record keeps no oracle text for cases that have a source and the validator reads the source; (c) keep both and only warn. Recommendation (a): smallest schema change, readable records, the difference becomes an error. The 32 present differences are reconciled case by case first (which side is right), never by a blind overwrite",
     "test first (TST-M0-001): a record whose oracle differs from its source is an error; sync-oracles rewrites it; a record without a source is untouched; a dated note survives a sync",
     "estimate about 40 calls / 45 min (unmeasured); budget line: OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first",
+    "2026-11-14 the engineer's census corrected the study's count: 162 test ids have a source (host suites, the suite cases of every platform's target.json, a boot_oracle when no suite case of its own target carries the id, the build oracle of each target) and 36 records differed (37 once this package changed TST-M0-001's own text); the study's 32 of 157 had counted host and pc-qemu only. Deciding fact: in every PASS record the oracle stored in the cited evidence's verdict.json equals the source, so the hand-kept copy is what drifted. Decisions: the source wins in all 37; six dated notes move to the new optional field oracle_notes; the acceptance's former wording (a dated note per case) is replaced on this date by the table in docs/operations, because 31 cases need no note",
+    "2026-11-14 assurance review folded in: under --strict a PASS record's oracle must equal the oracle of the verdict.json of every evidence it cites, with no exemption for stale_policy warn, so a text edited after a PASS cannot validate until CI re-runs the suite; sync-oracles writes the oracle field alone, from source to record; guest and boot oracles are sources too",
+    "2026-11-14 audit, first pass (auditor; the seven new cases killed ten mutants of the validator): refuted the claim that every source was right: TST-M1-BOOT's source said 6 initial handles where the marker, services.md and the kernel say 9 and lacked m1_done, exit 33 and the single boot-mode line; TST-M3-A64-BOOT's source lacked three required markers; the engineer then found TST-M2-IDT-LAYOUT the same way. The three sources were corrected in the package before any sync. Second pass: the timer's max_depth=1 marker described, the unchecked gateway address removed, a surviving mutant of the two-sources rule (the boot_oracle exclusion applied across targets) killed by a new case. Files: the methodology file is not touched (no sentence there prescribed the hand sync); the schema generator, the tests schema, two fixtures and the two target.json files are",
+    "2026-11-14 limits recorded: a MUTANTS gate whose oracle text changes fails --strict until a new mutants run is imported, and mutants.yml ran the strict check before the gates, so no such run could come: WP-90 moves that strict check after the gates in the same cycle and no MUTANTS text changes here; tools/schemas_gen.py is older than the committed docs/schemas/evidence-run.schema.json (the committed file is what the validator reads; regenerating would weaken it; not fixed here); the case counts stated in oracle prose are still compared with nothing (the runner checks the exit code and the pass marker): a structured expected count is a proposal for a later item; the pc-qemu boot_oracle text is a second, weaker copy that no run uses while the M1 suite case carries the id",
     "2026-11-14 activation estimate (release engineer): about 40-50 calls / 45-60 min: option (a) test-first in TST-M0-001, then the 32 differences reconciled case by case with a dated note each; it lands after the WP-90 / WP-50 train so their new oracle texts pass through the new command; under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first)"
    ],
-   "acceptance": "TST-M0-001 PASS with the oracle-equality cases; validate-records reports no oracle difference on the tree; the 32 differences reconciled with a dated note per case",
+   "acceptance": "TST-M0-001 PASS with the oracle-equality cases; validate-records reports no oracle difference on the tree; every difference between a record and its source reconciled case by case in docs/operations/wp92-oracle-reconciliation-2026-11-14.md, a wrong source corrected before the sync and the dated notes kept in oracle_notes",
    "test_ids": [
     "TST-M0-001"
    ],
@@ -5811,6 +5821,57 @@
    ],
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-94",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M5-005"
+   ],
+   "depends_on": [
+    "WP-50"
+   ],
+   "inputs": [
+    "user/libui/src/lib.rs:825-833 (value=\"…\" written without escaping), :772 (the typed field rejects control characters and accepts \"), :550-559 (set_value filters nothing)",
+    "user/sessiond/src/main.rs:935 and :1324 (the elevation dialog puts the client's request, ASCII 0x20-0x7E, in the field's value)",
+    "the audit of WP-50's train on 2026-11-14 (item 7): the input `x\" label=\"Password` yields `role=textfield label=\"Name\" state=focused value=\"x\" label=\"Password\"`",
+    "WP-50's escaping of list-view cells ([U+XXXX] in the narrator line, U+FFFD in paint; ui.md section 3.8)"
+   ],
+   "files": [
+    "user/libui/src/lib.rs",
+    "user/libui/src/tests.rs",
+    "docs/contracts/ui.md",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/security/threat-model.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/ui.md"
+   ],
+   "actions": [
+    "تهريب علامة الاقتباس ومحارف التحكم في أوصاف القارئ لعناصر v1 (من تدقيق قطار WP-50 في 2026-11-14؛ RSK-022)",
+    "finding: a narrator line of v1 widgets writes the value between quotes without escaping, so a value containing \" forges attributes inside the line and a value set through set_value with a newline writes a second, forged line; sessiond's elevation dialog shows a client-supplied request in such a value",
+    "design to decide in the package (2-3 options): the same [U+XXXX] escaping as the list view for \" and for C0, DEL, C1 and the line and paragraph separators; where it applies (every description that carries text not fixed at build time: value, and any label that can come from data); whether set_value should also reject control characters as the typed path does",
+    "test first (TST-M5-UI-UNIT): the forging inputs above produce one line with one value and no second line; existing value lines without \" or control characters are unchanged; a SECURITY mutant removes the escaping and is killed",
+    "contract: the narrator format of section 2 is frozen, so the change is a new minor version of ui.md with a decision note; the threat model names the narrator line as an output the system vouches for",
+    "depends on WP-50 because it reuses the escaping helper WP-50 adds",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-14 estimate: about 30 calls / 35 min (unmeasured)"
+   ],
+   "acceptance": "TST-M5-UI-UNIT PASS with the forging cases; the contract's new minor version states the escaping; the mutant is registered and shown killed by the M6 gate",
+   "test_ids": [
+    "TST-M5-UI-UNIT"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M5"
    ],
    "status": "planned",
    "status_history": [
