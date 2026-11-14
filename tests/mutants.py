@@ -784,6 +784,19 @@ MUTANTS = [
      '        (true, "K_E_SVC_TIMEOUT") => 2,',
      '        (true, "K_E_SVC_TIMEOUT") => 4,',
      ["TST-M6-BOOT-HALT"], "SECURITY: a manager that never answered is halted with code 4 (an answered error) instead of 2: TST-M6-BOOT-HALT FAIL: phase 2 misses OSX|<id>|kernel|halt|reason=svcmgr|code=2|wait_ticks= and its screendump's digit cell is 000080, not 008000"),
+    # ---- M6 (WP-99, RSK-024): a wait's deadline is kept whatever spins beside it (boot.md v1.3,
+    # ADR-0010's 2026-11-14 amendment). M194 (SECURITY): the waiter stays at the lowest priority
+    # after its deadline, so a manager that spins keeps the boot from its LOAD deadline and no
+    # halt line appears. M195: a waiter competes at the best priority from the start, so it
+    # starves what it waits for (the demotion ADR-0010 introduced is gone).
+    ("M194", "kernel/src/sched/mod.rs",
+     "    } else if now >= t.wait_deadline {",
+     "    } else if now >= t.wait_deadline && now < t.wait_deadline {",
+     ["TST-M6-WAIT-DEADLINE", "TST-M6-BOOT-HALT"], "SECURITY: an expired wait keeps the lowest priority: TST-M6-WAIT-DEADLINE FAIL (exit 37: spinner_prio=0|ok=0 with late about 350 of a limit of 20) and TST-M6-BOOT-HALT FAIL: phase 3 (a spinning manager) times out with no svcmgr line and no halt line"),
+    ("M195", "kernel/src/sched/mod.rs",
+     "    } else if now >= t.wait_deadline {",
+     "    } else if now >= t.wait_deadline || t.waiting {",
+     ["TST-M6-WAIT-DEADLINE"], "a waiter competes at the best priority before its deadline: beside the priority-1 spinner it is polled every tick and the spinner never runs (spinner_prio=1|ok=0), TST-M6-WAIT-DEADLINE FAIL"),
     # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
     # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
     # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
@@ -872,7 +885,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M193",
             # M6 (WP-84): a failed manager always stops the interactive boot visibly (M172) and
             # the halt code says what happened (M173).
-            "M172", "M173"}
+            "M172", "M173",
+            # M6 (WP-99): a wait's deadline is kept beside a spinning thread, so the LOAD budget
+            # holds against a manager that never blocks (M194).
+            "M194"}
 
 
 def security_of(mid: str) -> bool:
