@@ -800,15 +800,15 @@ MUTANTS = [
     ("M195", "kernel/src/sched/mod.rs",
      "    } else if now >= t.wait_deadline {",
      "    } else if now >= t.wait_deadline || t.wait_deadline != u64::MAX {",
-     ["TST-M6-WAIT-DEADLINE"], "a wait with a deadline competes at the best priority before it: beside the priority-1 spinner the waiter is polled every tick (polls about 50, limit 3) and the spinner never runs (spins=0), spinner_prio=1|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL"),
+     ["TST-M6-WAIT-DEADLINE"], "a wait with a deadline competes at the best priority before it: beside the priority-1 spinner the waiter is run before its deadline (more than the three polls allowed, or the spinner never runs), spinner_prio=1|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL"),
     ("M196", "kernel/src/sched/mod.rs",
      "    set_waiting(false, u64::MAX);\n    held",
      "    held",
-     ["TST-M6-WAIT-DEADLINE"], "the boost is never taken back after poll_until: beside the priority-0 spinner the case's thread keeps running after its wait (resumed about 100, not >= spin_ticks=400), spinner_prio=0|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL"),
+     ["TST-M6-WAIT-DEADLINE"], "the boost is never taken back after poll_until: beside the priority-0 spinner the case's thread keeps running after its wait (resumed before the spinner gave up, under spin_ticks=400), spinner_prio=0|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL"),
     ("M197", "kernel/src/sched/mod.rs",
      "    } else if now >= t.wait_deadline {\n        0\n",
      "    } else if now >= t.wait_deadline {\n        t.priority\n",
-     ["TST-M6-WAIT-DEADLINE"], "an expired wait competes at the thread's own priority: beside the priority-0 spinner the waiter comes back only when the spinner gives up (late about 350 of a limit of 20), spinner_prio=0|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL"),
+     ["TST-M6-WAIT-DEADLINE"], "an expired wait competes at the thread's own priority: beside the priority-0 spinner the waiter comes back only when the spinner gives up (late past the limit of 20), spinner_prio=0|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL"),
     # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
     # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
     # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
