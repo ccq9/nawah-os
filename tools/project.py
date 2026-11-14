@@ -398,6 +398,8 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
         if t["verdict"] == "PASS" and PLANNED_WORD.search(t["oracle"]):
             pb.err(w, "PASS while the oracle still describes the plan ('planned'); state what the test checks")
     # One source per oracle (WP-92): the record's copy must equal the text the runner writes.
+    for tid, where in oracle_conflicts().items():
+        pb.err(f"tests/{tid}", f"two sources with different oracle texts ({', '.join(where)}); make them one")
     for t, _ in oracle_differences(recs.get("tests", [])):
         pb.err(f"tests/{t['id']}", "oracle differs from its source (HOST_SUITES or target.json); "
                "change the source, then run `project.py sync-oracles` (a dated note goes to oracle_notes)")
@@ -1391,7 +1393,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
 
 HOST_SUITES = {
     "M0": [
-        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 29 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, two runners in the same second getting distinct run ids through the job slot NAWAH_RUN_SLOT (one lowercase letter appended as -<slot>, anything else refused, no slot the id as before) that the evidence schemas accept, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL; each oracle has one source (WP-92): a record whose oracle differs from its source (a HOST_SUITES case, a target.json suite case or boot_oracle, the build's own text) is an error naming the test, sync-oracles writes the oracle field alone from the source and leaves a record without one, its --check writes nothing and fails on a difference, the file keeps its format, a dated note lives in oracle_notes (an undated one is refused), and under --strict a PASS record's oracle must equal the oracle its evidence's verdict.json records, stale_policy warn included",
+        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 31 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, two runners in the same second getting distinct run ids through the job slot NAWAH_RUN_SLOT (one lowercase letter appended as -<slot>, anything else refused, no slot the id as before) that the evidence schemas accept, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL; each oracle has one source (WP-92): a record whose oracle differs from its source (a HOST_SUITES case, a target.json suite case or boot_oracle, the build's own text) is an error naming the test, as are two sources giving one id different texts (a boot_oracle shadowed by a suite case of its own target is no source, another target's is; sync-oracles then writes nothing), sync-oracles writes the oracle field alone from the source and leaves a record without one, its --check writes nothing and fails on a difference, the file keeps its format, a dated note lives in oracle_notes (an undated one is refused), and under --strict a PASS record's oracle must equal the oracle its evidence's verdict.json records, stale_policy warn included",
          "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
         {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision); every file ADR-0002 item 4 ports from Sol OS names its origin (commit d54f0a5 or the Sol ADR) in its header; the twelve-role team methodology is in place (docs/policies/team-methodology.md names every role, .claude/workflows/nawah-team.js opens with its meta literal, the twelve agent definitions carry name/description/tools/model; docs/PLAN-REVERSE.md exists with its seven sections, the fifth listing refuted and unverified claims; docs/PLAN-ANSWER.md exists with its eight sections)",
          "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md",
@@ -1506,28 +1508,44 @@ HOST_SUITES["M1"] = [
 ]
 
 
-def oracle_sources():
-    """(test id, oracle) for every case whose oracle has a source the runner writes into
-    verdict.json: a HOST_SUITES case, a target.json suite case, else a target's boot_oracle
-    (the suite case carrying the boot id wins, as in cmd_boot), and a target's build test
-    (BUILD_ORACLE). The first source of an id wins.
-    docs/tests.json keeps a copy of each for reading; WP-92 makes that copy checked."""
-    found = {}
-    for cases in HOST_SUITES.values():
+def oracle_candidates():
+    """(test id, oracle, where) for every text the runner writes into verdict.json: HOST_SUITES,
+    each target.json suite case, a target's boot_oracle when no suite case of that target carries
+    its id (a shadowed boot_oracle is never run: cmd_boot), every target's build (BUILD_ORACLE)."""
+    for suite, cases in HOST_SUITES.items():
         for c in cases:
-            found.setdefault(c["id"], c["oracle"])
+            yield c["id"], c["oracle"], f"HOST_SUITES[{suite}]"
     for tp in sorted((ROOT / "platform").glob("*/target.json")):
-        t = load_json(tp)
+        t, where = load_json(tp), tp.relative_to(ROOT).as_posix()
+        ids = set()
         for cases in t.get("suites", {}).values():
             for c in cases:
                 if c.get("oracle"):
-                    found.setdefault(c["test_id"], c["oracle"])
+                    ids.add(c["test_id"]); yield c["test_id"], c["oracle"], where
         b = t.get("boot_oracle") or {}
-        if b.get("oracle"):
-            found.setdefault(b["test_id"], b["oracle"])
+        if b.get("oracle") and b["test_id"] not in ids:
+            yield b["test_id"], b["oracle"], f"{where} boot_oracle"
         if t.get("build", {}).get("test_id"):
-            found.setdefault(t["build"]["test_id"], BUILD_ORACLE)
-    return found
+            yield t["build"]["test_id"], BUILD_ORACLE, f"{where} build"
+
+
+def oracle_conflicts():
+    """{test id: [where, ...]} for each id two sources give different texts."""
+    seen, out = {}, {}
+    for tid, oracle, where in oracle_candidates():
+        seen.setdefault(tid, []).append((oracle, where))
+    for tid, texts in seen.items():
+        if len({o for o, _ in texts}) > 1:
+            out[tid] = [w for _, w in texts]
+    return out
+
+
+def oracle_sources():
+    """{test id: oracle} from oracle_candidates(); docs/tests.json keeps a copy of each for
+    reading, checked by validate-records (WP-92). Ids with two different texts are reported
+    by oracle_conflicts() and left out here, so nothing is synced from either."""
+    conflicts = oracle_conflicts()
+    return {tid: o for tid, o, _ in oracle_candidates() if tid not in conflicts}
 
 
 def oracle_differences(tests):
@@ -1540,6 +1558,11 @@ def oracle_differences(tests):
 def cmd_sync_oracles(check=False) -> int:
     """Write each record's oracle from its source (WP-92); --check writes nothing and exits
     E_VALIDATION when any record differs."""
+    conflicts = oracle_conflicts()
+    for tid, where in conflicts.items():
+        print(f"two sources with different texts: {tid} ({', '.join(where)}); make them one")
+    if conflicts:
+        return E_VALIDATION
     path = DOCS / "tests.json"
     data = load_json(path)
     diffs = oracle_differences(data["records"])
