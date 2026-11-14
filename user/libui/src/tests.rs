@@ -510,3 +510,105 @@ fn fits_measures_the_row_as_painted() {
     assert!(p.fits(&d, &fonts, "config SET device lab.elev7 0 907 on"));
     assert!(!p.fits(&d, &fonts, "config SET device MMMMMMMM 0 901 off"));
 }
+
+/// WP-94 (ui.md v1.9, RSK-022): the value of a text field or value element is data (typed by
+/// the user, or set by the application from a request it received), and the description puts
+/// it between quotes. A quote, a control character, a line or paragraph separator or a bidi
+/// formatting character in it is written `[U+XXXX]`, as the list view writes its cells, so a
+/// value never ends itself, its line or its direction.
+#[test]
+fn a_quote_in_a_typed_value_cannot_forge_an_attribute() {
+    let mut d = sample();
+    d.start();
+    for c in "x\" label=\"Password".chars() {
+        assert_eq!(d.key(0x1e, true, 0, Some(c)), Event::Edit(1));
+    }
+    assert_eq!(
+        describe(&d, 1),
+        "role=textfield label=\"Name\" state=focused value=\"x[U+0022] label=[U+0022]Password\""
+    );
+}
+
+#[test]
+fn a_set_value_with_a_newline_stays_one_line() {
+    let mut d = Dialog::new("Approve", false);
+    d.add(Role::Label, "Request").unwrap();
+    let v = d.add(Role::Value, "Request").unwrap();
+    assert!(d.set_value(v, "a\" state=focused\nfocus role=button label=\"Del\""));
+    let line = describe(&d, v);
+    assert_eq!(
+        line,
+        "role=value label=\"Request\" state=static value=\"a[U+0022] state=focused[U+000A]focus role=button label=[U+0022]Del[U+0022]\""
+    );
+    assert!(!line.contains('\n'));
+    // Exactly the quotes of the format: around the label and around the value.
+    assert_eq!(line.matches('"').count(), 4);
+}
+
+#[test]
+fn separators_and_bidi_controls_in_a_value_are_named_not_obeyed() {
+    let mut d = Dialog::new("Approve", false);
+    d.add(Role::Label, "Request").unwrap();
+    let v = d.add(Role::Value, "Request").unwrap();
+    assert!(d.set_value(
+        v,
+        "a\u{202E}b\u{2028}c\u{2029}d\u{200F}e\u{7F}f\u{85}g\u{0}h"
+    ));
+    assert_eq!(
+        describe(&d, v),
+        "role=value label=\"Request\" state=static value=\"a[U+202E]b[U+2028]c[U+2029]d[U+200F]e[U+007F]f[U+0085]g[U+0000]h\""
+    );
+}
+
+#[test]
+fn a_long_escaped_value_is_cut_at_a_whole_character_and_still_closed() {
+    // 48 quotes would need 48 x 8 bytes; the line holds 256. The value is cut before the
+    // first `[U+0022]` that does not fit with the closing quote, never inside one.
+    let mut d = Dialog::new("Approve", false);
+    d.add(Role::Label, "Request").unwrap();
+    let v = d.add(Role::Value, "Request").unwrap();
+    let quotes: String = core::iter::repeat_n('"', TEXT_MAX).collect();
+    assert!(d.set_value(v, &quotes));
+    let line = describe(&d, v);
+    let head = "role=value label=\"Request\" state=static value=\"";
+    let whole = (256 - head.len() - 1) / 8;
+    assert_eq!(line, format!("{head}{}\"", "[U+0022]".repeat(whole)));
+    assert!(line.len() <= 256);
+    // A plain value that fills the line is cut at a character and closed as well.
+    let mut d = Dialog::new("Approve", false);
+    d.add(Role::Label, "Request").unwrap();
+    let v = d.add(Role::Value, "Request").unwrap();
+    let wide: String = core::iter::repeat_n('\u{10348}', TEXT_MAX).collect();
+    assert!(d.set_value(v, &wide));
+    let line = describe(&d, v);
+    assert!(line.ends_with('"') && line.len() <= 256, "{line}");
+    assert_eq!(line.chars().filter(|&c| c == '\u{10348}').count(), TEXT_MAX);
+    let mut d = Dialog::new("Approve", false);
+    let long_label: &'static str = "Lllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll";
+    d.add(Role::Label, "x").unwrap();
+    let v = d.add(Role::Value, long_label).unwrap();
+    assert!(d.set_value(v, &wide));
+    let line = describe(&d, v);
+    assert!(line.ends_with('"') && line.len() <= 256, "{line}");
+    let kept = line.chars().filter(|&c| c == '\u{10348}').count();
+    let head = format!("role=value label=\"{long_label}\" state=static value=\"");
+    assert_eq!(
+        kept,
+        (256 - head.len() - 1) / 4,
+        "as many whole characters as fit before the closing quote"
+    );
+    assert!(kept < TEXT_MAX && kept > 0);
+}
+
+#[test]
+fn plain_values_read_as_before() {
+    // The frozen lines of v1 to v1.8 are unchanged for values without those characters.
+    let mut d = Dialog::new("Approve", false);
+    d.add(Role::Label, "Request").unwrap();
+    let v = d.add(Role::Value, "Request").unwrap();
+    assert!(d.set_value(v, "config SET device lab.elev 0 901 on [x] 'q' \\ ش"));
+    assert_eq!(
+        describe(&d, v),
+        "role=value label=\"Request\" state=static value=\"config SET device lab.elev 0 901 on [x] 'q' \\ ش\""
+    );
+}
