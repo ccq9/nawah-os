@@ -259,7 +259,8 @@
     "WP-95"
    ],
    "requested_at": "2026-11-14T17:10:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-14: the owner chose option A in the session (asked in plain words: run the mutation check with every push): the M6 mutation gate runs inside verify as a parallel job; no stale_policy warn on TST-M6-MUTANTS. Carried out by WP-96"
   }
  ]
 }

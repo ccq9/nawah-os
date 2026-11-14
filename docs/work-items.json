@@ -4406,7 +4406,8 @@
     "REQ-M6-003"
    ],
    "depends_on": [
-    "WP-46"
+    "WP-46",
+    "WP-96"
    ],
    "inputs": [
     "docs/contracts/syscall.md",
@@ -4428,6 +4429,7 @@
     "mutants M154-M156 (SECURITY): the subtree filter removed; the READ check removed; the cursor check removed",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-09 estimate: about 60-80 tool calls (the manager's, after the kernel engineer's design report; an estimate, not measured)",
+    "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): its M6 mutants (M154, M156) are registered; executed only once the M6 gate (WP-90) exists"
    ],
    "acceptance": "TST-M6-PROC-LIST-REFUSALS PASS on CI; TST-M6-JOB-KILL re-run and PASS; M3 and M5 suites unregressed",
@@ -4756,7 +4758,8 @@
     "REQ-M0-006"
    ],
    "depends_on": [
-    "WP-83"
+    "WP-83",
+    "WP-96"
    ],
    "inputs": [
     "tools/project.py (import-ci-evidence)",
@@ -4782,6 +4785,7 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 estimate (lab engineer, unmeasured): about 10 tool calls / 30 min; under the line",
     "2026-11-10 (steward round B): depends on WP-83 instead of WP-81 (WP-81 split: the tooling stays in WP-81, the parallel jobs and per-job budgets are WP-83)",
+    "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-10 (steward round F, WP-83 split into 83a/83b by the manager, decisions D1-D8): stays on WP-83 (83a): the merge path is what it builds on"
    ],
    "acceptance": "TST-M0-007 PASS on CI with an existing run directory without a receipt whose content differs refused (named) and an identical one accepted, and the 1.0.0 warning policy as decided here; validate-records --strict 0 errors",
@@ -4806,7 +4810,8 @@
     "REQ-M0-005"
    ],
    "depends_on": [
-    "WP-83"
+    "WP-83",
+    "WP-96"
    ],
    "inputs": [
     "tools/project.py:1084-1089, :1288 (keep_artifact)",
@@ -4834,6 +4839,7 @@
     "2026-11-10 (steward round B): depends on WP-83 instead of WP-81 (WP-81 split: the tooling stays in WP-81, the parallel jobs and per-job budgets are WP-83)",
     "2026-11-10 (manager, decision C2): \"upload and publish only this run's dirs\" is this item's scope; until it lands, WP-83's merge job relies on adopt-native skipping directories already under evidence/",
     "2026-11-10 (steward round F, WP-83 split into 83a/83b by the manager, decisions D1-D8): stays on WP-83 (83a): the merge path is what it builds on",
+    "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): note from WP-89 (L6): publishing only the run's own directories must not open a pruned-directory denial of service on the import"
    ],
    "acceptance": "TST-M0-001 and TST-M0-003 PASS on CI; a verify run's evidence references the test kernel through evidence/blobs/<sha256>/<name> and keeps its screens gzipped after the verdict; validate-records --strict 0 errors",
@@ -5439,7 +5445,8 @@
     "REQ-M6-006"
    ],
    "depends_on": [
-    "WP-50"
+    "WP-50",
+    "WP-96"
    ],
    "inputs": [
     "the apps engineer's WP-50 split design, option B (2026-11-10, read-only)",
@@ -5467,6 +5474,7 @@
     "planned mutants (fix commit only): M182 SECURITY (keys still reach the previous pane after F6), M183 (path isolation dropped), M184 (paint_into clip off by one, a guest panic)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 estimate (apps engineer, unverified): about 65 tool calls / 75 min; under the budget line",
+    "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): its M6 mutants (M182, M183, M184) are registered; executed only once the M6 gate (WP-90) exists"
    ],
    "acceptance": "TST-M6-UI-PANES PASS on CI (7 passed) and TST-M6-LISTVIEW-UNIT still PASS; ui.md at its next version with the toolbar, status bar, panes and TEXT_MAX 255; M182-M184 registered in tests/mutants.py with each anchor once; shown killed once the M6 mutation gate (WP-90) exists",
@@ -5548,7 +5556,8 @@
     "REQ-M0-006"
    ],
    "depends_on": [
-    "WP-83"
+    "WP-83",
+    "WP-96"
    ],
    "inputs": [
     ".github/workflows/verify.yml after WP-83 (job a and the merge job)",
@@ -5569,6 +5578,7 @@
     "moved from WP-83 on 2026-11-10 (steward round F), the PLAN-ANSWER V3 text is written here: moved from WP-81 on 2026-11-10 (steward round B), the V3 text in PLAN-ANSWER is written here: the V3 trigger at PLAN-ANSWER.md:420 is amended here: opened on 2026-11-10 (as WP-74, whose parallel-jobs half is this item since the same day's split)",
     "one CI run measures the critical path against 42m11s (the claim of about T+20 min is unverified until measured)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-10 estimate (lab engineer, unmeasured): 45-60 tool calls / 45-60 min; under the budget line"
    ],
    "acceptance": "TST-M0-003 PASS with the per-job budgets {a 40, b 40, c 40, merge 20} and M6 18 in c; TST-M0-001 and TST-M0-007 PASS; a verify run with three test jobs and the merge job publishing one evidence branch; the measured critical path recorded",
@@ -5595,7 +5605,8 @@
     "REQ-M0-006"
    ],
    "depends_on": [
-    "WP-83"
+    "WP-83",
+    "WP-96"
    ],
    "inputs": [
     "the security assurance review of WP-82/WP-83 (2026-11-10): findings H1, M1, M3, L6",
@@ -5628,6 +5639,7 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-14 from the audit of WP-83's train: the token is also reachable through the environment of the merge job ($GITHUB_ENV setting GIT_CONFIG_COUNT/KEY/VALUE, LD_PRELOAD or GIT_EXEC_PATH before Publish); demonstrated in a scratch repository; the code-free publish job is the fix, and its test must assert that no step of that job runs repository code",
     "2026-11-14 from the manager's reading of actions/download-artifact v4.3.0: the action only WARNS when a downloaded artifact's digest does not match (`outcome.digestMismatch` → core.warning), so a corrupted or substituted artifact still reaches adopt-native; the integrity item must make the merge job fail on that warning or verify a manifest of its own",
+    "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-10 estimate: unmeasured, to be designed; the planners' split rule applies (team-methodology.md §2 item 0)"
    ],
    "acceptance": "TST-M0-003 and TST-M0-007 PASS on CI with the per-attempt branch, the slot binding and the code-free publish job; M191 and M192 registered (executed once WP-90 exists); the ruleset on ci-evidence/** in place (owner, DEC-019)",
@@ -5814,7 +5826,8 @@
     "REQ-M0-001"
    ],
    "depends_on": [
-    "WP-92"
+    "WP-92",
+    "WP-96"
    ],
    "inputs": [
     "docs/work-items.json, docs/tests.json, docs/risks.json, docs/PLAN*.md: 405 `file:line` citations (study count 2026-11-14)",
@@ -5833,6 +5846,7 @@
     "study: root cause confirmed: a line number is valid only for the commit it was read at, and nothing re-checks it; the records carry 405 of them, some with a bare file name that no tool can resolve",
     "rule (team-methodology.md): new record text cites a full path plus a symbol or heading (function, constant, section), a line number only beside it as a hint; fix: validate-records warns on a citation whose path does not exist or whose line is past the end of the file, and on a bare file name with a line; no mass rewrite of the 405 existing citations (history stays as written)",
     "test first (TST-M0-001): a citation of a missing path, a line past the end and a bare name each produce one named warning; a path-plus-symbol citation produces none",
+    "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "estimate about 20 calls / 20 min (unmeasured); budget line: OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first"
    ],
    "acceptance": "TST-M0-001 PASS with the citation cases; the methodology states the rule; the warning count on the tree is recorded as the baseline",
@@ -5856,7 +5870,8 @@
     "REQ-M5-005"
    ],
    "depends_on": [
-    "WP-50"
+    "WP-50",
+    "WP-96"
    ],
    "inputs": [
     "user/libui/src/lib.rs:825-833 (value=\"…\" written without escaping), :772 (the typed field rejects control characters and accepts \"), :550-559 (set_value filters nothing)",
@@ -5884,6 +5899,7 @@
     "contract: the narrator format of section 2 is frozen, so the change is a new minor version of ui.md with a decision note; the threat model names the narrator line as an output the system vouches for",
     "depends on WP-50 because it reuses the escaping helper WP-50 adds",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-14 estimate: about 30 calls / 35 min (unmeasured)"
    ],
    "acceptance": "TST-M5-UI-UNIT PASS with the forging cases; the contract's new minor version states the escaping; the mutant is registered and shown killed by the M6 gate",
@@ -5907,7 +5923,8 @@
     "REQ-M6-021"
    ],
    "depends_on": [
-    "WP-90"
+    "WP-90",
+    "WP-96"
    ],
    "inputs": [
     ".github/workflows/mutants.yml (the stages input defaults to M2 M3 M4 M5; the schedule takes the default)",
@@ -5928,6 +5945,7 @@
     "order that keeps verify importable as long as possible: change the four texts and the default stages in one push (test first: the case that pins the default), which turns the merge job's strict check red until the mutants run of that head (about 140 min measured for M2-M5, plus M6) is imported; nothing else is closed in that window, so it goes last in a cycle",
     "a gate that turns red under the new rules is a finding, never loosened: each surviving, invalid or ERROR mutant opens its own fix",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-14 estimate: about 25 calls of work and one mutants run of about 160 min on CI (unmeasured as a whole)"
    ],
    "acceptance": "TST-M0-003 PASS with the default-stages case; TST-M2-MUTANTS, TST-M3-MUTANTS, TST-M4-MUTANTS and TST-M5-MUTANTS PASS with evidence of a run on the head that carries the new texts; validate-records --strict reports no stale mutation verdict",
@@ -5937,6 +5955,60 @@
     "TST-M3-MUTANTS",
     "TST-M4-MUTANTS",
     "TST-M5-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-96",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-021"
+   ],
+   "depends_on": [
+    "WP-83",
+    "WP-90"
+   ],
+   "inputs": [
+    "DEC-029, answered by the owner on 2026-11-14: option A",
+    "the owner's review of 2026-11-14: stale M6 mutation evidence must stay a strict error (the warn setting was removed, aaabecf65)",
+    ".github/workflows/verify.yml: the test job a with slot a, the merge job adopting `for slot in a` (WP-83)",
+    ".github/workflows/mutants.yml: the M6 gate step and its 135-minute cap (WP-90)",
+    "mutants run 43615540519: the M6 gate took 20 min (16:28:05 to 16:48:09), 38 of 38 killed",
+    "docs/PLAN-ANSWER.md:771: a guard keeps stale_policy=warn to TST-M2..M5-MUTANTS"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py",
+    "tests/test_validate_records.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/adr/0026-evidence-provenance.md"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "بوابة طفرات M6 وظيفة موازية في verify، وحارس يقصر stale_policy=warn على البوابات الأربع الأقدم (قرار المالك DEC-029، الخيار أ)",
+    "why: with the strict rule restored, a push that changes an input of the gate (kernel/, user/, tools/, tests/, the workflows) can turn green in neither workflow: verify's strict check sees the stale gate verdict and the mutants run's strict check sees the stale verify verdicts; the gate must produce its evidence in the same run that produces the other verdicts",
+    "design (read from the code): a job `m` in verify.yml with slot m and the same Toolchain step as job a; a baseline build and boot as mutants.yml has; the gate step `python3 tools/project.py test --target host --suite M6-GATE` under the same 135-minute cap; its run directory and build/mutants-m6-report.json uploaded as evidence-m; the merge job needs a and m and adopts `for slot in a m`, so a missing slot fails closed as WP-83 built it; the report is published on the run's evidence branch; job limit 180 = (15 + 135) x 1.2, a hang guard: the gate measured 20 min, about as long as job a, so the run's wall time stays about 25 min while runner minutes roughly double",
+    "the guard of the plan as a validator rule: stale_policy warn is accepted only on TST-M2-MUTANTS, TST-M3-MUTANTS, TST-M4-MUTANTS and TST-M5-MUTANTS (the gates verify does not run); any other test carrying it is an error of validate-records, also without --strict, so the relaxation of 2026-11-14 cannot recur unnoticed",
+    "test first, shown failing locally before the change (the method's rule; no failing commit is pushed): TST-M0-003: job m exists with its slot, the same toolchain, the baseline, the gate step alone and its cap above the case's timeout_s; the adopt step names a and m in both loops; the budget per job; the M6 gate counts as a suite verify runs; TST-M0-001: the stale_policy guard",
+    "local checks before the one push: validate-records, cargo fmt, hygiene, the host suites, and the M6 gate run once here on QEMU (scratch, not evidence)",
+    "what stays as it is: mutants.yml keeps its stages input and its M6 step (WP-95 decides the default); the four older gates keep stale_policy warn until WP-95 re-runs them",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-14 estimate: about 35 calls / 45 min of work, plus one local gate run of about 25 min and one verify run (unmeasured)"
+   ],
+   "acceptance": "TST-M0-003 and TST-M0-001 PASS with the new cases; in one verify run the merge job adopts TST-M6-MUTANTS's evidence from slot m and its strict check passes with no stale_policy on that test",
+   "test_ids": [
+    "TST-M0-003",
+    "TST-M0-001",
+    "TST-M6-MUTANTS"
    ],
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
