@@ -5665,7 +5665,8 @@
     "flag (steward round G): TST-M0-005's oracle still says \"(no M6 gate runs them yet: WP-66 proposal)\"; it mirrors the HOST_SUITES text in tools/project.py, so it is fixed in this item's code commit together with the HOST_SUITES text (WP-90 replaces the WP-66 proposal)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-14 harness item found while preparing WP-82 and WP-83: tests/mutants.py reset() restores only kernel/ and user/ and runs killers through the worktree's tools/project.py, so mutants of tools/, tests/ or .github/ cannot be registered (M174, M185-M190 wait for it): reset() also restores tools/, tests/ and .github/, tooling mutants skip the image build and run host killers only",
-    "2026-11-10 estimate: unmeasured; to be estimated at activation against the budget line"
+    "2026-11-10 estimate: unmeasured; to be estimated at activation against the budget line",
+    "2026-11-14 activation estimate (lab engineer, the assurance engineer reviewing; unmeasured before the first gate run): about 60-80 calls / 75 min for HOST_SUITES M6-GATE with TST-M6-MUTANTS, its step in mutants.yml after M5-GATE, the stage-mapping checks and the harness item (reset() restoring tools/, tests/ and .github/; tooling mutants on host killers only); the gate's own running time on CI is unknown and is measured on its first run; under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first); trigger to split: if the engineer's design puts the harness item past the line, it leaves this item as its own package before more is spent"
    ],
    "acceptance": "the mutants workflow runs the M6 gate after M5-GATE; TST-M6-MUTANTS runs every registered M6 mutant (kill ratio and live security mutants reported); WP-62's gate can then show stages.json:306",
    "test_ids": [
@@ -5674,9 +5675,10 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M6-GATE"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
