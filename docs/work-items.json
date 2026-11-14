@@ -5913,12 +5913,15 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M5"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261114T201139Z-b9e8a4b8-001-a"
+   ],
    "blocker": null
   },
   {
