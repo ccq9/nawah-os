@@ -3435,12 +3435,15 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M6"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261114T161920Z-1ac8c09d-003-a"
+   ],
    "blocker": null
   },
   {
