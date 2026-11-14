@@ -1,0 +1,22 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261017T210945Z-9f580295-001",
+ "test_id": "TST-M1-NEG",
+ "verdict": "PASS",
+ "oracle": "contracts/boot.md v1 failure path: stale map key injected -> firmware rejects EBS twice -> boot|error|code=BOOT_E_EBS_FAILED, boot|halt|reboot=0, QEMU exit 97 (0x30); exactly one boot|start (no reboot loop); kernel never entered",
+ "expected": "exit=97; markers=['OSX|9f58029599e8|boot|start|', 'OSX|9f58029599e8|boot|ebs|retry=1|', 'OSX|9f58029599e8|boot|error|code=BOOT_E_EBS_FAILED|', 'OSX|9f58029599e8|boot|halt|reboot=0']; forbidden=['|kernel|post_ebs|', '|boot|ebs|ok=1|']",
+ "observed": "exit=97; serial_lines=8; missing=[]; forbidden_present=[]",
+ "inputs_digest": "9389b54e74d4c883b5ba478fb24da20f3a26d17598c8c9555e5a8755ad5875bf",
+ "inputs": {
+  "boot/stub/main.c": "42c61c19dbd623c2f3f10724462d1afc69dd96ef3d5ad252edd6d9fade327004",
+  "kernel/main.c": "23793e8060ae5f225e4d3d169a6e3491ff83a0d447726ceac79de11a5ef999cd",
+  "boot/common/efi.h": "3015acd6e82e7065b1ed8ad6daaa6b1a2451dd9d565e0db50db664f62f19fdad",
+  "boot/common/types.h": "99a5fb485f846d72d5d5cbfe8db5ffcb58264ff982e891504f9c90b19559b59a",
+  "boot/common/serial.h": "1b50bb95c63a40227ce3d821b080f0a04f4db9ca63d271c08e97b3954087ae10",
+  "boot/common/bootinfo.h": "5c9573c7478baec49ccdc9581be6e4705fade1cd604e4cd69f5959190b2f76de",
+  "platform/pc-qemu/target.json": "f3006e27e3230e3edd0552e650cbfc80c7949e2dccad8765e150a6dc8508b757",
+  "evidence/20261017T210945Z-9f580295-001/artifact/KERNEL-NEG.EFI": "9608dab036b193708a68763df1b612bbe2ffa2bb59433e46283e4ad236701196"
+ },
+ "claim_tag": "source_backed_fact",
+ "reason": "exit code and serial markers match oracle"
+}
