@@ -1,0 +1,4 @@
+# Lab fixture (WP-84, TST-M6-BOOT-HALT phase 1): a damaged system manifest, placed as
+# /SYSTEM/SERVICES.TXT on that phase's disk by the case's disk_files. Its fourth line (the
+# manager counts comment lines) has a timeout that is not a number, so the manager answers `ERR MANIFEST_SYNTAX 4`
+auth /SYSTEM/AUTHD.ELF - never-a-number on-failure 3 100

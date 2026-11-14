@@ -306,9 +306,10 @@ class CmdBoot(unittest.TestCase):
     GOOD = [("OSX|x|k|phase=1|", 0.2), ("OSX|x|k|phase=2|", 0.6), ("tail", 5.0)]
     RESET = [("OSX|x|k|phase=1|", 0.2), ("__exit__0", 1.0)]   # status 0 before the last step
 
-    def boot(self, case, files=None):
+    def boot(self, case, files=None, disks=None):
         """The verdict of `case`; `files`, when given, receives the run directory's files
-        ({name: bytes}) before the directory goes."""
+        ({name: bytes}) before the directory goes; `disks`, when a list, receives the keyword
+        arguments of every prepare_disk call (WP-84: `fresh`, `files`)."""
         case = dict({"id": "T", "test_id": "T", "oracle": "o", "required_markers": [], "timeout_s": 20}, **case)
         with tempfile.TemporaryDirectory() as td:
             root = pathlib.Path(td).resolve()
@@ -332,7 +333,7 @@ class CmdBoot(unittest.TestCase):
             env = {k: v for k, v in project.os.environ.items() if k != "NAWAH_QEMU_TIMEOUT_S"}
             with mock.patch.dict(project.os.environ, env, clear=True), \
                     mock.patch.multiple(project, ROOT=root, load_target=lambda n: t, begin_run=lambda: None,
-                                        prepare_esp=lambda *a: root, prepare_disk=lambda *a, **k: root / "disk.img",
+                                        prepare_esp=lambda *a: root, prepare_disk=lambda *a, **k: (disks is not None and disks.append(k), root / "disk.img")[1],
                                         qemu_cmd=qemu_cmd, new_run_dir=lambda slug: ("rid", run_dir),
                                         write_run=lambda *a, **k: None, digests_for=lambda *a: {},
                                         keep_artifact=lambda *a: "k", attach_evidence=lambda *a: None,
@@ -439,6 +440,83 @@ class CmdBoot(unittest.TestCase):
         verdict, reason = self.boot(case)
         self.assertEqual((verdict, reason), ("FAIL", "timeout (hang)"))
         self.assertLess(time.monotonic() - begin, 7)
+
+
+    def test_disk_files_of_a_phase_rebuild_its_disk(self):
+        # WP-84: a phase with its own `disk_files` gets a fresh disk with exactly those files;
+        # a phase without any keeps the earlier disk (fresh only for the first) and inherits the
+        # case's own `disk_files`.
+        case = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT,
+                "disk_files": {"SYSTEM/SERVICES.TXT": "case.txt"}}
+        good = {"qemu_extra": self.script(self.GOOD)}
+        disks = []
+        verdict = self.boot(dict(case, phases=[good, dict(good, disk_files={"SYSTEM/SVCMGR.ELF": "${OUT}/apps/idle.elf"}),
+                                               dict(good)]), disks=disks)[0]
+        self.assertEqual(verdict, "PASS")
+        self.assertEqual(disks, [{"fresh": True, "files": {"SYSTEM/SERVICES.TXT": "case.txt"}},
+                                 {"fresh": True, "files": {"SYSTEM/SVCMGR.ELF": "${OUT}/apps/idle.elf"}},
+                                 {"fresh": False, "files": {"SYSTEM/SERVICES.TXT": "case.txt"}}])
+
+
+class PrepareDiskFiles(unittest.TestCase):
+    """prepare_disk's `files` (a case's `disk_files`, WP-84) on a real image read back by
+    tools/fat32.py: a listed file replaces the volume file of the same name (a manifest, the
+    manager's image) or is added; its source is a path under the tree (`${OUT}` = the target's
+    build directory); a missing source or a destination that is not a plain volume path is
+    refused before any image is written."""
+
+    def make(self, files):
+        td = tempfile.TemporaryDirectory()
+        self.addCleanup(td.cleanup)
+        root = pathlib.Path(td.name).resolve()
+        real = pathlib.Path(project.__file__).resolve().parent.parent
+        (root / "tools").mkdir()
+        (root / "tools" / "fat32.py").symlink_to(real / "tools" / "fat32.py")
+        fonts = root / "platform" / "assets" / "fonts"
+        fonts.mkdir(parents=True)
+        for src in project.FONT_FILES:
+            (fonts / src).write_bytes(b"font")
+        man = root / "platform" / "t" / "manifests"
+        man.mkdir(parents=True)
+        (man / "services.txt").write_text("good manifest\n")
+        (root / "platform" / "t" / "lab").mkdir()
+        (root / "platform" / "t" / "lab" / "bad.txt").write_text("bad manifest\n")
+        apps = root / "build" / "t" / "apps"
+        apps.mkdir(parents=True)
+        (apps / "svcmgr.elf").write_bytes(b"svcmgr image")
+        (apps / "idle.elf").write_bytes(b"idle image")
+        t = {"qemu": {"disk": {"size_mib": 64}}}
+        with mock.patch.object(project, "ROOT", root):
+            img = project.prepare_disk(t, "t", fresh=True, files=files)
+        return img
+
+    def cat(self, img, path):
+        r = subprocess.run([sys.executable, "-I", str(pathlib.Path(project.__file__).parent / "fat32.py"), "cat", str(img), path],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout
+
+    def test_files_replace_the_manifest_and_the_manager(self):
+        img = self.make({"SYSTEM/SERVICES.TXT": "platform/t/lab/bad.txt", "SYSTEM/SVCMGR.ELF": "${OUT}/apps/idle.elf",
+                         "EXTRA.TXT": "platform/t/lab/bad.txt"})
+        self.assertEqual(self.cat(img, "SYSTEM/SERVICES.TXT"), b"bad manifest\n")
+        self.assertEqual(self.cat(img, "SYSTEM/SVCMGR.ELF"), b"idle image")
+        self.assertEqual(self.cat(img, "EXTRA.TXT"), b"bad manifest\n")
+        self.assertEqual(self.cat(img, "SYSTEM/IDLE.ELF"), b"idle image")
+
+    def test_no_files_keeps_the_volume(self):
+        img = self.make(None)
+        self.assertEqual(self.cat(img, "SYSTEM/SERVICES.TXT"), b"good manifest\n")
+        self.assertEqual(self.cat(img, "SYSTEM/SVCMGR.ELF"), b"svcmgr image")
+
+    def test_bad_entries_are_refused(self):
+        for files in ({"SYSTEM/SERVICES.TXT": "platform/t/lab/absent.txt"},
+                      {"SYSTEM/SERVICES.TXT": "/etc/hostname"},
+                      {"SYSTEM/SERVICES.TXT": "../outside.txt"},
+                      {"../SERVICES.TXT": "platform/t/lab/bad.txt"},
+                      {"/SYSTEM/SERVICES.TXT": "platform/t/lab/bad.txt"}):
+            with self.subTest(files=files), self.assertRaises(SystemExit):
+                self.make(files)
 
 
 class ConsoleReceived(unittest.TestCase):
