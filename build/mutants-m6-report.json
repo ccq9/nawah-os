@@ -1,0 +1,700 @@
+{
+ "threshold": 0.95,
+ "target": "pc-qemu",
+ "mutants": [
+  {
+   "id": "M130",
+   "file": "kernel/src/arch/x86_64/fwcfg.rs",
+   "note": "hypervisor_present forced true: without the hypervisor bit fw_cfg is still read, so phase 5 (-cpu qemu64,-hypervisor with the key) prints hv=1|key=ok, m1_done and exits 33 (its line requires hv=0, exit 0)",
+   "killers": [
+    "TST-M6-INTERACTIVE-BOOT"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-INTERACTIVE-BOOT"
+   ],
+   "results": {
+    "TST-M6-INTERACTIVE-BOOT": "FAIL"
+   },
+   "seconds": 66.8
+  },
+  {
+   "id": "M131",
+   "file": "kernel/src/bootmode.rs",
+   "note": "any key value selects the self-test: phases 2 (selftest=0) and 6 (selftest=10) print key=ok and m1_done (forbidden) and exit 33, not 0",
+   "killers": [
+    "TST-M6-INTERACTIVE-BOOT"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-INTERACTIVE-BOOT"
+   ],
+   "results": {
+    "TST-M6-INTERACTIVE-BOOT": "FAIL"
+   },
+   "seconds": 48.6
+  },
+  {
+   "id": "M132",
+   "file": "kernel/src/kmain.rs",
+   "note": "the interactive boot takes the self-test exit: phase 1 prints m1_done (forbidden) and exits 33, not 0 by the lab's quit",
+   "killers": [
+    "TST-M6-INTERACTIVE-BOOT"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-INTERACTIVE-BOOT"
+   ],
+   "results": {
+    "TST-M6-INTERACTIVE-BOOT": "FAIL"
+   },
+   "seconds": 23.9
+  },
+  {
+   "id": "M135",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "the restarted session shows its sign-in screen without LOGOUT to the compositor: no session|purge line, the spy keeps its window and is not told LOGGED_OUT, so phase 2 reads spy_after=ready:\u2026 and windows=2, not stopped:0x0 and windows=1",
+   "killers": [
+    "TST-M5-SESSION-LOSS"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-SESSION-LOSS"
+   ],
+   "results": {
+    "TST-M5-SESSION-LOSS": "FAIL"
+   },
+   "seconds": 34.5
+  },
+  {
+   "id": "M137",
+   "file": "user/apps/authd/src/main.rs",
+   "note": "auth forgets nothing when the session client is lost (the trace still says revoked=1): the dead session's token stays alive under auth's handle, so tokens_after=2|revoked=0 and failed=session_token, not tokens_after=1|revoked=1|failed=none",
+   "killers": [
+    "TST-M6-TOKEN-REVOKE"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-TOKEN-REVOKE"
+   ],
+   "results": {
+    "TST-M6-TOKEN-REVOKE": "FAIL"
+   },
+   "seconds": 30.0
+  },
+  {
+   "id": "M147",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "a LIST failure starts the screen unheld while the trace says locked=1: case=reply and case=too_long read holds=OK locked=0 (forbidden) and keys=2 (press and release both reach the window), not locked=1 and keys=0",
+   "killers": [
+    "TST-M6-HOLD-FAIL-CLOSED"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-HOLD-FAIL-CLOSED"
+   ],
+   "results": {
+    "TST-M6-HOLD-FAIL-CLOSED": "FAIL"
+   },
+   "seconds": 15.6
+  },
+  {
+   "id": "M150",
+   "file": "user/apps/sessiond/src/main.rs",
+   "note": "a LIST the session cannot read skips the purge: sub-cases reply, no_session_line, bad_count, too_long and closed read logout=-|order=screen_only|ok=0 (closed: exit 0xe5, no LOGOUT), the list_failure trace appears 0 times, not 5, and failed= names those five",
+   "killers": [
+    "TST-M6-PURGE-FAIL-CLOSED"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-PURGE-FAIL-CLOSED"
+   ],
+   "results": {
+    "TST-M6-PURGE-FAIL-CLOSED": "FAIL"
+   },
+   "seconds": 16.2
+  },
+  {
+   "id": "M151",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "a job handle without WRITE creates, kills and spawns into its job: the app's read-only duplicate is not refused, so phase 1 fails (jobs|phase=1|types=fail, exit 0xe4), not exit=0x4a",
+   "killers": [
+    "TST-M6-JOB-KILL"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-JOB-KILL"
+   ],
+   "results": {
+    "TST-M6-JOB-KILL": "FAIL"
+   },
+   "seconds": 14.6
+  },
+  {
+   "id": "M152",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "process_spawn puts the child in the root, not the caller's job: the grandchild started inside job A escapes job_kill(A), so phase 5 fails (jobs|phase=5|kill=fail, exit 0xf4), not exit=0x4a",
+   "killers": [
+    "TST-M6-JOB-KILL"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-JOB-KILL"
+   ],
+   "results": {
+    "TST-M6-JOB-KILL": "FAIL"
+   },
+   "seconds": 311.8
+  },
+  {
+   "id": "M153",
+   "file": "kernel/src/sched/mod.rs",
+   "note": "a process enters a killed job when a kill lands after spawn's early check: job_spawn_dead's spawn starts (refused=0|\u2026|ok=0, |ktest|fail|), not refused=1|ok=1",
+   "killers": [
+    "TST-M6-JOB-KILL"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-JOB-KILL"
+   ],
+   "results": {
+    "TST-M6-JOB-KILL": "FAIL"
+   },
+   "seconds": 311.9
+  },
+  {
+   "id": "M157",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "a manifest of 4096 bytes or more is truncated and accepted: case=4097 and case=4096 read reply=OK 1 (forbidden), list=A:\u2026 and again=ERR LOADED (forbidden), ok=0, failed=4097,4096,",
+   "killers": [
+    "TST-M6-MANIFEST-TOO-LARGE"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-MANIFEST-TOO-LARGE"
+   ],
+   "results": {
+    "TST-M6-MANIFEST-TOO-LARGE": "FAIL"
+   },
+   "seconds": 14.9
+  },
+  {
+   "id": "M158",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "a manifest whose read fails at byte 1024 is accepted from what was read: case=io reads reply=OK 1 (forbidden), fired=1, again=ERR LOADED (forbidden), ok=0, failed=io,",
+   "killers": [
+    "TST-M6-MANIFEST-TOO-LARGE"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-MANIFEST-TOO-LARGE"
+   ],
+   "results": {
+    "TST-M6-MANIFEST-TOO-LARGE": "FAIL"
+   },
+   "seconds": 14.7
+  },
+  {
+   "id": "M159",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "LOAD reads outside /SYSTEM/: case=outside reads reply=OK 1|started=1|ok=0 (forbidden reply=OK), the later LOADs answer ERR LOADED (forbidden), failed=outside,dotdot,dep_name,system,",
+   "killers": [
+    "TST-M6-LOAD-OUTSIDE-SYSTEM"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-LOAD-OUTSIDE-SYSTEM"
+   ],
+   "results": {
+    "TST-M6-LOAD-OUTSIDE-SYSTEM": "FAIL"
+   },
+   "seconds": 15.7
+  },
+  {
+   "id": "M160",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "a boot message longer than 64 bytes stays at the head of the queue and the loop spins on it: case=too_long_msg reads pong=0|holds=error:K_E_SVC_TIMEOUT|exit=0x20000|ok=0, the trace display|boot|discard=too_long is missing, failed=too_long_msg,",
+   "killers": [
+    "TST-M6-DISPLAYD-BOOT-LOOP"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-DISPLAYD-BOOT-LOOP"
+   ],
+   "results": {
+    "TST-M6-DISPLAYD-BOOT-LOOP": "FAIL"
+   },
+   "seconds": 23.5
+  },
+  {
+   "id": "M161",
+   "file": "user/apps/displayd/src/main.rs",
+   "note": "a STOP before the LIST answer is read as a failed LIST: case=stop_first reads ready=1|exit=0x20000|ok=0, display|hold|source=list_failure|reason=error|locked=1 appears (forbidden), display|boot|stop=before_ready is missing, failed=stop_first,",
+   "killers": [
+    "TST-M6-DISPLAYD-BOOT-LOOP"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-DISPLAYD-BOOT-LOOP"
+   ],
+   "results": {
+    "TST-M6-DISPLAYD-BOOT-LOOP": "FAIL"
+   },
+   "seconds": 17.5
+  },
+  {
+   "id": "M162",
+   "file": "kernel/src/syscall/mod.rs",
+   "note": "SECURITY: WRITE alone decides again: step 40 opens /SYSTEM/SERVICES.TXT for writing, probe=0x28, then |ktest|fail| (forbidden)",
+   "killers": [
+    "TST-M6-CONFIG-WRITE-SCOPE"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-CONFIG-WRITE-SCOPE"
+   ],
+   "results": {
+    "TST-M6-CONFIG-WRITE-SCOPE": "FAIL"
+   },
+   "seconds": 14.7
+  },
+  {
+   "id": "M163",
+   "file": "kernel/src/fs/vfs.rs",
+   "note": "SECURITY: any .A or .B in /SYSTEM is writable: step 46 creates /SYSTEM/AUTHD.A, probe=0x2e, created=1, then |ktest|fail| (forbidden)",
+   "killers": [
+    "TST-M6-CONFIG-WRITE-SCOPE"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-CONFIG-WRITE-SCOPE"
+   ],
+   "results": {
+    "TST-M6-CONFIG-WRITE-SCOPE": "FAIL"
+   },
+   "seconds": 14.0
+  },
+  {
+   "id": "M164",
+   "file": "kernel/src/fs/vfs.rs",
+   "note": "SECURITY: any CFG* name in /SYSTEM is writable: step 47 creates /SYSTEM/CFGPRB.C, probe=0x2f, created=1, then |ktest|fail| (forbidden)",
+   "killers": [
+    "TST-M6-CONFIG-WRITE-SCOPE"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-CONFIG-WRITE-SCOPE"
+   ],
+   "results": {
+    "TST-M6-CONFIG-WRITE-SCOPE": "FAIL"
+   },
+   "seconds": 14.2
+  },
+  {
+   "id": "M165",
+   "file": "user/libui/src/lib.rs",
+   "note": "the hit-test takes the column after an element's right edge as inside it: pointer_focuses_and_activates_the_element_under_it fails (a press at r.x + r.w focuses and activates the button), test result FAILED. 7 passed; 1 failed",
+   "killers": [
+    "TST-M6-UI-UNIT"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-UI-UNIT"
+   ],
+   "results": {
+    "TST-M6-UI-UNIT": "FAIL"
+   },
+   "seconds": 12.7
+  },
+  {
+   "id": "M166",
+   "file": "user/libui/src/lib.rs",
+   "note": "a left press focuses a label: pointer_focuses_and_activates_the_element_under_it fails (Focus to the label instead of None), test result FAILED. 7 passed; 1 failed",
+   "killers": [
+    "TST-M6-UI-UNIT"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-UI-UNIT"
+   ],
+   "results": {
+    "TST-M6-UI-UNIT": "FAIL"
+   },
+   "seconds": 6.2
+  },
+  {
+   "id": "M167",
+   "file": "user/libui/src/lib.rs",
+   "note": "Esc (and an outside press or a choice) closes the menu without returning the focus to its opener: focused() stays None; esc_and_outside_click_close_and_return_focus, context_menu_opens_by_three_ways and menu_wraps_skips_separators_and_disabled_never_chooses fail, test result FAILED. 5 passed; 3 failed",
+   "killers": [
+    "TST-M6-UI-UNIT"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-UI-UNIT"
+   ],
+   "results": {
+    "TST-M6-UI-UNIT": "FAIL"
+   },
+   "seconds": 6.2
+  },
+  {
+   "id": "M168",
+   "file": "user/libui/src/lib.rs",
+   "note": "SECURITY: Enter on a disabled menu item emits Choose: menu_wraps_skips_separators_and_disabled_never_chooses fails (Some(Choose(3, 3)) instead of None), test result FAILED. 7 passed; 1 failed",
+   "killers": [
+    "TST-M6-UI-UNIT"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-UI-UNIT"
+   ],
+   "results": {
+    "TST-M6-UI-UNIT": "FAIL"
+   },
+   "seconds": 6.1
+  },
+  {
+   "id": "M169",
+   "file": "user/libui/src/lib.rs",
+   "note": "in RTL the menu is anchored by its left edge and opens rightwards: menu_mirrors_in_rtl fails (the right edge is not the element's start edge), test result FAILED. 7 passed; 1 failed",
+   "killers": [
+    "TST-M6-UI-UNIT"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-UI-UNIT"
+   ],
+   "results": {
+    "TST-M6-UI-UNIT": "FAIL"
+   },
+   "seconds": 6.3
+  },
+  {
+   "id": "M171",
+   "file": "user/libui/src/lib.rs",
+   "note": "SECURITY: Esc answers Yes, so a cancel becomes consent: confirm_default_esc_enter (answer() Some(Yes) instead of Some(Cancel)) and confirm_narrator_lines (\"answer yes\" instead of \"answer cancel\") fail, test result: FAILED. 3 passed; 2 failed",
+   "killers": [
+    "TST-M6-UI-CONFIRM"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-UI-CONFIRM"
+   ],
+   "results": {
+    "TST-M6-UI-CONFIRM": "FAIL"
+   },
+   "seconds": 12.7
+  },
+  {
+   "id": "M176",
+   "file": "user/libui/src/list.rs",
+   "note": "SECURITY: a Shift range selects display positions taken as row ids, so in any order but the identity an action on the selection reaches rows the user did not select: single_and_multi_selection ([1, 2] instead of [17, 18] in the reversed order) and sort_stable_and_selection_follows_identity fail, test result: FAILED. 9 passed; 2 failed",
+   "killers": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "results": {
+    "TST-M6-LISTVIEW-UNIT": "FAIL"
+   },
+   "seconds": 13.5
+  },
+  {
+   "id": "M177",
+   "file": "user/libui/src/list.rs",
+   "note": "SECURITY: a type-ahead match activates the row, so typing opens a file: typeahead_latin_and_arabic (Activate(1) instead of Focus(1)) and focus_stays_visible fail, test result: FAILED. 9 passed; 2 failed",
+   "killers": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "results": {
+    "TST-M6-LISTVIEW-UNIT": "FAIL"
+   },
+   "seconds": 7.0
+  },
+  {
+   "id": "M178",
+   "file": "user/libui/src/list.rs",
+   "note": "End goes one past the last row and the view asks the application for position n: visible_rows_bounded_0_1_10000, home_end_pgup_pgdn_exact, single_and_multi_selection, row_narrator_lines_en_ar and focus_stays_visible fail (the RowSource panics on position n), test result: FAILED. 6 passed; 5 failed",
+   "killers": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "results": {
+    "TST-M6-LISTVIEW-UNIT": "FAIL"
+   },
+   "seconds": 7.1
+  },
+  {
+   "id": "M179",
+   "file": "user/libui/src/list.rs",
+   "note": "SECURITY (false report): a denied list is described state=empty, so a folder the user may not read is announced as having nothing in it: empty_and_denied_states_text fails, test result: FAILED. 10 passed; 1 failed",
+   "killers": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "results": {
+    "TST-M6-LISTVIEW-UNIT": "FAIL"
+   },
+   "seconds": 7.0
+  },
+  {
+   "id": "M180",
+   "file": "user/libui/src/list.rs",
+   "note": "SECURITY: a bidi override in a cell is drawn and obeyed, so photo<U+202E>gpj.exe shows as an image name: bidi_controls_in_cells_shown_not_obeyed fails (out[5] is 0x202E, not U+FFFD), test result: FAILED. 10 passed; 1 failed",
+   "killers": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "results": {
+    "TST-M6-LISTVIEW-UNIT": "FAIL"
+   },
+   "seconds": 7.1
+  },
+  {
+   "id": "M181",
+   "file": "user/libui/src/list.rs",
+   "note": "row k/n counts the visible rows, not all of them: row_narrator_lines_en_ar fails (row 500/10 instead of row 500/500), test result: FAILED. 10 passed; 1 failed",
+   "killers": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "results": {
+    "TST-M6-LISTVIEW-UNIT": "FAIL"
+   },
+   "seconds": 7.0
+  },
+  {
+   "id": "M175",
+   "file": "kernel/src/kmain.rs",
+   "note": "the LOAD budget back to 2000 ticks (under the 1096 measured on CI run 42696067096): test_the_interactive_load_wait_uses_the_named_budget fails (kernel/src/kmain.rs: LOAD_BUDGET_TICKS = 2_000, not 10000), TST-M0-003 FAILED",
+   "killers": [
+    "TST-M0-003"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-003"
+   ],
+   "results": {
+    "TST-M0-003": "FAIL"
+   },
+   "seconds": 6.9
+  },
+  {
+   "id": "M174",
+   "file": "tools/project.py",
+   "note": "SECURITY: a forbidden marker the guest wrote only to the console transcript no longer fails the case",
+   "killers": [
+    "TST-M5-LAB-TOOL"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-LAB-TOOL"
+   ],
+   "results": {
+    "TST-M5-LAB-TOOL": "FAIL"
+   },
+   "seconds": 88.9
+  },
+  {
+   "id": "M185",
+   "file": "tools/project.py",
+   "note": "SECURITY: adopt-native no longer compares the run attempt, so another attempt's directories are adopted as this run's",
+   "killers": [
+    "TST-M0-007"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-007"
+   ],
+   "results": {
+    "TST-M0-007": "FAIL"
+   },
+   "seconds": 4.4
+  },
+  {
+   "id": "M186",
+   "file": "tools/project.py",
+   "note": "SECURITY: a new directory without ci identity is adopted as if this run wrote it",
+   "killers": [
+    "TST-M0-007"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-007"
+   ],
+   "results": {
+    "TST-M0-007": "FAIL"
+   },
+   "seconds": 2.3
+  },
+  {
+   "id": "M187",
+   "file": ".github/workflows/verify.yml",
+   "note": "SECURITY: Publish runs even when the adopt step failed or the run was cancelled",
+   "killers": [
+    "TST-M0-003"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-003"
+   ],
+   "results": {
+    "TST-M0-003": "FAIL"
+   },
+   "seconds": 3.5
+  },
+  {
+   "id": "M188",
+   "file": ".github/workflows/verify.yml",
+   "note": "SECURITY: the top-level token may write, so the code under test in job a can push",
+   "killers": [
+    "TST-M0-003"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-003"
+   ],
+   "results": {
+    "TST-M0-003": "FAIL"
+   },
+   "seconds": 3.5
+  },
+  {
+   "id": "M189",
+   "file": ".github/workflows/verify.yml",
+   "note": "SECURITY: the merge job runs on a cancelled run (always() instead of !cancelled())",
+   "killers": [
+    "TST-M0-003"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-003"
+   ],
+   "results": {
+    "TST-M0-003": "FAIL"
+   },
+   "seconds": 3.5
+  },
+  {
+   "id": "M190",
+   "file": ".github/workflows/verify.yml",
+   "note": "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted",
+   "killers": [
+    "TST-M0-003"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-003"
+   ],
+   "results": {
+    "TST-M0-003": "FAIL"
+   },
+   "seconds": 3.5
+  }
+ ],
+ "started": "2026-11-14T18:56:40Z",
+ "valid": 38,
+ "killed": 38,
+ "survived": [],
+ "declared_killers_missed": [],
+ "invalid": [],
+ "ratio": 1.0,
+ "finished": "2026-11-14T19:17:00Z",
+ "surviving_security": [],
+ "invalid_security": []
+}
