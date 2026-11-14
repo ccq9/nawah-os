@@ -2,7 +2,7 @@
 # Re-runs the same commands tools/project.py runs locally, on a fresh runner, and keeps the evidence as an artifact.
 # WP-83 (83a): the test job `a` writes run directories with its slot (NAWAH_RUN_SLOT) and uploads
 # them; the `merge` job adopts them (adopt-native, ADR-0026 rule 5), validates strictly and alone
-# publishes the run's one ci-evidence branch. WP-88 (83b) splits `a` into parallel jobs.
+# publishes the run's one ci-evidence branch. Splitting `a` into parallel jobs is WP-98's.
 # WP-96 (the owner's DEC-029): the job `m` runs the M6 mutation gate beside `a` in every run.
 name: verify
 on:
@@ -24,7 +24,7 @@ jobs:
     env:
       NAWAH_RUN_SLOT: a  # run ids <stamp>-<rev>-<nnn>-a (project.py new_run_dir, WP-81)
     # 58 (WP-45, PLAN-ANSWER §2.5 D4-V2; 55 -> 58 WP-74, 2026-11-10): the run took 28m55s before M6;
-    # the capped steps (Toolchain 15, M5 18, M6 15) with a 20 % margin fit (tests/test_ci_workflows.py StepBudget).
+    # the capped steps (Toolchain 15, M5 18, M6 15 then) with a 20 % margin fitted (tests/test_ci_workflows.py StepBudget).
     # 62 (WP-88, 2026-11-14): with the M6 step's cap at 18, (15 + 18 + 18) x 1.2 = 61.2.
     timeout-minutes: 62
     steps:

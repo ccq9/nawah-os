@@ -586,7 +586,7 @@ class StepBudget(unittest.TestCase):
 
     BOUNDED = ("M6",)
     # WP-83 (83a): the test job `a` is the former single job; the merge job adopts and publishes.
-    # WP-88 (83b) splits `a` into a, b, c of 40 minutes each.
+    # WP-88 was re-scoped to the M6 cap alone; the split of `a` into parallel jobs is WP-98's.
     # WP-96 (DEC-029): the mutation job `m`: Toolchain 15 + the gate's 135 (mutants.yml's cap for
     # the same step), x1.2 = 180; a hang guard, the gate measured 20 min on run 43615540519.
     # WP-88 (re-scoped 2026-11-14): M6 15 -> 18 and job a 58 -> 62 ((15 + 18 + 18) x 1.2 = 61.2):
