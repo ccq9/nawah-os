@@ -3420,7 +3420,8 @@
     "2026-11-10: the 2026-11-09 renumbering of ui.md for the input-language badge is reverted (the badge is WP-72's and takes its ui.md number at merge, PLAN.md:132); this item's ui.md version is v1.7 again",
     "2026-11-10 (steward round B): WP-80 takes ui.md v1.7 (the confirm dialog); this item's ui.md version is v1.8",
     "2026-11-10 estimate (apps engineer, unverified extrapolation): about 70 tool calls / 80 min; under the budget line, thin on minutes; split point: case 8 (rtl_column_order_and_trailing_numeric) moves to WP-86 if measured over",
-    "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): its M6 mutants (M176, M177, M178, M179, M180, M181) are registered; executed only once the M6 gate (WP-90) exists"
+    "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): its M6 mutants (M176, M177, M178, M179, M180, M181) are registered; executed only once the M6 gate (WP-90) exists",
+    "2026-11-14 activation estimate (apps engineer; 50a was prepared before activation: the list-view core, nine host cases, the contract section draft and the text fix): about 30-40 calls / 40 min to rebase on the current head, cut the contract / failing tests / fix train, register M176-M181 and sync the oracle; the mutants are shown killed only once WP-90's gate exists; under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first)"
    ],
    "acceptance": "TST-M6-LISTVIEW-UNIT PASS on CI (9 passed); ui.md at v1.8 with §3.8 and the Text truncation fix; M176-M181 registered in tests/mutants.py with each anchor once; shown killed once the M6 mutation gate (WP-90) exists",
    "test_ids": [
@@ -3429,9 +3430,10 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
