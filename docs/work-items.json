@@ -5412,12 +5412,18 @@
     "python3 tools/project.py test --target pc-qemu --suite M1",
     "python3 tools/project.py test --target host --suite M5"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261114T224439Z-d3e963fc-001-a",
+    "evidence/20261114T224349Z-d3e963fc-001-a",
+    "evidence/20261114T222636Z-d3e963fc-001-a",
+    "evidence/20261114T224617Z-d3e963fc-001-a"
+   ],
    "blocker": null
   },
   {
