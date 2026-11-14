@@ -589,8 +589,10 @@ class StepBudget(unittest.TestCase):
     # WP-88 (83b) splits `a` into a, b, c of 40 minutes each.
     # WP-96 (DEC-029): the mutation job `m`: Toolchain 15 + the gate's 135 (mutants.yml's cap for
     # the same step), x1.2 = 180; a hang guard, the gate measured 20 min on run 43615540519.
-    LIMITS = {"a": 58, "m": 180, "merge": 20}
-    CAPS = {"a": {"M5": 18, "M6": 15}, "m": {}, "merge": {}}
+    # WP-88 (re-scoped 2026-11-14): M6 15 -> 18 and job a 58 -> 62 ((15 + 18 + 18) x 1.2 = 61.2):
+    # the M6 suite's worst case stood at 895 s of the cap's 900, and the cases to come need room.
+    LIMITS = {"a": 62, "m": 180, "merge": 20}
+    CAPS = {"a": {"M5": 18, "M6": 18}, "m": {}, "merge": {}}
 
     def caps(self):
         jobs = load("verify.yml")["jobs"]
