@@ -772,6 +772,18 @@ MUTANTS = [
      "pub const LOAD_BUDGET_TICKS: u64 = 10_000;",
      "pub const LOAD_BUDGET_TICKS: u64 = 2_000;",
      ["TST-M0-003"], "the LOAD budget back to 2000 ticks (under the 1096 measured on CI run 42696067096): test_the_interactive_load_wait_uses_the_named_budget fails (kernel/src/kmain.rs: LOAD_BUDGET_TICKS = 2_000, not 10000), TST-M0-003 FAILED"),
+    # ---- M6 (WP-84): the interactive halt (boot.md v1.2); killer TST-M6-BOOT-HALT (NAWAH.EFI).
+    # SECURITY: M172 (a failed manager boots on silently: no halt line, no band, no stop), M173
+    # (a manager that never answered is reported as one that answered an error: the halt code
+    # blames the manifest for a hang).
+    ("M172", "kernel/src/kmain.rs",
+     "        if !load.ok {",
+     "        if load.ok && !load.ok {",
+     ["TST-M6-BOOT-HALT"], "SECURITY: the interactive boot goes on after a failed manager: no halt line and no band, the kernel waits for ever; TST-M6-BOOT-HALT FAIL: phase 1 times out without OSX|<id>|kernel|halt|reason=svcmgr|code=4|wait_ticks= (timeout (hang))"),
+    ("M173", "kernel/src/services.rs",
+     '        (true, "K_E_SVC_TIMEOUT") => 2,',
+     '        (true, "K_E_SVC_TIMEOUT") => 4,',
+     ["TST-M6-BOOT-HALT"], "SECURITY: a manager that never answered is halted with code 4 (an answered error) instead of 2: TST-M6-BOOT-HALT FAIL: phase 2 misses OSX|<id>|kernel|halt|reason=svcmgr|code=2|wait_ticks= and its screendump's digit cell is 000080, not 008000"),
     # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
     # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
     # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
@@ -857,7 +869,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # attempt and identity checks (M185, M186) and the merge job's guards (M187-M190).
             "M174", "M185", "M186", "M187", "M188", "M189", "M190",
             # M6 (WP-94): a described value never forges an attribute or a second line (M193).
-            "M193"}
+            "M193",
+            # M6 (WP-84): a failed manager always stops the interactive boot visibly (M172) and
+            # the halt code says what happened (M173).
+            "M172", "M173"}
 
 
 def security_of(mid: str) -> bool:
