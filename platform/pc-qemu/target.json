@@ -6638,7 +6638,7 @@
         "id": "TST-M6-BOOT-HALT",
         "test_id": "TST-M6-BOOT-HALT",
         "artifact": "${OUT}/NAWAH.EFI",
-        "oracle": "REQ-M6-002, WP-84 (boot.md v1.2, the interactive halt): the release image NAWAH.EFI, booted without the self-test key, halts visibly when the service manager is not up. Phase 1 (12 s): disk_files puts platform/pc-qemu/lab/services-bad.txt as /SYSTEM/SERVICES.TXT; the manager answers `ERR MANIFEST_SYNTAX 4` (svcmgr line `|manifest=/SYSTEM/SERVICES.TXT|reply=ERR MANIFEST_SYNTAX 4|code=ok|selfcheck=0|`) and the kernel prints `OSX|<build id>|kernel|halt|reason=svcmgr|code=4|wait_ticks=` (code 4: a reply that is not OK <n> with n >= 1). Phase 2 (25 s: the 10 s budget plus the boot): disk_files puts the built idle application as /SYSTEM/SVCMGR.ELF, a manager that never answers and stays blocked (it waits for its channel's close only): svcmgr line `|manifest=/SYSTEM/SERVICES.TXT|reply=|code=K_E_SVC_TIMEOUT|selfcheck=0|wait_ticks=` and `OSX|<build id>|kernel|halt|reason=svcmgr|code=2|wait_ticks=` (code 2: no reply within LOAD_BUDGET_TICKS). Every phase requires the whole interactive boot-mode line `OSX|<build id>|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1`; once `|kernel|halt|reason=svcmgr|` is on serial the lab takes a screendump and quits (ends_by=monitor, exit 0), so the screendump follows the halt line. Host checks: in each screendump the band's colour C00000 at (512,400), the code's first digit cell at (80,400) in the build-id bar's colour for that digit (4: 000080; 2: 008000), and black 000000 at (512,300) above the band (each within 8 per channel); the timeout's wait_ticks lies between budget_ticks and budget_ticks + 500 (the halt line's own fields read from serial): the kernel waited the whole budget and stopped within 500 ticks of it. `|kernel|halt|` exactly twice (max_counts, min_counts). Never m1_done, a ktest line, the sign-in screen (`|state=no_session|`), a panic, an exception or a boot error.",
+        "oracle": "REQ-M6-002, WP-84 and WP-99 (boot.md v1.3, the interactive halt): the release image NAWAH.EFI, booted without the self-test key, halts visibly when the service manager is not up. Phase 1 (12 s): disk_files puts platform/pc-qemu/lab/services-bad.txt as /SYSTEM/SERVICES.TXT; the manager answers `ERR MANIFEST_SYNTAX 4` (svcmgr line `|manifest=/SYSTEM/SERVICES.TXT|reply=ERR MANIFEST_SYNTAX 4|code=ok|selfcheck=0|`) and the kernel prints `OSX|<build id>|kernel|halt|reason=svcmgr|code=4|wait_ticks=` (code 4: a reply that is not OK <n> with n >= 1). Phase 2 (25 s: the 10 s budget plus the boot): disk_files puts the built idle application as /SYSTEM/SVCMGR.ELF, a manager that never answers and stays blocked (it waits for its channel's close only): svcmgr line `|manifest=/SYSTEM/SERVICES.TXT|reply=|code=K_E_SVC_TIMEOUT|selfcheck=0|wait_ticks=` and `OSX|<build id>|kernel|halt|reason=svcmgr|code=2|wait_ticks=` (code 2: no reply within LOAD_BUDGET_TICKS). Phase 3 (25 s; WP-99, RSK-024): disk_files puts the built spin application as /SYSTEM/SVCMGR.ELF, a manager that never answers and never blocks (a busy loop making no system call, at the manager's priority on the boot CPU): the same svcmgr line with code=K_E_SVC_TIMEOUT and the same halt line with code=2, because a wait whose deadline has passed is run before whatever spins. Every phase requires the whole interactive boot-mode line `OSX|<build id>|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1`; once `|kernel|halt|reason=svcmgr|` is on serial the lab takes a screendump and quits (ends_by=monitor, exit 0), so the screendump follows the halt line. Host checks: in each of the three screendumps the band's colour C00000 at (512,400), the code's first digit cell at (80,400) in the build-id bar's colour for that digit (4: 000080; 2: 008000), and black 000000 at (512,300) above the band (each within 8 per channel); in phase 2 (the first code=2 line on serial) and in phase 3 (the last) wait_ticks lies between budget_ticks and budget_ticks + 500 (the halt line's own fields read from serial): the kernel waited the whole budget and stopped within 500 ticks of it, blocked manager or spinning one. `|kernel|halt|` exactly three times (max_counts, min_counts). Never m1_done, a ktest line, the sign-in screen (`|state=no_session|`), a panic, an exception or a boot error.",
         "expected_exit_code": 0,
         "ends_by": "monitor",
         "required_markers": [],
@@ -6696,6 +6696,29 @@
               ]
             },
             "timeout_s": 25
+          },
+          {
+            "disk_files": {
+              "SYSTEM/SVCMGR.ELF": "${OUT}/apps/spin.elf"
+            },
+            "required_markers": [
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1",
+              "|manifest=/SYSTEM/SERVICES.TXT|reply=|code=K_E_SVC_TIMEOUT|selfcheck=0|wait_ticks=",
+              "OSX|${BUILD_ID}|kernel|halt|reason=svcmgr|code=2|wait_ticks="
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|kernel|halt|reason=svcmgr|",
+                  "commands": [
+                    "screendump ${SCREEN:spin}",
+                    "quit"
+                  ],
+                  "gap_s": 1.0
+                }
+              ]
+            },
+            "timeout_s": 25
           }
         ],
         "host_checks": [
@@ -6728,6 +6751,27 @@
           [
             "python3",
             "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:spin}",
+            "--pixel",
+            "512,400,C00000",
+            "--pixel",
+            "80,400,008000",
+            "--pixel",
+            "512,300,000000"
+          ],
+          [
+            "python3",
+            "-I",
+            "-c",
+            "import sys; t, b = int(sys.argv[1]), int(sys.argv[2]); print(f'wait_ticks={t} budget_ticks={b} limit={b + 500}'); sys.exit(0 if b <= t <= b + 500 else 1)",
+            "${SERIAL_FIRST:|kernel|halt|reason=svcmgr|code=2|wait_ticks=}",
+            "${SERIAL_FIRST:|budget_ticks=}"
+          ],
+          [
+            "python3",
+            "-I",
             "-c",
             "import sys; t, b = int(sys.argv[1]), int(sys.argv[2]); print(f'wait_ticks={t} budget_ticks={b} limit={b + 500}'); sys.exit(0 if b <= t <= b + 500 else 1)",
             "${SERIAL:|kernel|halt|reason=svcmgr|code=2|wait_ticks=}",
@@ -6735,11 +6779,36 @@
           ]
         ],
         "max_counts": {
-          "|kernel|halt|": 2
+          "|kernel|halt|": 3
         },
         "min_counts": {
-          "|kernel|halt|": 2
+          "|kernel|halt|": 3
         }
+      },
+      {
+        "id": "TST-M6-WAIT-DEADLINE",
+        "test_id": "TST-M6-WAIT-DEADLINE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=wait_deadline"
+        ],
+        "oracle": "REQ-M6-002, WP-99 (RSK-024; kernel/src/sched/mod.rs poll_until): a wait with a deadline ends at its deadline whatever spins beside it. The case's thread (priority 1) waits 50 ticks in poll_until while a kernel thread on the same CPU spins without yielding or blocking, first at priority 0 (better than the waiter's own; it sleeps 5 ticks first so the waiter is inside its wait), then at priority 1 (the service manager's). Both rounds: the wait returns false (nothing became ready) no later than 20 ticks (two time slices) after the deadline, the spinner did run meanwhile and is joined; beside the priority-1 spinner the waiter is polled at most three times (it competes at the lowest priority until the deadline, so it is not run before it). The kernel judges each round and prints `|ktest|wait_deadline|spinner_prio=<p>|ok=1|` with late, limit, polls and spins; no frame is left; exit 33. A spinner gives up by itself after 400 ticks, so a kernel that starves the waiter fails with late about 350 instead of hanging.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=wait_deadline",
+          "|ktest|wait_deadline|spinner_prio=0|ok=1|deadline_ticks=50|",
+          "|ktest|wait_deadline|spinner_prio=1|ok=1|deadline_ticks=50|",
+          "|ktest|wait_deadline|frames_delta=0",
+          "|ktest|pass|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|ok=0|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "timeout_s": 20
       },
       {
         "id": "TST-M6-HOLD-FAIL-CLOSED",

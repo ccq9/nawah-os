@@ -1802,7 +1802,8 @@
     "TST-M6-CONFIG-WRITE-SCOPE",
     "TST-M6-DISPLAYD-BOOT-LOOP",
     "TST-M6-TOKEN-REVOKE",
-    "TST-M6-PURGE-FAIL-CLOSED"
+    "TST-M6-PURGE-FAIL-CLOSED",
+    "TST-M6-WAIT-DEADLINE"
    ],
    "implementation_status": "partial",
    "evidence_refs": [

@@ -6222,7 +6222,8 @@
    ],
    "acceptance": "a manager that spins without blocking ends in the halt line with code 2 within the budget's margin and the band, on CI; the scheduler's cases and the mutant PASS; boot.md's declared limit is removed",
    "test_ids": [
-    "TST-M6-BOOT-HALT"
+    "TST-M6-BOOT-HALT",
+    "TST-M6-WAIT-DEADLINE"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M6"

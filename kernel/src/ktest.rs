@@ -129,6 +129,7 @@ pub fn run() -> ! {
         "as_switch" => as_switch(),
         "threads_alternate" => threads_alternate(),
         "preempt" => preempt(),
+        "wait_deadline" => wait_deadline(),
         "exit_cleanup" => exit_cleanup(),
         "user_sleep" => user_sleep(),
         "ipc_roundtrip" => user_program_case("ipc_roundtrip", user_programs::ipc_roundtrip(), 0x1C),
@@ -1928,6 +1929,104 @@ fn priority_order() -> ! {
         fail("frames leaked")
     }
     pass("priorities decide who runs, not the quantum")
+}
+
+// ---- A wait's deadline against a spinning thread (WP-99, RSK-024) ----------------------
+
+static WD_STOP: AtomicBool = AtomicBool::new(false);
+static WD_SPINS: AtomicU64 = AtomicU64::new(0);
+static WD_UNTIL: AtomicU64 = AtomicU64::new(0);
+/// Ticks after which the waiter's `poll_until` must end.
+const WD_DEADLINE_TICKS: u64 = 50;
+/// The spinner gives up by itself this long after the start: a kernel that never runs the
+/// waiter still ends the case, as a failure with its lateness measured.
+const WD_SPIN_TICKS: u64 = 400;
+/// How late the waiter may come back: two time slices.
+const WD_LATE_LIMIT: u64 = 2 * sched::QUANTUM_TICKS as u64;
+
+/// Never yields and never blocks once it spins: `head_sleep` ticks asleep first (so the case's
+/// thread is inside its wait before a spinner of better priority takes the CPU), then a busy
+/// loop until the case stops it or its own limit.
+extern "sysv64" fn wd_spinner(head_sleep: u64) -> u64 {
+    if head_sleep > 0 {
+        sched::sleep_ticks(head_sleep);
+    }
+    let mut n = 0u64;
+    while !WD_STOP.load(Ordering::Acquire)
+        && sched::stats().ticks < WD_UNTIL.load(Ordering::Relaxed)
+    {
+        n += 1;
+        WD_SPINS.store(n, Ordering::Relaxed);
+    }
+    n
+}
+
+/// One wait of `WD_DEADLINE_TICKS` beside a spinner of priority `prio`: returns whether the
+/// waiter came back within `WD_LATE_LIMIT` of its deadline and, when `starved_before` is set,
+/// was not run before it (at most three polls: on entry, once more, at the deadline).
+fn wd_round(prio: u8, head_sleep: u64, starved_before: bool) -> bool {
+    WD_STOP.store(false, Ordering::Release);
+    WD_SPINS.store(0, Ordering::Relaxed);
+    let t0 = sched::ticks();
+    WD_UNTIL.store(t0 + WD_SPIN_TICKS, Ordering::Relaxed);
+    let deadline = t0 + WD_DEADLINE_TICKS;
+    let tid = spawn_or_fail(wd_spinner, head_sleep, prio);
+    let mut polls = 0u64;
+    let held = sched::poll_until(deadline, || {
+        polls += 1;
+        false
+    });
+    let late = sched::ticks().saturating_sub(deadline);
+    let spins_at_return = WD_SPINS.load(Ordering::Relaxed);
+    WD_STOP.store(true, Ordering::Release);
+    let joined = sched::join(tid).is_some();
+    let ok = !held
+        && joined
+        && late <= WD_LATE_LIMIT
+        && spins_at_return > 0
+        && (!starved_before || polls <= 3);
+    kprintln!(
+        "OSX|{}|ktest|wait_deadline|spinner_prio={}|ok={}|deadline_ticks={}|late={}|limit={}|polls={}|held={}|spins={}|joined={}",
+        BUILD_ID,
+        prio,
+        u8::from(ok),
+        WD_DEADLINE_TICKS,
+        late,
+        WD_LATE_LIMIT,
+        polls,
+        u8::from(held),
+        spins_at_return,
+        u8::from(joined)
+    );
+    ok
+}
+
+/// A wait with a deadline ends at its deadline whatever spins beside it (WP-99): the case's
+/// thread (priority 1) waits 50 ticks in `poll_until` while a kernel thread on the same CPU
+/// spins without yielding, first at priority 0 (better than the waiter's own), then at
+/// priority 1 (the service manager's). The waiter comes back within two slices of the deadline
+/// both times; beside the priority-1 spinner it is not run before the deadline (a waiter
+/// competes at the lowest priority until then), and the spinner did run.
+fn wait_deadline() -> ! {
+    let frames0 = pmm::stats().free_frames;
+    let better = wd_round(0, 5, false);
+    let equal = wd_round(1, 0, true);
+    let frames1 = pmm::stats().free_frames;
+    kprintln!(
+        "OSX|{}|ktest|wait_deadline|frames_delta={}",
+        BUILD_ID,
+        frames0 as i64 - frames1 as i64
+    );
+    if !better {
+        fail("the wait did not end at its deadline beside a spinner of better priority")
+    }
+    if !equal {
+        fail("the wait did not end at its deadline beside a spinner of the manager's priority, or ran before it")
+    }
+    if frames0 != frames1 {
+        fail("frames leaked")
+    }
+    pass("a wait's deadline holds against a spinning thread")
 }
 
 // ---- Isolation (WP-22) -----------------------------------------------------------------
