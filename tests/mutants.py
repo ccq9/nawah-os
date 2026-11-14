@@ -787,16 +787,28 @@ MUTANTS = [
     # ---- M6 (WP-99, RSK-024): a wait's deadline is kept whatever spins beside it (boot.md v1.3,
     # ADR-0010's 2026-11-14 amendment). M194 (SECURITY): the waiter stays at the lowest priority
     # after its deadline, so a manager that spins keeps the boot from its LOAD deadline and no
-    # halt line appears. M195: a waiter competes at the best priority from the start, so it
-    # starves what it waits for (the demotion ADR-0010 introduced is gone).
+    # halt line appears. M195: a wait with a deadline competes at the best priority from its
+    # start, so it starves what it waits for (ADR-0010's demotion is gone for it; join and
+    # wait_process, which have no deadline, are untouched, so the boot still reaches the case).
+    # M196: the boost outlives the wait (the waiter stays marked waiting with a deadline that
+    # has passed). M197: an expired wait competes at the thread's own priority, not the best,
+    # so a spinner of better priority still starves it.
     ("M194", "kernel/src/sched/mod.rs",
      "    } else if now >= t.wait_deadline {",
      "    } else if now >= t.wait_deadline && now < t.wait_deadline {",
      ["TST-M6-WAIT-DEADLINE", "TST-M6-BOOT-HALT"], "SECURITY: an expired wait keeps the lowest priority: TST-M6-WAIT-DEADLINE FAIL (exit 37: spinner_prio=0|ok=0 with late about 350 of a limit of 20) and TST-M6-BOOT-HALT FAIL: phase 3 (a spinning manager) times out with no svcmgr line and no halt line"),
     ("M195", "kernel/src/sched/mod.rs",
      "    } else if now >= t.wait_deadline {",
-     "    } else if now >= t.wait_deadline || t.waiting {",
-     ["TST-M6-WAIT-DEADLINE"], "a waiter competes at the best priority before its deadline: beside the priority-1 spinner it is polled every tick and the spinner never runs (spinner_prio=1|ok=0), TST-M6-WAIT-DEADLINE FAIL"),
+     "    } else if now >= t.wait_deadline || t.wait_deadline != u64::MAX {",
+     ["TST-M6-WAIT-DEADLINE"], "a wait with a deadline competes at the best priority before it: beside the priority-1 spinner the waiter is polled every tick (polls about 50, limit 3) and the spinner never runs (spins=0), spinner_prio=1|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL"),
+    ("M196", "kernel/src/sched/mod.rs",
+     "    set_waiting(false, u64::MAX);\n    held",
+     "    held",
+     ["TST-M6-WAIT-DEADLINE"], "the boost is never taken back after poll_until: beside the priority-0 spinner the case's thread keeps running after its wait (resumed about 100, not >= spin_ticks=400), spinner_prio=0|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL"),
+    ("M197", "kernel/src/sched/mod.rs",
+     "    } else if now >= t.wait_deadline {\n        0\n",
+     "    } else if now >= t.wait_deadline {\n        t.priority\n",
+     ["TST-M6-WAIT-DEADLINE"], "an expired wait competes at the thread's own priority: beside the priority-0 spinner the waiter comes back only when the spinner gives up (late about 350 of a limit of 20), spinner_prio=0|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL"),
     # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
     # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
     # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.

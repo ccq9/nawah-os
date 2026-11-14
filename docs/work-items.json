@@ -6112,7 +6112,8 @@
     "test first: guest cases with a forging title and a spoofing A11Y line (TST-M5-WINDOW-A11Y, TST-M5-NARRATOR-AUTHORITY or a new case), SECURITY mutants for each rule; the local guest suites on QEMU before the push",
     "depends on WP-94 for the escaping rule and its contract section",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here (title; relay) before activating",
-    "2026-11-14 estimate: unmeasured; the relay's change touches every expect file with narrator lines, to be sized at activation"
+    "2026-11-14 estimate: unmeasured; the relay's change touches every expect file with narrator lines, to be sized at activation",
+    "2026-11-14 (red team review of WP-99, by reading, unverified): to examine with this item: a process can print a marker's text inside its SYS_TRACE line (`…|user|trace|…text=…|kernel|halt|…`), which the lab's substring match counts; today the required lines carry the build id, which no system call returns, and max_counts catches an added line; a start-of-line match in tools/project.py with a host case would close it"
    ],
    "acceptance": "a title with a quote yields one unforgeable window line; an application's line cannot be taken for the compositor's; the cases and mutants named at activation PASS on CI; display.md's new version states both rules",
    "test_ids": [
@@ -6205,7 +6206,13 @@
     "tools/project.py",
     "docs/tests.json",
     "tests/test_ci_workflows.py",
-    ".github/workflows/verify.yml"
+    ".github/workflows/verify.yml",
+    "kernel/src/ktest.rs",
+    "docs/adr/0010-threads-and-scheduler.md",
+    "docs/risks.json",
+    "docs/PLAN-REVERSE.md",
+    "user/apps/idle/src/main.rs",
+    "docs/requirements.json"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
@@ -6218,15 +6225,19 @@
     "the M6 step's budget: the suite's worst case is 932 s of 1080 after WP-84; a new phase of about 25 s still fits; if it does not, the cap and job a's limit rise with the case",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-14 estimate: unmeasured; a scheduler change, to be sized after the design",
-    "2026-11-14 activation estimate and design (the manager, directly, with the local QEMU lab; one audit pass before the single push): about 50 calls / 75 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first). Three options read against kernel/src/sched/mod.rs: (A) poll_until records its deadline in the thread; once the clock reaches it the waiter no longer competes at the lowest priority but at the best one, so the next scheduling decision on its CPU (at the latest the running thread's slice end, QUANTUM_TICKS) runs it and it returns; join and wait_process, which have no deadline, and every wait before its deadline are unchanged; (B) the boot thread waits above user threads during the load: brings back the starvation the demotion removed (CI runs 39118752606, 39119679600); (C) the tick itself prints the line and halts: serial and screen work in interrupt context, a second halt path. Chosen: A. Test first, red shown locally: a scheduler case in the test kernel (TST-M6-WAIT-DEADLINE: a spinner of better priority, the waiter returns within two slices of its deadline and is not run before it) and a third phase of TST-M6-BOOT-HALT with the built spin application as the manager (25 s); the M6 suite's worst case becomes 932 + 25 + 20 = 977 of 1080 s"
+    "2026-11-14 activation estimate and design (the manager, directly, with the local QEMU lab; one audit pass before the single push): about 50 calls / 75 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first). Three options read against kernel/src/sched/mod.rs: (A) poll_until records its deadline in the thread; once the clock reaches it the waiter no longer competes at the lowest priority but at the best one, so the next scheduling decision on its CPU (at the latest the running thread's slice end, QUANTUM_TICKS) runs it and it returns; join and wait_process, which have no deadline, and every wait before its deadline are unchanged; (B) the boot thread waits above user threads during the load: brings back the starvation the demotion removed (CI runs 39118752606, 39119679600); (C) the tick itself prints the line and halts: serial and screen work in interrupt context, a second halt path. Chosen: A. Test first, red shown locally: a scheduler case in the test kernel (TST-M6-WAIT-DEADLINE: a spinner of better priority, the waiter returns within two slices of its deadline and is not run before it) and a third phase of TST-M6-BOOT-HALT with the built spin application as the manager (25 s); the M6 suite's worst case becomes 932 + 25 + 20 = 977 of 1080 s",
+    "2026-11-14 as built (the manager, directly): option A. kernel/src/sched/mod.rs: Thread.wait_deadline; effective_prio(t, now) gives a waiter the lowest priority until its wait's deadline and priority 0 from that tick until poll_until returns; join and wait_process pass no deadline and are unchanged; nothing was added to tick(): the running thread's slice end (QUANTUM_TICKS) is the scheduling decision that runs the waiter. Test first, red seen locally (scratch): TST-M6-WAIT-DEADLINE printed late=350 of a limit of 20 in both rounds (exit 37) and TST-M6-BOOT-HALT's third phase (the built spin application as /SYSTEM/SVCMGR.ELF) timed out with no svcmgr line and no halt line: the first measured reproduction of RSK-024. The M6 suite's worst case is 977 s of the cap's 1080",
+    "2026-11-14 audit and red team before the push (auditor; security red team; both by reading, nothing run): the boost confirmed in every scheduling path (pick_next, running_prio, new_thread, wake, the slice end), no behaviour change before a deadline or for join/wait_process, no existing case found that depends on a waiter starving after its deadline, clean room confirmed. Corrected before the push: M195 as first written also boosted join and hung the boot before the case (its stated reason was false): it now boosts only a wait with a deadline; two surviving mutants found and given a killer: M196 (the boost never taken back; the case now keeps busy after its wait, interrupts on, and must lose the CPU to the priority-0 spinner until it gives up) and M197 (the boost to the thread's own priority); the bound 'within a slice' holds unless another priority-0 thread is Ready on the same CPU (none in the boot), said in the code and in boot.md; a reply arriving in the last slice after the deadline is accepted, said in boot.md; stale texts corrected (the idle application's comment, hold_wait's comment, the plan's rows, RSK-024). Refuted, not adopted: the red team's reading that the halt path after the wait can be delayed or drawn over by processes the manager started: the boot thread runs with interrupts off outside its waits (kmain.rs after the timer self-check, whose line requires it) and poll_until returns with the flag as it found it, measured by the case (irq_before=0, irq_after=0, scratch); my first version of the case's busy stretch hung locally for that very reason (no tick with interrupts off) and was corrected to turn them on for the stretch. Raised and not examined here: ticks may be lost while other threads mask interrupts during long polled volume reads, so a deadline counted in ticks can slip in real time (RSK-025, a hypothesis); a marker's text inside a SYS_TRACE line is matched by the lab's substring check (the build id is not readable by a process and max_counts catches an added line; noted on WP-97); set_waiting does not nest (ktest.rs's drequest inside a poll_until closure; test code only)"
    ],
-   "acceptance": "a manager that spins without blocking ends in the halt line with code 2 within the budget's margin and the band, on CI; the scheduler's cases and the mutant PASS; boot.md's declared limit is removed",
+   "acceptance": "a manager that spins without blocking or calling the system ends in the halt line with code 2 within the budget's margin and the band, on CI (TST-M6-BOOT-HALT's third phase); TST-M6-WAIT-DEADLINE PASS (a wait ends within two slices of its deadline beside a spinner of better and of equal priority, is not run before it, and its boost ends with it); the whole guest suites M1 to M6 PASS on CI with the scheduler change; M194 (SECURITY), M195, M196 and M197 killed by the M6 gate; boot.md v1.3 removes v1.2's limit",
    "test_ids": [
     "TST-M6-BOOT-HALT",
     "TST-M6-WAIT-DEADLINE"
    ],
    "commands": [
-    "python3 tools/project.py test --target pc-qemu --suite M6"
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target pc-qemu --suite M2",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
    "status": "active",
    "status_history": [

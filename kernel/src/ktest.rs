@@ -1963,8 +1963,15 @@ extern "sysv64" fn wd_spinner(head_sleep: u64) -> u64 {
 
 /// One wait of `WD_DEADLINE_TICKS` beside a spinner of priority `prio`: returns whether the
 /// waiter came back within `WD_LATE_LIMIT` of its deadline and, when `starved_before` is set,
-/// was not run before it (at most three polls: on entry, once more, at the deadline).
-fn wd_round(prio: u8, head_sleep: u64, starved_before: bool) -> bool {
+/// was not run before it (at most three polls: on entry, once more, at the deadline). With
+/// `yields_after` (a spinner of better priority than the case's own) the case's thread then
+/// keeps busy without yielding, with interrupts on for that stretch (the boot thread runs with
+/// them off outside its waits, so the timer could not preempt it otherwise): back at its own
+/// priority it loses the CPU to the spinner and runs again only when the spinner gives up,
+/// `WD_SPIN_TICKS` after the start (`resumed`); a kernel that leaves the waiter boosted after
+/// its wait lets it run on beside the spinner. The wait leaves the interrupt flag as it found
+/// it (`irq_before`, `irq_after`).
+fn wd_round(prio: u8, head_sleep: u64, starved_before: bool, yields_after: bool) -> bool {
     WD_STOP.store(false, Ordering::Release);
     WD_SPINS.store(0, Ordering::Relaxed);
     let t0 = sched::ticks();
@@ -1972,21 +1979,36 @@ fn wd_round(prio: u8, head_sleep: u64, starved_before: bool) -> bool {
     let deadline = t0 + WD_DEADLINE_TICKS;
     let tid = spawn_or_fail(wd_spinner, head_sleep, prio);
     let mut polls = 0u64;
+    let irq_before = arch::interrupts::enabled();
     let held = sched::poll_until(deadline, || {
         polls += 1;
         false
     });
     let late = sched::ticks().saturating_sub(deadline);
+    let irq_after = arch::interrupts::enabled();
     let spins_at_return = WD_SPINS.load(Ordering::Relaxed);
+    let mut resumed = 0;
+    if yields_after {
+        arch::interrupts::enable();
+        while sched::ticks() < deadline + 2 * WD_LATE_LIMIT {
+            core::hint::spin_loop();
+        }
+        resumed = sched::ticks() - t0;
+        if !irq_after {
+            arch::interrupts::disable();
+        }
+    }
     WD_STOP.store(true, Ordering::Release);
     let joined = sched::join(tid).is_some();
     let ok = !held
         && joined
         && late <= WD_LATE_LIMIT
         && spins_at_return > 0
-        && (!starved_before || polls <= 3);
+        && (!starved_before || polls <= 3)
+        && (!yields_after || resumed >= WD_SPIN_TICKS)
+        && irq_after == irq_before;
     kprintln!(
-        "OSX|{}|ktest|wait_deadline|spinner_prio={}|ok={}|deadline_ticks={}|late={}|limit={}|polls={}|held={}|spins={}|joined={}",
+        "OSX|{}|ktest|wait_deadline|spinner_prio={}|ok={}|deadline_ticks={}|late={}|limit={}|polls={}|held={}|spins={}|joined={}|resumed={}|spin_ticks={}|irq_before={}|irq_after={}",
         BUILD_ID,
         prio,
         u8::from(ok),
@@ -1996,7 +2018,11 @@ fn wd_round(prio: u8, head_sleep: u64, starved_before: bool) -> bool {
         polls,
         u8::from(held),
         spins_at_return,
-        u8::from(joined)
+        u8::from(joined),
+        resumed,
+        WD_SPIN_TICKS,
+        u8::from(irq_before),
+        u8::from(irq_after)
     );
     ok
 }
@@ -2006,11 +2032,13 @@ fn wd_round(prio: u8, head_sleep: u64, starved_before: bool) -> bool {
 /// spins without yielding, first at priority 0 (better than the waiter's own), then at
 /// priority 1 (the service manager's). The waiter comes back within two slices of the deadline
 /// both times; beside the priority-1 spinner it is not run before the deadline (a waiter
-/// competes at the lowest priority until then), and the spinner did run.
+/// competes at the lowest priority until then), and the spinner did run. Beside the priority-0
+/// spinner the boost ends with the wait: the case's thread, busy at its own priority 1, runs
+/// again only when the spinner has given up.
 fn wait_deadline() -> ! {
     let frames0 = pmm::stats().free_frames;
-    let better = wd_round(0, 5, false);
-    let equal = wd_round(1, 0, true);
+    let better = wd_round(0, 5, false, true);
+    let equal = wd_round(1, 0, true, false);
     let frames1 = pmm::stats().free_frames;
     kprintln!(
         "OSX|{}|ktest|wait_deadline|frames_delta={}",
@@ -2018,7 +2046,7 @@ fn wait_deadline() -> ! {
         frames0 as i64 - frames1 as i64
     );
     if !better {
-        fail("the wait did not end at its deadline beside a spinner of better priority")
+        fail("beside a spinner of better priority the wait did not end at its deadline, or its boost outlived it")
     }
     if !equal {
         fail("the wait did not end at its deadline beside a spinner of the manager's priority, or ran before it")
@@ -9477,10 +9505,11 @@ const HOLD_STOP: u64 = 2000;
 const HOLD_REQUEST: u64 = 5000;
 
 /// Waits until `pred` holds or `deadline`, competing at the boot thread's own priority 1, the
-/// compositor's: `sched::poll_until` demotes the waiter to the lowest priority, and a
-/// compositor spinning on a jammed boot channel (the fault before display.md v1.12) then
-/// starves it on their shared CPU for ever (CI run 42685537720 hung in `too_long`). At equal
-/// priority the timer's slices alternate the two (TST-M2-PREEMPT), so every deadline holds.
+/// compositor's: `sched::poll_until` demotes the waiter to the lowest priority until its
+/// deadline, and a compositor spinning on a jammed boot channel (the fault before display.md
+/// v1.12) then starves it on their shared CPU until that deadline (before WP-99: for ever; CI
+/// run 42685537720 hung in `too_long`), so `pred` would be read once, at the end. At equal
+/// priority the timer's slices alternate the two (TST-M2-PREEMPT): `pred` is polled all along.
 fn hold_wait(deadline: u64, mut pred: impl FnMut() -> bool) -> bool {
     loop {
         if pred() {

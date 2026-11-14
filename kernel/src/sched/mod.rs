@@ -197,8 +197,9 @@ fn me() -> usize {
 }
 
 /// The priority a thread competes with at tick `now`: its own; the lowest while it waits; the
-/// best once its wait's deadline has come (WP-99: a deadline the kernel set is kept whatever
-/// else is runnable; the waiter then only returns from its wait, which ends the boost).
+/// best once its wait's deadline has come (WP-99: the waiter then only returns from its wait,
+/// which ends the boost). At the best priority it still takes its turn among the Ready
+/// priority-0 threads of its CPU, the one picked least recently first.
 fn effective_prio(t: &Thread, now: u64) -> u8 {
     if !t.waiting {
         t.priority
@@ -777,8 +778,9 @@ pub fn yield_now() -> bool {
 /// starved a priority-3 spinner; CI run 39119679600: two waiters at priority 1 kept handing
 /// the CPU to each other — the demotion must be visible to every decision, not only the
 /// waiter's own). `deadline` is the tick the wait ends at (`u64::MAX` for none): from that tick
-/// the waiter competes at the best priority instead (WP-99), at the latest when the running
-/// thread's slice ends, so a thread that spins beside it cannot keep it from returning.
+/// the waiter competes at the best priority instead (WP-99) and is run when the running
+/// thread's slice ends at the latest (one slice more for every other Ready priority-0 thread
+/// of its CPU), so a thread that spins beside it cannot keep it from returning.
 fn set_waiting(waiting: bool, deadline: u64) {
     with(|s| {
         if let Some(i) = index_of(s, s.current[me()]) {
@@ -882,8 +884,10 @@ fn join_loop(tid: u32) -> Option<u64> {
 /// else idle until an interrupt) until it answers true or the clock reaches `deadline`
 /// (ticks); usable from the boot thread, which cannot block. Returns whether `ready` held.
 /// Until the deadline the caller competes at the lowest priority; from the deadline on at the
-/// best, so it returns within a time slice of it even beside a thread that never yields
-/// (WP-99: a service manager that spins must not keep the boot from its `LOAD` deadline).
+/// best, so it returns within a time slice of it even beside a thread that never yields (a
+/// slice more for every other Ready priority-0 thread of its CPU; WP-99: a service manager
+/// that spins must not keep the boot from its `LOAD` deadline). `ready` is read before the
+/// clock, so what became ready in that last slice still counts as held.
 pub fn poll_until(deadline: u64, mut ready: impl FnMut() -> bool) -> bool {
     set_waiting(true, deadline);
     let held = loop {
