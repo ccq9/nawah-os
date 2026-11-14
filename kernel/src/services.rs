@@ -153,9 +153,10 @@ pub fn request_with(
 
 /// Boot (release kernel, ADR-0016 §1): the manager is the first process; `manifest` (one of the
 /// two boot manifests, chosen by the boot mode) is loaded and its reply reported. Returns
-/// whether the manager answered `OK <n>`, and the fields of the `kernel|svcmgr|…` line.
+/// whether the manager answered `OK <n>`, the fields of the `kernel|svcmgr|…` line, the halt code
+/// and the ticks waited (`BootLoad`).
 #[cfg(not(feature = "ktest"))]
-pub fn start_at_boot(timeout_ticks: u64, manifest: &[u8]) -> (bool, String) {
+pub fn start_at_boot(timeout_ticks: u64, manifest: &[u8]) -> BootLoad {
     let t0 = sched::ticks();
     let (pid, reply, code) = match spawn_manager() {
         Ok(m) => {
@@ -181,7 +182,35 @@ pub fn start_at_boot(timeout_ticks: u64, manifest: &[u8]) -> (bool, String) {
         u8::from(ok),
         waited
     );
-    (ok, line)
+    BootLoad {
+        ok,
+        line,
+        halt_code: halt_code(pid != 0, code),
+        wait_ticks: waited,
+    }
+}
+
+/// What `start_at_boot` saw: the verdict, the `kernel|svcmgr` fields, and for a failure the
+/// halt code of the interactive boot (boot.md v1.2) with the ticks the `LOAD` wait took.
+#[cfg(not(feature = "ktest"))]
+pub struct BootLoad {
+    pub ok: bool,
+    pub line: String,
+    pub halt_code: u8,
+    pub wait_ticks: u64,
+}
+
+/// The interactive halt code (boot.md v1.2, WP-84) of a failed boot load: 1 the manager was
+/// not started, 2 no reply within the budget, 3 the control channel failed, 4 a reply that is
+/// not `OK <n>` (n >= 1 for the system manifest). Meaningful only when the load failed.
+#[cfg(not(feature = "ktest"))]
+pub fn halt_code(spawned: bool, code: &str) -> u8 {
+    match (spawned, code) {
+        (false, _) => 1,
+        (true, "K_E_SVC_TIMEOUT") => 2,
+        (true, "ok") => 4,
+        (true, _) => 3,
+    }
 }
 
 /// The boot verdict on the manager's `LOAD` reply (services.md §3, v1.13): `OK <n>` with a

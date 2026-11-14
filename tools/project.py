@@ -1163,19 +1163,37 @@ def qemu_cmd(t, target_name, esp_dir, serial_log, extra=(), disk=None, smp=None,
     return cmd
 
 
-def prepare_disk(t, target_name, fresh=True):
+def disk_file_args(files, out):
+    """`--add` pairs for a case's `disk_files` (WP-84): {volume path: source}. The volume path is
+    a plain relative path (no `..`, not absolute); the source is a file under the tree, `${OUT}`
+    naming the target's build directory. A wrong entry stops the run before any image is made."""
+    adds = []
+    for dst, src in (files or {}).items():
+        src_s = src.replace("${OUT}", str(out.relative_to(ROOT)))
+        if not dst or dst.startswith("/") or ".." in dst.split("/") or src_s.startswith("/") or ".." in src_s.split("/"):
+            raise SystemExit(f"disk_files: {dst!r} <- {src!r}: paths must be relative, without '..'")
+        path = ROOT / src_s
+        if not path.is_file():
+            raise SystemExit(f"disk_files: {dst!r} <- {src!r}: no such file under the tree")
+        adds.append((dst.upper(), path))
+    return adds
+
+
+def prepare_disk(t, target_name, fresh=True, files=None):
     """The lab's virtio disk (WP-18): a raw FAT32 image of `qemu.disk.size_mib` MiB made by
     tools/fat32.py (an implementation independent of the kernel's) with the lab files
     (/HELLO.TXT, /PATTERN.BIN of 20480 bytes `(i*31 + (i>>8)) & 0xFF`, /DIR/INNER.TXT), the
     built applications under /SYSTEM (WP-23) and the raw pattern `(sector*7+i)&0xFF` in its
     last `pattern_tail` sectors. Rebuilt for every run
     unless `fresh` is false (a multi-phase case keeps what earlier phases wrote). Targets without
-    `qemu.disk` get none."""
+    `qemu.disk` get none. `files` (a case's `disk_files`, WP-84: disk_file_args) replace the
+    volume file of the same path or are added: a damaged manifest, a manager that never answers."""
     spec = t["qemu"].get("disk")
     if not spec:
         return None
     out = ROOT / "build" / target_name
     img = out / "disk.img"
+    overrides = disk_file_args(files, out)
     if fresh or not img.exists():
         sectors = int(spec["size_mib"]) * 2048
         hello = out / "lab-hello.txt"
@@ -1211,6 +1229,17 @@ def prepare_disk(t, target_name, fresh=True):
             db = out / "lab-users.db"
             db.write_text("\n".join(lines) + "\n")
             cmd += ["--add", f"SYSTEM/USERS.DB={db}"]
+        # The case's own files last, each replacing a volume file of the same path.
+        replaced = {dst for dst, _ in overrides}
+        kept = []
+        i = 0
+        while i < len(cmd):
+            if cmd[i] == "--add" and cmd[i + 1].split("=", 1)[0].upper() in replaced:
+                i += 2
+                continue
+            kept.append(cmd[i])
+            i += 1
+        cmd = kept + [x for dst, path in overrides for x in ("--add", f"{dst}={path}")]
         subprocess.run(cmd, cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
     return img
 
@@ -1272,7 +1301,10 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     for i, ph in enumerate(phases):
         timeout_s = int(os.environ.get("NAWAH_QEMU_TIMEOUT_S", ph.get("timeout_s", case_timeout)))
         serial = d / ("serial.log" if len(phases) == 1 else f"serial-{i + 1}.log")
-        disk = prepare_disk(t, target_name, fresh=(i == 0))
+        # A phase with its own `disk_files` (WP-84) starts from a fresh disk with them.
+        disk_files = ph.get("disk_files", case.get("disk_files"))
+        fresh = i == 0 or "disk_files" in ph
+        disk = prepare_disk(t, target_name, fresh=fresh, files=disk_files)
         extra = ph.get("qemu_extra", case.get("qemu_extra", []))
         actions = ph.get("monitor", case.get("monitor"))
         peers = HostServices(ph.get("host_services", case.get("host_services")))
@@ -1311,7 +1343,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
             lab_errors.append(f"phase {i + 1}: qemu died with signal {-rc}, retried")
             sent.clear()
             serial.unlink(missing_ok=True)
-            disk = prepare_disk(t, target_name, fresh=(i == 0))
+            disk = prepare_disk(t, target_name, fresh=fresh, files=disk_files)
             peers = HostServices(ph.get("host_services", case.get("host_services")))
             rc, console, cfails = attempt()
         # Every phase's console verdict is kept (a later phase's session must not overwrite an

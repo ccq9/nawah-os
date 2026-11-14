@@ -6638,7 +6638,7 @@
         "id": "TST-M6-BOOT-HALT",
         "test_id": "TST-M6-BOOT-HALT",
         "artifact": "${OUT}/NAWAH.EFI",
-        "oracle": "REQ-M6-002, WP-84 (boot.md v1.2, the interactive halt): the release image NAWAH.EFI, booted without the self-test key, halts visibly when the service manager is not up. Phase 1 (12 s): disk_files puts platform/pc-qemu/lab/services-bad.txt as /SYSTEM/SERVICES.TXT; the manager answers `ERR MANIFEST_SYNTAX 4` (svcmgr line `|manifest=/SYSTEM/SERVICES.TXT|reply=ERR MANIFEST_SYNTAX 4|code=ok|selfcheck=0|`) and the kernel prints `OSX|<build id>|kernel|halt|reason=svcmgr|code=4|wait_ticks=` (code 4: a reply that is not OK <n> with n >= 1). Phase 2 (18 s): disk_files puts the built idle application as /SYSTEM/SVCMGR.ELF, a manager that never answers: svcmgr line `|manifest=/SYSTEM/SERVICES.TXT|reply=|code=K_E_SVC_TIMEOUT|selfcheck=0|wait_ticks=` and `OSX|<build id>|kernel|halt|reason=svcmgr|code=2|wait_ticks=` (code 2: no reply within LOAD_BUDGET_TICKS). Every phase requires the whole interactive boot-mode line `OSX|<build id>|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1`; once `|kernel|halt|reason=svcmgr|` is on serial the lab takes a screendump and quits (ends_by=monitor, exit 0), so the screendump follows the halt line. Host checks: in each screendump the band's colour C00000 at (512,384), the code's first digit cell at (80,384) in the build-id bar's colour for that digit (4: 000080; 2: 008000), and black 000000 at (512,300) above the band (each within 8 per channel); the timeout's wait_ticks lies between budget_ticks and budget_ticks + 500 (the halt line's own fields read from serial): the kernel waited the whole budget and stopped within 500 ticks of it. `|kernel|halt|` exactly twice (max_counts, min_counts). Never m1_done, a ktest line, the sign-in screen (`|state=no_session|`), a panic, an exception or a boot error.",
+        "oracle": "REQ-M6-002, WP-84 (boot.md v1.2, the interactive halt): the release image NAWAH.EFI, booted without the self-test key, halts visibly when the service manager is not up. Phase 1 (12 s): disk_files puts platform/pc-qemu/lab/services-bad.txt as /SYSTEM/SERVICES.TXT; the manager answers `ERR MANIFEST_SYNTAX 4` (svcmgr line `|manifest=/SYSTEM/SERVICES.TXT|reply=ERR MANIFEST_SYNTAX 4|code=ok|selfcheck=0|`) and the kernel prints `OSX|<build id>|kernel|halt|reason=svcmgr|code=4|wait_ticks=` (code 4: a reply that is not OK <n> with n >= 1). Phase 2 (25 s: the 10 s budget plus the boot): disk_files puts the built idle application as /SYSTEM/SVCMGR.ELF, a manager that never answers and stays blocked (it waits for its channel's close only): svcmgr line `|manifest=/SYSTEM/SERVICES.TXT|reply=|code=K_E_SVC_TIMEOUT|selfcheck=0|wait_ticks=` and `OSX|<build id>|kernel|halt|reason=svcmgr|code=2|wait_ticks=` (code 2: no reply within LOAD_BUDGET_TICKS). Every phase requires the whole interactive boot-mode line `OSX|<build id>|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1`; once `|kernel|halt|reason=svcmgr|` is on serial the lab takes a screendump and quits (ends_by=monitor, exit 0), so the screendump follows the halt line. Host checks: in each screendump the band's colour C00000 at (512,400), the code's first digit cell at (80,400) in the build-id bar's colour for that digit (4: 000080; 2: 008000), and black 000000 at (512,300) above the band (each within 8 per channel); the timeout's wait_ticks lies between budget_ticks and budget_ticks + 500 (the halt line's own fields read from serial): the kernel waited the whole budget and stopped within 500 ticks of it. `|kernel|halt|` exactly twice (max_counts, min_counts). Never m1_done, a ktest line, the sign-in screen (`|state=no_session|`), a panic, an exception or a boot error.",
         "expected_exit_code": 0,
         "ends_by": "monitor",
         "required_markers": [],
@@ -6695,7 +6695,7 @@
                 }
               ]
             },
-            "timeout_s": 18
+            "timeout_s": 25
           }
         ],
         "host_checks": [
@@ -6706,9 +6706,9 @@
             "desktop",
             "${SCREEN:reply}",
             "--pixel",
-            "512,384,C00000",
+            "512,400,C00000",
             "--pixel",
-            "80,384,000080",
+            "80,400,000080",
             "--pixel",
             "512,300,000000"
           ],
@@ -6719,9 +6719,9 @@
             "desktop",
             "${SCREEN:timeout}",
             "--pixel",
-            "512,384,C00000",
+            "512,400,C00000",
             "--pixel",
-            "80,384,008000",
+            "80,400,008000",
             "--pixel",
             "512,300,000000"
           ],

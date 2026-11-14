@@ -18,7 +18,8 @@ use crate::mm::addrspace::{self, UserSpace, USER_BASE};
 /// manifest: `wait_ticks` measured 1096 at most on CI run 42696067096 and 806-836 on run
 /// 42673693676 (558-836 on other runs), against 4-5 for the self-test manifest. Rule: the budget
 /// stays at least 5x the largest interactive `wait_ticks` read on CI and under the shortest phase
-/// of a case that boots NAWAH.EFI (60 s today; 30 s once WP-84's halt case exists), so a manager
+/// of a case that boots NAWAH.EFI with a manager that may not answer (25 s: TST-M6-BOOT-HALT's
+/// phase 2, WP-84, whose boot takes 5-6 s before the wait on the local lab), so a manager
 /// that never answers still prints its `selfcheck=0` line before the lab ends the phase; a change
 /// follows a new CI measurement and updates boot.md in the same commit.
 #[cfg(all(target_arch = "x86_64", not(feature = "ktest")))]
@@ -577,8 +578,8 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         // WP-24 (ADR-0016 §1): the service manager is the first process — started from the
         // volume with a control channel; the manifest of the boot mode is loaded through it
         // and the reply reported. The test kernel starts managers of its own inside its cases.
-        let (svc_ok, svc_line) = crate::services::start_at_boot(LOAD_BUDGET_TICKS, mode.manifest());
-        kprintln!("OSX|{}|kernel|svcmgr|{}", build_id, svc_line);
+        let load = crate::services::start_at_boot(LOAD_BUDGET_TICKS, mode.manifest());
+        kprintln!("OSX|{}|kernel|svcmgr|{}", build_id, load.line);
         if mode.selftest() {
             // Nothing waits on the timer yet; stop it so the shutdown is quiet.
             arch::irq::timer_stop();
@@ -586,8 +587,17 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
             arch::qemu::exit(arch::qemu::EXIT_OK)
         }
         // Interactive: the timer keeps running and the exit port is never written. A manager
-        // that did not answer `OK <n>` was reported with selfcheck=0 above; stop there.
-        if !svc_ok {
+        // that did not answer `OK <n>` was reported with selfcheck=0 above; stop there, visibly
+        // (boot.md v1.2, WP-84): the halt line on serial first, then the band on the screen.
+        if !load.ok {
+            kprintln!(
+                "OSX|{}|kernel|halt|reason=svcmgr|code={}|wait_ticks={}|budget_ticks={}",
+                build_id,
+                load.halt_code,
+                load.wait_ticks,
+                LOAD_BUDGET_TICKS
+            );
+            crate::display::halt_banner(load.halt_code);
             arch::halt()
         }
         // The boot thread waits for ever at the lowest priority, so the services run.
