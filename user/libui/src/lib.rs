@@ -20,9 +20,15 @@
 //! (`set_menu`, `open_menu`; Shift+F10, the menu key or a right press), drawn as an overlay in
 //! the dialog's own surface. Menu outcomes come from `take_menu_event` so that `Event` keeps
 //! its v1 variants. Behaviour follows the W3C WAI-ARIA Authoring Practices menu pattern.
+//!
+//! v1.8 (WP-50, 50a; ui.md §3.8): the virtualised list view (`list::ListView`, the rows the
+//! application's `RowSource`), the navigation keys Home/End/PgUp/PgDn and `MOD_CTRL`, and
+//! `Text::put` cutting at a UTF-8 character boundary.
 
 #![cfg_attr(not(test), no_std)]
 #![deny(unsafe_code)]
+
+pub mod list;
 
 use nawah_text::bidi::Base;
 use nawah_text::layout::{Fonts, Glyph, Layout, RgbCanvas};
@@ -45,6 +51,13 @@ pub const KEY_DOWN: u32 = 0xd0;
 pub const KEY_LEFT: u32 = 0xcb;
 pub const KEY_RIGHT: u32 = 0xcd;
 pub const MOD_SHIFT: u32 = 1;
+/// (v1.8) The Ctrl modifier bit of input.md `KEY` and the extended (E0h, `0x80 | code`)
+/// navigation keys the list view takes.
+pub const MOD_CTRL: u32 = 2;
+pub const KEY_HOME: u32 = 0xc7;
+pub const KEY_END: u32 = 0xcf;
+pub const KEY_PGUP: u32 = 0xc9;
+pub const KEY_PGDN: u32 = 0xd1;
 /// F10 (Shift+F10 opens the context menu, v1.6).
 pub const KEY_F10: u32 = 0x44;
 /// The menu key: extended scancode 0x5d, sent by inputd as 0x80 | 0x5d (v1.6).
@@ -332,8 +345,13 @@ impl Text {
     pub fn clear(&mut self) {
         self.len = 0;
     }
+    /// Appends what fits. (v1.8) A cut never splits a UTF-8 character: it ends at the last
+    /// character boundary that fits, so the line stays valid UTF-8.
     pub fn put(&mut self, s: &[u8]) {
-        let n = s.len().min(self.buf.len() - self.len);
+        let mut n = s.len().min(self.buf.len() - self.len);
+        while n < s.len() && n > 0 && s[n] & 0xC0 == 0x80 {
+            n -= 1;
+        }
         self.buf[self.len..self.len + n].copy_from_slice(&s[..n]);
         self.len += n;
     }
