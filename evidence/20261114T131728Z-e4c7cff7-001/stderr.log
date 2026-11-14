@@ -1,0 +1,55 @@
+F.F...FFE..........
+======================================================================
+ERROR: test_received_is_the_guests_bytes_only (__main__.ConsoleReceived.test_received_is_the_guests_bytes_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_monitor_steps.py", line 474, in test_received_is_the_guests_bytes_only
+    self.assertIn(b"out-of-guest", cs.received)
+                                   ^^^^^^^^^^^
+AttributeError: 'ConsoleSession' object has no attribute 'received'
+
+======================================================================
+FAIL: test_a_phase_forbidden_marker_in_its_received_console_transcript_fails (__main__.CmdBoot.test_a_phase_forbidden_marker_in_its_received_console_transcript_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_monitor_steps.py", line 394, in test_a_phase_forbidden_marker_in_its_received_console_transcript_fails
+    self.assertEqual(verdict, "FAIL")
+AssertionError: 'PASS' != 'FAIL'
+- PASS
++ FAIL
+
+
+======================================================================
+FAIL: test_a_retry_after_qemu_died_gets_a_fresh_console_session (__main__.CmdBoot.test_a_retry_after_qemu_died_gets_a_fresh_console_session)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_monitor_steps.py", line 430, in test_a_retry_after_qemu_died_gets_a_fresh_console_session
+    self.assertEqual(verdict, "PASS", reason)
+AssertionError: 'FAIL' != 'PASS'
+- FAIL
++ PASS
+ : missing markers ['console: no prompt from the shell']; forbidden present []; phase 1: qemu died with signal 11, retried
+
+======================================================================
+FAIL: test_every_phase_keeps_its_console_transcript (__main__.CmdBoot.test_every_phase_keeps_its_console_transcript)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_monitor_steps.py", line 410, in test_every_phase_keeps_its_console_transcript
+    self.assertEqual(files.get("console-1.log"), b"first leak")
+AssertionError: None != b'first leak'
+
+======================================================================
+FAIL: test_forbidden_marker_in_the_received_console_transcript_fails (__main__.CmdBoot.test_forbidden_marker_in_the_received_console_transcript_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_monitor_steps.py", line 385, in test_forbidden_marker_in_the_received_console_transcript_fails
+    self.assertEqual(verdict, "FAIL")
+AssertionError: 'PASS' != 'FAIL'
+- PASS
++ FAIL
+
+
+----------------------------------------------------------------------
+Ran 19 tests in 41.707s
+
+FAILED (failures=4, errors=1)

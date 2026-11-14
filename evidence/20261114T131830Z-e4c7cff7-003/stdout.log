@@ -1,0 +1,11 @@
+$ cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu --test confirm
+
+running 5 tests
+test confirm_default_esc_enter ... ok
+test confirm_narrator_lines ... ok
+test confirm_pointer ... ok
+test confirm_rtl_order ... ok
+test confirm_labels_fit ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

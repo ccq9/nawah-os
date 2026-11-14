@@ -1,0 +1,158 @@
+......................FFFEFFFFFFF......F.........
+======================================================================
+ERROR: test_an_upload_beyond_the_slots_run_directories_is_refused (__main__.MergeJob.test_an_upload_beyond_the_slots_run_directories_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 374, in test_an_upload_beyond_the_slots_run_directories_is_refused
+    up = next(s for s in jobs["a"]["steps"] if s.get("with", {}).get("name") == "evidence-a")
+                         ~~~~^^^^^
+KeyError: 'a'
+
+======================================================================
+FAIL: test_the_interactive_load_wait_uses_the_named_budget (__main__.LoadBudget.test_the_interactive_load_wait_uses_the_named_budget)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 821, in test_the_interactive_load_wait_uses_the_named_budget
+    self.assertEqual(load_budget_violations(kernel_sources(ROOT)), [])
+AssertionError: Lists differ: ['0 declarations of LOAD_BUDGET_TICKS: []'[76 chars]CKS"] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'0 declarations of LOAD_BUDGET_TICKS: []'
+
++ []
+- ['0 declarations of LOAD_BUDGET_TICKS: []',
+-  "kernel/src/kmain.rs: start_at_boot called with '2000', not LOAD_BUDGET_TICKS"]
+
+======================================================================
+FAIL: test_a_failed_adoption_fails_the_adopt_step (__main__.MergeJob.test_a_failed_adoption_fails_the_adopt_step)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 439, in test_a_failed_adoption_fails_the_adopt_step
+    rc, out, args, _ = self.run_adopt(full, adopt_rc=1)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 403, in run_adopt
+    (d / "step.sh").write_text(self.adopt_step()["run"] if script is None else script)
+                               ^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 379, in adopt_step
+    return next(s for s in self.merge()["steps"] if s.get("id") == "adopt")
+                           ^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 282, in merge
+    self.assertIn("merge", list(jobs), "verify has no merge job")
+AssertionError: 'merge' not found in ['verify'] : verify has no merge job
+
+======================================================================
+FAIL: test_a_source_without_build_files_does_not_fail_the_adopt_step (__main__.MergeJob.test_a_source_without_build_files_does_not_fail_the_adopt_step)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 450, in test_a_source_without_build_files_does_not_fail_the_adopt_step
+    rc, out, args, _ = self.run_adopt({slot: {"run"} for slot in expected})
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 403, in run_adopt
+    (d / "step.sh").write_text(self.adopt_step()["run"] if script is None else script)
+                               ^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 379, in adopt_step
+    return next(s for s in self.merge()["steps"] if s.get("id") == "adopt")
+                           ^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 282, in merge
+    self.assertIn("merge", list(jobs), "verify has no merge job")
+AssertionError: 'merge' not found in ['verify'] : verify has no merge job
+
+======================================================================
+FAIL: test_every_test_job_writes_and_uploads_its_own_slot (__main__.MergeJob.test_every_test_job_writes_and_uploads_its_own_slot)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 368, in test_every_test_job_writes_and_uploads_its_own_slot
+    self.assertEqual(self.slot_problems(self.jobs())[1], [])
+AssertionError: Lists differ: ["verify: NAWAH_RUN_SLOT ''", 'no test job'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"verify: NAWAH_RUN_SLOT ''"
+
+- ["verify: NAWAH_RUN_SLOT ''", 'no test job']
++ []
+
+======================================================================
+FAIL: test_no_test_job_validates_strictly_or_publishes (__main__.MergeJob.test_no_test_job_validates_strictly_or_publishes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 331, in test_no_test_job_validates_strictly_or_publishes
+    self.assertNotIn("validate-records --strict", run, name)
+AssertionError: 'validate-records --strict' unexpectedly found in 'python3 tools/project.py validate-records --strict' : verify
+
+======================================================================
+FAIL: test_the_adopt_step_names_every_expected_slot_and_fails_closed (__main__.MergeJob.test_the_adopt_step_names_every_expected_slot_and_fails_closed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 413, in test_the_adopt_step_names_every_expected_slot_and_fails_closed
+    run = self.adopt_step()["run"]
+          ^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 379, in adopt_step
+    return next(s for s in self.merge()["steps"] if s.get("id") == "adopt")
+                           ^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 282, in merge
+    self.assertIn("merge", list(jobs), "verify has no merge job")
+AssertionError: 'merge' not found in ['verify'] : verify has no merge job
+
+======================================================================
+FAIL: test_the_merge_job_needs_every_test_job_and_skips_a_cancelled_run (__main__.MergeJob.test_the_merge_job_needs_every_test_job_and_skips_a_cancelled_run)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 292, in test_the_merge_job_needs_every_test_job_and_skips_a_cancelled_run
+    jobs, merge = self.jobs(), self.merge()
+                               ^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 282, in merge
+    self.assertIn("merge", list(jobs), "verify has no merge job")
+AssertionError: 'merge' not found in ['verify'] : verify has no merge job
+
+======================================================================
+FAIL: test_the_merge_steps_run_in_order (__main__.MergeJob.test_the_merge_steps_run_in_order)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 300, in test_the_merge_steps_run_in_order
+    steps = self.merge()["steps"]
+            ^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 282, in merge
+    self.assertIn("merge", list(jobs), "verify has no merge job")
+AssertionError: 'merge' not found in ['verify'] : verify has no merge job
+
+======================================================================
+FAIL: test_the_publish_step_is_hardened (__main__.MergeJob.test_the_publish_step_is_hardened)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 459, in test_the_publish_step_is_hardened
+    pub = next(s for s in self.merge()["steps"] if str(s.get("name", "")).startswith("Publish evidence"))
+                          ^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 282, in merge
+    self.assertIn("merge", list(jobs), "verify has no merge job")
+AssertionError: 'merge' not found in ['verify'] : verify has no merge job
+
+======================================================================
+FAIL: test_the_token_reads_and_only_the_publishing_job_writes (__main__.MergeJob.test_the_token_reads_and_only_the_publishing_job_writes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 481, in test_the_token_reads_and_only_the_publishing_job_writes
+    self.assertEqual(doc.get("permissions"), {"contents": "read"})
+AssertionError: {'contents': 'write'} != {'contents': 'read'}
+- {'contents': 'write'}
+?               - --
+
++ {'contents': 'read'}
+?                 ++
+
+
+======================================================================
+FAIL: test_guest_steps_are_capped_within_the_job_limit (__main__.StepBudget.test_guest_steps_are_capped_within_the_job_limit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 525, in test_guest_steps_are_capped_within_the_job_limit
+    self.assertEqual({k: j.get("timeout-minutes") for k, j in jobs.items()}, self.LIMITS)
+AssertionError: {'verify': 58} != {'a': 58, 'merge': 20}
+- {'verify': 58}
++ {'a': 58, 'merge': 20}
+
+----------------------------------------------------------------------
+Ran 49 tests in 2.479s
+
+FAILED (failures=11, errors=1)
