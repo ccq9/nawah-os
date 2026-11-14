@@ -1,0 +1,16 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+OSX|fad0bff56b20|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs
+OSX|fad0bff56b20|boot|memmap|bytes=6048|desc_size=48|key=0xb0f
+OSX|fad0bff56b20|boot|ebs|ok=1|attempts=1
+OSX|fad0bff56b20|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel
+OSX|fad0bff56b20|kernel|post_ebs|map_key=0xb0f|descriptors=126|conventional_pages=118245|ebs_attempts=1
+OSX|fad0bff56b20|kernel|pmm|managed_frames=118086|free_frames=118082|allocated_frames=4|bitmap_frames=4|selfcheck=1
+OSX|fad0bff56b20|kernel|vmm|cr3=0x104000|image=0x1dd5e000+0x33000|wp=1|nxe=1|text_rx=1|data_rw_nx=1|sections_rx=1|sections_ro=3|sections_rw=1|ram_mib=511|reclaimed_frames=11058|direct_ok=1
+OSX|fad0bff56b20|kernel|stack|guarded=1|base=0xffff900000001000|guard=0xffff900000000000|ist1_guard=0xffff900000020000
+OSX|fad0bff56b20|ktest|start|name=vmm_wp
+OSX|fad0bff56b20|ktest|vmm_wp|target=0x1dd5f3c0
+OSX|fad0bff56b20|ktest|expect_rip=0x1dd5f3c0
+OSX|fad0bff56b20|exc|vector=14|name=#PF|error=0x3|rip=0x1dd5f3c0|cs=0x8|rflags=0x82|rsp=0xffff900000010d58|ss=0x10|cr2=0x1dd5f3c0|stack=kernel
+OSX|fad0bff56b20|exc|regs1|rax=0x0|rbx=0x1dd63ea0|rcx=0x1dd5f3c0|rdx=0x1dd603f8|rsi=0xffff900000010ea0|rdi=0x1dd5f3c0|rbp=0xffff900000010d60
+OSX|fad0bff56b20|exc|regs2|r8=0x1dd6663a|r9=0xa|r10=0x186a0|r11=0x60000020|r12=0x747365742f686177|r13=0x10|r14=0x1dd66078|r15=0x38
