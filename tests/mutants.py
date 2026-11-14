@@ -728,6 +728,34 @@ MUTANTS = [
      "            KEY_ESC => self.give(Answer::Cancel, Event::Cancel),",
      "            KEY_ESC => self.give(Answer::Yes, Event::Cancel),",
      ["TST-M6-UI-CONFIRM"], "SECURITY: Esc answers Yes, so a cancel becomes consent: confirm_default_esc_enter (answer() Some(Yes) instead of Some(Cancel)) and confirm_narrator_lines (\"answer yes\" instead of \"answer cancel\") fail, test result: FAILED. 3 passed; 2 failed"),
+    # ---- M6 (WP-50, 50a): the list view (ui.md v1.8 §3.8); killer TST-M6-LISTVIEW-UNIT
+    # (user/libui/tests/listview.rs). SECURITY: M176 (a range selects rows the user did not see
+    # chosen), M177 (typing opens a row), M179 (a denied folder reported empty), M180 (a name
+    # reorders its own extension).
+    ("M176", "user/libui/src/list.rs",
+     "                self.set_sel(src.order(p), true);",
+     "                self.set_sel(p, true);",
+     ["TST-M6-LISTVIEW-UNIT"], "SECURITY: a Shift range selects display positions taken as row ids, so in any order but the identity an action on the selection reaches rows the user did not select: single_and_multi_selection ([1, 2] instead of [17, 18] in the reversed order) and sort_stable_and_selection_follows_identity fail, test result: FAILED. 9 passed; 2 failed"),
+    ("M177", "user/libui/src/list.rs",
+     "                return self.move_to(src, pos, 0);",
+     "                return ListEvent::Activate(src.order(pos));",
+     ["TST-M6-LISTVIEW-UNIT"], "SECURITY: a type-ahead match activates the row, so typing opens a file: typeahead_latin_and_arabic (Activate(1) instead of Focus(1)) and focus_stays_visible fail, test result: FAILED. 9 passed; 2 failed"),
+    ("M178", "user/libui/src/list.rs",
+     "            KEY_END => Some(last),",
+     "            KEY_END => Some(self.n),",
+     ["TST-M6-LISTVIEW-UNIT"], "End goes one past the last row and the view asks the application for position n: visible_rows_bounded_0_1_10000, home_end_pgup_pgdn_exact, single_and_multi_selection, row_narrator_lines_en_ar and focus_stays_visible fail (the RowSource panics on position n), test result: FAILED. 6 passed; 5 failed"),
+    ("M179", "user/libui/src/list.rs",
+     "        if let Some(r) = self.denied {",
+     "        if let Some(r) = self.denied.filter(|_| false) {",
+     ["TST-M6-LISTVIEW-UNIT"], "SECURITY (false report): a denied list is described state=empty, so a folder the user may not read is announced as having nothing in it: empty_and_denied_states_text fails, test result: FAILED. 10 passed; 1 failed"),
+    ("M180", "user/libui/src/list.rs",
+     "        out[n] = if is_bidi_control(c) || is_control(c) {",
+     "        out[n] = if is_control(c) {",
+     ["TST-M6-LISTVIEW-UNIT"], "SECURITY: a bidi override in a cell is drawn and obeyed, so photo<U+202E>gpj.exe shows as an image name: bidi_controls_in_cells_shown_not_obeyed fails (out[5] is 0x202E, not U+FFFD), test result: FAILED. 10 passed; 1 failed"),
+    ("M181", "user/libui/src/list.rs",
+     "        let total = self.n;",
+     "        let total = self.visible().1;",
+     ["TST-M6-LISTVIEW-UNIT"], "row k/n counts the visible rows, not all of them: row_narrator_lines_en_ar fails (row 500/10 instead of row 500/500), test result: FAILED. 10 passed; 1 failed"),
     # ---- M6 (WP-82): the interactive LOAD budget (boot.md v1.1, «مهلة LOAD»); killer TST-M0-003's
     # source guard (tests/test_ci_workflows.py LoadBudget). M174 (the received-transcript check in
     # tools/project.py) is not registrable: the harness restores only kernel/ and user/ and drives
@@ -779,7 +807,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # (M168).
             "M168",
             # M6 (WP-80): libui confirm (ui.md v1.7 §3.7): Esc answers Cancel, never consent (M171).
-            "M171"}
+            "M171",
+            # M6 (WP-50 50a): the list view (ui.md v1.8 §3.8): a selection is by row id (M176),
+            # typing never activates (M177), a denial is never shown as empty (M179), and bidi
+            # controls in a cell are shown, never obeyed (M180).
+            "M176", "M177", "M179", "M180"}
 
 
 def security_of(mid: str) -> bool:
