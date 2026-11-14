@@ -632,7 +632,9 @@ class ConsoleSession:
     ready before the first command), then sends each step's `send` line and collects the
     output up to the next prompt. Expectations are judged after the guest exits, with the
     complete serial log at hand (`expect_serial` compares the shell's values with the
-    kernel's own lines); the transcript is evidence (console.log)."""
+    kernel's own lines); the transcript is evidence (console.log). `received` is the guest's
+    bytes alone (the transcript without the lab's own `>>> ` lines): the case's forbidden
+    markers are checked on it as on the serial log (WP-82)."""
 
     PROMPT = re.compile(rb"(?:^|\n)(?:[A-Za-z0-9_]+@)?nawah> $")
 
@@ -642,6 +644,7 @@ class ConsoleSession:
         self.steps = []          # (step, output bytes, prompt bytes)
         self.errors = []
         self.transcript = bytearray()
+        self.received = bytearray()
         self.thread = threading.Thread(target=self._run, daemon=True)
 
     def start(self):
@@ -676,6 +679,7 @@ class ConsoleSession:
                 return None
             buf += chunk
             self.transcript += chunk
+            self.received += chunk
             if self.PROMPT.search(bytes(buf)):
                 return bytes(buf)
         return None
@@ -718,6 +722,7 @@ class ConsoleSession:
                     except OSError:
                         tail = b""
                     self.transcript += tail
+                    self.received += tail
                     self.steps.append((step, tail, b""))
                     return
                 out = self._read_until_prompt(sock, min(deadline, time.monotonic() + float(step.get("timeout_s", 60))))
@@ -1234,7 +1239,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     # and equal_values are checked against the concatenated serial output of all phases.
     phases = case.get("phases") or [{}]
     cmds, texts, rcs, phase_failures, lab_errors = [], [], [], [], []
-    console_failures = []
+    console_failures, received = [], []
     for i, ph in enumerate(phases):
         timeout_s = int(os.environ.get("NAWAH_QEMU_TIMEOUT_S", ph.get("timeout_s", case_timeout)))
         serial = d / ("serial.log" if len(phases) == 1 else f"serial-{i + 1}.log")
@@ -1253,17 +1258,23 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         sent = []
         run = (lambda: run_qemu_monitored(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s, serial, monitor, actions, sent)) if actions \
             else (lambda: run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s))
-        console = ConsoleSession(console_spec, d / "console.log", serial, timeout_s) if console_spec else None
-        if console:
-            console.start()
-        try:
-            rc = run()
-        finally:
-            peers.close()
-            if console:
-                # Every phase's console verdict is kept (a later phase's session must not
-                # overwrite an earlier one's failures).
-                console_failures += [f"phase {i + 1}: {f}" if len(phases) > 1 else f for f in console.finish()]
+        # One transcript per phase (console-<i>.log beside serial-<i>.log): a later phase's
+        # session never overwrites an earlier one's (security review M5).
+        console_log = d / ("console.log" if len(phases) == 1 else f"console-{i + 1}.log")
+
+        def attempt():
+            # One console session per QEMU attempt: a retry after QEMU died is judged by its own
+            # session, never by the dead attempt's transcript or failures (WP-82, the auditor).
+            con = ConsoleSession(console_spec, console_log, serial, timeout_s) if console_spec else None
+            if con:
+                con.start()
+            try:
+                code = run()
+            finally:
+                peers.close()
+                fails = con.finish() if con else []
+            return code, con, fails
+        rc, console, cfails = attempt()
         if rc < 0:
             # QEMU itself died (signal): a lab failure, not a verdict on the kernel. One retry on
             # a fresh image; if it dies again the case fails and says why (LAB_ERROR), so a
@@ -1273,10 +1284,13 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
             serial.unlink(missing_ok=True)
             disk = prepare_disk(t, target_name, fresh=(i == 0))
             peers = HostServices(ph.get("host_services", case.get("host_services")))
-            try:
-                rc = run()
-            finally:
-                peers.close()
+            rc, console, cfails = attempt()
+        # Every phase's console verdict is kept (a later phase's session must not overwrite an
+        # earlier one's failures).
+        console_failures += [f"phase {i + 1}: {f}" if len(phases) > 1 else f for f in cfails]
+        # What the guest sent on the console (WP-82): forbidden markers are checked on it too.
+        got = bytes(console.received).decode(errors="replace") if console else ""
+        received.append((console_log.name, got))
         text = serial.read_text(errors="replace") if serial.exists() else ""
         cmds.append(" ".join(cmd)); texts.append(text); rcs.append(rc)
         ended = [f"phase {i + 1}: {f}" for f in ends_by_failures(ph.get("ends_by", case.get("ends_by")), actions, sent)]
@@ -1285,7 +1299,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
             req = [m.replace("${BUILD_ID}", build_id) for m in ph.get("required_markers", [])]
             fb = ph.get("forbidden_markers", [])
             miss = [m for m in req if m not in text]
-            forb = [m for m in fb if m in text]
+            forb = [m for m in fb if m in text] + [f"{m} ({console_log.name})" for m in fb if m in got]
             if rc != exp or miss or forb or ended:
                 phase_failures.append(f"phase {i + 1}: exit {rc} (expected {exp}); missing {miss}; forbidden {forb}; {ended}")
                 break
@@ -1302,6 +1316,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     forbidden = case.get("forbidden_markers", [])
     missing = [m for m in required if m not in text]
     present_forbidden = [m for m in forbidden if m in text]
+    present_forbidden += [f"{m} ({name})" for name, r in received for m in forbidden if m in r]
     over = [f"{m}x{text.count(m)}>{mx}" for m, mx in case.get("max_counts", {}).items() if text.count(m) > mx]
     present_forbidden += over
     missing += [f"{m}x{text.count(m)}<{mn}" for m, mn in case.get("min_counts", {}).items() if text.count(m) < mn]
@@ -1426,7 +1441,7 @@ HOST_SUITES["M4"] = [
 ]
 HOST_SUITES["M5"] = [
     {"id": "TST-M5-LAB-TOOL", "command": ["python3", "-I", "tests/test_monitor_steps.py"],
-     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect; a case with ends_by=monitor (WP-45) ends by the lab's `quit` (QEMU status 0): every step sent and the last one ending with `quit`, while a run that ended before the last step (a guest reset is status 0 too), a last step without `quit`, a case without steps or an unknown ending is a failure; driven through cmd_boot itself on the fake QEMU (target, image preparation and records stubbed), a case ending by the monitor passes when the lab quits and fails when the guest exits 0 before the last step, in a single run and in a later phase, each phase's console failures are all reported (a later phase does not overwrite them) and a phase's own timeout_s ends that phase (14 cases, OK)",
+     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect; a case with ends_by=monitor (WP-45) ends by the lab's `quit` (QEMU status 0): every step sent and the last one ending with `quit`, while a run that ended before the last step (a guest reset is status 0 too), a last step without `quit`, a case without steps or an unknown ending is a failure; driven through cmd_boot itself on the fake QEMU (target, image preparation and records stubbed), a case ending by the monitor passes when the lab quits and fails when the guest exits 0 before the last step, in a single run and in a later phase, each phase's console failures are all reported (a later phase does not overwrite them) and a phase's own timeout_s ends that phase; a forbidden marker of the case, or of a phase in a multi-phase case, fails it when it appears only in the guest's received console transcript (named in the reason by its file) and the case passes when it is absent, and the real ConsoleSession's received transcript holds every byte read from the guest while the session runs (output after the last step or the socket's close is not checked), a guest line starting `>>> ` included (provenance, not prefix), and none of the lab's own `>>> ` lines, which stay in console.log (WP-82); a case of several phases writes console-<i>.log per phase (as serial-<i>.log), so both transcripts of a two-phase case stay on disk and a forbidden marker's reason names the file it was found in, while a single-phase case keeps console.log; when QEMU dies by a signal and the phase is retried, the retry gets its own console session, so neither the dead attempt's transcript nor its console failures judge the case (19 cases, OK)",
      "inputs": ["tests/test_monitor_steps.py", "tools/project.py"], "input_globs": []},
     {"id": "TST-M5-BIDI", "command": ["python3", "-I", "tests/test_text.py", "Bidi"],
      "oracle": "nawah-text's UAX #9 reproduces every line of the Unicode conformance file BidiCharacterTest-17.0.0 (91707 lines: paragraph level, resolved levels with X9-removed characters, visual order after L2), and tables.rs is what tools/unicode_tables.py generates from the UCD files (DerivedBidiClass, DerivedJoiningType, BidiBrackets 17.0.0)",
