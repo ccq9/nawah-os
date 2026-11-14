@@ -562,42 +562,45 @@ fn separators_and_bidi_controls_in_a_value_are_named_not_obeyed() {
 
 #[test]
 fn a_long_escaped_value_is_cut_at_a_whole_character_and_still_closed() {
-    // 48 quotes would need 48 x 8 bytes; the line holds 256. The value is cut before the
-    // first `[U+0022]` that does not fit with the closing quote, never inside one.
-    let mut d = Dialog::new("Approve", false);
-    d.add(Role::Label, "Request").unwrap();
-    let v = d.add(Role::Value, "Request").unwrap();
-    let quotes: String = core::iter::repeat_n('"', TEXT_MAX).collect();
-    assert!(d.set_value(v, &quotes));
-    let line = describe(&d, v);
-    let head = "role=value label=\"Request\" state=static value=\"";
-    let whole = (256 - head.len() - 1) / 8;
-    assert_eq!(line, format!("{head}{}\"", "[U+0022]".repeat(whole)));
-    assert!(line.len() <= 256);
-    // A plain value that fills the line is cut at a character and closed as well.
-    let mut d = Dialog::new("Approve", false);
-    d.add(Role::Label, "Request").unwrap();
-    let v = d.add(Role::Value, "Request").unwrap();
-    let wide: String = core::iter::repeat_n('\u{10348}', TEXT_MAX).collect();
-    assert!(d.set_value(v, &wide));
-    let line = describe(&d, v);
-    assert!(line.ends_with('"') && line.len() <= 256, "{line}");
-    assert_eq!(line.chars().filter(|&c| c == '\u{10348}').count(), TEXT_MAX);
-    let mut d = Dialog::new("Approve", false);
-    let long_label: &'static str = "Lllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll";
-    d.add(Role::Label, "x").unwrap();
-    let v = d.add(Role::Value, long_label).unwrap();
-    assert!(d.set_value(v, &wide));
-    let line = describe(&d, v);
-    assert!(line.ends_with('"') && line.len() <= 256, "{line}");
-    let kept = line.chars().filter(|&c| c == '\u{10348}').count();
-    let head = format!("role=value label=\"{long_label}\" state=static value=\"");
+    // The line holds 256 bytes. A value that does not fit with its closing quote is cut before
+    // the first character or `[U+XXXX]` that would not leave room for the quote and for the
+    // cut's own mark, ` cut=<k>`: k characters of the value are not in the line, so a listener
+    // is never read a shortened request as if it were whole (the audit of WP-94).
+    let value = |label: &'static str, text: &str| {
+        let mut d = Dialog::new("Approve", false);
+        d.add(Role::Label, "x").unwrap();
+        let v = d.add(Role::Value, label).unwrap();
+        assert!(d.set_value(v, text));
+        describe(&d, v)
+    };
+    let quotes = |n: usize| -> String { core::iter::repeat_n('"', n).collect() };
+    let head = "role=value label=\"Request\" state=static value=\""; // 47 bytes
+    assert_eq!(head.len(), 47);
+    // 48 quotes need 384 bytes: 25 fit with the quote and the mark, 23 are counted.
     assert_eq!(
-        kept,
-        (256 - head.len() - 1) / 4,
-        "as many whole characters as fit before the closing quote"
+        value("Request", &quotes(TEXT_MAX)),
+        format!("{head}{}\" cut=23", "[U+0022]".repeat(25))
     );
-    assert!(kept < TEXT_MAX && kept > 0);
+    // Exactly full: 47 + 26 x 8 + the closing quote = 256. Nothing is cut, nothing is marked.
+    let full = value("Request", &quotes(26));
+    assert_eq!(full, format!("{head}{}\"", "[U+0022]".repeat(26)));
+    assert_eq!(full.len(), 256);
+    // One byte more does not fit: the cut is at the 26th quote, and the `z` after it is not
+    // slipped in although it would fit by itself (the order of the value is kept).
+    assert_eq!(
+        value("Request", &format!("{}z", quotes(26))),
+        format!("{head}{}\" cut=2", "[U+0022]".repeat(25))
+    );
+    // 48 four-byte characters fit (47 + 192 + 1 = 240): written whole, no mark.
+    let wide: String = core::iter::repeat_n('\u{10348}', TEXT_MAX).collect();
+    assert_eq!(value("Request", &wide), format!("{head}{wide}\""));
+    // Behind a long label they do not: 28 whole characters, 20 counted, the line closed.
+    let long_label: &'static str = "Lllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll";
+    let head = format!("role=value label=\"{long_label}\" state=static value=\"");
+    assert_eq!(head.len(), 135);
+    let line = value(long_label, &wide);
+    assert_eq!(line, format!("{head}{}\" cut=20", "\u{10348}".repeat(28)));
+    assert!(line.len() <= 256);
 }
 
 #[test]
