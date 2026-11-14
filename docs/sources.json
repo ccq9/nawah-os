@@ -1089,6 +1089,42 @@
    ],
    "limits": "verified for the tag -> SHA mapping only; whether the commit is reachable only from a fork is unverified; the action's behaviour (pattern, layout of several upload paths, permissions) is not verified here",
    "verified": true
+  },
+  {
+   "id": "S83",
+   "title": "GitHub Docs: Workflow syntax for GitHub Actions (shell, timeout-minutes) and the contexts reference (needs.<job>.result)",
+   "url": "https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions",
+   "version": "read 2026-11-14 (living page, no version)",
+   "accessed": "2026-11-14",
+   "supports": [
+    "the default shell of a run step without `shell:` is `bash -e {0}`, `shell: bash` runs `bash --noprofile --norc -eo pipefail {0}`; a job reaching timeout-minutes is cancelled; needs.<job>.result is success, failure, cancelled or skipped (WP-91, WP-83)"
+   ],
+   "limits": "read through a search excerpt of the page, not the page in full; behaviour only",
+   "verified": true
+  },
+  {
+   "id": "S84",
+   "title": "actions/upload-artifact v4: src/shared/search.ts (the artifact root is the least common ancestor of the search paths)",
+   "url": "https://github.com/actions/upload-artifact/blob/v4.4.0/src/shared/search.ts",
+   "version": "v4.4.0 source; the workflow pins v4.6.2 (ea165f8d), whose file was not compared",
+   "accessed": "2026-11-14",
+   "supports": [
+    "with several paths the artifact root is the least common ancestor of the search paths, the non-wildcard prefix of each (WP-83's upload of evidence/*-a/ with two build files)"
+   ],
+   "limits": "read at v4.4.0, not at the pinned v4.6.2; the first CI run confirms the layout",
+   "verified": true
+  },
+  {
+   "id": "S85",
+   "title": "actions/download-artifact v4.3.0: src/download-artifact.ts",
+   "url": "https://raw.githubusercontent.com/actions/download-artifact/v4.3.0/src/download-artifact.ts",
+   "version": "v4.3.0 (the pinned d3f86a10, S82)",
+   "accessed": "2026-11-14",
+   "supports": [
+    "without `name` and with merge-multiple false every matched artifact is extracted to path/<artifact name>/, also when one artifact matches; a digest mismatch is a warning, not a failure; without github-token only the current run's artifacts are reachable (WP-83, WP-89)"
+   ],
+   "limits": "the tag's source file as served on 2026-11-14; v5 and later extract a single match directly into path",
+   "verified": true
   }
  ]
 }
