@@ -186,12 +186,12 @@
    "risk": "طفرات SECURITY من M130 فصاعدًا لم تُنفَّذ قط: stage_of يرسلها إلى بوابة M6 غير موجودة (لا HOST_SUITES[\"M6-GATE\"]، وmutants.yml ينتهي عند M5-GATE)، فلا يُعرف إن كانت الحالات تقتلها",
    "likelihood": "high",
    "impact": "high",
-   "evidence": "tests/mutants.py:733-738؛ tools/project.py HOST_SUITES (لا M6-GATE)؛ .github/workflows/mutants.yml (آخر خطوة M5-GATE)؛ مراجعة الضمان الأمني لـWP-82/WP-83 في 2026-11-10 (H2)",
+   "evidence": "tests/mutants.py:733-738؛ tools/project.py HOST_SUITES (لا M6-GATE)؛ .github/workflows/mutants.yml (آخر خطوة M5-GATE)؛ مراجعة الضمان الأمني لـWP-82/WP-83 في 2026-11-10 (H2)؛ أُغلق في 2026-11-14: بوابة M6 عملت على CI (تشغيل mutants رقم 43615540519، evidence/20261114T162741Z-8191a574-001): 38 طفرة، 38 مقتولة، لا طفرة SECURITY حية ولا غير صالحة",
    "owner": "agent",
    "warning_signal": "سجل يعلن طفرة M130+ مقتولة دون تقرير بوابة M6",
    "mitigation": "WP-90 تنشئ بوابة M6 وتشغّل كل الطفرات المسجّلة؛ كل سجل يسمّي طفرة M6 يقول إنها مسجّلة ولا تُنفَّذ إلا بعد WP-90؛ المسؤول: ضمان الأمن",
    "response_plan": "تفعيل WP-90 قبل بوابة WP-62؛ أي طفرة SECURITY حية في أول تشغيل تفتح حزمة إصلاح",
-   "status": "open"
+   "status": "closed"
   },
   {
    "id": "RSK-022",
