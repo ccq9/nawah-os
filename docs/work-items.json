@@ -6002,7 +6002,8 @@
     "local checks before the one push: validate-records, cargo fmt, hygiene, the host suites, and the M6 gate run once here on QEMU (scratch, not evidence)",
     "what stays as it is: mutants.yml keeps its stages input and its M6 step (WP-95 decides the default); the four older gates keep stale_policy warn until WP-95 re-runs them",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-14 estimate: about 35 calls / 45 min of work, plus one local gate run of about 25 min and one verify run (unmeasured)"
+    "2026-11-14 estimate: about 35 calls / 45 min of work, plus one local gate run of about 25 min and one verify run (unmeasured)",
+    "2026-11-14 activation estimate (manager working directly, as the project's change-loop skill asks for routine work; one audit pass before the push): about 35 calls / 45 min, one local gate run of about 25 min and one verify run; under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first)"
    ],
    "acceptance": "TST-M0-003 and TST-M0-001 PASS with the new cases; in one verify run the merge job adopts TST-M6-MUTANTS's evidence from slot m and its strict check passes with no stale_policy on that test",
    "test_ids": [
@@ -6013,9 +6014,10 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
