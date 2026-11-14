@@ -1121,6 +1121,9 @@ class CheckCommit(unittest.TestCase):
         self.assertTrue(any("project.py check-commit" in s for s in steps))
 
 
+DEFAULT_STAGES = "M2 M3 M4 M5"
+
+
 class MutationHarness(unittest.TestCase):
     def test_mutants_runs_the_gates_in_order_and_publishes_every_report(self):
         # WP-38 phase 1 (2026-10-28): the M5 step was added but its report was left out of the
@@ -1129,16 +1132,33 @@ class MutationHarness(unittest.TestCase):
         steps = next(iter(load("mutants.yml")["jobs"].values()))["steps"]
         names = [str(s.get("name", "")) for s in steps]
         gates = [n for n in names if n.startswith("Mutation run, ")]
-        self.assertEqual([g.split(",")[1].strip()[:2] for g in gates], ["M2", "M3", "M4", "M5"],
-                         "the gates run in order M2, M3, M4, M5")
+        self.assertEqual([g.split(",")[1].strip()[:2] for g in gates], ["M2", "M3", "M4", "M5", "M6"],
+                         "the gates run in order M2, M3, M4, M5, M6 (WP-90 adds M6)")
         runs = [s["run"] for s in steps if str(s.get("name", "")).startswith("Mutation run, ")]
-        self.assertEqual(runs, [f"python3 tools/project.py test --target host --suite {x}" for x in ("M2", "M3-GATE", "M4-GATE", "M5-GATE")])
+        self.assertEqual(runs, [f"python3 tools/project.py test --target host --suite {x}" for x in ("M2", "M3-GATE", "M4-GATE", "M5-GATE", "M6-GATE")])
         for s in steps[1:]:
-            if str(s.get("name", "")).startswith("Mutation run, ") and not s["name"].startswith("Mutation run, M2"):
-                self.assertEqual(s.get("if"), "always()", f"{s['name']}: a failed gate must not skip the next")
-        validate = [s for s in steps if str(s.get("name", "")).startswith("validate-records")]
-        self.assertEqual(len(validate), 1)
-        self.assertIn("--strict", validate[0]["run"], "the records check before the runs is strict")
+            if str(s.get("name", "")).startswith("Mutation run, "):
+                stage = s["name"].split(",")[1].strip()[:2]
+                want = f"contains(format(' {{0}} ', inputs.stages || '{DEFAULT_STAGES}'), ' {stage} ')"
+                if stage != "M2":
+                    want = f"always() && {want}"
+                self.assertEqual(s.get("if"), want, f"{s['name']}: a failed gate must not skip the next, and only the selected gates run")
+
+        # WP-90 (audit of WP-92): strict validation before the gates deadlocks when a gate's oracle
+        # text changes (its PASS cites evidence with the old oracle, and only a successful run of
+        # this workflow can bring new evidence). The check before the gates is the non-strict one
+        # (as verify's); the strict one runs after the last gate, over the run's native evidence.
+        validate = [(i, s) for i, s in enumerate(steps) if str(s.get("name", "")).startswith("validate-records")]
+        self.assertEqual(len(validate), 2, "one records check before the gates, one after")
+        gate_idx = [i for i, s in enumerate(steps) if str(s.get("name", "")).startswith("Mutation run, ")]
+        (pre_i, pre), (post_i, post) = validate
+        self.assertLess(pre_i, min(gate_idx))
+        self.assertEqual(pre["run"].strip(), "python3 tools/project.py validate-records", "the check before the gates is not strict")
+        self.assertGreater(post_i, max(gate_idx))
+        self.assertEqual(post["run"].strip(), "python3 tools/project.py validate-records --strict")
+        self.assertEqual(post.get("if"), "always()", "the strict check reports even after a red gate")
+        publish_i = next(i for i, s in enumerate(steps) if str(s.get("name", "")).startswith("Publish evidence"))
+        self.assertLess(post_i, publish_i)
         publish = next(s for s in steps if str(s.get("name", "")).startswith("Publish evidence"))
         run = publish["run"]
         self.assertIn("git add -f evidence/", run)
@@ -1147,8 +1167,33 @@ class MutationHarness(unittest.TestCase):
         self.assertNotRegex(run, r"git add -f evidence/ build/", "one missing report must not drop the others")
         loop = next(l for l in run.splitlines() if l.strip().startswith("for r in "))
         self.assertIn('if [ -f "$r" ]; then git add -f "$r"; fi', run)
-        for rep in ("build/mutants-report.json", "build/mutants-m3-report.json", "build/mutants-m4-report.json", "build/mutants-m5-report.json"):
+        upload = next(s for s in steps if str(s.get("uses", "")).startswith("actions/upload-artifact@"))
+        for rep in ("build/mutants-report.json", "build/mutants-m3-report.json", "build/mutants-m4-report.json",
+                    "build/mutants-m5-report.json", "build/mutants-m6-report.json"):
             self.assertIn(rep, loop, f"{rep} is not published on the evidence branch")
+            self.assertIn(rep, upload["with"]["path"], f"{rep} is not in the uploaded artifact")
+
+    def test_the_stages_are_selected_by_hand_and_m6_is_not_in_the_default(self):
+        # WP-90 (review condition 7): import-ci-evidence takes only a successful run, so a red or
+        # timed-out first M6 gate in the same run would make M2-M5's evidence unimportable. The
+        # gates run by a workflow_dispatch input; the schedule and the default run M2-M5, and M6
+        # runs in a run of its own until it is green (then it joins the default).
+        on = load("mutants.yml")["on"]
+        inp = on["workflow_dispatch"]["inputs"]["stages"]
+        self.assertEqual((inp.get("type"), inp.get("default")), ("string", DEFAULT_STAGES))
+        self.assertNotIn("M6", DEFAULT_STAGES.split())
+    def test_the_m6_gate_is_time_boxed_inside_the_job(self):
+        # WP-90: the M6 gate's 25+ mutants were never run, so survivors (each one a fairness sweep
+        # over every guest case) are expected. Its suite timeout ends the gate with a verdict and
+        # the partial report before its step cap, and the step cap leaves the job time for the
+        # report and publish steps after the four older gates (137 min on run 42610085488).
+        job = next(iter(load("mutants.yml")["jobs"].values()))
+        step = next(s for s in job["steps"] if str(s.get("name", "")).startswith("Mutation run, M6"))
+        self.assertIn("timeout-minutes", step, "the M6 gate step has no cap of its own")
+        case = next(c for c in project.HOST_SUITES["M6-GATE"] if c["id"] == "TST-M6-MUTANTS")
+        self.assertLess(case["timeout_s"], step["timeout-minutes"] * 60, "the suite timeout must fire before the step cap")
+        self.assertLessEqual(step["timeout-minutes"] + 140 + 20, job["timeout-minutes"],
+                             "older gates (137 min measured) + M6 cap + toolchain/report/publish must fit the job")
 
     def test_mutants_build_every_app_the_kernel_embeds_and_the_build_compiles(self):
         # Review 2026-10-19 (M8): the harness kept its own app list; WP-40 added exiter to the
