@@ -5,7 +5,7 @@ Exit codes (section 20): 0 ok | 10 no ready work package | 20 recorded blocker |
 30 budget exhausted | 40 cancelled | 50 record validation failure | 60 internal error |
 70 no worker configured.
 """
-import argparse, hashlib, json, os, subprocess, sys, time, datetime, re
+import argparse, shutil, hashlib, json, os, subprocess, sys, time, datetime, re
 from pathlib import Path
 
 ROOT = Path(os.environ.get("NAWAH_ROOT", Path(__file__).resolve().parents[1])).resolve()
@@ -16,6 +16,12 @@ EVIDENCE = ROOT / "evidence"
 # evidence/ and verdicts are never attached to the records.
 SCRATCH = Path(os.environ["NAWAH_SCRATCH_EVIDENCE"]).resolve() if os.environ.get("NAWAH_SCRATCH_EVIDENCE") else None
 SCHEMA_VERSION = "1.0.0"
+# evidence-run 1.1.0 (ADR-0026): a closed worker enumeration, the runner's `ci` identity, dirty_paths.
+RUN_SCHEMA_VERSION = "1.1.0"
+WORKERS = ("verification-runner", "interactive-agent", "test")
+DIRTY_EXCLUDED = ("evidence/", "build/", "state/")
+RUN_ID_RE = re.compile(r"^(mutants-)?[0-9]+$")
+ACCEPTED_WORKFLOWS = ("verify", "mutants")
 RECORD_FILES = ["requirements", "stages", "work-items", "tests", "risks", "sources", "hardware", "decisions-pending"]
 SINGLE_FILES = ["project-state", "automation"]
 LEGAL_TRANSITIONS = {("planned", "active"), ("active", "blocked"), ("active", "done"), ("blocked", "planned"), ("done", "planned"), ("active", "planned"),
@@ -70,10 +76,68 @@ def git(*args) -> str:
     return r.stdout.strip()
 
 
+def dirty_paths(limit=50):
+    """Tracked files changed and untracked files outside evidence/, build/ and state/, sorted, at
+    most `limit` of them (ADR-0026, REL-3 B): the evidence a run writes, the build it produces and
+    the lab's state must not make the run dirty; a changed source file must. Files .gitignore
+    hides (target/, build/) are not seen at all. Read with -z, so a path with a space or a
+    non-ASCII letter comes as it is, never quoted or octal-escaped."""
+    r = subprocess.run(["git", "status", "--porcelain", "-z", "--untracked-files=all"], cwd=ROOT, capture_output=True, text=True)
+    fields = r.stdout.split("\0")
+    out, i = [], 0
+    while i < len(fields):
+        entry = fields[i]; i += 1
+        if len(entry) < 4:
+            continue
+        xy, path = entry[:2], entry[3:]  # porcelain v1: two status letters, a space, the path (the first letter may be a space)
+        if "R" in xy or "C" in xy:
+            i += 1  # a rename or copy: the original path follows as a field of its own
+        if path.startswith(DIRTY_EXCLUDED):
+            continue
+        out.append(path)
+    return sorted(out)[:limit]
+
+
 def source_identity():
     rev = git("rev-parse", "HEAD") or "unknown"
-    dirty = bool(git("status", "--porcelain"))
-    return rev, dirty
+    return rev, bool(dirty_paths(limit=1))
+
+
+# The tree identity of the run in progress: (revision, dirty paths), taken once when a build, a
+# boot or a suite begins (ADR-0026 rule 2). attach_evidence rewrites docs/tests.json,
+# requirements.json and work-items.json while a suite runs, so a tree clean at the start would
+# read dirty from the second case on if every run.json measured afresh.
+RUN_TREE = None
+
+
+def begin_run():
+    global RUN_TREE
+    if RUN_TREE is None:
+        RUN_TREE = (git("rev-parse", "HEAD") or "unknown", dirty_paths())
+    return RUN_TREE
+
+
+def runner_identity():
+    """The worker and the run's CI identity from the environment (ADR-0026): on GitHub Actions the
+    verification runner with its run id, attempt, workflow, event, sha, head sha (the pull
+    request's head when the event carries one) and ref; anywhere else the interactive agent and
+    no `ci` object."""
+    e = os.environ
+    if e.get("GITHUB_ACTIONS") != "true":
+        return "interactive-agent", None
+    head = e.get("GITHUB_SHA", "")
+    ev_path = e.get("GITHUB_EVENT_PATH")
+    if ev_path and Path(ev_path).exists():
+        try:
+            head = json.loads(Path(ev_path).read_text(encoding="utf-8")).get("pull_request", {}).get("head", {}).get("sha") or head
+        except (OSError, ValueError, AttributeError):
+            pass
+    try:
+        attempt = int(e.get("GITHUB_RUN_ATTEMPT", "1"))
+    except ValueError:
+        attempt = 1
+    return "verification-runner", {"run_id": e.get("GITHUB_RUN_ID", ""), "run_attempt": attempt, "workflow": e.get("GITHUB_WORKFLOW", ""),
+                                   "event": e.get("GITHUB_EVENT_NAME", ""), "sha": e.get("GITHUB_SHA", ""), "head_sha": head, "ref": e.get("GITHUB_REF", "")}
 
 
 # ----------------------------------------------------------------------------- validation
@@ -83,6 +147,7 @@ class Problems:
         # docs/tests.json): long gate-time runs such as mutation testing, re-run at gates.
         self.warn_only_tests = set()
         self.errors, self.warnings, self.stale = [], [], []
+        self.legacy_runs = set()  # evidence-run 1.0.0 without import.json: one aggregated warning (ADR-0026)
         self.strict = strict
 
     def err(self, where, msg):
@@ -152,6 +217,51 @@ def check_evidence_dir(rel, pb: Problems, where, expect_test_id=None, current_di
     ec = (p / "exit_code").read_text().strip()
     if str(run["exit_code"]) != ec:
         pb.err(where, f"evidence {rel}: exit_code file ({ec}) != run.json ({run['exit_code']})")
+    # provenance (ADR-0026): a 1.1.0 PASS is adopted only through the checked import, whose
+    # import.json is a complete receipt naming the same CI run as the run's own identity. The rule
+    # binds the evidence, not the worker's own word: a run.json saying interactive-agent or test
+    # is a self-claim (REL-1 B, rejected), so it earns no exemption (audit of 77d48c91).
+    imp_p = p / "import.json"
+    ci = run.get("ci") or {}
+    if imp_p.exists():
+        # A present receipt is checked for every worker and verdict: its own schema, then its
+        # identity against the run's (id, attempt, head sha, workflow). A malformed file is a
+        # named error, not a crash of the validator.
+        readable = True
+        try:
+            receipt = load_json(imp_p)  # may be null or any JSON value: the schema decides, never this code
+        except ValueError as ex:
+            readable = False
+            pb.err(where, f"evidence {rel}: import.json is not valid JSON ({str(ex)[:80]})")
+        if readable:
+            before_imp = len(pb.errors)
+            validate_schema("evidence-import", receipt, pb, f"{rel}/import.json")
+            if len(pb.errors) == before_imp:
+                for key, ci_key in (("ci_run_id", "run_id"), ("run_attempt", "run_attempt"), ("head_sha", "head_sha"), ("workflow", "workflow")):
+                    have, want = receipt.get(key), ci.get(ci_key)
+                    if not want or str(have) != str(want):
+                        pb.err(where, f"evidence {rel}: import.json {key} {have!r} does not match run.json ci.{ci_key} {want!r}")
+    elif run.get("schema_version") == "1.0.0":
+        pb.legacy_runs.add(rel)
+    elif verdict["verdict"] == "PASS":
+        # Evidence native to the CI run that is validating (verify's strict step runs on the
+        # runner's own tree before any import exists) is produced, not adopted: no import.json
+        # yet. Native means the run's own identity equals this run's: id, attempt and commit all
+        # match and none is empty (an empty string is no identity). The exemption covers only a
+        # missing receipt (audit of 68d72a5e, 2026-11-09).
+        env = os.environ
+
+        def same(a, b):
+            return bool(a) and bool(b) and str(a) == str(b)
+
+        native = (env.get("GITHUB_ACTIONS") == "true" and same(ci.get("run_id"), env.get("GITHUB_RUN_ID"))
+                  and same(ci.get("run_attempt"), env.get("GITHUB_RUN_ATTEMPT")) and same(ci.get("sha"), env.get("GITHUB_SHA")))
+        if not native:
+            msg = f"evidence {rel}: a {run.get('schema_version')} PASS by {run.get('worker')} without import.json (not adopted through the checked import)"
+            if pb.strict:
+                pb.err(where, msg)
+            else:
+                pb.warn(where, msg)
     # staleness: recompute digests of declared inputs
     stale = []
     for inp, dig in verdict["inputs"].items():
@@ -275,6 +385,11 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
             v = check_evidence_dir(e, pb, w, expect_test_id=t["id"])
             if v and v["verdict"] != t["verdict"]:
                 pb.err(w, f"registry verdict {t['verdict']} != evidence verdict {v['verdict']} ({e})")
+            # A PASS stands for the oracle its run checked (write_verdict stores it): an oracle
+            # changed since, at its source and synced, waits for a new run (WP-92; no stale_policy
+            # exemption). Strict only: on a branch the code commit precedes its evidence.
+            if pb.strict and v and t["verdict"] == "PASS" and v.get("oracle") != t["oracle"]:
+                pb.err(w, f"oracle differs from the one its evidence ran with ({e}); re-run the test")
         if t["verdict"] == "PASS" and not t["evidence_refs"]:
             pb.err(w, "PASS without evidence_refs")
         # A passing test's oracle states what the test checks, not what was planned: three
@@ -282,6 +397,12 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
         # (WINDOW-A11Y, ARABIC-UI, PROCESS-KILL; audit 2026-10-19).
         if t["verdict"] == "PASS" and PLANNED_WORD.search(t["oracle"]):
             pb.err(w, "PASS while the oracle still describes the plan ('planned'); state what the test checks")
+    # One source per oracle (WP-92): the record's copy must equal the text the runner writes.
+    for tid, where in oracle_conflicts().items():
+        pb.err(f"tests/{tid}", f"two sources with different oracle texts ({', '.join(where)}); make them one")
+    for t, _ in oracle_differences(recs.get("tests", [])):
+        pb.err(f"tests/{t['id']}", "oracle differs from its source (HOST_SUITES or target.json); "
+               "change the source, then run `project.py sync-oracles` (a dated note goes to oracle_notes)")
 
     for wi in recs.get("work-items", []):
         w = f"work-items/{wi['id']}"
@@ -360,6 +481,9 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
 
 
 def report(pb: Problems, verbose) -> int:
+    if pb.legacy_runs:
+        pb.warnings.append(f"evidence: {len(pb.legacy_runs)} run(s) at evidence-run 1.0.0 without import.json (imported before ADR-0026; provenance not verifiable)")
+        pb.legacy_runs = set()
     if verbose:
         for w in pb.warnings: print("WARN", w)
         for e in pb.errors: print("ERROR", e)
@@ -519,7 +643,9 @@ class ConsoleSession:
     ready before the first command), then sends each step's `send` line and collects the
     output up to the next prompt. Expectations are judged after the guest exits, with the
     complete serial log at hand (`expect_serial` compares the shell's values with the
-    kernel's own lines); the transcript is evidence (console.log)."""
+    kernel's own lines); the transcript is evidence (console.log). `received` is the guest's
+    bytes alone (the transcript without the lab's own `>>> ` lines): the case's forbidden
+    markers are checked on it as on the serial log (WP-82)."""
 
     PROMPT = re.compile(rb"(?:^|\n)(?:[A-Za-z0-9_]+@)?nawah> $")
 
@@ -529,6 +655,7 @@ class ConsoleSession:
         self.steps = []          # (step, output bytes, prompt bytes)
         self.errors = []
         self.transcript = bytearray()
+        self.received = bytearray()
         self.thread = threading.Thread(target=self._run, daemon=True)
 
     def start(self):
@@ -563,6 +690,7 @@ class ConsoleSession:
                 return None
             buf += chunk
             self.transcript += chunk
+            self.received += chunk
             if self.PROMPT.search(bytes(buf)):
                 return bytes(buf)
         return None
@@ -605,6 +733,7 @@ class ConsoleSession:
                     except OSError:
                         tail = b""
                     self.transcript += tail
+                    self.received += tail
                     self.steps.append((step, tail, b""))
                     return
                 out = self._read_until_prompt(sock, min(deadline, time.monotonic() + float(step.get("timeout_s", 60))))
@@ -731,7 +860,7 @@ class QmpLink:
         self.sock, self.buf = None, b""
 
 
-def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions):
+def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor_path, actions, sent=None):
     """`run_logged` for a QEMU case that drives the guest through the monitor (WP-27): once
     `actions["after"]` appears in the serial log, every line of `actions["commands"]` goes to
     the monitor socket (`sendkey a`, …), then QEMU runs to its end as usual. A case may need
@@ -742,7 +871,8 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
     `key-down <qcode>` / `key-up <qcode>` go through QMP instead (WP-38, QmpLink): a key held
     from one step to a later one. A step with `since_previous` matches its marker only in what
     the serial log gained after the previous step fired (WP-38: a state the guest prints more
-    than once, such as `state=unlocked`, means its next occurrence)."""
+    than once, such as `state=unlocked`, means its next occurrence). `sent`, when a list, gets
+    the index of every step whose commands all went out (WP-45: `ends_by_failures`)."""
     import socket
     import time
     steps = actions.get("steps") or [actions]
@@ -781,6 +911,8 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
                                     m.sendall((line + "\n").encode())
                                 time.sleep(float(step.get("gap_s", actions.get("gap_s", 0.2))))
                             o.write(f"# monitor: sent {len(step['commands'])} command(s) after {step['after']!r}\n".encode()); o.flush()
+                            if sent is not None:
+                                sent.append(next_step)
                         except (OSError, ValueError) as ex:
                             e.write(f"monitor: {ex}\n".encode()); e.flush()
                         finally:
@@ -794,6 +926,25 @@ def run_qemu_monitored(cmd, cwd, log_out, log_err, timeout, serial_path, monitor
             p.kill(); p.wait()
             e.write(b"TIMEOUT\n"); return 124
         return p.returncode
+
+
+def ends_by_failures(ends_by, actions, sent):
+    """How a case that never exits by itself must end (WP-45, PLAN-ANSWER §2.5 D2-Q2):
+    `ends_by: "monitor"` passes only if every monitor step was sent and the last one ends with
+    `quit` — QEMU's status for `quit` (0) is also its status for a guest reset under
+    -no-reboot, so the status alone proves nothing. No `ends_by`: nothing to check."""
+    if ends_by is None:
+        return []
+    if ends_by != "monitor":
+        return [f"ends_by {ends_by!r} is not a known ending (monitor)"]
+    if not actions:
+        return ["ends_by monitor: the case has no monitor steps"]
+    steps = actions.get("steps") or [actions]
+    if not steps[-1].get("commands") or steps[-1]["commands"][-1] != "quit":
+        return ["ends_by monitor: the last monitor step does not end with `quit`"]
+    if list(sent) != list(range(len(steps))):
+        return [f"ends_by monitor: steps sent {list(sent)} of {len(steps)}: the run ended before the lab's `quit`"]
+    return []
 
 
 # The fonts on the system volume (8.3 names): text.md.
@@ -839,25 +990,39 @@ def substitute_host_arg(arg, disk_path, build_id, screen_path, serial_text, evid
     return out
 
 
+RUN_SLOT_RE = re.compile(r"[a-z]")
+
+
 def new_run_dir(purpose_slug):
+    """A fresh run directory <UTC second>-<rev[:8]>-<nnn>[-<slot>]. The slot (env NAWAH_RUN_SLOT,
+    one lowercase letter, WP-81) names the CI job that wrote the run: three jobs building the same
+    revision in the same second would otherwise each write <stamp>-<rev>-001, and their evidence
+    collides when the merge job adopts it."""
     rev, _ = source_identity()
     ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    slot = os.environ.get("NAWAH_RUN_SLOT", "")
+    if slot and not RUN_SLOT_RE.fullmatch(slot):
+        raise ValueError(f"NAWAH_RUN_SLOT {slot!r} is not one lowercase letter")
+    suffix = f"-{slot}" if slot else ""
     n = 1
     while True:
-        rid = f"{ts}-{rev[:8]}-{n:03d}"
+        rid = f"{ts}-{rev[:8]}-{n:03d}{suffix}"
         d = (SCRATCH or EVIDENCE) / rid
         if not d.exists():
             d.mkdir(parents=True); return rid, d
         n += 1
 
 
-def write_run(d, rid, target, purpose, commands, exit_code, started, worker="interactive-agent", notes=None):
-    rev, dirty = source_identity()
-    run = {"schema_version": SCHEMA_VERSION, "run_id": rid, "started_at": started,
+def write_run(d, rid, target, purpose, commands, exit_code, started, worker=None, notes=None):
+    rev, paths = RUN_TREE or (git("rev-parse", "HEAD") or "unknown", dirty_paths())
+    env_worker, ci = runner_identity()
+    run = {"schema_version": RUN_SCHEMA_VERSION, "run_id": rid, "started_at": started,
            "finished_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-           "source_revision": rev, "dirty_state": dirty,
+           "source_revision": rev, "dirty_state": bool(paths), "dirty_paths": paths,
            "host": {"os": os.uname().sysname + " " + os.uname().release, "machine": os.uname().machine},
-           "target": target, "worker": worker, "purpose": purpose, "commands": commands, "exit_code": exit_code}
+           "target": target, "worker": worker or env_worker, "purpose": purpose, "commands": commands, "exit_code": exit_code}
+    if ci:
+        run["ci"] = ci
     if notes: run["notes"] = notes
     (d / "run.json").write_text(json.dumps(run, ensure_ascii=False, indent=1) + "\n")
     (d / "command.txt").write_text("\n".join(commands) + "\n")
@@ -887,6 +1052,9 @@ def rust_env():
     return {}
 
 
+BUILD_ORACLE = "all build steps exit 0 and artifact exists"  # every target's build test (cmd_build)
+
+
 def write_verdict(d, rid, test_id, verdict, oracle, expected, observed, inputs, claim_tag="source_backed_fact", reason=None):
     combined = sha256_text("\n".join(f"{k}={v}" for k, v in sorted(inputs.items())))
     v = {"schema_version": SCHEMA_VERSION, "run_id": rid, "test_id": test_id, "verdict": verdict, "oracle": oracle,
@@ -898,6 +1066,7 @@ def write_verdict(d, rid, test_id, verdict, oracle, expected, observed, inputs, 
 
 
 def cmd_build(target_name) -> int:
+    begin_run()
     t = load_target(target_name)
     started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     rid, d = new_run_dir("build")
@@ -936,7 +1105,7 @@ def cmd_build(target_name) -> int:
             ep = safe_rel(extra.replace("${OUT}", f"build/{target_name}"))
             if ep.exists():
                 inputs[keep_artifact(d, rid, ep)] = sha256_file(ep)
-    write_verdict(d, rid, t["build"]["test_id"], verdict, "all build steps exit 0 and artifact exists", "exit 0 + artifact", observed, inputs)
+    write_verdict(d, rid, t["build"]["test_id"], verdict, BUILD_ORACLE, "exit 0 + artifact", observed, inputs)
     attach_evidence(t["build"]["test_id"], rid, verdict)
     print(f"build {target_name}: {verdict} run={rid} build_id={build_id}")
     return 0 if verdict == "PASS" else 1
@@ -1042,16 +1211,29 @@ def prepare_esp(t, target_name, artifact):
     return esp
 
 
+def select_boot_case(t):
+    """One oracle per boot test (docs/PLAN-ANSWER.md §2.6 D1-A): the suite case carrying the
+    boot test id is the oracle, QEMU arguments included — TST-M1-BOOT runs behind the lab
+    self-test key (WP-45), and skipping it would boot the release image interactively against
+    the weaker `boot_oracle` until the timeout. `boot_oracle` is only the fallback for targets
+    without such a case; two cases with the boot test id are ambiguous and refused."""
+    boot_id = t["boot_oracle"]["test_id"]
+    found = [c for cases in t.get("suites", {}).values() for c in cases if c["test_id"] == boot_id]
+    if len(found) > 1:
+        raise ValueError(f"{len(found)} suite cases carry the boot test {boot_id}: {[c['id'] for c in found]}")
+    return found[0] if found else None
+
+
 def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
+    begin_run()
     t = load_target(target_name)
     if suite_case is None:
-        # One oracle per boot test: when a suite case carries the boot test id, it is the oracle
-        # (`boot_oracle` is only the fallback for targets without suites).
-        boot_id = t["boot_oracle"]["test_id"]
-        for cases in t.get("suites", {}).values():
-            for c in cases:
-                if c["test_id"] == boot_id and not c.get("qemu_extra"):
-                    suite_case = dict(c, _plain_boot=True)
+        try:
+            c = select_boot_case(t)
+        except ValueError as e:
+            print(f"boot: {e}"); return E_INTERNAL
+        if c is not None:
+            suite_case = dict(c, _plain_boot=True)
     art_rel = (suite_case or {}).get("artifact") or t["build"]["artifact"]
     art = safe_rel(art_rel.replace("${OUT}", f"build/{target_name}"))
     if not art.exists():
@@ -1061,9 +1243,9 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     rid, d = new_run_dir("boot")
     esp = prepare_esp(t, target_name, art)
     # A case may need longer than the target's default (the auth cases derive keys at TCG
-    # speed); the environment variable still overrides everything (mutation runs).
+    # speed), and a phase may carry its own `timeout_s` (WP-45: the step cap bounds the sum of
+    # the phases); the environment variable still overrides everything (mutation runs).
     case_timeout = (suite_case or {}).get("timeout_s", t["qemu"]["boot_timeout_s"])
-    timeout_s = int(os.environ.get("NAWAH_QEMU_TIMEOUT_S", case_timeout))
     plain_boot = suite_case is None or suite_case.get("_plain_boot")
     case = suite_case or t["boot_oracle"]
     # A case is one QEMU run, or several `phases` in sequence on the same disk image (the
@@ -1071,8 +1253,9 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     # and equal_values are checked against the concatenated serial output of all phases.
     phases = case.get("phases") or [{}]
     cmds, texts, rcs, phase_failures, lab_errors = [], [], [], [], []
-    console_failures = []
+    console_failures, received = [], []
     for i, ph in enumerate(phases):
+        timeout_s = int(os.environ.get("NAWAH_QEMU_TIMEOUT_S", ph.get("timeout_s", case_timeout)))
         serial = d / ("serial.log" if len(phases) == 1 else f"serial-{i + 1}.log")
         disk = prepare_disk(t, target_name, fresh=(i == 0))
         extra = ph.get("qemu_extra", case.get("qemu_extra", []))
@@ -1086,40 +1269,56 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
         console_spec = ph.get("console", case.get("console"))
         cmd = qemu_cmd(t, target_name, esp, serial, extra, disk, ph.get("smp", case.get("smp")), monitor,
                        console_spec and console_spec["port"])
-        run = (lambda: run_qemu_monitored(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s, serial, monitor, actions)) if actions \
+        sent = []
+        run = (lambda: run_qemu_monitored(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s, serial, monitor, actions, sent)) if actions \
             else (lambda: run_logged(cmd, ROOT, d / "stdout.log", d / "stderr.log", timeout_s))
-        console = ConsoleSession(console_spec, d / "console.log", serial, timeout_s) if console_spec else None
-        if console:
-            console.start()
-        try:
-            rc = run()
-        finally:
-            peers.close()
-            if console:
-                console_failures = console.finish()
+        # One transcript per phase (console-<i>.log beside serial-<i>.log): a later phase's
+        # session never overwrites an earlier one's (security review M5).
+        console_log = d / ("console.log" if len(phases) == 1 else f"console-{i + 1}.log")
+
+        def attempt():
+            # One console session per QEMU attempt: a retry after QEMU died is judged by its own
+            # session, never by the dead attempt's transcript or failures (WP-82, the auditor).
+            con = ConsoleSession(console_spec, console_log, serial, timeout_s) if console_spec else None
+            if con:
+                con.start()
+            try:
+                code = run()
+            finally:
+                peers.close()
+                fails = con.finish() if con else []
+            return code, con, fails
+        rc, console, cfails = attempt()
         if rc < 0:
             # QEMU itself died (signal): a lab failure, not a verdict on the kernel. One retry on
             # a fresh image; if it dies again the case fails and says why (LAB_ERROR), so a
             # mutation run never counts it as a kill (mutants run 39116036466: 4 SIGSEGVs).
             lab_errors.append(f"phase {i + 1}: qemu died with signal {-rc}, retried")
+            sent.clear()
             serial.unlink(missing_ok=True)
             disk = prepare_disk(t, target_name, fresh=(i == 0))
             peers = HostServices(ph.get("host_services", case.get("host_services")))
-            try:
-                rc = run()
-            finally:
-                peers.close()
+            rc, console, cfails = attempt()
+        # Every phase's console verdict is kept (a later phase's session must not overwrite an
+        # earlier one's failures).
+        console_failures += [f"phase {i + 1}: {f}" if len(phases) > 1 else f for f in cfails]
+        # What the guest sent on the console (WP-82): forbidden markers are checked on it too.
+        got = bytes(console.received).decode(errors="replace") if console else ""
+        received.append((console_log.name, got))
         text = serial.read_text(errors="replace") if serial.exists() else ""
         cmds.append(" ".join(cmd)); texts.append(text); rcs.append(rc)
+        ended = [f"phase {i + 1}: {f}" for f in ends_by_failures(ph.get("ends_by", case.get("ends_by")), actions, sent)]
         if len(phases) > 1:
             exp = ph.get("expected_exit_code", case["expected_exit_code"])
             req = [m.replace("${BUILD_ID}", build_id) for m in ph.get("required_markers", [])]
             fb = ph.get("forbidden_markers", [])
             miss = [m for m in req if m not in text]
-            forb = [m for m in fb if m in text]
-            if rc != exp or miss or forb:
-                phase_failures.append(f"phase {i + 1}: exit {rc} (expected {exp}); missing {miss}; forbidden {forb}")
+            forb = [m for m in fb if m in text] + [f"{m} ({console_log.name})" for m in fb if m in got]
+            if rc != exp or miss or forb or ended:
+                phase_failures.append(f"phase {i + 1}: exit {rc} (expected {exp}); missing {miss}; forbidden {forb}; {ended}")
                 break
+        else:
+            phase_failures += ended
     if len(phases) > 1:
         (d / "serial.log").write_text("".join(f"=== phase {i + 1} ===\n{t_}" for i, t_ in enumerate(texts)))
     text = "".join(texts)
@@ -1131,6 +1330,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
     forbidden = case.get("forbidden_markers", [])
     missing = [m for m in required if m not in text]
     present_forbidden = [m for m in forbidden if m in text]
+    present_forbidden += [f"{m} ({name})" for name, r in received for m in forbidden if m in r]
     over = [f"{m}x{text.count(m)}>{mx}" for m, mx in case.get("max_counts", {}).items() if text.count(m) > mx]
     present_forbidden += over
     missing += [f"{m}x{text.count(m)}<{mn}" for m, mn in case.get("min_counts", {}).items() if text.count(m) < mn]
@@ -1193,19 +1393,26 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
 
 HOST_SUITES = {
     "M0": [
-        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 21 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL",
+        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 31 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, two runners in the same second getting distinct run ids through the job slot NAWAH_RUN_SLOT (one lowercase letter appended as -<slot>, anything else refused, no slot the id as before) that the evidence schemas accept, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL; each oracle has one source (WP-92): a record whose oracle differs from its source (a HOST_SUITES case, a target.json suite case or boot_oracle, the build's own text) is an error naming the test, as are two sources giving one id different texts (a boot_oracle shadowed by a suite case of its own target is no source, another target's is; sync-oracles then writes nothing), sync-oracles writes the oracle field alone from the source and leaves a record without one, its --check writes nothing and fails on a difference, the file keeps its format, a dated note lives in oracle_notes (an undated one is refused), and under --strict a PASS record's oracle must equal the oracle its evidence's verdict.json records, stale_policy warn included",
          "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
-        {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision)",
-         "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md"], "input_globs": []},
+        {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision); every file ADR-0002 item 4 ports from Sol OS names its origin (commit d54f0a5 or the Sol ADR) in its header; the twelve-role team methodology is in place (docs/policies/team-methodology.md names every role, .claude/workflows/nawah-team.js opens with its meta literal, the twelve agent definitions carry name/description/tools/model; docs/PLAN-REVERSE.md exists with its seven sections, the fifth listing refuted and unverified claims; docs/PLAN-ANSWER.md exists with its eight sections)",
+         "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md",
+                    "docs/adr/0002-rust-and-sol-os-reuse.md", "kernel/src/arch/x86_64/gdt.rs", "kernel/src/arch/x86_64/idt.rs", "kernel/src/arch/x86_64/trap.rs",
+                    "kernel/src/arch/x86_64/serial.rs", "kernel/src/arch/x86_64/port.rs", "kernel/src/arch/x86_64/qemu.rs", "kernel/src/arch/x86_64/ktest.rs",
+                    "kernel/src/cell.rs", "kernel/src/ktest.rs", "tests/mutants.py", "tools/check-unsafe.sh",
+                    "docs/policies/team-methodology.md", ".claude/workflows/nawah-team.js", "CLAUDE.md", "docs/PLAN-REVERSE.md", "docs/PLAN-ANSWER.md"], "input_globs": [".claude/agents/*.md"]},
         {"id": "TST-M0-003", "command": ["python3", "-I", "tests/test_ci_workflows.py"],
-         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; the mutants workflow runs the gates M2, M3, M4, M5 in order, checks the records strictly first and publishes every gate's report (16 cases, OK)",
-         "inputs": ["tests/test_ci_workflows.py", "tools/project.py"], "input_globs": [".github/workflows/*.yml"]},
+         "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; every guest suite of target.json has its verify step and vice versa, and every host suite outside the gates and M2 is non-empty and run (ADR-0026, D5); every verify job has one Toolchain step capped at 15 and its own limit (test job a 58, merge 20; WP-83, 83a), the M5 and M6 guest steps of job a carry their own caps {M5 18, M6 15} and in every job the step caps with a 20 % margin fit that job's limit (D4-V2), and M6, bounded by its own timeouts, fits its cap in the worst case (the sum over its cases of each phase's timeout_s, the case's or target.json's default, stays under the cap: 895 s against 900 on 2026-11-14; M5's cap is a measured hang guard, outside that rule; uncapped steps are not budgeted); the suite case carrying the boot test id is the oracle of `project.py boot` even with QEMU arguments, two such cases are refused, boot_oracle carries the same lab self-test key as TST-M1-BOOT, and a kernel source other than ktest.rs names that key (PLAN-ANSWER §2.6, WP-45); every phase of TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT require the kernel's whole boot-mode line with the build id (OSX|${BUILD_ID}|kernel|boot_mode|mode=…|source=…|key=…|hv=…, the values per phase), never a fragment a process could print through SYS_TRACE, and the case caps `|kernel|boot_mode|` at one per boot (6); fw_cfg is reached only from bootmode.rs, ktest.rs and fwcfg.rs itself (exact identifiers of fwcfg.rs's public entries, the module name outside its two declaring files, the ports 0x510/0x511), and the guard reports a planted caller, an aliased import and a direct port write while ignoring a lookalike name (PLAN-ANSWER §3.4 item 3); the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's new runs, skips a committed directory without ci identity already under evidence/ (no refusal, no receipt) and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; TST-M6-HOLD-FAIL-CLOSED is one case of the M6 suite on NAWAH-KTEST.EFI with the ktest key hold_fail_closed, exit 33 and 60 s, requires the ktest start line, its five verdict lines (reply and too_long held with keys=0 of keys_in=2, closed exit 0xe6, manifest locked=0 and locked_with_session=1, nothing left behind), displayd's held trace for each LIST failure branch (reply, too_long, closed) and both manifest decisions, forbids `holds=OK locked=0` and the unheld line of the reply and too_long branches, and no required marker of it is forbidden (WP-67); the mutants workflow runs the gates M2, M3, M4, M5, M6 in order, checks the records non-strictly before them and strictly after the last one (always(), before Publish; audit of WP-92) and publishes and uploads every gate's report, and the M6 gate step carries its own cap, above TST-M6-MUTANTS's timeout_s, that with the older gates' 140 minutes and 20 for the other steps fits the job's limit; the gates a run executes are chosen by the workflow_dispatch input `stages` (a string, default and schedule `M2 M3 M4 M5`, M6 outside it), each gate step's `if` naming its own stage, the steps after M2 under always() (WP-90); the Host suites step, found in whichever verify job holds it and run as GitHub runs a step without `shell:` (bash -e, no pipefail) with a stub project.py, runs every host suite but the gates and M2 once whatever fails and exits non-zero when any failed, zero when none did, and the check reports a loop that pipes a suite into tee and the six bare commands (WP-91); the interactive LOAD budget (WP-82, boot.md) is read from the kernel's code with comments dropped and string and char literals emptied: across kernel/src exactly one declaration of LOAD_BUDGET_TICKS at any indentation and under any attribute, `const LOAD_BUDGET_TICKS: u64 = 10_000;`; start_at_boot defined once, in services.rs, and named once elsewhere, by one call in kmain.rs whose first argument is the identifier LOAD_BUDGET_TICKS; inside start_at_boot its tick parameter used once, as the deadline `t0 + timeout_ticks`; exactly one TIMER_HZ in the kernel, `const TIMER_HZ: u32 = 1000;` in arch/x86_64/irq.rs; the guard reports a wrong value, a literal call, a missing constant and each decoy: an indented shadowing const, a second declaration under another cfg or as a static in another file, a call on another constant beside a commented, block-commented or quoted call, a `use … as` alias, a function pointer, a second call outside kmain.rs, a clamp or a literal deadline inside start_at_boot, a second definition, another TIMER_HZ value, a second TIMER_HZ or none; outside the guard: a const generated by a macro, a function-local `use … as` alias, a rebinding of the start tick and a clamp inside request(); verify's token reads at the top level and only the job holding the Publish step may write; every job other than `merge` sets NAWAH_RUN_SLOT to its own lowercase letter and uploads as `evidence-<slot>` exactly one evidence path, `evidence/*-<slot>/` (always, continue-on-error; `evidence/*`, `evidence`, `evidence/**` or another slot added beside it is refused), and none of them validates strictly, runs pre-merge, adopts or publishes; the `merge` job needs every other job and runs unless the run is cancelled (`!cancelled()`, never always()), and runs in order a pinned download-artifact of `evidence-*` (each artifact in its own directory), the adopt step, `validate-records --strict`, tools/pre-merge.sh and Publish evidence, then fails the run when any test job did not succeed; the adopt step names every expected slot (one per test job) in both its loops, the adoption and the build-file copy, and, run as GitHub runs a step without `shell:` (bash -e) in a scratch tree, fails with an error naming the slot and adopts nothing when a slot's artifact is missing or holds no run directory, passes `--from incoming/evidence-<slot>/evidence` for each slot otherwise, fails when adopt-native refuses (so `|| true` after it is caught), and still succeeds when a source carries no build/ files; Publish runs only when the adopt step succeeded and the run is not cancelled, with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1, every git call `/usr/bin/git -c core.hooksPath=/dev/null`, the token's header masked (`::add-mask::`) on the line after it is computed and GIT_TRACE, GIT_TRACE_CURL, GIT_CURL_VERBOSE, GIT_TRACE_REDACT, GIT_TRACE_PACKET, GIT_TRACE2, GIT_TRACE2_EVENT and GIT_TRACE2_PERF unset before the push (WP-83, 83a; a publish job running no repository code is WP-89) (51 cases, OK)",
+         "inputs": ["tests/test_ci_workflows.py", "tools/project.py", "platform/pc-qemu/target.json", "kernel/build.rs"], "input_globs": [".github/workflows/*.yml", "kernel/src/**/*.rs"]},
         {"id": "TST-M0-004", "command": ["python3", "-I", "tests/test_pre_merge.py"],
          "oracle": "tools/pre-merge.sh runs validate-records --strict under set -euo pipefail with no pipe after the validator and exits with its code: on a copy of the repository as committed it exits 0 and prints 'pre-merge: OK'; with one input of a host test edited after its run (a stale verdict) it exits 50 and prints no OK (3 cases, OK)",
          "inputs": ["tests/test_pre_merge.py", "tools/pre-merge.sh", "tools/project.py"], "input_globs": []},
         {"id": "TST-M0-005", "command": ["python3", "-I", "tests/test_mutants_harness.py"],
-         "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (~124 s, TST-M5-ELEVATE), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided (6 cases, OK)",
-         "inputs": ["tests/test_mutants_harness.py", "tests/mutants.py"], "input_globs": []},
+         "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (156 s start to finish in the slowest committed TST-M5-ELEVATE run, evidence 20261109T104517Z-dece70c2-001), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided; stage_of maps M129 to M5 and M130 onwards to M6, and every mutant's anchor occurs exactly once in its file; WP-45's boot-mode mutants M130 (hypervisor_present forced true), M131 (any key value is ok) and M132 (the interactive boot takes the self-test exit) are registered as SECURITY mutants of the M6 stage killed by TST-M6-INTERACTIVE-BOOT, run by the M6 gate (TST-M6-MUTANTS, WP-90), and a mutant whose declared killer boots the release image NAWAH.EFI gets that image built before its killers run; WP-67's mutant M147 (displayd's start-up hold held only for a listing naming `session`, so every LIST failure starts unheld while the trace still says locked=1) is a SECURITY mutant of the M6 stage on displayd killed by TST-M6-HOLD-FAIL-CLOSED, a case of the M6 suite on the test image, and changes the decision only, never a trace line; every stage a registered mutant maps to has exactly one gate suite running `tests/mutants.py --stage <stage>` that mutants.yml runs (a stage without a gate is an error), the M6 gate is TST-M6-MUTANTS of M6-GATE writing build/mutants-m6-report.json and no two gates share a report; reset() restores kernel/, user/, tools/, tests/ and .github/; a mutant of tools/, tests/ or .github/ is a tooling mutant that builds no image and runs its host killers only, and a kernel or user mutant builds its image before its declared killers only when one of them is a guest case, and before the fairness sweep otherwise (main() on a scratch repository: a tooling mutant, even with a guest killer, calls no build step and no guest case; a source mutant its host killers miss calls the build first); reset() fails the run when a tracked change under those trees survives it; host-suite-of and every killer run through the clean checkout's tools/project.py, never the worktree's (a worktree project.py printing OK does not judge); a host killer's FAIL is a kill only when its runner reported failing tests (unittest `FAILED (`, cargo `test result: FAILED`) and the case passes on the clean checkout, otherwise ERROR (a test file that does not compile is no kill); a guest killer's FAIL is a kill only when project.py returned 1 and printed that case's own `<id> <target>: FAIL (…) run=` line, so an internal error (rc 60) or rc 1 without the line is ERROR; the verdict needs ratio >= 0.95 over a non-empty valid set, no surviving and no invalid SECURITY mutant (a SECURITY mutant whose anchor is missing exits 1, report invalid_security); every stage of argparse's --stage has a gate; every mutant's file is an input of this case and of its stage's gate, and a tooling mutant names host killers only (WP-90, the assurance review's conditions); the killers' environment drops CARGO_TARGET_DIR, so the worktree and the clean checkout never share a build (31 cases, OK)",
+         "inputs": ["tests/test_mutants_harness.py", "tests/mutants.py", "platform/pc-qemu/target.json", "tools/project.py", ".github/workflows/mutants.yml"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs", "tools/**/*.py", "tests/**/*.py", ".github/workflows/*.yml"]},
+        {"id": "TST-M0-007", "command": ["python3", "-I", "tests/test_evidence_provenance.py"],
+         "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity (required for verification-runner, forbidden at 1.0.0) and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; the run's tree identity is taken once when the run begins, so the records attach_evidence writes never make it dirty; source_identity ignores evidence/, build/ and state/ and names the dirty paths as they are, spaces and non-ASCII letters included; a 1.1.0 PASS without import.json is a strict error whatever worker run.json declares, unless the evidence is native to the validating CI run (run id, attempt and sha all equal its ci identity, none empty); a present import.json is checked for every worker and verdict against its own schema (evidence-import: every field required, conclusion success, workflow verify or mutants, importer from the enumeration) and must match the run's ci identity on run id, attempt, head sha and workflow, and a malformed receipt is a named error; 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is not <digits> or mutants-<digits> matched whole, is blocked when gh is not on PATH, skips every directory of the branch already under evidence/ whatever its identity (the branch holds the whole committed tree: older 1.0.0 directories without a ci object and directories of other runs are skipped, never checked, never given a receipt), refuses the whole run, writing nothing and leaving no temporary copy, when any NEW run directory's run.json carries no ci identity or a ci run id or attempt that differs from gh's answer for the run (the directory named; committed directories beside it stay untouched), and on success writes import.json (naming the importer's worker and identity) beside an untouched run.json of each new directory only; adopt-native --from <dir> (repeatable; WP-81, rule 5's native exemption) adopts a set of run directories without gh and without import.json, re-pointing their tests' verdicts as a native run does, skipping and counting every directory already under evidence/ (each job's artifact holds the whole committed tree; a skipped directory is never re-attached and is no duplicate, also when it repeats across sources) and failing closed like the validator's native rule: only with GITHUB_ACTIONS=true and GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT and GITHUB_SHA all non-empty, every NEW directory carrying a ci identity equal to them on run id, attempt and sha, every --from holding at least one run directory, no new run id repeating across the sources, and at least one new directory; off the runner or with any of the three unset, a set mixing another run, attempt or sha, a set whose sha differs from GITHUB_SHA, an environment naming another run or attempt, a new directory without ci identity, a new directory of another run next to committed ones, a duplicate, an empty set (named) or nothing new to adopt adopts nothing and leaves docs/tests.json unchanged; a set of three slots -a/-b/-c passes strict validation inside its own run, and a set mixing committed older directories (no ci identity, or another run's) with this run's slots adopts the slots alone; the evaluator-outside-inputs staleness gap is not covered here (WP-66 and TST-M6-STALE-GATE are proposals of PLAN-ANSWER §1.3, not records yet) (46 cases, OK)",
+         "inputs": ["tests/test_evidence_provenance.py", "tools/project.py", "docs/automation.json"], "input_globs": ["docs/schemas/*.schema.json"]},
     ],
 }
 
@@ -1237,6 +1444,17 @@ HOST_SUITES["M5-GATE"] = [
      "oracle": "every seeded M5 defect that compiles (displayd: narrator authority, client limits and the session's reserve, LIST hash and STATUS composed= of a held screen; sessiond: the password field's announcements, the elevation prompt after the keys; inputd: the name `display`; libui: password bullets; kernel: process_kill authority, kill wake-up, K1 at block, K2 at exit, frame clear on release, mouse routing; svcmgr: PONG and the watchdog's kill) is killed by at least one M5 case, host suites included; kill ratio >= 0.95 and no surviving security mutant; report build/mutants-m5-report.json",
      "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs"], "timeout_s": 10800},
 ]
+# The M6 gate's mutation run (WP-90; H2 of the 2026-11-10 assurance review): M130 onwards against
+# the M6 suite, every guest case and the host suites (tooling mutants of tools/, tests/ and
+# .github/ run host killers only, without an image). Time-boxed: its timeout_s ends the run with
+# a verdict and the partial report before mutants.yml's step cap; a surviving SECURITY mutant
+# fails the run whatever the ratio (tests/mutants.py SECURITY).
+HOST_SUITES["M6-GATE"] = [
+    {"id": "TST-M6-MUTANTS", "command": ["python3", "-I", "tests/mutants.py", "--target", "pc-qemu", "--stage", "M6", "--report", "build/mutants-m6-report.json"],
+     "oracle": "every seeded M6 defect that compiles (kernel: the boot-mode gate, jobs, config's WRITE scope, the LOAD budget; displayd: the fail-closed hold and its boot channel; sessiond: the purge; authd: token revocation; svcmgr: the manifest errors and LOAD under /SYSTEM/; libui: pointer hit-testing, menus, confirm, the list view) is killed by at least one case, guest or host; kill ratio >= 0.95 and no surviving security mutant, each one named in stdout and in build/mutants-m6-report.json; the stage includes tooling mutants (the lab tool's console-transcript check, adopt-native, the verify workflow's token permissions and merge job), run on host killers only without an image; a host killer's FAIL is a kill only when its runner printed its failing-tests line (unittest `FAILED (`, cargo `test result: FAILED`) and the case passes on the clean checkout, a guest killer's only when project.py returned 1 with that case's own FAIL verdict line, anything else is ERROR and never a kill; an invalid SECURITY mutant (anchor gone or not building) fails the gate like a surviving one; the run is bounded by this timeout_s and leaves the report of every mutant decided so far",
+     "inputs": ["tests/mutants.py", "tools/project.py", "platform/pc-qemu/target.json"], "input_globs": ["kernel/src/**/*.rs", "user/**/*.rs", "tools/**/*.py", "tests/**/*.py", ".github/workflows/*.yml"], "timeout_s": 7800},
+]
+
 HOST_SUITES["M4"] = [
     {"id": "TST-M4-HASH-VECTORS", "command": ["cargo", "test", "--offline", "--release", "-p", "nawah-crypto", "--target", "x86_64-unknown-linux-gnu"],
      "oracle": "nawah-crypto's SHA-256 (FIPS 180-4 examples incl. the two-block message and the empty message, incremental = one-shot), HMAC-SHA-256 (RFC 4231 test cases 1, 2, 6, 7) and PBKDF2-HMAC-SHA-256 (RFC 7914 §11, 1 and 80000 iterations) known answers pass on the host (4 tests, 0 failed); the guest repeats them in the auth service (TST-M4-LOGIN)",
@@ -1248,7 +1466,7 @@ HOST_SUITES["M4"] = [
 ]
 HOST_SUITES["M5"] = [
     {"id": "TST-M5-LAB-TOOL", "command": ["python3", "-I", "tests/test_monitor_steps.py"],
-     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect (9 cases, OK)",
+     "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect; a case with ends_by=monitor (WP-45) ends by the lab's `quit` (QEMU status 0): every step sent and the last one ending with `quit`, while a run that ended before the last step (a guest reset is status 0 too), a last step without `quit`, a case without steps or an unknown ending is a failure; driven through cmd_boot itself on the fake QEMU (target, image preparation and records stubbed), a case ending by the monitor passes when the lab quits and fails when the guest exits 0 before the last step, in a single run and in a later phase, each phase's console failures are all reported (a later phase does not overwrite them) and a phase's own timeout_s ends that phase; a forbidden marker of the case, or of a phase in a multi-phase case, fails it when it appears only in the guest's received console transcript (named in the reason by its file) and the case passes when it is absent, and the real ConsoleSession's received transcript holds every byte read from the guest while the session runs (output after the last step or the socket's close is not checked), a guest line starting `>>> ` included (provenance, not prefix), and none of the lab's own `>>> ` lines, which stay in console.log (WP-82); a case of several phases writes console-<i>.log per phase (as serial-<i>.log), so both transcripts of a two-phase case stay on disk and a forbidden marker's reason names the file it was found in, while a single-phase case keeps console.log; when QEMU dies by a signal and the phase is retried, the retry gets its own console session, so neither the dead attempt's transcript nor its console failures judge the case (19 cases, OK)",
      "inputs": ["tests/test_monitor_steps.py", "tools/project.py"], "input_globs": []},
     {"id": "TST-M5-BIDI", "command": ["python3", "-I", "tests/test_text.py", "Bidi"],
      "oracle": "nawah-text's UAX #9 reproduces every line of the Unicode conformance file BidiCharacterTest-17.0.0 (91707 lines: paragraph level, resolved levels with X9-removed characters, visual order after L2), and tables.rs is what tools/unicode_tables.py generates from the UCD files (DerivedBidiClass, DerivedJoiningType, BidiBrackets 17.0.0)",
@@ -1262,7 +1480,7 @@ HOST_SUITES["M5"] = [
     {"id": "TST-M5-UI-UNIT", "command": ["cargo", "test", "--offline", "--release", "-p", "libui", "--target", "x86_64-unknown-linux-gnu"],
      "oracle": "libui on the host (14 tests): an element without a label (or a list without items) is refused when built; the focus order is the declared order without labels; Tab/Shift+Tab cycle it, Esc cancels, presses only; the text field takes characters (Arabic too), Backspace and the cursor keys, the list moves its selection with the arrows within bounds, Space/Enter toggle the checkbox and activate buttons; the descriptions read role, label, state and value/item exactly; ui.scale/ui.contrast map to the theme; 2x doubles every rectangle and the largest dialog fits one surface VMO; painting uses the theme's background and focus colours; v1.1 (WP-37): the password field edits like a text field, is described by role, label and state without its value, is drawn as one bullet per character (pixel-equal to a field of bullets, unlike the characters), and the application reads, wipes (zeroed slots) and sets values and moves the focus only where it can go; v1.2 (WP-39): in a right-to-left field Left and Right swap direction (set_rtl flips it live), and relabel/set_items switch an element's language in place with the selection clamped and bad arguments refused; v1.3 (WP-41): a value element shows text the application sets, is never focused, is described with its value as static and keeps at most TEXT_MAX (48) characters, and a password is never filled by the application; v1.5 (WP-38): Painter::fits measures a label or value through the painter's own line layout (font size, direction) against its row and refuses the 15+1+32 W prompt and config SET device MMMMMMMM 0 901 off but keeps the lab's requests (lab.elev, lab.elev7, lab.elev8), in both directions and at 2x, and never fits more than TEXT_MAX characters",
      "pass_marker": "test result: ok. 14 passed; 0 failed",
-     "inputs": ["user/libui/Cargo.toml"], "input_globs": ["user/libui/src/*.rs", "user/libnawah-text/src/*.rs"]},
+     "inputs": ["user/libui/Cargo.toml"], "input_globs": ["user/libui/src/*.rs", "user/libui/tests/*.rs", "user/libnawah-text/src/*.rs"]},
     {"id": "TST-M5-UI-TOOL", "command": ["python3", "-I", "tests/test_transcript_tool.py"],
      "oracle": "tools/transcript.py takes the narrator lines from trace lines and requires them to equal the expected file exactly in every serial log (a missing, extra or reordered line, or one bad phase, fails); dims accepts only the same origin with the size times the factor; streams (WP-37) checks every stream the file names exactly and in order whatever the interleaving, ignores other streams and non-user lines, and checks every phase (7 cases, OK)",
      "inputs": ["tests/test_transcript_tool.py", "tools/transcript.py"], "input_globs": []},
@@ -1275,6 +1493,25 @@ HOST_SUITES["M3"] = [
      "oracle": "the host FAT32 tool formats the lab volume (128992 clusters, 44 used), lists DIR/HELLO.TXT/PATTERN.BIN, reads files back exactly (cat/verify/expect), keeps the raw pattern tail, makes nested directories in their parent (SYSTEM/FONTS, a missing parent refused), and fsck.fat -n accepts the images",
      "inputs": ["tests/test_fat32_tool.py", "tools/fat32.py"], "input_globs": []},
 ]
+# M6's first host case (WP-45, PLAN-ANSWER §2.5 D3: a host suite comes with its first case,
+# never empty): the system manifest and the self-test manifest linted against services.md §2.
+HOST_SUITES["M6"] = [
+    {"id": "TST-M6-MANIFEST-LINT", "command": ["python3", "-I", "tests/test_m6_manifest.py"],
+     "oracle": "a host lint of platform/pc-qemu/manifests/services.txt (services.md v1.11) and the lab manifest selftest.txt, read as svcmgr's parser reads them (user/apps/svcmgr/src/main.rs load and Fields: lines split on newline only, each cut at its first `#`, fields split on spaces only; only bytes 0x20-0x7E and newline, a Tab, a CR or any other byte refused by name): the system manifest is ASCII and parses by services.md §2 (fields, restart policy, decimal numbers, watchdog= before arg, an arg of at most 64 bytes, names of [A-Za-z0-9_-] up to 15 bytes, no duplicate, at most 16 services) and is under MANIFEST_MAX (4096 bytes); by the table of services.md §0.000 it names exactly auth, config, net, input, display, narrator, session, sh in that order, each with exactly the table's dependencies, every one declared on an earlier line, each on-failure, with a readiness timeout no shorter than 60000 for auth and 30000 for session, and watchdog= on input and display; every image path is /SYSTEM/<8.3 name>.ELF of an application the build makes (target.json extra_artifacts); watchdog= only on a service whose source sends PONG through channel_write (a textual check: whether that write answers the manager's PING is not checked, the guest case TST-M5-LOCK-HANG is; a compare with PONG, as in svcmgr, does not count); selftest.txt is ASCII, has no service line and its comment names mode=selftest; the lint itself rejects one manifest per rule: a non-ASCII byte, 4096 bytes or more, never instead of on-failure, a timeout below the minimum (auth, session), session without config, a dependency set other than the table's (narrator, sh), no watchdog on input or display, a self-test manifest with a service or without mode=selftest, a line of 6 fields, a non-decimal watchdog, an arg over 64 bytes, a bad name, an unknown restart policy, a non-decimal number, more than 16 services, a service missing, two services swapped, a dependency on a later line, a duplicate, a watchdog on a service that never answers PONG, a non-8.3 image, an image the build does not make, a Tab, a CRLF line end, a control byte, and a `#` inside a line that cuts a field or a watchdog= (while a trailing comment longer than an arg is accepted, as svcmgr accepts it) (20 cases, OK)",
+     "inputs": ["tests/test_m6_manifest.py", "platform/pc-qemu/target.json"], "input_globs": ["platform/pc-qemu/manifests/*.txt", "user/apps/*/src/main.rs"]},
+    {"id": "TST-M6-UI-UNIT", "command": ["cargo", "test", "--offline", "--release", "-p", "libui", "--target", "x86_64-unknown-linux-gnu", "--test", "pointer_menu"],
+     "oracle": "libui v1.6 (WP-49, ui.md §3.6) on the host, user/libui/tests/pointer_menu.rs (9 tests): a left press focuses the focusable element under it (a label never; the rectangle's last column is inside and the next is not) and the release over the same element activates a button or toggles a checkbox, a release elsewhere or without a press does nothing and holding is not a new press; a list row press selects the row, the header selects nothing, and a second click on the same row within DOUBLE_CLICK_MS (400, nawah's own) activates the list while a later one, another row or the header does not; the focus order and Tab/Shift+Tab are unchanged after pointer use; the context menu (at most 8 entries, an unlabelled item or separators only refused) opens by Shift+F10, the menu key 0xdd and a right press on a focusable element (not a label, not by F10 alone; without a menu none of the three opens anything and the right press does not move the focus) with its first item focused and the dialog focus empty; Up/Down wrap over separators, a disabled item is focused and described disabled but never chosen by Enter or a left release, Enter or a left release on the pressed item chooses, closes and returns the focus; Tab is ignored while open, Esc closes the menu without cancelling the dialog and an outside press closes it, both returning the focus to the opener; the menu opens from the start edge and toward the reading direction in LTR and RTL, flips at the surface's edge, stays inside the surface, which grows to hold it and still fits one VMO at 2x; menu items are described role=menuitem label=\"...\" state=focused[,disabled] index=k/n, and describe_menu_item returns None and writes nothing with no menu or an entry out of range (9 passed)",
+     "pass_marker": "test result: ok. 9 passed; 0 failed",
+     "inputs": ["user/libui/Cargo.toml", "user/libui/tests/pointer_menu.rs"], "input_globs": ["user/libui/src/*.rs", "user/libnawah-text/src/*.rs"]},
+    {"id": "TST-M6-UI-CONFIRM", "command": ["cargo", "test", "--offline", "--release", "-p", "libui", "--target", "x86_64-unknown-linux-gnu", "--test", "confirm"],
+     "oracle": "libui v1.7 (WP-80, ui.md §3.7) on the host, user/libui/tests/confirm.rs (5 tests): Dialog::confirm(prompt, yes, no, cancel, default) on an empty dialog builds the prompt label (element 0) and three buttons (1 yes, 2 no, 3 cancel), refuses a blank prompt or label (NoLabel, nothing built), a non-empty dialog and any later element (Confirm), and drops a menu set before it (menu_len() 0, set_menu false after); the default button takes the first focus and start() returns to it; Enter or Space answers the focused button (Activate and answer()), also while a left press is held on it, Esc answers Cancel (Event::Cancel, answer() = Cancel) whatever has the focus, the default Yes included; Tab/Shift+Tab cycle only the three buttons; characters, arrows, Backspace, Shift+F10 and the menu key do nothing and set_menu is refused; an answer is final (later keys and clicks return None and leave it); the narrator strings are exactly confirm role=dialog label=\"<prompt>\", focus <default button description>, answer yes|no|cancel, in English and in Arabic (the tokens English), and a plain dialog writes no confirm line and has no answer; the layout is the column: the prompt's row then each button a full row, yes-no-cancel from the top, every row its own mirror so RTL equals LTR (also after set_rtl) and Tab order stays logical; the prompt fits its row (Painter::fits) and every button label is narrower than its button (Painter::text_width) in English and Arabic at 1x and 2x; text_width agrees with fits (the prompt at most 241 px at 1x, a longer question over 241 and not fitting), gives the exact 1x widths (English prompt 184 and widest label 128, Arabic 218 and 79), about double at 2x, every label above 0, and measures as many characters as paint draws (TEXT_PAINT 64: 64 characters wider than 49, 70 the same as 64); a left press and release on a button answers it through the v1.6 pointer path, a release elsewhere answers nothing and gives the focus back to what it was before the press only if the press moved it and it is still on the pressed button (Tab to Cancel, press Cancel, release elsewhere keeps Cancel; press No from Cancel, release elsewhere returns to Cancel; a Tab while held stands), so the next Enter never answers a button only pressed, a click on the prompt and a right click answer nothing (5 passed)",
+     "pass_marker": "test result: ok. 5 passed; 0 failed",
+     "inputs": ["user/libui/Cargo.toml", "user/libui/tests/confirm.rs", "platform/assets/fonts/NotoSans-Regular.ttf", "platform/assets/fonts/NotoSansArabic-Regular.ttf"], "input_globs": ["user/libui/src/*.rs", "user/libnawah-text/src/*.rs"]},
+    {"id": "TST-M6-LISTVIEW-UNIT", "command": ["cargo", "test", "--offline", "--release", "-p", "libui", "--target", "x86_64-unknown-linux-gnu", "--test", "listview"],
+     "oracle": "libui v1.8 (WP-50 50a, ui.md §3.8) on the host, user/libui/tests/listview.rs (11 tests): the list view asks the application's RowSource for no position or row id at or beyond rows() with 0, 1 and 10,000 rows (every key and type-ahead do nothing at 0 rows; End shows rows 9990-9999 of ten visible; 1,200 Shift+PgDn keep top+count <= rows and select all 10,000), and refuses MAX_ROWS+1 rows keeping its own and its focus, while exactly MAX_ROWS are taken (End focuses and selects id 16383); Home/End/PgUp/PgDn/Up/Down move to the exact positions with a page of visible rows less one and the first visible row follows, a key release does nothing, Enter activates the focused row by its id in the application's order; stable_sort keeps equal keys in order both ways and returns false leaving the ids untouched when its scratch is short, and a sort the application reports undone (false) is neither announced (ListEvent::None) nor described, Ctrl+2 sorts by the second column ascending then descending (Ctrl+9 without such a column nothing; MAX_COLUMNS 8) and the selected ids, the focused id and Enter's id stay the same rows while their positions change, and the description ends sort=\"<column>\" ascending|descending; the anchor stays on its row across a sort (Shift+Down after it selects ids 3 and 4); reset and deny end the sort and set the current column back to the first, so no sort= is described for rows nothing sorted; a plain move selects the focused row alone, Shift ranges from the anchor, Ctrl moves the focus only, Ctrl+Space toggles and sets the anchor (a later Shift ranges from it), Space selects the focused row alone (also out of several; nothing when already alone), select count=<m>; a single-selection list treats Shift and Ctrl as plain; selection is by row id in a reversed order and a reset clears it; type-ahead: a repeated letter cycles (case-folded), a pause over TYPEAHEAD_MS (1000, nawah's own) starts anew while exactly 1000 still extends (b then l at +1000 finds blue), characters past TYPEAHEAD_MAX (16) are dropped, a longer prefix searches from the focused row wrapping, Arabic prefixes match, a typed move sets the anchor, a space (KEY_SPACE) selects and never enters the search, no match moves nothing, Ctrl+letter is not type-ahead, typing never activates and selects the row alone, the search is in the current column; the narrator lines exactly: role=list label=\"...\" rows=<n> columns=<c>, row <k>/<n> state=focused|selected|focused,selected|enabled with \"<column>\"=\"<value>\" pairs in English and Arabic (n all rows: row 500/500), a column the 256-byte line cannot hold whole (also a value longer than the buffer, and a 222-byte name that would leave no room for more=) left out and counted as more=<j>, never half a value; Text::put cuts at a UTF-8 character boundary (two-, three- and four-byte characters) so every line is valid UTF-8; state=empty for no rows and state=denied reason=\"<sentence>\" (never empty) after deny, with no rows, no selection and keys doing nothing until a reset; blank labels, blank column names, no columns and MAX_COLUMNS+1 columns refused (exactly 8 taken); the header rectangles from the left edge in LTR and mirrored from the right in RTL (also after set_rtl, and doubled at 2x), text at the reading start and numbers at the trailing edge, Left/Right move the current column visually; explicit bidi formatting characters in a cell (U+061C, U+200E, U+200F, U+202A-U+202E, U+2066-U+2069) and control characters (U+0000-U+001F, U+007F-U+009F, U+2028, U+2029) are written [U+XXXX] in the line and drawn as U+FFFD, so a name keeps level 0 in LTR and never starts a second line, and a quote in a value is written [U+0022] so it cannot end the value and forge a column (drawn as itself); the focused row stays visible (top <= focus < top+count <= rows) after every move, type-ahead, sort, set_area and set_theme (focus 9: a 3-row area shows 7-9, then 2x shows 9 alone), a page is at least one row even in an area shorter than the header, and 0 rows give (0, 0) (11 passed)",
+     "pass_marker": "test result: ok. 11 passed; 0 failed",
+     "inputs": ["user/libui/Cargo.toml", "user/libui/tests/listview.rs"], "input_globs": ["user/libui/src/*.rs", "user/libnawah-text/src/*.rs"]},
+]
 HOST_SUITES["M1"] = [
     {"id": "TST-M1-NOBS", "command": ["python3", "-I", "tests/test_m1_nobs.py"],
      "oracle": "static: kmain.rs is safe-only (no unsafe allowed by main.rs), names no firmware table/efi symbol; boot::efi is private; BootInfo carries no function pointers; kernel_main takes &BootInfo only",
@@ -1282,7 +1519,76 @@ HOST_SUITES["M1"] = [
 ]
 
 
+def oracle_candidates():
+    """(test id, oracle, where) for every text the runner writes into verdict.json: HOST_SUITES,
+    each target.json suite case, a target's boot_oracle when no suite case of that target carries
+    its id (a shadowed boot_oracle is never run: cmd_boot), every target's build (BUILD_ORACLE)."""
+    for suite, cases in HOST_SUITES.items():
+        for c in cases:
+            yield c["id"], c["oracle"], f"HOST_SUITES[{suite}]"
+    for tp in sorted((ROOT / "platform").glob("*/target.json")):
+        t, where = load_json(tp), tp.relative_to(ROOT).as_posix()
+        ids = set()
+        for cases in t.get("suites", {}).values():
+            for c in cases:
+                if c.get("oracle"):
+                    ids.add(c["test_id"]); yield c["test_id"], c["oracle"], where
+        b = t.get("boot_oracle") or {}
+        if b.get("oracle") and b["test_id"] not in ids:
+            yield b["test_id"], b["oracle"], f"{where} boot_oracle"
+        if t.get("build", {}).get("test_id"):
+            yield t["build"]["test_id"], BUILD_ORACLE, f"{where} build"
+
+
+def oracle_conflicts():
+    """{test id: [where, ...]} for each id two sources give different texts."""
+    seen, out = {}, {}
+    for tid, oracle, where in oracle_candidates():
+        seen.setdefault(tid, []).append((oracle, where))
+    for tid, texts in seen.items():
+        if len({o for o, _ in texts}) > 1:
+            out[tid] = [w for _, w in texts]
+    return out
+
+
+def oracle_sources():
+    """{test id: oracle} from oracle_candidates(); docs/tests.json keeps a copy of each for
+    reading, checked by validate-records (WP-92). Ids with two different texts are reported
+    by oracle_conflicts() and left out here, so nothing is synced from either."""
+    conflicts = oracle_conflicts()
+    return {tid: o for tid, o, _ in oracle_candidates() if tid not in conflicts}
+
+
+def oracle_differences(tests):
+    """[(record, source oracle)] for each test record whose `oracle` is not its source's text.
+    Records without a source are not compared; dated notes live in `oracle_notes`, never here."""
+    src = oracle_sources()
+    return [(t, src[t["id"]]) for t in tests if t["id"] in src and t["oracle"] != src[t["id"]]]
+
+
+def cmd_sync_oracles(check=False) -> int:
+    """Write each record's oracle from its source (WP-92); --check writes nothing and exits
+    E_VALIDATION when any record differs."""
+    conflicts = oracle_conflicts()
+    for tid, where in conflicts.items():
+        print(f"two sources with different texts: {tid} ({', '.join(where)}); make them one")
+    if conflicts:
+        return E_VALIDATION
+    path = DOCS / "tests.json"
+    data = load_json(path)
+    diffs = oracle_differences(data["records"])
+    for t, oracle in diffs:
+        print(f"{'differs' if check else 'synced'}: {t['id']}")
+        t["oracle"] = oracle
+    if check:
+        return E_VALIDATION if diffs else E_OK
+    if diffs:
+        write_json(path, data)
+    print(f"sync-oracles: {len(diffs)} record(s) {'rewritten' if diffs else 'already equal to their source'}")
+    return E_OK
+
 def cmd_test_host(suite, only=None) -> int:
+    begin_run()
     if suite not in HOST_SUITES:
         print(f"host suite {suite} is not implemented; implemented: {sorted(HOST_SUITES)}"); return E_INTERNAL
     cases = HOST_SUITES[suite]
@@ -1390,6 +1696,7 @@ def cmd_reverify_host() -> int:
 
 
 def cmd_test(target_name, suite, only=None) -> int:
+    begin_run()
     if target_name == "host":
         return cmd_test_host(suite, only)
     t = load_target(target_name)
@@ -1497,15 +1804,62 @@ def cmd_check_commit(rev: str = "HEAD") -> int:
 
 
 # ----------------------------------------------------------------------------- CI evidence import
+def github_run(run_id: str):
+    """The GitHub run's state through gh (`gh run view <id> --json ...`): (info, None), or
+    (None, reason) when gh is missing or fails. `mutants-<n>` names run n of the mutants workflow."""
+    gh = shutil.which("gh")
+    if not gh:
+        return None, "gh is not on PATH; the import needs the run's conclusion from GitHub"
+    num = run_id.split("-")[-1]
+    r = subprocess.run([gh, "run", "view", num, "--json", "status,conclusion,headSha,event,workflowName,attempt"], cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        return None, f"gh run view {num} failed: {(r.stderr or r.stdout).strip()[:200]}"
+    try:
+        return json.loads(r.stdout), None
+    except ValueError:
+        return None, "gh returned no JSON"
+
+
+def importer_identity():
+    """Who adopts the evidence (REQ-M0-006): the importing process's worker from the closed
+    enumeration and the development worker's identity as docs/automation.json records it."""
+    worker, _ = runner_identity()
+    identity = "unknown"
+    auto = DOCS / "automation.json"
+    if auto.exists():
+        try:
+            identity = load_json(auto).get("development_worker", {}).get("identity") or identity
+        except (OSError, ValueError):
+            pass
+    return {"worker": worker, "identity": identity}
+
+
 def cmd_import_ci_evidence(run_id: str) -> int:
     """Fetch the ci-evidence/<run> branch pushed by the verification runner and adopt its run
     directories as evidence (their input digests must match the current tree, which
     validate-records checks). Each imported verdict is attached to its test in docs/tests.json."""
     import shutil, tempfile
+    # The checked import (ADR-0026, REL-2 A): the GitHub run must have concluded with success,
+    # come from verify or mutants and start from a head that is an ancestor of HEAD; two
+    # cancelled runs of 2026-11-09 had published evidence branches this importer would have
+    # adopted. Without gh the import is blocked, never guessed.
+    if not RUN_ID_RE.fullmatch(run_id):
+        print(f"import refused: run id {run_id!r} is not <digits> or mutants-<digits>"); return E_VALIDATION
+    info, why = github_run(run_id)
+    if info is None:
+        print(f"import blocked: {why}"); return E_BLOCKED
+    if info.get("status") != "completed" or info.get("conclusion") != "success":
+        print(f"import refused: run {run_id} is {info.get('status')}/{info.get('conclusion')}, not completed/success"); return E_VALIDATION
+    if info.get("workflowName") not in ACCEPTED_WORKFLOWS:
+        print(f"import refused: workflow {info.get('workflowName')!r} is not one of {ACCEPTED_WORKFLOWS}"); return E_VALIDATION
+    head = str(info.get("headSha", ""))
+    if not head or subprocess.run(["git", "merge-base", "--is-ancestor", head, "HEAD"], cwd=ROOT, capture_output=True).returncode != 0:
+        print(f"import refused: the run's head {head[:8]!r} is not an ancestor of HEAD"); return E_VALIDATION
     ref = f"refs/heads/ci-evidence/{run_id}"
     r = subprocess.run(["git", "fetch", "-q", "origin", f"{ref}:refs/remotes/ci/{run_id}"], cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
         print(f"fetch failed: {r.stderr.strip()}"); return E_BLOCKED
+    branch_commit = git("rev-parse", f"refs/remotes/ci/{run_id}")
     # The branch is checked out into a temporary copy, removed when the import ends (left
     # behind, 44 copies filled the workspace's disk on 2026-10-19), through an index of its own
     # inside the copy: the repository's index, and what the user has staged in it, stay as
@@ -1515,17 +1869,31 @@ def cmd_import_ci_evidence(run_id: str) -> int:
     try:
         subprocess.run(["git", f"--work-tree={tmp}", "checkout", "-q", f"ci/{run_id}", "--", "evidence"], cwd=ROOT, check=True,
                        env={**os.environ, "GIT_INDEX_FILE": str(tmp / ".index")})
-        for d in sorted((tmp / "evidence").iterdir()):
-            if not (d / "verdict.json").exists():
-                continue
+        dirs = [d for d in sorted((tmp / "evidence").iterdir()) if (d / "verdict.json").exists()]
+        # The branch holds the whole committed evidence tree (verify.yml, mutants.yml: `git add -f
+        # evidence/` on the full checkout): a directory already under evidence/ is skipped as before,
+        # whatever its identity. Every NEW directory must be this run's, attempt included, before
+        # anything is written (WP-81): one of another run or attempt would receive this run's
+        # receipt and fail the validator only later.
+        new = [d for d in dirs if not (EVIDENCE / d.name).exists()]
+        want = (run_id.split("-")[-1], str(info.get("attempt")))
+        for d in new:
+            have = run_ci_identity(d)
+            if have is None or have[:2] != want:
+                print(f"import refused: {d.name} names run/attempt {have[:2] if have else None}, not {want} as gh reports for run {run_id}; nothing imported")
+                return E_VALIDATION
+        if len(dirs) > len(new):
+            print(f"skipped {len(dirs) - len(new)} run(s) already under evidence/")
+        for d in new:
             dest = EVIDENCE / d.name
-            if dest.exists():
-                continue
             shutil.copytree(d, dest)
             v = load_json(dest / "verdict.json")
-            run = load_json(dest / "run.json")
-            run["notes"] = (run.get("notes", "") + f" imported from CI run {run_id} (verification runner)").strip()
-            (dest / "run.json").write_text(json.dumps(run, ensure_ascii=False, indent=1) + "\n")
+            # run.json stays exactly as the runner wrote it; the import's own record is import.json
+            imp = {"ci_run_id": run_id.split("-")[-1], "conclusion": info["conclusion"], "head_sha": head, "event": info.get("event"),
+                   "run_attempt": info.get("attempt"), "workflow": info.get("workflowName"), "evidence_branch_commit": branch_commit,
+                   "imported_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                   "importer": importer_identity()}
+            (dest / "import.json").write_text(json.dumps(imp, ensure_ascii=False, indent=1) + "\n")
             attach_evidence(v["test_id"], d.name, v["verdict"])
             imported += 1
             print(f"imported {d.name} {v['test_id']} {v['verdict']}")
@@ -1534,6 +1902,76 @@ def cmd_import_ci_evidence(run_id: str) -> int:
         if tmp.exists():
             print(f"warning: the temporary copy {tmp} could not be removed")
     print(f"imported {imported} run(s) from CI run {run_id}")
+    return E_OK
+
+
+def run_ci_identity(d):
+    """(run id, attempt, sha) as strings from <d>/run.json's ci object, or None when the file is
+    unreadable or carries no ci identity (an empty value is no identity)."""
+    try:
+        ci = load_json(d / "run.json").get("ci")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(ci, dict):
+        return None
+    ident = tuple(str(ci.get(k) if ci.get(k) is not None else "") for k in ("run_id", "run_attempt", "sha"))
+    return ident if all(ident) else None
+
+
+def cmd_adopt_native(sources) -> int:
+    """Adopt the run directories the verify jobs of this very CI run wrote (WP-81, ADR-0026 rule 5:
+    native evidence carries no import.json). No gh, no receipt. Each job's evidence/ artifact holds
+    the whole committed tree too: a directory already under evidence/ is skipped and counted, never
+    adopted again, whatever its identity. It fails closed like the validator's native rule: only on
+    GitHub Actions with GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT and GITHUB_SHA all set, every NEW
+    directory naming exactly that run id, attempt and sha, every --from holding at least one run
+    directory, no new run id repeating across the sources, and at least one new directory.
+    Anything else adopts nothing. Each verdict is attached like a native run's."""
+    import shutil
+    found, seen, skipped = [], {}, 0
+    for src in sources:
+        src = Path(src)
+        if not src.is_dir():
+            print(f"adopt refused: {src} is not a directory"); return E_VALIDATION
+        runs = [d for d in sorted(src.iterdir()) if (d / "verdict.json").exists()]
+        if not runs:
+            print(f"adopt refused: {src} holds no run directory (an empty artifact adopts nothing)"); return E_VALIDATION
+        for d in runs:
+            if (EVIDENCE / d.name).exists():
+                skipped += 1
+                continue
+            if d.name in seen:
+                print(f"adopt refused: run id {d.name} appears in {seen[d.name]} and {src}"); return E_VALIDATION
+            seen[d.name] = src
+            found.append(d)
+    if skipped:
+        print(f"skipped {skipped} run(s) already under evidence/")
+    if not found:
+        print("adopt refused: nothing new to adopt (every run directory is already under evidence/)"); return E_VALIDATION
+    env = os.environ
+    names = ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA")
+    expect = [env.get(k, "") for k in names]
+    if env.get("GITHUB_ACTIONS") != "true" or not all(expect):
+        print(f"adopt refused: not inside a CI run (GITHUB_ACTIONS=true and {', '.join(names)} all set); native evidence is adopted only by its own run")
+        return E_VALIDATION
+    first = None
+    for d in found:
+        have = run_ci_identity(d)
+        if have is None:
+            print(f"adopt refused: {d.name} carries no ci identity (run id, attempt, sha)"); return E_VALIDATION
+        first = first or (have, d.name)
+        if have != first[0]:
+            print(f"adopt refused: {d.name} names run/attempt/sha {have}, {first[1]} names {first[0]}"); return E_VALIDATION
+        for name, want, got in zip(("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA"), expect, have):
+            if want != got:
+                print(f"adopt refused: {d.name} names {got!r} where {name} is {want!r}"); return E_VALIDATION
+    for d in found:
+        dest = EVIDENCE / d.name
+        shutil.copytree(d, dest)
+        v = load_json(dest / "verdict.json")
+        attach_evidence(v["test_id"], d.name, v["verdict"])
+        print(f"adopted {d.name} {v['test_id']} {v['verdict']}")
+    print(f"adopted {len(found)} run(s) of CI run {first[0][0] if first else '-'} attempt {first[0][1] if first else '-'}")
     return E_OK
 
 
@@ -1687,7 +2125,11 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("validate-records"); s.add_argument("--strict", action="store_true"); sub.add_parser("reverify-host")
     s = sub.add_parser("import-ci-evidence"); s.add_argument("--run", required=True)
+    s = sub.add_parser("adopt-native", help="adopt this CI run's own run directories (merge job; no gh, no import.json)")
+    s.add_argument("--from", dest="sources", action="append", required=True, help="a directory of run directories; repeatable")
     s = sub.add_parser("check-commit", help="the head commit names only an active or done work item (DEC-004)"); s.add_argument("--rev", default="HEAD")
+    s = sub.add_parser("sync-oracles", help="write each test record's oracle from its source (HOST_SUITES, target.json)")
+    s.add_argument("--check", action="store_true", help="write nothing; exit 50 when a record differs")
     s = sub.add_parser("status"); s.add_argument("--json", action="store_true")
     for n in ("build", "boot"):
         s = sub.add_parser(n); s.add_argument("--target", required=True)
@@ -1702,6 +2144,7 @@ def main(argv=None):
         s = sub.add_parser(n); s.add_argument("--json", action="store_true"); s.add_argument("--result"); s.add_argument("--once", action="store_true"); s.add_argument("--until"); s.add_argument("--note")
     a = ap.parse_args(argv)
     if a.cmd == "validate-records": return validate_records(strict=a.strict)
+    if a.cmd == "sync-oracles": return cmd_sync_oracles(a.check)
     if a.cmd == "status": return cmd_status(a.json)
     if a.cmd == "build": return cmd_build(a.target)
     if a.cmd == "boot": return cmd_boot(a.target)
@@ -1714,6 +2157,7 @@ def main(argv=None):
     if a.cmd == "checkpoint": return cmd_checkpoint(a.note)
     if a.cmd == "reverify-host": return cmd_reverify_host()
     if a.cmd == "import-ci-evidence": return cmd_import_ci_evidence(a.run)
+    if a.cmd == "adopt-native": return cmd_adopt_native(a.sources)
     if a.cmd == "check-commit": return cmd_check_commit(a.rev)
     if a.cmd == "preflight": return cmd_preflight(a.suite, a.only)
     if a.cmd == "hygiene": return cmd_hygiene()

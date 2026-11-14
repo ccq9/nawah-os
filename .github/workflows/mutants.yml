@@ -1,12 +1,21 @@
 # Mutation testing of the kernel and the system services: TST-M2-MUTANTS (REQ-M2-014, M01-M29
 # against the M1/M2 suites), TST-M3-MUTANTS (REQ-M3-010, M30-M49 against the M3 suite) and
 # TST-M4-MUTANTS (REQ-M4-010, M50-M81 against the M4 suite) and TST-M5-MUTANTS (REQ-M5-007, M82
-# onwards against the M5 suite, WP-38). Manual/scheduled (each mutant
+# onwards against the M5 suite, WP-38) and TST-M6-MUTANTS (REQ-M6-021, M130 onwards against the M6
+# suite and the host suites, WP-90). Manual/scheduled (each mutant
 # rebuilds the kernel and the applications), evidence published like the verify workflow so it
 # can be imported with `project.py import-ci-evidence --run mutants-<run id>`.
+# The gates a run executes are chosen by the `stages` input (the schedule takes its default):
+# import-ci-evidence takes only a successful run, so a gate expected red (M6's first run) runs in
+# a run of its own and never makes the other gates' evidence unimportable (WP-90).
 name: mutants
 on:
   workflow_dispatch:
+    inputs:
+      stages:
+        description: "gates to run, space-separated (M2 M3 M4 M5 M6)"
+        type: string
+        default: "M2 M3 M4 M5"
   schedule:
     - cron: "17 3 * * 1"
 permissions:
@@ -37,23 +46,37 @@ jobs:
           retry rustup toolchain install 1.97.0 --profile minimal
           retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; qemu-system-x86_64 --version | head -1
-      - name: validate-records --strict (committed state; a stale verdict fails, warn-policy tests aside)
-        run: python3 tools/project.py validate-records --strict
+      # Not strict before the gates (as verify's): a gate whose oracle text changed has a PASS citing
+      # evidence of the old oracle, and only a successful run of this workflow brings new evidence;
+      # a strict check here would block that run for good (audit of WP-92, WP-90).
+      - name: validate-records (committed state)
+        run: python3 tools/project.py validate-records
       - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
         run: |
           python3 tools/project.py build --target pc-qemu
           python3 tools/project.py boot --target pc-qemu
       - name: "Mutation run, M2 gate (TST-M2-MUTANTS, M01-M29)"
+        if: contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M2 ')
         run: python3 tools/project.py test --target host --suite M2
       - name: "Mutation run, M3 gate (TST-M3-MUTANTS, M30-M49, WP-22)"
-        if: always()
+        if: always() && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M3 ')
         run: python3 tools/project.py test --target host --suite M3-GATE
       - name: "Mutation run, M4 gate (TST-M4-MUTANTS, M50-M81, WP-31)"
-        if: always()
+        if: always() && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M4 ')
         run: python3 tools/project.py test --target host --suite M4-GATE
       - name: "Mutation run, M5 gate (TST-M5-MUTANTS, M82 onwards, WP-38)"
-        if: always()
+        if: always() && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M5 ')
         run: python3 tools/project.py test --target host --suite M5-GATE
+      - name: "Mutation run, M6 gate (TST-M6-MUTANTS, M130 onwards, WP-90)"
+        if: always() && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M6 ')
+        # Time-boxed: TST-M6-MUTANTS's timeout_s (130 min) ends it with a verdict and the partial
+        # report first; this cap is the hang guard and, with the older gates (137 min on run
+        # 42610085488) and the other steps, fits the job's 300.
+        timeout-minutes: 135
+        run: python3 tools/project.py test --target host --suite M6-GATE
+      - name: validate-records --strict (after the gates, over this run's native evidence)
+        if: always()
+        run: python3 tools/project.py validate-records --strict
       - name: Report
         if: always()
         run: |
@@ -61,6 +84,7 @@ jobs:
           cat build/mutants-m3-report.json || true
           cat build/mutants-m4-report.json || true
           cat build/mutants-m5-report.json || true
+          cat build/mutants-m6-report.json || true
       # A convenience copy, as in verify.yml: the ci-evidence branch below is the record.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         if: always()
@@ -73,6 +97,7 @@ jobs:
             build/mutants-m3-report.json
             build/mutants-m4-report.json
             build/mutants-m5-report.json
+            build/mutants-m6-report.json
             build/mutants-scratch/
           retention-days: 7
       - name: Publish evidence on a ci-evidence branch
@@ -88,7 +113,7 @@ jobs:
           git add -f evidence/
           # Each report that exists, one by one: a gate step that was skipped must not drop
           # the others (run 42481065666 lost the M5 report because M2 had none).
-          for r in build/mutants-report.json build/mutants-m3-report.json build/mutants-m4-report.json build/mutants-m5-report.json; do
+          for r in build/mutants-report.json build/mutants-m3-report.json build/mutants-m4-report.json build/mutants-m5-report.json build/mutants-m6-report.json; do
             if [ -f "$r" ]; then git add -f "$r"; fi
           done
           git add -f build/mutants-scratch 2>/dev/null || true

@@ -1,2 +1,13 @@
-# Lab manifest (/SYSTEM/SERVICES.TXT, services.md §2): no service yet — the manager answers
-# `OK 0` at boot (TST-M1-BOOT). Fields: name path deps timeout_ticks restart max backoff [arg]
+# System manifest (/SYSTEM/SERVICES.TXT, services.md v1.11): the interactive boot to the sign-in
+# screen (boot.md v1.1); the manager answers `OK 8` (TST-M6-INTERACTIVE-BOOT, TST-M6-MANIFEST-LINT).
+# Every line on-failure; watchdog= only where the service answers PONG (input, display); the
+# session's hard dependencies are declared here. Timings are initial values, pinned by measurement.
+# Fields: name path deps timeout_ticks restart max_restarts backoff_ticks [watchdog=<ticks>] [arg]
+auth     /SYSTEM/AUTHD.ELF     -                                  60000 on-failure 3 100
+config   /SYSTEM/CONFIGD.ELF   -                                   5000 on-failure 3 100
+net      /SYSTEM/NETD.ELF      -                                   5000 on-failure 3 100
+input    /SYSTEM/INPUTD.ELF    -                                   5000 on-failure 3 10 watchdog=2000
+display  /SYSTEM/DISPLAYD.ELF  input                               5000 on-failure 3 10 watchdog=2000
+narrator /SYSTEM/NARRATOR.ELF  display                             5000 on-failure 3 100
+session  /SYSTEM/SESSIOND.ELF  auth,input,display,config,narrator 30000 on-failure 5 100
+sh       /SYSTEM/SH.ELF        auth,net                            5000 on-failure 3 100

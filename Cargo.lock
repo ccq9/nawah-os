@@ -106,6 +106,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "jobs"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "kbdprobe"
 version = "0.1.0"
 dependencies = [

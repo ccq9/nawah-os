@@ -114,6 +114,9 @@ struct Session {
     token_id: u64,
     user: usize,
     locked: bool,
+    /// (v1.2) The connection of the client named `session` that opened it (its tag), or 0: the
+    /// session is closed when that connection is lost.
+    opener: u64,
 }
 
 const NO_SESSION: Session = Session {
@@ -121,6 +124,7 @@ const NO_SESSION: Session = Session {
     token_id: 0,
     user: 0,
     locked: false,
+    opener: 0,
 };
 
 struct Out {
@@ -346,8 +350,9 @@ impl Auth {
         Verdict::Access
     }
 
-    /// Mints a session token for user `i`; returns the client's copy (no WRITE) and the slot.
-    fn open_session(&mut self, i: usize, now: u64) -> Option<(Handle, usize)> {
+    /// Mints a session token for user `i`, opened by connection `opener` (0: not `session`);
+    /// returns the client's copy (no WRITE) and the slot.
+    fn open_session(&mut self, i: usize, now: u64, opener: u64) -> Option<(Handle, usize)> {
         let slot = (0..MAX_SESSIONS).find(|&s| self.sessions[s].token == 0)?;
         let u = &self.users[i];
         let token = libnawah::token_create(
@@ -371,6 +376,7 @@ impl Auth {
             token_id: info.id,
             user: i,
             locked: false,
+            opener,
         };
         Some((client, slot))
     }
@@ -386,6 +392,19 @@ impl Auth {
         *s = NO_SESSION;
     }
 
+    /// (v1.2) The connection `opener` of the client named `session` is gone: every session it
+    /// opened is closed as LOGOUT closes one (revoked for every holder of a copy). The count.
+    fn session_lost(&mut self, opener: u64) -> u64 {
+        let mut revoked = 0;
+        for s in 0..MAX_SESSIONS {
+            if self.sessions[s].token != 0 && self.sessions[s].opener == opener {
+                self.close_session(s);
+                revoked += 1;
+            }
+        }
+        revoked
+    }
+
     fn put_identity(&self, out: &mut Out, i: usize) {
         let u = &self.users[i];
         out.put(b"OK ");
@@ -396,18 +415,20 @@ impl Auth {
         out.num(u64::from(u.perms));
     }
 
-    /// One client request: `req` bytes and the handle it carried (if any); the reply bytes
-    /// and the handle to send back (a token for the client).
+    /// One client request from connection `opener` (its tag; 0 unless the client is `session`):
+    /// `req` bytes and the handle it carried (if any); the reply bytes and the handle to send
+    /// back (a token for the client).
     fn handle(
         &mut self,
         req: &[u8],
         token: Option<Handle>,
         now: u64,
+        opener: u64,
         out: &mut Out,
     ) -> Option<Handle> {
         // The handle the client sent is ours now: close it when done.
         let info = token.and_then(|h| libnawah::token_info(h).ok());
-        let result = self.dispatch(req, token.is_some(), info, now, out);
+        let result = self.dispatch(req, token.is_some(), info, now, opener, out);
         if let Some(h) = token {
             libnawah::handle_close(h);
         }
@@ -420,6 +441,7 @@ impl Auth {
         has_handle: bool,
         info: Option<libnawah::TokenInfo>,
         now: u64,
+        opener: u64,
         out: &mut Out,
     ) -> Option<Handle> {
         let mut words = req.split(|c| *c == b' ');
@@ -444,7 +466,7 @@ impl Auth {
                     return None;
                 };
                 match self.verify(i, password, now) {
-                    Verdict::Ok => match self.open_session(i, now) {
+                    Verdict::Ok => match self.open_session(i, now, opener) {
                         Some((client, _)) => {
                             self.put_identity(out, i);
                             Some(client)
@@ -527,7 +549,7 @@ impl Auth {
                     Verdict::Ok => {
                         // The locked token is finished; the session continues with a new one.
                         self.close_session(slot);
-                        match self.open_session(i, now) {
+                        match self.open_session(i, now, opener) {
                             Some((client, _)) => {
                                 self.put_identity(out, i);
                                 Some(client)
@@ -573,6 +595,20 @@ impl Auth {
             }
         }
     }
+}
+
+/// (v1.2) Client connection `tag` is gone: if it was the client named `session`, every session
+/// it opened is closed and the loss traced (`auth|session_lost|revoked=<n>`).
+fn connection_lost(auth: &mut Auth, tag: &mut u64) {
+    let t = core::mem::take(tag);
+    if t == 0 {
+        return;
+    }
+    let n = auth.session_lost(t);
+    let mut line = Out::new();
+    line.put(b"auth|session_lost|revoked=");
+    line.num(n);
+    libnawah::trace(line.bytes());
 }
 
 fn main() -> u64 {
@@ -626,6 +662,10 @@ fn main() -> u64 {
         return 0xE4;
     }
     let mut clients = [0u32; MAX_CLIENTS];
+    // (v1.2) Per client: a tag when the manager vouched it is `session` (services.md v1.6),
+    // else 0; tags are never reused, so a later connection cannot inherit another's sessions.
+    let mut tags = [0u64; MAX_CLIENTS];
+    let mut next_tag = 0u64;
     let mut entries = [WaitEntry {
         handle: 0,
         signals: 0,
@@ -656,7 +696,15 @@ fn main() -> u64 {
                 Ok((n, nh)) => {
                     if (buf[..n] == *b"CONNECT" || buf[..n].starts_with(b"CONNECT ")) && nh == 1 {
                         match clients.iter().position(|&c| c == 0) {
-                            Some(slot) => clients[slot] = hs[0],
+                            Some(slot) => {
+                                clients[slot] = hs[0];
+                                tags[slot] = if buf[..n] == *b"CONNECT session" {
+                                    next_tag += 1;
+                                    next_tag
+                                } else {
+                                    0
+                                };
+                            }
                             None => {
                                 libnawah::handle_close(hs[0]);
                             }
@@ -678,7 +726,7 @@ fn main() -> u64 {
             Ok((n, nh)) => {
                 let token = if nh == 1 { Some(hs[0]) } else { None };
                 let mut out = Out::new();
-                let reply_handle = auth.handle(&buf[..n], token, now, &mut out);
+                let reply_handle = auth.handle(&buf[..n], token, now, tags[ci], &mut out);
                 let sent = match reply_handle {
                     Some(h) => {
                         let r = libnawah::channel_write(c, out.bytes(), &[h]);
@@ -692,11 +740,13 @@ fn main() -> u64 {
                 if sent == ERR_PEER_CLOSED {
                     libnawah::handle_close(c);
                     clients[ci] = 0;
+                    connection_lost(&mut auth, &mut tags[ci]);
                 }
             }
             Err(ERR_PEER_CLOSED) => {
                 libnawah::handle_close(c);
                 clients[ci] = 0;
+                connection_lost(&mut auth, &mut tags[ci]);
             }
             // Larger than any request, or carrying handles no request takes: discarded and
             // refused, so this client's next request is read and the clients after it are not

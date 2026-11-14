@@ -35,7 +35,8 @@
       "user/apps/spin/Cargo.toml",
       "user/apps/idle/Cargo.toml",
       "user/apps/exiter/Cargo.toml",
-      "user/apps/fileauth/Cargo.toml"
+      "user/apps/fileauth/Cargo.toml",
+      "user/apps/jobs/Cargo.toml"
     ],
     "input_globs": [
       "kernel/src/**/*.rs",
@@ -76,7 +77,8 @@
       "${OUT}/apps/spin.elf",
       "${OUT}/apps/idle.elf",
       "${OUT}/apps/exiter.elf",
-      "${OUT}/apps/fileauth.elf"
+      "${OUT}/apps/fileauth.elf",
+      "${OUT}/apps/jobs.elf"
     ],
     "toolchain": "rust-1.97.0 x86_64-unknown-uefi + x86_64-unknown-none (applications)",
     "steps": [
@@ -623,6 +625,24 @@
       [
         "cargo",
         "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/jobs/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/jobs",
+        "${OUT}/apps/jobs.elf"
+      ],
+      [
+        "cargo",
+        "build",
         "--release",
         "--offline",
         "--manifest-path",
@@ -701,6 +721,10 @@
   },
   "boot_oracle": {
     "test_id": "TST-M1-BOOT",
+    "qemu_extra": [
+      "-fw_cfg",
+      "name=opt/nawah/selftest,string=1"
+    ],
     "oracle": "contracts/boot.md v1: boot|start, boot|ebs|ok=1, then kernel|post_ebs with map_key and descriptors emitted from kernel/ after ExitBootServices; QEMU exit 33 (0x10 via isa-debug-exit); no boot|error",
     "expected_exit_code": 33,
     "required_markers": [
@@ -723,12 +747,17 @@
       {
         "id": "TST-M1-BOOT",
         "test_id": "TST-M1-BOOT",
-        "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); WP-30: the second 16550 (COM2, the diagnostic console) answers its loopback probe (kernel|diag|port=0x2f8|present=1|…|selfcheck=1); WP-32: firmware's GOP frame buffer is captured before ExitBootServices (boot|gop|present=1), mapped by the kernel and carries the diagnostic pattern (kernel|display|present=1|…|selfcheck=1); the manager receives 6 initial handles (control, authority, interface, keyboard, console, display)",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/selftest,string=1"
+        ],
+        "oracle": "contracts/boot.md v1 success path: boot|start exactly once (arch=x86_64, boot=uefi, stage=pre_ebs), boot|ebs|ok=1, then from kernel code after ExitBootServices kernel|cpu_tables (the kernel's GDT, TSS and IDT on the kernel stack) and kernel|post_ebs with the map key; the ACPI RSDP found (not 0x0); the PIC masked and the PIT check over a 50 ms window passing with the timer's interrupts never nested (max_depth=1); the physical memory manager's self-check; kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map) and a guarded stack; the MADT's 4 CPUs online (one I/O APIC, its 24 entries masked; every application processor answers its probe, none failed, no id mismatch); heap, scratch mapping and address-space self-checks; scheduler self-check (a kernel thread spawned and joined, no frame left); object self-check (VMO through a kernel channel, peer close seen, nothing left); PCI enumerated through the MCFG ECAM window at 0xe0000000; virtio-blk self-check (modern device 0x1042, its MMIO window shared, 131072 sectors, a 16-entry queue, a read and a flush); the FAT32 volume NAWAHLAB mounted and /HELLO.TXT (24 bytes) read; WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway is answered by SLIRP's MAC 52:55:0a:00:02:02 within the boot, no bad frame received and nothing left in flight (kernel|net|…), no K_E_NET_ code; the i8042 keyboard and the PS/2 mouse initialised (kernel|kbd|…|mouse=1, nothing pending or overflowed); WP-30: the second 16550 (COM2, the diagnostic console) answers its loopback probe (kernel|diag|port=0x2f8|present=1|…|selfcheck=1); WP-32: firmware's GOP frame buffer is captured before ExitBootServices (boot|gop|present=1), mapped by the kernel and carries the diagnostic pattern (kernel|display|present=1|…|selfcheck=1); the system-call entry set (kernel|user|lstar) and a ring-3 ping as process 1 (exit 0x1235, no frame left); ELF loader self-check (the embedded hello app exits 7, no frame left); WP-24, WP-46: the kernel spawns the service manager /SYSTEM/SVCMGR.ELF from the volume with 9 initial handles (services.md v1.12: control, authority, SystemFiles, network interface, keyboard, diagnostic console, mouse, display, root job) and it answers `OK 0` to the lab manifest /SYSTEM/SELFTEST.TXT (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1); WP-45 (boot.md, PLAN-ANSWER §2.1): under the fw_cfg key opt/nawah/selftest=1 exactly one boot-mode line, the whole line OSX|<build id>|kernel|boot_mode|mode=selftest|source=fw_cfg|key=ok|hv=1; then kernel|m1_done|exit=0x10 and QEMU exit 33; no boot|error, no exception, no panic",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs",
           "OSX|${BUILD_ID}|boot|ebs|ok=1|attempts=",
           "OSX|${BUILD_ID}|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel",
+          "OSX|${BUILD_ID}|kernel|boot_mode|mode=selftest|source=fw_cfg|key=ok|hv=1",
           "|kernel|pmm|managed_frames=",
           "|selfcheck=1",
           "OSX|${BUILD_ID}|kernel|post_ebs|map_key=0x",
@@ -767,9 +796,9 @@
           "|corner=32|cell=16|code=ok|selfcheck=1",
           "|ring=64|pending=0|overflow=0|mouse=1|mouse_ring=192|code=ok|selfcheck=1",
           "|kernel|svcmgr|pid=",
-          "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
+          "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SELFTEST.TXT|reply=OK 0|code=ok|selfcheck=1|wait_ticks=",
           "|kernel|spawn|pid=",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel",
           "|kernel|user|lstar=0x",
           "|pid=1|ping_exit=0x1235|frames_delta=0|code=ok|selfcheck=1",
           "|kernel|elf|app=hello|size=",
@@ -784,7 +813,11 @@
           "|kernel|net|device=none"
         ],
         "max_counts": {
-          "|boot|start|": 1
+          "|boot|start|": 1,
+          "|kernel|boot_mode|": 1
+        },
+        "min_counts": {
+          "|kernel|boot_mode|": 1
         }
       },
       {
@@ -1034,7 +1067,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=idt_layout"
         ],
-        "oracle": "sidt-based walk: 0..=31 present interrupt gates to stubs pushing the vector (dummy 0 where the CPU pushes no error code); 32..=255 present interrupt gates to the uniform interrupt entries (push 0, push imm32 vector); exit 33",
+        "oracle": "sidt-based walk of all 256 gates (IDT limit 256×16−1): each a present 64-bit interrupt gate with the kernel code selector, zero reserved bytes and IST 0 except #DF (vector 8) on the double-fault IST stack; 0..=31 point to stubs pushing the vector (dummy 0 where the CPU pushes no error code); 32..=255 to the uniform interrupt entries (push 0, push imm32 vector); no mismatch line; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=idt_layout",
@@ -2628,7 +2661,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_order",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_order|load=OK 3|list=A:ready:0:",
           "|all_ready=1|b_after_a=1|c_after_ab=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2674,7 +2707,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_timeout",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_timeout|load=OK 2|list=M:failed:0:",
           "|failed_after_timeout=1|dependent_blocked=1|list_after=1|mgr_exit=0x0|processes_after=0|clean=1",
@@ -2720,7 +2753,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=svc_restart",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel",
           "|path=/SYSTEM/SVC.ELF|handles=1",
           "|ktest|svc_restart|load=OK 1|list=X:given_up:3:",
           "|state=given_up|restarts=3|exit=1|span=",
@@ -3830,7 +3863,7 @@
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=input_route",
-          "|path=/SYSTEM/SVCMGR.ELF|handles=8|by=kernel",
+          "|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel",
           "|path=/SYSTEM/INPUTD.ELF|handles=3",
           "|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0 sak_pending=0|phase=1|ready=1",
           "|ktest|input_route|a=KEY 0x1e down 0 a;KEY 0x1e up 0 a;KEY 0x2a down 1 -;KEY 0x30 down 1 B;KEY 0x30 up 1 B;KEY 0x2a up 0 -;KEY 0x1d down 2 -;KEY 0x38 down 6 -|s=SAK;KEY 0x38 up 2 -;KEY 0x1d up 0 -|b=",
@@ -4879,16 +4912,20 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=session_loss"
         ],
-        "oracle": "SVC-SS.TXT: the session service itself is lost twice (the manager's RESTART: its process ends and every channel of it closes, as in a crash). Unlocked: the lab signs in with the spy focused (`OK keys=0 focus=1 connections=1`); after the loss the input service has taken the keyboard from the compositor (the spy: `OK keys=0 focus=0 connections=1`), the lab's screendump shows the new session's sign-in dialog only (10141C at (2,2) and at the spy's place (150,150), the dialog's F0F0F0 at (512,338)), and the new session starts from nothing (`OK no_session user=- changes=0 display=1 input=1 focus=session`). The lab signs in again: every key reaches the new session and none the compositor (KEYS unchanged); the open desktop's screendump shows the desktop (1E2A38 at (2,2)) and the spy's window (2E8B57 at (150,150)). Locked: after Ctrl+Alt+Del the session is lost again; the next session again starts at no_session, the spy has no focus and the compositor received no key; then (WP-38 mutant M106, input.md v2.2) the lab signs in once more, so the input service's focus is the compositor's (`display`), and the test stops the session for good (the manager's STOP, no restart): once the manager lists it stopped, the input service's own STATUS reads `focus=-` — the keyboard is with nobody even though the session did not hold it when it was lost (`unlocked3=… focus=display|stop=OK|stopped=1|input_focus_cleared=1|phase=6`); the password never appears in the serial log; no frame leaks; exit 33",
+        "oracle": "SVC-SS.TXT: the session service itself is lost twice (the manager's RESTART: its process ends and every channel of it closes, as in a crash). Rewritten for session.md v1.7 (WP-64; PLAN-ANSWER §2.3 D5-B): a contract-driven change, not a weakening — the restarted session now ends what the lost one left on the screen before its sign-in screen, so the spy (whose focus the earlier case read after the loss) is logged out and exits; every other assertion is kept. Unlocked: the lab signs in with the spy focused (`OK keys=0 focus=1 connections=1`); after the loss the new session traces `session|purge=logout|restarts=1|reason=restarted`, the spy is told LOGGED_OUT with no window left (`spy|logged_out|windows=0`) and ends (the manager lists it `stopped:0x0`), the compositor counts one window — the sign-in dialog (`windows=1`) — the lab's screendump shows the new session's sign-in dialog only (10141C at (2,2) and at the spy's place (150,150), the dialog's F0F0F0 at (512,338)), and the new session starts from nothing (`OK no_session user=- changes=0 display=1 input=1 focus=session`). A client then connects anew (the test's own window `w`, D04040 at (600,100)) while the screen is held. The lab signs in again: every key reaches the new session and none the compositor (KEYS unchanged), `w` is focused; the open desktop's screendump shows the desktop (1E2A38 at (2,2)) and, where the spy's window was, the desktop again (1E2A38 at (150,150): no window of the lost session came back), and `w` at (650,170) (D04040). Locked: after Ctrl+Alt+Del the session is lost again; the next session again starts at no_session after `session|purge=logout|restarts=2|reason=restarted`, `w` was told LOGGED_OUT and has no window left, and the compositor received no key; then (WP-38 mutant M106, input.md v2.2) the lab signs in once more, so the input service's focus is the compositor's (`display`), and the test stops the session for good (the manager's STOP, no restart): once the manager lists it stopped, the input service's own STATUS reads `focus=-` — the keyboard is with nobody even though the session did not hold it when it was lost (`unlocked3=… focus=display|stop=OK|stopped=1|input_focus_cleared=1|phase=6`); stopped for good (no restart, so no purge), the compositor still holds the screen on its own (display.md v1.2 rescue: HOLDS `OK locked=1 …`, `held_after_stop=1|phase=7`); the password never appears in the serial log; no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=session_loss",
           "|path=/SYSTEM/SESSIOND.ELF|handles=1",
           "|ktest|session_loss|services=5|ready=1",
-          "|ktest|session_loss|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|spy=OK keys=0 focus=1 connections=1|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|spy_after=OK keys=0 focus=0 connections=1|phase=2|ready=1",
-          "|ktest|session_loss|unlocked2=OK unlocked user=admin changes=1 display=1 input=1 focus=display|keys_during_signin=0|phase=3|ready=1",
-          "|ktest|session_loss|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|spy_focus0=1|keys_after_loss=0|phase=4",
+          "|text=session|purge=logout|restarts=1|reason=restarted",
+          "|text=spy|logged_out|windows=0",
+          "|ktest|session_loss|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|spy=OK keys=0 focus=1 connections=1|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|spy_after=stopped:0x0|windows=1|phase=2|ready=1",
+          "|ktest|session_loss|unlocked2=OK unlocked user=admin changes=1 display=1 input=1 focus=display|keys_during_signin=0|w_focused=1|phase=3|ready=1",
+          "|text=session|purge=logout|restarts=2|reason=restarted",
+          "|ktest|session_loss|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|w_logged_out=1|w_windows=0|keys_after_loss=0|phase=4",
           "|ktest|session_loss|unlocked3=OK unlocked user=admin changes=1 display=1 input=1 focus=display|stop=OK|stopped=1|input_focus_cleared=1|phase=6",
+          "|held_after_stop=1|phase=7",
           "|ktest|session_loss|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|session_loss|frames_delta=0",
           "|ktest|pass|a lost session left the screen held and the keyboard with nobody until a fresh session"
@@ -4898,7 +4935,8 @@
           "|kernel|panic|",
           "|exc|vector",
           "|user_fault|",
-          "lab-admin-1"
+          "lab-admin-1",
+          "reason=list_failure"
         ],
         "min_counts": {
           "|path=/SYSTEM/SESSIOND.ELF|": 3
@@ -4999,7 +5037,9 @@
             "--pixel",
             "2,2,1E2A38",
             "--pixel",
-            "150,150,2E8B57"
+            "150,150,1E2A38",
+            "--pixel",
+            "650,170,D04040"
           ],
           [
             "python3",
@@ -6298,6 +6338,587 @@
         "min_counts": {
           "|user|trace|len=8|text=svc|pong": 3
         }
+      }
+    ],
+    "M6": [
+      {
+        "id": "TST-M6-INTERACTIVE-BOOT",
+        "test_id": "TST-M6-INTERACTIVE-BOOT",
+        "artifact": "${OUT}/NAWAH.EFI",
+        "oracle": "REQ-M6-002, WP-45 (boot.md boot mode, services.md v1.11 system manifest; PLAN-ANSWER §2.1, §2.2, §2.5 D2-Q2, §2.6): the release image NAWAH.EFI boots without the lab self-test key: one boot-mode line `kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1` (exactly one `|kernel|boot_mode|` line per boot: 6 over the six phases, max_counts and min_counts), the manager answers the real system manifest (`manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok`) with selfcheck=1, and over COM2, once the password has unlocked the desktop again (after `|text=session|focus=display|n=2`; the lab's last monitor step waits 5 s before `quit` so the shell answers first), the shell's `svc` lists the eight services (auth, config, net, input, display, narrator, session, sh) `ready 0`: readiness is judged at the end of the run, not at the sign-in screen, and since svcmgr's restart counter never resets it shows no restart across the whole run (the boot itself is covered by the manifest marker reply=OK 8 and the sign-in pixel checks); the lab signs in as `user` (lab-user-1) at the sign-in screen (screendump: lock background 10141C at (2,2), dialog F0F0F0 at (512,338)), the plain desktop background 1E2A38 follows, Ctrl+Alt+Del locks (the lock screen again), the password unlocks (desktop again); the image never prints m1_done, any ktest line or selfcheck=0 and never exits by itself: every phase ends by the lab's monitor `quit` after every step was sent (ends_by=monitor, exit 0). Negative phases on the same image (150 s for the positive phase, 60 s for each negative one: the six phases took 56 s in all on CI, evidence/20261109T184629Z-d63f7ae4-001, and with TST-M6-HOLD-FAIL-CLOSED's 180 s the suite's worst case, 630 s, stays under the M6 step's 12-minute cap): opt/nawah/selftest=0 and opt/nawah/selftest=10 (key=invalid: only the value 1 selects the self-test), opt/nawah/test=exc_de (the ktest key is not the self-test key: source=none, no ktest line), opt/nawah/selftest=svc-sh (a value never names a manifest: SERVICES.TXT answers OK 8, SVC-SH.TXT is not loaded) and -cpu qemu64,-hypervisor with the key (hv=0: fw_cfg is never read, source=none|key=absent, the boot is interactive and nothing is written to the exit port) each still reach the sign-in screen on the real manifest. Every phase requires the kernel's whole boot-mode line with the build id (OSX|<build id>|kernel|boot_mode|mode=…|source=…|key=…|hv=…: source=none whenever the mode is interactive, an invalid key included), never a fragment a process could print through SYS_TRACE; a traced copy of the whole line is a seventh `|kernel|boot_mode|` and fails max_counts. The password never appears in the serial log",
+        "expected_exit_code": 0,
+        "ends_by": "monitor",
+        "required_markers": [],
+        "forbidden_markers": [
+          "|kernel|m1_done|",
+          "|ktest|",
+          "selfcheck=0",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|boot|error|",
+          "lab-user-1",
+          "reason=list_failure"
+        ],
+        "phases": [
+          {
+            "required_markers": [
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|selfcheck=1",
+              "|text=session|state=no_session|window=",
+              "|text=session|state=unlocked|user=user|uid=1001|token=usable",
+              "|text=session|focus=display|n=1",
+              "|text=session|state=locked|",
+              "|text=session|focus=display|n=2"
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "screendump ${SCREEN:login}",
+                    "sendkey u",
+                    "sendkey s",
+                    "sendkey e",
+                    "sendkey r",
+                    "sendkey tab",
+                    "sendkey l",
+                    "sendkey a",
+                    "sendkey b",
+                    "sendkey minus",
+                    "sendkey u",
+                    "sendkey s",
+                    "sendkey e",
+                    "sendkey r",
+                    "sendkey minus",
+                    "sendkey 1",
+                    "sendkey ret"
+                  ],
+                  "gap_s": 0.5
+                },
+                {
+                  "after": "|text=session|focus=display|n=1",
+                  "commands": [
+                    "screendump ${SCREEN:desktop}",
+                    "sendkey ctrl-alt-delete"
+                  ],
+                  "gap_s": 1.0
+                },
+                {
+                  "after": "|text=session|state=locked|",
+                  "commands": [
+                    "screendump ${SCREEN:locked}",
+                    "sendkey l",
+                    "sendkey a",
+                    "sendkey b",
+                    "sendkey minus",
+                    "sendkey u",
+                    "sendkey s",
+                    "sendkey e",
+                    "sendkey r",
+                    "sendkey minus",
+                    "sendkey 1",
+                    "sendkey ret"
+                  ],
+                  "gap_s": 0.5
+                },
+                {
+                  "after": "|text=session|focus=display|n=2",
+                  "commands": [
+                    "screendump ${SCREEN:unlocked}",
+                    "quit"
+                  ],
+                  "gap_s": 5.0
+                }
+              ]
+            },
+            "console": {
+              "port": 17060,
+              "after": "|text=session|focus=display|n=2",
+              "script": [
+                {
+                  "send": "svc",
+                  "expect": [
+                    "auth ready 0 ",
+                    "config ready 0 ",
+                    "net ready 0 ",
+                    "input ready 0 ",
+                    "display ready 0 ",
+                    "narrator ready 0 ",
+                    "session ready 0 ",
+                    "sh ready 0 "
+                  ]
+                }
+              ]
+            },
+            "timeout_s": 150
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/selftest,string=0"
+            ],
+            "required_markers": [
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=invalid|hv=1",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
+              "|text=session|state=no_session|window="
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "quit"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 60
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=exc_de"
+            ],
+            "required_markers": [
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
+              "|text=session|state=no_session|window="
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "quit"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 60
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/selftest,string=svc-sh"
+            ],
+            "required_markers": [
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=invalid|hv=1",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
+              "|text=session|state=no_session|window="
+            ],
+            "forbidden_markers": [
+              "manifest=/SYSTEM/SVC-SH.TXT",
+              "manifest=/SYSTEM/SELFTEST.TXT"
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "quit"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 60
+          },
+          {
+            "qemu_extra": [
+              "-cpu",
+              "qemu64,-hypervisor",
+              "-fw_cfg",
+              "name=opt/nawah/selftest,string=1"
+            ],
+            "required_markers": [
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=absent|hv=0",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
+              "|text=session|state=no_session|window="
+            ],
+            "forbidden_markers": [
+              "|key=ok|",
+              "manifest=/SYSTEM/SELFTEST.TXT"
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "quit"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 60
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/selftest,string=10"
+            ],
+            "required_markers": [
+              "OSX|${BUILD_ID}|kernel|boot_mode|mode=interactive|source=none|key=invalid|hv=1",
+              "|image=/SYSTEM/SVCMGR.ELF|manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok|",
+              "|text=session|state=no_session|window="
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "quit"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 60
+          }
+        ],
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:login}",
+            "--pixel",
+            "2,2,10141C",
+            "--pixel",
+            "512,338,F0F0F0"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:desktop}",
+            "--pixel",
+            "2,2,1E2A38",
+            "--pixel",
+            "700,600,1E2A38"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:locked}",
+            "--pixel",
+            "2,2,10141C",
+            "--pixel",
+            "512,338,F0F0F0"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/screen.py",
+            "desktop",
+            "${SCREEN:unlocked}",
+            "--pixel",
+            "2,2,1E2A38",
+            "--pixel",
+            "700,600,1E2A38"
+          ]
+        ],
+        "max_counts": {
+          "|kernel|boot_mode|": 6
+        },
+        "min_counts": {
+          "|kernel|boot_mode|": 6
+        }
+      },
+      {
+        "id": "TST-M6-HOLD-FAIL-CLOSED",
+        "test_id": "TST-M6-HOLD-FAIL-CLOSED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=hold_fail_closed"
+        ],
+        "oracle": "REQ-M6-002, WP-67 (display.md v1.12, services.md §4 v1.3 LIST; mutant M147): the compositor's start-up hold fails closed. A substitute manager inside the test kernel spawns /SYSTEM/DISPLAYD.ELF with a boot channel and the display object and makes its LIST fail in each named branch of the contract: (1) an ERR answer, not a listing naming `display` (reason=reply); (2) an answer longer than displayd's 1024-byte reply buffer (reason=too_long: the kernel refuses it with ERR_BUFFER_TOO_SMALL and displayd discards it so the boot channel keeps serving); (3) a boot channel closed before the answer (reason=closed: displayd cannot say READY and exits 0xE6). In (1) and (2) displayd traces `display|hold|source=list_failure|reason=…|locked=1`, answers HOLDS `OK locked=1 releases=0`, and both events of a key injected meanwhile reach displayd but no window (keys_in=2, keys=0); in (3) the trace says locked=1 before the exit. (4) A valid listing without `session` starts unheld (`source=manifest|reason=-|locked=0`, display.md v1.2, which the M5 lab manifests rely on) and one with `session` held (locked_with_session=1), so the gate is not a constant. The kernel sees the screen (HOLDS, keys at the client), the serial sees displayd's trace; no compositor leaves a process, an object or a frame behind (failed= empty, clean=1, frames_delta=0). The unheld line of a failure branch and any held-open HOLDS answer are forbidden, so a fail-open regression fails the case whatever else it prints; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=hold_fail_closed",
+          "|ktest|hold_fail_closed|case=reply|holds=OK locked=1 releases=0|keys=0|keys_in=2|",
+          "|ktest|hold_fail_closed|case=too_long|holds=OK locked=1 releases=0|keys=0|keys_in=2|",
+          "|ktest|hold_fail_closed|case=closed|holds=none_no_ready|exit=0xe6|ok=1",
+          "|ktest|hold_fail_closed|case=manifest|locked=0|locked_with_session=1|",
+          "|ktest|hold_fail_closed|failed=|processes_after=0|clean=1|frames_delta=0",
+          "display|hold|source=list_failure|reason=reply|locked=1",
+          "display|hold|source=list_failure|reason=too_long|locked=1",
+          "display|hold|source=list_failure|reason=closed|locked=1",
+          "display|hold|source=manifest|reason=-|locked=0",
+          "display|hold|source=manifest|reason=-|locked=1",
+          "|ktest|pass|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "holds=OK locked=0",
+          "|kernel|panic|",
+          "reason=reply|locked=0",
+          "reason=too_long|locked=0"
+        ],
+        "timeout_s": 60
+      },
+      {
+        "id": "TST-M6-DISPLAYD-BOOT-LOOP",
+        "test_id": "TST-M6-DISPLAYD-BOOT-LOOP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=displayd_boot_loop"
+        ],
+        "oracle": "REQ-M6-002, WP-77 (display.md v1.13; mutants M160, M161): the compositor's boot channel keeps serving the manager. As in TST-M6-HOLD-FAIL-CLOSED, a substitute manager inside the test kernel spawns /SYSTEM/DISPLAYD.ELF per sub-case and answers its LIST with a listing naming `display` and no `session`: (a) control: after READY a PING is answered PONG, an application connects (HOLDS `OK locked=0 releases=0`) and STOP ends it with exit 0; (b) too_long_msg: after READY a 200-byte boot message, longer than displayd's 64-byte boot buffer: displayd discards it (trace `display|boot|discard=too_long`) and the PING, the CONNECT and the STOP behind it are still served (before v1.13 the message stayed at the head of the queue, the loop spun on it and displayd had to be killed: exit 0x20000, ok=0); (c) stop_first: STOP in place of the LIST answer: displayd exits 0 without READY (trace `display|boot|stop=before_ready`; before v1.13 it took STOP for a failed LIST, traced source=list_failure, said READY and was killed: 0x20000); (d) ping_first: a PING before the listing is ignored (no PONG before READY) and the listing still decides the hold (locked=0, judged by the kernel's HOLDS and by displayd's own trace `display|hold|source=manifest|reason=-|locked=0`, required 3 times: control, too_long_msg, ping_first; before v1.13 the PING was the LIST answer and the screen held); (e) stop_at_connect: STOP in place of the CONNECT input answer: displayd exits 0 without READY (the stop trace, required twice with stop_first; before v1.13 it exited 0xe5). No compositor leaves a process, an object or a frame behind (failed= empty, processes_after=0, frames_delta=0, clean=1); any list_failure trace is forbidden, since every sub-case answers LIST with a valid listing or a STOP; 50 s (five sub-cases of at most 9 s each); exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=displayd_boot_loop",
+          "|ktest|displayd_boot_loop|case=control|ready=1|pong=1|holds=OK locked=0 releases=0|exit=0x0|ok=1",
+          "|ktest|displayd_boot_loop|case=too_long_msg|bytes=200|ready=1|pong=1|holds=OK locked=0 releases=0|exit=0x0|ok=1",
+          "|ktest|displayd_boot_loop|case=stop_first|ready=0|exit=0x0|ok=1",
+          "|ktest|displayd_boot_loop|case=ping_first|ready=1|holds=OK locked=0 releases=0|exit=0x0|ok=1",
+          "|ktest|displayd_boot_loop|case=stop_at_connect|ready=0|exit=0x0|ok=1",
+          "|ktest|displayd_boot_loop|failed=|processes_after=0|frames_delta=0|clean=1",
+          "display|boot|discard=too_long",
+          "display|boot|stop=before_ready",
+          "display|hold|source=manifest|reason=-|locked=0",
+          "|ktest|pass|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "display|hold|source=list_failure"
+        ],
+        "min_counts": {
+          "display|boot|stop=before_ready": 2,
+          "display|hold|source=manifest|reason=-|locked=0": 3
+        },
+        "timeout_s": 50
+      },
+      {
+        "id": "TST-M6-MANIFEST-TOO-LARGE",
+        "test_id": "TST-M6-MANIFEST-TOO-LARGE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=manifest_too_large"
+        ],
+        "oracle": "REQ-M6-002, WP-68 (services.md v1.13 §0.00000, §2; mutants M157, M158): a manifest the manager cannot read whole is refused whole. The test kernel writes /SYSTEM/BIGMAN.TXT at run time (one service line `A` and comment lines up to the size) and a real /SYSTEM/SVCMGR.ELF, started per sub-case through SvcHarness, loads it: 4097 and 4096 bytes answer `ERR MANIFEST_TOO_LARGE` (MANIFEST_MAX = 4096 is refused, not truncated), 4095 bytes answer `OK 1` and `A` becomes ready (the boundary is not over-tight); a read that fails midway (the test kernel's one-shot read hook in kernel/src/fs/vfs.rs, armed for files of 3001 bytes, stops reads at byte 1024 and fails the next one; fired=1) answers `ERR MANIFEST_IO`. A refused manifest starts nothing (list= empty) and the refused LOAD does not count (a second LOAD is answered ERR MANIFEST_MISSING, not ERR LOADED); every manager exits 0 and leaves nothing (failed= empty, processes_after=0, frames_delta=0, clean=1), and the file is removed. Before v1.13 the manager parsed the first 4096 bytes or what it read before the error and answered `OK 1`, which is forbidden here; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=manifest_too_large",
+          "|ktest|manifest_too_large|case=4097|reply=ERR MANIFEST_TOO_LARGE|list=|again=ERR MANIFEST_MISSING|fired=0|bytes=4097|mgr_exit=0x0|ok=1",
+          "|ktest|manifest_too_large|case=4096|reply=ERR MANIFEST_TOO_LARGE|list=|again=ERR MANIFEST_MISSING|fired=0|bytes=4096|mgr_exit=0x0|ok=1",
+          "|ktest|manifest_too_large|case=4095|reply=OK 1|ready=1|bytes=4095|mgr_exit=0x0|ok=1",
+          "|ktest|manifest_too_large|case=io|reply=ERR MANIFEST_IO|list=|again=ERR MANIFEST_MISSING|fired=1|bytes=3001|mgr_exit=0x0|ok=1",
+          "|ktest|manifest_too_large|failed=|processes_after=0|frames_delta=0|clean=1|removed=1",
+          "|ktest|pass|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|ktest|manifest_too_large|case=4097|reply=OK",
+          "|ktest|manifest_too_large|case=4096|reply=OK",
+          "|ktest|manifest_too_large|case=io|reply=OK",
+          "again=ERR LOADED"
+        ],
+        "timeout_s": 30
+      },
+      {
+        "id": "TST-M6-LOAD-OUTSIDE-SYSTEM",
+        "test_id": "TST-M6-LOAD-OUTSIDE-SYSTEM",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=load_outside_system"
+        ],
+        "oracle": "REQ-M6-002, WP-68 (services.md v1.13 §0.00000, §3; mutant M159): LOAD reads only under /SYSTEM/. The test kernel writes a valid one-service manifest at /OUTSIDE.TXT and starts a real /SYSTEM/SVCMGR.ELF through SvcHarness with `LOAD /OUTSIDE.TXT`: the answer is `ERR ACCESS` and LIST stays empty (started=0); `LOAD /SYSTEM/../OUTSIDE.TXT` (a `..` component after the byte-exact `/SYSTEM/` prefix) is `ERR ACCESS` too; a manifest whose dependency field is `a|b` (/SYSTEM/BADDEP.TXT, written at run time) is `ERR MANIFEST_SYNTAX 1`, not an echo of the name; none of these counts as the LOAD, so `LOAD /SYSTEM/SVC-ORD.TXT` then answers `OK 3` and its three services become ready. The kernel's boot verdict (services.rs boot_reply_ok) refuses `OK 0` for the interactive manifest and a reply without a number, accepts `OK 0` for the self-test manifest, and its trace field (reply_field) escapes `|`, `\\` and control bytes. The manager exits 0 and nothing is left (failed= empty, processes_after=0, frames_delta=0, clean=1); both files are removed. Before v1.13 `/OUTSIDE.TXT` loaded (`OK 1`, started=1), which is forbidden here; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=load_outside_system",
+          "|ktest|load_outside_system|case=outside|reply=ERR ACCESS|started=0|ok=1",
+          "|ktest|load_outside_system|case=dotdot|reply=ERR ACCESS|started=0|ok=1",
+          "|ktest|load_outside_system|case=dep_name|reply=ERR MANIFEST_SYNTAX 1|ok=1",
+          "|ktest|load_outside_system|case=system|reply=OK 3|ready=3|ok=1",
+          "|ktest|load_outside_system|case=boot_reply|interactive_ok0=0|selftest_ok0=1|interactive_ok8=1|bad_ok=0|escaped=1|ok=1",
+          "|ktest|load_outside_system|failed=|processes_after=0|frames_delta=0|clean=1|mgr_exit=0x0|removed=1",
+          "|ktest|pass|"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|ktest|load_outside_system|case=outside|reply=OK",
+          "|ktest|load_outside_system|case=dotdot|reply=OK",
+          "ERR LOADED"
+        ],
+        "timeout_s": 30
+      },
+      {
+        "id": "TST-M6-TOKEN-REVOKE",
+        "test_id": "TST-M6-TOKEN-REVOKE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=token_revoke"
+        ],
+        "oracle": "SVC-SS.TXT (auth.md v1.2, session.md v1.7 §5; negative): the test logs `user` in on its own connection to auth and closes it at once, as sh does (user/apps/sh/src/main.rs:362-374), keeping the token (`sh_login=OK 1001 1001 8|sh_token=1`); the lab signs in to the session as admin (two live tokens above the baseline). The session process is frozen and the manager's STOP kills it (`session=stopped:0x20000|killed=1`): auth traces `auth|session_lost|revoked=1`, and the kernel's live-token count returns to what it was before the session's sign-in (the sh-like token alone) (`tokens_before=2|tokens_after=1|revoked=1`) — before auth.md v1.2 auth kept the dead session's token until SESSION_TICKS and the count stays at 2. The sh-like token, whose connection closed long before, still answers WHOAMI (`OK 1001 1001 8`). Every part prints its verdict and the case goes on after a failed one (`failed=` lists them, `none` when green); no password in the serial log; no process, object or frame left; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=token_revoke",
+          "|path=/SYSTEM/SESSIOND.ELF|handles=1",
+          "|ktest|token_revoke|services=5|ready=1",
+          "|ktest|token_revoke|sh_login=OK 1001 1001 8|sh_token=1|phase=1",
+          "|ktest|token_revoke|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|tokens=2|phase=2",
+          "|ktest|token_revoke|frozen=1|stop=OK|session=stopped:0x20000|killed=1|phase=3",
+          "|text=auth|session_lost|revoked=1",
+          "|ktest|token_revoke|case=session_token|tokens_before=2|tokens_after=1|revoked=1",
+          "|ktest|token_revoke|case=sh_token|whoami=OK 1001 1001 8|kept=1",
+          "|ktest|token_revoke|failed=none",
+          "|ktest|token_revoke|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|token_revoke|frames_delta=0",
+          "|ktest|pass|the token of a killed session was revoked; a token another client held survived"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1",
+          "lab-user-1"
+        ],
+        "timeout_s": 85,
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            }
+          ]
+        }
+      },
+      {
+        "id": "TST-M6-PURGE-FAIL-CLOSED",
+        "test_id": "TST-M6-PURGE-FAIL-CLOSED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=purge_fail_closed"
+        ],
+        "oracle": "session.md v1.7 (WP-64): the test kernel plays the service manager, the input service and the compositor for a fresh /SYSTEM/SESSIOND.ELF per sub-case and logs the compositor's requests in order. A LIST the session cannot read — (a) `ERR TEST`, (b) a listing without `session`, (c) a restart count that is not a number, (d) 2000 bytes against the session's 1024-byte buffer, (e) the boot channel closed — makes it send LOGOUT before its sign-in screen (`logout=OK|order=logout_first`), then READY (a–d; exit 0 after STOP) or, with no boot channel, exit 0xE5 (e); the trace `session|purge=logout|restarts=-|reason=list_failure` appears exactly five times. Restarted (`restarts=1`) with LOGOUT refused (f, `ERR ACCESS`) or its channel closed (g): no sign-in screen (`order=logout_only`), no READY, exit 0xE4, and no `reason=restarted` trace (it is printed only after the compositor's OK). (h) `restarts=0`, the control: no LOGOUT, the screen, READY. Every sub-case prints its verdict; `failed=none`; no process, object or frame left; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=purge_fail_closed",
+          "|ktest|purge_fail_closed|case=reply|logout=OK|order=logout_first|ready=1|exit=0x0|ok=1",
+          "|ktest|purge_fail_closed|case=no_session_line|logout=OK|order=logout_first|ready=1|exit=0x0|ok=1",
+          "|ktest|purge_fail_closed|case=bad_count|logout=OK|order=logout_first|ready=1|exit=0x0|ok=1",
+          "|ktest|purge_fail_closed|case=too_long|logout=OK|order=logout_first|ready=1|exit=0x0|ok=1",
+          "|ktest|purge_fail_closed|case=closed|logout=OK|order=logout_first|ready=0|exit=0xe5|ok=1",
+          "|ktest|purge_fail_closed|case=refused|logout=ERR ACCESS|order=logout_only|ready=0|exit=0xe4|ok=1",
+          "|ktest|purge_fail_closed|case=logout_closed|logout=closed|order=logout_only|ready=0|exit=0xe4|ok=1",
+          "|ktest|purge_fail_closed|case=first_start|logout=-|order=screen_only|ready=1|exit=0x0|ok=1",
+          "|ktest|purge_fail_closed|failed=none|processes_after=0|clean=1|frames_delta=0",
+          "|ktest|pass|a session purges whenever it cannot tell it was not restarted, and shows no sign-in screen when the purge fails"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|reason=restarted"
+        ],
+        "min_counts": {
+          "|text=session|purge=logout|restarts=-|reason=list_failure": 5
+        },
+        "max_counts": {
+          "|text=session|purge=logout|restarts=-|reason=list_failure": 5
+        },
+        "timeout_s": 100
+      },
+      {
+        "id": "TST-M6-JOB-KILL",
+        "test_id": "TST-M6-JOB-KILL",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=job_kill_all"
+        ],
+        "oracle": "REQ-M6-003, WP-46 (syscall.md v1.13 §5, ipc.md §1 type 13; mutants M151-M153): jobs as process groups. Part 1 (job_spawn_dead, M153): inside the test kernel a process object placed in a killed child job of the root is refused at the scheduler's locked check (AsError::Spawn), never bound, told the stillborn exit, its initial channel closed (the peer reads PEER_CLOSED), nothing leaked. Part 2: /SYSTEM/JOBS.ELF, started in the root with a channel as its bootstrap handle and the root job (READ|WRITE|DUPLICATE|TRANSFER) right after it, proves in seven phases, each traced jobs|phase=<n>|<name>=ok: (1 types) job_create on the bootstrap channel is ERR_WRONG_TYPE (probed before the job handle is touched, so a kernel without jobs fails here: ERR_NOSYS, exit 0xe2) and the next handle is a job; a duplicate without WRITE can neither create, kill nor spawn into (ERR_ACCESS, M151) and the handle a refused spawn named stays the caller's; process_spawn_in on a channel is ERR_WRONG_TYPE; (2 contain) job_kill on the root, which contains the caller, is ERR_INVALID; (3 tree) job A under the root, B under A; (4 spawn) IDLE into A and into B with process_spawn_in, a copy of the app into A in its child role, where job_kill(A) — a non-root job containing the caller — is ERR_INVALID and plain process_spawn places its IDLE grandchild in A (the caller's job, M152), and an outsider IDLE in the root, all alive after 20 ticks; (5 kill) job_kill(A) is 0, the IDLEs in A and B, the child and the grandchild end with EXIT_KILLED=0x20000 within 5000 ticks, the app's ends of the killed IDLEs' channels see PEER_CLOSED, the outsider is still alive 20 ticks later, a second job_kill(A) is 0; (6 dead) job_create on A and on B is ERR_PEER_CLOSED, process_spawn_in into A and into B is ERR_PEER_CLOSED and the named handle stays the caller's; (7 depth) eight nested jobs below the root are made and a ninth level is ERR_NO_RESOURCES; then the outsider is killed with process_kill. The app exits 0x4A; no process, frame or object (live jobs included) is left (processes_after=0, frames_delta=0, clean=1). Any phase's =fail line is forbidden; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=job_kill_all",
+          "|ktest|job_spawn_dead|marked=1|refused=1|peer_closed=1|unbound=1|clean=1|frames_delta=0|ok=1",
+          "|kernel|spawn|pid=",
+          "|text=jobs|phase=1|types=ok",
+          "|text=jobs|phase=2|contain=ok",
+          "|text=jobs|phase=3|tree=ok",
+          "|text=jobs|phase=4|spawn=ok",
+          "|text=jobs|phase=5|kill=ok",
+          "|text=jobs|phase=6|dead=ok",
+          "|text=jobs|phase=7|depth=ok",
+          "|ktest|job_kill_all|exit=0x4a|phases=7|processes_after=0|frames_delta=0|clean=1|ok=1",
+          "|ktest|pass|job_kill ends every process in a job and below it, a killed job admits nothing, and a job containing the caller cannot be killed"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "=fail",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 60
+      },
+      {
+        "id": "TST-M6-CONFIG-WRITE-SCOPE",
+        "test_id": "TST-M6-CONFIG-WRITE-SCOPE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=config_write_scope"
+        ],
+        "oracle": "REQ-M6-002, RSK-019, WP-78 (files.md v1.4 §2, config.md v1.2, ADR-0020 item 5; mutants M162-M164): config's copy of the system-files authority, READ|WRITE|TRANSFER, changes only config's stores (a file directly in /SYSTEM whose 8.3 base starts with CFG and whose extension is A or B, compared as short names). The fileauth application given that mask: opening for writing /SYSTEM/SERVICES.TXT (step 40), /system/services.txt (41) and /SYSTEM./SERVICES.TXT (42), USERS.DB for reading and writing (43), INPUTD.ELF for writing (44), creating /SYSTEM/NEW.TXT (45), /SYSTEM/AUTHD.A (46, not a CFG base) and /SYSTEM/CFGPRB.C (47, not A or B), unlinking SVC-AUTH.TXT (48), writing a font or creating /SYSTEM/FONTS/CFGPRB.A (49) are all refused with ERR_ACCESS; none truncates, so a kernel without the rule fails at step 40 (probe=0x28) having changed nothing; then /SYSTEM/CFGPRB.A is created, written and removed: exit 0x46. The kernel reads back SERVICES.TXT's, USERS.DB's and INPUTD.ELF's sizes unchanged and none of the probe's names left; no frame or object leaks. The matcher answers 8 spellings as the volume resolves them (/SYSTEM/CFGDEV.A, /system/cfgdev.a, /SYSTEM./CFGU1000.B yes; CFGPOL.C, AUTHD.A, /SYSTEM/FONTS/CFGDEV.A, /SYSTEM/../SYSTEM/CFGDEV.A, SERVICES.TXT no). Then the SVC-CFG stack: the lab users sign in and an admin SET of device lab.cwscope is stored on /SYSTEM/CFGDEV.A (OK 1, read back OK 1 kept); the manager exits 0, no process left, no frame leak. Residual (declared): the READ right still reads USERS.DB. Timeout 30 s: the M6 suite's worst case becomes 815 + 45 (WP-77) + 30 = 890 s, under 900; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=config_write_scope",
+          "|ktest|config_write_scope|probe=0x46|services_same=1|usersdb_same=1|inputd_same=1|created=0|frames=0|objects_same=1",
+          "|ktest|config_write_scope|table=8/8",
+          "|ktest|config_write_scope|services=auth,config|set=OK 1|get=OK 1 kept",
+          "|ktest|config_write_scope|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|config_write_scope|frames_delta=0",
+          "|ktest|pass|config's authority changes only its own stores"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "NAWAH-USERS",
+          "lab-admin-1"
+        ],
+        "timeout_s": 30
       }
     ]
   },

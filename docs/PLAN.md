@@ -99,29 +99,38 @@
 
 | الحزمة | المحتوى | الاختبار الحاكم | تعتمد على |
 |---|---|---|---|
-| WP-45 الإقلاع التفاعلي | صورة الإصدار تبقى على شاشة الدخول ببيان SERVICES.TXT، الفحص الذاتي بمفتاح fw_cfg، مراقبة الجلسة (session.md v1.7)، شاشات الجلسة بالعربية ومؤشر لغة الإدخال | INTERACTIVE-BOOT، SESSION-WATCHDOG، SESSION-AR؛ TST-M1-BOOT/NEG/NOBS | WP-38 |
-| WP-46 مهام النواة والمحاسبة | Object::Job، job_kill، محاسبة لكل عملية، الخمول لكل معالج، process_list (syscall.md v1.13)، `ps` (shell.md v1.3) | JOB-KILL، PROC-ACCOUNTING، PROC-LIST-REFUSALS، SHELL-PS | WP-45 |
-| WP-47 التطبيقات والتشغيل | ADR-0023، سجل /APPS، LAUNCH عبر المدير وهوية app:<id>#<n> (services.md v1.12)، مهمة لكل جلسة والتشغيل التلقائي وjob_kill عند الخروج (session.md v1.8) | APP-LAUNCH، LOGOUT-KILLS، LAUNCH-DENIED، APP-REGISTRY-FUZZ | WP-46 |
-| WP-48 الصدفة وشريط المهام | دور الصدفة والطبقات ومنطقة العمل والأحداث (display.md v1.12)، desktopd: الخلفية وشريط المهام (desktop.md)، هوية بصرية أصلية | SHELL-EVENTS، SHELL-AUTHORITY، TASKBAR-WINDOW، SHELL-CRASH، ASSET-PROVENANCE | WP-47 |
-| WP-49 libui v2a | الفأرة لكل عنصر، قوائم منبثقة وسياقية، حوار تأكيد (ui.md v1.6) | UI-UNIT، UI-POINTER | WP-45 |
-| WP-50 libui v2b | عرض قائمة افتراضي بأعمدة وتمرير، شريط أدوات وحالة، تخطيط بلوحين (ui.md v1.7) | LISTVIEW-UNIT، LISTVIEW-A11Y، LISTVIEW-RTL | WP-49 |
+| WP-45 الإقلاع التفاعلي | صورة الإصدار تبقى على شاشة الدخول ببيان SERVICES.TXT، الفحص الذاتي بمفتاح fw_cfg (services.md v1.11، قرار النمط في boot.md)؛ قُسمت 2026-11-09 عند نقطة ميزانيتها (PLAN-ANSWER §1.2) | INTERACTIVE-BOOT، MANIFEST-LINT، TST-M1-BOOT/NEG/NOBS (HOLD-FAIL-CLOSED انتقل إلى WP-67 في 2026-11-09) | WP-38 |
+| WP-64 تطهير الجلسة | التطهير عند الإعادة بإخفاق مغلق (session.md v1.7)، أوراكل SESSION-LOSS يُعاد كتابته للعقد؛ قُسمت 2026-11-09 (المراقب WP-71، الشاشات WP-72) و2026-11-10 لخط الميزانية (إلغاء الرموز WP-73) | TST-M5-SESSION-LOSS، PURGE-FAIL-CLOSED | WP-45 |
+| WP-73 إلغاء الرموز | إلغاء رموز auth بموت عميل الجلسة V2 (auth.md v1.2)؛ مفصولة من WP-64 في 2026-11-10؛ فحص WHOAMI بالنسخة المحمولة في WP-71 | TOKEN-REVOKE | WP-45 |
+| WP-71 مراقب الجلسة | watchdog=25000 والقاعدة W > 3 × REQUEST_DEADLINE + D (session.md، الرقم عند الدمج)، restart=always لسطر الجلسة (services.md، الرقم عند الدمج)، قرار سقف خطوة M6، فحص WHOAMI بالنسخة المحمولة لـWP-73؛ سقف M6 يرفعه توزيع WP-88 لكل وظيفة (18 دقيقة؛ قسمة WP-81 في 2026-11-10) | SESSION-WATCHDOG | WP-64، WP-88 |
+| WP-72 شاشات الجلسة العربية | شاشات الدخول والقفل والرفع تتبع ui.lang والتكبير والتباين (session.md، الرقم عند الدمج)، شارة لغة الإدخال (ui.md، الرقم عند الدمج)، علاج RTL B1 | SESSION-AR، SESSION-STRINGS | WP-64، WP-71 |
+| WP-65 ضمان الأدلة | فحص الاستيراد (تشغيل ناجح، سلف للرأس)، هوية الدليل 1.1.0 بملف import.json، dirty_paths، مرحلة طفرات M6، حراس الأجنحة (ADR-0026) | TST-M0-001، M0-003، M0-005، M0-007 | — |
+| WP-67 الإخفاق المغلق في displayd | قاعدة الحجز المغلق وسطر تتبع الحجز وHOLDS (display.md v1.12)، session_in_manifest يفشل مغلقًا، ktest hold_fail_closed، مهل مراحل INTERACTIVE-BOOT تقصر لتبقى خطوة M6 تحت سقفها (15 دقيقة منذ 2026-11-10)؛ النصف الأول من قسمتها (2026-11-09) | HOLD-FAIL-CLOSED، TST-M5-SCREEN/WINDOW-STATES/KEYBOARD-NAV/WINDOW-A11Y | WP-45 |
+| WP-68 أخطاء البيان (68a1) | ERR MANIFEST_TOO_LARGE/MANIFEST_IO وOK n ≥ 1، LOAD خارج /SYSTEM بفحص بادئة حرفي، name_ok والتهريب في حقل الرد (services.md v1.13، رقم تخطيطي منذ صارت على المسار الحرج في 2026-11-10)؛ حلقة displayd ورسالة التوقف ومهلة LOAD وعلامة console.log في WP-77، ونطاق كتابة config (RSK-019) في WP-78 (قسمة 2026-11-10) | MANIFEST-TOO-LARGE، LOAD-OUTSIDE-SYSTEM، وإعادة MANIFEST-LINT وINTERACTIVE-BOOT وTST-M4-SVC-ORDER | WP-45 |
+| WP-46 مهام النواة | Object::Job وjob_create وjob_kill وprocess_spawn_in (syscall.md v1.13، ipc.md، services.md v1.12: مقابض المدير الأولية 9 آخرها مقبض المهمة الجذر)، التصميم J1؛ قُسمت 2026-11-09 (process_list في WP-69، المحاسبة وps في WP-70) | JOB-KILL | WP-45 |
+| WP-69 قائمة العمليات | process_list بنطاق مقبض المهمة وسجلات 64 بايت ورفضها بلا كتابة جزئية؛ رقم syscall.md عند الدمج؛ محجوبة بـDEC-027 | PROC-LIST-REFUSALS | WP-46 |
+| WP-70 المحاسبة وps | زمن المعالج والإطارات والخيوط والمقابض لكل عملية، الخمول لكل معالج في system_info v2، `ps` (shell.md v1.3) | PROC-ACCOUNTING، SHELL-PS | WP-46، WP-69 |
+| WP-47 التطبيقات والتشغيل | ADR-0023، سجل /APPS، LAUNCH عبر المدير وهوية app:<id>#<n> (services.md v1.14، أُعيد ترقيمه 2026-11-09 و2026-11-10)، مهمة لكل جلسة والتشغيل التلقائي وjob_kill عند الخروج (session.md v1.8) | APP-LAUNCH، LOGOUT-KILLS، LAUNCH-DENIED، APP-REGISTRY-FUZZ | WP-46، WP-64، WP-73، WP-67، WP-68، WP-77، WP-78، WP-82، WP-84 |
+| WP-48 الصدفة وشريط المهام | دور الصدفة والطبقات ومنطقة العمل والأحداث (display.md v1.14؛ v1.13 لـWP-77 منذ 2026-11-10)، desktopd: الخلفية وشريط المهام (desktop.md)، هوية بصرية أصلية | SHELL-EVENTS، SHELL-AUTHORITY، TASKBAR-WINDOW، SHELL-CRASH، ASSET-PROVENANCE | WP-47 |
+| WP-49 libui v2a | الفأرة لكل عنصر وقوائم منبثقة وسياقية في libui باختبارات مضيف (ui.md v1.6)؛ حالة الضيف UI-POINTER في WP-79 وحوار التأكيد في WP-80 (قسمة 2026-11-10) | UI-UNIT (M6، مضيف) | WP-45 |
+| WP-50 libui v2b | عرض قائمة افتراضي بأعمدة وتمرير، شريط أدوات وحالة، تخطيط بلوحين (ui.md v1.8) | LISTVIEW-UNIT، LISTVIEW-A11Y، LISTVIEW-RTL | WP-49 |
 | WP-51 ابدأ والطاقة | ابدأ (desktop.md v1.1)، Super محجوز (input.md v2.7)، قفل وخروج من الصدفة (session.md v1.9)، rtc_read وsystem_reset (syscall.md v1.14) | START-LAUNCH، START-ARABIC، START-FAIL، RESTART-PERSIST، POWER-DENIED | WP-48، WP-50 |
-| WP-52 نظام الملفات v1.4 | LFN يونيكود، مجلدات، إعادة تسمية ونقل بترتيب يحتمل الانقطاع، fs_info، mtime (files.md v1.4، syscall.md v1.15، shell.md v1.4) | LFN، RENAME، RENAME-CRASH، DISK-FULL، FAT-FUZZ | WP-51 |
-| WP-53 منازل المستخدمين | ADR-0024، /USERS/<name> ومقدرة Dir وواجهات *_at (files.md v1.5، syscall.md v1.16، session.md v1.10) | HOME-ISOLATION، DIR-ESCAPE | WP-52 |
-| WP-54 الحافظة والسحب | clipboard.md، منحة لصق لمرة واحدة، السحب بوساطة الـ compositor (display.md v1.13) | CLIPBOARD-ROUNDTRIP، CLIPBOARD-ISOLATION، DND-FILELIST | WP-48، WP-49 |
+| WP-52 نظام الملفات v1.4 | LFN يونيكود، مجلدات، إعادة تسمية ونقل بترتيب يحتمل الانقطاع، fs_info، mtime (files.md v1.5؛ v1.4 لـWP-78 منذ 2026-11-10، syscall.md v1.15، shell.md v1.4) | LFN، RENAME، RENAME-CRASH، DISK-FULL، FAT-FUZZ | WP-51 |
+| WP-53 منازل المستخدمين | ADR-0024، /USERS/<name> ومقدرة Dir وواجهات *_at (files.md v1.6، syscall.md v1.16، session.md v1.10) | HOME-ISOLATION، DIR-ESCAPE | WP-52 |
+| WP-54 الحافظة والسحب | clipboard.md، منحة لصق لمرة واحدة، السحب بوساطة الـ compositor (display.md v1.15) | CLIPBOARD-ROUNDTRIP، CLIPBOARD-ISOLATION، DND-FILELIST | WP-48، WP-49 |
 | WP-55 مستكشف الملفات | apps/files.md: تصفح وإنشاء ونسخ وإعادة تسمية وتعارضات وأخطاء النواة | FILES-CHAIN، FILES-CONFLICT، FILES-DISK-FULL، FILES-DENIED، FILES-A11Y-AR | WP-50، WP-53، WP-54 |
 | WP-56 سلة المهملات | فهرس لكل مستخدم، حذف واستعادة ومصالحة عند البدء | TRASH-RESTORE-REBOOT، TRASH-CONFLICT، TRASH-CRASH، TRASH-ISOLATION | WP-55 |
-| WP-57 الإشعارات | notifyd (notify.md)، أحداث المدير (services.md v1.13)، منبثقات ومركز إشعارات (desktop.md v1.2) | NOTIFY-SERVICE-FAILURE، NOTIFY-SPOOF، NOTIFY-LOCKED، NOTIFY-NO-FOCUS-STEAL | WP-48، WP-55 |
-| WP-58 مدير المهام | بيانات حقيقية من process_list وsystem_info v2، KILL بفحص مهمة الجلسة (services.md v1.14) | TASKMGR-DATA، END-TASK، END-TASK-DENIED | WP-46، WP-47، WP-50 |
+| WP-57 الإشعارات | notifyd (notify.md)، أحداث المدير (services.md، الرقم عند الدمج)، منبثقات ومركز إشعارات (desktop.md v1.2) | NOTIFY-SERVICE-FAILURE، NOTIFY-SPOOF، NOTIFY-LOCKED، NOTIFY-NO-FOCUS-STEAL | WP-48، WP-55 |
+| WP-58 مدير المهام | بيانات حقيقية من process_list وsystem_info v2، KILL بفحص مهمة الجلسة (services.md v1.14) | TASKMGR-DATA، END-TASK، END-TASK-DENIED | WP-46، WP-47، WP-50، WP-69، WP-70 |
 | WP-59 أداة الخدمات | START/STOP/RESTART برمز مدير يفحصه المدير (services.md v1.15)، خدمات محمية | SVC-TOOL-CONTROL، SVC-TOOL-DENIED، SVC-TOOL-LIVE | WP-47، WP-50، WP-57 |
 | WP-60 الأجهزة | device_list (syscall.md v1.17) وأداة شجرية؛ الأسماء من رموز صنف PCI ومعرفات virtio | DEVICE-LIST، DEVICES-APP | WP-47، WP-50 |
 | WP-61 السجلات | حلقة النواة ومقدرة LogRead (syscall.md v1.18، services.md v1.16)، logd تحت /SYSTEM/LOGS، عارض | LOG-PERSIST، LOG-AUTHORITY، LOG-OVERFLOW، LOG-NO-SECRETS | WP-47، WP-50 |
-| WP-63 محرر النصوص | نص متعدد الأسطر (ui.md v1.8)، apps/editor.md، حفظ آمن باسم مؤقت ثم إعادة تسمية | EDITOR-UNIT، EDITOR-MODIFY-REBOOT، EDITOR-UNSAVED، EDITOR-SAVE-FAIL | WP-50، WP-53 |
+| WP-63 محرر النصوص | نص متعدد الأسطر (ui.md v1.9)، apps/editor.md، حفظ آمن باسم مؤقت ثم إعادة تسمية | EDITOR-UNIT، EDITOR-MODIFY-REBOOT، EDITOR-UNSAVED، EDITOR-SAVE-FAIL | WP-50، WP-53 |
 | WP-62 بوابة M6 | سلاسل الاستعمال الكاملة (السيناريوهات 1، 3، 4، 6، 7، 8، 11)، الجولة العربية بلوحة المفاتيح، طفرات M6 ≥95%، docs/operations/m6-review.md، نموذج التهديد | E2E-SCENARIO، E2E-AR، MUTANTS | WP-56..61، WP-63 |
 
-- التسلسل: المسار الحرج WP-45 ← 46 ← 47 ← 48 ← 51 ← 52 ← 53 ← 55 ← 56 ← 62، وWP-49 ← 50 تبدأ بعد WP-45 مباشرة. بعد WP-47 ثلاثة مسارات متوازية: النواة (WP-52 ثم أجزاء النواة في WP-53 وWP-60 وWP-61)، والواجهة (WP-49 ثم WP-50)، والصدفة (WP-48 ثم WP-51 وWP-57). الأدوات WP-58..61 متوازية بعد WP-50 بعمال منفصلين، وWP-63 بعد WP-53. كل حزمة تنتهي بسيناريو قابل للتشغيل مذكور في سجلها.
+- التسلسل: المسار الحرج WP-45 ← (46 ∥ 64 ∥ 73 ∥ 67 ∥ 68) ← 47 ← 48 ← 51 ← 52 ← 53 ← 55 ← 57 ← 59 ← 62 (صُحِّح 2026-11-09: المسار القديم عبر WP-56 كان خطأ، PLAN-ANSWER §4؛ وWP-73 بجانب WP-64 منذ قسمة 2026-11-10)، وWP-49 (منتهية) ← 50 (جاهزة بقاعدة الاعتماد منذ 2026-11-10) (حافة WP-49 ← WP-72 أضيفت 2026-11-09 لترقيم ui.md وحُذفت 2026-11-10: الحزم المتوازية تأخذ أرقامها عند الدمج)، وقسمتا 2026-11-09: WP-71 ثم WP-72 بعد WP-64، وWP-69 ثم WP-70 بعد WP-46، وWP-58 تنتظر WP-69 وWP-70، وقسمة 2026-11-10: WP-73 (إلغاء الرموز) بعد WP-45 وتسبق WP-47؛ والمسار الحرج لا يتغير لأن WP-47 تعتمد على WP-46 وWP-64 وWP-73 وحدها من الحزم المقسومة: أطول سلسلة مفتوحة كانت عبر WP-46 وWP-47 وWP-48 (عشر حزم حتى WP-62)؛ ومنذ إغلاق WP-46 وWP-64 وWP-73 وWP-67 (2026-11-10) صارت WP-68 ← 47 ← 48 ← 51 ← 52 ← 53 ← 55 ← 57 ← 59 ← 62 (عشر حزم)، وتساويها السلسلتان عبر WP-77 وWP-78 (قسمة WP-68 في 2026-11-10، وكلتاهما تسبق WP-47)؛ وبعد إغلاق WP-68 وWP-77 وWP-78 وقسمة WP-82 (2026-11-10، السجلات الحالية) صارت أطول سلسلة مفتوحة WP-82 ← 84 ← 47 ← 48 ← 51 ← 52 ← 53 ← 55 ← 57 ← 59 ← 62 (إحدى عشرة حزمة)، ولو بقيت حافة WP-49 لكانت اثنتي عشرة عبر WP-64 ← 71 ← 72 ← 49 ← … ← 62، وWP-65 تسبق تفعيل WP-45، وWP-67 (الإخفاق المغلق في displayd) وWP-68 (نصف svcmgr وتقييد كتابة config، قسمة WP-67 في 2026-11-09)، وكلتاهما مفصولة من WP-45 في 2026-11-09، تسبقان WP-47. بعد WP-47 ثلاثة مسارات متوازية: النواة (WP-52 ثم أجزاء النواة في WP-53 وWP-60 وWP-61)، والواجهة (WP-50، جاهزة؛ WP-49 منتهية)، والصدفة (WP-48 ثم WP-51 وWP-57). الأدوات WP-58..61 متوازية بعد WP-50 بعمال منفصلين، وWP-63 بعد WP-53. كل حزمة تنتهي بسيناريو قابل للتشغيل مذكور في سجلها.
 - قواعد كل حزمة: العقد أولًا بإصدار إضافي (الأقسام المجمَّدة لا تُمس)، والاختبار الحاكم قبل الكود، وCI أخضر، ومعرفات طفرات M6 جديدة للبوابة. أرقام إصدارات العقود في السجلات تخطيطية بترتيب المسار الحرج؛ الحزم المتوازية تأخذ الرقم التالي الحر عند الدمج وتصحح سجلها. حجم الحزمة (السطر 44): 90 دقيقة أو 120 استدعاءً؛ ما يتجاوزها يُقسم قبل تفعيله بنقطة القسمة المذكورة في سجله (WP-45، WP-48، WP-53، WP-55).
-- أسئلة تُحسم داخل الحزم (لا تمنع الفتح): عملية واحدة أم عدة لسطح المكتب وابدأ والمنبثقات، والتكبير والالتصاق ولوحة Alt+Tab (ADR-0023 في WP-47؛ تغيير دلالات display.md v1.3/v1.6 المجمَّدة يحتاج مدخلًا في ADR-0019)؛ ظهور العمليات بين المستخدمين (WP-46 قبل تجميد ABI)؛ ساعة الشريط قبل إعدادات M7 (WP-51: RTC بتوقيت UTC معلن)؛ مصمم الأيقونات وترخيصها (WP-48، مسجلة في sources.json).
+- أسئلة تُحسم داخل الحزم (لا تمنع الفتح): عملية واحدة أم عدة لسطح المكتب وابدأ والمنبثقات، والتكبير والالتصاق ولوحة Alt+Tab (ADR-0023 في WP-47؛ تغيير دلالات display.md v1.3/v1.6 المجمَّدة يحتاج مدخلًا في ADR-0019)؛ ظهور العمليات بين المستخدمين (رُفع قرارًا DEC-027 في 2026-11-09 ويحجب WP-69 قبل تجميد ABI النداء process_list)؛ ساعة الشريط قبل إعدادات M7 (WP-51: RTC بتوقيت UTC معلن)؛ مصمم الأيقونات وترخيصها (WP-48، مسجلة في sources.json).
 - استثناءات ظاهرة منذ الفتح: الإيقاف الكامل (DEC-007)، أحكام مطابقة المرجع (DEC-009)، «الشاشات» في السيناريو 7 (ADR-0019).
 - M7: إعدادات R1 (ثلاث صفحات على الأقل: العرض، الوقت واللغة، الحسابات) بعقد البند 12 لكل إعداد.
 
@@ -136,3 +145,27 @@ SDK أصلي + أمثلة؛ مثبّت على قرص افتراضي فارغ؛ �
 ## 9. المخاطر الحاكمة للخطة
 
 RSK-001 (اتساع النطاق) وRSK-003 (الشبكة) وRSK-006 (وكيل واحد) في docs/risks.json. إشارة الإنذار الأولى: أي حزمة تتجاوز ميزانيتها (120 استدعاء أداة) دون اختبار ناجح تُقسَّم.
+
+## ملحق 2026-11-10: حزم M6 المضافة بالقسمة (WP-74..WP-85)
+
+جدول مستقل بصيغة جدول M6 أعلاه، أُلحق في آخر الملف كي لا تتحرك أرقام الأسطر التي تستشهد بها السجلات (PLAN.md:130-136).
+
+| الحزمة | المحتوى | الاختبار الحاكم | تعتمد على |
+|---|---|---|---|
+| WP-74 سقوف CI (74a) | سقف Toolchain 15 وحد وظيفة verify 58 (Toolchain قيست 11m12s من 12، التشغيل 42754423494)؛ منتهية 2026-11-10 (التشغيل 42775276374) | TST-M0-003، TST-M0-001 | WP-64، WP-65 |
+| WP-75 مصدر الأدلة | فحص محتوى مجلد موجود بلا إيصال بمقارنة البصمات، سياسة التحذير المجمَّع لأدلة 1.0.0، تعديل ADR-0026 لهذه القاعدة | TST-M0-007 | WP-83 |
+| WP-76 تقليم الأدلة | مخزن محتوى واحد لنواة الاختبار، ضغط لقطات PPM بعد الحكم، رفع ونشر أدلة التشغيل وحدها | TST-M0-001، TST-M0-003 | WP-83 |
+| WP-77 حلقة displayd (68a2) | عيبا حلقة displayd عند الإقلاع (display.md v1.13)؛ الطفرتان M160 وM161؛ منتهية 2026-11-10 (التشغيل 42775276374) | DISPLAYD-BOOT-LOOP، INTERACTIVE-BOOT، HOLD-FAIL-CLOSED | WP-45 |
+| WP-78 نطاق كتابة config (68b) | قائمة السماح A-min في fs_authority (RSK-019)؛ الطفرات M162-M164؛ منتهية 2026-11-10 (التشغيل 42775276374) | CONFIG-WRITE-SCOPE، TST-M4-CONFIG-PERSIST، TST-M5-FILE-AUTHORITY | WP-45 |
+| WP-79 تطبيق الحوار بالمؤشر | فرع POINTER في تطبيق الحوار والحالة الضيفية وملف التوقع (49a2)، بعد قرار DEC-028 في display.md؛ الطفرة M170 | UI-POINTER | WP-49، WP-88 |
+| WP-80 حوار التأكيد | Dialog::confirm في libui (ui.md v1.7، 49b)؛ الطفرة M171؛ منتهية 2026-11-10 | UI-CONFIRM، UI-UNIT | WP-49 |
+| WP-81 أدوات الأدلة | خانة الوظيفة في معرف التشغيل، adopt-native، رفض المستورد للمجلدات الجديدة بلا هوية، القاعدة 5 من ADR-0026؛ منتهية 2026-11-10 | TST-M0-001، TST-M0-007، TST-M0-003 | WP-74 |
+| WP-82 مهلة LOAD وconsole.log | LOAD_BUDGET_TICKS = 10_000 مع جملة boot.md، العلامات الممنوعة على console.log (82a)؛ الطفرتان M174 وM175 | INTERACTIVE-BOOT، TST-M1-BOOT، TST-M0-003، TST-M5-LAB-TOOL | WP-45، WP-68، WP-77 |
+| WP-83 مسار الدمج (83a) | الوظيفة a ترفع evidence-a، ووظيفة merge (needs [a]، !cancelled()، وحدها contents: write) تتبنى الأدلة بـadopt-native ثم strict وpre-merge والنشر؛ StepBudget {a 58، merge 20}؛ ADR-0026 بلا تعديل | TST-M0-003 (35 حالة)، TST-M0-001، TST-M0-007 | WP-81 |
+| WP-84 سطر التوقف وشريطه | سطر kernel\|halt وdisplay::halt_banner وحالة مختبر بقرص بيان تالف (82b، boot.md)؛ الطفرتان M172 وM173 | BOOT-HALT، INTERACTIVE-BOOT، TST-M1-BOOT | WP-68، WP-77، WP-82، WP-88 |
+| WP-85 نص التوقف المقروء | نص توقف بالعربية والإنجليزية بعرض نص في النواة؛ مقترحة، غير مجدولة | لا اختبار بعد | WP-84 |
+| WP-86 الأدوات والحالة واللوحان (50b) | شريط أدوات بموقف Tab واحد، شريط حالة بدور status، لوحان بـF6، TEXT_MAX 255، مقاطع مسار معزولة بـLRI، المؤشر في القائمة، paint_into؛ إصدار ui.md التالي عند الدمج؛ الطفرات M182-M184 | UI-PANES، LISTVIEW-UNIT | WP-50 |
+| WP-87 إثبات القائمة على الضيف (50c) | listdemo بـ500 صف، حالتان ضيفيتان بملفي توقع، قرار سقف السطح (إبقاء 1 MiB موصى به الآن) | LISTVIEW-A11Y، LISTVIEW-RTL | WP-86، WP-88 |
+| WP-88 التوزيع على ثلاث وظائف (83b) | الوظائف a وb وc بحدود 40/40/40 وmerge 20، M5 18 في b وM6 18 في c، نص V3 في PLAN-ANSWER، قياس المسار الحرج | TST-M0-003، TST-M0-001، TST-M0-007 | WP-83 |
+| WP-89 سلامة فرع الأدلة | فرع لكل محاولة بلا دفع قسري، ربط المجلد بخانته، وظيفة نشر بلا كود المستودع، مجموعة قواعد ci-evidence/** (المالك، DEC-019)؛ الطفرتان M191 وM192 | TST-M0-003، TST-M0-007 | WP-83 |
+| WP-90 بوابة طفرات M6 | HOST_SUITES["M6-GATE"] وخطوتها في mutants.yml وفحص ربط المراحل؛ تجعل طفرات M130 فصاعدًا قابلة للتنفيذ (RSK-021) | TST-M6-MUTANTS | — |

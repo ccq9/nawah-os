@@ -4,10 +4,10 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "788c772f690b6dd3fee5675fd3223615b6d21f1d",
+ "source_revision": "c7c7ac962a6e04d8573f0be5c579d64f72f83a85",
  "dirty_state": true,
  "current_stage": "M6",
- "current_task": "WP-45",
+ "current_task": "WP-50",
  "completed_requirement_ids": [
   "REQ-M0-001",
   "REQ-M0-002",
@@ -59,15 +59,16 @@
   "REQ-M5-008",
   "REQ-M5-009",
   "REQ-M5-010",
-  "REQ-M5-011"
+  "REQ-M5-011",
+  "REQ-M0-006"
  ],
- "last_run_id": "20261109T000029Z-2cbdeaad-001",
+ "last_run_id": "20261114T134453Z-c7b3e920-001-a",
  "blockers": [],
- "next_action": "WP-45: إقلاع تفاعلي إلى شاشة الدخول ببيان النظام الحقيقي، ومراقبة الجلسة، وشاشات الجلسة بالعربية",
+ "next_action": "WP-50: libui v2b: عرض قائمة بأعمدة وتمرير (50a: نواة عرض القائمة، مضيف فقط)",
  "required_inputs": [],
  "runner_status": "running",
- "checkpoint_generation": 56,
- "event_sequence": 56,
+ "checkpoint_generation": 97,
+ "event_sequence": 97,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 7,
@@ -75,18 +76,19 @@
  },
  "next_retry_at": null,
  "cancellation_state": "none",
- "lease": {
-  "holder_id": "claude-session-015h9GTwLifTZqTMhyRyf9bH",
-  "acquired_at": "2026-10-24T14:30:00Z",
-  "ttl_s": 900,
-  "fencing_token": 56
- },
+ "lease": null,
  "host_fingerprint": "linux-6.8.0-138-generic-x86_64-2vcpu",
  "errata_version": "1",
  "pending_decision_ids": [
-  "DEC-002"
+  "DEC-002",
+  "DEC-023",
+  "DEC-027",
+  "DEC-012",
+  "DEC-019",
+  "DEC-028"
  ],
  "unknown_fields": {
-  "budget_counters.tool_calls_session": "no API exposes the session's tool-call or token budget"
+  "budget_counters.tool_calls_session": "no API exposes the session's tool-call or token budget",
+  "lease": "no lease tool exists (state/lease.json never written); the records writer is the session manager alone (PLAN-ANSWER §5.3 item 1); the expired lease of 2026-10-24 was removed on 2026-11-09"
  }
 }

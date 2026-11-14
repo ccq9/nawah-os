@@ -6,7 +6,13 @@ appeared, in order, and a later step must not fire on an earlier marker; a singl
 `${SCREEN:tag}` (WP-37) one of several, `screen-<tag>.ppm` beside it, in commands and in
 host-check arguments alike. `key-down`/`key-up` (WP-38) go through QMP on one connection kept
 for the run: a key pressed in one step is released by a later step, within a bounded delay of
-that step's marker."""
+that step's marker. `cmd_boot` itself (WP-45) on the same fake QEMU: a case that ends by the
+lab's `quit` fails when the guest ended first, in a single run and in a later phase; each
+phase's console failures are kept, not overwritten by the next phase; a phase's own
+`timeout_s` bounds that phase. A forbidden marker of the case or of a phase fails it when it
+appears in the guest's received console transcript (console.log) as in the serial log, and
+the received transcript of the real ConsoleSession holds the guest's bytes, never the lab's
+own `>>> ` lines (WP-82)."""
 
 import json
 import pathlib
@@ -14,12 +20,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "tools"))
 import project  # noqa: E402
 
 FAKE_QEMU = r'''
-import json, socket, sys, time, threading
+import json, os, socket, sys, time, threading
 serial, mon, record, script = sys.argv[1], sys.argv[2], sys.argv[3], json.loads(sys.argv[4])
 qmp_path = sys.argv[5] if len(sys.argv) > 5 else None
 got = []
@@ -71,10 +78,19 @@ def serve():
         with open(record, "w") as f:
             json.dump(got, f)
         c.close()
+        if "quit" in got:
+            os._exit(0)  # QEMU's monitor `quit` ends the emulator with status 0
 threading.Thread(target=serve, daemon=True).start()
 with open(serial, "ab") as f:
     for line, wait in script:
         time.sleep(wait)
+        if line.startswith("__signal_once__") and not os.path.exists(record + ".died"):
+            open(record + ".died", "w").close()
+            os.kill(os.getpid(), int(line[15:]))  # the emulator itself dies (QEMU's SIGSEGV), once
+        if line.startswith("__signal_once__"):
+            continue
+        if line.startswith("__exit__"):
+            os._exit(int(line[8:]))  # the guest ends by itself (a reset under -no-reboot is status 0)
         f.write((line + "\n").encode()); f.flush()
         marks[line] = round(time.monotonic() - t0, 3)
 time.sleep(1.5)
@@ -86,7 +102,7 @@ sys.exit(33)
 
 
 class MonitorSteps(unittest.TestCase):
-    def drive(self, actions, script, timeout=20):
+    def drive(self, actions, script, timeout=20, sent=None):
         with tempfile.TemporaryDirectory() as td:
             d = pathlib.Path(td)
             serial, mon, record = d / "serial.log", d / "mon.sock", d / "record.json"
@@ -94,7 +110,7 @@ class MonitorSteps(unittest.TestCase):
             fake.write_text(FAKE_QEMU)
             cmd = [sys.executable, "-I", str(fake), str(serial), str(mon), str(record), json.dumps(script),
                    str(project.qmp_socket_path(mon))]
-            rc = project.run_qemu_monitored(cmd, d, d / "out.log", d / "err.log", timeout, serial, mon, actions)
+            rc = project.run_qemu_monitored(cmd, d, d / "out.log", d / "err.log", timeout, serial, mon, actions, sent=sent)
             got = json.loads(record.read_text()) if record.exists() else []
             qmp_record = pathlib.Path(str(record) + ".qmp")
             self.qmp = json.loads(qmp_record.read_text()) if qmp_record.exists() else {"qmp": [], "marks": {}}
@@ -231,11 +247,237 @@ class MonitorSteps(unittest.TestCase):
             th.join(5); link.close(); srv.close()
             self.assertEqual(got, ["qmp_capabilities", "input-send-event"])
 
+    def test_ends_by_monitor_quit(self):
+        # WP-45 (PLAN-ANSWER §2.5 D2-Q2): an interactive case ends by the lab's `quit` (status 0,
+        # also QEMU's status for a guest reset under -no-reboot): it passes only if every step
+        # was sent and the last one ends with `quit`.
+        actions = {"steps": [{"after": "|phase=1|", "commands": ["sendkey a"]},
+                             {"after": "|phase=2|", "commands": ["screendump ${SCREEN:end}", "quit"]}]}
+        sent = []
+        rc, got, out, _ = self.drive(actions, [("OSX|x|k|phase=1|", 0.2), ("OSX|x|k|phase=2|", 0.8), ("tail", 5.0)],
+                                     sent=sent)
+        self.assertEqual(rc, 0)
+        self.assertEqual(sent, [0, 1])
+        self.assertEqual(got[0], "sendkey a")
+        self.assertEqual(got[-1], "quit")
+        self.assertEqual(project.ends_by_failures("monitor", actions, sent), [])
+        # A reset before the last step (status 0 too) is not an end by the lab.
+        self.assertTrue(project.ends_by_failures("monitor", actions, [0]))
+        # The last command must be `quit`; a case without steps cannot end by the monitor.
+        self.assertTrue(project.ends_by_failures("monitor", {"after": "|x|", "commands": ["sendkey a"]}, [0]))
+        self.assertTrue(project.ends_by_failures("monitor", None, []))
+        self.assertTrue(project.ends_by_failures("reset", actions, [0, 1]))
+        self.assertEqual(project.ends_by_failures(None, actions, []), [])
+
     def test_timeout_kills_qemu(self):
         rc, got, _, err = self.drive({"after": "|never|", "commands": ["sendkey a"]}, [("boot", 5.0)], timeout=2)
         self.assertEqual(rc, 124)
         self.assertEqual(got, [])
         self.assertIn("TIMEOUT", err)
+
+
+
+class FakeConsole:
+    """The COM2 session of a phase, reduced to its verdict: `fail` in the spec is what
+    `finish()` reports and `received` what the guest sent on the console (WP-82), which
+    `finish()` writes to its transcript path as the real session does."""
+
+    def __init__(self, spec, transcript_path, serial_path, timeout):
+        self.spec, self.transcript_path = spec, transcript_path
+        # `attempts` (a list) gives each new session of the phase its own (received, fail).
+        self.attempt = spec["attempts"].pop(0) if spec.get("attempts") else (spec.get("received", ""), spec.get("fail", []))
+        self.received = self.attempt[0].encode()
+
+    def start(self):
+        pass
+
+    def finish(self):
+        self.transcript_path.write_bytes(self.received)
+        return list(self.attempt[1])
+
+
+class CmdBoot(unittest.TestCase):
+    """cmd_boot end to end on the fake QEMU: the target, the image preparation and the records
+    are stubbed; the phase loop, the monitor driver, ends_by and the verdict are the real ones.
+    A phase's fake-QEMU script travels in its qemu_extra."""
+
+    QUIT = {"steps": [{"after": "|phase=1|", "commands": ["sendkey a"], "gap_s": 0.1},
+                      {"after": "|phase=2|", "commands": ["quit"], "gap_s": 0.1}]}
+    GOOD = [("OSX|x|k|phase=1|", 0.2), ("OSX|x|k|phase=2|", 0.6), ("tail", 5.0)]
+    RESET = [("OSX|x|k|phase=1|", 0.2), ("__exit__0", 1.0)]   # status 0 before the last step
+
+    def boot(self, case, files=None):
+        """The verdict of `case`; `files`, when given, receives the run directory's files
+        ({name: bytes}) before the directory goes."""
+        case = dict({"id": "T", "test_id": "T", "oracle": "o", "required_markers": [], "timeout_s": 20}, **case)
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td).resolve()
+            out = root / "build" / "fake"
+            out.mkdir(parents=True)
+            (out / "build-id.txt").write_text("bid")
+            (out / "K.EFI").write_bytes(b"k")
+            fake = root / "fake_qemu.py"
+            fake.write_text(FAKE_QEMU)
+            run_dir = root / "run"
+            run_dir.mkdir()
+            t = {"build": {"artifact": "${OUT}/K.EFI", "inputs": []}, "qemu": {"boot_timeout_s": 20},
+                 "boot_oracle": {"test_id": "B"}}
+            verdicts = []
+
+            def qemu_cmd(t_, name, esp, serial, extra=(), disk=None, smp=None, monitor=None, console_port=None):
+                mon = monitor or (root / "unused.sock")
+                return [sys.executable, "-I", str(fake), str(serial), str(mon), str(root / f"rec-{serial.stem}.json"),
+                        extra[0], str(project.qmp_socket_path(mon))]
+
+            env = {k: v for k, v in project.os.environ.items() if k != "NAWAH_QEMU_TIMEOUT_S"}
+            with mock.patch.dict(project.os.environ, env, clear=True), \
+                    mock.patch.multiple(project, ROOT=root, load_target=lambda n: t, begin_run=lambda: None,
+                                        prepare_esp=lambda *a: root, prepare_disk=lambda *a, **k: root / "disk.img",
+                                        qemu_cmd=qemu_cmd, new_run_dir=lambda slug: ("rid", run_dir),
+                                        write_run=lambda *a, **k: None, digests_for=lambda *a: {},
+                                        keep_artifact=lambda *a: "k", attach_evidence=lambda *a: None,
+                                        ConsoleSession=FakeConsole,
+                                        write_verdict=lambda d, rid, tid, v, *a, reason=None, **k: verdicts.append((v, reason))):
+                project.cmd_boot("fake", suite_case=case)
+            if files is not None:
+                files.update({f.name: f.read_bytes() for f in run_dir.iterdir() if f.is_file()})
+            self.assertEqual(len(verdicts), 1)
+            return verdicts[0]
+
+    def script(self, lines):
+        return [json.dumps(lines)]
+
+    def test_ends_by_monitor_in_one_run(self):
+        case = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT}
+        self.assertEqual(self.boot(dict(case, qemu_extra=self.script(self.GOOD)))[0], "PASS")
+        verdict, reason = self.boot(dict(case, qemu_extra=self.script(self.RESET)))
+        self.assertEqual(verdict, "FAIL")
+        self.assertIn("the run ended before the lab", reason)
+
+    def test_ends_by_monitor_in_a_later_phase(self):
+        case = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT}
+        good = {"qemu_extra": self.script(self.GOOD)}
+        self.assertEqual(self.boot(dict(case, phases=[good, dict(good)]))[0], "PASS")
+        verdict, reason = self.boot(dict(case, phases=[good, {"qemu_extra": self.script(self.RESET)}]))
+        self.assertEqual(verdict, "FAIL")
+        self.assertIn("phase 2", reason)
+        self.assertIn("the run ended before the lab", reason)
+
+    def test_console_failures_of_every_phase_are_kept(self):
+        good = {"qemu_extra": self.script(self.GOOD)}
+        case = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT,
+                "phases": [dict(good, console={"port": 1, "fail": ["console: svc listed 7 services"]}),
+                           dict(good, console={"port": 2})]}
+        verdict, reason = self.boot(case)
+        self.assertEqual(verdict, "FAIL")
+        self.assertIn("phase 1: console: svc listed 7 services", reason)
+
+    def test_forbidden_marker_in_the_received_console_transcript_fails(self):
+        # WP-82: the case's forbidden markers are checked on what the guest sent on the
+        # console (console.log) as on the serial log; absent there, the case passes.
+        good = {"qemu_extra": self.script(self.GOOD)}
+        case = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT,
+                "forbidden_markers": ["lab-user-1"]}
+        clean = dict(case, phases=[dict(good, console={"port": 1, "received": "nawah> svc\nauth ready\n"})])
+        self.assertEqual(self.boot(clean)[0], "PASS")
+        leak = dict(case, phases=[dict(good, console={"port": 1, "received": "nawah> svc\nlab-user-1\n"})])
+        verdict, reason = self.boot(leak)
+        self.assertEqual(verdict, "FAIL")
+        self.assertIn("lab-user-1", reason)
+        self.assertIn("console.log", reason)
+
+    def test_a_phase_forbidden_marker_in_its_received_console_transcript_fails(self):
+        good = {"qemu_extra": self.script(self.GOOD)}
+        case = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT}
+        ph = dict(good, forbidden_markers=["secret"], console={"port": 1, "received": "x secret y"})
+        verdict, reason = self.boot(dict(case, phases=[ph, dict(good)]))
+        self.assertEqual(verdict, "FAIL")
+        self.assertIn("phase 1", reason)
+        self.assertIn("secret (console-1.log)", reason)
+        ok = dict(ph, console={"port": 1, "received": "x y"})
+        self.assertEqual(self.boot(dict(case, phases=[ok, dict(good)]))[0], "PASS")
+
+    def test_every_phase_keeps_its_console_transcript(self):
+        # Security review M5: a multi-phase case writes console-<i>.log per phase (as serial-<i>.log),
+        # so a later phase's session never overwrites an earlier one's transcript; a case-level
+        # forbidden marker names the file it was found in.
+        good = {"qemu_extra": self.script(self.GOOD)}
+        case = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT, "forbidden_markers": ["leak"],
+                "phases": [dict(good, console={"port": 1, "received": "first leak"}),
+                           dict(good, console={"port": 2, "received": "second"})]}
+        files = {}
+        verdict, reason = self.boot(case, files)
+        self.assertEqual(files.get("console-1.log"), b"first leak")
+        self.assertEqual(files.get("console-2.log"), b"second")
+        self.assertNotIn("console.log", files)
+        self.assertEqual(verdict, "FAIL")
+        self.assertIn("leak (console-1.log)", reason)
+        single = {"expected_exit_code": 0, "ends_by": "monitor", "monitor": self.QUIT,
+                  "phases": [dict(good, console={"port": 1, "received": "only"})]}
+        files = {}
+        self.assertEqual(self.boot(single, files)[0], "PASS")
+        self.assertEqual(files.get("console.log"), b"only")
+
+    def test_a_retry_after_qemu_died_gets_a_fresh_console_session(self):
+        # The auditor's WP-82 limit: QEMU dies by a signal, the phase is retried on a fresh image;
+        # the retry needs its own console session, so neither the dead attempt's transcript nor
+        # its console failures judge the case.
+        script = self.script([("__signal_once__11", 0.1), ("OSX|x|k|phase=1|", 0.2)])   # then exits 33
+        case = {"expected_exit_code": 33, "forbidden_markers": ["leak"], "qemu_extra": script,
+                "console": {"port": 1, "attempts": [("stale leak", ["console: no prompt from the shell"]), ("fresh", [])]}}
+        files = {}
+        verdict, reason = self.boot(case, files)
+        self.assertEqual(verdict, "PASS", reason)
+        self.assertIn("qemu died with signal 11, retried", reason)
+        self.assertEqual(files.get("console.log"), b"fresh")
+
+    def test_a_phase_timeout_bounds_that_phase(self):
+        import time
+        slow = self.script([("boot", 8.0)])           # exits 33 after ~9.5 s
+        case = {"expected_exit_code": 33, "phases": [{"qemu_extra": slow, "timeout_s": 2}]}
+        begin = time.monotonic()
+        verdict, reason = self.boot(case)
+        self.assertEqual((verdict, reason), ("FAIL", "timeout (hang)"))
+        self.assertLess(time.monotonic() - begin, 7)
+
+
+class ConsoleReceived(unittest.TestCase):
+    """The real ConsoleSession (WP-82) against a TCP peer acting as the guest's shell:
+    `received` is every byte the guest sent, a guest line starting `>>> ` included, and none of
+    the lab's own `>>> ` lines, which stay in the transcript (console.log)."""
+
+    def test_received_is_the_guests_bytes_only(self):
+        import socket
+        import threading
+        srv = socket.socket(); srv.bind(("127.0.0.1", 0)); srv.listen(1)
+        port = srv.getsockname()[1]
+
+        def guest():
+            c, _ = srv.accept()
+            c.sendall(b"nawah sh 1\nnawah> ")
+            buf = b""
+            while b"\n" not in buf:
+                buf += c.recv(64)
+            c.sendall(b"out-of-guest\n>>> guest-forbidden\nnawah> ")
+            c.recv(64)
+            c.close()
+        th = threading.Thread(target=guest, daemon=True); th.start()
+        with tempfile.TemporaryDirectory() as td:
+            td = pathlib.Path(td)
+            spec = {"port": port, "script": [{"send": "echo lab-sent", "expect": ["out-of-guest"]}]}
+            cs = project.ConsoleSession(spec, td / "console.log", td / "serial.log", 10)
+            cs.start()
+            cs.thread.join(10)
+            failures = cs.finish()
+            th.join(5); srv.close()
+            self.assertEqual(failures, [])
+            self.assertIn(b"out-of-guest", cs.received)
+            self.assertIn(b"nawah sh 1", cs.received)
+            self.assertNotIn(b"lab-sent", cs.received)
+            # Provenance, not prefix (security review L1): a guest line that looks like the
+            # lab's own `>>> ` echo is still the guest's and still checked.
+            self.assertIn(b">>> guest-forbidden", cs.received)
+            self.assertIn(b">>> echo lab-sent", (td / "console.log").read_bytes())
 
 
 if __name__ == "__main__":

@@ -113,6 +113,28 @@ pub fn classify(path: &[u8]) -> PathClass {
     }
 }
 
+/// Whether `path` names one of config's stores (files.md v1.4, config.md v1.2, WP-78): a file
+/// directly in /SYSTEM whose 8.3 base starts with CFG and whose extension is A or B. Compared as
+/// the short names the volume resolves, as `classify` does (`/system/cfgdev.a` is a store; `.`,
+/// `..`, an empty component or a trailing `/` make no store), so no spelling reaches another
+/// file through it. The only change under /SYSTEM the authority allows.
+pub fn is_config_store(path: &[u8]) -> bool {
+    if check_path(path).is_err() {
+        return false;
+    }
+    let mut parts = path[1..].split(|&c| c == b'/');
+    let (Some(dir), Some(file), None) = (parts.next(), parts.next(), parts.next()) else {
+        return false;
+    };
+    if super::fat32::short_name(dir).ok() != Some(*b"SYSTEM     ") {
+        return false;
+    }
+    match super::fat32::short_name(file) {
+        Ok(n) => n.starts_with(b"CFG") && matches!(&n[8..], b"A  " | b"B  "),
+        Err(_) => false,
+    }
+}
+
 fn check_path(path: &[u8]) -> Result<(), FsError> {
     if path.is_empty() || path.len() > PATH_MAX || path[0] != b'/' || !path.is_ascii() {
         return Err(FsError::BadName);
@@ -173,6 +195,50 @@ pub fn open(path: &[u8], flags: u64) -> Result<FileRef, FsError> {
     Ok(Arc::new(IrqSpinLock::new("file", FileObject::new(node))))
 }
 
+/// Test kernel only (WP-68, TST-M6-MANIFEST-TOO-LARGE): one read fault, armed for the files of
+/// one size. Reads of such a file stop at `at`, and the first read from `at` on fails with an
+/// I/O error, which disarms it. The release kernel is built without the `ktest` feature
+/// (kernel/Cargo.toml has no default features; target.json's release build passes none), so
+/// none of this exists there.
+#[cfg(feature = "ktest")]
+static READ_FAULT_SIZE: AtomicU32 = AtomicU32::new(0);
+#[cfg(feature = "ktest")]
+static READ_FAULT_AT: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+
+#[cfg(feature = "ktest")]
+pub fn arm_read_fault(size: u32, at: u64) {
+    READ_FAULT_AT.store(at, Ordering::SeqCst);
+    READ_FAULT_SIZE.store(size, Ordering::SeqCst);
+}
+
+/// Whether the armed fault has not fired yet.
+#[cfg(feature = "ktest")]
+pub fn read_fault_armed() -> bool {
+    READ_FAULT_SIZE.load(Ordering::SeqCst) != 0
+}
+
+#[cfg(feature = "ktest")]
+pub fn disarm_read_fault() {
+    READ_FAULT_SIZE.store(0, Ordering::SeqCst);
+}
+
+/// The part of `buf` a read of a file of `size` at `pos` may fill; `None`: fail it now.
+#[cfg(feature = "ktest")]
+fn read_fault(size: u32, pos: u64, buf: &mut [u8]) -> Option<&mut [u8]> {
+    if size == 0 || READ_FAULT_SIZE.load(Ordering::SeqCst) != size {
+        return Some(buf);
+    }
+    let at = READ_FAULT_AT.load(Ordering::SeqCst);
+    if pos >= at {
+        READ_FAULT_SIZE.store(0, Ordering::SeqCst);
+        return None;
+    }
+    let room = usize::try_from(at - pos)
+        .unwrap_or(usize::MAX)
+        .min(buf.len());
+    Some(&mut buf[..room])
+}
+
 /// Reads at the shared position; returns the count (0 at end of file).
 pub fn read(file: &FileRef, buf: &mut [u8]) -> Result<usize, FsError> {
     let mut f = file.lock();
@@ -182,6 +248,10 @@ pub fn read(file: &FileRef, buf: &mut [u8]) -> Result<usize, FsError> {
     }
     let n = {
         let e = f.node.lock();
+        #[cfg(feature = "ktest")]
+        let Some(buf) = read_fault(e.size, pos, buf) else {
+            return Err(FsError::Io(crate::drivers::virtio_blk::BlkError::Io(0)));
+        };
         super::with(|fs| fs.read(&e, pos as u32, buf))?
     };
     f.pos += n as u64;

@@ -1,0 +1,73 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$comment": "evidence/<run>/import.json, the receipt the checked import writes beside an untouched run.json (ADR-0026 rule 4; REQ-M0-006). Every field the importer writes is required; the validator matches ci_run_id, run_attempt, head_sha and workflow against run.json's ci identity.",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "ci_run_id",
+  "conclusion",
+  "head_sha",
+  "event",
+  "run_attempt",
+  "workflow",
+  "evidence_branch_commit",
+  "imported_at",
+  "importer"
+ ],
+ "properties": {
+  "ci_run_id": {
+   "type": "string",
+   "pattern": "^[0-9]+$"
+  },
+  "conclusion": {
+   "const": "success"
+  },
+  "head_sha": {
+   "type": "string",
+   "minLength": 1
+  },
+  "event": {
+   "type": "string",
+   "minLength": 1
+  },
+  "run_attempt": {
+   "type": "integer",
+   "minimum": 1
+  },
+  "workflow": {
+   "enum": [
+    "verify",
+    "mutants"
+   ]
+  },
+  "evidence_branch_commit": {
+   "type": "string",
+   "minLength": 1
+  },
+  "imported_at": {
+   "type": "string",
+   "minLength": 1
+  },
+  "importer": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "worker",
+    "identity"
+   ],
+   "properties": {
+    "worker": {
+     "enum": [
+      "verification-runner",
+      "interactive-agent",
+      "test"
+     ]
+    },
+    "identity": {
+     "type": "string",
+     "minLength": 1
+    }
+   }
+  }
+ }
+}

@@ -1952,7 +1952,17 @@ impl Compositor {
     }
 }
 
-/// A request to the manager on the boot channel; the reply and one handle, if any.
+/// `manager`'s outcome when the manager said `STOP` before answering (display.md v1.13): not a
+/// kernel error (those are negative), so no kernel answer is ever mistaken for it.
+const STOPPED: i64 = 1;
+
+/// The exit code of a boot channel the compositor can no longer read (display.md v1.13): any
+/// error other than "nothing yet", a closed channel or a message too long for the buffer.
+const EXIT_BOOT_READ: u64 = 0xE8;
+
+/// A request to the manager on the boot channel; the reply and one handle, if any. While the
+/// reply is awaited, `PING` is not an answer and is ignored (the manager pings only a service
+/// that is Ready), and `STOP` ends the wait as `Err(STOPPED)` (display.md v1.13).
 fn manager(boot: Handle, req: &[u8], reply: &mut [u8]) -> Result<(usize, Option<Handle>), i64> {
     if libnawah::channel_write(boot, req, &[]) != 0 {
         return Err(ERR_PEER_CLOSED);
@@ -1960,6 +1970,8 @@ fn manager(boot: Handle, req: &[u8], reply: &mut [u8]) -> Result<(usize, Option<
     loop {
         let mut hs = [0u32; 1];
         match libnawah::channel_read(boot, reply, &mut hs, false) {
+            Ok((n, 0)) if &reply[..n] == b"PING" => continue,
+            Ok((n, 0)) if &reply[..n] == b"STOP" => return Err(STOPPED),
             Ok((n, nh)) => return Ok((n, if nh == 1 { Some(hs[0]) } else { None })),
             Err(ERR_SHOULD_WAIT) => {}
             Err(e) => return Err(e),
@@ -1974,16 +1986,47 @@ fn manager(boot: Handle, req: &[u8], reply: &mut [u8]) -> Result<(usize, Option<
     }
 }
 
-/// Whether the manager's listing names a `session` service: then the screen starts held
-/// (display.md v1.2) until the session unlocks it.
-fn session_in_manifest(boot: Handle) -> bool {
+/// Whether the screen starts held: when the manager's listing names a `session` service
+/// (display.md v1.2), until the session unlocks it; and when the listing cannot be had — an
+/// answer that is not a listing naming this service, a closed channel, an answer longer than
+/// the buffer, any other error — for a hold fails closed, never open (v1.12). The decision is
+/// traced `display|hold|source=…|reason=…|locked=…`. `None`: the manager said `STOP` before
+/// it answered (v1.13), traced `display|boot|stop=before_ready`; the compositor then ends.
+fn session_in_manifest(boot: Handle) -> Option<bool> {
     let mut reply = [0u8; 1024];
-    match manager(boot, b"LIST", &mut reply) {
-        Ok((n, _)) => reply[..n]
-            .split(|&c| c == b'\n')
-            .any(|l| l.starts_with(b"session ")),
-        Err(_) => false,
-    }
+    let line: &[u8] = match manager(boot, b"LIST", &mut reply) {
+        Ok((n, h)) => {
+            if let Some(h) = h {
+                libnawah::handle_close(h);
+            }
+            let names = |name: &[u8]| {
+                reply[..n]
+                    .split(|&c| c == b'\n')
+                    .any(|l| l.strip_prefix(name).is_some_and(|r| r.starts_with(b" ")))
+            };
+            if !names(b"display") {
+                b"display|hold|source=list_failure|reason=reply|locked=1"
+            } else if names(b"session") {
+                b"display|hold|source=manifest|reason=-|locked=1"
+            } else {
+                b"display|hold|source=manifest|reason=-|locked=0"
+            }
+        }
+        Err(ERR_BUFFER_TOO_SMALL) => {
+            // The kernel leaves a message that does not fit at the head of the queue: remove
+            // it, or the boot channel would serve nothing after it.
+            libnawah::channel_discard(boot);
+            b"display|hold|source=list_failure|reason=too_long|locked=1"
+        }
+        Err(ERR_PEER_CLOSED) => b"display|hold|source=list_failure|reason=closed|locked=1",
+        Err(STOPPED) => {
+            libnawah::trace(b"display|boot|stop=before_ready");
+            return None;
+        }
+        Err(_) => b"display|hold|source=list_failure|reason=error|locked=1",
+    };
+    libnawah::trace(line);
+    Some(line.ends_with(b"locked=1"))
 }
 
 fn main() -> u64 {
@@ -2017,6 +2060,10 @@ fn main() -> u64 {
     let mut reply = [0u8; 64];
     let input = match manager(boot, b"CONNECT input", &mut reply) {
         Ok((n, Some(h))) if &reply[..n] == b"OK" => h,
+        Err(STOPPED) => {
+            libnawah::trace(b"display|boot|stop=before_ready");
+            return 0;
+        }
         _ => return 0xE5,
     };
     if libnawah::channel_write(input, b"REGISTER display", &[]) != 0 {
@@ -2040,6 +2087,10 @@ fn main() -> u64 {
         b"display|fonts=0"
     });
     let screen = Rect::new(0, 0, info.width as i32, info.height as i32);
+    // A STOP before the LIST answer ends the compositor here, before READY (display.md v1.13).
+    let Some(locked) = session_in_manifest(boot) else {
+        return 0;
+    };
     let mut c = Compositor {
         boot,
         input,
@@ -2070,7 +2121,7 @@ fn main() -> u64 {
         narrator: None,
         fonts,
         text,
-        locked: session_in_manifest(boot),
+        locked,
         releases: 0,
         keys: 0,
         input_asked: false,
@@ -2172,7 +2223,16 @@ fn main() -> u64 {
                     }
                 }
                 Err(ERR_PEER_CLOSED) => return 0,
-                Err(_) => {}
+                // A message longer than the buffer stays at the head of the queue: remove it,
+                // or the loop would wake for it for ever and read nothing behind it (v1.13).
+                Err(ERR_BUFFER_TOO_SMALL) => {
+                    if !libnawah::channel_discard(c.boot) {
+                        return EXIT_BOOT_READ;
+                    }
+                    libnawah::trace(b"display|boot|discard=too_long");
+                }
+                Err(ERR_SHOULD_WAIT) => {}
+                Err(_) => return EXIT_BOOT_READ,
             },
             Ok((idx, _)) if Some(idx) == input_slot => c.serve_input(now),
             Ok((idx, _)) => {

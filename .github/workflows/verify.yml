@@ -1,5 +1,8 @@
 # Deterministic verification runner (OS-EXEC-AR 3.2 §1: verification_runner, no AI).
 # Re-runs the same commands tools/project.py runs locally, on a fresh runner, and keeps the evidence as an artifact.
+# WP-83 (83a): the test job `a` writes run directories with its slot (NAWAH_RUN_SLOT) and uploads
+# them; the `merge` job adopts them (adopt-native, ADR-0026 rule 5), validates strictly and alone
+# publishes the run's one ci-evidence branch. WP-88 (83b) splits `a` into parallel jobs.
 name: verify
 on:
   push:
@@ -7,7 +10,7 @@ on:
   pull_request:
   workflow_dispatch:
 permissions:
-  contents: write  # only for pushing evidence to ci-evidence/* branches (never main)
+  contents: read  # the code under test runs here; only the merge job, which publishes, may write
 # A newer push to the same ref cancels the run it supersedes: the newest commit is the one whose
 # evidence counts (42 of the 59 failed runs of 2026-10-18 had been superseded within ten minutes
 # and still ran to their end and mailed the account; tests/test_ci_workflows.py, TST-M0-003).
@@ -15,9 +18,13 @@ concurrency:
   group: verify-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  verify:
+  a:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    env:
+      NAWAH_RUN_SLOT: a  # run ids <stamp>-<rev>-<nnn>-a (project.py new_run_dir, WP-81)
+    # 58 (WP-45, PLAN-ANSWER §2.5 D4-V2; 55 -> 58 WP-74, 2026-11-10): the run took 28m55s before M6;
+    # the capped steps (Toolchain 15, M5 18, M6 15) with a 20 % margin fit (tests/test_ci_workflows.py StepBudget).
+    timeout-minutes: 58
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         # The token stays out of .git/config, where every later step (the code under test
@@ -33,7 +40,10 @@ jobs:
         # limit four times in two runs. Packages are fetched before they are installed (a second
         # try keeps what the first fetched), from Canonical's archive when the runner's mirror
         # fails twice; each try gets 5 min (apt also drops a stalled connection after 60 s) and
-        # leaves an annotation with its exit code and how much it fetched; the step ends by 15 min.
+        # leaves an annotation with its exit code and how much it fetched; the step ends by 15 min
+        # (WP-74, 2026-11-10: 12 -> 15; the step measured 11m12s on run 42754423494 against the 12-min cap
+        # set that day (WP-64) from a 56 s measurement; 15 is a hang guard, not the bound of its retry loops,
+        # and the job limit 55 -> 58 keeps the 20 % margin over the step caps 15+18+15).
         timeout-minutes: 15
         run: |
           retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
@@ -96,6 +106,7 @@ jobs:
             cargo clippy --manifest-path user/apps/idle/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/exiter/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path user/apps/fileauth/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
+            cargo clippy --manifest-path user/apps/jobs/Cargo.toml --target x86_64-unknown-none --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --features inject_ebs_fail -- -D warnings
             cargo clippy --manifest-path kernel/Cargo.toml --target x86_64-unknown-uefi --offline --profile ktest --features ktest -- -D warnings
@@ -117,46 +128,122 @@ jobs:
       - name: M4 guest suite (test kernel, processes from the volume)
         run: python3 tools/project.py test --target pc-qemu --suite M4
       - name: M5 guest suite (test kernel, display and input)
+        # 11m34s measured (PLAN-ANSWER §2.5 D4-V2): a hang ends here, under its own name.
+        timeout-minutes: 18
         run: python3 tools/project.py test --target pc-qemu --suite M5
+      - name: M6 guest suite (release image interactive boot; test-kernel hold case)
+        # 15 (WP-64, 2026-11-10): a hang guard, not the run's wall time; the suite's worst case, the
+        # sum of target.json's phase timeouts, is 895 s on 2026-11-14 (StepBudget, bounded suite).
+        timeout-minutes: 15
+        run: python3 tools/project.py test --target pc-qemu --suite M6
       - name: A64 early port experiment (build + boot on QEMU virt, ADR-0008)
         run: |
           python3 tools/project.py build --target virt-qemu-aarch64
           python3 tools/project.py boot --target virt-qemu-aarch64
       - name: Host suites
+        # Every suite runs and the step fails at the end if any failed (WP-91): six bare commands
+        # under bash -e stopped at the first red suite and hid the others (run 42795169926).
         run: |
-          python3 tools/project.py test --target host --suite M0
-          python3 tools/project.py test --target host --suite M1
-          python3 tools/project.py test --target host --suite M3
-          python3 tools/project.py test --target host --suite M4
-          python3 tools/project.py test --target host --suite M5
+          rc=0
+          for s in M0 M1 M3 M4 M5 M6; do
+            python3 tools/project.py test --target host --suite "$s" || rc=1
+          done
+          exit $rc
+      # This job's own run directories (slot a) and the files the evidence branch carries beside
+      # them; the merge job adopts them. A full artifact quota must not turn a green job red.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: evidence-a
+          path: |
+            evidence/*-a/
+            build/pc-qemu/build-id.txt
+            build/hygiene.log
+          retention-days: 7
+  merge:
+    # Adopts every test job's evidence, checks it strictly and publishes one ci-evidence/<run>
+    # branch. Runs after a failed test job too (what exists is published, the run still fails;
+    # import-ci-evidence refuses a run that did not succeed), never in a cancelled run.
+    needs: [a]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write  # only for pushing evidence to ci-evidence/* branches (never main)
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Toolchain (Python modules of the validator)
+        timeout-minutes: 15
+        run: |
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice; fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq python3-jsonschema python3-yaml
+          python3 -c "import jsonschema, yaml; print('jsonschema', jsonschema.__version__)"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          pattern: evidence-*
+          path: incoming
+      - name: Adopt this run's evidence (adopt-native, ADR-0026 rule 5)
+        id: adopt
+        run: |
+          set -euo pipefail
+          # Each artifact keeps the workspace layout: incoming/evidence-<slot>/evidence/<run>-<slot>/.
+          # Every expected slot (one per test job; WP-88 adds b c) must have left a run directory:
+          # a missing or empty artifact fails the merge job, nothing is adopted (security review M2).
+          srcs=()
+          for slot in a; do
+            d="incoming/evidence-$slot/evidence"
+            if ! ls "$d"/*/verdict.json >/dev/null 2>&1; then
+              echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1
+            fi
+            srcs+=(--from "$d")
+          done
+          python3 tools/project.py adopt-native "${srcs[@]}"
+          mkdir -p build
+          for slot in a; do
+            if [ -d "incoming/evidence-$slot/build" ]; then cp -r "incoming/evidence-$slot/build/." build/; fi
+          done
       - name: "validate-records --strict (after fresh evidence, nothing may be stale)"
         run: python3 tools/project.py validate-records --strict
       - name: "pre-merge gate (tools/pre-merge.sh: the same strict check through the script a records commit must pass)"
         run: tools/pre-merge.sh
       - name: Status
         run: python3 tools/project.py status --json
-      # A convenience copy: the evidence of record is the ci-evidence branch below, which
-      # import-ci-evidence reads. A full artifact quota must not turn a green run red.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
-        if: always()
-        continue-on-error: true
-        with:
-          name: evidence-${{ github.sha }}
-          path: evidence/
-          retention-days: 7
       - name: Publish evidence on a ci-evidence branch (readable where artifact download is blocked)
-        if: always()
+        # What was adopted is published even when the strict check failed; nothing after a
+        # failed adoption or in a cancelled run.
+        if: ${{ !cancelled() && steps.adopt.outcome == 'success' }}
+        # Hardened (security review M1, correction 2): the system git, no global or system
+        # config, no hooks, no traces, the token's header masked as soon as it exists. Code of
+        # the repository still runs earlier in this job (adopt, strict); a publish job of its
+        # own that runs none is WP-89.
         env:
           PUSH_TOKEN: ${{ github.token }}
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: 1
         run: |
           set -e
           # -f: a re-run's evidence replaces the earlier attempt's branch (run 40397458355).
-          git config user.name "nawah-ci"
-          git config user.email "ci@nawah-os.invalid"
-          git checkout --orphan "ci-evidence/${GITHUB_RUN_ID}"
-          git rm -rfq --cached . >/dev/null
-          git add -f evidence/ build/pc-qemu/build-id.txt 2>/dev/null || git add -f evidence/
-          git add -f build/hygiene.log 2>/dev/null || true
-          git commit -qm "CI evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
+          /usr/bin/git -c core.hooksPath=/dev/null checkout -q --orphan "ci-evidence/${GITHUB_RUN_ID}"
+          /usr/bin/git -c core.hooksPath=/dev/null rm -rfq --cached . >/dev/null
+          /usr/bin/git -c core.hooksPath=/dev/null add -f evidence/ build/pc-qemu/build-id.txt 2>/dev/null || /usr/bin/git -c core.hooksPath=/dev/null add -f evidence/
+          /usr/bin/git -c core.hooksPath=/dev/null add -f build/hygiene.log 2>/dev/null || true
+          /usr/bin/git -c core.hooksPath=/dev/null -c user.name=nawah-ci -c user.email=ci@nawah-os.invalid commit -qm "CI evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
           auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push -q -f origin "ci-evidence/${GITHUB_RUN_ID}"
+          echo "::add-mask::$auth"
+          unset GIT_TRACE GIT_TRACE_CURL GIT_CURL_VERBOSE GIT_TRACE_REDACT GIT_TRACE_PACKET GIT_TRACE2 GIT_TRACE2_EVENT GIT_TRACE2_PERF
+          /usr/bin/git -c core.hooksPath=/dev/null -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push -q -f origin "ci-evidence/${GITHUB_RUN_ID}"
+      - name: A test job did not succeed
+        if: ${{ !cancelled() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')) }}
+        run: |
+          echo "::error title=Merge::test jobs: ${{ join(needs.*.result, ', ') }}"
+          exit 1

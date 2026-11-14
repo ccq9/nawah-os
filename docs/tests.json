@@ -8,11 +8,11 @@
     "REQ-M0-005"
    ],
    "layer": "host_unit",
-   "oracle": "unittest exit 0 and 'OK' in output; 21 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL",
+   "oracle": "unittest exit 0 and 'OK' in output; 31 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, two runners in the same second getting distinct run ids through the job slot NAWAH_RUN_SLOT (one lowercase letter appended as -<slot>, anything else refused, no slot the id as before) that the evidence schemas accept, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL; each oracle has one source (WP-92): a record whose oracle differs from its source (a HOST_SUITES case, a target.json suite case or boot_oracle, the build's own text) is an error naming the test, as are two sources giving one id different texts (a boot_oracle shadowed by a suite case of its own target is no source, another target's is; sync-oracles then writes nothing), sync-oracles writes the oracle field alone from the source and leaves a record without one, its --check writes nothing and fails on a difference, the file keeps its format, a dated note lives in oracle_notes (an undated one is refused), and under --strict a PASS record's oracle must equal the oracle its evidence's verdict.json records, stale_policy warn included",
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222022Z-25ac22b8-001"
+    "evidence/20261114T134328Z-c7b3e920-001-a"
    ]
   },
   {
@@ -22,11 +22,11 @@
     "REQ-M0-004"
    ],
    "layer": "host_unit",
-   "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision)",
+   "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision); every file ADR-0002 item 4 ports from Sol OS names its origin (commit d54f0a5 or the Sol ADR) in its header; the twelve-role team methodology is in place (docs/policies/team-methodology.md names every role, .claude/workflows/nawah-team.js opens with its meta literal, the twelve agent definitions carry name/description/tools/model; docs/PLAN-REVERSE.md exists with its seven sections, the fifth listing refuted and unverified claims; docs/PLAN-ANSWER.md exists with its eight sections)",
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222022Z-25ac22b8-002"
+    "evidence/20261114T134329Z-c7b3e920-001-a"
    ]
   },
   {
@@ -35,11 +35,11 @@
     "REQ-M0-005"
    ],
    "layer": "host_unit",
-   "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's runs and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; the mutants workflow runs the gates M2, M3, M4, M5 in order, checks the records strictly first and publishes every gate's report (16 cases, OK)",
+   "oracle": "every workflow file parses as YAML with a name, triggers and jobs (each with a runner and steps) and pins every action it uses to a commit; no checkout keeps the token and only the evidence push is given it; verify runs on pushes to main, pull requests and by hand, limits its job's time and cancels the run a newer push to the same ref supersedes (concurrency group per ref, cancel-in-progress); every Toolchain step ends within 15 minutes and retries each download with a per-attempt timeout (three runs of 2026-10-23 hung there to the job's limit); mutants never runs on a push; every guest suite of target.json has its verify step and vice versa, and every host suite outside the gates and M2 is non-empty and run (ADR-0026, D5); every verify job has one Toolchain step capped at 15 and its own limit (test job a 58, merge 20; WP-83, 83a), the M5 and M6 guest steps of job a carry their own caps {M5 18, M6 15} and in every job the step caps with a 20 % margin fit that job's limit (D4-V2), and M6, bounded by its own timeouts, fits its cap in the worst case (the sum over its cases of each phase's timeout_s, the case's or target.json's default, stays under the cap: 895 s against 900 on 2026-11-14; M5's cap is a measured hang guard, outside that rule; uncapped steps are not budgeted); the suite case carrying the boot test id is the oracle of `project.py boot` even with QEMU arguments, two such cases are refused, boot_oracle carries the same lab self-test key as TST-M1-BOOT, and a kernel source other than ktest.rs names that key (PLAN-ANSWER §2.6, WP-45); every phase of TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT require the kernel's whole boot-mode line with the build id (OSX|${BUILD_ID}|kernel|boot_mode|mode=…|source=…|key=…|hv=…, the values per phase), never a fragment a process could print through SYS_TRACE, and the case caps `|kernel|boot_mode|` at one per boot (6); fw_cfg is reached only from bootmode.rs, ktest.rs and fwcfg.rs itself (exact identifiers of fwcfg.rs's public entries, the module name outside its two declaring files, the ports 0x510/0x511), and the guard reports a planted caller, an aliased import and a direct port write while ignoring a lookalike name (PLAN-ANSWER §3.4 item 3); the local pre-flight adds scratch evidence to the caller's environment with build-std for the guest build only (never for the test step, whose host tools link the host's std) and accepts the library source only at the compiler's own commit (missing / ok / mismatch); the mutation harness builds every app the kernel embeds; import-ci-evidence copies the runner's new runs, skips a committed directory without ci identity already under evidence/ (no refusal, no receipt) and leaves no temporary copy behind, also when the checkout fails, and leaves what the user staged staged; check-commit rejects a head commit naming an unknown work item or one that is neither active nor done, and verify runs it (DEC-004); a re-run replaces its evidence branch; TST-M6-HOLD-FAIL-CLOSED is one case of the M6 suite on NAWAH-KTEST.EFI with the ktest key hold_fail_closed, exit 33 and 60 s, requires the ktest start line, its five verdict lines (reply and too_long held with keys=0 of keys_in=2, closed exit 0xe6, manifest locked=0 and locked_with_session=1, nothing left behind), displayd's held trace for each LIST failure branch (reply, too_long, closed) and both manifest decisions, forbids `holds=OK locked=0` and the unheld line of the reply and too_long branches, and no required marker of it is forbidden (WP-67); the mutants workflow runs the gates M2, M3, M4, M5, M6 in order, checks the records non-strictly before them and strictly after the last one (always(), before Publish; audit of WP-92) and publishes and uploads every gate's report, and the M6 gate step carries its own cap, above TST-M6-MUTANTS's timeout_s, that with the older gates' 140 minutes and 20 for the other steps fits the job's limit; the gates a run executes are chosen by the workflow_dispatch input `stages` (a string, default and schedule `M2 M3 M4 M5`, M6 outside it), each gate step's `if` naming its own stage, the steps after M2 under always() (WP-90); the Host suites step, found in whichever verify job holds it and run as GitHub runs a step without `shell:` (bash -e, no pipefail) with a stub project.py, runs every host suite but the gates and M2 once whatever fails and exits non-zero when any failed, zero when none did, and the check reports a loop that pipes a suite into tee and the six bare commands (WP-91); the interactive LOAD budget (WP-82, boot.md) is read from the kernel's code with comments dropped and string and char literals emptied: across kernel/src exactly one declaration of LOAD_BUDGET_TICKS at any indentation and under any attribute, `const LOAD_BUDGET_TICKS: u64 = 10_000;`; start_at_boot defined once, in services.rs, and named once elsewhere, by one call in kmain.rs whose first argument is the identifier LOAD_BUDGET_TICKS; inside start_at_boot its tick parameter used once, as the deadline `t0 + timeout_ticks`; exactly one TIMER_HZ in the kernel, `const TIMER_HZ: u32 = 1000;` in arch/x86_64/irq.rs; the guard reports a wrong value, a literal call, a missing constant and each decoy: an indented shadowing const, a second declaration under another cfg or as a static in another file, a call on another constant beside a commented, block-commented or quoted call, a `use … as` alias, a function pointer, a second call outside kmain.rs, a clamp or a literal deadline inside start_at_boot, a second definition, another TIMER_HZ value, a second TIMER_HZ or none; outside the guard: a const generated by a macro, a function-local `use … as` alias, a rebinding of the start tick and a clamp inside request(); verify's token reads at the top level and only the job holding the Publish step may write; every job other than `merge` sets NAWAH_RUN_SLOT to its own lowercase letter and uploads as `evidence-<slot>` exactly one evidence path, `evidence/*-<slot>/` (always, continue-on-error; `evidence/*`, `evidence`, `evidence/**` or another slot added beside it is refused), and none of them validates strictly, runs pre-merge, adopts or publishes; the `merge` job needs every other job and runs unless the run is cancelled (`!cancelled()`, never always()), and runs in order a pinned download-artifact of `evidence-*` (each artifact in its own directory), the adopt step, `validate-records --strict`, tools/pre-merge.sh and Publish evidence, then fails the run when any test job did not succeed; the adopt step names every expected slot (one per test job) in both its loops, the adoption and the build-file copy, and, run as GitHub runs a step without `shell:` (bash -e) in a scratch tree, fails with an error naming the slot and adopts nothing when a slot's artifact is missing or holds no run directory, passes `--from incoming/evidence-<slot>/evidence` for each slot otherwise, fails when adopt-native refuses (so `|| true` after it is caught), and still succeeds when a source carries no build/ files; Publish runs only when the adopt step succeeded and the run is not cancelled, with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1, every git call `/usr/bin/git -c core.hooksPath=/dev/null`, the token's header masked (`::add-mask::`) on the line after it is computed and GIT_TRACE, GIT_TRACE_CURL, GIT_CURL_VERBOSE, GIT_TRACE_REDACT, GIT_TRACE_PACKET, GIT_TRACE2, GIT_TRACE2_EVENT and GIT_TRACE2_PERF unset before the push (WP-83, 83a; a publish job running no repository code is WP-89) (51 cases, OK)",
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222023Z-25ac22b8-001"
+    "evidence/20261114T134329Z-c7b3e920-002-a"
    ]
   },
   {
@@ -52,7 +52,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222024Z-25ac22b8-001"
+    "evidence/20261114T134333Z-c7b3e920-001-a"
    ]
   },
   {
@@ -61,11 +61,11 @@
     "REQ-M5-007"
    ],
    "layer": "host_unit",
-   "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes, the per-case QEMU timeout exceeds the slowest clean case (~124 s, TST-M5-ELEVATE) instead of a blanket 90 s, and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided (6 cases)",
+   "oracle": "the mutation harness counts a kill only for a real one: a mutant's build id is all hex so TST-M5-DISPLAY-BOOT's bar decodes (not `mutm94`), the per-case QEMU timeout exceeds the slowest clean case (156 s start to finish in the slowest committed TST-M5-ELEVATE run, evidence 20261109T104517Z-dece70c2-001), and run_killers stops the fairness sweep at the first FAIL while declared killers run to the end; a partial report is written as each mutant is decided; stage_of maps M129 to M5 and M130 onwards to M6, and every mutant's anchor occurs exactly once in its file; WP-45's boot-mode mutants M130 (hypervisor_present forced true), M131 (any key value is ok) and M132 (the interactive boot takes the self-test exit) are registered as SECURITY mutants of the M6 stage killed by TST-M6-INTERACTIVE-BOOT, run by the M6 gate (TST-M6-MUTANTS, WP-90), and a mutant whose declared killer boots the release image NAWAH.EFI gets that image built before its killers run; WP-67's mutant M147 (displayd's start-up hold held only for a listing naming `session`, so every LIST failure starts unheld while the trace still says locked=1) is a SECURITY mutant of the M6 stage on displayd killed by TST-M6-HOLD-FAIL-CLOSED, a case of the M6 suite on the test image, and changes the decision only, never a trace line; every stage a registered mutant maps to has exactly one gate suite running `tests/mutants.py --stage <stage>` that mutants.yml runs (a stage without a gate is an error), the M6 gate is TST-M6-MUTANTS of M6-GATE writing build/mutants-m6-report.json and no two gates share a report; reset() restores kernel/, user/, tools/, tests/ and .github/; a mutant of tools/, tests/ or .github/ is a tooling mutant that builds no image and runs its host killers only, and a kernel or user mutant builds its image before its declared killers only when one of them is a guest case, and before the fairness sweep otherwise (main() on a scratch repository: a tooling mutant, even with a guest killer, calls no build step and no guest case; a source mutant its host killers miss calls the build first); reset() fails the run when a tracked change under those trees survives it; host-suite-of and every killer run through the clean checkout's tools/project.py, never the worktree's (a worktree project.py printing OK does not judge); a host killer's FAIL is a kill only when its runner reported failing tests (unittest `FAILED (`, cargo `test result: FAILED`) and the case passes on the clean checkout, otherwise ERROR (a test file that does not compile is no kill); a guest killer's FAIL is a kill only when project.py returned 1 and printed that case's own `<id> <target>: FAIL (…) run=` line, so an internal error (rc 60) or rc 1 without the line is ERROR; the verdict needs ratio >= 0.95 over a non-empty valid set, no surviving and no invalid SECURITY mutant (a SECURITY mutant whose anchor is missing exits 1, report invalid_security); every stage of argparse's --stage has a gate; every mutant's file is an input of this case and of its stage's gate, and a tooling mutant names host killers only (WP-90, the assurance review's conditions); the killers' environment drops CARGO_TARGET_DIR, so the worktree and the clean checkout never share a build (31 cases, OK)",
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222025Z-25ac22b8-001"
+    "evidence/20261114T134333Z-c7b3e920-002-a"
    ]
   },
   {
@@ -74,11 +74,11 @@
     "REQ-M0-003"
    ],
    "layer": "host_unit",
-   "oracle": "clang+lld-link steps exit 0 and PE32+ artifact exists",
+   "oracle": "all build steps exit 0 and artifact exists",
    "command": "python3 tools/project.py build --target pc-qemu-e0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215628Z-25ac22b8-001"
+    "evidence/20261114T132525Z-c7b3e920-001-a"
    ]
   },
   {
@@ -87,11 +87,11 @@
     "REQ-M0-003"
    ],
    "layer": "guest",
-   "oracle": "QEMU exit 33 and serial markers with build_id (OVMF 2024.02, QEMU 8.2.2)",
+   "oracle": "UEFI 2.11 image entry + QEMU isa-debug-exit ((v<<1)|1): app writes 0x10 -> QEMU exit 33; serial carries OSX|<build_id>|e0|start, conout ok=1, done",
    "command": "python3 tools/project.py boot --target pc-qemu-e0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215632Z-25ac22b8-001"
+    "evidence/20261114T132526Z-c7b3e920-001-a"
    ]
   },
   {
@@ -100,11 +100,11 @@
     "REQ-M1-001"
    ],
    "layer": "host_unit",
-   "oracle": "build steps exit 0, artifact exists, build_id recorded",
+   "oracle": "all build steps exit 0 and artifact exists",
    "command": "python3 tools/project.py build --target pc-qemu",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T223829Z-2cbdeaad-001"
+    "evidence/20261114T132529Z-c7b3e920-001-a"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -114,13 +114,16 @@
     "REQ-M1-002"
    ],
    "layer": "guest",
-   "oracle": "contracts/boot.md v1 success path (see boot_oracle); kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map), guarded stack adopted; scheduler self-check (kernel thread spawned and joined, no frame left) and ring-3 ping as process 1; object self-check (VMO through a kernel channel, peer close seen, nothing left); ELF loader self-check (embedded hello app exits 7 after trace+ping, no frame left); PCI enumerated through the MCFG ECAM window; virtio-blk self-check (modern device 0x1042, VERSION_1+FLUSH, sector 0 read, flush); FAT32 volume mounted and /HELLO.TXT read; WP-24: the service manager starts from the volume as the first process with a control channel and the token authority (2 initial handles) and answers `OK 0` to the lab manifest (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1|wait_ticks=…); WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway 10.0.2.2 is answered (SLIRP's MAC 52:55:0a:00:02:02) within the boot (kernel|net|…|code=ok|selfcheck=1); the i8042 keyboard path is initialised (kernel|kbd|…|code=ok|selfcheck=1); the manager receives 4 initial handles",
+   "oracle": "contracts/boot.md v1 success path: boot|start exactly once (arch=x86_64, boot=uefi, stage=pre_ebs), boot|ebs|ok=1, then from kernel code after ExitBootServices kernel|cpu_tables (the kernel's GDT, TSS and IDT on the kernel stack) and kernel|post_ebs with the map key; the ACPI RSDP found (not 0x0); the PIC masked and the PIT check over a 50 ms window passing with the timer's interrupts never nested (max_depth=1); the physical memory manager's self-check; kernel-owned page tables active (vmm line: WP, NXE, section permissions, direct map) and a guarded stack; the MADT's 4 CPUs online (one I/O APIC, its 24 entries masked; every application processor answers its probe, none failed, no id mismatch); heap, scratch mapping and address-space self-checks; scheduler self-check (a kernel thread spawned and joined, no frame left); object self-check (VMO through a kernel channel, peer close seen, nothing left); PCI enumerated through the MCFG ECAM window at 0xe0000000; virtio-blk self-check (modern device 0x1042, its MMIO window shared, 131072 sectors, a 16-entry queue, a read and a flush); the FAT32 volume NAWAHLAB mounted and /HELLO.TXT (24 bytes) read; WP-27: the virtio-net function (0x1041) comes up with VERSION_1|MAC|STATUS, 16-entry queues and 18 DMA frames, link up, and an ARP request for the lab gateway is answered by SLIRP's MAC 52:55:0a:00:02:02 within the boot, no bad frame received and nothing left in flight (kernel|net|…), no K_E_NET_ code; the i8042 keyboard and the PS/2 mouse initialised (kernel|kbd|…|mouse=1, nothing pending or overflowed); WP-30: the second 16550 (COM2, the diagnostic console) answers its loopback probe (kernel|diag|port=0x2f8|present=1|…|selfcheck=1); WP-32: firmware's GOP frame buffer is captured before ExitBootServices (boot|gop|present=1), mapped by the kernel and carries the diagnostic pattern (kernel|display|present=1|…|selfcheck=1); the system-call entry set (kernel|user|lstar) and a ring-3 ping as process 1 (exit 0x1235, no frame left); ELF loader self-check (the embedded hello app exits 7, no frame left); WP-24, WP-46: the kernel spawns the service manager /SYSTEM/SVCMGR.ELF from the volume with 9 initial handles (services.md v1.12: control, authority, SystemFiles, network interface, keyboard, diagnostic console, mouse, display, root job) and it answers `OK 0` to the lab manifest /SYSTEM/SELFTEST.TXT (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1); WP-45 (boot.md, PLAN-ANSWER §2.1): under the fw_cfg key opt/nawah/selftest=1 exactly one boot-mode line, the whole line OSX|<build id>|kernel|boot_mode|mode=selftest|source=fw_cfg|key=ok|hv=1; then kernel|m1_done|exit=0x10 and QEMU exit 33; no boot|error, no exception, no panic",
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T223902Z-2cbdeaad-001"
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
-   "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
+   "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload",
+   "oracle_notes": [
+    "2026-11-14 (WP-92): carried from the record's earlier oracle (undated there; WP-45, boot.md v1.1): the self-test manifest moved to /SYSTEM/SELFTEST.TXT behind the fw_cfg key opt/nawah/selftest=1, with m1_done and exit 33 unchanged: a declared path change, not a weakened oracle."
+   ]
   },
   {
    "id": "TST-M1-NOBS",
@@ -128,11 +131,11 @@
     "REQ-M1-003"
    ],
    "layer": "host_unit",
-   "oracle": "static: kmain.rs safe-only and names no firmware symbol; boot::efi private; BootInfo without fn pointers; kernel_main(&BootInfo)",
+   "oracle": "static: kmain.rs is safe-only (no unsafe allowed by main.rs), names no firmware table/efi symbol; boot::efi is private; BootInfo carries no function pointers; kernel_main takes &BootInfo only",
    "command": "python3 tools/project.py test --target host --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222026Z-25ac22b8-001"
+    "evidence/20261114T134336Z-c7b3e920-001-a"
    ]
   },
   {
@@ -141,11 +144,11 @@
     "REQ-M1-004"
    ],
    "layer": "negative",
-   "oracle": "inject EBS failure build variant: serial boot|error|code=BOOT_E_EBS_FAILED, QEMU exit 97, no reboot (single start line)",
+   "oracle": "contracts/boot.md v1 failure path: stale map key injected -> firmware rejects EBS twice -> boot|error|code=BOOT_E_EBS_FAILED, boot|halt|reboot=0, QEMU exit 97 (0x30); exactly one boot|start (no reboot loop); kernel never entered",
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215714Z-25ac22b8-001"
+    "evidence/20261114T132557Z-c7b3e920-001-a"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -172,7 +175,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215721Z-25ac22b8-001"
+    "evidence/20261114T132601Z-c7b3e920-001-a"
    ]
   },
   {
@@ -185,7 +188,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215727Z-25ac22b8-001"
+    "evidence/20261114T132604Z-c7b3e920-001-a"
    ]
   },
   {
@@ -198,7 +201,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215734Z-25ac22b8-001"
+    "evidence/20261114T132608Z-c7b3e920-001-a"
    ]
   },
   {
@@ -211,7 +214,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215741Z-25ac22b8-001"
+    "evidence/20261114T132612Z-c7b3e920-001-a"
    ]
   },
   {
@@ -224,7 +227,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215747Z-25ac22b8-001"
+    "evidence/20261114T132615Z-c7b3e920-001-a"
    ]
   },
   {
@@ -237,7 +240,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215754Z-25ac22b8-001"
+    "evidence/20261114T132619Z-c7b3e920-001-a"
    ]
   },
   {
@@ -250,7 +253,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215801Z-25ac22b8-001"
+    "evidence/20261114T132622Z-c7b3e920-001-a"
    ]
   },
   {
@@ -263,7 +266,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215807Z-25ac22b8-001"
+    "evidence/20261114T132626Z-c7b3e920-001-a"
    ]
   },
   {
@@ -276,7 +279,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215814Z-25ac22b8-001"
+    "evidence/20261114T132630Z-c7b3e920-001-a"
    ]
   },
   {
@@ -285,11 +288,11 @@
     "REQ-M2-001"
    ],
    "layer": "guest",
-   "oracle": "sidt-based walk of all 256 gates: exception stubs 0..=31 (vector + dummy error code rule), interrupt entries 32..=255 (push 0, push imm32 vector), IST only on #DF",
+   "oracle": "sidt-based walk of all 256 gates (IDT limit 256×16−1): each a present 64-bit interrupt gate with the kernel code selector, zero reserved bytes and IST 0 except #DF (vector 8) on the double-fault IST stack; 0..=31 point to stubs pushing the vector (dummy 0 where the CPU pushes no error code); 32..=255 to the uniform interrupt entries (push 0, push imm32 vector); no mismatch line; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215821Z-25ac22b8-001"
+    "evidence/20261114T132633Z-c7b3e920-001-a"
    ]
   },
   {
@@ -302,7 +305,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215827Z-25ac22b8-001"
+    "evidence/20261114T132637Z-c7b3e920-001-a"
    ]
   },
   {
@@ -311,11 +314,11 @@
     "REQ-M2-010"
    ],
    "layer": "guest",
-   "oracle": "alloc/free N frames: counters and free list consistent; no frame handed out twice",
+   "oracle": "1024 distinct, aligned, >=1 MiB, writable frames; counters move by N and return after free",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215834Z-25ac22b8-001"
+    "evidence/20261114T132640Z-c7b3e920-001-a"
    ]
   },
   {
@@ -324,11 +327,11 @@
     "REQ-M2-010"
    ],
    "layer": "negative",
-   "oracle": "stress/limit/recovery: allocate until None (count == free_frames, no panic, further allocations None), free every frame back via an intrusive list, counters return to the initial values and allocation works again",
+   "oracle": "stress/limit/recovery: alloc until None (count == free_frames, free_frames == 0 after, further alloc None, no panic); every frame given back through an intrusive list; counters back to the start and a new allocation succeeds",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215841Z-25ac22b8-001"
+    "evidence/20261114T132644Z-c7b3e920-001-a"
    ]
   },
   {
@@ -337,11 +340,11 @@
     "REQ-M2-010"
    ],
    "layer": "negative",
-   "oracle": "freeing a free frame is detected and reported, not silently accepted",
+   "oracle": "free twice -> NotAllocated; <1MiB, misaligned, bitmap storage -> Unmanaged",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215847Z-25ac22b8-001"
+    "evidence/20261114T132648Z-c7b3e920-001-a"
    ]
   },
   {
@@ -354,7 +357,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215854Z-25ac22b8-001"
+    "evidence/20261114T132651Z-c7b3e920-001-a"
    ]
   },
   {
@@ -363,11 +366,11 @@
     "REQ-M2-011"
    ],
    "layer": "negative",
-   "oracle": "WP cleared first (firmware may have set it): a supervisor write to a read-only page goes through; after the kernel's own enable_wp a write to .text -> #PF error code 3 with CR2 = RIP = target",
+   "oracle": "firmware-independent: WP cleared -> supervisor write to the read-only header page goes through (restored); kernel's enable_wp -> write to .text raises #PF error code 3 (present, write, supervisor: SDM Fig. 7-11), CR2 = RIP = target; exit 173",
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215901Z-25ac22b8-001"
+    "evidence/20261114T132655Z-c7b3e920-001-a"
    ]
   },
   {
@@ -380,7 +383,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215908Z-25ac22b8-001"
+    "evidence/20261114T132659Z-c7b3e920-001-a"
    ]
   },
   {
@@ -393,7 +396,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215914Z-25ac22b8-001"
+    "evidence/20261114T132702Z-c7b3e920-001-a"
    ]
   },
   {
@@ -406,7 +409,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215921Z-25ac22b8-001"
+    "evidence/20261114T132706Z-c7b3e920-001-a"
    ]
   },
   {
@@ -419,7 +422,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215928Z-25ac22b8-001"
+    "evidence/20261114T132710Z-c7b3e920-001-a"
    ]
   },
   {
@@ -432,7 +435,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215934Z-25ac22b8-001"
+    "evidence/20261114T132713Z-c7b3e920-001-a"
    ]
   },
   {
@@ -445,7 +448,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215941Z-25ac22b8-001"
+    "evidence/20261114T132717Z-c7b3e920-001-a"
    ]
   },
   {
@@ -458,7 +461,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215954Z-25ac22b8-001"
+    "evidence/20261114T132724Z-c7b3e920-001-a"
    ]
   },
   {
@@ -467,7 +470,7 @@
     "REQ-M2-014"
    ],
    "layer": "host_unit",
-   "oracle": "tests/mutants.py: 29 seeded defects applied one at a time in a detached worktree, each built and run against its killer M1/M2 cases (full suite before declaring a survivor); PASS when >= 95% of the compiling mutants are killed; report build/mutants-report.json",
+   "oracle": "every seeded defect that compiles is killed by at least one M1/M2 case; kill ratio >= 0.95 (report in stdout and build/mutants-report.json)",
    "command": "python3 tools/project.py test --target host --suite M2  (mutants workflow)",
    "verdict": "PASS",
    "evidence_refs": [
@@ -485,7 +488,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T215948Z-25ac22b8-001"
+    "evidence/20261114T132720Z-c7b3e920-001-a"
    ]
   },
   {
@@ -498,7 +501,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220001Z-25ac22b8-001"
+    "evidence/20261114T132728Z-c7b3e920-001-a"
    ]
   },
   {
@@ -511,7 +514,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220008Z-25ac22b8-001"
+    "evidence/20261114T132731Z-c7b3e920-001-a"
    ]
   },
   {
@@ -524,7 +527,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220022Z-25ac22b8-001"
+    "evidence/20261114T132739Z-c7b3e920-001-a"
    ]
   },
   {
@@ -533,11 +536,11 @@
     "REQ-M3-002"
    ],
    "layer": "host_unit",
-   "oracle": "cargo build for aarch64-unknown-uefi (release) exits 0 and NAWAH-A64.EFI exists",
+   "oracle": "all build steps exit 0 and artifact exists",
    "command": "python3 tools/project.py build --target virt-qemu-aarch64",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222014Z-25ac22b8-001"
+    "evidence/20261114T134321Z-c7b3e920-001-a"
    ]
   },
   {
@@ -546,11 +549,11 @@
     "REQ-M3-002"
    ],
    "layer": "guest",
-   "oracle": "QEMU virt + AAVMF: boot|start arch=aarch64, boot|ebs|ok=1, kernel cpu_tables (firmware vbar/mmu), post_ebs, pmm selfcheck=1, kernel|a64|el=<n>|paging=firmware|exit=0x10; semihosting exit status 16; no boot|error, no panic",
+   "oracle": "AArch64 lab (QEMU virt, AAVMF): boot|start exactly once (arch=aarch64, boot=uefi, stage=pre_ebs), GetMemoryMap + ExitBootServices succeed (boot|ebs|ok=1), then from kernel code kernel|cpu_tables with the firmware's vector base and MMU kept (vbar=firmware|mmu=firmware) on the kernel stack, kernel|post_ebs with the map key, the pmm self-check (managed_frames, selfcheck=1) and the kernel|a64 line with the exception level and paging=firmware|exit=0x10; then semihosting exit 0x10 (QEMU exit status 16); no boot|error, no panic",
    "command": "python3 tools/project.py boot --target virt-qemu-aarch64",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222015Z-25ac22b8-001"
+    "evidence/20261114T134322Z-c7b3e920-001-a"
    ]
   },
   {
@@ -563,7 +566,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220028Z-25ac22b8-001"
+    "evidence/20261114T132742Z-c7b3e920-001-a"
    ]
   },
   {
@@ -572,11 +575,11 @@
     "REQ-M3-003"
    ],
    "layer": "negative",
-   "oracle": "SYS_TRACE with an unmapped user pointer returns ERR_FAULT and with a kernel pointer ERR_RANGE; the program exits 0xfdfc and the kernel continues; exit 33; no user|trace|len=8 line",
+   "oracle": "SYS_TRACE with an unmapped user pointer returns ERR_FAULT and with a kernel pointer ERR_RANGE; the program exits 0xfdfc and the kernel continues; exit 33 (the boot self-check's hello app traces len=14 earlier in the log; only a len=8 trace would betray a bad-pointer copy)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220035Z-25ac22b8-001"
+    "evidence/20261114T132746Z-c7b3e920-001-a"
    ]
   },
   {
@@ -589,7 +592,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220041Z-25ac22b8-001"
+    "evidence/20261114T132750Z-c7b3e920-001-a"
    ]
   },
   {
@@ -603,7 +606,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220048Z-25ac22b8-001"
+    "evidence/20261114T132753Z-c7b3e920-001-a"
    ]
   },
   {
@@ -616,7 +619,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220055Z-25ac22b8-001"
+    "evidence/20261114T132757Z-c7b3e920-001-a"
    ]
   },
   {
@@ -629,7 +632,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220102Z-25ac22b8-001"
+    "evidence/20261114T132800Z-c7b3e920-001-a"
    ]
   },
   {
@@ -642,7 +645,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220108Z-25ac22b8-001"
+    "evidence/20261114T132804Z-c7b3e920-001-a"
    ]
   },
   {
@@ -656,7 +659,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220115Z-25ac22b8-001"
+    "evidence/20261114T132807Z-c7b3e920-001-a"
    ]
   },
   {
@@ -669,7 +672,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220122Z-25ac22b8-001"
+    "evidence/20261114T132811Z-c7b3e920-001-a"
    ]
   },
   {
@@ -682,7 +685,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220135Z-25ac22b8-001"
+    "evidence/20261114T132818Z-c7b3e920-001-a"
    ]
   },
   {
@@ -695,7 +698,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220142Z-25ac22b8-001"
+    "evidence/20261114T132822Z-c7b3e920-001-a"
    ]
   },
   {
@@ -708,7 +711,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220148Z-25ac22b8-001"
+    "evidence/20261114T132825Z-c7b3e920-001-a"
    ]
   },
   {
@@ -721,7 +724,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220155Z-25ac22b8-001"
+    "evidence/20261114T132829Z-c7b3e920-001-a"
    ]
   },
   {
@@ -734,7 +737,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220202Z-25ac22b8-001"
+    "evidence/20261114T132832Z-c7b3e920-001-a"
    ]
   },
   {
@@ -747,7 +750,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220229Z-25ac22b8-001"
+    "evidence/20261114T132846Z-c7b3e920-001-a"
    ]
   },
   {
@@ -760,7 +763,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220235Z-25ac22b8-001"
+    "evidence/20261114T132850Z-c7b3e920-001-a"
    ]
   },
   {
@@ -773,7 +776,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220242Z-25ac22b8-001"
+    "evidence/20261114T132853Z-c7b3e920-001-a"
    ]
   },
   {
@@ -786,7 +789,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220249Z-25ac22b8-001"
+    "evidence/20261114T132857Z-c7b3e920-001-a"
    ]
   },
   {
@@ -799,7 +802,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220255Z-25ac22b8-001"
+    "evidence/20261114T132900Z-c7b3e920-001-a"
    ]
   },
   {
@@ -812,7 +815,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220302Z-25ac22b8-001"
+    "evidence/20261114T132904Z-c7b3e920-001-a"
    ]
   },
   {
@@ -825,7 +828,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220341Z-25ac22b8-001"
+    "evidence/20261114T132925Z-c7b3e920-001-a"
    ]
   },
   {
@@ -838,7 +841,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220348Z-25ac22b8-001"
+    "evidence/20261114T132929Z-c7b3e920-001-a"
    ]
   },
   {
@@ -851,7 +854,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220355Z-25ac22b8-001"
+    "evidence/20261114T132932Z-c7b3e920-001-a"
    ]
   },
   {
@@ -864,7 +867,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220402Z-25ac22b8-001"
+    "evidence/20261114T132936Z-c7b3e920-001-a"
    ]
   },
   {
@@ -877,7 +880,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220408Z-25ac22b8-001"
+    "evidence/20261114T132940Z-c7b3e920-001-a"
    ]
   },
   {
@@ -890,7 +893,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220415Z-25ac22b8-001"
+    "evidence/20261114T132943Z-c7b3e920-001-a"
    ]
   },
   {
@@ -899,7 +902,7 @@
     "REQ-M3-010"
    ],
    "layer": "host_unit",
-   "oracle": "seeded defects in the M3 modules (M30 onwards in tests/mutants.py: scheduler, objects, syscalls, ELF loader, MMIO window, TLB shootdown, SMP placement, virtio-blk, FAT32, VFS) are killed by the M3 suite incl. host checks: kill ratio >= 0.95",
+   "oracle": "every seeded M3 defect that compiles (scheduler, objects, syscalls, loader, MMIO window, TLB shootdown, SMP placement, virtio-blk, FAT32, VFS) is killed by at least one M3 case, host checks included; kill ratio >= 0.95",
    "command": "python3 tools/project.py test --target host --suite M3-GATE",
    "verdict": "PASS",
    "evidence_refs": [
@@ -917,7 +920,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220015Z-25ac22b8-001"
+    "evidence/20261114T132735Z-c7b3e920-001-a"
    ]
   },
   {
@@ -931,7 +934,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220128Z-25ac22b8-001"
+    "evidence/20261114T132815Z-c7b3e920-001-a"
    ]
   },
   {
@@ -944,7 +947,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220208Z-25ac22b8-001"
+    "evidence/20261114T132836Z-c7b3e920-001-a"
    ]
   },
   {
@@ -958,7 +961,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220215Z-25ac22b8-001"
+    "evidence/20261114T132839Z-c7b3e920-001-a"
    ]
   },
   {
@@ -971,7 +974,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220222Z-25ac22b8-001"
+    "evidence/20261114T132843Z-c7b3e920-001-a"
    ]
   },
   {
@@ -984,7 +987,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220311Z-25ac22b8-001"
+    "evidence/20261114T132909Z-c7b3e920-001-a"
    ]
   },
   {
@@ -997,7 +1000,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220318Z-25ac22b8-001"
+    "evidence/20261114T132913Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1010,7 +1013,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220325Z-25ac22b8-001"
+    "evidence/20261114T132916Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1023,7 +1026,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220332Z-25ac22b8-001"
+    "evidence/20261114T132920Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1036,7 +1039,7 @@
    "command": "python3 tools/project.py test --target host --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222026Z-25ac22b8-002"
+    "evidence/20261114T134337Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1049,7 +1052,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220422Z-25ac22b8-001"
+    "evidence/20261114T132947Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1062,7 +1065,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220429Z-25ac22b8-001"
+    "evidence/20261114T132951Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1075,7 +1078,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220435Z-25ac22b8-001"
+    "evidence/20261114T132954Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1088,7 +1091,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220442Z-25ac22b8-001"
+    "evidence/20261114T132958Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1101,7 +1104,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220449Z-25ac22b8-001"
+    "evidence/20261114T133002Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1114,7 +1117,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220456Z-25ac22b8-001"
+    "evidence/20261114T133005Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1123,11 +1126,11 @@
     "REQ-M4-003"
    ],
    "layer": "host_unit",
-   "oracle": "nawah-crypto's SHA-256 (FIPS 180-4 examples incl. the two-block message and the empty message, incremental = one-shot), HMAC-SHA-256 (RFC 4231 test cases 1, 2, 6, 7) and PBKDF2-HMAC-SHA-256 (RFC 7914 §11, 1 and 80000 iterations) known answers pass on the host (cargo test); the guest repeats them in the auth service (TST-M4-LOGIN: user|trace auth|kat|fails=0|pbkdf2_80000=1)",
+   "oracle": "nawah-crypto's SHA-256 (FIPS 180-4 examples incl. the two-block message and the empty message, incremental = one-shot), HMAC-SHA-256 (RFC 4231 test cases 1, 2, 6, 7) and PBKDF2-HMAC-SHA-256 (RFC 7914 §11, 1 and 80000 iterations) known answers pass on the host (4 tests, 0 failed); the guest repeats them in the auth service (TST-M4-LOGIN)",
    "command": "python3 tools/project.py test --target host --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222029Z-25ac22b8-001"
+    "evidence/20261114T134339Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1140,7 +1143,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220509Z-25ac22b8-001"
+    "evidence/20261114T133013Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1153,7 +1156,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220521Z-25ac22b8-001"
+    "evidence/20261114T133019Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1166,7 +1169,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220530Z-25ac22b8-001"
+    "evidence/20261114T133023Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1179,7 +1182,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220611Z-25ac22b8-001"
+    "evidence/20261114T133043Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1192,7 +1195,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220538Z-25ac22b8-001"
+    "evidence/20261114T133027Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1205,7 +1208,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220546Z-25ac22b8-001"
+    "evidence/20261114T133031Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1218,7 +1221,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220554Z-25ac22b8-001"
+    "evidence/20261114T133035Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1231,7 +1234,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220602Z-25ac22b8-001"
+    "evidence/20261114T133039Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1244,7 +1247,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220623Z-25ac22b8-001"
+    "evidence/20261114T133049Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1257,7 +1260,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220629Z-25ac22b8-001"
+    "evidence/20261114T133053Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1270,7 +1273,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220636Z-25ac22b8-001"
+    "evidence/20261114T133057Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1283,7 +1286,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220644Z-25ac22b8-001"
+    "evidence/20261114T133102Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1296,7 +1299,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220652Z-25ac22b8-001"
+    "evidence/20261114T133106Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1309,7 +1312,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220700Z-25ac22b8-001"
+    "evidence/20261114T133110Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1322,7 +1325,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220709Z-25ac22b8-001"
+    "evidence/20261114T133114Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1331,11 +1334,11 @@
     "REQ-M4-008"
    ],
    "layer": "guest",
-   "oracle": "a TCP connection to a host echo server (hostfwd): handshake, data both ways, orderly close",
+   "oracle": "a TCP echo server on the host (127.0.0.1:17008, reached as 10.0.2.2 through SLIRP): TCP_CONNECT completes the three-way handshake (OK 1), two sends are acknowledged (OK 9 / OK 24) and their echoes come back through TCP_RECV, an empty receive times out, TCP_STATUS shows ESTABLISHED with no retransmission and rto=1000, TCP_CLOSE closes in order and the identifier is released (ERR CLOSED), a connect to a port nobody listens on is refused by RST (ERR REFUSED), a malformed request is ERR BAD_REQUEST; clean exit, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220717Z-25ac22b8-001"
+    "evidence/20261114T133119Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1344,11 +1347,11 @@
     "REQ-M4-008"
    ],
    "layer": "guest",
-   "oracle": "with a segment dropped by the lab (host-side drop), the data still arrives through retransmission within the RTO budget",
+   "oracle": "with the host's TCP echo server: after TCP_INJECT drop_next=1 the service loses its next transmission, so TCP_SEND (OK 13) completes only after the retransmission timer fires (waited >= 1000 ticks, the initial RTO of RFC 6298); TCP_STATUS then shows retransmits=1 and rto=2000 (doubled, no RTT sample from the retransmitted segment per Karn), the echo arrives, and the next acknowledged send restores rto=1000 (new RTT sample, floor 1 s); orderly close; clean exit, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220726Z-25ac22b8-001"
+    "evidence/20261114T133123Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1361,7 +1364,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220735Z-25ac22b8-001"
+    "evidence/20261114T133129Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1374,7 +1377,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220744Z-25ac22b8-001"
+    "evidence/20261114T133134Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1387,7 +1390,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220754Z-25ac22b8-001"
+    "evidence/20261114T133140Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1396,7 +1399,7 @@
     "REQ-M4-010"
    ],
    "layer": "host_unit",
-   "oracle": "seeded defects M50–M81 in the M4 modules (process/wait syscalls, tokens, device objects and polling, system_info, dir_list, svcmgr, authd, configd, netd, sh) are killed by the M4 suite, console sessions included (>= 95%); report build/mutants-m4-report.json",
+   "oracle": "every seeded M4 defect that compiles (process/wait syscalls, tokens, device objects and polling, system_info, dir_list, svcmgr ordering/timeouts/restarts/authority, authd verification and sessions, configd CAS/retry/precedence/notify/authorization, netd checksums/policy/retransmission, sh token hand-over and prompt) is killed by at least one M4 case, console sessions included; kill ratio >= 0.95",
    "command": "python3 tools/project.py test --target host --suite M4-GATE",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1414,7 +1417,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220503Z-25ac22b8-001"
+    "evidence/20261114T133009Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1423,11 +1426,11 @@
     "REQ-M4-009"
    ],
    "layer": "host_unit",
-   "oracle": "tools/project.py ConsoleSession against a fake shell over TCP (the shell.md line protocol): waits for the serial marker before the first command, splits each command's output at the prompt, judges expect/absent/prompt/expect_serial, reports every miss by step, and a missing marker ends the session with no command sent (3 unittest cases, OK)",
+   "oracle": "the lab's console session (ConsoleSession) against a fake shell over TCP: waits for the serial marker, splits output at the prompt, judges expect/absent/prompt/expect_serial, reports misses by step, a missing marker sends nothing (3 cases, OK)",
    "command": "python3 tools/project.py test --target host --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222036Z-25ac22b8-001"
+    "evidence/20261114T134344Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1436,11 +1439,11 @@
     "REQ-M5-001"
    ],
    "layer": "guest",
-   "oracle": "the boot stub captures the GOP mode into BootInfo (present=1, 32-bpp, resolution and stride printed), the kernel maps the frame and draws the diagnostic pattern (kernel|display|…|selfcheck=1), and a monitor screendump taken after boot shows the pattern's colours at the declared corners (tools/screen.py); (WP-42, REQ-M5-001) a frame the kernel cannot draw on — GOP bit mask or blt-only format, no width, a stride below the width, no base, larger than it maps — is refused before anything is mapped, its boot line reads present=0, and the frame in use is untouched; nothing lands past the frame: the kernel refuses to write a record across the end of a process's frame mapping (ERR_FAULT, last pixels unchanged) and the process's own write one pixel past it faults at exactly that address and ends it (exit 0x1000E), the only user fault of the run",
+   "oracle": "the boot stub captures the GOP mode into BootInfo (boot|gop|present=1 with the resolution, stride and 32-bit format), the kernel maps the frame and draws the diagnostic pattern (kernel|display|…|selfcheck=1); the test reads the four corners and decodes the build-id bar back from the frame; the fbprobe process maps the frame through the display object (display_info, display_map, vmo_map read-write and read-only), paints a magenta and a cyan 64×64 square, probes the refusals (write mapping of a read-only handle ERR_ACCESS, bad protection ERR_INVALID, a channel ERR_WRONG_TYPE, unmapping a non-mapping ERR_INVALID); nothing lands past the frame (REQ-M5-001, WP-42): the kernel refuses a frame in an unsupported pixel format (GOP bit mask, blt only) or geometry (no width, stride below width, no base, larger than it maps) before mapping anything, its boot line then reads present=0, and the frame in use is untouched (refused=6/6, kept=1); the probe maps the frame again as its last mapping, the kernel refuses to write a record across its end (ERR_FAULT, the last pixels unchanged), and the probe's own write one pixel past the end faults at exactly that address (one user_fault, vector 14, cr2 = the traced end) and ends it (exit 0x1000E) with no frame leaked; the lab then takes a QEMU screendump and presses Enter, and tools/screen.py finds the corners, the build id and both squares in the picture; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220801Z-25ac22b8-001"
+    "evidence/20261114T133144Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1454,7 +1457,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220841Z-25ac22b8-001"
+    "evidence/20261114T133209Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1463,11 +1466,11 @@
     "REQ-M5-002"
    ],
    "layer": "guest",
-   "oracle": "the input service (auth + input from SVC-IN.TXT) receives the keyboard and the mouse from the manager; clients a, b, session register (OK 1/2/3); FOCUS without a token, with a user's token, or for an unknown client is refused (ERR ACCESS/ERR ACCESS/ERR UNKNOWN) and LAYOUT with a user's token is refused; with the admin's token FOCUS 1 is OK; keys sent through the monitor (`a`, `shift-b`, `ctrl-alt-delete`) reach a as exactly the eight KEY events up to the Alt press with set-1 codes, modifiers and US characters, then the sequence moves the focus to the session client (input.md v2.2), which receives exactly `SAK` and the releases of Alt and Ctrl (Delete never reported), b receives nothing; after FOCUS 2 + LAYOUT ar, `a` reaches b as `ش` and a receives nothing; STATUS counts 12 keys, 1 SAK, 0 dropped; clean exit, no frame leak Phase 3 (WP-38, input.md v2.3): the lab presses shift-alt-x then a; Shift+Alt with a third key between is a shortcut, so the layout stays Arabic and a is still ش (keys=20)",
+   "oracle": "the input service (SVC-IN.TXT: auth, input) receives the keyboard and the mouse from the manager; three clients register (a, b, session → OK 1/2/3); FOCUS without a token, with a user's token or for an unknown client is refused (ERR ACCESS / ERR ACCESS / ERR UNKNOWN), LAYOUT with a user's token is refused, FOCUS 1 with the admin's token is OK and STATUS reports it; the lab then presses `a`, `shift-b` and `ctrl-alt-delete` through the QEMU monitor: client a receives exactly the eight key events up to the Alt press `KEY 0x1e down 0 a`, `KEY 0x1e up 0 a`, `KEY 0x2a down 1 -`, `KEY 0x30 down 1 B`, `KEY 0x30 up 1 B`, `KEY 0x2a up 0 -`, `KEY 0x1d down 2 -`, `KEY 0x38 down 6 -` (set-1 codes, modifiers, US layout; QEMU presses in order and releases in reverse), then the focus moves to the session client with the sequence (input.md v2.2) and it receives exactly `SAK`, `KEY 0x38 up 2 -`, `KEY 0x1d up 0 -` (the Delete make and break codes are never reported), client b receives nothing; the admin moves the focus to b and selects the Arabic layout, the lab presses `a` again and b receives `KEY 0x1e down 0 ش` and `KEY 0x1e up 0 ش` while a receives nothing more; STATUS counts 12 keys, 1 SAK, 0 dropped; the manager and services exit cleanly, no frame leaks; exit 33 Phase 3 (WP-38, input.md v2.3): the lab presses shift-alt-x then a; Shift+Alt with a third key between is a shortcut, so the layout stays Arabic and a is still ش (keys=20)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220811Z-25ac22b8-001"
+    "evidence/20261114T133151Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1476,11 +1479,11 @@
     "REQ-M5-002"
    ],
    "layer": "guest",
-   "oracle": "the PS/2 mouse answers at boot (kernel|kbd|…|mouse=1); pointer actions injected through the monitor reach the focused client as PTR events: `mouse_move 10 5` → `PTR 10 5 0` (y downwards: the PS/2 sign inverted), `mouse_button 1` → `PTR 0 0 1`, `mouse_button 0` → `PTR 0 0 0`; STATUS counts 3 packets, no key/SAK/drop; clean exit, no frame leak",
+   "oracle": "the kernel enables the i8042 auxiliary interface and the PS/2 mouse answers its set-defaults and enable-reporting commands at boot (kernel|kbd|…|mouse=1); the input service's focused client receives the lab's pointer actions sent through the QEMU monitor — `mouse_move 10 5` as `PTR 10 5 0` (y grows downwards on the screen: the PS/2 sign is inverted), `mouse_button 1` as `PTR 0 0 1`, `mouse_button 0` as `PTR 0 0 0` — and STATUS counts 3 packets with no key, SAK or drop; the manager and services exit cleanly, no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220831Z-25ac22b8-001"
+    "evidence/20261114T133203Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1489,11 +1492,11 @@
     "REQ-M5-002"
    ],
    "layer": "host_unit",
-   "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect (9 cases, OK)",
+   "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} and ${SCREEN:tag} (screen-<tag>.ppm beside it) resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value), ${EVIDENCE} (the run's directory) and ${SCREEN:tag}; key-down/key-up go through QMP on one connection kept for the run (handshake once): a key pressed in one step is released by a later step after that step's marker and within 0.5 s of it; a step with since_previous ignores its marker printed before the previous step fired; a key command with no QMP socket is reported and the run goes on, and the link reconnects after a failed connect; a case with ends_by=monitor (WP-45) ends by the lab's `quit` (QEMU status 0): every step sent and the last one ending with `quit`, while a run that ended before the last step (a guest reset is status 0 too), a last step without `quit`, a case without steps or an unknown ending is a failure; driven through cmd_boot itself on the fake QEMU (target, image preparation and records stubbed), a case ending by the monitor passes when the lab quits and fails when the guest exits 0 before the last step, in a single run and in a later phase, each phase's console failures are all reported (a later phase does not overwrite them) and a phase's own timeout_s ends that phase; a forbidden marker of the case, or of a phase in a multi-phase case, fails it when it appears only in the guest's received console transcript (named in the reason by its file) and the case passes when it is absent, and the real ConsoleSession's received transcript holds every byte read from the guest while the session runs (output after the last step or the socket's close is not checked), a guest line starting `>>> ` included (provenance, not prefix), and none of the lab's own `>>> ` lines, which stay in console.log (WP-82); a case of several phases writes console-<i>.log per phase (as serial-<i>.log), so both transcripts of a two-phase case stay on disk and a forbidden marker's reason names the file it was found in, while a single-phase case keeps console.log; when QEMU dies by a signal and the phase is retried, the retry gets its own console session, so neither the dead attempt's transcript nor its console failures judge the case (19 cases, OK)",
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222040Z-25ac22b8-001"
+    "evidence/20261114T134348Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1506,7 +1509,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220853Z-25ac22b8-001"
+    "evidence/20261114T133217Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1515,11 +1518,11 @@
     "REQ-M5-008"
    ],
    "layer": "guest",
-   "oracle": "REQ-M5-008 display.md v1.6 (M5 pre-gate review, M7): one kernel-side client of the compositor (SVC-DP.TXT) creates three 120×80 surfaces (1, 2, 3) and three windows in order (4, 5, 6; the newest, 6, focused) and minimises the oldest (MINIMIZE 4 → OK). The test types its keys into the keyboard ring itself (net::inject_keyboard, test kernel only), waiting for each focus move, because the lab's sendkey releases Alt at once. (1) Alt held across three Tabs: the focus walks the windows as they were stacked at the first Tab, the most recently used first — 5, 4 (restored from minimised while reached), 6 — and at Alt's release the walk is undone but for the window it ended on: 4 is minimised again and 6 is on top (z 0). Before v1.6 each Tab raised the window it reached and the next went straight back (5, 6, 5) and the minimised window was never reached. (2) Alt held across two Tabs: 5, 4; the walk ends on 4, which stays restored and goes on top. (3) The lab presses Alt+Tab once (Alt released between presses): the focus goes back to the window used before that walk, 6, and the compositor has handled the lab's four key events before the test goes on. Every key event the test types is counted by the compositor (KEYS) before the state after it is read. Phases 4 to 7 each start from a stacking set by RAISE requests. (4) During a walk (4, then 5) the client closes 4 and opens window 7 on 4's surface, which takes the focus: at Alt's release the stacking is 7, 5, 6 — the new window focused on top and the walk's last window just under it (before the second revision the walk's end was taken from the focus: 7, 6, 5). (5) From 7, 5, 6 a walk reaches 5, the client closes 6 and opens 8 in 6's slot (8 takes the focus), the walk goes on to 7: at the release 7, 8, 5 — 8 is a window created during the walk, not the closed one (matched by slot it was 7, 5, 8). (6) From 7, 8, 5 with 5 minimised a walk reaches 8, the client restores 5 itself, the walk goes on to 7: 5 stays restored at the release, 7, 8, 5 (before, every window minimised at the first Tab was minimised again). (7) From 7, 8, 5 with 5 minimised a walk goes 8, 5 (restored), 7 and the manager restarts the input service with Alt still held: the walk ends as at a release — 7, 8, 5 with 5 minimised again (before, the walk was dropped: 7, 5, 8, 5 restored); the input service is ready again (restarts 1). Clean exit, no frame leaks; exit 33 (display.md v1.6; S77; M5 pre-gate review, M7)",
+   "oracle": "one kernel-side client of the compositor (SVC-DP.TXT) creates three 120×80 surfaces (1, 2, 3) and three windows in order (4, 5, 6; the newest, 6, focused) and minimises the oldest (MINIMIZE 4 → OK). The test types its keys into the keyboard ring itself (net::inject_keyboard, test kernel only), waiting for each focus move, because the lab's sendkey releases Alt at once. (1) Alt held across three Tabs: the focus walks the windows as they were stacked at the first Tab, the most recently used first — 5, 4 (restored from minimised while reached), 6 — and at Alt's release the walk is undone but for the window it ended on: 4 is minimised again and 6 is on top (z 0). Before v1.6 each Tab raised the window it reached and the next went straight back (5, 6, 5) and the minimised window was never reached. (2) Alt held across two Tabs: 5, 4; the walk ends on 4, which stays restored and goes on top. (3) The lab presses Alt+Tab once (Alt released between presses): the focus goes back to the window used before that walk, 6, and the compositor has handled the lab's four key events before the test goes on. Every key event the test types is counted by the compositor (KEYS) before the state after it is read. Phases 4 to 7 each start from a stacking set by RAISE requests. (4) During a walk (4, then 5) the client closes 4 and opens window 7 on 4's surface, which takes the focus: at Alt's release the stacking is 7, 5, 6 — the new window focused on top and the walk's last window just under it (before the second revision the walk's end was taken from the focus: 7, 6, 5). (5) From 7, 5, 6 a walk reaches 5, the client closes 6 and opens 8 in 6's slot (8 takes the focus), the walk goes on to 7: at the release 7, 8, 5 — 8 is a window created during the walk, not the closed one (matched by slot it was 7, 5, 8). (6) From 7, 8, 5 with 5 minimised a walk reaches 8, the client restores 5 itself, the walk goes on to 7: 5 stays restored at the release, 7, 8, 5 (before, every window minimised at the first Tab was minimised again). (7) From 7, 8, 5 with 5 minimised a walk goes 8, 5 (restored), 7 and the manager restarts the input service with Alt still held: the walk ends as at a release — 7, 8, 5 with 5 minimised again (before, the walk was dropped: 7, 5, 8, 5 restored); the input service is ready again (restarts 1). Clean exit, no frame leaks; exit 33 (display.md v1.6; S77; M5 pre-gate review, M7)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220904Z-25ac22b8-001"
+    "evidence/20261114T133224Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1532,7 +1535,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220913Z-25ac22b8-001"
+    "evidence/20261114T133229Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1545,7 +1548,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220928Z-25ac22b8-001"
+    "evidence/20261114T133240Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1558,7 +1561,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222120Z-25ac22b8-001"
+    "evidence/20261114T134451Z-c7b3e920-002-a"
    ]
   },
   {
@@ -1571,7 +1574,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222057Z-25ac22b8-001"
+    "evidence/20261114T134433Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1584,7 +1587,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222058Z-25ac22b8-001"
+    "evidence/20261114T134434Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1597,7 +1600,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222107Z-25ac22b8-001"
+    "evidence/20261114T134441Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1610,7 +1613,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220945Z-25ac22b8-001"
+    "evidence/20261114T133248Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1623,7 +1626,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221000Z-25ac22b8-001"
+    "evidence/20261114T133258Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1636,7 +1639,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221024Z-25ac22b8-001"
+    "evidence/20261114T133316Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1646,11 +1649,11 @@
     "REQ-M5-009"
    ],
    "layer": "host_unit",
-   "oracle": "libui on the host (14 tests): an element without a label (or a list without items) is refused when built; the focus order is the declared order without labels; Tab/Shift+Tab cycle it, Esc cancels, presses only; the text field takes characters (Arabic too), Backspace and the cursor keys, the list moves its selection with the arrows within bounds, Space/Enter toggle the checkbox and activate buttons; the descriptions read role, label, state and value/item exactly; ui.scale/ui.contrast map to the theme; 2x doubles every rectangle and the largest dialog fits one surface VMO; painting uses the theme's background and focus colours; v1.1 (WP-37): the password field edits like a text field, is described by role, label and state without its value, is drawn as one bullet per character (pixel-equal to a field of bullets, unlike the characters), and the application reads, wipes (zeroed slots) and sets values and moves the focus only where it can go; v1.2 (WP-39): right-to-left field arrows swap (set_rtl live), relabel/set_items switch an element's language in place (selection clamped, bad arguments refused); v1.3 (WP-41): a value element shows text the application sets, is never focused, is described with its value as static and keeps at most TEXT_MAX (48) characters, and a password is never filled by the application; v1.5 (WP-38): Painter::fits measures a label or value through the painter's own line layout (font size, direction) against its row and refuses the 15+1+32 W prompt and config SET device MMMMMMMM 0 901 off but keeps the lab's requests (lab.elev, lab.elev7, lab.elev8), in both directions and at 2x, and never fits more than TEXT_MAX characters",
+   "oracle": "libui on the host (14 tests): an element without a label (or a list without items) is refused when built; the focus order is the declared order without labels; Tab/Shift+Tab cycle it, Esc cancels, presses only; the text field takes characters (Arabic too), Backspace and the cursor keys, the list moves its selection with the arrows within bounds, Space/Enter toggle the checkbox and activate buttons; the descriptions read role, label, state and value/item exactly; ui.scale/ui.contrast map to the theme; 2x doubles every rectangle and the largest dialog fits one surface VMO; painting uses the theme's background and focus colours; v1.1 (WP-37): the password field edits like a text field, is described by role, label and state without its value, is drawn as one bullet per character (pixel-equal to a field of bullets, unlike the characters), and the application reads, wipes (zeroed slots) and sets values and moves the focus only where it can go; v1.2 (WP-39): in a right-to-left field Left and Right swap direction (set_rtl flips it live), and relabel/set_items switch an element's language in place with the selection clamped and bad arguments refused; v1.3 (WP-41): a value element shows text the application sets, is never focused, is described with its value as static and keeps at most TEXT_MAX (48) characters, and a password is never filled by the application; v1.5 (WP-38): Painter::fits measures a label or value through the painter's own line layout (font size, direction) against its row and refuses the 15+1+32 W prompt and config SET device MMMMMMMM 0 901 off but keeps the lab's requests (lab.elev, lab.elev7, lab.elev8), in both directions and at 2x, and never fits more than TEXT_MAX characters",
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222111Z-25ac22b8-001"
+    "evidence/20261114T134443Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1663,7 +1666,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222119Z-25ac22b8-001"
+    "evidence/20261114T134451Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1676,7 +1679,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221135Z-25ac22b8-001"
+    "evidence/20261114T133415Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1685,11 +1688,11 @@
     "REQ-M5-006"
    ],
    "layer": "guest",
-   "oracle": "SVC-SA.TXT (SVC-SS.TXT with the narrator, before which the session starts): the lab signs in at the session's screen, then types `a` and `b`, which reach the focused spy, and Ctrl+Alt+Del: the Ctrl and Alt presses reach the spy, the sequence moves the keyboard to the session (input.md v2.2) and it locks (STATE `OK locked user=admin changes=2 …`); the spy has counted 6 keys and lost the focus, and the compositor has received 6 key events in all (KEYS); the lab types the password and Enter on the lock screen: the session unlocks (`OK unlocked user=admin changes=3 display=1 input=1 focus=display`) while the compositor's count stayed the same (keys_while_locked=0) and the spy's stayed 6 with the focus back; `c` then reaches the spy (8 keys) through the compositor (8); the session's, the spy's and the narrator's traces equal platform/pc-qemu/expect/auth-input-isolated.txt stream by stream — the narrator hears the password field's role, label and state and never a value, and no announcement per keystroke in a password field (ui.md v1.4); the password text appears nowhere in the serial log; no frame leaks; exit 33",
+   "oracle": "SVC-SA.TXT (SVC-SS.TXT with the narrator, before which the session starts): the lab signs in at the session's screen, then types `a` and `b`, which reach the focused spy, and Ctrl+Alt+Del: the Ctrl and Alt presses reach the spy, the sequence moves the keyboard to the session (input.md v2.2) and it locks (STATE `OK locked user=admin changes=2 …`); the spy has counted 6 keys and lost the focus, and the compositor has received 6 key events in all (KEYS); the lab types the password and Enter on the lock screen: the session unlocks (`OK unlocked user=admin changes=3 display=1 input=1 focus=display`) while the compositor's count stayed the same (keys_while_locked=0) and the spy's stayed 6 with the focus back; `c` then reaches the spy (8 keys) through the compositor (8); the session's, the spy's and the narrator's traces equal platform/pc-qemu/expect/auth-input-isolated.txt stream by stream — the narrator hears the password field's role, label and state and never a value; the password text appears nowhere in the serial log; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221106Z-25ac22b8-001"
+    "evidence/20261114T133350Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1702,7 +1705,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221037Z-25ac22b8-001"
+    "evidence/20261114T133324Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1711,11 +1714,14 @@
     "REQ-M5-008"
    ],
    "layer": "user_e2e",
-   "oracle": "scenario 7 (WP-39): the sample dialog alone (SVC-UI.TXT) driven by the keyboard — Alt+F9 minimises it (the focus leaves it), Alt+Tab reaches the minimised window and restores it (v1.3), Tab then moves inside it; the narrator's transcript equals platform/pc-qemu/expect/window-a11y.txt line for line: the startup tree and focus, then on the restore `window \"Sign in\" focused` and the dialog re-announcing its focused element (ui.md v1.2), then the focus moving to the list; (WP-42, REQ-M5-008) Alt+Shift+Right widens it by 16 px, announced `window \"Sign in\" resized 276x242` (display.md v1.7), and the next Tab moves the focus to the checkbox inside it — the resize kept the focus and switched no layout; Esc ends it with exit 0; no frame leaks; exit 33. Not exercised: moving a window by keyboard and a scale change",
+   "oracle": "scenario 7 (WP-39): the sample dialog alone (SVC-UI.TXT) driven by the keyboard — Alt+F9 minimises it (the focus leaves it), Alt+Tab reaches the minimised window and restores it (v1.3), Tab then moves inside it; the narrator's transcript equals platform/pc-qemu/expect/window-a11y.txt line for line: the startup tree and focus, then on the restore `window \"Sign in\" focused` and the dialog re-announcing its focused element (ui.md v1.2), then the focus moving to the list; (WP-42, REQ-M5-008) Alt+Shift+Right widens it by 16 px, announced `window \"Sign in\" resized 276x242` (display.md v1.7), and the next Tab moves the focus to the checkbox inside it — the resize kept the focus and switched no layout; Esc ends it with exit 0; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221921Z-25ac22b8-001"
+    "evidence/20261114T134110Z-c7b3e920-001-a"
+   ],
+   "oracle_notes": [
+    "2026-11-14 (WP-92): carried from the record's earlier oracle (undated there): not exercised: moving a window by keyboard and a scale change."
    ]
   },
   {
@@ -1728,7 +1734,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221933Z-25ac22b8-001"
+    "evidence/20261114T134118Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1741,7 +1747,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221953Z-25ac22b8-001"
+    "evidence/20261114T134134Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1754,7 +1760,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221959Z-25ac22b8-001"
+    "evidence/20261114T134138Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1767,7 +1773,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T222007Z-25ac22b8-001"
+    "evidence/20261114T134142Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1781,7 +1787,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221344Z-25ac22b8-001"
+    "evidence/20261114T133604Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1791,11 +1797,11 @@
     "REQ-M5-006"
    ],
    "layer": "security_access_perf",
-   "oracle": "REQ-M5-010, REQ-M5-006, display.md v1.5 (M5 pre-gate review, M5): SVC-SS.TXT (the compositor's restart policy is never): the lab signs in and the spy's window is composed onto the frame (the kernel reads back its colour 2E8B57 on 23856 pixels: the 200×120 client area less the compositor's 12×12 resize grip); the test stops the compositor (the manager's STOP: its process ends, display stopped with restarts=0, no restart). Nothing draws any more and the kernel clears the frame when the last VMO over it goes (display.md v1.5): exactly one clear, no pixel lit, none of the spy's. The lab's Ctrl+Alt+Del then locks the session with the input service alone (STATE `OK locked user=admin changes=2 display=1 input=1 focus=session`; the spy got no key) and the frame stays black; the lab's screendump shows black at (2,2), at the spy's place (150,150) and where the lock dialog would be (512,338); a second Ctrl+Alt+Del (the input service counts saks=2) leaves the session locked and the frame black. The compositor is spawned exactly once; the password never appears in the serial log; no frame leaks; exit 33. Without the clear the stopped compositor's last picture — the spy's window — stays on the screen through the lock (M5 pre-gate review, M5)",
+   "oracle": "SVC-SS.TXT (the compositor's restart policy is never): the lab signs in and the spy's window is composed onto the frame (the kernel reads back its colour 2E8B57 on 23856 pixels: the 200×120 client area less the compositor's 12×12 resize grip); the test stops the compositor (the manager's STOP: its process ends, display stopped with restarts=0, no restart). Nothing draws any more and the kernel clears the frame when the last VMO over it goes (display.md v1.5): exactly one clear, no pixel lit, none of the spy's. The lab's Ctrl+Alt+Del then locks the session with the input service alone (STATE `OK locked user=admin changes=2 display=1 input=1 focus=session`; the spy got no key) and the frame stays black; the lab's screendump shows black at (2,2), at the spy's place (150,150) and where the lock dialog would be (512,338); a second Ctrl+Alt+Del (the input service counts saks=2) leaves the session locked and the frame black. The compositor is spawned exactly once; the password never appears in the serial log; no frame leaks; exit 33. Without the clear the stopped compositor's last picture — the spy's window — stays on the screen through the lock (M5 pre-gate review, M5)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221605Z-25ac22b8-001"
+    "evidence/20261114T133807Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1808,7 +1814,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221902Z-25ac22b8-001"
+    "evidence/20261114T134055Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1821,7 +1827,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221627Z-25ac22b8-001"
+    "evidence/20261114T133824Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1830,7 +1836,7 @@
     "REQ-M5-007"
    ],
    "layer": "host_unit",
-   "oracle": "seeded defects M82 onwards in the M5 modules (displayd, inputd, sessiond, libui, libnawah-text; and since M122 the kernel's process_kill authority and kill delivery (K1 at block, K2 at exit), the frame clear when the last VMO over the display goes, the mouse's byte routing, and the manager's PING/PONG watchdog) are killed by the M5 suite, host suites included (libui's unit tests, the text conformance suites): 45 valid mutants (M82-M129 less the documented equivalents), kill ratio >= 0.95 over this gate's valid mutants alone, and no surviving security mutant (23 in tests/mutants.py SECURITY: each undoes a security fix of WP-40, WP-41 or WP-43, the kill authority, the dead compositor's frame clear or the watchdog's kill-and-restart); report build/mutants-m5-report.json",
+   "oracle": "every seeded M5 defect that compiles (displayd: narrator authority, client limits and the session's reserve, LIST hash and STATUS composed= of a held screen; sessiond: the password field's announcements, the elevation prompt after the keys; inputd: the name `display`; libui: password bullets; kernel: process_kill authority, kill wake-up, K1 at block, K2 at exit, frame clear on release, mouse routing; svcmgr: PONG and the watchdog's kill) is killed by at least one M5 case, host suites included; kill ratio >= 0.95 and no surviving security mutant; report build/mutants-m5-report.json",
    "command": "python3 tools/project.py test --target host --suite M5-GATE",
    "verdict": "PASS",
    "evidence_refs": [
@@ -1860,7 +1866,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221414Z-25ac22b8-001"
+    "evidence/20261114T133630Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1874,7 +1880,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221445Z-25ac22b8-001"
+    "evidence/20261114T133657Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1888,7 +1894,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221517Z-25ac22b8-001"
+    "evidence/20261114T133726Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1913,7 +1919,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221335Z-25ac22b8-001"
+    "evidence/20261114T133559Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1926,7 +1932,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221305Z-25ac22b8-001"
+    "evidence/20261114T133532Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1935,11 +1941,14 @@
     "REQ-M5-006"
    ],
    "layer": "security_access_perf",
-   "oracle": "SVC-SS.TXT: the session service itself is lost twice (the manager's RESTART: its process ends and every channel of it closes, as in a crash; the test waits for the manager to list the new session process ready). Unlocked: the lab signs in with the spy focused (`OK keys=0 focus=1 connections=1`); after the loss the input service has taken the keyboard from the compositor (the spy: `OK keys=0 focus=0 connections=1`), the lab's screendump shows the new session's sign-in dialog only (10141C at (2,2) and at the spy's place (150,150), the dialog's F0F0F0 at (512,338)), and the new session starts from nothing (`OK no_session user=- changes=0 display=1 input=1 focus=session`). The lab signs in again: every key reaches the new session and none the compositor (KEYS unchanged); the open desktop's screendump shows the desktop (1E2A38 at (2,2)) and the spy's window (2E8B57 at (150,150)). Locked: after Ctrl+Alt+Del the session is lost again; the next session again starts at no_session, the spy has no focus and the compositor received no key after the loss; then (WP-38 mutant M106, input.md v2.2) the lab signs in once more, so the input service's focus is the compositor's, and the session is stopped for good (STOP, no restart): once the manager lists it stopped, the input service's own STATUS reads `focus=-` — the keyboard is with nobody even though the session did not hold it when it was lost (phase=6); the password never appears in the serial log; no frame leaks; exit 33",
+   "oracle": "SVC-SS.TXT: the session service itself is lost twice (the manager's RESTART: its process ends and every channel of it closes, as in a crash). Rewritten for session.md v1.7 (WP-64; PLAN-ANSWER §2.3 D5-B): a contract-driven change, not a weakening — the restarted session now ends what the lost one left on the screen before its sign-in screen, so the spy (whose focus the earlier case read after the loss) is logged out and exits; every other assertion is kept. Unlocked: the lab signs in with the spy focused (`OK keys=0 focus=1 connections=1`); after the loss the new session traces `session|purge=logout|restarts=1|reason=restarted`, the spy is told LOGGED_OUT with no window left (`spy|logged_out|windows=0`) and ends (the manager lists it `stopped:0x0`), the compositor counts one window — the sign-in dialog (`windows=1`) — the lab's screendump shows the new session's sign-in dialog only (10141C at (2,2) and at the spy's place (150,150), the dialog's F0F0F0 at (512,338)), and the new session starts from nothing (`OK no_session user=- changes=0 display=1 input=1 focus=session`). A client then connects anew (the test's own window `w`, D04040 at (600,100)) while the screen is held. The lab signs in again: every key reaches the new session and none the compositor (KEYS unchanged), `w` is focused; the open desktop's screendump shows the desktop (1E2A38 at (2,2)) and, where the spy's window was, the desktop again (1E2A38 at (150,150): no window of the lost session came back), and `w` at (650,170) (D04040). Locked: after Ctrl+Alt+Del the session is lost again; the next session again starts at no_session after `session|purge=logout|restarts=2|reason=restarted`, `w` was told LOGGED_OUT and has no window left, and the compositor received no key; then (WP-38 mutant M106, input.md v2.2) the lab signs in once more, so the input service's focus is the compositor's (`display`), and the test stops the session for good (the manager's STOP, no restart): once the manager lists it stopped, the input service's own STATUS reads `focus=-` — the keyboard is with nobody even though the session did not hold it when it was lost (`unlocked3=… focus=display|stop=OK|stopped=1|input_focus_cleared=1|phase=6`); stopped for good (no restart, so no purge), the compositor still holds the screen on its own (display.md v1.2 rescue: HOLDS `OK locked=1 …`, `held_after_stop=1|phase=7`); the password never appears in the serial log; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221225Z-25ac22b8-001"
+    "evidence/20261114T133457Z-c7b3e920-001-a"
+   ],
+   "oracle_notes": [
+    "2026-11-10 (WP-64): the oracle was rewritten to session.md v1.7 from the earlier text (spy focus=0 after the loss, 2E8B57 at (150,150)); recorded as a contract-driven change, not a weakened gate (PLAN-ANSWER §2.3 D5-B); the compositor's own hold is still observed after the phase-6 STOP (HOLDS locked=1), which keeps the rescue path and M106 covered."
    ]
   },
   {
@@ -1952,7 +1961,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220823Z-25ac22b8-001"
+    "evidence/20261114T133159Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1965,7 +1974,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221206Z-25ac22b8-001"
+    "evidence/20261114T133442Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1978,7 +1987,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T220937Z-25ac22b8-001"
+    "evidence/20261114T133244Z-c7b3e920-001-a"
    ]
   },
   {
@@ -1991,7 +2000,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T221557Z-25ac22b8-001"
+    "evidence/20261114T133802Z-c7b3e920-001-a"
    ]
   },
   {
@@ -2000,7 +2009,23 @@
     "REQ-M6-002"
    ],
    "layer": "user_e2e",
-   "oracle": "planned (M6, WP-45): the release image boots on the real SERVICES.TXT (auth, config, net, input, display, session, narrator, sh) without the lab self-test key and does not exit within the case's tick window; the manager's LIST shows every manifest service ready; the screendump equals the sign-in screen's expected regions; the lab signs in as user, sees the plain desktop background, Ctrl+Alt+Del locks and user's password unlocks",
+   "oracle": "REQ-M6-002, WP-45 (boot.md boot mode, services.md v1.11 system manifest; PLAN-ANSWER §2.1, §2.2, §2.5 D2-Q2, §2.6): the release image NAWAH.EFI boots without the lab self-test key: one boot-mode line `kernel|boot_mode|mode=interactive|source=none|key=absent|hv=1` (exactly one `|kernel|boot_mode|` line per boot: 6 over the six phases, max_counts and min_counts), the manager answers the real system manifest (`manifest=/SYSTEM/SERVICES.TXT|reply=OK 8|code=ok`) with selfcheck=1, and over COM2, once the password has unlocked the desktop again (after `|text=session|focus=display|n=2`; the lab's last monitor step waits 5 s before `quit` so the shell answers first), the shell's `svc` lists the eight services (auth, config, net, input, display, narrator, session, sh) `ready 0`: readiness is judged at the end of the run, not at the sign-in screen, and since svcmgr's restart counter never resets it shows no restart across the whole run (the boot itself is covered by the manifest marker reply=OK 8 and the sign-in pixel checks); the lab signs in as `user` (lab-user-1) at the sign-in screen (screendump: lock background 10141C at (2,2), dialog F0F0F0 at (512,338)), the plain desktop background 1E2A38 follows, Ctrl+Alt+Del locks (the lock screen again), the password unlocks (desktop again); the image never prints m1_done, any ktest line or selfcheck=0 and never exits by itself: every phase ends by the lab's monitor `quit` after every step was sent (ends_by=monitor, exit 0). Negative phases on the same image (150 s for the positive phase, 60 s for each negative one: the six phases took 56 s in all on CI, evidence/20261109T184629Z-d63f7ae4-001, and with TST-M6-HOLD-FAIL-CLOSED's 180 s the suite's worst case, 630 s, stays under the M6 step's 12-minute cap): opt/nawah/selftest=0 and opt/nawah/selftest=10 (key=invalid: only the value 1 selects the self-test), opt/nawah/test=exc_de (the ktest key is not the self-test key: source=none, no ktest line), opt/nawah/selftest=svc-sh (a value never names a manifest: SERVICES.TXT answers OK 8, SVC-SH.TXT is not loaded) and -cpu qemu64,-hypervisor with the key (hv=0: fw_cfg is never read, source=none|key=absent, the boot is interactive and nothing is written to the exit port) each still reach the sign-in screen on the real manifest. Every phase requires the kernel's whole boot-mode line with the build id (OSX|<build id>|kernel|boot_mode|mode=…|source=…|key=…|hv=…: source=none whenever the mode is interactive, an invalid key included), never a fragment a process could print through SYS_TRACE; a traced copy of the whole line is a seventh `|kernel|boot_mode|` and fails max_counts. The password never appears in the serial log",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134147Z-c7b3e920-001-a"
+   ],
+   "oracle_notes": [
+    "2026-11-10 (WP-64): `reason=list_failure` is a forbidden marker: a latent LIST failure on the system manifest would otherwise purge on every boot unseen."
+   ]
+  },
+  {
+   "id": "TST-M6-BOOT-HALT",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-84; boot.md halt rule): the release image booted with the lab's corrupt manifest disk (platform/pc-qemu/lab/services-bad.txt, placed by prepare_disk's disk_files key) reports the manager's failure with selfcheck=0, prints `OSX|${BUILD_ID}|kernel|halt|reason=svcmgr|code=<n>` before arch::halt, where <n> is the numeric halt code that display::halt_banner(code) draws as digit cells in its band (the number is fixed by WP-84's boot.md amendment, not here; the reason token stays svcmgr), and a screendump pixel inside the band is C00000; the case never exits by itself, so it ends by the lab's rule for such cases (tools/project.py:915-931): ends_by monitor, the last monitor step a screendump followed by `quit`, within its 30 s timeout, and no exit-port write; forbidden: m1_done, no_session, ktest, panic; mutants M172 and M173 (SECURITY) planned",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2011,7 +2036,7 @@
     "REQ-M6-002"
    ],
    "layer": "negative",
-   "oracle": "planned (M6, WP-45; closes session.md §8 v1.1 limit): the session has watchdog=<ticks> longer than REQUEST_DEADLINE; a session frozen by the test kernel is killed by the manager and restarted into no_session with the screen held (no application pixel in the screendump) and no key reaching an application; a session legitimately waiting on a hung auth is not killed before the watchdog period",
+   "oracle": "planned (M6, WP-71 from the split of WP-64 on 2026-11-09; closes session.md §8 v1.1 limit): the session has watchdog=<ticks> longer than REQUEST_DEADLINE; a session frozen by the test kernel is killed by the manager and restarted into no_session with the screen held (no application pixel in the screendump) and no key reaching an application; a session legitimately waiting on a hung auth is not killed before the watchdog period; strengthened 2026-11-09 (PLAN-ANSWER §2.3): a session legitimately waiting while display, input and auth are frozen is not killed; the kill lands between W and 2W+1000; after the restart no pixel of the previous user is in the screendump and sak_pending=0; 2026-11-09 (WP-71): the judge is max_restarts+1 direct kills of the session followed by a successful sign-in (restart=always, BACKOFF_MAX 2000) instead of five kills, each phase prints its own verdict line",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2022,7 +2047,7 @@
     "REQ-M6-002"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-45; session.md §8 limit 'screens in English'): with ui.lang=ar the sign-in, lock and elevation screens are Arabic and right-to-left from the first frame and switch live on SUBSCRIBE device; the input-language indicator next to the user and password fields shows the active layout and changes on Alt+Shift; the narrator transcript equals the expected file and never carries the password",
+   "oracle": "planned (M6, WP-72 from the split of WP-64 on 2026-11-09; session.md §8 limit 'screens in English'): with ui.lang=ar the sign-in, lock and elevation screens are Arabic and right-to-left from the first frame and switch live on SUBSCRIBE device; the input-language indicator next to the user and password fields shows the active layout and changes on Alt+Shift; the narrator transcript equals the expected file and never carries the password; strengthened 2026-11-09 (PLAN-ANSWER §2.4): explicit and escaped leak markers (the \\u{XXXX} form) never appear in the narrator transcript; the elevation request text is drawn in its byte order",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2033,10 +2058,12 @@
     "REQ-M6-003"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-46; ktest job_kill_all): three processes spawned into one job; job_kill leaves none in process_list, every handle to them reports exit, and the free-frame count after equals the count before",
+   "oracle": "REQ-M6-003, WP-46 (syscall.md v1.13 §5, ipc.md §1 type 13; mutants M151-M153): jobs as process groups. Part 1 (job_spawn_dead, M153): inside the test kernel a process object placed in a killed child job of the root is refused at the scheduler's locked check (AsError::Spawn), never bound, told the stillborn exit, its initial channel closed (the peer reads PEER_CLOSED), nothing leaked. Part 2: /SYSTEM/JOBS.ELF, started in the root with a channel as its bootstrap handle and the root job (READ|WRITE|DUPLICATE|TRANSFER) right after it, proves in seven phases, each traced jobs|phase=<n>|<name>=ok: (1 types) job_create on the bootstrap channel is ERR_WRONG_TYPE (probed before the job handle is touched, so a kernel without jobs fails here: ERR_NOSYS, exit 0xe2) and the next handle is a job; a duplicate without WRITE can neither create, kill nor spawn into (ERR_ACCESS, M151) and the handle a refused spawn named stays the caller's; process_spawn_in on a channel is ERR_WRONG_TYPE; (2 contain) job_kill on the root, which contains the caller, is ERR_INVALID; (3 tree) job A under the root, B under A; (4 spawn) IDLE into A and into B with process_spawn_in, a copy of the app into A in its child role, where job_kill(A) — a non-root job containing the caller — is ERR_INVALID and plain process_spawn places its IDLE grandchild in A (the caller's job, M152), and an outsider IDLE in the root, all alive after 20 ticks; (5 kill) job_kill(A) is 0, the IDLEs in A and B, the child and the grandchild end with EXIT_KILLED=0x20000 within 5000 ticks, the app's ends of the killed IDLEs' channels see PEER_CLOSED, the outsider is still alive 20 ticks later, a second job_kill(A) is 0; (6 dead) job_create on A and on B is ERR_PEER_CLOSED, process_spawn_in into A and into B is ERR_PEER_CLOSED and the named handle stays the caller's; (7 depth) eight nested jobs below the root are made and a ninth level is ERR_NO_RESOURCES; then the outsider is killed with process_kill. The app exits 0x4A; no process, frame or object (live jobs included) is left (processes_after=0, frames_delta=0, clean=1). Any phase's =fail line is forbidden; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134313Z-c7b3e920-001-a"
+   ]
   },
   {
    "id": "TST-M6-PROC-ACCOUNTING",
@@ -2044,7 +2071,7 @@
     "REQ-M6-003"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-46; ktest process_accounting, -smp 4): a spinning app's cpu_ticks rise while the per-CPU idle ticks fall; the sum of all processes' cpu_ticks plus idle stays within a declared tolerance of ticks x cpus; frames, threads and handles per process match the counts the test itself created",
+   "oracle": "planned (M6, WP-70, from the split of WP-46 on 2026-11-09; ktest process_accounting, -smp 4): a spinning app's cpu_ticks rise while the per-CPU idle ticks fall; the sum of all processes' cpu_ticks plus idle stays within a declared tolerance of ticks x cpus; frames, threads and handles per process match the counts the test itself created",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2055,7 +2082,7 @@
     "REQ-M6-003"
    ],
    "layer": "negative",
-   "oracle": "planned (M6, WP-46; ktest process_list_bad_ptr, cursor_overflow): process_list with an invalid user pointer, an over-long buffer or a cursor past the end is refused with the syscall.md error codes, never a panic or a kernel-memory read; job_kill without WRITE on the job is refused ERR_ACCESS",
+   "oracle": "planned (M6, WP-69; process_list, syscall 46, handle-scoped): with a READ job handle the listing holds that job's subtree only, in 64-byte records whose reserved bytes are zero; refused: an invalid handle (ERR_BAD_HANDLE), a handle that is not a job (ERR_WRONG_TYPE), a job handle without READ (ERR_ACCESS), a bad cap (ERR_INVALID), a bad or over-long user buffer (ERR_RANGE or ERR_FAULT), a cursor past next_pid (ERR_RANGE); on every refusal the buffer is left unwritten (no partial write); never a panic or a kernel-memory read (rewritten 2026-11-09: the job_kill-without-WRITE refusal moved to TST-M6-JOB-KILL)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2066,7 +2093,7 @@
     "REQ-M6-003"
    ],
    "layer": "service_integration",
-   "oracle": "planned (M6, WP-46; shell.md v1.3): the diagnostic shell's `ps` lists the real services with pid, job, image name, state and cpu_ticks; a spinning app's cpu_ticks grow between two `ps` calls",
+   "oracle": "planned (M6, WP-70, from the split of WP-46 on 2026-11-09; shell.md v1.3): the diagnostic shell's `ps` lists the real services with pid, job, image name, state and cpu_ticks; a spinning app's cpu_ticks grow between two `ps` calls",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2176,10 +2203,25 @@
     "REQ-M6-006"
    ],
    "layer": "host_unit",
-   "oracle": "planned (M6, WP-49; ui.md v1.6): libui on the host: pointer hit-testing focuses and activates exactly the element under the point (double-click included), popup and context menus open on Shift+F10, the menu key and right click, navigate with wrap, close on Esc and return focus; the confirm dialog answers Yes/No/Cancel with its default; menus mirror in RTL; the keyboard focus order of v1.5 is unchanged",
+   "oracle": "libui v1.6 (WP-49, ui.md §3.6) on the host, user/libui/tests/pointer_menu.rs (9 tests): a left press focuses the focusable element under it (a label never; the rectangle's last column is inside and the next is not) and the release over the same element activates a button or toggles a checkbox, a release elsewhere or without a press does nothing and holding is not a new press; a list row press selects the row, the header selects nothing, and a second click on the same row within DOUBLE_CLICK_MS (400, nawah's own) activates the list while a later one, another row or the header does not; the focus order and Tab/Shift+Tab are unchanged after pointer use; the context menu (at most 8 entries, an unlabelled item or separators only refused) opens by Shift+F10, the menu key 0xdd and a right press on a focusable element (not a label, not by F10 alone; without a menu none of the three opens anything and the right press does not move the focus) with its first item focused and the dialog focus empty; Up/Down wrap over separators, a disabled item is focused and described disabled but never chosen by Enter or a left release, Enter or a left release on the pressed item chooses, closes and returns the focus; Tab is ignored while open, Esc closes the menu without cancelling the dialog and an outside press closes it, both returning the focus to the opener; the menu opens from the start edge and toward the reading direction in LTR and RTL, flips at the surface's edge, stays inside the surface, which grows to hold it and still fits one VMO at 2x; menu items are described role=menuitem label=\"...\" state=focused[,disabled] index=k/n, and describe_menu_item returns None and writes nothing with no menu or an entry out of range (9 passed)",
    "command": "python3 tools/project.py test --target host --suite M6",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134452Z-c7b3e920-002-a"
+   ]
+  },
+  {
+   "id": "TST-M6-UI-CONFIRM",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "layer": "host_unit",
+   "oracle": "libui v1.7 (WP-80, ui.md §3.7) on the host, user/libui/tests/confirm.rs (5 tests): Dialog::confirm(prompt, yes, no, cancel, default) on an empty dialog builds the prompt label (element 0) and three buttons (1 yes, 2 no, 3 cancel), refuses a blank prompt or label (NoLabel, nothing built), a non-empty dialog and any later element (Confirm), and drops a menu set before it (menu_len() 0, set_menu false after); the default button takes the first focus and start() returns to it; Enter or Space answers the focused button (Activate and answer()), also while a left press is held on it, Esc answers Cancel (Event::Cancel, answer() = Cancel) whatever has the focus, the default Yes included; Tab/Shift+Tab cycle only the three buttons; characters, arrows, Backspace, Shift+F10 and the menu key do nothing and set_menu is refused; an answer is final (later keys and clicks return None and leave it); the narrator strings are exactly confirm role=dialog label=\"<prompt>\", focus <default button description>, answer yes|no|cancel, in English and in Arabic (the tokens English), and a plain dialog writes no confirm line and has no answer; the layout is the column: the prompt's row then each button a full row, yes-no-cancel from the top, every row its own mirror so RTL equals LTR (also after set_rtl) and Tab order stays logical; the prompt fits its row (Painter::fits) and every button label is narrower than its button (Painter::text_width) in English and Arabic at 1x and 2x; text_width agrees with fits (the prompt at most 241 px at 1x, a longer question over 241 and not fitting), gives the exact 1x widths (English prompt 184 and widest label 128, Arabic 218 and 79), about double at 2x, every label above 0, and measures as many characters as paint draws (TEXT_PAINT 64: 64 characters wider than 49, 70 the same as 64); a left press and release on a button answers it through the v1.6 pointer path, a release elsewhere answers nothing and gives the focus back to what it was before the press only if the press moved it and it is still on the pressed button (Tab to Cancel, press Cancel, release elsewhere keeps Cancel; press No from Cancel, release elsewhere returns to Cancel; a Tab while held stands), so the next Enter never answers a button only pressed, a click on the prompt and a right click answer nothing (5 passed)",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134453Z-c7b3e920-001-a"
+   ]
   },
   {
    "id": "TST-M6-UI-POINTER",
@@ -2187,7 +2229,7 @@
     "REQ-M6-006"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-49): the sample dialog driven by lab mouse clicks reaches the same states as the keyboard path, with a context menu on a list item; the narrator transcript of the pointer path equals that of the keyboard path",
+   "oracle": "planned (M6, WP-79): the sample dialog driven by lab mouse clicks reaches the same states as the keyboard path, with a context menu on a list item; the narrator transcript of the pointer path equals that of the keyboard path",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2198,7 +2240,18 @@
     "REQ-M6-006"
    ],
    "layer": "host_unit",
-   "oracle": "planned (M6, WP-50; ui.md v1.7): the virtualised list view keeps visible rows within bounds for 0, 1 and 10,000 rows, sorts stably by column, keeps single and multi selection across scrolling, and Home/End/PgUp/PgDn and type-ahead (Arabic included) move exactly as specified",
+   "oracle": "libui v1.8 (WP-50 50a, ui.md §3.8) on the host, user/libui/tests/listview.rs (11 tests): the list view asks the application's RowSource for no position or row id at or beyond rows() with 0, 1 and 10,000 rows (every key and type-ahead do nothing at 0 rows; End shows rows 9990-9999 of ten visible; 1,200 Shift+PgDn keep top+count <= rows and select all 10,000), and refuses MAX_ROWS+1 rows keeping its own and its focus, while exactly MAX_ROWS are taken (End focuses and selects id 16383); Home/End/PgUp/PgDn/Up/Down move to the exact positions with a page of visible rows less one and the first visible row follows, a key release does nothing, Enter activates the focused row by its id in the application's order; stable_sort keeps equal keys in order both ways and returns false leaving the ids untouched when its scratch is short, and a sort the application reports undone (false) is neither announced (ListEvent::None) nor described, Ctrl+2 sorts by the second column ascending then descending (Ctrl+9 without such a column nothing; MAX_COLUMNS 8) and the selected ids, the focused id and Enter's id stay the same rows while their positions change, and the description ends sort=\"<column>\" ascending|descending; the anchor stays on its row across a sort (Shift+Down after it selects ids 3 and 4); reset and deny end the sort and set the current column back to the first, so no sort= is described for rows nothing sorted; a plain move selects the focused row alone, Shift ranges from the anchor, Ctrl moves the focus only, Ctrl+Space toggles and sets the anchor (a later Shift ranges from it), Space selects the focused row alone (also out of several; nothing when already alone), select count=<m>; a single-selection list treats Shift and Ctrl as plain; selection is by row id in a reversed order and a reset clears it; type-ahead: a repeated letter cycles (case-folded), a pause over TYPEAHEAD_MS (1000, nawah's own) starts anew while exactly 1000 still extends (b then l at +1000 finds blue), characters past TYPEAHEAD_MAX (16) are dropped, a longer prefix searches from the focused row wrapping, Arabic prefixes match, a typed move sets the anchor, a space (KEY_SPACE) selects and never enters the search, no match moves nothing, Ctrl+letter is not type-ahead, typing never activates and selects the row alone, the search is in the current column; the narrator lines exactly: role=list label=\"...\" rows=<n> columns=<c>, row <k>/<n> state=focused|selected|focused,selected|enabled with \"<column>\"=\"<value>\" pairs in English and Arabic (n all rows: row 500/500), a column the 256-byte line cannot hold whole (also a value longer than the buffer, and a 222-byte name that would leave no room for more=) left out and counted as more=<j>, never half a value; Text::put cuts at a UTF-8 character boundary (two-, three- and four-byte characters) so every line is valid UTF-8; state=empty for no rows and state=denied reason=\"<sentence>\" (never empty) after deny, with no rows, no selection and keys doing nothing until a reset; blank labels, blank column names, no columns and MAX_COLUMNS+1 columns refused (exactly 8 taken); the header rectangles from the left edge in LTR and mirrored from the right in RTL (also after set_rtl, and doubled at 2x), text at the reading start and numbers at the trailing edge, Left/Right move the current column visually; explicit bidi formatting characters in a cell (U+061C, U+200E, U+200F, U+202A-U+202E, U+2066-U+2069) and control characters (U+0000-U+001F, U+007F-U+009F, U+2028, U+2029) are written [U+XXXX] in the line and drawn as U+FFFD, so a name keeps level 0 in LTR and never starts a second line, and a quote in a value is written [U+0022] so it cannot end the value and forge a column (drawn as itself); the focused row stays visible (top <= focus < top+count <= rows) after every move, type-ahead, sort, set_area and set_theme (focus 9: a 3-row area shows 7-9, then 2x shows 9 alone), a page is at least one row even in an area shorter than the header, and 0 rows give (0, 0) (11 passed)",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-UI-PANES",
+   "requirement_ids": [
+    "REQ-M6-006"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-86 = 50b; the next ui.md version at merge): user/libui/tests/panes.rs on the host (7 tests): F6 and Shift+F6 move between the two panes in order and keys reach only the focused pane; the toolbar is one tab stop, arrows move within it and it mirrors in RTL; the status bar's description bytes are exact (role=status, announced on request); TEXT_MAX 255 accepts 255 characters and refuses the 256th; mixed Arabic and Latin paths keep their separators in order (LRI-isolated segments); a header click sorts and a second click toggles the direction; a scroll-bar drag maps to top exactly and paint_into never indexes out of range (7 passed)",
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2209,7 +2262,7 @@
     "REQ-M6-006"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-50): a 500-row list browsed by keyboard and mouse wheel gives narrator lines `row k/n` with column values, byte-identical across two boots, and a screendump hash equal to the expected one",
+   "oracle": "planned (M6, WP-87 = 50c, moved from WP-50 on 2026-11-10): user/apps/listdemo's 500-row list browsed by keyboard and by scroll-bar clicks (mouse_move/mouse_button) gives narrator lines `row k/n` with column values equal to platform/pc-qemu/expect/listview-a11y.txt through tools/transcript.py, and a screendump hash equal to the expected one",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2220,7 +2273,7 @@
     "REQ-M6-006"
    ],
    "layer": "guest",
-   "oracle": "planned (M6, WP-50): with ui.lang=ar the column order and scroll bar mirror, numeric columns align to the trailing edge, horizontal arrows move visually, and a mixed Arabic and Latin path keeps its separators in order (screendump regions)",
+   "oracle": "planned (M6, WP-87 = 50c, moved from WP-50 on 2026-11-10): with ui.lang=ar the column order and scroll bar mirror, numeric columns align to the trailing edge, horizontal arrows move visually, and a mixed Arabic and Latin path keeps its separators in order (screendump regions)",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2664,7 +2717,7 @@
     "REQ-M6-018"
    ],
    "layer": "host_unit",
-   "oracle": "planned (M6, WP-63; ui.md v1.8): the multi-line text area on the host: insert and delete across lines, caret movement by line and by character in mixed Arabic and Latin lines, UTF-8 boundaries never split, line breaking at the last space that fits, and the description reads `line k/n` without the whole text",
+   "oracle": "planned (M6, WP-63; ui.md v1.9): the multi-line text area on the host: insert and delete across lines, caret movement by line and by character in mixed Arabic and Latin lines, UTF-8 boundaries never split, line breaking at the last space that fits, and the description reads `line k/n` without the whole text",
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -2731,10 +2784,155 @@
     "REQ-M6-021"
    ],
    "layer": "host_unit",
-   "oracle": "planned (M6, WP-62): seeded defects for the M6 modules (kernel jobs and accounting, launch broker, shell role, libui v2, filesystem v1.4, directory capability, clipboard, notifyd, logd, the tools) are killed by the M6 suite: kill ratio >= 0.95 over this gate's valid mutants and no surviving security mutant, with M2-M5 re-run",
+   "oracle": "every seeded M6 defect that compiles (kernel: the boot-mode gate, jobs, config's WRITE scope, the LOAD budget; displayd: the fail-closed hold and its boot channel; sessiond: the purge; authd: token revocation; svcmgr: the manifest errors and LOAD under /SYSTEM/; libui: pointer hit-testing, menus, confirm, the list view) is killed by at least one case, guest or host; kill ratio >= 0.95 and no surviving security mutant, each one named in stdout and in build/mutants-m6-report.json; the stage includes tooling mutants (the lab tool's console-transcript check, adopt-native, the verify workflow's token permissions and merge job), run on host killers only without an image; a host killer's FAIL is a kill only when its runner printed its failing-tests line (unittest `FAILED (`, cargo `test result: FAILED`) and the case passes on the clean checkout, a guest killer's only when project.py returned 1 with that case's own FAIL verdict line, anything else is ERROR and never a kill; an invalid SECURITY mutant (anchor gone or not building) fails the gate like a surviving one; the run is bounded by this timeout_s and leaves the report of every mutant decided so far",
    "command": "python3 tools/project.py test --target host --suite M6-GATE",
    "verdict": "NOT_RUN",
    "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-MANIFEST-LINT",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "host_unit",
+   "oracle": "a host lint of platform/pc-qemu/manifests/services.txt (services.md v1.11) and the lab manifest selftest.txt, read as svcmgr's parser reads them (user/apps/svcmgr/src/main.rs load and Fields: lines split on newline only, each cut at its first `#`, fields split on spaces only; only bytes 0x20-0x7E and newline, a Tab, a CR or any other byte refused by name): the system manifest is ASCII and parses by services.md §2 (fields, restart policy, decimal numbers, watchdog= before arg, an arg of at most 64 bytes, names of [A-Za-z0-9_-] up to 15 bytes, no duplicate, at most 16 services) and is under MANIFEST_MAX (4096 bytes); by the table of services.md §0.000 it names exactly auth, config, net, input, display, narrator, session, sh in that order, each with exactly the table's dependencies, every one declared on an earlier line, each on-failure, with a readiness timeout no shorter than 60000 for auth and 30000 for session, and watchdog= on input and display; every image path is /SYSTEM/<8.3 name>.ELF of an application the build makes (target.json extra_artifacts); watchdog= only on a service whose source sends PONG through channel_write (a textual check: whether that write answers the manager's PING is not checked, the guest case TST-M5-LOCK-HANG is; a compare with PONG, as in svcmgr, does not count); selftest.txt is ASCII, has no service line and its comment names mode=selftest; the lint itself rejects one manifest per rule: a non-ASCII byte, 4096 bytes or more, never instead of on-failure, a timeout below the minimum (auth, session), session without config, a dependency set other than the table's (narrator, sh), no watchdog on input or display, a self-test manifest with a service or without mode=selftest, a line of 6 fields, a non-decimal watchdog, an arg over 64 bytes, a bad name, an unknown restart policy, a non-decimal number, more than 16 services, a service missing, two services swapped, a dependency on a later line, a duplicate, a watchdog on a service that never answers PONG, a non-8.3 image, an image the build does not make, a Tab, a CRLF line end, a control byte, and a `#` inside a line that cuts a field or a watchdog= (while a trailing comment longer than an arg is accepted, as svcmgr accepts it) (20 cases, OK)",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134452Z-c7b3e920-001-a"
+   ]
+  },
+  {
+   "id": "TST-M6-HOLD-FAIL-CLOSED",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "REQ-M6-002, WP-67 (display.md v1.12, services.md §4 v1.3 LIST; mutant M147): the compositor's start-up hold fails closed. A substitute manager inside the test kernel spawns /SYSTEM/DISPLAYD.ELF with a boot channel and the display object and makes its LIST fail in each named branch of the contract: (1) an ERR answer, not a listing naming `display` (reason=reply); (2) an answer longer than displayd's 1024-byte reply buffer (reason=too_long: the kernel refuses it with ERR_BUFFER_TOO_SMALL and displayd discards it so the boot channel keeps serving); (3) a boot channel closed before the answer (reason=closed: displayd cannot say READY and exits 0xE6). In (1) and (2) displayd traces `display|hold|source=list_failure|reason=…|locked=1`, answers HOLDS `OK locked=1 releases=0`, and both events of a key injected meanwhile reach displayd but no window (keys_in=2, keys=0); in (3) the trace says locked=1 before the exit. (4) A valid listing without `session` starts unheld (`source=manifest|reason=-|locked=0`, display.md v1.2, which the M5 lab manifests rely on) and one with `session` held (locked_with_session=1), so the gate is not a constant. The kernel sees the screen (HOLDS, keys at the client), the serial sees displayd's trace; no compositor leaves a process, an object or a frame behind (failed= empty, clean=1, frames_delta=0). The unheld line of a failure branch and any held-open HOLDS answer are forbidden, so a fail-open regression fails the case whatever else it prints; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134236Z-c7b3e920-001-a"
+   ],
+   "oracle_notes": [
+    "2026-11-10 (WP-64): timeout 180 s -> 60 s (measured 8 s on CI run 42696067096; a hang guard, not an oracle change)."
+   ]
+  },
+  {
+   "id": "TST-M6-PURGE-FAIL-CLOSED",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "session.md v1.7 (WP-64): the test kernel plays the service manager, the input service and the compositor for a fresh /SYSTEM/SESSIOND.ELF per sub-case and logs the compositor's requests in order. A LIST the session cannot read — (a) `ERR TEST`, (b) a listing without `session`, (c) a restart count that is not a number, (d) 2000 bytes against the session's 1024-byte buffer, (e) the boot channel closed — makes it send LOGOUT before its sign-in screen (`logout=OK|order=logout_first`), then READY (a–d; exit 0 after STOP) or, with no boot channel, exit 0xE5 (e); the trace `session|purge=logout|restarts=-|reason=list_failure` appears exactly five times. Restarted (`restarts=1`) with LOGOUT refused (f, `ERR ACCESS`) or its channel closed (g): no sign-in screen (`order=logout_only`), no READY, exit 0xE4, and no `reason=restarted` trace (it is printed only after the compositor's OK). (h) `restarts=0`, the control: no LOGOUT, the screen, READY. Every sub-case prints its verdict; `failed=none`; no process, object or frame left; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134308Z-c7b3e920-001-a"
+   ]
+  },
+  {
+   "id": "TST-M6-MANIFEST-TOO-LARGE",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "REQ-M6-002, WP-68 (services.md v1.13 §0.00000, §2; mutants M157, M158): a manifest the manager cannot read whole is refused whole. The test kernel writes /SYSTEM/BIGMAN.TXT at run time (one service line `A` and comment lines up to the size) and a real /SYSTEM/SVCMGR.ELF, started per sub-case through SvcHarness, loads it: 4097 and 4096 bytes answer `ERR MANIFEST_TOO_LARGE` (MANIFEST_MAX = 4096 is refused, not truncated), 4095 bytes answer `OK 1` and `A` becomes ready (the boundary is not over-tight); a read that fails midway (the test kernel's one-shot read hook in kernel/src/fs/vfs.rs, armed for files of 3001 bytes, stops reads at byte 1024 and fails the next one; fired=1) answers `ERR MANIFEST_IO`. A refused manifest starts nothing (list= empty) and the refused LOAD does not count (a second LOAD is answered ERR MANIFEST_MISSING, not ERR LOADED); every manager exits 0 and leaves nothing (failed= empty, processes_after=0, frames_delta=0, clean=1), and the file is removed. Before v1.13 the manager parsed the first 4096 bytes or what it read before the error and answered `OK 1`, which is forbidden here; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134246Z-c7b3e920-001-a"
+   ]
+  },
+  {
+   "id": "TST-M6-LOAD-OUTSIDE-SYSTEM",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "REQ-M6-002, WP-68 (services.md v1.13 §0.00000, §3; mutant M159): LOAD reads only under /SYSTEM/. The test kernel writes a valid one-service manifest at /OUTSIDE.TXT and starts a real /SYSTEM/SVCMGR.ELF through SvcHarness with `LOAD /OUTSIDE.TXT`: the answer is `ERR ACCESS` and LIST stays empty (started=0); `LOAD /SYSTEM/../OUTSIDE.TXT` (a `..` component after the byte-exact `/SYSTEM/` prefix) is `ERR ACCESS` too; a manifest whose dependency field is `a|b` (/SYSTEM/BADDEP.TXT, written at run time) is `ERR MANIFEST_SYNTAX 1`, not an echo of the name; none of these counts as the LOAD, so `LOAD /SYSTEM/SVC-ORD.TXT` then answers `OK 3` and its three services become ready. The kernel's boot verdict (services.rs boot_reply_ok) refuses `OK 0` for the interactive manifest and a reply without a number, accepts `OK 0` for the self-test manifest, and its trace field (reply_field) escapes `|`, `\\` and control bytes. The manager exits 0 and nothing is left (failed= empty, processes_after=0, frames_delta=0, clean=1); both files are removed. Before v1.13 `/OUTSIDE.TXT` loaded (`OK 1`, started=1), which is forbidden here; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134249Z-c7b3e920-001-a"
+   ]
+  },
+  {
+   "id": "TST-M6-CONFIG-WRITE-SCOPE",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "security_access_perf",
+   "oracle": "REQ-M6-002, RSK-019, WP-78 (files.md v1.4 §2, config.md v1.2, ADR-0020 item 5; mutants M162-M164): config's copy of the system-files authority, READ|WRITE|TRANSFER, changes only config's stores (a file directly in /SYSTEM whose 8.3 base starts with CFG and whose extension is A or B, compared as short names). The fileauth application given that mask: opening for writing /SYSTEM/SERVICES.TXT (step 40), /system/services.txt (41) and /SYSTEM./SERVICES.TXT (42), USERS.DB for reading and writing (43), INPUTD.ELF for writing (44), creating /SYSTEM/NEW.TXT (45), /SYSTEM/AUTHD.A (46, not a CFG base) and /SYSTEM/CFGPRB.C (47, not A or B), unlinking SVC-AUTH.TXT (48), writing a font or creating /SYSTEM/FONTS/CFGPRB.A (49) are all refused with ERR_ACCESS; none truncates, so a kernel without the rule fails at step 40 (probe=0x28) having changed nothing; then /SYSTEM/CFGPRB.A is created, written and removed: exit 0x46. The kernel reads back SERVICES.TXT's, USERS.DB's and INPUTD.ELF's sizes unchanged and none of the probe's names left; no frame or object leaks. The matcher answers 8 spellings as the volume resolves them (/SYSTEM/CFGDEV.A, /system/cfgdev.a, /SYSTEM./CFGU1000.B yes; CFGPOL.C, AUTHD.A, /SYSTEM/FONTS/CFGDEV.A, /SYSTEM/../SYSTEM/CFGDEV.A, SERVICES.TXT no). Then the SVC-CFG stack: the lab users sign in and an admin SET of device lab.cwscope is stored on /SYSTEM/CFGDEV.A (OK 1, read back OK 1 kept); the manager exits 0, no process left, no frame leak. Residual (declared): the READ right still reads USERS.DB. Timeout 30 s: the M6 suite's worst case becomes 815 + 45 (WP-77) + 30 = 890 s, under 900; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134317Z-c7b3e920-001-a"
+   ]
+  },
+  {
+   "id": "TST-M6-SESSION-STRINGS",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "host_unit",
+   "oracle": "planned (M6, WP-72 from the split of WP-64 on 2026-11-09): the session's string tables are whole sentences in Arabic and English with the same keys, no missing or extra key, every string fits its row at scale 1x and 2x through Painter::fits, no string carries a password placeholder, and the badge strings name every supported layout (PLAN-ANSWER §2.4)",
+   "command": "python3 tools/project.py test --target host --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M6-RTC-READ",
+   "requirement_ids": [
+    "REQ-M6-007"
+   ],
+   "layer": "guest",
+   "oracle": "planned (M6, WP-51): rtc_read returns a monotonic calendar time consistent with QEMU's -rtc base within the case's tolerance, reads the CMOS RTC through the documented registers (ICH9 S34) with the FADT CENTURY handling named in boot.md, and refuses the call without the documented authority (PLAN-ANSWER §2.7)",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
+  },
+  {
+   "id": "TST-M0-007",
+   "requirement_ids": [
+    "REQ-M0-006"
+   ],
+   "layer": "host_unit",
+   "oracle": "evidence provenance and the checked import (ADR-0026): evidence-run 1.1.0 carries a closed worker enumeration, the runner's ci identity (required for verification-runner, forbidden at 1.0.0) and dirty_paths while 1.0.0 stays valid; write_run on GitHub Actions records worker=verification-runner and the run's ci identity; the run's tree identity is taken once when the run begins, so the records attach_evidence writes never make it dirty; source_identity ignores evidence/, build/ and state/ and names the dirty paths as they are, spaces and non-ASCII letters included; a 1.1.0 PASS without import.json is a strict error whatever worker run.json declares, unless the evidence is native to the validating CI run (run id, attempt and sha all equal its ci identity, none empty); a present import.json is checked for every worker and verdict against its own schema (evidence-import: every field required, conclusion success, workflow verify or mutants, importer from the enumeration) and must match the run's ci identity on run id, attempt, head sha and workflow, and a malformed receipt is a named error; 1.0.0 evidence without import.json one aggregated warning; import-ci-evidence refuses a run that is not completed/success, not from verify or mutants, whose head is not an ancestor of HEAD or whose id is not <digits> or mutants-<digits> matched whole, is blocked when gh is not on PATH, skips every directory of the branch already under evidence/ whatever its identity (the branch holds the whole committed tree: older 1.0.0 directories without a ci object and directories of other runs are skipped, never checked, never given a receipt), refuses the whole run, writing nothing and leaving no temporary copy, when any NEW run directory's run.json carries no ci identity or a ci run id or attempt that differs from gh's answer for the run (the directory named; committed directories beside it stay untouched), and on success writes import.json (naming the importer's worker and identity) beside an untouched run.json of each new directory only; adopt-native --from <dir> (repeatable; WP-81, rule 5's native exemption) adopts a set of run directories without gh and without import.json, re-pointing their tests' verdicts as a native run does, skipping and counting every directory already under evidence/ (each job's artifact holds the whole committed tree; a skipped directory is never re-attached and is no duplicate, also when it repeats across sources) and failing closed like the validator's native rule: only with GITHUB_ACTIONS=true and GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT and GITHUB_SHA all non-empty, every NEW directory carrying a ci identity equal to them on run id, attempt and sha, every --from holding at least one run directory, no new run id repeating across the sources, and at least one new directory; off the runner or with any of the three unset, a set mixing another run, attempt or sha, a set whose sha differs from GITHUB_SHA, an environment naming another run or attempt, a new directory without ci identity, a new directory of another run next to committed ones, a duplicate, an empty set (named) or nothing new to adopt adopts nothing and leaves docs/tests.json unchanged; a set of three slots -a/-b/-c passes strict validation inside its own run, and a set mixing committed older directories (no ci identity, or another run's) with this run's slots adopts the slots alone; the evaluator-outside-inputs staleness gap is not covered here (WP-66 and TST-M6-STALE-GATE are proposals of PLAN-ANSWER §1.3, not records yet) (46 cases, OK)",
+   "command": "python3 tools/project.py test --target host --suite M0",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134334Z-c7b3e920-001-a"
+   ]
+  },
+  {
+   "id": "TST-M6-DISPLAYD-BOOT-LOOP",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "REQ-M6-002, WP-77 (display.md v1.13; mutants M160, M161): the compositor's boot channel keeps serving the manager. As in TST-M6-HOLD-FAIL-CLOSED, a substitute manager inside the test kernel spawns /SYSTEM/DISPLAYD.ELF per sub-case and answers its LIST with a listing naming `display` and no `session`: (a) control: after READY a PING is answered PONG, an application connects (HOLDS `OK locked=0 releases=0`) and STOP ends it with exit 0; (b) too_long_msg: after READY a 200-byte boot message, longer than displayd's 64-byte boot buffer: displayd discards it (trace `display|boot|discard=too_long`) and the PING, the CONNECT and the STOP behind it are still served (before v1.13 the message stayed at the head of the queue, the loop spun on it and displayd had to be killed: exit 0x20000, ok=0); (c) stop_first: STOP in place of the LIST answer: displayd exits 0 without READY (trace `display|boot|stop=before_ready`; before v1.13 it took STOP for a failed LIST, traced source=list_failure, said READY and was killed: 0x20000); (d) ping_first: a PING before the listing is ignored (no PONG before READY) and the listing still decides the hold (locked=0, judged by the kernel's HOLDS and by displayd's own trace `display|hold|source=manifest|reason=-|locked=0`, required 3 times: control, too_long_msg, ping_first; before v1.13 the PING was the LIST answer and the screen held); (e) stop_at_connect: STOP in place of the CONNECT input answer: displayd exits 0 without READY (the stop trace, required twice with stop_first; before v1.13 it exited 0xe5). No compositor leaves a process, an object or a frame behind (failed= empty, processes_after=0, frames_delta=0, clean=1); any list_failure trace is forbidden, since every sub-case answers LIST with a valid listing or a STOP; 50 s (five sub-cases of at most 9 s each); exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134241Z-c7b3e920-001-a"
+   ]
+  },
+  {
+   "id": "TST-M6-TOKEN-REVOKE",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "layer": "negative",
+   "oracle": "SVC-SS.TXT (auth.md v1.2, session.md v1.7 §5; negative): the test logs `user` in on its own connection to auth and closes it at once, as sh does (user/apps/sh/src/main.rs:362-374), keeping the token (`sh_login=OK 1001 1001 8|sh_token=1`); the lab signs in to the session as admin (two live tokens above the baseline). The session process is frozen and the manager's STOP kills it (`session=stopped:0x20000|killed=1`): auth traces `auth|session_lost|revoked=1`, and the kernel's live-token count returns to what it was before the session's sign-in (the sh-like token alone) (`tokens_before=2|tokens_after=1|revoked=1`) — before auth.md v1.2 auth kept the dead session's token until SESSION_TICKS and the count stays at 2. The sh-like token, whose connection closed long before, still answers WHOAMI (`OK 1001 1001 8`). Every part prints its verdict and the case goes on after a failed one (`failed=` lists them, `none` when green); no password in the serial log; no process, object or frame left; exit 33",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261114T134253Z-c7b3e920-001-a"
+   ],
+   "oracle_notes": [
+    "2026-11-10 (WP-73): the held-copy WHOAMI check (a service holds a token copy during a REQUEST, session.md:14) is deferred to WP-71 with its mechanism; this case measures the kernel's live-token count and the trace line, and TST-M4-TOKEN-OBJECTS proves that a revocation is visible to every copy."
+   ]
   }
  ]
 }

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Origin: Sol OS (d54f0a5) `tests/mutants.py` (ADR-0002 item 4), adapted here to nawah-os's stages,
+# lab driver and evidence rules; re-verified by TST-M0-005 and by every gate's mutation run.
 """TST-M2-MUTANTS (REQ-M2-014), TST-M3-MUTANTS (REQ-M3-010, WP-22) and TST-M4-MUTANTS
 (REQ-M4-010, WP-31): seeded-defect mutation testing of the kernel and the system services
 against the guest suites — M01..M29 cover arch/, mm/ and sync (M1/M2 suites); M30..M49 cover the
@@ -19,7 +21,7 @@ evidence records are never touched: evidence of the mutant runs goes to a scratc
 (NAWAH_SCRATCH_EVIDENCE) and tools/project.py attaches nothing in that mode.
 
 For each mutant: apply, build only the artifacts its killer tests need, run those tests
-(`project.py boot` for TST-M1-BOOT, `project.py test --only` for M2 cases). A mutant is
+(`project.py boot` for TST-M1-BOOT, `project.py test --only` for every other case). A mutant is
   killed   - at least one killer test FAILs (or times out) ;
   survived - every killer test PASSes; the whole M1+M2 suites are then run before the verdict ;
   invalid  - the mutant does not compile (excluded from the ratio; a defect that cannot build is
@@ -27,19 +29,23 @@ For each mutant: apply, build only the artifacts its killer tests need, run thos
 PASS = kill ratio >= 0.95 over valid mutants. `--check` only applies/reverts the patches and
 type-checks them on the host target (what this sandbox can do without the UEFI toolchain).
 """
-import argparse, json, os, subprocess, sys, tempfile, time, shutil
+import argparse, json, os, re, subprocess, sys, tempfile, time, shutil
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 THRESHOLD = 0.95
+# Every gate the harness knows (argparse --stage); each must have a HOST_SUITES gate suite that
+# mutants.yml runs (TST-M0-005 GateMapping, WP-90).
+STAGES = ("M2", "M3", "M4", "M5", "M6")
 
 # The per-case QEMU timeout while a mutant runs. It bounds a mutant that hangs a case, but it
 # must not fail a case that is merely slow: the slowest M5 case on the clean tree is
 # TST-M5-ELEVATE at ~124 s (CI verify 41232334352, 2026-10-31). The old blanket 90 s failed
 # ELEVATE on every mutant in the fairness sweep and counted that infrastructure timeout as a
-# kill (run 41232332567). 180 s cleared it then; by 2026-11-08 ELEVATE took 137 s (verify
-# 42508871862) and WP-38 adds phase 3i (a frozen service, a pointer flood, a second unlock),
-# so 300 s keeps the margin and still bounds a real hang.
+# kill (run 41232332567). 180 s cleared it then; the slowest committed ELEVATE run takes 156 s
+# start to finish (evidence/20261109T104517Z-dece70c2-001, 2026-11-09) and WP-38 adds phase 3i
+# (a frozen service, a pointer flood, a second unlock), so 300 s keeps the margin and still
+# bounds a real hang.
 MUTANT_CASE_TIMEOUT_S = 300
 
 
@@ -588,13 +594,220 @@ MUTANTS = [
      "                        if hung {\n                            self.services[i].wd_deadline = None;\n                            self.services[i].killing = true;\n                            if let Some(p) = self.services[i].process {\n                                libnawah::process_kill(p);\n                            }\n",
      "                        if hung {\n                            self.services[i].wd_deadline = None;\n                            self.services[i].killing = true;\n",
      ["TST-M5-SVC-WATCHDOG"], "the watchdog finds a service hung but never kills it, so it is never restarted (hung is not given_up:1:131072)"),
+    # ---- M6 (WP-45 red team): the boot-mode gate (boot.md v1.1); SECURITY, killer is the
+    # release image's TST-M6-INTERACTIVE-BOOT, run by the M6 gate (TST-M6-MUTANTS, WP-90); the
+    # anchor guard of TST-M0-005 keeps each anchor unique.
+    # `|| true` rather than `true`, so `ecx` stays used and the mutant builds warning-free.
+    ("M130", "kernel/src/arch/x86_64/fwcfg.rs",
+     "    ecx & CPUID_ECX_HYPERVISOR != 0",
+     "    ecx & CPUID_ECX_HYPERVISOR != 0 || true",
+     ["TST-M6-INTERACTIVE-BOOT"], "hypervisor_present forced true: without the hypervisor bit fw_cfg is still read, so phase 5 (-cpu qemu64,-hypervisor with the key) prints hv=1|key=ok, m1_done and exits 33 (its line requires hv=0, exit 0)"),
+    ("M131", "kernel/src/bootmode.rs",
+     "        Some(_) => Key::Invalid,",
+     "        Some(_) => Key::Ok,",
+     ["TST-M6-INTERACTIVE-BOOT"], "any key value selects the self-test: phases 2 (selftest=0) and 6 (selftest=10) print key=ok and m1_done (forbidden) and exit 33, not 0"),
+    # `|| true` rather than `true`, so the code after the diverging block stays reachable for
+    # the compiler and the mutant builds warning-free.
+    ("M132", "kernel/src/kmain.rs",
+     "        if mode.selftest() {",
+     "        if mode.selftest() || true {",
+     ["TST-M6-INTERACTIVE-BOOT"], "the interactive boot takes the self-test exit: phase 1 prints m1_done (forbidden) and exits 33, not 0 by the lab's quit"),
+    # ---- M6 (WP-64 purge, M135; WP-73 revocation, M137): a restarted session ends the lost one's windows before its sign-in
+    # screen (session.md v1.7), and auth revokes the sessions of a lost `session` client (auth.md
+    # v1.2); SECURITY. M133, M134 and M136 stay reserved for WP-71. M135 skips the purge (the
+    # condition never holds, `purge_restarted` stays referenced so the mutant builds
+    # warning-free). M137 keeps the count and its trace line but no longer closes the session.
+    ("M135", "user/apps/sessiond/src/main.rs",
+     "                if self.conn_n[DISPLAY] == 1 && !self.purge_restarted() {",
+     "                if self.conn_n[DISPLAY] == 0 && !self.purge_restarted() {",
+     ["TST-M5-SESSION-LOSS"], "the restarted session shows its sign-in screen without LOGOUT to the compositor: no session|purge line, the spy keeps its window and is not told LOGGED_OUT, so phase 2 reads spy_after=ready:… and windows=2, not stopped:0x0 and windows=1"),
+    ("M137", "user/apps/authd/src/main.rs",
+     "                self.close_session(s);",
+     "                let _ = s;",
+     ["TST-M6-TOKEN-REVOKE"], "auth forgets nothing when the session client is lost (the trace still says revoked=1): the dead session's token stays alive under auth's handle, so tokens_after=2|revoked=0 and failed=session_token, not tokens_after=1|revoked=1|failed=none"),
+    # ---- M6 (WP-67): displayd's start-up hold fails closed (display.md v1.12); SECURITY.
+    # M133, M134 and M136 are reserved for WP-71. The mutant keeps every trace line and changes only the
+    # decision: held only for a valid listing naming `session`, so every LIST failure starts
+    # unheld (the pre-v1.12 behaviour) behind a line that still says locked=1. The killer judges
+    # the screen itself: HOLDS answers locked=0 and the injected key (press and release) reaches the window.
+    ("M147", "user/apps/displayd/src/main.rs",
+     "    Some(line.ends_with(b\"locked=1\"))",
+     "    Some(line.starts_with(b\"display|hold|source=manifest\") && line.ends_with(b\"locked=1\"))",
+     ["TST-M6-HOLD-FAIL-CLOSED"], "a LIST failure starts the screen unheld while the trace says locked=1: case=reply and case=too_long read holds=OK locked=0 (forbidden) and keys=2 (press and release both reach the window), not locked=1 and keys=0"),
+    # ---- M6 (WP-64): the purge fails closed (session.md v1.7); SECURITY. A listing the
+    # session cannot read is taken as "not restarted": the sign-in screen comes without LOGOUT.
+    ("M150", "user/apps/sessiond/src/main.rs",
+     "            None => (None, b\"list_failure\"),",
+     "            None => return true,",
+     ["TST-M6-PURGE-FAIL-CLOSED"], "a LIST the session cannot read skips the purge: sub-cases reply, no_session_line, bad_count, too_long and closed read logout=-|order=screen_only|ok=0 (closed: exit 0xe5, no LOGOUT), the list_failure trace appears 0 times, not 5, and failed= names those five"),
+    # ---- M6 (WP-46): jobs (syscall.md v1.13 §5); SECURITY, killer TST-M6-JOB-KILL. M151 drops the
+    # WRITE check every job call shares (job_of): `contains(NONE)` is always true, so the check
+    # never fires and the line stays warning-free. M152 places syscall 20's child in the root
+    # instead of the caller's job. M153 removes the locked dead-job check in spawn_user_with
+    # (`if false`, so `process` stays used); process_spawn_in's early check hides it from user
+    # space, so its killer is part 1 of the case (ktest job_spawn_dead).
+    ("M151", "kernel/src/syscall/mod.rs",
+     "    if !Rights::contains(e.rights, Rights::WRITE) {",
+     "    if !Rights::contains(e.rights, Rights::NONE) {",
+     ["TST-M6-JOB-KILL"], "a job handle without WRITE creates, kills and spawns into its job: the app's read-only duplicate is not refused, so phase 1 fails (jobs|phase=1|types=fail, exit 0xe4), not exit=0x4a"),
+    ("M152", "kernel/src/syscall/mod.rs",
+     "    let job = job.unwrap_or_else(sched::current_job);",
+     "    let job = job.unwrap_or_else(crate::object::job::root);",
+     ["TST-M6-JOB-KILL"], "process_spawn puts the child in the root, not the caller's job: the grandchild started inside job A escapes job_kill(A), so phase 5 fails (jobs|phase=5|kill=fail, exit 0xf4), not exit=0x4a"),
+    ("M153", "kernel/src/sched/mod.rs",
+     "        if process.object.as_ref().is_some_and(|o| o.job().dead()) {",
+     "        if false {",
+     ["TST-M6-JOB-KILL"], "a process enters a killed job when a kill lands after spawn's early check: job_spawn_dead's spawn starts (refused=0|…|ok=0, |ktest|fail|), not refused=1|ok=1"),
+    # ---- M6 (WP-68): the manifest errors (services.md v1.13); M157 and M159 SECURITY. M157 and
+    # M158 turn the refusal back into the pre-v1.13 `break`: the file is closed (a second close
+    # follows, harmless) and what was read is parsed, so the manager answers OK 1. M159 keeps
+    # system_path referenced (`false &&`), so the mutant builds warning-free.
+    ("M157", "user/apps/svcmgr/src/main.rs",
+     "                return Err(LoadError::TooLarge);",
+     "                break;",
+     ["TST-M6-MANIFEST-TOO-LARGE"], "a manifest of 4096 bytes or more is truncated and accepted: case=4097 and case=4096 read reply=OK 1 (forbidden), list=A:… and again=ERR LOADED (forbidden), ok=0, failed=4097,4096,"),
+    ("M158", "user/apps/svcmgr/src/main.rs",
+     "                    return Err(LoadError::Io);",
+     "                    break;",
+     ["TST-M6-MANIFEST-TOO-LARGE"], "a manifest whose read fails at byte 1024 is accepted from what was read: case=io reads reply=OK 1 (forbidden), fired=1, again=ERR LOADED (forbidden), ok=0, failed=io,"),
+    ("M159", "user/apps/svcmgr/src/main.rs",
+     "            } else if !system_path(path) {",
+     "            } else if false && !system_path(path) {",
+     ["TST-M6-LOAD-OUTSIDE-SYSTEM"], "LOAD reads outside /SYSTEM/: case=outside reads reply=OK 1|started=1|ok=0 (forbidden reply=OK), the later LOADs answer ERR LOADED (forbidden), failed=outside,dotdot,dep_name,system,"),
+    # ---- M6 (WP-77): displayd's boot channel keeps serving (display.md v1.13); killer
+    # TST-M6-DISPLAYD-BOOT-LOOP; neither is SECURITY. M160 puts back the pre-v1.13 `Err(_) => {}`
+    # for the discard only (`Err(ERR_BUFFER_TOO_SMALL) | Err(ERR_SHOULD_WAIT) => {}`, the 0xE8 arm
+    # kept, so it builds warning-free). M161
+    # removes the STOP arm of session_in_manifest: STOPPED falls to reason=error.
+    ("M160", "user/apps/displayd/src/main.rs",
+     "                Err(ERR_BUFFER_TOO_SMALL) => {\n                    if !libnawah::channel_discard(c.boot) {\n                        return EXIT_BOOT_READ;\n                    }\n                    libnawah::trace(b\"display|boot|discard=too_long\");\n                }\n                Err(ERR_SHOULD_WAIT) => {}\n",
+     "                Err(ERR_BUFFER_TOO_SMALL) | Err(ERR_SHOULD_WAIT) => {}\n",
+     ["TST-M6-DISPLAYD-BOOT-LOOP"], "a boot message longer than 64 bytes stays at the head of the queue and the loop spins on it: case=too_long_msg reads pong=0|holds=error:K_E_SVC_TIMEOUT|exit=0x20000|ok=0, the trace display|boot|discard=too_long is missing, failed=too_long_msg,"),
+    ("M161", "user/apps/displayd/src/main.rs",
+     "        Err(STOPPED) => {\n            libnawah::trace(b\"display|boot|stop=before_ready\");\n            return None;\n        }\n",
+     "",
+     ["TST-M6-DISPLAYD-BOOT-LOOP"], "a STOP before the LIST answer is read as a failed LIST: case=stop_first reads ready=1|exit=0x20000|ok=0, display|hold|source=list_failure|reason=error|locked=1 appears (forbidden), display|boot|stop=before_ready is missing, failed=stop_first,"),
+    # ---- M6 (WP-78): config's WRITE scope at the authority layer (files.md v1.4, RSK-019); all
+    # SECURITY (each reopens a write under /SYSTEM outside config's stores); killer
+    # TST-M6-CONFIG-WRITE-SCOPE (the fileauth probe with config's mask READ|WRITE|TRANSFER).
+    ("M162", "kernel/src/syscall/mod.rs",
+     "    if write && !vfs::is_config_store(path) {",
+     "    if false && write && !vfs::is_config_store(path) {",
+     ["TST-M6-CONFIG-WRITE-SCOPE"], "SECURITY: WRITE alone decides again: step 40 opens /SYSTEM/SERVICES.TXT for writing, probe=0x28, then |ktest|fail| (forbidden)"),
+    ("M163", "kernel/src/fs/vfs.rs",
+     "        Ok(n) => n.starts_with(b\"CFG\") && matches!(&n[8..], b\"A  \" | b\"B  \"),",
+     "        Ok(n) => matches!(&n[8..], b\"A  \" | b\"B  \"),",
+     ["TST-M6-CONFIG-WRITE-SCOPE"], "SECURITY: any .A or .B in /SYSTEM is writable: step 46 creates /SYSTEM/AUTHD.A, probe=0x2e, created=1, then |ktest|fail| (forbidden)"),
+    ("M164", "kernel/src/fs/vfs.rs",
+     "        Ok(n) => n.starts_with(b\"CFG\") && matches!(&n[8..], b\"A  \" | b\"B  \"),",
+     "        Ok(n) => n.starts_with(b\"CFG\"),",
+     ["TST-M6-CONFIG-WRITE-SCOPE"], "SECURITY: any CFG* name in /SYSTEM is writable: step 47 creates /SYSTEM/CFGPRB.C, probe=0x2f, created=1, then |ktest|fail| (forbidden)"),
+    # ---- M6 (WP-49): libui pointer hit-testing and the context menu (ui.md v1.6 §3.6); killer
+    # TST-M6-UI-UNIT (user/libui/tests/pointer_menu.rs). SECURITY set: M168 (a disabled item is
+    # how an application withholds an action, so choosing it must be impossible).
+    ("M165", "user/libui/src/lib.rs",
+     "    x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h",
+     "    x >= r.x && x <= r.x + r.w && y >= r.y && y < r.y + r.h",
+     ["TST-M6-UI-UNIT"], "the hit-test takes the column after an element's right edge as inside it: pointer_focuses_and_activates_the_element_under_it fails (a press at r.x + r.w focuses and activates the button), test result FAILED. 7 passed; 1 failed"),
+    ("M166", "user/libui/src/lib.rs",
+     "            .filter(|&i| self.elements[i].role.focusable())",
+     "            .filter(|_| true)",
+     ["TST-M6-UI-UNIT"], "a left press focuses a label: pointer_focuses_and_activates_the_element_under_it fails (Focus to the label instead of None), test result FAILED. 7 passed; 1 failed"),
+    ("M167", "user/libui/src/lib.rs",
+     "        self.focus = Some(owner);",
+     "        let _ = owner;",
+     ["TST-M6-UI-UNIT"], "Esc (and an outside press or a choice) closes the menu without returning the focus to its opener: focused() stays None; esc_and_outside_click_close_and_return_focus, context_menu_opens_by_three_ways and menu_wraps_skips_separators_and_disabled_never_chooses fail, test result FAILED. 5 passed; 3 failed"),
+    ("M168", "user/libui/src/lib.rs",
+     "        if it.separator || !it.enabled {",
+     "        if it.separator {",
+     ["TST-M6-UI-UNIT"], "SECURITY: Enter on a disabled menu item emits Choose: menu_wraps_skips_separators_and_disabled_never_chooses fails (Some(Choose(3, 3)) instead of None), test result FAILED. 7 passed; 1 failed"),
+    ("M169", "user/libui/src/lib.rs",
+     "            let opened = m.ax - w;",
+     "            let opened = m.ax;",
+     ["TST-M6-UI-UNIT"], "in RTL the menu is anchored by its left edge and opens rightwards: menu_mirrors_in_rtl fails (the right edge is not the element's start edge), test result FAILED. 7 passed; 1 failed"),
+    # ---- M6 (WP-80): the confirm dialog (ui.md v1.7 §3.7); killer TST-M6-UI-CONFIRM
+    # (user/libui/tests/confirm.rs). SECURITY: M171 (a cancel becomes consent).
+    ("M171", "user/libui/src/lib.rs",
+     "            KEY_ESC => self.give(Answer::Cancel, Event::Cancel),",
+     "            KEY_ESC => self.give(Answer::Yes, Event::Cancel),",
+     ["TST-M6-UI-CONFIRM"], "SECURITY: Esc answers Yes, so a cancel becomes consent: confirm_default_esc_enter (answer() Some(Yes) instead of Some(Cancel)) and confirm_narrator_lines (\"answer yes\" instead of \"answer cancel\") fail, test result: FAILED. 3 passed; 2 failed"),
+    # ---- M6 (WP-50, 50a): the list view (ui.md v1.8 §3.8); killer TST-M6-LISTVIEW-UNIT
+    # (user/libui/tests/listview.rs). SECURITY: M176 (a range selects rows the user did not see
+    # chosen), M177 (typing opens a row), M179 (a denied folder reported empty), M180 (a name
+    # reorders its own extension).
+    ("M176", "user/libui/src/list.rs",
+     "                self.set_sel(src.order(p), true);",
+     "                self.set_sel(p, true);",
+     ["TST-M6-LISTVIEW-UNIT"], "SECURITY: a Shift range selects display positions taken as row ids, so in any order but the identity an action on the selection reaches rows the user did not select: single_and_multi_selection ([1, 2] instead of [17, 18] in the reversed order) and sort_stable_and_selection_follows_identity fail, test result: FAILED. 9 passed; 2 failed"),
+    ("M177", "user/libui/src/list.rs",
+     "                return self.move_to(src, pos, 0);",
+     "                return ListEvent::Activate(src.order(pos));",
+     ["TST-M6-LISTVIEW-UNIT"], "SECURITY: a type-ahead match activates the row, so typing opens a file: typeahead_latin_and_arabic (Activate(1) instead of Focus(1)) and focus_stays_visible fail, test result: FAILED. 9 passed; 2 failed"),
+    ("M178", "user/libui/src/list.rs",
+     "            KEY_END => Some(last),",
+     "            KEY_END => Some(self.n),",
+     ["TST-M6-LISTVIEW-UNIT"], "End goes one past the last row and the view asks the application for position n: visible_rows_bounded_0_1_10000, home_end_pgup_pgdn_exact, single_and_multi_selection, row_narrator_lines_en_ar and focus_stays_visible fail (the RowSource panics on position n), test result: FAILED. 6 passed; 5 failed"),
+    ("M179", "user/libui/src/list.rs",
+     "        if let Some(r) = self.denied {",
+     "        if let Some(r) = self.denied.filter(|_| false) {",
+     ["TST-M6-LISTVIEW-UNIT"], "SECURITY (false report): a denied list is described state=empty, so a folder the user may not read is announced as having nothing in it: empty_and_denied_states_text fails, test result: FAILED. 10 passed; 1 failed"),
+    ("M180", "user/libui/src/list.rs",
+     "        out[n] = if is_bidi_control(c) || is_control(c) {",
+     "        out[n] = if is_control(c) {",
+     ["TST-M6-LISTVIEW-UNIT"], "SECURITY: a bidi override in a cell is drawn and obeyed, so photo<U+202E>gpj.exe shows as an image name: bidi_controls_in_cells_shown_not_obeyed fails (out[5] is 0x202E, not U+FFFD), test result: FAILED. 10 passed; 1 failed"),
+    ("M181", "user/libui/src/list.rs",
+     "        let total = self.n;",
+     "        let total = self.visible().1;",
+     ["TST-M6-LISTVIEW-UNIT"], "row k/n counts the visible rows, not all of them: row_narrator_lines_en_ar fails (row 500/10 instead of row 500/500), test result: FAILED. 10 passed; 1 failed"),
+    # ---- M6 (WP-82): the interactive LOAD budget (boot.md v1.1, «مهلة LOAD»); killer TST-M0-003's
+    # source guard (tests/test_ci_workflows.py LoadBudget). M174 (the received-transcript check in
+    # tools/project.py) is not registrable: the harness restores only kernel/ and user/ and drives
+    # its killers through tools/project.py itself; TST-M5-LAB-TOOL's cases are that check's guard.
+    ("M175", "kernel/src/kmain.rs",
+     "pub const LOAD_BUDGET_TICKS: u64 = 10_000;",
+     "pub const LOAD_BUDGET_TICKS: u64 = 2_000;",
+     ["TST-M0-003"], "the LOAD budget back to 2000 ticks (under the 1096 measured on CI run 42696067096): test_the_interactive_load_wait_uses_the_named_budget fails (kernel/src/kmain.rs: LOAD_BUDGET_TICKS = 2_000, not 10000), TST-M0-003 FAILED"),
+    # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
+    # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
+    # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
+    # All SECURITY: each reopens a path for a forged, foreign or partial verdict to become evidence.
+    ("M174", "tools/project.py",
+     '    present_forbidden += [f"{m} ({name})" for name, r in received for m in forbidden if m in r]',
+     "    present_forbidden += []",
+     ["TST-M5-LAB-TOOL"], "SECURITY: a forbidden marker the guest wrote only to the console transcript no longer fails the case"),
+    ("M185", "tools/project.py",
+     "            if want != got:\n                print(f\"adopt refused: {d.name} names {got!r} where {name} is {want!r}\")",
+     "            if want != got and name != \"GITHUB_RUN_ATTEMPT\":\n                print(f\"adopt refused: {d.name} names {got!r} where {name} is {want!r}\")",
+     ["TST-M0-007"], "SECURITY: adopt-native no longer compares the run attempt, so another attempt's directories are adopted as this run's"),
+    ("M186", "tools/project.py",
+     "        have = run_ci_identity(d)\n        if have is None:\n            print(f\"adopt refused: {d.name} carries no ci identity",
+     "        have = run_ci_identity(d) or tuple(expect)\n        if have is None:\n            print(f\"adopt refused: {d.name} carries no ci identity",
+     ["TST-M0-007"], "SECURITY: a new directory without ci identity is adopted as if this run wrote it"),
+    ("M187", ".github/workflows/verify.yml",
+     "        if: ${{ !cancelled() && steps.adopt.outcome == 'success' }}",
+     "        if: always()",
+     ["TST-M0-003"], "SECURITY: Publish runs even when the adopt step failed or the run was cancelled"),
+    ("M188", ".github/workflows/verify.yml",
+     "  contents: read  # the code under test runs here",
+     "  contents: write  # the code under test runs here",
+     ["TST-M0-003"], "SECURITY: the top-level token may write, so the code under test in job a can push"),
+    ("M189", ".github/workflows/verify.yml",
+     "    if: ${{ !cancelled() }}",
+     "    if: always()",
+     ["TST-M0-003"], "SECURITY: the merge job runs on a cancelled run (always() instead of !cancelled())"),
+    ("M190", ".github/workflows/verify.yml",
+     'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
+     'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; continue',
+     ["TST-M0-003"], "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted"),
 ]
 
 def stage_of(mid: str) -> str:
     """M01..M29 belong to the M2 gate (TST-M2-MUTANTS), M30..M49 to the M3 gate (TST-M3-MUTANTS),
-    M50..M81 to the M4 gate (TST-M4-MUTANTS), M82.. to the M5 gate (TST-M5-MUTANTS, WP-38)."""
+    M50..M81 to the M4 gate (TST-M4-MUTANTS), M82..M129 to the M5 gate (TST-M5-MUTANTS, WP-38),
+    M130.. to the M6 gate (TST-M6-MUTANTS, WP-90). Every stage returned here must have a gate
+    suite in tools/project.py HOST_SUITES run by mutants.yml (TST-M0-005 GateMapping)."""
     n = int(mid[1:])
-    return "M2" if n < 30 else ("M3" if n < 50 else ("M4" if n < 82 else "M5"))
+    return "M2" if n < 30 else ("M3" if n < 50 else ("M4" if n < 82 else ("M5" if n < 130 else "M6")))
 
 
 # The M5 mutants that undo a security fix of the pre-gate review (WP-43) or of WP-41: the gate
@@ -604,7 +817,40 @@ def stage_of(mid: str) -> str:
 # v1.7) undo protections of the same rank.
 SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91",
             "M95", "M96", "M98", "M99", "M100", "M101", "M105", "M106", "M107", "M112",
-            "M122", "M126", "M129"}
+            "M122", "M126", "M129",
+            # M6 (WP-45): the boot-mode gate (boot.md v1.1): without the hypervisor bit no fw_cfg
+            # read (M130), only the key 1 selects the self-test (M131), and an interactive boot
+            # never takes the self-test exit (M132).
+            "M130", "M131", "M132",
+            # M6 (WP-64, WP-73): a restarted session purges the lost one's windows (session.md v1.7,
+            # M135); auth revokes the tokens of a lost session client (auth.md v1.2, M137).
+            "M135", "M137",
+            # M6 (WP-67): displayd's start-up hold fails closed on a LIST failure (display.md
+            # v1.12): a fail-open hold lets keys reach a window before the session unlocks.
+            "M147",
+            # M6 (WP-64): the purge fails closed when the listing cannot be read (session.md v1.7).
+            "M150",
+            # M6 (WP-46): jobs (syscall.md v1.13 §5): WRITE gates every job call (M151), a child
+            # inherits the caller's job so job_kill reaches what a member starts (M152), and no
+            # process enters a killed job (M153).
+            "M151", "M152", "M153",
+            # M6 (WP-68): the manifest is read whole or refused (services.md v1.13, M157) and LOAD
+            # reads only under /SYSTEM/ (M159). M158 (MANIFEST_IO) is not SECURITY.
+            "M157", "M159",
+            # M6 (WP-78): the config WRITE scope at the authority layer (files.md v1.4, M162-M164).
+            "M162", "M163", "M164",
+            # M6 (WP-49): libui menus (ui.md v1.6 §3.6): a disabled menu item is never chosen
+            # (M168).
+            "M168",
+            # M6 (WP-80): libui confirm (ui.md v1.7 §3.7): Esc answers Cancel, never consent (M171).
+            "M171",
+            # M6 (WP-50 50a): the list view (ui.md v1.8 §3.8): a selection is by row id (M176),
+            # typing never activates (M177), a denial is never shown as empty (M179), and bidi
+            # controls in a cell are shown, never obeyed (M180).
+            "M176", "M177", "M179", "M180",
+            # M6 tooling (WP-82, WP-83): the console-transcript forbidden check (M174), adopt-native's
+            # attempt and identity checks (M185, M186) and the merge job's guards (M187-M190).
+            "M174", "M185", "M186", "M187", "M188", "M189", "M190"}
 
 
 def security_of(mid: str) -> bool:
@@ -665,8 +911,33 @@ def apply(wt: Path, m) -> None:
     p.write_text(s.replace(old, new), encoding="utf-8")
 
 
+# Every tree a mutant may touch (WP-90): the sources and the tooling that tests them. A tooling
+# mutant left in place would run under every later mutant's killers.
+RESTORED = ("kernel", "user", "tools", "tests", ".github")
+
+
 def reset(wt: Path) -> None:
-    subprocess.run(["git", "checkout", "-q", "--", "kernel", "user"], cwd=wt, check=True)
+    """Restore every tree a mutant may touch, then prove it: a tracked path left modified (or
+    staged) under RESTORED fails the run rather than leak into the next mutant (WP-90)."""
+    subprocess.run(["git", "checkout", "-q", "--"] + list(RESTORED), cwd=wt, check=True)
+    dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "--"] + list(RESTORED),
+                           cwd=wt, check=True, capture_output=True, text=True).stdout.strip()
+    if dirty:
+        raise RuntimeError(f"reset left tracked changes in the worktree: {dirty}")
+
+
+def is_tooling(rel: str) -> bool:
+    """A mutant of the lab's tooling (tools/, tests/, .github/), not of the image: its killers are
+    host cases, run through the worktree's tools/project.py; no image is built and no guest case
+    is swept for it (WP-90)."""
+    return Path(rel).parts[0] not in ("kernel", "user")
+
+
+def needs_image(target, rel, killers) -> bool:
+    """Whether the mutant's image is built before its declared killers run: only for a kernel or
+    user mutant with at least one guest killer. A source mutant killed by host cases alone (libui's
+    unit tests, TST-M0-003's source guards) builds the image only if the fairness sweep needs it."""
+    return not is_tooling(rel) and any(suite_of(target, k) is not None for k in killers)
 
 
 def crate_of(rel: str):
@@ -685,11 +956,46 @@ def crate_of(rel: str):
     return None
 
 
+# The driver that judges every killer is the clean checkout's tools/project.py (WP-90): HOST_SUITES,
+# host-suite-of and the PASS/FAIL decision never come from the worktree, where a tooling mutant
+# could judge itself (a mutated cmd_test_host_case printing OK). Only the case's own files are
+# read from the worktree, through NAWAH_ROOT.
+PYPROJ = ["python3", str(REPO / "tools" / "project.py")]
+
+
 def host_suite_of(wt: Path, test_id):
-    """The host suite of tools/project.py that holds `test_id`, or None."""
-    r = subprocess.run(["python3", str(wt / "tools" / "project.py"), "host-suite-of", test_id],
-                       cwd=wt, capture_output=True, text=True)
+    """The host suite of the clean tools/project.py that holds `test_id`, or None (`wt` is kept
+    for the callers; the lookup never reads the worktree)."""
+    r = subprocess.run(PYPROJ + ["host-suite-of", test_id], cwd=REPO, capture_output=True, text=True,
+                       env={k: v for k, v in os.environ.items() if k != "NAWAH_ROOT"})
     return r.stdout.strip() or None if r.returncode == 0 else None
+
+
+# A host killer's FAIL is a kill only when the case's test runner reached a verdict and reported
+# failing tests (unittest `FAILED (...)`, cargo `test result: FAILED`), and the same case passes
+# on the clean tree. A case that cannot start (its file does not compile or import, a missing
+# tool, a timeout) or that also fails unmutated is ERROR: a kill must be caused by the mutant.
+RUNNER_FAILED = re.compile(r"^(FAILED \(|test result: FAILED)", re.M)
+_CLEAN_HOST = {}
+
+
+def runner_reported_failures(out: str, env) -> bool:
+    m = re.search(r" run=(\S+)", out)
+    scratch = env.get("NAWAH_SCRATCH_EVIDENCE")
+    if not m or not scratch:
+        return False
+    d = Path(scratch) / m.group(1)
+    text = "".join((d / f).read_text(encoding="utf-8", errors="replace") for f in ("stdout.log", "stderr.log") if (d / f).exists())
+    return bool(RUNNER_FAILED.search(text))
+
+
+def passes_clean(env, host_suite, test_id) -> bool:
+    """The host case on the clean checkout (cached per run)."""
+    if test_id not in _CLEAN_HOST:
+        r = sh(PYPROJ + ["test", "--target", "host", "--suite", host_suite, "--only", test_id], REPO,
+               dict(env, NAWAH_ROOT=str(REPO)))
+        _CLEAN_HOST[test_id] = r.returncode == 0
+    return _CLEAN_HOST[test_id]
 
 
 def suite_of(target, test_id):
@@ -709,6 +1015,17 @@ def _write_report(rel, report):
     rp.write_text(json.dumps(report, indent=1) + "\n")
 
 
+def needs_release(target, killers):
+    """Whether a declared killer boots the release image NAWAH.EFI (a case without its own
+    artifact boots the build's, NAWAH.EFI): then the mutant's release kernel is built before
+    the killers run. Keyed on TST-M1-BOOT alone, TST-M6-INTERACTIVE-BOOT found no artifact
+    (SKIPPED) and, being declared, was left out of the fairness sweep too."""
+    t = json.loads((REPO / "platform" / target / "target.json").read_text())
+    default = t["build"]["artifact"]
+    cases = {c["id"]: c for cs in t["suites"].values() for c in cs}
+    return any(k in cases and cases[k].get("artifact", default) == "${OUT}/NAWAH.EFI" for k in killers)
+
+
 def run_killers(wt: Path, env, target, killers, early_exit=False):
     """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED|ERROR}). Every case runs
     through its suite entry (the strong oracle); a missing artifact (exit 20) is SKIPPED and a
@@ -716,25 +1033,33 @@ def run_killers(wt: Path, env, target, killers, early_exit=False):
     stops at the first FAIL (one kill is enough): the fairness sweep over ~140 cases need not
     finish once a mutant is caught, which is most of a surviving-mutant run's cost."""
     results = {}
-    pyproj = ["python3", str(wt / "tools" / "project.py")]
     for tid in killers:
         suite = suite_of(target, tid)
+        host_suite = None
         if suite is None:
-            # A host case (M5 gate: libui's unit tests, the text conformance suites) runs on the
-            # worktree through the same driver; project.py knows its suite.
+            # A host case (libui's unit tests, the text conformance suites, the tooling checks)
+            # runs on the worktree's files through the clean driver; it knows its suite.
             host_suite = host_suite_of(wt, tid)
             if host_suite is None:
                 results[tid] = "SKIPPED"
                 continue
-            r = sh(pyproj + ["test", "--target", "host", "--suite", host_suite, "--only", tid], wt, env)
+            r = sh(PYPROJ + ["test", "--target", "host", "--suite", host_suite, "--only", tid], wt, env)
         else:
-            r = sh(pyproj + ["test", "--target", target, "--suite", suite, "--only", tid], wt, env)
+            r = sh(PYPROJ + ["test", "--target", target, "--suite", suite, "--only", tid], wt, env)
         if r.returncode == 0:
             results[tid] = "PASS"
+        elif host_suite is not None and not (runner_reported_failures(r.stdout, env) and passes_clean(env, host_suite, tid)):
+            # Not caused by the mutant (see RUNNER_FAILED): never a kill.
+            results[tid] = "ERROR"
         elif r.returncode == 20 or "no artifact" in r.stdout:
             results[tid] = "SKIPPED"
         elif "LAB_ERROR" in r.stdout:
             # The emulator died twice: no verdict on the mutant from this case (never a kill).
+            results[tid] = "ERROR"
+        elif host_suite is None and not (r.returncode == 1 and re.search(
+                rf"^{re.escape(tid)} {re.escape(target)}: FAIL\b.* run=\S+", r.stdout, re.M)):
+            # A guest kill is project.py's own FAIL verdict for this case (rc 1); an internal error
+            # (rc 60: no QEMU or OVMF, unknown case ids) is never a kill (WP-90 audit).
             results[tid] = "ERROR"
         else:
             results[tid] = "FAIL"
@@ -751,12 +1076,31 @@ def all_cases(target):
     return ids
 
 
+def harness_env(base, wt: Path, scratch: Path):
+    """The killers' environment: the worktree as NAWAH_ROOT, scratch evidence, the per-case QEMU
+    timeout, and no CARGO_TARGET_DIR, so the worktree and the clean checkout each build in their
+    own target/ (a shared one let the clean run reuse a mutated build, WP-90)."""
+    env = {k: v for k, v in base.items() if k != "CARGO_TARGET_DIR"}
+    env.update(NAWAH_ROOT=str(wt), NAWAH_SCRATCH_EVIDENCE=str(scratch), NAWAH_QEMU_TIMEOUT_S=str(MUTANT_CASE_TIMEOUT_S))
+    return env
+
+
+def gate_verdict(report) -> bool:
+    """The gate's verdict (WP-90): kill ratio >= THRESHOLD over a non-empty set of valid mutants,
+    no surviving SECURITY mutant, and no invalid SECURITY mutant (an anchor that no longer matches
+    or a mutant that does not build would otherwise leave the SECURITY rule silently)."""
+    report["surviving_security"] = [m for m in report["survived"] if security_of(m)]
+    report["invalid_security"] = [m for m in report["invalid"] if security_of(m)]
+    return bool(report["ratio"] >= THRESHOLD and report["valid"] and not report["surviving_security"]
+                and not report["invalid_security"])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--target", default="pc-qemu")
     ap.add_argument("--report", default="build/mutants-report.json")
     ap.add_argument("--only", help="comma-separated mutant ids")
-    ap.add_argument("--stage", choices=["M2", "M3", "M4", "M5"], help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50-M81 = M4, M82.. = M5)")
+    ap.add_argument("--stage", choices=list(STAGES), help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50-M81 = M4, M82-M129 = M5, M130.. = M6)")
     ap.add_argument("--check", action="store_true", help="apply/revert each patch and cargo check on the host target only")
     a = ap.parse_args()
     mutants = [m for m in MUTANTS if (not a.only or m[0] in a.only.split(",")) and (not a.stage or stage_of(m[0]) == a.stage)]
@@ -767,7 +1111,7 @@ def main():
     subprocess.run(["git", "worktree", "add", "-q", "--detach", str(wt), "HEAD"], cwd=REPO, check=True)
     report = {"threshold": THRESHOLD, "target": a.target, "mutants": [], "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     try:
-        env = dict(os.environ, NAWAH_ROOT=str(wt), NAWAH_SCRATCH_EVIDENCE=str(scratch), NAWAH_QEMU_TIMEOUT_S=str(MUTANT_CASE_TIMEOUT_S))
+        env = harness_env(os.environ, wt, scratch)
         env.setdefault("RUSTUP_TOOLCHAIN", os.environ.get("RUSTUP_TOOLCHAIN", ""))
         if not env["RUSTUP_TOOLCHAIN"]:
             del env["RUSTUP_TOOLCHAIN"]
@@ -798,26 +1142,43 @@ def main():
                 continue
             benv = dict(env, NAWAH_BUILD_ID=mutant_build_id(mid), NAWAH_OUT=str(wt / "build" / a.target),
                         NAWAH_APPS_DIR=str(wt / "build" / a.target / "apps"))
-            (wt / "build" / a.target / "apps").mkdir(parents=True, exist_ok=True)
-            need_release = "TST-M1-BOOT" in killers
-            build_ok = True
-            steps = [app_step(n) for n in APPS] + [(KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
-            if need_release:
-                steps.append((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"))
-            for step, out, name in steps:
-                r = sh(step, wt, benv, timeout=1800)
-                if r.returncode != 0:
-                    build_ok = False
-                    entry["reason"] = r.stdout[-2000:]
-                    break
-                shutil.copy(wt / out, wt / "build" / a.target / name)
-            if not build_ok:
+            need_release = needs_release(a.target, killers)
+            out_dir = wt / "build" / a.target
+
+            def build_image():
+                """The mutant's apps, test image and (when a killer boots it) release image. The
+                images a previous mutant left are removed first (the harness's own outputs only),
+                so a guest case never boots another mutant's kernel."""
+                for name in ("NAWAH-KTEST.EFI", "NAWAH.EFI", "NAWAH-NEG.EFI", "build-id.txt"):
+                    (out_dir / name).unlink(missing_ok=True)
+                shutil.rmtree(out_dir / "apps", ignore_errors=True)
+                (out_dir / "apps").mkdir(parents=True, exist_ok=True)
+                steps = [app_step(n) for n in APPS] + [(KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
+                if need_release:
+                    steps.append((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"))
+                for step, out, name in steps:
+                    r = sh(step, wt, benv, timeout=1800)
+                    if r.returncode != 0:
+                        entry["reason"] = r.stdout[-2000:]
+                        return False
+                    shutil.copy(wt / out, out_dir / name)
+                (out_dir / "build-id.txt").write_text(benv["NAWAH_BUILD_ID"] + "\n")
+                return True
+
+            built = needs_image(a.target, rel, killers)
+            entry["image_built"] = built
+            if built and not build_image():
                 entry.update(status="invalid", seconds=round(time.time() - t0, 1)); report["mutants"].append(entry)
                 print(f"{mid}: INVALID (does not build) ({note})"); continue
-            (wt / "build" / a.target / "build-id.txt").write_text(benv["NAWAH_BUILD_ID"] + "\n")
             killed_by, results = run_killers(wt, env, a.target, killers)
             declared_miss = not killed_by
-            if not killed_by:
+            if not killed_by and not built and not is_tooling(rel):
+                # A source mutant its host killers missed: the sweep below boots its image.
+                built = entry["image_built"] = build_image()
+                if not built:
+                    entry.update(status="invalid", results=results, seconds=round(time.time() - t0, 1)); report["mutants"].append(entry)
+                    print(f"{mid}: INVALID (does not build) ({note})"); _write_report(a.report, report); continue
+            if not killed_by and built:
                 # Be fair before declaring a survivor: build the remaining artifacts and run
                 # everything the suites have.
                 rest = [c for c in all_cases(a.target) if c not in killers]
@@ -845,8 +1206,10 @@ def main():
             print(f"{mid}: {'killed by ' + ','.join(killed_by) if killed_by else 'SURVIVED'} [{entry['seconds']}s] ({note})")
             _write_report(a.report, report)
     finally:
-        reset(wt)
-        subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO)
+        try:
+            reset(wt)
+        finally:
+            subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO)
         shutil.rmtree(tmp, ignore_errors=True)
     valid = [m for m in report["mutants"] if m["status"] in ("killed", "survived")]
     killed = [m for m in valid if m["status"] == "killed"]
@@ -862,9 +1225,9 @@ def main():
         bad = [m["id"] for m in report["mutants"] if m["status"] == "invalid"]
         print(f"\n{'OK' if not bad else 'FAIL'}: {len(report['mutants']) - len(bad)}/{len(report['mutants'])} mutants apply and type-check" + (f"; invalid: {bad}" if bad else ""))
         return 0 if not bad else 1
-    report["surviving_security"] = [m for m in report["survived"] if security_of(m)]
-    verdict = ratio >= THRESHOLD and valid and not report["surviving_security"]
-    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; surviving_security={report['surviving_security']}; invalid={report['invalid']}; declared_killers_missed={report['declared_killers_missed']}; report={a.report}")
+    verdict = gate_verdict(report)
+    _write_report(a.report, report)
+    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; surviving_security={report['surviving_security']}; invalid={report['invalid']}; invalid_security={report['invalid_security']}; declared_killers_missed={report['declared_killers_missed']}; report={a.report}")
     return 0 if verdict else 1
 
 
