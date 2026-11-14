@@ -759,6 +759,11 @@ MUTANTS = [
      "        let total = self.n;",
      "        let total = self.visible().1;",
      ["TST-M6-LISTVIEW-UNIT"], "row k/n counts the visible rows, not all of them: row_narrator_lines_en_ar fails (row 500/10 instead of row 500/500), test result: FAILED. 10 passed; 1 failed"),
+    # ---- M6 (WP-94): a described value cannot forge its line (ui.md v1.9 §3.9, RSK-022).
+    ("M193", "user/libui/src/lib.rs",
+     "        let named = c == '\"' || list::is_control(cp) || list::is_bidi_control(cp);",
+     "        let named = false;",
+     ["TST-M5-UI-UNIT"], "a value is written between the quotes as it is: a quote forges an attribute and a newline a second narrator line; a_quote_in_a_typed_value_cannot_forge_an_attribute, a_set_value_with_a_newline_stays_one_line, separators_and_bidi_controls_in_a_value_are_named_not_obeyed and a_long_escaped_value_is_cut_at_a_whole_character_and_still_closed fail, test result: FAILED. 15 passed; 4 failed"),
     # ---- M6 (WP-82): the interactive LOAD budget (boot.md v1.1, «مهلة LOAD»); killer TST-M0-003's
     # source guard (tests/test_ci_workflows.py LoadBudget). M174 (the received-transcript check in
     # tools/project.py) is not registrable: the harness restores only kernel/ and user/ and drives
@@ -850,7 +855,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M176", "M177", "M179", "M180",
             # M6 tooling (WP-82, WP-83): the console-transcript forbidden check (M174), adopt-native's
             # attempt and identity checks (M185, M186) and the merge job's guards (M187-M190).
-            "M174", "M185", "M186", "M187", "M188", "M189", "M190"}
+            "M174", "M185", "M186", "M187", "M188", "M189", "M190",
+            # M6 (WP-94): a described value never forges an attribute or a second line (M193).
+            "M193"}
 
 
 def security_of(mid: str) -> bool:

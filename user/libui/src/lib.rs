@@ -329,6 +329,42 @@ pub struct Text {
     pub len: usize,
 }
 
+/// (v1.9) A value between the quotes of a description: data the user typed or the application
+/// took from a request. A quote, a control character (C0, DEL, C1), a line or paragraph
+/// separator and a bidi formatting character are written `[U+XXXX]`, as the list view writes
+/// its cells, so a value never ends itself, its line or its direction; and the value is cut
+/// at a whole character or escape that still leaves room for the closing quote, so the line is
+/// never left open.
+fn put_quoted(out: &mut Text, cps: &[u32]) {
+    let mut tmp = [0u8; 4];
+    for &cp in cps {
+        let Some(c) = char::from_u32(cp) else {
+            continue;
+        };
+        let named = c == '"' || list::is_control(cp) || list::is_bidi_control(cp);
+        let need = if named {
+            // "[U+" and "]" around the hex digits `list::hex` writes: four at least.
+            4 + match cp {
+                0..=0xFFFF => 4,
+                0x1_0000..=0xF_FFFF => 5,
+                _ => 6,
+            }
+        } else {
+            c.len_utf8()
+        };
+        if out.len + need + 1 > out.buf.len() {
+            break;
+        }
+        if named {
+            out.put(b"[U+");
+            list::hex(out, cp);
+            out.put(b"]");
+        } else {
+            out.put(c.encode_utf8(&mut tmp).as_bytes());
+        }
+    }
+}
+
 impl Default for Text {
     fn default() -> Self {
         Self::new()
@@ -824,12 +860,7 @@ impl Dialog {
             // A password field is described without its value (v1.1).
             Role::TextField | Role::Value => {
                 out.put(b" value=\"");
-                let mut tmp = [0u8; 4];
-                for &cp in &e.text[..e.text_len] {
-                    if let Some(c) = char::from_u32(cp) {
-                        out.put(c.encode_utf8(&mut tmp).as_bytes());
-                    }
-                }
+                put_quoted(out, &e.text[..e.text_len]);
                 out.put(b"\"");
             }
             _ => {}

@@ -116,13 +116,13 @@ pub fn stable_sort(
 
 /// An explicit bidi formatting character (UAX #9: ALM, LRM, RLM, LRE..RLO, LRI..PDI). In a
 /// cell it is shown and named, never obeyed: a name cannot reorder its own extension.
-fn is_bidi_control(c: u32) -> bool {
+pub(crate) fn is_bidi_control(c: u32) -> bool {
     matches!(c, 0x061C | 0x200E | 0x200F | 0x202A..=0x202E | 0x2066..=0x2069)
 }
 
 /// A control character (C0, DEL, C1) or the line and paragraph separators U+2028/U+2029: in a
 /// cell it would end a narrator line, split a paragraph or draw nothing.
-fn is_control(c: u32) -> bool {
+pub(crate) fn is_control(c: u32) -> bool {
     c < 0x20 || (0x7F..=0x9F).contains(&c) || c == 0x2028 || c == 0x2029
 }
 
@@ -145,7 +145,7 @@ pub fn cell_chars(s: &str, out: &mut [u32]) -> usize {
     n
 }
 
-fn hex(out: &mut Text, v: u32) {
+pub(crate) fn hex(out: &mut Text, v: u32) {
     let d = b"0123456789ABCDEF";
     let mut b = [0u8; 6];
     let mut len = 0;
