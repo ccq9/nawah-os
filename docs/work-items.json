@@ -5568,7 +5568,7 @@
    "files": [
     ".github/workflows/verify.yml",
     "tests/test_ci_workflows.py",
-    "docs/PLAN-ANSWER.md",
+    "tools/project.py",
     "docs/tests.json"
    ],
    "contract_refs": [],
@@ -5579,9 +5579,10 @@
     "one CI run measures the critical path against 42m11s (the claim of about T+20 min is unverified until measured)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
+    "2026-11-14 re-scoped by the manager on measured facts (the former acceptance, kept for history: «TST-M0-003 PASS with the per-job budgets {a 40, b 40, c 40, merge 20} and M6 18 in c; TST-M0-001 and TST-M0-007 PASS; a verify run with three test jobs and the merge job publishing one evidence branch; the measured critical path recorded»): since the owner's DEC-029 the M6 mutation gate runs in every verify run as job m, and it is now the run's critical path: on run 43626254653 job a took 25 min 41 s (M5 10 min 58 s, M6 1 min 51 s, host suites 94 s) and job m 25 min 40 s (the gate 23 min 13 s), the merge job 2 min; on run 43633894291 the gate took 23 min 43 s. Splitting job a into a, b and c would add two toolchains and shorten nothing while the gate runs 23 minutes beside them. What the four items that wait for this one need (WP-71, WP-79, WP-84, WP-87) is the M6 guest step's cap: the suite's worst case, the sum of its phase timeouts, is 895 s against the cap's 900. This item therefore does the cap alone: M6 15 -> 18 (1080 s) and job a 58 -> 62 ((15 + 18 + 18) x 1.2 = 61.2), test first. A later item that adds M6 phases past 1080 s raises the cap with its own case (the bounded-suite case fails until it does). The fan-out into parallel test jobs moves to WP-98 together with sharding the gate, the only form in which it shortens the run",
     "2026-11-10 estimate (lab engineer, unmeasured): 45-60 tool calls / 45-60 min; under the budget line"
    ],
-   "acceptance": "TST-M0-003 PASS with the per-job budgets {a 40, b 40, c 40, merge 20} and M6 18 in c; TST-M0-001 and TST-M0-007 PASS; a verify run with three test jobs and the merge job publishing one evidence branch; the measured critical path recorded",
+   "acceptance": "TST-M0-003 PASS with the per-job budgets {a 62, m 180, merge 20} and the M6 guest step capped at 18; TST-M0-001 and TST-M0-007 PASS; the measured times of the jobs recorded",
    "test_ids": [
     "TST-M0-003",
     "TST-M0-001",
@@ -6085,6 +6086,56 @@
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-98",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-005"
+   ],
+   "depends_on": [
+    "WP-88"
+   ],
+   "inputs": [
+    "verify runs 43626254653 and 43633894291: job a about 26 min, job m about 26 min (the gate 23 min), merge 2 min; the run about 28 min",
+    "WP-88's record: the fan-out of job a into a, b, c as first planned (limits 40 each, M5 in b, M6 in c)",
+    "tests/mutants.py: one gate run writes one report and one verdict for TST-M6-MUTANTS",
+    "the audit of WP-96: adopt-native with two slots carrying one test id has no test"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tests/test_evidence_provenance.py",
+    "tools/project.py",
+    "docs/PLAN-ANSWER.md",
+    "docs/tests.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "تقصير تشغيل verify: توزيع وظيفة الاختبار وتقسيم بوابة الطفرات معًا (مفصولة من WP-88 في 2026-11-14)",
+    "why together: the test job and the mutation job each take about 26 minutes side by side; shortening one alone leaves the run as long as the other",
+    "design to decide in the package (2-3 options): the gate in shards whose reports one step combines into the single verdict of TST-M6-MUTANTS (ratio and SECURITY rules over the union, a missing shard fails closed), against two gate tests; the test job split by suite (M5 alone is 11 of its 26 minutes); what adopt-native does with one test id from two slots, with its test; the runner minutes each option costs",
+    "test first: the budget per job, the shards' union, a missing shard, the slots; the PLAN-ANSWER V3 text is written here",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split (gate shards; test jobs) before activating",
+    "2026-11-14 estimate: unmeasured; not on the path to any product item, to be taken when the 28-minute run costs more than it saves"
+   ],
+   "acceptance": "a verify run whose critical path is measurably shorter than 26 minutes with every verdict of today's run present, TST-M6-MUTANTS's verdict computed over all shards, and TST-M0-003, TST-M0-005 and TST-M0-007 PASS with the new cases",
+   "test_ids": [
+    "TST-M0-003",
+    "TST-M0-005",
+    "TST-M0-007"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
    ],
    "status": "planned",
    "status_history": [
