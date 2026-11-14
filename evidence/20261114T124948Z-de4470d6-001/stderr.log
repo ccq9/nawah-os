@@ -1,0 +1,23 @@
+.............F................
+======================================================================
+FAIL: test_the_step_runs_every_suite_and_fails_when_any_failed (__main__.HostStep.test_the_step_runs_every_suite_and_fails_when_any_failed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 249, in test_the_step_runs_every_suite_and_fails_when_any_failed
+    self.assertEqual(self.problems(), [])
+AssertionError: Lists differ: ["failing ['M0']: the step stopped early, [151 chars]0']"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"failing ['M0']: the step stopped early, ran ['M0']"
+
++ []
+- ["failing ['M0']: the step stopped early, ran ['M0']",
+-  "failing ['M0', 'M6']: the step stopped early, ran ['M0']",
+-  "failing ['M0', 'M1', 'M3', 'M4', 'M5', 'M6']: the step stopped early, ran "
+-  "['M0']"]
+
+----------------------------------------------------------------------
+Ran 30 tests in 2.640s
+
+FAILED (failures=1)
