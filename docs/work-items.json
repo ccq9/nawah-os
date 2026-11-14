@@ -5759,7 +5759,8 @@
     "study: root cause confirmed: the oracle lives in two places with no check that they agree; the copy in tests.json is synced by hand (scratch helper c8) and drifted in 32 of 157 cases; the PLANNED_WORD strict rule and an auditor's catch (TST-M6-UI-CONFIRM, 2026-11-10) each cost a cycle",
     "design options to decide in the package: (a) a `sync-oracles` command writes each record's oracle from its source and validate-records errors on a difference, with dated notes moved to a separate optional field; (b) the record keeps no oracle text for cases that have a source and the validator reads the source; (c) keep both and only warn. Recommendation (a): smallest schema change, readable records, the difference becomes an error. The 32 present differences are reconciled case by case first (which side is right), never by a blind overwrite",
     "test first (TST-M0-001): a record whose oracle differs from its source is an error; sync-oracles rewrites it; a record without a source is untouched; a dated note survives a sync",
-    "estimate about 40 calls / 45 min (unmeasured); budget line: OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first"
+    "estimate about 40 calls / 45 min (unmeasured); budget line: OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first",
+    "2026-11-14 activation estimate (release engineer): about 40-50 calls / 45-60 min: option (a) test-first in TST-M0-001, then the 32 differences reconciled case by case with a dated note each; it lands after the WP-90 / WP-50 train so their new oracle texts pass through the new command; under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first)"
    ],
    "acceptance": "TST-M0-001 PASS with the oracle-equality cases; validate-records reports no oracle difference on the tree; the 32 differences reconciled with a dated note per case",
    "test_ids": [
@@ -5768,9 +5769,10 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
