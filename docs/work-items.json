@@ -5599,12 +5599,17 @@
     "python3 -I tests/test_ci_workflows.py",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261114T205334Z-e8f72081-002-a",
+    "evidence/20261114T205333Z-e8f72081-001-a",
+    "evidence/20261114T205340Z-e8f72081-001-a"
+   ],
    "blocker": null
   },
   {
