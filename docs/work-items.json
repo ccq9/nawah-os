@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105254Z-bd43461d-001"
+    "evidence/20261114T134329Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105253Z-bd43461d-001"
+    "evidence/20261114T134328Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103442Z-bd43461d-001",
-    "evidence/20261110T103445Z-bd43461d-001"
+    "evidence/20261114T132525Z-c7b3e920-001-a",
+    "evidence/20261114T132526Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105254Z-bd43461d-001"
+    "evidence/20261114T134329Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -356,10 +356,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103448Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001",
-    "evidence/20261110T103514Z-bd43461d-001",
-    "evidence/20261110T105258Z-bd43461d-001"
+    "evidence/20261114T132529Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a",
+    "evidence/20261114T132557Z-c7b3e920-001-a",
+    "evidence/20261114T134336Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -429,17 +429,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103518Z-bd43461d-001",
-    "evidence/20261110T103522Z-bd43461d-001",
-    "evidence/20261110T103525Z-bd43461d-001",
-    "evidence/20261110T103529Z-bd43461d-001",
-    "evidence/20261110T103533Z-bd43461d-001",
-    "evidence/20261110T103537Z-bd43461d-001",
-    "evidence/20261110T103540Z-bd43461d-001",
-    "evidence/20261110T103544Z-bd43461d-001",
-    "evidence/20261110T103548Z-bd43461d-001",
-    "evidence/20261110T103551Z-bd43461d-001",
-    "evidence/20261110T103555Z-bd43461d-001"
+    "evidence/20261114T132601Z-c7b3e920-001-a",
+    "evidence/20261114T132604Z-c7b3e920-001-a",
+    "evidence/20261114T132608Z-c7b3e920-001-a",
+    "evidence/20261114T132612Z-c7b3e920-001-a",
+    "evidence/20261114T132615Z-c7b3e920-001-a",
+    "evidence/20261114T132619Z-c7b3e920-001-a",
+    "evidence/20261114T132622Z-c7b3e920-001-a",
+    "evidence/20261114T132626Z-c7b3e920-001-a",
+    "evidence/20261114T132630Z-c7b3e920-001-a",
+    "evidence/20261114T132633Z-c7b3e920-001-a",
+    "evidence/20261114T132637Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -490,9 +490,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103559Z-bd43461d-001",
-    "evidence/20261110T103602Z-bd43461d-001",
-    "evidence/20261110T103606Z-bd43461d-001"
+    "evidence/20261114T132640Z-c7b3e920-001-a",
+    "evidence/20261114T132644Z-c7b3e920-001-a",
+    "evidence/20261114T132648Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -555,11 +555,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103610Z-bd43461d-001",
-    "evidence/20261110T103613Z-bd43461d-001",
-    "evidence/20261110T103617Z-bd43461d-001",
-    "evidence/20261110T103621Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T132651Z-c7b3e920-001-a",
+    "evidence/20261114T132655Z-c7b3e920-001-a",
+    "evidence/20261114T132659Z-c7b3e920-001-a",
+    "evidence/20261114T132702Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -636,11 +636,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103625Z-bd43461d-001",
-    "evidence/20261110T103629Z-bd43461d-001",
-    "evidence/20261110T103632Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001",
-    "evidence/20261110T103551Z-bd43461d-001"
+    "evidence/20261114T132706Z-c7b3e920-001-a",
+    "evidence/20261114T132710Z-c7b3e920-001-a",
+    "evidence/20261114T132713Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a",
+    "evidence/20261114T132633Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -704,9 +704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103636Z-bd43461d-001",
-    "evidence/20261110T103640Z-bd43461d-001",
-    "evidence/20261110T103643Z-bd43461d-001"
+    "evidence/20261114T132717Z-c7b3e920-001-a",
+    "evidence/20261114T132720Z-c7b3e920-001-a",
+    "evidence/20261114T132724Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -818,11 +818,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103647Z-bd43461d-001",
-    "evidence/20261110T103651Z-bd43461d-001",
-    "evidence/20261110T103655Z-bd43461d-001",
-    "evidence/20261110T103658Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T132728Z-c7b3e920-001-a",
+    "evidence/20261114T132731Z-c7b3e920-001-a",
+    "evidence/20261114T132735Z-c7b3e920-001-a",
+    "evidence/20261114T132739Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -883,8 +883,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105246Z-bd43461d-001",
-    "evidence/20261110T105247Z-bd43461d-001"
+    "evidence/20261114T134321Z-c7b3e920-001-a",
+    "evidence/20261114T134322Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -950,11 +950,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103702Z-bd43461d-001",
-    "evidence/20261110T103706Z-bd43461d-001",
-    "evidence/20261110T103709Z-bd43461d-001",
-    "evidence/20261110T103717Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T132742Z-c7b3e920-001-a",
+    "evidence/20261114T132746Z-c7b3e920-001-a",
+    "evidence/20261114T132750Z-c7b3e920-001-a",
+    "evidence/20261114T132757Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1024,11 +1024,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103721Z-bd43461d-001",
-    "evidence/20261110T103724Z-bd43461d-001",
-    "evidence/20261110T103732Z-bd43461d-001",
-    "evidence/20261110T103735Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T132800Z-c7b3e920-001-a",
+    "evidence/20261114T132804Z-c7b3e920-001-a",
+    "evidence/20261114T132811Z-c7b3e920-001-a",
+    "evidence/20261114T132815Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1097,14 +1097,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103739Z-bd43461d-001",
-    "evidence/20261110T103743Z-bd43461d-001",
-    "evidence/20261110T103747Z-bd43461d-001",
-    "evidence/20261110T103750Z-bd43461d-001",
-    "evidence/20261110T103754Z-bd43461d-001",
-    "evidence/20261110T103757Z-bd43461d-001",
-    "evidence/20261110T103801Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T132818Z-c7b3e920-001-a",
+    "evidence/20261114T132822Z-c7b3e920-001-a",
+    "evidence/20261114T132825Z-c7b3e920-001-a",
+    "evidence/20261114T132829Z-c7b3e920-001-a",
+    "evidence/20261114T132832Z-c7b3e920-001-a",
+    "evidence/20261114T132836Z-c7b3e920-001-a",
+    "evidence/20261114T132839Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1174,10 +1174,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103809Z-bd43461d-001",
-    "evidence/20261110T103812Z-bd43461d-001",
-    "evidence/20261110T103816Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T132846Z-c7b3e920-001-a",
+    "evidence/20261114T132850Z-c7b3e920-001-a",
+    "evidence/20261114T132853Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1256,14 +1256,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103819Z-bd43461d-001",
-    "evidence/20261110T103823Z-bd43461d-001",
-    "evidence/20261110T103827Z-bd43461d-001",
-    "evidence/20261110T103832Z-bd43461d-001",
-    "evidence/20261110T103836Z-bd43461d-001",
-    "evidence/20261110T103843Z-bd43461d-001",
-    "evidence/20261110T105259Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T132857Z-c7b3e920-001-a",
+    "evidence/20261114T132900Z-c7b3e920-001-a",
+    "evidence/20261114T132904Z-c7b3e920-001-a",
+    "evidence/20261114T132909Z-c7b3e920-001-a",
+    "evidence/20261114T132913Z-c7b3e920-001-a",
+    "evidence/20261114T132920Z-c7b3e920-001-a",
+    "evidence/20261114T134337Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1331,10 +1331,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103848Z-bd43461d-001",
-    "evidence/20261110T103852Z-bd43461d-001",
-    "evidence/20261110T103856Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T132925Z-c7b3e920-001-a",
+    "evidence/20261114T132929Z-c7b3e920-001-a",
+    "evidence/20261114T132932Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1407,12 +1407,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103900Z-bd43461d-001",
-    "evidence/20261110T103903Z-bd43461d-001",
-    "evidence/20261110T103907Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001",
-    "evidence/20261110T103721Z-bd43461d-001",
-    "evidence/20261110T103732Z-bd43461d-001"
+    "evidence/20261114T132936Z-c7b3e920-001-a",
+    "evidence/20261114T132940Z-c7b3e920-001-a",
+    "evidence/20261114T132943Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a",
+    "evidence/20261114T132800Z-c7b3e920-001-a",
+    "evidence/20261114T132811Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1469,10 +1469,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103713Z-bd43461d-001",
+    "evidence/20261114T132753Z-c7b3e920-001-a",
     "evidence/20261108T230914Z-2cbdeaad-001",
-    "evidence/20261110T103728Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T132807Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1542,9 +1542,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103911Z-bd43461d-001",
-    "evidence/20261110T103915Z-bd43461d-001",
-    "evidence/20261110T103918Z-bd43461d-001"
+    "evidence/20261114T132947Z-c7b3e920-001-a",
+    "evidence/20261114T132951Z-c7b3e920-001-a",
+    "evidence/20261114T132954Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1608,10 +1608,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103922Z-bd43461d-001",
-    "evidence/20261110T103926Z-bd43461d-001",
-    "evidence/20261110T103930Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T132958Z-c7b3e920-001-a",
+    "evidence/20261114T133002Z-c7b3e920-001-a",
+    "evidence/20261114T133005Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1684,10 +1684,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105300Z-bd43461d-001",
-    "evidence/20261110T103933Z-bd43461d-001",
-    "evidence/20261110T103937Z-bd43461d-001",
-    "evidence/20261110T103944Z-bd43461d-001"
+    "evidence/20261114T134339Z-c7b3e920-001-a",
+    "evidence/20261114T133009Z-c7b3e920-001-a",
+    "evidence/20261114T133013Z-c7b3e920-001-a",
+    "evidence/20261114T133019Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1747,12 +1747,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T103948Z-bd43461d-001",
-    "evidence/20261110T104009Z-bd43461d-001",
-    "evidence/20261110T103952Z-bd43461d-001",
-    "evidence/20261110T103956Z-bd43461d-001",
-    "evidence/20261110T104000Z-bd43461d-001",
-    "evidence/20261110T104004Z-bd43461d-001"
+    "evidence/20261114T133023Z-c7b3e920-001-a",
+    "evidence/20261114T133043Z-c7b3e920-001-a",
+    "evidence/20261114T133027Z-c7b3e920-001-a",
+    "evidence/20261114T133031Z-c7b3e920-001-a",
+    "evidence/20261114T133035Z-c7b3e920-001-a",
+    "evidence/20261114T133039Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1834,10 +1834,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104015Z-bd43461d-001",
-    "evidence/20261110T104019Z-bd43461d-001",
-    "evidence/20261110T104023Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T133049Z-c7b3e920-001-a",
+    "evidence/20261114T133053Z-c7b3e920-001-a",
+    "evidence/20261114T133057Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1897,10 +1897,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104028Z-bd43461d-001",
-    "evidence/20261110T104032Z-bd43461d-001",
-    "evidence/20261110T104036Z-bd43461d-001",
-    "evidence/20261110T104041Z-bd43461d-001"
+    "evidence/20261114T133102Z-c7b3e920-001-a",
+    "evidence/20261114T133106Z-c7b3e920-001-a",
+    "evidence/20261114T133110Z-c7b3e920-001-a",
+    "evidence/20261114T133114Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -1951,8 +1951,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104045Z-bd43461d-001",
-    "evidence/20261110T104050Z-bd43461d-001"
+    "evidence/20261114T133119Z-c7b3e920-001-a",
+    "evidence/20261114T133123Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -2035,10 +2035,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104055Z-bd43461d-001",
-    "evidence/20261110T104101Z-bd43461d-001",
-    "evidence/20261110T105305Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001"
+    "evidence/20261114T133129Z-c7b3e920-001-a",
+    "evidence/20261114T133134Z-c7b3e920-001-a",
+    "evidence/20261114T134344Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -2099,11 +2099,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104106Z-bd43461d-001",
+    "evidence/20261114T133140Z-c7b3e920-001-a",
     "evidence/20261108T233109Z-2cbdeaad-001",
-    "evidence/20261110T104055Z-bd43461d-001",
-    "evidence/20261110T103944Z-bd43461d-001",
-    "evidence/20261110T103915Z-bd43461d-001"
+    "evidence/20261114T133129Z-c7b3e920-001-a",
+    "evidence/20261114T133019Z-c7b3e920-001-a",
+    "evidence/20261114T132951Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -2177,7 +2177,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104110Z-bd43461d-001"
+    "evidence/20261114T133144Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -2251,9 +2251,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104117Z-bd43461d-001",
-    "evidence/20261110T104130Z-bd43461d-001",
-    "evidence/20261110T105309Z-bd43461d-001"
+    "evidence/20261114T133151Z-c7b3e920-001-a",
+    "evidence/20261114T133203Z-c7b3e920-001-a",
+    "evidence/20261114T134348Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -2326,10 +2326,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104136Z-bd43461d-001",
-    "evidence/20261110T104144Z-bd43461d-001",
-    "evidence/20261110T104156Z-bd43461d-001",
-    "evidence/20261110T105357Z-bd43461d-001"
+    "evidence/20261114T133209Z-c7b3e920-001-a",
+    "evidence/20261114T133217Z-c7b3e920-001-a",
+    "evidence/20261114T133229Z-c7b3e920-001-a",
+    "evidence/20261114T134451Z-c7b3e920-002-a"
    ],
    "blocker": null
   },
@@ -2412,10 +2412,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105341Z-bd43461d-001",
-    "evidence/20261110T105341Z-bd43461d-002",
-    "evidence/20261110T105347Z-bd43461d-001",
-    "evidence/20261110T104216Z-bd43461d-001"
+    "evidence/20261114T134433Z-c7b3e920-001-a",
+    "evidence/20261114T134434Z-c7b3e920-001-a",
+    "evidence/20261114T134441Z-c7b3e920-001-a",
+    "evidence/20261114T133248Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -2486,10 +2486,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104226Z-bd43461d-001",
-    "evidence/20261110T104245Z-bd43461d-001",
-    "evidence/20261110T105349Z-bd43461d-001",
-    "evidence/20261110T105356Z-bd43461d-001"
+    "evidence/20261114T133258Z-c7b3e920-001-a",
+    "evidence/20261114T133316Z-c7b3e920-001-a",
+    "evidence/20261114T134443Z-c7b3e920-001-a",
+    "evidence/20261114T134451Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -2580,9 +2580,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104344Z-bd43461d-001",
-    "evidence/20261110T104319Z-bd43461d-001",
-    "evidence/20261110T104253Z-bd43461d-001"
+    "evidence/20261114T133415Z-c7b3e920-001-a",
+    "evidence/20261114T133350Z-c7b3e920-001-a",
+    "evidence/20261114T133324Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -2649,9 +2649,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105037Z-bd43461d-001",
-    "evidence/20261110T105045Z-bd43461d-001",
-    "evidence/20261110T105349Z-bd43461d-001"
+    "evidence/20261114T134110Z-c7b3e920-001-a",
+    "evidence/20261114T134118Z-c7b3e920-001-a",
+    "evidence/20261114T134443Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -2706,14 +2706,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105101Z-bd43461d-001",
-    "evidence/20261110T105104Z-bd43461d-001",
-    "evidence/20261110T105109Z-bd43461d-001",
-    "evidence/20261110T104532Z-bd43461d-001",
-    "evidence/20261110T105022Z-bd43461d-001",
-    "evidence/20261110T104558Z-bd43461d-001",
-    "evidence/20261110T104625Z-bd43461d-001",
-    "evidence/20261110T104654Z-bd43461d-001",
+    "evidence/20261114T134134Z-c7b3e920-001-a",
+    "evidence/20261114T134138Z-c7b3e920-001-a",
+    "evidence/20261114T134142Z-c7b3e920-001-a",
+    "evidence/20261114T133604Z-c7b3e920-001-a",
+    "evidence/20261114T134055Z-c7b3e920-001-a",
+    "evidence/20261114T133630Z-c7b3e920-001-a",
+    "evidence/20261114T133657Z-c7b3e920-001-a",
+    "evidence/20261114T133726Z-c7b3e920-001-a",
     "evidence/20261108T233109Z-2cbdeaad-001"
    ],
    "blocker": null
@@ -2755,7 +2755,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104752Z-bd43461d-001"
+    "evidence/20261114T133824Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -2803,15 +2803,15 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104110Z-bd43461d-001",
-    "evidence/20261110T104136Z-bd43461d-001",
-    "evidence/20261110T104144Z-bd43461d-001",
-    "evidence/20261110T104156Z-bd43461d-001",
-    "evidence/20261110T104208Z-bd43461d-001",
-    "evidence/20261110T105037Z-bd43461d-001",
-    "evidence/20261110T105045Z-bd43461d-001",
-    "evidence/20261110T105349Z-bd43461d-001",
-    "evidence/20261110T105357Z-bd43461d-001"
+    "evidence/20261114T133144Z-c7b3e920-001-a",
+    "evidence/20261114T133209Z-c7b3e920-001-a",
+    "evidence/20261114T133217Z-c7b3e920-001-a",
+    "evidence/20261114T133229Z-c7b3e920-001-a",
+    "evidence/20261114T133240Z-c7b3e920-001-a",
+    "evidence/20261114T134110Z-c7b3e920-001-a",
+    "evidence/20261114T134118Z-c7b3e920-001-a",
+    "evidence/20261114T134443Z-c7b3e920-001-a",
+    "evidence/20261114T134451Z-c7b3e920-002-a"
    ],
    "blocker": null
   },
@@ -2830,23 +2830,23 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104734Z-bd43461d-001",
-    "evidence/20261110T104156Z-bd43461d-001",
-    "evidence/20261110T104319Z-bd43461d-001",
-    "evidence/20261110T104344Z-bd43461d-001",
-    "evidence/20261110T104532Z-bd43461d-001",
-    "evidence/20261110T105341Z-bd43461d-002",
-    "evidence/20261110T105037Z-bd43461d-001",
-    "evidence/20261110T104117Z-bd43461d-001",
-    "evidence/20261110T104208Z-bd43461d-001",
-    "evidence/20261110T105109Z-bd43461d-001",
-    "evidence/20261110T104151Z-bd43461d-001",
-    "evidence/20261110T104528Z-bd43461d-001",
-    "evidence/20261110T104501Z-bd43461d-001",
-    "evidence/20261110T104426Z-bd43461d-001",
-    "evidence/20261110T104126Z-bd43461d-001",
-    "evidence/20261110T104411Z-bd43461d-001",
-    "evidence/20261110T104212Z-bd43461d-001"
+    "evidence/20261114T133807Z-c7b3e920-001-a",
+    "evidence/20261114T133229Z-c7b3e920-001-a",
+    "evidence/20261114T133350Z-c7b3e920-001-a",
+    "evidence/20261114T133415Z-c7b3e920-001-a",
+    "evidence/20261114T133604Z-c7b3e920-001-a",
+    "evidence/20261114T134434Z-c7b3e920-001-a",
+    "evidence/20261114T134110Z-c7b3e920-001-a",
+    "evidence/20261114T133151Z-c7b3e920-001-a",
+    "evidence/20261114T133240Z-c7b3e920-001-a",
+    "evidence/20261114T134142Z-c7b3e920-001-a",
+    "evidence/20261114T133224Z-c7b3e920-001-a",
+    "evidence/20261114T133559Z-c7b3e920-001-a",
+    "evidence/20261114T133532Z-c7b3e920-001-a",
+    "evidence/20261114T133457Z-c7b3e920-001-a",
+    "evidence/20261114T133159Z-c7b3e920-001-a",
+    "evidence/20261114T133442Z-c7b3e920-001-a",
+    "evidence/20261114T133244Z-c7b3e920-001-a"
    ],
    "blocker": null,
    "id": "WP-43",
@@ -2921,9 +2921,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104730Z-bd43461d-001",
-    "evidence/20261110T104319Z-bd43461d-001",
-    "evidence/20261110T104055Z-bd43461d-001"
+    "evidence/20261114T133802Z-c7b3e920-001-a",
+    "evidence/20261114T133350Z-c7b3e920-001-a",
+    "evidence/20261114T133129Z-c7b3e920-001-a"
    ],
    "blocker": null,
    "id": "WP-44",
@@ -3078,14 +3078,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105113Z-bd43461d-001",
-    "evidence/20261110T105357Z-bd43461d-002",
-    "evidence/20261110T103511Z-bd43461d-001",
-    "evidence/20261110T103514Z-bd43461d-001",
-    "evidence/20261110T105258Z-bd43461d-001",
-    "evidence/20261110T105254Z-bd43461d-002",
-    "evidence/20261110T105256Z-bd43461d-001",
-    "evidence/20261110T105309Z-bd43461d-001"
+    "evidence/20261114T134147Z-c7b3e920-001-a",
+    "evidence/20261114T134452Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a",
+    "evidence/20261114T132557Z-c7b3e920-001-a",
+    "evidence/20261114T134336Z-c7b3e920-001-a",
+    "evidence/20261114T134329Z-c7b3e920-002-a",
+    "evidence/20261114T134333Z-c7b3e920-002-a",
+    "evidence/20261114T134348Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -3177,12 +3177,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105238Z-bd43461d-001",
-    "evidence/20261110T103511Z-bd43461d-001",
-    "evidence/20261110T103922Z-bd43461d-001",
-    "evidence/20261110T103926Z-bd43461d-001",
-    "evidence/20261110T103930Z-bd43461d-001",
-    "evidence/20261110T104117Z-bd43461d-001"
+    "evidence/20261114T134313Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a",
+    "evidence/20261114T132958Z-c7b3e920-001-a",
+    "evidence/20261114T133002Z-c7b3e920-001-a",
+    "evidence/20261114T133005Z-c7b3e920-001-a",
+    "evidence/20261114T133151Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -3368,10 +3368,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105358Z-bd43461d-001",
-    "evidence/20261110T105349Z-bd43461d-001",
-    "evidence/20261110T104226Z-bd43461d-001",
-    "evidence/20261110T105045Z-bd43461d-001"
+    "evidence/20261114T134452Z-c7b3e920-002-a",
+    "evidence/20261114T134443Z-c7b3e920-001-a",
+    "evidence/20261114T133258Z-c7b3e920-001-a",
+    "evidence/20261114T134118Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -4149,16 +4149,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T104426Z-bd43461d-001",
-    "evidence/20261110T105233Z-bd43461d-001",
-    "evidence/20261110T105113Z-bd43461d-001",
-    "evidence/20261110T105202Z-bd43461d-001",
-    "evidence/20261110T105254Z-bd43461d-002",
-    "evidence/20261110T104253Z-bd43461d-001",
-    "evidence/20261110T104344Z-bd43461d-001",
-    "evidence/20261110T104532Z-bd43461d-001",
-    "evidence/20261110T104654Z-bd43461d-001",
-    "evidence/20261110T105109Z-bd43461d-001"
+    "evidence/20261114T133457Z-c7b3e920-001-a",
+    "evidence/20261114T134308Z-c7b3e920-001-a",
+    "evidence/20261114T134147Z-c7b3e920-001-a",
+    "evidence/20261114T134236Z-c7b3e920-001-a",
+    "evidence/20261114T134329Z-c7b3e920-002-a",
+    "evidence/20261114T133324Z-c7b3e920-001-a",
+    "evidence/20261114T133415Z-c7b3e920-001-a",
+    "evidence/20261114T133604Z-c7b3e920-001-a",
+    "evidence/20261114T133726Z-c7b3e920-001-a",
+    "evidence/20261114T134142Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -4219,10 +4219,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105253Z-bd43461d-001",
-    "evidence/20261110T105254Z-bd43461d-002",
-    "evidence/20261110T105256Z-bd43461d-001",
-    "evidence/20261110T105256Z-bd43461d-002"
+    "evidence/20261114T134328Z-c7b3e920-001-a",
+    "evidence/20261114T134329Z-c7b3e920-002-a",
+    "evidence/20261114T134333Z-c7b3e920-002-a",
+    "evidence/20261114T134334Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -4299,14 +4299,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105202Z-bd43461d-001",
-    "evidence/20261110T104136Z-bd43461d-001",
-    "evidence/20261110T104144Z-bd43461d-001",
-    "evidence/20261110T104226Z-bd43461d-001",
-    "evidence/20261110T105037Z-bd43461d-001",
-    "evidence/20261110T105113Z-bd43461d-001",
-    "evidence/20261110T105254Z-bd43461d-002",
-    "evidence/20261110T105256Z-bd43461d-001"
+    "evidence/20261114T134236Z-c7b3e920-001-a",
+    "evidence/20261114T133209Z-c7b3e920-001-a",
+    "evidence/20261114T133217Z-c7b3e920-001-a",
+    "evidence/20261114T133258Z-c7b3e920-001-a",
+    "evidence/20261114T134110Z-c7b3e920-001-a",
+    "evidence/20261114T134147Z-c7b3e920-001-a",
+    "evidence/20261114T134329Z-c7b3e920-002-a",
+    "evidence/20261114T134333Z-c7b3e920-002-a"
    ],
    "blocker": null
   },
@@ -4381,11 +4381,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105211Z-bd43461d-001",
-    "evidence/20261110T105215Z-bd43461d-001",
-    "evidence/20261110T105357Z-bd43461d-002",
-    "evidence/20261110T105113Z-bd43461d-001",
-    "evidence/20261110T103922Z-bd43461d-001"
+    "evidence/20261114T134246Z-c7b3e920-001-a",
+    "evidence/20261114T134249Z-c7b3e920-001-a",
+    "evidence/20261114T134452Z-c7b3e920-001-a",
+    "evidence/20261114T134147Z-c7b3e920-001-a",
+    "evidence/20261114T132958Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -4679,10 +4679,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105219Z-bd43461d-001",
-    "evidence/20261110T103944Z-bd43461d-001",
-    "evidence/20261110T103937Z-bd43461d-001",
-    "evidence/20261110T104752Z-bd43461d-001"
+    "evidence/20261114T134253Z-c7b3e920-001-a",
+    "evidence/20261114T133019Z-c7b3e920-001-a",
+    "evidence/20261114T133013Z-c7b3e920-001-a",
+    "evidence/20261114T133824Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -4734,8 +4734,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105254Z-bd43461d-002",
-    "evidence/20261110T105253Z-bd43461d-001"
+    "evidence/20261114T134329Z-c7b3e920-002-a",
+    "evidence/20261114T134328Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -4898,9 +4898,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105206Z-bd43461d-001",
-    "evidence/20261110T105113Z-bd43461d-001",
-    "evidence/20261110T105202Z-bd43461d-001"
+    "evidence/20261114T134241Z-c7b3e920-001-a",
+    "evidence/20261114T134147Z-c7b3e920-001-a",
+    "evidence/20261114T134236Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -4977,9 +4977,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105241Z-bd43461d-001",
-    "evidence/20261110T104009Z-bd43461d-001",
-    "evidence/20261110T104730Z-bd43461d-001"
+    "evidence/20261114T134317Z-c7b3e920-001-a",
+    "evidence/20261114T133043Z-c7b3e920-001-a",
+    "evidence/20261114T133802Z-c7b3e920-001-a"
    ],
    "blocker": null
   },
@@ -5092,8 +5092,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105358Z-bd43461d-002",
-    "evidence/20261110T105358Z-bd43461d-001"
+    "evidence/20261114T134453Z-c7b3e920-001-a",
+    "evidence/20261114T134452Z-c7b3e920-002-a"
    ],
    "blocker": null
   },
@@ -5156,9 +5156,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261110T105253Z-bd43461d-001",
-    "evidence/20261110T105256Z-bd43461d-002",
-    "evidence/20261110T105254Z-bd43461d-002"
+    "evidence/20261114T134328Z-c7b3e920-001-a",
+    "evidence/20261114T134334Z-c7b3e920-001-a",
+    "evidence/20261114T134329Z-c7b3e920-002-a"
    ],
    "blocker": null
   },
@@ -5214,6 +5214,7 @@
     "2026-11-14 tooling state (lab engineer, prepared and tested locally, scratch): the decoy-proof LOAD guard reads the kernel's code with comments and literals removed (one declaration across kernel/src, one definition of start_at_boot, one call with the identifier, the tick parameter used once as the deadline); one console transcript per phase; the provenance case; and the audit's retry gap fixed (a fresh ConsoleSession per QEMU attempt). Mutants: M174 is NOT registrable: the harness restores only kernel/ and user/ between mutants and runs its killers through tools/project.py itself, so a tooling mutant would contaminate it; the killer tests, each shown red without the check, stand as the guard. M175 (LOAD_BUDGET_TICKS 10_000 -> 2_000 in kernel/src/kmain.rs, killer TST-M0-003) is registrable. Open flags: a clamp inside request() is outside the guard; the retry path does not remove the dead attempt's monitor and QMP sockets (real QEMU's behaviour unverified)",
     "2026-11-14 push train, replacing the three-push plan above (with WP-91 and WP-83): push 1 = boot.md contract + WP-91's failing host-step test (red at host M0, TST-M0-003); push 2 = WP-91's fix + WP-82's failing tests (the received-transcript cases, the LOAD guard) + WP-83's failing tests (with the host step running every suite, the M0 red and the M5 red are both observed in one run); push 3 = WP-82's fixes (tools/project.py, kmain.rs, M175) + WP-83's workflow: green expected, the merge job's first run decides its unverified points",
     "2026-11-14 audit of the commit train: boot.md's sentences confirmed against the code and the evidence (1096 and 806-836 interactive, 4-5 self-test); corrections folded in: the kmain.rs comment aligned with boot.md, the unbounded virtio reset spins and the 50 ms PIT window named as outside the bounded waits, TIMER_HZ pinned by the guard, the host-step test run under the step's real default shell (bash -e). Recorded limits: the guard does not catch a macro-generated constant, a function-local `use … as`, a shifted t0 or a clamp inside request(); `received` holds the bytes read while the session runs, not later output; a dead attempt's session thread is not stopped and could reach the retry's single-client console first (unverified race); the console check now also covers TST-M4-SHELL-SVC and TST-M4-SHELL-LOGIN (their committed transcripts carry no forbidden marker). Push 1 also carries WP-83's ADR-0026 amendment",
+    "2026-11-14 CI record: red on run 43597200982 (push 2, tests before the fix: TST-M0-003 Ran 49, failures=11, errors=1, the LoadBudget guard among them, run directory 20261114T131710Z-e4c7cff7-002; TST-M5-LAB-TOOL Ran 19, failures=4, errors=1, run directory 20261114T131728Z-e4c7cff7-001; both on branch ci-evidence/43597200982); green on run 43599536659 (head 19d1d2450): TST-M6-INTERACTIVE-BOOT PASS (evidence/20261114T134147Z-c7b3e920-001-a, console-1.log is the received transcript), TST-M1-BOOT PASS (evidence/20261114T132553Z-c7b3e920-001-a), TST-M0-003 Ran 49 OK (evidence/20261114T134329Z-c7b3e920-002-a), TST-M5-LAB-TOOL Ran 19 OK (evidence/20261114T134348Z-c7b3e920-001-a). Measured in this run: the manager's LOAD reply took wait_ticks 358 to 372 across the six phases of the interactive boot (serial-1.log to serial-6.log), against the budget of 10 000; lower than the 806-836 and 1096 the budget was sized on, so the 5x rule holds with more room, and the runner's speed varies by about 3x between runs. Not shown by this run: no QEMU attempt was retried, so the fresh ConsoleSession per attempt is covered by the host cases only; M175 is registered and not executed (RSK-021, WP-90); M174 cannot be registered until WP-90's harness item; the guard's known survivors (a macro-generated const, a fn-local `use ... as`, a rebinding of t0, a clamp inside request()) stay as recorded.",
     "2026-11-10 activation estimate (kernel and lab engineers; the kernel part prepared and designed in three options: LOAD_BUDGET_TICKS = 10_000 ticks = 10 s at TIMER_HZ 1000, about 9x the measured 1096; the tooling part, the received-transcript check and the TST-M0-003 guard, in preparation): about 50 calls / 45 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls)"
    ],
    "acceptance": "the host monitor test (TST-M5-LAB-TOOL) PASS with the console.log forbidden check; TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT PASS on CI; TST-M0-003 PASS with the LOAD_BUDGET_TICKS check; M175 registered in tests/mutants.py with its anchor once and shown killed once the M6 mutation gate (WP-90) exists; M174 not registrable with the present harness (its killer tests stand as the guard); boot.md states the LOAD budget and its measured basis",
@@ -5287,6 +5288,7 @@
     "2026-11-10 estimate (lab engineer, partly measured): 55-70 tool calls / 60-75 min, about 30 spent; under the budget line",
     "2026-11-14 audit of the commit train (auditor, scratch reproductions): every per-push prediction reproduced; corrections folded into the rebuilt train: a failing adopt-native must fail the adopt step (a `|| true` mutation survived), the build-copy loop checked against the expected slots, the stale M6 sum in the workflow comment and oracle corrected. Earlier figures in this record are superseded: the case count is not 35 and the red is not 'six failures'; the commit bodies carry the measured numbers. Open, for WP-89: repository code that runs in the merge job before Publish can also reach the token through $GITHUB_ENV (GIT_CONFIG_COUNT/KEY/VALUE, LD_PRELOAD, GIT_EXEC_PATH), shown by the auditor with an insteadOf redirect in a scratch repository; only a publish job that runs no repository code closes it. Unmeasured: the merge job's uncapped steps (checkout of the full tree, strict, push) inside its 20-minute limit",
     "2026-11-14 manager's research on the first-run risks, read from primary sources (the first CI run still decides): (1) upload layout: actions/upload-artifact v4 src/shared/search.ts takes the least common ancestor of the SEARCH PATHS (the non-wildcard prefix of each path) as the artifact root when more than one path is given, so evidence/*-a/ with the two build files roots the artifact at the workspace: evidence/<run>-a/… and build/…; a path added outside that tree would move the root; (2) download layout: actions/download-artifact v4.3.0 src/download-artifact.ts extracts to path/<artifact name>/ whenever `name` is empty and merge-multiple is false, also when the pattern matches ONE artifact, so incoming/evidence-a/ exists with a single producer; from v5 a pattern matching a single artifact is extracted directly into path, so an upgrade past v4 breaks the adopt step's layout: when WP-88 adds slots, or on any upgrade, download each expected slot by `name` into incoming/evidence-<slot> (the same in every version); (3) permissions: without `github-token` the action downloads within the current run only (its README), no actions: read; (4) shell: the workflow-syntax reference gives `bash -e {0}` for a step without `shell:` and `bash --noprofile --norc -eo pipefail {0}` only for `shell: bash`; (5) a job that reaches timeout-minutes is cancelled, and needs.<job>.result is one of success, failure, cancelled, skipped: the last step covers the three bad values. Found while reading the source: a digest mismatch of a downloaded artifact is only a warning ('digest validation failed'), not a failure: recorded for WP-89",
+    "2026-11-14 CI record: red on run 43597200982 (push 2: the MergeJob cases among TST-M0-003's 11 failures and 1 error, against the single-job workflow); green on run 43599536659 (head 19d1d2450), the first run of the two-job workflow: job a 13:23:42-13:45:00 (21 min 18 s of its 58), artifact upload 5 s; job merge 13:45:02-13:47:22 (2 min 20 s of its 20): checkout 35 s, toolchain 12 s, download 3 s, adopt 8 s, strict 11 s, pre-merge 10 s, status 10 s, publish 47 s, the final failing step skipped. The four points the research left to the first run all held: the artifact layout (adopt-native found the slot under incoming/evidence-a/evidence), the download inside the same run without `actions: read`, jsonschema and yaml from apt alone, and git under GIT_CONFIG_GLOBAL=/dev/null with identity and the token header passed by -c (branch ci-evidence/43599536659 published at 828927229; the import took 158 new run directories from it, every one with slot suffix -a). TST-M0-001 (evidence/20261114T134328Z-c7b3e920-001-a), TST-M0-003 (evidence/20261114T134329Z-c7b3e920-002-a) and TST-M0-007 (evidence/20261114T134334Z-c7b3e920-001-a) PASS. Not read: the adopt step's own count line (the step succeeded; the log tail fetched did not reach it). New from this run: the runner warns that checkout@11d5960a and download-artifact@d3f86a10 target Node 20 and are forced onto Node 24; the pins need a planned upgrade, and download-artifact v5 and later extract a single match directly (S84), so the upgrade belongs with WP-88's download by name per slot. Still open as recorded: the token reachable through $GITHUB_ENV inside the merge job and the digest mismatch that only warns (WP-89, blocked by DEC-019); identity proves consistency, not provenance (WP-76).",
     "2026-11-14 activation estimate (lab engineer, measured: about 40 calls spent on tests, workflow, rebase and hardening; about 20-25 to go for the oracle sync, two CI runs, the import and what the merge job's first run shows): 60-65 calls / 60-75 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls); split point: after the merge job's first green on CI"
    ],
    "acceptance": "TST-M0-003 PASS on CI (the case count is the test file's at the fix commit) with MergeJob and the per-job StepBudget {a: 58, merge: 20}; TST-M0-001 and TST-M0-007 PASS; a verify run where job a uploads evidence-a and the merge job adopts it (adopt-native), validates strictly with 0 errors, passes pre-merge and publishes the evidence branch, which import-ci-evidence then adopts locally with strict 0; the missing-slot fail-closed rule and the masked, config-free git push asserted by TST-M0-003; ADR-0026 rule 5 carries the 83a amendment; M185-M190 reserved, not registrable until the harness item of WP-90 (their killer tests stand as the guard)",
@@ -5694,6 +5696,7 @@
     "fix: one loop over the host suites that runs all of them, remembers a failure and exits non-zero at the end; the strict step stays skipped on a red run as today. Not in scope: a red guest step still ends the job (WP-88 separates M5 and M6 into jobs)",
     "test first (TST-M0-003): the Host suites step names every non-gate host suite, does not stop at the first failure (no bare sequence under -e) and fails when any suite failed; red on the present step",
     "sequence: lands with WP-82's and WP-83's push train because all three touch verify.yml and tests/test_ci_workflows.py; estimate about 15 calls / 15 min (unmeasured); budget line: OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first",
+    "2026-11-14 CI record: red first on run 43594227145 (push 1, the failing test alone: TST-M0-003 Ran 30, failures=1, the HostStep case; branch ci-evidence/43594227145, run directory 20261114T124948Z-de4470d6-001); the fix seen at work on run 43597200982 (push 2: host M0 failed and the loop still ran every later suite: TST-M0-003 and TST-M5-LAB-TOOL both red in one run, host M1, M3, M4 and M6 ran and passed; before WP-91 the step stopped at the first failing suite); green on run 43599536659 (head 19d1d2450): TST-M0-003 Ran 49 OK (evidence/20261114T134329Z-c7b3e920-002-a), the Host suites step 85 s. Not covered: the step's shell is GitHub's default `bash -e {0}` without pipefail, pinned by the HostStep case as it is today; a change of the default shell would need the case re-read.",
     "2026-11-14 activation estimate (lab engineer): about 15 calls / 15 min, unmeasured, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls)"
    ],
    "acceptance": "TST-M0-003 PASS with the host-step case; a CI run with two failing host suites reports both (observed once on the red push that follows)",
