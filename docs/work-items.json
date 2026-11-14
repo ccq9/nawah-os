@@ -5689,12 +5689,15 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M6-GATE"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261114T162741Z-8191a574-001"
+   ],
    "blocker": null
   },
   {
