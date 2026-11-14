@@ -5211,6 +5211,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 (steward round F, WP-83 split into 83a/83b by the manager, decisions D1-D8): CI red plan in three pushes: push 1 = the boot.md contract and the received-transcript tests (red at host M5 TST-M5-LAB-TOOL: FAILED failures=2 errors=1, AttributeError 'ConsoleSession' has no attribute 'received'); push 2 = the tools/project.py fix and the TST-M0-003 guard (red at host M0 with WP-83's tests); push 3 = kernel/src/kmain.rs and the WP-83 workflow (green)",
     "2026-11-10 estimate (82a, unmeasured): about 50 tool calls / 45 min; under the budget line",
+    "2026-11-14 tooling state (lab engineer, prepared and tested locally, scratch): the decoy-proof LOAD guard reads the kernel's code with comments and literals removed (one declaration across kernel/src, one definition of start_at_boot, one call with the identifier, the tick parameter used once as the deadline); one console transcript per phase; the provenance case; and the audit's retry gap fixed (a fresh ConsoleSession per QEMU attempt). Mutants: M174 is NOT registrable: the harness restores only kernel/ and user/ between mutants and runs its killers through tools/project.py itself, so a tooling mutant would contaminate it; the killer tests, each shown red without the check, stand as the guard. M175 (LOAD_BUDGET_TICKS 10_000 -> 2_000 in kernel/src/kmain.rs, killer TST-M0-003) is registrable. Open flags: a clamp inside request() is outside the guard; the retry path does not remove the dead attempt's monitor and QMP sockets (real QEMU's behaviour unverified)",
+    "2026-11-14 push train, replacing the three-push plan above (with WP-91 and WP-83): push 1 = boot.md contract + WP-91's failing host-step test (red at host M0, TST-M0-003); push 2 = WP-91's fix + WP-82's failing tests (the received-transcript cases, the LOAD guard) + WP-83's failing tests (with the host step running every suite, the M0 red and the M5 red are both observed in one run); push 3 = WP-82's fixes (tools/project.py, kmain.rs, M175) + WP-83's workflow: green expected, the merge job's first run decides its unverified points",
     "2026-11-10 activation estimate (kernel and lab engineers; the kernel part prepared and designed in three options: LOAD_BUDGET_TICKS = 10_000 ticks = 10 s at TIMER_HZ 1000, about 9x the measured 1096; the tooling part, the received-transcript check and the TST-M0-003 guard, in preparation): about 50 calls / 45 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls)"
    ],
    "acceptance": "the host monitor test (TST-M5-LAB-TOOL) PASS with the console.log forbidden check; TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT PASS on CI; TST-M0-003 PASS with the LOAD_BUDGET_TICKS check; M174 and M175 registered in tests/mutants.py with each anchor once; shown killed once the M6 mutation gate (WP-90) exists (M174 only if the harness can mutate tools/project.py; otherwise its killer tests stand as the guard); boot.md states the LOAD budget and its measured basis",
@@ -5280,6 +5282,7 @@
     "history (the design before the 83a/83b split): moved from WP-81 on 2026-11-10 (steward round B), verbatim: 74b: verify in three test jobs (A: records, check-commit, hygiene, E0, build, M1-M4, aarch64, host suites; B: toolchain, build, M5; C: toolchain, build, M6) plus a merge job needs:[A,B,C] if: always() that downloads the three evidence artifacts (pinned download-artifact), adopts them with a new `project.py adopt-native --from <dir>` (the importer's attach loop without gh or receipt: ADR-0026 rule 5's native exemption, same run id, attempt and sha across jobs; it never writes import.json), re-runs validate-records --strict and tools/pre-merge.sh, and publishes ONE ci-evidence/<run> branch holding only this run's dirs plus build-id.txt and hygiene.log; run dir ids get a job slot (env NAWAH_RUN_SLOT -> `-a|-b|-c`) so two runners never collide; the merge job refuses a duplicate id or a dir whose ci.run_id/attempt differs; per-job StepBudget (B: Toolchain 15 + M5 18, limit 40; C: Toolchain 15 + M6 18, limit 40; A limit 40; merge 20), so M6 gets 1080 s and WP-71's 935 s fits; cancel-in-progress stays true; images rebuilt per job (26-32 s measured); expected critical path about T+20 min against 42m11s today (unverified until measured)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 (steward round F, WP-83 split into 83a/83b by the manager, decisions D1-D8): split point: after the merge job's first green on CI; the import, tests.json and follow-up fixes are the second half",
+    "2026-11-14 implementation state (lab engineer, local scratch): 83a rebased on the final WP-82 tooling; tests/test_ci_workflows.py 45 cases; the adopt step loops over the expected slots and fails closed, the build copy uses the if-form, the slot upload must be exactly evidence/*-<slot>/, Publish is hardened (identity passed with -c, no config written). Mutants M185-M190 are NOT registrable with the present harness (they mutate tools/project.py and .github/workflows/verify.yml, outside what reset() restores); their killer tests stand as the guard until the harness item in WP-90. Note for WP-89: -c cannot remove keys repository code may have planted in .git/config (url.*.insteadOf, credential.helper, http.*); only a publish job running no repository code closes that",
     "2026-11-10 estimate (lab engineer, partly measured): 55-70 tool calls / 60-75 min, about 30 spent; under the budget line"
    ],
    "acceptance": "TST-M0-003 PASS on CI (35 cases) with MergeJob and the per-job StepBudget {a: 58, merge: 20}; TST-M0-001 and TST-M0-007 PASS; a verify run where job a uploads evidence-a and the merge job adopts it (adopt-native), validates strictly with 0 errors, passes pre-merge and publishes the evidence branch, which import-ci-evidence then adopts locally with strict 0; the missing-slot fail-closed rule and the masked, config-free git push asserted by TST-M0-003; ADR-0026 rule 5 carries the 83a amendment; M185-M190 registered (executed once WP-90 exists)",
@@ -5641,6 +5644,7 @@
     "depends on no other item: the M6 cases its mutants need already exist; RSK-021 tracks the gap until it lands",
     "flag (steward round G): TST-M0-005's oracle still says \"(no M6 gate runs them yet: WP-66 proposal)\"; it mirrors the HOST_SUITES text in tools/project.py, so it is fixed in this item's code commit together with the HOST_SUITES text (WP-90 replaces the WP-66 proposal)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
+    "2026-11-14 harness item found while preparing WP-82 and WP-83: tests/mutants.py reset() restores only kernel/ and user/ and runs killers through the worktree's tools/project.py, so mutants of tools/, tests/ or .github/ cannot be registered (M174, M185-M190 wait for it): reset() also restores tools/, tests/ and .github/, tooling mutants skip the image build and run host killers only",
     "2026-11-10 estimate: unmeasured; to be estimated at activation against the budget line"
    ],
    "acceptance": "the mutants workflow runs the M6 gate after M5-GATE; TST-M6-MUTANTS runs every registered M6 mutant (kill ratio and live security mutants reported); WP-62's gate can then show stages.json:306",
@@ -5649,6 +5653,132 @@
    ],
    "commands": [
     "python3 tools/project.py test --target host --suite M6-GATE"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-91",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-005"
+   ],
+   "depends_on": [],
+   "inputs": [
+    ".github/workflows/verify.yml, the Host suites step (six `project.py test --target host --suite …` lines under bash -e)",
+    "tools/project.py cmd_test_host (rc_all |= …: every case of a suite runs)",
+    "CI runs 42743814734, 42769555412, 42790269224, 42795169926 (a red host suite hid the later ones)",
+    "the owner's approval of option B on 2026-11-14, conditional on this study"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "خطوة أجنحة المضيف تُشغّل كل الأجنحة وتُبلّغ بكل الإخفاقات (الخيار ب-1، بموافقة المالك المشروطة بالدراسة في 2026-11-14)",
+    "study (systematic debugging, 2026-11-14): root cause confirmed from the workflow and four runs: the step lists six suite commands under bash -e, so the first failing suite ends the step; inside a suite every case already runs (cmd_test_host accumulates rc). Effect measured: WP-49's and WP-80's own host M6 red was never observed (the M5 compile failure ended the step: runs 42769555412, 42790269224), WP-81's red needed its own push (run 42795169926 stopped at M0), and each such miss costs one CI cycle of 25-35 min",
+    "fix: one loop over the host suites that runs all of them, remembers a failure and exits non-zero at the end; the strict step stays skipped on a red run as today. Not in scope: a red guest step still ends the job (WP-88 separates M5 and M6 into jobs)",
+    "test first (TST-M0-003): the Host suites step names every non-gate host suite, does not stop at the first failure (no bare sequence under -e) and fails when any suite failed; red on the present step",
+    "sequence: lands with WP-82's and WP-83's push train because all three touch verify.yml and tests/test_ci_workflows.py; estimate about 15 calls / 15 min (unmeasured); budget line: OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first"
+   ],
+   "acceptance": "TST-M0-003 PASS with the host-step case; a CI run with two failing host suites reports both (observed once on the red push that follows)",
+   "test_ids": [
+    "TST-M0-003"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-92",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-001"
+   ],
+   "depends_on": [
+    "WP-83"
+   ],
+   "inputs": [
+    "tools/project.py HOST_SUITES and platform/pc-qemu/target.json (the oracle text the runner writes into verdict.json)",
+    "docs/tests.json (a second, hand-maintained copy of each oracle)",
+    "tools/project.py validate_records (only the PLANNED_WORD rule looks at oracles)",
+    "study measurement 2026-11-14: 157 cases have a source oracle; 32 records differ from it (5 with a dated note appended, 27 rewritten on one side only; 12 of the 32 are PASS records)"
+   ],
+   "files": [
+    "tools/project.py",
+    "tests/test_validate_records.py",
+    "docs/tests.json",
+    "docs/policies/team-methodology.md"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "مصدر واحد لنص معيار الاختبار (الخيار ب-2)",
+    "study: root cause confirmed: the oracle lives in two places with no check that they agree; the copy in tests.json is synced by hand (scratch helper c8) and drifted in 32 of 157 cases; the PLANNED_WORD strict rule and an auditor's catch (TST-M6-UI-CONFIRM, 2026-11-10) each cost a cycle",
+    "design options to decide in the package: (a) a `sync-oracles` command writes each record's oracle from its source and validate-records errors on a difference, with dated notes moved to a separate optional field; (b) the record keeps no oracle text for cases that have a source and the validator reads the source; (c) keep both and only warn. Recommendation (a): smallest schema change, readable records, the difference becomes an error. The 32 present differences are reconciled case by case first (which side is right), never by a blind overwrite",
+    "test first (TST-M0-001): a record whose oracle differs from its source is an error; sync-oracles rewrites it; a record without a source is untouched; a dated note survives a sync",
+    "estimate about 40 calls / 45 min (unmeasured); budget line: OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first"
+   ],
+   "acceptance": "TST-M0-001 PASS with the oracle-equality cases; validate-records reports no oracle difference on the tree; the 32 differences reconciled with a dated note per case",
+   "test_ids": [
+    "TST-M0-001"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-93",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-001"
+   ],
+   "depends_on": [
+    "WP-92"
+   ],
+   "inputs": [
+    "docs/work-items.json, docs/tests.json, docs/risks.json, docs/PLAN*.md: 405 `file:line` citations (study count 2026-11-14)",
+    "audit of 2026-11-10: nine rows added to PLAN.md moved 27 citations of PLAN.md:132 off their target",
+    "a mechanical check cannot resolve bare names such as main.rs:803 (several files share the name), so staleness is not detectable today"
+   ],
+   "files": [
+    "tools/project.py",
+    "tests/test_validate_records.py",
+    "docs/policies/team-methodology.md",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "السجلات تستشهد بالرموز لا بأرقام الأسطر (الخيار ب-3)",
+    "study: root cause confirmed: a line number is valid only for the commit it was read at, and nothing re-checks it; the records carry 405 of them, some with a bare file name that no tool can resolve",
+    "rule (team-methodology.md): new record text cites a full path plus a symbol or heading (function, constant, section), a line number only beside it as a hint; fix: validate-records warns on a citation whose path does not exist or whose line is past the end of the file, and on a bare file name with a line; no mass rewrite of the 405 existing citations (history stays as written)",
+    "test first (TST-M0-001): a citation of a missing path, a line past the end and a bare name each produce one named warning; a path-plus-symbol citation produces none",
+    "estimate about 20 calls / 20 min (unmeasured); budget line: OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first"
+   ],
+   "acceptance": "TST-M0-001 PASS with the citation cases; the methodology states the rule; the warning count on the tree is recorded as the baseline",
+   "test_ids": [
+    "TST-M0-001"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
    ],
    "status": "planned",
    "status_history": [
