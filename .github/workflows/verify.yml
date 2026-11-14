@@ -203,6 +203,11 @@ jobs:
           hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
       - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
+        # A check of this job's lab, not evidence: the test job writes TST-M1-BUILD and TST-M1-BOOT
+        # in the same run, so this step writes to a scratch root and the slot's artifact holds the
+        # gate's run directory alone (the audit of WP-96).
+        env:
+          NAWAH_SCRATCH_EVIDENCE: ${{ runner.temp }}/baseline-evidence
         run: |
           python3 tools/project.py build --target pc-qemu
           python3 tools/project.py boot --target pc-qemu

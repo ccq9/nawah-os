@@ -525,6 +525,27 @@ class MutationJob(unittest.TestCase):
         base = next((i for i, r in enumerate(runs) if "project.py build --target pc-qemu" in r and "project.py boot --target pc-qemu" in r), None)
         self.assertIsNotNone(base, "no baseline build and boot of the unmutated kernel")
         self.assertLess(base, gate)
+        # The baseline is a check of the lab, not evidence: the test job writes TST-M1-BUILD and
+        # TST-M1-BOOT in the same run, and two slots carrying one test would leave the records
+        # citing one run and the import another (the audit of WP-96). It writes to a scratch
+        # root, so the slot's artifact holds the gate's run directory alone.
+        scratch = str(steps[base].get("env", {}).get("NAWAH_SCRATCH_EVIDENCE", ""))
+        self.assertTrue(scratch.startswith("${{ runner.temp }}/"), f"the baseline writes evidence into the slot: {scratch!r}")
+        for i, s in enumerate(steps):
+            if i != base:
+                self.assertNotIn("NAWAH_SCRATCH_EVIDENCE", s.get("env", {}), "only the baseline is scratch")
+        self.assertNotIn("NAWAH_SCRATCH_EVIDENCE", m.get("env", {}))
+
+    def test_no_other_job_runs_the_gate(self):
+        # The audit of WP-96: the Suites case compares sets, so the gate added to the test
+        # job's host loop as well would run twice unnoticed (two slots, one test).
+        for name, job in self.jobs().items():
+            if name == "m":
+                continue
+            for s in job["steps"]:
+                run = str(s.get("run", ""))
+                self.assertNotIn("M6-GATE", run, name)
+                self.assertNotRegex(run, r"for \w+ in [^;\n]*-GATE", name)
 
     def test_the_gate_step_is_capped_above_its_suite_timeout_as_in_mutants(self):
         m = self.job()
