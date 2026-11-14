@@ -260,11 +260,240 @@ class HostStep(unittest.TestCase):
         bare = "".join(f"python3 tools/project.py test --target host --suite {s}\n" for s in self.EXPECTED)
         self.assertTrue(any("stopped early" in b for b in self.problems(bare)))
 
+
+class MergeJob(unittest.TestCase):
+    """WP-83 (83a; ADR-0026 rule 5 as WP-81 amends it): verify's test jobs each write run
+    directories with their own slot (NAWAH_RUN_SLOT, one distinct lowercase letter) and upload
+    only those (`evidence/*-<slot>/`) as the artifact `evidence-<slot>`; one `merge` job, which
+    needs every other job and runs unless the run was cancelled (a superseded run never
+    publishes), downloads them through a pinned action, adopts them with `adopt-native --from`,
+    then runs the strict validator and tools/pre-merge.sh, and alone publishes the run's one
+    ci-evidence branch: only when the adoption succeeded, also after a failed test job or a red
+    strict check (what exists is published, the run still fails: import-ci-evidence refuses a
+    run that did not succeed), and it fails the run when any test job did not succeed. No test
+    job validates strictly or publishes (a strict check inside one job sees the other jobs'
+    fresh verdicts as stale). The workflow's token reads; only the publishing job may write."""
+
+    def jobs(self):
+        return load("verify.yml")["jobs"]
+
+    def merge(self):
+        jobs = self.jobs()
+        self.assertIn("merge", list(jobs), "verify has no merge job")
+        return jobs["merge"]
+
+    @staticmethod
+    def index(steps, pred, what):
+        found = [i for i, s in enumerate(steps) if pred(s)]
+        assert len(found) == 1, f"{what}: {len(found)} steps"
+        return found[0]
+
+    def test_the_merge_job_needs_every_test_job_and_skips_a_cancelled_run(self):
+        jobs, merge = self.jobs(), self.merge()
+        needs = merge.get("needs", [])
+        needs = [needs] if isinstance(needs, str) else needs
+        self.assertEqual(sorted(needs), sorted(k for k in jobs if k != "merge"))
+        self.assertIn("!cancelled()", str(merge.get("if", "")))
+        self.assertNotIn("always()", str(merge.get("if", "")))
+
+    def test_the_merge_steps_run_in_order(self):
+        steps = self.merge()["steps"]
+        run = lambda s: str(s.get("run", ""))
+        order = [self.index(steps, lambda s: str(s.get("uses", "")).startswith("actions/download-artifact@"), "download"),
+                 self.index(steps, lambda s: "project.py adopt-native" in run(s) and "--from" in run(s), "adopt"),
+                 self.index(steps, lambda s: "validate-records --strict" in run(s), "strict"),
+                 self.index(steps, lambda s: "tools/pre-merge.sh" in run(s), "pre-merge"),
+                 self.index(steps, lambda s: str(s.get("name", "")).startswith("Publish evidence"), "publish")]
+        self.assertEqual(order, sorted(order), "download, adopt, strict, pre-merge, publish")
+        download = steps[order[0]]
+        self.assertEqual(download.get("with", {}).get("pattern"), "evidence-*")
+        self.assertFalse(download.get("with", {}).get("merge-multiple", False), "each job's artifact in its own directory")
+        adopt, publish = steps[order[1]], steps[order[4]]
+        # Publish what exists: after a failed strict check too, never after a failed adoption
+        # nor in a cancelled run.
+        cond = str(publish.get("if", ""))
+        self.assertIn("!cancelled()", cond)
+        self.assertIn(f"steps.{adopt.get('id')}.outcome == 'success'", cond)
+        self.assertTrue(adopt.get("id"), "the adopt step has an id the publish step can test")
+        # The run fails when a test job did not succeed, after the publish.
+        last = steps[-1]
+        self.assertGreater(len(steps) - 1, order[4])
+        self.assertIn("needs.*.result", str(last.get("if", "")))
+        self.assertIn("!cancelled()", str(last.get("if", "")))
+        self.assertIn("exit 1", run(last))
+
+    def test_no_test_job_validates_strictly_or_publishes(self):
+        for name, job in self.jobs().items():
+            if name == "merge":
+                continue
+            for s in job["steps"]:
+                run = str(s.get("run", ""))
+                self.assertNotIn("validate-records --strict", run, name)
+                self.assertNotIn("pre-merge.sh", run, name)
+                self.assertNotIn("adopt-native", run, name)
+                self.assertFalse(str(s.get("name", "")).startswith("Publish"), name)
+
+    @staticmethod
+    def slot_problems(jobs):
+        """({job: slot}, problems) of the test jobs' slots and evidence uploads."""
+        slots, bad = {}, []
+        for name, job in jobs.items():
+            if name == "merge":
+                continue
+            slot = str(job.get("env", {}).get("NAWAH_RUN_SLOT", ""))
+            if not project.RUN_SLOT_RE.fullmatch(slot) or not re.fullmatch(r"[a-z]", slot):
+                bad.append(f"{name}: NAWAH_RUN_SLOT {slot!r}")
+                continue
+            if slot in slots.values():
+                bad.append(f"{name}: slot {slot} taken by another job")
+            slots[name] = slot
+            ups = [s for s in job["steps"] if str(s.get("uses", "")).startswith("actions/upload-artifact@")
+                   and s.get("with", {}).get("name") == f"evidence-{slot}"]
+            if len(ups) != 1:
+                bad.append(f"{name}: {len(ups)} uploads of evidence-{slot}")
+                continue
+            up = ups[0]
+            paths = str(up["with"].get("path", "")).split()
+            # Exactly the slot's run directories under evidence/, nothing wider (the auditor, 83a).
+            ev = [x for x in paths if x.startswith("evidence")]
+            if ev != [f"evidence/*-{slot}/"]:
+                bad.append(f"{name}: evidence paths {ev}, not exactly ['evidence/*-{slot}/']")
+            if "always()" not in str(up.get("if", "")) or up.get("continue-on-error") is not True:
+                bad.append(f"{name}: the upload is not always() with continue-on-error")
+        if not slots:
+            bad.append("no test job")
+        return slots, bad
+
+    def test_every_test_job_writes_and_uploads_its_own_slot(self):
+        self.assertEqual(self.slot_problems(self.jobs())[1], [])
+
+    def test_an_upload_beyond_the_slots_run_directories_is_refused(self):
+        # The auditor (83a): `evidence/*` beside `evidence/*-a/` uploads the whole tree again.
+        for extra in ("evidence/*", "evidence", "evidence/**", "evidence/*-b/"):
+            jobs = load("verify.yml")["jobs"]
+            up = next(s for s in jobs["a"]["steps"] if s.get("with", {}).get("name") == "evidence-a")
+            up["with"]["path"] = up["with"]["path"] + extra + "\n"
+            self.assertTrue(self.slot_problems(jobs)[1], f"{extra!r} accepted")
+
+    def adopt_step(self):
+        return next(s for s in self.merge()["steps"] if s.get("id") == "adopt")
+
+    def run_adopt(self, layout, adopt_rc=0, script=None):
+        """Runs the adopt step's script in a scratch tree: `layout` maps a slot to None (no
+        artifact), "empty" (no run directory) or the set of parts it holds ({"run", "build"});
+        tools/project.py is a stub recording its arguments and exiting `adopt_rc`; `script`
+        replaces the step's own. (exit code, output, arguments, tree)."""
+        d = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, d, True)
+        (d / "tools").mkdir()
+        (d / "tools" / "project.py").write_text("import json, sys\nopen('adopt-args', 'w').write(json.dumps(sys.argv[1:]))\n"
+                                                f"sys.exit({adopt_rc})\n")
+        for slot, parts in layout.items():
+            if parts is None:
+                continue
+            art = d / "incoming" / f"evidence-{slot}"
+            (art / "evidence").mkdir(parents=True)
+            if parts != "empty" and "run" in parts:
+                run = art / "evidence" / f"20261110T000000Z-abcdef12-001-{slot}"
+                run.mkdir()
+                (run / "verdict.json").write_text("{}")
+            if parts != "empty" and "build" in parts:
+                (art / "build" / "pc-qemu").mkdir(parents=True)
+                (art / "build" / "pc-qemu" / "build-id.txt").write_text(slot)
+        (d / "step.sh").write_text(self.adopt_step()["run"] if script is None else script)
+        # GitHub's default for a run step without `shell:` on Linux: bash -e {0}.
+        r = subprocess.run(["bash", "-e", str(d / "step.sh")], cwd=d, capture_output=True, text=True)
+        args = json.loads((d / "adopt-args").read_text()) if (d / "adopt-args").exists() else None
+        return r.returncode, r.stdout + r.stderr, args, d
+
+    def test_the_adopt_step_names_every_expected_slot_and_fails_closed(self):
+        # Security review M2: a missing slot artifact fails the merge job (the producer's upload
+        # stays continue-on-error); no warn-and-skip path, no glob over whatever arrived.
+        expected = sorted(self.slot_problems(self.jobs())[0].values())
+        run = self.adopt_step()["run"]
+        loops = re.findall(r"for slot in ([a-z ]+); do", run)
+        # The adoption loop and the build-file copy loop name the same expected slots (G7).
+        self.assertEqual(len(loops), 2, "the adopt step does not name its slots in both loops")
+        for names in loops:
+            self.assertEqual(sorted(names.split()), expected)
+        self.assertNotIn("::warning", run)
+        self.assertNotIn("incoming/*/evidence", run)
+        full = {slot: {"run", "build"} for slot in expected}
+        rc, out, args, d = self.run_adopt(full)
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(args, ["adopt-native"] + [x for slot in expected for x in ("--from", f"incoming/evidence-{slot}/evidence")])
+        self.assertTrue((d / "build" / "pc-qemu" / "build-id.txt").exists())
+        for slot in expected:
+            for broken in (None, "empty"):
+                rc, out, args, _ = self.run_adopt(dict(full, **{slot: broken}))
+                self.assertNotEqual(rc, 0, f"slot {slot} {broken}: {out}")
+                self.assertIn("::error", out)
+                self.assertIn(f"evidence-{slot}", out)
+                self.assertIsNone(args, "adopt-native ran on a partial set")
+
+    def test_a_failed_adoption_fails_the_adopt_step(self):
+        # The auditor's survivor: `adopt-native "${srcs[@]}" || true` let a refused adoption count
+        # as success, and Publish runs on the adopt step's success.
+        expected = sorted(self.slot_problems(self.jobs())[0].values())
+        full = {slot: {"run", "build"} for slot in expected}
+        rc, out, args, _ = self.run_adopt(full, adopt_rc=1)
+        self.assertIsNotNone(args, "adopt-native never ran")
+        self.assertNotEqual(rc, 0, f"a refused adoption passed the step: {out}")
+        masked = self.adopt_step()["run"].replace('adopt-native "${srcs[@]}"', 'adopt-native "${srcs[@]}" || true')
+        self.assertNotEqual(masked, self.adopt_step()["run"])
+        self.assertEqual(self.run_adopt(full, adopt_rc=1, script=masked)[0], 0, "the survivor is no longer one")
+
+    def test_a_source_without_build_files_does_not_fail_the_adopt_step(self):
+        # The auditor (83a): `[ -d "$b" ] && cp …` as the loop's last command returned 1 for a
+        # source without build/, failing the step after a successful adoption.
+        expected = sorted(self.slot_problems(self.jobs())[0].values())
+        rc, out, args, _ = self.run_adopt({slot: {"run"} for slot in expected})
+        self.assertEqual(rc, 0, out)
+        self.assertIsNotNone(args)
+
+    def test_the_publish_step_is_hardened(self):
+        # Security review M1 (correction 2): the token's base64 is masked as soon as it exists;
+        # git is the system binary, reads no global or system config, runs no hook, traces
+        # nothing; the step runs only after a successful adoption in a run not cancelled. (The
+        # rule that no repository code runs before Publish in the token's job is WP-89's.)
+        pub = next(s for s in self.merge()["steps"] if str(s.get("name", "")).startswith("Publish evidence"))
+        self.assertIn("steps.adopt.outcome == 'success'", str(pub.get("if", "")))
+        self.assertRegex(str(pub.get("if", "")), r"^\$\{\{.*\}\}$")
+        env = pub.get("env", {})
+        self.assertEqual(str(env.get("GIT_CONFIG_GLOBAL")), "/dev/null")
+        self.assertEqual(str(env.get("GIT_CONFIG_NOSYSTEM")), "1")
+        lines = [l.strip() for l in pub["run"].splitlines() if l.strip() and not l.strip().startswith("#")]
+        auth = next(i for i, l in enumerate(lines) if l.startswith("auth="))
+        self.assertEqual(lines[auth + 1], 'echo "::add-mask::$auth"')
+        unset = next(i for i, l in enumerate(lines) if l.startswith("unset "))
+        self.assertTrue({"GIT_TRACE", "GIT_TRACE_CURL", "GIT_CURL_VERBOSE", "GIT_TRACE_REDACT", "GIT_TRACE_PACKET",
+                         "GIT_TRACE2", "GIT_TRACE2_EVENT", "GIT_TRACE2_PERF"} <= set(lines[unset].split()[1:]), lines[unset])
+        gits = [l for l in lines if re.search(r"(^|[\s;|&(])(/usr/bin/)?git\s", l)]
+        self.assertTrue(gits)
+        for l in gits:
+            self.assertTrue(l.startswith("/usr/bin/git -c core.hooksPath=/dev/null "), l)
+        push = next(i for i, l in enumerate(lines) if " push " in l)
+        self.assertLess(unset, push)
+        self.assertLess(auth + 1, push)
+
+    def test_the_token_reads_and_only_the_publishing_job_writes(self):
+        doc = load("verify.yml")
+        self.assertEqual(doc.get("permissions"), {"contents": "read"})
+        for name, job in doc["jobs"].items():
+            publishes = any(str(s.get("name", "")).startswith("Publish evidence") for s in job["steps"])
+            perms = job.get("permissions", {})
+            if publishes:
+                self.assertEqual(perms, {"contents": "write"}, name)
+            else:
+                self.assertNotIn("write", str(perms), name)
+
 class StepBudget(unittest.TestCase):
-    """The verify job's time budget (docs/PLAN-ANSWER.md §2.5 D4-V2): the guest suites that can
-    hang until the job's limit carry their own cap (M5: 11m34s measured, cap 18; M6: cap 15 since WP-64) and
-    the sum of every step cap with a 20 % margin stays within the job's limit (58: Toolchain 15 +
-    M5 18 + M6 15 = 48, x1.2 = 57.6; WP-74), so a hung step ends with its own name instead of the job's timeout. A capped
+    """Each verify job's time budget (docs/PLAN-ANSWER.md §2.5 D4-V2; per job since WP-83): the
+    guest suites that can hang until the job's limit carry their own cap (M5: 11m34s measured,
+    cap 18; M6: cap 15 since WP-64), every job has one Toolchain step capped at 15, and in every
+    job the sum of its step caps with a 20 % margin stays within that job's limit (test job `a`
+    58: Toolchain 15 + M5 18 + M6 15 = 48, x1.2 = 57.6; WP-74; the merge job 20: Toolchain 15,
+    x1.2 = 18), so a hung step ends with its own name instead of the job's timeout. A capped
     suite whose cases are bounded by their own timeouts (M6) must fit its cap in the worst case:
     the sum over its cases of each phase's timeout_s stays below the cap. M5 is outside that
     rule: its cap is a hang guard set from a measured run (its worst case is 33 cases of up to
@@ -272,32 +501,42 @@ class StepBudget(unittest.TestCase):
     uncapped step (the build, M1-M4, the host suites) runs until the job's limit (G9)."""
 
     BOUNDED = ("M6",)
+    # WP-83 (83a): the test job `a` is the former single job; the merge job adopts and publishes.
+    # WP-88 (83b) splits `a` into a, b, c of 40 minutes each.
+    LIMITS = {"a": 58, "merge": 20}
+    CAPS = {"a": {"M5": 18, "M6": 15}, "merge": {}}
 
     def caps(self):
-        job = load("verify.yml")["jobs"]["verify"]
+        jobs = load("verify.yml")["jobs"]
         caps = {}
-        for s in job["steps"]:
-            for line in str(s.get("run", "")).splitlines():
-                m = re.search(r"--target pc-qemu --suite (\S+)", line)
-                if m and s.get("timeout-minutes") is not None:
-                    caps[m.group(1)] = s["timeout-minutes"]
-        return job, caps
+        for name, job in jobs.items():
+            caps[name] = {}
+            for s in job["steps"]:
+                for line in str(s.get("run", "")).splitlines():
+                    m = re.search(r"--target pc-qemu --suite (\S+)", line)
+                    if m and s.get("timeout-minutes") is not None:
+                        caps[name][m.group(1)] = s["timeout-minutes"]
+        return jobs, caps
 
     def test_guest_steps_are_capped_within_the_job_limit(self):
-        job, caps = self.caps()
+        jobs, caps = self.caps()
         # 55 -> 58 and Toolchain 12 -> 15 (WP-74, 2026-11-10): the Toolchain step measured 11m12s
         # on run 42754423494 against its 12-min cap; 15 is a hang guard and 58 keeps the 20 % margin.
-        self.assertEqual(job["timeout-minutes"], 58)
-        toolchain = [s for s in job["steps"] if str(s.get("name", "")).startswith("Toolchain")]
-        self.assertEqual([s.get("timeout-minutes") for s in toolchain], [15])
+        self.assertEqual({k: j.get("timeout-minutes") for k, j in jobs.items()}, self.LIMITS)
         # M6 12 -> 15 (WP-64, 2026-11-10): PURGE-FAIL-CLOSED, TOKEN-REVOKE and WP-46's JOB-KILL
-        # bring its worst case to 755 s (test_a_bounded_suite_fits_its_cap_in_the_worst_case).
-        self.assertEqual(caps, {"M5": 18, "M6": 15})
-        total = sum(int(s["timeout-minutes"]) for s in job["steps"] if "timeout-minutes" in s)
-        self.assertLessEqual(total * 1.2, job["timeout-minutes"], f"step caps {total} min + 20 % exceed the job's limit")
+        # bring its worst case under its cap (test_a_bounded_suite_fits_its_cap_in_the_worst_case: the
+        # sum of target.json's phase timeouts, 895 s against 900 on 2026-11-14).
+        self.assertEqual(caps, self.CAPS)
+        for name, job in jobs.items():
+            toolchain = [s for s in job["steps"] if str(s.get("name", "")).startswith("Toolchain")]
+            self.assertEqual([s.get("timeout-minutes") for s in toolchain], [15], name)
+            total = sum(int(s["timeout-minutes"]) for s in job["steps"] if "timeout-minutes" in s)
+            self.assertLessEqual(total * 1.2, job["timeout-minutes"],
+                                 f"{name}: step caps {total} min + 20 % exceed the job's limit")
 
     def test_a_bounded_suite_fits_its_cap_in_the_worst_case(self):
-        _, caps = self.caps()
+        _, per_job = self.caps()
+        caps = {suite: cap for job in per_job.values() for suite, cap in job.items()}
         t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
         default = t["qemu"]["boot_timeout_s"]
         for suite in self.BOUNDED:
