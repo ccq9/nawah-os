@@ -6217,7 +6217,8 @@
     "test first: a third phase of TST-M6-BOOT-HALT, or a case of its own, with a manager that spins (a lab application that never yields): the halt line with code 2 and wait_ticks within the budget's margin; a SECURITY mutant that removes the enforcement; the scheduler's own ktest for the wake",
     "the M6 step's budget: the suite's worst case is 932 s of 1080 after WP-84; a new phase of about 25 s still fits; if it does not, the cap and job a's limit rise with the case",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-14 estimate: unmeasured; a scheduler change, to be sized after the design"
+    "2026-11-14 estimate: unmeasured; a scheduler change, to be sized after the design",
+    "2026-11-14 activation estimate and design (the manager, directly, with the local QEMU lab; one audit pass before the single push): about 50 calls / 75 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first). Three options read against kernel/src/sched/mod.rs: (A) poll_until records its deadline in the thread; once the clock reaches it the waiter no longer competes at the lowest priority but at the best one, so the next scheduling decision on its CPU (at the latest the running thread's slice end, QUANTUM_TICKS) runs it and it returns; join and wait_process, which have no deadline, and every wait before its deadline are unchanged; (B) the boot thread waits above user threads during the load: brings back the starvation the demotion removed (CI runs 39118752606, 39119679600); (C) the tick itself prints the line and halts: serial and screen work in interrupt context, a second halt path. Chosen: A. Test first, red shown locally: a scheduler case in the test kernel (TST-M6-WAIT-DEADLINE: a spinner of better priority, the waiter returns within two slices of its deadline and is not run before it) and a third phase of TST-M6-BOOT-HALT with the built spin application as the manager (25 s); the M6 suite's worst case becomes 932 + 25 + 20 = 977 of 1080 s"
    ],
    "acceptance": "a manager that spins without blocking ends in the halt line with code 2 within the budget's margin and the band, on CI; the scheduler's cases and the mutant PASS; boot.md's declared limit is removed",
    "test_ids": [
@@ -6226,9 +6227,10 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
