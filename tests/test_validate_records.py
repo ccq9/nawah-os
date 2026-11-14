@@ -468,6 +468,38 @@ class OracleSingleSource(unittest.TestCase):
                     rc = project.validate_records(verbose=True, strict=True)
                 self.assertEqual(rc, 50, policy); self.assertIn("tests/TST-M0-001", out.getvalue())
 
+    def test_two_sources_with_different_texts_for_one_id_are_an_error(self):
+        # A host case and a guest case (or two guest cases) that both run under one id must
+        # state one text; the first source winning silently hid such a split. A boot_oracle
+        # shadowed by a suite case is never run (cmd_boot) and is no source.
+        tests = self.records()
+        p = TMP / "platform" / "unit-qemu" / "target.json"; p.parent.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, TMP / "platform", True)
+        p.write_text(json.dumps({"suites": {"M1": [{"test_id": "TST-M0-001", "oracle": "exit 0"}]}}))
+        self.assertEqual(self.validate()[0], 0)
+        p.write_text(json.dumps({"suites": {"M1": [{"test_id": "TST-M0-001", "oracle": "exit 0 and a second text"}]}}))
+        rc, out = self.validate()
+        self.assertEqual(rc, 50, out); self.assertIn("tests/TST-M0-001", out); self.assertIn("two sources", out)
+        before = tests.read_bytes()
+        rc, out = self.sync()
+        self.assertEqual(rc, 50, out); self.assertIn("TST-M0-001", out)
+        self.assertEqual(tests.read_bytes(), before)
+
+    def test_a_boot_oracle_is_shadowed_only_by_its_own_targets_suite_case(self):
+        # Target A runs TST-M9-X as a suite case; target B has no suite case for it, so B's
+        # boot_oracle is run and is a second source: different texts are an error.
+        tests = self.records()
+        self.addCleanup(shutil.rmtree, TMP / "platform", True)
+        for name, body in (("unit-a", {"suites": {"M1": [{"test_id": "TST-M9-X", "oracle": "a"}]}}),
+                           ("unit-b", {"suites": {}, "boot_oracle": {"test_id": "TST-M9-X", "oracle": "b"}})):
+            p = TMP / "platform" / name / "target.json"; p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps(body))
+        rc, out = self.validate()
+        self.assertEqual(rc, 50, out); self.assertIn("tests/TST-M9-X", out); self.assertIn("two sources", out)
+        before = tests.read_bytes()
+        rc, out = self.sync()
+        self.assertEqual(rc, 50, out); self.assertEqual(tests.read_bytes(), before)
+
     def test_sync_keeps_the_file_format_one_line_changes(self):
         tests = self.records(oracle="exit 0 and more")
         before = tests.read_text(encoding="utf-8").splitlines()
