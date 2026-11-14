@@ -1,0 +1,9 @@
+test_fsck (__main__.Fat32Tool.test_fsck) ... ok
+test_geometry_and_listing (__main__.Fat32Tool.test_geometry_and_listing) ... ok
+test_pattern_tail (__main__.Fat32Tool.test_pattern_tail) ... ok
+test_read_back (__main__.Fat32Tool.test_read_back) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.802s
+
+OK
