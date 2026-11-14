@@ -165,7 +165,7 @@
    "evidence": "مراجعة الفريق الأحمر لـWP-45 (2026-11-09)؛ docs/security/threat-model.md قسم M6 الخصم 3؛ user/apps/configd/src/main.rs:239-253 (أسماء ملفات ثابتة، فلا مسار مباشر اليوم)",
    "owner": "agent",
    "warning_signal": "أي مسار في configd يأخذ اسم ملف من عميل؛ أو تغيير في SERVICES.TXT على القرص لا يطابق الملف المودَع (بصمة البيان)",
-   "mitigation": "أسماء ملفات configd ثابتة؛ البيان ضمن مدخلات كل حكم ضيف فيُكشف تغييره في المستودع لا على القرص الحي | 2026-11-10 (WP-78, run 42775276374): fs_authority allows a change under /SYSTEM only for CFG*.A|B (A-min, files.md v1.4); TST-M6-CONFIG-WRITE-SCOPE PASS, mutants M162-M164 registered; residual: config can still read USERS.DB (A-scoped per-handle scope deferred to WP-61), so the risk is reduced, not closed",
+   "mitigation": "أسماء ملفات configd ثابتة؛ البيان ضمن مدخلات كل حكم ضيف فيُكشف تغييره في المستودع لا على القرص الحي | 2026-11-10 (WP-78, run 42775276374): fs_authority allows a change under /SYSTEM only for CFG*.A|B (A-min, files.md v1.4); TST-M6-CONFIG-WRITE-SCOPE PASS, mutants M162-M164 registered; residual: config can still read USERS.DB (A-scoped per-handle scope deferred to WP-61), so the risk is reduced, not closed؛ (2026-11-10) الطفرات M162، M164 مسجّلة ولا تُنفَّذ إلا بعد وجود بوابة M6 (WP-90)",
    "response_plan": "WP-78 (A-min): قائمة سماح في fs_authority بالنواة: تغيير تحت /SYSTEM ينجح فقط لملف مباشر في /SYSTEM يبدأ اسمه القصير 8.3 بـCFG وامتداده A أو B، وكل ما عداه ERR_ACCESS قبل لمس القرص؛ بلا ABI جديد والمقابض تبقى 9؛ حالة TST-M6-CONFIG-WRITE-SCOPE والطفرات M162-M164 (SECURITY)؛ النطاق لكل مقبض (A-scoped) مؤجل إلى WP-61/M8؛ يبقى للمالك أن config تقرأ USERS.DB",
    "status": "open"
   },
@@ -177,8 +177,20 @@
    "evidence": "تقرير تصميم مهندس التطبيقات لـWP-49 (2026-11-10، قراءة فقط)؛ user/apps/displayd/src/main.rs:1189، :1210-1216؛ docs/contracts/display.md (سؤال دلالات يُحسم قبل WP-79)",
    "owner": "agent",
    "warning_signal": "تطبيق يتصرف على ضغطة POINTER وهو غير مركّز؛ نجاة الطفرة M170 في WP-79",
-   "mitigation": "WP-79 لا تُفعَّل قبل حسم دلالات display.md؛ الطفرة M170 (SECURITY) تقتلها TST-M6-UI-POINTER؛ المسؤول: مهندس البرمجيات للتطبيقات، والتصعيد إلى المدير",
+   "mitigation": "WP-79 لا تُفعَّل قبل حسم دلالات display.md؛ الطفرة M170 (SECURITY) تقتلها TST-M6-UI-POINTER؛ المسؤول: مهندس البرمجيات للتطبيقات، والتصعيد إلى المدير؛ (2026-11-10) الطفرات M170 مسجّلة ولا تُنفَّذ إلا بعد وجود بوابة M6 (WP-90)",
    "response_plan": "قرار دلالات POINTER في display.md (التسليم للنافذة المركّزة وحدها، أو التركيز بأي ضغطة) قبل تفعيل WP-79، ثم إصلاح displayd أو تطبيق الحوار بحسب القرار",
+   "status": "open"
+  },
+  {
+   "id": "RSK-021",
+   "risk": "طفرات SECURITY من M130 فصاعدًا لم تُنفَّذ قط: stage_of يرسلها إلى بوابة M6 غير موجودة (لا HOST_SUITES[\"M6-GATE\"]، وmutants.yml ينتهي عند M5-GATE)، فلا يُعرف إن كانت الحالات تقتلها",
+   "likelihood": "high",
+   "impact": "high",
+   "evidence": "tests/mutants.py:733-738؛ tools/project.py HOST_SUITES (لا M6-GATE)؛ .github/workflows/mutants.yml (آخر خطوة M5-GATE)؛ مراجعة الضمان الأمني لـWP-82/WP-83 في 2026-11-10 (H2)",
+   "owner": "agent",
+   "warning_signal": "سجل يعلن طفرة M130+ مقتولة دون تقرير بوابة M6",
+   "mitigation": "WP-90 تنشئ بوابة M6 وتشغّل كل الطفرات المسجّلة؛ كل سجل يسمّي طفرة M6 يقول إنها مسجّلة ولا تُنفَّذ إلا بعد WP-90؛ المسؤول: ضمان الأمن",
+   "response_plan": "تفعيل WP-90 قبل بوابة WP-62؛ أي طفرة SECURITY حية في أول تشغيل تفتح حزمة إصلاح",
    "status": "open"
   }
  ]

@@ -1077,6 +1077,18 @@
    ],
    "limits": "behaviour only for libui's list view (WP-50, ui.md v1.8); key codes, narrator wording, the selection bitset and limits are nawah's own; no text, metrics or assets are taken (ADR-0022)",
    "verified": false
+  },
+  {
+   "id": "S82",
+   "title": "actions/download-artifact v4.3.0, pinned to d3f86a106a0bac45b974a628896c90dbdf5c8093",
+   "url": "https://github.com/actions/download-artifact",
+   "version": "v4.3.0 = d3f86a106a0bac45b974a628896c90dbdf5c8093 (lightweight tag), resolved 2026-11-10 with `git ls-remote --tags https://github.com/actions/download-artifact`",
+   "accessed": "2026-11-10",
+   "supports": [
+    "the tag v4.3.0 resolves to the commit d3f86a106a0bac45b974a628896c90dbdf5c8093 (WP-83's merge job pins it)"
+   ],
+   "limits": "verified for the tag -> SHA mapping only; whether the commit is reachable only from a fork is unverified; the action's behaviour (pattern, layout of several upload paths, permissions) is not verified here",
+   "verified": true
   }
  ]
 }

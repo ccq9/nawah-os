@@ -2772,7 +2772,7 @@
     "REQ-M6-021"
    ],
    "layer": "host_unit",
-   "oracle": "planned (M6, WP-62): seeded defects for the M6 modules (kernel jobs and accounting, launch broker, shell role, libui v2, filesystem v1.4, directory capability, clipboard, notifyd, logd, the tools) are killed by the M6 suite: kill ratio >= 0.95 over this gate's valid mutants and no surviving security mutant, with M2-M5 re-run",
+   "oracle": "planned (M6, WP-90 creates the M6-GATE suite this command runs; WP-62's gate judges it): seeded defects for the M6 modules (kernel jobs and accounting, launch broker, shell role, libui v2, filesystem v1.4, directory capability, clipboard, notifyd, logd, the tools) are killed by the M6 suite: kill ratio >= 0.95 over this gate's valid mutants and no surviving security mutant, with M2-M5 re-run",
    "command": "python3 tools/project.py test --target host --suite M6-GATE",
    "verdict": "NOT_RUN",
    "evidence_refs": []
