@@ -198,7 +198,38 @@ class ValidateRecords(unittest.TestCase):
         r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]; r["tests"][0]["stale_policy"] = "warn"
         write_all(r)
         (TMP / "docs" / "ENVIRONMENT.md").write_text("changed")
-        self.assertEqual(project.validate_records(verbose=False, strict=True), 0)
+        with unittest.mock.patch.object(project, "STALE_WARN_TESTS", ("TST-M0-001",)):
+            self.assertEqual(project.validate_records(verbose=False, strict=True), 0)
+
+    def test_stale_policy_warn_is_refused_outside_the_named_gates(self):
+        # DEC-029, WP-96 (PLAN-ANSWER.md:771): on 2026-11-14 the warn policy was put on
+        # TST-M6-MUTANTS by a records edit alone, and a stale M6 verdict became a warning under
+        # --strict. The policy is accepted only on the tests named in STALE_WARN_TESTS (the
+        # gates verify does not run); on any other test it is an error, also without --strict,
+        # and it never softens that test's stale verdict.
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]; r["tests"][0]["stale_policy"] = "warn"
+        write_all(r)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = project.validate_records(verbose=True)
+        self.assertEqual(rc, 50, out.getvalue())
+        self.assertIn("tests/TST-M0-001", out.getvalue()); self.assertIn("stale_policy", out.getvalue())
+        (TMP / "docs" / "ENVIRONMENT.md").write_text("changed")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            project.validate_records(verbose=True, strict=True)
+        self.assertIn("inputs changed since verdict", "\n".join(l for l in out.getvalue().splitlines() if l.startswith("ERROR")),
+                      "a refused warn policy must not soften the stale verdict")
+
+    def test_the_records_keep_warn_to_the_four_older_gates(self):
+        # The allowance itself: the four mutation gates verify does not run, and never the M6
+        # gate, whose evidence verify produces in every run (DEC-029 option A). Changing this
+        # set is a decision of the owner, not a records edit.
+        self.assertEqual(tuple(project.STALE_WARN_TESTS), ("TST-M2-MUTANTS", "TST-M3-MUTANTS", "TST-M4-MUTANTS", "TST-M5-MUTANTS"))
+        real = json.loads((REPO / "docs" / "tests.json").read_text(encoding="utf-8"))["records"]
+        self.assertEqual(sorted(t["id"] for t in real if "stale_policy" in t), sorted(project.STALE_WARN_TESTS))
 
     def test_stale_input_requires_reevaluation(self):
         r = base_records(); write_all(r)
@@ -443,7 +474,8 @@ class OracleSingleSource(unittest.TestCase):
         t.update(verdict="PASS", evidence_refs=[ev], stale_policy="warn", verdict_reason="r", oracle_notes=["2026-11-14 (WP-92): kept"])
         project.write_json(tests, r)
         before = project.load_json(tests)
-        self.assertEqual(self.sync()[0], 0)
+        with unittest.mock.patch.object(project, "STALE_WARN_TESTS", ("TST-M0-001",)):
+            self.assertEqual(self.sync()[0], 0)
         after = project.load_json(tests)
         before["records"][0]["oracle"] = "exit 0"
         self.assertEqual(after, before)
@@ -458,6 +490,8 @@ class OracleSingleSource(unittest.TestCase):
             r = project.load_json(tests); r["records"][0].update(verdict="PASS", evidence_refs=[ev])
             if policy: r["records"][0]["stale_policy"] = policy
             project.write_json(tests, r)
+            allow = unittest.mock.patch.object(project, "STALE_WARN_TESTS", ("TST-M0-001",))
+            allow.start(); self.addCleanup(allow.stop)
             self.assertEqual(project.validate_records(verbose=False, strict=True), 0)
             weaker = {"M0": [dict(project.HOST_SUITES["M0"][0], oracle="exit 0 (says less)")]}
             with unittest.mock.patch.object(project, "HOST_SUITES", weaker):

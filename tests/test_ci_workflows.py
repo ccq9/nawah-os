@@ -189,7 +189,10 @@ class Suites(unittest.TestCase):
 
     def test_every_host_suite_is_nonempty_and_runs_in_verify(self):
         excluded = {"M2"}  # its host suite is the M2 mutation gate, run by the mutants workflow
-        expected = {k for k in project.HOST_SUITES if not k.endswith("-GATE") and k not in excluded}
+        # DEC-029 option A (WP-96): the open stage's gate runs in verify, in its own job, so its
+        # evidence is of the same run as every other verdict; the older gates stay in mutants.yml.
+        in_verify = {"M6-GATE"}
+        expected = {k for k in project.HOST_SUITES if (not k.endswith("-GATE") or k in in_verify) and k not in excluded}
         self.assertEqual([k for k in expected if not project.HOST_SUITES[k]], [])
         self.assertEqual(sorted(expected), sorted(self.suite_args("host")))
 
@@ -487,6 +490,66 @@ class MergeJob(unittest.TestCase):
             else:
                 self.assertNotIn("write", str(perms), name)
 
+class MutationJob(unittest.TestCase):
+    """WP-96 (the owner's DEC-029, option A): the M6 mutation gate runs in every verify run, in a
+    job `m` of its own beside the test job, so TST-M6-MUTANTS's evidence is of the same run as
+    every other verdict and a stale gate verdict stays a strict error (no stale_policy on it).
+    The job has the test job's lab (the same Toolchain step), builds and boots the unmutated
+    kernel first as mutants.yml does, runs the gate suite alone under the cap mutants.yml gives
+    the same step, and uploads its slot's run directory and the gate's report; the merge job
+    adopts slot m with slot a (MergeJob: a missing slot fails closed) and publishes the report."""
+
+    def jobs(self):
+        return load("verify.yml")["jobs"]
+
+    def job(self):
+        jobs = self.jobs()
+        self.assertIn("m", list(jobs), "verify has no mutation job `m`")
+        return jobs["m"]
+
+    def test_the_gate_runs_alone_in_its_own_job_with_the_test_jobs_lab(self):
+        jobs, m = self.jobs(), self.job()
+        self.assertEqual(m.get("env", {}).get("NAWAH_RUN_SLOT"), "m")
+        self.assertNotIn("needs", m, "the gate runs beside the test job, not after it")
+        self.assertNotIn("write", str(m.get("permissions", {})))
+        steps = m["steps"]
+        checkout = steps[0]
+        self.assertTrue(str(checkout.get("uses", "")).startswith("actions/checkout@"))
+        self.assertIs(checkout.get("with", {}).get("persist-credentials"), False)
+        tool = lambda job: next(s for s in job["steps"] if str(s.get("name", "")).startswith("Toolchain"))
+        self.assertEqual(tool(m)["run"], tool(jobs["a"])["run"], "the mutation job's lab is not the test job's")
+        runs = [str(s.get("run", "")) for s in steps]
+        suites = [l.strip() for r in runs for l in r.splitlines() if "project.py test " in l]
+        self.assertEqual(suites, ["python3 tools/project.py test --target host --suite M6-GATE"], "the gate suite, and nothing else")
+        gate = next(i for i, r in enumerate(runs) if "--suite M6-GATE" in r)
+        base = next((i for i, r in enumerate(runs) if "project.py build --target pc-qemu" in r and "project.py boot --target pc-qemu" in r), None)
+        self.assertIsNotNone(base, "no baseline build and boot of the unmutated kernel")
+        self.assertLess(base, gate)
+
+    def test_the_gate_step_is_capped_above_its_suite_timeout_as_in_mutants(self):
+        m = self.job()
+        step = next(s for s in m["steps"] if "--suite M6-GATE" in str(s.get("run", "")))
+        case = next(c for c in project.HOST_SUITES["M6-GATE"] if c["id"] == "TST-M6-MUTANTS")
+        self.assertIn("timeout-minutes", step, "the gate step has no cap of its own")
+        self.assertLess(case["timeout_s"], step["timeout-minutes"] * 60, "the suite timeout must fire before the step cap")
+        other = next(s for s in next(iter(load("mutants.yml")["jobs"].values()))["steps"] if str(s.get("name", "")).startswith("Mutation run, M6"))
+        self.assertEqual(step["timeout-minutes"], other["timeout-minutes"], "one cap for the same step in both workflows")
+
+    def test_the_report_is_uploaded_and_published(self):
+        m = self.job()
+        up = next(s for s in m["steps"] if s.get("with", {}).get("name") == "evidence-m")
+        self.assertIn("build/mutants-m6-report.json", str(up["with"].get("path", "")).split())
+        pub = next(s for s in self.jobs()["merge"]["steps"] if str(s.get("name", "")).startswith("Publish evidence"))
+        lines = [l.strip() for l in pub["run"].splitlines()]
+        self.assertIn("/usr/bin/git -c core.hooksPath=/dev/null add -f build/mutants-m6-report.json 2>/dev/null || true", lines,
+                      "the gate's report is not on the run's evidence branch")
+
+    def test_no_record_softens_the_gates_stale_verdict(self):
+        tests = json.loads((ROOT / "docs" / "tests.json").read_text(encoding="utf-8"))["records"]
+        rec = next(t for t in tests if t["id"] == "TST-M6-MUTANTS")
+        self.assertNotIn("stale_policy", rec, "verify runs this gate in every run: its stale verdict is a strict error")
+        self.assertNotIn("TST-M6-MUTANTS", project.STALE_WARN_TESTS)
+
 class StepBudget(unittest.TestCase):
     """Each verify job's time budget (docs/PLAN-ANSWER.md §2.5 D4-V2; per job since WP-83): the
     guest suites that can hang until the job's limit carry their own cap (M5: 11m34s measured,
@@ -503,8 +566,10 @@ class StepBudget(unittest.TestCase):
     BOUNDED = ("M6",)
     # WP-83 (83a): the test job `a` is the former single job; the merge job adopts and publishes.
     # WP-88 (83b) splits `a` into a, b, c of 40 minutes each.
-    LIMITS = {"a": 58, "merge": 20}
-    CAPS = {"a": {"M5": 18, "M6": 15}, "merge": {}}
+    # WP-96 (DEC-029): the mutation job `m`: Toolchain 15 + the gate's 135 (mutants.yml's cap for
+    # the same step), x1.2 = 180; a hang guard, the gate measured 20 min on run 43615540519.
+    LIMITS = {"a": 58, "m": 180, "merge": 20}
+    CAPS = {"a": {"M5": 18, "M6": 15}, "m": {}, "merge": {}}
 
     def caps(self):
         jobs = load("verify.yml")["jobs"]
