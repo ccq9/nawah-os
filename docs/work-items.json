@@ -5230,12 +5230,18 @@
     "python3 tools/project.py test --target host --suite M0",
     "python3 tools/project.py test --target host --suite M5"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261114T134147Z-c7b3e920-001-a",
+    "evidence/20261114T132553Z-c7b3e920-001-a",
+    "evidence/20261114T134329Z-c7b3e920-002-a",
+    "evidence/20261114T134348Z-c7b3e920-001-a"
+   ],
    "blocker": null
   },
   {
