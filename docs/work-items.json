@@ -6017,12 +6017,17 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261114T184629Z-d4954d3a-001-a",
+    "evidence/20261114T184627Z-d4954d3a-001-a",
+    "evidence/20261114T182504Z-d4954d3a-001-m"
+   ],
    "blocker": null
   }
  ]
