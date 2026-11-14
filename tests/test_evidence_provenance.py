@@ -38,6 +38,9 @@ if _prev_root is None:
 else:
     os.environ["NAWAH_ROOT"] = _prev_root
 project.SCRATCH = None
+# The copy's oracle source (WP-92) holds the fixture's one host case, whose record and
+# verdict.json carry the same text, so the oracle rules hold on every set built here.
+project.HOST_SUITES = {"M0": [{"id": "TST-M0-001", "command": ["true"], "oracle": "exit 0", "inputs": [], "input_globs": []}]}
 SV = "1.0.0"
 RUN_SV = "1.1.0"
 
@@ -81,7 +84,7 @@ def make_evidence(run_sv=RUN_SV, worker="test", ci=None, import_json=None, verdi
            "commands": ["x"], "exit_code": 0}
     if ci is not None:
         run["ci"] = ci
-    v = {"schema_version": SV, "run_id": d.name, "test_id": "TST-M0-001", "verdict": verdict, "oracle": "o", "expected": "e", "observed": "o",
+    v = {"schema_version": SV, "run_id": d.name, "test_id": "TST-M0-001", "verdict": verdict, "oracle": "exit 0", "expected": "e", "observed": "o",
          "inputs_digest": combined, "inputs": inputs, "claim_tag": "source_backed_fact"}
     (d / "run.json").write_text(json.dumps(run)); (d / "verdict.json").write_text(json.dumps(v)); (d / "digests.json").write_text(json.dumps(inputs))
     for f in ("command.txt", "stdout.log", "stderr.log"):
@@ -619,7 +622,7 @@ def native_dir(parent, name, test_id, run_id="42", attempt=1, sha_="cafe", with_
            "purpose": "unit", "commands": ["x"], "exit_code": 0}
     if with_ci:
         run["ci"] = {**CI, "run_id": run_id, "run_attempt": attempt, "sha": sha_}
-    v = {"schema_version": SV, "run_id": name, "test_id": test_id, "verdict": "PASS", "oracle": "o", "expected": "e", "observed": "o",
+    v = {"schema_version": SV, "run_id": name, "test_id": test_id, "verdict": "PASS", "oracle": "exit 0", "expected": "e", "observed": "o",
          "inputs_digest": combined, "inputs": inputs, "claim_tag": "source_backed_fact"}
     (d / "run.json").write_text(json.dumps(run)); (d / "verdict.json").write_text(json.dumps(v)); (d / "digests.json").write_text(json.dumps(inputs))
     for f in ("command.txt", "stdout.log", "stderr.log"):

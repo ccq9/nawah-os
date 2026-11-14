@@ -58,7 +58,8 @@ schemas = {
    {"id": ID, "requirement_ids": IDS,
     "layer": {"enum": ["host_unit","guest","service_integration","user_e2e","negative","compat_hw","security_access_perf"]},
     "oracle": STR, "command": STR, "verdict": VERDICT, "evidence_refs": RELPATHS, "verdict_reason": STR,
-    "stale_policy": {"enum": ["error", "warn"]}})),
+    "stale_policy": {"enum": ["error", "warn"]},
+    "oracle_notes": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2} "}}})),
  "risks": wrapper(obj(
    ["id","risk","likelihood","impact","evidence","owner","warning_signal","mitigation","response_plan","status"],
    {"id": ID, "risk": STR, "likelihood": {"enum": ["low","medium","high"]}, "impact": {"enum": ["low","medium","high","critical"]},

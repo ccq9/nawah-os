@@ -385,6 +385,11 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
             v = check_evidence_dir(e, pb, w, expect_test_id=t["id"])
             if v and v["verdict"] != t["verdict"]:
                 pb.err(w, f"registry verdict {t['verdict']} != evidence verdict {v['verdict']} ({e})")
+            # A PASS stands for the oracle its run checked (write_verdict stores it): an oracle
+            # changed since, at its source and synced, waits for a new run (WP-92; no stale_policy
+            # exemption). Strict only: on a branch the code commit precedes its evidence.
+            if pb.strict and v and t["verdict"] == "PASS" and v.get("oracle") != t["oracle"]:
+                pb.err(w, f"oracle differs from the one its evidence ran with ({e}); re-run the test")
         if t["verdict"] == "PASS" and not t["evidence_refs"]:
             pb.err(w, "PASS without evidence_refs")
         # A passing test's oracle states what the test checks, not what was planned: three
@@ -392,6 +397,10 @@ def validate_records(stage_scope=None, verbose=True, strict=False) -> int:
         # (WINDOW-A11Y, ARABIC-UI, PROCESS-KILL; audit 2026-10-19).
         if t["verdict"] == "PASS" and PLANNED_WORD.search(t["oracle"]):
             pb.err(w, "PASS while the oracle still describes the plan ('planned'); state what the test checks")
+    # One source per oracle (WP-92): the record's copy must equal the text the runner writes.
+    for t, _ in oracle_differences(recs.get("tests", [])):
+        pb.err(f"tests/{t['id']}", "oracle differs from its source (HOST_SUITES or target.json); "
+               "change the source, then run `project.py sync-oracles` (a dated note goes to oracle_notes)")
 
     for wi in recs.get("work-items", []):
         w = f"work-items/{wi['id']}"
@@ -1041,6 +1050,9 @@ def rust_env():
     return {}
 
 
+BUILD_ORACLE = "all build steps exit 0 and artifact exists"  # every target's build test (cmd_build)
+
+
 def write_verdict(d, rid, test_id, verdict, oracle, expected, observed, inputs, claim_tag="source_backed_fact", reason=None):
     combined = sha256_text("\n".join(f"{k}={v}" for k, v in sorted(inputs.items())))
     v = {"schema_version": SCHEMA_VERSION, "run_id": rid, "test_id": test_id, "verdict": verdict, "oracle": oracle,
@@ -1091,7 +1103,7 @@ def cmd_build(target_name) -> int:
             ep = safe_rel(extra.replace("${OUT}", f"build/{target_name}"))
             if ep.exists():
                 inputs[keep_artifact(d, rid, ep)] = sha256_file(ep)
-    write_verdict(d, rid, t["build"]["test_id"], verdict, "all build steps exit 0 and artifact exists", "exit 0 + artifact", observed, inputs)
+    write_verdict(d, rid, t["build"]["test_id"], verdict, BUILD_ORACLE, "exit 0 + artifact", observed, inputs)
     attach_evidence(t["build"]["test_id"], rid, verdict)
     print(f"build {target_name}: {verdict} run={rid} build_id={build_id}")
     return 0 if verdict == "PASS" else 1
@@ -1379,7 +1391,7 @@ def cmd_boot(target_name, test_id=None, suite_case=None) -> int:
 
 HOST_SUITES = {
     "M0": [
-        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 22 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, two runners in the same second getting distinct run ids through the job slot NAWAH_RUN_SLOT (one lowercase letter appended as -<slot>, anything else refused, no slot the id as before) that the evidence schemas accept, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL",
+        {"id": "TST-M0-001", "command": ["python3", "-I", "tests/test_validate_records.py"], "oracle": "unittest exit 0 and 'OK' in output; 29 cases incl. 6 required rejections, the dependency rule for active and done items, a new run re-pointing every older run of its test, two runners in the same second getting distinct run ids through the job slot NAWAH_RUN_SLOT (one lowercase letter appended as -<slot>, anything else refused, no slot the id as before) that the evidence schemas accept, an earlier schema error that must not skip later evidence checks, and environment failures (a missing command, a failed toolchain download) recorded as ERROR, not FAIL; each oracle has one source (WP-92): a record whose oracle differs from its source (a HOST_SUITES case, a target.json suite case or boot_oracle, the build's own text) is an error naming the test, sync-oracles writes the oracle field alone from the source and leaves a record without one, its --check writes nothing and fails on a difference, the file keeps its format, a dated note lives in oracle_notes (an undated one is refused), and under --strict a PASS record's oracle must equal the oracle its evidence's verdict.json records, stale_policy warn included",
          "inputs": ["tools/project.py", "tools/schemas_gen.py", "tests/test_validate_records.py"], "input_globs": ["docs/schemas/*.schema.json"]},
         {"id": "TST-M0-002", "command": ["python3", "-I", "tests/test_m0_records.py"], "oracle": "required M0 documents and contract sections exist; every tracked path checks out on Windows (no reserved device name, invalid character, trailing dot or space, or case-only collision); every file ADR-0002 item 4 ports from Sol OS names its origin (commit d54f0a5 or the Sol ADR) in its header; the twelve-role team methodology is in place (docs/policies/team-methodology.md names every role, .claude/workflows/nawah-team.js opens with its meta literal, the twelve agent definitions carry name/description/tools/model; docs/PLAN-REVERSE.md exists with its seven sections, the fifth listing refuted and unverified claims; docs/PLAN-ANSWER.md exists with its eight sections)",
          "inputs": ["tests/test_m0_records.py", "docs/contracts/boot.md", "docs/adr/0001-bootstrap.md", "docs/PROJECT.md", "docs/ENVIRONMENT.md", "docs/security/threat-model.md",
@@ -1493,6 +1505,53 @@ HOST_SUITES["M1"] = [
      "inputs": ["tests/test_m1_nobs.py", "kernel/src/main.rs", "kernel/src/kmain.rs", "kernel/src/bootinfo.rs", "kernel/src/boot/mod.rs", "kernel/src/boot/stub.rs"], "input_globs": []},
 ]
 
+
+def oracle_sources():
+    """(test id, oracle) for every case whose oracle has a source the runner writes into
+    verdict.json: a HOST_SUITES case, a target.json suite case, else a target's boot_oracle
+    (the suite case carrying the boot id wins, as in cmd_boot), and a target's build test
+    (BUILD_ORACLE). The first source of an id wins.
+    docs/tests.json keeps a copy of each for reading; WP-92 makes that copy checked."""
+    found = {}
+    for cases in HOST_SUITES.values():
+        for c in cases:
+            found.setdefault(c["id"], c["oracle"])
+    for tp in sorted((ROOT / "platform").glob("*/target.json")):
+        t = load_json(tp)
+        for cases in t.get("suites", {}).values():
+            for c in cases:
+                if c.get("oracle"):
+                    found.setdefault(c["test_id"], c["oracle"])
+        b = t.get("boot_oracle") or {}
+        if b.get("oracle"):
+            found.setdefault(b["test_id"], b["oracle"])
+        if t.get("build", {}).get("test_id"):
+            found.setdefault(t["build"]["test_id"], BUILD_ORACLE)
+    return found
+
+
+def oracle_differences(tests):
+    """[(record, source oracle)] for each test record whose `oracle` is not its source's text.
+    Records without a source are not compared; dated notes live in `oracle_notes`, never here."""
+    src = oracle_sources()
+    return [(t, src[t["id"]]) for t in tests if t["id"] in src and t["oracle"] != src[t["id"]]]
+
+
+def cmd_sync_oracles(check=False) -> int:
+    """Write each record's oracle from its source (WP-92); --check writes nothing and exits
+    E_VALIDATION when any record differs."""
+    path = DOCS / "tests.json"
+    data = load_json(path)
+    diffs = oracle_differences(data["records"])
+    for t, oracle in diffs:
+        print(f"{'differs' if check else 'synced'}: {t['id']}")
+        t["oracle"] = oracle
+    if check:
+        return E_VALIDATION if diffs else E_OK
+    if diffs:
+        write_json(path, data)
+    print(f"sync-oracles: {len(diffs)} record(s) {'rewritten' if diffs else 'already equal to their source'}")
+    return E_OK
 
 def cmd_test_host(suite, only=None) -> int:
     begin_run()
@@ -2035,6 +2094,8 @@ def main(argv=None):
     s = sub.add_parser("adopt-native", help="adopt this CI run's own run directories (merge job; no gh, no import.json)")
     s.add_argument("--from", dest="sources", action="append", required=True, help="a directory of run directories; repeatable")
     s = sub.add_parser("check-commit", help="the head commit names only an active or done work item (DEC-004)"); s.add_argument("--rev", default="HEAD")
+    s = sub.add_parser("sync-oracles", help="write each test record's oracle from its source (HOST_SUITES, target.json)")
+    s.add_argument("--check", action="store_true", help="write nothing; exit 50 when a record differs")
     s = sub.add_parser("status"); s.add_argument("--json", action="store_true")
     for n in ("build", "boot"):
         s = sub.add_parser(n); s.add_argument("--target", required=True)
@@ -2049,6 +2110,7 @@ def main(argv=None):
         s = sub.add_parser(n); s.add_argument("--json", action="store_true"); s.add_argument("--result"); s.add_argument("--once", action="store_true"); s.add_argument("--until"); s.add_argument("--note")
     a = ap.parse_args(argv)
     if a.cmd == "validate-records": return validate_records(strict=a.strict)
+    if a.cmd == "sync-oracles": return cmd_sync_oracles(a.check)
     if a.cmd == "status": return cmd_status(a.json)
     if a.cmd == "build": return cmd_build(a.target)
     if a.cmd == "boot": return cmd_boot(a.target)
