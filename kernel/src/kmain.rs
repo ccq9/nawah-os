@@ -12,6 +12,18 @@ use crate::mm;
 #[cfg(target_arch = "x86_64")]
 use crate::mm::addrspace::{self, UserSpace, USER_BASE};
 
+/// The boot's budget for the service manager's reply to `LOAD` (boot.md v1.1, «مهلة `LOAD`»;
+/// WP-82), in timer ticks (`arch::irq::TIMER_HZ` = 1000, so 10 s). The manager answers only after
+/// it has started the manifest's roots (services.md §3), so the wait grows with the interactive
+/// manifest: `wait_ticks` measured 1096 at most on CI run 42696067096 and 806-836 on run
+/// 42673693676 (558-836 on other runs), against 4-5 for the self-test manifest. Rule: the budget
+/// stays at least 5x the largest interactive `wait_ticks` read on CI and under the shortest phase
+/// of a case that boots NAWAH.EFI (60 s today; 30 s once WP-84's halt case exists), so a manager
+/// that never answers still prints its `selfcheck=0` line before the lab ends the phase; a change
+/// follows a new CI measurement and updates boot.md in the same commit.
+#[cfg(all(target_arch = "x86_64", not(feature = "ktest")))]
+pub const LOAD_BUDGET_TICKS: u64 = 10_000;
+
 /// M1/M2 boot path: own CPU tables, validate the handoff, account the memory map, bring up the
 /// frame allocator and the kernel address space, then continue on a guarded stack.
 pub fn kernel_main(bi: &BootInfo) -> ! {
@@ -565,7 +577,7 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         // WP-24 (ADR-0016 §1): the service manager is the first process — started from the
         // volume with a control channel; the manifest of the boot mode is loaded through it
         // and the reply reported. The test kernel starts managers of its own inside its cases.
-        let (svc_ok, svc_line) = crate::services::start_at_boot(2000, mode.manifest());
+        let (svc_ok, svc_line) = crate::services::start_at_boot(LOAD_BUDGET_TICKS, mode.manifest());
         kprintln!("OSX|{}|kernel|svcmgr|{}", build_id, svc_line);
         if mode.selftest() {
             // Nothing waits on the timer yet; stop it so the shutdown is quiet.

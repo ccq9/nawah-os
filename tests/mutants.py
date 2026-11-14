@@ -728,6 +728,14 @@ MUTANTS = [
      "            KEY_ESC => self.give(Answer::Cancel, Event::Cancel),",
      "            KEY_ESC => self.give(Answer::Yes, Event::Cancel),",
      ["TST-M6-UI-CONFIRM"], "SECURITY: Esc answers Yes, so a cancel becomes consent: confirm_default_esc_enter (answer() Some(Yes) instead of Some(Cancel)) and confirm_narrator_lines (\"answer yes\" instead of \"answer cancel\") fail, test result: FAILED. 3 passed; 2 failed"),
+    # ---- M6 (WP-82): the interactive LOAD budget (boot.md v1.1, «مهلة LOAD»); killer TST-M0-003's
+    # source guard (tests/test_ci_workflows.py LoadBudget). M174 (the received-transcript check in
+    # tools/project.py) is not registrable: the harness restores only kernel/ and user/ and drives
+    # its killers through tools/project.py itself; TST-M5-LAB-TOOL's cases are that check's guard.
+    ("M175", "kernel/src/kmain.rs",
+     "pub const LOAD_BUDGET_TICKS: u64 = 10_000;",
+     "pub const LOAD_BUDGET_TICKS: u64 = 2_000;",
+     ["TST-M0-003"], "the LOAD budget back to 2000 ticks (under the 1096 measured on CI run 42696067096): test_the_interactive_load_wait_uses_the_named_budget fails (kernel/src/kmain.rs: LOAD_BUDGET_TICKS = 2_000, not 10000), TST-M0-003 FAILED"),
 ]
 
 def stage_of(mid: str) -> str:
