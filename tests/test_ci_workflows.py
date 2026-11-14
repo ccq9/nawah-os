@@ -165,11 +165,20 @@ class Suites(unittest.TestCase):
         return [s for job in load("verify.yml")["jobs"].values() for s in job["steps"]]
 
     def suite_args(self, kind):
+        """The suites a step names: `--suite X` literally, or `--suite "$v"` inside a
+        `for v in X Y …; do` loop of the same step (WP-91)."""
         found = set()
         for s in self.steps():
-            for line in str(s.get("run", "")).splitlines():
+            run = str(s.get("run", ""))
+            for line in run.splitlines():
                 m = re.search(rf"--target {kind} --suite (\S+)", line)
-                if m:
+                if not m:
+                    continue
+                var = re.fullmatch(r'"?\$\{?(\w+)\}?"?;?', m.group(1))
+                if var:
+                    loop = re.search(rf"\bfor {var.group(1)} in ([^;\n]+);", run)
+                    found.update(loop.group(1).split() if loop else [m.group(1)])
+                else:
                     found.add(m.group(1))
         return found
 
@@ -183,6 +192,72 @@ class Suites(unittest.TestCase):
         self.assertEqual([k for k in expected if not project.HOST_SUITES[k]], [])
         self.assertEqual(sorted(expected), sorted(self.suite_args("host")))
 
+
+class HostStep(unittest.TestCase):
+    """WP-91: the Host suites step runs every host suite the workflow runs (every non-gate suite
+    of HOST_SUITES but M2) and reports every failure: a failing suite does not end the step
+    before the later ones run (six bare commands under `bash -e` did: runs 42769555412,
+    42790269224 and 42795169926 hid the later suites' verdicts), and the step fails at the end
+    when any suite failed. Judged by running the step's own script the way GitHub runs a step
+    without `shell:` (`bash -e {0}`: no pipefail, so a suite piped into `tee` would hide its
+    failure) in a scratch tree whose tools/project.py is a stub that records each suite and
+    fails the chosen ones; found in whichever verify job holds it."""
+
+    EXPECTED = sorted(k for k in project.HOST_SUITES if not k.endswith("-GATE") and k != "M2")
+
+    def step(self):
+        steps = [s for job in load("verify.yml")["jobs"].values() for s in job["steps"]
+                 if str(s.get("name", "")) == "Host suites"]
+        self.assertEqual(len(steps), 1, "one Host suites step")
+        return steps[0]
+
+    def run_step(self, failing, script=None):
+        d = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, d, True)
+        (d / "tools").mkdir()
+        (d / "tools" / "project.py").write_text(
+            "import os, sys\n"
+            "suite = sys.argv[sys.argv.index('--suite') + 1]\n"
+            "open('suites.log', 'a').write(suite + '\\n')\n"
+            "sys.exit(1 if suite in os.environ['FAILING'].split() else 0)\n")
+        (d / "step.sh").write_text(self.step()["run"] if script is None else script)
+        # GitHub's default for a run step without `shell:` on Linux: bash -e {0}.
+        r = subprocess.run(["bash", "-e", str(d / "step.sh")], cwd=d,
+                           capture_output=True, text=True, env=dict(os.environ, FAILING=" ".join(failing)))
+        ran = (d / "suites.log").read_text().split() if (d / "suites.log").exists() else []
+        return r.returncode, ran
+
+    def problems(self, script=None):
+        """What the step (or `script`) breaks: a suite not run, run twice, or a red set that
+        passes; an empty list when it runs every suite and fails exactly when one failed."""
+        bad = []
+        rc, ran = self.run_step([], script)
+        if rc != 0 or sorted(ran) != self.EXPECTED:
+            bad.append(f"nothing failing: exit {rc}, ran {ran}")
+        if len(ran) != len(set(ran)):
+            bad.append(f"a suite ran twice: {ran}")
+        first, last = self.EXPECTED[0], self.EXPECTED[-1]
+        for failing in ([first], [first, last], [last], self.EXPECTED):
+            rc, ran = self.run_step(failing, script)
+            if sorted(ran) != self.EXPECTED:
+                bad.append(f"failing {failing}: the step stopped early, ran {ran}")
+            if rc == 0:
+                bad.append(f"failing {failing}: the step passed")
+        return bad
+
+    def test_the_step_runs_every_suite_and_fails_when_any_failed(self):
+        self.assertEqual(self.problems(), [])
+
+    def test_the_check_sees_a_failure_hidden_by_a_pipe(self):
+        # The auditor's survivor: under bash -e without pipefail a pipeline's status is its last
+        # command's, so `… --suite "$s" | tee -a host.log || rc=1` never records a failure.
+        loop = ('rc=0\nfor s in {}; do\n  python3 tools/project.py test --target host --suite "$s"{} || rc=1\n'
+                'done\nexit $rc\n')
+        self.assertEqual(self.problems(loop.format(" ".join(self.EXPECTED), "")), [])
+        bad = self.problems(loop.format(" ".join(self.EXPECTED), " | tee -a host.log"))
+        self.assertTrue(any("the step passed" in b for b in bad), bad)
+        bare = "".join(f"python3 tools/project.py test --target host --suite {s}\n" for s in self.EXPECTED)
+        self.assertTrue(any("stopped early" in b for b in self.problems(bare)))
 
 class StepBudget(unittest.TestCase):
     """The verify job's time budget (docs/PLAN-ANSWER.md §2.5 D4-V2): the guest suites that can
