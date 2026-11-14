@@ -1,0 +1,24 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261110T085617Z-a8fcb8fd-002",
+ "test_id": "TST-M6-UI-UNIT",
+ "verdict": "PASS",
+ "oracle": "libui v1.6 (WP-49, ui.md §3.6) on the host, user/libui/tests/pointer_menu.rs (9 tests): a left press focuses the focusable element under it (a label never; the rectangle's last column is inside and the next is not) and the release over the same element activates a button or toggles a checkbox, a release elsewhere or without a press does nothing and holding is not a new press; a list row press selects the row, the header selects nothing, and a second click on the same row within DOUBLE_CLICK_MS (400, nawah's own) activates the list while a later one, another row or the header does not; the focus order and Tab/Shift+Tab are unchanged after pointer use; the context menu (at most 8 entries, an unlabelled item or separators only refused) opens by Shift+F10, the menu key 0xdd and a right press on a focusable element (not a label, not by F10 alone; without a menu none of the three opens anything and the right press does not move the focus) with its first item focused and the dialog focus empty; Up/Down wrap over separators, a disabled item is focused and described disabled but never chosen by Enter or a left release, Enter or a left release on the pressed item chooses, closes and returns the focus; Tab is ignored while open, Esc closes the menu without cancelling the dialog and an outside press closes it, both returning the focus to the opener; the menu opens from the start edge and toward the reading direction in LTR and RTL, flips at the surface's edge, stays inside the surface, which grows to hold it and still fits one VMO at 2x; menu items are described role=menuitem label=\"...\" state=focused[,disabled] index=k/n, and describe_menu_item returns None and writes nothing with no menu or an entry out of range (9 passed)",
+ "expected": "exit 0 + 'test result: ok. 9 passed; 0 failed'",
+ "observed": "exit=0; tail=     Running tests/pointer_menu.rs (target/x86_64-unknown-linux-gnu/release/deps/pointer_menu-35ddb5fd5d5ad93b)",
+ "inputs_digest": "09632a09915ee88d8527441927c5492a058e67aed3dad4d34529f16d30a5fe88",
+ "inputs": {
+  "user/libui/Cargo.toml": "563cb41c43f3c4f6bde9fb59e6bea0786fa8025413bfe3a2fd544bf80fdefaf9",
+  "user/libui/tests/pointer_menu.rs": "dcc25842c3ec2531df202338e95d3aa2b8b8173ef6ce92825a6f7944d315695e",
+  "user/libui/src/lib.rs": "4421db8e2b56bc4ff05b7193dee0ea03406e4fdbe1ffc05c54903d2fa64b7f54",
+  "user/libui/src/tests.rs": "b16c8ad6f9777c5e6de813a3b4f1d2bb449af58268aa3a70b36cb248c85bb60c",
+  "user/libnawah-text/src/bidi.rs": "c90c55187eb45e61eb0947fe32ffdf6463c67677d894a39670ec2abb788a1602",
+  "user/libnawah-text/src/font.rs": "445836ef820e087cc0091697769b9bdb01653f1529adb955821b4f64d751da83",
+  "user/libnawah-text/src/layout.rs": "35132c882292665f6a80b232222da57ffaca71602d83ecea712aa6b19f8ba3c1",
+  "user/libnawah-text/src/lib.rs": "d08f77a0142e15b8a2fa2cb5e24242fa8b1a712bdc733416f46c93188c5531cf",
+  "user/libnawah-text/src/raster.rs": "de7bb116c7ff51f0c335dcaa6a08104e35f278e7db6a047da3c1dd850ae6d7dd",
+  "user/libnawah-text/src/shape.rs": "ae5c6eeab4d433449fb7c63dfc28448d4caad95618fdaedb198e608bc2730ef0",
+  "user/libnawah-text/src/tables.rs": "136625d6a0be90d42b1347cacb4747f9535cce71195ecf88d6c8baad3d549e3b"
+ },
+ "claim_tag": "source_backed_fact"
+}

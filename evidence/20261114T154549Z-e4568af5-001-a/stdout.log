@@ -1,0 +1,10 @@
+$ python3 -I tests/test_mutants_harness.py
+M999: INVALID (M999: pattern occurs 0 times in kernel/a.rs (must be exactly once))
+
+FAIL: 0/0 valid mutants killed (0.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=['M999']; declared_killers_missed=[]; report=build/r.json
+M998: INVALID (does not build) (synthetic)
+
+FAIL: 0/0 valid mutants killed (0.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=['M998']; declared_killers_missed=[]; report=build/r.json
+M998: INVALID (does not build) (synthetic)
+
+FAIL: 0/0 valid mutants killed (0.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=['M998']; declared_killers_missed=[]; report=build/r.json

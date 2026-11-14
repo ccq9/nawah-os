@@ -1,0 +1,16 @@
+{
+ "user/libui/Cargo.toml": "563cb41c43f3c4f6bde9fb59e6bea0786fa8025413bfe3a2fd544bf80fdefaf9",
+ "user/libui/tests/confirm.rs": "08c3985b2b3dbda88f6835dae3afc0f785d30e58d68ce89a94d0ddfd3f3fd1a6",
+ "platform/assets/fonts/NotoSans-Regular.ttf": "2118e60a3c88075064261fd7ba82c973a01673d3eb44d58a8a983ae0b9a465ed",
+ "platform/assets/fonts/NotoSansArabic-Regular.ttf": "95952171cbc85c19cbb7b22684c595b521e780134d45ea508c34ba872681731d",
+ "user/libui/src/lib.rs": "a106e85efed1eb23ec9004de08bbec3af3753d4c21c13bde3d4ef3b33bb66e66",
+ "user/libui/src/list.rs": "fad0546ad5f06211401c063bf97eb95aa9f0957943a3cb540feefb343c3bdc1a",
+ "user/libui/src/tests.rs": "b16c8ad6f9777c5e6de813a3b4f1d2bb449af58268aa3a70b36cb248c85bb60c",
+ "user/libnawah-text/src/bidi.rs": "c90c55187eb45e61eb0947fe32ffdf6463c67677d894a39670ec2abb788a1602",
+ "user/libnawah-text/src/font.rs": "445836ef820e087cc0091697769b9bdb01653f1529adb955821b4f64d751da83",
+ "user/libnawah-text/src/layout.rs": "35132c882292665f6a80b232222da57ffaca71602d83ecea712aa6b19f8ba3c1",
+ "user/libnawah-text/src/lib.rs": "d08f77a0142e15b8a2fa2cb5e24242fa8b1a712bdc733416f46c93188c5531cf",
+ "user/libnawah-text/src/raster.rs": "de7bb116c7ff51f0c335dcaa6a08104e35f278e7db6a047da3c1dd850ae6d7dd",
+ "user/libnawah-text/src/shape.rs": "ae5c6eeab4d433449fb7c63dfc28448d4caad95618fdaedb198e608bc2730ef0",
+ "user/libnawah-text/src/tables.rs": "136625d6a0be90d42b1347cacb4747f9535cce71195ecf88d6c8baad3d549e3b"
+}

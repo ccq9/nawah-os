@@ -1,0 +1,40 @@
+..................................FEE..............
+======================================================================
+ERROR: test_the_m6_gate_is_time_boxed_inside_the_job (__main__.MutationHarness.test_the_m6_gate_is_time_boxed_inside_the_job)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 1191, in test_the_m6_gate_is_time_boxed_inside_the_job
+    step = next(s for s in job["steps"] if str(s.get("name", "")).startswith("Mutation run, M6"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StopIteration
+
+======================================================================
+ERROR: test_the_stages_are_selected_by_hand_and_m6_is_not_in_the_default (__main__.MutationHarness.test_the_stages_are_selected_by_hand_and_m6_is_not_in_the_default)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 1182, in test_the_stages_are_selected_by_hand_and_m6_is_not_in_the_default
+    inp = on["workflow_dispatch"]["inputs"]["stages"]
+          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+
+======================================================================
+FAIL: test_mutants_runs_the_gates_in_order_and_publishes_every_report (__main__.MutationHarness.test_mutants_runs_the_gates_in_order_and_publishes_every_report)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_ci_workflows.py", line 1135, in test_mutants_runs_the_gates_in_order_and_publishes_every_report
+    self.assertEqual([g.split(",")[1].strip()[:2] for g in gates], ["M2", "M3", "M4", "M5", "M6"],
+AssertionError: Lists differ: ['M2', 'M3', 'M4', 'M5'] != ['M2', 'M3', 'M4', 'M5', 'M6']
+
+Second list contains 1 additional elements.
+First extra element 4:
+'M6'
+
+- ['M2', 'M3', 'M4', 'M5']
++ ['M2', 'M3', 'M4', 'M5', 'M6']
+?                        ++++++
+ : the gates run in order M2, M3, M4, M5, M6 (WP-90 adds M6)
+
+----------------------------------------------------------------------
+Ran 51 tests in 2.756s
+
+FAILED (failures=1, errors=2)

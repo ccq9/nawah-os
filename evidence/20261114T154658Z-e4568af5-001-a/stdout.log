@@ -1,0 +1,65 @@
+$ cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu
+
+running 14 tests
+test tests::a_value_is_read_only_and_described ... ok
+test tests::clear_set_value_and_focus_on ... ok
+test tests::elements_without_labels_are_refused ... ok
+test tests::focus_order_is_declared_order_without_labels ... ok
+test tests::keys_act_on_the_focused_element ... ok
+test tests::password_is_edited_like_a_field_and_never_described ... ok
+test tests::fits_measures_the_row_as_painted ... ok
+test tests::relabel_and_set_items_switch_language ... ok
+test tests::rtl_field_arrows_follow_reading_direction ... ok
+test tests::scale_doubles_the_layout_and_contrast_changes_the_palette ... ok
+test tests::tab_and_shift_tab_cycle ... ok
+test tests::password_is_drawn_as_bullets ... ok
+test tests::theme_from_config ... ok
+test tests::paint_uses_the_theme_and_marks_the_focus ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test confirm_default_esc_enter ... ok
+test confirm_narrator_lines ... ok
+test confirm_rtl_order ... ok
+test confirm_pointer ... ok
+test confirm_labels_fit ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 11 tests
+test bidi_controls_in_cells_shown_not_obeyed ... ok
+test empty_and_denied_states_text ... ok
+test focus_stays_visible ... ok
+test rtl_column_order_and_trailing_numeric ... ok
+test home_end_pgup_pgdn_exact ... ok
+test single_and_multi_selection ... ok
+test row_narrator_lines_en_ar ... ok
+test text_put_cuts_at_char_boundary ... ok
+test typeahead_latin_and_arabic ... ok
+test sort_stable_and_selection_follows_identity ... ok
+test visible_rows_bounded_0_1_10000 ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 9 tests
+test context_menu_opens_by_three_ways ... ok
+test describe_menu_item_out_of_range_is_none ... ok
+test focus_order_unchanged_after_pointer ... ok
+test esc_and_outside_click_close_and_return_focus ... ok
+test list_click_selects_the_row_and_double_click_activates ... ok
+test menu_mirrors_in_rtl ... ok
+test menu_wraps_skips_separators_and_disabled_never_chooses ... ok
+test pointer_focuses_and_activates_the_element_under_it ... ok
+test release_outside_cancels ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

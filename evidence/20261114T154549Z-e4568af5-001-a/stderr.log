@@ -1,0 +1,253 @@
+...F..EFF.F.FEEEEEE...FE...FEFE
+======================================================================
+ERROR: test_every_registered_stage_has_one_gate_run_by_the_mutants_workflow (__main__.GateMapping.test_every_registered_stage_has_one_gate_run_by_the_mutants_workflow)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 178, in test_every_registered_stage_has_one_gate_run_by_the_mutants_workflow
+    stages = sorted({mutants.stage_of(m[0]) for m in mutants.MUTANTS} | set(mutants.STAGES))
+                                                                            ^^^^^^^^^^^^^^
+AttributeError: module 'mutants' has no attribute 'STAGES'
+
+======================================================================
+ERROR: test_tooling_mutants_have_host_killers_only (__main__.Inputs.test_tooling_mutants_have_host_killers_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 456, in test_tooling_mutants_have_host_killers_only
+    bad = [(m[0], k) for m in mutants.MUTANTS if mutants.is_tooling(m[1]) for k in m[4]
+                                                 ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'mutants' has no attribute 'is_tooling'
+
+======================================================================
+ERROR: test_a_security_mutant_with_a_missing_anchor_exits_1 (__main__.InvalidSecurity.test_a_security_mutant_with_a_missing_anchor_exits_1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 431, in test_a_security_mutant_with_a_missing_anchor_exits_1
+    self.assertEqual(got["invalid_security"], ["M999"])
+                     ~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'invalid_security'
+
+======================================================================
+ERROR: test_the_verdict_counts_invalid_security_mutants (__main__.InvalidSecurity.test_the_verdict_counts_invalid_security_mutants)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 407, in test_the_verdict_counts_invalid_security_mutants
+    self.assertTrue(mutants.gate_verdict(dict(base)))
+                    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'mutants' has no attribute 'gate_verdict'
+
+======================================================================
+ERROR: test_a_case_failing_on_the_clean_tree_is_no_kill (__main__.KillCause.test_a_case_failing_on_the_clean_tree_is_no_kill)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 326, in test_a_case_failing_on_the_clean_tree_is_no_kill
+    self.assertEqual(self._run("Ran 3 tests\n\nFAILED (failures=1)\n", 1), "ERROR")
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 307, in _run
+    orig = mutants.suite_of, mutants.sh, mutants.host_suite_of, dict(mutants._CLEAN_HOST)
+                                                                     ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'mutants' has no attribute '_CLEAN_HOST'
+
+======================================================================
+ERROR: test_a_test_file_that_does_not_compile_is_no_kill (__main__.KillCause.test_a_test_file_that_does_not_compile_is_no_kill)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 323, in test_a_test_file_that_does_not_compile_is_no_kill
+    self.assertEqual(self._run('  File "tests/t.py", line 3\nSyntaxError: invalid syntax\n', 0), "ERROR")
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 307, in _run
+    orig = mutants.suite_of, mutants.sh, mutants.host_suite_of, dict(mutants._CLEAN_HOST)
+                                                                     ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'mutants' has no attribute '_CLEAN_HOST'
+
+======================================================================
+ERROR: test_failing_tests_that_pass_clean_are_a_kill (__main__.KillCause.test_failing_tests_that_pass_clean_are_a_kill)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 319, in test_failing_tests_that_pass_clean_are_a_kill
+    self.assertEqual(self._run("Ran 3 tests\n\nFAILED (failures=1)\n", 0), "FAIL")
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 307, in _run
+    orig = mutants.suite_of, mutants.sh, mutants.host_suite_of, dict(mutants._CLEAN_HOST)
+                                                                     ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'mutants' has no attribute '_CLEAN_HOST'
+
+======================================================================
+ERROR: test_the_harness_env_has_no_shared_cargo_target (__main__.SeparateBuilds.test_the_harness_env_has_no_shared_cargo_target)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 468, in test_the_harness_env_has_no_shared_cargo_target
+    env = mutants.harness_env({"CARGO_TARGET_DIR": "/shared", "PATH": "/bin"}, pathlib.Path("/wt"), pathlib.Path("/s"))
+          ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'mutants' has no attribute 'harness_env'
+
+======================================================================
+ERROR: test_a_tooling_mutant_is_host_only (__main__.ToolingMutants.test_a_tooling_mutant_is_host_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 221, in test_a_tooling_mutant_is_host_only
+    self.assertTrue(mutants.is_tooling(rel), rel)
+                    ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'mutants' has no attribute 'is_tooling'
+
+======================================================================
+ERROR: test_the_image_is_built_for_guest_killers_only (__main__.ToolingMutants.test_the_image_is_built_for_guest_killers_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 227, in test_the_image_is_built_for_guest_killers_only
+    self.assertTrue(mutants.needs_image("pc-qemu", "kernel/src/kmain.rs", ["TST-M6-INTERACTIVE-BOOT"]))
+                    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'mutants' has no attribute 'needs_image'
+
+======================================================================
+FAIL: test_killers_and_suite_lookup_run_the_clean_project_py (__main__.CleanDriver.test_killers_and_suite_lookup_run_the_clean_project_py)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 276, in test_killers_and_suite_lookup_run_the_clean_project_py
+    self.assertEqual(mutants.host_suite_of(wt, "TST-M0-005"), "M0")
+AssertionError: 'OK' != 'M0'
+- OK
++ M0
+
+
+======================================================================
+FAIL: test_the_m6_gate_reports_ratio_and_live_security_mutants (__main__.GateMapping.test_the_m6_gate_reports_ratio_and_live_security_mutants)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 187, in test_the_m6_gate_reports_ratio_and_live_security_mutants
+    self.assertIn("M6", sorted(gates), "no gate suite runs `tests/mutants.py --stage M6`")
+AssertionError: 'M6' not found in ['M2', 'M3', 'M4', 'M5'] : no gate suite runs `tests/mutants.py --stage M6`
+
+======================================================================
+FAIL: test_an_internal_error_is_no_kill (__main__.GuestKillCause.test_an_internal_error_is_no_kill)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 347, in test_an_internal_error_is_no_kill
+    self.assertEqual(self._one(60, "internal error: FileNotFoundError: /usr/share/OVMF/OVMF_VARS_4M.fd\n"), "ERROR")
+AssertionError: 'FAIL' != 'ERROR'
+- FAIL
++ ERROR
+
+
+======================================================================
+FAIL: test_rc_1_without_the_case_verdict_line_is_no_kill (__main__.GuestKillCause.test_rc_1_without_the_case_verdict_line_is_no_kill)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 350, in test_rc_1_without_the_case_verdict_line_is_no_kill
+    self.assertEqual(self._one(1, "TST-M6-OTHER pc-qemu: FAIL (x) run=R1\n"), "ERROR")
+AssertionError: 'FAIL' != 'ERROR'
+- FAIL
++ ERROR
+
+
+======================================================================
+FAIL: test_every_mutant_file_is_an_input_of_the_guard_and_of_its_gate (__main__.Inputs.test_every_mutant_file_is_an_input_of_the_guard_and_of_its_gate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 453, in test_every_mutant_file_is_an_input_of_the_guard_and_of_its_gate
+    self.assertEqual(bad, [])
+AssertionError: Lists differ: ['M130', 'M131', 'M132', 'M135', 'M137', '[201 chars]175'] != []
+
+First list contains 31 additional elements.
+First extra element 0:
+'M130'
+
++ []
+- ['M130',
+-  'M131',
+-  'M132',
+-  'M135',
+-  'M137',
+-  'M147',
+-  'M150',
+-  'M151',
+-  'M152',
+-  'M153',
+-  'M157',
+-  'M158',
+-  'M159',
+-  'M160',
+-  'M161',
+-  'M162',
+-  'M163',
+-  'M164',
+-  'M165',
+-  'M166',
+-  'M167',
+-  'M168',
+-  'M169',
+-  'M171',
+-  'M176',
+-  'M177',
+-  'M178',
+-  'M179',
+-  'M180',
+-  'M181',
+-  'M175']
+
+======================================================================
+FAIL: test_a_change_reset_cannot_undo_fails_the_run (__main__.ResetIsVerified.test_a_change_reset_cannot_undo_fails_the_run)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 255, in test_a_change_reset_cannot_undo_fails_the_run
+    with self.assertRaises(RuntimeError):
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_a_tooling_mutant_builds_nothing_and_sweeps_no_guest_case (__main__.ToolingMain.test_a_tooling_mutant_builds_nothing_and_sweeps_no_guest_case)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 393, in test_a_tooling_mutant_builds_nothing_and_sweeps_no_guest_case
+    self.assertEqual((built, swept, entry["status"]), ([], [], "survived"))
+AssertionError: Tuples differ: ([['cargo', 'build', '--profile', 'app', '-[150 chars]lid') != ([], [], 'survived')
+
+First differing element 0:
+[['cargo', 'build', '--profile', 'app', '-[134 chars]er']]
+[]
+
++ ([], [], 'survived')
+- ([['cargo',
+-    'build',
+-    '--profile',
+-    'app',
+-    '--offline',
+-    '--manifest-path',
+-    'user/apps/hello/Cargo.toml',
+-    '--target',
+-    'x86_64-unknown-none',
+-    '--target-dir',
+-    'build/pc-qemu/cargo-user']],
+-  [],
+-  'invalid')
+
+======================================================================
+FAIL: test_reset_restores_tooling_and_sources (__main__.ToolingMutants.test_reset_restores_tooling_and_sources)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/nawah-os/nawah-os/tests/test_mutants_harness.py", line 217, in test_reset_restores_tooling_and_sources
+    self.assertEqual({f: (wt / f).read_text() for f in files}, {f: "clean\n" for f in files})
+AssertionError: {'ker[56 chars]y': 'mutated\n', 'tests/d.py': 'mutated\n', '.[32 chars]d\n'} != {'ker[56 chars]y': 'clean\n', 'tests/d.py': 'clean\n', '.gith[26 chars]n\n'}
+- {'.github/workflows/e.yml': 'mutated\n',
+?                              ^^^ ^^^
+
++ {'.github/workflows/e.yml': 'clean\n',
+?                              ^^^ ^
+
+   'kernel/a.rs': 'clean\n',
+-  'tests/d.py': 'mutated\n',
+?                 ^^^ ^^^
+
++  'tests/d.py': 'clean\n',
+?                 ^^^ ^
+
+-  'tools/c.py': 'mutated\n',
+?                 ^^^ ^^^
+
++  'tools/c.py': 'clean\n',
+?                 ^^^ ^
+
+   'user/b.rs': 'clean\n'}
+
+----------------------------------------------------------------------
+Ran 31 tests in 0.170s
+
+FAILED (failures=8, errors=10)
