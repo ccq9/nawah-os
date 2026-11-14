@@ -3,6 +3,7 @@
 # WP-83 (83a): the test job `a` writes run directories with its slot (NAWAH_RUN_SLOT) and uploads
 # them; the `merge` job adopts them (adopt-native, ADR-0026 rule 5), validates strictly and alone
 # publishes the run's one ci-evidence branch. WP-88 (83b) splits `a` into parallel jobs.
+# WP-96 (the owner's DEC-029): the job `m` runs the M6 mutation gate beside `a` in every run.
 name: verify
 on:
   push:
@@ -161,11 +162,73 @@ jobs:
             build/pc-qemu/build-id.txt
             build/hygiene.log
           retention-days: 7
+  m:
+    # The M6 mutation gate in every run (the owner's DEC-029, option A; WP-96): TST-M6-MUTANTS's
+    # evidence is of the same run as every other verdict, so a stale gate verdict stays a strict
+    # error (no stale_policy on it). The gate measured 20 min on run 43615540519, about the test
+    # job's time; 180 = (Toolchain 15 + the gate's 135) x 1.2 is the hang guard
+    # (tests/test_ci_workflows.py MutationJob, StepBudget).
+    runs-on: ubuntu-24.04
+    env:
+      NAWAH_RUN_SLOT: m
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
+        # About 80 s normally, 5 min on a slow day; on 2026-10-23 it hung for 34-40 min and three
+        # runs hit the job's 40-min limit; on 2026-10-26 (20:38-21:11) `apt-get install` hit its
+        # limit four times in two runs. Packages are fetched before they are installed (a second
+        # try keeps what the first fetched), from Canonical's archive when the runner's mirror
+        # fails twice; each try gets 5 min (apt also drops a stalled connection after 60 s) and
+        # leaves an annotation with its exit code and how much it fetched; the step ends by 15 min
+        # (WP-74, 2026-11-10: 12 -> 15; the step measured 11m12s on run 42754423494 against the 12-min cap
+        # set that day (WP-64) from a 56 s measurement; 15 is a hang guard, not the bound of its retry loops,
+        # and the job limit 55 -> 58 keeps the 20 % margin over the step caps 15+18+15).
+        timeout-minutes: 15
+        run: |
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          rustup run 1.97.0 rustc --version; cargo --version
+          hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
+          clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
+      - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
+        run: |
+          python3 tools/project.py build --target pc-qemu
+          python3 tools/project.py boot --target pc-qemu
+      - name: "Mutation run, M6 gate (TST-M6-MUTANTS, M130 onwards)"
+        # The same cap as mutants.yml gives this step: TST-M6-MUTANTS's timeout_s (130 min) ends
+        # the gate with a verdict and the partial report first.
+        timeout-minutes: 135
+        run: python3 tools/project.py test --target host --suite M6-GATE
+      - name: Report
+        if: always()
+        run: cat build/mutants-m6-report.json || true
+      # This job's own run directories (slot m) and the gate's report; the merge job adopts them.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: evidence-m
+          path: |
+            evidence/*-m/
+            build/mutants-m6-report.json
+          retention-days: 7
   merge:
     # Adopts every test job's evidence, checks it strictly and publishes one ci-evidence/<run>
     # branch. Runs after a failed test job too (what exists is published, the run still fails;
     # import-ci-evidence refuses a run that did not succeed), never in a cancelled run.
-    needs: [a]
+    needs: [a, m]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -197,10 +260,10 @@ jobs:
         run: |
           set -euo pipefail
           # Each artifact keeps the workspace layout: incoming/evidence-<slot>/evidence/<run>-<slot>/.
-          # Every expected slot (one per test job; WP-88 adds b c) must have left a run directory:
+          # Every expected slot (the test job a, the mutation job m; WP-88 adds b c) must have left a run directory:
           # a missing or empty artifact fails the merge job, nothing is adopted (security review M2).
           srcs=()
-          for slot in a; do
+          for slot in a m; do
             d="incoming/evidence-$slot/evidence"
             if ! ls "$d"/*/verdict.json >/dev/null 2>&1; then
               echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1
@@ -209,7 +272,7 @@ jobs:
           done
           python3 tools/project.py adopt-native "${srcs[@]}"
           mkdir -p build
-          for slot in a; do
+          for slot in a m; do
             if [ -d "incoming/evidence-$slot/build" ]; then cp -r "incoming/evidence-$slot/build/." build/; fi
           done
       - name: "validate-records --strict (after fresh evidence, nothing may be stale)"
@@ -237,6 +300,7 @@ jobs:
           /usr/bin/git -c core.hooksPath=/dev/null rm -rfq --cached . >/dev/null
           /usr/bin/git -c core.hooksPath=/dev/null add -f evidence/ build/pc-qemu/build-id.txt 2>/dev/null || /usr/bin/git -c core.hooksPath=/dev/null add -f evidence/
           /usr/bin/git -c core.hooksPath=/dev/null add -f build/hygiene.log 2>/dev/null || true
+          /usr/bin/git -c core.hooksPath=/dev/null add -f build/mutants-m6-report.json 2>/dev/null || true
           /usr/bin/git -c core.hooksPath=/dev/null -c user.name=nawah-ci -c user.email=ci@nawah-os.invalid commit -qm "CI evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
           auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
           echo "::add-mask::$auth"
