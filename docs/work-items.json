@@ -3201,7 +3201,8 @@
     "WP-77",
     "WP-78",
     "WP-82",
-    "WP-84"
+    "WP-84",
+    "WP-99"
    ],
    "inputs": [
     "DEC-005",
@@ -3227,6 +3228,7 @@
     "2026-11-10 the 2026-11-09 renumbering (session.md v1.8 -> v1.10) reverted per docs/PLAN.md:132: this package is on the critical path and keeps its planning number session.md v1.8; the parallel WP-71 and WP-72 take theirs at merge",
     "2026-11-10 services.md: v1.12 is WP-46's (the manager's ninth initial handle, the root job); WP-71's services.md number is assigned at merge; this package keeps v1.13",
     "2026-11-10 services.md renumbered v1.13 -> v1.14: v1.13 is WP-68's, on the critical path since WP-46, WP-64 and WP-73 closed (PLAN.md:132)",
+    "2026-11-14 waits for WP-99 too: applications add to what runs before and beside the manager, and a manager that spins must end in the halt line before more is built on the interactive boot (RSK-024)",
     "2026-11-10 (steward round B): depends on WP-84 too (the halt line and band split from WP-82)"
    ],
    "acceptance": "TST-M6-APP-LAUNCH, LOGOUT-KILLS, LAUNCH-DENIED and APP-REGISTRY-FUZZ PASS on CI; ADR-0023 accepted",
@@ -5366,7 +5368,12 @@
     "platform/pc-qemu/lab/services-bad.txt",
     "docs/contracts/boot.md",
     "docs/tests.json",
-    "tests/mutants.py"
+    "tests/mutants.py",
+    "kernel/src/services.rs",
+    "user/apps/idle/src/main.rs",
+    "tests/test_monitor_steps.py",
+    "docs/PLAN-REVERSE.md",
+    "docs/risks.json"
    ],
    "contract_refs": [
     "docs/contracts/boot.md"
@@ -5386,17 +5393,23 @@
     "2026-11-10 (steward round F, WP-83 split into 83a/83b by the manager, decisions D1-D8): depends on WP-88 instead of WP-83: what it needs is job c's M6 budget, which lands in WP-88 (83b); WP-83 (83a) is the merge path with one producer",
     "2026-11-14 (audit of WP-88): WP-88 was re-scoped and delivers the M6 guest step's cap inside job a, 18 minutes (1080 s), with job a limited to 62; there is no job c (the parallel jobs are WP-98's). The M6 suite's worst case is 895 s today, not the 755 s some lines above assume, so 185 s are free: an item whose phases do not fit raises the cap with its own case, and job a's limit with it, since (15 + 18 + cap) x 1.2 must stay within the limit",
     "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): its M6 mutants (M172, M173) are registered; executed only once the M6 gate (WP-90) exists",
+    "2026-11-14 as built (kernel engineer in a worktree with the local lab; where it differs from the lines above, kept for history): the case has two phases, 12 s (a damaged manifest: code 4) and 25 s (idle.elf placed as the manager, which blocks and never answers: code 2), 37 s together, not 30; the M6 suite's worst case is 932 s of the cap's 1080; the halt line is `OSX|<build id>|kernel|halt|reason=svcmgr|code=<n>|wait_ticks=<t>|budget_ticks=10000`, printed before the band is drawn and before arch::halt, only on the interactive branch and never in the test kernel; codes 1 (the manager did not start), 2 (no reply within the budget), 3 (the control channel broke), 4 (a reply other than OK <n>, n >= 1); the band spans the frame's width, 96 px high, centred, colour C00000, with the code's digit cells in the build-id bar's own colours; disk_files is a general map from a volume path to a source under the tree, per case or per phase; idle now waits for the peer's close alone so that it can stand in for a manager that never answers (its other users, TST-M5-PROCESS-KILL and TST-M6-JOB-KILL, never write to it and pass locally and on CI below). The red was seen locally first (scratch): the host cases FAILED (failures=1, errors=7); the guest case FAIL (timeout) with no halt line",
+    "2026-11-14 audit before the push (auditor): the code confirmed (every failure of the load maps to one code, none silent; the success path byte-identical; no new unsafe, no overflow in halt_banner; nothing taken from another system's stop screen); corrected before the push: two sentences of boot.md that still called this case planned and the halt silent, the plan's row, this record, one false sentence of TST-M5-LAB-TOOL's oracle (a phase without disk_files keeps the earlier phase's disk; the case's files apply only to a fresh disk), and disk_files hardened test-first (an empty or dot component, a backslash, a colon, a source that is a link out of the tree and a volume file named twice are refused before any image is made). Limits recorded: codes 1 and 3 have no lab case and no killing mutant; the order line-then-band is read from the code, not tested; the screendump is sent as soon as the line appears, the band is drawn right after it (a small race); the pixel coordinates assume a frame 770 to 833 px high (every committed screen is 1280x800); phase 2's 25 s on a slow runner is unmeasured",
+    "2026-11-14 found by the engineer and confirmed by the audit by reading, not fixed here (RSK-024, WP-99): a manager that spins without blocking starves the boot thread's wait for LOAD, so neither the svcmgr line nor the halt line appears and the machine hangs with no message, the very state this item exists to remove; the timer still counts while it spins, so the deadline can be enforced from the tick",
+    "2026-11-14 local checks before the push (scratch, the manager): every guest suite on QEMU: M1 5, M2 27, M3 41, M5 36 and M6 13 cases PASS; M4 28 PASS and TST-M4-NET-NO-INTERNET FAIL, which fails the same way on the commit before this item (its probe of 192.0.2.1 is answered inside this container: probe=OK rtt=1) and is green on CI on that commit (run 43643314405): this container's network, not the change; the six host suites PASS",
     "2026-11-14 activation estimate (kernel engineer in a worktree with the local QEMU lab, the manager integrating; one audit pass before the single push): about 65 calls / 70 min as estimated on 2026-11-10; the case's 30 s phase fits the M6 step's cap as WP-88 left it (895 + 30 = 925 of 1080 s), so no budget change is needed here; red shown locally, no failing commit pushed; under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first)"
    ],
-   "acceptance": "TST-M6-BOOT-HALT PASS on CI; TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT PASS with `|kernel|halt|` forbidden; M172 and M173 registered in tests/mutants.py with each anchor once; shown killed once the M6 mutation gate (WP-90) exists; boot.md states the halt line and the band",
+   "acceptance": "TST-M6-BOOT-HALT PASS on CI (a damaged manifest gives code 4, a manager that blocks and never answers gives code 2 with wait_ticks within budget_ticks + 500; the band's colour and the code's first cell on the screen); TST-M6-INTERACTIVE-BOOT and TST-M1-BOOT PASS with `|kernel|halt|` forbidden; TST-M5-LAB-TOOL PASS with the disk_files cases; M172 and M173 registered and killed by the M6 gate; boot.md states the halt line, its codes and the band, and the declared limit: a manager that spins without blocking starves the wait and no line appears (RSK-024, WP-99)",
    "test_ids": [
     "TST-M6-BOOT-HALT",
     "TST-M6-INTERACTIVE-BOOT",
-    "TST-M1-BOOT"
+    "TST-M1-BOOT",
+    "TST-M5-LAB-TOOL"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M6",
-    "python3 tools/project.py test --target pc-qemu --suite M1"
+    "python3 tools/project.py test --target pc-qemu --suite M1",
+    "python3 tools/project.py test --target host --suite M5"
    ],
    "status": "active",
    "status_history": [
@@ -6151,6 +6164,60 @@
    ],
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-99",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-002"
+   ],
+   "depends_on": [
+    "WP-84"
+   ],
+   "inputs": [
+    "RSK-024; boot.md v1.2's declared limit",
+    "kernel/src/sched/mod.rs: set_waiting gives a waiting thread the lowest priority, pick_next takes the best priority only, poll_until; tick() counts on CPU 0 while user code spins",
+    "kernel/src/services.rs: the manager is spawned above the boot thread; the wait for LOAD and LOAD_BUDGET_TICKS (WP-82)",
+    "TST-M6-BOOT-HALT's second phase (a manager that blocks) and its disk_files (WP-84)"
+   ],
+   "files": [
+    "kernel/src/sched/mod.rs",
+    "kernel/src/services.rs",
+    "kernel/src/kmain.rs",
+    "user/apps",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/boot.md",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "tests/test_ci_workflows.py",
+    ".github/workflows/verify.yml"
+   ],
+   "contract_refs": [
+    "docs/contracts/boot.md"
+   ],
+   "actions": [
+    "مهلة LOAD تُنفَّذ حتى لو دار المدير بلا حجب (من WP-84 وتدقيقها في 2026-11-14؛ RSK-024)",
+    "finding: a manager that spins without blocking keeps the boot thread from ever running, so the budget of WP-82 is never checked and the halt line and band of WP-84 never appear",
+    "design to decide in the package (2-3 options, with the scheduler read first): the deadline checked from the timer tick, which then wakes or boosts the waiting boot thread; the boot thread waiting at a priority above user threads during the load; a watchdog of the load in the tick itself; each with what it changes for every other waiter",
+    "test first: a third phase of TST-M6-BOOT-HALT, or a case of its own, with a manager that spins (a lab application that never yields): the halt line with code 2 and wait_ticks within the budget's margin; a SECURITY mutant that removes the enforcement; the scheduler's own ktest for the wake",
+    "the M6 step's budget: the suite's worst case is 932 s of 1080 after WP-84; a new phase of about 25 s still fits; if it does not, the cap and job a's limit rise with the case",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-14 estimate: unmeasured; a scheduler change, to be sized after the design"
+   ],
+   "acceptance": "a manager that spins without blocking ends in the halt line with code 2 within the budget's margin and the band, on CI; the scheduler's cases and the mutant PASS; boot.md's declared limit is removed",
+   "test_ids": [
+    "TST-M6-BOOT-HALT"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
    "status": "planned",
    "status_history": [
