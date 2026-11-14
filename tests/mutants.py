@@ -29,11 +29,14 @@ For each mutant: apply, build only the artifacts its killer tests need, run thos
 PASS = kill ratio >= 0.95 over valid mutants. `--check` only applies/reverts the patches and
 type-checks them on the host target (what this sandbox can do without the UEFI toolchain).
 """
-import argparse, json, os, subprocess, sys, tempfile, time, shutil
+import argparse, json, os, re, subprocess, sys, tempfile, time, shutil
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 THRESHOLD = 0.95
+# Every gate the harness knows (argparse --stage); each must have a HOST_SUITES gate suite that
+# mutants.yml runs (TST-M0-005 GateMapping, WP-90).
+STAGES = ("M2", "M3", "M4", "M5", "M6")
 
 # The per-case QEMU timeout while a mutant runs. It bounds a mutant that hangs a case, but it
 # must not fail a case that is merely slow: the slowest M5 case on the clean tree is
@@ -592,8 +595,8 @@ MUTANTS = [
      "                        if hung {\n                            self.services[i].wd_deadline = None;\n                            self.services[i].killing = true;\n",
      ["TST-M5-SVC-WATCHDOG"], "the watchdog finds a service hung but never kills it, so it is never restarted (hung is not given_up:1:131072)"),
     # ---- M6 (WP-45 red team): the boot-mode gate (boot.md v1.1); SECURITY, killer is the
-    # release image's TST-M6-INTERACTIVE-BOOT. No M6 gate runs them yet (TST-M6-MUTANTS is a
-    # WP-66 proposal); the anchor guard of TST-M0-005 keeps each anchor unique meanwhile.
+    # release image's TST-M6-INTERACTIVE-BOOT, run by the M6 gate (TST-M6-MUTANTS, WP-90); the
+    # anchor guard of TST-M0-005 keeps each anchor unique.
     # `|| true` rather than `true`, so `ecx` stays used and the mutant builds warning-free.
     ("M130", "kernel/src/arch/x86_64/fwcfg.rs",
      "    ecx & CPUID_ECX_HYPERVISOR != 0",
@@ -769,7 +772,8 @@ MUTANTS = [
 def stage_of(mid: str) -> str:
     """M01..M29 belong to the M2 gate (TST-M2-MUTANTS), M30..M49 to the M3 gate (TST-M3-MUTANTS),
     M50..M81 to the M4 gate (TST-M4-MUTANTS), M82..M129 to the M5 gate (TST-M5-MUTANTS, WP-38),
-    M130.. to the M6 gate (TST-M6-MUTANTS; the M6-GATE suite is created with the first M6 mutant)."""
+    M130.. to the M6 gate (TST-M6-MUTANTS, WP-90). Every stage returned here must have a gate
+    suite in tools/project.py HOST_SUITES run by mutants.yml (TST-M0-005 GateMapping)."""
     n = int(mid[1:])
     return "M2" if n < 30 else ("M3" if n < 50 else ("M4" if n < 82 else ("M5" if n < 130 else "M6")))
 
@@ -872,8 +876,33 @@ def apply(wt: Path, m) -> None:
     p.write_text(s.replace(old, new), encoding="utf-8")
 
 
+# Every tree a mutant may touch (WP-90): the sources and the tooling that tests them. A tooling
+# mutant left in place would run under every later mutant's killers.
+RESTORED = ("kernel", "user", "tools", "tests", ".github")
+
+
 def reset(wt: Path) -> None:
-    subprocess.run(["git", "checkout", "-q", "--", "kernel", "user"], cwd=wt, check=True)
+    """Restore every tree a mutant may touch, then prove it: a tracked path left modified (or
+    staged) under RESTORED fails the run rather than leak into the next mutant (WP-90)."""
+    subprocess.run(["git", "checkout", "-q", "--"] + list(RESTORED), cwd=wt, check=True)
+    dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "--"] + list(RESTORED),
+                           cwd=wt, check=True, capture_output=True, text=True).stdout.strip()
+    if dirty:
+        raise RuntimeError(f"reset left tracked changes in the worktree: {dirty}")
+
+
+def is_tooling(rel: str) -> bool:
+    """A mutant of the lab's tooling (tools/, tests/, .github/), not of the image: its killers are
+    host cases, run through the worktree's tools/project.py; no image is built and no guest case
+    is swept for it (WP-90)."""
+    return Path(rel).parts[0] not in ("kernel", "user")
+
+
+def needs_image(target, rel, killers) -> bool:
+    """Whether the mutant's image is built before its declared killers run: only for a kernel or
+    user mutant with at least one guest killer. A source mutant killed by host cases alone (libui's
+    unit tests, TST-M0-003's source guards) builds the image only if the fairness sweep needs it."""
+    return not is_tooling(rel) and any(suite_of(target, k) is not None for k in killers)
 
 
 def crate_of(rel: str):
@@ -892,11 +921,46 @@ def crate_of(rel: str):
     return None
 
 
+# The driver that judges every killer is the clean checkout's tools/project.py (WP-90): HOST_SUITES,
+# host-suite-of and the PASS/FAIL decision never come from the worktree, where a tooling mutant
+# could judge itself (a mutated cmd_test_host_case printing OK). Only the case's own files are
+# read from the worktree, through NAWAH_ROOT.
+PYPROJ = ["python3", str(REPO / "tools" / "project.py")]
+
+
 def host_suite_of(wt: Path, test_id):
-    """The host suite of tools/project.py that holds `test_id`, or None."""
-    r = subprocess.run(["python3", str(wt / "tools" / "project.py"), "host-suite-of", test_id],
-                       cwd=wt, capture_output=True, text=True)
+    """The host suite of the clean tools/project.py that holds `test_id`, or None (`wt` is kept
+    for the callers; the lookup never reads the worktree)."""
+    r = subprocess.run(PYPROJ + ["host-suite-of", test_id], cwd=REPO, capture_output=True, text=True,
+                       env={k: v for k, v in os.environ.items() if k != "NAWAH_ROOT"})
     return r.stdout.strip() or None if r.returncode == 0 else None
+
+
+# A host killer's FAIL is a kill only when the case's test runner reached a verdict and reported
+# failing tests (unittest `FAILED (...)`, cargo `test result: FAILED`), and the same case passes
+# on the clean tree. A case that cannot start (its file does not compile or import, a missing
+# tool, a timeout) or that also fails unmutated is ERROR: a kill must be caused by the mutant.
+RUNNER_FAILED = re.compile(r"^(FAILED \(|test result: FAILED)", re.M)
+_CLEAN_HOST = {}
+
+
+def runner_reported_failures(out: str, env) -> bool:
+    m = re.search(r" run=(\S+)", out)
+    scratch = env.get("NAWAH_SCRATCH_EVIDENCE")
+    if not m or not scratch:
+        return False
+    d = Path(scratch) / m.group(1)
+    text = "".join((d / f).read_text(encoding="utf-8", errors="replace") for f in ("stdout.log", "stderr.log") if (d / f).exists())
+    return bool(RUNNER_FAILED.search(text))
+
+
+def passes_clean(env, host_suite, test_id) -> bool:
+    """The host case on the clean checkout (cached per run)."""
+    if test_id not in _CLEAN_HOST:
+        r = sh(PYPROJ + ["test", "--target", "host", "--suite", host_suite, "--only", test_id], REPO,
+               dict(env, NAWAH_ROOT=str(REPO)))
+        _CLEAN_HOST[test_id] = r.returncode == 0
+    return _CLEAN_HOST[test_id]
 
 
 def suite_of(target, test_id):
@@ -934,25 +998,33 @@ def run_killers(wt: Path, env, target, killers, early_exit=False):
     stops at the first FAIL (one kill is enough): the fairness sweep over ~140 cases need not
     finish once a mutant is caught, which is most of a surviving-mutant run's cost."""
     results = {}
-    pyproj = ["python3", str(wt / "tools" / "project.py")]
     for tid in killers:
         suite = suite_of(target, tid)
+        host_suite = None
         if suite is None:
-            # A host case (M5 gate: libui's unit tests, the text conformance suites) runs on the
-            # worktree through the same driver; project.py knows its suite.
+            # A host case (libui's unit tests, the text conformance suites, the tooling checks)
+            # runs on the worktree's files through the clean driver; it knows its suite.
             host_suite = host_suite_of(wt, tid)
             if host_suite is None:
                 results[tid] = "SKIPPED"
                 continue
-            r = sh(pyproj + ["test", "--target", "host", "--suite", host_suite, "--only", tid], wt, env)
+            r = sh(PYPROJ + ["test", "--target", "host", "--suite", host_suite, "--only", tid], wt, env)
         else:
-            r = sh(pyproj + ["test", "--target", target, "--suite", suite, "--only", tid], wt, env)
+            r = sh(PYPROJ + ["test", "--target", target, "--suite", suite, "--only", tid], wt, env)
         if r.returncode == 0:
             results[tid] = "PASS"
+        elif host_suite is not None and not (runner_reported_failures(r.stdout, env) and passes_clean(env, host_suite, tid)):
+            # Not caused by the mutant (see RUNNER_FAILED): never a kill.
+            results[tid] = "ERROR"
         elif r.returncode == 20 or "no artifact" in r.stdout:
             results[tid] = "SKIPPED"
         elif "LAB_ERROR" in r.stdout:
             # The emulator died twice: no verdict on the mutant from this case (never a kill).
+            results[tid] = "ERROR"
+        elif host_suite is None and not (r.returncode == 1 and re.search(
+                rf"^{re.escape(tid)} {re.escape(target)}: FAIL\b.* run=\S+", r.stdout, re.M)):
+            # A guest kill is project.py's own FAIL verdict for this case (rc 1); an internal error
+            # (rc 60: no QEMU or OVMF, unknown case ids) is never a kill (WP-90 audit).
             results[tid] = "ERROR"
         else:
             results[tid] = "FAIL"
@@ -969,12 +1041,31 @@ def all_cases(target):
     return ids
 
 
+def harness_env(base, wt: Path, scratch: Path):
+    """The killers' environment: the worktree as NAWAH_ROOT, scratch evidence, the per-case QEMU
+    timeout, and no CARGO_TARGET_DIR, so the worktree and the clean checkout each build in their
+    own target/ (a shared one let the clean run reuse a mutated build, WP-90)."""
+    env = {k: v for k, v in base.items() if k != "CARGO_TARGET_DIR"}
+    env.update(NAWAH_ROOT=str(wt), NAWAH_SCRATCH_EVIDENCE=str(scratch), NAWAH_QEMU_TIMEOUT_S=str(MUTANT_CASE_TIMEOUT_S))
+    return env
+
+
+def gate_verdict(report) -> bool:
+    """The gate's verdict (WP-90): kill ratio >= THRESHOLD over a non-empty set of valid mutants,
+    no surviving SECURITY mutant, and no invalid SECURITY mutant (an anchor that no longer matches
+    or a mutant that does not build would otherwise leave the SECURITY rule silently)."""
+    report["surviving_security"] = [m for m in report["survived"] if security_of(m)]
+    report["invalid_security"] = [m for m in report["invalid"] if security_of(m)]
+    return bool(report["ratio"] >= THRESHOLD and report["valid"] and not report["surviving_security"]
+                and not report["invalid_security"])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--target", default="pc-qemu")
     ap.add_argument("--report", default="build/mutants-report.json")
     ap.add_argument("--only", help="comma-separated mutant ids")
-    ap.add_argument("--stage", choices=["M2", "M3", "M4", "M5", "M6"], help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50-M81 = M4, M82-M129 = M5, M130.. = M6)")
+    ap.add_argument("--stage", choices=list(STAGES), help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50-M81 = M4, M82-M129 = M5, M130.. = M6)")
     ap.add_argument("--check", action="store_true", help="apply/revert each patch and cargo check on the host target only")
     a = ap.parse_args()
     mutants = [m for m in MUTANTS if (not a.only or m[0] in a.only.split(",")) and (not a.stage or stage_of(m[0]) == a.stage)]
@@ -985,7 +1076,7 @@ def main():
     subprocess.run(["git", "worktree", "add", "-q", "--detach", str(wt), "HEAD"], cwd=REPO, check=True)
     report = {"threshold": THRESHOLD, "target": a.target, "mutants": [], "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     try:
-        env = dict(os.environ, NAWAH_ROOT=str(wt), NAWAH_SCRATCH_EVIDENCE=str(scratch), NAWAH_QEMU_TIMEOUT_S=str(MUTANT_CASE_TIMEOUT_S))
+        env = harness_env(os.environ, wt, scratch)
         env.setdefault("RUSTUP_TOOLCHAIN", os.environ.get("RUSTUP_TOOLCHAIN", ""))
         if not env["RUSTUP_TOOLCHAIN"]:
             del env["RUSTUP_TOOLCHAIN"]
@@ -1016,26 +1107,43 @@ def main():
                 continue
             benv = dict(env, NAWAH_BUILD_ID=mutant_build_id(mid), NAWAH_OUT=str(wt / "build" / a.target),
                         NAWAH_APPS_DIR=str(wt / "build" / a.target / "apps"))
-            (wt / "build" / a.target / "apps").mkdir(parents=True, exist_ok=True)
             need_release = needs_release(a.target, killers)
-            build_ok = True
-            steps = [app_step(n) for n in APPS] + [(KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
-            if need_release:
-                steps.append((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"))
-            for step, out, name in steps:
-                r = sh(step, wt, benv, timeout=1800)
-                if r.returncode != 0:
-                    build_ok = False
-                    entry["reason"] = r.stdout[-2000:]
-                    break
-                shutil.copy(wt / out, wt / "build" / a.target / name)
-            if not build_ok:
+            out_dir = wt / "build" / a.target
+
+            def build_image():
+                """The mutant's apps, test image and (when a killer boots it) release image. The
+                images a previous mutant left are removed first (the harness's own outputs only),
+                so a guest case never boots another mutant's kernel."""
+                for name in ("NAWAH-KTEST.EFI", "NAWAH.EFI", "NAWAH-NEG.EFI", "build-id.txt"):
+                    (out_dir / name).unlink(missing_ok=True)
+                shutil.rmtree(out_dir / "apps", ignore_errors=True)
+                (out_dir / "apps").mkdir(parents=True, exist_ok=True)
+                steps = [app_step(n) for n in APPS] + [(KTEST_STEP, KTEST_OUT, "NAWAH-KTEST.EFI")]
+                if need_release:
+                    steps.append((RELEASE_STEP, RELEASE_OUT, "NAWAH.EFI"))
+                for step, out, name in steps:
+                    r = sh(step, wt, benv, timeout=1800)
+                    if r.returncode != 0:
+                        entry["reason"] = r.stdout[-2000:]
+                        return False
+                    shutil.copy(wt / out, out_dir / name)
+                (out_dir / "build-id.txt").write_text(benv["NAWAH_BUILD_ID"] + "\n")
+                return True
+
+            built = needs_image(a.target, rel, killers)
+            entry["image_built"] = built
+            if built and not build_image():
                 entry.update(status="invalid", seconds=round(time.time() - t0, 1)); report["mutants"].append(entry)
                 print(f"{mid}: INVALID (does not build) ({note})"); continue
-            (wt / "build" / a.target / "build-id.txt").write_text(benv["NAWAH_BUILD_ID"] + "\n")
             killed_by, results = run_killers(wt, env, a.target, killers)
             declared_miss = not killed_by
-            if not killed_by:
+            if not killed_by and not built and not is_tooling(rel):
+                # A source mutant its host killers missed: the sweep below boots its image.
+                built = entry["image_built"] = build_image()
+                if not built:
+                    entry.update(status="invalid", results=results, seconds=round(time.time() - t0, 1)); report["mutants"].append(entry)
+                    print(f"{mid}: INVALID (does not build) ({note})"); _write_report(a.report, report); continue
+            if not killed_by and built:
                 # Be fair before declaring a survivor: build the remaining artifacts and run
                 # everything the suites have.
                 rest = [c for c in all_cases(a.target) if c not in killers]
@@ -1063,8 +1171,10 @@ def main():
             print(f"{mid}: {'killed by ' + ','.join(killed_by) if killed_by else 'SURVIVED'} [{entry['seconds']}s] ({note})")
             _write_report(a.report, report)
     finally:
-        reset(wt)
-        subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO)
+        try:
+            reset(wt)
+        finally:
+            subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO)
         shutil.rmtree(tmp, ignore_errors=True)
     valid = [m for m in report["mutants"] if m["status"] in ("killed", "survived")]
     killed = [m for m in valid if m["status"] == "killed"]
@@ -1080,9 +1190,9 @@ def main():
         bad = [m["id"] for m in report["mutants"] if m["status"] == "invalid"]
         print(f"\n{'OK' if not bad else 'FAIL'}: {len(report['mutants']) - len(bad)}/{len(report['mutants'])} mutants apply and type-check" + (f"; invalid: {bad}" if bad else ""))
         return 0 if not bad else 1
-    report["surviving_security"] = [m for m in report["survived"] if security_of(m)]
-    verdict = ratio >= THRESHOLD and valid and not report["surviving_security"]
-    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; surviving_security={report['surviving_security']}; invalid={report['invalid']}; declared_killers_missed={report['declared_killers_missed']}; report={a.report}")
+    verdict = gate_verdict(report)
+    _write_report(a.report, report)
+    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; surviving_security={report['surviving_security']}; invalid={report['invalid']}; invalid_security={report['invalid_security']}; declared_killers_missed={report['declared_killers_missed']}; report={a.report}")
     return 0 if verdict else 1
 
 
