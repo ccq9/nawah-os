@@ -332,17 +332,16 @@ pub struct Text {
 /// (v1.9) A value between the quotes of a description: data the user typed or the application
 /// took from a request. A quote, a control character (C0, DEL, C1), a line or paragraph
 /// separator and a bidi formatting character are written `[U+XXXX]`, as the list view writes
-/// its cells, so a value never ends itself, its line or its direction; and the value is cut
-/// at a whole character or escape that still leaves room for the closing quote, so the line is
-/// never left open.
-fn put_quoted(out: &mut Text, cps: &[u32]) {
-    let mut tmp = [0u8; 4];
-    for &cp in cps {
-        let Some(c) = char::from_u32(cp) else {
-            continue;
-        };
+/// its cells, so a value never ends itself, its line or its direction. A value that does not
+/// fit with its closing quote is cut, in order, before the first character or escape that
+/// would not leave room for the quote and for the cut's mark; the number of characters left
+/// out is returned (0: the whole value is in the line) and the caller writes ` cut=<k>`.
+fn put_quoted(out: &mut Text, cps: &[u32]) -> usize {
+    // What one character takes in the line; `None` for a value `char` cannot hold.
+    let need = |cp: u32| -> Option<(char, bool, usize)> {
+        let c = char::from_u32(cp)?;
         let named = c == '"' || list::is_control(cp) || list::is_bidi_control(cp);
-        let need = if named {
+        let n = if named {
             // "[U+" and "]" around the hex digits `list::hex` writes: four at least.
             4 + match cp {
                 0..=0xFFFF => 4,
@@ -352,8 +351,22 @@ fn put_quoted(out: &mut Text, cps: &[u32]) {
         } else {
             c.len_utf8()
         };
-        if out.len + need + 1 > out.buf.len() {
-            break;
+        Some((c, named, n))
+    };
+    let total: usize = cps.iter().filter_map(|&cp| need(cp)).map(|x| x.2).sum();
+    // Room kept after the value: the closing quote, and the mark only when the value is cut.
+    let after = if out.len + total < out.buf.len() {
+        1
+    } else {
+        1 + CUT_ROOM
+    };
+    let mut tmp = [0u8; 4];
+    for (k, &cp) in cps.iter().enumerate() {
+        let Some((c, named, n)) = need(cp) else {
+            continue;
+        };
+        if out.len + n + after > out.buf.len() {
+            return cps.len() - k;
         }
         if named {
             out.put(b"[U+");
@@ -363,7 +376,12 @@ fn put_quoted(out: &mut Text, cps: &[u32]) {
             out.put(c.encode_utf8(&mut tmp).as_bytes());
         }
     }
+    0
 }
+
+/// The bytes of the longest cut mark, ` cut=<k>`: k is at most TEXT_MAX, two digits.
+const CUT_ROOM: usize = 5 + 2;
+const _: () = assert!(TEXT_MAX < 100);
 
 impl Default for Text {
     fn default() -> Self {
@@ -860,8 +878,12 @@ impl Dialog {
             // A password field is described without its value (v1.1).
             Role::TextField | Role::Value => {
                 out.put(b" value=\"");
-                put_quoted(out, &e.text[..e.text_len]);
+                let cut = put_quoted(out, &e.text[..e.text_len]);
                 out.put(b"\"");
+                if cut > 0 {
+                    out.put(b" cut=");
+                    out.num(cut);
+                }
             }
             _ => {}
         }

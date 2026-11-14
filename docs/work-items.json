@@ -6031,6 +6031,61 @@
     "evidence/20261114T182504Z-d4954d3a-001-m"
    ],
    "blocker": null
+  },
+  {
+   "id": "WP-97",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M5-005"
+   ],
+   "depends_on": [
+    "WP-94"
+   ],
+   "inputs": [
+    "user/apps/displayd/src/main.rs:906-908 and :929-930: `SAY window \"<title>\" focused` / `resized` writes the title, client data from CREATE and TITLE (:989-991, :1566-1570; TITLE_MAX 32, buffer 64), between quotes as it is",
+    "user/apps/displayd/src/main.rs:1743-1772: the A11Y relay passes the focused client's text to SAY unchanged",
+    "user/apps/narrator/src/main.rs:47-80: the narrator writes every byte outside 0x20-0x7E as \\u{…}, so only printable ASCII, the quote included, can forge",
+    "the audit of WP-94 on 2026-11-14 (findings outside the package); RSK-022",
+    "docs/contracts/display.md (the A11Y and SAY lines) and ui.md v1.9 section 3.9 (the escaping WP-94 gave libui's values)"
+   ],
+   "files": [
+    "user/apps/displayd/src/main.rs",
+    "docs/contracts/display.md",
+    "docs/contracts/ui.md",
+    "platform/pc-qemu/target.json",
+    "platform/pc-qemu/expect",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/security/threat-model.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/display.md"
+   ],
+   "actions": [
+    "سطر القارئ لا يُزوَّر من عنوان نافذة ولا ينتحل تطبيقٌ أسطر النظام (من تدقيق WP-94 في 2026-11-14؛ RSK-022)",
+    "finding 1: a window title containing \" forges attributes in the compositor's own line `window \"<title>\" focused`; the title is the client's",
+    "finding 2: the focused application's A11Y text is spoken as it is, so an application can speak a line that reads like the compositor's (`window \"…\" focused`) or like another element's description; nothing in the spoken line says who said it",
+    "design to decide in the package (2-3 options each, with the services and threat engineers): the title escaped as libui escapes a value; for the relay, a prefix or a separate SAY form that marks application lines apart from the compositor's own, against refusing application lines that begin with the compositor's words; what the frozen expect files then read (every guest case that reads narrator lines)",
+    "test first: guest cases with a forging title and a spoofing A11Y line (TST-M5-WINDOW-A11Y, TST-M5-NARRATOR-AUTHORITY or a new case), SECURITY mutants for each rule; the local guest suites on QEMU before the push",
+    "depends on WP-94 for the escaping rule and its contract section",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here (title; relay) before activating",
+    "2026-11-14 estimate: unmeasured; the relay's change touches every expect file with narrator lines, to be sized at activation"
+   ],
+   "acceptance": "a title with a quote yields one unforgeable window line; an application's line cannot be taken for the compositor's; the cases and mutants named at activation PASS on CI; display.md's new version states both rules",
+   "test_ids": [
+    "TST-M5-WINDOW-A11Y",
+    "TST-M5-NARRATOR-AUTHORITY"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
   }
  ]
 }
