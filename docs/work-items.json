@@ -5688,7 +5688,8 @@
     "study (systematic debugging, 2026-11-14): root cause confirmed from the workflow and four runs: the step lists six suite commands under bash -e, so the first failing suite ends the step; inside a suite every case already runs (cmd_test_host accumulates rc). Effect measured: WP-49's and WP-80's own host M6 red was never observed (the M5 compile failure ended the step: runs 42769555412, 42790269224), WP-81's red needed its own push (run 42795169926 stopped at M0), and each such miss costs one CI cycle of 25-35 min",
     "fix: one loop over the host suites that runs all of them, remembers a failure and exits non-zero at the end; the strict step stays skipped on a red run as today. Not in scope: a red guest step still ends the job (WP-88 separates M5 and M6 into jobs)",
     "test first (TST-M0-003): the Host suites step names every non-gate host suite, does not stop at the first failure (no bare sequence under -e) and fails when any suite failed; red on the present step",
-    "sequence: lands with WP-82's and WP-83's push train because all three touch verify.yml and tests/test_ci_workflows.py; estimate about 15 calls / 15 min (unmeasured); budget line: OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first"
+    "sequence: lands with WP-82's and WP-83's push train because all three touch verify.yml and tests/test_ci_workflows.py; estimate about 15 calls / 15 min (unmeasured); budget line: OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first",
+    "2026-11-14 activation estimate (lab engineer): about 15 calls / 15 min, unmeasured, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls)"
    ],
    "acceptance": "TST-M0-003 PASS with the host-step case; a CI run with two failing host suites reports both (observed once on the red push that follows)",
    "test_ids": [
@@ -5697,9 +5698,10 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
