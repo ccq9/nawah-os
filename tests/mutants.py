@@ -767,6 +767,38 @@ MUTANTS = [
      "pub const LOAD_BUDGET_TICKS: u64 = 10_000;",
      "pub const LOAD_BUDGET_TICKS: u64 = 2_000;",
      ["TST-M0-003"], "the LOAD budget back to 2000 ticks (under the 1096 measured on CI run 42696067096): test_the_interactive_load_wait_uses_the_named_budget fails (kernel/src/kmain.rs: LOAD_BUDGET_TICKS = 2_000, not 10000), TST-M0-003 FAILED"),
+    # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
+    # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
+    # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
+    # All SECURITY: each reopens a path for a forged, foreign or partial verdict to become evidence.
+    ("M174", "tools/project.py",
+     '    present_forbidden += [f"{m} ({name})" for name, r in received for m in forbidden if m in r]',
+     "    present_forbidden += []",
+     ["TST-M5-LAB-TOOL"], "SECURITY: a forbidden marker the guest wrote only to the console transcript no longer fails the case"),
+    ("M185", "tools/project.py",
+     "            if want != got:\n                print(f\"adopt refused: {d.name} names {got!r} where {name} is {want!r}\")",
+     "            if want != got and name != \"GITHUB_RUN_ATTEMPT\":\n                print(f\"adopt refused: {d.name} names {got!r} where {name} is {want!r}\")",
+     ["TST-M0-007"], "SECURITY: adopt-native no longer compares the run attempt, so another attempt's directories are adopted as this run's"),
+    ("M186", "tools/project.py",
+     "        have = run_ci_identity(d)\n        if have is None:\n            print(f\"adopt refused: {d.name} carries no ci identity",
+     "        have = run_ci_identity(d) or tuple(expect)\n        if have is None:\n            print(f\"adopt refused: {d.name} carries no ci identity",
+     ["TST-M0-007"], "SECURITY: a new directory without ci identity is adopted as if this run wrote it"),
+    ("M187", ".github/workflows/verify.yml",
+     "        if: ${{ !cancelled() && steps.adopt.outcome == 'success' }}",
+     "        if: always()",
+     ["TST-M0-003"], "SECURITY: Publish runs even when the adopt step failed or the run was cancelled"),
+    ("M188", ".github/workflows/verify.yml",
+     "  contents: read  # the code under test runs here",
+     "  contents: write  # the code under test runs here",
+     ["TST-M0-003"], "SECURITY: the top-level token may write, so the code under test in job a can push"),
+    ("M189", ".github/workflows/verify.yml",
+     "    if: ${{ !cancelled() }}",
+     "    if: always()",
+     ["TST-M0-003"], "SECURITY: the merge job runs on a cancelled run (always() instead of !cancelled())"),
+    ("M190", ".github/workflows/verify.yml",
+     'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
+     'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; continue',
+     ["TST-M0-003"], "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -815,7 +847,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # M6 (WP-50 50a): the list view (ui.md v1.8 §3.8): a selection is by row id (M176),
             # typing never activates (M177), a denial is never shown as empty (M179), and bidi
             # controls in a cell are shown, never obeyed (M180).
-            "M176", "M177", "M179", "M180"}
+            "M176", "M177", "M179", "M180",
+            # M6 tooling (WP-82, WP-83): the console-transcript forbidden check (M174), adopt-native's
+            # attempt and identity checks (M185, M186) and the merge job's guards (M187-M190).
+            "M174", "M185", "M186", "M187", "M188", "M189", "M190"}
 
 
 def security_of(mid: str) -> bool:
