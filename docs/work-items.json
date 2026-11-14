@@ -5580,7 +5580,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-14 re-scoped by the manager on measured facts (the former acceptance, kept for history: «TST-M0-003 PASS with the per-job budgets {a 40, b 40, c 40, merge 20} and M6 18 in c; TST-M0-001 and TST-M0-007 PASS; a verify run with three test jobs and the merge job publishing one evidence branch; the measured critical path recorded»): since the owner's DEC-029 the M6 mutation gate runs in every verify run as job m, and it is now the run's critical path: on run 43626254653 job a took 25 min 41 s (M5 10 min 58 s, M6 1 min 51 s, host suites 94 s) and job m 25 min 40 s (the gate 23 min 13 s), the merge job 2 min; on run 43633894291 the gate took 23 min 43 s. Splitting job a into a, b and c would add two toolchains and shorten nothing while the gate runs 23 minutes beside them. What the four items that wait for this one need (WP-71, WP-79, WP-84, WP-87) is the M6 guest step's cap: the suite's worst case, the sum of its phase timeouts, is 895 s against the cap's 900. This item therefore does the cap alone: M6 15 -> 18 (1080 s) and job a 58 -> 62 ((15 + 18 + 18) x 1.2 = 61.2), test first. A later item that adds M6 phases past 1080 s raises the cap with its own case (the bounded-suite case fails until it does). The fan-out into parallel test jobs moves to WP-98 together with sharding the gate, the only form in which it shortens the run",
-    "2026-11-10 estimate (lab engineer, unmeasured): 45-60 tool calls / 45-60 min; under the budget line"
+    "2026-11-10 estimate (lab engineer, unmeasured): 45-60 tool calls / 45-60 min; under the budget line",
+    "2026-11-14 activation estimate (manager working directly): about 12 calls / 15 min: two numbers in verify.yml, the budget cases and the oracle text, the host suite and the workflow mutants locally, one short audit pass, one push; under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first)"
    ],
    "acceptance": "TST-M0-003 PASS with the per-job budgets {a 62, m 180, merge 20} and the M6 guest step capped at 18; TST-M0-001 and TST-M0-007 PASS; the measured times of the jobs recorded",
    "test_ids": [
@@ -5592,9 +5593,10 @@
     "python3 -I tests/test_ci_workflows.py",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
