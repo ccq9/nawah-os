@@ -901,7 +901,7 @@ MUTANTS = [
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; continue',
      ["TST-M0-003"], "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted"),
-    # M214..M216 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
+    # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
      "        if need > have && !self.has_free(need - have)? {\n",
@@ -917,6 +917,16 @@ MUTANTS = [
      "        Ok(want == 0 || self.nth_free(want, self.alloc_end())?.is_some())\n",
      "        Ok(want <= 1 || self.nth_free(want - 1, self.alloc_end())?.is_some())\n",
      ["TST-M3-FAT32-DISK-FULL"], "SECURITY: a write that needs one cluster more than the volume has is let through, takes what is free and loses it: the line carries refused_writes and a free_delta that are not 0 and the host checks find lost clusters, TST-M3-FAT32-DISK-FULL FAIL"),
+    # M217: the question asks for every cluster of the file, not for the ones it lacks.
+    ("M217", "kernel/src/fs/fat32.rs",
+     "        if need > have && !self.has_free(need - have)? {\n",
+     "        if need > have && !self.has_free(need)? {\n",
+     ["TST-M3-FAT32-DISK-FULL"], "SECURITY: a file that has clusters cannot be extended while fewer clusters are free than it would hold in all, though the volume holds the call: the line carries b_grow=K_E_FS_DISK_FULL, TST-M3-FAT32-DISK-FULL FAIL"),
+    # M218: the clusters a file has are counted from its size, not along its chain.
+    ("M218", "kernel/src/fs/fat32.rs",
+     "        let have = self.chain_len(file.first, need)?;\n",
+     "        let have = file.size.div_ceil(cluster_bytes as u32).min(need);\n",
+     ["TST-M3-FAT32-DISK-FULL"], "SECURITY: a write into a cluster the chain already holds past the size is refused on a full volume, and on a chain shorter than its size the question would ask for too few: the line carries d_into=K_E_FS_DISK_FULL, TST-M3-FAT32-DISK-FULL FAIL"),
     # M212, M213 (SECURITY, WP-118): the exact numbers a fault case gives the host checker.
     # M212: any number of chains longer than their size is accepted once the case allows some.
     ("M212", "tools/fat32.py",
@@ -1033,7 +1043,12 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M210", "M211",
             # M6 tooling (WP-118): the host checker compares the exact numbers a fault case
             # gives it: chains longer than their size (M212) and lost clusters (M213).
-            "M212", "M213"}
+            "M212", "M213",
+            # M6 (WP-121): a write the volume cannot hold whole changes nothing (files.md v1.7):
+            # the call asks for its clusters (M214), counts them rounded up (M215), is not let
+            # through one short (M216), asks only for the ones the file lacks (M217) and counts
+            # the ones it has along the chain (M218).
+            "M214", "M215", "M216", "M217", "M218"}
 
 
 def security_of(mid: str) -> bool:

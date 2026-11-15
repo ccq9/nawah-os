@@ -3378,18 +3378,20 @@ fn fat32_fault_write_check() -> ! {
 /// the file, its node and the open's position are what they were; a write that fits is made
 /// whole, down to the volume's last cluster. The test kernel's hook ends the volume, for the
 /// allocator, just before a chosen free cluster: the allocator's own scan finds nothing past
-/// it. Three files: A, empty, is refused three clusters with two left, takes the two, is
+/// it. Four files: A, empty, is refused three clusters with two left, takes the two, is
 /// refused one byte more and a write that overwrites one cluster and needs a third, and is
 /// overwritten in place with nothing left; B, half a cluster, is refused a write that needs
-/// a second cluster and filled to the end of its own; C, empty, is refused one byte, and
-/// takes the two clusters A's removal gives back. Then the files are removed and the free
-/// count is what it was: the host's ordinary checks judge the image.
+/// a second cluster and filled to the end of its own; C, empty, is refused one byte; D, whose
+/// chain is one cluster longer than its size (an append whose entry write was refused before
+/// the volume was ended), is written into that cluster with nothing left. A's removal gives
+/// two clusters back: C takes one, B is extended by the other, and C is refused one more.
+/// Then the files are removed and the free count is what it was: the host's ordinary checks
+/// judge the image.
 fn fat32_disk_full() -> ! {
     use crate::fs::vfs;
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
     }
-    let free0 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
     let rw = vfs::O_READ | vfs::O_WRITE;
     let (all, other) = (fault_bytes(1), fault_bytes(2));
     let (half, one, two) = (FAULT_HALF / 2, FAULT_HALF, 2 * FAULT_HALF);
@@ -3412,17 +3414,38 @@ fn fat32_disk_full() -> ! {
         Ok(n) => alloc::format!("{}", n),
         Err(e) => alloc::string::String::from(e.code()),
     };
+    // A refused seek would leave the next write somewhere else than the case says.
+    let seek_to = |f: &vfs::FileRef, pos: usize| {
+        if vfs::seek(f, pos as u64) != Ok(pos as u64) {
+            fail("could not move an open's position inside its file")
+        }
+    };
 
-    let (Ok(a), Ok(b), Ok(c)) = (
+    let (Ok(a), Ok(b), Ok(c), Ok(d)) = (
         vfs::open(b"/FULL1.TXT", rw | vfs::O_CREATE),
         vfs::open(b"/FULL2.TXT", rw | vfs::O_CREATE),
         vfs::open(b"/FULL3.TXT", rw | vfs::O_CREATE),
+        vfs::open(b"/FULL4.TXT", rw | vfs::O_CREATE),
     ) else {
         fail("could not create the case's files")
     };
+    // Counted once the names exist: a directory that grew for them is not the case's matter.
+    let free0 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
     if !matches!(vfs::write(&b, &all[..half]), Ok(n) if n == half) {
         fail("could not write the second file's half cluster")
     }
+    // D: one cluster, then an append whose last write, the entry, is refused by the block
+    // layer's hook (the ninth write of such a call: TST-M3-FAT32-FAULT-WRITE counts them). The
+    // new cluster stays linked past the size (files.md v1.6).
+    if !matches!(vfs::write(&d, &all[..one]), Ok(n) if n == one) {
+        fail("could not write the fourth file's first cluster")
+    }
+    crate::block::arm_write_fault(9);
+    let d_fault = vfs::write(&d, &all[one..two]);
+    crate::block::disarm_write_fault();
+    let d_long = size_of(b"/FULL4.TXT") == one as u64
+        && node_size(&d) == one as u32
+        && chain_of(b"/FULL4.TXT") == 2;
     if crate::fs::with(|fs| fs.arm_disk_full(2)).is_err() {
         fail("could not end the volume two free clusters ahead")
     }
@@ -3436,7 +3459,7 @@ fn fat32_disk_full() -> ! {
     );
     let a_fit = attempt(&a, &all[..two]);
     let a_more = attempt(&a, b"x");
-    let _ = vfs::seek(&a, one as u64);
+    seek_to(&a, one);
     let a_span = attempt(&a, &other[..two]);
     let (a_size, a_node, a_chain) = (
         size_of(b"/FULL1.TXT"),
@@ -3447,13 +3470,13 @@ fn fat32_disk_full() -> ! {
     // What the same open reads from 0: the bytes the name holds, and no more.
     let a_read = {
         let mut back = alloc::vec![0u8; all.len() + 1];
-        let _ = vfs::seek(&a, 0);
+        seek_to(&a, 0);
         match vfs::read(&a, &mut back) {
             Ok(k) if back[..k] == all[..k] => k as i64,
             _ => -1,
         }
     };
-    let _ = vfs::seek(&a, 0);
+    seek_to(&a, 0);
     let a_over = attempt(&a, &other[..two]);
     let a_over_whole =
         fault_state(b"/FULL1.TXT", &other[..two]) == 1 && chain_of(b"/FULL1.TXT") == 2;
@@ -3470,24 +3493,37 @@ fn fat32_disk_full() -> ! {
     let c_none = attempt(&c, b"x");
     let (c_node, c_chain) = (node_size(&c), chain_of(b"/FULL3.TXT"));
     let c_empty = fault_state(b"/FULL3.TXT", &[]) == 2;
+    // D: its second cluster's bytes again, with nothing left: the chain already holds the
+    // cluster, so the call needs none.
+    let d_into = attempt(&d, &all[one..two]);
+    let d_chain = chain_of(b"/FULL4.TXT");
+    let d_whole = fault_state(b"/FULL4.TXT", &all[..two]) == 1;
+
+    // A's removal gives two clusters back: one to C, the other to B's chain.
     drop(a);
     let a_removed = vfs::unlink(b"/FULL1.TXT").is_ok();
-    let c_after = attempt(&c, &all[..two]);
+    let c_after = attempt(&c, &all[..one]);
+    let b_grow = attempt(&b, &all[one..two]);
     let c_more = attempt(&c, b"x");
-    let c_whole = fault_state(b"/FULL3.TXT", &all[..two]) == 1 && chain_of(b"/FULL3.TXT") == 2;
+    let c_whole = fault_state(b"/FULL3.TXT", &all[..one]) == 1 && chain_of(b"/FULL3.TXT") == 1;
+    let b_grown = fault_state(b"/FULL2.TXT", &all[..two]) == 1 && chain_of(b"/FULL2.TXT") == 2;
 
     crate::fs::fat32::disarm_disk_full();
     let refused = [&a_big, &a_more, &a_span, &b_span, &c_none, &c_more];
     let refused_writes: u32 = refused.iter().map(|x| x.1).sum();
     let pos_moved = refused.iter().filter(|x| x.2 != 0).count();
-    drop((b, c));
-    let removed =
-        a_removed && vfs::unlink(b"/FULL2.TXT").is_ok() && vfs::unlink(b"/FULL3.TXT").is_ok();
+    drop((b, c, d));
+    let removed = a_removed
+        && vfs::unlink(b"/FULL2.TXT").is_ok()
+        && vfs::unlink(b"/FULL3.TXT").is_ok()
+        && vfs::unlink(b"/FULL4.TXT").is_ok();
     let synced = vfs::sync().is_ok();
     let free1 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
     kprintln!(
-        "OSX|{}|ktest|fat32_disk_full|a_big={}|a_big_size={}|a_big_node={}|a_big_chain={}|a_fit={}|a_more={}|a_span={}|a_size={}|a_node={}|a_chain={}|a_whole={}|a_read={}|a_over={}|a_over_whole={}|b_span={}|b_size={}|b_whole={}|b_fill={}|b_chain={}|b_filled={}|c_none={}|c_node={}|c_chain={}|c_empty={}|c_after={}|c_more={}|c_whole={}|refused_writes={}|pos_moved={}|removed={}|free_delta={}|synced={}|live_files={}",
+        "OSX|{}|ktest|fat32_disk_full|d_fault={}|d_long={}|a_big={}|a_big_size={}|a_big_node={}|a_big_chain={}|a_fit={}|a_more={}|a_span={}|a_size={}|a_node={}|a_chain={}|a_whole={}|a_read={}|a_over={}|a_over_whole={}|b_span={}|b_size={}|b_whole={}|b_fill={}|b_chain={}|b_filled={}|c_none={}|c_node={}|c_chain={}|c_empty={}|d_into={}|d_chain={}|d_whole={}|c_after={}|b_grow={}|c_more={}|c_whole={}|b_grown={}|refused_writes={}|pos_moved={}|removed={}|free_delta={}|synced={}|live_files={}",
         BUILD_ID,
+        show(&d_fault),
+        u8::from(d_long),
         show(&a_big.0),
         a_big_size,
         a_big_node,
@@ -3512,9 +3548,14 @@ fn fat32_disk_full() -> ! {
         c_node,
         c_chain,
         u8::from(c_empty),
+        show(&d_into.0),
+        d_chain,
+        u8::from(d_whole),
         show(&c_after.0),
+        show(&b_grow.0),
         show(&c_more.0),
         u8::from(c_whole),
+        u8::from(b_grown),
         refused_writes,
         pos_moved,
         u8::from(removed),
@@ -3522,6 +3563,9 @@ fn fat32_disk_full() -> ! {
         u8::from(synced),
         vfs::live_files()
     );
+    if !matches!(d_fault, Err(FsError::Io(_))) || !d_long {
+        fail("the fourth file's chain is not one cluster longer than its size")
+    }
     if refused.iter().any(|x| x.0 != Err(FsError::DiskFull)) {
         fail("a write the volume could not hold whole was not answered with no space")
     }
@@ -3532,18 +3576,20 @@ fn fat32_disk_full() -> ! {
     {
         fail("a refused write to an empty file left it something")
     }
-    if a_fit.0 != Ok(two)
-        || a_over.0 != Ok(two)
-        || b_fill.0 != Ok(one - half)
-        || c_after.0 != Ok(two)
-    {
+    if a_fit.0 != Ok(two) || a_over.0 != Ok(two) || b_fill.0 != Ok(one - half) {
         fail("a write the volume could hold whole was not made whole")
+    }
+    if d_into.0 != Ok(one) || d_chain != 2 || !d_whole {
+        fail("a write into a cluster the chain already holds was refused or took another")
+    }
+    if c_after.0 != Ok(one) || b_grow.0 != Ok(one) || !c_whole || !b_grown {
+        fail("the clusters a removed file gave back were not taken, one each")
     }
     if (a_size, a_node, a_chain) != (two as u64, two as u32, 2) || !a_whole || a_read != two as i64
     {
         fail("a refused write changed the file, its node or what its open reads")
     }
-    if !a_over_whole || b_size != half as u64 || !b_whole || b_chain != 1 || !b_filled || !c_whole {
+    if !a_over_whole || b_size != half as u64 || !b_whole || b_chain != 1 || !b_filled {
         fail("a file does not hold the bytes and the clusters its writes gave it")
     }
     if !removed || !synced || free1 != free0 {

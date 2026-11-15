@@ -57,6 +57,18 @@ pub fn disarm_disk_full() {
     full::set(u32::MAX);
 }
 
+/// The cluster the test kernel's hook ends the allocator's range at; no end outside it.
+fn full_end() -> u32 {
+    #[cfg(feature = "ktest")]
+    {
+        full::end()
+    }
+    #[cfg(not(feature = "ktest"))]
+    {
+        u32::MAX
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FsError {
     NotMounted,
@@ -341,14 +353,7 @@ impl Fat32 {
 
     /// One past the last cluster the allocator may take.
     fn alloc_end(&self) -> u32 {
-        #[cfg(feature = "ktest")]
-        {
-            (self.clusters + 2).min(full::end())
-        }
-        #[cfg(not(feature = "ktest"))]
-        {
-            self.clusters + 2
-        }
+        (self.clusters + 2).min(full_end())
     }
 
     /// The `n`th free cluster (from 1), lowest first, below `end`, by scanning the first FAT;
