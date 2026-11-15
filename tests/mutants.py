@@ -901,6 +901,17 @@ MUTANTS = [
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; continue',
      ["TST-M0-003"], "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted"),
+    # M210, M211 (SECURITY, WP-118, files.md v1.6, ADR-0014 item 7): a failed write leaves the
+    # shared node equal to the stored entry. M210: the node takes the new entry before it is stored.
+    ("M210", "kernel/src/fs/fat32.rs",
+     "        self.store_entry(&staged)?;\n        *file = staged;\n        Ok(done)",
+     "        *file = staged;\n        self.store_entry(&staged)?;\n        Ok(done)",
+     ["TST-M3-FAT32-FAULT-WRITE"], "SECURITY: a write whose entry write is refused leaves the node of every open ahead of the stored entry, and the same open reads bytes the name does not hold: the sweeps' lines carry node_differs and ghost that are not 0, TST-M3-FAT32-FAULT-WRITE FAIL"),
+    # M211: a new file's node takes its first cluster as soon as it is allocated.
+    ("M211", "kernel/src/fs/fat32.rs",
+     "            staged.first = self.alloc_cluster()?;\n",
+     "            staged.first = self.alloc_cluster()?;\n            file.first = staged.first;\n",
+     ["TST-M3-FAT32-FAULT-WRITE"], "SECURITY: a write to a new file that fails after its first allocation leaves the node with a first cluster the stored entry does not have: the first sweep's line carries node_differs that is not 0, TST-M3-FAT32-FAULT-WRITE FAIL"),
     # M208, M209 (SECURITY, WP-105): the host image check is the judge of the fault cases; these
     # blind it. M208: two names on one cluster are no longer reported.
     ("M208", "tools/fat32.py",
@@ -988,7 +999,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M205", "M206", "M207",
             # M6 tooling (WP-105): the host image check that judges the fault cases still sees
             # shared clusters (M208) and a chain that runs into a free cluster (M209).
-            "M208", "M209"}
+            "M208", "M209",
+            # M6 (WP-118): a failed write leaves the shared node equal to the stored entry
+            # (files.md v1.6): the node follows the stored entry (M210) and takes no cluster
+            # before it (M211).
+            "M210", "M211"}
 
 
 def security_of(mid: str) -> bool:

@@ -7306,7 +7306,10 @@
     "tests/mutants.py",
     "docs/tests.json",
     "docs/contracts/files.md",
-    "docs/adr/0014-files.md"
+    "docs/adr/0014-files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/requirements.json",
+    "docs/risks.json"
    ],
    "contract_refs": [
     "docs/contracts/files.md"
@@ -7371,6 +7374,57 @@
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-120",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-118"
+   ],
+   "inputs": [
+    "kernel/src/fs/fat32.rs fat_set: the copies are written in order, the first then the second, and the call ends at the first error; the kernel reads the first copy only (fat_get, alloc_cluster, free_clusters)",
+    "kernel/src/fs/fat32.rs write: when an append walks the chain and finds a next cluster in the first copy it goes on through it and writes no link, so a link whose second-copy write was refused is never written there",
+    "seen locally on 2026-11-15 (a scratch experiment during WP-118, not committed and no CI evidence): with the append of the second sweep of TST-M3-FAT32-FAULT-WRITE made again after each failure, all nine appends succeed and the host checker reports `FAT1: /X07.TXT: chain shorter than size` (N=7 is the refused write of the link in the second copy); fsck.fat reads the first copy and says only that the copies differ",
+    "tools/fat32.py check --faulted walks the tree along both copies; RSK-027"
+   ],
+   "files": [
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT: ربط فشلت كتابته في النسخة الثانية لا يبقى ناقصًا: النسخة التي تقرؤها النواة تُكتب أخيرًا أو يُعاد تثبيت الربط (من تجربة أثناء WP-118، 2026-11-15)",
+    "found by the manager during WP-118 on 2026-11-15, first by reasoning about the retry of an append and then by a scratch run: after a link is written to the first FAT copy and refused in the second, a later successful append leaves the second copy with the file's chain shorter than its size for good; no data is wrong while the first copy is readable, and a tool or a recovery that falls back to the second copy would cut the file",
+    "design to decide in the package (2-3 options with trade-offs): write the copy the kernel reads last (every partial fat_set then leaves what the kernel sees unchanged, and the next fat_set of that entry rewrites all copies) against writing a found link again in every copy when an append goes on through it (two writes more per extended cluster) against comparing the copies at mount and repairing (with WP-106)",
+    "test first, red seen locally before the fix: the second sweep of TST-M3-FAT32-FAULT-WRITE makes its append again after each failure and the host check with --faulted must find no name whose chain is shorter than its size in either copy: today `FAT1: /X07.TXT: chain shorter than size`; the delete and truncate sweeps of WP-105 run again because the order of FAT writes they count may change; a SECURITY mutant for the order",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: about 35 calls, unmeasured; sized at activation"
+   ],
+   "acceptance": "after a failed write of a FAT link an append made again leaves no name whose chain is shorter than its size in either FAT copy, shown by the sweep with the append made again and the host check on CI; the delete and truncate sweeps still show no name on a free cluster; files.md (the version free at the merge) states the order of the copies; the mutant killed",
+   "test_ids": [
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
    "status": "planned",
    "status_history": [
