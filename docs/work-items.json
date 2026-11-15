@@ -6653,12 +6653,20 @@
     "python3 tools/project.py test --target pc-qemu --suite M3",
     "python3 tools/project.py test --target host --suite M3"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261115T092934Z-7cc13c28-001-a",
+    "evidence/20261115T092926Z-7cc13c28-001-a",
+    "evidence/20261115T092908Z-7cc13c28-001-a",
+    "evidence/20261115T092914Z-7cc13c28-001-a",
+    "evidence/20261115T092919Z-7cc13c28-001-a",
+    "evidence/20261115T094650Z-7cc13c28-001-a"
+   ],
    "blocker": null
   },
   {
