@@ -1,0 +1,36 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261109T184725Z-d63f7ae4-001",
+ "started_at": "2026-11-09T18:47:25+00:00",
+ "finished_at": "2026-11-09T18:47:26+00:00",
+ "source_revision": "d63f7ae4cca50b35688cf64bdbde15c35dbb1616",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "virt-qemu-aarch64",
+ "worker": "verification-runner",
+ "purpose": "build",
+ "commands": [
+  "cargo build --release --offline --manifest-path kernel/Cargo.toml --target aarch64-unknown-uefi --target-dir /home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/cargo",
+  "cp /home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/cargo/aarch64-unknown-uefi/release/nawah-kernel.efi /home/runner/work/nawah-os/nawah-os/build/virt-qemu-aarch64/NAWAH-A64.EFI"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "42673693676",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "d63f7ae4cca50b35688cf64bdbde15c35dbb1616",
+  "head_sha": "803af4243cf46eb899517da7f8c68ca060db97b7",
+  "ref": "refs/pull/23/merge"
+ }
+}

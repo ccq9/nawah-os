@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261115T214840Z-1e511c4f-001-a",
+ "started_at": "2026-11-15T21:48:40+00:00",
+ "finished_at": "2026-11-15T21:48:40+00:00",
+ "source_revision": "1e511c4f5df5bfa3bc90ee6244851850b3c89453",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1014-aws",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M6-MANIFEST-LINT",
+ "commands": [
+  "python3 -I tests/test_m6_manifest.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "43763423582",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "1e511c4f5df5bfa3bc90ee6244851850b3c89453",
+  "head_sha": "d1416464c2ff6d03f24148c06beebfd844340cb4",
+  "ref": "refs/pull/23/merge"
+ }
+}
