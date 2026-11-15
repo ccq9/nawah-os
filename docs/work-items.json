@@ -6286,12 +6286,19 @@
    "files": [
     "docs/adr/0023-desktop-shell-and-app-model.md",
     "docs/contracts/apps.md",
-    "user",
-    "tools/project.py",
-    "tests",
-    "docs/tests.json",
     "docs/requirements.json",
-    "tests/mutants.py"
+    "user/nawah-apps/Cargo.toml",
+    "user/nawah-apps/src/lib.rs",
+    "user/nawah-apps/tests/registry.rs",
+    "platform/pc-qemu/apps/NOTES.APP",
+    "platform/pc-qemu/apps/CLOCK.APP",
+    "Cargo.toml",
+    "Cargo.lock",
+    ".github/workflows/verify.yml",
+    "tools/project.py",
+    "docs/tests.json",
+    "tests/mutants.py",
+    "docs/work-items.json"
    ],
    "contract_refs": [
     "docs/contracts/apps.md"
@@ -6299,12 +6306,14 @@
    "actions": [
     "سجل التطبيقات: صيغته ومحلّله وفحصه على المضيف (100، مفصولة من WP-47 في 2026-11-15)",
     "ADR-0023, proposed, the application model only: where the registry lives and who may write it (the requirement says /APPS, which every process can write today; PLAN-ANSWER's table denies writes to /SYSTEM/APPS: decide with the reason and amend REQ-M6-004's wording if it moves), the entry's fields (id, ELF path, ar/en names, declared dependencies), the reserved ids, the id's length against NAME_MAX; the desktop shell's open questions (one process or several, maximize/snap, an Alt+Tab panel) are left to WP-48 by name",
-    "apps.md v1 (new): the registry entry's format and limits; a no_std parser in a crate of its own, used later by the manager; a sample registry on the built volume",
+    "apps.md v1 (new): the registry entry's format and limits; a no_std parser in a crate of its own, used later by the manager; sample entries in the repository (platform/pc-qemu/apps/NOTES.APP, CLOCK.APP) parsed by the host test, not on the built volume (WP-101 puts them there)",
     "test first: TST-M6-APP-REGISTRY-FUZZ on the host (a seeded corpus: over-long fields, bad and reserved ids, a missing ELF path, duplicate ids, non-UTF-8 names; never a panic; the well-formed examples accepted exactly); a SECURITY mutant for the reserved ids",
-    "does not touch svcmgr or sessiond and grants no authority; adds no second to the M6 guest step (977 of 1080 s today)",
+    "does not touch svcmgr, sessiond, the kernel, the disk image or any guest case and grants no authority; adds no second to the M6 guest step (977 of 1080 s today)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation",
-    "2026-11-15 activation estimate (services engineer in a worktree, host only; the manager integrating; an audit pass on the work and a second on its corrections before the single push): about 100 calls / 85 min across the roles, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first); host-only: no guest case and no second of the M6 guest step; red shown locally, no failing commit pushed"
+    "2026-11-15 activation estimate (services engineer in a worktree, host only; the manager integrating; an audit pass on the work and a second on its corrections before the single push): about 100 calls / 85 min across the roles, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first); host-only: no guest case and no second of the M6 guest step; red shown locally, no failing commit pushed",
+    "2026-11-15 as built (services engineer in a worktree; the manager integrating): ADR-0023 proposed, the application model only: applications are not services and the manager brokers LAUNCH (DEC-005 option 1, answered under the delegation of 2026-11-08 whose text is not in the records: the ADR waits for the owner's record or confirmation); the registry is /SYSTEM/APPS/<ID>.APP, one file per application, written by the build only (every path outside /SYSTEM is open to every process, kernel/src/fs/vfs.rs; under /SYSTEM every change is refused but config's stores), and REQ-M6-004's statement names that place; the image is /SYSTEM/APPS/<NAME>.ELF only; an entry is UTF-8 key=value lines (id, elf, name.ar, name.en, deps, each exactly once, a final LF, no CR or control byte, at most 1024 bytes); the id is [a-z][a-z0-9]{0,7}, so app:<id>#<n> with n of 1 to 99 fits NAME_MAX = 15; 15 reserved ids, every service of services.txt among them; dependencies from the allow-list display, config, net (the parser refuses others as a format check; the authority check at CONNECT is WP-101's); a display name is 1 to 32 bytes of UTF-8, the compositor's title capacity, without #, =, C1 controls, bidi and zero-width controls, U+2028, U+2029, U+FEFF, and without white space at either end; at most 16 entries; 17 error names, three of them the registry's; the desktop shell's questions left to WP-48 by name. user/nawah-apps is no_std, without allocation, unsafe or dependency. Test first, red seen locally (scratch): on the stub `test result: FAILED. 1 passed; 7 failed`; TST-M6-APP-REGISTRY-FUZZ is 9 tests: 143 hand cases, a seeded corpus of 2000 generated entries and 30000 mutations compared with a model written apart, the two samples, and the contract's lists and error names compared for equality with the crate's. Mutant M198 (SECURITY): the reserved-id check removed",
+    "2026-11-15 audit before the push, two passes (auditor): the first refused the work as it stood: the display name's limit rested on a wrong fact (the compositor's title capacity counts bytes, not characters: a 32-character Arabic name would be cut mid-name), the reserved ids and the allow-list were unguarded (removing `kernel` from the list failed no test, because the model took the lists from the crate) and one forbidden code point was untested (removing U+2069 failed no test); corrected test first (red seen locally: `FAILED. 6 passed; 3 failed`): the limit in bytes, the lists read from apps.md and compared for equality both ways, a hand case per forbidden code point (the C1 range by its two ends alone), the forbidden set widened; the second pass confirmed the nine corrections, tried three more one-line defects, each caught, and had one wording corrected (the oracle said every forbidden code point has a case). Moved to WP-101 and written there: the samples on the built volume and the identity's numbering past 99. Not shown: clippy and the gate on CI; no CI run yet"
    ],
    "acceptance": "TST-M6-APP-REGISTRY-FUZZ PASS on CI; apps.md v1 exists; ADR-0023 is proposed with the application model decided and the desktop questions left to WP-48 by name; the mutant killed by the M6 gate",
    "test_ids": [
@@ -6356,6 +6365,7 @@
     "سمسار التشغيل في المدير: LAUNCH وهوية التطبيق وحصر اتصاله (101، مفصولة من WP-47 في 2026-11-15)",
     "services.md v1.14: the manager takes the root job handle; an applications table apart from the services table; LAUNCH/APPS accepted only from the vouched session or desktop; the identity app:<id>#<n> vouched on CONNECT; an application's CONNECT limited to its declared dependencies within an allow-list that excludes auth and session; a LAUNCH rate limit",
     "test first: TST-M6-LAUNCH-DENIED in the test kernel (LAUNCH from a plain client refused ERR ACCESS by the manager; an undeclared CONNECT refused in the manager; the reserved ids and the denied dependencies of PLAN-ANSWER's table); SECURITY mutants M140 (the app: prefix dropped) and M142 (the allow-list dropped)",
+    "taken over from WP-100 (2026-11-15): the registry's samples placed on the built volume under /SYSTEM/APPS by the build (tools/project.py prepare_disk; every guest case's disk changes with it), read by the manager through the WP-100 parser; the identity's number: what happens past app:<id>#99 (refuse the launch, or reuse a freed number) is decided and tested here; svcmgr's name_ok accepts [A-Za-z0-9_-] only and is not the check for the vouched identity",
     "M6 guest step: the case's seconds are counted at activation against 977 of 1080 s; if it does not fit, the cap and job a's limit rise with the case (test_a_bounded_suite_fits_its_cap_in_the_worst_case)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation"

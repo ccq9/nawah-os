@@ -566,7 +566,8 @@ fn malformed_entries_are_refused_by_name() {
         swap("name.ar=الملاحظات", &format!("name.ar={ar16s}")),
         "BAD_NAME",
     ));
-    // Every code point apps.md §2 forbids in a name, each inside a name (20 cases).
+    // Code points apps.md §2 forbids in a name, each inside a name (20 cases): the C1 range by its
+    // two ends alone, every other forbidden code point by itself.
     let forbidden = [
         '\u{80}', '\u{9f}', '\u{61c}', '\u{200b}', '\u{200c}', '\u{200d}', '\u{200e}', '\u{200f}',
         '\u{2028}', '\u{2029}', '\u{202a}', '\u{202b}', '\u{202c}', '\u{202d}', '\u{202e}',
