@@ -6245,12 +6245,16 @@
     "python3 tools/project.py test --target pc-qemu --suite M4",
     "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261115T005243Z-bde18d19-001-a",
+    "evidence/20261115T005329Z-bde18d19-001-a"
+   ],
    "blocker": null
   }
  ]
