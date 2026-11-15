@@ -3280,8 +3280,9 @@ const FAULT_HALF: usize = 512;
 
 /// TST-M3-FAT32-FAULT-WRITE, first boot (WP-118, RSK-027): a write that fails at any of its
 /// disk writes leaves the file as it was, in its stored entry and in the node every open
-/// shares alike. Two sweeps: three clusters written to a new file (and the same write made
-/// again, which must succeed), and one cluster appended to a file of one cluster.
+/// shares alike. Three sweeps: three clusters written to a new file (and the same write made
+/// again, which must succeed), one cluster appended to a file of one cluster, and (WP-120)
+/// that append made again after each failure, which must succeed too.
 fn fat32_fault_write() -> ! {
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
@@ -3331,8 +3332,9 @@ fn fat32_fault_write() -> ! {
 
 /// The second boot of TST-M3-FAT32-FAULT-WRITE: a kernel with no memory of the first boot
 /// reads the image: every file of the first sweep is whole (its write was made again), every
-/// file of the second sweep holds its first cluster (the control both), none is anything else;
-/// a new file changes none of them.
+/// file of the second sweep holds its first cluster (the control both), every file of the
+/// third holds both clusters (its append was made again), none is anything else; a new file
+/// changes none of them.
 fn fat32_fault_write_check() -> ! {
     if crate::fs::mount().is_err() {
         fail("volume did not mount")

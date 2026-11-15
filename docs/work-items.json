@@ -6689,7 +6689,8 @@
     "from WP-105's red team (2026-11-15, by reading, to check at activation): clusters lost by a failed delete or truncation are never given back and are not shown anywhere (free_clusters counts them as used; FSInfo's count stays stale because fsinfo_adjust works by difference; nothing is checked at mount); free_chain follows a chain that is already cross-linked into another file's clusters and frees them; free_chain stops silently at CHAIN_MAX",
     "from WP-118's red team (2026-11-15, by reading, to check at activation): lost clusters hold the bytes of the calls that failed (config's stores under /SYSTEM among them); a recovery must free them, never save them into files a process can read, and must copy the first FAT copy over the second before it frees",
     "from WP-121's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): mount sets a lower bound on the cluster count (65525) and bounds it by the FAT's size, but sets no upper bound at 0x0FFFFFF5, past which cluster numbers meet the BAD and end-of-chain marks (kernel/src/fs/fat32.rs:237)",
-    "from WP-121's auditor and red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): a stored entry whose first cluster is 1 is counted as a file with no chain by chain_len (kernel/src/fs/fat32.rs:389) and as a file with a first cluster by write: with an offset of a cluster or more, next_cluster(1) reads FAT[1], which usually holds an end-of-chain mark, a cluster is allocated and fat_set(1, n) then refuses, so the call answers Corrupt and the cluster is lost, once for every call (older than WP-121; files.md v1.7 promises nothing on a damaged volume); when FAT[1] holds a valid cluster number the write goes on into another file's chain, the /SYSTEM authority being asked of the path and not of the cluster; proposed: write and the chain walks refuse a first cluster of 1 or past the volume's end with Corrupt before any write, with a case on a made-up entry"
+    "from WP-121's auditor and red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): a stored entry whose first cluster is 1 is counted as a file with no chain by chain_len (kernel/src/fs/fat32.rs:389) and as a file with a first cluster by write: with an offset of a cluster or more, next_cluster(1) reads FAT[1], which usually holds an end-of-chain mark, a cluster is allocated and fat_set(1, n) then refuses, so the call answers Corrupt and the cluster is lost, once for every call (older than WP-121; files.md v1.7 promises nothing on a damaged volume); when FAT[1] holds a valid cluster number the write goes on into another file's chain, the /SYSTEM authority being asked of the path and not of the cluster; proposed: write and the chain walks refuse a first cluster of 1 or past the volume's end with Corrupt before any write, with a case on a made-up entry",
+    "from WP-120's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): mount accepts a volume with one FAT copy (the check is fats of 1 or 2) and no case uses such an image: a fat_set that always wrote two copies would pass every case and, on a one-copy volume, write FAT entries into the data region; and the input above on a huge FAT size (`every FAT1 write refused as out of range`) is older than files.md v1.8: the second copy is now written first, so on that image every fat_set fails before it touches the first copy"
    ],
    "files": [
     "kernel/src/fs/fat32.rs",
@@ -7248,7 +7249,8 @@
     "kernel/src/fs/mod.rs: every file-system call goes through with(), except vfs::seek",
     "docs/adr/0013-storage.md decision 9: K_E_BLK_TIMEOUT on a write means an unknown outcome, K_E_BLK_NEEDS_RESET after the stop means nothing was published; the test kernel's arm_timeout drives the driver's own timeout branch",
     "WP-105's fault hook in block::write and its strengthened host checker",
-    "RSK-027"
+    "RSK-027",
+    "from WP-120's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): the test kernel's hook refuses write N and every write after it, so no case shows that fat_set stops at its first refused write: with `block::write(sector, &s)?` in fat_set turned into an ignored result, every fat_set of the fault cases is followed by another checked write that is refused too (the zeroed sector in alloc_cluster, the data sector in write, the entry in create, FSInfo in free_chain), and the image and the answer stay what they are; on a disk that refuses one write and takes the next, a mark refused in the first copy and ignored leaves the cluster free there for another file to take (two names on one cluster) and a refused link leaves a chain shorter than its size; a variant that checks only the first copy's write brings WP-120's defect back and M219 does not see it; proposed: a mode of the hook that refuses write N alone, a sweep with it, and a SECURITY mutant for each of the two"
    ],
    "files": [
     "kernel/src/fs/fat32.rs",
@@ -7448,7 +7450,8 @@
     "2026-11-15 estimate: about 35 calls, unmeasured; sized at activation",
     "2026-11-15 (WP-118's red team, by reading): with the copy the kernel reads written last, a failure between the two copies leaves, for a link, the second copy linked and the first not (the next append links another cluster in both and the first one is lost in both); for an allocation, the second copy marked and the first free (the kernel takes the cluster again); for a free, the second copy free and the first marked (no name reaches it since WP-105): no state where a name reaches a free cluster; whatever recovers lost clusters (WP-106) must copy the first copy over the second before it frees, or the second copy keeps a link to a cluster another file may take",
     "2026-11-15 activation estimate and design (the manager, from a reading of fat_set, write, create and free_chain at 657f6fd32 and the scratch experiment recorded during WP-118; the local QEMU lab; an audit pass and a red-team pass before the single push): about 50 calls / 75 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first). Design to try first, of the three options: fat_set writes the copies from the last to the first, so the copy the kernel reads is written last; a fat_set that fails between the copies then leaves what the kernel sees unchanged, and the next fat_set of that entry writes every copy again: a link refused in the first copy is not seen, the append made again allocates another cluster and links it in both, and the first one is lost in both. Not chosen: writing a found link again in every copy when a write goes on through a cluster past the old size (two writes more on that path; create's directory growth and a failed allocation or free are not covered) and comparing the copies at mount (WP-106). Known price, to measure: the order of FAT writes changes, so the numbers the three fault cases pin (9 lost for delete and for truncate; 51 lost and 3 longer chains for write) are derived again write by write and by a local run, and the host checker's longer-chain count is read per copy; M46's anchor follows the loop. Test first, red seen locally: the append sweep of TST-M3-FAT32-FAULT-WRITE makes its append again after each failure and the host check must find no chain shorter than its size in either copy; expected today: one name short in the second copy (N=7). If the audit finds the design against a recorded acceptance text, the text is not changed: the design is",
-    "2026-11-15 the work (scratch runs, no CI evidence): test first: a third sweep, `again`, makes the append of the second sweep again after each failure; red on the pushed order of writes with one finding only, `FAT1: /Y07.TXT: chain shorter than size` (lost=56 longer=3, the numbers of that order: 46, 5 and 5); the fix: fat_set writes the copies from the last to the first; the numbers the three cases pin were derived write by write before the run and the run gave the same: write lost=53 longer=2 (new file: one for N=3 to 8, two for N=9 to 16, three for N=17 to 23, 43; append and again: N=3 to 7, 5 each; longer: N=8 and 9 of the append), delete and truncate lost=12 each (0, 3, 3, 2, 2, 1, 1, 0, 0). The price, stated in files.md v1.8 and ADR-0014 item 9: a cluster freed in the second copy only stays marked in the first and is lost, three more clusters over the nine failure points of a delete or a truncation; a new file's write loses three fewer. TST-M3-FAT32-DISK-FULL is in the item's tests because its file D counts on the ninth write of an append being the entry. Mutant M219 (SECURITY, in the gate's set); M46's anchor follows the loop"
+    "2026-11-15 the work (scratch runs, no CI evidence): test first: a third sweep, `again`, makes the append of the second sweep again after each failure; red on the pushed order of writes with one finding only, `FAT1: /Y07.TXT: chain shorter than size` (lost=56 longer=3, the numbers of that order: 46, 5 and 5); the fix: fat_set writes the copies from the last to the first; the numbers the three cases pin were derived write by write before the run and the run gave the same: write lost=53 longer=2 (new file: one for N=3 to 8, two for N=9 to 16, three for N=17 to 23, 43; append and again: N=3 to 7, 5 each; longer: N=8 and 9 of the append), delete and truncate lost=12 each (0, 3, 3, 2, 2, 1, 1, 0, 0). The price, stated in files.md v1.8 and ADR-0014 item 9: a cluster freed in the second copy only stays marked in the first and is lost, three more clusters over the nine failure points of a delete or a truncation; a new file's write loses three fewer. TST-M3-FAT32-DISK-FULL is in the item's tests because its file D counts on the ninth write of an append being the entry. Mutant M219 (SECURITY, in the gate's set); M46's anchor follows the loop",
+    "2026-11-15 after the audit and the red-team pass (both by reading; nothing run by them): the derivations of 53, 2, 12 and 12 and of the old order's 56, 3 and 9 confirmed write by write; no state found in which a name reaches a free cluster, two names share one or a chain is shorter than its size in either copy, after one failure, two, or a power cut; no acceptance or fail condition relaxed (the pinned numbers are compared for equality and tools/fat32.py is unchanged). Corrections made: the recovery rule now covers tying a lost chain to a name as well as freeing; the recovery of lost clusters had no owner (WP-106 only refuses a malformed boot sector) and is now WP-122, planned; the decision says it can be reversed by one line; M219 names the delete and the truncate cases as killers too; the texts of M205 and M206 follow the order; stale comments and one overstated sentence of the oracle. Corrected here and not rewritten: the activation line above ends cut off at `the design is`: it was meant to end `the design is what changes`; and its promise that the checker's longer-chain count would be read for each copy was kept by reading only: the checker counts longer chains in the first copy, a longer chain in the second copy only is in the oracle's not-shown list, and an exact count for each copy is an input of WP-122; the last line of commit 2ee59d118's message (TST-M3-FAT32-DISK-FULL PASS) is a local, scratch result like the lines above it. Registered, by reading: no case shows that fat_set stops at its first refused write (WP-117); a one-copy volume (WP-106)"
    ],
    "acceptance": "after a failed write of a FAT link an append made again leaves no name whose chain is shorter than its size in either FAT copy, shown by the sweep with the append made again and the host check on CI; the delete and truncate sweeps still show no name on a free cluster; files.md (the version free at the merge) states the order of the copies; the mutant killed",
    "test_ids": [
@@ -7537,6 +7540,61 @@
     "evidence/20261115T133658Z-8c621319-001-a",
     "evidence/20261115T132952Z-8c621319-001-m"
    ],
+   "blocker": null
+  },
+  {
+   "id": "WP-122",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-106",
+    "WP-120"
+   ],
+   "inputs": [
+    "the records and docs/contracts/files.md (v1.5 to v1.8), docs/adr/0014-files.md items 6 to 9, RSK-027 and RSK-033 name WP-106 for giving lost clusters back, but WP-106's actions and acceptance cover only the refusal of a malformed boot sector at mount: until 2026-11-15 no planned package owned the recovery (found by WP-120's red team)",
+    "kernel/src/fs/fat32.rs: free_clusters counts lost clusters as used and nothing in the system frees them; every failed delete, truncation or write may leave some (the fault cases pin 12, 12 and 53 on their sweeps), and a volume written before files.md v1.7 may hold clusters lost by a full disk",
+    "files.md v1.8, ADR-0014 item 9: the second FAT copy may be ahead of the first (a link, a mark or a free the first does not have), never behind: a recovery copies the first copy over the second before it frees a cluster or ties a lost chain to a name, or the second copy keeps a link to a cluster another file may take, or a name whose chain there runs through a free cluster",
+    "from WP-118's and WP-120's red teams (by reading): lost clusters hold the bytes of the calls that failed, the configuration stores under /SYSTEM among them, and after files.md v1.8 a delete that fails at N=2 or N=3 leaves the whole file in lost clusters: a recovery frees them and never saves them into files a process can read",
+    "from WP-120's audit (by reading): tools/fat32.py counts chains longer than their size in the first copy only; a longer chain in the second copy only (an append whose link was refused in the first copy) is not counted by any case; an exact count for each copy needs a new option of the checker and host cases for it",
+    "tools/fat32.py check --faulted, fsck-faulted; TST-M3-FAT32-FAULT-WRITE, -UNLINK, -TRUNCATE; RSK-027, RSK-033"
+   ],
+   "files": [
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/ktest.rs",
+    "tools/fat32.py",
+    "tests/test_fat32_tool.py",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32: العناقيد الضائعة تُعرض وتُستعاد داخل النظام (من الفريق الأحمر لـWP-120، 2026-11-15)",
+    "found by the security red team while reading WP-120 on 2026-11-15 (by reading; nothing run, no CI evidence; the manager read WP-106's record): the recovery of lost clusters is promised to WP-106 in the contract, the decisions and two risks, and WP-106 does not hold it; this package holds it",
+    "design to decide in the package (2-3 options with trade-offs): a pass at mount that walks every chain from the root, copies the first FAT copy over the second and frees every marked cluster no name reaches, against the same pass on demand behind an authority (a system call or a tool of the system), against showing the count only (fs_info) and leaving the freeing to a tool outside the system; in every option the lost bytes are freed, never saved into files",
+    "test first, red seen locally before the fix: on the final image of a fault case the count of lost clusters is not 0 today and stays so after a restart; expected: after the recovery the host check finds no lost cluster, equal FAT copies and a right free count, and every name of the case still holds its own bytes; a SECURITY mutant for the order (the second copy is made equal before any free) and one for freeing a cluster a name reaches",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "after a failed delete, truncation or write and a restart, the system gives the lost clusters back without freeing a cluster a name reaches and without saving their bytes, shown by a case whose host check finds no lost cluster, equal FAT copies and a right free count on CI; files.md (the version free at the merge) states when the recovery runs and what it does; the mutants killed",
+   "test_ids": [
+    "TST-M3-FAT32-TOOL",
+    "TST-M3-FAT32-FAULT-WRITE"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
    "blocker": null
   }
  ]

@@ -858,12 +858,12 @@ MUTANTS = [
     ("M205", "kernel/src/fs/fat32.rs",
      "        let mut dead = e;\n        dead.name[0] = 0xE5;\n        self.store_entry(&dead)?;\n        let freed = if e.first >= 2 {\n            self.free_chain(e.first)?\n        } else {\n            0\n        };\n        Ok(freed)",
      "        let freed = if e.first >= 2 {\n            self.free_chain(e.first)?\n        } else {\n            0\n        };\n        let mut dead = e;\n        dead.name[0] = 0xE5;\n        self.store_entry(&dead)?;\n        Ok(freed)",
-     ["TST-M3-FAT32-FAULT-UNLINK"], "SECURITY: a delete that fails after its first FAT write leaves the name with a chain that runs into free clusters: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-UNLINK FAIL"),
+     ["TST-M3-FAT32-FAULT-UNLINK"], "SECURITY: a delete that fails after a cluster is freed in the FAT copy the kernel reads leaves the name with a chain that runs into free clusters: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-UNLINK FAIL"),
     # M206: truncate frees the chain before the emptied entry is stored.
     ("M206", "kernel/src/fs/fat32.rs",
      "        self.store_entry(&emptied)?;\n        *file = emptied;\n        if old_first >= 2 {\n            self.free_chain(old_first)\n        } else {\n            Ok(0)\n        }",
      "        let freed = if old_first >= 2 {\n            self.free_chain(old_first)?\n        } else {\n            0\n        };\n        self.store_entry(&emptied)?;\n        *file = emptied;\n        Ok(freed)",
-     ["TST-M3-FAT32-FAULT-TRUNCATE"], "SECURITY: a truncation that fails after its first FAT write leaves the stored entry pointing at freed clusters: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-TRUNCATE FAIL"),
+     ["TST-M3-FAT32-FAULT-TRUNCATE"], "SECURITY: a truncation that fails after a cluster is freed in the FAT copy the kernel reads leaves the stored entry pointing at freed clusters: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-TRUNCATE FAIL"),
     # M207: truncate empties the shared node before the emptied entry is stored.
     ("M207", "kernel/src/fs/fat32.rs",
      "        self.store_entry(&emptied)?;\n        *file = emptied;\n",
@@ -906,7 +906,7 @@ MUTANTS = [
     ("M219", "kernel/src/fs/fat32.rs",
      "        for k in (0..self.fats).rev() {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
      "        for k in 0..self.fats {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
-     ["TST-M3-FAT32-FAULT-WRITE"], "SECURITY: a link written in the first FAT copy and refused in the second stays missing there for good once the append is made again: the host check finds a chain shorter than its size in the second copy and other numbers of lost clusters and longer chains than the case pins, TST-M3-FAT32-FAULT-WRITE FAIL (the delete and truncate cases would count 9 lost where 12 are pinned)"),
+     ["TST-M3-FAT32-FAULT-WRITE", "TST-M3-FAT32-FAULT-UNLINK", "TST-M3-FAT32-FAULT-TRUNCATE"], "SECURITY: a link written in the first FAT copy and refused in the second stays missing there once the append is made again: the host check finds a chain shorter than its size in the second copy and other numbers of lost clusters and longer chains than the case pins (56 and 3 where 53 and 2 are), TST-M3-FAT32-FAULT-WRITE FAIL; the delete and the truncate cases count 9 lost where 12 are pinned, FAIL"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
