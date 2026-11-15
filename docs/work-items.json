@@ -6713,9 +6713,10 @@
     "design to decide in the package (2-3 options with trade-offs): checked or 64-bit arithmetic for every bound with an explicit check that the FAT region and the data start lie inside the volume, against an early cap on the FAT size derived from the capacity; the validation as a pure function over the sector and the capacity so that crafted sectors can be tested",
     "test first, red seen locally before the fix: a test-kernel case that passes crafted boot sectors (wrapping FAT size, total near u32::MAX, zero and odd values) to the validation and expects a clean refusal for each: today the wrapping one panics the test kernel; a mutant that removes the bound",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: unmeasured; sized at activation"
+    "2026-11-15 estimate: unmeasured; sized at activation",
+    "2026-11-15 acceptance tightened, nothing removed (from the owner's external reviewer (relayed by the owner on 2026-11-15; read at cbd59ca4, nothing run by the reviewer) and the manager's verification of the same lines the same day): RSK-033 and this item's inputs named the entry with a first cluster of 1 for this package, but no action and no clause of the acceptance bound it, so the item could have been closed as written without it; the clause is added. The same holds for every input marked `to check at activation`: at activation each is taken into the acceptance, moved to a named package's acceptance, or refuted with evidence, and the activation line says which; none is dropped"
    ],
-   "acceptance": "every malformed boot sector of the case is refused with the mount's error in the test kernel and the release arithmetic cannot wrap, on CI; the storage cases PASS; the mutant killed",
+   "acceptance": "every malformed boot sector of the case is refused with the mount's error in the test kernel and the release arithmetic cannot wrap, on CI; the storage cases PASS; the mutant killed; a stored entry whose first cluster is 1 or lies past the volume's end is refused with the corrupt-volume error before any disk write of a write call, shown by a case on a made-up entry on CI, with its mutant",
    "test_ids": [
     "TST-M3-FAT32-READ",
     "TST-M3-FAT32-TOOL"
@@ -7201,7 +7202,8 @@
     "docs/adr/0013-storage.md decision 9 (what the stop does not cover)",
     "RSK-032",
     "from WP-121's red team (2026-11-15, by reading, the manager read the same lines; nothing run, nothing timed): a write walks its file's chain twice and scans the first FAT once more than before, each a disk request made with the volume's lock held, an IrqSpinLock with interrupts off on that CPU (kernel/src/fs/mod.rs:11, kernel/src/fs/fat32.rs:389, kernel/src/fs/fat32.rs:764-768); how long one call keeps interrupts off on a large file or a nearly full volume is not measured",
-    "from WP-117's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): the device's needs-reset bit makes the driver answer DeviceNeedsReset without stopping the device (kernel/src/drivers/virtio_blk.rs, the check before a request is built), so the file system, which stops on a timed-out request only (files.md v1.9), keeps answering from memory and writes no line; the ring violations already named here (a completion for another head, a status byte not written) do not stop it either; how long a file call keeps interrupts off while it waits for the volume's lock behind a request that is running toward its timeout is not measured"
+    "from WP-117's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): the device's needs-reset bit makes the driver answer DeviceNeedsReset without stopping the device (kernel/src/drivers/virtio_blk.rs, the check before a request is built), so the file system, which stops on a timed-out request only (files.md v1.9), keeps answering from memory and writes no line; the ring violations already named here (a completion for another head, a status byte not written) do not stop it either; how long a file call keeps interrupts off while it waits for the volume's lock behind a request that is running toward its timeout is not measured",
+    "found by the manager on 2026-11-15 while verifying the owner's external reviewer's finding on the network driver (by reading; nothing run): kernel/src/drivers/virtio_blk.rs waits for the device status to read 0 after the reset with no bound, as the network driver does; a disk that never confirms its reset keeps the boot there"
    ],
    "files": [
     "kernel/src/drivers/virtio_blk.rs",
@@ -7221,9 +7223,10 @@
     "design to decide in the package (2-3 options with trade-offs): a deadline in timer ticks or TSC against a calibrated poll count; stop on every protocol fault against stop on the pending-request faults only; a limit on a process's disk requests or an authority for sync against leaving both open; the measurement of the present limit on CI comes first",
     "test first, red seen locally before the fix: test-kernel cases with ktest-only hooks that imitate a faulty device (a used index advanced by two, a completion for head 1, a status byte left at 0xFF, a short length): expected: the disk stops and says so; today: the next request is served; a SECURITY mutant for each stop condition",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: unmeasured; sized at activation"
+    "2026-11-15 estimate: unmeasured; sized at activation",
+    "2026-11-15 acceptance tightened, nothing removed: the bounded reset wait of the disk driver is added as a clause (see the input of the same date)"
    ],
-   "acceptance": "the timeout is a stated duration measured on CI; each named device fault stops the disk with its line, shown by new cases on CI; the decision on a process's request rate and on sync's authority is recorded; the storage cases PASS; the mutants killed",
+   "acceptance": "the timeout is a stated duration measured on CI; each named device fault stops the disk with its line, shown by new cases on CI; the decision on a process's request rate and on sync's authority is recorded; the storage cases PASS; the mutants killed; the wait for the device's reset at initialisation is bounded and its failure is an error with one line, shown by a case on CI",
    "test_ids": [
     "TST-M3-BLK-TIMEOUT",
     "TST-M3-BLK-READ"
@@ -7424,7 +7427,8 @@
     "design to decide in the package (2-3 options with trade-offs): wait until no slot is in flight before the sixteen sends, so sixteen frames meet sixteen free slots (the stated property, with no race); against allowing a refusal in the second burst as in the first (weaker); against sending fifteen (changes the count the oracle states). The first keeps the oracle's sentence and needs the owner's approval as a change to a test's condition",
     "no failing test can precede this change (it removes a race from a test); shown instead by the case's line over repeated local runs before and after, and by a mutant that leaves a slot unreclaimed still being killed",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: about 15 calls, unmeasured; sized at activation"
+    "2026-11-15 estimate: about 15 calls, unmeasured; sized at activation",
+    "2026-11-15 (from the owner's external reviewer (relayed by the owner on 2026-11-15; read at cbd59ca4, nothing run by the reviewer) and the manager's verification of the same lines the same day): the approval this item needs was written in its text only; it is now the pending decision DEC-030 and this item's blocker, so the item cannot be activated before the owner answers"
    ],
    "acceptance": "TST-M4-NET-LIMITS no longer depends on how fast the lab's device drains the ring: the second burst starts with no slot in flight, its sixteen sends all succeed, and the mutants of the transmit path are still killed, shown on CI; the owner approved the change to the test's condition",
    "test_ids": [
@@ -7438,7 +7442,7 @@
     "planned"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": "DEC-030"
   },
   {
    "id": "WP-120",
@@ -7734,6 +7738,104 @@
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-125",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M4-007",
+    "REQ-M4-008"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "from the owner's external reviewer (relayed by the owner on 2026-11-15; read at cbd59ca4, nothing run by the reviewer) and the manager's verification of the same lines the same day (by reading; nothing run by either, no CI evidence)",
+    "kernel/src/drivers/virtio_net.rs init: the 18 DMA frames (DMA_FRAMES, 72 KiB) are allocated before the two queues are set up; setup_queue answers QueueUnavailable when the device reports a queue size of 0 and the `?` returns without freeing the frames and without writing the FAILED status; when the transmit queue fails after the receive queue was enabled, the device already holds the receive ring's addresses, so the frames may be freed only after the device is reset; whether the lab's device ever reports it and whether the initialisation is tried again is not shown (kernel/src/net.rs calls it once at boot)",
+    "kernel/src/drivers/virtio_net.rs take_used and recv: the used element's id is read as 32 bits and cut to 16; recv replaces an id past the queue's size by 0, copies slot 0's bytes to the caller and posts slot 0 again, whether or not the device had finished with it; reclaim_tx ignores an id past the size; the condition is a faulty device or a damaged used ring, not a frame from the network; no read outside the DMA frames is claimed",
+    "kernel/src/drivers/virtio_net.rs init: after writing 0 to the device status the driver waits for it to read 0 with no bound; a device that never confirms the reset keeps the boot in that loop; the disk driver has the same loop (kernel/src/drivers/virtio_blk.rs, the reset at its initialisation): that one is an input of WP-116",
+    "docs/contracts/net.md; kernel/src/mm/dma.rs; TST-M4-NET-LINK, TST-M4-NET-LIMITS"
+   ],
+   "files": [
+    "kernel/src/drivers/virtio_net.rs",
+    "kernel/src/net.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/net.md",
+    "docs/PLAN-REVERSE.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/net.md"
+   ],
+   "actions": [
+    "سائق الشبكة virtio-net: فشل التهيئة لا يسرّب ذاكرة DMA، ومعرّف إكمال خارج المدى لا يُعامل كخانة صالحة، وانتظار إعادة الضبط له مهلة (من مراجعة المالك الخارجية، 2026-11-15)",
+    "design to decide in the package (2-3 options with trade-offs): on a failed queue, reset the device, write FAILED and free the frames, against keeping the frames and never trying again (and saying so); a completion whose id is past the queue's size or was not handed to the device stops the interface with one line, against dropping that completion and counting it, against the present substitution; a reset wait bounded by a count measured on CI, against one bounded by time (the clock at that point of the boot)",
+    "test first, red seen locally before the fix: a test-kernel hook makes setup_queue see a queue size of 0 for the transmit queue: today the count of free frames falls by 18 and stays; a hook writes a used element whose id is past the queue's size (and one whose high 16 bits are set): today slot 0 is delivered and posted again; a hook keeps the status from reading 0: today the boot does not return; SECURITY mutants for each",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating (the three parts are separable)",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "a queue the device reports unavailable leaves the count of free frames what it was before the initialisation and the device reset, shown by a case on CI; a completion whose id is past the queue's size or carries high bits delivers no slot's bytes and posts no slot the device may still hold, shown by a case on CI; the wait for the device's reset is bounded and its failure is one line and an error, shown by a case on CI; the network cases PASS; net.md (the version free at the merge) states the three; the mutants killed",
+   "test_ids": [
+    "TST-M4-NET-LINK",
+    "TST-M4-NET-LIMITS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-126",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "from the owner's external reviewer (relayed by the owner on 2026-11-15; read at cbd59ca4, nothing run by the reviewer) and the manager's verification of the same lines the same day; the reviewer read tools/fat32.py; the manager ran a scratch experiment on crafted images in an isolated worktree at cbd59ca4 (no CI evidence)",
+    "tools/fat32.py tree_findings: claim walks a chain only while the cluster number is at least 2, so a directory entry whose first cluster is 0 or 1 is walked as an empty directory and nothing names it; seen in the scratch experiment: plain `check` answers only `lost clusters: 2` and `check --faulted` answers no problem (exit 0); a file entry whose first cluster is 1 and whose size is 0 is not named either (`lost clusters: 1`; exit 0 with --faulted)",
+    "tools/fat32.py cmd_check: the scan that reports a reserved or out-of-range value reads the first FAT copy only; in a chain the walk treats the reserved value 1 as its end; seen in the scratch experiment: with --faulted, the value 1 in the second copy at a directory's cluster, or at a file's last cluster in place of the end mark, is no problem (exit 0); only when it cuts a file's chain is `FAT1: ...: chain shorter than size` reported",
+    "the host checker is the judge of the fault cases (TST-M3-FAT32-FAULT-UNLINK, -TRUNCATE, -WRITE, TST-M3-FAT32-STOP) and of the packages planned after them (WP-123, WP-124, WP-122): what it does not see, they cannot fail on; the exact --expect-lost counts catch some of it by number only",
+    "tests/test_fat32_tool.py (class Fat32Check); tests/mutants.py tool mutants M208, M209, M212, M213; RSK-037"
+   ],
+   "files": [
+    "tools/fat32.py",
+    "tests/test_fat32_tool.py",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/PLAN-REVERSE.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "فاحص الصورة المضيف: إدخال تالف (مجلد أو ملف عنقوده الأول 0 أو 1) وقيمة محجوزة في أي نسخة FAT يُسمَّيان مشكلة (من مراجعة المالك الخارجية، 2026-11-15)",
+    "design to decide in the package (2-3 options with trade-offs): a named finding for every entry whose first cluster is not a cluster of the volume (0 is right for an empty file only; never for a directory other than the dot entries) and for a reserved or out-of-range value met in a walk along any copy, against a scan of every FAT copy for such values besides the walk, against both",
+    "test first, red seen locally before the fix: host cases on crafted images, each failing today: a directory entry with a first cluster of 0 and of 1, a file entry with a first cluster of 1 and a size of 0, the value 1 in the second copy at a directory's cluster and at a file's last cluster; each must be a named problem in plain and in faulted mode; SECURITY tool mutants for each new finding; the four guest cases that use the checker run again and keep their pinned numbers",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "tools/fat32.py check names, in plain and in faulted mode, a directory entry whose first cluster is 0 or 1, a file entry whose first cluster is 1, and a reserved or out-of-range value in a chain of either FAT copy, shown by host cases on CI; the fault cases keep their pinned numbers; the tool mutants killed",
+   "test_ids": [
+    "TST-M3-FAT32-TOOL",
+    "TST-M3-FAT32-FAULT-WRITE"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M3"
    ],
    "status": "planned",
    "status_history": [
