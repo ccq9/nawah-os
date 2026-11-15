@@ -61,22 +61,40 @@ pub fn capacity_sectors() -> u64 {
         .map_or(0, |d| d.info().capacity_sectors)
 }
 
+/// The visible sign of a stopped disk (ADR-0013 decision 9). The request that timed out is the
+/// only one that answers `Timeout` (the driver refuses every later one with `DeviceNeedsReset`),
+/// so the line is written once in a boot; it is written after the device lock is released.
+fn report(op: &'static str, sector: u64, r: Result<(), BlkError>) -> Result<(), BlkError> {
+    if matches!(r, Err(BlkError::Timeout)) {
+        kprintln!(
+            "OSX|{}|kernel|blk|stopped|op={}|sector={}|code={}",
+            crate::BUILD_ID,
+            op,
+            sector,
+            BlkError::Timeout.code()
+        );
+    }
+    r
+}
+
 pub fn read(sector: u64, buf: &mut [u8]) -> Result<(), BlkError> {
-    DEVICE
+    let r = DEVICE
         .lock()
         .as_mut()
         .ok_or(BlkError::NoDevice)?
-        .read(sector, buf)
+        .read(sector, buf);
+    report("read", sector, r)
 }
 
 /// Used by the test kernel until the file system (WP-18 part 2) writes through it.
 #[cfg_attr(not(feature = "ktest"), allow(dead_code))]
 pub fn write(sector: u64, buf: &[u8]) -> Result<(), BlkError> {
-    DEVICE
+    let r = DEVICE
         .lock()
         .as_mut()
         .ok_or(BlkError::NoDevice)?
-        .write(sector, buf)
+        .write(sector, buf);
+    report("write", sector, r)
 }
 
 /// Test kernel only (TST-M3-BLK-TIMEOUT): the first bytes of the driver's shared data buffer.
@@ -100,5 +118,6 @@ pub fn submitted() -> u16 {
 }
 
 pub fn flush() -> Result<(), BlkError> {
-    DEVICE.lock().as_mut().ok_or(BlkError::NoDevice)?.flush()
+    let r = DEVICE.lock().as_mut().ok_or(BlkError::NoDevice)?.flush();
+    report("flush", 0, r)
 }
