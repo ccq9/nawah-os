@@ -13,10 +13,11 @@ Commands:
   ls IMG [DIR]            list a directory (root by default)
   cat IMG PATH            print a file's bytes to stdout
   verify IMG PATH SHA256  exit 0 when the file exists and its sha256 matches
-  check IMG [--faulted [--allow-longer]]
+  check IMG [--faulted [--allow-longer N] [--expect-lost K]]
                           structural check (signatures, FAT mirrors equal, every chain whole and its own,
-                          no lost cluster, free count); --faulted counts what a failed write may leave
-  fsck-faulted IMG [--allow-longer]
+                          no lost cluster, free count); --faulted counts what a failed write may leave,
+                          with exactly N chains longer than their size and exactly K lost clusters when given
+  fsck-faulted IMG [--allow-longer N]
                           fsck.fat -n with every message named; fails on a failing or unnamed one
   expect IMG PATH TEXT    exit 0 when the file's bytes equal TEXT (\\n escapes allowed)
 """
@@ -455,11 +456,14 @@ def cmd_check(a):
     what a safe order of writes may leave behind (lost clusters, FAT copies that differ, a stale
     free count) is counted on the output line instead of being a problem, and the tree is walked
     along every FAT copy, so a name that reaches a free cluster or shares one is a problem
-    whichever copy shows it. A chain longer than its size stays a problem unless the case adds
-    --allow-longer (a failed delete or truncation never leaves one; a failed write may)."""
+    whichever copy shows it. A chain longer than its size stays a problem unless the case says
+    with --allow-longer N how many its failures leave (a failed delete or truncation leaves
+    none; a failed write may): any other number is a problem. --expect-lost K does the same for
+    the lost clusters."""
     img = Image(a.image)
     faulted = getattr(a, "faulted", False)
-    allow_longer = faulted and getattr(a, "allow_longer", False)
+    allow_longer = getattr(a, "allow_longer", None) if faulted else None
+    expect_lost = getattr(a, "expect_lost", None) if faulted else None
     problems = []
     if img.sig != 0xAA55 or img.boot_sig != 0x29:
         problems.append("boot signatures")
@@ -494,8 +498,12 @@ def cmd_check(a):
     recorded = struct.unpack_from("<I", info, 488)[0] if signed else 0xFFFFFFFF
     real_free = img.clusters - used
     fsinfo = "unknown" if recorded == 0xFFFFFFFF else ("ok" if recorded == real_free else "stale")
-    if not allow_longer:
+    if allow_longer is None:
         problems += [f"{name}: chain longer than size" for name in longer]
+    elif len(longer) != allow_longer:
+        problems.append(f"chains longer than size: {len(longer)} where {allow_longer} are expected: {longer}")
+    if expect_lost is not None and lost != expect_lost:
+        problems.append(f"lost clusters: {lost} where {expect_lost} are expected")
     if not faulted:
         if lost:
             problems.append(f"lost clusters: {lost}")
@@ -530,12 +538,13 @@ FSCK_FAILING = {
 }
 
 
-def classify_fsck(text, allow_longer=False):
+def classify_fsck(text, allow_longer=None):
     """Returns (allowed, failing, unnamed) for the output of `fsck.fat -n`: how many lines
     carried each allowed finding, the failing findings in order of appearance (each once), and
-    the lines no pattern names. A chain longer than its size is allowed only when the case
-    says so (`allow_longer`); otherwise it fails."""
+    the lines no pattern names. Chains longer than their size are allowed only in the exact
+    number the case gives (`allow_longer`); any other number, none included, fails."""
     allowed, failing, unnamed = {}, [], []
+    longer = 0
     for line in text.splitlines():
         hit = next((k for k, pat in FSCK_FAILING.items() if re.fullmatch(pat, line)), None)
         if hit:
@@ -543,13 +552,16 @@ def classify_fsck(text, allow_longer=False):
                 failing.append(hit)
             continue
         hit = next((k for k, pat in FSCK_ALLOWED.items() if re.fullmatch(pat, line)), None)
-        if hit == "longer" and not allow_longer:
-            if hit not in failing:
-                failing.append(hit)
+        if hit == "longer":
+            longer += 1
         elif hit:
             allowed[hit] = allowed.get(hit, 0) + 1
         elif not any(re.fullmatch(pat, line) for pat in FSCK_NEUTRAL):
             unnamed.append(line.strip())
+    if longer != (allow_longer or 0):
+        failing.append("longer")
+    elif longer:
+        allowed["longer"] = longer
     return allowed, failing, unnamed
 
 
@@ -579,8 +591,8 @@ def main(argv=None):
     s = sub.add_parser("cat"); s.add_argument("image"); s.add_argument("path")
     s = sub.add_parser("verify"); s.add_argument("image"); s.add_argument("path"); s.add_argument("sha256"); s.add_argument("--size", type=int)
     s = sub.add_parser("check"); s.add_argument("image"); s.add_argument("--faulted", action="store_true")
-    s.add_argument("--allow-longer", action="store_true")
-    s = sub.add_parser("fsck-faulted"); s.add_argument("image"); s.add_argument("--allow-longer", action="store_true")
+    s.add_argument("--allow-longer", type=int, metavar="N"); s.add_argument("--expect-lost", type=int, metavar="K")
+    s = sub.add_parser("fsck-faulted"); s.add_argument("image"); s.add_argument("--allow-longer", type=int, metavar="N")
     s = sub.add_parser("expect"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
     s = sub.add_parser("absent-raw"); s.add_argument("image"); s.add_argument("text")
     s = sub.add_parser("grep"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")

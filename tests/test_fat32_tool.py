@@ -195,6 +195,12 @@ class Fat32Check(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertIn("lost=1", r.stdout)
         self.assertIn("problems=[]", r.stdout)
+        # A case that knows how many clusters its failures lose says so: any other count fails.
+        self.assertEqual(run("check", "--faulted", "--expect-lost", "1", self.img).returncode, 0)
+        for n in ("0", "2"):
+            r = run("check", "--faulted", "--expect-lost", n, self.img)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("lost clusters: 1", r.stdout)
 
     def test_chain_longer_than_size(self):
         img = self.image()
@@ -209,10 +215,16 @@ class Fat32Check(unittest.TestCase):
         r = run("check", "--faulted", self.img)
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn("ONE.TXT: chain longer than size", r.stdout)
-        r = run("check", "--faulted", "--allow-longer", self.img)
+        # --allow-longer takes the exact number the case expects: one more or one fewer fails.
+        r = run("check", "--faulted", "--allow-longer", "1", self.img)
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertIn("longer=1", r.stdout)
         self.assertIn("problems=[]", r.stdout)
+        for n in ("0", "2"):
+            r = run("check", "--faulted", "--allow-longer", n, self.img)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("chains longer than size: 1", r.stdout)
+            self.assertIn("/ONE.TXT", r.stdout)
 
     def test_copies_differ(self):
         img = self.image()
@@ -312,7 +324,10 @@ class Fat32Check(unittest.TestCase):
         ]
         longer = "/ONE.TXT\n  File size is 100 bytes, cluster chain length is > 512 bytes.\n  Truncating file to 100 bytes.\n"
         self.assertEqual(self.tool.classify_fsck(head + longer + tail), ({}, ["longer"], []))
-        self.assertEqual(self.tool.classify_fsck(head + longer + tail, allow_longer=True), ({"longer": 1}, [], []))
+        self.assertEqual(self.tool.classify_fsck(head + longer + tail, allow_longer=1), ({"longer": 1}, [], []))
+        # The exact number again: two files where one is expected, or none where one is.
+        self.assertEqual(self.tool.classify_fsck(head + longer + longer + tail, allow_longer=1)[1], ["longer"])
+        self.assertEqual(self.tool.classify_fsck(head + tail, allow_longer=1)[1], ["longer"])
         # A line that starts like a path but says more is no path line.
         self.assertEqual(self.tool.classify_fsck(head + "/ONE.TXT is beyond repair\n" + tail)[2], ["/ONE.TXT is beyond repair"])
         for body in ok:
