@@ -1,10 +1,10 @@
 //! stopio (WP-117, TST-M3-FAT32-STOP): started by the test kernel with a hook armed that
 //! withholds from the device the second disk write from then on, the first FAT write of this
 //! process's delete. The process opens /STOP2.TXT, reads it to its end, deletes /STOP1.TXT
-//! (the disk stops inside that call) and then makes twelve more calls of the files contract
-//! through the system-call layer, five of them with a path, flags or a handle that would be
-//! refused on a working disk: every answer from the delete on must be ERR_IO. Exits 0x5709,
-//! or the number of the first step that answered something else.
+//! (the disk stops inside that call) and then makes thirteen more calls of the files contract
+//! through the system-call layer, five of them with a path, flags, a handle or a position
+//! that would be refused on a working disk: every answer from the delete on must be ERR_IO.
+//! Exits 0x5709, or the number of the first step that answered something else.
 
 #![no_std]
 #![no_main]

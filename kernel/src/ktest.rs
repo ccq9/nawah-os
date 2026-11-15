@@ -3618,8 +3618,9 @@ fn fat32_disk_full() -> ! {
 /// from the device the second disk write from then on, and the `stopio` application is run:
 /// it reads B to its end and deletes A, whose first FAT write is that second write, so the
 /// driver's own timeout branch answers it and stops the disk inside the process's call; the
-/// application then makes six more calls and exits 0x5709 only if the delete and every one of
-/// them answered ERR_IO through the system-call layer. Then the kernel asks ten things of its
+/// application then makes thirteen more calls of the files contract, five of them with
+/// arguments a working disk would refuse, and exits 0x5709 only if the delete and every one
+/// of them answered ERR_IO through the system-call layer. Then the kernel asks ten things of its
 /// own opens: a read at the end of B, a seek and a write of no bytes (the three that ask
 /// nothing of the disk), a read inside B, a stat of B and of the root, a create, a sync, the
 /// count of free clusters, and a write through T's open whose position is past its size.
