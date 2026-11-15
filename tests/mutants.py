@@ -853,12 +853,12 @@ MUTANTS = [
      "        self.refuse_stopped()?;\n        if !self.info.flush {\n            return Ok(());\n        }\n        self.request(T_FLUSH, 0, 0, false)",
      "        if !self.info.flush {\n            return Ok(());\n        }\n        let r = self.request(T_FLUSH, 0, 0, false);\n        self.refuse_stopped()?;\n        r",
      ["TST-M3-BLK-TIMEOUT"], "SECURITY: a refused flush has been published to the device: the answer is still K_E_BLK_NEEDS_RESET but the line no longer carries published=0 (the required line is missing), TST-M3-BLK-TIMEOUT FAIL"),
-    # M205-M207 (SECURITY, WP-105, files.md v1.5, ADR-0014 item 5): delete and truncate keep the
+    # M205-M207 (SECURITY, WP-105, files.md v1.5, ADR-0014 item 6): delete and truncate keep the
     # directory entry ahead of the frees. M205: delete frees the chain before it writes the entry.
     ("M205", "kernel/src/fs/fat32.rs",
      "        let mut dead = e;\n        dead.name[0] = 0xE5;\n        self.store_entry(&dead)?;\n        let freed = if e.first >= 2 {\n            self.free_chain(e.first)?\n        } else {\n            0\n        };\n        Ok(freed)",
      "        let freed = if e.first >= 2 {\n            self.free_chain(e.first)?\n        } else {\n            0\n        };\n        let mut dead = e;\n        dead.name[0] = 0xE5;\n        self.store_entry(&dead)?;\n        Ok(freed)",
-     ["TST-M3-FAT32-FAULT-UNLINK"], "SECURITY: a delete that fails after its first FAT write leaves the name with a chain that runs into free clusters, which the next file takes: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-UNLINK FAIL"),
+     ["TST-M3-FAT32-FAULT-UNLINK"], "SECURITY: a delete that fails after its first FAT write leaves the name with a chain that runs into free clusters: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-UNLINK FAIL"),
     # M206: truncate frees the chain before the emptied entry is stored.
     ("M206", "kernel/src/fs/fat32.rs",
      "        self.store_entry(&emptied)?;\n        *file = emptied;\n        if old_first >= 2 {\n            self.free_chain(old_first)\n        } else {\n            Ok(0)\n        }",
@@ -901,6 +901,17 @@ MUTANTS = [
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; continue',
      ["TST-M0-003"], "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted"),
+    # M208, M209 (SECURITY, WP-105): the host image check is the judge of the fault cases; these
+    # blind it. M208: two names on one cluster are no longer reported.
+    ("M208", "tools/fat32.py",
+     "            if c in owner:\n                strict.append(f\"{name} and {owner[c]} share cluster {c}\")\n                break",
+     "            if c in owner:\n                break",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` accepts an image where two names reach one cluster: the host case on the shared cluster fails, TST-M3-FAT32-TOOL FAIL"),
+    # M209: a chain that runs into a free cluster is no longer reported.
+    ("M209", "tools/fat32.py",
+     "            if v == 0:\n                strict.append(f\"{name}: cluster {c} of its chain is free\")\n                break",
+     "            if v == 0:\n                break",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` accepts an image where a name's chain runs into a free cluster: the host cases on the free first cluster fail, TST-M3-FAT32-TOOL FAIL"),
 ]
 
 def stage_of(mid: str) -> str:
@@ -974,7 +985,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # M6 (WP-105): delete and truncate write the directory entry before they free the
             # chain (files.md v1.5): no name points at a freed cluster (M205, M206) and the
             # shared node follows the stored entry (M207).
-            "M205", "M206", "M207"}
+            "M205", "M206", "M207",
+            # M6 tooling (WP-105): the host image check that judges the fault cases still sees
+            # shared clusters (M208) and a chain that runs into a free cluster (M209).
+            "M208", "M209"}
 
 
 def security_of(mid: str) -> bool:
