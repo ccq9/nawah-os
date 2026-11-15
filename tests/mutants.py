@@ -927,7 +927,7 @@ MUTANTS = [
      "                DISK_STOPPED.store(true, Ordering::SeqCst);\n                self.stopped = true;\n",
      "                self.stopped = true;\n",
      ["TST-M3-FAT32-STOP"], "SECURITY: the disk stops and the file system never learns it: the calls that ask nothing of the disk answer from memory and no line kernel|fs|stopped is written, TST-M3-FAT32-STOP FAIL"),
-    # M226..M237 (SECURITY, WP-126): the host image check names a damaged entry and a reserved
+    # M226..M238 (SECURITY, WP-126): the host image check names a damaged entry and a reserved
     # value in any FAT copy. M226: an entry's first cluster is no longer looked at.
     ("M226", "tools/fat32.py",
      "                if not 2 <= entry_first < img.clusters + 2 and (entry_first != 0 or e[11] & ATTR_DIR):\n",
@@ -953,6 +953,11 @@ MUTANTS = [
      "                if not 2 <= entry_first < img.clusters + 2 and (entry_first != 0 or e[11] & ATTR_DIR):\n",
      "                if not 2 <= entry_first < img.clusters + 2 and (entry_first != 0 or e[11] == ATTR_DIR):\n",
      ["TST-M3-FAT32-TOOL"], "SECURITY: a directory whose attributes carry another bit besides the directory's (the kernel asks that bit alone) passes with a first cluster of 0: the host case with attributes 0x30 fails, TST-M3-FAT32-TOOL FAIL"),
+    # M238: the first number past the volume is followed as a cluster.
+    ("M238", "tools/fat32.py",
+     "            if c >= img.clusters + 2 or c in got:\n",
+     "            if c > img.clusters + 2 or c in got:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a link to the first number that is no cluster of the volume is followed and the file is not named: the host case with that number in a chain fails, TST-M3-FAT32-TOOL FAIL"),
     # M228: a chain that reaches the reserved value 1 ends quietly.
     ("M228", "tools/fat32.py",
      "        if c == 1 and got:\n",
@@ -1157,9 +1162,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M225",
             # M6 tooling (WP-126): the host image check names an entry with no cluster (M226,
             # M232), a directory's 0 too (M227, M236) but not an empty file's (M231), the
-            # reserved value in a chain (M228), scans every FAT copy (M229, M230, M235, M237) and
+            # reserved value and a number past the volume in a chain (M228, M238), scans every
+            # FAT copy (M229, M230, M235, M237) and
             # does both in plain mode as with --faulted (M233, M234).
-            "M226", "M227", "M228", "M229", "M230", "M231", "M232", "M233", "M234", "M235", "M236", "M237"}
+            "M226", "M227", "M228", "M229", "M230", "M231", "M232", "M233", "M234", "M235", "M236", "M237", "M238"}
 
 
 def security_of(mid: str) -> bool:

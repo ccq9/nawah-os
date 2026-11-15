@@ -355,7 +355,7 @@ class Fat32Check(unittest.TestCase):
     def test_file_entry_whose_first_cluster_is_no_cluster(self):
         # 0 is the first cluster of an empty file and of nothing else; 1, an end mark and a
         # number past the volume are no cluster at all, whatever the size.
-        for first, size in ((1, 0), (1, 100), (0x0FFFFFF8, 0), (0x0FFFFFF8, 100), ("past", 0)):
+        for first, size in ((1, 0), (1, 100), (0x0FFFFFF8, 0), (0x0FFFFFF8, 100), ("past", 0), ("past", 100)):
             img = self.image()
             saved = img.read_cluster(img.root_cluster)
             n = img.clusters + 2 if first == "past" else first
@@ -419,12 +419,14 @@ class Fat32Check(unittest.TestCase):
             self.assertIn("/BIG.BIN: its chain holds the reserved value 1", r.stdout, mode)
 
     def test_out_of_range_value_in_a_chain(self):
-        # A link that is no cluster of the volume: a number past it, and the bad-cluster mark.
-        # Along either copy the name is given, with and without --faulted.
+        # A link that is no cluster of the volume: a reserved number, the bad-cluster mark,
+        # and the first number past the volume. Along either copy the name is given, with and
+        # without --faulted.
         img = self.image()
         last = img.chain(self.first(img, "BIG.BIN"))[-1]
+        past = img.clusters + 2
         img.close()
-        for value in (0x0FFFFFF0, 0x0FFFFFF7):
+        for value in (0x0FFFFFF0, 0x0FFFFFF7, past):
             for fat in (1, 0):
                 img = self.image()
                 self.set_one_copy(img, last, value, fat)
