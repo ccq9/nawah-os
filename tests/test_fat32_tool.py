@@ -201,9 +201,9 @@ class Fat32Check(unittest.TestCase):
         self.assertIn("lost=1", r.stdout)
         self.assertIn("problems=[]", r.stdout)
         # A case that knows how many clusters its failures lose says so: any other count fails.
-        self.assertEqual(run("check", "--faulted", "--expect-lost", "1", "--expect-lost-second", "1", self.img).returncode, 0)
+        self.assertEqual(run("check", "--faulted", "--expect-lost", "1", "--expect-lost-second", "1", "--expect-lost-both", "1", self.img).returncode, 0)
         for n in ("0", "2"):
-            r = run("check", "--faulted", "--expect-lost", n, "--expect-lost-second", "1", self.img)
+            r = run("check", "--faulted", "--expect-lost", n, "--expect-lost-second", "1", "--expect-lost-both", "1", self.img)
             self.assertEqual(r.returncode, 1, r.stdout)
             self.assertIn("lost clusters: 1", r.stdout)
 
@@ -250,7 +250,7 @@ class Fat32Check(unittest.TestCase):
         # the same counts. X: ONE.TXT one cluster longer, one cluster lost. Y: ONE.TXT sound,
         # BIG.BIN two clusters longer (one of them the cluster X lost), another cluster lost.
         pins = ("--allow-longer", "1", "--expect-longer", "/ONE.TXT:+1", "--expect-longer-second", "/ONE.TXT:+1",
-                "--expect-lost", "1", "--expect-lost-second", "1")
+                "--expect-lost", "1", "--expect-lost-second", "1", "--expect-lost-both", "1")
         img = self.image()
         a, b, c = self.free(img, 3)
         one, big = self.first(img, "ONE.TXT"), img.chain(self.first(img, "BIG.BIN"))[-1]
@@ -271,7 +271,7 @@ class Fat32Check(unittest.TestCase):
         self.assertIn("/BIG.BIN:+2", r.stdout)
         # Each copy is judged by its own pin: with the other copy's pin right, the finding is
         # this copy's alone.
-        counts = ("--allow-longer", "1", "--expect-lost", "1", "--expect-lost-second", "1")
+        counts = ("--allow-longer", "1", "--expect-lost", "1", "--expect-lost-second", "1", "--expect-lost-both", "1")
         r = run("check", "--faulted", *counts, "--expect-longer", "/ONE.TXT:+1", "--expect-longer-second", "/BIG.BIN:+2", self.img)
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("problems=['chains longer than size: /BIG.BIN:+2 where /ONE.TXT:+1 are expected']", r.stdout)
@@ -295,7 +295,7 @@ class Fat32Check(unittest.TestCase):
         # A case whose operation may leave it says which file and by how much.
         r = run("check", "--faulted", "--expect-longer-second", "/ONE.TXT:+1", self.img)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn(" second: lost=0 longer_files=/ONE.TXT:+1", r.stdout)
+        self.assertIn(" second: lost=0 lost_both=0 longer_files=/ONE.TXT:+1", r.stdout)
         for other in ("/TWO.TXT:+1", "/ONE.TXT:+2", "-"):
             r = run("check", "--faulted", "--expect-longer-second", other, self.img)
             self.assertEqual(r.returncode, 1, (other, r.stdout + r.stderr))
@@ -311,25 +311,152 @@ class Fat32Check(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertIn(" lost=0 ", r.stdout)
         self.assertIn(" second: lost=100 ", r.stdout)
-        r = run("check", "--faulted", "--expect-lost", "0", "--expect-lost-second", "100", self.img)
+        r = run("check", "--faulted", "--expect-lost", "0", "--expect-lost-second", "100", "--expect-lost-both", "0", self.img)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         for n in ("0", "99", "101"):
-            r = run("check", "--faulted", "--expect-lost", "0", "--expect-lost-second", n, self.img)
+            r = run("check", "--faulted", "--expect-lost", "0", "--expect-lost-second", n, "--expect-lost-both", "0", self.img)
             self.assertEqual(r.returncode, 1, (n, r.stdout + r.stderr))
             self.assertIn(f"FAT1: lost clusters: 100 where {n} are expected", r.stdout)
 
     def test_a_pin_on_the_first_copy_needs_the_second(self):
         # WP-127 (B4): a case cannot pin the first copy and leave the second unjudged.
+        # The three numbers of the lost clusters come together or not at all, in whichever order
+        # a case tries to leave one out.
         for opts in (("--expect-lost", "0"), ("--allow-longer", "0"), ("--expect-longer", "-"),
-                     ("--allow-longer", "0", "--expect-longer", "-")):
+                     ("--allow-longer", "0", "--expect-longer", "-"),
+                     ("--expect-lost-second", "0"), ("--expect-lost-both", "0"),
+                     ("--expect-lost", "0", "--expect-lost-second", "0"), ("--expect-lost", "0", "--expect-lost-both", "0"),
+                     ("--expect-lost-second", "0", "--expect-lost-both", "0")):
             r = run("check", "--faulted", *opts, self.img)
             self.assertEqual(r.returncode, 2, (opts, r.stdout + r.stderr))
             self.assertIn("-second", r.stderr, opts)
         whole = ("--allow-longer", "0", "--expect-longer", "-", "--expect-longer-second", "-",
-                 "--expect-lost", "0", "--expect-lost-second", "0")
+                 "--expect-lost", "0", "--expect-lost-second", "0", "--expect-lost-both", "0")
         r = run("check", "--faulted", *whole, self.img)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn(" longer_files=- second: lost=0 longer_files=-", r.stdout)
+        self.assertIn(" longer_files=- second: lost=0 lost_both=0 longer_files=-", r.stdout)
+
+    def test_lost_clusters_that_cancel_between_the_copies(self):
+        # WP-127 (the red team's A1): one cluster lost in both copies, against one marked in
+        # the first copy alone and another in the second alone: the two counts are the same.
+        pins = ("--expect-lost", "1", "--expect-lost-second", "1", "--expect-lost-both", "1")
+        img = self.image()
+        x, y = self.free(img, 2)
+        self.both(img, x, EOC)
+        img.close()
+        r = run("check", "--faulted", *pins, self.img)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(" second: lost=1 lost_both=1 ", r.stdout)
+        img = self.image()
+        self.set_one_copy(img, x, 0, 1)
+        self.set_one_copy(img, y, EOC, 1)
+        img.close()
+        r = run("check", "--faulted", *pins, self.img)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("lost clusters in both copies: 0 where 1 are expected", r.stdout)
+        self.assertIn(" lost=1 ", r.stdout)
+        self.assertIn(" second: lost=1 lost_both=0 ", r.stdout)
+
+    def test_each_copy_s_longer_files_are_its_own(self):
+        # WP-127 (the red team's A5): ONE.TXT longer along the first copy alone, BIG.BIN along
+        # the second alone. Each copy's pin is compared with that copy's files.
+        img = self.image()
+        a, b = self.free(img, 2)
+        self.set_one_copy(img, self.first(img, "ONE.TXT"), a, 0)
+        self.set_one_copy(img, a, EOC, 0)
+        self.set_one_copy(img, img.chain(self.first(img, "BIG.BIN"))[-1], b, 1)
+        self.set_one_copy(img, b, EOC, 1)
+        img.close()
+        r = run("check", "--faulted", "--allow-longer", "1", "--expect-longer", "/ONE.TXT:+1", "--expect-longer-second", "/BIG.BIN:+1", self.img)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        r = run("check", "--faulted", "--allow-longer", "1", "--expect-longer", "/BIG.BIN:+1", "--expect-longer-second", "/ONE.TXT:+1", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("'chains longer than size: /ONE.TXT:+1 where /BIG.BIN:+1 are expected'", r.stdout)
+        self.assertIn("'FAT1: chains longer than size: /BIG.BIN:+1 where /ONE.TXT:+1 are expected'", r.stdout)
+        # The number --allow-longer pins is the first copy's: here it is 1 along each copy,
+        # and two files along the second alone must not meet it.
+        img = self.image()
+        self.set_one_copy(img, self.first(img, "ONE.TXT"), EOC, 0)
+        self.set_one_copy(img, a, 0, 0)
+        self.set_one_copy(img, self.first(img, "TWO.TXT"), a, 1)
+        self.set_one_copy(img, a, EOC, 1)
+        img.close()
+        r = run("check", "--faulted", "--allow-longer", "2", "--expect-longer", "-", "--expect-longer-second", "/BIG.BIN:+1,/TWO.TXT:+1", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("chains longer than size: 0 where 2 are expected", r.stdout)
+
+    def test_two_longer_files_are_named_in_any_order(self):
+        img = self.image()
+        a, b = self.free(img, 2)
+        self.both(img, self.first(img, "ONE.TXT"), a); self.both(img, a, EOC)
+        self.both(img, img.chain(self.first(img, "BIG.BIN"))[-1], b); self.both(img, b, EOC)
+        img.close()
+        for order in ("/ONE.TXT:+1,/BIG.BIN:+1", "/BIG.BIN:+1,/ONE.TXT:+1"):
+            r = run("check", "--faulted", "--allow-longer", "2", "--expect-longer", order, "--expect-longer-second", order, self.img)
+            self.assertEqual(r.returncode, 0, (order, r.stdout + r.stderr))
+            self.assertIn(" longer_files=/BIG.BIN:+1,/ONE.TXT:+1 ", r.stdout)
+        r = run("check", "--faulted", "--allow-longer", "2", "--expect-longer", "/ONE.TXT:+1,/TWO.TXT:+1", "--expect-longer-second", "/ONE.TXT:+1,/BIG.BIN:+1", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+
+    def test_a_name_that_reads_as_two_is_one_file(self):
+        # WP-127 (the red team's A2): one longer file whose name holds a comma and `:+` must
+        # not meet a pin that names two files.
+        img = self.image()
+        (a,) = self.free(img, 1)
+        self.both(img, self.first(img, "ONE.TXT"), a); self.both(img, a, EOC)
+        data = bytearray(img.read_cluster(img.root_cluster))
+        i = bytes(data).index(b"ONE     TXT")
+        data[i:i + 11] = b"A:+1,/B TXT"
+        img.write_cluster(img.root_cluster, bytes(data))
+        img.close()
+        r = run("check", "--faulted", "--allow-longer", "1", "--expect-longer", "/A:+1,/B.TXT:+1", "--expect-longer-second", "/A:+1,/B.TXT:+1", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+
+    def test_a_name_reached_along_one_copy_only(self):
+        # WP-127 (the red team's A4): the root's chain is longer in the second copy alone and
+        # its extra cluster holds an entry: a name the first copy does not reach.
+        img = self.image()
+        z, first = self.free(img, 2)
+        data = bytearray(img.read_cluster(img.root_cluster))
+        for i in range(0, len(data), 32):
+            if data[i] == 0:
+                data[i] = 0xE5          # the walk must go on into the next cluster
+        img.write_cluster(img.root_cluster, bytes(data))
+        entry = bytearray(data[bytes(data).index(b"ONE     TXT"):][:32])
+        entry[0:11] = b"GHOST   TXT"
+        struct.pack_into("<H", entry, 20, first >> 16); struct.pack_into("<H", entry, 26, first & 0xFFFF)
+        img.write_cluster(z, bytes(entry) + bytes(len(data) - 32))
+        self.set_one_copy(img, img.root_cluster, z, 1)
+        self.set_one_copy(img, z, EOC, 1)
+        self.both(img, first, EOC)
+        img.close()
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, self.img)
+            self.assertEqual(r.returncode, 1, (mode, r.stdout))
+            self.assertIn("FAT1: /GHOST.TXT is reached along this copy only", r.stdout, mode)
+
+    def test_second_copy_pins_need_a_second_copy(self):
+        # WP-127 (the red team's A3): on a volume with one FAT copy a pin on the second copy
+        # is met by nothing and must not pass in silence.
+        img = self.image()
+        for sector in (0, img.bk_boot):
+            s = bytearray(img.read_sector(sector))
+            s[16] = 1
+            img.write_sector(sector, bytes(s))
+        img.close()
+        r = run("check", "--faulted", "--expect-longer-second", "-", self.img)
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("no second FAT copy", r.stdout + r.stderr)
+
+    def test_a_chain_that_loops_is_named(self):
+        img = self.image()
+        chain = img.chain(self.first(img, "BIG.BIN"))
+        self.both(img, chain[-1], chain[0])
+        img.close()
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, self.img)
+            self.assertEqual(r.returncode, 1, (mode, r.stdout))
+            self.assertIn(f"/BIG.BIN: bad chain at {chain[0]:#x}", r.stdout, mode)
 
     def test_a_chain_of_the_volume_s_size_is_walked_in_time(self):
         # WP-127 (C5): BIG.BIN takes every free cluster of the volume. The image is healthy.
