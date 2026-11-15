@@ -152,6 +152,7 @@ pub fn run() -> ! {
         "tlb_shootdown" => tlb_shootdown(),
         "blk_read_pattern" => blk_read_pattern(),
         "blk_user_cr3" => blk_user_cr3(),
+        "blk_timeout" => blk_timeout(),
         "blk_persist_write" => blk_persist(true),
         "blk_persist_read" => blk_persist(false),
         "fat32_read" => fat32_read(),
@@ -1854,6 +1855,80 @@ fn blk_read_pattern() -> ! {
         fail("frames leaked by block reads")
     }
     pass("virtio-blk reads the harness pattern exactly and refuses bad requests")
+}
+
+/// TST-M3-BLK-TIMEOUT (REQ-M3-007; WP-104, RSK-026; ADR-0013 decision 9): after a request
+/// times out the driver serves nothing more. Every request shares one header, one status byte,
+/// one data buffer and the same descriptors, and a completion is taken by its position: a
+/// request that was given up may still complete later, so the next request's result could be
+/// the old one's, and a write's bytes could reach the old request's sector. The case reads a
+/// pattern sector (served, so the shared buffer holds that sector), makes the next request
+/// time out through the test kernel's hook, and then asks for a read, a write and a flush:
+/// each must be refused with K_E_BLK_NEEDS_RESET, and the shared buffer must still hold the
+/// first sector (the refused write did not copy its bytes in). The write carries the bytes its
+/// sector already holds, so a kernel that serves it leaves the image as it was.
+fn blk_timeout() -> ! {
+    let capacity = crate::block::capacity_sectors();
+    let mut buf = alloc::vec![0u8; 512];
+    let mut held = alloc::vec![0u8; 512];
+    let target = capacity.saturating_sub(PATTERN_TAIL);
+    let first = target + 1;
+    let frames0 = pmm::stats().free_frames;
+    let before = crate::block::read(first, &mut buf);
+    let pattern_ok = buf
+        .iter()
+        .enumerate()
+        .all(|(k, b)| *b == pattern_byte(first, k));
+    crate::block::arm_timeout();
+    let timed = crate::block::read(target, &mut buf);
+    let after_read = crate::block::read(target, &mut buf);
+    let mut same = [0u8; 512];
+    for (k, b) in same.iter_mut().enumerate() {
+        *b = pattern_byte(target, k);
+    }
+    let after_write = crate::block::write(target, &same);
+    crate::block::peek_data(&mut held);
+    let buffer_kept = held
+        .iter()
+        .enumerate()
+        .all(|(k, b)| *b == pattern_byte(first, k));
+    let after_flush = crate::block::flush();
+    let frames1 = pmm::stats().free_frames;
+    let code = |r: &Result<(), crate::drivers::virtio_blk::BlkError>| match r {
+        Ok(()) => "ok",
+        Err(e) => e.code(),
+    };
+    kprintln!(
+        "OSX|{}|ktest|blk_timeout|before={}|pattern={}|timed={}|after_read={}|after_write={}|buffer_kept={}|after_flush={}|frames_delta={}",
+        BUILD_ID,
+        code(&before),
+        u8::from(pattern_ok),
+        code(&timed),
+        code(&after_read),
+        code(&after_write),
+        u8::from(buffer_kept),
+        code(&after_flush),
+        frames0 as i64 - frames1 as i64
+    );
+    if before.is_err() || !pattern_ok {
+        fail("the pattern sector was not read before the timeout")
+    }
+    if code(&timed) != "K_E_BLK_TIMEOUT" {
+        fail("the withheld request did not time out")
+    }
+    if [&after_read, &after_write, &after_flush]
+        .iter()
+        .any(|r| code(r) != "K_E_BLK_NEEDS_RESET")
+    {
+        fail("a request was served after a timed-out one")
+    }
+    if !buffer_kept {
+        fail("a refused write changed the shared buffer")
+    }
+    if frames0 != frames1 {
+        fail("frames leaked")
+    }
+    pass("after a timed-out request the disk serves nothing more")
 }
 
 // ---- Priority order (WP-22, mutant M31) ------------------------------------------------

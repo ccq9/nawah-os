@@ -6558,6 +6558,7 @@
    ],
    "acceptance": "after a timed-out request no later request returns data or a status that is not its own, shown by the new case on CI; TST-M3-BLK-READ and the storage cases PASS; the mutant killed",
    "test_ids": [
+    "TST-M3-BLK-TIMEOUT",
     "TST-M3-BLK-READ",
     "TST-M3-BLK-PERSIST"
    ],

@@ -79,6 +79,20 @@ pub fn write(sector: u64, buf: &[u8]) -> Result<(), BlkError> {
         .write(sector, buf)
 }
 
+/// Test kernel only (TST-M3-BLK-TIMEOUT): the first bytes of the driver's shared data buffer.
+#[cfg(feature = "ktest")]
+pub fn peek_data(out: &mut [u8]) {
+    if let Some(d) = DEVICE.lock().as_ref() {
+        d.peek_data(out);
+    }
+}
+
+/// Test kernel only: the next request times out (TST-M3-BLK-TIMEOUT; see the driver's hook).
+#[cfg(feature = "ktest")]
+pub fn arm_timeout() {
+    crate::drivers::virtio_blk::arm_timeout();
+}
+
 pub fn flush() -> Result<(), BlkError> {
     DEVICE.lock().as_mut().ok_or(BlkError::NoDevice)?.flush()
 }

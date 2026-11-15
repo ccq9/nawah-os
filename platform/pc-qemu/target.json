@@ -2085,6 +2085,31 @@
         ]
       },
       {
+        "id": "TST-M3-BLK-TIMEOUT",
+        "test_id": "TST-M3-BLK-TIMEOUT",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=blk_timeout"
+        ],
+        "oracle": "REQ-M3-007, WP-104 (RSK-026; ADR-0013 decision 9): after a request times out the virtio-blk driver serves nothing more for the rest of the boot. Every request shares one header, one status byte, one data buffer and the same three descriptors, and a completion is taken by its position in the used ring, so a request the driver gave up could still complete later and be taken for the next one, and a later write's bytes could reach the earlier request's sector. The case reads one pattern sector (before=ok, pattern=1: the shared buffer now holds that sector), arms the test kernel's hook, which withholds the next request from the device (not published, no notify) and shortens its wait so the driver's own timeout branch runs (timed=K_E_BLK_TIMEOUT), then asks for a read of another sector, a write to that sector of the bytes it already holds, and a flush: each is refused with K_E_BLK_NEEDS_RESET; after the refused write the shared buffer still holds the first sector (buffer_kept=1: the refusal comes before the copy); no frame is left; exit 33. Not shown by this case: a late completion from a real device (the withheld request never reaches the device), and the order of the refusal against the missing-FLUSH shortcut (the lab device offers FLUSH).",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=blk_timeout",
+          "|ktest|blk_timeout|before=ok|pattern=1|timed=K_E_BLK_TIMEOUT|after_read=K_E_BLK_NEEDS_RESET|after_write=K_E_BLK_NEEDS_RESET|buffer_kept=1|after_flush=K_E_BLK_NEEDS_RESET|frames_delta=0",
+          "|ktest|pass|after a timed-out request the disk serves nothing more"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "after_read=ok",
+          "after_write=ok",
+          "after_flush=ok",
+          "buffer_kept=0"
+        ]
+      },
+      {
         "id": "TST-M3-BLK-USER-CR3",
         "test_id": "TST-M3-BLK-USER-CR3",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

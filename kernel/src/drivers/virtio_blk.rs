@@ -20,6 +20,8 @@
 //! virtio_blk_req {le32 type, le32 reserved, le64 sector, data[], u8 status};
 //! VIRTIO_BLK_T_IN 0, OUT 1, FLUSH 4; status OK 0, IOERR 1, UNSUPP 2).
 
+#[cfg(feature = "ktest")]
+use core::sync::atomic::AtomicBool;
 use core::sync::atomic::{fence, Ordering};
 
 use crate::arch::mmio::{
@@ -64,6 +66,21 @@ const QUEUE_SIZE: u16 = 16;
 pub const MAX_SECTORS: usize = 128;
 /// Polling bound per request (iterations of a PIT-free spin; the lab completes in microseconds).
 const POLL_LIMIT: u64 = 50_000_000;
+
+/// Test kernel only (TST-M3-BLK-TIMEOUT): the next request is withheld from the device (its
+/// entry is not published in the available ring and no notify is sent) and waits a short
+/// poll, so the driver's own timeout branch runs without depending on the emulator's timing.
+#[cfg(feature = "ktest")]
+static FORCE_TIMEOUT: AtomicBool = AtomicBool::new(false);
+/// The poll bound of a withheld request.
+#[cfg(feature = "ktest")]
+const FORCED_POLL_LIMIT: u64 = 10_000;
+
+/// Arms the hook for the next request.
+#[cfg(feature = "ktest")]
+pub fn arm_timeout() {
+    FORCE_TIMEOUT.store(true, Ordering::SeqCst);
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BlkError {
@@ -336,14 +353,28 @@ impl VirtioBlk {
         dma::write32(d(2) + 8, 1);
         dma::write16(d(2) + 12, DESC_F_WRITE);
         dma::write16(d(2) + 14, 0);
-        // Available ring: ring[idx % size] = head 0; then idx += 1; then notify (§2.7.13).
-        let slot = u64::from(self.avail_idx % self.queue_size);
-        dma::write16(self.avail + 4 + slot * 2, 0);
-        fence(Ordering::SeqCst);
-        self.avail_idx = self.avail_idx.wrapping_add(1);
-        dma::write16(self.avail + 2, self.avail_idx);
-        fence(Ordering::SeqCst);
-        wr16(self.notify_addr, 0);
+        #[cfg(feature = "ktest")]
+        let withheld = FORCE_TIMEOUT.swap(false, Ordering::SeqCst);
+        #[cfg(not(feature = "ktest"))]
+        let withheld = false;
+        #[cfg(feature = "ktest")]
+        let limit = if withheld {
+            FORCED_POLL_LIMIT
+        } else {
+            POLL_LIMIT
+        };
+        #[cfg(not(feature = "ktest"))]
+        let limit = POLL_LIMIT;
+        if !withheld {
+            // Available ring: ring[idx % size] = head 0; then idx += 1; then notify (§2.7.13).
+            let slot = u64::from(self.avail_idx % self.queue_size);
+            dma::write16(self.avail + 4 + slot * 2, 0);
+            fence(Ordering::SeqCst);
+            self.avail_idx = self.avail_idx.wrapping_add(1);
+            dma::write16(self.avail + 2, self.avail_idx);
+            fence(Ordering::SeqCst);
+            wr16(self.notify_addr, 0);
+        }
         // Completion: used.idx advances past our last seen value.
         let mut spins = 0u64;
         loop {
@@ -352,7 +383,7 @@ impl VirtioBlk {
                 break;
             }
             spins += 1;
-            if spins > POLL_LIMIT {
+            if spins > limit {
                 return Err(BlkError::Timeout);
             }
             core::hint::spin_loop();
@@ -407,6 +438,14 @@ impl VirtioBlk {
             return Ok(());
         }
         self.request(T_FLUSH, 0, 0, false)
+    }
+
+    /// Test kernel only (TST-M3-BLK-TIMEOUT): a copy of the first bytes of the shared data
+    /// buffer, so the case can show that a refused write left it alone.
+    #[cfg(feature = "ktest")]
+    pub fn peek_data(&self, out: &mut [u8]) {
+        let n = out.len().min(MAX_SECTORS * SECTOR);
+        out[..n].copy_from_slice(dma::bytes_mut(self.data, n));
     }
 
     pub fn frames(&self) -> usize {
