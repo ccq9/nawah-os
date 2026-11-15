@@ -322,14 +322,19 @@ impl Fat32 {
         Ok(le32(&s, off % SECTOR) & 0x0FFF_FFFF)
     }
 
-    /// Writes entry `c` in every FAT copy, keeping the high 4 bits.
+    /// Writes entry `c` in every FAT copy, keeping the high 4 bits. The copies are written from
+    /// the last to the first, so the copy the kernel reads, the first, is written last (files.md
+    /// v1.8): a call that fails between the copies leaves what the kernel sees unchanged, and
+    /// the next `fat_set` of that entry writes every copy again. A copy after the first may
+    /// then be ahead of it (a link, a mark or a free the first copy does not have), never
+    /// behind.
     fn fat_set(&self, c: u32, v: u32) -> Result<(), FsError> {
         if c < 2 || c >= self.clusters + 2 {
             return Err(FsError::Corrupt);
         }
         let off = c as usize * 4;
         let mut s = [0u8; SECTOR];
-        for k in 0..self.fats {
+        for k in (0..self.fats).rev() {
             let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;
             block::read(sector, &mut s)?;
             let old = le32(&s, off % SECTOR);

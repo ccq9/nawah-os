@@ -233,7 +233,7 @@ MUTANTS = [
      "            .is_none_or(|e| e > self.info.capacity_sectors + 8)",
      ["TST-M3-BLK-READ"], "reads past the capacity accepted"),
     ("M46", "kernel/src/fs/fat32.rs",
-     "        for k in 0..self.fats {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
+     "        for k in (0..self.fats).rev() {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
      "        for k in 0..1 {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
      ["TST-M3-FILE-ROUNDTRIP", "TST-M3-FD-LEAK", "TST-M3-FAT32-PERSIST"],
      "only the first FAT is updated (fsck on an image with files left: FATs differ)"),
