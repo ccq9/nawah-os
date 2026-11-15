@@ -853,6 +853,22 @@ MUTANTS = [
      "        self.refuse_stopped()?;\n        if !self.info.flush {\n            return Ok(());\n        }\n        self.request(T_FLUSH, 0, 0, false)",
      "        if !self.info.flush {\n            return Ok(());\n        }\n        let r = self.request(T_FLUSH, 0, 0, false);\n        self.refuse_stopped()?;\n        r",
      ["TST-M3-BLK-TIMEOUT"], "SECURITY: a refused flush has been published to the device: the answer is still K_E_BLK_NEEDS_RESET but the line no longer carries published=0 (the required line is missing), TST-M3-BLK-TIMEOUT FAIL"),
+    # M205-M207 (SECURITY, WP-105, files.md v1.5, ADR-0014 item 5): delete and truncate keep the
+    # directory entry ahead of the frees. M205: delete frees the chain before it writes the entry.
+    ("M205", "kernel/src/fs/fat32.rs",
+     "        let mut dead = e;\n        dead.name[0] = 0xE5;\n        self.store_entry(&dead)?;\n        let freed = if e.first >= 2 {\n            self.free_chain(e.first)?\n        } else {\n            0\n        };\n        Ok(freed)",
+     "        let freed = if e.first >= 2 {\n            self.free_chain(e.first)?\n        } else {\n            0\n        };\n        let mut dead = e;\n        dead.name[0] = 0xE5;\n        self.store_entry(&dead)?;\n        Ok(freed)",
+     ["TST-M3-FAT32-FAULT-UNLINK"], "SECURITY: a delete that fails after its first FAT write leaves the name with a chain that runs into free clusters, which the next file takes: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-UNLINK FAIL"),
+    # M206: truncate frees the chain before the emptied entry is stored.
+    ("M206", "kernel/src/fs/fat32.rs",
+     "        self.store_entry(&emptied)?;\n        *file = emptied;\n        if old_first >= 2 {\n            self.free_chain(old_first)\n        } else {\n            Ok(0)\n        }",
+     "        let freed = if old_first >= 2 {\n            self.free_chain(old_first)?\n        } else {\n            0\n        };\n        self.store_entry(&emptied)?;\n        *file = emptied;\n        Ok(freed)",
+     ["TST-M3-FAT32-FAULT-TRUNCATE"], "SECURITY: a truncation that fails after its first FAT write leaves the stored entry pointing at freed clusters: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-TRUNCATE FAIL"),
+    # M207: truncate empties the shared node before the emptied entry is stored.
+    ("M207", "kernel/src/fs/fat32.rs",
+     "        self.store_entry(&emptied)?;\n        *file = emptied;\n",
+     "        *file = emptied;\n        self.store_entry(&emptied)?;\n",
+     ["TST-M3-FAT32-FAULT-TRUNCATE"], "SECURITY: a truncation whose entry write is refused leaves the node of every open empty over a file the disk still holds whole: the sweep's line carries node_differs that is not 0, TST-M3-FAT32-FAULT-TRUNCATE FAIL"),
     # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
     # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
     # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
@@ -954,7 +970,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # the next requests are refused (M201), a refused write leaves the shared buffer
             # alone (M202), a failed read hands nothing to its caller (M203) and a refused
             # request is not published first (M204).
-            "M201", "M202", "M203", "M204"}
+            "M201", "M202", "M203", "M204",
+            # M6 (WP-105): delete and truncate write the directory entry before they free the
+            # chain (files.md v1.5): no name points at a freed cluster (M205, M206) and the
+            # shared node follows the stored entry (M207).
+            "M205", "M206", "M207"}
 
 
 def security_of(mid: str) -> bool:
