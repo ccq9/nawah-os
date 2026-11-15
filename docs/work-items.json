@@ -7317,7 +7317,8 @@
     "design to decide in the package (2-3 options with trade-offs): the node updated from a staged copy only after store_entry succeeds (small; a failed call leaks its chain) against a dirty mark that sync and close write back (keeps the data; I/O and errors inside Drop) against poisoning the node after a failure",
     "test first, red seen locally before the fix: a swept case with the fault hook refusing write N and every later one until the call has answered (inside one call that is one failure: every write is checked) for every N of an append to a new file; the host checks then run with --faulted --allow-longer (check ignores --allow-longer without --faulted), since a failed write may leave a chain longer than the size: after each failed call the node equals the stored entry, then sync, close, reopen: stat and read agree; expected today: the node differs for the later N and sync answers Ok on a stale entry; the host checker on the image; a SECURITY mutant: the node updated before the stored entry",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: about 35 calls by the engineer's brief, unmeasured; sized at activation"
+    "2026-11-15 estimate: about 35 calls by the engineer's brief, unmeasured; sized at activation",
+    "2026-11-15 activation estimate and design (the manager, from the kernel engineer's brief audited on the same day and a reading of fat32.rs write and vfs::write at ee03d4306; the local QEMU lab; an audit pass and a red-team pass before the single push): about 50 calls / 60 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first); the fault hook, the second-boot check and the host checker exist since WP-105. Design chosen from the three options: write works on a staged copy of the entry and the shared node takes it only after store_entry succeeds, so after any failed call the node equals the stored entry; a failed call then loses the clusters it allocated (a new file) or leaves the chain longer than the size (an existing file; a later append takes the cluster it finds there), and a write that fails inside the old size leaves torn bytes, which no order removes: the contract will say so. Not chosen: a dirty mark written back by sync and close (I/O and errors inside Drop) and poisoning the node. Test first, red seen locally: two sweeps with the block layer's hook, one appending three clusters to a new file and one appending a cluster to an existing one-cluster file; expected by reading before the fix: the node differs from the stored entry for every failure after the first allocation. The host checks run with --faulted --allow-longer. The contract takes the files.md version free at the merge (v1.6 today)"
    ],
    "acceptance": "no failure point of a write (every write N, swept by the fault hook) leaves a directory entry that points at a free cluster, a shared node that differs from the stored entry after a failed call, or a sync that reports a stable file whose entry is stale, shown by the new case and the host image check on CI; files.md (the version free at the merge) states what a failed write leaves; the mutant killed",
    "test_ids": [
@@ -7328,9 +7329,10 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
