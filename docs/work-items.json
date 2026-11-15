@@ -7494,7 +7494,8 @@
     "design to decide in the package (2-3 options with trade-offs): store what was written and answer the shorter count when the disk fills in the middle of a call (the bytes are on the disk and the count says so; the next call answers no space with nothing taken; callers must treat a short count as they treat it elsewhere) against freeing what the call took and answering no space with the file as it was (all or nothing; more writes on the failure path, each of which can fail) against asking for the free count before taking anything (a scan of the FAT for every call)",
     "test first, red seen locally before the fix: a test-kernel hook that makes alloc_cluster answer DiskFull after K allocations (filling the lab volume for real is too slow: every allocation scans the FAT from its start), then a first write to an empty file that needs more than K clusters: expected: no lost cluster and the answer the chosen option states; today: the K clusters are lost; the case has an image of its own for the host check (--expect-lost 0 cannot be asked of the image of TST-M3-FAT32-FAULT-WRITE, which holds 51 lost clusters by design); a second step on a file that has a first cluster shows that nothing is lost there today either; a SECURITY mutant that drops the handling",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: about 40 calls, unmeasured; sized at activation"
+    "2026-11-15 estimate: about 40 calls, unmeasured; sized at activation",
+    "2026-11-15 activation estimate and design (the manager, from the red team's and the auditor's reading of WP-118 and a reading of write, alloc_cluster and sys_write at e8b368105; the local QEMU lab; an audit pass and a red-team pass before the single push): about 45 calls / 60 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first). Design chosen from the three options: when the volume runs out in the middle of a call, write stores what it wrote (the entry with the size reached) and answers that shorter count; when nothing could be written it answers no space with nothing taken; a count smaller than asked is already part of the ABI (a call is cut to 64 KiB) and by reading no caller breaks: config compares with the exact length and treats less as a failed save. Not chosen: freeing what the call took (all or nothing, but more writes on the failure path, each of which can fail, and bytes already written inside the old size would stay while the call says nothing was written) and asking for the free count first (a scan of the whole FAT for every call). Test first, red seen locally: a test-kernel hook in alloc_cluster that answers DiskFull after K allocations, a first write of three clusters to an empty file with K=2 and an append to a one-cluster file with K=1, on an image judged by the plain host checks (no lost cluster, no chain longer than its size, fsck.fat exit 0); expected today: the empty file's two clusters lost, the other file's chain longer than its size"
    ],
    "acceptance": "a write that runs out of space in the middle of a call loses no cluster and tells its caller what was written or that nothing was, shown by a case with the host check counting zero lost clusters on CI; files.md (the version free at the merge) states the answer; the mutant killed",
    "test_ids": [
@@ -7504,9 +7505,10 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
