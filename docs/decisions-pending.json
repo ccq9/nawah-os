@@ -82,7 +82,7 @@
    ],
    "requested_at": "2026-11-09T12:00:00Z",
    "status": "answered",
-   "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. App launch is brokered by the service manager (LAUNCH, app identity vouched on CONNECT); the desktop never holds the apps' process handles."
+   "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. App launch is brokered by the service manager (LAUNCH, app identity vouched on CONNECT); the desktop never holds the apps' process handles. 2026-11-15: put to the owner again in the session, because the delegation of 2026-11-08 has no text in the records: asked to confirm option 1 or to dictate the delegation, the owner answered in his own words «قم باختيار الافضل» (choose the best). The manager chose option 1, the recommendation put to him: a system service launches applications and vouches their identity (the comparison given to him with macOS and with Windows 11's packaged applications was from general knowledge, not checked against a source in the session). Scope of this instruction: DEC-005 alone; the 2026-11-08 delegation itself stays without a recorded text."
   },
   {
    "id": "DEC-006",

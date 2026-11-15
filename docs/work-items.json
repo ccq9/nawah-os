@@ -6375,7 +6375,8 @@
     "taken over from WP-100 (2026-11-15): the registry's samples placed on the built volume under /SYSTEM/APPS by the build (tools/project.py prepare_disk; every guest case's disk changes with it), read by the manager through the WP-100 parser; the identity's number: what happens past app:<id>#99 (refuse the launch, or reuse a freed number) is decided and tested here; svcmgr's name_ok accepts [A-Za-z0-9_-] only and is not the check for the vouched identity",
     "M6 guest step: the case's seconds are counted at activation against 977 of 1080 s; if it does not fit, the cap and job a's limit rise with the case (test_a_bounded_suite_fits_its_cap_in_the_worst_case)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation"
+    "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation",
+    "2026-11-15: DEC-005 confirmed for option 1 under the owner's instruction of the same day («قم باختيار الافضل»), recorded in docs/decisions-pending.json: this item no longer waits for the owner; ADR-0023's sentence that the model awaits the owner's record is corrected with this item's push"
    ],
    "acceptance": "TST-M6-LAUNCH-DENIED PASS on CI; services.md v1.14 states LAUNCH, the identity and the allow-list; M140 and M142 killed by the M6 gate",
    "test_ids": [
