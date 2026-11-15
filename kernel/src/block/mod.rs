@@ -86,9 +86,62 @@ pub fn read(sector: u64, buf: &mut [u8]) -> Result<(), BlkError> {
     report("read", sector, r)
 }
 
+/// Test kernel only (WP-105, the FAT32 fault cases): disk writes are counted, and from a chosen
+/// write on every write is refused with `Io(0xEE)` before it reaches the driver (nothing is
+/// published), while reads keep working. The disk then holds, to the sector, what a power cut
+/// after the earlier writes would leave. Not imitated: writes reordered in a device cache, a
+/// torn sector, and a request whose outcome is unknown (the driver's timeout).
+#[cfg(feature = "ktest")]
+mod fault {
+    use core::sync::atomic::{AtomicU32, Ordering};
+
+    static WRITES: AtomicU32 = AtomicU32::new(0);
+    static FAIL_FROM: AtomicU32 = AtomicU32::new(u32::MAX);
+
+    /// Counts one write; true when it is refused.
+    pub fn refuses() -> bool {
+        let n = WRITES.fetch_add(1, Ordering::SeqCst) + 1;
+        n >= FAIL_FROM.load(Ordering::SeqCst)
+    }
+
+    pub fn writes() -> u32 {
+        WRITES.load(Ordering::SeqCst)
+    }
+
+    pub fn arm(nth: u32) {
+        FAIL_FROM.store(writes().saturating_add(nth), Ordering::SeqCst);
+    }
+
+    pub fn disarm() {
+        FAIL_FROM.store(u32::MAX, Ordering::SeqCst);
+    }
+}
+
+/// Test kernel only: how many disk writes were asked for since boot (refused ones included).
+#[cfg(feature = "ktest")]
+pub fn writes() -> u32 {
+    fault::writes()
+}
+
+/// Test kernel only: the `nth` write from now (1 is the next one) and every write after it is
+/// refused until `disarm_write_fault`.
+#[cfg(feature = "ktest")]
+pub fn arm_write_fault(nth: u32) {
+    fault::arm(nth);
+}
+
+#[cfg(feature = "ktest")]
+pub fn disarm_write_fault() {
+    fault::disarm();
+}
+
 /// Used by the test kernel until the file system (WP-18 part 2) writes through it.
 #[cfg_attr(not(feature = "ktest"), allow(dead_code))]
 pub fn write(sector: u64, buf: &[u8]) -> Result<(), BlkError> {
+    #[cfg(feature = "ktest")]
+    if fault::refuses() {
+        return Err(BlkError::Io(0xEE));
+    }
     let r = DEVICE
         .lock()
         .as_mut()

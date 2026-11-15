@@ -160,6 +160,10 @@ pub fn run() -> ! {
         "file_shared" => file_shared(),
         "fat32_persist_write" => fat32_persist(true),
         "fat32_persist_read" => fat32_persist(false),
+        "fat32_fault_unlink" => fat32_fault_unlink(),
+        "fat32_fault_unlink_check" => fat32_fault_check(b'U', "fat32_fault_unlink_check"),
+        "fat32_fault_truncate" => fat32_fault_truncate(),
+        "fat32_fault_truncate_check" => fat32_fault_check(b'T', "fat32_fault_truncate_check"),
         "file_roundtrip" => file_app("file_roundtrip", crate::apps::FILE_ROUNDTRIP, 0x60),
         "path_invalid" => file_app("path_invalid", crate::apps::PATH_INVALID, 0x61),
         "fd_leak" => fd_leak(),
@@ -2895,6 +2899,232 @@ fn fat32_persist(write: bool) -> ! {
     } else {
         "persistence file survived the QEMU restart"
     })
+}
+
+// ---- WP-105: delete and truncate under a failing disk --------------------------------------
+
+/// Bytes of a fault-case file: three clusters, every byte a function of the file and the offset.
+const FAULT_LEN: usize = 1536;
+
+fn fault_bytes(n: u32) -> alloc::vec::Vec<u8> {
+    (0..FAULT_LEN)
+        .map(|i| (n as usize * 37 + i * 7 + i / 512) as u8)
+        .collect()
+}
+
+fn fault_path(kind: u8, n: u32) -> alloc::vec::Vec<u8> {
+    alloc::format!("/{}{:02}.TXT", kind as char, n).into_bytes()
+}
+
+/// What the volume holds under `path`, read through a fresh lookup (the stored entry and the
+/// FAT, not an open file's node): 0 no such name, 1 the whole file with the bytes `want`,
+/// 2 an empty file (size 0, no first cluster), 3 anything else (a name whose chain or bytes are
+/// not its own).
+fn fault_state(path: &[u8], want: &[u8]) -> u8 {
+    crate::fs::with(|fs| {
+        let e = match fs.lookup(path) {
+            Ok(e) => e,
+            Err(FsError::NotFound) => return Ok(0),
+            Err(_) => return Ok(3),
+        };
+        if e.size == 0 && e.first == 0 {
+            return Ok(2);
+        }
+        let mut buf = alloc::vec![0u8; want.len() + 1];
+        Ok(match fs.read(&e, 0, &mut buf) {
+            Ok(n) if n == want.len() && e.size as usize == n && buf[..n] == *want => 1,
+            _ => 3,
+        })
+    })
+    .unwrap_or(3)
+}
+
+/// TST-M3-FAT32-FAULT-UNLINK, first boot (WP-105, RSK-027; files.md v1.5): a delete that fails
+/// at any of its disk writes leaves either the whole file or no name, never a name whose chain
+/// runs into free clusters. A control delete counts the writes of one delete (W); then for
+/// every N from 1 to W a fresh three-cluster file is deleted with the test kernel's hook
+/// refusing write N and all after it, and the volume is read back.
+fn fat32_fault_unlink() -> ! {
+    use crate::fs::vfs;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let make = |n: u32| {
+        let path = fault_path(b'U', n);
+        crate::fs::with(|fs| {
+            let mut e = fs.create(&path)?;
+            fs.write(&mut e, 0, &fault_bytes(n))?;
+            fs.sync()
+        })
+        .is_ok()
+    };
+    if !make(0) {
+        fail("could not create the control file")
+    }
+    let w0 = crate::block::writes();
+    let control = vfs::unlink(&fault_path(b'U', 0));
+    let writes = crate::block::writes() - w0;
+    let (mut failed, mut gone, mut kept, mut bad) = (0u32, 0u32, 0u32, 0u32);
+    for n in 1..=writes {
+        if !make(n) {
+            fail("could not create a file of the sweep")
+        }
+        let path = fault_path(b'U', n);
+        crate::block::arm_write_fault(n);
+        let r = vfs::unlink(&path);
+        crate::block::disarm_write_fault();
+        failed += u32::from(r.is_err());
+        match fault_state(&path, &fault_bytes(n)) {
+            0 => gone += 1,
+            1 => kept += 1,
+            _ => bad += 1,
+        }
+    }
+    let synced = vfs::sync().is_ok();
+    kprintln!(
+        "OSX|{}|ktest|fat32_fault_unlink|control={}|writes={}|failed={}|gone={}|kept={}|bad={}|synced={}|live_files={}",
+        BUILD_ID,
+        control.map_or_else(|e| e.code(), |_| "ok"),
+        writes,
+        failed,
+        gone,
+        kept,
+        bad,
+        u8::from(synced),
+        vfs::live_files()
+    );
+    if control.is_err() || writes < 3 || failed != writes || !synced {
+        fail("the sweep did not run as planned")
+    }
+    if bad != 0 || gone + kept != writes {
+        fail("a failed delete left a name that is neither whole nor gone")
+    }
+    pass("a failed delete leaves the whole file or no name")
+}
+
+/// TST-M3-FAT32-FAULT-TRUNCATE, first boot (WP-105, RSK-027; files.md v1.5): a truncation that
+/// fails at any of its disk writes leaves the file whole or empty, on the disk and in the node
+/// every open shares alike. For every N a file is written through one open, and a second open
+/// with O_TRUNCATE runs with write N and all after it refused.
+fn fat32_fault_truncate() -> ! {
+    use crate::fs::vfs;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let rw = vfs::O_READ | vfs::O_WRITE;
+    let (mut writes, mut failed, mut kept, mut emptied, mut bad, mut node_differs) =
+        (0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
+    let mut control_ok = false;
+    let mut n = 0u32;
+    // n = 0 is the control: no fault, it counts the writes of one truncation.
+    while n == 0 || n <= writes {
+        let path = fault_path(b'T', n);
+        let Ok(a) = vfs::open(&path, rw | vfs::O_CREATE) else {
+            fail("could not create a file of the sweep")
+        };
+        if !matches!(vfs::write(&a, &fault_bytes(n)), Ok(FAULT_LEN)) || vfs::sync().is_err() {
+            fail("could not write a file of the sweep")
+        }
+        let w0 = crate::block::writes();
+        if n > 0 {
+            crate::block::arm_write_fault(n);
+        }
+        let b = vfs::open(&path, rw | vfs::O_TRUNCATE);
+        crate::block::disarm_write_fault();
+        let node = {
+            let f = a.lock();
+            let e = f.node.lock();
+            (e.first, e.size)
+        };
+        let stored = crate::fs::with(|fs| fs.lookup(&path)).map(|e| (e.first, e.size));
+        let state = fault_state(&path, &fault_bytes(n));
+        if n == 0 {
+            writes = crate::block::writes() - w0;
+            control_ok = b.is_ok() && state == 2 && stored == Ok(node);
+        } else {
+            failed += u32::from(b.is_err());
+            node_differs += u32::from(stored != Ok(node));
+            match state {
+                1 => kept += 1,
+                2 => emptied += 1,
+                _ => bad += 1,
+            }
+        }
+        drop(b);
+        drop(a);
+        n += 1;
+    }
+    let synced = vfs::sync().is_ok();
+    kprintln!(
+        "OSX|{}|ktest|fat32_fault_truncate|control={}|writes={}|failed={}|kept={}|emptied={}|bad={}|node_differs={}|synced={}|live_files={}",
+        BUILD_ID,
+        u8::from(control_ok),
+        writes,
+        failed,
+        kept,
+        emptied,
+        bad,
+        node_differs,
+        u8::from(synced),
+        vfs::live_files()
+    );
+    if !control_ok || writes < 3 || failed != writes || !synced {
+        fail("the sweep did not run as planned")
+    }
+    if bad != 0 || node_differs != 0 || kept + emptied != writes {
+        fail("a failed truncation left a file that is neither whole nor empty")
+    }
+    pass("a failed truncation leaves the file whole or empty, on disk and in its node")
+}
+
+/// The second boot of the two fault cases: a kernel with no memory of the first boot reads the
+/// image. Every name of the sweep is whole, empty or gone; then a new file is written (it takes
+/// the lowest free clusters) and the names are read again: none of them reads the new bytes.
+fn fat32_fault_check(kind: u8, name: &'static str) -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let count = || {
+        let (mut kept, mut empty, mut bad) = (0u32, 0u32, 0u32);
+        for n in 0..32 {
+            match fault_state(&fault_path(kind, n), &fault_bytes(n)) {
+                1 => kept += 1,
+                2 => empty += 1,
+                3 => bad += 1,
+                _ => {}
+            }
+        }
+        (kept, empty, bad)
+    };
+    let (kept, empty, bad) = count();
+    let fresh = alloc::vec![0x5Au8; FAULT_LEN];
+    let after_ok = crate::fs::with(|fs| {
+        let mut e = fs.create(b"/AFTER.TXT")?;
+        fs.write(&mut e, 0, &fresh)?;
+        fs.sync()
+    })
+    .is_ok()
+        && fault_state(b"/AFTER.TXT", &fresh) == 1;
+    let (kept_after, empty_after, bad_after) = count();
+    kprintln!(
+        "OSX|{}|ktest|{}|kept={}|empty={}|bad={}|after_ok={}|kept_after={}|empty_after={}|bad_after={}",
+        BUILD_ID,
+        name,
+        kept,
+        empty,
+        bad,
+        u8::from(after_ok),
+        kept_after,
+        empty_after,
+        bad_after
+    );
+    if bad != 0 || bad_after != 0 || !after_ok {
+        fail("a name of the sweep is not its own file after the restart")
+    }
+    if (kept, empty) != (kept_after, empty_after) {
+        fail("a new file changed a name of the sweep")
+    }
+    pass("after the restart every name of the sweep is whole, empty or gone")
 }
 
 // ---- WP-19: files through system calls ---------------------------------------------------

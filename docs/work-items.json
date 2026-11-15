@@ -6633,6 +6633,8 @@
    ],
    "acceptance": "no failure point of delete or truncate (every write N of each operation, swept by the fault hook) leaves a directory entry that points at a free cluster, two names that share a cluster, or a shared node that differs from the stored entry after a failed call, shown by the new cases and by the strengthened host image check on CI, with fsck.fat's messages kept and classified; files.md (v1.5) states the order and what a failed delete or truncate leaves, its line about a copy per open is corrected to the shared node, and ADR-0014 item 2 is amended; the mutants killed",
    "test_ids": [
+    "TST-M3-FAT32-FAULT-TRUNCATE",
+    "TST-M3-FAT32-FAULT-UNLINK",
     "TST-M3-FAT32-WRITE",
     "TST-M3-FILE-SHARED",
     "TST-M3-FAT32-PERSIST",

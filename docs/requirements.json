@@ -884,7 +884,9 @@
     "TST-M3-FAT32-READ",
     "TST-M3-FAT32-WRITE",
     "TST-M3-FAT32-PERSIST",
-    "TST-M3-FAT32-TOOL"
+    "TST-M3-FAT32-TOOL",
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
