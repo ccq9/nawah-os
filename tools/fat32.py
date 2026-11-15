@@ -396,7 +396,9 @@ def tree_findings(img, fat):
     """One walk of the whole tree along FAT copy `fat`, recording which name reaches each
     cluster. Returns (strict, longer, owned, complete). `strict` holds what no state of the
     volume may show: a chain that runs into a free cluster, leaves the volume or loops, two names
-    on one cluster, and a file whose chain is shorter than its size. `longer` names the files
+    on one cluster, a file whose chain is shorter than its size, an entry whose first cluster
+    is no cluster of the volume (0 belongs to a file that holds none and to no directory), and
+    a chain that reaches the reserved value 1. `longer` names the files
     whose chain holds more clusters than their size needs; `owned` is every cluster a name
     reaches; `complete` is false when the walk stopped at its depth limit, so `owned` is not
     the whole tree."""
@@ -419,6 +421,9 @@ def tree_findings(img, fat):
             owner[c] = name
             got.append(c)
             c = v
+        if c == 1 and got:
+            # 1 is no cluster and no end mark: a chain that reaches it did not end.
+            strict.append(f"{name}: its chain holds the reserved value 1")
         return got
 
     def walk(path, first, depth):
@@ -437,6 +442,12 @@ def tree_findings(img, fat):
                     continue
                 name = f"{path}/{display_name(e[:11])}"
                 entry_first = img.entry_cluster(e)
+                # No name starts at a number that is no cluster of the volume. 0 is the first
+                # cluster of a file that holds none (its size says whether that is right) and
+                # of no directory.
+                if not 2 <= entry_first < img.clusters + 2 and (entry_first != 0 or e[11] & ATTR_DIR):
+                    strict.append(f"{name}: first cluster {entry_first}, no cluster of the volume")
+                    continue
                 if e[11] & ATTR_DIR:
                     walk(name, entry_first, depth + 1)
                     continue
@@ -482,6 +493,13 @@ def cmd_check(a):
             used += 1
             if v != 0x0FFFFFF7:
                 in_use.add(c)
+    # The same scan over every other copy: a reserved or out-of-range value is no state a
+    # refused write leaves, in whichever copy it sits.
+    for fat in range(1, img.nfats):
+        for c in range(2, img.clusters + 2):
+            v = img.fat_get(c, fat)
+            if v == 1 or (2 <= v < 0x0FFFFFF7 and v >= img.clusters + 2):
+                problems.append(f"FAT{fat}[{c}] = {v:#x} invalid"); break
     strict, longer, owned, complete = tree_findings(img, 0)
     problems += strict
     if faulted:
