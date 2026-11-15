@@ -901,17 +901,32 @@ MUTANTS = [
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; continue',
      ["TST-M0-003"], "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted"),
-    # M220, M221 (SECURITY, WP-117, files.md v1.9, ADR-0014 item 10): the file system stops with
+    # M220..M224 (SECURITY, WP-117, files.md v1.9, ADR-0014 item 10): the file system stops with
     # the disk. M220: fs::with no longer asks whether the disk has stopped.
     ("M220", "kernel/src/fs/mod.rs",
-     "    if stopped() {\n        return Err(stop_error());\n    }\n    let g = VOLUME.lock();",
-     "    let g = VOLUME.lock();",
-     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a read at the end of an open file and a write of no bytes answer success from memory: the line carries end_read=ok and empty_write=ok, TST-M3-FAT32-STOP FAIL"),
+     "    let g = VOLUME.lock();\n    if stopped() {\n        return Err(stop_error());\n    }\n",
+     "    let g = VOLUME.lock();\n",
+     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a read at the end of an open file, a write of no bytes and a stat of the root answer success from memory, to a process too: the line carries end_read=ok, empty_write=ok and root_stat=ok and the application's exit code is its step, TST-M3-FAT32-STOP FAIL"),
     # M221: vfs::seek no longer asks.
     ("M221", "kernel/src/fs/vfs.rs",
-     "    if super::stopped() {\n        return Err(super::stop_error());\n    }\n    let mut f = file.lock();",
-     "    let mut f = file.lock();",
-     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a seek answers success from memory: the line carries seek=ok, TST-M3-FAT32-STOP FAIL"),
+     "    if super::stopped() {\n        return Err(super::stop_error());\n    }\n    if pos > u64::from(f.node.lock().size) {",
+     "    if pos > u64::from(f.node.lock().size) {",
+     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a seek answers success from memory and moves the position: the line carries seek=ok and pos_moved=1 and the application exits at its seek, TST-M3-FAT32-STOP FAIL"),
+    # M222: vfs::write refuses a position past the size from the node, before the disk is asked.
+    ("M222", "kernel/src/fs/vfs.rs",
+     "        super::with(|fs| fs.write(&mut e, pos as u32, data))?\n",
+     "        if pos > u64::from(e.size) {\n            return Err(FsError::Range);\n        }\n        super::with(|fs| fs.write(&mut e, pos as u32, data))?\n",
+     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a write through an open whose position is past the size answers the range error from memory: the line carries stale_write=K_E_FS_RANGE, TST-M3-FAT32-STOP FAIL"),
+    # M223: vfs::seek asks only after it has moved the position.
+    ("M223", "kernel/src/fs/vfs.rs",
+     "    if super::stopped() {\n        return Err(super::stop_error());\n    }\n    if pos > u64::from(f.node.lock().size) {\n        return Err(FsError::Range);\n    }\n    f.pos = pos;\n    Ok(pos)",
+     "    if pos > u64::from(f.node.lock().size) {\n        return Err(FsError::Range);\n    }\n    f.pos = pos;\n    if super::stopped() {\n        return Err(super::stop_error());\n    }\n    Ok(pos)",
+     ["TST-M3-FAT32-STOP"], "SECURITY: a seek refused after the disk has stopped has already moved the open's position: the line carries pos_moved=1, TST-M3-FAT32-STOP FAIL"),
+    # M224: the driver stops the device and does not set the flag the file system reads.
+    ("M224", "kernel/src/drivers/virtio_blk.rs",
+     "                DISK_STOPPED.store(true, Ordering::SeqCst);\n                self.stopped = true;\n",
+     "                self.stopped = true;\n",
+     ["TST-M3-FAT32-STOP"], "SECURITY: the disk stops and the file system never learns it: the calls that ask nothing of the disk answer from memory and no line kernel|fs|stopped is written, TST-M3-FAT32-STOP FAIL"),
     # M219 (SECURITY, WP-120, files.md v1.8, ADR-0014 item 9): the first FAT copy, the one the
     # kernel reads, is written first again.
     ("M219", "kernel/src/fs/fat32.rs",
@@ -1069,8 +1084,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # M6 (WP-120): the FAT copy the kernel reads is written last (files.md v1.8).
             "M219",
             # M6 (WP-117): the file system stops with the disk (files.md v1.9): fs::with asks
-            # first (M220) and so does vfs::seek (M221).
-            "M220", "M221"}
+            # (M220), vfs::seek asks (M221) before it moves anything (M223), vfs::write answers
+            # nothing from the node (M222) and the driver sets the flag they read (M224).
+            "M220", "M221", "M222", "M223", "M224"}
 
 
 def security_of(mid: str) -> bool:
