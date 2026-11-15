@@ -275,6 +275,10 @@ pub fn write(file: &FileRef, data: &[u8]) -> Result<usize, FsError> {
 
 /// Moves the shared position (absolute; at most the current size).
 pub fn seek(file: &FileRef, pos: u64) -> Result<u64, FsError> {
+    // The one file call that does not go through `with`: it asks the same question first.
+    if super::stopped() {
+        return Err(super::stop_error());
+    }
     let mut f = file.lock();
     if pos > u64::from(f.node.lock().size) {
         return Err(FsError::Range);

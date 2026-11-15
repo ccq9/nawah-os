@@ -407,6 +407,11 @@ impl VirtioBlk {
         Ok(())
     }
 
+    /// True once a request has timed out: the device serves nothing more until a reboot.
+    pub fn is_stopped(&self) -> bool {
+        self.stopped
+    }
+
     /// The answer of a stopped device (see `stopped`): asked first by every entry point, before
     /// the shared data buffer is read or written.
     fn refuse_stopped(&self) -> Result<(), BlkError> {

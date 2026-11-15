@@ -196,6 +196,12 @@ pub fn submitted() -> u16 {
     DEVICE.lock().as_ref().map_or(0, |d| d.submitted())
 }
 
+/// True once the disk has stopped (ADR-0013 decision 9): a request timed out and the driver
+/// refuses every later one.
+pub fn stopped() -> bool {
+    DEVICE.lock().as_ref().is_some_and(|d| d.is_stopped())
+}
+
 pub fn flush() -> Result<(), BlkError> {
     let r = DEVICE.lock().as_mut().ok_or(BlkError::NoDevice)?.flush();
     report("flush", 0, r)
