@@ -309,6 +309,8 @@ struct Window {
     minimized: bool,
     title: [u8; TITLE_MAX],
     title_len: usize,
+    /// Units of the title as the client sent it that were not kept (beyond TITLE_MAX).
+    title_cut: usize,
 }
 
 const NO_WINDOW: Window = Window {
@@ -323,6 +325,7 @@ const NO_WINDOW: Window = Window {
     minimized: false,
     title: [0; TITLE_MAX],
     title_len: 0,
+    title_cut: 0,
 };
 
 impl Window {
@@ -427,17 +430,18 @@ fn parse_i32(s: &[u8]) -> Option<i32> {
     Some(if neg { -v } else { v })
 }
 
-/// The text after the first `n` space-separated fields, trimmed.
 /// The bytes a title may take between the quotes of the compositor's own narrator lines
 /// (display.md v1.14), its names included; what does not fit is cut and counted.
 const TITLE_SAY: usize = 96;
 /// One `SAY window "<title>" …` line: `SAY window "`, the title's room, the longest event
-/// (`" resized <w>x<h>`, two i32) and the cut mark (` cut=` and at most two digits).
+/// (`" resized <w>x<h>`, two i32) and the cut mark (` cut=` and at most four digits).
 const SAY_LINE: usize = 160;
-const _: () = assert!(12 + TITLE_SAY + 10 + 23 + 7 <= SAY_LINE);
+const _: () = assert!(12 + TITLE_SAY + 10 + 23 + 9 <= SAY_LINE);
 // The narrator's line: `narrator|`, the text after `SAY `, and three more bytes for each byte
 // of a title outside ASCII (a two-byte character written as eight).
-const _: () = assert!(9 + (8 + TITLE_SAY + 10 + 23 + 7) + 3 * TITLE_MAX <= 256);
+const _: () = assert!(9 + (8 + TITLE_SAY + 10 + 23 + 9) + 3 * TITLE_MAX <= 256);
+/// The largest count a cut mark carries (four digits).
+const CUT_MAX: usize = 9999;
 
 /// A control character (C0, DEL, C1) or the line and paragraph separators U+2028/U+2029
 /// (ui.md §3.9, the same set libui names in a described value).
@@ -497,12 +501,7 @@ fn put_title(o: &mut Out, title: &[u8]) -> usize {
         let (n, cp, named) = title_unit(rest);
         let w = if named { 4 + name_digits(cp) } else { n };
         if used + w > TITLE_SAY {
-            let mut left = 0;
-            while let Some(rest) = title.get(i..).filter(|r| !r.is_empty()) {
-                i += title_unit(rest).0;
-                left += 1;
-            }
-            return left;
+            return title_units(title.get(i..).unwrap_or(&[]));
         }
         if named {
             o.put(b"[U+");
@@ -520,16 +519,38 @@ fn put_title(o: &mut Out, title: &[u8]) -> usize {
     0
 }
 
-/// The bytes of a client's title the window keeps: at most TITLE_MAX, cut at a character
-/// boundary (display.md v1.14), never inside a UTF-8 character.
-fn title_len(title: &[u8]) -> usize {
-    let mut n = title.len().min(TITLE_MAX);
-    while n > 0 && title.get(n).is_some_and(|b| b & 0xC0 == 0x80) {
-        n -= 1;
+/// The number of units (title_unit) in `s`: one per character or per byte named U+FFFD; at
+/// most CUT_MAX, the most a cut mark says.
+fn title_units(s: &[u8]) -> usize {
+    let mut i = 0;
+    let mut k: usize = 0;
+    while let Some(rest) = s.get(i..).filter(|r| !r.is_empty()) {
+        i += title_unit(rest).0;
+        k = k.saturating_add(1);
     }
-    n
+    k.min(CUT_MAX)
 }
 
+/// The bytes of a client's title the window keeps (display.md v1.14): at most TITLE_MAX, cut
+/// before the character the limit falls in. The cut backs off at most 3 bytes, the longest
+/// tail of a UTF-8 character, to a byte that begins one; past that the bytes are no character,
+/// so the cut stays at TITLE_MAX and they are kept (and named U+FFFD in the line).
+fn title_len(title: &[u8]) -> usize {
+    let max = title.len().min(TITLE_MAX);
+    for back in 0..=3 {
+        let Some(n) = max.checked_sub(back) else {
+            break;
+        };
+        match title.get(n) {
+            None => return n,
+            Some(b) if b & 0xC0 != 0x80 => return n,
+            Some(_) => {}
+        }
+    }
+    max
+}
+
+/// The text after the first `n` space-separated fields, trimmed.
 fn after_fields(req: &[u8], n: usize) -> &[u8] {
     let mut i = 0;
     let mut seen = 0;
@@ -1007,11 +1028,12 @@ impl Compositor {
                     len: 0,
                 };
                 o.put(b"SAY window \"");
-                let cut = put_title(&mut o, w.title.get(..w.title_len).unwrap_or(&[]));
+                let title = w.title.get(..w.title_len).unwrap_or(&[]);
+                let cut = put_title(&mut o, title).saturating_add(w.title_cut);
                 o.put(b"\" focused");
                 if cut > 0 {
                     o.put(b" cut=");
-                    o.num(i64::try_from(cut).unwrap_or(0));
+                    o.num(i64::try_from(cut.min(CUT_MAX)).unwrap_or(0));
                 }
                 o.len
             };
@@ -1034,14 +1056,15 @@ impl Compositor {
                 len: 0,
             };
             o.put(b"SAY window \"");
-            let cut = put_title(&mut o, w.title.get(..w.title_len).unwrap_or(&[]));
+            let shown = w.title.get(..w.title_len).unwrap_or(&[]);
+            let cut = put_title(&mut o, shown).saturating_add(w.title_cut);
             o.put(b"\" resized ");
             o.num(i64::from(w.w));
             o.put(b"x");
             o.num(i64::from(w.h));
             if cut > 0 {
                 o.put(b" cut=");
-                o.num(i64::try_from(cut).unwrap_or(0));
+                o.num(i64::try_from(cut.min(CUT_MAX)).unwrap_or(0));
             }
             o.len
         };
@@ -1100,6 +1123,7 @@ impl Compositor {
         let n = title_len(title);
         w.title[..n].copy_from_slice(&title[..n]);
         w.title_len = n;
+        w.title_cut = title_units(title.get(n..).unwrap_or(&[]));
         self.windows[wi] = w;
         // On top of the stack, focused.
         for j in (1..=self.n_order).rev() {
@@ -1679,6 +1703,7 @@ impl Compositor {
                 self.windows[wi].title[..n].copy_from_slice(&title[..n]);
                 self.windows[wi].title[n..].fill(0);
                 self.windows[wi].title_len = n;
+                self.windows[wi].title_cut = title_units(title.get(n..).unwrap_or(&[]));
                 let r = self.windows[wi].title_bar();
                 self.damage(r);
                 out.put(b"OK");

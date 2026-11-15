@@ -823,6 +823,12 @@ MUTANTS = [
      "            let named = cp == 0x22 || is_control(cp) || is_bidi_control(cp);",
      "            let named = false && (cp == 0x22 || is_control(cp) || is_bidi_control(cp));",
      ["TST-M5-WINDOW-TITLE"], "SECURITY: a window title is written between the quotes as it is: the narrator reads `window \"x\" focused role=\"button\" focused` (a forbidden marker) and the transcript differs from platform/pc-qemu/expect/window-title.txt at its first line, TST-M5-WINDOW-TITLE FAIL"),
+    # M200 (SECURITY): the resize line (say_size) writes the title as it is, while the focus
+    # line still names it.
+    ("M200", "user/apps/displayd/src/main.rs",
+     "            let cut = put_title(&mut o, shown).saturating_add(w.title_cut);",
+     "            let cut = {\n                o.put(shown);\n                w.title_cut\n            };",
+     ["TST-M5-WINDOW-TITLE-RESIZE"], "SECURITY: the resize line writes the title between the quotes as it is: the narrator reads `window \"x\" resized 9x9 role=\"button\" resized 48x32` (a forbidden marker), the required named resize line is missing and the transcript differs at its second line, TST-M5-WINDOW-TITLE-RESIZE FAIL"),
     # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
     # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
     # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
@@ -918,8 +924,8 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # M6 (WP-100): the registry parser refuses the reserved ids (apps.md v1 §3, M198).
             "M198",
             # M6 (WP-97): a window title cannot forge the compositor's narrator line
-            # (display.md v1.14, M199).
-            "M199"}
+            # (display.md v1.14): in the focus line (M199) and in the resize line (M200).
+            "M199", "M200"}
 
 
 def security_of(mid: str) -> bool:
