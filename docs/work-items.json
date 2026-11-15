@@ -3518,7 +3518,8 @@
     "docs/contracts/files.md:11-12 (8.3 ASCII, no mkdir)",
     "Microsoft FAT32 File System Specification (LFN, checksum)",
     "tools/fat32.py",
-    "docs/contracts/shell.md"
+    "docs/contracts/shell.md",
+    "from WP-121's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): alloc_cluster scans the first FAT from its start for every allocation and FSInfo's next-free hint is never read; since WP-121 a write that extends a file scans once more before it allocates (files.md v1.7), so on a nearly full volume each such call reads the FAT twice over; a directory grows by a cluster for every 16 names and never shrinks (unlink marks the slot free and frees no directory cluster), and a lookup of a name that is not there reads the whole directory with the volume's lock held (an IrqSpinLock): RSK-035"
    ],
    "files": [],
    "contract_refs": [
@@ -3570,7 +3571,8 @@
     "DEC-006",
     "docs/contracts/files.md:3 (only /SYSTEM protected)",
     "docs/contracts/auth.md:25 (accounts admin and user)",
-    "docs/adr/0020-system-files-authority.md"
+    "docs/adr/0020-system-files-authority.md",
+    "from WP-121's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): no quota and no reserve: any process fills the volume with writes that fit, after which every other write that needs a cluster is refused, the configuration stores' saves among them (RSK-034); a file outside /SYSTEM cannot be removed while any process holds it open (vfs::unlink answers Busy), and any process may open it with O_TRUNCATE"
    ],
    "files": [],
    "contract_refs": [
@@ -6685,7 +6687,8 @@
     "Cargo.toml profiles",
     "RSK-027",
     "from WP-105's red team (2026-11-15, by reading, to check at activation): clusters lost by a failed delete or truncation are never given back and are not shown anywhere (free_clusters counts them as used; FSInfo's count stays stale because fsinfo_adjust works by difference; nothing is checked at mount); free_chain follows a chain that is already cross-linked into another file's clusters and frees them; free_chain stops silently at CHAIN_MAX",
-    "from WP-118's red team (2026-11-15, by reading, to check at activation): lost clusters hold the bytes of the calls that failed (config's stores under /SYSTEM among them); a recovery must free them, never save them into files a process can read, and must copy the first FAT copy over the second before it frees"
+    "from WP-118's red team (2026-11-15, by reading, to check at activation): lost clusters hold the bytes of the calls that failed (config's stores under /SYSTEM among them); a recovery must free them, never save them into files a process can read, and must copy the first FAT copy over the second before it frees",
+    "from WP-121's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): mount sets a lower bound on the cluster count (65525) and bounds it by the FAT's size, but sets no upper bound at 0x0FFFFFF5, past which cluster numbers meet the BAD and end-of-chain marks"
    ],
    "files": [
     "kernel/src/fs/fat32.rs",
@@ -7497,13 +7500,15 @@
     "test first, red seen locally before the fix: a test-kernel hook that makes alloc_cluster answer DiskFull after K allocations (filling the lab volume for real is too slow: every allocation scans the FAT from its start), then a first write to an empty file that needs more than K clusters: expected: no lost cluster and the answer the chosen option states; today: the K clusters are lost; the case has an image of its own for the host check (--expect-lost 0 cannot be asked of the image of TST-M3-FAT32-FAULT-WRITE, which holds 51 lost clusters by design); a second step on a file that has a first cluster shows that nothing is lost there today either; a SECURITY mutant that drops the handling",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: about 40 calls, unmeasured; sized at activation",
-    "2026-11-15 activation estimate and design (the manager, from the red team's and the auditor's reading of WP-118 and a reading of write, alloc_cluster and sys_write at e8b368105; the local QEMU lab; an audit pass and a red-team pass before the single push): about 45 calls / 60 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first). Design chosen from the three options: when the volume runs out in the middle of a call, write stores what it wrote (the entry with the size reached) and answers that shorter count; when nothing could be written it answers no space with nothing taken; a count smaller than asked is already part of the ABI (a call is cut to 64 KiB) and by reading no caller breaks: config compares with the exact length and treats less as a failed save. Not chosen: freeing what the call took (all or nothing, but more writes on the failure path, each of which can fail, and bytes already written inside the old size would stay while the call says nothing was written) and asking for the free count first (a scan of the whole FAT for every call). Test first, red seen locally: a test-kernel hook in alloc_cluster that answers DiskFull after K allocations, a first write of three clusters to an empty file with K=2 and an append to a one-cluster file with K=1, on an image judged by the plain host checks (no lost cluster, no chain longer than its size, fsck.fat exit 0); expected today: the empty file's two clusters lost, the other file's chain longer than its size"
+    "2026-11-15 activation estimate and design (the manager, from the red team's and the auditor's reading of WP-118 and a reading of write, alloc_cluster and sys_write at e8b368105; the local QEMU lab; an audit pass and a red-team pass before the single push): about 45 calls / 60 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first). Design chosen from the three options: when the volume runs out in the middle of a call, write stores what it wrote (the entry with the size reached) and answers that shorter count; when nothing could be written it answers no space with nothing taken; a count smaller than asked is already part of the ABI (a call is cut to 64 KiB) and by reading no caller breaks: config compares with the exact length and treats less as a failed save. Not chosen: freeing what the call took (all or nothing, but more writes on the failure path, each of which can fail, and bytes already written inside the old size would stay while the call says nothing was written) and asking for the free count first (a scan of the whole FAT for every call). Test first, red seen locally: a test-kernel hook in alloc_cluster that answers DiskFull after K allocations, a first write of three clusters to an empty file with K=2 and an append to a one-cluster file with K=1, on an image judged by the plain host checks (no lost cluster, no chain longer than its size, fsck.fat exit 0); expected today: the empty file's two clusters lost, the other file's chain longer than its size",
+    "2026-11-15 design changed before the push (nothing of the first design was pushed): the auditor found that the design chosen at activation, a shorter count when the volume fills in the middle of a call, contradicts what the records already ask: PLAN-REVERSE section 4 item 8 recommends all or nothing for every call, and the planned oracle of TST-M6-DISK-FULL (WP-52) wants ERR_NO_SPACE with no partly written file; changing an acceptance text is the owner's, so the package took the design that needs no change to it: before any write the call counts the clusters it needs beyond the file's chain and asks the allocator whether it can take them (a scan of the first FAT that stops at the last one needed; the volume's lock is held to the end of the call); when it cannot, the call answers no space with nothing written and nothing taken. No write is added: the writes of TST-M3-FAT32-FAULT-WRITE keep their order and counts. The test kernel's hook no longer answers for the allocator: it ends the allocator's range before a chosen free cluster and the allocator's own scan answers. Red seen locally on the test-first commit (scratch, no CI evidence): the refused first write took two clusters and wrote 14 sectors (refused_writes=15 with one more refused call, free_delta=2; fsck.fat: Reclaimed 2 unused clusters). Mutants M214, M215, M216"
    ],
    "acceptance": "a write that runs out of space in the middle of a call loses no cluster and tells its caller what was written or that nothing was, shown by a case with the host check counting zero lost clusters on CI; files.md (the version free at the merge) states the answer; the mutant killed",
    "test_ids": [
     "TST-M3-FAT32-DISK-FULL",
     "TST-M3-FAT32-FAULT-WRITE",
-    "TST-M3-FAT32-WRITE"
+    "TST-M3-FAT32-WRITE",
+    "TST-M6-MUTANTS"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"

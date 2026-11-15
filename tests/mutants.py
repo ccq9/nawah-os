@@ -901,6 +901,22 @@ MUTANTS = [
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; continue',
      ["TST-M0-003"], "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted"),
+    # M214..M216 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
+    # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
+    ("M214", "kernel/src/fs/fat32.rs",
+     "        if need > have && !self.has_free(need - have)? {\n",
+     "        if need > have && !self.has_free(0)? {\n",
+     ["TST-M3-FAT32-DISK-FULL"], "SECURITY: a write to an empty file that the volume cannot hold takes what is free, writes, answers no space and loses the clusters, and any process can repeat it: the line carries refused_writes and a free_delta that are not 0 and the host checks find lost clusters, TST-M3-FAT32-DISK-FULL FAIL"),
+    # M215: the clusters a call needs are rounded down.
+    ("M215", "kernel/src/fs/fat32.rs",
+     "        let need = (offset + data.len() as u32).div_ceil(cluster_bytes as u32);\n",
+     "        let need = (offset + data.len() as u32) / cluster_bytes as u32;\n",
+     ["TST-M3-FAT32-DISK-FULL"], "SECURITY: a write that ends inside a cluster the file does not have passes the question, writes the sectors it has and then finds no cluster: the refused call wrote to the device, the line carries refused_writes that is not 0, TST-M3-FAT32-DISK-FULL FAIL"),
+    # M216: the question accepts one free cluster fewer than the call needs.
+    ("M216", "kernel/src/fs/fat32.rs",
+     "        Ok(want == 0 || self.nth_free(want, self.alloc_end())?.is_some())\n",
+     "        Ok(want <= 1 || self.nth_free(want - 1, self.alloc_end())?.is_some())\n",
+     ["TST-M3-FAT32-DISK-FULL"], "SECURITY: a write that needs one cluster more than the volume has is let through, takes what is free and loses it: the line carries refused_writes and a free_delta that are not 0 and the host checks find lost clusters, TST-M3-FAT32-DISK-FULL FAIL"),
     # M212, M213 (SECURITY, WP-118): the exact numbers a fault case gives the host checker.
     # M212: any number of chains longer than their size is accepted once the case allows some.
     ("M212", "tools/fat32.py",
