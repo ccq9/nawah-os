@@ -6605,7 +6605,11 @@
     "docs/adr",
     "tests/mutants.py",
     "tools/project.py",
-    "docs/tests.json"
+    "docs/tests.json",
+    "tools/fat32.py",
+    "tests/test_fat32_tool.py",
+    "docs/adr/0014-files.md",
+    "docs/risks.json"
    ],
    "contract_refs": [
     "docs/contracts/files.md"
@@ -6616,13 +6620,15 @@
     "design to decide in the package (2-3 options with trade-offs): entry first, then free (the worst case becomes leaked clusters that fsck recovers) with or without a flush between them; FSInfo failure made non-fatal; the node zeroed before the free; a dirty mark on the node so that sync and close write the entry again; what the contract says about a failed write",
     "test first, red seen locally before the fix: a ktest-only hook in block::write that fails the N-th write or a chosen sector, one case per failure point (entry write in unlink and in truncate, FSInfo write with two opens, entry write after a data write then close, reopen and stat), each followed by the host's tools/fat32.py check and fsck.fat -n on the image; SECURITY mutant: the order reversed",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: unmeasured; sized at activation"
+    "2026-11-15 estimate: unmeasured; sized at activation",
+    "2026-11-15 sized before activation (a design brief by the kernel engineer, by reading; then the auditor, by reading and by experiments on a copy of tools/fat32.py in the scratch area, seen again by the manager; nothing run on the kernel, no CI evidence). Corrections to the lines above: (1) the host checks cannot judge a fault case as written: today's `fat32.py check` exits 0 on an image where a one-cluster file's first cluster is free in both FATs and on one where two files share a cluster, and `fsck.fat -n` exits 1 on every state the safe order itself leaves (a lost cluster, a stale FSInfo count, a chain longer than the size); so the package first strengthens `fat32.py check` (one seen-set over all files, a free first cluster, both FAT copies) and gives it a faulted mode that counts lost clusters, copy differences and longer chains and stays strict on an entry that points at a free cluster and on shared clusters; fsck.fat stays on the success-path cases; (2) a failed write leaks up to the whole call's chain (at most 128 clusters: 64 KiB a call, one sector a cluster), not one cluster; (3) two states the finding did not name: store_entry failing in truncate after the whole chain was freed (the node is empty, the disk entry still points at the freed chain) and a chain longer than the size; (4) one N per operation does not show every failure point: the fault hook sweeps every write N of each operation, and a second boot reads the image again because the running kernel keeps its memory; (5) the hook imitates the disk after a cut following N-1 writes to the sector; it does not show writes reordered in a device cache, a torn sector or the unknown outcome of a timeout. Size: 130 to 160 calls by the engineer's estimate (unmeasured), over the budget line, so the package is split at a named point before activation: this package keeps the order of the three operations (delete: entry first, then free; truncate: a staged entry stored, then the node, then the free; write: the node after the stored entry), the fault hook and its sweep, the host checker and its host test, the mutants (one for each order) and the contract's text (files.md v1.5: the order and what a failed delete, truncate or write leaves; line 38 corrected to the shared node; ADR-0014 item 2); what depends on the disk's stop (the file system stopping with it, a flush between the two steps, FSInfo no longer fatal, the timeout case in two boots) is WP-117"
    ],
-   "acceptance": "no failure point of delete, truncate or write leaves a directory entry that points at a free cluster or a sync that reports a stable file whose entry is stale, shown by the new cases and the host's image checks on CI; files.md's line about a copy per open is corrected to the shared node (v1.2) and ADR-0014 amended; the mutant killed",
+   "acceptance": "no failure point of delete, truncate or write (every write N of each operation, swept by the fault hook) leaves a directory entry that points at a free cluster, two names that share a cluster, a shared node that differs from the stored entry after a failed call, or a sync that reports a stable file whose entry is stale, shown by the new cases and by the strengthened host image check on CI; files.md (v1.5) states the order and what a failed delete, truncate or write leaves, its line about a copy per open is corrected to the shared node, and ADR-0014 item 2 is amended; the mutants killed",
    "test_ids": [
     "TST-M3-FAT32-WRITE",
     "TST-M3-FILE-SHARED",
-    "TST-M3-FAT32-PERSIST"
+    "TST-M3-FAT32-PERSIST",
+    "TST-M3-FAT32-TOOL"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3",
@@ -7177,6 +7183,60 @@
    "test_ids": [
     "TST-M3-BLK-TIMEOUT",
     "TST-M3-BLK-READ"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-117",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-105"
+   ],
+   "inputs": [
+    "kernel/src/fs/fat32.rs and kernel/src/fs/vfs.rs: after the disk stops some calls still answer from memory with no disk request (a read at or past the end answers Ok(0), seek, a write of length 0); FsError::Io keeps the block code but code() melts it into K_E_FS_IO; fsinfo_adjust fails the whole operation although FSInfo is advisory; sync only flushes the device",
+    "kernel/src/fs/mod.rs: every file-system call goes through with(), except vfs::seek",
+    "docs/adr/0013-storage.md decision 9: K_E_BLK_TIMEOUT on a write means an unknown outcome, K_E_BLK_NEEDS_RESET after the stop means nothing was published; the test kernel's arm_timeout drives the driver's own timeout branch",
+    "WP-105's fault hook in block::write and its strengthened host checker",
+    "RSK-027"
+   ],
+   "files": [
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/fs/vfs.rs",
+    "kernel/src/fs/mod.rs",
+    "kernel/src/block/mod.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32 بعد توقف القرص: نظام الملفات يتوقف معه ولا يجيب من الذاكرة، وflush بين الخطوتين (117، مفصولة من WP-105 في 2026-11-15 عند نقطة قسمتها المسماة: ما يعتمد على توقف القرص)",
+    "from the sizing of WP-105 on 2026-11-15 (the kernel engineer's brief and the auditor's pass, by reading; nothing run, no CI evidence): once the disk has stopped (ADR-0013 decision 9) the file system keeps answering some calls from memory and gives no sign of its own; the order of WP-105 is safe against a failed write but not against writes reordered in a device's volatile cache, which needs a flush between the entry and the frees; a failed FSInfo write aborts an operation whose real steps succeeded",
+    "design to decide in the package (2-3 options with trade-offs): a stopped flag of the volume set on K_E_BLK_TIMEOUT or K_E_BLK_NEEDS_RESET and asked in with() and in seek, against a read-only volume after any write error, against leaving the codes melted; a flush after the entry write in delete and truncate against none; FSInfo failure ignored against counted",
+    "test first, red seen locally before the fix: a case in two boots that drives the driver's real timeout branch at a chosen write of a delete (the fault hook arms arm_timeout before write N): the first boot expects K_E_FS_IO from every later call, a read at the end of another open file included, and one line of the stop; the second boot reads the image: the name is gone or whole, and a new file shares none of its clusters; a counter in the test kernel shows the flush between the entry write and the first free; that a device cache reorders writes cannot be imitated in the lab and is said so; a SECURITY mutant for the volume's stop check and one for the flush",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: about 60 calls by the engineer's brief, unmeasured; sized at activation"
+   ],
+   "acceptance": "after the disk stops every file call answers ERR_IO with no answer from memory, and the stop is written once, shown by the two-boot case on CI; a flush separates the entry write from the frees in delete and truncate (counted in the test kernel; reordering in a device cache is not shown by the lab and the contract says so); a failed FSInfo write no longer fails an operation; files.md states it (the version after WP-105's); the mutants killed",
+   "test_ids": [
+    "TST-M3-BLK-TIMEOUT",
+    "TST-M3-FAT32-PERSIST"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
