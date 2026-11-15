@@ -835,13 +835,24 @@ MUTANTS = [
     ("M201", "kernel/src/drivers/virtio_blk.rs",
      "            if spins > limit {\n                self.stopped = true;\n                return Err(BlkError::Timeout);",
      "            if spins > limit {\n                return Err(BlkError::Timeout);",
-     ["TST-M3-BLK-TIMEOUT"], "SECURITY: after a timed-out request the disk serves the next read, write and flush: the line reads after_read=ok|after_write=ok|after_flush=ok (forbidden markers), TST-M3-BLK-TIMEOUT FAIL"),
+     ["TST-M3-BLK-TIMEOUT"], "SECURITY: after a timed-out request the disk serves the next read, write and flush: the line carries after_read=ok, after_write=ok and after_flush=ok (forbidden markers), TST-M3-BLK-TIMEOUT FAIL"),
     # M202: a stopped device refuses a write only after copying its bytes into the shared buffer
     # (the buffer a pending request's device side may still read or write).
     ("M202", "kernel/src/drivers/virtio_blk.rs",
      "        self.refuse_stopped()?;\n        self.check_range(sector, buf.len())?;\n        dma::bytes_mut(self.data, buf.len()).copy_from_slice(buf);\n        self.request(T_OUT, sector, buf.len(), false)",
      "        self.check_range(sector, buf.len())?;\n        dma::bytes_mut(self.data, buf.len()).copy_from_slice(buf);\n        self.refuse_stopped()?;\n        self.request(T_OUT, sector, buf.len(), false)",
      ["TST-M3-BLK-TIMEOUT"], "SECURITY: a refused write has already changed the shared buffer: the line reads buffer_kept=0 (a forbidden marker), TST-M3-BLK-TIMEOUT FAIL"),
+    # M203: a read whose request failed hands the shared buffer (an earlier request's bytes) to
+    # its caller before it answers the error.
+    ("M203", "kernel/src/drivers/virtio_blk.rs",
+     "        self.request(T_IN, sector, buf.len(), true)?;\n        buf.copy_from_slice(dma::bytes_mut(self.data, buf.len()));\n        Ok(())",
+     "        let r = self.request(T_IN, sector, buf.len(), true);\n        buf.copy_from_slice(dma::bytes_mut(self.data, buf.len()));\n        r",
+     ["TST-M3-BLK-TIMEOUT"], "SECURITY: the read that timed out copies the shared buffer over its caller's guard bytes: the line carries caller_kept=0 (a forbidden marker), TST-M3-BLK-TIMEOUT FAIL"),
+    # M204: a stopped device publishes a flush to the device and refuses it only afterwards.
+    ("M204", "kernel/src/drivers/virtio_blk.rs",
+     "        self.refuse_stopped()?;\n        if !self.info.flush {\n            return Ok(());\n        }\n        self.request(T_FLUSH, 0, 0, false)",
+     "        if !self.info.flush {\n            return Ok(());\n        }\n        let r = self.request(T_FLUSH, 0, 0, false);\n        self.refuse_stopped()?;\n        r",
+     ["TST-M3-BLK-TIMEOUT"], "SECURITY: a refused flush has been published to the device: the answer is still K_E_BLK_NEEDS_RESET but the line no longer carries published=0 (the required line is missing), TST-M3-BLK-TIMEOUT FAIL"),
     # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
     # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
     # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
@@ -940,9 +951,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # (display.md v1.14): in the focus line (M199) and in the resize line (M200).
             "M199", "M200",
             # M6 (WP-104): a disk request that timed out stops the device (ADR-0013 decision 9):
-            # nothing is submitted after it (M201) and a refused write leaves the shared buffer
-            # alone (M202).
-            "M201", "M202"}
+            # the next requests are refused (M201), a refused write leaves the shared buffer
+            # alone (M202), a failed read hands nothing to its caller (M203) and a refused
+            # request is not published first (M204).
+            "M201", "M202", "M203", "M204"}
 
 
 def security_of(mid: str) -> bool:
