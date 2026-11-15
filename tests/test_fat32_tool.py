@@ -269,6 +269,17 @@ class Fat32Check(unittest.TestCase):
         r = run("check", "--faulted", *pins, self.img)
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("/BIG.BIN:+2", r.stdout)
+        # Each copy is judged by its own pin: with the other copy's pin right, the finding is
+        # this copy's alone.
+        counts = ("--allow-longer", "1", "--expect-lost", "1", "--expect-lost-second", "1")
+        r = run("check", "--faulted", *counts, "--expect-longer", "/ONE.TXT:+1", "--expect-longer-second", "/BIG.BIN:+2", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("problems=['chains longer than size: /BIG.BIN:+2 where /ONE.TXT:+1 are expected']", r.stdout)
+        r = run("check", "--faulted", *counts, "--expect-longer", "/BIG.BIN:+2", "--expect-longer-second", "/ONE.TXT:+1", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("problems=['FAT1: chains longer than size: /BIG.BIN:+2 where /ONE.TXT:+1 are expected']", r.stdout)
+        r = run("check", "--faulted", *counts, "--expect-longer", "/BIG.BIN:+2", "--expect-longer-second", "/BIG.BIN:+2", self.img)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def test_chain_longer_in_the_second_copy_alone(self):
         # WP-127 (B4): a file longer than its size along the second copy alone, its extra

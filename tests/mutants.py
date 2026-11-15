@@ -955,8 +955,8 @@ MUTANTS = [
      ["TST-M3-FAT32-TOOL"], "SECURITY: a directory whose attributes carry another bit besides the directory's (the kernel asks that bit alone) passes with a first cluster of 0: the host case with attributes 0x30 fails, TST-M3-FAT32-TOOL FAIL"),
     # M238: the first number past the volume is followed as a cluster.
     ("M238", "tools/fat32.py",
-     "            if c >= img.clusters + 2 or c in got:\n",
-     "            if c > img.clusters + 2 or c in got:\n",
+     "            if c >= img.clusters + 2 or c in seen:\n",
+     "            if c > img.clusters + 2 or c in seen:\n",
      ["TST-M3-FAT32-TOOL"], "SECURITY: a link to the first number that is no cluster of the volume is followed and the file is not named: the host case with that number in a chain fails, TST-M3-FAT32-TOOL FAIL"),
     # M228: a chain that reaches the reserved value 1 ends quietly.
     ("M228", "tools/fat32.py",
@@ -990,8 +990,8 @@ MUTANTS = [
      ["TST-M3-FAT32-TOOL"], "SECURITY: a reserved or out-of-range value outside every chain in the first FAT copy is counted as a lost cluster and can meet a case's exact count (the red team ran it: exit 0 with --expect-lost 2): the host case on the first copy fails, TST-M3-FAT32-TOOL FAIL"),
     # M233: the other FAT copies are walked only with --faulted.
     ("M233", "tools/fat32.py",
-     "    for fat in range(1, img.nfats):\n        problems += [f\"FAT{fat}: {p}\" for p in tree_findings(img, fat)[0]]\n",
-     "    for fat in range(1, img.nfats if faulted else 1):\n        problems += [f\"FAT{fat}: {p}\" for p in tree_findings(img, fat)[0]]\n",
+     "    for fat in range(1, img.nfats):\n        strict_o, longer_o, owned_o, complete_o = tree_findings(img, fat)\n",
+     "    for fat in range(1, img.nfats if faulted else 1):\n        strict_o, longer_o, owned_o, complete_o = tree_findings(img, fat)\n",
      ["TST-M3-FAT32-TOOL"], "SECURITY: without --faulted a reserved or out-of-range value in a chain of the second copy is not tied to the file or the directory that holds it: the plain-mode halves of the host cases fail, TST-M3-FAT32-TOOL FAIL"),
     # M225: the system-call layer no longer asks first for the calls of the files contract.
     ("M225", "kernel/src/syscall/mod.rs",
@@ -1030,11 +1030,52 @@ MUTANTS = [
      "        let have = self.chain_len(file.first, need)?;\n",
      "        let have = file.size.div_ceil(cluster_bytes as u32).min(need);\n",
      ["TST-M3-FAT32-DISK-FULL"], "SECURITY: a write into a cluster the chain already holds past the size is refused on a full volume, and on a chain shorter than its size the question would ask for too few: the line carries d_into=K_E_FS_DISK_FULL, TST-M3-FAT32-DISK-FULL FAIL"),
+    # M239..M246 (WP-127): the host image check names the longer files and judges the second FAT
+    # copy. M239: the first copy's longer files are compared by number only.
+    ("M239", "tools/fat32.py",
+     "        if expect_longer is not None and names(longer) != wanted(expect_longer):\n",
+     "        if False:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check --faulted --expect-longer NAMES` accepts another file, or another number of extra clusters, along the first FAT copy as long as the count is the same: the host case on the two images with equal counts fails, TST-M3-FAT32-TOOL FAIL"),
+    # M240: the second copy's longer files are not compared with what the case names.
+    ("M240", "tools/fat32.py",
+     "        elif names(longer_o) != wanted(expect_longer_second):\n",
+     "        elif False:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `--expect-longer-second` accepts any file longer than its size along the second FAT copy: the host case on the chain longer in the second copy alone fails, TST-M3-FAT32-TOOL FAIL"),
+    # M241: a chain longer than its size along the second copy is no problem when no case names it.
+    ("M241", "tools/fat32.py",
+     "            problems += [f\"FAT{fat}: {name}: chain longer than size\" for name, _ in longer_o]\n",
+     "            pass\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: with --faulted a file longer than its size along the second FAT copy alone, its extra cluster free in the first, passes: the host case fails, TST-M3-FAT32-TOOL FAIL"),
+    # M242: the second copy's lost clusters are not compared with the number the case pins.
+    ("M242", "tools/fat32.py",
+     "        if expect_lost_second is not None and lost_o != expect_lost_second:\n",
+     "        if False:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `--expect-lost-second K` accepts any number of clusters marked in the second FAT copy alone: the host case with a hundred of them fails, TST-M3-FAT32-TOOL FAIL"),
+    # M246: the second copy's clusters in use are not gathered, so none is ever lost there.
+    ("M246", "tools/fat32.py",
+     "            if v and v != 0x0FFFFFF7:\n                in_use_other[fat].add(c)\n",
+     "            if False:\n                in_use_other[fat].add(c)\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: the second FAT copy's lost clusters are counted as none whatever it holds: the host case with a hundred clusters marked there fails, TST-M3-FAT32-TOOL FAIL"),
+    # M243: a pin on the first copy is taken without the second's.
+    ("M243", "tools/fat32.py",
+     "    if (expect_lost is not None and expect_lost_second is None) or (allow_longer is not None and expect_longer is None) \\\n            or (expect_longer is not None and expect_longer_second is None):\n",
+     "    if False:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a case may pin the first FAT copy's lost clusters or longer files and leave the second copy unjudged: the host case on the unpaired options fails, TST-M3-FAT32-TOOL FAIL"),
+    # M244: every longer file is said to have one cluster too many.
+    ("M244", "tools/fat32.py",
+     "                    longer.append((name, n - (size + cluster_bytes - 1) // cluster_bytes))\n",
+     "                    longer.append((name, 1))\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a file two clusters longer than its size is taken for one that is one cluster longer, so two different states meet the same pin: the host case on the two images fails, TST-M3-FAT32-TOOL FAIL"),
+    # M245: the walk looks a cluster up in the chain's list again (its cost grows with the square).
+    ("M245", "tools/fat32.py",
+     "            if c >= img.clusters + 2 or c in seen:\n",
+     "            if c >= img.clusters + 2 or c in got:\n",
+     ["TST-M3-FAT32-TOOL"], "the walk of a chain costs the square of its length again: the host case on a file of the volume's size runs past its bound, TST-M3-FAT32-TOOL FAIL"),
     # M212, M213 (SECURITY, WP-118): the exact numbers a fault case gives the host checker.
     # M212: any number of chains longer than their size is accepted once the case allows some.
     ("M212", "tools/fat32.py",
-     "    elif len(longer) != allow_longer:\n",
-     "    elif False:\n",
+     "        if allow_longer is not None and len(longer) != allow_longer:\n",
+     "        if False:\n",
      ["TST-M3-FAT32-TOOL"], "SECURITY: `check --faulted --allow-longer N` accepts an image with another number of chains longer than their size: the host case on the longer chain fails, TST-M3-FAT32-TOOL FAIL"),
     # M213: the number of lost clusters a case expects is no longer compared.
     ("M213", "tools/fat32.py",
@@ -1165,7 +1206,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # reserved value and a number past the volume in a chain (M228, M238), scans every
             # FAT copy (M229, M230, M235, M237) and
             # does both in plain mode as with --faulted (M233, M234).
-            "M226", "M227", "M228", "M229", "M230", "M231", "M232", "M233", "M234", "M235", "M236", "M237", "M238"}
+            "M226", "M227", "M228", "M229", "M230", "M231", "M232", "M233", "M234", "M235", "M236", "M237", "M238",
+            # M6 tooling (WP-127): the checker names the longer files (M239, M244), judges the second
+            # FAT copy (M240, M241, M242, M246) and refuses a pin on the first without it (M243).
+            "M239", "M240", "M241", "M242", "M243", "M244", "M246"}
 
 
 def security_of(mid: str) -> bool:
