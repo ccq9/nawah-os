@@ -12,7 +12,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025503Z-4623b9bc-001-a"
+    "evidence/20261115T051340Z-7edf7395-001-a"
    ]
   },
   {
@@ -26,7 +26,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025504Z-4623b9bc-001-a"
+    "evidence/20261115T051341Z-7edf7395-001-a"
    ]
   },
   {
@@ -39,7 +39,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025504Z-4623b9bc-002-a"
+    "evidence/20261115T051341Z-7edf7395-002-a"
    ]
   },
   {
@@ -52,7 +52,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025508Z-4623b9bc-001-a"
+    "evidence/20261115T051344Z-7edf7395-001-a"
    ]
   },
   {
@@ -65,7 +65,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025508Z-4623b9bc-002-a"
+    "evidence/20261115T051345Z-7edf7395-001-a"
    ]
   },
   {
@@ -78,7 +78,7 @@
    "command": "python3 tools/project.py build --target pc-qemu-e0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023452Z-4623b9bc-001-a"
+    "evidence/20261115T045315Z-7edf7395-001-a"
    ]
   },
   {
@@ -91,7 +91,7 @@
    "command": "python3 tools/project.py boot --target pc-qemu-e0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023454Z-4623b9bc-001-a"
+    "evidence/20261115T045317Z-7edf7395-001-a"
    ]
   },
   {
@@ -104,7 +104,7 @@
    "command": "python3 tools/project.py build --target pc-qemu",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023456Z-4623b9bc-001-a"
+    "evidence/20261115T045319Z-7edf7395-001-a"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -118,7 +118,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023523Z-4623b9bc-001-a"
+    "evidence/20261115T045347Z-7edf7395-001-a"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload",
    "oracle_notes": [
@@ -135,7 +135,7 @@
    "command": "python3 tools/project.py test --target host --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025511Z-4623b9bc-001-a"
+    "evidence/20261115T051348Z-7edf7395-001-a"
    ]
   },
   {
@@ -148,7 +148,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023527Z-4623b9bc-001-a"
+    "evidence/20261115T045351Z-7edf7395-001-a"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -175,7 +175,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023531Z-4623b9bc-001-a"
+    "evidence/20261115T045355Z-7edf7395-001-a"
    ]
   },
   {
@@ -188,7 +188,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023536Z-4623b9bc-001-a"
+    "evidence/20261115T045359Z-7edf7395-001-a"
    ]
   },
   {
@@ -201,7 +201,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023540Z-4623b9bc-001-a"
+    "evidence/20261115T045404Z-7edf7395-001-a"
    ]
   },
   {
@@ -214,7 +214,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023544Z-4623b9bc-001-a"
+    "evidence/20261115T045408Z-7edf7395-001-a"
    ]
   },
   {
@@ -227,7 +227,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023548Z-4623b9bc-001-a"
+    "evidence/20261115T045412Z-7edf7395-001-a"
    ]
   },
   {
@@ -240,7 +240,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023553Z-4623b9bc-001-a"
+    "evidence/20261115T045416Z-7edf7395-001-a"
    ]
   },
   {
@@ -253,7 +253,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023557Z-4623b9bc-001-a"
+    "evidence/20261115T045421Z-7edf7395-001-a"
    ]
   },
   {
@@ -266,7 +266,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023601Z-4623b9bc-001-a"
+    "evidence/20261115T045425Z-7edf7395-001-a"
    ]
   },
   {
@@ -279,7 +279,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023605Z-4623b9bc-001-a"
+    "evidence/20261115T045429Z-7edf7395-001-a"
    ]
   },
   {
@@ -292,7 +292,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023609Z-4623b9bc-001-a"
+    "evidence/20261115T045433Z-7edf7395-001-a"
    ]
   },
   {
@@ -305,7 +305,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023614Z-4623b9bc-001-a"
+    "evidence/20261115T045438Z-7edf7395-001-a"
    ]
   },
   {
@@ -318,7 +318,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023618Z-4623b9bc-001-a"
+    "evidence/20261115T045442Z-7edf7395-001-a"
    ]
   },
   {
@@ -331,7 +331,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023622Z-4623b9bc-001-a"
+    "evidence/20261115T045446Z-7edf7395-001-a"
    ]
   },
   {
@@ -344,7 +344,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023626Z-4623b9bc-001-a"
+    "evidence/20261115T045451Z-7edf7395-001-a"
    ]
   },
   {
@@ -357,7 +357,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023631Z-4623b9bc-001-a"
+    "evidence/20261115T045455Z-7edf7395-001-a"
    ]
   },
   {
@@ -370,7 +370,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023635Z-4623b9bc-001-a"
+    "evidence/20261115T045459Z-7edf7395-001-a"
    ]
   },
   {
@@ -383,7 +383,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023639Z-4623b9bc-001-a"
+    "evidence/20261115T045503Z-7edf7395-001-a"
    ]
   },
   {
@@ -396,7 +396,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023643Z-4623b9bc-001-a"
+    "evidence/20261115T045507Z-7edf7395-001-a"
    ]
   },
   {
@@ -409,7 +409,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023648Z-4623b9bc-001-a"
+    "evidence/20261115T045512Z-7edf7395-001-a"
    ]
   },
   {
@@ -422,7 +422,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023652Z-4623b9bc-001-a"
+    "evidence/20261115T045516Z-7edf7395-001-a"
    ]
   },
   {
@@ -435,7 +435,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023656Z-4623b9bc-001-a"
+    "evidence/20261115T045520Z-7edf7395-001-a"
    ]
   },
   {
@@ -448,7 +448,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023700Z-4623b9bc-001-a"
+    "evidence/20261115T045525Z-7edf7395-001-a"
    ]
   },
   {
@@ -461,7 +461,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023709Z-4623b9bc-001-a"
+    "evidence/20261115T045533Z-7edf7395-001-a"
    ]
   },
   {
@@ -488,7 +488,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M2",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023705Z-4623b9bc-001-a"
+    "evidence/20261115T045529Z-7edf7395-001-a"
    ]
   },
   {
@@ -501,7 +501,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023713Z-4623b9bc-001-a"
+    "evidence/20261115T045537Z-7edf7395-001-a"
    ]
   },
   {
@@ -514,7 +514,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023718Z-4623b9bc-001-a"
+    "evidence/20261115T045542Z-7edf7395-001-a"
    ]
   },
   {
@@ -527,7 +527,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023726Z-4623b9bc-001-a"
+    "evidence/20261115T045550Z-7edf7395-001-a"
    ]
   },
   {
@@ -540,7 +540,7 @@
    "command": "python3 tools/project.py build --target virt-qemu-aarch64",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025456Z-4623b9bc-001-a"
+    "evidence/20261115T051333Z-7edf7395-001-a"
    ]
   },
   {
@@ -553,7 +553,7 @@
    "command": "python3 tools/project.py boot --target virt-qemu-aarch64",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025457Z-4623b9bc-001-a"
+    "evidence/20261115T051334Z-7edf7395-001-a"
    ]
   },
   {
@@ -566,7 +566,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023730Z-4623b9bc-001-a"
+    "evidence/20261115T045555Z-7edf7395-001-a"
    ]
   },
   {
@@ -579,7 +579,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023735Z-4623b9bc-001-a"
+    "evidence/20261115T045559Z-7edf7395-001-a"
    ]
   },
   {
@@ -592,7 +592,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023739Z-4623b9bc-001-a"
+    "evidence/20261115T045603Z-7edf7395-001-a"
    ]
   },
   {
@@ -606,7 +606,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023743Z-4623b9bc-001-a"
+    "evidence/20261115T045607Z-7edf7395-001-a"
    ]
   },
   {
@@ -619,7 +619,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023747Z-4623b9bc-001-a"
+    "evidence/20261115T045611Z-7edf7395-001-a"
    ]
   },
   {
@@ -632,7 +632,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023752Z-4623b9bc-001-a"
+    "evidence/20261115T045616Z-7edf7395-001-a"
    ]
   },
   {
@@ -645,7 +645,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023756Z-4623b9bc-001-a"
+    "evidence/20261115T045620Z-7edf7395-001-a"
    ]
   },
   {
@@ -659,7 +659,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023800Z-4623b9bc-001-a"
+    "evidence/20261115T045624Z-7edf7395-001-a"
    ]
   },
   {
@@ -672,7 +672,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023804Z-4623b9bc-001-a"
+    "evidence/20261115T045628Z-7edf7395-001-a"
    ]
   },
   {
@@ -685,7 +685,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023813Z-4623b9bc-001-a"
+    "evidence/20261115T045637Z-7edf7395-001-a"
    ]
   },
   {
@@ -698,7 +698,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023817Z-4623b9bc-001-a"
+    "evidence/20261115T045641Z-7edf7395-001-a"
    ]
   },
   {
@@ -711,7 +711,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023821Z-4623b9bc-001-a"
+    "evidence/20261115T045645Z-7edf7395-001-a"
    ]
   },
   {
@@ -724,7 +724,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023825Z-4623b9bc-001-a"
+    "evidence/20261115T045650Z-7edf7395-001-a"
    ]
   },
   {
@@ -737,7 +737,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023830Z-4623b9bc-001-a"
+    "evidence/20261115T045654Z-7edf7395-001-a"
    ]
   },
   {
@@ -750,7 +750,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023847Z-4623b9bc-001-a"
+    "evidence/20261115T045711Z-7edf7395-001-a"
    ]
   },
   {
@@ -763,7 +763,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023851Z-4623b9bc-001-a"
+    "evidence/20261115T045715Z-7edf7395-001-a"
    ]
   },
   {
@@ -776,7 +776,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023855Z-4623b9bc-001-a"
+    "evidence/20261115T045720Z-7edf7395-001-a"
    ]
   },
   {
@@ -789,7 +789,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023859Z-4623b9bc-001-a"
+    "evidence/20261115T045724Z-7edf7395-001-a"
    ]
   },
   {
@@ -802,7 +802,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023903Z-4623b9bc-001-a"
+    "evidence/20261115T045728Z-7edf7395-001-a"
    ]
   },
   {
@@ -815,7 +815,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023908Z-4623b9bc-001-a"
+    "evidence/20261115T045732Z-7edf7395-001-a"
    ]
   },
   {
@@ -828,7 +828,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023933Z-4623b9bc-001-a"
+    "evidence/20261115T045758Z-7edf7395-001-a"
    ]
   },
   {
@@ -841,7 +841,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023937Z-4623b9bc-001-a"
+    "evidence/20261115T045802Z-7edf7395-001-a"
    ]
   },
   {
@@ -854,7 +854,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023941Z-4623b9bc-001-a"
+    "evidence/20261115T045806Z-7edf7395-001-a"
    ]
   },
   {
@@ -867,7 +867,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023946Z-4623b9bc-001-a"
+    "evidence/20261115T045811Z-7edf7395-001-a"
    ]
   },
   {
@@ -880,7 +880,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023950Z-4623b9bc-001-a"
+    "evidence/20261115T045815Z-7edf7395-001-a"
    ]
   },
   {
@@ -893,7 +893,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023954Z-4623b9bc-001-a"
+    "evidence/20261115T045819Z-7edf7395-001-a"
    ]
   },
   {
@@ -920,7 +920,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023722Z-4623b9bc-001-a"
+    "evidence/20261115T045546Z-7edf7395-001-a"
    ]
   },
   {
@@ -934,7 +934,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023809Z-4623b9bc-001-a"
+    "evidence/20261115T045633Z-7edf7395-001-a"
    ]
   },
   {
@@ -947,7 +947,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023834Z-4623b9bc-001-a"
+    "evidence/20261115T045658Z-7edf7395-001-a"
    ]
   },
   {
@@ -961,7 +961,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023838Z-4623b9bc-001-a"
+    "evidence/20261115T045702Z-7edf7395-001-a"
    ]
   },
   {
@@ -974,7 +974,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023842Z-4623b9bc-001-a"
+    "evidence/20261115T045707Z-7edf7395-001-a"
    ]
   },
   {
@@ -987,7 +987,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023914Z-4623b9bc-001-a"
+    "evidence/20261115T045738Z-7edf7395-001-a"
    ]
   },
   {
@@ -1000,7 +1000,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023918Z-4623b9bc-001-a"
+    "evidence/20261115T045743Z-7edf7395-001-a"
    ]
   },
   {
@@ -1013,7 +1013,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023922Z-4623b9bc-001-a"
+    "evidence/20261115T045747Z-7edf7395-001-a"
    ]
   },
   {
@@ -1026,7 +1026,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023927Z-4623b9bc-001-a"
+    "evidence/20261115T045752Z-7edf7395-001-a"
    ]
   },
   {
@@ -1039,7 +1039,7 @@
    "command": "python3 tools/project.py test --target host --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025512Z-4623b9bc-001-a"
+    "evidence/20261115T051348Z-7edf7395-002-a"
    ]
   },
   {
@@ -1052,7 +1052,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023959Z-4623b9bc-001-a"
+    "evidence/20261115T045824Z-7edf7395-001-a"
    ]
   },
   {
@@ -1065,7 +1065,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024003Z-4623b9bc-001-a"
+    "evidence/20261115T045828Z-7edf7395-001-a"
    ]
   },
   {
@@ -1078,7 +1078,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024007Z-4623b9bc-001-a"
+    "evidence/20261115T045832Z-7edf7395-001-a"
    ]
   },
   {
@@ -1091,7 +1091,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024012Z-4623b9bc-001-a"
+    "evidence/20261115T045837Z-7edf7395-001-a"
    ]
   },
   {
@@ -1104,7 +1104,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024016Z-4623b9bc-001-a"
+    "evidence/20261115T045841Z-7edf7395-001-a"
    ]
   },
   {
@@ -1117,7 +1117,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024020Z-4623b9bc-001-a"
+    "evidence/20261115T045846Z-7edf7395-001-a"
    ]
   },
   {
@@ -1130,7 +1130,7 @@
    "command": "python3 tools/project.py test --target host --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025513Z-4623b9bc-001-a"
+    "evidence/20261115T051350Z-7edf7395-001-a"
    ]
   },
   {
@@ -1143,7 +1143,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024029Z-4623b9bc-001-a"
+    "evidence/20261115T045854Z-7edf7395-001-a"
    ]
   },
   {
@@ -1156,7 +1156,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024037Z-4623b9bc-001-a"
+    "evidence/20261115T045902Z-7edf7395-001-a"
    ]
   },
   {
@@ -1169,7 +1169,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024041Z-4623b9bc-001-a"
+    "evidence/20261115T045907Z-7edf7395-001-a"
    ]
   },
   {
@@ -1182,7 +1182,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024105Z-4623b9bc-001-a"
+    "evidence/20261115T045931Z-7edf7395-001-a"
    ]
   },
   {
@@ -1195,7 +1195,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024046Z-4623b9bc-001-a"
+    "evidence/20261115T045911Z-7edf7395-001-a"
    ]
   },
   {
@@ -1208,7 +1208,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024051Z-4623b9bc-001-a"
+    "evidence/20261115T045916Z-7edf7395-001-a"
    ]
   },
   {
@@ -1221,7 +1221,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024055Z-4623b9bc-001-a"
+    "evidence/20261115T045921Z-7edf7395-001-a"
    ]
   },
   {
@@ -1234,7 +1234,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024100Z-4623b9bc-001-a"
+    "evidence/20261115T045926Z-7edf7395-001-a"
    ]
   },
   {
@@ -1247,7 +1247,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024112Z-4623b9bc-001-a"
+    "evidence/20261115T045938Z-7edf7395-001-a"
    ]
   },
   {
@@ -1260,7 +1260,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024116Z-4623b9bc-001-a"
+    "evidence/20261115T045942Z-7edf7395-001-a"
    ]
   },
   {
@@ -1273,7 +1273,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024121Z-4623b9bc-001-a"
+    "evidence/20261115T045946Z-7edf7395-001-a"
    ]
   },
   {
@@ -1286,7 +1286,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024126Z-4623b9bc-001-a"
+    "evidence/20261115T045952Z-7edf7395-001-a"
    ]
   },
   {
@@ -1299,7 +1299,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024131Z-4623b9bc-001-a"
+    "evidence/20261115T045957Z-7edf7395-001-a"
    ]
   },
   {
@@ -1312,7 +1312,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024136Z-4623b9bc-001-a"
+    "evidence/20261115T050002Z-7edf7395-001-a"
    ]
   },
   {
@@ -1325,7 +1325,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024141Z-4623b9bc-001-a"
+    "evidence/20261115T050007Z-7edf7395-001-a"
    ]
   },
   {
@@ -1338,7 +1338,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024146Z-4623b9bc-001-a"
+    "evidence/20261115T050012Z-7edf7395-001-a"
    ]
   },
   {
@@ -1351,7 +1351,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024151Z-4623b9bc-001-a"
+    "evidence/20261115T050017Z-7edf7395-001-a"
    ]
   },
   {
@@ -1364,7 +1364,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024158Z-4623b9bc-001-a"
+    "evidence/20261115T050023Z-7edf7395-001-a"
    ]
   },
   {
@@ -1377,7 +1377,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024204Z-4623b9bc-001-a"
+    "evidence/20261115T050029Z-7edf7395-001-a"
    ]
   },
   {
@@ -1390,7 +1390,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024210Z-4623b9bc-001-a"
+    "evidence/20261115T050035Z-7edf7395-001-a"
    ]
   },
   {
@@ -1417,7 +1417,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024025Z-4623b9bc-001-a"
+    "evidence/20261115T045850Z-7edf7395-001-a"
    ]
   },
   {
@@ -1430,7 +1430,7 @@
    "command": "python3 tools/project.py test --target host --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025519Z-4623b9bc-001-a"
+    "evidence/20261115T051355Z-7edf7395-001-a"
    ]
   },
   {
@@ -1443,7 +1443,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024214Z-4623b9bc-001-a"
+    "evidence/20261115T050040Z-7edf7395-001-a"
    ]
   },
   {
@@ -1457,7 +1457,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024242Z-4623b9bc-001-a"
+    "evidence/20261115T050108Z-7edf7395-001-a"
    ]
   },
   {
@@ -1470,7 +1470,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024222Z-4623b9bc-001-a"
+    "evidence/20261115T050048Z-7edf7395-001-a"
    ]
   },
   {
@@ -1483,7 +1483,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024235Z-4623b9bc-001-a"
+    "evidence/20261115T050101Z-7edf7395-001-a"
    ]
   },
   {
@@ -1496,7 +1496,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025523Z-4623b9bc-001-a"
+    "evidence/20261115T051400Z-7edf7395-001-a"
    ]
   },
   {
@@ -1509,7 +1509,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024250Z-4623b9bc-001-a"
+    "evidence/20261115T050116Z-7edf7395-001-a"
    ]
   },
   {
@@ -1522,7 +1522,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024258Z-4623b9bc-001-a"
+    "evidence/20261115T050124Z-7edf7395-001-a"
    ]
   },
   {
@@ -1535,7 +1535,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024304Z-4623b9bc-001-a"
+    "evidence/20261115T050130Z-7edf7395-001-a"
    ]
   },
   {
@@ -1548,7 +1548,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024316Z-4623b9bc-001-a"
+    "evidence/20261115T050142Z-7edf7395-001-a"
    ]
   },
   {
@@ -1561,7 +1561,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025635Z-4623b9bc-001-a"
+    "evidence/20261115T051511Z-7edf7395-002-a"
    ]
   },
   {
@@ -1574,7 +1574,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025613Z-4623b9bc-001-a"
+    "evidence/20261115T051449Z-7edf7395-001-a"
    ]
   },
   {
@@ -1587,7 +1587,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025613Z-4623b9bc-002-a"
+    "evidence/20261115T051450Z-7edf7395-001-a"
    ]
   },
   {
@@ -1600,7 +1600,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025620Z-4623b9bc-001-a"
+    "evidence/20261115T051457Z-7edf7395-001-a"
    ]
   },
   {
@@ -1613,7 +1613,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024325Z-4623b9bc-001-a"
+    "evidence/20261115T050151Z-7edf7395-001-a"
    ]
   },
   {
@@ -1626,7 +1626,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024336Z-4623b9bc-001-a"
+    "evidence/20261115T050203Z-7edf7395-001-a"
    ]
   },
   {
@@ -1639,7 +1639,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024356Z-4623b9bc-001-a"
+    "evidence/20261115T050222Z-7edf7395-001-a"
    ]
   },
   {
@@ -1653,7 +1653,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025622Z-4623b9bc-001-a"
+    "evidence/20261115T051459Z-7edf7395-001-a"
    ]
   },
   {
@@ -1666,7 +1666,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025634Z-4623b9bc-001-a"
+    "evidence/20261115T051511Z-7edf7395-001-a"
    ]
   },
   {
@@ -1679,7 +1679,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024456Z-4623b9bc-001-a"
+    "evidence/20261115T050322Z-7edf7395-001-a"
    ]
   },
   {
@@ -1692,7 +1692,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024430Z-4623b9bc-001-a"
+    "evidence/20261115T050256Z-7edf7395-001-a"
    ]
   },
   {
@@ -1705,7 +1705,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024404Z-4623b9bc-001-a"
+    "evidence/20261115T050230Z-7edf7395-001-a"
    ]
   },
   {
@@ -1718,7 +1718,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025156Z-4623b9bc-001-a"
+    "evidence/20261115T051034Z-7edf7395-001-a"
    ],
    "oracle_notes": [
     "2026-11-14 (WP-92): carried from the record's earlier oracle (undated there): not exercised: moving a window by keyboard and a scale change."
@@ -1734,7 +1734,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025204Z-4623b9bc-001-a"
+    "evidence/20261115T051042Z-7edf7395-001-a"
    ]
   },
   {
@@ -1747,7 +1747,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025221Z-4623b9bc-001-a"
+    "evidence/20261115T051058Z-7edf7395-001-a"
    ]
   },
   {
@@ -1760,7 +1760,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025225Z-4623b9bc-001-a"
+    "evidence/20261115T051103Z-7edf7395-001-a"
    ]
   },
   {
@@ -1773,7 +1773,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025230Z-4623b9bc-001-a"
+    "evidence/20261115T051107Z-7edf7395-001-a"
    ]
   },
   {
@@ -1787,7 +1787,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024647Z-4623b9bc-001-a"
+    "evidence/20261115T050525Z-7edf7395-001-a"
    ]
   },
   {
@@ -1801,7 +1801,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024851Z-4623b9bc-001-a"
+    "evidence/20261115T050729Z-7edf7395-001-a"
    ]
   },
   {
@@ -1814,7 +1814,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025141Z-4623b9bc-001-a"
+    "evidence/20261115T051019Z-7edf7395-001-a"
    ]
   },
   {
@@ -1827,7 +1827,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024909Z-4623b9bc-001-a"
+    "evidence/20261115T050747Z-7edf7395-001-a"
    ]
   },
   {
@@ -1866,7 +1866,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024714Z-4623b9bc-001-a"
+    "evidence/20261115T050552Z-7edf7395-001-a"
    ]
   },
   {
@@ -1880,7 +1880,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024741Z-4623b9bc-001-a"
+    "evidence/20261115T050619Z-7edf7395-001-a"
    ]
   },
   {
@@ -1894,7 +1894,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024810Z-4623b9bc-001-a"
+    "evidence/20261115T050648Z-7edf7395-001-a"
    ]
   },
   {
@@ -1919,7 +1919,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024642Z-4623b9bc-001-a"
+    "evidence/20261115T050508Z-7edf7395-001-a"
    ]
   },
   {
@@ -1930,8 +1930,10 @@
    "layer": "negative",
    "oracle": "REQ-M5-005, WP-97 (display.md v1.14; mutant M199): a window title is the client's data and the compositor's own narrator line names in it what would end it. SVC-NT.TXT (auth, input, the compositor and the narrator; no other client of the compositor): the test kernel, one display client, opens four windows titled `x\" focused role=\"button`, `a<BEL>b<LF>c`, `abc<U+202E>def<U+2028>g` and 32 quotes, then renames and raises them in turn (window k mod 4) to `ab<C2>`, `A` and 16 Arabic letters (33 bytes), `Sign in`, `a<DEL>b<C2 85>c<U+2029>d<U+061C>e<U+200F>f<U+202A>g<U+2067>h`, 33 bytes 0x80, `abc` and 40 bytes 0x80, 32 ASCII bytes and 33 ASCII bytes, and closes the four, the focused one last; every reply is OK. The narrator's transcript equals platform/pc-qemu/expect/window-title.txt line for line, sixteen lines, one per focus change and nothing else: `window \"x[U+0022] focused role=[U+0022]button\" focused`, `window \"a[U+0007]b[U+000A]c\" focused`, `window \"abc[U+202E]def[U+2028]g\" focused`, `window \"` + 12 times `[U+0022]` + `\" focused cut=20` (the names that do not fit in 96 bytes cut at a whole name, the line still closed and the cut counted), `window \"ab[U+FFFD]\" focused`, `window \"A` + 15 times `\\u{0628}` + `\" focused cut=1` (stored cut at a character boundary, the dropped letter counted), `window \"Sign in\" focused` (a plain title as before), `window \"a[U+007F]b[U+0085]c[U+2029]d[U+061C]e[U+200F]f[U+202A]g[U+2067]h\" focused`, `window \"` + 12 times `[U+FFFD]` + `\" focused cut=21`, `window \"abc` + 11 times `[U+FFFD]` + `\" focused cut=29` (bytes that are no character stay and are named), `window \"0123456789abcdefghijklmnopqrstuv\" focused` (32 bytes, no cut), the same title with `cut=1` (33 bytes), `window \"0123456789abcdefghijklmnopqrst\\u{00E9}\" focused cut=1` (30 ASCII bytes, `é` and a stray continuation byte: the character that ends at the limit stays), `window \"` + 31 times `a` + `[U+FFFD]\" focused cut=1` (31 letters and two stray bytes: the letters and the first stray byte stay), `window \"a[U+200E]b[U+202B]c[U+202C]d[U+202D]e[U+2066]f[U+2068]g[U+2069]h\" focused` (the rest of the bidi set) and `window \"` + 30 times `a` + `[U+FFFD]b\" focused cut=1` (a lead byte, a letter and a stray byte: the letter stays); the forged attribute never appears outside the quotes; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261115T050513Z-7edf7395-001-a"
+   ]
   },
   {
    "id": "TST-M5-WINDOW-TITLE-RESIZE",
@@ -1942,8 +1944,10 @@
    "layer": "negative",
    "oracle": "REQ-M5-005, REQ-M5-008, WP-97 (display.md v1.14 and v1.7; mutant M200): the compositor's resize line names the title as its focus line does. SVC-NT.TXT (auth, input, the compositor and the narrator; no other client of the compositor): the test kernel, one display client, opens a 32x32 window titled `x\" resized 9x9 role=\"button`; after `|ktest|window_title_resize|window=OK|services=4|ready=1` the lab sends Alt+Shift+Right, LIST then shows the window 48x32 and it is closed. The narrator's transcript equals platform/pc-qemu/expect/window-title-resize.txt line for line: `window \"x[U+0022] resized 9x9 role=[U+0022]button\" focused` then `window \"x[U+0022] resized 9x9 role=[U+0022]button\" resized 48x32`; the forged resize line never appears; no frame leaks; exit 33",
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
-   "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "verdict": "PASS",
+   "evidence_refs": [
+    "evidence/20261115T050518Z-7edf7395-001-a"
+   ]
   },
   {
    "id": "TST-M5-LIST-HASH-HELD",
@@ -1955,7 +1959,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024615Z-4623b9bc-001-a"
+    "evidence/20261115T050441Z-7edf7395-001-a"
    ]
   },
   {
@@ -1968,7 +1972,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024539Z-4623b9bc-001-a"
+    "evidence/20261115T050405Z-7edf7395-001-a"
    ],
    "oracle_notes": [
     "2026-11-10 (WP-64): the oracle was rewritten to session.md v1.7 from the earlier text (spy focus=0 after the loss, 2E8B57 at (150,150)); recorded as a contract-driven change, not a weakened gate (PLAN-ANSWER §2.3 D5-B); the compositor's own hold is still observed after the phase-6 STOP (HOLDS locked=1), which keeps the rescue path and M106 covered."
@@ -1984,7 +1988,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024231Z-4623b9bc-001-a"
+    "evidence/20261115T050057Z-7edf7395-001-a"
    ]
   },
   {
@@ -1997,7 +2001,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024523Z-4623b9bc-001-a"
+    "evidence/20261115T050349Z-7edf7395-001-a"
    ]
   },
   {
@@ -2010,7 +2014,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024320Z-4623b9bc-001-a"
+    "evidence/20261115T050146Z-7edf7395-001-a"
    ]
   },
   {
@@ -2023,7 +2027,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T024847Z-4623b9bc-001-a"
+    "evidence/20261115T050725Z-7edf7395-001-a"
    ]
   },
   {
@@ -2036,7 +2040,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025235Z-4623b9bc-001-a"
+    "evidence/20261115T051112Z-7edf7395-001-a"
    ],
    "oracle_notes": [
     "2026-11-10 (WP-64): `reason=list_failure` is a forbidden marker: a latent LIST failure on the system manifest would otherwise purge on every boot unseen."
@@ -2052,7 +2056,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025325Z-4623b9bc-001-a"
+    "evidence/20261115T051202Z-7edf7395-001-a"
    ]
   },
   {
@@ -2065,7 +2069,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025404Z-4623b9bc-001-a"
+    "evidence/20261115T051241Z-7edf7395-001-a"
    ]
   },
   {
@@ -2100,7 +2104,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025447Z-4623b9bc-001-a"
+    "evidence/20261115T051324Z-7edf7395-001-a"
    ]
   },
   {
@@ -2179,7 +2183,7 @@
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025636Z-4623b9bc-004-a"
+    "evidence/20261115T051513Z-7edf7395-003-a"
    ],
    "oracle_notes": [
     "2026-11-15 (WP-100): the planned oracle (WP-47's, before the split) replaced by the case's source in tools/project.py HOST_SUITES[\"M6\"]; every class it named (over-long fields, bad ids, a missing ELF path, duplicate ids, non-UTF-8 names, no panic, the well-formed examples exactly) is kept, and the source adds the named errors of apps.md v1.",
@@ -2251,7 +2255,7 @@
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025636Z-4623b9bc-001-a"
+    "evidence/20261115T051512Z-7edf7395-002-a"
    ]
   },
   {
@@ -2264,7 +2268,7 @@
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025636Z-4623b9bc-002-a"
+    "evidence/20261115T051513Z-7edf7395-001-a"
    ]
   },
   {
@@ -2288,7 +2292,7 @@
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025636Z-4623b9bc-003-a"
+    "evidence/20261115T051513Z-7edf7395-002-a"
    ]
   },
   {
@@ -2834,7 +2838,7 @@
    "command": "python3 tools/project.py test --target host --suite M6-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T023452Z-4623b9bc-001-m"
+    "evidence/20261115T045310Z-7edf7395-001-m"
    ]
   },
   {
@@ -2847,7 +2851,7 @@
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025635Z-4623b9bc-002-a"
+    "evidence/20261115T051512Z-7edf7395-001-a"
    ]
   },
   {
@@ -2860,7 +2864,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025408Z-4623b9bc-001-a"
+    "evidence/20261115T051245Z-7edf7395-001-a"
    ],
    "oracle_notes": [
     "2026-11-10 (WP-64): timeout 180 s -> 60 s (measured 8 s on CI run 42696067096; a hang guard, not an oracle change)."
@@ -2876,7 +2880,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025442Z-4623b9bc-001-a"
+    "evidence/20261115T051319Z-7edf7395-001-a"
    ]
   },
   {
@@ -2889,7 +2893,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025418Z-4623b9bc-001-a"
+    "evidence/20261115T051256Z-7edf7395-001-a"
    ]
   },
   {
@@ -2902,7 +2906,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025423Z-4623b9bc-001-a"
+    "evidence/20261115T051300Z-7edf7395-001-a"
    ]
   },
   {
@@ -2915,7 +2919,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025451Z-4623b9bc-001-a"
+    "evidence/20261115T051328Z-7edf7395-001-a"
    ]
   },
   {
@@ -2950,7 +2954,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025509Z-4623b9bc-001-a"
+    "evidence/20261115T051346Z-7edf7395-001-a"
    ]
   },
   {
@@ -2963,7 +2967,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025413Z-4623b9bc-001-a"
+    "evidence/20261115T051250Z-7edf7395-001-a"
    ]
   },
   {
@@ -2976,7 +2980,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261115T025427Z-4623b9bc-001-a"
+    "evidence/20261115T051304Z-7edf7395-001-a"
    ],
    "oracle_notes": [
     "2026-11-10 (WP-73): the held-copy WHOAMI check (a service holds a token copy during a REQUEST, session.md:14) is deferred to WP-71 with its mechanism; this case measures the kernel's live-token count and the trace line, and TST-M4-TOKEN-OBJECTS proves that a revocation is visible to every copy."
