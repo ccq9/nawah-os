@@ -3288,8 +3288,10 @@ fn fat32_fault_write() -> ! {
     }
     let w = fault_write_sweep(b'W', 0, FAULT_LEN, true);
     let x = fault_write_sweep(b'X', FAULT_HALF, FAULT_HALF, false);
+    // WP-120: the same append, made again after each failure through the same open.
+    let y = fault_write_sweep(b'Y', FAULT_HALF, FAULT_HALF, true);
     let synced = crate::fs::vfs::sync().is_ok();
-    for (name, v) in [("new", &w), ("append", &x)] {
+    for (name, v) in [("new", &w), ("append", &x), ("again", &y)] {
         kprintln!(
             "OSX|{}|ktest|fat32_fault_write|sweep={}|control={}|writes={}|failed={}|io={}|node_differs={}|pos_moved={}|stale_sync={}|unchanged={}|bad={}|ghost={}|retry_ok={}",
             BUILD_ID,
@@ -3313,7 +3315,7 @@ fn fat32_fault_write() -> ! {
         u8::from(synced),
         crate::fs::vfs::live_files()
     );
-    for v in [&w, &x] {
+    for v in [&w, &x, &y] {
         if v[1] != 1 || v[0] < 3 || v[2] != v[0] || v[3] != v[0] {
             fail("the sweep did not run as planned")
         }
@@ -3321,7 +3323,7 @@ fn fat32_fault_write() -> ! {
             fail("a failed write left the file, its node or the open's position changed")
         }
     }
-    if w[8] != w[0] || !synced {
+    if w[8] != w[0] || y[8] != y[0] || !synced {
         fail("the same write made again did not leave the whole file")
     }
     pass("a failed write leaves the file as it was, on disk and in its node")
@@ -3339,10 +3341,12 @@ fn fat32_fault_write_check() -> ! {
         let w = fault_count(b'W', FAULT_LEN);
         let x1 = fault_count(b'X', FAULT_HALF);
         let x2 = fault_count(b'X', 2 * FAULT_HALF);
-        // A file of the second sweep is its first cluster, or (the control) both clusters.
-        (w.0, x1.0, x2.0, w.2, x1.2 - x2.0)
+        // A file of the second sweep is its first cluster, or (the control) both clusters;
+        // every file of the third, whose append was made again, is both.
+        let y = fault_count(b'Y', 2 * FAULT_HALF);
+        (w.0, x1.0, x2.0, y.0, w.2, x1.2 - x2.0 + y.1 + y.2)
     };
-    let (w_whole, x_first, x_both, w_bad, x_bad) = count();
+    let (w_whole, x_first, x_both, y_both, w_bad, x_bad) = count();
     let fresh = alloc::vec![0x5Au8; FAULT_LEN];
     let after_ok = crate::fs::with(|fs| {
         let mut e = fs.create(b"/AFTER.TXT")?;
@@ -3353,19 +3357,21 @@ fn fat32_fault_write_check() -> ! {
         && fault_state(b"/AFTER.TXT", &fresh) == 1;
     let after = count();
     kprintln!(
-        "OSX|{}|ktest|fat32_fault_write_check|new_whole={}|append_first={}|append_both={}|bad={}|after_ok={}|same_after={}",
+        "OSX|{}|ktest|fat32_fault_write_check|new_whole={}|append_first={}|append_both={}|again_both={}|bad={}|after_ok={}|same_after={}",
         BUILD_ID,
         w_whole,
         x_first,
         x_both,
+        y_both,
         w_bad + x_bad,
         u8::from(after_ok),
-        u8::from(after == (w_whole, x_first, x_both, w_bad, x_bad))
+        u8::from(after == (w_whole, x_first, x_both, y_both, w_bad, x_bad))
     );
-    if w_bad + x_bad != 0 || !after_ok || after != (w_whole, x_first, x_both, w_bad, x_bad) {
+    if w_bad + x_bad != 0 || !after_ok || after != (w_whole, x_first, x_both, y_both, w_bad, x_bad)
+    {
         fail("a name of the sweeps is not its own file after the restart")
     }
-    if w_whole == 0 || x_first == 0 || x_both != 1 {
+    if w_whole == 0 || x_first == 0 || x_both != 1 || y_both == 0 {
         fail("a whole sweep, or the control of the second, is missing after the restart")
     }
     pass("after the restart every file of the write sweeps is its own")
