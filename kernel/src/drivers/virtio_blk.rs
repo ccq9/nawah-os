@@ -156,6 +156,10 @@ pub struct VirtioBlk {
     queue_size: u16,
     avail_idx: u16,
     last_used: u16,
+    /// Set when a request timed out and never cleared (ADR-0013 decision 9): that request may
+    /// still complete at the device, and every request shares the header, the status byte, the
+    /// data buffer and the descriptors, so nothing more is submitted until a reboot.
+    stopped: bool,
     info: BlkInfo,
 }
 
@@ -309,6 +313,7 @@ impl VirtioBlk {
             queue_size,
             avail_idx: 0,
             last_used: 0,
+            stopped: false,
             info,
         })
     }
@@ -384,6 +389,7 @@ impl VirtioBlk {
             }
             spins += 1;
             if spins > limit {
+                self.stopped = true;
                 return Err(BlkError::Timeout);
             }
             core::hint::spin_loop();
@@ -397,6 +403,15 @@ impl VirtioBlk {
         let status = dma::bytes_mut(self.hdr + 16, 1)[0];
         if status != S_OK {
             return Err(BlkError::Io(status));
+        }
+        Ok(())
+    }
+
+    /// The answer of a stopped device (see `stopped`): asked first by every entry point, before
+    /// the shared data buffer is read or written.
+    fn refuse_stopped(&self) -> Result<(), BlkError> {
+        if self.stopped {
+            return Err(BlkError::DeviceNeedsReset);
         }
         Ok(())
     }
@@ -417,6 +432,7 @@ impl VirtioBlk {
 
     /// Reads `buf.len()` bytes (a multiple of 512, at most 64 KiB) from `sector`.
     pub fn read(&mut self, sector: u64, buf: &mut [u8]) -> Result<(), BlkError> {
+        self.refuse_stopped()?;
         self.check_range(sector, buf.len())?;
         self.request(T_IN, sector, buf.len(), true)?;
         buf.copy_from_slice(dma::bytes_mut(self.data, buf.len()));
@@ -426,6 +442,7 @@ impl VirtioBlk {
     /// Writes `buf` (a multiple of 512, at most 64 KiB) at `sector`.
     #[cfg_attr(not(feature = "ktest"), allow(dead_code))]
     pub fn write(&mut self, sector: u64, buf: &[u8]) -> Result<(), BlkError> {
+        self.refuse_stopped()?;
         self.check_range(sector, buf.len())?;
         dma::bytes_mut(self.data, buf.len()).copy_from_slice(buf);
         self.request(T_OUT, sector, buf.len(), false)
@@ -434,6 +451,7 @@ impl VirtioBlk {
     /// Makes completed writes stable (VIRTIO_BLK_T_FLUSH); a no-op when the device did not
     /// offer FLUSH (its writes are then already stable per §5.2.6.2).
     pub fn flush(&mut self) -> Result<(), BlkError> {
+        self.refuse_stopped()?;
         if !self.info.flush {
             return Ok(());
         }
