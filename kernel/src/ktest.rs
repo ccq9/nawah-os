@@ -8536,14 +8536,24 @@ fn window_title() -> ! {
     // (33 bytes, cut at TITLE_MAX before the last letter); a plain title, spoken as it always
     // was; DEL, a C1 control (C2 85), U+2029, ALM, RLM, LRE and RLI between letters; 33
     // continuation bytes; `abc` and 40 continuation bytes; exactly 32 ASCII bytes (no cut);
-    // 33 ASCII bytes (one cut).
+    // 33 ASCII bytes (one cut). Then the storage cut where a whole character ends exactly at
+    // TITLE_MAX and a stray byte follows: 30 ASCII bytes, `é` and a continuation byte (the `é`
+    // stays); 31 letters and two continuation bytes (the letters and the first stray byte stay);
+    // the rest of the bidi set (LRM, RLE, PDF, LRO, LRI, FSI, PDI) between letters; 30 letters,
+    // a lead byte, a letter and a continuation byte (the letter stays).
     let mut arabic = alloc::vec![b'A'];
     for _ in 0..16 {
         arabic.extend_from_slice("\u{0628}".as_bytes());
     }
     let mut abc = b"abc".to_vec();
     abc.extend_from_slice(&[0x80; 40]);
-    let renamed: [&[u8]; 8] = [
+    let mut e_acute = b"0123456789abcdefghijklmnopqrst".to_vec();
+    e_acute.extend_from_slice(&[0xC3, 0xA9, 0x80]);
+    let mut stray = alloc::vec![b'a'; 31];
+    stray.extend_from_slice(&[0x80, 0x80]);
+    let mut lead = alloc::vec![b'a'; 30];
+    lead.extend_from_slice(&[0xE2, b'b', 0x80]);
+    let renamed: [&[u8]; 12] = [
         b"ab\xC2",
         &arabic,
         b"Sign in",
@@ -8552,6 +8562,10 @@ fn window_title() -> ! {
         &abc,
         b"0123456789abcdefghijklmnopqrstuv",
         b"0123456789abcdefghijklmnopqrstuvw",
+        &e_acute,
+        &stray,
+        "a\u{200E}b\u{202B}c\u{202C}d\u{202D}e\u{2066}f\u{2068}g\u{2069}h".as_bytes(),
+        &lead,
     ];
     let mut again = Vec::new();
     for (k, t) in renamed.iter().enumerate() {
@@ -8600,7 +8614,9 @@ fn window_title() -> ! {
     // The narrator writes its lines on its own time: let the last ones reach the serial log
     // before the manager stops it.
     sched::poll_until(sched::ticks() + 1_000, || false);
-    drop((replies, again, closed, wids, ev, arabic, abc));
+    drop((
+        replies, again, closed, wids, ev, arabic, abc, e_acute, stray, lead,
+    ));
     drop((vmos, clients, admin));
     display_finish(
         name,

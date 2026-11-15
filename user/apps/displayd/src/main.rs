@@ -531,23 +531,21 @@ fn title_units(s: &[u8]) -> usize {
     k.min(CUT_MAX)
 }
 
-/// The bytes of a client's title the window keeps (display.md v1.14): at most TITLE_MAX, cut
-/// before the character the limit falls in. The cut backs off at most 3 bytes, the longest
-/// tail of a UTF-8 character, to a byte that begins one; past that the bytes are no character,
-/// so the cut stays at TITLE_MAX and they are kept (and named U+FFFD in the line).
+/// The bytes of a client's title the window keeps (display.md v1.14): the whole units
+/// (title_unit: a valid character, or one byte that begins none) that fit in TITLE_MAX bytes.
+/// A character the limit falls inside is left out whole; a character that ends at the limit
+/// and a byte that is no character stay (the byte is named U+FFFD in the line).
 fn title_len(title: &[u8]) -> usize {
     let max = title.len().min(TITLE_MAX);
-    for back in 0..=3 {
-        let Some(n) = max.checked_sub(back) else {
-            break;
-        };
-        match title.get(n) {
-            None => return n,
-            Some(b) if b & 0xC0 != 0x80 => return n,
-            Some(_) => {}
+    let mut i = 0;
+    while i < max {
+        let n = title_unit(title.get(i..).unwrap_or(&[])).0;
+        if i + n > max {
+            return i;
         }
+        i += n;
     }
-    max
+    i
 }
 
 /// The text after the first `n` space-separated fields, trimmed.
