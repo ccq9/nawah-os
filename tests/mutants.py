@@ -829,6 +829,19 @@ MUTANTS = [
      "            let cut = put_title(&mut o, shown).saturating_add(w.title_cut);",
      "            let cut = {\n                o.put(shown);\n                w.title_cut\n            };",
      ["TST-M5-WINDOW-TITLE-RESIZE"], "SECURITY: the resize line writes the title between the quotes as it is: the narrator reads `window \"x\" resized 9x9 role=\"button\" resized 48x32` (a forbidden marker), the required named resize line is missing and the transcript differs at its second line, TST-M5-WINDOW-TITLE-RESIZE FAIL"),
+    # M201, M202 (SECURITY, WP-104, ADR-0013 decision 9): the disk after a timed-out request.
+    # M201: the timeout branch no longer stops the device, so the next requests are submitted on
+    # the shared header, status byte, buffer and descriptors while the old one may still complete.
+    ("M201", "kernel/src/drivers/virtio_blk.rs",
+     "            if spins > limit {\n                self.stopped = true;\n                return Err(BlkError::Timeout);",
+     "            if spins > limit {\n                return Err(BlkError::Timeout);",
+     ["TST-M3-BLK-TIMEOUT"], "SECURITY: after a timed-out request the disk serves the next read, write and flush: the line reads after_read=ok|after_write=ok|after_flush=ok (forbidden markers), TST-M3-BLK-TIMEOUT FAIL"),
+    # M202: a stopped device refuses a write only after copying its bytes into the shared buffer
+    # (the buffer a pending request's device side may still read or write).
+    ("M202", "kernel/src/drivers/virtio_blk.rs",
+     "        self.refuse_stopped()?;\n        self.check_range(sector, buf.len())?;\n        dma::bytes_mut(self.data, buf.len()).copy_from_slice(buf);\n        self.request(T_OUT, sector, buf.len(), false)",
+     "        self.check_range(sector, buf.len())?;\n        dma::bytes_mut(self.data, buf.len()).copy_from_slice(buf);\n        self.refuse_stopped()?;\n        self.request(T_OUT, sector, buf.len(), false)",
+     ["TST-M3-BLK-TIMEOUT"], "SECURITY: a refused write has already changed the shared buffer: the line reads buffer_kept=0 (a forbidden marker), TST-M3-BLK-TIMEOUT FAIL"),
     # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
     # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
     # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
@@ -925,7 +938,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M198",
             # M6 (WP-97): a window title cannot forge the compositor's narrator line
             # (display.md v1.14): in the focus line (M199) and in the resize line (M200).
-            "M199", "M200"}
+            "M199", "M200",
+            # M6 (WP-104): a disk request that timed out stops the device (ADR-0013 decision 9):
+            # nothing is submitted after it (M201) and a refused write leaves the shared buffer
+            # alone (M202).
+            "M201", "M202"}
 
 
 def security_of(mid: str) -> bool:
