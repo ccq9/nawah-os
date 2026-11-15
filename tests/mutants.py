@@ -927,17 +927,32 @@ MUTANTS = [
      "                DISK_STOPPED.store(true, Ordering::SeqCst);\n                self.stopped = true;\n",
      "                self.stopped = true;\n",
      ["TST-M3-FAT32-STOP"], "SECURITY: the disk stops and the file system never learns it: the calls that ask nothing of the disk answer from memory and no line kernel|fs|stopped is written, TST-M3-FAT32-STOP FAIL"),
-    # M226..M229 (SECURITY, WP-126): the host image check names a damaged entry and a reserved
+    # M226..M237 (SECURITY, WP-126): the host image check names a damaged entry and a reserved
     # value in any FAT copy. M226: an entry's first cluster is no longer looked at.
     ("M226", "tools/fat32.py",
      "                if not 2 <= entry_first < img.clusters + 2 and (entry_first != 0 or e[11] & ATTR_DIR):\n",
      "                if False:\n",
-     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` walks a directory or a file whose first cluster is 0 or 1 as an empty one and names nothing: the host cases on the damaged directory and the damaged file fail, TST-M3-FAT32-TOOL FAIL"),
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` walks a directory or a file whose first cluster is no cluster of the volume as an empty one and names nothing: the host cases on the damaged directory and the damaged file fail, TST-M3-FAT32-TOOL FAIL"),
     # M227: a first cluster of 0 is accepted for a directory as it is for an empty file.
     ("M227", "tools/fat32.py",
      "                if not 2 <= entry_first < img.clusters + 2 and (entry_first != 0 or e[11] & ATTR_DIR):\n",
      "                if not 2 <= entry_first < img.clusters + 2 and entry_first != 0:\n",
      ["TST-M3-FAT32-TOOL"], "SECURITY: a directory entry whose first cluster is 0 is walked as an empty directory: the host case on the directory with a first cluster of 0 fails, TST-M3-FAT32-TOOL FAIL"),
+    # M231: the empty file is no longer excepted.
+    ("M231", "tools/fat32.py",
+     "                if not 2 <= entry_first < img.clusters + 2 and (entry_first != 0 or e[11] & ATTR_DIR):\n",
+     "                if not 2 <= entry_first < img.clusters + 2:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: every empty file is called damaged, so every image a guest case leaves with one fails for no fault: the host case on the healthy empty file fails, TST-M3-FAT32-TOOL FAIL"),
+    # M232: a first cluster past the volume, or an end mark, is accepted.
+    ("M232", "tools/fat32.py",
+     "                if not 2 <= entry_first < img.clusters + 2 and (entry_first != 0 or e[11] & ATTR_DIR):\n",
+     "                if not 2 <= entry_first and (entry_first != 0 or e[11] & ATTR_DIR):\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a directory or an empty file whose first cluster is an end mark is walked as empty and named nowhere: the host cases with a first cluster of 0x0FFFFFF8 fail, TST-M3-FAT32-TOOL FAIL"),
+    # M236: only attributes that are exactly a directory's make an entry a directory.
+    ("M236", "tools/fat32.py",
+     "                if not 2 <= entry_first < img.clusters + 2 and (entry_first != 0 or e[11] & ATTR_DIR):\n",
+     "                if not 2 <= entry_first < img.clusters + 2 and (entry_first != 0 or e[11] == ATTR_DIR):\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a directory whose attributes carry another bit besides the directory's (the kernel asks that bit alone) passes with a first cluster of 0: the host case with attributes 0x30 fails, TST-M3-FAT32-TOOL FAIL"),
     # M228: a chain that reaches the reserved value 1 ends quietly.
     ("M228", "tools/fat32.py",
      "        if c == 1 and got:\n",
@@ -947,7 +962,32 @@ MUTANTS = [
     ("M229", "tools/fat32.py",
      "    for fat in range(1, img.nfats):\n        for c in range(2, img.clusters + 2):\n",
      "    for fat in range(1, 1):\n        for c in range(2, img.clusters + 2):\n",
-     ["TST-M3-FAT32-TOOL"], "SECURITY: a reserved or out-of-range value outside every chain in the second FAT copy is no problem with --faulted: the host case fails, TST-M3-FAT32-TOOL FAIL"),
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a reserved or out-of-range value outside every chain in the second FAT copy is no problem: the host case fails, TST-M3-FAT32-TOOL FAIL"),
+    # M234: the second copy is scanned only with --faulted.
+    ("M234", "tools/fat32.py",
+     "    for fat in range(1, img.nfats):\n        for c in range(2, img.clusters + 2):\n",
+     "    for fat in range(1, img.nfats if faulted else 1):\n        for c in range(2, img.clusters + 2):\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: without --faulted an invalid value in the second copy is reported only as copies that differ, not by its entry: the host case's plain-mode half fails, TST-M3-FAT32-TOOL FAIL"),
+    # M235: the first number past the volume passes the second copy's scan.
+    ("M235", "tools/fat32.py",
+     "            if v == 1 or (2 <= v < 0x0FFFFFF7 and v >= img.clusters + 2):\n                problems.append(f\"FAT{fat}[{c}] = {v:#x} invalid\"); break\n",
+     "            if v == 1 or (2 <= v < 0x0FFFFFF7 and v > img.clusters + 2):\n                problems.append(f\"FAT{fat}[{c}] = {v:#x} invalid\"); break\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: the first number that is no cluster of the volume is accepted in the second FAT copy: the host case fails, TST-M3-FAT32-TOOL FAIL"),
+    # M237: the second copy's scan no longer knows the reserved values below the bad-cluster mark.
+    ("M237", "tools/fat32.py",
+     "            if v == 1 or (2 <= v < 0x0FFFFFF7 and v >= img.clusters + 2):\n                problems.append(f\"FAT{fat}[{c}] = {v:#x} invalid\"); break\n",
+     "            if v == 1 or (2 <= v < 0x0FFFFFF1 and v >= img.clusters + 2):\n                problems.append(f\"FAT{fat}[{c}] = {v:#x} invalid\"); break\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: the reserved values 0x0FFFFFF1 to 0x0FFFFFF6 outside every chain pass the second FAT copy's scan: the host case with 0x0FFFFFF6 fails, TST-M3-FAT32-TOOL FAIL"),
+    # M230: the first copy is no longer scanned for reserved and out-of-range values.
+    ("M230", "tools/fat32.py",
+     "        if v == 1 or (2 <= v < 0x0FFFFFF7 and v >= img.clusters + 2):\n            problems.append(f\"FAT[{c}] = {v:#x} invalid\"); break\n",
+     "        if False:\n            problems.append(f\"FAT[{c}] = {v:#x} invalid\"); break\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a reserved or out-of-range value outside every chain in the first FAT copy is counted as a lost cluster and can meet a case's exact count (the red team ran it: exit 0 with --expect-lost 2): the host case on the first copy fails, TST-M3-FAT32-TOOL FAIL"),
+    # M233: the other FAT copies are walked only with --faulted.
+    ("M233", "tools/fat32.py",
+     "    for fat in range(1, img.nfats):\n        problems += [f\"FAT{fat}: {p}\" for p in tree_findings(img, fat)[0]]\n",
+     "    for fat in range(1, img.nfats if faulted else 1):\n        problems += [f\"FAT{fat}: {p}\" for p in tree_findings(img, fat)[0]]\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: without --faulted a reserved or out-of-range value in a chain of the second copy is not tied to the file or the directory that holds it: the plain-mode halves of the host cases fail, TST-M3-FAT32-TOOL FAIL"),
     # M225: the system-call layer no longer asks first for the calls of the files contract.
     ("M225", "kernel/src/syscall/mod.rs",
      "    if crate::fs::stopped() {\n        ERR_IO\n    } else {\n        f()\n    }\n",
@@ -1115,10 +1155,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M220", "M221", "M222", "M223", "M224",
             # the system-call layer asks first for the eight calls of the files contract (M225).
             "M225",
-            # M6 tooling (WP-126): the host image check names an entry with no cluster (M226),
-            # a directory's 0 too (M227), the reserved value in a chain (M228), and scans every
-            # FAT copy (M229).
-            "M226", "M227", "M228", "M229"}
+            # M6 tooling (WP-126): the host image check names an entry with no cluster (M226,
+            # M232), a directory's 0 too (M227, M236) but not an empty file's (M231), the
+            # reserved value in a chain (M228), scans every FAT copy (M229, M230, M235, M237) and
+            # does both in plain mode as with --faulted (M233, M234).
+            "M226", "M227", "M228", "M229", "M230", "M231", "M232", "M233", "M234", "M235", "M236", "M237"}
 
 
 def security_of(mid: str) -> bool:

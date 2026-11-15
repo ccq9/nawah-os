@@ -7827,7 +7827,9 @@
     "tools/project.py",
     "docs/tests.json",
     "docs/contracts/files.md",
-    "docs/PLAN-REVERSE.md"
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/risks.json"
    ],
    "contract_refs": [
     "docs/contracts/files.md"
@@ -7839,12 +7841,16 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; sized at activation",
     "2026-11-15 activation estimate and design (the manager, from the scratch experiment on crafted images of the same day and a reading of tree_findings and cmd_check in tools/fat32.py and of class Fat32Check in tests/test_fat32_tool.py; a host package: the local host suites and the four guest fault cases; an audit pass and a red-team pass before the single push): about 45 calls / 60 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first). The inputs of this item, each taken into the acceptance (the rule written in WP-106 on 2026-11-15): the directory entry and the file entry whose first cluster is no cluster of the volume are the acceptance's first two clauses; the reserved value in a chain of either copy is its third; the scan that reads the first copy only is taken in by a clause added at this activation (the scan covers every FAT copy), a tightening; none is moved and none refuted. Design to try first, of the three options: both: the walk names an entry whose first cluster is not a cluster of the volume (0 is right for a file of size 0 only) and a reserved or out-of-range value it meets in a chain along the copy it walks, and the scan for such values runs over every copy. Not chosen: the walk alone (a reserved value outside every chain in the second copy stays unseen) and the scan alone (it names a FAT entry, not the name whose chain holds it, and says nothing of an entry's first cluster). Test first, red seen locally: five host cases on crafted images, each failing today as the experiment showed (exit 0 with --faulted): a directory entry with a first cluster of 0 and of 1, a file entry with a first cluster of 1 and a size of 0, the value 1 in the second copy at a directory's cluster and at a file's last cluster; then tool mutants in the gate's SECURITY set for each new finding; the fault cases must keep their pinned numbers. If the audit finds the design against a recorded acceptance text, the design changes and the text does not.",
-    "2026-11-15 the work (scratch runs, no CI evidence): test first: five host cases on crafted images in tests/test_fat32_tool.py; red on the pushed checker: 24 cases run, the 19 older pass and the 5 new fail (a directory with a first cluster of 0: only `lost clusters: 2`; a file with a first cluster of 1: only `lost clusters: 1`; the value 1 in the second copy, in a chain or outside every chain: `check --faulted` exit 0; the value 1 in the first copy: the FAT entry named, the file not); the fix in tools/fat32.py: the walk names an entry whose first cluster is no cluster of the volume (0 is a file's that holds none, and no directory's) and a chain that reaches the reserved value 1, along the copy it walks; the scan for reserved and out-of-range values runs over every copy; after it 24 of 24 pass. One wording changed with it: a file whose first cluster lies past the volume was named `bad chain at`, and is now named by its first cluster. Mutants M226 to M229 (SECURITY tooling, in the gate's set)"
+    "2026-11-15 the work (scratch runs, no CI evidence): test first: five host cases on crafted images in tests/test_fat32_tool.py; red on the pushed checker: 24 cases run, the 19 older pass and the 5 new fail (a directory with a first cluster of 0: only `lost clusters: 2`; a file with a first cluster of 1: only `lost clusters: 1`; the value 1 in the second copy, in a chain or outside every chain: `check --faulted` exit 0; the value 1 in the first copy: the FAT entry named, the file not); the fix in tools/fat32.py: the walk names an entry whose first cluster is no cluster of the volume (0 is a file's that holds none, and no directory's) and a chain that reaches the reserved value 1, along the copy it walks; the scan for reserved and out-of-range values runs over every copy; after it 24 of 24 pass. One wording changed with it: a file whose first cluster lies past the volume was named `bad chain at`, and is now named by its first cluster. Mutants M226 to M229 (SECURITY tooling, in the gate's set)",
+    "2026-11-15 the audit and the red team (both read-only on c44e3855c; each ran the checker on crafted images in a scratch folder; no CI evidence) and the corrections made before any push. The audit: the acceptance's entry clauses confirmed in the code and the cases; refuted: the contract note's sentence that `check --faulted` left with 0 on each kind (a file with a first cluster of 1 and a size of 100, and the value 1 in the first copy, left with 1 before the fix), corrected in docs/contracts/files.md; gaps: no case for an out-of-range value in a chain, for a first cluster that is an end mark or past the volume, for the healthy empty file, or for the second copy in plain mode; test_ids lacked TST-M3-FAT32-FAULT-UNLINK, TST-M3-FAT32-FAULT-TRUNCATE and TST-M3-FAT32-STOP, the cases whose pinned numbers the acceptance names (added); three mutants that no case killed. The red team: the first copy's scan was guarded by no case (run by it: with that scan turned off, two invalid values outside every chain met `--expect-lost 2` and left with 0); by reading, the boundary values, attributes that are a directory's and more, and plain mode were in no case. The corrections, test first: the host cases widened to 26 (every branch of the new code has a case; each in plain and in faulted mode); red seen locally on c44e3855c: 24 pass and 2 fail, for in plain mode a reserved or out-of-range value in a chain of the second copy was reported as `FAT1[7] = 0xffffff0 invalid` and as copies that differ, and the file was not named; the fix: the tree is walked along every FAT copy in plain mode too; the 26 cases pass. The SECURITY tool mutants are now M226 to M237 (M230 the first copy's scan; M231 the empty file's exception; M232 the upper bound; M233 and M234 plain mode; M235 and M237 the boundary values; M236 the directory bit). A change the first work line did not state: a file whose first cluster lies past the volume gave two findings (`bad chain at` and `chain shorter than size`) and now gives one (`first cluster N, no cluster of the volume`); the image still fails. What the red team ran and this package leaves, each a named input of WP-127: counts compared by number only, the second copy's lost and longer chains uncounted, a bad-cluster mark outside every chain, directory attributes and sizes, duplicate names and skipped entries, FAT[0] and FAT[1], the backup FSInfo, the boot sector's bounds and the root cluster, and a walk whose cost grows with the square of a chain's length"
    ],
    "acceptance": "tools/fat32.py check names, in plain and in faulted mode, a directory entry whose first cluster is 0 or 1, a file entry whose first cluster is 1, and a reserved or out-of-range value in a chain of either FAT copy, shown by host cases on CI; the fault cases keep their pinned numbers; the tool mutants killed; the scan for reserved or out-of-range values covers every FAT copy, not the first alone",
    "test_ids": [
     "TST-M3-FAT32-TOOL",
     "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE",
+    "TST-M3-FAT32-STOP",
     "TST-M6-MUTANTS"
    ],
    "commands": [
@@ -7854,6 +7860,69 @@
    "status_history": [
     "planned",
     "active"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-127",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-126"
+   ],
+   "inputs": [
+    "from WP-126's red team (2026-11-15; each item marked run was run by it on crafted 64 MiB images in a scratch folder at c44e3855c, the rest is by reading; no CI evidence; to check at activation, and each input is then taken into the acceptance, moved to a named package, or refuted)",
+    "B1 (run): `--expect-lost` and `--allow-longer` compare counts only; two images, one with the expected state (ONE.TXT one cluster longer, cluster 2000 lost) and one with another (BIG.BIN two clusters longer, cluster 2500 lost), both leave `check --faulted --allow-longer 1 --expect-lost 1` with 0; proposed: the names of the files allowed to be longer and the sum of their extra clusters, or the set of lost clusters",
+    "B2 (run): a directory that lost its directory bit is only a chain longer than its size and passes with `--allow-longer 1`; a file that gained the directory bit over zeroed data passes in both modes; a directory whose size field is 99999 passes in both modes",
+    "B3 (run): pass in both modes: two entries of one name in a directory; an entry after the end marker 0x00, an entry with the volume-label attribute, and an entry whose name starts with a dot, each sharing ONE.TXT's cluster; `.` and `..` with wrong clusters or deleted; an orphan long-name entry; a name with bytes the kernel refuses. The kernel skips the same entries (kernel/src/fs/fat32.rs, the directory walk), so most need a crafted image; the latent harm is a shared cluster",
+    "B4 (run): with `--faulted`, a chain longer in the second copy alone that runs into a cluster free in the first, and a hundred clusters marked in the second copy alone, pass: lost and longer are counted along the first copy only. Right for an interrupted write, not for what a delete or a truncation leaves",
+    "B5 (run): a lost cluster marked 0x0FFFFFF7 (bad) is not counted as lost and passes with `--faulted`; in plain mode it failed only through FSInfo's count, so with a matching count it would pass (by reading). A recovery that marked clusters bad would meet `no lost cluster` (WP-122)",
+    "B6 (run): pass in both modes: FAT[0] and FAT[1] zero in both copies; the backup FSInfo sector (7) full of garbage (the checker reads the main one only; the kernel writes both: WP-123); reserved sectors 2..5 and 8..31 full of garbage; BIG.BIN's data zeroed (`check` reads no file content). With `--faulted`: a free count of 0x7FFFFFFF, more than the volume, and a next-free hint of 0xDEADBEEF",
+    "B7 (by reading): the checker does not hold the boot sector to the bounds the kernel sets at mount (at least 65525 clusters, a FAT that holds (clusters+2)*4 bytes, 1 or 2 copies, a root cluster inside the volume; kernel/src/fs/fat32.rs, the mount); a root cluster of 0 makes everything lost with no name; on a volume with one FAT copy plain mode compares the FAT with data sectors and refuses a healthy image",
+    "C5 (run, the growth by reading): a chain of 20000 clusters took 4.1 s for two runs; claim looks a cluster up in a list, so the cost grows with the square of the chain's length; worst harm: a CI case that runs past its limit and fails, never one that passes wrongly",
+    "tools/fat32.py (tree_findings, cmd_check); tests/test_fat32_tool.py (class Fat32Check, 19 cases after WP-126); tests/mutants.py (tool mutants M208, M209, M212, M213, M226 to M237); the fault cases' host_checks in platform/pc-qemu/target.json; RSK-037"
+   ],
+   "files": [
+    "tools/fat32.py",
+    "tests/test_fat32_tool.py",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "فاحص الصورة المضيف، الجزء الثاني: ما شغّله الفريق الأحمر لـWP-126 ومرّ (عدّ بلا هوية، النسخة الثانية بلا عدّ، علامة التالف، سمات المجلد، الأسماء المكررة والإدخالات المتخطاة، FSInfo الاحتياطي، قطاع الإقلاع)",
+    "found by the security red team while attacking WP-126 on 2026-11-15 (run on crafted images in a scratch folder, no CI evidence): each image named in the inputs leaves the checker with 0 in the mode named there; WP-126's acceptance promised none of them, so they are this package's",
+    "design to decide in the package (2-3 options with trade-offs): which findings are strict in both modes, which become counts a case pins (the second copy's lost and longer chains; the identity of the longer files), and which belong to the kernel's packages (WP-106 for what the mount refuses, WP-122 for the bad mark, WP-123 for the backup FSInfo) and are moved there by a dated line; a changed option of a fault case's host check is a tightening and is written as one",
+    "test first, red seen locally before the fix: a host case on a crafted image for every input taken, each leaving the checker with 0 today; a SECURITY tool mutant for each new finding; the guest cases that use the checker run again; a pinned number may change only by tightening, with the image CI showed",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation; seven groups of inputs, so a split by group (counts and the second copy; entries; the boot sector and FSInfo) is expected"
+   ],
+   "acceptance": "for every input of this item taken at activation, tools/fat32.py check names the damage in the mode the input names, shown by a host case on CI that fails before the fix; the fault cases' host checks tell the expected state from the opposite one the red team built (B1), and count the second copy (B4); a SECURITY tool mutant for each new finding is killed; every input not taken is moved to a named package or refuted by a dated line; no fault case's condition is relaxed",
+   "test_ids": [
+    "TST-M3-FAT32-TOOL",
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE",
+    "TST-M3-FAT32-STOP",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
    ],
    "evidence_refs": [],
    "blocker": null
