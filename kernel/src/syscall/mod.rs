@@ -408,6 +408,17 @@ fn fs_err(e: FsError) -> i64 {
     }
 }
 
+/// The eight calls of the files contract (files.md v1.9): once the disk has stopped each
+/// answers ERR_IO before anything else about it is looked at, its path, its flags and its
+/// handle included, so a process learns nothing from memory and is told one thing only.
+fn file_call(f: impl FnOnce() -> i64) -> i64 {
+    if crate::fs::stopped() {
+        ERR_IO
+    } else {
+        f()
+    }
+}
+
 /// The system-files authority (files.md v1.4, WP-44, WP-78): under /SYSTEM, reading needs a
 /// held SystemFiles handle with READ (the fonts in /SYSTEM/FONTS excepted) and a change one with
 /// WRITE, and only config's stores can change (`vfs::is_config_store`): any other change there,
@@ -617,13 +628,17 @@ fn dispatch_inner(nr: u64, args: [u64; 6]) -> i64 {
         SYS_HANDLE_DUPLICATE => flat(as_handle(args[0]).and_then(|h| handle_duplicate(h, args[1]))),
         SYS_VMO_CREATE => flat(vmo_create(args[0])),
         SYS_HANDLE_RIGHTS => flat(as_handle(args[0]).and_then(handle_rights)),
-        SYS_OPEN => flat(sys_open(args[0], args[1], args[2])),
-        SYS_READ => flat(as_handle(args[0]).and_then(|h| sys_read(h, args[1], args[2]))),
-        SYS_WRITE => flat(as_handle(args[0]).and_then(|h| sys_write(h, args[1], args[2]))),
-        SYS_STAT => flat(sys_stat(args[0], args[1], args[2])),
-        SYS_UNLINK => flat(sys_unlink(args[0], args[1])),
-        SYS_SEEK => flat(as_handle(args[0]).and_then(|h| sys_seek(h, args[1]))),
-        SYS_SYNC => flat(vfs::sync().map(|_| 0).map_err(fs_err)),
+        SYS_OPEN => file_call(|| flat(sys_open(args[0], args[1], args[2]))),
+        SYS_READ => {
+            file_call(|| flat(as_handle(args[0]).and_then(|h| sys_read(h, args[1], args[2]))))
+        }
+        SYS_WRITE => {
+            file_call(|| flat(as_handle(args[0]).and_then(|h| sys_write(h, args[1], args[2]))))
+        }
+        SYS_STAT => file_call(|| flat(sys_stat(args[0], args[1], args[2]))),
+        SYS_UNLINK => file_call(|| flat(sys_unlink(args[0], args[1]))),
+        SYS_SEEK => file_call(|| flat(as_handle(args[0]).and_then(|h| sys_seek(h, args[1])))),
+        SYS_SYNC => file_call(|| flat(vfs::sync().map(|_| 0).map_err(fs_err))),
         SYS_PROCESS_SPAWN => flat(sys_process_spawn(args[0], args[1], args[2], args[3])),
         SYS_OBJECT_WAIT_MANY => flat(sys_object_wait_many(args[0], args[1], args[2])),
         SYS_CLOCK_TICKS => sched::ticks() as i64,
@@ -646,7 +661,7 @@ fn dispatch_inner(nr: u64, args: [u64; 6]) -> i64 {
             flat(as_handle(args[0]).and_then(|h| sys_serial_write(h, args[1], args[2])))
         }
         SYS_SYSTEM_INFO => flat(sys_system_info(args[0], args[1])),
-        SYS_DIR_LIST => flat(sys_dir_list(args[0], args[1], args[2], args[3])),
+        SYS_DIR_LIST => file_call(|| flat(sys_dir_list(args[0], args[1], args[2], args[3]))),
         SYS_DISPLAY_INFO => flat(as_handle(args[0]).and_then(|h| sys_display_info(h, args[1]))),
         SYS_DISPLAY_MAP => flat(as_handle(args[0]).and_then(sys_display_map)),
         SYS_VMO_MAP => flat(as_handle(args[0]).and_then(|h| sys_vmo_map(h, args[1]))),
