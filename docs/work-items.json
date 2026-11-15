@@ -7252,7 +7252,7 @@
     "docs/adr/0013-storage.md decision 9: K_E_BLK_TIMEOUT on a write means an unknown outcome, K_E_BLK_NEEDS_RESET after the stop means nothing was published; the test kernel's arm_timeout drives the driver's own timeout branch",
     "WP-105's fault hook in block::write and its strengthened host checker",
     "RSK-027",
-    "from WP-120's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): the test kernel's hook refuses write N and every write after it, so no case shows that fat_set stops at its first refused write: with `block::write(sector, &s)?` in fat_set turned into an ignored result, every fat_set of the fault cases is followed by another checked write that is refused too (the zeroed sector in alloc_cluster, the data sector in write, the entry in create, FSInfo in free_chain), and the image and the answer stay what they are; on a disk that refuses one write and takes the next, a mark refused in the first copy and ignored leaves the cluster free there for another file to take (two names on one cluster) and a refused link leaves a chain shorter than its size; a variant that checks only the first copy's write brings WP-120's defect back and M219 does not see it; proposed: a mode of the hook that refuses write N alone, a sweep with it, and a SECURITY mutant for each of the two"
+    "from WP-120's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): the test kernel's hook refuses write N and every write after it, so no case shows that fat_set stops at its first refused write: with `block::write(sector, &s)?` in fat_set turned into an ignored result, every fat_set of the fault cases is followed by another checked write that is refused too (the zeroed sector in alloc_cluster, the data sector in write, the entry in create, FSInfo in free_chain), and the image and the answer stay what they are; on a disk that refuses one write and takes the next, a mark refused in the first copy and ignored leaves the cluster free there for another file to take (two names on one cluster) and a refused link leaves a chain shorter than its size; a variant that checks only the first copy's write brings WP-120's defect back and M219 does not see it; proposed: a mode of the hook that refuses write N alone, a sweep with it, and a SECURITY mutant for each of the two (since 2026-11-15 this input is WP-124's)"
    ],
    "files": [
     "kernel/src/fs/fat32.rs",
@@ -7276,9 +7276,10 @@
     "test first, red seen locally before the fix: a case in two boots that drives the driver's real timeout branch at a chosen write of a delete (the fault hook arms arm_timeout before write N): the first boot expects K_E_FS_IO from every later call, a read at the end of another open file included, and one line of the stop; the second boot reads the image: the name is gone or whole, and a new file shares none of its clusters; a counter in the test kernel shows the flush between the entry write and the first free; that a device cache reorders writes cannot be imitated in the lab and is said so; a SECURITY mutant for the volume's stop check and one for the flush",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: about 60 calls by the engineer's brief, unmeasured; sized at activation",
-    "2026-11-15 (audit of WP-105): making a failed FSInfo write no longer fail the operation changes the lines of TST-M3-FAT32-FAULT-UNLINK and TST-M3-FAT32-FAULT-TRUNCATE (failed=9 and io=9 count the two FSInfo writes today), so both cases are tests of this package; a write whose outcome is unknown (the timeout) can store the entry and still answer an error: the two-boot case here is where that is shown"
+    "2026-11-15 (audit of WP-105): making a failed FSInfo write no longer fail the operation changes the lines of TST-M3-FAT32-FAULT-UNLINK and TST-M3-FAT32-FAULT-TRUNCATE (failed=9 and io=9 count the two FSInfo writes today), so both cases are tests of this package; a write whose outcome is unknown (the timeout) can store the entry and still answer an error: the two-boot case here is where that is shown",
+    "2026-11-15 split before activation (the budget rule, OS-EXEC-AR section 2.3 line 44; the manager's sizing after WP-121 and WP-120, each of which took more calls than its estimate once the audits and the local runs were counted): this item keeps its first part, the file system stops with the disk and answers nothing from memory; its second part, the flush between the entry write and the frees and a failed FSInfo write that no longer fails an operation, is WP-123, which carries those two clauses of the acceptance word for word and the two fault cases whose lines they change; the input of WP-120's red team, a FAT write that stops at its first refused write, is WP-124. No clause of the acceptance is dropped: each is owed by a planned item. The plan's rows for WP-123 and WP-124 are owed in the next code push (docs/PLAN-REVERSE.md is an input of a host test)"
    ],
-   "acceptance": "after the disk stops every file call answers ERR_IO with no answer from memory, and the stop is written once, shown by the two-boot case on CI; a flush separates the entry write from the frees in delete and truncate (counted in the test kernel; reordering in a device cache is not shown by the lab and the contract says so); a failed FSInfo write no longer fails an operation; files.md states it (the version free at the merge); the mutants killed",
+   "acceptance": "after the disk stops every file call answers ERR_IO with no answer from memory, and the stop is written once, shown by the two-boot case on CI; files.md states it (the version free at the merge); the mutants killed",
    "test_ids": [
     "TST-M3-BLK-TIMEOUT",
     "TST-M3-FAT32-PERSIST",
@@ -7601,6 +7602,110 @@
    "test_ids": [
     "TST-M3-FAT32-TOOL",
     "TST-M3-FAT32-FAULT-WRITE"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-123",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-117"
+   ],
+   "inputs": [
+    "split from WP-117 on 2026-11-15 before its activation (the budget rule); WP-117's actions hold the sizing of WP-105 this part came from",
+    "kernel/src/fs/fat32.rs: unlink and truncate write the entry and then free the chain with no flush between (files.md v1.5): the order is safe against a refused write but not against writes reordered in a device's volatile cache; fsinfo_adjust fails the whole operation although FSInfo is advisory; sync only flushes the device",
+    "from WP-105's audit (2026-11-15): making a failed FSInfo write no longer fail the operation changes the lines of TST-M3-FAT32-FAULT-UNLINK and TST-M3-FAT32-FAULT-TRUNCATE (failed=9 and io=9 count the two FSInfo writes today), and the numbers of lost clusters those cases pin (12 each since files.md v1.8) are derived again write by write",
+    "docs/adr/0013-storage.md decision 9; docs/contracts/files.md v1.5 and v1.8; RSK-027"
+   ],
+   "files": [
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/fs/vfs.rs",
+    "kernel/src/block/mod.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md",
+    "docs/PLAN-REVERSE.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32: flush بين كتابة الإدخال والتحرير في الحذف والتفريغ، وفشل كتابة FSInfo لا يُفشل العملية (مفصولة من WP-117 في 2026-11-15 قبل تفعيلها)",
+    "design to decide in the package (2-3 options with trade-offs): a flush after the entry write in delete and truncate against none (a flush costs a device request on every delete; what it buys cannot be shown in the lab, whose device keeps no volatile cache); a failed FSInfo write ignored, against counted and reported, against failing the operation as today",
+    "test first, red seen locally before the fix: a counter in the test kernel shows a flush between the entry write and the first free of a delete and of a truncation (today: none); the fault sweeps expect a delete and a truncation whose only refused writes are FSInfo's to answer success (today: an I/O error); that a device cache reorders writes cannot be imitated in the lab and the contract says so; a SECURITY mutant that drops the flush",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "a flush separates the entry write from the frees in delete and truncate (counted in the test kernel; reordering in a device cache is not shown by the lab and the contract says so); a failed FSInfo write no longer fails an operation; files.md states it (the version free at the merge); the mutants killed",
+   "test_ids": [
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-124",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-120"
+   ],
+   "inputs": [
+    "from WP-120's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): the test kernel's hook refuses write N and every write after it, so no case shows that fat_set stops at its first refused write: with `block::write(sector, &s)?` in fat_set turned into an ignored result, every fat_set of the fault cases is followed by another checked write that is refused too (the zeroed sector in alloc_cluster, the data sector in write, the entry in create, FSInfo in free_chain), and the image and the answer stay what they are; on a disk that refuses one write and takes the next, a mark refused in the first copy and ignored leaves the cluster free there for another file to take (two names on one cluster) and a refused link leaves a chain shorter than its size; a variant that checks only the first copy's write brings WP-120's defect back and M219 does not see it; proposed: a mode of the hook that refuses write N alone, a sweep with it, and a SECURITY mutant for each of the two",
+    "kernel/src/block/mod.rs: the test kernel's hook (arm_write_fault) refuses write N and every write after it until it is disarmed; a disk that refuses one write and takes the next is in no case",
+    "docs/contracts/files.md v1.5, v1.6 and v1.8; docs/adr/0014-files.md items 6, 7 and 9; RSK-027"
+   ],
+   "files": [
+    "kernel/src/block/mod.rs",
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md",
+    "docs/PLAN-REVERSE.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32: كتابة FAT تقف عند أول كتابة مرفوضة: خطّاف يرفض كتابة واحدة ومسح به (من الفريق الأحمر لـWP-120، 2026-11-15)",
+    "found by the security red team while reading WP-120 on 2026-11-15 (by reading; nothing run, no CI evidence; the manager read the same lines): every fault case refuses write N and all after it, so a fat_set that ignored a refused write would pass them all; on a disk that refuses one write and takes the next, an ignored mark leaves a cluster free in the copy the kernel reads for another file to take, and an ignored link leaves a chain shorter than its size",
+    "design to decide in the package (2-3 options with trade-offs): a second mode of the block layer's hook that refuses write N alone and lets the later ones through, with the three sweeps run in it, against a hook that refuses a chosen set of writes, against showing it by mutants alone in the present cases (which, by the red team's reading, cannot see it)",
+    "test first, red seen locally: the present code is expected to pass the new sweeps; the red is the mutants': one that ignores a refused FAT write and one that checks only the first copy's write must each fail a case that passes without them; if the present code fails a sweep, that failure is the package's first finding and is fixed test first",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "with the hook refusing one write alone, for every write of a delete, a truncation, a new file's write and an append, no name reaches a free cluster, no two names share one and no chain is shorter than its size in either FAT copy, and the call answers an I/O error, shown by the sweeps and the host check on CI; a mutant that ignores a refused FAT write and one that checks only the first copy's write are killed; files.md (the version free at the merge) states what a single refused write leaves",
+   "test_ids": [
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
