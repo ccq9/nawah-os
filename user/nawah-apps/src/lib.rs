@@ -13,8 +13,9 @@ pub const FILE_MAX: usize = 1024;
 pub const MAX_APPS: usize = 16;
 /// Longest id (apps.md §2: the 8.3 base of `<ID>.APP`).
 pub const ID_MAX: usize = 8;
-/// Most characters of a display name (apps.md §2; display's TITLE_MAX).
-pub const NAME_CHARS_MAX: usize = 32;
+/// Most bytes of a display name's UTF-8 (apps.md §2): display's TITLE_MAX counts bytes
+/// (user/apps/displayd/src/main.rs `title: [u8; TITLE_MAX]`), so a name is never cut as a title.
+pub const NAME_MAX_BYTES: usize = 32;
 /// Ids no entry may take (apps.md §3).
 pub const RESERVED: [&str; 15] = [
     "app", "auth", "config", "desktop", "display", "input", "kernel", "manager", "narrator", "net",
@@ -181,24 +182,32 @@ fn elf_ok(elf: &str) -> bool {
     }
 }
 
-/// A character no display name may hold (apps.md §2): the separators `#` and `=`, the C1
-/// controls and the explicit direction marks, embeddings, overrides and isolates.
+/// A character no display name may hold anywhere (apps.md §2): the separators `#` and `=`, the
+/// C1 controls, the zero-width space and joiners, the direction marks, the line and paragraph
+/// separators, the embeddings, overrides and isolates, and the byte order mark.
 fn forbidden_in_name(c: char) -> bool {
     matches!(c,
-        '#' | '=' | '\u{80}'..='\u{9f}' | '\u{61c}' | '\u{200e}' | '\u{200f}'
-        | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
+        '#' | '=' | '\u{80}'..='\u{9f}' | '\u{61c}' | '\u{200b}'..='\u{200f}'
+        | '\u{2028}' | '\u{2029}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}'
+        | '\u{feff}')
 }
 
-/// 1-32 characters, no space first or last, nothing [`forbidden_in_name`] (apps.md §2).
+/// The white space no display name may start or end with (apps.md §2): Unicode White_Space
+/// less the control bytes and the code points [`forbidden_in_name`] refuses anywhere.
+fn edge_space(c: char) -> bool {
+    matches!(
+        c,
+        ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'
+            ..='\u{200a}' | '\u{202f}' | '\u{205f}' | '\u{3000}'
+    )
+}
+
+/// 1-32 bytes, no white space first or last, nothing [`forbidden_in_name`] (apps.md §2).
 fn name_ok(name: &str) -> bool {
-    let mut n = 0usize;
-    for c in name.chars() {
-        n += 1;
-        if n > NAME_CHARS_MAX || forbidden_in_name(c) {
-            return false;
-        }
-    }
-    n >= 1 && !name.starts_with(' ') && !name.ends_with(' ')
+    (1..=NAME_MAX_BYTES).contains(&name.len())
+        && !name.starts_with(edge_space)
+        && !name.ends_with(edge_space)
+        && !name.chars().any(forbidden_in_name)
 }
 
 /// `-`, or names of the allow-list separated by `,` with no empty item and no repeat; each item

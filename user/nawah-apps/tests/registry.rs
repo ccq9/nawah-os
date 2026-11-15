@@ -2,8 +2,9 @@
 //! parser on the host. Hand-written malformed entries are refused by their contract name; a
 //! seeded, deterministic corpus (a PRNG of the test's own: builds are --offline) of generated
 //! malformed entries in every class is refused by name; mutated well-formed entries never make
-//! the parser panic and get exactly the verdict of an independent reference model of apps.md
-//! written here with std; the well-formed examples and the repository's sample entries
+//! the parser panic and get exactly the verdict of a reference model of apps.md written here
+//! with std and with its own literal lists (reserved ids, allowed dependencies, forbidden and
+//! edge characters), which a separate test holds equal to apps.md §3 and to the crate's; the well-formed examples and the repository's sample entries
 //! (platform/pc-qemu/apps/*.APP) are accepted with their fields exactly.
 
 use nawah_apps::*;
@@ -48,6 +49,31 @@ const PIECES: [&[u8]; 7] = [
     b"#",
 ];
 
+/// The model's own lists, written from apps.md §2-§3, never taken from the crate.
+const MODEL_RESERVED: [&str; 15] = [
+    "app", "auth", "config", "desktop", "display", "input", "kernel", "manager", "narrator", "net",
+    "session", "sh", "shell", "svcmgr", "system",
+];
+const MODEL_ALLOWED: [&str; 3] = ["display", "config", "net"];
+/// apps.md §2: code points no display name may hold anywhere (besides `=`).
+const MODEL_FORBIDDEN: [(char, char); 8] = [
+    ('\u{80}', '\u{9f}'),
+    ('\u{61c}', '\u{61c}'),
+    ('\u{200b}', '\u{200f}'),
+    ('\u{2028}', '\u{2029}'),
+    ('\u{202a}', '\u{202e}'),
+    ('\u{2066}', '\u{2069}'),
+    ('\u{feff}', '\u{feff}'),
+    ('#', '#'),
+];
+/// apps.md §2: the white space no display name may start or end with (Unicode White_Space
+/// outside the control bytes and the code points forbidden anywhere).
+const MODEL_EDGE_SPACE: [char; 17] = [
+    ' ', '\u{a0}', '\u{1680}', '\u{2000}', '\u{2001}', '\u{2002}', '\u{2003}', '\u{2004}',
+    '\u{2005}', '\u{2006}', '\u{2007}', '\u{2008}', '\u{2009}', '\u{200a}', '\u{202f}', '\u{205f}',
+    '\u{3000}',
+];
+
 const KEYS: [&str; 5] = ["id", "elf", "name.ar", "name.en", "deps"];
 
 #[derive(Debug, PartialEq, Eq)]
@@ -60,19 +86,14 @@ struct Fields {
 }
 
 fn model_name(v: &str) -> bool {
-    let n = v.chars().count();
-    (1..=32).contains(&n)
-        && !v.starts_with(' ')
-        && !v.ends_with(' ')
+    (1..=32).contains(&v.len())
+        && !v.starts_with(MODEL_EDGE_SPACE)
+        && !v.ends_with(MODEL_EDGE_SPACE)
         && !v.chars().any(|c| {
-            c == '#'
-                || c == '='
-                || ('\u{80}'..='\u{9f}').contains(&c)
-                || c == '\u{61c}'
-                || c == '\u{200e}'
-                || c == '\u{200f}'
-                || ('\u{202a}'..='\u{202e}').contains(&c)
-                || ('\u{2066}'..='\u{2069}').contains(&c)
+            c == '='
+                || MODEL_FORBIDDEN
+                    .iter()
+                    .any(|(lo, hi)| (*lo..=*hi).contains(&c))
         })
 }
 
@@ -112,7 +133,7 @@ fn model(file: &[u8]) -> Result<Fields, &'static str> {
     if !id_ok {
         return Err("BAD_ID");
     }
-    if RESERVED.contains(&id) {
+    if MODEL_RESERVED.contains(&id) {
         return Err("RESERVED_ID");
     }
     let elf = map["elf"];
@@ -136,7 +157,7 @@ fn model(file: &[u8]) -> Result<Fields, &'static str> {
             if d.is_empty() || !d.bytes().all(|b| b.is_ascii_lowercase()) {
                 return Err("BAD_DEPS");
             }
-            if !ALLOWED_DEPS.contains(&d) {
+            if !MODEL_ALLOWED.contains(&d) {
                 return Err("DEP_NOT_ALLOWED");
             }
             if deps.iter().any(|x| x == d) {
@@ -161,7 +182,7 @@ fn verdict(file: &[u8]) -> Result<Fields, &'static str> {
         .unwrap_or_else(|_| panic!("the parser panicked on {:?}", String::from_utf8_lossy(file)));
     got.map(|a| {
         let mut deps: Vec<String> = Vec::new();
-        for d in ALLOWED_DEPS {
+        for d in MODEL_ALLOWED {
             if a.deps.contains(d) {
                 deps.push(d.to_string());
             }
@@ -224,10 +245,11 @@ fn well_formed_examples_are_accepted_exactly() {
     );
     assert!(!app.deps.contains("auth") && !app.deps.contains("session"));
 
-    // No dependency, the longest id, a 32-character Arabic name with an inner space, digits,
-    // the underscore in the image's base, comments and blank lines, keys in another order.
-    let ar32 = "محرر النصوص والملاحظات اليومية ا";
-    assert_eq!(ar32.chars().count(), 32);
+    // No dependency, the longest id, a 16-letter Arabic name of 32 bytes (the limit is in bytes:
+    // display's TITLE_MAX), digits, the underscore in the image's base, comments and blank
+    // lines, keys in another order.
+    let ar32 = "الملاحظاتاليومية";
+    assert_eq!((ar32.chars().count(), ar32.len()), (16, 32));
     let b = format!(
         "# comment\n\ndeps=-\nname.en=Text Editor 2\n#another=comment\nelf=/SYSTEM/APPS/T_EDIT9.ELF\nname.ar={ar32}\nid=texted99\n\n"
     );
@@ -253,7 +275,26 @@ fn well_formed_examples_are_accepted_exactly() {
     big.extend(b"\n");
     assert_eq!(big.len(), FILE_MAX);
     assert_eq!(parse(&big).map(|a| a.id), Ok("notes"));
-    for f in [&a[..], b.as_bytes(), &c, &big] {
+    // A Latin name of 32 bytes; an inner space, no-break space or ideographic space is not at
+    // an edge.
+    let en32 = "Text Editor For Daily Notes 1234";
+    assert_eq!(en32.len(), 32);
+    let d = entry("ed", "/SYSTEM/APPS/ED.ELF", "محرر النصوص", en32, "display");
+    let app = parse(&d).expect("a 32-byte Latin name");
+    assert_eq!((app.name_ar, app.name_en), ("محرر النصوص", en32));
+    let e = entry(
+        "ed",
+        "/SYSTEM/APPS/ED.ELF",
+        "محرر\u{a0}النصوص",
+        "Text\u{3000}Editor",
+        "-",
+    );
+    let app = parse(&e).expect("inner white space");
+    assert_eq!(
+        (app.name_ar, app.name_en),
+        ("محرر\u{a0}النصوص", "Text\u{3000}Editor")
+    );
+    for f in [&a[..], b.as_bytes(), &c, &big, &d, &e] {
         assert_eq!(
             verdict(f).map(sorted),
             model(f).map(sorted),
@@ -312,7 +353,7 @@ fn every_service_of_the_system_manifest_is_a_reserved_id() {
         );
     }
     assert!(names >= 8, "the manifest's services were read ({names})");
-    for id in RESERVED
+    for id in MODEL_RESERVED
         .iter()
         .chain(["desktop", "session", "narrator", "auth"].iter())
     {
@@ -325,7 +366,7 @@ fn every_service_of_the_system_manifest_is_a_reserved_id() {
 fn malformed_entries_are_refused_by_name() {
     let g = String::from_utf8(good()).unwrap();
     let swap = |from: &str, to: &str| g.replacen(from, to, 1).into_bytes();
-    let cases: Vec<(Vec<u8>, &str)> = vec![
+    let mut cases: Vec<(Vec<u8>, &str)> = vec![
         (vec![], "TRUNCATED"),
         (g.trim_end().as_bytes().to_vec(), "TRUNCATED"),
         (g.as_bytes()[..g.len() / 2].to_vec(), "TRUNCATED"),
@@ -507,8 +548,54 @@ fn malformed_entries_are_refused_by_name() {
             "DEP_NOT_ALLOWED",
         ),
     ];
+    // Display names are limited in bytes (32, display's TITLE_MAX): 33 Latin bytes, 17 Arabic
+    // letters (34 bytes), 16 Arabic letters and a space (33 bytes).
+    let en33 = "Text Editor For Daily Notes 12345";
+    let ar17 = "م".repeat(17);
+    let ar16s = format!("{} م", "م".repeat(15));
+    assert_eq!((en33.len(), ar17.len(), ar16s.len()), (33, 34, 33));
+    cases.push((
+        swap("name.en=Notes", &format!("name.en={en33}")),
+        "BAD_NAME",
+    ));
+    cases.push((
+        swap("name.ar=الملاحظات", &format!("name.ar={ar17}")),
+        "BAD_NAME",
+    ));
+    cases.push((
+        swap("name.ar=الملاحظات", &format!("name.ar={ar16s}")),
+        "BAD_NAME",
+    ));
+    // Every code point apps.md §2 forbids in a name, each inside a name (20 cases).
+    let forbidden = [
+        '\u{80}', '\u{9f}', '\u{61c}', '\u{200b}', '\u{200c}', '\u{200d}', '\u{200e}', '\u{200f}',
+        '\u{2028}', '\u{2029}', '\u{202a}', '\u{202b}', '\u{202c}', '\u{202d}', '\u{202e}',
+        '\u{2066}', '\u{2067}', '\u{2068}', '\u{2069}', '\u{feff}',
+    ];
+    for c in forbidden {
+        cases.push((
+            swap("name.en=Notes", &format!("name.en=No{c}tes")),
+            "BAD_NAME",
+        ));
+    }
+    // Every white space apps.md §2 forbids at either end of a name (17 x 2 cases).
+    let edge = [
+        ' ', '\u{a0}', '\u{1680}', '\u{2000}', '\u{2001}', '\u{2002}', '\u{2003}', '\u{2004}',
+        '\u{2005}', '\u{2006}', '\u{2007}', '\u{2008}', '\u{2009}', '\u{200a}', '\u{202f}',
+        '\u{205f}', '\u{3000}',
+    ];
+    for c in edge {
+        cases.push((
+            swap("name.ar=الملاحظات", &format!("name.ar={c}الملاحظات")),
+            "BAD_NAME",
+        ));
+        cases.push((
+            swap("name.en=Notes", &format!("name.en=Notes{c}")),
+            "BAD_NAME",
+        ));
+    }
     // The count the oracle states (tools/project.py HOST_SUITES["M6"]).
-    assert_eq!(cases.len(), 86, "hand-written cases");
+    assert_eq!(cases.len(), 143, "hand-written cases");
     for (file, want) in &cases {
         assert_eq!(err(file), *want, "{:?}", String::from_utf8_lossy(file));
         assert_eq!(
@@ -534,7 +621,7 @@ fn seeded_generated_malformed_entries_are_refused_by_name() {
         let mut id = word(&mut r, lower, 1);
         let n_id = r.below(8);
         id.push_str(&word(&mut r, alnum, n_id));
-        if RESERVED.contains(&id.as_str()) {
+        if MODEL_RESERVED.contains(&id.as_str()) {
             continue;
         }
         let elf = format!("/SYSTEM/APPS/{}.ELF", id.to_ascii_uppercase());
@@ -567,7 +654,7 @@ fn seeded_generated_malformed_entries_are_refused_by_name() {
             }
             // a reserved id
             2 => (
-                entry(r.pick(&RESERVED), &elf, "تطبيق", "App", "-"),
+                entry(r.pick(&MODEL_RESERVED), &elf, "تطبيق", "App", "-"),
                 "RESERVED_ID",
             ),
             // the image's line missing
@@ -847,41 +934,140 @@ fn the_registry_refuses_duplicates_overflow_and_wrong_file_names() {
     assert_eq!(reg.len(), 1);
 }
 
+/// Every variant, checked by a match without a wildcard: a new variant does not compile here
+/// until it has its place in ALL (and so in the contract check below).
+const ALL: [Error; 17] = [
+    Error::TooLarge,
+    Error::Truncated,
+    Error::BadUtf8,
+    Error::ControlByte,
+    Error::Syntax,
+    Error::UnknownKey,
+    Error::DupKey,
+    Error::MissingKey,
+    Error::BadId,
+    Error::ReservedId,
+    Error::BadElf,
+    Error::BadName,
+    Error::BadDeps,
+    Error::DepNotAllowed,
+    Error::FileName,
+    Error::DupId,
+    Error::TooMany,
+];
+
+fn position(e: Error) -> usize {
+    match e {
+        Error::TooLarge => 0,
+        Error::Truncated => 1,
+        Error::BadUtf8 => 2,
+        Error::ControlByte => 3,
+        Error::Syntax => 4,
+        Error::UnknownKey => 5,
+        Error::DupKey => 6,
+        Error::MissingKey => 7,
+        Error::BadId => 8,
+        Error::ReservedId => 9,
+        Error::BadElf => 10,
+        Error::BadName => 11,
+        Error::BadDeps => 12,
+        Error::DepNotAllowed => 13,
+        Error::FileName => 14,
+        Error::DupId => 15,
+        Error::TooMany => 16,
+    }
+}
+
+fn contract() -> String {
+    std::fs::read_to_string(root().join("docs/contracts/apps.md")).expect("apps.md")
+}
+
+/// The backticked words of the first contract line that starts with `prefix`, `skip` left out.
+fn listed(text: &str, prefix: &str, skip: &str) -> Vec<String> {
+    let line = text
+        .lines()
+        .find(|l| l.starts_with(prefix))
+        .unwrap_or_else(|| panic!("apps.md has no line starting {prefix:?}"));
+    let mut out: Vec<String> = line
+        .split('`')
+        .skip(1)
+        .step_by(2)
+        .filter(|w| *w != skip)
+        .map(String::from)
+        .collect();
+    out.sort();
+    out
+}
+
+fn sorted_strs(xs: &[&str]) -> Vec<String> {
+    let mut v: Vec<String> = xs.iter().map(|x| x.to_string()).collect();
+    v.sort();
+    v
+}
+
 #[test]
 fn error_names_are_the_contracts() {
-    let all = [
-        Error::TooLarge,
-        Error::Truncated,
-        Error::BadUtf8,
-        Error::ControlByte,
-        Error::Syntax,
-        Error::UnknownKey,
-        Error::DupKey,
-        Error::MissingKey,
-        Error::BadId,
-        Error::ReservedId,
-        Error::BadElf,
-        Error::BadName,
-        Error::BadDeps,
-        Error::DepNotAllowed,
-        Error::FileName,
-        Error::DupId,
-        Error::TooMany,
-    ];
-    let contract = std::fs::read_to_string(root().join("docs/contracts/apps.md")).expect("apps.md");
-    for e in all {
-        assert!(
-            contract.contains(&format!("| `{}` |", e.name())),
-            "{} not in apps.md §5",
-            e.name()
-        );
+    for (i, e) in ALL.iter().enumerate() {
+        assert_eq!(position(*e), i, "ALL lists {} out of place", e.name());
     }
-    // And every reserved id and allowed dependency is written in the contract.
-    for id in RESERVED.iter().chain(ALLOWED_DEPS.iter()) {
-        assert!(contract.contains(&format!("`{id}`")), "{id} not in apps.md");
-    }
+    let text = contract();
+    let s5 = text
+        .split("## 5.")
+        .nth(1)
+        .and_then(|t| t.split("## 6.").next())
+        .expect("apps.md §5");
+    let mut table: Vec<String> = s5
+        .lines()
+        .filter_map(|l| l.strip_prefix("| `"))
+        .filter_map(|l| l.split('`').next())
+        .map(String::from)
+        .collect();
+    table.sort();
+    let names: Vec<&str> = ALL.iter().map(|e| e.name()).collect();
     assert_eq!(
-        (FILE_MAX, MAX_APPS, ID_MAX, NAME_CHARS_MAX),
+        table,
+        sorted_strs(&names),
+        "apps.md §5's table and the Error enum differ"
+    );
+    assert_eq!(
+        (FILE_MAX, MAX_APPS, ID_MAX, NAME_MAX_BYTES),
         (1024, 16, 8, 32)
     );
+}
+
+/// The reserved ids and the allowed dependencies are the contract's, exactly, in the crate and
+/// in the model (both directions: nothing missing, nothing added).
+#[test]
+fn the_contracts_lists_equal_the_crates_and_the_models() {
+    let text = contract();
+    let reserved = listed(&text, "- المحجوزة (`RESERVED_ID`)", "RESERVED_ID");
+    let allowed = listed(&text, "- القائمة البيضاء للتبعيات", "DEP_NOT_ALLOWED");
+    assert_eq!(
+        reserved,
+        sorted_strs(&RESERVED),
+        "apps.md §3 and nawah_apps::RESERVED differ"
+    );
+    assert_eq!(
+        reserved,
+        sorted_strs(&MODEL_RESERVED),
+        "apps.md §3 and the model differ"
+    );
+    assert_eq!(
+        allowed,
+        sorted_strs(&ALLOWED_DEPS),
+        "apps.md §3 and nawah_apps::ALLOWED_DEPS differ"
+    );
+    assert_eq!(
+        allowed,
+        sorted_strs(&MODEL_ALLOWED),
+        "apps.md §3 and the model differ"
+    );
+    for id in &reserved {
+        let file = entry(id, "/SYSTEM/APPS/X.ELF", "اسم", "Name", "-");
+        assert_eq!(err(&file), "RESERVED_ID", "{id}");
+    }
+    for d in &allowed {
+        let file = entry("x", "/SYSTEM/APPS/X.ELF", "اسم", "Name", d);
+        assert!(parse(&file).is_ok_and(|a| a.deps.contains(d)), "{d}");
+    }
 }
