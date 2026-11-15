@@ -4507,7 +4507,8 @@
    ],
    "depends_on": [
     "WP-64",
-    "WP-88"
+    "WP-88",
+    "WP-113"
    ],
    "inputs": [
     "docs/PLAN-ANSWER.md §2.3 (D4-A), §5.3 (item 10)",
@@ -4541,7 +4542,8 @@
     "2026-11-10 (steward round B): depends on WP-83 instead of WP-81 (WP-81 split: the tooling stays in WP-81, the parallel jobs and per-job budgets are WP-83)",
     "2026-11-10 (steward round F, WP-83 split into 83a/83b by the manager, decisions D1-D8): depends on WP-88 instead of WP-83: what it needs is the M6 cap (job c, 18 min), which lands in WP-88 (83b); WP-83 (83a) is the merge path with one producer",
     "2026-11-14 (audit of WP-88): WP-88 was re-scoped and delivers the M6 guest step's cap inside job a, 18 minutes (1080 s), with job a limited to 62; there is no job c (the parallel jobs are WP-98's). The M6 suite's worst case is 895 s today, not the 755 s some lines above assume, so 185 s are free: an item whose phases do not fit raises the cap with its own case, and job a's limit with it, since (15 + 18 + cap) x 1.2 must stay within the limit",
-    "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): its M6 mutants (M133, M134, M136, M148, M149, M150) are registered; executed only once the M6 gate (WP-90) exists"
+    "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): its M6 mutants (M133, M134, M136, M148, M149, M150) are registered; executed only once the M6 gate (WP-90) exists",
+    "2026-11-15: waits for WP-113: its watchdog rule assumes that a request ends within REQUEST_DEADLINE, which a peer that floods without answering defeats today"
    ],
    "acceptance": "TST-M6-SESSION-WATCHDOG PASS on CI; TST-M6-MANIFEST-LINT with the session line's policy and W, TST-M6-INTERACTIVE-BOOT and TST-M0-003 (step budget) re-run and PASS; the M5 session, lock and watchdog cases in test_ids PASS (no regression)",
    "test_ids": [
@@ -5677,7 +5679,8 @@
     "2026-11-14 from the audit of WP-83's train: the token is also reachable through the environment of the merge job ($GITHUB_ENV setting GIT_CONFIG_COUNT/KEY/VALUE, LD_PRELOAD or GIT_EXEC_PATH before Publish); demonstrated in a scratch repository; the code-free publish job is the fix, and its test must assert that no step of that job runs repository code",
     "2026-11-14 from the manager's reading of actions/download-artifact v4.3.0: the action only WARNS when a downloaded artifact's digest does not match (`outcome.digestMismatch` → core.warning), so a corrupted or substituted artifact still reaches adopt-native; the integrity item must make the merge job fail on that warning or verify a manifest of its own",
     "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
-    "2026-11-10 estimate: unmeasured, to be designed; the planners' split rule applies (team-methodology.md §2 item 0)"
+    "2026-11-10 estimate: unmeasured, to be designed; the planners' split rule applies (team-methodology.md §2 item 0)",
+    "2026-11-15 (assurance review of the external findings, by experiment on a copy): to do with this item: the import receipt does not bind the verdict: a verdict.json copied from another run of the same test into a directory with its own run.json and import.json is accepted, and so is a verdict edited after the import; a hash of verdict.json and digests.json in the receipt (a new schema version; 163 receipts today have none) closes it; the plain equality checks are WP-109's"
    ],
    "acceptance": "TST-M0-003 and TST-M0-007 PASS on CI with the per-attempt branch, the slot binding and the code-free publish job; M191 and M192 registered (executed once WP-90 exists); the ruleset on ci-evidence/** in place (owner, DEC-019)",
    "test_ids": [
@@ -5991,7 +5994,8 @@
     "a gate that turns red under the new rules is a finding, never loosened: each surviving, invalid or ERROR mutant opens its own fix",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
-    "2026-11-14 estimate: about 25 calls of work and one mutants run of about 160 min on CI (unmeasured as a whole)"
+    "2026-11-14 estimate: about 25 calls of work and one mutants run of about 160 min on CI (unmeasured as a whole)",
+    "2026-11-15 (assurance review of the external findings, by reading): to do with this item: a guest killer's FAIL counts as a kill without the case passing on the clean tree (tests/mutants.py: only host killers are checked clean): inside verify the same run's job a covers it, in mutants.yml nothing does; and the gates M3 to M6 of mutants.yml run under always() after a failed baseline: each gate's condition gets the baseline's success; a dispatch that selects no gate ends green and imports nothing"
    ],
    "acceptance": "TST-M0-003 PASS with the default-stages case; TST-M2-MUTANTS, TST-M3-MUTANTS, TST-M4-MUTANTS and TST-M5-MUTANTS PASS with evidence of a run on the head that carries the new texts; validate-records --strict reports no stale mutation verdict",
    "test_ids": [
@@ -6355,7 +6359,9 @@
     "REQ-M6-004"
    ],
    "depends_on": [
-    "WP-100"
+    "WP-100",
+    "WP-107",
+    "WP-108"
    ],
    "inputs": [
     "WP-100 (apps.md v1, the parser)",
@@ -6387,7 +6393,8 @@
     "M6 guest step: the case's seconds are counted at activation against 977 of 1080 s; if it does not fit, the cap and job a's limit rise with the case (test_a_bounded_suite_fits_its_cap_in_the_worst_case)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation",
-    "2026-11-15: DEC-005 confirmed for option 1 under the owner's instruction of the same day («قم باختيار الافضل»), recorded in docs/decisions-pending.json: this item no longer waits for the owner; ADR-0023's sentence that the model awaits the owner's record is corrected with this item's push"
+    "2026-11-15: DEC-005 confirmed for option 1 under the owner's instruction of the same day («قم باختيار الافضل»), recorded in docs/decisions-pending.json: this item no longer waits for the owner; ADR-0023's sentence that the model awaits the owner's record is corrected with this item's push",
+    "2026-11-15 (the manager, after the external review's verification): waits for WP-107 and WP-108: applications become clients of config, the manager and net here, and those services leak a handle per replayed request, keep a client end when a reply fails and hand a client's sockets to the next one; by the manager's order the data packages WP-104 to WP-106 come first as well (a priority, not a dependency)"
    ],
    "acceptance": "TST-M6-LAUNCH-DENIED PASS on CI; services.md v1.14 states LAUNCH, the identity and the allow-list; M140 and M142 killed by the M6 gate",
    "test_ids": [
@@ -6502,6 +6509,611 @@
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-104",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "kernel/src/drivers/virtio_blk.rs: one header frame, one status byte, one data buffer and descriptors 0-2 shared by every request; completion taken by position; POLL_LIMIT counts polls, not time",
+    "kernel/src/block/mod.rs (IrqSpinLock around every request)",
+    "docs/adr/0013 (a timeout means K_E_BLK_TIMEOUT)",
+    "RSK-026"
+   ],
+   "files": [
+    "kernel/src/drivers/virtio_blk.rs",
+    "kernel/src/block/mod.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/adr"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "القرص بعد انتهاء مهلة طلب: إيقاف الجهاز بدل متابعة العمل ببيانات منسوبة خطأ (المرحلة أ من خطة المراجعة، 2026-11-15)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): after one timeout the driver returns an error with the request still pending at the device (avail advanced, last_used not); the next request rewrites the same header, descriptors and buffer, and its wait ends on the late completion of the old one: wrong status and wrong data returned as Ok, a write's buffer refilled before the device read it, and last_used stays one behind for every later request until reboot; no reset path exists. Trigger: a slow or failing device or a stalled host, never a user process; no measurement of the timeout's duration exists; no test covers it",
+    "design to decide in the package (2-3 options with trade-offs): fail closed (a broken flag: every later request refused without touching the shared buffers) against a device reset and queue re-initialisation that restores service, against tracking the pending request with rotating heads; the first now, the second as a follow-up if chosen",
+    "test first, red seen locally before the fix: a test-kernel case with a ktest-only hook that makes one request time out (no notify, or a tiny poll limit), then reads a known sector: today the later request returns at once with an error or another request's data; expected: every later request is refused with the timeout's code (or correct data after a reset); a SECURITY mutant that drops the fail-closed check",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "after a timed-out request no later request returns data or a status that is not its own, shown by the new case on CI; TST-M3-BLK-READ and the storage cases PASS; the mutant killed",
+   "test_ids": [
+    "TST-M3-BLK-READ",
+    "TST-M3-BLK-PERSIST"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-105",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007",
+    "REQ-M3-008"
+   ],
+   "depends_on": [
+    "WP-104"
+   ],
+   "inputs": [
+    "kernel/src/fs/fat32.rs: unlink and truncate call free_chain before store_entry; free_chain ends with fsinfo_adjust; fat_set writes FAT0 then FAT1; write updates the shared node before store_entry; sync only flushes the device",
+    "kernel/src/fs/vfs.rs (shared node per open file; O_TRUNCATE; arm_read_fault as the model of a ktest fault hook)",
+    "docs/contracts/files.md lines 7 and 38 (contradiction about the shared node) and docs/adr/0014 item 2",
+    "tools/fat32.py check and fsck.fat -n (host checks of TST-M3-FAT32-WRITE)",
+    "RSK-027"
+   ],
+   "files": [
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/fs/vfs.rs",
+    "kernel/src/block/mod.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/files.md",
+    "docs/adr",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32 عند أخطاء الإدخال والإخراج وانقطاع الكهرباء: الدليل أولًا ثم التحرير (المرحلة أ)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): delete and truncate free the cluster chain before the directory entry is rewritten: a failed entry write, a failed FSInfo write (advisory, yet it aborts the operation), a partial free or a power cut leaves a name that points at free clusters, which the next allocation hands to another file (cross-linked files, one file's data read through another's name); on a failed truncate the shared in-memory node keeps the freed chain for other open handles; a failed entry write after a data write leaves memory and disk different and sync does not write the entry again (a later successful write repairs it); a failed allocation leaks one cluster (safe order, bounded); the two FAT copies can differ after a failed second write (the kernel reads FAT0 only). Trigger: a device fault, a timeout (WP-104) or a power cut; the paths are reachable by any process on its own files, the failure is not. No test injects a write error",
+    "design to decide in the package (2-3 options with trade-offs): entry first, then free (the worst case becomes leaked clusters that fsck recovers) with or without a flush between them; FSInfo failure made non-fatal; the node zeroed before the free; a dirty mark on the node so that sync and close write the entry again; what the contract says about a failed write",
+    "test first, red seen locally before the fix: a ktest-only hook in block::write that fails the N-th write or a chosen sector, one case per failure point (entry write in unlink and in truncate, FSInfo write with two opens, entry write after a data write then close, reopen and stat), each followed by the host's tools/fat32.py check and fsck.fat -n on the image; SECURITY mutant: the order reversed",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "no failure point of delete, truncate or write leaves a directory entry that points at a free cluster or a sync that reports a stable file whose entry is stale, shown by the new cases and the host's image checks on CI; files.md's line about a copy per open is corrected to the shared node (v1.2) and ADR-0014 amended; the mutant killed",
+   "test_ids": [
+    "TST-M3-FAT32-WRITE",
+    "TST-M3-FILE-SHARED",
+    "TST-M3-FAT32-PERSIST"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3",
+    "python3 tools/project.py test --target host --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-106",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-105"
+   ],
+   "inputs": [
+    "kernel/src/fs/fat32.rs mount: reserved + fats * fat_sectors and clusters + 2 in u32; release builds wrap (overflow-checks off), the test kernel panics (overflow-checks on)",
+    "Cargo.toml profiles",
+    "RSK-027"
+   ],
+   "files": [
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tools/fat32.py",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32 عند التحميل: رفض معلومات قرص مشوّهة بحساب لا يلتف (المرحلة أ)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): a boot sector with a huge FAT size passes every check in the release image and mounts with a wrong geometry (the data region over FAT0; every FAT1 write refused as out of range), and panics the test kernel; no division by zero; only a prepared image or a swapped disk can supply it, no user process; no test feeds a malformed boot sector",
+    "design to decide in the package (2-3 options with trade-offs): checked or 64-bit arithmetic for every bound with an explicit check that the FAT region and the data start lie inside the volume, against an early cap on the FAT size derived from the capacity; the validation as a pure function over the sector and the capacity so that crafted sectors can be tested",
+    "test first, red seen locally before the fix: a test-kernel case that passes crafted boot sectors (wrapping FAT size, total near u32::MAX, zero and odd values) to the validation and expects a clean refusal for each: today the wrapping one panics the test kernel; a mutant that removes the bound",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "every malformed boot sector of the case is refused with the mount's error in the test kernel and the release arithmetic cannot wrap, on CI; the storage cases PASS; the mutant killed",
+   "test_ids": [
+    "TST-M3-FAT32-READ",
+    "TST-M3-FAT32-TOOL"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3",
+    "python3 tools/project.py test --target host --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-107",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M4-005",
+    "REQ-M4-002"
+   ],
+   "depends_on": [
+    "WP-100"
+   ],
+   "inputs": [
+    "user/apps/configd/src/main.rs: the replay path answers the saved reply without closing the received handle; SUBSCRIBE user/<n> and SET/IMPORT create a user store before any authorisation; ERR_NO_RESOURCES from channel_read is swallowed in the main loop; MAX_CLIENTS = 8; no watchdog= on the config line",
+    "user/apps/svcmgr/src/main.rs connect_for: the reply's write result is ignored and the client end stays open in the manager, which also pins the target's client slot",
+    "kernel/src/syscall/mod.rs channel_write (the sender's table is untouched on failure) and docs/contracts/ipc.md",
+    "kernel/src/ktest.rs config_retry (leaks two handles per run and stays green: the balance is taken after the processes exit)",
+    "docs/contracts/apps.md (config and net are allowed dependencies of applications: WP-101 makes these paths reachable by unprivileged code)",
+    "RSK-028"
+   ],
+   "files": [
+    "user/apps/configd/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "user/apps/svc/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "platform/pc-qemu/manifests",
+    "docs/contracts/config.md",
+    "docs/contracts/services.md",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/config.md",
+    "docs/contracts/services.md"
+   ],
+   "actions": [
+    "مقابض الخدمات قبل وصول التطبيقات: الإعدادات ومدير الخدمات لا يسرّبان مقبضًا ولا خانة (المرحلة ب)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): configd keeps one handle per replayed request that carries a handle (about a thousand replays fill its table: it then reads nothing, spins and is not restarted); the manager keeps the client end when its CONNECT reply fails (a requester that stops reading), and the target never sees the peer close, so eight such leaks cut config off for everyone; eight SUBSCRIBE requests without a token take the eight user-store slots. Reachable today by manifest services only; by any application once WP-101 lands",
+    "design to decide in the package (2-3 options with trade-offs): one exit that always closes a received handle (the subscription taking it explicitly) against closing in the replay path alone; write-or-close for every reply that carries a handle; stores created only after the authorisation check, with eviction of stores without subscribers; whether a service that finds its table full exits so that the manager restarts it",
+    "test first, red seen locally before the fix: test-kernel cases that read the live handle count while the service is alive: 20 replays with a token (today +20, expected 0); a lab service that sends CONNECT and never reads (today the manager's count grows and the target's slots stay taken; expected 0 and PEER_CLOSED seen by the target); eight SUBSCRIBE without a token then a real user's SET (today refused); SECURITY mutants for each close",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "the live handle counts of configd and the manager do not grow under replays and failed replies, a client that never reads cannot take another service's client slots, and a store is not created for an unauthorised request, shown by the new cases on CI; TST-M4-CONFIG-RETRY PASS with a balance taken while the service lives; the mutants killed",
+   "test_ids": [
+    "TST-M4-CONFIG-RETRY",
+    "TST-M4-SVC-RESTART"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-108",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M4-007",
+    "REQ-M4-008"
+   ],
+   "depends_on": [
+    "WP-100"
+   ],
+   "inputs": [
+    "user/apps/netd/src/main.rs: the reply-failure path clears the client slot without freeing its sockets and connections (the PEER_CLOSED path does); ownership is the slot index, without a generation; a UDP socket id is its slot 0..15 and a TCP id a global counter; requests are served one at a time and block up to 60 s",
+    "docs/contracts/net.md lines 40 and 67 (sockets closed and connections reset when the client's channel closes)",
+    "docs/contracts/apps.md (net is an allowed dependency of applications)",
+    "RSK-028"
+   ],
+   "files": [
+    "user/apps/netd/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/net.md",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/net.md"
+   ],
+   "actions": [
+    "خدمة الشبكة: موارد العميل تُحرَّر في كل مسار ولا يرثها من يأخذ خانته (المرحلة ب)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): a client that closes before its reply is written leaves its UDP sockets and TCP connections behind; the next client in the same slot can receive the previous client's datagrams, send from its port and use or close its connections by guessing small ids; without reuse the orphans stay until netd restarts and exhaust the 16 sockets and 8 connections. Clients today: sh and the lab controller; applications once WP-101 lands",
+    "design to decide in the package (2-3 options with trade-offs): one drop_client used by every path, with or without an ownership key of slot and generation so that a missed cleanup can never be inherited",
+    "test first, red seen locally before the fix: a test-kernel case with two clients: A opens a UDP port, sends a blocking receive and closes its end; B connects into the same slot and tries to receive on A's id and to open A's port: today a timeout and EXISTS, expected BAD_REQUEST and success; SECURITY mutant: the cleanup dropped from the reply-failure path",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "a client's sockets and connections are freed on every path that frees its slot and a later client cannot use them, shown by the new case on CI; the network cases PASS; the mutant killed",
+   "test_ids": [
+    "TST-M4-UDP-ECHO",
+    "TST-M4-TCP-ECHO",
+    "TST-M4-NET-LIMITS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-109",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-002",
+    "REQ-M0-006"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "tools/project.py validate-records: gate_evidence_refs are checked for presence of the text only; a plain-file reference skips the verdict, test id, oracle, provenance and staleness checks; a done item or a verified requirement may cite a FAIL verdict or another test's run; run_id is not compared between run.json, verdict.json and the directory; digests.json is not read; inputs' globs are expanded when the run is written and never again; a declared input absent at run time is dropped silently",
+    "the assurance engineer's experiments of 2026-11-15 on a copy (scratch): each of these accepted in normal and strict mode",
+    "docs/work-items.json WP-05 (the one plain-file reference today) and the 28 references of 18 done items and one of REQ-M5-003 that cite runs of tests outside their test_ids",
+    "RSK-030"
+   ],
+   "files": [
+    "tools/project.py",
+    "tests/test_validate_records.py",
+    "tests/test_evidence_provenance.py",
+    "docs/tests.json",
+    "docs/work-items.json",
+    "docs/adr"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "مدقق السجلات: مراجع الأدلة تُفحص في كل نوع سجل (المرحلة ج)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): no forged or broken reference exists today (0 of 148 gate references, 0 of 167 run directories with mismatching ids or digests), but the validator would accept them: a passed stage gate may cite a missing path or a FAIL run; a PASS test may cite a plain file alone; a receipt for one run vouches for another run's verdict copied into its directory; a new file matching an input glob does not make a verdict stale (CI masks it for everything verify re-runs; the four older mutation gates are the exception)",
+    "design to decide in the package (2-3 options with trade-offs): gate references checked like a test's; PASS and a run directory required for gates, done items and verified requirements, with WP-05's legacy file named as such or the item redone; the three run ids and digests.json compared; globs re-expanded at validation from the source or stored in the verdict; a decision on references to runs of tests outside test_ids (a separate field for regression evidence, or the tests added): tightening only, nothing relaxed; binding the verdict's hash into the import receipt goes with WP-89",
+    "test first, red seen locally before the fix: one failing host case per missing rule in tests/test_validate_records.py and tests/test_evidence_provenance.py (a passed gate citing a missing run and a FAIL run; a done item citing a FAIL run; a PASS test citing only a plain file; mismatching run ids; digests.json differing from the verdict's inputs; a new file matching a glob), and pinning cases for the existing rules that have none",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "each of the named forged or broken references is a validate-records error, shown by the new host cases on CI, and the committed records pass the stricter validator with every exception named; TST-M0-001 and TST-M0-007 PASS",
+   "test_ids": [
+    "TST-M0-001",
+    "TST-M0-007"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-110",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M4-003"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "user/apps/authd/src/main.rs: a known user's failure counter lives in its record and is never evicted; unknown names share a table of 8 that evicts the oldest failure even when delayed",
+    "docs/contracts/auth.md line 5 (the eviction is written there, and so is the goal it defeats: ERR DELAYED must not tell existing names apart)",
+    "kernel/src/ktest.rs login() (equal replies and the limit; no eviction)",
+    "RSK-029"
+   ],
+   "files": [
+    "user/apps/authd/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/auth.md",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/auth.md"
+   ],
+   "actions": [
+    "المصادقة: لا يُعرف وجود الحساب من ردّ الخدمة (المرحلة د)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): five wrong attempts on a name, eight attempts on fresh names, then one more on the first: an unknown name answers ERR ACCESS (its counter was evicted), an existing one ERR DELAYED: the reply text tells whether the account exists, from the sign-in screen, before any authentication; unverified: whether eight key derivations fit inside the first delay on the lab",
+    "design to decide in the package (2-3 options with trade-offs): one bounded table of counters for every name, keyed by a salted hash (two names may share a delay), against a global delay after failures (one attacker can then block the legitimate sign-in); auth.md gets a new version either way",
+    "test first, red seen locally before the fix: the sequence added to the sign-in case for a ghost name and for an existing one, the two transcripts required equal: today they differ; SECURITY mutant: the old eviction restored",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "the replies and delays for an existing name and an unknown one are the same under the eviction sequence, shown by the case on CI; auth.md's new version states the rule; the mutant killed",
+   "test_ids": [
+    "TST-M4-LOGIN"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-111",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-005"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "kernel/src/syscall/mod.rs channel_read: the table check uses the reader's handle-buffer capacity before the message is known, and rights are checked before the type (ipc.md line 11 says handle, type, rights); the kill path returns without forget_waiter",
+    "kernel/src/object/channel.rs waiters (object_wait_many cleans up, a blocked channel_read is the one exception)",
+    "user/libnawah/src/lib.rs channel_discard (a four-slot buffer: it fails from 1021 live handles; services pass one slot)",
+    "docs/contracts/ipc.md lines 14 and 20"
+   ],
+   "files": [
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/object/channel.rs",
+    "user/libnawah/src/lib.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/ipc.md",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/ipc.md"
+   ],
+   "actions": [
+    "قراءة القنوات: لا رفض بلا حاجة، ولا تسجيل يبقى بعد قتل القارئ (المرحلة د)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): a message without handles is refused with ERR_NO_RESOURCES when live handles plus the buffer's capacity exceed 1024 (services: at exactly 1024; channel_discard: from 1021, which stops the repair path for a message that blocks a queue's head); a reader killed while blocked leaves its thread id on the endpoint until the next write (thread ids are never reused and a wake of a dead id does nothing: bounded growth, no wrong wake); the contract documents neither",
+    "design to decide in the package (2-3 options with trade-offs): the exact check under the channel's lock (free slots passed to the read, the message left in the queue when it does not fit) against documenting the conservative check in a new ipc.md version and fixing channel_discard with a zero-slot first read; forget_waiter in the kill path against a guard on every exit",
+    "test first, red seen locally before the fix: test-kernel cases: a table filled to 1021, a message without handles read with a four-slot buffer (today refused); a reader killed while blocked on a duplicated endpoint the case keeps, then the endpoint's waiter count read through a test accessor (today 1); the check order for a handle of the wrong type",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "channel_read's behaviour at a nearly full table and its error order are what ipc.md's new version says, and a killed reader leaves no registration, shown by the new cases on CI; TST-M3-HANDLE-TABLE and TST-M5-PROCESS-KILL PASS",
+   "test_ids": [
+    "TST-M3-HANDLE-TABLE",
+    "TST-M5-PROCESS-KILL"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3",
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-112",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M4-005"
+   ],
+   "depends_on": [
+    "WP-107"
+   ],
+   "inputs": [
+    "user/apps/configd/src/main.rs: only DEVICE, POLICY and SESSION are loaded at start; GET, EXPORT and RESOLVE do not load a user store (RESOLVE then skips the user level: config.md line 20); IMPORT drops ERR FULL and ERR IO and answers OK <count>, each line saved on its own",
+    "docs/contracts/config.md lines 18, 20, 24, 36 (frozen: a reply change needs a new version)",
+    "kernel/src/ktest.rs config_persist (device only), policy_precedence (no restart)"
+   ],
+   "files": [
+    "user/apps/configd/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/config.md",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/config.md"
+   ],
+   "actions": [
+    "الإعدادات: قيمة المستخدم تُقرأ بعد إعادة التشغيل، والاستيراد لا يجيب بالنجاح بعد فشل جزئي (المرحلة د)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): after a restart a user's saved value reads as not found and RESOLVE returns the device value until a write loads the store (a user's accessibility settings fall back silently); an import of 65 keys answers OK 64, and a retry with the same request id repeats that answer",
+    "design to decide in the package (2-3 options with trade-offs): stores loaded on demand for reads too, with eviction of the least recently used store without subscribers, against loading every user store at start; an atomic import (capacity checked first, one save, a full rollback on I/O error) against a reply that names the failing line: config.md v1.3 either way",
+    "test first, red seen locally before the fix: a two-phase case on one disk (SET a user key, restart, then GET and RESOLVE: today not found); an import of 65 distinct keys (today OK 64)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "a user's saved value is read and takes its precedence after a restart, and an import either applies every line or reports the failure and applies none, shown by the new cases on CI; config.md v1.3 states both",
+   "test_ids": [
+    "TST-M4-CONFIG-PERSIST",
+    "TST-M4-POLICY-PRECEDENCE"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-113",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M5-010"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "user/apps/sessiond/src/main.rs Conn::request: the clock is read only in the ERR_SHOULD_WAIT branch; non-reply messages are saved (32 at most) and the loop reads on; the first OK or ERR is taken as the reply without matching a request id",
+    "docs/contracts/session.md line 34 (events that arrive while waiting are saved and do not extend the deadline)",
+    "WP-71's rule W > 3 x REQUEST_DEADLINE + D"
+   ],
+   "files": [
+    "user/apps/sessiond/src/main.rs",
+    "user/apps/svc/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "platform/pc-qemu/manifests",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/session.md"
+   ],
+   "actions": [
+    "مهلة طلب الجلسة تُفحص في كل دورة، لا عند فراغ القناة وحده (المرحلة د؛ قبل مراقب الجلسة)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): a peer that keeps the session's queue non-empty and never answers extends the request without bound, against the contract; the peers are the display and input services (trusted), no application can feed the session's channel as far as read; WP-71's watchdog rule assumes the bound",
+    "design to decide in the package (2-3 options with trade-offs): the clock read on every turn of the loop against a cap on non-reply messages per request against waiting with the remaining time before each read",
+    "test first, red seen locally before the fix: a chatty mode of the lab service (takes the request, never answers, writes events while the queue has room) in a manifest like svc-sd.txt: expected session|display=timed_out with a wait between 4900 and 6000 ticks; today no timeout",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "a request to a peer that floods without answering ends within REQUEST_DEADLINE, shown by the new case on CI; TST-M5-SESSION-DEADLINE and TST-M5-SESSION-HANG PASS",
+   "test_ids": [
+    "TST-M5-SESSION-DEADLINE",
+    "TST-M5-SESSION-HANG"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M5"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-114",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M4-008"
+   ],
+   "depends_on": [
+    "WP-108"
+   ],
+   "inputs": [
+    "user/apps/netd/src/main.rs: the ACK test accepts any ack from snd_nxt to snd_nxt + 2^31 - 1, clears the unacknowledged data and stops retransmission; RST is accepted in any state without a sequence check; ACK and FIN are processed before the segment's sequence is checked",
+    "docs/sources.json S61 (RFC 9293 segment processing; the exact sentences are not in the records: general knowledge until read)",
+    "kernel/src/net.rs (inject_tx_full only: no way to inject a received frame; slirp ends TCP itself)",
+    "RSK-031"
+   ],
+   "files": [
+    "user/apps/netd/src/main.rs",
+    "kernel/src/net.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/net.md",
+    "docs/sources.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/net.md"
+   ],
+   "actions": [
+    "TCP في خدمة الشبكة: لا يُقبل إقرار لما لم يُرسل ولا قطع بلا فحص التسلسل (المرحلة د)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): a segment that matches the connection's four addresses and carries an ack beyond what was sent makes the sender report success for data that may not have arrived; a forged RST cuts any connection; both need a peer that lies or an attacker able to spoof the source address (none in the lab)",
+    "design to decide in the package (2-3 options with trade-offs): the sequence acceptability check first, then an exact rule for the acknowledgement in this one-segment design; the RFC's text read and recorded as a source excerpt before the rule is written; how a received frame is injected in the test kernel",
+    "test first, red seen locally before the fix: a ktest-only hook that injects a received frame: an ACK at the right boundary and one beyond it, with the unacknowledged data and the retransmission timer checked; an RST outside the window; today the wrong ACK is accepted and the RST cuts",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "an ACK beyond the data sent and an RST outside the window are dropped and the connection keeps retransmitting, shown by the new cases on CI; TST-M4-TCP-ECHO and TST-M4-TCP-RETRANSMIT PASS",
+   "test_ids": [
+    "TST-M4-TCP-ECHO",
+    "TST-M4-TCP-RETRANSMIT"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-115",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M5-004"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "user/libnawah-text/src/font.rs: every read is bounds-checked against the file (no unsafe, no panic from indexing) but not against its table or glyph; a composite glyph has a depth limit of 4 and no limit on components, and a component that names an empty glyph adds no points: K components per level cost K^4 visits; wrapping arithmetic in cmap 12, coverage 2 and the transform in release builds",
+    "the fonts come from /SYSTEM/FONTS written by the build only; displayd, sessiond, dialog and textprobe parse them",
+    "tests/test_text.py and TST-M5-GLYPHS (the two shipped fonts against fontTools; no malformed font)"
+   ],
+   "files": [
+    "user/libnawah-text/src/font.rs",
+    "user/libnawah-text/src/raster.rs",
+    "user/libnawah-text",
+    "tests/test_text.py",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/contracts/text.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/text.md"
+   ],
+   "actions": [
+    "قارئ الخطوط: ميزانية للمحارف المركّبة وحدود الجداول (المرحلة د)",
+    "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): a malformed font can hang the thread that draws (the compositor, the session) and can be read across table bounds into neighbouring data; no unprivileged process can supply a font today",
+    "design to decide in the package (2-3 options with trade-offs): a work budget per glyph (total components) with length checks at parse time now, against passing a slice of each table to its reader (mechanical and wide) when fonts become untrusted input",
+    "test first, red seen locally before the fix: host unit tests in the text library with small fonts built in memory: a chain of composites (expected: refused within a budget; today slow without failing) and tables cut short in their headers (expected: absent, not a value from the next table); a seeded fuzz of the two shipped fonts' bytes that must never panic",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "a composite chain is refused within a stated budget and a table read never leaves its declared length, shown by the new host cases on CI; TST-M5-GLYPHS PASS",
+   "test_ids": [
+    "TST-M5-GLYPHS",
+    "TST-M5-SHAPING"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M5"
    ],
    "status": "planned",
    "status_history": [
