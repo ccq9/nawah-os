@@ -166,6 +166,7 @@ pub fn run() -> ! {
         "fat32_fault_truncate_check" => fat32_fault_check(b'T', "fat32_fault_truncate_check"),
         "fat32_fault_write" => fat32_fault_write(),
         "fat32_fault_write_check" => fat32_fault_write_check(),
+        "fat32_disk_full" => fat32_disk_full(),
         "file_roundtrip" => file_app("file_roundtrip", crate::apps::FILE_ROUNDTRIP, 0x60),
         "path_invalid" => file_app("path_invalid", crate::apps::PATH_INVALID, 0x61),
         "fd_leak" => fd_leak(),
@@ -3368,6 +3369,187 @@ fn fat32_fault_write_check() -> ! {
         fail("a whole sweep, or the control of the second, is missing after the restart")
     }
     pass("after the restart every file of the write sweeps is its own")
+}
+
+// ---- WP-121: a write on a volume that runs out ------------------------------------------------
+
+/// TST-M3-FAT32-DISK-FULL (WP-121, RSK-033; files.md v1.7): a write the volume cannot hold
+/// whole answers no space and changes nothing: no sector is written, no cluster taken, and
+/// the file, its node and the open's position are what they were; a write that fits is made
+/// whole, down to the volume's last cluster. The test kernel's hook ends the volume, for the
+/// allocator, just before a chosen free cluster: the allocator's own scan finds nothing past
+/// it. Three files: A, empty, is refused three clusters with two left, takes the two, is
+/// refused one byte more and a write that overwrites one cluster and needs a third, and is
+/// overwritten in place with nothing left; B, half a cluster, is refused a write that needs
+/// a second cluster and filled to the end of its own; C, empty, is refused one byte, and
+/// takes the two clusters A's removal gives back. Then the files are removed and the free
+/// count is what it was: the host's ordinary checks judge the image.
+fn fat32_disk_full() -> ! {
+    use crate::fs::vfs;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let free0 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    let rw = vfs::O_READ | vfs::O_WRITE;
+    let (all, other) = (fault_bytes(1), fault_bytes(2));
+    let (half, one, two) = (FAULT_HALF / 2, FAULT_HALF, 2 * FAULT_HALF);
+    let size_of = |path: &[u8]| vfs::stat(path).map_or(u64::MAX, |st| st.size);
+    // How many clusters the stored entry's chain holds (u32::MAX when it cannot be walked).
+    let chain_of = |path: &[u8]| {
+        vfs::stat(path)
+            .and_then(|st| crate::fs::with(|fs| fs.chain_clusters(st.first_cluster)))
+            .unwrap_or(u32::MAX)
+    };
+    let node_size = |f: &vfs::FileRef| f.lock().node.lock().size;
+    // One write through an open: its answer, the sectors it wrote to the device, and how far
+    // the open's position moved.
+    let attempt = |f: &vfs::FileRef, data: &[u8]| {
+        let (w0, p0) = (crate::block::writes(), f.lock().pos);
+        let r = vfs::write(f, data);
+        (r, crate::block::writes() - w0, f.lock().pos - p0)
+    };
+    let show = |r: &Result<usize, FsError>| match r {
+        Ok(n) => alloc::format!("{}", n),
+        Err(e) => alloc::string::String::from(e.code()),
+    };
+
+    let (Ok(a), Ok(b), Ok(c)) = (
+        vfs::open(b"/FULL1.TXT", rw | vfs::O_CREATE),
+        vfs::open(b"/FULL2.TXT", rw | vfs::O_CREATE),
+        vfs::open(b"/FULL3.TXT", rw | vfs::O_CREATE),
+    ) else {
+        fail("could not create the case's files")
+    };
+    if !matches!(vfs::write(&b, &all[..half]), Ok(n) if n == half) {
+        fail("could not write the second file's half cluster")
+    }
+    if crate::fs::with(|fs| fs.arm_disk_full(2)).is_err() {
+        fail("could not end the volume two free clusters ahead")
+    }
+
+    // A: three clusters with two left; the two; one byte more; one cluster over and one new.
+    let a_big = attempt(&a, &all);
+    let (a_big_size, a_big_node, a_big_chain) = (
+        size_of(b"/FULL1.TXT"),
+        node_size(&a),
+        chain_of(b"/FULL1.TXT"),
+    );
+    let a_fit = attempt(&a, &all[..two]);
+    let a_more = attempt(&a, b"x");
+    let _ = vfs::seek(&a, one as u64);
+    let a_span = attempt(&a, &other[..two]);
+    let (a_size, a_node, a_chain) = (
+        size_of(b"/FULL1.TXT"),
+        node_size(&a),
+        chain_of(b"/FULL1.TXT"),
+    );
+    let a_whole = fault_state(b"/FULL1.TXT", &all[..two]) == 1;
+    // What the same open reads from 0: the bytes the name holds, and no more.
+    let a_read = {
+        let mut back = alloc::vec![0u8; all.len() + 1];
+        let _ = vfs::seek(&a, 0);
+        match vfs::read(&a, &mut back) {
+            Ok(k) if back[..k] == all[..k] => k as i64,
+            _ => -1,
+        }
+    };
+    let _ = vfs::seek(&a, 0);
+    let a_over = attempt(&a, &other[..two]);
+    let a_over_whole =
+        fault_state(b"/FULL1.TXT", &other[..two]) == 1 && chain_of(b"/FULL1.TXT") == 2;
+
+    // B: from the middle of its cluster into a second one; then to the end of its own.
+    let b_span = attempt(&b, &all[half..half + one]);
+    let b_size = size_of(b"/FULL2.TXT");
+    let b_whole = fault_state(b"/FULL2.TXT", &all[..half]) == 1 && node_size(&b) == half as u32;
+    let b_fill = attempt(&b, &all[half..one]);
+    let b_chain = chain_of(b"/FULL2.TXT");
+    let b_filled = fault_state(b"/FULL2.TXT", &all[..one]) == 1;
+
+    // C: one byte with nothing left; then the clusters a removed file gives back.
+    let c_none = attempt(&c, b"x");
+    let (c_node, c_chain) = (node_size(&c), chain_of(b"/FULL3.TXT"));
+    let c_empty = fault_state(b"/FULL3.TXT", &[]) == 2;
+    drop(a);
+    let a_removed = vfs::unlink(b"/FULL1.TXT").is_ok();
+    let c_after = attempt(&c, &all[..two]);
+    let c_more = attempt(&c, b"x");
+    let c_whole = fault_state(b"/FULL3.TXT", &all[..two]) == 1 && chain_of(b"/FULL3.TXT") == 2;
+
+    crate::fs::fat32::disarm_disk_full();
+    let refused = [&a_big, &a_more, &a_span, &b_span, &c_none, &c_more];
+    let refused_writes: u32 = refused.iter().map(|x| x.1).sum();
+    let pos_moved = refused.iter().filter(|x| x.2 != 0).count();
+    drop((b, c));
+    let removed =
+        a_removed && vfs::unlink(b"/FULL2.TXT").is_ok() && vfs::unlink(b"/FULL3.TXT").is_ok();
+    let synced = vfs::sync().is_ok();
+    let free1 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    kprintln!(
+        "OSX|{}|ktest|fat32_disk_full|a_big={}|a_big_size={}|a_big_node={}|a_big_chain={}|a_fit={}|a_more={}|a_span={}|a_size={}|a_node={}|a_chain={}|a_whole={}|a_read={}|a_over={}|a_over_whole={}|b_span={}|b_size={}|b_whole={}|b_fill={}|b_chain={}|b_filled={}|c_none={}|c_node={}|c_chain={}|c_empty={}|c_after={}|c_more={}|c_whole={}|refused_writes={}|pos_moved={}|removed={}|free_delta={}|synced={}|live_files={}",
+        BUILD_ID,
+        show(&a_big.0),
+        a_big_size,
+        a_big_node,
+        a_big_chain,
+        show(&a_fit.0),
+        show(&a_more.0),
+        show(&a_span.0),
+        a_size,
+        a_node,
+        a_chain,
+        u8::from(a_whole),
+        a_read,
+        show(&a_over.0),
+        u8::from(a_over_whole),
+        show(&b_span.0),
+        b_size,
+        u8::from(b_whole),
+        show(&b_fill.0),
+        b_chain,
+        u8::from(b_filled),
+        show(&c_none.0),
+        c_node,
+        c_chain,
+        u8::from(c_empty),
+        show(&c_after.0),
+        show(&c_more.0),
+        u8::from(c_whole),
+        refused_writes,
+        pos_moved,
+        u8::from(removed),
+        i64::from(free0) - i64::from(free1),
+        u8::from(synced),
+        vfs::live_files()
+    );
+    if refused.iter().any(|x| x.0 != Err(FsError::DiskFull)) {
+        fail("a write the volume could not hold whole was not answered with no space")
+    }
+    if refused_writes != 0 || pos_moved != 0 {
+        fail("a refused write wrote to the device or moved the open's position")
+    }
+    if (a_big_size, a_big_node, a_big_chain) != (0, 0, 0) || c_node != 0 || c_chain != 0 || !c_empty
+    {
+        fail("a refused write to an empty file left it something")
+    }
+    if a_fit.0 != Ok(two)
+        || a_over.0 != Ok(two)
+        || b_fill.0 != Ok(one - half)
+        || c_after.0 != Ok(two)
+    {
+        fail("a write the volume could hold whole was not made whole")
+    }
+    if (a_size, a_node, a_chain) != (two as u64, two as u32, 2) || !a_whole || a_read != two as i64
+    {
+        fail("a refused write changed the file, its node or what its open reads")
+    }
+    if !a_over_whole || b_size != half as u64 || !b_whole || b_chain != 1 || !b_filled || !c_whole {
+        fail("a file does not hold the bytes and the clusters its writes gave it")
+    }
+    if !removed || !synced || free1 != free0 {
+        fail("clusters were lost on a volume that ran out of space")
+    }
+    pass("a write the volume cannot hold whole changes nothing, and one that fits is whole")
 }
 
 // ---- WP-19: files through system calls ---------------------------------------------------

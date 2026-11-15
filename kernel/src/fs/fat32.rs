@@ -31,6 +31,32 @@ const CHAIN_MAX: u32 = 1 << 20;
 /// Largest file this implementation writes (a kernel-side bound, not the format's).
 pub const FILE_MAX: u32 = 64 * 1024 * 1024;
 
+/// Test kernel only (WP-121, TST-M3-FAT32-DISK-FULL): the allocator looks no further than a
+/// chosen cluster, as a volume that ends there would (filling the lab volume for real is too
+/// slow: every allocation scans the FAT from its start). Nothing answers in the allocator's
+/// place: its own scan runs to that end, finds no free cluster and answers `DiskFull`, and a
+/// cluster freed below that end is found again.
+#[cfg(feature = "ktest")]
+mod full {
+    use core::sync::atomic::{AtomicU32, Ordering};
+
+    static END: AtomicU32 = AtomicU32::new(u32::MAX);
+
+    pub fn set(end: u32) {
+        END.store(end, Ordering::SeqCst);
+    }
+
+    pub fn end() -> u32 {
+        END.load(Ordering::SeqCst)
+    }
+}
+
+/// Test kernel only: the allocator sees the whole volume again.
+#[cfg(feature = "ktest")]
+pub fn disarm_disk_full() {
+    full::set(u32::MAX);
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FsError {
     NotMounted,
@@ -313,11 +339,56 @@ impl Fat32 {
         }
     }
 
+    /// One past the last cluster the allocator may take.
+    fn alloc_end(&self) -> u32 {
+        #[cfg(feature = "ktest")]
+        {
+            (self.clusters + 2).min(full::end())
+        }
+        #[cfg(not(feature = "ktest"))]
+        {
+            self.clusters + 2
+        }
+    }
+
+    /// The `n`th free cluster (from 1), lowest first, below `end`, by scanning the first FAT;
+    /// `None` when fewer are free there.
+    #[cfg(feature = "ktest")]
+    fn nth_free(&self, n: u32, end: u32) -> Result<Option<u32>, FsError> {
+        let mut s = [0u8; SECTOR];
+        let mut seen = 0u32;
+        let mut c = 2u32;
+        while c < end {
+            let sector_index = (c as usize * 4) / SECTOR;
+            block::read(u64::from(self.reserved) + sector_index as u64, &mut s)?;
+            let stop = (((sector_index + 1) * SECTOR / 4) as u32).min(end);
+            while c < stop {
+                if le32(&s, (c as usize * 4) % SECTOR) & 0x0FFF_FFFF == 0 {
+                    seen += 1;
+                    if seen == n {
+                        return Ok(Some(c));
+                    }
+                }
+                c += 1;
+            }
+        }
+        Ok(None)
+    }
+
+    /// Test kernel only (TST-M3-FAT32-DISK-FULL): from now the allocator sees `left` free
+    /// clusters and no more (it stops before the next free one).
+    #[cfg(feature = "ktest")]
+    pub fn arm_disk_full(&self, left: u32) -> Result<(), FsError> {
+        let end = self.nth_free(left + 1, self.clusters + 2)?;
+        full::set(end.unwrap_or(u32::MAX));
+        Ok(())
+    }
+
     /// Finds a free cluster (lowest first), marks it EOC and zeroes it.
     fn alloc_cluster(&self) -> Result<u32, FsError> {
         let mut s = [0u8; SECTOR];
         let fat0 = u64::from(self.reserved);
-        let last = self.clusters + 2;
+        let last = self.alloc_end();
         let mut c = 2u32;
         while c < last {
             let sector_index = (c as usize * 4) / SECTOR;
@@ -359,6 +430,21 @@ impl Fat32 {
         }
         if n > 0 {
             self.fsinfo_adjust(i64::from(n), lowest)?;
+        }
+        Ok(n)
+    }
+
+    /// Test kernel only (TST-M3-FAT32-DISK-FULL): how many clusters the chain from `first`
+    /// holds, so a case can compare it with what the file's size needs.
+    #[cfg(feature = "ktest")]
+    pub fn chain_clusters(&self, first: u32) -> Result<u32, FsError> {
+        let (mut c, mut n) = (first, 0u32);
+        while c >= 2 && n < CHAIN_MAX {
+            n += 1;
+            match self.next_cluster(c)? {
+                Some(x) => c = x,
+                None => break,
+            }
         }
         Ok(n)
     }

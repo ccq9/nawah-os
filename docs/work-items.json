@@ -7483,7 +7483,9 @@
     "docs/tests.json",
     "docs/contracts/files.md",
     "docs/adr/0014-files.md",
-    "docs/risks.json"
+    "docs/risks.json",
+    "docs/PLAN-REVERSE.md",
+    "docs/requirements.json"
    ],
    "contract_refs": [
     "docs/contracts/files.md"
@@ -7499,6 +7501,7 @@
    ],
    "acceptance": "a write that runs out of space in the middle of a call loses no cluster and tells its caller what was written or that nothing was, shown by a case with the host check counting zero lost clusters on CI; files.md (the version free at the merge) states the answer; the mutant killed",
    "test_ids": [
+    "TST-M3-FAT32-DISK-FULL",
     "TST-M3-FAT32-FAULT-WRITE",
     "TST-M3-FAT32-WRITE"
    ],
