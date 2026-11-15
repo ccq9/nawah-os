@@ -13,12 +13,17 @@ Commands:
   ls IMG [DIR]            list a directory (root by default)
   cat IMG PATH            print a file's bytes to stdout
   verify IMG PATH SHA256  exit 0 when the file exists and its sha256 matches
-  check IMG               structural check (signatures, FAT mirrors equal, chains terminate)
+  check IMG [--faulted]   structural check (signatures, FAT mirrors equal, every chain whole and its own,
+                          no lost cluster, free count); --faulted counts what a failed write may leave
+  fsck-faulted IMG        fsck.fat -n with every message named; fails on a failing or unnamed one
   expect IMG PATH TEXT    exit 0 when the file's bytes equal TEXT (\\n escapes allowed)
 """
 import argparse
 import hashlib
+import re
+import shutil
 import struct
+import subprocess
 import sys
 
 SECTOR = 512
@@ -378,45 +383,164 @@ def cmd_expect(a):
     return 0 if ok else 1
 
 
+def tree_findings(img, fat):
+    """One walk of the whole tree along FAT copy `fat`, recording which name reaches each
+    cluster. Returns (strict, longer, owned). `strict` holds what no state of the volume may
+    show: a chain that runs into a free cluster, leaves the volume or loops, two names on one
+    cluster, and a file whose chain is shorter than its size. `longer` names the files whose
+    chain holds more clusters than their size needs; `owned` is every cluster a name reaches."""
+    owner, strict, longer = {}, [], []
+    cluster_bytes = img.spc * SECTOR
+
+    def claim(name, first):
+        got, c = [], first
+        while 2 <= c < 0x0FFFFFF8:
+            if c >= img.clusters + 2 or c in got:
+                strict.append(f"{name}: bad chain at {c:#x}")
+                break
+            if c in owner:
+                strict.append(f"{name} and {owner[c]} share cluster {c}")
+                break
+            v = img.fat_get(c, fat)
+            if v == 0:
+                strict.append(f"{name}: cluster {c} of its chain is free")
+                break
+            owner[c] = name
+            got.append(c)
+            c = v
+        return got
+
+    def walk(path, first, depth):
+        clusters = claim(path or "/", first)
+        if depth > 8:
+            return
+        for c in clusters:
+            data = img.read_cluster(c)
+            for i in range(0, len(data), 32):
+                e = data[i:i + 32]
+                if e[0] == 0:
+                    return
+                if e[0] == 0xE5 or e[11] == ATTR_LFN or e[11] & 0x08 or e[:1] == b".":
+                    continue
+                name = f"{path}/{display_name(e[:11])}"
+                entry_first = img.entry_cluster(e)
+                if e[11] & ATTR_DIR:
+                    walk(name, entry_first, depth + 1)
+                    continue
+                size = struct.unpack_from("<I", e, 28)[0]
+                n = len(claim(name, entry_first)) if entry_first else 0
+                if n * cluster_bytes < size:
+                    strict.append(f"{name}: chain shorter than size")
+                elif n > (size + cluster_bytes - 1) // cluster_bytes:
+                    longer.append(name)
+
+    walk("", img.root_cluster, 0)
+    return strict, longer, set(owner)
+
+
 def cmd_check(a):
+    """The image is consistent. With --faulted (after a guest case that made a disk write fail):
+    what a safe order of writes may leave behind (lost clusters, a chain longer than its size,
+    FAT copies that differ, a stale free count) is counted on the output line instead of being
+    a problem, and the tree is walked along every FAT copy, so a name that reaches a free
+    cluster or shares one is a problem whichever copy shows it."""
     img = Image(a.image)
+    faulted = getattr(a, "faulted", False)
     problems = []
     if img.sig != 0xAA55 or img.boot_sig != 0x29:
         problems.append("boot signatures")
     if img.read_sector(0) != img.read_sector(img.bk_boot):
         problems.append("backup boot sector differs")
-    for s in range(img.fatsz):
-        if img.read_sector(img.fat_start + s) != img.read_sector(img.fat_start + img.fatsz + s):
-            problems.append(f"FAT mirrors differ at sector {s}"); break
-    used = 0
+    differing = [s for s in range(img.fatsz)
+                 if img.read_sector(img.fat_start + s) != img.read_sector(img.fat_start + img.fatsz + s)]
+    if differing and not faulted:
+        problems.append(f"FAT mirrors differ at sector {differing[0]}")
+    used, in_use = 0, set()
     for c in range(2, img.clusters + 2):
         v = img.fat_get(c)
         if v == 1 or (2 <= v < 0x0FFFFFF7 and v >= img.clusters + 2):
             problems.append(f"FAT[{c}] = {v:#x} invalid"); break
         if v:
             used += 1
-    # every file's chain terminates and covers its size
-    def walk(d, depth):
-        if depth > 8:
-            return
-        for _, _, e in img.dir_entries(d):
-            if e[0] == 0:
-                break
-            if e[0] == 0xE5 or e[11] == ATTR_LFN or e[11] & 0x08 or e[:1] == b".":
-                continue
-            first = img.entry_cluster(e)
-            size = struct.unpack_from("<I", e, 28)[0]
-            try:
-                n = len(img.chain(first)) if first else 0
-            except ValueError as ex:
-                problems.append(str(ex)); continue
-            if e[11] & ATTR_DIR:
-                walk(first, depth + 1)
-            elif n * img.spc * SECTOR < size:
-                problems.append(f"{display_name(e[:11])}: chain shorter than size")
-    walk(img.root_cluster, 0)
-    print(f"check: clusters={img.clusters} used={used} free={img.clusters - used} label={img.label!r} fstype={img.fstype!r} problems={problems}")
+            if v != 0x0FFFFFF7:
+                in_use.add(c)
+    strict, longer, owned = tree_findings(img, 0)
+    problems += strict
+    if faulted:
+        for fat in range(1, img.nfats):
+            problems += [f"FAT{fat}: {p}" for p in tree_findings(img, fat)[0]]
+    lost = len(in_use - owned)
+    recorded = struct.unpack_from("<I", img.read_sector(img.fsinfo_sector), 488)[0]
+    real_free = img.clusters - used
+    fsinfo = "unknown" if recorded == 0xFFFFFFFF else ("ok" if recorded == real_free else "stale")
+    if not faulted:
+        if lost:
+            problems.append(f"lost clusters: {lost}")
+        problems += [f"{name}: chain longer than size" for name in longer]
+        if fsinfo == "stale":
+            problems.append(f"FSInfo free count {recorded}, really {real_free}")
+    tail = f" faulted: lost={lost} longer={len(longer)} mirror_diff={len(differing)} fsinfo={fsinfo}" if faulted else ""
+    print(f"check: clusters={img.clusters} used={used} free={real_free} label={img.label!r} fstype={img.fstype!r} problems={problems}{tail}")
     return 0 if not problems else 1
+
+
+# fsck.fat -n (dosfstools 4.2) says one message a line; a message about a file follows a line
+# with its path. After a guest case that made a disk write fail its exit code alone is no
+# verdict (a lost cluster already makes it 1), so every message is named here: lines that carry
+# no finding, findings a safe order of writes may leave, and findings that fail the case. A
+# line that matches none of them is unnamed and fails the case too.
+FSCK_NEUTRAL = [
+    r"fsck\.fat \d+\.\d+.*", r"Warning: Filesystem is FAT32 according to fat_length and fat32_length fields,",
+    r"\s+but has only \d+ clusters, less than the required minimum of \d+\.", r"\s+This may lead to problems on some systems\.",
+    r"Leaving filesystem unchanged\.", r".+: \d+ files, \d+/\d+ clusters", r"\s*", r"/.*",
+    r"\s+Auto-correcting\.", r"\s+Using first FAT\.", r"\s+Truncating file to \d+ bytes\.", r"\s+Truncating second to 0 bytes\.",
+]
+FSCK_ALLOWED = {
+    "lost": r"Reclaimed \d+ unused clusters? \(\d+ bytes\)\.",
+    "free_count": r"Free cluster summary wrong \(\d+ vs\. really \d+\)",
+    "mirror": r"FATs differ but appear to be intact\.",
+    "longer": r"\s+File size is \d+ bytes, cluster chain length is > \d+ bytes\.",
+}
+FSCK_FAILING = {
+    "shared": r"\s+share clusters\.",
+    "free_in_chain": r"\s+Contains a free cluster \(\d+\)\. Assuming EOF\.",
+    "shorter": r"\s+File size is \d+ bytes, cluster chain length is \d+ bytes\.",
+}
+
+
+def classify_fsck(text):
+    """Returns (allowed, failing, unnamed) for the output of `fsck.fat -n`: how many lines
+    carried each allowed finding, the failing findings in order of appearance (each once), and
+    the lines no pattern names."""
+    allowed, failing, unnamed = {}, [], []
+    for line in text.splitlines():
+        hit = next((k for k, pat in FSCK_FAILING.items() if re.fullmatch(pat, line)), None)
+        if hit:
+            if hit not in failing:
+                failing.append(hit)
+            continue
+        hit = next((k for k, pat in FSCK_ALLOWED.items() if re.fullmatch(pat, line)), None)
+        if hit:
+            allowed[hit] = allowed.get(hit, 0) + 1
+        elif not any(re.fullmatch(pat, line) for pat in FSCK_NEUTRAL):
+            unnamed.append(line.strip())
+    return allowed, failing, unnamed
+
+
+def cmd_fsck_faulted(a):
+    """fsck.fat -n on an image a guest case left after a failed disk write: its whole output is
+    printed (the lab keeps it in host-check.log), then one line with its exit code and the
+    named findings; 0 only when nothing failing and nothing unnamed was said."""
+    fsck = shutil.which("fsck.fat")
+    if not fsck:
+        print("fsck-faulted: fsck.fat is not installed")
+        return 3
+    r = subprocess.run([fsck, "-n", a.image], capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    sys.stdout.write(out)
+    allowed, failing, unnamed = classify_fsck(out)
+    print(f"fsck: exit={r.returncode} allowed={allowed} failing={failing} unnamed={unnamed}")
+    return 0 if r.returncode in (0, 1) and not failing and not unnamed else 1
 
 
 def main(argv=None):
@@ -428,12 +552,13 @@ def main(argv=None):
     s = sub.add_parser("ls"); s.add_argument("image"); s.add_argument("dir", nargs="?")
     s = sub.add_parser("cat"); s.add_argument("image"); s.add_argument("path")
     s = sub.add_parser("verify"); s.add_argument("image"); s.add_argument("path"); s.add_argument("sha256"); s.add_argument("--size", type=int)
-    s = sub.add_parser("check"); s.add_argument("image")
+    s = sub.add_parser("check"); s.add_argument("image"); s.add_argument("--faulted", action="store_true")
+    s = sub.add_parser("fsck-faulted"); s.add_argument("image")
     s = sub.add_parser("expect"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
     s = sub.add_parser("absent-raw"); s.add_argument("image"); s.add_argument("text")
     s = sub.add_parser("grep"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
     a = ap.parse_args(argv)
-    return {"format": cmd_format, "ls": cmd_ls, "cat": cmd_cat, "verify": cmd_verify, "check": cmd_check, "expect": cmd_expect,
+    return {"format": cmd_format, "ls": cmd_ls, "cat": cmd_cat, "verify": cmd_verify, "check": cmd_check, "fsck-faulted": cmd_fsck_faulted, "expect": cmd_expect,
             "absent-raw": cmd_absent_raw, "grep": cmd_grep}[a.cmd](a) or 0
 
 
