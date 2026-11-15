@@ -809,6 +809,13 @@ MUTANTS = [
      "    } else if now >= t.wait_deadline {\n        0\n",
      "    } else if now >= t.wait_deadline {\n        t.priority\n",
      ["TST-M6-WAIT-DEADLINE"], "an expired wait competes at the thread's own priority: beside the priority-0 spinner the waiter comes back only when the spinner gives up (late past the limit of 20), spinner_prio=0|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL"),
+    # ---- M6 (WP-100): the application registry's entry parser (apps.md v1 §3, ADR-0023 item 6).
+    # M198 (SECURITY): the reserved-id check removed, so an entry may take the id `session`,
+    # `desktop`, `narrator` or a service's name and be shown and spoken as one.
+    ("M198", "user/nawah-apps/src/lib.rs",
+     "    if RESERVED.contains(&id) {",
+     "    if RESERVED.contains(&id) && false {",
+     ["TST-M6-APP-REGISTRY-FUZZ"], "SECURITY: a reserved id is accepted as an application id: every_service_of_the_system_manifest_is_a_reserved_id, malformed_entries_are_refused_by_name, seeded_generated_malformed_entries_are_refused_by_name and the_registry_refuses_duplicates_overflow_and_wrong_file_names fail, test result: FAILED. 4 passed; 4 failed"),
     # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
     # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
     # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
@@ -900,7 +907,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M172", "M173",
             # M6 (WP-99): a wait's deadline is kept beside a spinning thread, so the LOAD budget
             # holds against a manager that never blocks (M194).
-            "M194"}
+            "M194",
+            # M6 (WP-100): the registry parser refuses the reserved ids (apps.md v1 §3, M198).
+            "M198"}
 
 
 def security_of(mid: str) -> bool:
