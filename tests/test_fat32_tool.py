@@ -204,9 +204,15 @@ class Fat32Check(unittest.TestCase):
         r = run("check", self.img)
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn("ONE.TXT: chain longer than size", r.stdout)
+        # A delete or a truncation never leaves it, so --faulted fails it too unless the case
+        # says its operation may (a failed write, WP-118).
         r = run("check", "--faulted", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("ONE.TXT: chain longer than size", r.stdout)
+        r = run("check", "--faulted", "--allow-longer", self.img)
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertIn("longer=1", r.stdout)
+        self.assertIn("problems=[]", r.stdout)
 
     def test_copies_differ(self):
         img = self.image()
@@ -227,8 +233,12 @@ class Fat32Check(unittest.TestCase):
             "Reclaimed 3 unused clusters (1536 bytes).\n",
             "Free cluster summary wrong (5 vs. really 8026)\n  Auto-correcting.\n",
             "FATs differ but appear to be intact.\n  Using first FAT.\n",
-            "/ONE.TXT\n  File size is 100 bytes, cluster chain length is > 512 bytes.\n  Truncating file to 100 bytes.\n",
         ]
+        longer = "/ONE.TXT\n  File size is 100 bytes, cluster chain length is > 512 bytes.\n  Truncating file to 100 bytes.\n"
+        self.assertEqual(self.tool.classify_fsck(head + longer + tail), ({}, ["longer"], []))
+        self.assertEqual(self.tool.classify_fsck(head + longer + tail, allow_longer=True), ({"longer": 1}, [], []))
+        # A line that starts like a path but says more is no path line.
+        self.assertEqual(self.tool.classify_fsck(head + "/ONE.TXT is beyond repair\n" + tail)[2], ["/ONE.TXT is beyond repair"])
         for body in ok:
             failing, unnamed = self.tool.classify_fsck(head + body + tail)[1:]
             self.assertEqual((failing, unnamed), ([], []), body)

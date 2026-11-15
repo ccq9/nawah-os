@@ -13,9 +13,11 @@ Commands:
   ls IMG [DIR]            list a directory (root by default)
   cat IMG PATH            print a file's bytes to stdout
   verify IMG PATH SHA256  exit 0 when the file exists and its sha256 matches
-  check IMG [--faulted]   structural check (signatures, FAT mirrors equal, every chain whole and its own,
+  check IMG [--faulted [--allow-longer]]
+                          structural check (signatures, FAT mirrors equal, every chain whole and its own,
                           no lost cluster, free count); --faulted counts what a failed write may leave
-  fsck-faulted IMG        fsck.fat -n with every message named; fails on a failing or unnamed one
+  fsck-faulted IMG [--allow-longer]
+                          fsck.fat -n with every message named; fails on a failing or unnamed one
   expect IMG PATH TEXT    exit 0 when the file's bytes equal TEXT (\\n escapes allowed)
 """
 import argparse
@@ -413,6 +415,7 @@ def tree_findings(img, fat):
     def walk(path, first, depth):
         clusters = claim(path or "/", first)
         if depth > 8:
+            strict.append(f"{path}: deeper than this check walks")
             return
         for c in clusters:
             data = img.read_cluster(c)
@@ -440,12 +443,14 @@ def tree_findings(img, fat):
 
 def cmd_check(a):
     """The image is consistent. With --faulted (after a guest case that made a disk write fail):
-    what a safe order of writes may leave behind (lost clusters, a chain longer than its size,
-    FAT copies that differ, a stale free count) is counted on the output line instead of being
-    a problem, and the tree is walked along every FAT copy, so a name that reaches a free
-    cluster or shares one is a problem whichever copy shows it."""
+    what a safe order of writes may leave behind (lost clusters, FAT copies that differ, a stale
+    free count) is counted on the output line instead of being a problem, and the tree is walked
+    along every FAT copy, so a name that reaches a free cluster or shares one is a problem
+    whichever copy shows it. A chain longer than its size stays a problem unless the case adds
+    --allow-longer (a failed delete or truncation never leaves one; a failed write may)."""
     img = Image(a.image)
     faulted = getattr(a, "faulted", False)
+    allow_longer = faulted and getattr(a, "allow_longer", False)
     problems = []
     if img.sig != 0xAA55 or img.boot_sig != 0x29:
         problems.append("boot signatures")
@@ -470,13 +475,16 @@ def cmd_check(a):
         for fat in range(1, img.nfats):
             problems += [f"FAT{fat}: {p}" for p in tree_findings(img, fat)[0]]
     lost = len(in_use - owned)
-    recorded = struct.unpack_from("<I", img.read_sector(img.fsinfo_sector), 488)[0]
+    info = img.read_sector(img.fsinfo_sector)
+    signed = struct.unpack_from("<I", info, 0)[0] == 0x41615252 and struct.unpack_from("<I", info, 484)[0] == 0x61417272
+    recorded = struct.unpack_from("<I", info, 488)[0] if signed else 0xFFFFFFFF
     real_free = img.clusters - used
     fsinfo = "unknown" if recorded == 0xFFFFFFFF else ("ok" if recorded == real_free else "stale")
+    if not allow_longer:
+        problems += [f"{name}: chain longer than size" for name in longer]
     if not faulted:
         if lost:
             problems.append(f"lost clusters: {lost}")
-        problems += [f"{name}: chain longer than size" for name in longer]
         if fsinfo == "stale":
             problems.append(f"FSInfo free count {recorded}, really {real_free}")
     tail = f" faulted: lost={lost} longer={len(longer)} mirror_diff={len(differing)} fsinfo={fsinfo}" if faulted else ""
@@ -492,7 +500,7 @@ def cmd_check(a):
 FSCK_NEUTRAL = [
     r"fsck\.fat \d+\.\d+.*", r"Warning: Filesystem is FAT32 according to fat_length and fat32_length fields,",
     r"\s+but has only \d+ clusters, less than the required minimum of \d+\.", r"\s+This may lead to problems on some systems\.",
-    r"Leaving filesystem unchanged\.", r".+: \d+ files, \d+/\d+ clusters", r"\s*", r"/.*",
+    r"Leaving filesystem unchanged\.", r".+: \d+ files, \d+/\d+ clusters", r"\s*", r"/\S*(  and)?",
     r"\s+Auto-correcting\.", r"\s+Using first FAT\.", r"\s+Truncating file to \d+ bytes\.", r"\s+Truncating second to 0 bytes\.",
 ]
 FSCK_ALLOWED = {
@@ -508,10 +516,11 @@ FSCK_FAILING = {
 }
 
 
-def classify_fsck(text):
+def classify_fsck(text, allow_longer=False):
     """Returns (allowed, failing, unnamed) for the output of `fsck.fat -n`: how many lines
     carried each allowed finding, the failing findings in order of appearance (each once), and
-    the lines no pattern names."""
+    the lines no pattern names. A chain longer than its size is allowed only when the case
+    says so (`allow_longer`); otherwise it fails."""
     allowed, failing, unnamed = {}, [], []
     for line in text.splitlines():
         hit = next((k for k, pat in FSCK_FAILING.items() if re.fullmatch(pat, line)), None)
@@ -520,7 +529,10 @@ def classify_fsck(text):
                 failing.append(hit)
             continue
         hit = next((k for k, pat in FSCK_ALLOWED.items() if re.fullmatch(pat, line)), None)
-        if hit:
+        if hit == "longer" and not allow_longer:
+            if hit not in failing:
+                failing.append(hit)
+        elif hit:
             allowed[hit] = allowed.get(hit, 0) + 1
         elif not any(re.fullmatch(pat, line) for pat in FSCK_NEUTRAL):
             unnamed.append(line.strip())
@@ -538,7 +550,7 @@ def cmd_fsck_faulted(a):
     r = subprocess.run([fsck, "-n", a.image], capture_output=True, text=True)
     out = r.stdout + r.stderr
     sys.stdout.write(out)
-    allowed, failing, unnamed = classify_fsck(out)
+    allowed, failing, unnamed = classify_fsck(out, a.allow_longer)
     print(f"fsck: exit={r.returncode} allowed={allowed} failing={failing} unnamed={unnamed}")
     return 0 if r.returncode in (0, 1) and not failing and not unnamed else 1
 
@@ -553,7 +565,8 @@ def main(argv=None):
     s = sub.add_parser("cat"); s.add_argument("image"); s.add_argument("path")
     s = sub.add_parser("verify"); s.add_argument("image"); s.add_argument("path"); s.add_argument("sha256"); s.add_argument("--size", type=int)
     s = sub.add_parser("check"); s.add_argument("image"); s.add_argument("--faulted", action="store_true")
-    s = sub.add_parser("fsck-faulted"); s.add_argument("image")
+    s.add_argument("--allow-longer", action="store_true")
+    s = sub.add_parser("fsck-faulted"); s.add_argument("image"); s.add_argument("--allow-longer", action="store_true")
     s = sub.add_parser("expect"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
     s = sub.add_parser("absent-raw"); s.add_argument("image"); s.add_argument("text")
     s = sub.add_parser("grep"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
