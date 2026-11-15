@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import os
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,10 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOOL = os.path.join(ROOT, "tools", "fat32.py")
+EOC = 0x0FFFFFFF
+# WP-127 (C5): how long `check` may take on a chain of the volume's size (it takes seconds when
+# its cost grows with the chain's length, minutes when it grows with the square).
+WALK_BOUND = 30
 
 
 def run(*args):
@@ -196,9 +201,9 @@ class Fat32Check(unittest.TestCase):
         self.assertIn("lost=1", r.stdout)
         self.assertIn("problems=[]", r.stdout)
         # A case that knows how many clusters its failures lose says so: any other count fails.
-        self.assertEqual(run("check", "--faulted", "--expect-lost", "1", self.img).returncode, 0)
+        self.assertEqual(run("check", "--faulted", "--expect-lost", "1", "--expect-lost-second", "1", self.img).returncode, 0)
         for n in ("0", "2"):
-            r = run("check", "--faulted", "--expect-lost", n, self.img)
+            r = run("check", "--faulted", "--expect-lost", n, "--expect-lost-second", "1", self.img)
             self.assertEqual(r.returncode, 1, r.stdout)
             self.assertIn("lost clusters: 1", r.stdout)
 
@@ -216,15 +221,129 @@ class Fat32Check(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn("ONE.TXT: chain longer than size", r.stdout)
         # --allow-longer takes the exact number the case expects: one more or one fewer fails.
-        r = run("check", "--faulted", "--allow-longer", "1", self.img)
-        self.assertEqual(r.returncode, 0, r.stdout)
+        names = ("--expect-longer", "/ONE.TXT:+1", "--expect-longer-second", "/ONE.TXT:+1")
+        r = run("check", "--faulted", "--allow-longer", "1", *names, self.img)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("longer=1", r.stdout)
         self.assertIn("problems=[]", r.stdout)
         for n in ("0", "2"):
-            r = run("check", "--faulted", "--allow-longer", n, self.img)
+            r = run("check", "--faulted", "--allow-longer", n, *names, self.img)
             self.assertEqual(r.returncode, 1, r.stdout)
             self.assertIn("chains longer than size: 1", r.stdout)
             self.assertIn("/ONE.TXT", r.stdout)
+
+    def both(self, img, cluster, value):
+        for fat in (0, 1):
+            self.set_one_copy(img, cluster, value, fat)
+
+    def free(self, img, n):
+        got = []
+        for c in range(2, img.clusters + 2):
+            if img.fat_get(c) == 0 and img.fat_get(c, 1) == 0:
+                got.append(c)
+                if len(got) == n:
+                    break
+        return got
+
+    def test_longer_files_are_named_with_their_extra_clusters(self):
+        # WP-127 (B1): counts alone cannot tell the state a case expects from another one with
+        # the same counts. X: ONE.TXT one cluster longer, one cluster lost. Y: ONE.TXT sound,
+        # BIG.BIN two clusters longer (one of them the cluster X lost), another cluster lost.
+        pins = ("--allow-longer", "1", "--expect-longer", "/ONE.TXT:+1", "--expect-longer-second", "/ONE.TXT:+1",
+                "--expect-lost", "1", "--expect-lost-second", "1")
+        img = self.image()
+        a, b, c = self.free(img, 3)
+        one, big = self.first(img, "ONE.TXT"), img.chain(self.first(img, "BIG.BIN"))[-1]
+        self.both(img, one, a); self.both(img, a, EOC); self.both(img, b, EOC)
+        img.close()
+        r = run("check", "--faulted", *pins, self.img)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(" longer_files=/ONE.TXT:+1 ", r.stdout)
+        # The same file with another number of extra clusters is another state.
+        r = run("check", "--faulted", *[p.replace(":+1", ":+2") for p in pins], self.img)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("/ONE.TXT:+1", r.stdout)
+        img = self.image()
+        self.both(img, one, EOC); self.both(img, big, a); self.both(img, a, b); self.both(img, b, EOC); self.both(img, c, EOC)
+        img.close()
+        r = run("check", "--faulted", *pins, self.img)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("/BIG.BIN:+2", r.stdout)
+
+    def test_chain_longer_in_the_second_copy_alone(self):
+        # WP-127 (B4): a file longer than its size along the second copy alone, its extra
+        # cluster free in the first: no state a delete or a truncation leaves.
+        img = self.image()
+        (a,) = self.free(img, 1)
+        self.set_one_copy(img, self.first(img, "ONE.TXT"), a, 1)
+        self.set_one_copy(img, a, EOC, 1)
+        img.close()
+        r = run("check", "--faulted", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("FAT1: /ONE.TXT: chain longer than size", r.stdout)
+        # A case whose operation may leave it says which file and by how much.
+        r = run("check", "--faulted", "--expect-longer-second", "/ONE.TXT:+1", self.img)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(" second: lost=0 longer_files=/ONE.TXT:+1", r.stdout)
+        for other in ("/TWO.TXT:+1", "/ONE.TXT:+2", "-"):
+            r = run("check", "--faulted", "--expect-longer-second", other, self.img)
+            self.assertEqual(r.returncode, 1, (other, r.stdout + r.stderr))
+            self.assertIn("/ONE.TXT:+1", r.stdout, other)
+
+    def test_clusters_marked_in_the_second_copy_alone(self):
+        # WP-127 (B4): lost clusters are counted along the second copy too, and a case pins them.
+        img = self.image()
+        for c in self.free(img, 100):
+            self.set_one_copy(img, c, EOC, 1)
+        img.close()
+        r = run("check", "--faulted", self.img)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn(" lost=0 ", r.stdout)
+        self.assertIn(" second: lost=100 ", r.stdout)
+        r = run("check", "--faulted", "--expect-lost", "0", "--expect-lost-second", "100", self.img)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        for n in ("0", "99", "101"):
+            r = run("check", "--faulted", "--expect-lost", "0", "--expect-lost-second", n, self.img)
+            self.assertEqual(r.returncode, 1, (n, r.stdout + r.stderr))
+            self.assertIn(f"FAT1: lost clusters: 100 where {n} are expected", r.stdout)
+
+    def test_a_pin_on_the_first_copy_needs_the_second(self):
+        # WP-127 (B4): a case cannot pin the first copy and leave the second unjudged.
+        for opts in (("--expect-lost", "0"), ("--allow-longer", "0"), ("--expect-longer", "-"),
+                     ("--allow-longer", "0", "--expect-longer", "-")):
+            r = run("check", "--faulted", *opts, self.img)
+            self.assertEqual(r.returncode, 2, (opts, r.stdout + r.stderr))
+            self.assertIn("-second", r.stderr, opts)
+        whole = ("--allow-longer", "0", "--expect-longer", "-", "--expect-longer-second", "-",
+                 "--expect-lost", "0", "--expect-lost-second", "0")
+        r = run("check", "--faulted", *whole, self.img)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(" longer_files=- second: lost=0 longer_files=-", r.stdout)
+
+    def test_a_chain_of_the_volume_s_size_is_walked_in_time(self):
+        # WP-127 (C5): BIG.BIN takes every free cluster of the volume. The image is healthy.
+        img = self.image()
+        last = img.chain(self.first(img, "BIG.BIN"))[-1]
+        fat = bytearray(img.read_sector(img.fat_start, img.fatsz))
+        free = [c for c in range(2, img.clusters + 2) if not struct.unpack_from("<I", fat, c * 4)[0]]
+        for prev, c in zip([last] + free, free):
+            struct.pack_into("<I", fat, prev * 4, c)
+        struct.pack_into("<I", fat, free[-1] * 4, EOC)
+        for copy in (0, 1):
+            for s in range(img.fatsz):
+                img.write_sector(img.fat_start + copy * img.fatsz + s, bytes(fat[s * 512:(s + 1) * 512]))
+        info = bytearray(img.read_sector(img.fsinfo_sector))
+        struct.pack_into("<I", info, 488, 0)
+        img.write_sector(img.fsinfo_sector, bytes(info))
+        self.set_entry(img, "BIG.BIN", self.first(img, "BIG.BIN"), (3 + len(free)) * 512)
+        img.close()
+        self.assertGreater(len(free), 128000)
+        try:
+            r = subprocess.run([sys.executable, "-I", TOOL, "check", self.img], capture_output=True, text=True, timeout=WALK_BOUND)
+        except subprocess.TimeoutExpired:
+            self.fail(f"check took more than {WALK_BOUND} s on a chain of {3 + len(free)} clusters")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("free=0 ", r.stdout)
 
     def test_copies_differ(self):
         img = self.image()
