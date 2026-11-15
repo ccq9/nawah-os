@@ -6303,7 +6303,8 @@
     "test first: TST-M6-APP-REGISTRY-FUZZ on the host (a seeded corpus: over-long fields, bad and reserved ids, a missing ELF path, duplicate ids, non-UTF-8 names; never a panic; the well-formed examples accepted exactly); a SECURITY mutant for the reserved ids",
     "does not touch svcmgr or sessiond and grants no authority; adds no second to the M6 guest step (977 of 1080 s today)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation"
+    "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation",
+    "2026-11-15 activation estimate (services engineer in a worktree, host only; the manager integrating; an audit pass on the work and a second on its corrections before the single push): about 100 calls / 85 min across the roles, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first); host-only: no guest case and no second of the M6 guest step; red shown locally, no failing commit pushed"
    ],
    "acceptance": "TST-M6-APP-REGISTRY-FUZZ PASS on CI; apps.md v1 exists; ADR-0023 is proposed with the application model decided and the desktop questions left to WP-48 by name; the mutant killed by the M6 gate",
    "test_ids": [
@@ -6312,9 +6313,10 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
