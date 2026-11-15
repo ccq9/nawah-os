@@ -8626,8 +8626,8 @@ fn window_title_resize() -> ! {
     let d = &clients[0];
     let mut ev = Vec::new();
     let (vmo, entry) = kernel_surface(32, 32, format, 0x808080);
-    let r = drequest(d, b"CREATE_SURFACE 32 32", alloc::vec![entry], &mut ev);
-    let sid = String::from(r.strip_prefix("OK ").unwrap_or("0"));
+    let surface = drequest(d, b"CREATE_SURFACE 32 32", alloc::vec![entry], &mut ev);
+    let sid = String::from(surface.strip_prefix("OK ").unwrap_or("0"));
     let r = drequest(
         d,
         alloc::format!("CREATE_WINDOW {} x\" resized 9x9 role=\"button", sid).as_bytes(),
@@ -8671,7 +8671,9 @@ fn window_title_resize() -> ! {
         fail("the window was not widened by the keyboard or not closed")
     }
     sched::poll_until(sched::ticks() + 1_000, || false);
-    drop((list, closed, wid, sid, r, ev));
+    // Every reply is dropped before the balance: display_finish never returns, so a value
+    // still in scope here would be counted as a frame the test left behind.
+    drop((list, closed, wid, sid, surface, r, ev));
     drop((vmo, clients, admin));
     display_finish(
         name,
