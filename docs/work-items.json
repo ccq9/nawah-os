@@ -7604,7 +7604,8 @@
    "depends_on": [
     "WP-106",
     "WP-120",
-    "WP-126"
+    "WP-126",
+    "WP-128"
    ],
    "inputs": [
     "docs/contracts/files.md (v1.7, and v1.8 before WP-122 was named), docs/adr/0014-files.md items 8 and 9 (before WP-122 was named), RSK-027, RSK-033, the records of WP-105 and WP-118 and two inputs of WP-106 name WP-106 for giving lost clusters back, but WP-106's actions and acceptance cover only the refusal of a malformed boot sector at mount: until 2026-11-15 no planned package owned the recovery (found by WP-120's red team)",
@@ -7635,12 +7636,16 @@
     "test first, red seen locally before the fix: on the final image of a fault case the count of lost clusters is not 0 today and stays so after a restart; expected: after the recovery the host check finds no lost cluster, equal FAT copies and a right free count, and every name of the case still holds its own bytes; a SECURITY mutant for the order (the second copy is made equal before any free) and one for freeing a cluster a name reaches",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; sized at activation",
-    "2026-11-15: depends on WP-126 (the host image checker is this package's judge; RSK-037); the order stood in RSK-037's response plan and the plan's row only, and is written into depends_on after WP-126's second audit named the gap; WP-127 (the checker's second part) is proposed before this package too and is not in depends_on until the owner answers the order"
+    "2026-11-15: depends on WP-126 (the host image checker is this package's judge; RSK-037); the order stood in RSK-037's response plan and the plan's row only, and is written into depends_on after WP-126's second audit named the gap; WP-127 (the checker's second part) is proposed before this package too and is not in depends_on until the owner answers the order",
+    "2026-11-15: the manager's order, written into depends_on where a package is judged by what an earlier one adds to the checker (no question is registered for the owner; the owner may reorder at any time): WP-127 (counts by identity, the second copy counted) before WP-124; WP-128 (entries, the bad mark) before WP-122; WP-129 (FSInfo's backup, the boot sector) after WP-127; by data risk: WP-127, WP-124, WP-128, WP-123, WP-122, with WP-106 ready at any point and WP-129 before WP-123 if its activation finds that FSInfo's judgement needs it",
+    "2026-11-15: TST-M3-FAT32-FAULT-UNLINK and TST-M3-FAT32-FAULT-TRUNCATE added to test_ids: the acceptance speaks of what a delete and a truncation leave, and the two cases were not named (the planner's reading)"
    ],
    "acceptance": "after a failed delete, truncation or write and a restart, the system gives the lost clusters back without freeing a cluster a name reaches and without saving their bytes, shown by a case whose host check finds no lost cluster, equal FAT copies and a right free count on CI; files.md (the version free at the merge) states when the recovery runs and what it does; the mutants killed",
    "test_ids": [
     "TST-M3-FAT32-TOOL",
-    "TST-M3-FAT32-FAULT-WRITE"
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
@@ -7690,7 +7695,8 @@
     "test first, red seen locally before the fix: a counter in the test kernel shows a flush between the entry write and the first free of a delete and of a truncation (today: none); the fault sweeps expect a delete and a truncation whose only refused writes are FSInfo's to answer success (today: an I/O error); that a device cache reorders writes cannot be imitated in the lab and the contract says so; a SECURITY mutant that drops the flush",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; sized at activation",
-    "2026-11-15: depends on WP-126 (the host image checker is this package's judge; RSK-037); the order stood in RSK-037's response plan and the plan's row only, and is written into depends_on after WP-126's second audit named the gap; WP-127 (the checker's second part) is proposed before this package too and is not in depends_on until the owner answers the order"
+    "2026-11-15: depends on WP-126 (the host image checker is this package's judge; RSK-037); the order stood in RSK-037's response plan and the plan's row only, and is written into depends_on after WP-126's second audit named the gap; WP-127 (the checker's second part) is proposed before this package too and is not in depends_on until the owner answers the order",
+    "2026-11-15: the manager's order, written into depends_on where a package is judged by what an earlier one adds to the checker (no question is registered for the owner; the owner may reorder at any time): WP-127 (counts by identity, the second copy counted) before WP-124; WP-128 (entries, the bad mark) before WP-122; WP-129 (FSInfo's backup, the boot sector) after WP-127; by data risk: WP-127, WP-124, WP-128, WP-123, WP-122, with WP-106 ready at any point and WP-129 before WP-123 if its activation finds that FSInfo's judgement needs it"
    ],
    "acceptance": "a flush separates the entry write from the frees in delete and truncate (counted in the test kernel; reordering in a device cache is not shown by the lab and the contract says so); a failed FSInfo write no longer fails an operation; files.md states it (the version free at the merge); the mutants killed",
    "test_ids": [
@@ -7715,7 +7721,8 @@
    ],
    "depends_on": [
     "WP-120",
-    "WP-126"
+    "WP-126",
+    "WP-127"
    ],
    "inputs": [
     "from WP-120's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): the test kernel's hook refuses write N and every write after it, so no case shows that fat_set stops at its first refused write: with `block::write(sector, &s)?` in fat_set turned into an ignored result, every fat_set of the fault cases is followed by another checked write that is refused too (the zeroed sector in alloc_cluster, the data sector in write, the entry in create, FSInfo in free_chain), and the image and the answer stay what they are; on a disk that refuses one write and takes the next, a mark refused in the first copy and ignored leaves the cluster free there for another file to take (two names on one cluster) and a refused link leaves a chain shorter than its size; a variant that checks only the first copy's write brings WP-120's defect back and M219 does not see it; proposed: a mode of the hook that refuses write N alone, a sweep with it, and a SECURITY mutant for each of the two",
@@ -7744,7 +7751,8 @@
     "test first, red seen locally: the present code is expected to pass the new sweeps; the red is the mutants': one that ignores a refused FAT write and one that checks only the first copy's write must each fail a case that passes without them; if the present code fails a sweep, that failure is the package's first finding and is fixed test first",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; sized at activation",
-    "2026-11-15: depends on WP-126 (the host image checker is this package's judge; RSK-037); the order stood in RSK-037's response plan and the plan's row only, and is written into depends_on after WP-126's second audit named the gap; WP-127 (the checker's second part) is proposed before this package too and is not in depends_on until the owner answers the order"
+    "2026-11-15: depends on WP-126 (the host image checker is this package's judge; RSK-037); the order stood in RSK-037's response plan and the plan's row only, and is written into depends_on after WP-126's second audit named the gap; WP-127 (the checker's second part) is proposed before this package too and is not in depends_on until the owner answers the order",
+    "2026-11-15: the manager's order, written into depends_on where a package is judged by what an earlier one adds to the checker (no question is registered for the owner; the owner may reorder at any time): WP-127 (counts by identity, the second copy counted) before WP-124; WP-128 (entries, the bad mark) before WP-122; WP-129 (FSInfo's backup, the boot sector) after WP-127; by data risk: WP-127, WP-124, WP-128, WP-123, WP-122, with WP-106 ready at any point and WP-129 before WP-123 if its activation finds that FSInfo's judgement needs it"
    ],
    "acceptance": "with the hook refusing one write alone, for every write of a delete, a truncation, a new file's write and an append, no name reaches a free cluster, no two names share one and no chain is shorter than its size in either FAT copy, and the call answers an I/O error, shown by the sweeps and the host check on CI; a mutant that ignores a refused FAT write and one that checks only the first copy's write are killed; files.md (the version free at the merge) states what a single refused write leaves",
    "test_ids": [
@@ -7924,7 +7932,8 @@
     "design to decide in the package (2-3 options with trade-offs): which findings are strict in both modes, which become counts a case pins (the second copy's lost and longer chains; the identity of the longer files), and which belong to the kernel's packages (WP-106 for what the mount refuses, WP-122 for the bad mark, WP-123 for the backup FSInfo) and are moved there by a dated line; a changed option of a fault case's host check is a tightening and is written as one",
     "test first, red seen locally before the fix: a host case on a crafted image for every input taken, each leaving the checker with 0 today; a SECURITY tool mutant for each new finding; the guest cases that use the checker run again; a pinned number may change only by tightening, with the image CI showed",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: unmeasured; sized at activation; seven groups of inputs, so a split by group (counts and the second copy; entries; the boot sector and FSInfo) is expected"
+    "2026-11-15 estimate: unmeasured; sized at activation; seven groups of inputs, so a split by group (counts and the second copy; entries; the boot sector and FSInfo) is expected",
+    "2026-11-15 activation estimate, design and the fate of every input (the manager, from the planner's reading of the same day at a847ee438 and a reading of cmd_check and tree_findings in tools/fat32.py and of the four fault cases' host checks; a host package with a change of four guest cases' host checks; an audit pass and a red-team pass before the single push): about 85 calls / 80 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first); if the second copy's numbers do not settle in two local runs, B4 is split off before the push. Taken into the acceptance: B1 (the files whose chain is longer than their size are named with their extra clusters, so the red team's two images get opposite verdicts), B4 (lost clusters and longer chains are counted along the second FAT copy too and a case pins each) and C5 (the walk's cost on a chain of the volume's size). Moved by this line: B2, B3 and B5 to WP-128, B6 and B7 to WP-129 (both planned, both depending on this item); the earlier action line that sent B5 to WP-122, B6 to WP-123 and B7 to WP-106 is replaced by this: they change the checker, not the kernel. Not taken: the alternative of B1 that pins the set of lost clusters (their numbers follow the allocator; the count stays pinned). Design, three options: (1) new options that take names: `--expect-longer NAME:+K,...` beside the counts, the tail line printing the names and each copy's counts, and the four fault cases' host checks pinning them (chosen: the verdict is the checker's and a host case can show it); (2) the tail line alone prints the names and the case compares text (the verdict would sit in the lab's text match, which no host case of the tool shows); (3) a digest of both FAT copies pinned by the case (it would pin the allocator's numbers and fail for any harmless change). The acceptance stands as written. The pinned numbers of the four cases change only by tightening: every number they pin today stays and the names, the extra clusters and the second copy's counts are added, with the numbers CI's images give; the second copy's counts were never shown by CI (the tail prints the first copy's), so they are derived locally first and CI judges"
    ],
    "acceptance": "for every input of this item taken at activation, tools/fat32.py check names the damage in the mode the input names, shown by a host case on CI that fails before the fix; the fault cases' host checks tell the expected state from the opposite one the red team built (B1), and count the second copy (B4); a SECURITY tool mutant for each new finding is killed; every input not taken is moved to a named package or refuted by a dated line; no fault case's condition is relaxed",
    "test_ids": [
@@ -7936,7 +7945,128 @@
     "TST-M6-MUTANTS"
    ],
    "commands": [
-    "python3 tools/project.py test --target host --suite M3"
+    "python3 tools/project.py test --target host --suite M3",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "active",
+   "status_history": [
+    "planned",
+    "active"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-128",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-127"
+   ],
+   "inputs": [
+    "moved from WP-127 at its activation on 2026-11-15 (found by WP-126's red team on crafted 64 MiB images in a scratch folder at c44e3855c; no CI evidence; to check at activation, and each input is then taken into the acceptance, moved to a named package, or refuted)",
+    "B2 (run): a directory that lost its directory bit is only a chain longer than its size and passes with `--allow-longer 1`; a file that gained the directory bit over zeroed data passes in both modes; a directory whose size field is 99999 passes in both modes",
+    "B3 (run): pass in both modes: two entries of one name in a directory; an entry after the end marker 0x00, an entry with the volume-label attribute, and an entry whose name starts with a dot, each sharing ONE.TXT's cluster; `.` and `..` with wrong clusters or deleted; an orphan long-name entry; a name with bytes the kernel refuses. The kernel skips the same entries (kernel/src/fs/fat32.rs, the directory walk), so most need a crafted image; the latent harm is a shared cluster",
+    "B5 (run): a lost cluster marked 0x0FFFFFF7 (bad) is not counted as lost and passes with `--faulted`; in plain mode it failed only through FSInfo's count, so with a matching count it would pass (by reading). A recovery that marked clusters bad would meet `no lost cluster` (WP-122)",
+    "from the planner's reading on 2026-11-15 (by reading, nothing run; to check at activation): what could make a healthy lab image fail if these findings are made strict: a deleted entry (0xE5) must stay unwalked, or its old chain is called shared; the volume label in the root has a first cluster of 0 and `..` is 0 under the root (tools/fat32.py, the image builder); whether the kernel writes a directory's size field when the directory grows is unverified; about 28 guest cases call plain `check` in platform/pc-qemu/target.json",
+    "tools/fat32.py (tree_findings: the entries it skips and the fields it reads); kernel/src/fs/fat32.rs (the directory walk skips the same entries); RSK-037"
+   ],
+   "files": [
+    "tools/fat32.py",
+    "tests/test_fat32_tool.py",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "فاحص الصورة المضيف، الجزء الثالث: الإدخالات: حجم المجلد وبت المجلد، الأسماء المكررة، الإدخالات المتخطاة التي تشارك عنقودًا، `.` و`..`، وعلامة العنقود التالف (من الفريق الأحمر لـWP-126، مفصولة من WP-127)",
+    "split from WP-127 at its activation (2026-11-15): strict findings in both modes about entries, which the lost-cluster recovery (WP-122) will be judged by; they change the checker, not the kernel, so they are a checker package and not inputs of WP-106 or WP-122",
+    "design to decide in the package (2-3 options with trade-offs): which entries the walk still skips and which it reads for their first cluster only; whether a bad-cluster mark is a strict finding always or a count a case pins (the lab builds no bad cluster)",
+    "test first, red seen locally before the fix: a host case on a crafted image for every input taken, each leaving the checker with 0 today, in both modes; a healthy image with a deleted entry, a volume label and a subdirectory stays healthy; a SECURITY tool mutant for each new finding; every guest case that calls the checker runs again",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; the planner's reading: about 90 calls / 85 min; sized at activation"
+   ],
+   "acceptance": "for every input of this item taken at activation, tools/fat32.py check names the damage in both modes, shown by a host case on CI that fails before the fix; a healthy image with a deleted entry, a volume label and a subdirectory passes; a SECURITY tool mutant for each new finding is killed; every guest case that calls the checker keeps its verdict and its pinned numbers; every input not taken is moved to a named package or refuted by a dated line",
+   "test_ids": [
+    "TST-M3-FAT32-TOOL",
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE",
+    "TST-M3-FAT32-STOP",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M3",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-129",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-127"
+   ],
+   "inputs": [
+    "moved from WP-127 at its activation on 2026-11-15 (found by WP-126's red team on crafted 64 MiB images in a scratch folder at c44e3855c; no CI evidence; to check at activation, and each input is then taken into the acceptance, moved to a named package, or refuted)",
+    "B6 (run): pass in both modes: FAT[0] and FAT[1] zero in both copies; the backup FSInfo sector (7) full of garbage (the checker reads the main one only; the kernel writes both: WP-123); reserved sectors 2..5 and 8..31 full of garbage; BIG.BIN's data zeroed (`check` reads no file content). With `--faulted`: a free count of 0x7FFFFFFF, more than the volume, and a next-free hint of 0xDEADBEEF",
+    "B7 (by reading): the checker does not hold the boot sector to the bounds the kernel sets at mount (at least 65525 clusters, a FAT that holds (clusters+2)*4 bytes, 1 or 2 copies, a root cluster inside the volume; kernel/src/fs/fat32.rs, the mount); a root cluster of 0 makes everything lost with no name; on a volume with one FAT copy plain mode compares the FAT with data sectors and refuses a healthy image",
+    "from the planner's reading on 2026-11-15 (by reading, nothing run; to check at activation): the kernel writes the next-free hint as the last cluster taken plus one, which can equal clusters+2, and writes the two FSInfo sectors by two separate writes (kernel/src/fs/fat32.rs, the FSInfo update), so in a fault case the backup may lag the main one: a strict comparison would fail a state a refused write leaves; an image with one FAT copy must be accepted in plain mode; the item of B6 on a file's zeroed data is likely refuted (`check` judges structure; the cases read the bytes themselves)",
+    "tools/fat32.py (cmd_check: the boot sector, FSInfo); kernel/src/fs/fat32.rs (the mount's bounds; WP-106 moves them); RSK-037"
+   ],
+   "files": [
+    "tools/fat32.py",
+    "tests/test_fat32_tool.py",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "فاحص الصورة المضيف، الجزء الرابع: نسخة FSInfo الاحتياطية وعدّادها، FAT[0] وFAT[1]، وحدود قطاع الإقلاع وعنقود الجذر، وصورة بنسخة FAT واحدة (من الفريق الأحمر لـWP-126، مفصولة من WP-127)",
+    "split from WP-127 at its activation (2026-11-15): what the checker reads outside the tree; it changes the checker, not the kernel; WP-106 (the mount refuses a malformed boot sector) and WP-123 (FSInfo) are the kernel's side, and if WP-106 moves a bound the checker follows it there",
+    "design to decide in the package (2-3 options with trade-offs): which of these are strict in both modes and which only in plain mode (what a refused write may leave: a backup FSInfo behind the main one, a stale count); the bounds taken from the kernel's mount as it is at activation",
+    "test first, red seen locally before the fix: a host case on a crafted image for every input taken, each leaving the checker with 0 today in the mode the input names; an image with one FAT copy passes plain mode (it fails today); a SECURITY tool mutant for each new finding; every guest case that calls the checker runs again",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; the planner's reading: about 60 calls / 60 min; sized at activation"
+   ],
+   "acceptance": "for every input of this item taken at activation, tools/fat32.py check names the damage in the mode the input names, shown by a host case on CI that fails before the fix; a healthy image with one FAT copy passes plain mode; a SECURITY tool mutant for each new finding is killed; every guest case that calls the checker keeps its verdict and its pinned numbers; every input not taken is moved to a named package or refuted by a dated line",
+   "test_ids": [
+    "TST-M3-FAT32-TOOL",
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE",
+    "TST-M3-FAT32-STOP",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M3",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
    "status": "planned",
    "status_history": [
