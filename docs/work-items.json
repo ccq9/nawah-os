@@ -3534,7 +3534,8 @@
     "scenario at the end: in the shell, a folder with an Arabic name, a file moved into it, reboot, names and contents intact",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10: files.md v1.4 renumbered to files.md v1.5: WP-78 takes files.md v1.4 at merge per PLAN.md:132",
-    "2026-11-15 (audit of WP-105): files.md v1.5 is taken by WP-105 (the order of delete and truncate), and WP-118 and WP-117 will each take a version after it; the files.md number named in the lines above no longer holds: this package takes the files.md version that is free at its merge"
+    "2026-11-15 (audit of WP-105): files.md v1.5 is taken by WP-105 (the order of delete and truncate), and WP-118 and WP-117 will each take a version after it; the files.md number named in the lines above no longer holds: this package takes the files.md version that is free at its merge",
+    "2026-11-15 (WP-118's red team): TST-M6-DISK-FULL wants the free space back after a clean-up, which lost clusters make impossible; what a write that fills the disk leaves is decided and tested in WP-121 first"
    ],
    "acceptance": "TST-M6-LFN, RENAME, RENAME-CRASH, DISK-FULL and FAT-FUZZ PASS on CI; REQ-M6-001 verified in scope",
    "test_ids": [
@@ -6682,7 +6683,8 @@
     "kernel/src/fs/fat32.rs mount: reserved + fats * fat_sectors and clusters + 2 in u32; release builds wrap (overflow-checks off), the test kernel panics (overflow-checks on)",
     "Cargo.toml profiles",
     "RSK-027",
-    "from WP-105's red team (2026-11-15, by reading, to check at activation): clusters lost by a failed delete or truncation are never given back and are not shown anywhere (free_clusters counts them as used; FSInfo's count stays stale because fsinfo_adjust works by difference; nothing is checked at mount); free_chain follows a chain that is already cross-linked into another file's clusters and frees them; free_chain stops silently at CHAIN_MAX"
+    "from WP-105's red team (2026-11-15, by reading, to check at activation): clusters lost by a failed delete or truncation are never given back and are not shown anywhere (free_clusters counts them as used; FSInfo's count stays stale because fsinfo_adjust works by difference; nothing is checked at mount); free_chain follows a chain that is already cross-linked into another file's clusters and frees them; free_chain stops silently at CHAIN_MAX",
+    "from WP-118's red team (2026-11-15, by reading, to check at activation): lost clusters hold the bytes of the calls that failed (config's stores under /SYSTEM among them); a recovery must free them, never save them into files a process can read, and must copy the first FAT copy over the second before it frees"
    ],
    "files": [
     "kernel/src/fs/fat32.rs",
@@ -7300,7 +7302,6 @@
    ],
    "files": [
     "kernel/src/fs/fat32.rs",
-    "kernel/src/fs/vfs.rs",
     "kernel/src/ktest.rs",
     "platform/pc-qemu/target.json",
     "tests/mutants.py",
@@ -7309,7 +7310,10 @@
     "docs/adr/0014-files.md",
     "docs/PLAN-REVERSE.md",
     "docs/requirements.json",
-    "docs/risks.json"
+    "docs/risks.json",
+    "tools/fat32.py",
+    "tests/test_fat32_tool.py",
+    "tools/project.py"
    ],
    "contract_refs": [
     "docs/contracts/files.md"
@@ -7321,7 +7325,8 @@
     "test first, red seen locally before the fix: a swept case with the fault hook refusing write N and every later one until the call has answered (inside one call that is one failure: every write is checked) for every N of an append to a new file; the host checks then run with --faulted --allow-longer (check ignores --allow-longer without --faulted), since a failed write may leave a chain longer than the size: after each failed call the node equals the stored entry, then sync, close, reopen: stat and read agree; expected today: the node differs for the later N and sync answers Ok on a stale entry; the host checker on the image; a SECURITY mutant: the node updated before the stored entry",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: about 35 calls by the engineer's brief, unmeasured; sized at activation",
-    "2026-11-15 activation estimate and design (the manager, from the kernel engineer's brief audited on the same day and a reading of fat32.rs write and vfs::write at ee03d4306; the local QEMU lab; an audit pass and a red-team pass before the single push): about 50 calls / 60 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first); the fault hook, the second-boot check and the host checker exist since WP-105. Design chosen from the three options: write works on a staged copy of the entry and the shared node takes it only after store_entry succeeds, so after any failed call the node equals the stored entry; a failed call then loses the clusters it allocated (a new file) or leaves the chain longer than the size (an existing file; a later append takes the cluster it finds there), and a write that fails inside the old size leaves torn bytes, which no order removes: the contract will say so. Not chosen: a dirty mark written back by sync and close (I/O and errors inside Drop) and poisoning the node. Test first, red seen locally: two sweeps with the block layer's hook, one appending three clusters to a new file and one appending a cluster to an existing one-cluster file; expected by reading before the fix: the node differs from the stored entry for every failure after the first allocation. The host checks run with --faulted --allow-longer. The contract takes the files.md version free at the merge (v1.6 today)"
+    "2026-11-15 activation estimate and design (the manager, from the kernel engineer's brief audited on the same day and a reading of fat32.rs write and vfs::write at ee03d4306; the local QEMU lab; an audit pass and a red-team pass before the single push): about 50 calls / 60 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first); the fault hook, the second-boot check and the host checker exist since WP-105. Design chosen from the three options: write works on a staged copy of the entry and the shared node takes it only after store_entry succeeds, so after any failed call the node equals the stored entry; a failed call then loses the clusters it allocated (a new file) or leaves the chain longer than the size (an existing file; a later append takes the cluster it finds there), and a write that fails inside the old size leaves torn bytes, which no order removes: the contract will say so. Not chosen: a dirty mark written back by sync and close (I/O and errors inside Drop) and poisoning the node. Test first, red seen locally: two sweeps with the block layer's hook, one appending three clusters to a new file and one appending a cluster to an existing one-cluster file; expected by reading before the fix: the node differs from the stored entry for every failure after the first allocation. The host checks run with --faulted --allow-longer. The contract takes the files.md version free at the merge (v1.6 today)",
+    "2026-11-15 corrections after the audit and the red team (both by reading; nothing of theirs run): (1) the sentence `what the failed call allocated is lost (a new file) or left on the chain past the size (an existing file)` was wrong for an existing file whose allocation or first-copy link failed: there the cluster is lost too; the contract, the decision and the comment now say so, and `a later append takes it` is marked as not shown (WP-120); (2) the activation line's forecast `the node differs for every failure after the first allocation` held for the new file (18 of 23) and not for the append (1 of 9: only the refused entry write, since an existing file's node changes only in its size); (3) the acceptance's clause on sync was shown by inference only: after each failed write the sweeps now sync and compare stat with the node (stale_sync=0), and show that the open's position did not move (pos_moved=0); (4) the host checks accepted a longer chain on any file and pinned no count: they now name the exact numbers (three longer chains, 51 lost clusters; nine lost clusters for each of WP-105's cases); (5) a full disk loses the clusters a call took, with no device fault and for any process: older than this package and now the outcome of every such call; said in the contract and the decision, registered as RSK-033 and WP-121, the next package; (6) not shown and said in the oracle: a write of part of a sector, clusters of more than one sector, an overwrite that extends, a close and a new open after each failure; (7) a design constraint for WP-106 and one more input for WP-120 are written there"
    ],
    "acceptance": "no failure point of a write (every write N, swept by the fault hook) leaves a directory entry that points at a free cluster, a shared node that differs from the stored entry after a failed call, or a sync that reports a stable file whose entry is stale, shown by the new case and the host image check on CI; files.md (the version free at the merge) states what a failed write leaves; the mutant killed",
    "test_ids": [
@@ -7395,7 +7400,8 @@
     "kernel/src/fs/fat32.rs fat_set: the copies are written in order, the first then the second, and the call ends at the first error; the kernel reads the first copy only (fat_get, alloc_cluster, free_clusters)",
     "kernel/src/fs/fat32.rs write: when an append walks the chain and finds a next cluster in the first copy it goes on through it and writes no link, so a link whose second-copy write was refused is never written there",
     "seen locally on 2026-11-15 (a scratch experiment during WP-118, not committed and no CI evidence): with the append of the second sweep of TST-M3-FAT32-FAULT-WRITE made again after each failure, all nine appends succeed and the host checker reports `FAT1: /X07.TXT: chain shorter than size` (N=7 is the refused write of the link in the second copy); fsck.fat reads the first copy and says only that the copies differ",
-    "tools/fat32.py check --faulted walks the tree along both copies; RSK-027"
+    "tools/fat32.py check --faulted walks the tree along both copies; RSK-027",
+    "from WP-118's audit (2026-11-15, by reading): create has the same pattern when it grows a directory (kernel/src/fs/fat32.rs create: the new cluster is linked with fat_set and a later create finds it through the first copy): a link refused in the second copy is never written there either"
    ],
    "files": [
     "kernel/src/fs/fat32.rs",
@@ -7415,13 +7421,67 @@
     "design to decide in the package (2-3 options with trade-offs): write the copy the kernel reads last (every partial fat_set then leaves what the kernel sees unchanged, and the next fat_set of that entry rewrites all copies) against writing a found link again in every copy when an append goes on through it (two writes more per extended cluster) against comparing the copies at mount and repairing (with WP-106)",
     "test first, red seen locally before the fix: the second sweep of TST-M3-FAT32-FAULT-WRITE makes its append again after each failure and the host check with --faulted must find no name whose chain is shorter than its size in either copy: today `FAT1: /X07.TXT: chain shorter than size`; the delete and truncate sweeps of WP-105 run again because the order of FAT writes they count may change; a SECURITY mutant for the order",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: about 35 calls, unmeasured; sized at activation"
+    "2026-11-15 estimate: about 35 calls, unmeasured; sized at activation",
+    "2026-11-15 (WP-118's red team, by reading): with the copy the kernel reads written last, a failure between the two copies leaves, for a link, the second copy linked and the first not (the next append links another cluster in both and the first one is lost in both); for an allocation, the second copy marked and the first free (the kernel takes the cluster again); for a free, the second copy free and the first marked (no name reaches it since WP-105): no state where a name reaches a free cluster; whatever recovers lost clusters (WP-106) must copy the first copy over the second before it frees, or the second copy keeps a link to a cluster another file may take"
    ],
    "acceptance": "after a failed write of a FAT link an append made again leaves no name whose chain is shorter than its size in either FAT copy, shown by the sweep with the append made again and the host check on CI; the delete and truncate sweeps still show no name on a free cluster; files.md (the version free at the merge) states the order of the copies; the mutant killed",
    "test_ids": [
     "TST-M3-FAT32-FAULT-WRITE",
     "TST-M3-FAT32-FAULT-UNLINK",
     "TST-M3-FAT32-FAULT-TRUNCATE"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-121",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-118"
+   ],
+   "inputs": [
+    "kernel/src/fs/fat32.rs write: when alloc_cluster answers DiskFull in the middle of a call the `?` returns before store_entry, so the clusters the call took before the volume ran out stay marked with no name that reaches them (a new file: the whole chain; an existing file: what was not linked); DiskFull is no I/O error and needs no device fault",
+    "kernel/src/syscall/mod.rs: a path outside /SYSTEM needs no authority to create and write a file, a call writes up to 64 KiB (128 clusters on the lab volume), and DiskFull is answered as ERR_NO_SPACE",
+    "nothing in the system gives the clusters back: O_TRUNCATE skips a file of size 0 (kernel/src/fs/vfs.rs), unlink frees from the stored first cluster (0), nothing is repaired at mount",
+    "before WP-118 the node kept the first cluster, so a retry through the same open went on along the chain, and a close lost it as today: the loss is older than WP-118 and is now the outcome of every such call",
+    "no case reaches DiskFull (the lab volume has about 125000 free clusters and alloc_cluster scans the FAT from its start for each one); WP-52 plans TST-M6-DISK-FULL, whose oracle wants the free space back after a clean-up",
+    "RSK-033; files.md v1.6; docs/adr/0014-files.md item 7"
+   ],
+   "files": [
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32: كتابة يمتلئ القرص في أثنائها لا تضيّع عناقيد: يُخزَّن ما كُتب ويُعاد عدد أقصر، أو يُحرَّر ما أُخذ (من الفريق الأحمر والمدقق في WP-118، 2026-11-15)",
+    "found by the security red team and by the auditor while reading WP-118 on 2026-11-15 (by reading; nothing run, no CI evidence; the manager read the same lines): any process can lose the volume's free space for good, with no device fault, by writing a new file until the disk is full and repeating: each call that ends in DiskFull loses the clusters it took; the loss outlives a reboot and only a repair tool outside the system gives it back",
+    "design to decide in the package (2-3 options with trade-offs): store what was written and answer the shorter count when the disk fills in the middle of a call (the bytes are on the disk and the count says so; the next call answers no space with nothing taken; callers must treat a short count as they treat it elsewhere) against freeing what the call took and answering no space with the file as it was (all or nothing; more writes on the failure path, each of which can fail) against asking for the free count before taking anything (a scan of the FAT for every call)",
+    "test first, red seen locally before the fix: a test-kernel hook that makes alloc_cluster answer DiskFull after K allocations (filling the lab volume for real is too slow: every allocation scans the FAT from its start), then a write that needs more: expected: no lost cluster on the host check (--expect-lost 0) and the answer the chosen option states; today: the clusters taken before the limit are lost; a SECURITY mutant that drops the handling",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: about 40 calls, unmeasured; sized at activation"
+   ],
+   "acceptance": "a write that runs out of space in the middle of a call loses no cluster and tells its caller what was written or that nothing was, shown by a case with the host check counting zero lost clusters on CI; files.md (the version free at the merge) states the answer; the mutant killed",
+   "test_ids": [
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M3-FAT32-WRITE"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
