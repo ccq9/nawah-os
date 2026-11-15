@@ -2635,6 +2635,84 @@
         ]
       },
       {
+        "id": "TST-M3-FAT32-STOP",
+        "test_id": "TST-M3-FAT32-STOP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "phases": [
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=fat32_stop"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=fat32_stop",
+              "OSX|${BUILD_ID}|kernel|blk|stopped|op=write|",
+              "OSX|${BUILD_ID}|kernel|fs|stopped|code=K_E_FS_IO",
+              "OSX|${BUILD_ID}|ktest|fat32_stop|unlink=K_E_FS_IO|end_read=K_E_FS_IO|seek=K_E_FS_IO|empty_write=K_E_FS_IO|inner_read=K_E_FS_IO|stat=K_E_FS_IO|create=K_E_FS_IO|sync=K_E_FS_IO|free=K_E_FS_IO|live_files=0",
+              "|ktest|pass|after the disk stops every file call answers an I/O error"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=fat32_stop_check"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=fat32_stop_check",
+              "OSX|${BUILD_ID}|ktest|fat32_stop_check|a_gone=1|b_whole=1|after_ok=1|same_after=1",
+              "|ktest|pass|after the restart the stopped delete left no name and the other file whole"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          }
+        ],
+        "oracle": "REQ-M3-007, WP-117 (RSK-027; ADR-0013 decision 9; files.md v1.9): once the disk has stopped, every file call answers an I/O error and none answers from memory, and the file system says so once. First boot: file A (three clusters) is written and closed; file B (two clusters) is open twice, one position at its end and one at 0. The test kernel's hook withholds from the device the second write of A's delete, the first to a FAT copy (the entry is written before it), so the driver's own timeout branch answers that request and stops the disk: one line kernel|blk|stopped, and the delete answers an I/O error (unlink=K_E_FS_IO). Then eight calls: a read at the end of B, a seek of that open to 0 and a write of no bytes, the three that ask nothing of the disk (end_read=K_E_FS_IO, seek=K_E_FS_IO, empty_write=K_E_FS_IO); a read inside B through the other open, a stat, a create, a sync and the count of free clusters (inner_read, stat, create, sync, free: K_E_FS_IO each); no open file is left (live_files=0); the file system writes one line kernel|fs|stopped, and no more than one of each stop line appears in the case. Second boot on the same image, a kernel with no memory of the first: A's name is gone and B holds its 1024 bytes (a_gone=1, b_whole=1); a new three-cluster file reads back its own bytes and changes neither (after_ok=1, same_after=1). Host, once, on the final image: tools/fat32.py check --faulted --expect-lost 3 (the tree is walked along both FAT copies: no name reaches a free cluster, no two names share one, no chain is shorter than its size in either copy and none is longer in the first; exactly three clusters are lost, A's, which the withheld write never freed) and tools/fat32.py fsck-faulted (fsck.fat -n, every message named). Not shown: a write whose request reached the device before the timeout (its outcome is unknown; the hook withholds the request, so here it was not written), a stop in the middle of a write or a truncation, calls of other processes that were waiting when the disk stopped, the ABI's ERR_IO itself (the case shows the file system's answer; the system-call layer maps it), a restart of the device without a reboot (there is none: ADR-0013 decision 9), a flush between the entry write and the frees and a failed FSInfo write (WP-123); both boots exit 33.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "|ktest|pass|after the disk stops every file call answers an I/O error",
+          "|ktest|pass|after the restart the stopped delete left no name and the other file whole"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "max_counts": {
+          "|boot|start|": 2,
+          "|kernel|blk|stopped|": 1,
+          "|kernel|fs|stopped|": 1
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "--faulted",
+            "--expect-lost",
+            "3",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "fsck-faulted",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
         "id": "TST-M3-FILE-ROUNDTRIP",
         "test_id": "TST-M3-FILE-ROUNDTRIP",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

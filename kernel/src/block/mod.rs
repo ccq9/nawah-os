@@ -97,6 +97,20 @@ mod fault {
 
     static WRITES: AtomicU32 = AtomicU32::new(0);
     static FAIL_FROM: AtomicU32 = AtomicU32::new(u32::MAX);
+    static TIMEOUT_AT: AtomicU32 = AtomicU32::new(u32::MAX);
+
+    /// True, once, when the write just counted is the one chosen to time out.
+    pub fn times_out() -> bool {
+        let hit = WRITES.load(Ordering::SeqCst) == TIMEOUT_AT.load(Ordering::SeqCst);
+        if hit {
+            TIMEOUT_AT.store(u32::MAX, Ordering::SeqCst);
+        }
+        hit
+    }
+
+    pub fn arm_timeout_at(nth: u32) {
+        TIMEOUT_AT.store(writes().saturating_add(nth), Ordering::SeqCst);
+    }
 
     /// Counts one write; true when it is refused.
     pub fn refuses() -> bool {
@@ -135,12 +149,24 @@ pub fn disarm_write_fault() {
     fault::disarm();
 }
 
+/// Test kernel only (TST-M3-FAT32-STOP): the `nth` write from now (1 is the next one) is
+/// withheld from the device, so the driver's own timeout branch answers it and stops the disk
+/// in the middle of a file-system call.
+#[cfg(feature = "ktest")]
+pub fn arm_timeout_at_write(nth: u32) {
+    fault::arm_timeout_at(nth);
+}
+
 /// Used by the test kernel until the file system (WP-18 part 2) writes through it.
 #[cfg_attr(not(feature = "ktest"), allow(dead_code))]
 pub fn write(sector: u64, buf: &[u8]) -> Result<(), BlkError> {
     #[cfg(feature = "ktest")]
     if fault::refuses() {
         return Err(BlkError::Io(0xEE));
+    }
+    #[cfg(feature = "ktest")]
+    if fault::times_out() {
+        crate::drivers::virtio_blk::arm_timeout();
     }
     let r = DEVICE
         .lock()

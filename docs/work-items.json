@@ -7264,7 +7264,11 @@
     "tests/mutants.py",
     "docs/tests.json",
     "docs/contracts/files.md",
-    "docs/adr/0014-files.md"
+    "docs/adr/0014-files.md",
+    "docs/requirements.json",
+    "docs/PLAN-REVERSE.md",
+    "kernel/src/drivers/virtio_blk.rs",
+    "docs/adr/0013-storage.md"
    ],
    "contract_refs": [
     "docs/contracts/files.md"
@@ -7286,7 +7290,9 @@
     "TST-M3-BLK-TIMEOUT",
     "TST-M3-FAT32-PERSIST",
     "TST-M3-FAT32-FAULT-UNLINK",
-    "TST-M3-FAT32-FAULT-TRUNCATE"
+    "TST-M3-FAT32-FAULT-TRUNCATE",
+    "TST-M3-FAT32-STOP",
+    "TST-M6-MUTANTS"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"

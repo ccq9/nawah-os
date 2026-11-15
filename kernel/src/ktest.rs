@@ -167,6 +167,8 @@ pub fn run() -> ! {
         "fat32_fault_write" => fat32_fault_write(),
         "fat32_fault_write_check" => fat32_fault_write_check(),
         "fat32_disk_full" => fat32_disk_full(),
+        "fat32_stop" => fat32_stop(),
+        "fat32_stop_check" => fat32_stop_check(),
         "file_roundtrip" => file_app("file_roundtrip", crate::apps::FILE_ROUNDTRIP, 0x60),
         "path_invalid" => file_app("path_invalid", crate::apps::PATH_INVALID, 0x61),
         "fd_leak" => fd_leak(),
@@ -3604,6 +3606,129 @@ fn fat32_disk_full() -> ! {
         fail("clusters were lost on a volume that ran out of space")
     }
     pass("a write the volume cannot hold whole changes nothing, and one that fits is whole")
+}
+
+// ---- WP-117: the file system stops with the disk -----------------------------------------------
+
+/// TST-M3-FAT32-STOP, first boot (WP-117, RSK-027; ADR-0013 decision 9): once the disk has
+/// stopped, every file call answers an I/O error and none answers from memory. File A, three
+/// clusters, is closed; file B, two clusters, is open twice, one position at its end and one
+/// at 0. The second write of A's delete, the first to a FAT copy, is withheld from the device
+/// by the test kernel's hook, so the driver's own timeout branch answers it and stops the
+/// disk. Then eight calls are made: a read at the end of B, a seek and a write of no bytes
+/// (the three that ask nothing of the disk), a read inside B, a stat, a create, a sync and
+/// the count of free clusters.
+fn fat32_stop() -> ! {
+    use crate::fs::vfs;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let rw = vfs::O_READ | vfs::O_WRITE;
+    let all = fault_bytes(1);
+    let two = 2 * FAULT_HALF;
+    let made = (|| {
+        let a = vfs::open(b"/STOP1.TXT", rw | vfs::O_CREATE).ok()?;
+        if vfs::write(&a, &all) != Ok(all.len()) {
+            return None;
+        }
+        drop(a);
+        let b = vfs::open(b"/STOP2.TXT", rw | vfs::O_CREATE).ok()?;
+        if vfs::write(&b, &all[..two]) != Ok(two) {
+            return None;
+        }
+        let b0 = vfs::open(b"/STOP2.TXT", vfs::O_READ).ok()?;
+        vfs::sync().ok()?;
+        Some((b, b0))
+    })();
+    let Some((b, b0)) = made else {
+        fail("could not prepare the case's files")
+    };
+    crate::block::arm_timeout_at_write(2);
+    let unlink = vfs::unlink(b"/STOP1.TXT");
+    let mut buf = alloc::vec![0u8; 16];
+    let end_read = vfs::read(&b, &mut buf).map(|_| ());
+    let seek = vfs::seek(&b, 0).map(|_| ());
+    let empty_write = vfs::write(&b, &[]).map(|_| ());
+    let inner_read = vfs::read(&b0, &mut buf).map(|_| ());
+    let stat = vfs::stat(b"/STOP2.TXT").map(|_| ());
+    let create = vfs::open(b"/STOP3.TXT", rw | vfs::O_CREATE).map(|_| ());
+    let sync = vfs::sync();
+    let free = crate::fs::with(|fs| fs.free_clusters()).map(|_| ());
+    drop((b, b0));
+    let code = |r: &Result<(), FsError>| match r {
+        Ok(()) => "ok",
+        Err(e) => e.code(),
+    };
+    kprintln!(
+        "OSX|{}|ktest|fat32_stop|unlink={}|end_read={}|seek={}|empty_write={}|inner_read={}|stat={}|create={}|sync={}|free={}|live_files={}",
+        BUILD_ID,
+        code(&unlink),
+        code(&end_read),
+        code(&seek),
+        code(&empty_write),
+        code(&inner_read),
+        code(&stat),
+        code(&create),
+        code(&sync),
+        code(&free),
+        vfs::live_files()
+    );
+    if !matches!(unlink, Err(FsError::Io(_))) {
+        fail("the delete whose write timed out did not answer an I/O error")
+    }
+    let later = [
+        &end_read,
+        &seek,
+        &empty_write,
+        &inner_read,
+        &stat,
+        &create,
+        &sync,
+        &free,
+    ];
+    if later.iter().any(|r| !matches!(r, Err(FsError::Io(_)))) {
+        fail("a file call answered something else than an I/O error after the disk stopped")
+    }
+    pass("after the disk stops every file call answers an I/O error")
+}
+
+/// The second boot of TST-M3-FAT32-STOP: a kernel with no memory of the first reads the image.
+/// A's name is gone (its entry was written before the write that timed out), B holds its two
+/// clusters' bytes, and a new three-cluster file reads back its own bytes and changes neither.
+fn fat32_stop_check() -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let all = fault_bytes(1);
+    let two = 2 * FAULT_HALF;
+    let state = || {
+        (
+            fault_state(b"/STOP1.TXT", &all),
+            fault_state(b"/STOP2.TXT", &all[..two]),
+        )
+    };
+    let (a, b) = state();
+    let fresh = alloc::vec![0x5Au8; FAULT_LEN];
+    let after_ok = crate::fs::with(|fs| {
+        let mut e = fs.create(b"/AFTER.TXT")?;
+        fs.write(&mut e, 0, &fresh)?;
+        fs.sync()
+    })
+    .is_ok()
+        && fault_state(b"/AFTER.TXT", &fresh) == 1;
+    let same_after = state() == (a, b);
+    kprintln!(
+        "OSX|{}|ktest|fat32_stop_check|a_gone={}|b_whole={}|after_ok={}|same_after={}",
+        BUILD_ID,
+        u8::from(a == 0),
+        u8::from(b == 1),
+        u8::from(after_ok),
+        u8::from(same_after)
+    );
+    if a != 0 || b != 1 || !after_ok || !same_after {
+        fail("after the restart a name of the case is not what the stop left")
+    }
+    pass("after the restart the stopped delete left no name and the other file whole")
 }
 
 // ---- WP-19: files through system calls ---------------------------------------------------

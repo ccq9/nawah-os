@@ -888,7 +888,8 @@
     "TST-M3-FAT32-FAULT-UNLINK",
     "TST-M3-FAT32-FAULT-TRUNCATE",
     "TST-M3-FAT32-FAULT-WRITE",
-    "TST-M3-FAT32-DISK-FULL"
+    "TST-M3-FAT32-DISK-FULL",
+    "TST-M3-FAT32-STOP"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
