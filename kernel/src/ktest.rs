@@ -1858,16 +1858,21 @@ fn blk_read_pattern() -> ! {
 }
 
 /// TST-M3-BLK-TIMEOUT (REQ-M3-007; WP-104, RSK-026; ADR-0013 decision 9): after a request
-/// times out the driver serves nothing more. Every request shares one header, one status byte,
-/// one data buffer and the same descriptors, and a completion is taken by its position: a
+/// times out the driver publishes nothing more. Every request shares one header, one status
+/// byte, one data buffer and the same descriptors, and a completion is taken by its position: a
 /// request that was given up may still complete later, so the next request's result could be
-/// the old one's, and a write's bytes could reach the old request's sector. The case reads a
-/// pattern sector (served, so the shared buffer holds that sector), makes the next request
-/// time out through the test kernel's hook, and then asks for a read, a write and a flush:
-/// each must be refused with K_E_BLK_NEEDS_RESET, and the shared buffer must still hold the
-/// first sector (the refused write did not copy its bytes in). The write carries the bytes its
+/// the old one's, and a write's bytes could reach the old request's sector.
+///
+/// The case reads one pattern sector (served, so the shared buffer holds that sector), fills
+/// its own buffer with a guard byte, and makes the next read time out through the test
+/// kernel's hook: the read answers K_E_BLK_TIMEOUT and hands back nothing (the caller's buffer
+/// keeps the guard). Then a read, a write, a flush and a read past the end are each refused
+/// with K_E_BLK_NEEDS_RESET; the caller's buffer still keeps the guard, the shared buffer still
+/// holds the first sector (the refused write did not copy its bytes in), and the driver's
+/// available index did not move (nothing was published). The write carries the bytes its
 /// sector already holds, so a kernel that serves it leaves the image as it was.
 fn blk_timeout() -> ! {
+    const GUARD: u8 = 0xA5;
     let capacity = crate::block::capacity_sectors();
     let mut buf = alloc::vec![0u8; 512];
     let mut held = alloc::vec![0u8; 512];
@@ -1879,9 +1884,12 @@ fn blk_timeout() -> ! {
         .iter()
         .enumerate()
         .all(|(k, b)| *b == pattern_byte(first, k));
+    buf.fill(GUARD);
     crate::block::arm_timeout();
     let timed = crate::block::read(target, &mut buf);
+    let published0 = crate::block::submitted();
     let after_read = crate::block::read(target, &mut buf);
+    let caller_kept = buf.iter().all(|b| *b == GUARD);
     let mut same = [0u8; 512];
     for (k, b) in same.iter_mut().enumerate() {
         *b = pattern_byte(target, k);
@@ -1893,21 +1901,26 @@ fn blk_timeout() -> ! {
         .enumerate()
         .all(|(k, b)| *b == pattern_byte(first, k));
     let after_flush = crate::block::flush();
+    let past_end = crate::block::read(capacity, &mut buf);
+    let published = crate::block::submitted().wrapping_sub(published0);
     let frames1 = pmm::stats().free_frames;
     let code = |r: &Result<(), crate::drivers::virtio_blk::BlkError>| match r {
         Ok(()) => "ok",
         Err(e) => e.code(),
     };
     kprintln!(
-        "OSX|{}|ktest|blk_timeout|before={}|pattern={}|timed={}|after_read={}|after_write={}|buffer_kept={}|after_flush={}|frames_delta={}",
+        "OSX|{}|ktest|blk_timeout|before={}|pattern={}|timed={}|caller_kept={}|after_read={}|after_write={}|buffer_kept={}|after_flush={}|past_end={}|published={}|frames_delta={}",
         BUILD_ID,
         code(&before),
         u8::from(pattern_ok),
         code(&timed),
+        u8::from(caller_kept),
         code(&after_read),
         code(&after_write),
         u8::from(buffer_kept),
         code(&after_flush),
+        code(&past_end),
+        published,
         frames0 as i64 - frames1 as i64
     );
     if before.is_err() || !pattern_ok {
@@ -1916,14 +1929,20 @@ fn blk_timeout() -> ! {
     if code(&timed) != "K_E_BLK_TIMEOUT" {
         fail("the withheld request did not time out")
     }
-    if [&after_read, &after_write, &after_flush]
+    if [&after_read, &after_write, &after_flush, &past_end]
         .iter()
         .any(|r| code(r) != "K_E_BLK_NEEDS_RESET")
     {
         fail("a request was served after a timed-out one")
     }
+    if !caller_kept {
+        fail("a failed read changed the caller's buffer")
+    }
     if !buffer_kept {
         fail("a refused write changed the shared buffer")
+    }
+    if published != 0 {
+        fail("a refused request was published to the device")
     }
     if frames0 != frames1 {
         fail("frames leaked")

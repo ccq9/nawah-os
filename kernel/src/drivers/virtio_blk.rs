@@ -466,6 +466,14 @@ impl VirtioBlk {
         out[..n].copy_from_slice(dma::bytes_mut(self.data, n));
     }
 
+    /// Test kernel only (TST-M3-BLK-TIMEOUT): the driver's available index, which advances by
+    /// one for every request published to the device, so the case can show that a refused
+    /// request published nothing.
+    #[cfg(feature = "ktest")]
+    pub fn submitted(&self) -> u16 {
+        self.avail_idx
+    }
+
     pub fn frames(&self) -> usize {
         self.frames.len()
     }

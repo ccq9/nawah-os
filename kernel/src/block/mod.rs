@@ -93,6 +93,12 @@ pub fn arm_timeout() {
     crate::drivers::virtio_blk::arm_timeout();
 }
 
+/// Test kernel only (TST-M3-BLK-TIMEOUT): how many requests the driver has published.
+#[cfg(feature = "ktest")]
+pub fn submitted() -> u16 {
+    DEVICE.lock().as_ref().map_or(0, |d| d.submitted())
+}
+
 pub fn flush() -> Result<(), BlkError> {
     DEVICE.lock().as_mut().ok_or(BlkError::NoDevice)?.flush()
 }
