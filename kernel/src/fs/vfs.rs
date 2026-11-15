@@ -264,9 +264,8 @@ pub fn write(file: &FileRef, data: &[u8]) -> Result<usize, FsError> {
     let pos = f.pos;
     let n = {
         let mut e = f.node.lock();
-        if pos > u64::from(e.size) {
-            return Err(FsError::Range);
-        }
+        // A position past the size is refused by the volume's own write, under its lock and
+        // after the disk is asked (files.md v1.9): nothing is answered here from the node.
         super::with(|fs| fs.write(&mut e, pos as u32, data))?
     };
     f.pos += n as u64;
@@ -275,11 +274,13 @@ pub fn write(file: &FileRef, data: &[u8]) -> Result<usize, FsError> {
 
 /// Moves the shared position (absolute; at most the current size).
 pub fn seek(file: &FileRef, pos: u64) -> Result<u64, FsError> {
-    // The one file call that does not go through `with`: it asks the same question first.
+    let mut f = file.lock();
+    // The one file call that does not go through `with`: it asks the same question, once it
+    // holds its open and before it reads or moves anything. It takes no other lock, so a seek
+    // is ordered against a stop by this read of the flag.
     if super::stopped() {
         return Err(super::stop_error());
     }
-    let mut f = file.lock();
     if pos > u64::from(f.node.lock().size) {
         return Err(FsError::Range);
     }

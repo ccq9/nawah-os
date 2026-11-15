@@ -23,8 +23,10 @@ pub(crate) fn stop_error() -> FsError {
 /// True once the disk has stopped (ADR-0013 decision 9; files.md v1.9). The file system stops
 /// with it: `with` and `vfs::seek`, the two ways into a file call, ask this before they look
 /// at anything held in memory, so no call answers from memory what the disk can no longer
-/// back. The disk is asked each time (one flag, the driver's); the first call that finds it
-/// stopped writes the file system's own line.
+/// back. `with` asks once it holds the volume's lock: every disk request of the file system
+/// is made under that lock, so a call that waited for it while the disk stopped finds it
+/// stopped. The driver's flag is read each time (one flag, no lock); the first call that
+/// finds the disk stopped writes the file system's own line.
 pub(crate) fn stopped() -> bool {
     if !crate::block::stopped() {
         return false;
@@ -52,10 +54,10 @@ pub fn mount() -> Result<Fat32, FsError> {
 
 /// Runs `f` on the mounted volume.
 pub fn with<R>(f: impl FnOnce(&Fat32) -> Result<R, FsError>) -> Result<R, FsError> {
+    let g = VOLUME.lock();
     if stopped() {
         return Err(stop_error());
     }
-    let g = VOLUME.lock();
     match g.as_ref() {
         Some(v) => f(v),
         None => Err(FsError::NotMounted),

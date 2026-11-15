@@ -20,7 +20,6 @@
 //! virtio_blk_req {le32 type, le32 reserved, le64 sector, data[], u8 status};
 //! VIRTIO_BLK_T_IN 0, OUT 1, FLUSH 4; status OK 0, IOERR 1, UNSUPP 2).
 
-#[cfg(feature = "ktest")]
 use core::sync::atomic::AtomicBool;
 use core::sync::atomic::{fence, Ordering};
 
@@ -66,6 +65,16 @@ const QUEUE_SIZE: u16 = 16;
 pub const MAX_SECTORS: usize = 128;
 /// Polling bound per request (iterations of a PIT-free spin; the lab completes in microseconds).
 const POLL_LIMIT: u64 = 50_000_000;
+
+/// True once a request has timed out (see the device's `stopped`; ADR-0013 decision 9): set on
+/// the line that stops the device and read without a lock, so that the file system can ask
+/// before every call (files.md v1.9) and take no lock to do it.
+static DISK_STOPPED: AtomicBool = AtomicBool::new(false);
+
+/// Whether the disk has stopped. No lock is taken.
+pub fn disk_stopped() -> bool {
+    DISK_STOPPED.load(Ordering::SeqCst)
+}
 
 /// Test kernel only (TST-M3-BLK-TIMEOUT): the next request is withheld from the device (its
 /// entry is not published in the available ring and no notify is sent) and waits a short
@@ -389,6 +398,7 @@ impl VirtioBlk {
             }
             spins += 1;
             if spins > limit {
+                DISK_STOPPED.store(true, Ordering::SeqCst);
                 self.stopped = true;
                 return Err(BlkError::Timeout);
             }
@@ -405,11 +415,6 @@ impl VirtioBlk {
             return Err(BlkError::Io(status));
         }
         Ok(())
-    }
-
-    /// True once a request has timed out: the device serves nothing more until a reboot.
-    pub fn is_stopped(&self) -> bool {
-        self.stopped
     }
 
     /// The answer of a stopped device (see `stopped`): asked first by every entry point, before

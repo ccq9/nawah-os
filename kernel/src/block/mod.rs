@@ -197,9 +197,9 @@ pub fn submitted() -> u16 {
 }
 
 /// True once the disk has stopped (ADR-0013 decision 9): a request timed out and the driver
-/// refuses every later one.
+/// refuses every later one. The driver's flag is read; no lock is taken.
 pub fn stopped() -> bool {
-    DEVICE.lock().as_ref().is_some_and(|d| d.is_stopped())
+    crate::drivers::virtio_blk::disk_stopped()
 }
 
 pub fn flush() -> Result<(), BlkError> {

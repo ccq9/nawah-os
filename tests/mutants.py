@@ -833,8 +833,8 @@ MUTANTS = [
     # M201: the timeout branch no longer stops the device, so the next requests are submitted on
     # the shared header, status byte, buffer and descriptors while the old one may still complete.
     ("M201", "kernel/src/drivers/virtio_blk.rs",
-     "            if spins > limit {\n                self.stopped = true;\n                return Err(BlkError::Timeout);",
-     "            if spins > limit {\n                return Err(BlkError::Timeout);",
+     "            if spins > limit {\n                DISK_STOPPED.store(true, Ordering::SeqCst);\n                self.stopped = true;\n                return Err(BlkError::Timeout);",
+     "            if spins > limit {\n                DISK_STOPPED.store(true, Ordering::SeqCst);\n                return Err(BlkError::Timeout);",
      ["TST-M3-BLK-TIMEOUT"], "SECURITY: after a timed-out request the disk serves the next read, write and flush: the line carries after_read=ok, after_write=ok and after_flush=ok (forbidden markers), TST-M3-BLK-TIMEOUT FAIL"),
     # M202: a stopped device refuses a write only after copying its bytes into the shared buffer
     # (the buffer a pending request's device side may still read or write).
