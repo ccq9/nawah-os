@@ -7322,6 +7322,7 @@
    ],
    "acceptance": "no failure point of a write (every write N, swept by the fault hook) leaves a directory entry that points at a free cluster, a shared node that differs from the stored entry after a failed call, or a sync that reports a stable file whose entry is stale, shown by the new case and the host image check on CI; files.md (the version free at the merge) states what a failed write leaves; the mutant killed",
    "test_ids": [
+    "TST-M3-FAT32-FAULT-WRITE",
     "TST-M3-FAT32-WRITE",
     "TST-M3-FILE-SHARED",
     "TST-M3-FAT32-PERSIST"
