@@ -901,6 +901,17 @@ MUTANTS = [
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; continue',
      ["TST-M0-003"], "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted"),
+    # M220, M221 (SECURITY, WP-117, files.md v1.9, ADR-0014 item 10): the file system stops with
+    # the disk. M220: fs::with no longer asks whether the disk has stopped.
+    ("M220", "kernel/src/fs/mod.rs",
+     "    if stopped() {\n        return Err(stop_error());\n    }\n    let g = VOLUME.lock();",
+     "    let g = VOLUME.lock();",
+     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a read at the end of an open file and a write of no bytes answer success from memory: the line carries end_read=ok and empty_write=ok, TST-M3-FAT32-STOP FAIL"),
+    # M221: vfs::seek no longer asks.
+    ("M221", "kernel/src/fs/vfs.rs",
+     "    if super::stopped() {\n        return Err(super::stop_error());\n    }\n    let mut f = file.lock();",
+     "    let mut f = file.lock();",
+     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a seek answers success from memory: the line carries seek=ok, TST-M3-FAT32-STOP FAIL"),
     # M219 (SECURITY, WP-120, files.md v1.8, ADR-0014 item 9): the first FAT copy, the one the
     # kernel reads, is written first again.
     ("M219", "kernel/src/fs/fat32.rs",
@@ -1056,7 +1067,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # the ones it has along the chain (M218).
             "M214", "M215", "M216", "M217", "M218",
             # M6 (WP-120): the FAT copy the kernel reads is written last (files.md v1.8).
-            "M219"}
+            "M219",
+            # M6 (WP-117): the file system stops with the disk (files.md v1.9): fs::with asks
+            # first (M220) and so does vfs::seek (M221).
+            "M220", "M221"}
 
 
 def security_of(mid: str) -> bool:
