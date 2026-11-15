@@ -901,6 +901,12 @@ MUTANTS = [
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; continue',
      ["TST-M0-003"], "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted"),
+    # M219 (SECURITY, WP-120, files.md v1.8, ADR-0014 item 9): the first FAT copy, the one the
+    # kernel reads, is written first again.
+    ("M219", "kernel/src/fs/fat32.rs",
+     "        for k in (0..self.fats).rev() {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
+     "        for k in 0..self.fats {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
+     ["TST-M3-FAT32-FAULT-WRITE"], "SECURITY: a link written in the first FAT copy and refused in the second stays missing there for good once the append is made again: the host check finds a chain shorter than its size in the second copy and other numbers of lost clusters and longer chains than the case pins, TST-M3-FAT32-FAULT-WRITE FAIL (the delete and truncate cases would count 9 lost where 12 are pinned)"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1048,7 +1054,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # the call asks for its clusters (M214), counts them rounded up (M215), is not let
             # through one short (M216), asks only for the ones the file lacks (M217) and counts
             # the ones it has along the chain (M218).
-            "M214", "M215", "M216", "M217", "M218"}
+            "M214", "M215", "M216", "M217", "M218",
+            # M6 (WP-120): the FAT copy the kernel reads is written last (files.md v1.8).
+            "M219"}
 
 
 def security_of(mid: str) -> bool:
