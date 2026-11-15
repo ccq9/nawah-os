@@ -315,9 +315,9 @@ class Fat32Check(unittest.TestCase):
 
     # ---- WP-126: a damaged entry and a reserved value are named, in every FAT copy ----------
 
-    def set_entry(self, img, name, first, size=None):
-        """Rewrites the root directory entry NAME in place: its first cluster, and its size
-        when one is given."""
+    def set_entry(self, img, name, first, size=None, attr=None):
+        """Rewrites the root directory entry NAME in place: its first cluster, and its size and
+        attributes when given."""
         import struct
         data = bytearray(img.read_cluster(img.root_cluster))
         for i in range(0, len(data), 32):
@@ -329,57 +329,84 @@ class Fat32Check(unittest.TestCase):
                 struct.pack_into("<H", data, i + 26, first & 0xFFFF)
                 if size is not None:
                     struct.pack_into("<I", data, i + 28, size)
+                if attr is not None:
+                    data[i + 11] = attr
                 img.write_cluster(img.root_cluster, bytes(data))
                 return
         self.fail(f"no root entry {name}")
 
     def test_directory_entry_whose_first_cluster_is_no_cluster(self):
-        # A directory has no size: with a first cluster of 0 or 1 the walk found nothing to
-        # read and called it empty; only the lost count, in plain mode, hinted at it.
-        for first in (0, 1):
+        # A directory has no size: with a first cluster that is no cluster the walk found
+        # nothing to read and called it empty; only the lost count, in plain mode, hinted at it.
+        # 0 and 1; 0 under attributes that are a directory's and more (the kernel asks the
+        # directory bit alone); an end mark; the first number past the volume.
+        for first, attr in ((0, None), (1, None), (0, 0x30), (0x0FFFFFF8, None), ("past", None)):
             path = self.with_dirs("D1", files=["D1/IN.TXT"])
             img = self.tool.Image(path, writable=True)
-            self.set_entry(img, "D1", first)
+            n = img.clusters + 2 if first == "past" else first
+            self.set_entry(img, "D1", n, attr=attr)
             img.close()
             for mode in ([], ["--faulted"]):
                 r = run("check", *mode, path)
-                self.assertEqual(r.returncode, 1, (first, mode, r.stdout))
-                self.assertIn(f"/D1: first cluster {first}", r.stdout, (first, mode))
+                self.assertEqual(r.returncode, 1, (first, attr, mode, r.stdout))
+                self.assertIn(f"/D1: first cluster {n}, no cluster", r.stdout, (first, attr, mode))
             os.remove(path)
 
     def test_file_entry_whose_first_cluster_is_no_cluster(self):
-        # 0 is the first cluster of an empty file and of nothing else; 1 is no cluster at all.
-        for first, size in ((1, 0), (1, 100)):
+        # 0 is the first cluster of an empty file and of nothing else; 1, an end mark and a
+        # number past the volume are no cluster at all, whatever the size.
+        for first, size in ((1, 0), (1, 100), (0x0FFFFFF8, 0), (0x0FFFFFF8, 100), ("past", 0)):
             img = self.image()
             saved = img.read_cluster(img.root_cluster)
-            self.set_entry(img, "ONE.TXT", first, size)
+            n = img.clusters + 2 if first == "past" else first
+            self.set_entry(img, "ONE.TXT", n, size)
             img.close()
             for mode in ([], ["--faulted"]):
                 r = run("check", *mode, self.img)
                 self.assertEqual(r.returncode, 1, (first, size, mode, r.stdout))
-                self.assertIn(f"/ONE.TXT: first cluster {first}", r.stdout, (first, size, mode))
+                self.assertIn(f"/ONE.TXT: first cluster {n}, no cluster", r.stdout, (first, size, mode))
             img = self.image()
             img.write_cluster(img.root_cluster, saved)
             img.close()
         self.assertEqual(run("check", self.img).returncode, 0)
 
+    def test_empty_file_is_healthy(self):
+        # The one entry whose first cluster is 0 by right: a file that holds nothing.
+        empty = os.path.join(self.dir, "empty.bin")
+        open(empty, "wb").close()
+        one = os.path.join(self.dir, "one.txt")
+        path = os.path.join(self.dir, "empty.img")
+        r = run("format", path, "--sectors", "131072", "--add", f"EMPTY.TXT={empty}", "--add", f"ONE.TXT={one}")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        img = self.tool.Image(path)
+        e = img.resolve("/EMPTY.TXT")[1]
+        self.assertEqual((img.entry_cluster(e), int.from_bytes(e[28:32], "little")), (0, 0))
+        img.close()
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, path)
+            self.assertEqual(r.returncode, 0, (mode, r.stdout))
+            self.assertIn("problems=[]", r.stdout, mode)
+
     def test_reserved_value_in_a_chain_of_the_second_copy(self):
         # The value 1 is no cluster and no end mark. In the second copy alone it ended a walk
         # quietly: at a directory's cluster, and at a file's last cluster in place of the mark.
+        # The name is given with and without --faulted.
         path = self.with_dirs("D1", files=["D1/IN.TXT"])
         img = self.tool.Image(path, writable=True)
         self.set_one_copy(img, img.entry_cluster(img.resolve("/D1")[1]), 1, 1)
         img.close()
-        r = run("check", "--faulted", path)
-        self.assertEqual(r.returncode, 1, r.stdout)
-        self.assertIn("FAT1: /D1: its chain holds the reserved value 1", r.stdout)
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, path)
+            self.assertEqual(r.returncode, 1, (mode, r.stdout))
+            self.assertIn("FAT1: /D1: its chain holds the reserved value 1", r.stdout, mode)
         img = self.image()
         last = img.chain(self.first(img, "BIG.BIN"))[-1]
         self.set_one_copy(img, last, 1, 1)
         img.close()
-        r = run("check", "--faulted", self.img)
-        self.assertEqual(r.returncode, 1, r.stdout)
-        self.assertIn("FAT1: /BIG.BIN: its chain holds the reserved value 1", r.stdout)
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, self.img)
+            self.assertEqual(r.returncode, 1, (mode, r.stdout))
+            self.assertIn("FAT1: /BIG.BIN: its chain holds the reserved value 1", r.stdout, mode)
 
     def test_reserved_value_in_a_chain_of_the_first_copy_names_the_file(self):
         img = self.image()
@@ -391,18 +418,47 @@ class Fat32Check(unittest.TestCase):
             self.assertEqual(r.returncode, 1, (mode, r.stdout))
             self.assertIn("/BIG.BIN: its chain holds the reserved value 1", r.stdout, mode)
 
-    def test_invalid_value_outside_every_chain_in_the_second_copy(self):
-        # The scan for reserved and out-of-range values read the first copy only.
-        for value in (1, 0x0FFFFFF0):
-            img = self.image()
-            self.set_one_copy(img, 5000, value, 1)
-            img.close()
-            r = run("check", "--faulted", self.img)
-            self.assertEqual(r.returncode, 1, (value, r.stdout))
-            self.assertIn(f"FAT1[5000] = {value:#x} invalid", r.stdout, value)
-            img = self.image()
-            self.set_one_copy(img, 5000, 0, 1)
-            img.close()
+    def test_out_of_range_value_in_a_chain(self):
+        # A link that is no cluster of the volume: a number past it, and the bad-cluster mark.
+        # Along either copy the name is given, with and without --faulted.
+        img = self.image()
+        last = img.chain(self.first(img, "BIG.BIN"))[-1]
+        img.close()
+        for value in (0x0FFFFFF0, 0x0FFFFFF7):
+            for fat in (1, 0):
+                img = self.image()
+                self.set_one_copy(img, last, value, fat)
+                img.close()
+                want = ("FAT1: " if fat else "") + f"/BIG.BIN: bad chain at {value:#x}"
+                for mode in ([], ["--faulted"]):
+                    r = run("check", *mode, self.img)
+                    self.assertEqual(r.returncode, 1, (value, fat, mode, r.stdout))
+                    self.assertIn(want, r.stdout, (value, fat, mode))
+                img = self.image()
+                self.set_one_copy(img, last, 0x0FFFFFFF, fat)
+                img.close()
+        self.assertEqual(run("check", self.img).returncode, 0)
+
+    def test_invalid_value_outside_every_chain(self):
+        # The scan for reserved and out-of-range values read the first copy only, and no case
+        # held it to the first. Each copy; 1, two reserved values, the first number past the
+        # volume; a free cluster in the middle and the volume's last entry.
+        img = self.image()
+        top, past = img.clusters + 1, img.clusters + 2
+        img.close()
+        for fat in (1, 0):
+            label = f"FAT{fat}" if fat else "FAT"
+            for cluster, value in ((5000, 1), (5000, 0x0FFFFFF0), (5001, 0x0FFFFFF6), (5000, past), (top, 1)):
+                img = self.image()
+                self.set_one_copy(img, cluster, value, fat)
+                img.close()
+                for mode in ([], ["--faulted"]):
+                    r = run("check", *mode, self.img)
+                    self.assertEqual(r.returncode, 1, (fat, cluster, value, mode, r.stdout))
+                    self.assertIn(f"{label}[{cluster}] = {value:#x} invalid", r.stdout, (fat, cluster, value, mode))
+                img = self.image()
+                self.set_one_copy(img, cluster, 0, fat)
+                img.close()
         self.assertEqual(run("check", self.img).returncode, 0)
 
     def test_fsck_messages_are_named(self):
