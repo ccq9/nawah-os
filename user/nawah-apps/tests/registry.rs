@@ -507,6 +507,8 @@ fn malformed_entries_are_refused_by_name() {
             "DEP_NOT_ALLOWED",
         ),
     ];
+    // The count the oracle states (tools/project.py HOST_SUITES["M6"]).
+    assert_eq!(cases.len(), 86, "hand-written cases");
     for (file, want) in &cases {
         assert_eq!(err(file), *want, "{:?}", String::from_utf8_lossy(file));
         assert_eq!(

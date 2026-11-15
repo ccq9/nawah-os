@@ -2152,10 +2152,13 @@
     "REQ-M6-004"
    ],
    "layer": "host_unit",
-   "oracle": "planned (M6, WP-47): the registry parser on the host rejects every malformed entry of a seeded corpus (over-long fields, bad ids, missing ELF path, duplicate ids, non-UTF-8 names) without panicking and accepts the well-formed examples exactly",
+   "oracle": "apps.md v1 (WP-100, ADR-0023 proposed) on the host, user/nawah-apps/tests/registry.rs (8 tests): the registry entry parser refuses 86 hand-written malformed entries each by its contract name (TOO_LARGE, TRUNCATED, BAD_UTF8, CONTROL_BYTE incl. CR and CRLF, SYNTAX, UNKNOWN_KEY, DUP_KEY, MISSING_KEY incl. a missing ELF path, BAD_ID, RESERVED_ID, BAD_ELF, BAD_NAME incl. 33 characters, C1 controls and bidi controls, BAD_DEPS, DEP_NOT_ALLOWED for auth, session, input, narrator and sh), and a seeded deterministic corpus of 2000 rounds of generated malformed entries in 14 classes (a round whose random base id is reserved is skipped) (over-long and bad ids, reserved ids, a missing ELF path, duplicate keys, over-long and non-UTF-8 names, control bytes, CR/LF variants, a `#` or `=` inside a field, truncation, huge input, denied dependencies, images outside /SYSTEM/APPS) each by its named error; 30000 seeded mutations of well-formed entries never panic and get exactly the verdict and fields of an independent reference model of apps.md (more than 100 accepted and 10000 refused); the well-formed examples (no dependency, every allowed dependency, the 8-byte id, a 32-character Arabic name, comments, blank lines, keys in any order, a file of exactly 1024 bytes) and the samples platform/pc-qemu/apps/*.APP are accepted with their fields exactly; the registry refuses a repeated id (DUP_ID), a 17th entry (TOO_MANY) and a file not named <ID>.APP (FILE_NAME) and a refused entry changes nothing; every service of platform/pc-qemu/manifests/services.txt is a reserved id; every error name and reserved id is written in docs/contracts/apps.md",
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "NOT_RUN",
-   "evidence_refs": []
+   "evidence_refs": [],
+   "oracle_notes": [
+    "2026-11-15 (WP-100): the planned oracle (WP-47's, before the split) replaced by the case's source in tools/project.py HOST_SUITES[\"M6\"]; every class it named (over-long fields, bad ids, a missing ELF path, duplicate ids, non-UTF-8 names, no panic, the well-formed examples exactly) is kept, and the source adds the named errors of apps.md v1."
+   ]
   },
   {
    "id": "TST-M6-SHELL-EVENTS",
