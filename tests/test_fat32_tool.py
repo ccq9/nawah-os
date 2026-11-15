@@ -3,6 +3,7 @@
 back exactly, that passes its own structural check and, where dosfstools is installed, fsck.fat.
 The tool is the independent implementation the kernel's FAT32 is checked against."""
 import hashlib
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -99,6 +100,169 @@ class Fat32Tool(unittest.TestCase):
         r = subprocess.run([fsck, "-n", self.img], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("44/128992 clusters", r.stdout)
+
+
+def load_tool():
+    spec = importlib.util.spec_from_file_location("fat32_tool", TOOL)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class Fat32Check(unittest.TestCase):
+    """WP-105: `check` sees what a broken delete or truncate leaves (a name whose chain runs
+    into a free cluster, two names on one cluster), and what the safe order leaves (lost
+    clusters, a chain longer than the size, FAT copies that differ, a stale free count) is a
+    problem on a healthy image and a counted finding with `--faulted`. `fsck-faulted` runs
+    fsck.fat -n, keeps its whole output and names every message."""
+
+    def setUp(self):
+        self.tool = load_tool()
+        self.dir = tempfile.mkdtemp(prefix="fat32-check-")
+        self.img = os.path.join(self.dir, "disk.img")
+        one = os.path.join(self.dir, "one.txt")
+        with open(one, "wb") as f:
+            f.write(b"1" * 100)
+        big = os.path.join(self.dir, "big.bin")
+        with open(big, "wb") as f:
+            f.write(b"B" * 1500)
+        r = run("format", self.img, "--sectors", "131072", "--add", f"ONE.TXT={one}", "--add", f"TWO.TXT={one}",
+                "--add", f"BIG.BIN={big}")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(run("check", self.img).returncode, 0)
+
+    def tearDown(self):
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def image(self):
+        return self.tool.Image(self.img, writable=True)
+
+    def first(self, img, name):
+        return img.entry_cluster(img.resolve("/" + name)[1])
+
+    def set_one_copy(self, img, cluster, value, fat):
+        off = cluster * 4
+        sec = img.fat_start + fat * img.fatsz + off // 512
+        s = bytearray(img.read_sector(sec))
+        s[off % 512:off % 512 + 4] = value.to_bytes(4, "little")
+        img.write_sector(sec, bytes(s))
+
+    def test_free_first_cluster_is_a_problem(self):
+        img = self.image()
+        img.fat_set(self.first(img, "ONE.TXT"), 0)
+        img.close()
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, self.img)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("ONE.TXT", r.stdout)
+            self.assertIn("is free", r.stdout)
+
+    def test_shared_cluster_is_a_problem(self):
+        img = self.image()
+        c, i, e = img.lookup(img.root_cluster, "TWO.TXT")
+        one = self.first(img, "ONE.TXT")
+        e = bytearray(e)
+        e[20:22] = (one >> 16).to_bytes(2, "little")
+        e[26:28] = (one & 0xFFFF).to_bytes(2, "little")
+        data = bytearray(img.read_cluster(c))
+        data[i * 32:i * 32 + 32] = e
+        img.write_cluster(c, bytes(data))
+        img.close()
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, self.img)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("share cluster", r.stdout)
+            self.assertIn("ONE.TXT", r.stdout)
+            self.assertIn("TWO.TXT", r.stdout)
+
+    def test_free_in_the_second_copy_alone_is_a_problem_when_faulted(self):
+        img = self.image()
+        self.set_one_copy(img, self.first(img, "ONE.TXT"), 0, 1)
+        img.close()
+        r = run("check", "--faulted", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("FAT1", r.stdout)
+        self.assertIn("is free", r.stdout)
+
+    def test_lost_cluster(self):
+        img = self.image()
+        img.alloc_cluster()
+        img.close()
+        r = run("check", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("lost clusters: 1", r.stdout)
+        r = run("check", "--faulted", self.img)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("lost=1", r.stdout)
+        self.assertIn("problems=[]", r.stdout)
+
+    def test_chain_longer_than_size(self):
+        img = self.image()
+        extra = img.alloc_cluster()
+        img.fat_set(self.first(img, "ONE.TXT"), extra)
+        img.close()
+        r = run("check", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("ONE.TXT: chain longer than size", r.stdout)
+        r = run("check", "--faulted", self.img)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("longer=1", r.stdout)
+
+    def test_copies_differ(self):
+        img = self.image()
+        free = next(c for c in range(2, img.clusters + 2) if img.fat_get(c) == 0)
+        self.set_one_copy(img, free, 0x0FFFFFFF, 0)
+        img.close()
+        self.assertEqual(run("check", self.img).returncode, 1)
+        r = run("check", "--faulted", self.img)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("mirror_diff=1", r.stdout)
+        self.assertIn("lost=1", r.stdout)
+
+    def test_fsck_messages_are_named(self):
+        head = "fsck.fat 4.2 (2021-01-31)\n"
+        tail = "\nLeaving filesystem unchanged.\ndisk.img: 4 files, 6/128992 clusters\n"
+        ok = [
+            "Reclaimed 1 unused cluster (512 bytes).\n",
+            "Reclaimed 3 unused clusters (1536 bytes).\n",
+            "Free cluster summary wrong (5 vs. really 8026)\n  Auto-correcting.\n",
+            "FATs differ but appear to be intact.\n  Using first FAT.\n",
+            "/ONE.TXT\n  File size is 100 bytes, cluster chain length is > 512 bytes.\n  Truncating file to 100 bytes.\n",
+        ]
+        for body in ok:
+            failing, unnamed = self.tool.classify_fsck(head + body + tail)[1:]
+            self.assertEqual((failing, unnamed), ([], []), body)
+        bad = {
+            "/ONE.TXT  and\n/TWO.TXT\n  share clusters.\n  Truncating second to 0 bytes.\n": "shared",
+            "/ONE.TXT\n  Contains a free cluster (3). Assuming EOF.\n": "free_in_chain",
+            "/BIG.BIN\n  File size is 1500 bytes, cluster chain length is 512 bytes.\n  Truncating file to 512 bytes.\n": "shorter",
+        }
+        for body, name in bad.items():
+            failing, unnamed = self.tool.classify_fsck(head + body + tail)[1:]
+            self.assertEqual(failing, [name], body)
+            self.assertEqual(unnamed, [], body)
+        allowed, failing, unnamed = self.tool.classify_fsck(head + "Something this tool never said before.\n" + tail)
+        self.assertEqual(unnamed, ["Something this tool never said before."])
+        allowed = self.tool.classify_fsck(head + ok[0] + ok[2] + tail)[0]
+        self.assertEqual(allowed, {"lost": 1, "free_count": 1})
+
+    def test_fsck_faulted_on_images(self):
+        if not shutil.which("fsck.fat"):
+            self.skipTest("dosfstools not installed")
+        img = self.image()
+        img.alloc_cluster()
+        img.close()
+        r = run("fsck-faulted", self.img)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("Reclaimed 1 unused cluster", r.stdout)
+        self.assertIn("fsck: exit=1 allowed={'lost': 1} failing=[] unnamed=[]", r.stdout)
+        img = self.image()
+        img.fat_set(self.first(img, "ONE.TXT"), 0)
+        img.close()
+        r = run("fsck-faulted", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("Contains a free cluster", r.stdout)
+        self.assertIn("'free_in_chain'", r.stdout)
 
 
 if __name__ == "__main__":
