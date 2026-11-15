@@ -428,6 +428,108 @@ fn parse_i32(s: &[u8]) -> Option<i32> {
 }
 
 /// The text after the first `n` space-separated fields, trimmed.
+/// The bytes a title may take between the quotes of the compositor's own narrator lines
+/// (display.md v1.14), its names included; what does not fit is cut and counted.
+const TITLE_SAY: usize = 96;
+/// One `SAY window "<title>" …` line: `SAY window "`, the title's room, the longest event
+/// (`" resized <w>x<h>`, two i32) and the cut mark (` cut=` and at most two digits).
+const SAY_LINE: usize = 160;
+const _: () = assert!(12 + TITLE_SAY + 10 + 23 + 7 <= SAY_LINE);
+// The narrator's line: `narrator|`, the text after `SAY `, and three more bytes for each byte
+// of a title outside ASCII (a two-byte character written as eight).
+const _: () = assert!(9 + (8 + TITLE_SAY + 10 + 23 + 7) + 3 * TITLE_MAX <= 256);
+
+/// A control character (C0, DEL, C1) or the line and paragraph separators U+2028/U+2029
+/// (ui.md §3.9, the same set libui names in a described value).
+fn is_control(c: u32) -> bool {
+    c < 0x20 || (0x7F..=0x9F).contains(&c) || c == 0x2028 || c == 0x2029
+}
+
+/// A bidi formatting character (ui.md §3.9): ALM, LRM, RLM, the embeddings and overrides, the
+/// isolates.
+fn is_bidi_control(c: u32) -> bool {
+    matches!(c, 0x061C | 0x200E | 0x200F | 0x202A..=0x202E | 0x2066..=0x2069)
+}
+
+/// The first unit of a title (`s` not empty) in a narrator line: its length in bytes, its code
+/// point and whether the line names it `[U+XXXX]`. A byte that does not begin a whole, valid
+/// UTF-8 character is one unit of its own, named U+FFFD: a reader decoding UTF-8 would join it
+/// to the closing quote.
+fn title_unit(s: &[u8]) -> (usize, u32, bool) {
+    let n = match s.first() {
+        Some(0xC2..=0xDF) => 2,
+        Some(0xE0..=0xEF) => 3,
+        Some(0xF0..=0xF4) => 4,
+        _ => 1,
+    };
+    let c = s
+        .get(..n)
+        .and_then(|b| core::str::from_utf8(b).ok())
+        .and_then(|t| t.chars().next());
+    match c {
+        Some(c) => {
+            let cp = u32::from(c);
+            let named = cp == 0x22 || is_control(cp) || is_bidi_control(cp);
+            (n, cp, named)
+        }
+        None => (1, 0xFFFD, true),
+    }
+}
+
+/// The hex digits of a name: four at least.
+fn name_digits(cp: u32) -> usize {
+    let mut d = 4;
+    while d < 8 && cp >> (4 * d) != 0 {
+        d += 1;
+    }
+    d
+}
+
+/// Writes a window title between the quotes of a narrator line (display.md v1.14): `"`, the
+/// control characters, the separators, the bidi formatting characters and every byte that
+/// does not begin a valid character are written `[U+XXXX]`, everything else as it is. Units are
+/// written in order while they fit in TITLE_SAY bytes; the number of units left out is returned
+/// (0: the whole title is in the line) and the caller writes ` cut=<k>`.
+fn put_title(o: &mut Out, title: &[u8]) -> usize {
+    let mut i = 0;
+    let mut used = 0;
+    while let Some(rest) = title.get(i..).filter(|r| !r.is_empty()) {
+        let (n, cp, named) = title_unit(rest);
+        let w = if named { 4 + name_digits(cp) } else { n };
+        if used + w > TITLE_SAY {
+            let mut left = 0;
+            while let Some(rest) = title.get(i..).filter(|r| !r.is_empty()) {
+                i += title_unit(rest).0;
+                left += 1;
+            }
+            return left;
+        }
+        if named {
+            o.put(b"[U+");
+            for k in (0..name_digits(cp)).rev() {
+                let v = ((cp >> (4 * k)) & 0xF) as u8;
+                o.put(&[if v < 10 { b'0' + v } else { b'A' + v - 10 }]);
+            }
+            o.put(b"]");
+        } else {
+            o.put(rest.get(..n).unwrap_or(&[]));
+        }
+        used += w;
+        i += n;
+    }
+    0
+}
+
+/// The bytes of a client's title the window keeps: at most TITLE_MAX, cut at a character
+/// boundary (display.md v1.14), never inside a UTF-8 character.
+fn title_len(title: &[u8]) -> usize {
+    let mut n = title.len().min(TITLE_MAX);
+    while n > 0 && title.get(n).is_some_and(|b| b & 0xC0 == 0x80) {
+        n -= 1;
+    }
+    n
+}
+
 fn after_fields(req: &[u8], n: usize) -> &[u8] {
     let mut i = 0;
     let mut seen = 0;
@@ -897,15 +999,20 @@ impl Compositor {
             self.damage(r);
             // The narrator hears which window has the focus (display.md v1.1).
             let w = self.windows[new];
-            let mut buf = [0u8; 64];
+            // The title is the client's: named, not obeyed (v1.14).
+            let mut buf = [0u8; SAY_LINE];
             let len = {
                 let mut o = Out {
                     buf: &mut buf,
                     len: 0,
                 };
                 o.put(b"SAY window \"");
-                o.put(&w.title[..w.title_len]);
+                let cut = put_title(&mut o, w.title.get(..w.title_len).unwrap_or(&[]));
                 o.put(b"\" focused");
+                if cut > 0 {
+                    o.put(b" cut=");
+                    o.num(i64::try_from(cut).unwrap_or(0));
+                }
                 o.len
             };
             self.say(&buf[..len], now);
@@ -920,18 +1027,22 @@ impl Compositor {
         if (w.w, w.h) == before {
             return;
         }
-        let mut buf = [0u8; 96];
+        let mut buf = [0u8; SAY_LINE];
         let len = {
             let mut o = Out {
                 buf: &mut buf,
                 len: 0,
             };
             o.put(b"SAY window \"");
-            o.put(&w.title[..w.title_len]);
+            let cut = put_title(&mut o, w.title.get(..w.title_len).unwrap_or(&[]));
             o.put(b"\" resized ");
             o.num(i64::from(w.w));
             o.put(b"x");
             o.num(i64::from(w.h));
+            if cut > 0 {
+                o.put(b" cut=");
+                o.num(i64::try_from(cut).unwrap_or(0));
+            }
             o.len
         };
         self.say(&buf[..len], now);
@@ -986,7 +1097,7 @@ impl Compositor {
         w.y = ORIGIN + k * CASCADE + BORDER + TITLE_H;
         w.w = s.w;
         w.h = s.h;
-        let n = title.len().min(TITLE_MAX);
+        let n = title_len(title);
         w.title[..n].copy_from_slice(&title[..n]);
         w.title_len = n;
         self.windows[wi] = w;
@@ -1564,7 +1675,7 @@ impl Compositor {
                     return false;
                 }
                 let title = after_fields(req, 2);
-                let n = title.len().min(TITLE_MAX);
+                let n = title_len(title);
                 self.windows[wi].title[..n].copy_from_slice(&title[..n]);
                 self.windows[wi].title[n..].fill(0);
                 self.windows[wi].title_len = n;

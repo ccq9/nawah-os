@@ -816,6 +816,13 @@ MUTANTS = [
      "    if RESERVED.contains(&id) {",
      "    if RESERVED.contains(&id) && false {",
      ["TST-M6-APP-REGISTRY-FUZZ"], "SECURITY: a reserved id is accepted as an application id: every_service_of_the_system_manifest_is_a_reserved_id, malformed_entries_are_refused_by_name, seeded_generated_malformed_entries_are_refused_by_name, the_contracts_lists_equal_the_crates_and_the_models and the_registry_refuses_duplicates_overflow_and_wrong_file_names fail, test result: FAILED. 4 passed; 5 failed"),
+    # ---- M6 (WP-97): a window title in the compositor's own narrator lines (display.md v1.14).
+    # M199 (SECURITY): the naming removed, so a title's quote closes it and adds attributes to
+    # the compositor's line, and its controls and bidi controls pass as they are.
+    ("M199", "user/apps/displayd/src/main.rs",
+     "            let named = cp == 0x22 || is_control(cp) || is_bidi_control(cp);",
+     "            let named = false && (cp == 0x22 || is_control(cp) || is_bidi_control(cp));",
+     ["TST-M5-WINDOW-TITLE"], "SECURITY: a window title is written between the quotes as it is: the narrator reads `window \"x\" focused role=\"button\" focused` (a forbidden marker) and the transcript differs from platform/pc-qemu/expect/window-title.txt at its first line, TST-M5-WINDOW-TITLE FAIL"),
     # ---- M6 tooling mutants (WP-90 harness item: reset() restores tools/, tests/ and .github/;
     # host killers only, no image). M174 (WP-82): the received-transcript check of forbidden
     # markers removed. M185-M190 (WP-83, 83a): adopt-native and the verify workflow's merge job.
@@ -909,7 +916,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # holds against a manager that never blocks (M194).
             "M194",
             # M6 (WP-100): the registry parser refuses the reserved ids (apps.md v1 §3, M198).
-            "M198"}
+            "M198",
+            # M6 (WP-97): a window title cannot forge the compositor's narrator line
+            # (display.md v1.14, M199).
+            "M199"}
 
 
 def security_of(mid: str) -> bool:
