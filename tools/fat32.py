@@ -385,9 +385,10 @@ def cmd_expect(a):
     return 0 if ok else 1
 
 
-# Deeper than any path the kernel can name (PATH_MAX 256). A loop of directories cannot run the
-# walk away: a cluster reached twice is a finding and ends that chain.
-DEPTH_MAX = 64
+# A path of the kernel's PATH_MAX (256 bytes) names at most 127 levels of directories, so no
+# tree the kernel can name is cut here. A loop of directories cannot run the walk away: a
+# cluster reached twice is a finding and ends that chain.
+DEPTH_MAX = 128
 
 
 def tree_findings(img, fat):
@@ -487,8 +488,8 @@ def cmd_check(a):
     info = img.read_sector(img.fsinfo_sector)
     signed = [struct.unpack_from("<I", info, off)[0] for off in (0, 484, 508)] == [0x41615252, 0x61417272, 0xAA550000]
     if not signed:
-        # The three signatures the kernel asks for before it trusts the count; no refused or
-        # lost write breaks them (a sector is written whole or not at all).
+        # The three signatures the kernel asks for before it trusts the count. A refused write
+        # does not break them; a torn sector could, and is not covered by any case.
         problems.append("FSInfo signatures")
     recorded = struct.unpack_from("<I", info, 488)[0] if signed else 0xFFFFFFFF
     real_free = img.clusters - used

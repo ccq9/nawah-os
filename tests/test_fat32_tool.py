@@ -279,14 +279,14 @@ class Fat32Check(unittest.TestCase):
         r = run("check", self.nested("ten.img", 10))
         self.assertEqual(r.returncode, 0, r.stdout)
         # Past its limit the walk says so, and does not call what it did not visit lost.
-        r = run("check", self.nested("deep.img", 70))
+        r = run("check", self.nested("deep.img", 130))
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn("deeper than this check walks", r.stdout)
         self.assertNotIn("lost clusters", r.stdout)
 
     def test_fsinfo_signatures(self):
         # A free count under broken signatures is not a count: it is a problem of its own,
-        # with and without --faulted (a refused write leaves a sector as it was, signatures too).
+        # with and without --faulted (a refused write leaves the sector as it was).
         img = self.image()
         s = bytearray(img.read_sector(img.fsinfo_sector))
         s[488:492] = (5).to_bytes(4, "little")

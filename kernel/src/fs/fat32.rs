@@ -712,8 +712,8 @@ impl Fat32 {
     /// node, the frees (files.md v1.5): the emptied entry is stored first, then the node every
     /// open shares follows it, then the old chain is freed. A failure before the entry is
     /// stored changes nothing; a failure after it leaves the file empty on the disk and in the
-    /// node alike, with the FSInfo count stale and, unless FSInfo alone failed, clusters of
-    /// the old chain lost, and is answered as an error. At no failure point of these writes does a name point at a freed
+    /// node alike, with clusters of the old chain lost, the FSInfo count stale, or both, and
+    /// is answered as an error. At no failure point of these writes does a name point at a freed
     /// cluster, given that the writes reach the disk in the order they are made (no flush
     /// separates the steps: a device cache that reorders them is not covered).
     pub fn truncate(&self, file: &mut Entry) -> Result<u32, FsError> {
@@ -735,8 +735,8 @@ impl Fat32 {
 
     /// Removes a file (not a directory). The entry is marked free first and its chain is freed
     /// after it (files.md v1.5): a failure before the entry is written changes nothing; a
-    /// failure after it leaves no name, the FSInfo count stale and, unless FSInfo alone failed,
-    /// clusters of the chain lost, and is answered as an error (a second delete then answers that the name does not
+    /// failure after it leaves no name, with clusters of the chain lost, the FSInfo count
+    /// stale, or both, and is answered as an error (a second delete then answers that the name does not
     /// exist). At no failure point of these writes does a name point at a freed cluster, given
     /// that the writes reach the disk in the order they are made (no flush separates the
     /// steps: a device cache that reorders them is not covered).
