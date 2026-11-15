@@ -434,6 +434,22 @@ class Fat32Check(unittest.TestCase):
             r = run("check", *mode, self.img)
             self.assertEqual(r.returncode, 1, (mode, r.stdout))
             self.assertIn("FAT1: /GHOST.TXT is reached along this copy only", r.stdout, mode)
+        # The mirror: the root's chain is longer in the first copy alone, and the second copy
+        # does not reach the name.
+        img = self.image()
+        self.set_one_copy(img, img.root_cluster, EOC, 1)
+        self.set_one_copy(img, z, 0, 1)
+        self.set_one_copy(img, img.root_cluster, z, 0)
+        self.set_one_copy(img, z, EOC, 0)
+        img.close()
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, self.img)
+            self.assertEqual(r.returncode, 1, (mode, r.stdout))
+            self.assertIn("FAT1: /GHOST.TXT is not reached along this copy", r.stdout, mode)
+        # With the counts such an image has, the name is still the finding.
+        r = run("check", "--faulted", "--expect-lost", "0", "--expect-lost-second", "1", "--expect-lost-both", "0", self.img)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("problems=['FAT1: /GHOST.TXT is not reached along this copy']", r.stdout)
 
     def test_second_copy_pins_need_a_second_copy(self):
         # WP-127 (the red team's A3): on a volume with one FAT copy a pin on the second copy

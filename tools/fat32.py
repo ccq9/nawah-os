@@ -20,8 +20,10 @@ Commands:
                           with exactly N chains longer than their size and exactly K lost clusters when given;
                           NAMES says which files are longer and by how many clusters (/A.TXT:+1,/B.TXT:+2;
                           - for none); the -second options say the same of the second FAT copy,
-                          --expect-lost-both how many clusters are lost in both, and a pin on one copy
-                          without the other's is refused
+                          --expect-lost-both how many clusters are lost in both; the three numbers of the
+                          lost clusters come together, --allow-longer with --expect-longer and --expect-longer
+                          with --expect-longer-second, or the call is refused (--expect-longer-second alone
+                          is taken: the first copy then may hold no longer file)
   fsck-faulted IMG [--allow-longer N]
                           fsck.fat -n with every message named; fails on a failing or unnamed one
   expect IMG PATH TEXT    exit 0 when the file's bytes equal TEXT (\\n escapes allowed)
@@ -399,7 +401,7 @@ DEPTH_MAX = 128
 
 def tree_findings(img, fat):
     """One walk of the whole tree along FAT copy `fat`, recording which name reaches each
-    cluster. Returns (strict, longer, owned, complete). `strict` holds what no state of the
+    cluster. Returns (strict, longer, owned, complete, reached). `strict` holds what no state of the
     volume may show: a chain that runs into a free cluster, leaves the volume or loops, two names
     on one cluster, a file whose chain is shorter than its size, an entry whose first cluster
     is no cluster of the volume (0 belongs to a file that holds none and to no directory), and
@@ -486,9 +488,11 @@ def cmd_check(a):
     for the number of lost clusters. Both are counted along the second FAT copy too:
     --expect-longer-second and --expect-lost-second pin them, --expect-lost-both pins how many
     clusters are lost in both copies (so a cluster marked in one copy alone cannot stand for
-    one marked in the other alone), and a pin on one copy without the other's is refused
-    (exit 2), so no case judges one copy and not the other. A name the walk reaches along one
-    copy and not along another is a problem in both modes."""
+    one marked in the other alone). The three numbers of the lost clusters are given together,
+    --allow-longer with --expect-longer and --expect-longer with --expect-longer-second, or the
+    call is refused (exit 2); --expect-longer-second alone is taken and leaves the first copy
+    judged as without it: any file longer than its size there is a problem. A name the walk
+    reaches along one copy and not along another is a problem in both modes."""
     img = Image(a.image)
     faulted = getattr(a, "faulted", False)
     allow_longer = getattr(a, "allow_longer", None) if faulted else None
