@@ -6813,7 +6813,8 @@
     "tools/project.py validate-records: gate_evidence_refs are checked for presence of the text only; a plain-file reference skips the verdict, test id, oracle, provenance and staleness checks; a done item or a verified requirement may cite a FAIL verdict or another test's run; run_id is not compared between run.json, verdict.json and the directory; digests.json is not read; inputs' globs are expanded when the run is written and never again; a declared input absent at run time is dropped silently",
     "the assurance engineer's experiments of 2026-11-15 on a copy (scratch): each of these accepted in normal and strict mode",
     "docs/work-items.json WP-05 (the one plain-file reference today) and the 28 references of 18 done items and one of REQ-M5-003 that cite runs of tests outside their test_ids",
-    "RSK-030"
+    "RSK-030",
+    "tools/project.py derive_position: with no active item the current task is the first planned item whose dependencies are done; it reads neither the item's `blocker` nor the blocked_task_ids of an open decision, so after every close docs/project-state.json names WP-69 as current_task and next_action although DEC-027 blocks it (noted by the owner's reviewer at 27e80d846 on 2026-11-15; confirmed by reading the function and that commit's project-state.json; nothing was done on WP-69)"
    ],
    "files": [
     "tools/project.py",
@@ -6830,9 +6831,10 @@
     "design to decide in the package (2-3 options with trade-offs): gate references checked like a test's; PASS and a run directory required for gates, done items and verified requirements, with WP-05's legacy file named as such or the item redone; the three run ids and digests.json compared; globs re-expanded at validation from the source or stored in the verdict; a decision on references to runs of tests outside test_ids (a separate field for regression evidence, or the tests added): tightening only, nothing relaxed; binding the verdict's hash into the import receipt goes with WP-89",
     "test first, red seen locally before the fix: one failing host case per missing rule in tests/test_validate_records.py and tests/test_evidence_provenance.py (a passed gate citing a missing run and a FAIL run; a done item citing a FAIL run; a PASS test citing only a plain file; mismatching run ids; digests.json differing from the verdict's inputs; a new file matching a glob), and pinning cases for the existing rules that have none",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: unmeasured; sized at activation"
+    "2026-11-15 estimate: unmeasured; sized at activation",
+    "2026-11-15 added from the owner's reviewer: the derived next task skips an item that carries a blocker or is listed by an open decision; test first: a host case with a planned, dependency-free item blocked by an open decision before an unblocked one: today the blocked one is named"
    ],
-   "acceptance": "each of the named forged or broken references is a validate-records error, shown by the new host cases on CI, and the committed records pass the stricter validator with every exception named; TST-M0-001 and TST-M0-007 PASS",
+   "acceptance": "each of the named forged or broken references is a validate-records error, shown by the new host cases on CI, and the committed records pass the stricter validator with every exception named; TST-M0-001 and TST-M0-007 PASS; project-state never names as its next task an item with a blocker or one an open decision blocks, pinned by a host case",
    "test_ids": [
     "TST-M0-001",
     "TST-M0-007"
