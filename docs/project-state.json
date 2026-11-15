@@ -4,7 +4,7 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "2173d2e3985f8fb5c343f164832ac406db1e8310",
+ "source_revision": "48cd1f93c5c5523709f5c28f8b4a25d4fccd8841",
  "dirty_state": true,
  "current_stage": "M6",
  "current_task": "WP-126",
@@ -67,8 +67,8 @@
  "next_action": "WP-126: فاحص الصورة المضيف: إدخال تالف (مجلد أو ملف عنقوده الأول 0 أو 1) وقيمة محجوزة في أي نسخة FAT يُسمَّيان مشكلة (من مراجعة المالك الخارجية، 2026-11-15)",
  "required_inputs": [],
  "runner_status": "running",
- "checkpoint_generation": 154,
- "event_sequence": 154,
+ "checkpoint_generation": 155,
+ "event_sequence": 155,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 7,
@@ -85,7 +85,8 @@
   "DEC-027",
   "DEC-012",
   "DEC-019",
-  "DEC-028"
+  "DEC-028",
+  "DEC-030"
  ],
  "unknown_fields": {
   "budget_counters.tool_calls_session": "no API exposes the session's tool-call or token budget",
