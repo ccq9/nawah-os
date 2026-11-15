@@ -6114,12 +6114,12 @@
     "depends on WP-94 for the escaping rule and its contract section",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here (title; relay) before activating",
     "2026-11-14 estimate: unmeasured; the relay's change touches every expect file with narrator lines, to be sized at activation",
-    "2026-11-14 (red team review of WP-99, by reading, unverified): to examine with this item: a process can print a marker's text inside its SYS_TRACE line (`…|user|trace|…text=…|kernel|halt|…`), which the lab's substring match counts; today the required lines carry the build id, which no system call returns, and max_counts catches an added line; a start-of-line match in tools/project.py with a host case would close it"
+    "2026-11-14 (red team review of WP-99, by reading, unverified): to examine with this item: a process can print a marker's text inside its SYS_TRACE line (`…|user|trace|…text=…|kernel|halt|…`), which the lab's substring match counts; today the required lines carry the build id, which no system call returns, and max_counts catches an added line; a start-of-line match in tools/project.py with a host case would close it",
+    "2026-11-15 split before activation at its named point (title; relay), as its budget line requires: this item keeps the title's escaping in the compositor's own lines (finding 1, TST-M5-WINDOW-A11Y); the relay's attribution (finding 2, TST-M5-NARRATOR-AUTHORITY, every expect file with narrator lines) and the SYS_TRACE marker note go to WP-103, which depends on this one"
    ],
-   "acceptance": "a title with a quote yields one unforgeable window line; an application's line cannot be taken for the compositor's; the cases and mutants named at activation PASS on CI; display.md's new version states both rules",
+   "acceptance": "a title with a quote, a control byte or a bidi control yields one unforgeable window line in the compositor's own SAY lines (focused, resized and any other that carries the title); the case and the SECURITY mutant named at activation PASS on CI; display.md's new version states the rule; the relay's attribution is WP-103",
    "test_ids": [
-    "TST-M5-WINDOW-A11Y",
-    "TST-M5-NARRATOR-AUTHORITY"
+    "TST-M5-WINDOW-A11Y"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M5"
@@ -6435,6 +6435,58 @@
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-103",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M5-005"
+   ],
+   "depends_on": [
+    "WP-97"
+   ],
+   "inputs": [
+    "user/apps/displayd/src/main.rs: the A11Y relay passes the focused client's text to SAY unchanged",
+    "user/apps/narrator/src/main.rs: the narrator writes every byte outside 0x20-0x7E as an escape, so only printable ASCII can forge",
+    "WP-97 (the title's escaping in the compositor's own line); the audit of WP-94 on 2026-11-14; RSK-022",
+    "docs/contracts/display.md (the A11Y and SAY lines)"
+   ],
+   "files": [
+    "user/apps/displayd/src/main.rs",
+    "docs/contracts/display.md",
+    "docs/contracts/ui.md",
+    "platform/pc-qemu/target.json",
+    "platform/pc-qemu/expect",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/security/threat-model.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/display.md"
+   ],
+   "actions": [
+    "تطبيقٌ لا ينتحل أسطر النظام في القارئ: نسبة أسطر التطبيق (103، مفصولة من WP-97 في 2026-11-15 عند نقطة قسمتها المسماة: العنوان؛ المرحّل)",
+    "finding: the focused application's A11Y text is spoken as it is, so an application can speak a line that reads like the compositor's (`window \"…\" focused`) or like another element's description; nothing in the spoken line says who said it",
+    "design to decide in the package (2-3 options, with the services and threat engineers): a prefix or a separate SAY form that marks application lines apart from the compositor's own, against refusing application lines that begin with the compositor's words; what the frozen expect files then read (every guest case that reads narrator lines)",
+    "test first: a guest case with a spoofing A11Y line (TST-M5-NARRATOR-AUTHORITY or a new case), a SECURITY mutant for the rule; the local guest suites on QEMU before the push",
+    "taken over from WP-97 (red team review of WP-99, by reading, unverified): a process can print a marker's text inside its SYS_TRACE line, which the lab's substring match counts; today the required lines carry the build id, which no system call returns, and max_counts catches an added line; a start-of-line match in tools/project.py with a host case would close it: examine here or split out",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate: unmeasured; the change touches every expect file with narrator lines, to be sized at activation"
+   ],
+   "acceptance": "an application's spoken line cannot be taken for the compositor's; the case and the mutant named at activation PASS on CI; display.md's new version states the rule",
+   "test_ids": [
+    "TST-M5-NARRATOR-AUTHORITY"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
    "status": "planned",
    "status_history": [
