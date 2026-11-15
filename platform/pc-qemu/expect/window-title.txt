@@ -1,0 +1,12 @@
+# TST-M5-WINDOW-TITLE (WP-97, display.md v1.14): the compositor's own narrator lines for window
+# titles a client chose. A quote, a control byte, a newline, a bidi control, a line separator and
+# a lead byte with nothing after it are named [U+XXXX] between the quotes; a title whose names do
+# not fit is cut at a whole character or name and marked cut=<k>; a title longer than TITLE_MAX
+# is stored cut at a character boundary; a plain title reads as it always did.
+window "x[U+0022] focused role=[U+0022]button" focused
+window "a[U+0007]b[U+000A]c" focused
+window "abc[U+202E]def[U+2028]g" focused
+window "[U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022]" focused cut=20
+window "ab[U+FFFD]" focused
+window "A\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}" focused
+window "Sign in" focused

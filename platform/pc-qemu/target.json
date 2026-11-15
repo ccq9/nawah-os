@@ -5150,6 +5150,45 @@
         "timeout_s": 300
       },
       {
+        "id": "TST-M5-WINDOW-TITLE",
+        "test_id": "TST-M5-WINDOW-TITLE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=window_title"
+        ],
+        "oracle": "REQ-M5-005, WP-97 (display.md v1.14; mutant M199): a window title is the client's data and the compositor's own narrator line names in it what would end it. SVC-NT.TXT (the compositor and the narrator alone): the test kernel, one display client, opens four windows titled `x\" focused role=\"button`, `a<BEL>b<LF>c`, `abc<U+202E>def<U+2028>g` and 32 quotes, then renames and raises the first three to `ab<0xC2>` (a lead byte with nothing after it), `A` and 16 Arabic letters (33 bytes) and `Sign in`, and closes the four, the focused one last; every reply is OK. The narrator's transcript equals platform/pc-qemu/expect/window-title.txt line for line, seven lines, one per focus change and nothing else: `window \"x[U+0022] focused role=[U+0022]button\" focused`, `window \"a[U+0007]b[U+000A]c\" focused`, `window \"abc[U+202E]def[U+2028]g\" focused`, `window \"` + 12 times `[U+0022]` + `\" focused cut=20` (the names that do not fit in 96 bytes cut at a whole name, the line still closed and the cut counted), `window \"ab[U+FFFD]\" focused`, `window \"A` + 15 times `\\u{0628}` + `\" focused` (stored cut at a character boundary, not inside a letter) and `window \"Sign in\" focused` (a plain title as before); the forged attribute never appears outside the quotes; no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=window_title",
+          "|ktest|window_title|services=4|ready=1",
+          "|ktest|window_title|created=OK,OK,OK,OK|renamed=OK,OK,OK|closed=OK,OK,OK,OK",
+          "|text=narrator|window \"x[U+0022] focused role=[U+0022]button\" focused",
+          "|text=narrator|window \"Sign in\" focused",
+          "|ktest|window_title|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|window_title|frames_delta=0",
+          "|ktest|pass|a window title is spoken between its quotes and never ends its line"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|text=narrator|window \"x\" focused role=\"button\""
+        ],
+        "timeout_s": 60,
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/transcript.py",
+            "check",
+            "${EVIDENCE}",
+            "platform/pc-qemu/expect/window-title.txt"
+          ]
+        ]
+      },
+      {
         "id": "TST-M5-LOCK-HANG",
         "test_id": "TST-M5-LOCK-HANG",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

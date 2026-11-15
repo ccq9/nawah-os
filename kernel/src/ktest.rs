@@ -212,6 +212,7 @@ pub fn run() -> ! {
         "auth_input_isolated" => auth_input_isolated(),
         "lock_survives" => lock_survives(),
         "narrator_authority" => narrator_authority(),
+        "window_title" => window_title(),
         "client_limits" => client_limits(),
         "input_name_reserved" => input_name_reserved(),
         "focus_after_restart" => focus_after_restart(),
@@ -8484,6 +8485,110 @@ fn narrator_authority() -> ! {
         name,
         h,
         "only the service the manifest names narrator may hear the announcements",
+    )
+}
+
+/// TST-M5-WINDOW-TITLE (REQ-M5-005; WP-97, display.md v1.14): a window title is the client's
+/// data, and the compositor's own narrator line `window "<title>" focused` names in it what
+/// would end the title, the line or its direction. SVC-NT.TXT has the compositor and the
+/// narrator alone, so every narrator line is the compositor's; the host checks the transcript
+/// (platform/pc-qemu/expect/window-title.txt) line for line. One client opens four windows
+/// (each focused when created, each announced once) and renames and raises the first three
+/// (each raise announced once); the last focused window is closed last, after the others, so
+/// no close moves the focus to a window that would be announced again.
+fn window_title() -> ! {
+    let name = "window_title";
+    let (h, admin, clients, format) = display_env(
+        name,
+        b"/SYSTEM/SVC-NT.TXT",
+        &["auth", "input", "display", "narrator"],
+        1,
+    );
+    kprintln!("OSX|{}|ktest|window_title|services=4|ready=1", BUILD_ID);
+    let d = &clients[0];
+    let mut ev = Vec::new();
+    let mut vmos = Vec::new();
+    // A quote that tries to close the title and add an attribute; a control byte and a
+    // newline; a bidi override and a line separator; 32 quotes, whose names do not fit.
+    let created: [&[u8]; 4] = [
+        b"x\" focused role=\"button",
+        b"a\x07b\nc",
+        "abc\u{202E}def\u{2028}g".as_bytes(),
+        &[b'"'; 32],
+    ];
+    let mut wids = Vec::new();
+    let mut replies = Vec::new();
+    for t in created {
+        let (vmo, entry) = kernel_surface(32, 32, format, 0x808080);
+        vmos.push(vmo);
+        let r = drequest(d, b"CREATE_SURFACE 32 32", alloc::vec![entry], &mut ev);
+        let sid = String::from(r.strip_prefix("OK ").unwrap_or("0"));
+        let mut req = alloc::format!("CREATE_WINDOW {} ", sid).into_bytes();
+        req.extend_from_slice(t);
+        let r = drequest(d, &req, Vec::new(), &mut ev);
+        replies.push(if r.starts_with("OK ") { "OK" } else { "ERR" });
+        wids.push(String::from(r.strip_prefix("OK ").unwrap_or("0")));
+    }
+    // A lead byte with nothing after it, which a reader decoding UTF-8 would join to the
+    // closing quote; an ASCII letter and 16 Arabic letters (33 bytes), cut at TITLE_MAX; a
+    // plain title, spoken as it always was.
+    let mut arabic = alloc::vec![b'A'];
+    for _ in 0..16 {
+        arabic.extend_from_slice("\u{0628}".as_bytes());
+    }
+    let renamed: [&[u8]; 3] = [b"ab\xC2", &arabic, b"Sign in"];
+    let mut again = Vec::new();
+    for (k, t) in renamed.iter().enumerate() {
+        let mut req = alloc::format!("TITLE {} ", wids[k]).into_bytes();
+        req.extend_from_slice(t);
+        let r1 = drequest(d, &req, Vec::new(), &mut ev);
+        let r2 = drequest(
+            d,
+            alloc::format!("RAISE {}", wids[k]).as_bytes(),
+            Vec::new(),
+            &mut ev,
+        );
+        again.push(if r1 == "OK" && r2 == "OK" {
+            "OK"
+        } else {
+            "ERR"
+        });
+    }
+    // The focused window (the third) goes last: closing the others moves no focus.
+    let mut closed = Vec::new();
+    for k in [0, 1, 3, 2] {
+        let r = drequest(
+            d,
+            alloc::format!("CLOSE {}", wids[k]).as_bytes(),
+            Vec::new(),
+            &mut ev,
+        );
+        closed.push(if r == "OK" { "OK" } else { "ERR" });
+    }
+    kprintln!(
+        "OSX|{}|ktest|window_title|created={}|renamed={}|closed={}",
+        BUILD_ID,
+        replies.join(","),
+        again.join(","),
+        closed.join(",")
+    );
+    if replies
+        .iter()
+        .chain(&again)
+        .chain(&closed)
+        .any(|r| *r != "OK")
+    {
+        fail("the compositor refused a window, a title, a raise or a close")
+    }
+    // The narrator writes its lines on its own time: let the last ones reach the serial log
+    // before the manager stops it.
+    sched::poll_until(sched::ticks() + 1_000, || false);
+    drop((replies, again, closed, wids, ev, arabic));
+    drop((vmos, clients, admin));
+    display_finish(
+        name,
+        h,
+        "a window title is spoken between its quotes and never ends its line",
     )
 }
 
