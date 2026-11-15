@@ -7445,7 +7445,8 @@
     "test first, red seen locally before the fix: the second sweep of TST-M3-FAT32-FAULT-WRITE makes its append again after each failure and the host check with --faulted must find no name whose chain is shorter than its size in either copy: today `FAT1: /X07.TXT: chain shorter than size`; the delete and truncate sweeps of WP-105 run again because the order of FAT writes they count may change; a SECURITY mutant for the order",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: about 35 calls, unmeasured; sized at activation",
-    "2026-11-15 (WP-118's red team, by reading): with the copy the kernel reads written last, a failure between the two copies leaves, for a link, the second copy linked and the first not (the next append links another cluster in both and the first one is lost in both); for an allocation, the second copy marked and the first free (the kernel takes the cluster again); for a free, the second copy free and the first marked (no name reaches it since WP-105): no state where a name reaches a free cluster; whatever recovers lost clusters (WP-106) must copy the first copy over the second before it frees, or the second copy keeps a link to a cluster another file may take"
+    "2026-11-15 (WP-118's red team, by reading): with the copy the kernel reads written last, a failure between the two copies leaves, for a link, the second copy linked and the first not (the next append links another cluster in both and the first one is lost in both); for an allocation, the second copy marked and the first free (the kernel takes the cluster again); for a free, the second copy free and the first marked (no name reaches it since WP-105): no state where a name reaches a free cluster; whatever recovers lost clusters (WP-106) must copy the first copy over the second before it frees, or the second copy keeps a link to a cluster another file may take",
+    "2026-11-15 activation estimate and design (the manager, from a reading of fat_set, write, create and free_chain at 657f6fd32 and the scratch experiment recorded during WP-118; the local QEMU lab; an audit pass and a red-team pass before the single push): about 50 calls / 75 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first). Design to try first, of the three options: fat_set writes the copies from the last to the first, so the copy the kernel reads is written last; a fat_set that fails between the copies then leaves what the kernel sees unchanged, and the next fat_set of that entry writes every copy again: a link refused in the first copy is not seen, the append made again allocates another cluster and links it in both, and the first one is lost in both. Not chosen: writing a found link again in every copy when a write goes on through a cluster past the old size (two writes more on that path; create's directory growth and a failed allocation or free are not covered) and comparing the copies at mount (WP-106). Known price, to measure: the order of FAT writes changes, so the numbers the three fault cases pin (9 lost for delete and for truncate; 51 lost and 3 longer chains for write) are derived again write by write and by a local run, and the host checker's longer-chain count is read per copy; M46's anchor follows the loop. Test first, red seen locally: the append sweep of TST-M3-FAT32-FAULT-WRITE makes its append again after each failure and the host check must find no chain shorter than its size in either copy; expected today: one name short in the second copy (N=7). If the audit finds the design against a recorded acceptance text, the text is not changed: the design is"
    ],
    "acceptance": "after a failed write of a FAT link an append made again leaves no name whose chain is shorter than its size in either FAT copy, shown by the sweep with the append made again and the host check on CI; the delete and truncate sweeps still show no name on a free cluster; files.md (the version free at the merge) states the order of the copies; the mutant killed",
    "test_ids": [
@@ -7456,9 +7457,10 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
