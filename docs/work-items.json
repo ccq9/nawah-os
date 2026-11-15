@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135749Z-8c621319-001-a"
+    "evidence/20261115T155655Z-b502599e-002-a"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135748Z-8c621319-001-a"
+    "evidence/20261115T155655Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T132953Z-8c621319-001-a",
-    "evidence/20261115T132956Z-8c621319-001-a"
+    "evidence/20261115T153556Z-b502599e-001-a",
+    "evidence/20261115T153558Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135749Z-8c621319-001-a"
+    "evidence/20261115T155655Z-b502599e-002-a"
    ],
    "blocker": null
   },
@@ -356,10 +356,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133000Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a",
-    "evidence/20261115T133041Z-8c621319-001-a",
-    "evidence/20261115T135800Z-8c621319-001-a"
+    "evidence/20261115T153600Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a",
+    "evidence/20261115T153633Z-b502599e-001-a",
+    "evidence/20261115T155703Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -429,17 +429,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133048Z-8c621319-001-a",
-    "evidence/20261115T133055Z-8c621319-001-a",
-    "evidence/20261115T133102Z-8c621319-001-a",
-    "evidence/20261115T133109Z-8c621319-001-a",
-    "evidence/20261115T133115Z-8c621319-001-a",
-    "evidence/20261115T133122Z-8c621319-001-a",
-    "evidence/20261115T133129Z-8c621319-001-a",
-    "evidence/20261115T133136Z-8c621319-001-a",
-    "evidence/20261115T133142Z-8c621319-001-a",
-    "evidence/20261115T133149Z-8c621319-001-a",
-    "evidence/20261115T133156Z-8c621319-001-a"
+    "evidence/20261115T153637Z-b502599e-001-a",
+    "evidence/20261115T153642Z-b502599e-001-a",
+    "evidence/20261115T153646Z-b502599e-001-a",
+    "evidence/20261115T153650Z-b502599e-001-a",
+    "evidence/20261115T153655Z-b502599e-001-a",
+    "evidence/20261115T153659Z-b502599e-001-a",
+    "evidence/20261115T153703Z-b502599e-001-a",
+    "evidence/20261115T153708Z-b502599e-001-a",
+    "evidence/20261115T153712Z-b502599e-001-a",
+    "evidence/20261115T153716Z-b502599e-001-a",
+    "evidence/20261115T153721Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -490,9 +490,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133203Z-8c621319-001-a",
-    "evidence/20261115T133210Z-8c621319-001-a",
-    "evidence/20261115T133216Z-8c621319-001-a"
+    "evidence/20261115T153725Z-b502599e-001-a",
+    "evidence/20261115T153729Z-b502599e-001-a",
+    "evidence/20261115T153733Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -555,11 +555,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133223Z-8c621319-001-a",
-    "evidence/20261115T133230Z-8c621319-001-a",
-    "evidence/20261115T133237Z-8c621319-001-a",
-    "evidence/20261115T133244Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T153738Z-b502599e-001-a",
+    "evidence/20261115T153742Z-b502599e-001-a",
+    "evidence/20261115T153746Z-b502599e-001-a",
+    "evidence/20261115T153751Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -636,11 +636,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133250Z-8c621319-001-a",
-    "evidence/20261115T133257Z-8c621319-001-a",
-    "evidence/20261115T133304Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a",
-    "evidence/20261115T133149Z-8c621319-001-a"
+    "evidence/20261115T153755Z-b502599e-001-a",
+    "evidence/20261115T153759Z-b502599e-001-a",
+    "evidence/20261115T153804Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a",
+    "evidence/20261115T153716Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -704,9 +704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133311Z-8c621319-001-a",
-    "evidence/20261115T133318Z-8c621319-001-a",
-    "evidence/20261115T133324Z-8c621319-001-a"
+    "evidence/20261115T153808Z-b502599e-001-a",
+    "evidence/20261115T153812Z-b502599e-001-a",
+    "evidence/20261115T153817Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -818,11 +818,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133332Z-8c621319-001-a",
-    "evidence/20261115T133339Z-8c621319-001-a",
-    "evidence/20261115T133345Z-8c621319-001-a",
-    "evidence/20261115T133352Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T153821Z-b502599e-001-a",
+    "evidence/20261115T153826Z-b502599e-001-a",
+    "evidence/20261115T153830Z-b502599e-001-a",
+    "evidence/20261115T153834Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -883,8 +883,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135739Z-8c621319-001-a",
-    "evidence/20261115T135741Z-8c621319-001-a"
+    "evidence/20261115T155647Z-b502599e-001-a",
+    "evidence/20261115T155649Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -950,11 +950,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133359Z-8c621319-001-a",
-    "evidence/20261115T133406Z-8c621319-001-a",
-    "evidence/20261115T133412Z-8c621319-001-a",
-    "evidence/20261115T133426Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T153838Z-b502599e-001-a",
+    "evidence/20261115T153843Z-b502599e-001-a",
+    "evidence/20261115T153847Z-b502599e-001-a",
+    "evidence/20261115T153856Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1024,11 +1024,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133433Z-8c621319-001-a",
-    "evidence/20261115T133440Z-8c621319-001-a",
-    "evidence/20261115T133453Z-8c621319-001-a",
-    "evidence/20261115T133500Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T153900Z-b502599e-001-a",
+    "evidence/20261115T153904Z-b502599e-001-a",
+    "evidence/20261115T153913Z-b502599e-001-a",
+    "evidence/20261115T153917Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1097,14 +1097,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133507Z-8c621319-001-a",
-    "evidence/20261115T133514Z-8c621319-001-a",
-    "evidence/20261115T133521Z-8c621319-001-a",
-    "evidence/20261115T133527Z-8c621319-001-a",
-    "evidence/20261115T133534Z-8c621319-001-a",
-    "evidence/20261115T133541Z-8c621319-001-a",
-    "evidence/20261115T133548Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T153922Z-b502599e-001-a",
+    "evidence/20261115T153926Z-b502599e-001-a",
+    "evidence/20261115T153930Z-b502599e-001-a",
+    "evidence/20261115T153935Z-b502599e-001-a",
+    "evidence/20261115T153939Z-b502599e-001-a",
+    "evidence/20261115T153943Z-b502599e-001-a",
+    "evidence/20261115T153947Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1174,10 +1174,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133601Z-8c621319-001-a",
-    "evidence/20261115T133608Z-8c621319-001-a",
-    "evidence/20261115T133615Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T153956Z-b502599e-001-a",
+    "evidence/20261115T154000Z-b502599e-001-a",
+    "evidence/20261115T154004Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1256,14 +1256,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133622Z-8c621319-001-a",
-    "evidence/20261115T133635Z-8c621319-001-a",
-    "evidence/20261115T133642Z-8c621319-001-a",
-    "evidence/20261115T133652Z-8c621319-001-a",
-    "evidence/20261115T133658Z-8c621319-001-a",
-    "evidence/20261115T133713Z-8c621319-001-a",
-    "evidence/20261115T135801Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T154009Z-b502599e-001-a",
+    "evidence/20261115T154017Z-b502599e-001-a",
+    "evidence/20261115T154021Z-b502599e-001-a",
+    "evidence/20261115T154027Z-b502599e-001-a",
+    "evidence/20261115T154032Z-b502599e-001-a",
+    "evidence/20261115T154040Z-b502599e-001-a",
+    "evidence/20261115T155703Z-b502599e-002-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1331,10 +1331,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133759Z-8c621319-001-a",
-    "evidence/20261115T133806Z-8c621319-001-a",
-    "evidence/20261115T133813Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T154110Z-b502599e-001-a",
+    "evidence/20261115T154114Z-b502599e-001-a",
+    "evidence/20261115T154119Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1407,12 +1407,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133820Z-8c621319-001-a",
-    "evidence/20261115T133827Z-8c621319-001-a",
-    "evidence/20261115T133833Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a",
-    "evidence/20261115T133433Z-8c621319-001-a",
-    "evidence/20261115T133453Z-8c621319-001-a"
+    "evidence/20261115T154123Z-b502599e-001-a",
+    "evidence/20261115T154127Z-b502599e-001-a",
+    "evidence/20261115T154132Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a",
+    "evidence/20261115T153900Z-b502599e-001-a",
+    "evidence/20261115T153913Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1469,10 +1469,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133419Z-8c621319-001-a",
+    "evidence/20261115T153851Z-b502599e-001-a",
     "evidence/20261108T230914Z-2cbdeaad-001",
-    "evidence/20261115T133446Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T153908Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1542,9 +1542,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133841Z-8c621319-001-a",
-    "evidence/20261115T133848Z-8c621319-001-a",
-    "evidence/20261115T133854Z-8c621319-001-a"
+    "evidence/20261115T154136Z-b502599e-001-a",
+    "evidence/20261115T154140Z-b502599e-001-a",
+    "evidence/20261115T154145Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1608,10 +1608,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133901Z-8c621319-001-a",
-    "evidence/20261115T133908Z-8c621319-001-a",
-    "evidence/20261115T133915Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T154149Z-b502599e-001-a",
+    "evidence/20261115T154153Z-b502599e-001-a",
+    "evidence/20261115T154158Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1684,10 +1684,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135811Z-8c621319-001-a",
-    "evidence/20261115T133922Z-8c621319-001-a",
-    "evidence/20261115T133929Z-8c621319-001-a",
-    "evidence/20261115T133940Z-8c621319-001-a"
+    "evidence/20261115T155710Z-b502599e-001-a",
+    "evidence/20261115T154202Z-b502599e-001-a",
+    "evidence/20261115T154207Z-b502599e-001-a",
+    "evidence/20261115T154214Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1747,12 +1747,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133948Z-8c621319-001-a",
-    "evidence/20261115T134026Z-8c621319-001-a",
-    "evidence/20261115T133955Z-8c621319-001-a",
-    "evidence/20261115T134003Z-8c621319-001-a",
-    "evidence/20261115T134011Z-8c621319-001-a",
-    "evidence/20261115T134018Z-8c621319-001-a"
+    "evidence/20261115T154219Z-b502599e-001-a",
+    "evidence/20261115T154243Z-b502599e-001-a",
+    "evidence/20261115T154224Z-b502599e-001-a",
+    "evidence/20261115T154228Z-b502599e-001-a",
+    "evidence/20261115T154233Z-b502599e-001-a",
+    "evidence/20261115T154238Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1834,10 +1834,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134037Z-8c621319-001-a",
-    "evidence/20261115T134044Z-8c621319-001-a",
-    "evidence/20261115T134051Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T154250Z-b502599e-001-a",
+    "evidence/20261115T154254Z-b502599e-001-a",
+    "evidence/20261115T154259Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1897,10 +1897,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134059Z-8c621319-001-a",
-    "evidence/20261115T134106Z-8c621319-001-a",
-    "evidence/20261115T134114Z-8c621319-001-a",
-    "evidence/20261115T134122Z-8c621319-001-a"
+    "evidence/20261115T154304Z-b502599e-001-a",
+    "evidence/20261115T154309Z-b502599e-001-a",
+    "evidence/20261115T154314Z-b502599e-001-a",
+    "evidence/20261115T154319Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -1951,8 +1951,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134130Z-8c621319-001-a",
-    "evidence/20261115T134138Z-8c621319-001-a"
+    "evidence/20261115T154324Z-b502599e-001-a",
+    "evidence/20261115T154330Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -2035,10 +2035,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134147Z-8c621319-001-a",
-    "evidence/20261115T134156Z-8c621319-001-a",
-    "evidence/20261115T135818Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a"
+    "evidence/20261115T154336Z-b502599e-001-a",
+    "evidence/20261115T154342Z-b502599e-001-a",
+    "evidence/20261115T155715Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -2099,11 +2099,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134205Z-8c621319-001-a",
+    "evidence/20261115T154348Z-b502599e-001-a",
     "evidence/20261108T233109Z-2cbdeaad-001",
-    "evidence/20261115T134147Z-8c621319-001-a",
-    "evidence/20261115T133940Z-8c621319-001-a",
-    "evidence/20261115T133848Z-8c621319-001-a"
+    "evidence/20261115T154336Z-b502599e-001-a",
+    "evidence/20261115T154214Z-b502599e-001-a",
+    "evidence/20261115T154140Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -2177,7 +2177,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134212Z-8c621319-001-a"
+    "evidence/20261115T154352Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -2251,9 +2251,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134222Z-8c621319-001-a",
-    "evidence/20261115T134242Z-8c621319-001-a",
-    "evidence/20261115T135822Z-8c621319-001-a"
+    "evidence/20261115T154400Z-b502599e-001-a",
+    "evidence/20261115T154414Z-b502599e-001-a",
+    "evidence/20261115T155720Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -2326,10 +2326,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134251Z-8c621319-001-a",
-    "evidence/20261115T134302Z-8c621319-001-a",
-    "evidence/20261115T134322Z-8c621319-001-a",
-    "evidence/20261115T135942Z-8c621319-001-a"
+    "evidence/20261115T154420Z-b502599e-001-a",
+    "evidence/20261115T154429Z-b502599e-001-a",
+    "evidence/20261115T154442Z-b502599e-001-a",
+    "evidence/20261115T155831Z-b502599e-002-a"
    ],
    "blocker": null
   },
@@ -2412,10 +2412,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135912Z-8c621319-001-a",
-    "evidence/20261115T135913Z-8c621319-001-a",
-    "evidence/20261115T135922Z-8c621319-001-a",
-    "evidence/20261115T134352Z-8c621319-001-a"
+    "evidence/20261115T155809Z-b502599e-001-a",
+    "evidence/20261115T155810Z-b502599e-001-a",
+    "evidence/20261115T155816Z-b502599e-001-a",
+    "evidence/20261115T154504Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -2486,10 +2486,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134407Z-8c621319-001-a",
-    "evidence/20261115T134431Z-8c621319-001-a",
-    "evidence/20261115T135927Z-8c621319-001-a",
-    "evidence/20261115T135941Z-8c621319-001-a"
+    "evidence/20261115T154515Z-b502599e-001-a",
+    "evidence/20261115T154535Z-b502599e-001-a",
+    "evidence/20261115T155819Z-b502599e-001-a",
+    "evidence/20261115T155831Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -2580,9 +2580,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134541Z-8c621319-001-a",
-    "evidence/20261115T134512Z-8c621319-001-a",
-    "evidence/20261115T134443Z-8c621319-001-a"
+    "evidence/20261115T154635Z-b502599e-001-a",
+    "evidence/20261115T154609Z-b502599e-001-a",
+    "evidence/20261115T154543Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -2649,9 +2649,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135340Z-8c621319-001-a",
-    "evidence/20261115T135352Z-8c621319-001-a",
-    "evidence/20261115T135927Z-8c621319-001-a"
+    "evidence/20261115T155347Z-b502599e-001-a",
+    "evidence/20261115T155355Z-b502599e-001-a",
+    "evidence/20261115T155819Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -2706,14 +2706,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135411Z-8c621319-001-a",
-    "evidence/20261115T135418Z-8c621319-001-a",
-    "evidence/20261115T135425Z-8c621319-001-a",
-    "evidence/20261115T134806Z-8c621319-001-a",
-    "evidence/20261115T135322Z-8c621319-001-a",
-    "evidence/20261115T134836Z-8c621319-001-a",
-    "evidence/20261115T134906Z-8c621319-001-a",
-    "evidence/20261115T134938Z-8c621319-001-a",
+    "evidence/20261115T155412Z-b502599e-001-a",
+    "evidence/20261115T155416Z-b502599e-001-a",
+    "evidence/20261115T155421Z-b502599e-001-a",
+    "evidence/20261115T154838Z-b502599e-001-a",
+    "evidence/20261115T155332Z-b502599e-001-a",
+    "evidence/20261115T154905Z-b502599e-001-a",
+    "evidence/20261115T154932Z-b502599e-001-a",
+    "evidence/20261115T155001Z-b502599e-001-a",
     "evidence/20261108T233109Z-2cbdeaad-001"
    ],
    "blocker": null
@@ -2755,7 +2755,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135047Z-8c621319-001-a"
+    "evidence/20261115T155101Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -2803,15 +2803,15 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134212Z-8c621319-001-a",
-    "evidence/20261115T134251Z-8c621319-001-a",
-    "evidence/20261115T134302Z-8c621319-001-a",
-    "evidence/20261115T134322Z-8c621319-001-a",
-    "evidence/20261115T134337Z-8c621319-001-a",
-    "evidence/20261115T135340Z-8c621319-001-a",
-    "evidence/20261115T135352Z-8c621319-001-a",
-    "evidence/20261115T135927Z-8c621319-001-a",
-    "evidence/20261115T135942Z-8c621319-001-a"
+    "evidence/20261115T154352Z-b502599e-001-a",
+    "evidence/20261115T154420Z-b502599e-001-a",
+    "evidence/20261115T154429Z-b502599e-001-a",
+    "evidence/20261115T154442Z-b502599e-001-a",
+    "evidence/20261115T154454Z-b502599e-001-a",
+    "evidence/20261115T155347Z-b502599e-001-a",
+    "evidence/20261115T155355Z-b502599e-001-a",
+    "evidence/20261115T155819Z-b502599e-001-a",
+    "evidence/20261115T155831Z-b502599e-002-a"
    ],
    "blocker": null
   },
@@ -2830,23 +2830,23 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135026Z-8c621319-001-a",
-    "evidence/20261115T134322Z-8c621319-001-a",
-    "evidence/20261115T134512Z-8c621319-001-a",
-    "evidence/20261115T134541Z-8c621319-001-a",
-    "evidence/20261115T134806Z-8c621319-001-a",
-    "evidence/20261115T135913Z-8c621319-001-a",
-    "evidence/20261115T135340Z-8c621319-001-a",
-    "evidence/20261115T134222Z-8c621319-001-a",
-    "evidence/20261115T134337Z-8c621319-001-a",
-    "evidence/20261115T135425Z-8c621319-001-a",
-    "evidence/20261115T134313Z-8c621319-001-a",
-    "evidence/20261115T134740Z-8c621319-001-a",
-    "evidence/20261115T134710Z-8c621319-001-a",
-    "evidence/20261115T134630Z-8c621319-001-a",
-    "evidence/20261115T134234Z-8c621319-001-a",
-    "evidence/20261115T134612Z-8c621319-001-a",
-    "evidence/20261115T134345Z-8c621319-001-a"
+    "evidence/20261115T155043Z-b502599e-001-a",
+    "evidence/20261115T154442Z-b502599e-001-a",
+    "evidence/20261115T154609Z-b502599e-001-a",
+    "evidence/20261115T154635Z-b502599e-001-a",
+    "evidence/20261115T154838Z-b502599e-001-a",
+    "evidence/20261115T155810Z-b502599e-001-a",
+    "evidence/20261115T155347Z-b502599e-001-a",
+    "evidence/20261115T154400Z-b502599e-001-a",
+    "evidence/20261115T154454Z-b502599e-001-a",
+    "evidence/20261115T155421Z-b502599e-001-a",
+    "evidence/20261115T154436Z-b502599e-001-a",
+    "evidence/20261115T154821Z-b502599e-001-a",
+    "evidence/20261115T154754Z-b502599e-001-a",
+    "evidence/20261115T154718Z-b502599e-001-a",
+    "evidence/20261115T154409Z-b502599e-001-a",
+    "evidence/20261115T154702Z-b502599e-001-a",
+    "evidence/20261115T154459Z-b502599e-001-a"
    ],
    "blocker": null,
    "id": "WP-43",
@@ -2921,9 +2921,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135019Z-8c621319-001-a",
-    "evidence/20261115T134512Z-8c621319-001-a",
-    "evidence/20261115T134147Z-8c621319-001-a"
+    "evidence/20261115T155038Z-b502599e-001-a",
+    "evidence/20261115T154609Z-b502599e-001-a",
+    "evidence/20261115T154336Z-b502599e-001-a"
    ],
    "blocker": null,
    "id": "WP-44",
@@ -3078,14 +3078,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135433Z-8c621319-001-a",
-    "evidence/20261115T135943Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a",
-    "evidence/20261115T133041Z-8c621319-001-a",
-    "evidence/20261115T135800Z-8c621319-001-a",
-    "evidence/20261115T135749Z-8c621319-002-a",
-    "evidence/20261115T135755Z-8c621319-001-a",
-    "evidence/20261115T135822Z-8c621319-001-a"
+    "evidence/20261115T155426Z-b502599e-001-a",
+    "evidence/20261115T155832Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a",
+    "evidence/20261115T153633Z-b502599e-001-a",
+    "evidence/20261115T155703Z-b502599e-001-a",
+    "evidence/20261115T155656Z-b502599e-001-a",
+    "evidence/20261115T155700Z-b502599e-001-a",
+    "evidence/20261115T155720Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -3177,12 +3177,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135724Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a",
-    "evidence/20261115T133901Z-8c621319-001-a",
-    "evidence/20261115T133908Z-8c621319-001-a",
-    "evidence/20261115T133915Z-8c621319-001-a",
-    "evidence/20261115T134222Z-8c621319-001-a"
+    "evidence/20261115T155638Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a",
+    "evidence/20261115T154149Z-b502599e-001-a",
+    "evidence/20261115T154153Z-b502599e-001-a",
+    "evidence/20261115T154158Z-b502599e-001-a",
+    "evidence/20261115T154400Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -3371,10 +3371,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135944Z-8c621319-001-a",
-    "evidence/20261115T135927Z-8c621319-001-a",
-    "evidence/20261115T134407Z-8c621319-001-a",
-    "evidence/20261115T135352Z-8c621319-001-a"
+    "evidence/20261115T155832Z-b502599e-002-a",
+    "evidence/20261115T155819Z-b502599e-001-a",
+    "evidence/20261115T154515Z-b502599e-001-a",
+    "evidence/20261115T155355Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -3445,7 +3445,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135945Z-8c621319-001-a"
+    "evidence/20261115T155833Z-b502599e-002-a"
    ],
    "blocker": null
   },
@@ -4170,16 +4170,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T134630Z-8c621319-001-a",
-    "evidence/20261115T135715Z-8c621319-001-a",
-    "evidence/20261115T135433Z-8c621319-001-a",
-    "evidence/20261115T135626Z-8c621319-001-a",
-    "evidence/20261115T135749Z-8c621319-002-a",
-    "evidence/20261115T134443Z-8c621319-001-a",
-    "evidence/20261115T134541Z-8c621319-001-a",
-    "evidence/20261115T134806Z-8c621319-001-a",
-    "evidence/20261115T134938Z-8c621319-001-a",
-    "evidence/20261115T135425Z-8c621319-001-a"
+    "evidence/20261115T154718Z-b502599e-001-a",
+    "evidence/20261115T155633Z-b502599e-001-a",
+    "evidence/20261115T155426Z-b502599e-001-a",
+    "evidence/20261115T155559Z-b502599e-001-a",
+    "evidence/20261115T155656Z-b502599e-001-a",
+    "evidence/20261115T154543Z-b502599e-001-a",
+    "evidence/20261115T154635Z-b502599e-001-a",
+    "evidence/20261115T154838Z-b502599e-001-a",
+    "evidence/20261115T155001Z-b502599e-001-a",
+    "evidence/20261115T155421Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -4240,10 +4240,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135748Z-8c621319-001-a",
-    "evidence/20261115T135749Z-8c621319-002-a",
-    "evidence/20261115T135755Z-8c621319-001-a",
-    "evidence/20261115T135757Z-8c621319-001-a"
+    "evidence/20261115T155655Z-b502599e-001-a",
+    "evidence/20261115T155656Z-b502599e-001-a",
+    "evidence/20261115T155700Z-b502599e-001-a",
+    "evidence/20261115T155701Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -4320,14 +4320,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135626Z-8c621319-001-a",
-    "evidence/20261115T134251Z-8c621319-001-a",
-    "evidence/20261115T134302Z-8c621319-001-a",
-    "evidence/20261115T134407Z-8c621319-001-a",
-    "evidence/20261115T135340Z-8c621319-001-a",
-    "evidence/20261115T135433Z-8c621319-001-a",
-    "evidence/20261115T135749Z-8c621319-002-a",
-    "evidence/20261115T135755Z-8c621319-001-a"
+    "evidence/20261115T155559Z-b502599e-001-a",
+    "evidence/20261115T154420Z-b502599e-001-a",
+    "evidence/20261115T154429Z-b502599e-001-a",
+    "evidence/20261115T154515Z-b502599e-001-a",
+    "evidence/20261115T155347Z-b502599e-001-a",
+    "evidence/20261115T155426Z-b502599e-001-a",
+    "evidence/20261115T155656Z-b502599e-001-a",
+    "evidence/20261115T155700Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -4402,11 +4402,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135644Z-8c621319-001-a",
-    "evidence/20261115T135651Z-8c621319-001-a",
-    "evidence/20261115T135943Z-8c621319-001-a",
-    "evidence/20261115T135433Z-8c621319-001-a",
-    "evidence/20261115T133901Z-8c621319-001-a"
+    "evidence/20261115T155610Z-b502599e-001-a",
+    "evidence/20261115T155614Z-b502599e-001-a",
+    "evidence/20261115T155832Z-b502599e-001-a",
+    "evidence/20261115T155426Z-b502599e-001-a",
+    "evidence/20261115T154149Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -4705,10 +4705,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135658Z-8c621319-001-a",
-    "evidence/20261115T133940Z-8c621319-001-a",
-    "evidence/20261115T133929Z-8c621319-001-a",
-    "evidence/20261115T135047Z-8c621319-001-a"
+    "evidence/20261115T155618Z-b502599e-001-a",
+    "evidence/20261115T154214Z-b502599e-001-a",
+    "evidence/20261115T154207Z-b502599e-001-a",
+    "evidence/20261115T155101Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -4760,8 +4760,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135749Z-8c621319-002-a",
-    "evidence/20261115T135748Z-8c621319-001-a"
+    "evidence/20261115T155656Z-b502599e-001-a",
+    "evidence/20261115T155655Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -4928,9 +4928,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135635Z-8c621319-001-a",
-    "evidence/20261115T135433Z-8c621319-001-a",
-    "evidence/20261115T135626Z-8c621319-001-a"
+    "evidence/20261115T155604Z-b502599e-001-a",
+    "evidence/20261115T155426Z-b502599e-001-a",
+    "evidence/20261115T155559Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -5007,9 +5007,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135731Z-8c621319-001-a",
-    "evidence/20261115T134026Z-8c621319-001-a",
-    "evidence/20261115T135019Z-8c621319-001-a"
+    "evidence/20261115T155642Z-b502599e-001-a",
+    "evidence/20261115T154243Z-b502599e-001-a",
+    "evidence/20261115T155038Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -5123,8 +5123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135944Z-8c621319-002-a",
-    "evidence/20261115T135944Z-8c621319-001-a"
+    "evidence/20261115T155833Z-b502599e-001-a",
+    "evidence/20261115T155832Z-b502599e-002-a"
    ],
    "blocker": null
   },
@@ -5187,9 +5187,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135748Z-8c621319-001-a",
-    "evidence/20261115T135757Z-8c621319-001-a",
-    "evidence/20261115T135749Z-8c621319-002-a"
+    "evidence/20261115T155655Z-b502599e-001-a",
+    "evidence/20261115T155701Z-b502599e-001-a",
+    "evidence/20261115T155656Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -5268,10 +5268,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135433Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a",
-    "evidence/20261115T135749Z-8c621319-002-a",
-    "evidence/20261115T135822Z-8c621319-001-a"
+    "evidence/20261115T155426Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a",
+    "evidence/20261115T155656Z-b502599e-001-a",
+    "evidence/20261115T155720Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -5346,9 +5346,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135748Z-8c621319-001-a",
-    "evidence/20261115T135749Z-8c621319-002-a",
-    "evidence/20261115T135757Z-8c621319-001-a"
+    "evidence/20261115T155655Z-b502599e-001-a",
+    "evidence/20261115T155656Z-b502599e-001-a",
+    "evidence/20261115T155701Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -5430,10 +5430,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135533Z-8c621319-001-a",
-    "evidence/20261115T135433Z-8c621319-001-a",
-    "evidence/20261115T133034Z-8c621319-001-a",
-    "evidence/20261115T135822Z-8c621319-001-a"
+    "evidence/20261115T155516Z-b502599e-001-a",
+    "evidence/20261115T155426Z-b502599e-001-a",
+    "evidence/20261115T153629Z-b502599e-001-a",
+    "evidence/20261115T155720Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -5639,9 +5639,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135749Z-8c621319-002-a",
-    "evidence/20261115T135748Z-8c621319-001-a",
-    "evidence/20261115T135757Z-8c621319-001-a"
+    "evidence/20261115T155656Z-b502599e-001-a",
+    "evidence/20261115T155655Z-b502599e-001-a",
+    "evidence/20261115T155701Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -5757,7 +5757,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T132952Z-8c621319-001-m"
+    "evidence/20261115T153613Z-b502599e-001-m"
    ],
    "blocker": null
   },
@@ -5804,7 +5804,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135749Z-8c621319-002-a"
+    "evidence/20261115T155656Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -5863,7 +5863,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135748Z-8c621319-001-a"
+    "evidence/20261115T155655Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -5968,7 +5968,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135927Z-8c621319-001-a"
+    "evidence/20261115T155819Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -6081,9 +6081,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135749Z-8c621319-002-a",
-    "evidence/20261115T135748Z-8c621319-001-a",
-    "evidence/20261115T132952Z-8c621319-001-m"
+    "evidence/20261115T155656Z-b502599e-001-a",
+    "evidence/20261115T155655Z-b502599e-001-a",
+    "evidence/20261115T153613Z-b502599e-001-m"
    ],
    "blocker": null
   },
@@ -6156,9 +6156,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135340Z-8c621319-001-a",
-    "evidence/20261115T134748Z-8c621319-001-a",
-    "evidence/20261115T134757Z-8c621319-001-a"
+    "evidence/20261115T155347Z-b502599e-001-a",
+    "evidence/20261115T154826Z-b502599e-001-a",
+    "evidence/20261115T154832Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -6284,8 +6284,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135533Z-8c621319-001-a",
-    "evidence/20261115T135619Z-8c621319-001-a"
+    "evidence/20261115T155516Z-b502599e-001-a",
+    "evidence/20261115T155555Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -6362,7 +6362,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T135945Z-8c621319-002-a"
+    "evidence/20261115T155833Z-b502599e-003-a"
    ],
    "blocker": null
   },
@@ -6585,9 +6585,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133628Z-8c621319-001-a",
-    "evidence/20261115T133622Z-8c621319-001-a",
-    "evidence/20261115T133642Z-8c621319-001-a"
+    "evidence/20261115T154013Z-b502599e-001-a",
+    "evidence/20261115T154009Z-b502599e-001-a",
+    "evidence/20261115T154021Z-b502599e-001-a"
    ],
    "blocker": null
   },
@@ -6665,12 +6665,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133732Z-8c621319-001-a",
-    "evidence/20261115T133722Z-8c621319-001-a",
-    "evidence/20261115T133658Z-8c621319-001-a",
-    "evidence/20261115T133706Z-8c621319-001-a",
-    "evidence/20261115T133713Z-8c621319-001-a",
-    "evidence/20261115T135801Z-8c621319-001-a"
+    "evidence/20261115T154053Z-b502599e-001-a",
+    "evidence/20261115T154047Z-b502599e-001-a",
+    "evidence/20261115T154032Z-b502599e-001-a",
+    "evidence/20261115T154036Z-b502599e-001-a",
+    "evidence/20261115T154040Z-b502599e-001-a",
+    "evidence/20261115T155703Z-b502599e-002-a"
    ],
    "blocker": null
   },
@@ -7364,14 +7364,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133741Z-8c621319-001-a",
-    "evidence/20261115T133658Z-8c621319-001-a",
-    "evidence/20261115T133706Z-8c621319-001-a",
-    "evidence/20261115T133713Z-8c621319-001-a",
-    "evidence/20261115T133722Z-8c621319-001-a",
-    "evidence/20261115T133732Z-8c621319-001-a",
-    "evidence/20261115T135801Z-8c621319-001-a",
-    "evidence/20261115T132952Z-8c621319-001-m"
+    "evidence/20261115T154059Z-b502599e-001-a",
+    "evidence/20261115T154032Z-b502599e-001-a",
+    "evidence/20261115T154036Z-b502599e-001-a",
+    "evidence/20261115T154040Z-b502599e-001-a",
+    "evidence/20261115T154047Z-b502599e-001-a",
+    "evidence/20261115T154053Z-b502599e-001-a",
+    "evidence/20261115T155703Z-b502599e-002-a",
+    "evidence/20261115T153613Z-b502599e-001-m"
    ],
    "blocker": null
   },
@@ -7457,7 +7457,8 @@
     "2026-11-15 the work (scratch runs, no CI evidence): test first: a third sweep, `again`, makes the append of the second sweep again after each failure; red on the pushed order of writes with one finding only, `FAT1: /Y07.TXT: chain shorter than size` (lost=56 longer=3, the numbers of that order: 46, 5 and 5); the fix: fat_set writes the copies from the last to the first; the numbers the three cases pin were derived write by write before the run and the run gave the same: write lost=53 longer=2 (new file: one for N=3 to 8, two for N=9 to 16, three for N=17 to 23, 43; append and again: N=3 to 7, 5 each; longer: N=8 and 9 of the append), delete and truncate lost=12 each (0, 3, 3, 2, 2, 1, 1, 0, 0). The price, stated in files.md v1.8 and ADR-0014 item 9: a cluster freed in the second copy only stays marked in the first and is lost, three more clusters over the nine failure points of a delete or a truncation; a new file's write loses three fewer. TST-M3-FAT32-DISK-FULL is in the item's tests because its file D counts on the ninth write of an append being the entry. Mutant M219 (SECURITY, in the gate's set); M46's anchor follows the loop",
     "2026-11-15 after the audit and the red-team pass (both by reading; nothing run by them): the derivations of 53, 2, 12 and 12 and of the old order's 56, 3 and 9 confirmed write by write; no state found in which a name reaches a free cluster, two names share one or a chain is shorter than its size in either copy, after one failure, two, or a power cut; no acceptance or fail condition relaxed (the pinned numbers are compared for equality and tools/fat32.py is unchanged). Corrections made: the recovery rule now covers tying a lost chain to a name as well as freeing; the recovery of lost clusters had no owner (WP-106 only refuses a malformed boot sector) and is now WP-122, planned; the decision says it can be reversed by one line; M219 names the delete and the truncate cases as killers too; the texts of M205 and M206 follow the order; stale comments and one overstated sentence of the oracle. Corrected here and not rewritten: the activation line above ends cut off at `the design is`: it was meant to end `the design is what changes`; and its promise that the checker's longer-chain count would be read for each copy was kept by reading only: the checker counts longer chains in the first copy, a longer chain in the second copy only is in the oracle's not-shown list, and an exact count for each copy is an input of WP-122; the line `TST-M3-FAT32-DISK-FULL PASS ...` of commit 2ee59d118's message is a local, scratch result like the lines above it. Registered, by reading: no case shows that fat_set stops at its first refused write (WP-117); a one-copy volume (WP-106)",
     "2026-11-15 second audit of the last commit (by reading; nothing run by it): no behaviour, fail condition, required marker or host check changed in it; corrections made here: the oracle's sentence on the second copy says what is checked there (a chain not shorter than its size); the decision is reversed by one line of fat_set together with the numbers the three cases pin; the recovery of lost clusters is named WP-122 wherever the decisions, the risks, the plan and the records of WP-105, WP-118 and WP-106 named WP-106 for it (files.md's older paragraphs are covered by the sentence in v1.8); WP-122 is in the plan's blocks column of WP-106 and WP-120. Corrected here and not rewritten: commit aacb3c93f's message calls the DISK-FULL line of 2ee59d118's message its last line, which it is not, and says the decision is reversed by one line, which is true of the code only",
-    "2026-11-15 local checks before the push (scratch, no CI evidence; run on the tree at 1fb52578f, before this records commit): guest suites, counted by case: M6 11 of 11, M1 2 of 2, M2 24 of 24, M5 35 of 35 PASS; M4 26 of 27 PASS, TST-M4-NET-NO-INTERNET FAIL (exit 37; this lab's network cannot judge that case; CI judges it); M3 42 of 43 in the full run: TST-M3-BLOCK-WAKE ended in a timeout with a serial log of 0 bytes, not even the firmware's lines that come before the kernel is loaded, so no line of the kernel ran; the case tests kernel threads and channels and mounts no volume; run alone six times on the same tree it passed six times, and the whole M3 suite run again passed 43 of 43 with TST-M3-FAT32-FAULT-WRITE, -UNLINK, -TRUNCATE and -DISK-FULL under their pinned numbers; the cause of the one stall was not found beyond that (the emulator gave no output for the whole timeout); host suites M0, M1, M3, M4, M5, M6 PASS; hygiene PASS (CI's 42 commands); the mutation harness on M46, M205, M206, M207, M210, M211, M214, M218, M219: 9 of 9 killed, M219 by its three declared cases; an audit, a red-team pass and a second audit, all by reading"
+    "2026-11-15 local checks before the push (scratch, no CI evidence; run on the tree at 1fb52578f, before this records commit): guest suites, counted by case: M6 11 of 11, M1 2 of 2, M2 24 of 24, M5 35 of 35 PASS; M4 26 of 27 PASS, TST-M4-NET-NO-INTERNET FAIL (exit 37; this lab's network cannot judge that case; CI judges it); M3 42 of 43 in the full run: TST-M3-BLOCK-WAKE ended in a timeout with a serial log of 0 bytes, not even the firmware's lines that come before the kernel is loaded, so no line of the kernel ran; the case tests kernel threads and channels and mounts no volume; run alone six times on the same tree it passed six times, and the whole M3 suite run again passed 43 of 43 with TST-M3-FAT32-FAULT-WRITE, -UNLINK, -TRUNCATE and -DISK-FULL under their pinned numbers; the cause of the one stall was not found beyond that (the emulator gave no output for the whole timeout); host suites M0, M1, M3, M4, M5, M6 PASS; hygiene PASS (CI's 42 commands); the mutation harness on M46, M205, M206, M207, M210, M211, M214, M218, M219: 9 of 9 killed, M219 by its three declared cases; an audit, a red-team pass and a second audit, all by reading",
+    "2026-11-15 CI record: verify run 43730562696 on fca573170, green on its first push (the case was seen failing locally first, scratch); the run took 45 min 6 s from 15:33:41 to 16:18:47; 170 runs imported, none failing; TST-M3-FAT32-FAULT-WRITE PASS (evidence/20261115T154059Z-b502599e-001-a: `sweep=again|control=1|writes=9|failed=9|io=9|node_differs=0|pos_moved=0|stale_sync=0|unchanged=9|bad=0|ghost=0|retry_ok=9`, second boot `new_whole=24|append_first=9|append_both=1|again_both=10|bad=0|after_ok=1|same_after=1`; host: `problems=[] faulted: lost=53 longer=2 mirror_diff=1 fsinfo=stale`, fsck allowed mirror, lost, free_count and longer 2, failing none, unnamed none); TST-M3-FAT32-FAULT-UNLINK PASS (evidence/20261115T154047Z-b502599e-001-a: `problems=[] faulted: lost=12 longer=0`) and TST-M3-FAT32-FAULT-TRUNCATE PASS (evidence/20261115T154053Z-b502599e-001-a: `problems=[] faulted: lost=12 longer=0`): the numbers derived before any run are the ones CI's images give; TST-M3-FAT32-DISK-FULL PASS (evidence/20261115T154106Z-b502599e-001-a); TST-M6-MUTANTS PASS (evidence/20261115T153613Z-b502599e-001-m: 67 of 67 valid mutants killed, no surviving and no invalid SECURITY mutant; M219 killed by its three declared cases); TST-M3-BLOCK-WAKE, which stalled once locally with no serial output, PASS on CI (evidence/20261115T153947Z-b502599e-001-a). What CI did not show is what the oracles list as not shown: a longer chain in the second copy only, a directory that grows while a FAT write fails, writes reordered by a device, and that fat_set stops at its first refused write (WP-117)"
    ],
    "acceptance": "after a failed write of a FAT link an append made again leaves no name whose chain is shorter than its size in either FAT copy, shown by the sweep with the append made again and the host check on CI; the delete and truncate sweeps still show no name on a free cluster; files.md (the version free at the merge) states the order of the copies; the mutant killed",
    "test_ids": [
@@ -7542,10 +7543,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T133752Z-8c621319-001-a",
-    "evidence/20261115T133741Z-8c621319-001-a",
-    "evidence/20261115T133658Z-8c621319-001-a",
-    "evidence/20261115T132952Z-8c621319-001-m"
+    "evidence/20261115T154106Z-b502599e-001-a",
+    "evidence/20261115T154059Z-b502599e-001-a",
+    "evidence/20261115T154032Z-b502599e-001-a",
+    "evidence/20261115T153613Z-b502599e-001-m"
    ],
    "blocker": null
   },
