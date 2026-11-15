@@ -465,9 +465,11 @@ def tree_findings(img, fat):
 def cmd_check(a):
     """The image is consistent. With --faulted (after a guest case that made a disk write fail):
     what a safe order of writes may leave behind (lost clusters, FAT copies that differ, a stale
-    free count) is counted on the output line instead of being a problem, and the tree is walked
-    along every FAT copy, so a name that reaches a free cluster or shares one is a problem
-    whichever copy shows it. A chain longer than its size stays a problem unless the case says
+    free count) is counted on the output line instead of being a problem. In both modes the tree
+    is walked along every FAT copy, so a name that reaches a free cluster, shares one, starts at
+    no cluster or runs into a reserved value is a problem whichever copy shows it, and every
+    copy is scanned for reserved and out-of-range values. A chain longer than its size stays a
+    problem unless the case says
     with --allow-longer N how many its failures leave (a failed delete or truncation leaves
     none; a failed write may): any other number is a problem. --expect-lost K does the same for
     the lost clusters."""
@@ -502,9 +504,10 @@ def cmd_check(a):
                 problems.append(f"FAT{fat}[{c}] = {v:#x} invalid"); break
     strict, longer, owned, complete = tree_findings(img, 0)
     problems += strict
-    if faulted:
-        for fat in range(1, img.nfats):
-            problems += [f"FAT{fat}: {p}" for p in tree_findings(img, fat)[0]]
+    # Every other copy is walked too, with and without --faulted: what a name reaches along it
+    # must be as sound as along the first, and a finding there carries the name.
+    for fat in range(1, img.nfats):
+        problems += [f"FAT{fat}: {p}" for p in tree_findings(img, fat)[0]]
     # What the walk did not visit is not called lost.
     lost = len(in_use - owned) if complete else 0
     info = img.read_sector(img.fsinfo_sector)
