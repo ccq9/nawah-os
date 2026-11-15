@@ -6141,12 +6141,17 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M5"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261115T051034Z-7edf7395-001-a",
+    "evidence/20261115T050513Z-7edf7395-001-a",
+    "evidence/20261115T050518Z-7edf7395-001-a"
+   ],
    "blocker": null
   },
   {
