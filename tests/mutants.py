@@ -901,6 +901,17 @@ MUTANTS = [
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; continue',
      ["TST-M0-003"], "SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted"),
+    # M212, M213 (SECURITY, WP-118): the exact numbers a fault case gives the host checker.
+    # M212: any number of chains longer than their size is accepted once the case allows some.
+    ("M212", "tools/fat32.py",
+     "    elif len(longer) != allow_longer:\n",
+     "    elif False:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check --faulted --allow-longer N` accepts an image with another number of chains longer than their size: the host case on the longer chain fails, TST-M3-FAT32-TOOL FAIL"),
+    # M213: the number of lost clusters a case expects is no longer compared.
+    ("M213", "tools/fat32.py",
+     "    if expect_lost is not None and lost != expect_lost:\n",
+     "    if False:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check --faulted --expect-lost K` accepts an image with another number of lost clusters: the host case on the lost cluster fails, TST-M3-FAT32-TOOL FAIL"),
     # M210, M211 (SECURITY, WP-118, files.md v1.6, ADR-0014 item 7): a failed write leaves the
     # shared node equal to the stored entry. M210: the node takes the new entry before it is stored.
     ("M210", "kernel/src/fs/fat32.rs",
@@ -1003,7 +1014,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # M6 (WP-118): a failed write leaves the shared node equal to the stored entry
             # (files.md v1.6): the node follows the stored entry (M210) and takes no cluster
             # before it (M211).
-            "M210", "M211"}
+            "M210", "M211",
+            # M6 tooling (WP-118): the host checker compares the exact numbers a fault case
+            # gives it: chains longer than their size (M212) and lost clusters (M213).
+            "M212", "M213"}
 
 
 def security_of(mid: str) -> bool:

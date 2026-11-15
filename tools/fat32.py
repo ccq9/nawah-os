@@ -540,9 +540,10 @@ FSCK_FAILING = {
 
 def classify_fsck(text, allow_longer=None):
     """Returns (allowed, failing, unnamed) for the output of `fsck.fat -n`: how many lines
-    carried each allowed finding, the failing findings in order of appearance (each once), and
-    the lines no pattern names. Chains longer than their size are allowed only in the exact
-    number the case gives (`allow_longer`); any other number, none included, fails."""
+    carried each allowed finding, the failing findings (each once, in order of appearance, a
+    wrong number of longer chains last), and the lines no pattern names. Chains longer than
+    their size are allowed only in the exact number the case gives (`allow_longer`); any other
+    number, none included, fails."""
     allowed, failing, unnamed = {}, [], []
     longer = 0
     for line in text.splitlines():

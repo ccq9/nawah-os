@@ -660,8 +660,10 @@ impl Fat32 {
         // node equal to the stored entry. What the failed call allocated then stays allocated
         // with no owner, except a cluster already linked to an existing file's chain in the
         // first FAT copy, which stays on the chain past the size; bytes the call wrote inside
-        // the old size stay written. This holds for a full disk too (DiskFull): the clusters
-        // the call took before the volume ran out are lost with it.
+        // the old size stay written. On a full disk (DiskFull, no device fault) every cluster
+        // taken before the volume ran out was linked in both copies: for a file that had no
+        // first cluster they are lost with the call; for one that had, they stay on its chain
+        // past the size.
         let mut staged = *file;
         if staged.first == 0 {
             staged.first = self.alloc_cluster()?;
