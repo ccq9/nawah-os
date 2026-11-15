@@ -906,12 +906,12 @@ MUTANTS = [
     ("M208", "tools/fat32.py",
      "            if c in owner:\n                strict.append(f\"{name} and {owner[c]} share cluster {c}\")\n                break",
      "            if c in owner:\n                break",
-     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` accepts an image where two names reach one cluster: the host case on the shared cluster fails, TST-M3-FAT32-TOOL FAIL"),
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` no longer names two names on one cluster: two directories on one cluster pass it (exit 0), and for files the cut chain is still refused as shorter than its size but the named finding is gone: the host cases on shared clusters fail, TST-M3-FAT32-TOOL FAIL"),
     # M209: a chain that runs into a free cluster is no longer reported.
     ("M209", "tools/fat32.py",
      "            if v == 0:\n                strict.append(f\"{name}: cluster {c} of its chain is free\")\n                break",
      "            if v == 0:\n                break",
-     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` accepts an image where a name's chain runs into a free cluster: the host cases on the free first cluster fail, TST-M3-FAT32-TOOL FAIL"),
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` no longer names a chain that runs into a free cluster: a directory on a freed cluster passes it (exit 0), and for files the cut chain is still refused as shorter than its size but the named finding is gone: the host cases on a free cluster in a chain fail, TST-M3-FAT32-TOOL FAIL"),
 ]
 
 def stage_of(mid: str) -> str:
