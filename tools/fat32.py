@@ -14,13 +14,14 @@ Commands:
   cat IMG PATH            print a file's bytes to stdout
   verify IMG PATH SHA256  exit 0 when the file exists and its sha256 matches
   check IMG [--faulted [--allow-longer N --expect-longer NAMES --expect-longer-second NAMES]
-                       [--expect-lost K --expect-lost-second K]]
+                       [--expect-lost K --expect-lost-second K --expect-lost-both K]]
                           structural check (signatures, FAT mirrors equal, every chain whole and its own,
                           no lost cluster, free count); --faulted counts what a failed write may leave,
                           with exactly N chains longer than their size and exactly K lost clusters when given;
                           NAMES says which files are longer and by how many clusters (/A.TXT:+1,/B.TXT:+2;
-                          - for none); the -second options say the same of the second FAT copy, and a pin
-                          on the first copy without the second's is refused
+                          - for none); the -second options say the same of the second FAT copy,
+                          --expect-lost-both how many clusters are lost in both, and a pin on one copy
+                          without the other's is refused
   fsck-faulted IMG [--allow-longer N]
                           fsck.fat -n with every message named; fails on a failing or unnamed one
   expect IMG PATH TEXT    exit 0 when the file's bytes equal TEXT (\\n escapes allowed)
@@ -404,9 +405,10 @@ def tree_findings(img, fat):
     is no cluster of the volume (0 belongs to a file that holds none and to no directory), and
     a chain that reaches the reserved value 1. `longer` names the files
     whose chain holds more clusters than their size needs, each with the number of clusters it
-    has too many; `owned` is every cluster a name reaches; `complete` is false when the walk stopped at its depth limit, so `owned` is not
+    has too many; `owned` is every cluster a name reaches; `reached` is every name the walk met
+    (the last element returned); `complete` is false when the walk stopped at its depth limit, so `owned` is not
     the whole tree."""
-    owner, strict, longer, cut = {}, [], [], []
+    owner, strict, longer, cut, reached = {}, [], [], [], set()
     cluster_bytes = img.spc * SECTOR
 
     def claim(name, first):
@@ -448,6 +450,7 @@ def tree_findings(img, fat):
                 if e[0] == 0xE5 or e[11] == ATTR_LFN or e[11] & 0x08 or e[:1] == b".":
                     continue
                 name = f"{path}/{display_name(e[:11])}"
+                reached.add(name)
                 entry_first = img.entry_cluster(e)
                 # No name starts at a number that is no cluster of the volume. 0 is the first
                 # cluster of a file that holds none (its size says whether that is right) and
@@ -466,7 +469,7 @@ def tree_findings(img, fat):
                     longer.append((name, n - (size + cluster_bytes - 1) // cluster_bytes))
 
     walk("", img.root_cluster, 0)
-    return strict, longer, set(owner), not cut
+    return strict, longer, set(owner), not cut, reached
 
 
 def cmd_check(a):
@@ -481,8 +484,11 @@ def cmd_check(a):
     none; a failed write may) and with --expect-longer NAMES which files and by how many
     clusters each: any other number, file or length is a problem. --expect-lost K does the same
     for the number of lost clusters. Both are counted along the second FAT copy too:
-    --expect-longer-second and --expect-lost-second pin them, and a pin on the first copy
-    without the second's is refused (exit 2), so no case judges one copy and not the other."""
+    --expect-longer-second and --expect-lost-second pin them, --expect-lost-both pins how many
+    clusters are lost in both copies (so a cluster marked in one copy alone cannot stand for
+    one marked in the other alone), and a pin on one copy without the other's is refused
+    (exit 2), so no case judges one copy and not the other. A name the walk reaches along one
+    copy and not along another is a problem in both modes."""
     img = Image(a.image)
     faulted = getattr(a, "faulted", False)
     allow_longer = getattr(a, "allow_longer", None) if faulted else None
@@ -490,18 +496,26 @@ def cmd_check(a):
     expect_longer = getattr(a, "expect_longer", None) if faulted else None
     expect_longer_second = getattr(a, "expect_longer_second", None) if faulted else None
     expect_lost_second = getattr(a, "expect_lost_second", None) if faulted else None
-    if (expect_lost is not None and expect_lost_second is None) or (allow_longer is not None and expect_longer is None) \
-            or (expect_longer is not None and expect_longer_second is None):
-        print("check: a pin on the first FAT copy needs the second's: --expect-lost with --expect-lost-second, "
-              "--allow-longer with --expect-longer, --expect-longer with --expect-longer-second", file=sys.stderr)
+    expect_lost_both = getattr(a, "expect_lost_both", None) if faulted else None
+    lost_pins = (expect_lost, expect_lost_second, expect_lost_both)
+    if (any(pin is not None for pin in lost_pins) and any(pin is None for pin in lost_pins)) \
+            or (allow_longer is not None and expect_longer is None) or (expect_longer is not None and expect_longer_second is None):
+        print("check: a pin on one FAT copy needs the other's: --expect-lost, --expect-lost-second and --expect-lost-both "
+              "together, --allow-longer with --expect-longer, --expect-longer with --expect-longer-second", file=sys.stderr)
         return 2
 
+    # The longer files are compared as lists, one item a file: a name is never split or joined.
     def names(found):
-        return ",".join(sorted(f"{name}:+{extra}" for name, extra in found)) or "-"
+        return sorted(f"{name}:+{extra}" for name, extra in found)
 
     def wanted(text):
-        return ",".join(sorted(text.split(","))) if text != "-" else "-"
+        return sorted(text.split(",")) if text != "-" else []
+
+    def shown(found):
+        return ",".join(names(found)) or "-"
     problems = []
+    if img.nfats < 2 and any(pin is not None for pin in (expect_longer_second, expect_lost_second, expect_lost_both)):
+        problems.append("no second FAT copy: nothing meets a pin on it")
     if img.sig != 0xAA55 or img.boot_sig != 0x29:
         problems.append("boot signatures")
     if img.read_sector(0) != img.read_sector(img.bk_boot):
@@ -529,25 +543,33 @@ def cmd_check(a):
                 problems.append(f"FAT{fat}[{c}] = {v:#x} invalid"); break
             if v and v != 0x0FFFFFF7:
                 in_use_other[fat].add(c)
-    strict, longer, owned, complete = tree_findings(img, 0)
+    strict, longer, owned, complete, reached = tree_findings(img, 0)
     problems += strict
+    # What the walk did not visit is not called lost.
+    lost_set = (in_use - owned) if complete else set()
     # Every other copy is walked too, with and without --faulted: what a name reaches along it
     # must be as sound as along the first, and a finding there carries the name. Its longer
     # chains and its lost clusters are counted like the first copy's.
     second = ""
     for fat in range(1, img.nfats):
-        strict_o, longer_o, owned_o, complete_o = tree_findings(img, fat)
+        strict_o, longer_o, owned_o, complete_o, reached_o = tree_findings(img, fat)
         problems += [f"FAT{fat}: {p}" for p in strict_o]
-        lost_o = len(in_use_other[fat] - owned_o) if complete_o else 0
+        # The two walks read the same directories unless a directory's chain differs between
+        # the copies: a name one of them reaches and the other does not is named.
+        problems += [f"FAT{fat}: {name} is reached along this copy only" for name in sorted(reached_o - reached)]
+        problems += [f"FAT{fat}: {name} is not reached along this copy" for name in sorted(reached - reached_o)]
+        lost_set_o = (in_use_other[fat] - owned_o) if complete_o else set()
+        lost_o, lost_both = len(lost_set_o), len(lost_set & lost_set_o)
         if expect_longer_second is None:
             problems += [f"FAT{fat}: {name}: chain longer than size" for name, _ in longer_o]
         elif names(longer_o) != wanted(expect_longer_second):
-            problems.append(f"FAT{fat}: chains longer than size: {names(longer_o)} where {expect_longer_second} are expected")
+            problems.append(f"FAT{fat}: chains longer than size: {shown(longer_o)} where {expect_longer_second} are expected")
         if expect_lost_second is not None and lost_o != expect_lost_second:
             problems.append(f"FAT{fat}: lost clusters: {lost_o} where {expect_lost_second} are expected")
-        second += f" second: lost={lost_o} longer_files={names(longer_o)}"
-    # What the walk did not visit is not called lost.
-    lost = len(in_use - owned) if complete else 0
+        if expect_lost_both is not None and lost_both != expect_lost_both:
+            problems.append(f"FAT{fat}: lost clusters in both copies: {lost_both} where {expect_lost_both} are expected")
+        second += f" second: lost={lost_o} lost_both={lost_both} longer_files={shown(longer_o)}"
+    lost = len(lost_set)
     info = img.read_sector(img.fsinfo_sector)
     signed = [struct.unpack_from("<I", info, off)[0] for off in (0, 484, 508)] == [0x41615252, 0x61417272, 0xAA550000]
     if not signed:
@@ -561,9 +583,9 @@ def cmd_check(a):
         problems += [f"{name}: chain longer than size" for name, _ in longer]
     else:
         if allow_longer is not None and len(longer) != allow_longer:
-            problems.append(f"chains longer than size: {len(longer)} where {allow_longer} are expected: {names(longer)}")
+            problems.append(f"chains longer than size: {len(longer)} where {allow_longer} are expected: {shown(longer)}")
         if expect_longer is not None and names(longer) != wanted(expect_longer):
-            problems.append(f"chains longer than size: {names(longer)} where {expect_longer} are expected")
+            problems.append(f"chains longer than size: {shown(longer)} where {expect_longer} are expected")
     if expect_lost is not None and lost != expect_lost:
         problems.append(f"lost clusters: {lost} where {expect_lost} are expected")
     if not faulted:
@@ -572,7 +594,7 @@ def cmd_check(a):
         if fsinfo == "stale":
             problems.append(f"FSInfo free count {recorded}, really {real_free}")
     tail = (f" faulted: lost={lost} longer={len(longer)} mirror_diff={len(differing)} fsinfo={fsinfo}"
-            f" longer_files={names(longer)}{second}") if faulted else ""
+            f" longer_files={shown(longer)}{second}") if faulted else ""
     print(f"check: clusters={img.clusters} used={used} free={real_free} label={img.label!r} fstype={img.fstype!r} problems={problems}{tail}")
     return 0 if not problems else 1
 
@@ -657,7 +679,7 @@ def main(argv=None):
     s = sub.add_parser("check"); s.add_argument("image"); s.add_argument("--faulted", action="store_true")
     s.add_argument("--allow-longer", type=int, metavar="N"); s.add_argument("--expect-lost", type=int, metavar="K")
     s.add_argument("--expect-longer", metavar="NAMES"); s.add_argument("--expect-longer-second", metavar="NAMES")
-    s.add_argument("--expect-lost-second", type=int, metavar="K")
+    s.add_argument("--expect-lost-second", type=int, metavar="K"); s.add_argument("--expect-lost-both", type=int, metavar="K")
     s = sub.add_parser("fsck-faulted"); s.add_argument("image"); s.add_argument("--allow-longer", type=int, metavar="N")
     s = sub.add_parser("expect"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
     s = sub.add_parser("absent-raw"); s.add_argument("image"); s.add_argument("text")
