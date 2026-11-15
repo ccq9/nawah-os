@@ -213,6 +213,7 @@ pub fn run() -> ! {
         "lock_survives" => lock_survives(),
         "narrator_authority" => narrator_authority(),
         "window_title" => window_title(),
+        "window_title_resize" => window_title_resize(),
         "client_limits" => client_limits(),
         "input_name_reserved" => input_name_reserved(),
         "focus_after_restart" => focus_after_restart(),
@@ -8490,12 +8491,13 @@ fn narrator_authority() -> ! {
 
 /// TST-M5-WINDOW-TITLE (REQ-M5-005; WP-97, display.md v1.14): a window title is the client's
 /// data, and the compositor's own narrator line `window "<title>" focused` names in it what
-/// would end the title, the line or its direction. SVC-NT.TXT has the compositor and the
-/// narrator alone, so every narrator line is the compositor's; the host checks the transcript
-/// (platform/pc-qemu/expect/window-title.txt) line for line. One client opens four windows
-/// (each focused when created, each announced once) and renames and raises the first three
-/// (each raise announced once); the last focused window is closed last, after the others, so
-/// no close moves the focus to a window that would be announced again.
+/// would end the title, the line or its direction. SVC-NT.TXT starts auth, input, the
+/// compositor and the narrator and no client of the compositor, so every narrator line is the
+/// compositor's; the host checks the transcript (platform/pc-qemu/expect/window-title.txt)
+/// line for line. One client opens four windows (each focused when created, each announced
+/// once), then renames and raises them in turn, each raise announced once; the last focused
+/// window is closed last, after the others, so no close moves the focus to a window that
+/// would be announced again.
 fn window_title() -> ! {
     let name = "window_title";
     let (h, admin, clients, format) = display_env(
@@ -8529,22 +8531,37 @@ fn window_title() -> ! {
         replies.push(if r.starts_with("OK ") { "OK" } else { "ERR" });
         wids.push(String::from(r.strip_prefix("OK ").unwrap_or("0")));
     }
-    // A lead byte with nothing after it, which a reader decoding UTF-8 would join to the
-    // closing quote; an ASCII letter and 16 Arabic letters (33 bytes), cut at TITLE_MAX; a
-    // plain title, spoken as it always was.
+    // Renamed in turn (window k % 4): a lead byte with nothing after it, which a reader
+    // decoding UTF-8 would join to the closing quote; an ASCII letter and 16 Arabic letters
+    // (33 bytes, cut at TITLE_MAX before the last letter); a plain title, spoken as it always
+    // was; DEL, a C1 control (C2 85), U+2029, ALM, RLM, LRE and RLI between letters; 33
+    // continuation bytes; `abc` and 40 continuation bytes; exactly 32 ASCII bytes (no cut);
+    // 33 ASCII bytes (one cut).
     let mut arabic = alloc::vec![b'A'];
     for _ in 0..16 {
         arabic.extend_from_slice("\u{0628}".as_bytes());
     }
-    let renamed: [&[u8]; 3] = [b"ab\xC2", &arabic, b"Sign in"];
+    let mut abc = b"abc".to_vec();
+    abc.extend_from_slice(&[0x80; 40]);
+    let renamed: [&[u8]; 8] = [
+        b"ab\xC2",
+        &arabic,
+        b"Sign in",
+        "a\u{7F}b\u{85}c\u{2029}d\u{061C}e\u{200F}f\u{202A}g\u{2067}h".as_bytes(),
+        &[0x80; 33],
+        &abc,
+        b"0123456789abcdefghijklmnopqrstuv",
+        b"0123456789abcdefghijklmnopqrstuvw",
+    ];
     let mut again = Vec::new();
     for (k, t) in renamed.iter().enumerate() {
-        let mut req = alloc::format!("TITLE {} ", wids[k]).into_bytes();
+        let wid = &wids[k % 4];
+        let mut req = alloc::format!("TITLE {} ", wid).into_bytes();
         req.extend_from_slice(t);
         let r1 = drequest(d, &req, Vec::new(), &mut ev);
         let r2 = drequest(
             d,
-            alloc::format!("RAISE {}", wids[k]).as_bytes(),
+            alloc::format!("RAISE {}", wid).as_bytes(),
             Vec::new(),
             &mut ev,
         );
@@ -8554,9 +8571,9 @@ fn window_title() -> ! {
             "ERR"
         });
     }
-    // The focused window (the third) goes last: closing the others moves no focus.
+    // The focused window (the fourth) goes last: closing the others moves no focus.
     let mut closed = Vec::new();
-    for k in [0, 1, 3, 2] {
+    for k in [0, 1, 2, 3] {
         let r = drequest(
             d,
             alloc::format!("CLOSE {}", wids[k]).as_bytes(),
@@ -8583,12 +8600,83 @@ fn window_title() -> ! {
     // The narrator writes its lines on its own time: let the last ones reach the serial log
     // before the manager stops it.
     sched::poll_until(sched::ticks() + 1_000, || false);
-    drop((replies, again, closed, wids, ev, arabic));
+    drop((replies, again, closed, wids, ev, arabic, abc));
     drop((vmos, clients, admin));
     display_finish(
         name,
         h,
         "a window title is spoken between its quotes and never ends its line",
+    )
+}
+
+/// TST-M5-WINDOW-TITLE-RESIZE (REQ-M5-005, REQ-M5-008; WP-97, display.md v1.14): the other
+/// line that carries the title, `window "<title>" resized <w>x<h>` (v1.7), names it too. On
+/// SVC-NT.TXT one client opens a 32x32 window titled `x" resized 9x9 role="button` (announced
+/// focused); after the ready marker the lab sends Alt+Shift+Right, which widens the focused
+/// window by 16 px; the test waits until LIST shows 48x32, closes the window and lets the
+/// narrator write. The host checks the transcript (expect/window-title-resize.txt).
+fn window_title_resize() -> ! {
+    let name = "window_title_resize";
+    let (h, admin, clients, format) = display_env(
+        name,
+        b"/SYSTEM/SVC-NT.TXT",
+        &["auth", "input", "display", "narrator"],
+        1,
+    );
+    let d = &clients[0];
+    let mut ev = Vec::new();
+    let (vmo, entry) = kernel_surface(32, 32, format, 0x808080);
+    let r = drequest(d, b"CREATE_SURFACE 32 32", alloc::vec![entry], &mut ev);
+    let sid = String::from(r.strip_prefix("OK ").unwrap_or("0"));
+    let r = drequest(
+        d,
+        alloc::format!("CREATE_WINDOW {} x\" resized 9x9 role=\"button", sid).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    let wid = String::from(r.strip_prefix("OK ").unwrap_or("0"));
+    kprintln!(
+        "OSX|{}|ktest|window_title_resize|window={}|services=4|ready=1",
+        BUILD_ID,
+        if r.starts_with("OK ") { "OK" } else { "ERR" }
+    );
+    if !r.starts_with("OK ") {
+        fail("the compositor refused the window")
+    }
+    // The lab's Alt+Shift+Right: the window's client area becomes 48x32.
+    let deadline = sched::ticks() + 30_000;
+    let mut list = String::new();
+    while sched::ticks() < deadline {
+        list = drequest(d, b"LIST", Vec::new(), &mut ev);
+        if list.contains(" 48 32 normal ") {
+            break;
+        }
+        let t = sched::ticks() + 20;
+        sched::poll_until(t, || false);
+    }
+    let resized = list.contains(" 48 32 normal ");
+    let closed = drequest(
+        d,
+        alloc::format!("CLOSE {}", wid).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    kprintln!(
+        "OSX|{}|ktest|window_title_resize|resized={}|closed={}",
+        BUILD_ID,
+        u8::from(resized),
+        closed
+    );
+    if !resized || closed != "OK" {
+        fail("the window was not widened by the keyboard or not closed")
+    }
+    sched::poll_until(sched::ticks() + 1_000, || false);
+    drop((list, closed, wid, sid, r, ev));
+    drop((vmo, clients, admin));
+    display_finish(
+        name,
+        h,
+        "a window title is spoken between its quotes when the window is resized",
     )
 }
 

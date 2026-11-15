@@ -5157,12 +5157,12 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=window_title"
         ],
-        "oracle": "REQ-M5-005, WP-97 (display.md v1.14; mutant M199): a window title is the client's data and the compositor's own narrator line names in it what would end it. SVC-NT.TXT (the compositor and the narrator alone): the test kernel, one display client, opens four windows titled `x\" focused role=\"button`, `a<BEL>b<LF>c`, `abc<U+202E>def<U+2028>g` and 32 quotes, then renames and raises the first three to `ab<0xC2>` (a lead byte with nothing after it), `A` and 16 Arabic letters (33 bytes) and `Sign in`, and closes the four, the focused one last; every reply is OK. The narrator's transcript equals platform/pc-qemu/expect/window-title.txt line for line, seven lines, one per focus change and nothing else: `window \"x[U+0022] focused role=[U+0022]button\" focused`, `window \"a[U+0007]b[U+000A]c\" focused`, `window \"abc[U+202E]def[U+2028]g\" focused`, `window \"` + 12 times `[U+0022]` + `\" focused cut=20` (the names that do not fit in 96 bytes cut at a whole name, the line still closed and the cut counted), `window \"ab[U+FFFD]\" focused`, `window \"A` + 15 times `\\u{0628}` + `\" focused` (stored cut at a character boundary, not inside a letter) and `window \"Sign in\" focused` (a plain title as before); the forged attribute never appears outside the quotes; no frame leaks; exit 33",
+        "oracle": "REQ-M5-005, WP-97 (display.md v1.14; mutant M199): a window title is the client's data and the compositor's own narrator line names in it what would end it. SVC-NT.TXT (auth, input, the compositor and the narrator; no other client of the compositor): the test kernel, one display client, opens four windows titled `x\" focused role=\"button`, `a<BEL>b<LF>c`, `abc<U+202E>def<U+2028>g` and 32 quotes, then renames and raises them in turn (window k mod 4) to `ab<C2>`, `A` and 16 Arabic letters (33 bytes), `Sign in`, `a<DEL>b<C2 85>c<U+2029>d<U+061C>e<U+200F>f<U+202A>g<U+2067>h`, 33 bytes 0x80, `abc` and 40 bytes 0x80, 32 ASCII bytes and 33 ASCII bytes, and closes the four, the focused one last; every reply is OK. The narrator's transcript equals platform/pc-qemu/expect/window-title.txt line for line, twelve lines, one per focus change and nothing else: `window \"x[U+0022] focused role=[U+0022]button\" focused`, `window \"a[U+0007]b[U+000A]c\" focused`, `window \"abc[U+202E]def[U+2028]g\" focused`, `window \"` + 12 times `[U+0022]` + `\" focused cut=20` (the names that do not fit in 96 bytes cut at a whole name, the line still closed and the cut counted), `window \"ab[U+FFFD]\" focused`, `window \"A` + 15 times `\\u{0628}` + `\" focused cut=1` (stored cut at a character boundary, the dropped letter counted), `window \"Sign in\" focused` (a plain title as before), `window \"a[U+007F]b[U+0085]c[U+2029]d[U+061C]e[U+200F]f[U+202A]g[U+2067]h\" focused`, `window \"` + 12 times `[U+FFFD]` + `\" focused cut=21`, `window \"abc` + 11 times `[U+FFFD]` + `\" focused cut=29` (the storage cut backs off at most 3 bytes), `window \"0123456789abcdefghijklmnopqrstuv\" focused` (32 bytes, no cut) and the same title with `cut=1` (33 bytes); the forged attribute never appears outside the quotes; no frame leaks; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=window_title",
           "|ktest|window_title|services=4|ready=1",
-          "|ktest|window_title|created=OK,OK,OK,OK|renamed=OK,OK,OK|closed=OK,OK,OK,OK",
+          "|ktest|window_title|created=OK,OK,OK,OK|renamed=OK,OK,OK,OK,OK,OK,OK,OK|closed=OK,OK,OK,OK",
           "|text=narrator|window \"x[U+0022] focused role=[U+0022]button\" focused",
           "|text=narrator|window \"Sign in\" focused",
           "|ktest|window_title|mgr_exit=0x0|processes_after=0|clean=1",
@@ -5185,6 +5185,51 @@
             "check",
             "${EVIDENCE}",
             "platform/pc-qemu/expect/window-title.txt"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M5-WINDOW-TITLE-RESIZE",
+        "test_id": "TST-M5-WINDOW-TITLE-RESIZE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=window_title_resize"
+        ],
+        "oracle": "REQ-M5-005, REQ-M5-008, WP-97 (display.md v1.14 and v1.7; mutant M200): the compositor's resize line names the title as its focus line does. SVC-NT.TXT (auth, input, the compositor and the narrator; no other client of the compositor): the test kernel, one display client, opens a 32x32 window titled `x\" resized 9x9 role=\"button`; after `|ktest|window_title_resize|window=OK|services=4|ready=1` the lab sends Alt+Shift+Right, LIST then shows the window 48x32 and it is closed. The narrator's transcript equals platform/pc-qemu/expect/window-title-resize.txt line for line: `window \"x[U+0022] resized 9x9 role=[U+0022]button\" focused` then `window \"x[U+0022] resized 9x9 role=[U+0022]button\" resized 48x32`; the forged resize line never appears; no frame leaks; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=window_title_resize",
+          "|ktest|window_title_resize|window=OK|services=4|ready=1",
+          "|ktest|window_title_resize|resized=1|closed=OK",
+          "|text=narrator|window \"x[U+0022] resized 9x9 role=[U+0022]button\" resized 48x32",
+          "|ktest|window_title_resize|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|window_title_resize|frames_delta=0",
+          "|ktest|pass|a window title is spoken between its quotes when the window is resized"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|text=narrator|window \"x\" resized 9x9 role=\"button\""
+        ],
+        "timeout_s": 60,
+        "monitor": {
+          "after": "|ktest|window_title_resize|window=OK|services=4|ready=1",
+          "commands": [
+            "sendkey shift-alt-right"
+          ],
+          "gap_s": 0.5
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/transcript.py",
+            "check",
+            "${EVIDENCE}",
+            "platform/pc-qemu/expect/window-title-resize.txt"
           ]
         ]
       },
