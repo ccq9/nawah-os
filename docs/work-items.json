@@ -3202,7 +3202,10 @@
     "WP-78",
     "WP-82",
     "WP-84",
-    "WP-99"
+    "WP-99",
+    "WP-100",
+    "WP-101",
+    "WP-102"
    ],
    "inputs": [
     "DEC-005",
@@ -3229,14 +3232,12 @@
     "2026-11-10 services.md: v1.12 is WP-46's (the manager's ninth initial handle, the root job); WP-71's services.md number is assigned at merge; this package keeps v1.13",
     "2026-11-10 services.md renumbered v1.13 -> v1.14: v1.13 is WP-68's, on the critical path since WP-46, WP-64 and WP-73 closed (PLAN.md:132)",
     "2026-11-14 waits for WP-99 too: applications add to what runs before and beside the manager, and a manager that spins must end in the halt line before more is built on the interactive boot (RSK-024)",
-    "2026-11-10 (steward round B): depends on WP-84 too (the halt line and band split from WP-82)"
+    "2026-11-10 (steward round B): depends on WP-84 too (the halt line and band split from WP-82)",
+    "2026-11-15 split before activation, as its budget line requires (planner's reading of the code and the records; the manager): three packages come first and this item stays as the closing scenario, so the five items that wait for it (WP-48, WP-58, WP-59, WP-60, WP-61) keep their dependency unchanged: WP-100 the registry's format, parser and host fuzz with ADR-0023 proposed; WP-101 the manager's broker (services.md v1.14, TST-M6-LAUNCH-DENIED); WP-102 the session's job, autostart and sign-out (session.md v1.8, TST-M6-LOGOUT-KILLS); here TST-M6-APP-LAUNCH and the ADR's acceptance. Found on the way and carried by the slices: the registry's place (/APPS is writable by every process today; PLAN-ANSWER denies writes to /SYSTEM/APPS) is decided in WP-100; TST-M6-LOGOUT-KILLS's planned oracle needs process_list (WP-69, DEC-027), settled at WP-102's activation; TST-M6-APP-LAUNCH's planned oracle reads two identities in the compositor's LIST, which lists the asker's own windows only today (displayd), so display.md may change here under ADR-0019; the identity app:<id>#<n> must fit NAME_MAX = 15. Not ours to settle: DEC-005, on which the whole model rests, was answered under the owner's delegation of 2026-11-08, whose text is in no record (PLAN-ANSWER.md §6): the owner records it or confirms DEC-005 before WP-101 builds on it; WP-100 holds under either answer"
    ],
-   "acceptance": "TST-M6-APP-LAUNCH, LOGOUT-KILLS, LAUNCH-DENIED and APP-REGISTRY-FUZZ PASS on CI; ADR-0023 accepted",
+   "acceptance": "TST-M6-APP-LAUNCH PASS on CI (the closing scenario on the release image: sign in, the autostart application opens a window, two launches of one application give two identities, sign out ends the session's job); ADR-0023 accepted; the registry, the broker and the session job are WP-100, WP-101 and WP-102 (TST-M6-APP-REGISTRY-FUZZ, TST-M6-LAUNCH-DENIED, TST-M6-LOGOUT-KILLS)",
    "test_ids": [
-    "TST-M6-APP-LAUNCH",
-    "TST-M6-LOGOUT-KILLS",
-    "TST-M6-LAUNCH-DENIED",
-    "TST-M6-APP-REGISTRY-FUZZ"
+    "TST-M6-APP-LAUNCH"
    ],
    "commands": [
     "python3 tools/project.py build --target pc-qemu",
@@ -6255,6 +6256,174 @@
     "evidence/20261115T005243Z-bde18d19-001-a",
     "evidence/20261115T005329Z-bde18d19-001-a"
    ],
+   "blocker": null
+  },
+  {
+   "id": "WP-100",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-46",
+    "WP-64",
+    "WP-67",
+    "WP-68",
+    "WP-73",
+    "WP-77",
+    "WP-78",
+    "WP-82",
+    "WP-84",
+    "WP-99"
+   ],
+   "inputs": [
+    "DEC-005 (answered under the delegation of 2026-11-08, whose text is not in the records: PLAN-ANSWER.md §6)",
+    "docs/PLAN-ANSWER.md §4 «سمسار التشغيل» and its denied-branches table",
+    "kernel/src/fs/vfs.rs classify: every path outside /SYSTEM is open to every process",
+    "user/apps/svcmgr/src/main.rs NAME_MAX = 15 (the vouched identity app:<id>#<n> must fit)",
+    "tools/project.py prepare_disk (what the built volume holds)"
+   ],
+   "files": [
+    "docs/adr/0023-desktop-shell-and-app-model.md",
+    "docs/contracts/apps.md",
+    "user",
+    "tools/project.py",
+    "tests",
+    "docs/tests.json",
+    "docs/requirements.json",
+    "tests/mutants.py"
+   ],
+   "contract_refs": [
+    "docs/contracts/apps.md"
+   ],
+   "actions": [
+    "سجل التطبيقات: صيغته ومحلّله وفحصه على المضيف (100، مفصولة من WP-47 في 2026-11-15)",
+    "ADR-0023, proposed, the application model only: where the registry lives and who may write it (the requirement says /APPS, which every process can write today; PLAN-ANSWER's table denies writes to /SYSTEM/APPS: decide with the reason and amend REQ-M6-004's wording if it moves), the entry's fields (id, ELF path, ar/en names, declared dependencies), the reserved ids, the id's length against NAME_MAX; the desktop shell's open questions (one process or several, maximize/snap, an Alt+Tab panel) are left to WP-48 by name",
+    "apps.md v1 (new): the registry entry's format and limits; a no_std parser in a crate of its own, used later by the manager; a sample registry on the built volume",
+    "test first: TST-M6-APP-REGISTRY-FUZZ on the host (a seeded corpus: over-long fields, bad and reserved ids, a missing ELF path, duplicate ids, non-UTF-8 names; never a panic; the well-formed examples accepted exactly); a SECURITY mutant for the reserved ids",
+    "does not touch svcmgr or sessiond and grants no authority; adds no second to the M6 guest step (977 of 1080 s today)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation"
+   ],
+   "acceptance": "TST-M6-APP-REGISTRY-FUZZ PASS on CI; apps.md v1 exists; ADR-0023 is proposed with the application model decided and the desktop questions left to WP-48 by name; the mutant killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-APP-REGISTRY-FUZZ"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-101",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-100"
+   ],
+   "inputs": [
+    "WP-100 (apps.md v1, the parser)",
+    "docs/contracts/services.md (v1.13 today; CONNECT, vouching; v1.12: the manager does not use the root job handle)",
+    "user/apps/svcmgr/src/main.rs (process_spawn into the root job; CONNECT limited to declared dependencies; no LAUNCH)",
+    "docs/PLAN-ANSWER.md §4 (allow-list without auth and session; the app: prefix; a LAUNCH rate limit); planned mutants M140, M142"
+   ],
+   "files": [
+    "user/apps/svcmgr/src/main.rs",
+    "user/libnawah",
+    "docs/contracts/services.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/apps.md"
+   ],
+   "actions": [
+    "سمسار التشغيل في المدير: LAUNCH وهوية التطبيق وحصر اتصاله (101، مفصولة من WP-47 في 2026-11-15)",
+    "services.md v1.14: the manager takes the root job handle; an applications table apart from the services table; LAUNCH/APPS accepted only from the vouched session or desktop; the identity app:<id>#<n> vouched on CONNECT; an application's CONNECT limited to its declared dependencies within an allow-list that excludes auth and session; a LAUNCH rate limit",
+    "test first: TST-M6-LAUNCH-DENIED in the test kernel (LAUNCH from a plain client refused ERR ACCESS by the manager; an undeclared CONNECT refused in the manager; the reserved ids and the denied dependencies of PLAN-ANSWER's table); SECURITY mutants M140 (the app: prefix dropped) and M142 (the allow-list dropped)",
+    "M6 guest step: the case's seconds are counted at activation against 977 of 1080 s; if it does not fit, the cap and job a's limit rise with the case (test_a_bounded_suite_fits_its_cap_in_the_worst_case)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation"
+   ],
+   "acceptance": "TST-M6-LAUNCH-DENIED PASS on CI; services.md v1.14 states LAUNCH, the identity and the allow-list; M140 and M142 killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-LAUNCH-DENIED"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-102",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-101"
+   ],
+   "inputs": [
+    "WP-101 (LAUNCH into a job)",
+    "docs/contracts/session.md §8 (sign-out does not end user processes)",
+    "user/apps/sessiond/src/main.rs sign_out (LOGOUT to auth and display only; nothing is killed)",
+    "kernel/src/object/job.rs and syscall.md v1.13 (job_create, job_kill, process_spawn_in)",
+    "docs/contracts/config.md (the user store)",
+    "TST-M6-LOGOUT-KILLS's planned oracle reads process_list, which is WP-69's (blocked by DEC-027)"
+   ],
+   "files": [
+    "user/apps/sessiond/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "docs/contracts/session.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py"
+   ],
+   "contract_refs": [
+    "docs/contracts/session.md"
+   ],
+   "actions": [
+    "مهمة لكل جلسة، والتشغيل التلقائي، والخروج يقتل المهمة (102، مفصولة من WP-47 في 2026-11-15)",
+    "session.md v1.8: a job per session; autostart from the user's config store (session.autostart); job_kill at Sign out (closes the §8 limit)",
+    "test first: TST-M6-LOGOUT-KILLS in the test kernel (an application that ignores the close request is gone after Sign out, its frames returned, the next sign-in starts with no process of the previous session); its oracle as planned reads process_list (WP-69, DEC-027): at activation it is rewritten to observe the job's end without it, or this item waits for WP-69; SECURITY mutant M141 (job_kill at sign-out dropped)",
+    "M6 guest step: with this case the suite is expected to pass the 1080 s cap (planner's estimate, unmeasured): the cap and job a's limit rise with the case, or WP-98's fan-out comes first; never a skipped case",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation"
+   ],
+   "acceptance": "TST-M6-LOGOUT-KILLS PASS on CI; session.md v1.8 closes §8's limit; M141 killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-LOGOUT-KILLS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
    "blocker": null
   }
  ]
