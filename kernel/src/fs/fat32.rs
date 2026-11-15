@@ -353,7 +353,6 @@ impl Fat32 {
 
     /// The `n`th free cluster (from 1), lowest first, below `end`, by scanning the first FAT;
     /// `None` when fewer are free there.
-    #[cfg(feature = "ktest")]
     fn nth_free(&self, n: u32, end: u32) -> Result<Option<u32>, FsError> {
         let mut s = [0u8; SECTOR];
         let mut seen = 0u32;
@@ -373,6 +372,25 @@ impl Fat32 {
             }
         }
         Ok(None)
+    }
+
+    /// True when the allocator can take `want` more clusters (the scan stops at the last one
+    /// it needs).
+    fn has_free(&self, want: u32) -> Result<bool, FsError> {
+        Ok(want == 0 || self.nth_free(want, self.alloc_end())?.is_some())
+    }
+
+    /// How many clusters the chain from `first` holds, counted no further than `cap`.
+    fn chain_len(&self, first: u32, cap: u32) -> Result<u32, FsError> {
+        let (mut c, mut n) = (first, 0u32);
+        while c >= 2 && n < cap {
+            n += 1;
+            match self.next_cluster(c)? {
+                Some(x) => c = x,
+                None => break,
+            }
+        }
+        Ok(n)
     }
 
     /// Test kernel only (TST-M3-FAT32-DISK-FULL): from now the allocator sees `left` free
@@ -438,15 +456,7 @@ impl Fat32 {
     /// holds, so a case can compare it with what the file's size needs.
     #[cfg(feature = "ktest")]
     pub fn chain_clusters(&self, first: u32) -> Result<u32, FsError> {
-        let (mut c, mut n) = (first, 0u32);
-        while c >= 2 && n < CHAIN_MAX {
-            n += 1;
-            match self.next_cluster(c)? {
-                Some(x) => c = x,
-                None => break,
-            }
-        }
-        Ok(n)
+        self.chain_len(first, CHAIN_MAX)
     }
 
     /// Free clusters, by scanning the first FAT.
@@ -741,15 +751,22 @@ impl Fat32 {
             return Ok(0);
         }
         let cluster_bytes = self.sectors_per_cluster as usize * SECTOR;
+        // The volume must hold the whole call before any of it is written (files.md v1.7): the
+        // clusters the bytes need beyond the chain the file has are counted, and when the
+        // allocator cannot take that many the call answers DiskFull with nothing written and
+        // nothing taken. The volume's lock is held to the end of the call, so the clusters
+        // counted here are the ones the allocations below find.
+        let need = (offset + data.len() as u32).div_ceil(cluster_bytes as u32);
+        let have = self.chain_len(file.first, need)?;
+        if need > have && !self.has_free(need - have)? {
+            return Err(FsError::DiskFull);
+        }
         // The call works on a copy of the entry, and the node every open shares takes it only
         // after the entry is stored (files.md v1.6): a failure at any write below leaves the
         // node equal to the stored entry. What the failed call allocated then stays allocated
         // with no owner, except a cluster already linked to an existing file's chain in the
         // first FAT copy, which stays on the chain past the size; bytes the call wrote inside
-        // the old size stay written. On a full disk (DiskFull, no device fault) every cluster
-        // taken before the volume ran out was linked in both copies: for a file that had no
-        // first cluster they are lost with the call; for one that had, they stay on its chain
-        // past the size.
+        // the old size stay written.
         let mut staged = *file;
         if staged.first == 0 {
             staged.first = self.alloc_cluster()?;
