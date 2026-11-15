@@ -708,36 +708,47 @@ impl Fat32 {
         Ok(done)
     }
 
-    /// Empties a file: frees its chain, size 0, no first cluster; the entry stays.
+    /// Empties a file (size 0, no first cluster; the entry stays). The order is the entry, the
+    /// node, the frees (files.md v1.5): the emptied entry is stored first, then the node every
+    /// open shares follows it, then the old chain is freed. A failure before the entry is
+    /// stored changes nothing; a failure after it leaves the file empty on the disk and in the
+    /// node alike, with clusters of the old chain lost, and is answered as an error. No name
+    /// ever points at a freed cluster.
     pub fn truncate(&self, file: &mut Entry) -> Result<u32, FsError> {
         if file.is_dir() {
             return Err(FsError::IsADirectory);
         }
-        let freed = if file.first >= 2 {
-            self.free_chain(file.first)?
+        let old_first = file.first;
+        let mut emptied = *file;
+        emptied.first = 0;
+        emptied.size = 0;
+        self.store_entry(&emptied)?;
+        *file = emptied;
+        if old_first >= 2 {
+            self.free_chain(old_first)
         } else {
-            0
-        };
-        file.first = 0;
-        file.size = 0;
-        self.store_entry(file)?;
-        Ok(freed)
+            Ok(0)
+        }
     }
 
-    /// Removes a file (not a directory): frees its chain and marks the entry free.
+    /// Removes a file (not a directory). The entry is marked free first and its chain is freed
+    /// after it (files.md v1.5): a failure before the entry is written changes nothing; a
+    /// failure after it leaves no name and clusters of the chain lost, and is answered as an
+    /// error (a second delete then answers that the name does not exist). No name ever points
+    /// at a freed cluster.
     pub fn unlink(&self, path: &[u8]) -> Result<u32, FsError> {
         let e = self.lookup(path)?;
         if e.is_dir() {
             return Err(FsError::IsADirectory);
         }
+        let mut dead = e;
+        dead.name[0] = 0xE5;
+        self.store_entry(&dead)?;
         let freed = if e.first >= 2 {
             self.free_chain(e.first)?
         } else {
             0
         };
-        let mut dead = e;
-        dead.name[0] = 0xE5;
-        self.store_entry(&dead)?;
         Ok(freed)
     }
 
