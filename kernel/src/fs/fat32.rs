@@ -657,9 +657,11 @@ impl Fat32 {
         let cluster_bytes = self.sectors_per_cluster as usize * SECTOR;
         // The call works on a copy of the entry, and the node every open shares takes it only
         // after the entry is stored (files.md v1.6): a failure at any write below leaves the
-        // node equal to the stored entry. What the failed call allocated is then lost (a new
-        // file) or left on the chain past the size (an existing file, where a later append
-        // finds it); bytes it wrote inside the old size stay written.
+        // node equal to the stored entry. What the failed call allocated then stays allocated
+        // with no owner, except a cluster already linked to an existing file's chain in the
+        // first FAT copy, which stays on the chain past the size; bytes the call wrote inside
+        // the old size stay written. This holds for a full disk too (DiskFull): the clusters
+        // the call took before the volume ran out are lost with it.
         let mut staged = *file;
         if staged.first == 0 {
             staged.first = self.alloc_cluster()?;

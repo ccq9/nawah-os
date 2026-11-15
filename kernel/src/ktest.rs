@@ -3180,17 +3180,19 @@ fn fat32_fault_check(kind: u8, name: &'static str) -> ! {
 /// writes of the call) and every N up to that count, a file `/<kind>NN.TXT` holding `before`
 /// bytes is written `add` more bytes through one open with disk write N and all after it
 /// refused. Returns (writes, control_ok, failed, io, node_differs, unchanged, bad, ghost,
-/// retry_ok): after a failed call the node every open shares must equal the stored entry
-/// (`node_differs`), the name must still hold its `before` bytes (`unchanged`), and a read
-/// through the same open from 0 must return those bytes and no more (`ghost` counts the reads
-/// that returned anything else). With `retry`, the same call is made again and must leave the
-/// whole file.
-fn fault_write_sweep(kind: u8, before: usize, add: usize, retry: bool) -> [u32; 9] {
+/// retry_ok, pos_moved, stale_sync): after a failed call the node every open shares must equal
+/// the stored entry (`node_differs`), the open's position must not have moved (`pos_moved`),
+/// the name must still hold its `before` bytes (`unchanged`), a sync must not answer success
+/// while `stat` and the node disagree on the size (`stale_sync`), and a read through the same
+/// open from 0 must return those bytes and no more (`ghost` counts the reads that returned
+/// anything else). With `retry`, the same call is made again and must leave the whole file.
+fn fault_write_sweep(kind: u8, before: usize, add: usize, retry: bool) -> [u32; 11] {
     use crate::fs::vfs;
     let rw = vfs::O_READ | vfs::O_WRITE;
     let (mut writes, mut control_ok) = (0u32, 0u32);
     let (mut failed, mut io, mut node_differs, mut unchanged, mut bad, mut ghost, mut retry_ok) =
         (0u32, 0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
+    let (mut pos_moved, mut stale_sync) = (0u32, 0u32);
     let mut n = 0u32;
     while n == 0 || n <= writes {
         let path = fault_path(kind, n);
@@ -3227,6 +3229,11 @@ fn fault_write_sweep(kind: u8, before: usize, add: usize, retry: bool) -> [u32; 
             failed += u32::from(r.is_err());
             io += u32::from(matches!(r, Err(FsError::Io(_))));
             node_differs += u32::from(stored != Ok(node));
+            pos_moved += u32::from(a.lock().pos != before as u64);
+            // A sync that answers success must leave `stat` and the node agreeing on the size.
+            let synced = vfs::sync().is_ok();
+            let stat_size = vfs::stat(&path).map(|st| st.size);
+            stale_sync += u32::from(synced && stat_size != Ok(u64::from(node.1)));
             let state = fault_state(&path, &all[..before]);
             if (before == 0 && state == 2) || (before > 0 && state == 1) {
                 unchanged += 1;
@@ -3260,6 +3267,8 @@ fn fault_write_sweep(kind: u8, before: usize, add: usize, retry: bool) -> [u32; 
         bad,
         ghost,
         retry_ok,
+        pos_moved,
+        stale_sync,
     ]
 }
 
@@ -3279,7 +3288,7 @@ fn fat32_fault_write() -> ! {
     let synced = crate::fs::vfs::sync().is_ok();
     for (name, v) in [("new", &w), ("append", &x)] {
         kprintln!(
-            "OSX|{}|ktest|fat32_fault_write|sweep={}|control={}|writes={}|failed={}|io={}|node_differs={}|unchanged={}|bad={}|ghost={}|retry_ok={}",
+            "OSX|{}|ktest|fat32_fault_write|sweep={}|control={}|writes={}|failed={}|io={}|node_differs={}|pos_moved={}|stale_sync={}|unchanged={}|bad={}|ghost={}|retry_ok={}",
             BUILD_ID,
             name,
             v[1],
@@ -3287,6 +3296,8 @@ fn fat32_fault_write() -> ! {
             v[2],
             v[3],
             v[4],
+            v[9],
+            v[10],
             v[5],
             v[6],
             v[7],
@@ -3303,8 +3314,8 @@ fn fat32_fault_write() -> ! {
         if v[1] != 1 || v[0] < 3 || v[2] != v[0] || v[3] != v[0] {
             fail("the sweep did not run as planned")
         }
-        if v[4] != 0 || v[6] != 0 || v[7] != 0 || v[5] != v[0] {
-            fail("a failed write left the file or its node changed")
+        if v[4] != 0 || v[6] != 0 || v[7] != 0 || v[5] != v[0] || v[9] != 0 || v[10] != 0 {
+            fail("a failed write left the file, its node or the open's position changed")
         }
     }
     if w[8] != w[0] || !synced {
@@ -3350,6 +3361,9 @@ fn fat32_fault_write_check() -> ! {
     );
     if w_bad + x_bad != 0 || !after_ok || after != (w_whole, x_first, x_both, w_bad, x_bad) {
         fail("a name of the sweeps is not its own file after the restart")
+    }
+    if w_whole == 0 || x_first == 0 || x_both != 1 {
+        fail("the files of the sweeps are not all there after the restart")
     }
     pass("after the restart every file of the write sweeps is its own")
 }
