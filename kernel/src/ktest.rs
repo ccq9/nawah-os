@@ -2964,7 +2964,8 @@ fn fat32_fault_unlink() -> ! {
     let w0 = crate::block::writes();
     let control = vfs::unlink(&fault_path(b'U', 0));
     let writes = crate::block::writes() - w0;
-    let (mut failed, mut gone, mut kept, mut bad) = (0u32, 0u32, 0u32, 0u32);
+    let (mut failed, mut io, mut gone, mut retry_gone, mut kept, mut bad) =
+        (0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
     for n in 1..=writes {
         if !make(n) {
             fail("could not create a file of the sweep")
@@ -2974,30 +2975,40 @@ fn fat32_fault_unlink() -> ! {
         let r = vfs::unlink(&path);
         crate::block::disarm_write_fault();
         failed += u32::from(r.is_err());
+        io += u32::from(matches!(r, Err(FsError::Io(_))));
         match fault_state(&path, &fault_bytes(n)) {
-            0 => gone += 1,
+            0 => {
+                gone += 1;
+                // The name is gone: a second delete says so (files.md v1.5).
+                retry_gone += u32::from(vfs::unlink(&path) == Err(FsError::NotFound));
+            }
             1 => kept += 1,
             _ => bad += 1,
         }
     }
     let synced = vfs::sync().is_ok();
     kprintln!(
-        "OSX|{}|ktest|fat32_fault_unlink|control={}|writes={}|failed={}|gone={}|kept={}|bad={}|synced={}|live_files={}",
+        "OSX|{}|ktest|fat32_fault_unlink|control={}|writes={}|failed={}|io={}|gone={}|retry_gone={}|kept={}|bad={}|synced={}|live_files={}",
         BUILD_ID,
         control.map_or_else(|e| e.code(), |_| "ok"),
         writes,
         failed,
+        io,
         gone,
+        retry_gone,
         kept,
         bad,
         u8::from(synced),
         vfs::live_files()
     );
-    if control.is_err() || writes < 3 || failed != writes || !synced {
+    if control.is_err() || writes < 3 || failed != writes || io != writes || !synced {
         fail("the sweep did not run as planned")
     }
     if bad != 0 || gone + kept != writes {
         fail("a failed delete left a name that is neither whole nor gone")
+    }
+    if retry_gone != gone {
+        fail("a second delete of a name that is gone did not answer not found")
     }
     pass("a failed delete leaves the whole file or no name")
 }
@@ -3012,8 +3023,10 @@ fn fat32_fault_truncate() -> ! {
         fail("volume did not mount")
     }
     let rw = vfs::O_READ | vfs::O_WRITE;
-    let (mut writes, mut failed, mut kept, mut emptied, mut bad, mut node_differs) =
-        (0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
+    let (mut writes, mut failed, mut io, mut kept, mut emptied, mut bad, mut node_differs) =
+        (0u32, 0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
+    // What the first open sees afterwards and what a second attempt does.
+    let (mut a_whole, mut a_refused, mut a_empty, mut retry_ok) = (0u32, 0u32, 0u32, 0u32);
     let mut control_ok = false;
     let mut n = 0u32;
     // n = 0 is the control: no fault, it counts the writes of one truncation.
@@ -3043,10 +3056,30 @@ fn fat32_fault_truncate() -> ! {
             control_ok = b.is_ok() && state == 2 && stored == Ok(node);
         } else {
             failed += u32::from(b.is_err());
+            io += u32::from(matches!(b, Err(FsError::Io(_))));
             node_differs += u32::from(stored != Ok(node));
             match state {
-                1 => kept += 1,
-                2 => emptied += 1,
+                1 => {
+                    kept += 1;
+                    // Nothing changed: the first open reads its bytes back.
+                    let mut back = alloc::vec![0u8; FAULT_LEN + 1];
+                    let _ = vfs::seek(&a, 0);
+                    a_whole += u32::from(
+                        matches!(vfs::read(&a, &mut back), Ok(FAULT_LEN))
+                            && back[..FAULT_LEN] == fault_bytes(n)[..],
+                    );
+                }
+                2 => {
+                    emptied += 1;
+                    // The first open's position (the old end) is past the new end: a write
+                    // there is refused, not sent into the freed clusters; from 0 it reads
+                    // nothing; and a second truncating open succeeds (files.md v1.5).
+                    a_refused += u32::from(vfs::write(&a, b"stale").err() == Some(FsError::Range));
+                    let mut one = [0u8; 16];
+                    let _ = vfs::seek(&a, 0);
+                    a_empty += u32::from(matches!(vfs::read(&a, &mut one), Ok(0)));
+                    retry_ok += u32::from(vfs::open(&path, rw | vfs::O_TRUNCATE).is_ok());
+                }
                 _ => bad += 1,
             }
         }
@@ -3056,23 +3089,31 @@ fn fat32_fault_truncate() -> ! {
     }
     let synced = vfs::sync().is_ok();
     kprintln!(
-        "OSX|{}|ktest|fat32_fault_truncate|control={}|writes={}|failed={}|kept={}|emptied={}|bad={}|node_differs={}|synced={}|live_files={}",
+        "OSX|{}|ktest|fat32_fault_truncate|control={}|writes={}|failed={}|io={}|kept={}|a_whole={}|emptied={}|a_refused={}|a_empty={}|retry_ok={}|bad={}|node_differs={}|synced={}|live_files={}",
         BUILD_ID,
         u8::from(control_ok),
         writes,
         failed,
+        io,
         kept,
+        a_whole,
         emptied,
+        a_refused,
+        a_empty,
+        retry_ok,
         bad,
         node_differs,
         u8::from(synced),
         vfs::live_files()
     );
-    if !control_ok || writes < 3 || failed != writes || !synced {
+    if !control_ok || writes < 3 || failed != writes || io != writes || !synced {
         fail("the sweep did not run as planned")
     }
     if bad != 0 || node_differs != 0 || kept + emptied != writes {
         fail("a failed truncation left a file that is neither whole nor empty")
+    }
+    if a_whole != kept || a_refused != emptied || a_empty != emptied || retry_ok != emptied {
+        fail("the first open or a second attempt did not see the file as the disk holds it")
     }
     pass("a failed truncation leaves the file whole or empty, on disk and in its node")
 }
