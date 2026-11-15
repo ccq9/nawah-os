@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071356Z-6f2dcbf5-001-a"
+    "evidence/20261115T094641Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071355Z-6f2dcbf5-001-a"
+    "evidence/20261115T094640Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065042Z-6f2dcbf5-001-a",
-    "evidence/20261115T065045Z-6f2dcbf5-001-a"
+    "evidence/20261115T092348Z-7cc13c28-001-a",
+    "evidence/20261115T092352Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071356Z-6f2dcbf5-001-a"
+    "evidence/20261115T094641Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -356,10 +356,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065049Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a",
-    "evidence/20261115T065122Z-6f2dcbf5-001-a",
-    "evidence/20261115T071406Z-6f2dcbf5-001-a"
+    "evidence/20261115T092355Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a",
+    "evidence/20261115T092431Z-7cc13c28-001-a",
+    "evidence/20261115T094649Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -429,17 +429,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065128Z-6f2dcbf5-001-a",
-    "evidence/20261115T065133Z-6f2dcbf5-001-a",
-    "evidence/20261115T065138Z-6f2dcbf5-001-a",
-    "evidence/20261115T065143Z-6f2dcbf5-001-a",
-    "evidence/20261115T065149Z-6f2dcbf5-001-a",
-    "evidence/20261115T065154Z-6f2dcbf5-001-a",
-    "evidence/20261115T065159Z-6f2dcbf5-001-a",
-    "evidence/20261115T065204Z-6f2dcbf5-001-a",
-    "evidence/20261115T065210Z-6f2dcbf5-001-a",
-    "evidence/20261115T065215Z-6f2dcbf5-001-a",
-    "evidence/20261115T065220Z-6f2dcbf5-001-a"
+    "evidence/20261115T092436Z-7cc13c28-001-a",
+    "evidence/20261115T092441Z-7cc13c28-001-a",
+    "evidence/20261115T092446Z-7cc13c28-001-a",
+    "evidence/20261115T092451Z-7cc13c28-001-a",
+    "evidence/20261115T092456Z-7cc13c28-001-a",
+    "evidence/20261115T092501Z-7cc13c28-001-a",
+    "evidence/20261115T092506Z-7cc13c28-001-a",
+    "evidence/20261115T092511Z-7cc13c28-001-a",
+    "evidence/20261115T092516Z-7cc13c28-001-a",
+    "evidence/20261115T092521Z-7cc13c28-001-a",
+    "evidence/20261115T092526Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -490,9 +490,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065225Z-6f2dcbf5-001-a",
-    "evidence/20261115T065230Z-6f2dcbf5-001-a",
-    "evidence/20261115T065236Z-6f2dcbf5-001-a"
+    "evidence/20261115T092531Z-7cc13c28-001-a",
+    "evidence/20261115T092536Z-7cc13c28-001-a",
+    "evidence/20261115T092541Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -555,11 +555,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065241Z-6f2dcbf5-001-a",
-    "evidence/20261115T065246Z-6f2dcbf5-001-a",
-    "evidence/20261115T065252Z-6f2dcbf5-001-a",
-    "evidence/20261115T065257Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T092546Z-7cc13c28-001-a",
+    "evidence/20261115T092551Z-7cc13c28-001-a",
+    "evidence/20261115T092556Z-7cc13c28-001-a",
+    "evidence/20261115T092601Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -636,11 +636,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065302Z-6f2dcbf5-001-a",
-    "evidence/20261115T065307Z-6f2dcbf5-001-a",
-    "evidence/20261115T065313Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a",
-    "evidence/20261115T065215Z-6f2dcbf5-001-a"
+    "evidence/20261115T092606Z-7cc13c28-001-a",
+    "evidence/20261115T092611Z-7cc13c28-001-a",
+    "evidence/20261115T092616Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a",
+    "evidence/20261115T092521Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -704,9 +704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065318Z-6f2dcbf5-001-a",
-    "evidence/20261115T065323Z-6f2dcbf5-001-a",
-    "evidence/20261115T065329Z-6f2dcbf5-001-a"
+    "evidence/20261115T092621Z-7cc13c28-001-a",
+    "evidence/20261115T092626Z-7cc13c28-001-a",
+    "evidence/20261115T092631Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -818,11 +818,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065334Z-6f2dcbf5-001-a",
-    "evidence/20261115T065340Z-6f2dcbf5-001-a",
-    "evidence/20261115T065345Z-6f2dcbf5-001-a",
-    "evidence/20261115T065350Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T092637Z-7cc13c28-001-a",
+    "evidence/20261115T092642Z-7cc13c28-001-a",
+    "evidence/20261115T092647Z-7cc13c28-001-a",
+    "evidence/20261115T092652Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -883,8 +883,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071347Z-6f2dcbf5-001-a",
-    "evidence/20261115T071349Z-6f2dcbf5-001-a"
+    "evidence/20261115T094632Z-7cc13c28-001-a",
+    "evidence/20261115T094634Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -950,11 +950,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065356Z-6f2dcbf5-001-a",
-    "evidence/20261115T065401Z-6f2dcbf5-001-a",
-    "evidence/20261115T065406Z-6f2dcbf5-001-a",
-    "evidence/20261115T065417Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T092657Z-7cc13c28-001-a",
+    "evidence/20261115T092702Z-7cc13c28-001-a",
+    "evidence/20261115T092707Z-7cc13c28-001-a",
+    "evidence/20261115T092717Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1024,11 +1024,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065422Z-6f2dcbf5-001-a",
-    "evidence/20261115T065427Z-6f2dcbf5-001-a",
-    "evidence/20261115T065438Z-6f2dcbf5-001-a",
-    "evidence/20261115T065443Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T092722Z-7cc13c28-001-a",
+    "evidence/20261115T092727Z-7cc13c28-001-a",
+    "evidence/20261115T092737Z-7cc13c28-001-a",
+    "evidence/20261115T092742Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1097,14 +1097,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065449Z-6f2dcbf5-001-a",
-    "evidence/20261115T065454Z-6f2dcbf5-001-a",
-    "evidence/20261115T065459Z-6f2dcbf5-001-a",
-    "evidence/20261115T065504Z-6f2dcbf5-001-a",
-    "evidence/20261115T065509Z-6f2dcbf5-001-a",
-    "evidence/20261115T065515Z-6f2dcbf5-001-a",
-    "evidence/20261115T065520Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T092747Z-7cc13c28-001-a",
+    "evidence/20261115T092752Z-7cc13c28-001-a",
+    "evidence/20261115T092757Z-7cc13c28-001-a",
+    "evidence/20261115T092802Z-7cc13c28-001-a",
+    "evidence/20261115T092807Z-7cc13c28-001-a",
+    "evidence/20261115T092812Z-7cc13c28-001-a",
+    "evidence/20261115T092817Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1174,10 +1174,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065530Z-6f2dcbf5-001-a",
-    "evidence/20261115T065536Z-6f2dcbf5-001-a",
-    "evidence/20261115T065541Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T092827Z-7cc13c28-001-a",
+    "evidence/20261115T092832Z-7cc13c28-001-a",
+    "evidence/20261115T092837Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1256,14 +1256,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065546Z-6f2dcbf5-001-a",
-    "evidence/20261115T065556Z-6f2dcbf5-001-a",
-    "evidence/20261115T065602Z-6f2dcbf5-001-a",
-    "evidence/20261115T065609Z-6f2dcbf5-001-a",
-    "evidence/20261115T065614Z-6f2dcbf5-001-a",
-    "evidence/20261115T065625Z-6f2dcbf5-001-a",
-    "evidence/20261115T071407Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T092842Z-7cc13c28-001-a",
+    "evidence/20261115T092852Z-7cc13c28-001-a",
+    "evidence/20261115T092857Z-7cc13c28-001-a",
+    "evidence/20261115T092904Z-7cc13c28-001-a",
+    "evidence/20261115T092908Z-7cc13c28-001-a",
+    "evidence/20261115T092919Z-7cc13c28-001-a",
+    "evidence/20261115T094650Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1331,10 +1331,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065633Z-6f2dcbf5-001-a",
-    "evidence/20261115T065638Z-6f2dcbf5-001-a",
-    "evidence/20261115T065643Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T092941Z-7cc13c28-001-a",
+    "evidence/20261115T092946Z-7cc13c28-001-a",
+    "evidence/20261115T092951Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1407,12 +1407,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065649Z-6f2dcbf5-001-a",
-    "evidence/20261115T065654Z-6f2dcbf5-001-a",
-    "evidence/20261115T065659Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a",
-    "evidence/20261115T065422Z-6f2dcbf5-001-a",
-    "evidence/20261115T065438Z-6f2dcbf5-001-a"
+    "evidence/20261115T092956Z-7cc13c28-001-a",
+    "evidence/20261115T093001Z-7cc13c28-001-a",
+    "evidence/20261115T093006Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a",
+    "evidence/20261115T092722Z-7cc13c28-001-a",
+    "evidence/20261115T092737Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1469,10 +1469,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065411Z-6f2dcbf5-001-a",
+    "evidence/20261115T092712Z-7cc13c28-001-a",
     "evidence/20261108T230914Z-2cbdeaad-001",
-    "evidence/20261115T065433Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T092732Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1542,9 +1542,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065705Z-6f2dcbf5-001-a",
-    "evidence/20261115T065710Z-6f2dcbf5-001-a",
-    "evidence/20261115T065716Z-6f2dcbf5-001-a"
+    "evidence/20261115T093011Z-7cc13c28-001-a",
+    "evidence/20261115T093016Z-7cc13c28-001-a",
+    "evidence/20261115T093021Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1608,10 +1608,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065721Z-6f2dcbf5-001-a",
-    "evidence/20261115T065726Z-6f2dcbf5-001-a",
-    "evidence/20261115T065732Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T093026Z-7cc13c28-001-a",
+    "evidence/20261115T093031Z-7cc13c28-001-a",
+    "evidence/20261115T093037Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1684,10 +1684,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071409Z-6f2dcbf5-001-a",
-    "evidence/20261115T065737Z-6f2dcbf5-001-a",
-    "evidence/20261115T065742Z-6f2dcbf5-001-a",
-    "evidence/20261115T065751Z-6f2dcbf5-001-a"
+    "evidence/20261115T094656Z-7cc13c28-001-a",
+    "evidence/20261115T093042Z-7cc13c28-001-a",
+    "evidence/20261115T093047Z-7cc13c28-001-a",
+    "evidence/20261115T093055Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1747,12 +1747,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065757Z-6f2dcbf5-001-a",
-    "evidence/20261115T065826Z-6f2dcbf5-001-a",
-    "evidence/20261115T065803Z-6f2dcbf5-001-a",
-    "evidence/20261115T065809Z-6f2dcbf5-001-a",
-    "evidence/20261115T065815Z-6f2dcbf5-001-a",
-    "evidence/20261115T065821Z-6f2dcbf5-001-a"
+    "evidence/20261115T093100Z-7cc13c28-001-a",
+    "evidence/20261115T093128Z-7cc13c28-001-a",
+    "evidence/20261115T093106Z-7cc13c28-001-a",
+    "evidence/20261115T093112Z-7cc13c28-001-a",
+    "evidence/20261115T093117Z-7cc13c28-001-a",
+    "evidence/20261115T093123Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1834,10 +1834,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065835Z-6f2dcbf5-001-a",
-    "evidence/20261115T065840Z-6f2dcbf5-001-a",
-    "evidence/20261115T065846Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T093136Z-7cc13c28-001-a",
+    "evidence/20261115T093141Z-7cc13c28-001-a",
+    "evidence/20261115T093147Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1897,10 +1897,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065852Z-6f2dcbf5-001-a",
-    "evidence/20261115T065858Z-6f2dcbf5-001-a",
-    "evidence/20261115T065904Z-6f2dcbf5-001-a",
-    "evidence/20261115T065911Z-6f2dcbf5-001-a"
+    "evidence/20261115T093153Z-7cc13c28-001-a",
+    "evidence/20261115T093158Z-7cc13c28-001-a",
+    "evidence/20261115T093204Z-7cc13c28-001-a",
+    "evidence/20261115T093210Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -1951,8 +1951,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065917Z-6f2dcbf5-001-a",
-    "evidence/20261115T065923Z-6f2dcbf5-001-a"
+    "evidence/20261115T093216Z-7cc13c28-001-a",
+    "evidence/20261115T093222Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -2035,10 +2035,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065931Z-6f2dcbf5-001-a",
-    "evidence/20261115T065938Z-6f2dcbf5-001-a",
-    "evidence/20261115T071415Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a"
+    "evidence/20261115T093229Z-7cc13c28-001-a",
+    "evidence/20261115T093236Z-7cc13c28-001-a",
+    "evidence/20261115T094702Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -2099,11 +2099,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065945Z-6f2dcbf5-001-a",
+    "evidence/20261115T093242Z-7cc13c28-001-a",
     "evidence/20261108T233109Z-2cbdeaad-001",
-    "evidence/20261115T065931Z-6f2dcbf5-001-a",
-    "evidence/20261115T065751Z-6f2dcbf5-001-a",
-    "evidence/20261115T065710Z-6f2dcbf5-001-a"
+    "evidence/20261115T093229Z-7cc13c28-001-a",
+    "evidence/20261115T093055Z-7cc13c28-001-a",
+    "evidence/20261115T093016Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -2177,7 +2177,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065951Z-6f2dcbf5-001-a"
+    "evidence/20261115T093248Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -2251,9 +2251,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065959Z-6f2dcbf5-001-a",
-    "evidence/20261115T070015Z-6f2dcbf5-001-a",
-    "evidence/20261115T071419Z-6f2dcbf5-001-a"
+    "evidence/20261115T093256Z-7cc13c28-001-a",
+    "evidence/20261115T093312Z-7cc13c28-001-a",
+    "evidence/20261115T094707Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -2326,10 +2326,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T070023Z-6f2dcbf5-001-a",
-    "evidence/20261115T070032Z-6f2dcbf5-001-a",
-    "evidence/20261115T070048Z-6f2dcbf5-001-a",
-    "evidence/20261115T071532Z-6f2dcbf5-002-a"
+    "evidence/20261115T093319Z-7cc13c28-001-a",
+    "evidence/20261115T093328Z-7cc13c28-001-a",
+    "evidence/20261115T093343Z-7cc13c28-001-a",
+    "evidence/20261115T094820Z-7cc13c28-002-a"
    ],
    "blocker": null
   },
@@ -2412,10 +2412,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071509Z-6f2dcbf5-001-a",
-    "evidence/20261115T071510Z-6f2dcbf5-001-a",
-    "evidence/20261115T071517Z-6f2dcbf5-001-a",
-    "evidence/20261115T070113Z-6f2dcbf5-001-a"
+    "evidence/20261115T094757Z-7cc13c28-001-a",
+    "evidence/20261115T094757Z-7cc13c28-002-a",
+    "evidence/20261115T094804Z-7cc13c28-001-a",
+    "evidence/20261115T093408Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -2486,10 +2486,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T070126Z-6f2dcbf5-001-a",
-    "evidence/20261115T070147Z-6f2dcbf5-001-a",
-    "evidence/20261115T071520Z-6f2dcbf5-001-a",
-    "evidence/20261115T071532Z-6f2dcbf5-001-a"
+    "evidence/20261115T093420Z-7cc13c28-001-a",
+    "evidence/20261115T093442Z-7cc13c28-001-a",
+    "evidence/20261115T094807Z-7cc13c28-001-a",
+    "evidence/20261115T094820Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -2580,9 +2580,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T070251Z-6f2dcbf5-001-a",
-    "evidence/20261115T070224Z-6f2dcbf5-001-a",
-    "evidence/20261115T070157Z-6f2dcbf5-001-a"
+    "evidence/20261115T093545Z-7cc13c28-001-a",
+    "evidence/20261115T093518Z-7cc13c28-001-a",
+    "evidence/20261115T093451Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -2649,9 +2649,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071022Z-6f2dcbf5-001-a",
-    "evidence/20261115T071032Z-6f2dcbf5-001-a",
-    "evidence/20261115T071520Z-6f2dcbf5-001-a"
+    "evidence/20261115T094313Z-7cc13c28-001-a",
+    "evidence/20261115T094322Z-7cc13c28-001-a",
+    "evidence/20261115T094807Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -2706,14 +2706,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071050Z-6f2dcbf5-001-a",
-    "evidence/20261115T071055Z-6f2dcbf5-001-a",
-    "evidence/20261115T071101Z-6f2dcbf5-001-a",
-    "evidence/20261115T070503Z-6f2dcbf5-001-a",
-    "evidence/20261115T071006Z-6f2dcbf5-001-a",
-    "evidence/20261115T070532Z-6f2dcbf5-001-a",
-    "evidence/20261115T070600Z-6f2dcbf5-001-a",
-    "evidence/20261115T070630Z-6f2dcbf5-001-a",
+    "evidence/20261115T094340Z-7cc13c28-001-a",
+    "evidence/20261115T094345Z-7cc13c28-001-a",
+    "evidence/20261115T094350Z-7cc13c28-001-a",
+    "evidence/20261115T093755Z-7cc13c28-001-a",
+    "evidence/20261115T094257Z-7cc13c28-001-a",
+    "evidence/20261115T093823Z-7cc13c28-001-a",
+    "evidence/20261115T093851Z-7cc13c28-001-a",
+    "evidence/20261115T093922Z-7cc13c28-001-a",
     "evidence/20261108T233109Z-2cbdeaad-001"
    ],
    "blocker": null
@@ -2755,7 +2755,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T070734Z-6f2dcbf5-001-a"
+    "evidence/20261115T094024Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -2803,15 +2803,15 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065951Z-6f2dcbf5-001-a",
-    "evidence/20261115T070023Z-6f2dcbf5-001-a",
-    "evidence/20261115T070032Z-6f2dcbf5-001-a",
-    "evidence/20261115T070048Z-6f2dcbf5-001-a",
-    "evidence/20261115T070101Z-6f2dcbf5-001-a",
-    "evidence/20261115T071022Z-6f2dcbf5-001-a",
-    "evidence/20261115T071032Z-6f2dcbf5-001-a",
-    "evidence/20261115T071520Z-6f2dcbf5-001-a",
-    "evidence/20261115T071532Z-6f2dcbf5-002-a"
+    "evidence/20261115T093248Z-7cc13c28-001-a",
+    "evidence/20261115T093319Z-7cc13c28-001-a",
+    "evidence/20261115T093328Z-7cc13c28-001-a",
+    "evidence/20261115T093343Z-7cc13c28-001-a",
+    "evidence/20261115T093356Z-7cc13c28-001-a",
+    "evidence/20261115T094313Z-7cc13c28-001-a",
+    "evidence/20261115T094322Z-7cc13c28-001-a",
+    "evidence/20261115T094807Z-7cc13c28-001-a",
+    "evidence/20261115T094820Z-7cc13c28-002-a"
    ],
    "blocker": null
   },
@@ -2830,23 +2830,23 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T070714Z-6f2dcbf5-001-a",
-    "evidence/20261115T070048Z-6f2dcbf5-001-a",
-    "evidence/20261115T070224Z-6f2dcbf5-001-a",
-    "evidence/20261115T070251Z-6f2dcbf5-001-a",
-    "evidence/20261115T070503Z-6f2dcbf5-001-a",
-    "evidence/20261115T071510Z-6f2dcbf5-001-a",
-    "evidence/20261115T071022Z-6f2dcbf5-001-a",
-    "evidence/20261115T065959Z-6f2dcbf5-001-a",
-    "evidence/20261115T070101Z-6f2dcbf5-001-a",
-    "evidence/20261115T071101Z-6f2dcbf5-001-a",
-    "evidence/20261115T070041Z-6f2dcbf5-001-a",
-    "evidence/20261115T070442Z-6f2dcbf5-001-a",
-    "evidence/20261115T070414Z-6f2dcbf5-001-a",
-    "evidence/20261115T070337Z-6f2dcbf5-001-a",
-    "evidence/20261115T070009Z-6f2dcbf5-001-a",
-    "evidence/20261115T070320Z-6f2dcbf5-001-a",
-    "evidence/20261115T070107Z-6f2dcbf5-001-a"
+    "evidence/20261115T094005Z-7cc13c28-001-a",
+    "evidence/20261115T093343Z-7cc13c28-001-a",
+    "evidence/20261115T093518Z-7cc13c28-001-a",
+    "evidence/20261115T093545Z-7cc13c28-001-a",
+    "evidence/20261115T093755Z-7cc13c28-001-a",
+    "evidence/20261115T094757Z-7cc13c28-002-a",
+    "evidence/20261115T094313Z-7cc13c28-001-a",
+    "evidence/20261115T093256Z-7cc13c28-001-a",
+    "evidence/20261115T093356Z-7cc13c28-001-a",
+    "evidence/20261115T094350Z-7cc13c28-001-a",
+    "evidence/20261115T093337Z-7cc13c28-001-a",
+    "evidence/20261115T093736Z-7cc13c28-001-a",
+    "evidence/20261115T093708Z-7cc13c28-001-a",
+    "evidence/20261115T093630Z-7cc13c28-001-a",
+    "evidence/20261115T093306Z-7cc13c28-001-a",
+    "evidence/20261115T093613Z-7cc13c28-001-a",
+    "evidence/20261115T093402Z-7cc13c28-001-a"
    ],
    "blocker": null,
    "id": "WP-43",
@@ -2921,9 +2921,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T070709Z-6f2dcbf5-001-a",
-    "evidence/20261115T070224Z-6f2dcbf5-001-a",
-    "evidence/20261115T065931Z-6f2dcbf5-001-a"
+    "evidence/20261115T094000Z-7cc13c28-001-a",
+    "evidence/20261115T093518Z-7cc13c28-001-a",
+    "evidence/20261115T093229Z-7cc13c28-001-a"
    ],
    "blocker": null,
    "id": "WP-44",
@@ -3078,14 +3078,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071107Z-6f2dcbf5-001-a",
-    "evidence/20261115T071533Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a",
-    "evidence/20261115T065122Z-6f2dcbf5-001-a",
-    "evidence/20261115T071406Z-6f2dcbf5-001-a",
-    "evidence/20261115T071357Z-6f2dcbf5-001-a",
-    "evidence/20261115T071402Z-6f2dcbf5-001-a",
-    "evidence/20261115T071419Z-6f2dcbf5-001-a"
+    "evidence/20261115T094356Z-7cc13c28-001-a",
+    "evidence/20261115T094821Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a",
+    "evidence/20261115T092431Z-7cc13c28-001-a",
+    "evidence/20261115T094649Z-7cc13c28-001-a",
+    "evidence/20261115T094641Z-7cc13c28-002-a",
+    "evidence/20261115T094646Z-7cc13c28-001-a",
+    "evidence/20261115T094707Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -3177,12 +3177,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071336Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a",
-    "evidence/20261115T065721Z-6f2dcbf5-001-a",
-    "evidence/20261115T065726Z-6f2dcbf5-001-a",
-    "evidence/20261115T065732Z-6f2dcbf5-001-a",
-    "evidence/20261115T065959Z-6f2dcbf5-001-a"
+    "evidence/20261115T094622Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a",
+    "evidence/20261115T093026Z-7cc13c28-001-a",
+    "evidence/20261115T093031Z-7cc13c28-001-a",
+    "evidence/20261115T093037Z-7cc13c28-001-a",
+    "evidence/20261115T093256Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -3371,10 +3371,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071534Z-6f2dcbf5-001-a",
-    "evidence/20261115T071520Z-6f2dcbf5-001-a",
-    "evidence/20261115T070126Z-6f2dcbf5-001-a",
-    "evidence/20261115T071032Z-6f2dcbf5-001-a"
+    "evidence/20261115T094821Z-7cc13c28-002-a",
+    "evidence/20261115T094807Z-7cc13c28-001-a",
+    "evidence/20261115T093420Z-7cc13c28-001-a",
+    "evidence/20261115T094322Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -3445,7 +3445,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071534Z-6f2dcbf5-003-a"
+    "evidence/20261115T094822Z-7cc13c28-002-a"
    ],
    "blocker": null
   },
@@ -4166,16 +4166,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T070337Z-6f2dcbf5-001-a",
-    "evidence/20261115T071329Z-6f2dcbf5-001-a",
-    "evidence/20261115T071107Z-6f2dcbf5-001-a",
-    "evidence/20261115T071249Z-6f2dcbf5-001-a",
-    "evidence/20261115T071357Z-6f2dcbf5-001-a",
-    "evidence/20261115T070157Z-6f2dcbf5-001-a",
-    "evidence/20261115T070251Z-6f2dcbf5-001-a",
-    "evidence/20261115T070503Z-6f2dcbf5-001-a",
-    "evidence/20261115T070630Z-6f2dcbf5-001-a",
-    "evidence/20261115T071101Z-6f2dcbf5-001-a"
+    "evidence/20261115T093630Z-7cc13c28-001-a",
+    "evidence/20261115T094615Z-7cc13c28-001-a",
+    "evidence/20261115T094356Z-7cc13c28-001-a",
+    "evidence/20261115T094536Z-7cc13c28-001-a",
+    "evidence/20261115T094641Z-7cc13c28-002-a",
+    "evidence/20261115T093451Z-7cc13c28-001-a",
+    "evidence/20261115T093545Z-7cc13c28-001-a",
+    "evidence/20261115T093755Z-7cc13c28-001-a",
+    "evidence/20261115T093922Z-7cc13c28-001-a",
+    "evidence/20261115T094350Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -4236,10 +4236,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071355Z-6f2dcbf5-001-a",
-    "evidence/20261115T071357Z-6f2dcbf5-001-a",
-    "evidence/20261115T071402Z-6f2dcbf5-001-a",
-    "evidence/20261115T071403Z-6f2dcbf5-001-a"
+    "evidence/20261115T094640Z-7cc13c28-001-a",
+    "evidence/20261115T094641Z-7cc13c28-002-a",
+    "evidence/20261115T094646Z-7cc13c28-001-a",
+    "evidence/20261115T094647Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -4316,14 +4316,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071249Z-6f2dcbf5-001-a",
-    "evidence/20261115T070023Z-6f2dcbf5-001-a",
-    "evidence/20261115T070032Z-6f2dcbf5-001-a",
-    "evidence/20261115T070126Z-6f2dcbf5-001-a",
-    "evidence/20261115T071022Z-6f2dcbf5-001-a",
-    "evidence/20261115T071107Z-6f2dcbf5-001-a",
-    "evidence/20261115T071357Z-6f2dcbf5-001-a",
-    "evidence/20261115T071402Z-6f2dcbf5-001-a"
+    "evidence/20261115T094536Z-7cc13c28-001-a",
+    "evidence/20261115T093319Z-7cc13c28-001-a",
+    "evidence/20261115T093328Z-7cc13c28-001-a",
+    "evidence/20261115T093420Z-7cc13c28-001-a",
+    "evidence/20261115T094313Z-7cc13c28-001-a",
+    "evidence/20261115T094356Z-7cc13c28-001-a",
+    "evidence/20261115T094641Z-7cc13c28-002-a",
+    "evidence/20261115T094646Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -4398,11 +4398,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071302Z-6f2dcbf5-001-a",
-    "evidence/20261115T071307Z-6f2dcbf5-001-a",
-    "evidence/20261115T071533Z-6f2dcbf5-001-a",
-    "evidence/20261115T071107Z-6f2dcbf5-001-a",
-    "evidence/20261115T065721Z-6f2dcbf5-001-a"
+    "evidence/20261115T094549Z-7cc13c28-001-a",
+    "evidence/20261115T094554Z-7cc13c28-001-a",
+    "evidence/20261115T094821Z-7cc13c28-001-a",
+    "evidence/20261115T094356Z-7cc13c28-001-a",
+    "evidence/20261115T093026Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -4701,10 +4701,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071313Z-6f2dcbf5-001-a",
-    "evidence/20261115T065751Z-6f2dcbf5-001-a",
-    "evidence/20261115T065742Z-6f2dcbf5-001-a",
-    "evidence/20261115T070734Z-6f2dcbf5-001-a"
+    "evidence/20261115T094559Z-7cc13c28-001-a",
+    "evidence/20261115T093055Z-7cc13c28-001-a",
+    "evidence/20261115T093047Z-7cc13c28-001-a",
+    "evidence/20261115T094024Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -4756,8 +4756,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071357Z-6f2dcbf5-001-a",
-    "evidence/20261115T071355Z-6f2dcbf5-001-a"
+    "evidence/20261115T094641Z-7cc13c28-002-a",
+    "evidence/20261115T094640Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -4924,9 +4924,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071255Z-6f2dcbf5-001-a",
-    "evidence/20261115T071107Z-6f2dcbf5-001-a",
-    "evidence/20261115T071249Z-6f2dcbf5-001-a"
+    "evidence/20261115T094542Z-7cc13c28-001-a",
+    "evidence/20261115T094356Z-7cc13c28-001-a",
+    "evidence/20261115T094536Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -5003,9 +5003,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071341Z-6f2dcbf5-001-a",
-    "evidence/20261115T065826Z-6f2dcbf5-001-a",
-    "evidence/20261115T070709Z-6f2dcbf5-001-a"
+    "evidence/20261115T094627Z-7cc13c28-001-a",
+    "evidence/20261115T093128Z-7cc13c28-001-a",
+    "evidence/20261115T094000Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -5119,8 +5119,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071534Z-6f2dcbf5-002-a",
-    "evidence/20261115T071534Z-6f2dcbf5-001-a"
+    "evidence/20261115T094822Z-7cc13c28-001-a",
+    "evidence/20261115T094821Z-7cc13c28-002-a"
    ],
    "blocker": null
   },
@@ -5183,9 +5183,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071355Z-6f2dcbf5-001-a",
-    "evidence/20261115T071403Z-6f2dcbf5-001-a",
-    "evidence/20261115T071357Z-6f2dcbf5-001-a"
+    "evidence/20261115T094640Z-7cc13c28-001-a",
+    "evidence/20261115T094647Z-7cc13c28-001-a",
+    "evidence/20261115T094641Z-7cc13c28-002-a"
    ],
    "blocker": null
   },
@@ -5264,10 +5264,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071107Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a",
-    "evidence/20261115T071357Z-6f2dcbf5-001-a",
-    "evidence/20261115T071419Z-6f2dcbf5-001-a"
+    "evidence/20261115T094356Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a",
+    "evidence/20261115T094641Z-7cc13c28-002-a",
+    "evidence/20261115T094707Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -5342,9 +5342,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071355Z-6f2dcbf5-001-a",
-    "evidence/20261115T071357Z-6f2dcbf5-001-a",
-    "evidence/20261115T071403Z-6f2dcbf5-001-a"
+    "evidence/20261115T094640Z-7cc13c28-001-a",
+    "evidence/20261115T094641Z-7cc13c28-002-a",
+    "evidence/20261115T094647Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -5426,10 +5426,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071202Z-6f2dcbf5-001-a",
-    "evidence/20261115T071107Z-6f2dcbf5-001-a",
-    "evidence/20261115T065117Z-6f2dcbf5-001-a",
-    "evidence/20261115T071419Z-6f2dcbf5-001-a"
+    "evidence/20261115T094450Z-7cc13c28-001-a",
+    "evidence/20261115T094356Z-7cc13c28-001-a",
+    "evidence/20261115T092426Z-7cc13c28-001-a",
+    "evidence/20261115T094707Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -5635,9 +5635,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071357Z-6f2dcbf5-001-a",
-    "evidence/20261115T071355Z-6f2dcbf5-001-a",
-    "evidence/20261115T071403Z-6f2dcbf5-001-a"
+    "evidence/20261115T094641Z-7cc13c28-002-a",
+    "evidence/20261115T094640Z-7cc13c28-001-a",
+    "evidence/20261115T094647Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -5753,7 +5753,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065059Z-6f2dcbf5-001-m"
+    "evidence/20261115T092350Z-7cc13c28-001-m"
    ],
    "blocker": null
   },
@@ -5800,7 +5800,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071357Z-6f2dcbf5-001-a"
+    "evidence/20261115T094641Z-7cc13c28-002-a"
    ],
    "blocker": null
   },
@@ -5859,7 +5859,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071355Z-6f2dcbf5-001-a"
+    "evidence/20261115T094640Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -5964,7 +5964,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071520Z-6f2dcbf5-001-a"
+    "evidence/20261115T094807Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -6077,9 +6077,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071357Z-6f2dcbf5-001-a",
-    "evidence/20261115T071355Z-6f2dcbf5-001-a",
-    "evidence/20261115T065059Z-6f2dcbf5-001-m"
+    "evidence/20261115T094641Z-7cc13c28-002-a",
+    "evidence/20261115T094640Z-7cc13c28-001-a",
+    "evidence/20261115T092350Z-7cc13c28-001-m"
    ],
    "blocker": null
   },
@@ -6152,9 +6152,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071022Z-6f2dcbf5-001-a",
-    "evidence/20261115T070449Z-6f2dcbf5-001-a",
-    "evidence/20261115T070456Z-6f2dcbf5-001-a"
+    "evidence/20261115T094313Z-7cc13c28-001-a",
+    "evidence/20261115T093742Z-7cc13c28-001-a",
+    "evidence/20261115T093748Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -6280,8 +6280,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071202Z-6f2dcbf5-001-a",
-    "evidence/20261115T071243Z-6f2dcbf5-001-a"
+    "evidence/20261115T094450Z-7cc13c28-001-a",
+    "evidence/20261115T094530Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -6358,7 +6358,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T071535Z-6f2dcbf5-001-a"
+    "evidence/20261115T094822Z-7cc13c28-003-a"
    ],
    "blocker": null
   },
@@ -6581,9 +6581,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261115T065551Z-6f2dcbf5-001-a",
-    "evidence/20261115T065546Z-6f2dcbf5-001-a",
-    "evidence/20261115T065602Z-6f2dcbf5-001-a"
+    "evidence/20261115T092847Z-7cc13c28-001-a",
+    "evidence/20261115T092842Z-7cc13c28-001-a",
+    "evidence/20261115T092857Z-7cc13c28-001-a"
    ],
    "blocker": null
   },
@@ -6637,7 +6637,8 @@
     "2026-11-15 corrections after the audit and the red team (both by reading, the auditor also by experiments on copies; nothing of theirs run on the kernel): (1) files.md v1.5 was promised by four planned packages (WP-52, WP-53, WP-55, WP-63 in their chain of numbers): each now takes the version free at its merge; (2) the decision is ADR-0014 item 6 (an item 5 existed); (3) `seen by running` in the contract and the decision meant a local scratch run of the failing cases: they now say so; what CI shows is the behaviour after the fix; (4) a chain longer than its size cannot come from a failed delete or truncation, so the host checks fail it here (--allow-longer is for WP-118); the neutral pattern for fsck's path lines accepts a path only; (5) the two sweeps also show the kind of the error (io=9), a second delete of a name that is gone (not found), a second truncating open (succeeds), and what the first open sees after a failed truncation; (6) the oracles say that the host judges the final image only (later files of the sweep re-take half-freed clusters, which repairs differing FAT copies) and that the guest reads the first FAT copy; (7) the functions' comments are limited to failure points of their own writes arriving in order; (8) two tooling mutants (M208, M209) show that the host cases guard the checker's two strict findings; (9) left to later packages and written there: a flush between the steps and FSInfo no longer fatal (WP-117), a failed write's node (WP-118), lost clusters given back or at least shown, and a cross-linked chain followed by free_chain (WP-106)",
     "2026-11-15 corrections after the second audit (by reading and by experiments on copies): (1) a weakening it showed by experiment and that is now closed: reading FSInfo's count only under its signatures let `check` pass an image with broken signatures and a wrong count; broken signatures are a problem of their own, tested first; (2) the depth limit of the walk had been changed with no test: a ten-level tree is healthy and a tree past the limit (64) is named, both tested, red first on the tool as it was; (3) M208 and M209's notes said `check` accepts the image: on files the cut chain is still refused as shorter than its size, so the guard there is the named finding; two host cases on directories give both mutants an effect on the exit code; (4) the oracles say that a longer chain is looked for along the first FAT copy only, that the second truncating open succeeds because the file is already empty, and three more things not shown; (5) the contract, the decision and the two functions' comments say that the FSInfo count is stale after every failure past the first FAT write, and alone when FSInfo fails last; the timeout sentence is marked as read, not shown; (6) every new counter of the sweeps flips under a registered mutant except io (retry_gone under M205, a_refused, a_empty and retry_ok under M206, a_whole under M207, by the auditor's walk); io is pinned by the marker alone; (7) TST-M3-FAT32-TOOL's committed PASS and evidence are those of its seven old cases (stale by its changed inputs) until this push's CI run: its nineteen cases have run locally only; (8) PLAN.md's rows and two input lines still named files.md v1.5 and v1.6 for planned packages: corrected to the version free at the merge",
     "2026-11-15 corrections after the third, narrow audit (by reading and by experiments on copies): (1) the sentence about FSInfo written after the second audit was wrong at three of the eight failure points past the entry (the first FAT write refused: clusters lost and the count right; the last FAT write of the second copy refused: the count stale and no cluster lost in the first copy; the backup FSInfo alone refused: the primary right): the contract, the decision and the two comments now say `clusters lost, a stale count, or both` and no more, and point (5) of the line above is withdrawn in its wording; (2) the checker's depth limit is 128, above the 127 levels a 256-byte path can name (64 would have cut a tree the kernel can name once directories can be made); (3) M208 and M209 let two directories on one cluster, and a directory on a freed cluster, pass `check --faulted`; without --faulted the lost cluster still fails the image, so the two host cases on directories turn red on the named finding there and on the exit code with --faulted; (4) the oracles no longer say where the three clusters of a file sit: no case checks it",
-    "2026-11-15 local checks before the single push (scratch, never evidence; CI is the judge): red seen first for the host checker (7 failures and 1 error of 15 on the old tool; then 2 of 15 and 2 of 19 for its two tightenings) and for the two sweeps (fat32_fault_unlink: gone=0|kept=1|bad=8; fat32_fault_truncate: emptied=0|bad=8|node_differs=1; the host checker naming eight files each on a free cluster and fsck's messages classified as failing), green after each change. Full run on commit 2006bdde0 with the local QEMU: M3 44 PASS with both new cases, M6 14, M1 5, M2 27, M5 38 PASS; M4 27 PASS and two cases failing: TST-M4-NET-NO-INTERNET, which this container cannot judge (it passes on CI), and TST-M4-NET-LIMITS once (sent2=15|busy2=1), traced with systematic debugging to the case's own race with the device's drain (seventeen frames for sixteen slots; six of six alone afterwards; this package changes nothing under the network path; registered as WP-119); the six host suites PASS. After the third audit's text corrections, on commit 39487520e: M3 44 PASS again, the six host suites PASS, hygiene PASS, validate-records 0 errors, cargo fmt clean; the harness killed M47 (still valid after the reorder) by TST-M3-FAT32-WRITE, M205 by TST-M3-FAT32-FAULT-UNLINK, M206 and M207 by TST-M3-FAT32-FAULT-TRUNCATE, M208 and M209 by TST-M3-FAT32-TOOL (6 of 6). Review before the push: the kernel engineer's design brief and its audit, then the auditor three times and the red team once on the package, by reading and by experiments on copies; their corrections are in the commits before this line"
+    "2026-11-15 local checks before the single push (scratch, never evidence; CI is the judge): red seen first for the host checker (7 failures and 1 error of 15 on the old tool; then 2 of 15 and 2 of 19 for its two tightenings) and for the two sweeps (fat32_fault_unlink: gone=0|kept=1|bad=8; fat32_fault_truncate: emptied=0|bad=8|node_differs=1; the host checker naming eight files each on a free cluster and fsck's messages classified as failing), green after each change. Full run on commit 2006bdde0 with the local QEMU: M3 44 PASS with both new cases, M6 14, M1 5, M2 27, M5 38 PASS; M4 27 PASS and two cases failing: TST-M4-NET-NO-INTERNET, which this container cannot judge (it passes on CI), and TST-M4-NET-LIMITS once (sent2=15|busy2=1), traced with systematic debugging to the case's own race with the device's drain (seventeen frames for sixteen slots; six of six alone afterwards; this package changes nothing under the network path; registered as WP-119); the six host suites PASS. After the third audit's text corrections, on commit 39487520e: M3 44 PASS again, the six host suites PASS, hygiene PASS, validate-records 0 errors, cargo fmt clean; the harness killed M47 (still valid after the reorder) by TST-M3-FAT32-WRITE, M205 by TST-M3-FAT32-FAULT-UNLINK, M206 and M207 by TST-M3-FAT32-FAULT-TRUNCATE, M208 and M209 by TST-M3-FAT32-TOOL (6 of 6). Review before the push: the kernel engineer's design brief and its audit, then the auditor three times and the red team once on the package, by reading and by experiments on copies; their corrections are in the commits before this line",
+    "2026-11-15 CI record: verify run 43698860905 on ee03d4306, green on its first push (the cases were seen failing locally first, scratch); the run took 41 min 51 s from 09:21:28 to 10:03:19; 168 runs imported, none failing; TST-M3-FAT32-FAULT-UNLINK PASS (evidence/20261115T092926Z-7cc13c28-001-a: `control=ok|writes=9|failed=9|io=9|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0`, second boot `kept=1|empty=0|bad=0|after_ok=1|kept_after=1|empty_after=0|bad_after=0`; host: check --faulted problems=[] with lost=9, longer=0, mirror_diff=0, fsinfo=stale printed; fsck.fat exit 1 with allowed={'lost': 1, 'free_count': 1}, failing=[], unnamed=[]); TST-M3-FAT32-FAULT-TRUNCATE PASS (evidence/20261115T092934Z-7cc13c28-001-a: `control=1|writes=9|failed=9|io=9|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0`, second boot `kept=1|empty=9|bad=0|after_ok=1|kept_after=1|empty_after=9|bad_after=0`; the same host results); TST-M3-FAT32-TOOL PASS with its nineteen cases (evidence/20261115T094650Z-7cc13c28-001-a: Ran 19 tests, OK); TST-M3-FAT32-WRITE, TST-M3-FILE-SHARED and TST-M3-FAT32-PERSIST PASS (evidence/20261115T092908Z-7cc13c28-001-a, evidence/20261115T092914Z-7cc13c28-001-a, evidence/20261115T092919Z-7cc13c28-001-a); the M6 gate of the same run: 57 of 57 mutants killed, M205 by TST-M3-FAT32-FAULT-UNLINK (14.3 s), M206 and M207 by TST-M3-FAT32-FAULT-TRUNCATE (14.3 s, 14.4 s), M208 and M209 by TST-M3-FAT32-TOOL (11.4 s, 5.7 s), 2026-11-15T09:23:49Z to 2026-11-15T10:00:11Z, 36 min 22 s (evidence/20261115T092350Z-7cc13c28-001-m). After the import: validate-records --strict 0 errors. What CI does not show: the failing state before the fix (seen locally only), writes reordered in a device's cache, a torn sector, a failing read, a timed-out write's outcome, and the states in between on the second FAT copy; what the fix costs (lost clusters that nothing gives back or shows) is WP-106's; a failed write is WP-118's and the disk's stop WP-117's"
    ],
    "acceptance": "no failure point of delete or truncate (every write N of each operation, swept by the fault hook) leaves a directory entry that points at a free cluster, two names that share a cluster, or a shared node that differs from the stored entry after a failed call, shown by the new cases and by the strengthened host image check on CI, with fsck.fat's messages kept and classified; files.md (v1.5) states the order and what a failed delete or truncate leaves, its line about a copy per open is corrected to the shared node, and ADR-0014 item 2 is amended; the mutants killed",
    "test_ids": [
