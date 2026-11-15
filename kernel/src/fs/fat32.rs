@@ -655,12 +655,18 @@ impl Fat32 {
             return Ok(0);
         }
         let cluster_bytes = self.sectors_per_cluster as usize * SECTOR;
-        if file.first == 0 {
-            file.first = self.alloc_cluster()?;
+        // The call works on a copy of the entry, and the node every open shares takes it only
+        // after the entry is stored (files.md v1.6): a failure at any write below leaves the
+        // node equal to the stored entry. What the failed call allocated is then lost (a new
+        // file) or left on the chain past the size (an existing file, where a later append
+        // finds it); bytes it wrote inside the old size stay written.
+        let mut staged = *file;
+        if staged.first == 0 {
+            staged.first = self.alloc_cluster()?;
         }
         // Walk to the cluster holding `offset`, extending the chain when the offset is exactly
         // at the end of the last cluster.
-        let mut c = file.first;
+        let mut c = staged.first;
         let mut skip = offset as usize / cluster_bytes;
         while skip > 0 {
             c = match self.next_cluster(c)? {
@@ -701,10 +707,11 @@ impl Fat32 {
             }
         }
         let end = offset + done as u32;
-        if end > file.size {
-            file.size = end;
+        if end > staged.size {
+            staged.size = end;
         }
-        self.store_entry(file)?;
+        self.store_entry(&staged)?;
+        *file = staged;
         Ok(done)
     }
 
