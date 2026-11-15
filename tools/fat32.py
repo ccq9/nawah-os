@@ -385,13 +385,20 @@ def cmd_expect(a):
     return 0 if ok else 1
 
 
+# Deeper than any path the kernel can name (PATH_MAX 256). A loop of directories cannot run the
+# walk away: a cluster reached twice is a finding and ends that chain.
+DEPTH_MAX = 64
+
+
 def tree_findings(img, fat):
     """One walk of the whole tree along FAT copy `fat`, recording which name reaches each
-    cluster. Returns (strict, longer, owned). `strict` holds what no state of the volume may
-    show: a chain that runs into a free cluster, leaves the volume or loops, two names on one
-    cluster, and a file whose chain is shorter than its size. `longer` names the files whose
-    chain holds more clusters than their size needs; `owned` is every cluster a name reaches."""
-    owner, strict, longer = {}, [], []
+    cluster. Returns (strict, longer, owned, complete). `strict` holds what no state of the
+    volume may show: a chain that runs into a free cluster, leaves the volume or loops, two names
+    on one cluster, and a file whose chain is shorter than its size. `longer` names the files
+    whose chain holds more clusters than their size needs; `owned` is every cluster a name
+    reaches; `complete` is false when the walk stopped at its depth limit, so `owned` is not
+    the whole tree."""
+    owner, strict, longer, cut = {}, [], [], []
     cluster_bytes = img.spc * SECTOR
 
     def claim(name, first):
@@ -414,8 +421,9 @@ def tree_findings(img, fat):
 
     def walk(path, first, depth):
         clusters = claim(path or "/", first)
-        if depth > 8:
+        if depth > DEPTH_MAX:
             strict.append(f"{path}: deeper than this check walks")
+            cut.append(path)
             return
         for c in clusters:
             data = img.read_cluster(c)
@@ -438,7 +446,7 @@ def tree_findings(img, fat):
                     longer.append(name)
 
     walk("", img.root_cluster, 0)
-    return strict, longer, set(owner)
+    return strict, longer, set(owner), not cut
 
 
 def cmd_check(a):
@@ -469,14 +477,19 @@ def cmd_check(a):
             used += 1
             if v != 0x0FFFFFF7:
                 in_use.add(c)
-    strict, longer, owned = tree_findings(img, 0)
+    strict, longer, owned, complete = tree_findings(img, 0)
     problems += strict
     if faulted:
         for fat in range(1, img.nfats):
             problems += [f"FAT{fat}: {p}" for p in tree_findings(img, fat)[0]]
-    lost = len(in_use - owned)
+    # What the walk did not visit is not called lost.
+    lost = len(in_use - owned) if complete else 0
     info = img.read_sector(img.fsinfo_sector)
-    signed = struct.unpack_from("<I", info, 0)[0] == 0x41615252 and struct.unpack_from("<I", info, 484)[0] == 0x61417272
+    signed = [struct.unpack_from("<I", info, off)[0] for off in (0, 484, 508)] == [0x41615252, 0x61417272, 0xAA550000]
+    if not signed:
+        # The three signatures the kernel asks for before it trusts the count; no refused or
+        # lost write breaks them (a sector is written whole or not at all).
+        problems.append("FSInfo signatures")
     recorded = struct.unpack_from("<I", info, 488)[0] if signed else 0xFFFFFFFF
     real_free = img.clusters - used
     fsinfo = "unknown" if recorded == 0xFFFFFFFF else ("ok" if recorded == real_free else "stale")

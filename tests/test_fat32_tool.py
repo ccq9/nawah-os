@@ -225,6 +225,82 @@ class Fat32Check(unittest.TestCase):
         self.assertIn("mirror_diff=1", r.stdout)
         self.assertIn("lost=1", r.stdout)
 
+    def with_dirs(self, *dirs, files=()):
+        img = os.path.join(self.dir, "dirs.img")
+        args = ["format", img, "--sectors", "131072"]
+        for d in dirs:
+            args += ["--mkdir", d]
+        one = os.path.join(self.dir, "one.txt")
+        for f in files:
+            args += ["--add", f"{f}={one}"]
+        r = run(*args)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(run("check", img).returncode, 0)
+        return img
+
+    def test_directory_chain_into_a_free_cluster(self):
+        # A directory has no size to fall short of: only the named finding stands guard.
+        path = self.with_dirs("D1", files=["D1/IN.TXT"])
+        img = self.tool.Image(path, writable=True)
+        img.fat_set(img.entry_cluster(img.resolve("/D1")[1]), 0)
+        img.close()
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, path)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("/D1: cluster", r.stdout)
+            self.assertIn("is free", r.stdout)
+
+    def test_two_directories_on_one_cluster(self):
+        path = self.with_dirs("D1", "D2")
+        img = self.tool.Image(path, writable=True)
+        d1 = img.entry_cluster(img.resolve("/D1")[1])
+        c, i, e = img.lookup(img.root_cluster, "D2")
+        e = bytearray(e)
+        e[20:22] = (d1 >> 16).to_bytes(2, "little")
+        e[26:28] = (d1 & 0xFFFF).to_bytes(2, "little")
+        data = bytearray(img.read_cluster(c))
+        data[i * 32:i * 32 + 32] = e
+        img.write_cluster(c, bytes(data))
+        img.close()
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, path)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("/D2 and /D1 share cluster", r.stdout)
+
+    def nested(self, name, levels):
+        img = os.path.join(self.dir, name)
+        dirs = ["/".join("D" * 1 for _ in range(k + 1)) for k in range(levels)]
+        r = run("format", img, "--sectors", "131072", *[x for d in dirs for x in ("--mkdir", d)])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return img
+
+    def test_deep_tree(self):
+        # Ten levels are a healthy tree (the walk used to stop at eight and call the rest lost).
+        r = run("check", self.nested("ten.img", 10))
+        self.assertEqual(r.returncode, 0, r.stdout)
+        # Past its limit the walk says so, and does not call what it did not visit lost.
+        r = run("check", self.nested("deep.img", 70))
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("deeper than this check walks", r.stdout)
+        self.assertNotIn("lost clusters", r.stdout)
+
+    def test_fsinfo_signatures(self):
+        # A free count under broken signatures is not a count: it is a problem of its own,
+        # with and without --faulted (a refused write leaves a sector as it was, signatures too).
+        img = self.image()
+        s = bytearray(img.read_sector(img.fsinfo_sector))
+        s[488:492] = (5).to_bytes(4, "little")
+        for off in (0, 484, 508):
+            broken = bytearray(s)
+            broken[off:off + 4] = bytes(4)
+            img.write_sector(img.fsinfo_sector, bytes(broken))
+            img.f.flush()
+            for mode in ([], ["--faulted"]):
+                r = run("check", *mode, self.img)
+                self.assertEqual(r.returncode, 1, (off, r.stdout))
+                self.assertIn("FSInfo signatures", r.stdout)
+        img.close()
+
     def test_fsck_messages_are_named(self):
         head = "fsck.fat 4.2 (2021-01-31)\n"
         tail = "\nLeaving filesystem unchanged.\ndisk.img: 4 files, 6/128992 clusters\n"
