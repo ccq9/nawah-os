@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224558Z-d3e963fc-001-a"
+    "evidence/20261115T005458Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224557Z-d3e963fc-001-a"
+    "evidence/20261115T005457Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222604Z-d3e963fc-001-a",
-    "evidence/20261114T222606Z-d3e963fc-001-a"
+    "evidence/20261115T002758Z-bde18d19-001-a",
+    "evidence/20261115T002802Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224558Z-d3e963fc-001-a"
+    "evidence/20261115T005458Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -356,10 +356,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222608Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a",
-    "evidence/20261114T222640Z-d3e963fc-001-a",
-    "evidence/20261114T224605Z-d3e963fc-001-a"
+    "evidence/20261115T002806Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a",
+    "evidence/20261115T002848Z-bde18d19-001-a",
+    "evidence/20261115T005510Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -429,17 +429,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222644Z-d3e963fc-001-a",
-    "evidence/20261114T222648Z-d3e963fc-001-a",
-    "evidence/20261114T222652Z-d3e963fc-001-a",
-    "evidence/20261114T222657Z-d3e963fc-001-a",
-    "evidence/20261114T222701Z-d3e963fc-001-a",
-    "evidence/20261114T222705Z-d3e963fc-001-a",
-    "evidence/20261114T222709Z-d3e963fc-001-a",
-    "evidence/20261114T222714Z-d3e963fc-001-a",
-    "evidence/20261114T222718Z-d3e963fc-001-a",
-    "evidence/20261114T222722Z-d3e963fc-001-a",
-    "evidence/20261114T222727Z-d3e963fc-001-a"
+    "evidence/20261115T002855Z-bde18d19-001-a",
+    "evidence/20261115T002902Z-bde18d19-001-a",
+    "evidence/20261115T002909Z-bde18d19-001-a",
+    "evidence/20261115T002916Z-bde18d19-001-a",
+    "evidence/20261115T002923Z-bde18d19-001-a",
+    "evidence/20261115T002929Z-bde18d19-001-a",
+    "evidence/20261115T002936Z-bde18d19-001-a",
+    "evidence/20261115T002943Z-bde18d19-001-a",
+    "evidence/20261115T002950Z-bde18d19-001-a",
+    "evidence/20261115T002957Z-bde18d19-001-a",
+    "evidence/20261115T003004Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -490,9 +490,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222731Z-d3e963fc-001-a",
-    "evidence/20261114T222735Z-d3e963fc-001-a",
-    "evidence/20261114T222739Z-d3e963fc-001-a"
+    "evidence/20261115T003010Z-bde18d19-001-a",
+    "evidence/20261115T003017Z-bde18d19-001-a",
+    "evidence/20261115T003024Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -555,11 +555,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222744Z-d3e963fc-001-a",
-    "evidence/20261114T222748Z-d3e963fc-001-a",
-    "evidence/20261114T222752Z-d3e963fc-001-a",
-    "evidence/20261114T222756Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003031Z-bde18d19-001-a",
+    "evidence/20261115T003038Z-bde18d19-001-a",
+    "evidence/20261115T003044Z-bde18d19-001-a",
+    "evidence/20261115T003051Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -636,11 +636,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222801Z-d3e963fc-001-a",
-    "evidence/20261114T222805Z-d3e963fc-001-a",
-    "evidence/20261114T222809Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a",
-    "evidence/20261114T222722Z-d3e963fc-001-a"
+    "evidence/20261115T003058Z-bde18d19-001-a",
+    "evidence/20261115T003105Z-bde18d19-001-a",
+    "evidence/20261115T003112Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a",
+    "evidence/20261115T002957Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -704,9 +704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222814Z-d3e963fc-001-a",
-    "evidence/20261114T222818Z-d3e963fc-001-a",
-    "evidence/20261114T222822Z-d3e963fc-001-a"
+    "evidence/20261115T003119Z-bde18d19-001-a",
+    "evidence/20261115T003126Z-bde18d19-001-a",
+    "evidence/20261115T003133Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -818,11 +818,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222826Z-d3e963fc-001-a",
-    "evidence/20261114T222831Z-d3e963fc-001-a",
-    "evidence/20261114T222835Z-d3e963fc-001-a",
-    "evidence/20261114T222839Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003140Z-bde18d19-001-a",
+    "evidence/20261115T003147Z-bde18d19-001-a",
+    "evidence/20261115T003154Z-bde18d19-001-a",
+    "evidence/20261115T003201Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -883,8 +883,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224550Z-d3e963fc-001-a",
-    "evidence/20261114T224551Z-d3e963fc-001-a"
+    "evidence/20261115T005449Z-bde18d19-001-a",
+    "evidence/20261115T005450Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -950,11 +950,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222844Z-d3e963fc-001-a",
-    "evidence/20261114T222848Z-d3e963fc-001-a",
-    "evidence/20261114T222852Z-d3e963fc-001-a",
-    "evidence/20261114T222901Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003208Z-bde18d19-001-a",
+    "evidence/20261115T003214Z-bde18d19-001-a",
+    "evidence/20261115T003221Z-bde18d19-001-a",
+    "evidence/20261115T003235Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1024,11 +1024,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222905Z-d3e963fc-001-a",
-    "evidence/20261114T222909Z-d3e963fc-001-a",
-    "evidence/20261114T222918Z-d3e963fc-001-a",
-    "evidence/20261114T222922Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003242Z-bde18d19-001-a",
+    "evidence/20261115T003249Z-bde18d19-001-a",
+    "evidence/20261115T003302Z-bde18d19-001-a",
+    "evidence/20261115T003309Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1097,14 +1097,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222926Z-d3e963fc-001-a",
-    "evidence/20261114T222930Z-d3e963fc-001-a",
-    "evidence/20261114T222935Z-d3e963fc-001-a",
-    "evidence/20261114T222939Z-d3e963fc-001-a",
-    "evidence/20261114T222943Z-d3e963fc-001-a",
-    "evidence/20261114T222947Z-d3e963fc-001-a",
-    "evidence/20261114T222952Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003316Z-bde18d19-001-a",
+    "evidence/20261115T003323Z-bde18d19-001-a",
+    "evidence/20261115T003330Z-bde18d19-001-a",
+    "evidence/20261115T003337Z-bde18d19-001-a",
+    "evidence/20261115T003344Z-bde18d19-001-a",
+    "evidence/20261115T003350Z-bde18d19-001-a",
+    "evidence/20261115T003357Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1174,10 +1174,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223000Z-d3e963fc-001-a",
-    "evidence/20261114T223004Z-d3e963fc-001-a",
-    "evidence/20261114T223009Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003411Z-bde18d19-001-a",
+    "evidence/20261115T003418Z-bde18d19-001-a",
+    "evidence/20261115T003425Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1256,14 +1256,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223013Z-d3e963fc-001-a",
-    "evidence/20261114T223017Z-d3e963fc-001-a",
-    "evidence/20261114T223021Z-d3e963fc-001-a",
-    "evidence/20261114T223028Z-d3e963fc-001-a",
-    "evidence/20261114T223032Z-d3e963fc-001-a",
-    "evidence/20261114T223041Z-d3e963fc-001-a",
-    "evidence/20261114T224605Z-d3e963fc-002-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003431Z-bde18d19-001-a",
+    "evidence/20261115T003438Z-bde18d19-001-a",
+    "evidence/20261115T003445Z-bde18d19-001-a",
+    "evidence/20261115T003454Z-bde18d19-001-a",
+    "evidence/20261115T003501Z-bde18d19-001-a",
+    "evidence/20261115T003515Z-bde18d19-001-a",
+    "evidence/20261115T005510Z-bde18d19-002-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1331,10 +1331,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223047Z-d3e963fc-001-a",
-    "evidence/20261114T223051Z-d3e963fc-001-a",
-    "evidence/20261114T223055Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003525Z-bde18d19-001-a",
+    "evidence/20261115T003532Z-bde18d19-001-a",
+    "evidence/20261115T003539Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1407,12 +1407,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223100Z-d3e963fc-001-a",
-    "evidence/20261114T223104Z-d3e963fc-001-a",
-    "evidence/20261114T223108Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a",
-    "evidence/20261114T222905Z-d3e963fc-001-a",
-    "evidence/20261114T222918Z-d3e963fc-001-a"
+    "evidence/20261115T003546Z-bde18d19-001-a",
+    "evidence/20261115T003553Z-bde18d19-001-a",
+    "evidence/20261115T003559Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a",
+    "evidence/20261115T003242Z-bde18d19-001-a",
+    "evidence/20261115T003302Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1469,10 +1469,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222856Z-d3e963fc-001-a",
+    "evidence/20261115T003228Z-bde18d19-001-a",
     "evidence/20261108T230914Z-2cbdeaad-001",
-    "evidence/20261114T222913Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003256Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1542,9 +1542,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223113Z-d3e963fc-001-a",
-    "evidence/20261114T223117Z-d3e963fc-001-a",
-    "evidence/20261114T223121Z-d3e963fc-001-a"
+    "evidence/20261115T003607Z-bde18d19-001-a",
+    "evidence/20261115T003613Z-bde18d19-001-a",
+    "evidence/20261115T003620Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1608,10 +1608,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223126Z-d3e963fc-001-a",
-    "evidence/20261114T223130Z-d3e963fc-001-a",
-    "evidence/20261114T223135Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003627Z-bde18d19-001-a",
+    "evidence/20261115T003634Z-bde18d19-001-a",
+    "evidence/20261115T003641Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1684,10 +1684,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224607Z-d3e963fc-001-a",
-    "evidence/20261114T223139Z-d3e963fc-001-a",
-    "evidence/20261114T223143Z-d3e963fc-001-a",
-    "evidence/20261114T223151Z-d3e963fc-001-a"
+    "evidence/20261115T005513Z-bde18d19-001-a",
+    "evidence/20261115T003648Z-bde18d19-001-a",
+    "evidence/20261115T003655Z-bde18d19-001-a",
+    "evidence/20261115T003706Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1747,12 +1747,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223155Z-d3e963fc-001-a",
-    "evidence/20261114T223219Z-d3e963fc-001-a",
-    "evidence/20261114T223200Z-d3e963fc-001-a",
-    "evidence/20261114T223205Z-d3e963fc-001-a",
-    "evidence/20261114T223210Z-d3e963fc-001-a",
-    "evidence/20261114T223214Z-d3e963fc-001-a"
+    "evidence/20261115T003713Z-bde18d19-001-a",
+    "evidence/20261115T003752Z-bde18d19-001-a",
+    "evidence/20261115T003721Z-bde18d19-001-a",
+    "evidence/20261115T003728Z-bde18d19-001-a",
+    "evidence/20261115T003736Z-bde18d19-001-a",
+    "evidence/20261115T003744Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1834,10 +1834,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223226Z-d3e963fc-001-a",
-    "evidence/20261114T223230Z-d3e963fc-001-a",
-    "evidence/20261114T223235Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003803Z-bde18d19-001-a",
+    "evidence/20261115T003809Z-bde18d19-001-a",
+    "evidence/20261115T003817Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1897,10 +1897,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223241Z-d3e963fc-001-a",
-    "evidence/20261114T223245Z-d3e963fc-001-a",
-    "evidence/20261114T223250Z-d3e963fc-001-a",
-    "evidence/20261114T223255Z-d3e963fc-001-a"
+    "evidence/20261115T003825Z-bde18d19-001-a",
+    "evidence/20261115T003832Z-bde18d19-001-a",
+    "evidence/20261115T003840Z-bde18d19-001-a",
+    "evidence/20261115T003848Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -1951,8 +1951,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223300Z-d3e963fc-001-a",
-    "evidence/20261114T223306Z-d3e963fc-001-a"
+    "evidence/20261115T003856Z-bde18d19-001-a",
+    "evidence/20261115T003904Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2035,10 +2035,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223312Z-d3e963fc-001-a",
-    "evidence/20261114T223318Z-d3e963fc-001-a",
-    "evidence/20261114T224613Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a"
+    "evidence/20261115T003913Z-bde18d19-001-a",
+    "evidence/20261115T003922Z-bde18d19-001-a",
+    "evidence/20261115T005520Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2099,11 +2099,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223324Z-d3e963fc-001-a",
+    "evidence/20261115T003931Z-bde18d19-001-a",
     "evidence/20261108T233109Z-2cbdeaad-001",
-    "evidence/20261114T223312Z-d3e963fc-001-a",
-    "evidence/20261114T223151Z-d3e963fc-001-a",
-    "evidence/20261114T223117Z-d3e963fc-001-a"
+    "evidence/20261115T003913Z-bde18d19-001-a",
+    "evidence/20261115T003706Z-bde18d19-001-a",
+    "evidence/20261115T003613Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2177,7 +2177,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223328Z-d3e963fc-001-a"
+    "evidence/20261115T003938Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2251,9 +2251,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223336Z-d3e963fc-001-a",
-    "evidence/20261114T223350Z-d3e963fc-001-a",
-    "evidence/20261114T224617Z-d3e963fc-001-a"
+    "evidence/20261115T003949Z-bde18d19-001-a",
+    "evidence/20261115T004008Z-bde18d19-001-a",
+    "evidence/20261115T005524Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2326,10 +2326,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223356Z-d3e963fc-001-a",
-    "evidence/20261114T223405Z-d3e963fc-001-a",
-    "evidence/20261114T223418Z-d3e963fc-001-a",
-    "evidence/20261114T224729Z-d3e963fc-002-a"
+    "evidence/20261115T004017Z-bde18d19-001-a",
+    "evidence/20261115T004028Z-bde18d19-001-a",
+    "evidence/20261115T004048Z-bde18d19-001-a",
+    "evidence/20261115T005644Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2412,10 +2412,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224706Z-d3e963fc-001-a",
-    "evidence/20261114T224707Z-d3e963fc-001-a",
-    "evidence/20261114T224714Z-d3e963fc-001-a",
-    "evidence/20261114T223440Z-d3e963fc-001-a"
+    "evidence/20261115T005614Z-bde18d19-001-a",
+    "evidence/20261115T005615Z-bde18d19-001-a",
+    "evidence/20261115T005624Z-bde18d19-001-a",
+    "evidence/20261115T004118Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2486,10 +2486,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223451Z-d3e963fc-001-a",
-    "evidence/20261114T223510Z-d3e963fc-001-a",
-    "evidence/20261114T224717Z-d3e963fc-001-a",
-    "evidence/20261114T224729Z-d3e963fc-001-a"
+    "evidence/20261115T004134Z-bde18d19-001-a",
+    "evidence/20261115T004158Z-bde18d19-001-a",
+    "evidence/20261115T005629Z-bde18d19-001-a",
+    "evidence/20261115T005643Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2580,9 +2580,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223611Z-d3e963fc-001-a",
-    "evidence/20261114T223545Z-d3e963fc-001-a",
-    "evidence/20261114T223519Z-d3e963fc-001-a"
+    "evidence/20261115T004307Z-bde18d19-001-a",
+    "evidence/20261115T004239Z-bde18d19-001-a",
+    "evidence/20261115T004209Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2649,9 +2649,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224311Z-d3e963fc-001-a",
-    "evidence/20261114T224319Z-d3e963fc-001-a",
-    "evidence/20261114T224717Z-d3e963fc-001-a"
+    "evidence/20261115T005049Z-bde18d19-001-a",
+    "evidence/20261115T005100Z-bde18d19-001-a",
+    "evidence/20261115T005629Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2706,14 +2706,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224335Z-d3e963fc-001-a",
-    "evidence/20261114T224340Z-d3e963fc-001-a",
-    "evidence/20261114T224344Z-d3e963fc-001-a",
-    "evidence/20261114T223801Z-d3e963fc-001-a",
-    "evidence/20261114T224256Z-d3e963fc-001-a",
-    "evidence/20261114T223828Z-d3e963fc-001-a",
-    "evidence/20261114T223855Z-d3e963fc-001-a",
-    "evidence/20261114T223924Z-d3e963fc-001-a",
+    "evidence/20261115T005120Z-bde18d19-001-a",
+    "evidence/20261115T005127Z-bde18d19-001-a",
+    "evidence/20261115T005134Z-bde18d19-001-a",
+    "evidence/20261115T004515Z-bde18d19-001-a",
+    "evidence/20261115T005031Z-bde18d19-001-a",
+    "evidence/20261115T004545Z-bde18d19-001-a",
+    "evidence/20261115T004615Z-bde18d19-001-a",
+    "evidence/20261115T004647Z-bde18d19-001-a",
     "evidence/20261108T233109Z-2cbdeaad-001"
    ],
    "blocker": null
@@ -2755,7 +2755,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224024Z-d3e963fc-001-a"
+    "evidence/20261115T004756Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2803,15 +2803,15 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223328Z-d3e963fc-001-a",
-    "evidence/20261114T223356Z-d3e963fc-001-a",
-    "evidence/20261114T223405Z-d3e963fc-001-a",
-    "evidence/20261114T223418Z-d3e963fc-001-a",
-    "evidence/20261114T223430Z-d3e963fc-001-a",
-    "evidence/20261114T224311Z-d3e963fc-001-a",
-    "evidence/20261114T224319Z-d3e963fc-001-a",
-    "evidence/20261114T224717Z-d3e963fc-001-a",
-    "evidence/20261114T224729Z-d3e963fc-002-a"
+    "evidence/20261115T003938Z-bde18d19-001-a",
+    "evidence/20261115T004017Z-bde18d19-001-a",
+    "evidence/20261115T004028Z-bde18d19-001-a",
+    "evidence/20261115T004048Z-bde18d19-001-a",
+    "evidence/20261115T004103Z-bde18d19-001-a",
+    "evidence/20261115T005049Z-bde18d19-001-a",
+    "evidence/20261115T005100Z-bde18d19-001-a",
+    "evidence/20261115T005629Z-bde18d19-001-a",
+    "evidence/20261115T005644Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -2830,23 +2830,23 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224006Z-d3e963fc-001-a",
-    "evidence/20261114T223418Z-d3e963fc-001-a",
-    "evidence/20261114T223545Z-d3e963fc-001-a",
-    "evidence/20261114T223611Z-d3e963fc-001-a",
-    "evidence/20261114T223801Z-d3e963fc-001-a",
-    "evidence/20261114T224707Z-d3e963fc-001-a",
-    "evidence/20261114T224311Z-d3e963fc-001-a",
-    "evidence/20261114T223336Z-d3e963fc-001-a",
-    "evidence/20261114T223430Z-d3e963fc-001-a",
-    "evidence/20261114T224344Z-d3e963fc-001-a",
-    "evidence/20261114T223412Z-d3e963fc-001-a",
-    "evidence/20261114T223757Z-d3e963fc-001-a",
-    "evidence/20261114T223730Z-d3e963fc-001-a",
-    "evidence/20261114T223654Z-d3e963fc-001-a",
-    "evidence/20261114T223345Z-d3e963fc-001-a",
-    "evidence/20261114T223638Z-d3e963fc-001-a",
-    "evidence/20261114T223435Z-d3e963fc-001-a"
+    "evidence/20261115T004735Z-bde18d19-001-a",
+    "evidence/20261115T004048Z-bde18d19-001-a",
+    "evidence/20261115T004239Z-bde18d19-001-a",
+    "evidence/20261115T004307Z-bde18d19-001-a",
+    "evidence/20261115T004515Z-bde18d19-001-a",
+    "evidence/20261115T005615Z-bde18d19-001-a",
+    "evidence/20261115T005049Z-bde18d19-001-a",
+    "evidence/20261115T003949Z-bde18d19-001-a",
+    "evidence/20261115T004103Z-bde18d19-001-a",
+    "evidence/20261115T005134Z-bde18d19-001-a",
+    "evidence/20261115T004039Z-bde18d19-001-a",
+    "evidence/20261115T004506Z-bde18d19-001-a",
+    "evidence/20261115T004436Z-bde18d19-001-a",
+    "evidence/20261115T004357Z-bde18d19-001-a",
+    "evidence/20261115T004000Z-bde18d19-001-a",
+    "evidence/20261115T004338Z-bde18d19-001-a",
+    "evidence/20261115T004111Z-bde18d19-001-a"
    ],
    "blocker": null,
    "id": "WP-43",
@@ -2921,9 +2921,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224001Z-d3e963fc-001-a",
-    "evidence/20261114T223545Z-d3e963fc-001-a",
-    "evidence/20261114T223312Z-d3e963fc-001-a"
+    "evidence/20261115T004727Z-bde18d19-001-a",
+    "evidence/20261115T004239Z-bde18d19-001-a",
+    "evidence/20261115T003913Z-bde18d19-001-a"
    ],
    "blocker": null,
    "id": "WP-44",
@@ -3078,14 +3078,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224349Z-d3e963fc-001-a",
-    "evidence/20261114T224730Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a",
-    "evidence/20261114T222640Z-d3e963fc-001-a",
-    "evidence/20261114T224605Z-d3e963fc-001-a",
-    "evidence/20261114T224558Z-d3e963fc-002-a",
-    "evidence/20261114T224602Z-d3e963fc-001-a",
-    "evidence/20261114T224617Z-d3e963fc-001-a"
+    "evidence/20261115T005142Z-bde18d19-001-a",
+    "evidence/20261115T005645Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a",
+    "evidence/20261115T002848Z-bde18d19-001-a",
+    "evidence/20261115T005510Z-bde18d19-001-a",
+    "evidence/20261115T005459Z-bde18d19-001-a",
+    "evidence/20261115T005505Z-bde18d19-001-a",
+    "evidence/20261115T005524Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -3177,12 +3177,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224541Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a",
-    "evidence/20261114T223126Z-d3e963fc-001-a",
-    "evidence/20261114T223130Z-d3e963fc-001-a",
-    "evidence/20261114T223135Z-d3e963fc-001-a",
-    "evidence/20261114T223336Z-d3e963fc-001-a"
+    "evidence/20261115T005434Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a",
+    "evidence/20261115T003627Z-bde18d19-001-a",
+    "evidence/20261115T003634Z-bde18d19-001-a",
+    "evidence/20261115T003641Z-bde18d19-001-a",
+    "evidence/20261115T003949Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -3370,10 +3370,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224730Z-d3e963fc-002-a",
-    "evidence/20261114T224717Z-d3e963fc-001-a",
-    "evidence/20261114T223451Z-d3e963fc-001-a",
-    "evidence/20261114T224319Z-d3e963fc-001-a"
+    "evidence/20261115T005646Z-bde18d19-001-a",
+    "evidence/20261115T005629Z-bde18d19-001-a",
+    "evidence/20261115T004134Z-bde18d19-001-a",
+    "evidence/20261115T005100Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -3444,7 +3444,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224731Z-d3e963fc-001-a"
+    "evidence/20261115T005646Z-bde18d19-003-a"
    ],
    "blocker": null
   },
@@ -4161,16 +4161,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T223654Z-d3e963fc-001-a",
-    "evidence/20261114T224535Z-d3e963fc-001-a",
-    "evidence/20261114T224349Z-d3e963fc-001-a",
-    "evidence/20261114T224502Z-d3e963fc-001-a",
-    "evidence/20261114T224558Z-d3e963fc-002-a",
-    "evidence/20261114T223519Z-d3e963fc-001-a",
-    "evidence/20261114T223611Z-d3e963fc-001-a",
-    "evidence/20261114T223801Z-d3e963fc-001-a",
-    "evidence/20261114T223924Z-d3e963fc-001-a",
-    "evidence/20261114T224344Z-d3e963fc-001-a"
+    "evidence/20261115T004357Z-bde18d19-001-a",
+    "evidence/20261115T005425Z-bde18d19-001-a",
+    "evidence/20261115T005142Z-bde18d19-001-a",
+    "evidence/20261115T005336Z-bde18d19-001-a",
+    "evidence/20261115T005459Z-bde18d19-001-a",
+    "evidence/20261115T004209Z-bde18d19-001-a",
+    "evidence/20261115T004307Z-bde18d19-001-a",
+    "evidence/20261115T004515Z-bde18d19-001-a",
+    "evidence/20261115T004647Z-bde18d19-001-a",
+    "evidence/20261115T005134Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -4231,10 +4231,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224557Z-d3e963fc-001-a",
-    "evidence/20261114T224558Z-d3e963fc-002-a",
-    "evidence/20261114T224602Z-d3e963fc-001-a",
-    "evidence/20261114T224603Z-d3e963fc-001-a"
+    "evidence/20261115T005457Z-bde18d19-001-a",
+    "evidence/20261115T005459Z-bde18d19-001-a",
+    "evidence/20261115T005505Z-bde18d19-001-a",
+    "evidence/20261115T005506Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -4311,14 +4311,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224502Z-d3e963fc-001-a",
-    "evidence/20261114T223356Z-d3e963fc-001-a",
-    "evidence/20261114T223405Z-d3e963fc-001-a",
-    "evidence/20261114T223451Z-d3e963fc-001-a",
-    "evidence/20261114T224311Z-d3e963fc-001-a",
-    "evidence/20261114T224349Z-d3e963fc-001-a",
-    "evidence/20261114T224558Z-d3e963fc-002-a",
-    "evidence/20261114T224602Z-d3e963fc-001-a"
+    "evidence/20261115T005336Z-bde18d19-001-a",
+    "evidence/20261115T004017Z-bde18d19-001-a",
+    "evidence/20261115T004028Z-bde18d19-001-a",
+    "evidence/20261115T004134Z-bde18d19-001-a",
+    "evidence/20261115T005049Z-bde18d19-001-a",
+    "evidence/20261115T005142Z-bde18d19-001-a",
+    "evidence/20261115T005459Z-bde18d19-001-a",
+    "evidence/20261115T005505Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -4393,11 +4393,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224512Z-d3e963fc-001-a",
-    "evidence/20261114T224516Z-d3e963fc-001-a",
-    "evidence/20261114T224730Z-d3e963fc-001-a",
-    "evidence/20261114T224349Z-d3e963fc-001-a",
-    "evidence/20261114T223126Z-d3e963fc-001-a"
+    "evidence/20261115T005353Z-bde18d19-001-a",
+    "evidence/20261115T005400Z-bde18d19-001-a",
+    "evidence/20261115T005645Z-bde18d19-001-a",
+    "evidence/20261115T005142Z-bde18d19-001-a",
+    "evidence/20261115T003627Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -4694,10 +4694,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224521Z-d3e963fc-001-a",
-    "evidence/20261114T223151Z-d3e963fc-001-a",
-    "evidence/20261114T223143Z-d3e963fc-001-a",
-    "evidence/20261114T224024Z-d3e963fc-001-a"
+    "evidence/20261115T005407Z-bde18d19-001-a",
+    "evidence/20261115T003706Z-bde18d19-001-a",
+    "evidence/20261115T003655Z-bde18d19-001-a",
+    "evidence/20261115T004756Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -4749,8 +4749,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224558Z-d3e963fc-002-a",
-    "evidence/20261114T224557Z-d3e963fc-001-a"
+    "evidence/20261115T005459Z-bde18d19-001-a",
+    "evidence/20261115T005457Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -4917,9 +4917,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224507Z-d3e963fc-001-a",
-    "evidence/20261114T224349Z-d3e963fc-001-a",
-    "evidence/20261114T224502Z-d3e963fc-001-a"
+    "evidence/20261115T005344Z-bde18d19-001-a",
+    "evidence/20261115T005142Z-bde18d19-001-a",
+    "evidence/20261115T005336Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -4996,9 +4996,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224545Z-d3e963fc-001-a",
-    "evidence/20261114T223219Z-d3e963fc-001-a",
-    "evidence/20261114T224001Z-d3e963fc-001-a"
+    "evidence/20261115T005441Z-bde18d19-001-a",
+    "evidence/20261115T003752Z-bde18d19-001-a",
+    "evidence/20261115T004727Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -5112,8 +5112,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224730Z-d3e963fc-003-a",
-    "evidence/20261114T224730Z-d3e963fc-002-a"
+    "evidence/20261115T005646Z-bde18d19-002-a",
+    "evidence/20261115T005646Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -5176,9 +5176,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224557Z-d3e963fc-001-a",
-    "evidence/20261114T224603Z-d3e963fc-001-a",
-    "evidence/20261114T224558Z-d3e963fc-002-a"
+    "evidence/20261115T005457Z-bde18d19-001-a",
+    "evidence/20261115T005506Z-bde18d19-001-a",
+    "evidence/20261115T005459Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -5257,10 +5257,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224349Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a",
-    "evidence/20261114T224558Z-d3e963fc-002-a",
-    "evidence/20261114T224617Z-d3e963fc-001-a"
+    "evidence/20261115T005142Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a",
+    "evidence/20261115T005459Z-bde18d19-001-a",
+    "evidence/20261115T005524Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -5335,9 +5335,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224557Z-d3e963fc-001-a",
-    "evidence/20261114T224558Z-d3e963fc-002-a",
-    "evidence/20261114T224603Z-d3e963fc-001-a"
+    "evidence/20261115T005457Z-bde18d19-001-a",
+    "evidence/20261115T005459Z-bde18d19-001-a",
+    "evidence/20261115T005506Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -5419,10 +5419,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224439Z-d3e963fc-001-a",
-    "evidence/20261114T224349Z-d3e963fc-001-a",
-    "evidence/20261114T222636Z-d3e963fc-001-a",
-    "evidence/20261114T224617Z-d3e963fc-001-a"
+    "evidence/20261115T005243Z-bde18d19-001-a",
+    "evidence/20261115T005142Z-bde18d19-001-a",
+    "evidence/20261115T002842Z-bde18d19-001-a",
+    "evidence/20261115T005524Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -5628,9 +5628,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224558Z-d3e963fc-002-a",
-    "evidence/20261114T224557Z-d3e963fc-001-a",
-    "evidence/20261114T224603Z-d3e963fc-001-a"
+    "evidence/20261115T005459Z-bde18d19-001-a",
+    "evidence/20261115T005457Z-bde18d19-001-a",
+    "evidence/20261115T005506Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -5745,7 +5745,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T222610Z-d3e963fc-001-m"
+    "evidence/20261115T002823Z-bde18d19-001-m"
    ],
    "blocker": null
   },
@@ -5792,7 +5792,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224558Z-d3e963fc-002-a"
+    "evidence/20261115T005459Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -5851,7 +5851,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224557Z-d3e963fc-001-a"
+    "evidence/20261115T005457Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -5956,7 +5956,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224717Z-d3e963fc-001-a"
+    "evidence/20261115T005629Z-bde18d19-001-a"
    ],
    "blocker": null
   },
@@ -6068,9 +6068,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261114T224558Z-d3e963fc-002-a",
-    "evidence/20261114T224557Z-d3e963fc-001-a",
-    "evidence/20261114T222610Z-d3e963fc-001-m"
+    "evidence/20261115T005459Z-bde18d19-001-a",
+    "evidence/20261115T005457Z-bde18d19-001-a",
+    "evidence/20261115T002823Z-bde18d19-001-m"
    ],
    "blocker": null
   },
@@ -6229,7 +6229,8 @@
     "2026-11-14 as built (the manager, directly): option A. kernel/src/sched/mod.rs: Thread.wait_deadline; effective_prio(t, now) gives a waiter the lowest priority until its wait's deadline and priority 0 from that tick until poll_until returns; join and wait_process pass no deadline and are unchanged; nothing was added to tick(): the running thread's slice end (QUANTUM_TICKS) is the scheduling decision that runs the waiter. Test first, red seen locally (scratch): TST-M6-WAIT-DEADLINE printed late=350 of a limit of 20 in both rounds (exit 37) and TST-M6-BOOT-HALT's third phase (the built spin application as /SYSTEM/SVCMGR.ELF) timed out with no svcmgr line and no halt line: the first measured reproduction of RSK-024. The M6 suite's worst case is 977 s of the cap's 1080",
     "2026-11-14 audit and red team before the push (auditor; security red team; both by reading, nothing run): the boost confirmed in every scheduling path (pick_next, running_prio, new_thread, wake, the slice end), no behaviour change before a deadline or for join/wait_process, no existing case found that depends on a waiter starving after its deadline, clean room confirmed. Corrected before the push: M195 as first written also boosted join and hung the boot before the case (its stated reason was false): it now boosts only a wait with a deadline; two surviving mutants found and given a killer: M196 (the boost never taken back; the case now keeps busy after its wait, interrupts on, and must lose the CPU to the priority-0 spinner until it gives up) and M197 (the boost to the thread's own priority); the bound 'within a slice' holds unless another priority-0 thread is Ready on the same CPU (none in the boot), said in the code and in boot.md; a reply arriving in the last slice after the deadline is accepted, said in boot.md; stale texts corrected (the idle application's comment, hold_wait's comment, the plan's rows, RSK-024). Refuted, not adopted: the red team's reading that the halt path after the wait can be delayed or drawn over by processes the manager started: the boot thread runs with interrupts off outside its waits (kmain.rs after the timer self-check, whose line requires it) and poll_until returns with the flag as it found it, measured by the case (irq_before=0, irq_after=0, scratch); my first version of the case's busy stretch hung locally for that very reason (no tick with interrupts off) and was corrected to turn them on for the stretch. Raised and not examined here: ticks may be lost while other threads mask interrupts during long polled volume reads, so a deadline counted in ticks can slip in real time (RSK-025, a hypothesis); a marker's text inside a SYS_TRACE line is matched by the lab's substring check (the build id is not readable by a process and max_counts catches an added line; noted on WP-97); set_waiting does not nest (ktest.rs's drequest inside a poll_until closure; test code only)",
     "2026-11-15 local checks before the push (scratch, the manager, on the final tree): every guest suite on QEMU: M1, M2, M3, M5 and M6 with no failing case (M6 with TST-M6-WAIT-DEADLINE: late=6 and 0 of a limit of 20, polls=7 and 2, resumed=400, irq_before=0 and irq_after=0; TST-M6-BOOT-HALT's three phases, the third with `code=2|wait_ticks=10000|budget_ticks=10000`); M4 with one failing case, TST-M4-NET-NO-INTERNET, the case this container cannot judge (its probe of 192.0.2.1 is answered here; it failed the same way before this item and passed on CI in runs 43643314405 and 43647891277); the six host suites PASS; the four mutants M194 to M197 killed locally, M194 by both its killers (8 min for the four, M194 alone 379 s with the release image)",
-    "2026-11-15 second audit pass, on the corrections alone (auditor, by reading): the four claims confirmed (no interrupt window between the wait's return and halt in the release path; the busy stretch and its condition; the three mutants' anchors and reasons; the records). Corrected before the push: boot.md cited the case's irq fields as if the case required 0 and as if it measured the release path: the case now requires `|irq_before=0|irq_after=0` and boot.md says what is read from the release kernel's code and what is measured in the test kernel; this record's commands list every guest suite its acceptance names"
+    "2026-11-15 second audit pass, on the corrections alone (auditor, by reading): the four claims confirmed (no interrupt window between the wait's return and halt in the release path; the busy stretch and its condition; the three mutants' anchors and reasons; the records). Corrected before the push: boot.md cited the case's irq fields as if the case required 0 and as if it measured the release path: the case now requires `|irq_before=0|irq_after=0` and boot.md says what is read from the release kernel's code and what is measured in the test kernel; this record's commands list every guest suite its acceptance names",
+    "2026-11-15 CI record: verify run 43658133829 on 5ab339759, green on its first push (the failing tests were seen failing locally first, scratch); the run took 38 min 33 s from 00:25:58 to 01:04:31; 162 runs imported, none failing, so every guest suite passed with the scheduler change (among them TST-M3-PRIORITY-ORDER, evidence/20261115T003256Z-bde18d19-001-a, and TST-M4-NET-NO-INTERNET, evidence/20261115T003848Z-bde18d19-001-a, the case the local container cannot judge); TST-M6-WAIT-DEADLINE PASS (evidence/20261115T005329Z-bde18d19-001-a: spinner_prio=0 late=6 of 20, polls=7, resumed=400 of spin_ticks=400; spinner_prio=1 late=0, polls=2; irq_before=0 and irq_after=0 in both; frames_delta=0); TST-M6-BOOT-HALT PASS (evidence/20261115T005243Z-bde18d19-001-a: third phase, the spin application as the manager: `code=K_E_SVC_TIMEOUT|selfcheck=0|wait_ticks=10000` then `|kernel|halt|reason=svcmgr|code=2|wait_ticks=10000|budget_ticks=10000`, the screendump and the margin checked); the M6 gate of the same run: 45 of 45 mutants killed, M194 by TST-M6-WAIT-DEADLINE and TST-M6-BOOT-HALT (344 s), M195, M196 and M197 by TST-M6-WAIT-DEADLINE (15 s each), 2026-11-15T00:28:49Z to 2026-11-15T01:02:06Z, 33 min 17 s (evidence/20261115T002823Z-bde18d19-001-m). After the import: validate-records --strict 0 errors. Not shown by this run: the release kernel's interrupt flag on the halt path (read from the code; the test kernel's is measured), a bound in real time (ticks are counted; RSK-025), halt codes 1 and 3"
    ],
    "acceptance": "a manager that spins without blocking or calling the system ends in the halt line with code 2 within the budget's margin and the band, on CI (TST-M6-BOOT-HALT's third phase); TST-M6-WAIT-DEADLINE PASS (a wait ends within two slices of its deadline beside a spinner of better and of equal priority, is not run before it, and its boost ends with it); the whole guest suites M1 to M6 PASS on CI with the scheduler change; M194 (SECURITY), M195, M196 and M197 killed by the M6 gate; boot.md v1.3 removes v1.2's limit",
    "test_ids": [
