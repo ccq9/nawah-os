@@ -152,6 +152,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "nawah-apps"
+version = "0.1.0"
+
+[[package]]
 name = "nawah-crypto"
 version = "0.1.0"
 
