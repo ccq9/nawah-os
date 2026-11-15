@@ -6553,7 +6553,8 @@
     "design to decide in the package (2-3 options with trade-offs): fail closed (a broken flag: every later request refused without touching the shared buffers) against a device reset and queue re-initialisation that restores service, against tracking the pending request with rotating heads; the first now, the second as a follow-up if chosen",
     "test first, red seen locally before the fix: a test-kernel case with a ktest-only hook that makes one request time out (no notify, or a tiny poll limit), then reads a known sector: today the later request returns at once with an error or another request's data; expected: every later request is refused with the timeout's code (or correct data after a reset); a SECURITY mutant that drops the fail-closed check",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: unmeasured; sized at activation"
+    "2026-11-15 estimate: unmeasured; sized at activation",
+    "2026-11-15 activation estimate and design (the manager, directly, with the local QEMU lab; the request path read first; one audit pass before the single push): about 45 calls / 60 min, under the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first). Options: (A) fail closed: a stopped flag set in the timeout branch; read, write and flush refuse with K_E_BLK_NEEDS_RESET before they touch the shared buffer (write fills it before submitting, so the check sits there and not only in the request); (B) reset the device and re-initialise the queue: restores service, needs a bounded reset wait and a second init path; (C) track the pending request with rotating heads: more state, no answer for a dead device. Chosen: A now; B stays a possible follow-up. Test first, red seen locally: TST-M3-BLK-TIMEOUT in the test kernel with a ktest-only hook that withholds one request from the device and shortens its wait, so the driver's own timeout branch runs deterministically (publishing the request without a notify would depend on the emulator not polling the queue); a SECURITY mutant that drops the refusal"
    ],
    "acceptance": "after a timed-out request no later request returns data or a status that is not its own, shown by the new case on CI; TST-M3-BLK-READ and the storage cases PASS; the mutant killed",
    "test_ids": [
@@ -6563,9 +6564,10 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
