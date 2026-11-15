@@ -7346,12 +7346,22 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261115T113040Z-6fea0460-001-a",
+    "evidence/20261115T112956Z-6fea0460-001-a",
+    "evidence/20261115T113004Z-6fea0460-001-a",
+    "evidence/20261115T113011Z-6fea0460-001-a",
+    "evidence/20261115T113020Z-6fea0460-001-a",
+    "evidence/20261115T113030Z-6fea0460-001-a",
+    "evidence/20261115T115054Z-6fea0460-001-a",
+    "evidence/20261115T112252Z-6fea0460-001-m"
+   ],
    "blocker": null
   },
   {
