@@ -3613,13 +3613,22 @@ fn fat32_disk_full() -> ! {
 /// TST-M3-FAT32-STOP, first boot (WP-117, RSK-027; ADR-0013 decision 9): once the disk has
 /// stopped, every file call answers an I/O error and none answers from memory. File A, three
 /// clusters, is closed; file B, two clusters, is open twice, one position at its end and one
-/// at 0. The second write of A's delete, the first to a FAT copy, is withheld from the device
-/// by the test kernel's hook, so the driver's own timeout branch answers it and stops the
-/// disk. Then eight calls are made: a read at the end of B, a seek and a write of no bytes
-/// (the three that ask nothing of the disk), a read inside B, a stat, a create, a sync and
-/// the count of free clusters.
+/// at 0; file T was written two clusters through one open and then emptied through another,
+/// so the first open's position is past the size. The test kernel's hook is armed to withhold
+/// from the device the second disk write from then on, and the `stopio` application is run:
+/// it reads B to its end and deletes A, whose first FAT write is that second write, so the
+/// driver's own timeout branch answers it and stops the disk inside the process's call; the
+/// application then makes six more calls and exits 0x5709 only if the delete and every one of
+/// them answered ERR_IO through the system-call layer. Then the kernel asks ten things of its
+/// own opens: a read at the end of B, a seek and a write of no bytes (the three that ask
+/// nothing of the disk), a read inside B, a stat of B and of the root, a create, a sync, the
+/// count of free clusters, and a write through T's open whose position is past its size.
 fn fat32_stop() -> ! {
     use crate::fs::vfs;
+    let image = crate::apps::STOPIO;
+    if image.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
     }
@@ -3637,44 +3646,65 @@ fn fat32_stop() -> ! {
             return None;
         }
         let b0 = vfs::open(b"/STOP2.TXT", vfs::O_READ).ok()?;
+        let t = vfs::open(b"/STOP4.TXT", rw | vfs::O_CREATE).ok()?;
+        if vfs::write(&t, &all[..two]) != Ok(two) {
+            return None;
+        }
+        drop(vfs::open(b"/STOP4.TXT", rw | vfs::O_TRUNCATE).ok()?);
         vfs::sync().ok()?;
-        Some((b, b0))
+        Some((b, b0, t))
     })();
-    let Some((b, b0)) = made else {
+    let Some((b, b0, t)) = made else {
         fail("could not prepare the case's files")
     };
+    let pos_of = |f: &vfs::FileRef| f.lock().pos;
+    if pos_of(&b) != two as u64 || pos_of(&t) != two as u64 || t.lock().node.lock().size != 0 {
+        fail("the case's opens are not where it needs them")
+    }
     crate::block::arm_timeout_at_write(2);
-    let unlink = vfs::unlink(b"/STOP1.TXT");
+    let app_exit = match crate::user::run_elf(image) {
+        Ok((o, _l)) => o.exit_code,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|fat32_stop|error={}", BUILD_ID, e.code());
+            fail("application did not load")
+        }
+    };
     let mut buf = alloc::vec![0u8; 16];
     let end_read = vfs::read(&b, &mut buf).map(|_| ());
     let seek = vfs::seek(&b, 0).map(|_| ());
+    let pos_moved = u8::from(pos_of(&b) != two as u64);
     let empty_write = vfs::write(&b, &[]).map(|_| ());
     let inner_read = vfs::read(&b0, &mut buf).map(|_| ());
     let stat = vfs::stat(b"/STOP2.TXT").map(|_| ());
+    let root_stat = vfs::stat(b"/").map(|_| ());
     let create = vfs::open(b"/STOP3.TXT", rw | vfs::O_CREATE).map(|_| ());
     let sync = vfs::sync();
     let free = crate::fs::with(|fs| fs.free_clusters()).map(|_| ());
-    drop((b, b0));
+    let stale_write = vfs::write(&t, b"x").map(|_| ());
+    drop((b, b0, t));
     let code = |r: &Result<(), FsError>| match r {
         Ok(()) => "ok",
         Err(e) => e.code(),
     };
     kprintln!(
-        "OSX|{}|ktest|fat32_stop|unlink={}|end_read={}|seek={}|empty_write={}|inner_read={}|stat={}|create={}|sync={}|free={}|live_files={}",
+        "OSX|{}|ktest|fat32_stop|app_exit={:#x}|end_read={}|seek={}|pos_moved={}|empty_write={}|inner_read={}|stat={}|root_stat={}|create={}|sync={}|free={}|stale_write={}|live_files={}",
         BUILD_ID,
-        code(&unlink),
+        app_exit,
         code(&end_read),
         code(&seek),
+        pos_moved,
         code(&empty_write),
         code(&inner_read),
         code(&stat),
+        code(&root_stat),
         code(&create),
         code(&sync),
         code(&free),
+        code(&stale_write),
         vfs::live_files()
     );
-    if !matches!(unlink, Err(FsError::Io(_))) {
-        fail("the delete whose write timed out did not answer an I/O error")
+    if app_exit != 0x5709 {
+        fail("a call of the process did not answer ERR_IO once the disk had stopped (exit code = its step)")
     }
     let later = [
         &end_read,
@@ -3682,12 +3712,17 @@ fn fat32_stop() -> ! {
         &empty_write,
         &inner_read,
         &stat,
+        &root_stat,
         &create,
         &sync,
         &free,
+        &stale_write,
     ];
     if later.iter().any(|r| !matches!(r, Err(FsError::Io(_)))) {
         fail("a file call answered something else than an I/O error after the disk stopped")
+    }
+    if pos_moved != 0 {
+        fail("a refused seek moved the open's position")
     }
     pass("after the disk stops every file call answers an I/O error")
 }

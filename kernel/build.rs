@@ -23,6 +23,7 @@ const APPS: &[&str] = &[
     "file_roundtrip",
     "path_invalid",
     "fd_leak",
+    "stopio",
     "echo",
     "launch",
     "child",

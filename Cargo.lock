@@ -219,6 +219,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "stopio"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "svc"
 version = "0.1.0"
 dependencies = [

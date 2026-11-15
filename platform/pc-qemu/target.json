@@ -19,6 +19,7 @@
       "user/apps/file_roundtrip/Cargo.toml",
       "user/apps/path_invalid/Cargo.toml",
       "user/apps/fd_leak/Cargo.toml",
+      "user/apps/stopio/Cargo.toml",
       "user/apps/sh/Cargo.toml",
       "user/apps/fbprobe/Cargo.toml",
       "user/apps/inputd/Cargo.toml",
@@ -52,6 +53,7 @@
       "${OUT}/apps/file_roundtrip.elf",
       "${OUT}/apps/path_invalid.elf",
       "${OUT}/apps/fd_leak.elf",
+      "${OUT}/apps/stopio.elf",
       "${OUT}/apps/echo.elf",
       "${OUT}/apps/launch.elf",
       "${OUT}/apps/child.elf",
@@ -153,6 +155,24 @@
         "cp",
         "${OUT}/cargo-user/x86_64-unknown-none/app/fd_leak",
         "${OUT}/apps/fd_leak.elf"
+      ],
+      [
+        "cargo",
+        "build",
+        "--profile",
+        "app",
+        "--offline",
+        "--manifest-path",
+        "user/apps/stopio/Cargo.toml",
+        "--target",
+        "x86_64-unknown-none",
+        "--target-dir",
+        "${OUT}/cargo-user"
+      ],
+      [
+        "cp",
+        "${OUT}/cargo-user/x86_64-unknown-none/app/stopio",
+        "${OUT}/apps/stopio.elf"
       ],
       [
         "cargo",
@@ -2649,13 +2669,14 @@
               "OSX|${BUILD_ID}|ktest|start|name=fat32_stop",
               "OSX|${BUILD_ID}|kernel|blk|stopped|op=write|",
               "OSX|${BUILD_ID}|kernel|fs|stopped|code=K_E_FS_IO",
-              "OSX|${BUILD_ID}|ktest|fat32_stop|unlink=K_E_FS_IO|end_read=K_E_FS_IO|seek=K_E_FS_IO|empty_write=K_E_FS_IO|inner_read=K_E_FS_IO|stat=K_E_FS_IO|create=K_E_FS_IO|sync=K_E_FS_IO|free=K_E_FS_IO|live_files=0",
+              "OSX|${BUILD_ID}|ktest|fat32_stop|app_exit=0x5709|end_read=K_E_FS_IO|seek=K_E_FS_IO|pos_moved=0|empty_write=K_E_FS_IO|inner_read=K_E_FS_IO|stat=K_E_FS_IO|root_stat=K_E_FS_IO|create=K_E_FS_IO|sync=K_E_FS_IO|free=K_E_FS_IO|stale_write=K_E_FS_IO|live_files=0",
               "|ktest|pass|after the disk stops every file call answers an I/O error"
             ],
             "forbidden_markers": [
               "|ktest|fail|",
               "|kernel|panic|",
-              "|exc|vector"
+              "|exc|vector",
+              "|user_fault|"
             ]
           },
           {
@@ -2676,7 +2697,7 @@
             ]
           }
         ],
-        "oracle": "REQ-M3-007, WP-117 (RSK-027; ADR-0013 decision 9; files.md v1.9): once the disk has stopped, every file call answers an I/O error and none answers from memory, and the file system says so once. First boot: file A (three clusters) is written and closed; file B (two clusters) is open twice, one position at its end and one at 0. The test kernel's hook withholds from the device the second write of A's delete, the first to a FAT copy (the entry is written before it), so the driver's own timeout branch answers that request and stops the disk: one line kernel|blk|stopped, and the delete answers an I/O error (unlink=K_E_FS_IO). Then eight calls: a read at the end of B, a seek of that open to 0 and a write of no bytes, the three that ask nothing of the disk (end_read=K_E_FS_IO, seek=K_E_FS_IO, empty_write=K_E_FS_IO); a read inside B through the other open, a stat, a create, a sync and the count of free clusters (inner_read, stat, create, sync, free: K_E_FS_IO each); no open file is left (live_files=0); the file system writes one line kernel|fs|stopped, and no more than one of each stop line appears in the case. Second boot on the same image, a kernel with no memory of the first: A's name is gone and B holds its 1024 bytes (a_gone=1, b_whole=1); a new three-cluster file reads back its own bytes and changes neither (after_ok=1, same_after=1). Host, once, on the final image: tools/fat32.py check --faulted --expect-lost 3 (the tree is walked along both FAT copies: no name reaches a free cluster, no two names share one, no chain is shorter than its size in either copy and none is longer in the first; exactly three clusters are lost, A's, which the withheld write never freed) and tools/fat32.py fsck-faulted (fsck.fat -n, every message named). Not shown: a write whose request reached the device before the timeout (its outcome is unknown; the hook withholds the request, so here it was not written), a stop in the middle of a write or a truncation, calls of other processes that were waiting when the disk stopped, the ABI's ERR_IO itself (the case shows the file system's answer; the system-call layer maps it), a restart of the device without a reboot (there is none: ADR-0013 decision 9), a flush between the entry write and the frees and a failed FSInfo write (WP-123); both boots exit 33.",
+        "oracle": "REQ-M3-007, WP-117 (RSK-027; ADR-0013 decision 9; files.md v1.9): once the disk has stopped, every file call answers an I/O error and none answers from memory, a process sees ERR_IO, and the file system says so once. First boot: file A (three clusters) is written and closed; file B (two clusters) is open twice by the kernel, one position at its end and one at 0; file T was written two clusters through one open and emptied through another, so that open's position is past the size. The test kernel's hook is armed to withhold from the device the second disk write from then on, and the application stopio is run. It opens B, reads its 1024 bytes to the end and deletes A: the delete's first write is the entry and its second, the first to a FAT copy, is the withheld one, so the driver's own timeout branch answers that request and stops the disk inside the process's call (one line kernel|blk|stopped). The application exits 0x5709 only if the delete answered ERR_IO and so did each of the six calls it then made through the system-call layer: a read at the end of its open, a seek, a write of no bytes, a stat, a create and a sync (app_exit=0x5709; any other exit code is the number of the step that answered something else). Then the kernel asks ten things of its own opens: a read at the end of B, a seek of that open to 0, which also leaves its position where it was, and a write of no bytes, the three that ask nothing of the disk (end_read=K_E_FS_IO, seek=K_E_FS_IO, pos_moved=0, empty_write=K_E_FS_IO); a read inside B through the other open, a stat of B and a stat of the root, which reads no sector (inner_read, stat, root_stat: K_E_FS_IO each); a create, a sync and the count of free clusters (create, sync, free: K_E_FS_IO each); and a write through T's open, whose position is past the size (stale_write=K_E_FS_IO, not the range error memory alone would give); no open file is left (live_files=0); the file system writes one line kernel|fs|stopped, and no more than one of each stop line appears in the case. Second boot on the same image, a kernel with no memory of the first: A's name is gone and B holds its 1024 bytes (a_gone=1, b_whole=1); a new three-cluster file reads back its own bytes and changes neither (after_ok=1, same_after=1). Host, once, on the final image: tools/fat32.py check --faulted --expect-lost 3 (the tree is walked along both FAT copies: no name reaches a free cluster, no two names share one, no chain is shorter than its size in either copy and none is longer in the first; exactly three clusters are lost, A's, which the withheld write never freed) and tools/fat32.py fsck-faulted (fsck.fat -n, every message named). Not shown: a write whose request reached the device before the timeout (its outcome is unknown; the hook withholds the request, so here it was not written), a stop in the middle of a write, a truncation or a create, two calls racing with the stop on two processors (a call is ordered by where it asks: under the volume's lock, or at its read of the flag for a seek), a device that reports it needs a reset without a timed-out request (the file system does not stop then: WP-116), an error of the arguments or of the authority, which is answered before the disk is asked, closing a handle (it frees memory and asks nothing), a restart of the device without a reboot (there is none: ADR-0013 decision 9), a flush between the entry write and the frees and a failed FSInfo write (WP-123); both boots exit 33.",
         "expected_exit_code": 33,
         "required_markers": [
           "|ktest|pass|after the disk stops every file call answers an I/O error",
