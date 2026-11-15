@@ -906,12 +906,12 @@ MUTANTS = [
     ("M220", "kernel/src/fs/mod.rs",
      "    let g = VOLUME.lock();\n    if stopped() {\n        return Err(stop_error());\n    }\n",
      "    let g = VOLUME.lock();\n",
-     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a read at the end of an open file, a write of no bytes and a stat of the root answer success from memory, to a process too: the line carries end_read=ok, empty_write=ok and root_stat=ok and the application's exit code is its step, TST-M3-FAT32-STOP FAIL"),
+     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a read at the end of an open file, a write of no bytes and a stat of the root answer success from memory, to a process too: the kernel's own calls carry end_read=ok, empty_write=ok, root_stat=ok and stale_write=K_E_FS_RANGE (the process is still answered ERR_IO by the system-call layer), TST-M3-FAT32-STOP FAIL"),
     # M221: vfs::seek no longer asks.
     ("M221", "kernel/src/fs/vfs.rs",
      "    if super::stopped() {\n        return Err(super::stop_error());\n    }\n    if pos > u64::from(f.node.lock().size) {",
      "    if pos > u64::from(f.node.lock().size) {",
-     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a seek answers success from memory and moves the position: the line carries seek=ok and pos_moved=1 and the application exits at its seek, TST-M3-FAT32-STOP FAIL"),
+     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a seek answers success from memory and moves the position: the kernel's own seek carries seek=ok and pos_moved=1 (the process is still answered ERR_IO by the system-call layer), TST-M3-FAT32-STOP FAIL"),
     # M222: vfs::write refuses a position past the size from the node, before the disk is asked.
     ("M222", "kernel/src/fs/vfs.rs",
      "        super::with(|fs| fs.write(&mut e, pos as u32, data))?\n",
@@ -927,6 +927,11 @@ MUTANTS = [
      "                DISK_STOPPED.store(true, Ordering::SeqCst);\n                self.stopped = true;\n",
      "                self.stopped = true;\n",
      ["TST-M3-FAT32-STOP"], "SECURITY: the disk stops and the file system never learns it: the calls that ask nothing of the disk answer from memory and no line kernel|fs|stopped is written, TST-M3-FAT32-STOP FAIL"),
+    # M225: the system-call layer no longer asks first for the calls of the files contract.
+    ("M225", "kernel/src/syscall/mod.rs",
+     "    if crate::fs::stopped() {\n        ERR_IO\n    } else {\n        f()\n    }\n",
+     "    f()\n",
+     ["TST-M3-FAT32-STOP"], "SECURITY: after the disk has stopped a file call whose path, flags or handle a working disk would refuse answers that refusal, not ERR_IO: the application exits at its step 13, the line carries app_exit=0xd, TST-M3-FAT32-STOP FAIL"),
     # M219 (SECURITY, WP-120, files.md v1.8, ADR-0014 item 9): the first FAT copy, the one the
     # kernel reads, is written first again.
     ("M219", "kernel/src/fs/fat32.rs",
@@ -1086,7 +1091,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # M6 (WP-117): the file system stops with the disk (files.md v1.9): fs::with asks
             # (M220), vfs::seek asks (M221) before it moves anything (M223), vfs::write answers
             # nothing from the node (M222) and the driver sets the flag they read (M224).
-            "M220", "M221", "M222", "M223", "M224"}
+            "M220", "M221", "M222", "M223", "M224",
+            # the system-call layer asks first for the eight calls of the files contract (M225).
+            "M225"}
 
 
 def security_of(mid: str) -> bool:
