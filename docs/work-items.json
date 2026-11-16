@@ -5689,7 +5689,8 @@
     "2026-11-14 from the manager's reading of actions/download-artifact v4.3.0: the action only WARNS when a downloaded artifact's digest does not match (`outcome.digestMismatch` → core.warning), so a corrupted or substituted artifact still reaches adopt-native; the integrity item must make the merge job fail on that warning or verify a manifest of its own",
     "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-10 estimate: unmeasured, to be designed; the planners' split rule applies (team-methodology.md §2 item 0)",
-    "2026-11-15 (assurance review of the external findings, by experiment on a copy): to do with this item: the import receipt does not bind the verdict: a verdict.json copied from another run of the same test into a directory with its own run.json and import.json is accepted, and so is a verdict edited after the import; a hash of verdict.json and digests.json in the receipt (a new schema version; 163 receipts today have none) closes it; the plain equality checks are WP-109's"
+    "2026-11-15 (assurance review of the external findings, by experiment on a copy): to do with this item: the import receipt does not bind the verdict: a verdict.json copied from another run of the same test into a directory with its own run.json and import.json is accepted, and so is a verdict edited after the import; a hash of verdict.json and digests.json in the receipt (a new schema version; 163 receipts today have none) closes it; the plain equality checks are WP-109's",
+    "2026-11-16 inputs from the audit the owner ordered (by reading; nothing run): .github/workflows/mutants.yml gives contents: write to the whole job and the repository's own code (tests/mutants.py, build scripts) runs in it before the publish step, with none of the hardening verify's merge job has; verify publishes evidence branches with a forced push; the ruleset for ci-evidence/* and main is the owner's to set on GitHub (DEC-019)"
    ],
    "acceptance": "TST-M0-003 and TST-M0-007 PASS on CI with the per-attempt branch, the slot binding and the code-free publish job; M191 and M192 registered (executed once WP-90 exists); the ruleset on ci-evidence/** in place (owner, DEC-019)",
    "test_ids": [
@@ -6004,7 +6005,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-14 estimate: about 25 calls of work and one mutants run of about 160 min on CI (unmeasured as a whole)",
-    "2026-11-15 (assurance review of the external findings, by reading): to do with this item: a guest killer's FAIL counts as a kill without the case passing on the clean tree (tests/mutants.py: only host killers are checked clean): inside verify the same run's job a covers it, in mutants.yml nothing does; and the gates M3 to M6 of mutants.yml run under always() after a failed baseline: each gate's condition gets the baseline's success; a dispatch that selects no gate ends green and imports nothing"
+    "2026-11-15 (assurance review of the external findings, by reading): to do with this item: a guest killer's FAIL counts as a kill without the case passing on the clean tree (tests/mutants.py: only host killers are checked clean): inside verify the same run's job a covers it, in mutants.yml nothing does; and the gates M3 to M6 of mutants.yml run under always() after a failed baseline: each gate's condition gets the baseline's success; a dispatch that selects no gate ends green and imports nothing",
+    "2026-11-16 inputs from the audit the owner ordered (by reading; nothing run): the four gates' evidence is stale since 2026-11-09, at evidence-run 1.0.0 with worker interactive-agent and no import.json, and CI runs M01 to M129 on no push (RSK-041); a successful run, mutants-42610085488 of 2026-11-09, was never imported; M30 to M49 cover the FAT32, VFS and virtio-blk code that WP-104 to WP-121 changed; nine authority mutants are outside the SECURITY set (M34, M53, M62, M67, M68, M69, M70, M73, M77) and are to be moved into it with this item, as are mutants for the checks that have none (the read branch of fs_authority, the ADMIN check of netd's POLICY and of inputd); 36 ids are in the set with no SECURITY prefix in their notes: the notes change and a harness test keeps prefix and membership equal; M08, M09 and M10 (memory protection) are in no set; whether the owner accepts stale_policy warn on the four gates until this item is done is DEC-035"
    ],
    "acceptance": "TST-M0-003 PASS with the default-stages case; TST-M2-MUTANTS, TST-M3-MUTANTS, TST-M4-MUTANTS and TST-M5-MUTANTS PASS with evidence of a run on the head that carries the new texts; validate-records --strict reports no stale mutation verdict",
    "test_ids": [
@@ -6874,7 +6876,8 @@
     "test first, red seen locally before the fix: one failing host case per missing rule in tests/test_validate_records.py and tests/test_evidence_provenance.py (a passed gate citing a missing run and a FAIL run; a done item citing a FAIL run; a PASS test citing only a plain file; mismatching run ids; digests.json differing from the verdict's inputs; a new file matching a glob), and pinning cases for the existing rules that have none",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; sized at activation",
-    "2026-11-15 added from the owner's reviewer: the derived next task skips an item that carries a blocker or is listed by an open decision; test first: a host case with a planned, dependency-free item blocked by an open decision before an unblocked one: today the blocked one is named"
+    "2026-11-15 added from the owner's reviewer: the derived next task skips an item that carries a blocker or is listed by an open decision; test first: a host case with a planned, dependency-free item blocked by an open decision before an unblocked one: today the blocked one is named",
+    "2026-11-16 inputs from the audit the owner ordered (by reading; nothing run): digests.json is written as a copy of the inputs map and the validator only asks that it exists, so an imported directory can be altered after its import and pass --strict; the import should write a sha256 of every file into import.json and the strict validation recompute them; the stages' gate_evidence_refs are only asked to be non-empty (by hand, old evidence stands in them: M0 1 of 3, M1 3 of 4, M2 25 of 25, M3 40 of 41, M4 29 of 31, M5 37 of 44); the digest inputs of a guest verdict miss the evaluator itself (tools/project.py), tools/screen.py, Cargo.lock and thirteen Cargo.toml files; ADR-0026 points at WP-66 and TST-M6-STALE-GATE, neither of which exists"
    ],
    "acceptance": "each of the named forged or broken references is a validate-records error, shown by the new host cases on CI, and the committed records pass the stricter validator with every exception named; TST-M0-001 and TST-M0-007 PASS; project-state never names as its next task an item with a blocker or one an open decision blocks, pinned by a host case",
    "test_ids": [
@@ -6922,7 +6925,8 @@
     "design to decide in the package (2-3 options with trade-offs): one bounded table of counters for every name, keyed by a salted hash (two names may share a delay), against a global delay after failures (one attacker can then block the legitimate sign-in); auth.md gets a new version either way",
     "test first, red seen locally before the fix: the sequence added to the sign-in case for a ghost name and for an existing one, the two transcripts required equal: today they differ; SECURITY mutant: the old eviction restored",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: unmeasured; sized at activation"
+    "2026-11-15 estimate: unmeasured; sized at activation",
+    "2026-11-16 input from the audit the owner ordered (by reading; nothing run): an unknown name is derived with the highest iteration count and a known one with its own; where accounts differ in iterations the time tells an existing account from a missing one: the acceptance should also ask for equal cost"
    ],
    "acceptance": "the replies and delays for an existing name and an unknown one are the same under the eviction sequence, shown by the case on CI; auth.md's new version states the rule; the mutant killed",
    "test_ids": [
@@ -8344,7 +8348,8 @@
     "test first, red seen locally before the fix: a reply with the probe's id and sequence from another address arrives before the timeout: today the probe answers success; a SECURITY mutant that removes the source check after the fix",
     "also in the package: a capture of the packets of TST-M4-NET-NO-INTERNET in this lab, to say who answers the probe here, or a dated line saying why it could not be taken",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-16 estimate: unmeasured; sized at activation"
+    "2026-11-16 estimate: unmeasured; sized at activation",
+    "2026-11-16 input from the audit the owner ordered: the local answer of TST-M4-NET-NO-INTERNET is explained without a capture: the address the case probes, 192.0.2.1, is this container's own default gateway (/proc/net/route: network 192.0.2.0/24 on eth0, gateway 192.0.2.1; read by the manager), so the probe is answered here; the case passes on CI (evidence/20261116T100740Z-825e313c-001-a). It is not evidence for the missing source check. ARP and DHCP answers accepted without their sender are WP-142's (RSK-042); the injection hook is shared"
    ],
    "acceptance": "an ICMP echo reply is taken as the answer to a probe only when its source is the address probed: a reply with the probe's id and sequence from another address does not end the probe, which answers a timeout, shown by a guest case on CI that fails before the fix; a SECURITY mutant that removes the check is killed; the network cases PASS; net.md (the version free at the merge) states it; the local failure of TST-M4-NET-NO-INTERNET is explained from a capture, or a dated line says why none could be taken",
    "test_ids": [
@@ -8664,7 +8669,8 @@
     "design to decide in the package (2-3 options with trade-offs): a sparse worktree that leaves evidence/ out, against a worktree with hard links, against no worktree at all for host-only mutants; what a killer that validates records needs from evidence/ (if anything) decides between them",
     "test first, red seen locally: a host case that runs the harness on one tool mutant and asserts its worktree holds no evidence/ and that a stale worktree of an earlier, killed harness is removed; the mutation gate's verdicts must be the same before and after (the same mutants killed by the same cases on CI)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: unmeasured; sized at activation"
+    "2026-11-15 estimate: unmeasured; sized at activation",
+    "2026-11-16 inputs from the audit the owner ordered (by reading, the durations from the evidence): the M6 gate took 72 min for 115 mutants and its ceiling is 130 min (RSK-043); at the ceiling the harness is killed with no cleanup, its worktree and child processes stay and its verdict is ERROR, so every verify run turns red: an inner deadline that ends before the ceiling and writes a verdict, and a removal of leftovers at start, belong to this item"
    ],
    "acceptance": "the mutation harness's worktree holds no evidence/ and a run's disk need no longer grows with the evidence tree, shown by a host case on CI; a stale worktree of a killed harness is removed at the next start; TST-M6-MUTANTS kills the same mutants by the same cases as before the change; no evidence directory is touched",
    "test_ids": [
@@ -8672,6 +8678,235 @@
    ],
    "commands": [
     "python3 tools/project.py test --target host --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-142",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M4-007"
+   ],
+   "depends_on": [
+    "WP-141"
+   ],
+   "inputs": [
+    "from the audit the owner ordered on 2026-11-16 (eight roles, read-only at c68d5819d; the threat auditor by reading, the ARP part verified by the manager by reading; nothing run): netd learns a MAC from any ARP frame whose sender address is not zero and writes over the entry it holds (user/apps/netd/src/main.rs, arp_learn), so an unsolicited reply moves the gateway's address; DHCP offers and acks are taken by the transaction id alone, from any source, and an ack is applied after the exchange has ended; the id is predictable (the auditor's reading of lines 768, 833, 881-886, 896-897; not opened by the manager)",
+    "the frame-injection hook this needs is the one WP-141 and WP-114 need; whether it can be exploited under the emulator's network is not known"
+   ],
+   "files": [
+    "user/apps/netd/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/net.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/net.md"
+   ],
+   "actions": [
+    "الشبكة: ARP وDHCP لا يُقبل منهما إلا جواب ما طُلب وممن طُلب منه (من تدقيق 2026-11-16)",
+    "design to decide in the package (2-3 options with trade-offs): what an unsolicited ARP reply does (ignored, or learned only for a pending request); which DHCP fields bind an ack to its offer; the hook shared with WP-141",
+    "test first, red seen locally before the fix: an unsolicited ARP reply for the gateway changes the next frame's destination; an ack with the last id after the exchange changes the address",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; sized at activation",
+    "2026-11-16: registered with no place in the order of work: the order is the owner's to rule (DEC-033)"
+   ],
+   "acceptance": "an ARP reply is learned only for an address the service asked for and does not replace an entry it did not ask to refresh, and a DHCP offer or ack is taken only inside the exchange, from the server chosen, shown by guest cases on CI that fail before the fix, with a SECURITY mutant for each check killed; the network cases PASS; net.md (the version free at the merge) states it",
+   "test_ids": [
+    "TST-M4-NET-NO-INTERNET",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-143",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-002",
+    "REQ-M0-006"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "from the audit the owner ordered on 2026-11-16 (eight roles, read-only at c68d5819d; the lab auditor; one case verified by the manager on CI's serial log): TST-M2-EXC-DE requires `|stack=kernel`, which the line kernel|cpu_tables|…|stack=kernel prints in every boot; by the auditor's reading the same holds for `|frames_delta=0` in TST-M3-USER-SLEEP and TST-M3-APP-EXIT-CODE, `>1|` in TST-M5-WINDOW-STATES, and TST-M2-EXC-DF has no equal_values; TST-M2-EXC-TRIPLE accepts exit 0 from any reboot",
+    "tools/project.py:1679: a host suite passes on the marker `\\nOK`, which `OK (skipped=N)` also carries; tests/test_fat32_tool.py skips two tests when dosfstools is missing"
+   ],
+   "files": [
+    "platform/pc-qemu/target.json",
+    "tools/project.py",
+    "tests/test_validate_records.py",
+    "docs/tests.json",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "المعمل: كل علامة مطلوبة مثبّتة على سطر حالتها، وحزمة المضيف لا تنجح مع اختبار متخطّى (من تدقيق 2026-11-16)",
+    "design to decide in the package (2-3 options with trade-offs): a lint over target.json that refuses a required marker a generic boot line satisfies, against fixing the named cases only; skipped host tests as FAIL against ERROR",
+    "test first, red seen locally: the lint fails on today's target.json; a host suite printing `OK (skipped=1)` is PASS today",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; sized at activation",
+    "2026-11-16: registered with no place in the order of work: the order is the owner's to rule (DEC-033)"
+   ],
+   "acceptance": "every required marker of the cases named in the inputs is pinned to the case's own line (its prefix or an equal_values rule), shown by a host case that fails first on each of today's markers; a host suite whose output reports a skipped test is not PASS, shown by a host case; every guest and host suite PASS on CI; no pinned number is relaxed",
+   "test_ids": [
+    "TST-M0-001",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-144",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-002",
+    "REQ-M0-006"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "from the audit the owner ordered on 2026-11-16 (eight roles, read-only at c68d5819d; the lab auditor by reading; not opened by the manager): preflight builds the guest with build-std and compiler-builtins-mem where CI uses the prebuilt rust-std; cmd_build does not clean build/pc-qemu/apps and prepare_disk adds every *.elf found there; no run.json records the versions of QEMU, OVMF or slirp; CI's image holds 54 more used clusters than the lab's and the cause is not known",
+    "TST-M4-NET-NO-INTERNET fails in this lab because the address it probes, 192.0.2.1, is this container's own default gateway (/proc/net/route, verified by the manager); the case passes on CI; a per-case network field would change a test's condition and is the owner's to decide"
+   ],
+   "files": [
+    "tools/project.py",
+    "tests/test_validate_records.py",
+    ".github/workflows/verify.yml",
+    "docs/tests.json",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "المعمل: الفحص المحلي المسبق يبني ما يبنيه CI، ويسجّل كل تشغيل إصدارات أدواته (من تدقيق 2026-11-16)",
+    "design to decide in the package (2-3 options with trade-offs): the prebuilt rust-std locally when present, against build-std on CI too; where the versions are recorded",
+    "test first, red seen locally: a stale app in build/pc-qemu/apps enters the image today",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; sized at activation",
+    "2026-11-16: registered with no place in the order of work: the order is the owner's to rule (DEC-033)"
+   ],
+   "acceptance": "the local pre-flight builds the guest the way CI does or says in one line that it could not and why; the apps directory is cleaned before a build; every run.json records the versions of QEMU, OVMF and slirp and the sizes of the built apps; the difference of used clusters between the lab's image and CI's is explained from those records, shown by host cases on CI",
+   "test_ids": [
+    "TST-M0-001"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-145",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-002",
+    "REQ-M0-006"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "from the audit the owner ordered on 2026-11-16 (eight roles, read-only at c68d5819d; the threat auditor by opening the file; not re-read line by line by the manager): docs/security/threat-model.md was last edited for WP-97; it says the network driver checks the used element's id while the code substitutes slot 0 (RSK-036); it lists as open limits that WP-67, WP-68, WP-84 and WP-73 closed; M130 to M132 are still called proposed; it points at WP-61 for a scope that item does not hold; it has no section for netd's network adversary (RSK-031, RSK-039, RSK-042), for disk faults and FAT32 (WP-104 to WP-134), for the host checker as a judge (RSK-037), for the boundary between evidence and CI (RSK-030), for RSK-010 and RSK-029; DEC-017 (Secure Boot) is cited by PLAN-ANSWER.md and PLAN-REVERSE.md and is absent from docs/decisions-pending.json",
+    "M6's exit conditions name the threat model and no item owns it"
+   ],
+   "files": [
+    "docs/security/threat-model.md",
+    "tests/test_m0_records.py",
+    "docs/tests.json",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/decisions-pending.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "نموذج التهديد يُحدَّث ليطابق الشيفرة والسجلات حتى M6 (من تدقيق 2026-11-16)",
+    "design to decide in the package (2-3 options with trade-offs): one item for the whole model against one per boundary (network, storage, evidence); the check of names by a host case",
+    "test first, red seen locally: the host case fails on today's model (WP-61's pointer, the tests the model does not name)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; sized at activation",
+    "2026-11-16: registered with no place in the order of work: the order is the owner's to rule (DEC-033)"
+   ],
+   "acceptance": "docs/security/threat-model.md states, per stage to M6, the assets, adversaries, boundaries and controls as the code and the records have them today: every control it claims names the test that shows it or says none does, every open risk is placed, and the claims the audit refuted are corrected, checked by the auditor against the files; a host case fails when the model names a test id or a work item that does not exist",
+   "test_ids": [
+    "TST-M0-002"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-146",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-002",
+    "REQ-M0-006"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "from the audit the owner ordered on 2026-11-16 (eight roles, read-only at c68d5819d; the records and the two item auditors; each opened by its auditor, not all by the manager): WP-39 cites run 39175302719 and the evidence holds 39175587401; the evidence_refs of WP-42, WP-44 and WP-38 hold tests that are not in their test_ids; WP-05 is done with no test_ids; WP-20 lists kernel/src/arch/x86_64/percpu.rs and trampoline.s, which never existed, and WP-27 and WP-28 list kernel/src/object/kbd.rs, which WP-30 deleted; TST-M0-002's oracle says twelve roles and the test checks fourteen; net.md's head says part B is a draft and its sections say frozen; ipc.md's head says version 1 is frozen and line 9 was extended in place; REQ-M1-005 is deferred to M3, which is closed; M0's exit conditions miss the prompt's line on tools; WP-30's acceptance says five initial handles and the oracle nine; WP-99's evidence_refs hold two references for all suites; WP-06 and WP-07 say PASS locally (or CI); project-state counts 7 done items where 81 are done and 33 checkpoint events name WP-69, a planned item; contract_version() reads a contract's first line only and boot.md's version is on its third",
+    "docs/PLAN-REVERSE.md section 2 (by the chain auditor): rows that say ready or blocked for items that are done (WP-45, 49, 50, 67, 68, 82, 83, 88, 90), rows whose dependencies differ from the records (WP-55, 58, 62, 69, 71, 75, 76, 86, 89), no row for WP-91 to WP-96 and WP-98, several rows for WP-46, WP-64, WP-71, WP-72, WP-100; its section 1 counts 80 M6 test records with 12 PASS where the ladder auditor counted 82 with 17; rows are also owed for the items registered on 2026-11-16"
+   ],
+   "files": [
+    "docs/work-items.json",
+    "docs/tests.json",
+    "docs/requirements.json",
+    "docs/stages.json",
+    "docs/project-state.json",
+    "docs/PLAN-REVERSE.md",
+    "docs/contracts/net.md",
+    "docs/contracts/ipc.md",
+    "tools/project.py",
+    "tests/test_validate_records.py",
+    "tests/test_m0_records.py"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "السجلات: تصحيحات صغيرة من تدقيق 2026-11-16 (أرقام، ملفات لم توجد، نصوص أوراكل قديمة، عدّادات)",
+    "design to decide in the package (2-3 options with trade-offs): historical texts corrected in place with a dated line against left as written with a note; the plan's rows generated from the records against checked against them",
+    "test first, red seen locally: a host case that compares the plan's rows with the records fails on today's file",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; sized at activation",
+    "2026-11-16: registered with no place in the order of work: the order is the owner's to rule (DEC-033)"
+   ],
+   "acceptance": "each record named in the inputs says what the files and the evidence say, or carries a dated line that it is historical and why; docs/PLAN-REVERSE.md section 2 has one row per item of M6 that agrees with the record's state, dependencies and tests, kept so by a host case that fails first on today's file; validate-records --strict reports 0 errors; no acceptance text and no pinned number is changed by this item",
+   "test_ids": [
+    "TST-M0-001",
+    "TST-M0-002"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
    ],
    "status": "planned",
    "status_history": [
