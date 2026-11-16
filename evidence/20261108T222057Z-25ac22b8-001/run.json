@@ -1,0 +1,20 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261108T222057Z-25ac22b8-001",
+ "started_at": "2026-11-08T22:20:57+00:00",
+ "finished_at": "2026-11-08T22:20:58+00:00",
+ "source_revision": "25ac22b80bd51a875e3422873ec38b8d1bc3c93d",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M5-BIDI",
+ "commands": [
+  "python3 -I tests/test_text.py Bidi"
+ ],
+ "exit_code": 0,
+ "notes": "imported from CI run 42527203772 (verification runner)"
+}

@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261115T182235Z-09992ce6-002-a",
+ "started_at": "2026-11-15T18:22:35+00:00",
+ "finished_at": "2026-11-15T18:22:36+00:00",
+ "source_revision": "09992ce61cc79bab6975b21c5f42c39d57ee0218",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M0-005",
+ "commands": [
+  "python3 -I tests/test_mutants_harness.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "43743707444",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "09992ce61cc79bab6975b21c5f42c39d57ee0218",
+  "head_sha": "f5d34daeade890e5f7c16395fd90be9a453ebdf4",
+  "ref": "refs/pull/23/merge"
+ }
+}
