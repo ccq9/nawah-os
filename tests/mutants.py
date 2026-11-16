@@ -1040,6 +1040,25 @@ MUTANTS = [
      "            s[off % SECTOR..off % SECTOR + 4].copy_from_slice(&new.to_le_bytes());\n            block::write(sector, &s)?;\n",
      "            s[off % SECTOR..off % SECTOR + 4].copy_from_slice(&new.to_le_bytes());\n            if block::write(sector, &s).is_err() {\n                block::write(sector, &s)?;\n            }\n",
      ["TST-M3-FAT32-FAULT-ONE-UNLINK", "TST-M3-FAT32-FAULT-ONE-TRUNCATE"], "SECURITY: a FAT write the disk refused is sent again and the call answers success, so the caller never learns the disk refused a write (files.md v1.10: the call stops and answers an I/O error): the sweeps' lines carry failed=3, io=3, stopped=3 and once_refused=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL"),
+    # M258..M260 (SECURITY, WP-131, files.md v1.11, ADR-0014 item 12): a write stops at its
+    # first refused disk write. The older write case refuses write N and every write after it,
+    # so a swallowed refusal is followed by another refused, checked write; the case under the
+    # hook's once mode refuses write N alone. M258: the refusal of the write that zeroes a new
+    # cluster is swallowed.
+    ("M258", "kernel/src/fs/fat32.rs",
+     "                        block::write(base + u64::from(i), &zero)?;\n",
+     "                        let _ = block::write(base + u64::from(i), &zero);\n",
+     ["TST-M3-FAT32-FAULT-ONE-WRITE"], "SECURITY: a new cluster whose zeroing the disk refused is linked into the file with whatever it held before, and the write answers success: the sweeps' lines carry failed=20, bad=3 and ghost=3 for a new file and failed=8 for an append, TST-M3-FAT32-FAULT-ONE-WRITE FAIL"),
+    # M259: the refusal of a data write is swallowed.
+    ("M259", "kernel/src/fs/fat32.rs",
+     "            block::write(sector, &s)?;\n            done += n;\n",
+     "            let _ = block::write(sector, &s);\n            done += n;\n",
+     ["TST-M3-FAT32-FAULT-ONE-WRITE"], "SECURITY: a write whose data the disk refused answers success and the file reads bytes that were never stored: the sweeps' lines carry failed=20, bad=3 and ghost=3 for a new file and failed=8 for an append, TST-M3-FAT32-FAULT-ONE-WRITE FAIL"),
+    # M260: after a refused data write the entry is written and the first error returned.
+    ("M260", "kernel/src/fs/fat32.rs",
+     "            block::write(sector, &s)?;\n            done += n;\n",
+     "            if let Err(e) = block::write(sector, &s) {\n                let _ = self.store_entry(file);\n                return Err(FsError::Io(e));\n            }\n            done += n;\n",
+     ["TST-M3-FAT32-FAULT-ONE-WRITE"], "SECURITY: a write whose disk write was refused goes on writing and reports the error at its end: the answer and the image are those of a call that stopped, and only the count of its disk writes differs: the sweeps' lines carry stopped=20, 8 and 8 beside failed=23, 9 and 9, TST-M3-FAT32-FAULT-ONE-WRITE FAIL"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1281,7 +1300,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M252", "M253", "M254",
             # from WP-124's red team: the whole call stops at the refused write: no write after
             # it (M255), no swallowed FSInfo refusal (M256), no second try (M257).
-            "M255", "M256", "M257"}
+            "M255", "M256", "M257",
+            # M6 (WP-131): a write stops at its first refused disk write: the zeroing (M258),
+            # the data (M259), and no write after the refused one (M260).
+            "M258", "M259", "M260"}
 
 
 def security_of(mid: str) -> bool:
