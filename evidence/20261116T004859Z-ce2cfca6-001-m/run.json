@@ -1,0 +1,29 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261116T004859Z-ce2cfca6-001-m",
+ "started_at": "2026-11-16T00:48:59+00:00",
+ "finished_at": "2026-11-16T01:42:02+00:00",
+ "source_revision": "ce2cfca62a95dd36dbb714b5730a732402b6c10d",
+ "dirty_state": false,
+ "dirty_paths": [],
+ "host": {
+  "os": "Linux 7.0.0-1014-aws",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M6-MUTANTS",
+ "commands": [
+  "python3 -I tests/mutants.py --target pc-qemu --stage M6 --report build/mutants-m6-report.json"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "43782355301",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "ce2cfca62a95dd36dbb714b5730a732402b6c10d",
+  "head_sha": "0a03cab7fa7c418cb86542de1e35428e3167343c",
+  "ref": "refs/pull/23/merge"
+ }
+}
