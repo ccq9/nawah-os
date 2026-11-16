@@ -891,6 +891,7 @@
     "TST-M3-FAT32-FAULT-ONE-TRUNCATE",
     "TST-M3-FAT32-FAULT-WRITE",
     "TST-M3-FAT32-FAULT-ONE-WRITE",
+    "TST-M3-FAT32-FAULT-CREATE",
     "TST-M3-FAT32-DISK-FULL",
     "TST-M3-FAT32-STOP"
    ],
@@ -910,6 +911,7 @@
     "evidence/20261116T073935Z-bb73f0eb-001-a",
     "evidence/20261116T073946Z-bb73f0eb-001-a",
     "evidence/20261116T073956Z-bb73f0eb-001-a",
+    "evidence/20261116T074007Z-bb73f0eb-001-a",
     "evidence/20261116T074018Z-bb73f0eb-001-a",
     "evidence/20261116T074025Z-bb73f0eb-001-a"
    ]
