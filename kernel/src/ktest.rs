@@ -174,9 +174,10 @@ pub fn run() -> ! {
         "fat32_fault_write_check" => fat32_fault_write_check("fat32_fault_write_check"),
         "fat32_fault_write_one" => fat32_fault_write(true),
         "fat32_fault_write_one_check" => fat32_fault_write_check("fat32_fault_write_one_check"),
-        "fat32_fault_create" => fat32_fault_create(false),
+        "fat32_fault_create" => fat32_fault_create(false, false),
         "fat32_fault_create_check" => fat32_fault_create_check("fat32_fault_create_check", false),
-        "fat32_fault_create_one" => fat32_fault_create(true),
+        "fat32_fault_create_one" => fat32_fault_create(true, false),
+        "fat32_fault_create_copies" => fat32_fault_create(true, true),
         "fat32_fault_create_one_check" => {
             fat32_fault_create_check("fat32_fault_create_one_check", true)
         }
@@ -3672,43 +3673,58 @@ fn fault_dir_in_copy(copy: u32) -> Option<(u32, u32, bool, u64)> {
     .ok()
 }
 
-/// The two FAT copies compared by the test itself over the FAT sectors up to the one that
-/// holds the first cluster free in the first copy (the cluster the next allocation takes lies
-/// there): the clusters marked in the second copy and free in the first, and the clusters
-/// marked in the first and free in the second. The second copy is written first, so a refusal
-/// between the two writes of a mark leaves one cluster of the first kind; a create frees
-/// nothing, so after one a cluster of the second kind says the second copy is behind the
-/// first (WP-138).
-fn fault_second_marks() -> Option<(u32, u32)> {
+/// The two FAT copies compared whole by the test itself, entry by entry (the two reserved
+/// entries left out): the clusters marked in the second copy and free in the first, the
+/// clusters marked in the first and free in the second, and the clusters marked in both with
+/// different values (a link one copy holds and the other does not). An entry that differs
+/// between the copies is one of the three. The second copy is written first, so a refusal
+/// between the two writes of a mark leaves one cluster of the first kind and a refusal between
+/// the two writes of a link one of the third; a create frees nothing, so after one a cluster
+/// of the second kind says the second copy is behind the first (WP-138).
+fn fault_fat_diff() -> Option<(u32, u32, u32)> {
+    const CHUNK: u32 = 32;
     crate::fs::with(|fs| {
         if fs.fats < 2 {
             return Err(FsError::Corrupt);
         }
-        let (mut a, mut b) = ([0u8; 512], [0u8; 512]);
-        let (mut ahead, mut behind) = (0u32, 0u32);
-        for s in 0..fs.fat_sectors {
-            crate::block::read(u64::from(fs.reserved + s), &mut a)?;
-            crate::block::read(u64::from(fs.reserved + fs.fat_sectors + s), &mut b)?;
-            let mut free_seen = false;
-            for i in 0..128u32 {
-                let c = s * 128 + i;
+        let mut a = alloc::vec![0u8; CHUNK as usize * 512];
+        let mut b = alloc::vec![0u8; CHUNK as usize * 512];
+        let (mut ahead, mut behind, mut links) = (0u32, 0u32, 0u32);
+        let mut s = 0u32;
+        while s < fs.fat_sectors {
+            let n = CHUNK.min(fs.fat_sectors - s) as usize * 512;
+            crate::block::read(u64::from(fs.reserved + s), &mut a[..n])?;
+            crate::block::read(u64::from(fs.reserved + fs.fat_sectors + s), &mut b[..n])?;
+            for (i, (x, y)) in a[..n].chunks(4).zip(b[..n].chunks(4)).enumerate() {
+                let c = s * 128 + i as u32;
                 if c < 2 || c >= fs.clusters + 2 {
                     continue;
                 }
-                let o = (i * 4) as usize;
-                let first = u32::from_le_bytes([a[o], a[o + 1], a[o + 2], a[o + 3]]) & 0x0FFF_FFFF;
-                let second = u32::from_le_bytes([b[o], b[o + 1], b[o + 2], b[o + 3]]) & 0x0FFF_FFFF;
-                free_seen |= first == 0;
+                let first = u32::from_le_bytes([x[0], x[1], x[2], x[3]]) & 0x0FFF_FFFF;
+                let second = u32::from_le_bytes([y[0], y[1], y[2], y[3]]) & 0x0FFF_FFFF;
                 ahead += u32::from(first == 0 && second != 0);
                 behind += u32::from(first != 0 && second == 0);
+                links += u32::from(first != 0 && second != 0 && first != second);
             }
-            if free_seen {
-                break;
-            }
+            s += CHUNK;
         }
-        Ok((ahead, behind))
+        Ok((ahead, behind, links))
     })
     .ok()
+}
+
+/// The judgements on what is read along the second FAT copy after every create under the hook,
+/// the same for the three create cases (WP-138).
+fn fault_second_judge(free: u32, names: u32, shorter: u32, first_marks: u32) {
+    if free != 0 {
+        fail("after a create under the hook the directory's chain along the second FAT copy stands on a cluster that is free there, or does not end")
+    }
+    if names != 0 {
+        fail("after a create under the hook the two FAT copies do not list the same names in the directory")
+    }
+    if shorter != 0 || first_marks != 0 {
+        fail("after a create under the hook the second FAT copy is behind the first: the directory's chain is shorter along it, or a cluster is marked in the first copy and free in the second")
+    }
 }
 
 fn fault_create_path(n: u32) -> alloc::vec::Vec<u8> {
@@ -3728,7 +3744,12 @@ fn fault_create_path(n: u32) -> alloc::vec::Vec<u8> {
 /// the case judges by what is read: the names the directory lists that no create made (strays)
 /// and the creates that answered success for a name no lookup finds (ghost). The mode is shown
 /// first, before the clusters are dirtied, so that its file takes none of them.
-fn fat32_fault_create(once: bool) -> ! {
+///
+/// TST-M3-FAT32-FAULT-CREATE-COPIES (WP-138, after its close audit) is the sweep under one
+/// refused write once more (`copies`), with nothing printed or judged but what is read along
+/// the second FAT copy after every create under the hook: a kernel that fails this case fails
+/// it by those fields.
+fn fat32_fault_create(once: bool, copies: bool) -> ! {
     use crate::fs::vfs;
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
@@ -3765,6 +3786,7 @@ fn fat32_fault_create(once: bool) -> ! {
     let (mut first_same, mut second_free, mut second_longer, mut second_names) =
         (0u32, 0u32, 0u32, 0u32);
     let (mut second_marks, mut second_shorter, mut first_marks) = (0u32, 0u32, 0u32);
+    let mut second_links = 0u32;
     for n in 1..=writes {
         filled += u32::from(fault_dir_fill(&mut filler));
         let path = fault_create_path(n);
@@ -3795,9 +3817,11 @@ fn fat32_fault_create(once: bool) -> ! {
         // The names of the two copies are compared by their prints: the 11 bytes of every
         // name, in the order read.
         second_names += u32::from(one.map(|d| d.3) != two.map(|d| d.3));
-        let marks = fault_second_marks();
-        second_marks += u32::from(marks.is_some_and(|m| m.0 > 0));
-        first_marks += u32::from(!marks.is_some_and(|m| m.1 == 0));
+        // Every FAT entry that differs between the copies is of one of three kinds.
+        let diff = fault_fat_diff();
+        second_marks += u32::from(diff.is_some_and(|d| d.0 > 0));
+        first_marks += u32::from(!diff.is_some_and(|d| d.1 == 0));
+        second_links += u32::from(diff.is_some_and(|d| d.2 > 0));
         // No name of the failed create, and no other name either: the listing counts what it
         // counted before (an entry read from a new cluster that was not zeroed would add to
         // it: the free clusters were dirtied with entries).
@@ -3823,6 +3847,21 @@ fn fat32_fault_create(once: bool) -> ! {
     }
     let synced = vfs::sync().is_ok();
     let (names, clusters) = fault_dir_state().unwrap_or((0, 0));
+    if copies {
+        kprintln!(
+            "OSX|{}|ktest|fat32_fault_create_copies|second_free={}|second_longer={}|second_shorter={}|second_names={}|second_marks={}|second_links={}|first_marks={}",
+            BUILD_ID,
+            second_free,
+            second_longer,
+            second_shorter,
+            second_names,
+            second_marks,
+            second_links,
+            first_marks
+        );
+        fault_second_judge(second_free, second_names, second_shorter, first_marks);
+        pass("between a failed create and the create made again the second FAT copy is as pinned")
+    }
     // Both cases' lines carry the second copy's fields (WP-138); the once case adds its own.
     let mode = if once {
         alloc::format!(
@@ -3836,7 +3875,7 @@ fn fat32_fault_create(once: bool) -> ! {
         String::new()
     };
     kprintln!(
-        "OSX|{}|ktest|{}|dirty={}|control={}|writes={}|filled={}|failed={}|io={}|stopped={}|absent={}|grown={}|retry_ok={}|retry_grew={}|names={}|dir_clusters={}|synced={}|live_files={}|first_same={}|second_free={}|second_longer={}|second_names={}|second_marks={}|second_shorter={}|first_marks={}{}",
+        "OSX|{}|ktest|{}|dirty={}|control={}|writes={}|filled={}|failed={}|io={}|stopped={}|absent={}|grown={}|retry_ok={}|retry_grew={}|names={}|dir_clusters={}|synced={}|live_files={}|first_same={}|second_free={}|second_longer={}|second_names={}|second_marks={}|second_shorter={}|first_marks={}|second_links={}{}",
         BUILD_ID,
         case,
         u8::from(dirty),
@@ -3861,6 +3900,7 @@ fn fat32_fault_create(once: bool) -> ! {
         second_marks,
         second_shorter,
         first_marks,
+        second_links,
         mode
     );
     if !dirty {
@@ -3869,15 +3909,7 @@ fn fat32_fault_create(once: bool) -> ! {
     if first_same != writes {
         fail("the test's own reader of the first FAT copy does not read the directory as the file system does")
     }
-    if second_free != 0 {
-        fail("after a create under the hook the directory's chain along the second FAT copy stands on a cluster that is free there, or does not end")
-    }
-    if second_names != 0 {
-        fail("after a create under the hook the two FAT copies do not list the same names in the directory")
-    }
-    if second_shorter != 0 || first_marks != 0 {
-        fail("after a create under the hook the second FAT copy is behind the first: the directory's chain is shorter along it, or a cluster is marked in the first copy and free in the second")
-    }
+    fault_second_judge(second_free, second_names, second_shorter, first_marks);
     if once {
         // strays and ghost are judged before the count of disk writes: under one refused write
         // a swallowed refusal shows in the directory too, not only in that count.
