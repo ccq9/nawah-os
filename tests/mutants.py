@@ -1048,17 +1048,18 @@ MUTANTS = [
     ("M258", "kernel/src/fs/fat32.rs",
      "                        block::write(base + u64::from(i), &zero)?;\n",
      "                        let _ = block::write(base + u64::from(i), &zero);\n",
-     ["TST-M3-FAT32-FAULT-ONE-WRITE"], "SECURITY: a new cluster whose zeroing the disk refused is linked into the file with whatever it held before, and the write answers success: the sweeps' lines carry failed=20, bad=3 and ghost=3 for a new file and failed=8 for an append, TST-M3-FAT32-FAULT-ONE-WRITE FAIL"),
+     ["TST-M3-FAT32-FAULT-ONE-WRITE"], "SECURITY: a write whose new cluster the disk refused to zero goes on and answers success; the case sees that answer (on the lab's volume a cluster is one sector and the data write that follows covers it, so no unzeroed byte is left to read here; where a cluster is not covered, as in a directory that grows, it would be: WP-133): the sweeps' lines carry failed=20, bad=3 and ghost=3 for a new file and failed=8 for an append, TST-M3-FAT32-FAULT-ONE-WRITE FAIL"),
     # M259: the refusal of a data write is swallowed.
     ("M259", "kernel/src/fs/fat32.rs",
      "            block::write(sector, &s)?;\n            done += n;\n",
      "            let _ = block::write(sector, &s);\n            done += n;\n",
      ["TST-M3-FAT32-FAULT-ONE-WRITE"], "SECURITY: a write whose data the disk refused answers success and the file reads bytes that were never stored: the sweeps' lines carry failed=20, bad=3 and ghost=3 for a new file and failed=8 for an append, TST-M3-FAT32-FAULT-ONE-WRITE FAIL"),
-    # M260: after a refused data write the entry is written and the first error returned.
+    # M260: after a refused data write one more disk write is asked for (the entry as it was)
+    # before the error is returned.
     ("M260", "kernel/src/fs/fat32.rs",
      "            block::write(sector, &s)?;\n            done += n;\n",
      "            if let Err(e) = block::write(sector, &s) {\n                let _ = self.store_entry(file);\n                return Err(FsError::Io(e));\n            }\n            done += n;\n",
-     ["TST-M3-FAT32-FAULT-ONE-WRITE"], "SECURITY: a write whose disk write was refused goes on writing and reports the error at its end: the answer and the image are those of a call that stopped, and only the count of its disk writes differs: the sweeps' lines carry stopped=20, 8 and 8 beside failed=23, 9 and 9, TST-M3-FAT32-FAULT-ONE-WRITE FAIL"),
+     ["TST-M3-FAT32-FAULT-ONE-WRITE"], "SECURITY: a write whose data write was refused asks for one more disk write (the entry as it was) and then reports the error: the answer and the image are those of a call that stopped, and only the count of its disk writes differs: the sweeps' lines carry stopped=20, 8 and 8 beside failed=23, 9 and 9, TST-M3-FAT32-FAULT-ONE-WRITE FAIL"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
