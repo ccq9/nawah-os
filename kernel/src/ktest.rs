@@ -3746,9 +3746,10 @@ fn fault_create_path(n: u32) -> alloc::vec::Vec<u8> {
 /// first, before the clusters are dirtied, so that its file takes none of them.
 ///
 /// TST-M3-FAT32-FAULT-CREATE-COPIES (WP-138, after its close audit) is the sweep under one
-/// refused write once more (`copies`), printing and judging, once the sweep has started,
-/// nothing but what is read along the second FAT copy after every create under the hook (the
-/// checks before the sweep stop it as in the other create cases).
+/// refused write once more (`copies`): once the sweep has started it prints the count of the
+/// sweep's calls and what is read along the second FAT copy after every create under the hook,
+/// and judges nothing but the latter (the checks before the sweep stop it as in the other
+/// create cases).
 fn fat32_fault_create(once: bool, copies: bool) -> ! {
     use crate::fs::vfs;
     if crate::fs::mount().is_err() {
@@ -3787,6 +3788,7 @@ fn fat32_fault_create(once: bool, copies: bool) -> ! {
         (0u32, 0u32, 0u32, 0u32);
     let (mut second_marks, mut second_shorter, mut first_marks) = (0u32, 0u32, 0u32);
     let mut second_links = 0u32;
+    let mut calls = 0u32;
     for n in 1..=writes {
         filled += u32::from(fault_dir_fill(&mut filler));
         let path = fault_create_path(n);
@@ -3844,13 +3846,15 @@ fn fat32_fault_create(once: bool, copies: bool) -> ! {
                 && last.map(|s| s.0) == before.map(|s| s.0 + 1),
         );
         retry_grew += u32::from(matches!((after, last), (Some(a), Some(l)) if l.1 > a.1));
+        calls += 1;
     }
     let synced = vfs::sync().is_ok();
     let (names, clusters) = fault_dir_state().unwrap_or((0, 0));
     if copies {
         kprintln!(
-            "OSX|{}|ktest|fat32_fault_create_copies|second_free={}|second_longer={}|second_shorter={}|second_names={}|second_marks={}|second_links={}|first_marks={}",
+            "OSX|{}|ktest|fat32_fault_create_copies|calls={}|second_free={}|second_longer={}|second_shorter={}|second_names={}|second_marks={}|second_links={}|first_marks={}",
             BUILD_ID,
+            calls,
             second_free,
             second_longer,
             second_shorter,

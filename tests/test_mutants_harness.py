@@ -367,11 +367,12 @@ class ToolingMain(unittest.TestCase):
             class R:
                 returncode, stdout = 1, "build failed"
 
-            names = ("REPO", "MUTANTS", "sh", "run_killers", "all_cases", "suite_of", "needs_release")
+            names = ("REPO", "MUTANTS", "EXPECT", "sh", "run_killers", "all_cases", "suite_of", "needs_release")
             orig = {n: getattr(mutants, n) for n in names}
             argv = sys.argv
             mutants.REPO = repo
             mutants.MUTANTS = [("M998", rel, "clean", "mutated", killers, "synthetic")]
+            mutants.EXPECT = {}
             mutants.sh = lambda cmd, cwd, env=None, timeout=0: (built.append(cmd), R())[1]
             mutants.run_killers = lambda wt, env, target, ks, early_exit=False: ([], {k: "PASS" for k in ks})
             mutants.all_cases = lambda target: swept.append(target) or []
@@ -415,15 +416,16 @@ class InvalidSecurity(unittest.TestCase):
         import subprocess
         with tempfile.TemporaryDirectory() as tmp:
             repo, _ = scratch_repo(tmp)
-            orig = mutants.REPO, mutants.MUTANTS, sys.argv
+            orig = mutants.REPO, mutants.MUTANTS, sys.argv, mutants.EXPECT
             mutants.REPO = repo
+            mutants.EXPECT = {}
             mutants.MUTANTS = [("M999", "kernel/a.rs", "no such anchor", "x", ["TST-X"], "synthetic")]
             mutants.SECURITY.add("M999")
             sys.argv = ["mutants.py", "--report", "build/r.json"]
             try:
                 rc = mutants.main()
             finally:
-                mutants.REPO, mutants.MUTANTS, sys.argv = orig
+                mutants.REPO, mutants.MUTANTS, sys.argv, mutants.EXPECT = orig
                 mutants.SECURITY.discard("M999")
                 subprocess.run(["git", "worktree", "prune"], cwd=repo)
             self.assertEqual(rc, 1)
@@ -484,6 +486,203 @@ class PartialReport(unittest.TestCase):
             finally:
                 mutants.REPO = orig
             self.assertEqual(got["mutants"][0]["id"], "M82")
+
+
+class KillEvidence(unittest.TestCase):
+    """The owner's audit of WP-138: the harness recorded only that a declared killer FAILED, not
+    why, so a timeout or a setup failure read "killed" like the failure of the field the mutant is
+    about, and the scratch serial logs were deleted right after. Each failed killer now keeps its
+    kill evidence before the scratch is emptied (the driver's reason, the run id and the test
+    kernel's `|ktest|` lines of that run, bounded per boot), in the report and on stdout; EXPECT
+    declares the substrings a mutant's kill must show, and a kill that does not show them fails
+    the run whatever the ratio. main() runs on a scratch repository with the driver stubbed."""
+
+    MID = "M997"
+    NAMES = "|ktest|fail|after a create under the hook the two FAT copies do not list the same names"
+
+    def _main(self, cases, expect=None, check=False, killers=None, mutants_list=None):
+        """`cases` maps a killer id to (rc, verdict stdout, {file under the run dir: text}) for a
+        guest killer, or to ("host", rc) for a host killer. Returns (rc, report, stdout, entry)."""
+        import contextlib
+        import io
+        import subprocess
+        killers = killers if killers is not None else list(cases)
+        with tempfile.TemporaryDirectory() as tmp:
+            repo, _ = scratch_repo(tmp)
+
+            class R:
+                def __init__(self, rc, out):
+                    self.returncode, self.stdout = rc, out
+
+            def fake_sh(cmd, cwd, env=None, timeout=0):
+                if cmd[0] == "cargo":
+                    return R(0, "")
+                tid = cmd[-1]
+                spec = cases[tid]
+                scratch = pathlib.Path(env["NAWAH_SCRATCH_EVIDENCE"])
+                if spec[0] == "host":
+                    if env.get("NAWAH_ROOT") == str(mutants.REPO):
+                        return R(0, "")
+                    (scratch / "RH").mkdir(exist_ok=True)
+                    (scratch / "RH" / "stderr.log").write_text("Ran 2 tests\n\nFAILED (failures=1)\n")
+                    return R(spec[1], f"{tid}: FAIL run=RH\n")
+                rc, out, files = spec
+                for name, text in files.items():
+                    run = re.search(r" run=(\S+)", out).group(1)
+                    (scratch / run).mkdir(exist_ok=True)
+                    (scratch / run / name).write_text(text)
+                return R(rc, out)
+
+            names = ("REPO", "MUTANTS", "sh", "all_cases", "suite_of", "host_suite_of", "needs_release", "needs_image")
+            orig = {n: getattr(mutants, n) for n in names}
+            orig_expect = getattr(mutants, "EXPECT", None)
+            orig_clean = dict(mutants._CLEAN_HOST)
+            argv = sys.argv
+            mutants.REPO = repo
+            mutants.MUTANTS = mutants_list if mutants_list is not None else [(self.MID, "kernel/a.rs", "clean", "mutated", killers, "synthetic")]
+            mutants.EXPECT = expect or {}
+            mutants.sh = fake_sh
+            mutants.all_cases = lambda target: []
+            mutants.suite_of = lambda target, tid: None if cases.get(tid, ("",))[0] == "host" else "M3"
+            mutants.host_suite_of = lambda wt, tid: "M0"
+            mutants.needs_release = lambda target, ks: False
+            mutants.needs_image = lambda target, rel, ks: False
+            mutants._CLEAN_HOST.clear()
+            sys.argv = ["mutants.py", "--report", "build/r.json"] + (["--check"] if check else [])
+            buf = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(buf):
+                    rc = mutants.main()
+            finally:
+                for n, v in orig.items():
+                    setattr(mutants, n, v)
+                if orig_expect is None:
+                    del mutants.EXPECT
+                else:
+                    mutants.EXPECT = orig_expect
+                mutants._CLEAN_HOST.clear(); mutants._CLEAN_HOST.update(orig_clean)
+                sys.argv = argv
+                subprocess.run(["git", "worktree", "prune"], cwd=repo)
+            p = repo / "build" / "r.json"
+            report = json.loads(p.read_text()) if p.exists() else {}
+            entry = report["mutants"][0] if report.get("mutants") else {}
+            return rc, report, buf.getvalue(), entry
+
+    @staticmethod
+    def guest(tid, reason, serial, run="R1", rc=1):
+        files = serial if isinstance(serial, dict) else {"serial.log": serial}
+        return (rc, f"{tid} pc-qemu: FAIL ({reason}) run={run}\n  serial| ...\n", files)
+
+    FIELD = "OSX|00000000003e5|ktest|fat32_fault_create|calls=8|second_names=1|second_free=0\n"
+
+    def test_a_failed_guest_killer_keeps_reason_run_and_ktest_lines(self):
+        serial = "boot noise\n" + self.FIELD + "OSX|b|kernel|other\nOSX|b" + self.NAMES + "\n"
+        rc, report, out, entry = self._main({"TST-G1": self.guest("TST-G1", "exit 37 != expected 33", serial),
+                                             "TST-G2": (0, "", {})})
+        self.assertEqual(rc, 0)
+        self.assertEqual(entry["status"], "killed")
+        self.assertEqual(entry["kills"], {"TST-G1": {"reason": "exit 37 != expected 33", "run": "R1",
+                                                     "lines": [self.FIELD.strip(), "OSX|b" + self.NAMES]}})
+        lines = out.splitlines()
+        first = next(i for i, l in enumerate(lines) if l.startswith(f"{self.MID}: killed by TST-G1 ["))
+        self.assertRegex(lines[first], r"^M997: killed by TST-G1 \[[0-9.]+s\] \(synthetic\)$")
+        below = "\n".join(lines[first + 1:first + 4])
+        self.assertIn("exit 37 != expected 33", below)
+        self.assertIn("R1", below)
+        self.assertIn("|second_names=1|", below)
+        self.assertIn(self.NAMES, below)
+        self.assertTrue(all(l.startswith("  ") for l in lines[first + 1:first + 4]), lines[first + 1:first + 4])
+        self.assertEqual(report["expected_missed"], [])
+
+    def test_multi_boot_logs_are_bounded_per_boot_and_a_missing_log_is_no_error(self):
+        many = "".join(f"OSX|b|ktest|n|{i}\n" for i in range(20)) + "OSX|b|ktest|long|" + "x" * 1000 + "\n"
+        rc, _, _, entry = self._main({
+            "TST-G1": self.guest("TST-G1", "exit 37 != expected 33",
+                                 {"serial-1.log": "OSX|b|ktest|phase1|ok\n", "serial-2.log": many,
+                                  "serial.log": "=== phase 1 ===\nOSX|b|ktest|phase1|ok\n=== phase 2 ===\n" + many}),
+            "TST-G2": self.guest("TST-G2", "timeout (hang)", {}, run="R2")})
+        got = entry["kills"]["TST-G1"]["lines"]
+        self.assertEqual(got[0], "OSX|b|ktest|phase1|ok")
+        self.assertEqual(len(got), 1 + 12)
+        self.assertEqual(got[1], "OSX|b|ktest|n|9")
+        self.assertEqual(len(got[-1]), 600)
+        self.assertEqual(entry["kills"]["TST-G2"], {"reason": "timeout (hang)", "run": "R2", "lines": []})
+
+    def test_a_host_killer_keeps_its_reason_and_no_lines(self):
+        rc, _, _, entry = self._main({"TST-H": ("host", 1)})
+        self.assertEqual(entry["status"], "killed")
+        self.assertEqual(entry["kills"]["TST-H"]["run"], "RH")
+        self.assertEqual(entry["kills"]["TST-H"]["lines"], [])
+        self.assertTrue(entry["kills"]["TST-H"]["reason"])
+
+    def test_a_met_expectation_passes(self):
+        rc, report, out, entry = self._main(
+            {"TST-G1": self.guest("TST-G1", "exit 37 != expected 33", self.FIELD + "OSX|b" + self.NAMES + "\n")},
+            expect={self.MID: {"TST-G1": ["exit 37", "|calls=8|", "|second_names=1|", self.NAMES]}})
+        self.assertEqual(rc, 0)
+        self.assertNotIn("expected_missed", entry)
+        self.assertEqual(report["expected_missed"], [])
+
+    def _missed(self, cases, expect, killer, substring):
+        rc, report, out, entry = self._main(cases, expect={self.MID: expect})
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(entry["status"], "killed", "the kill itself is still decided as before")
+        self.assertEqual(report["ratio"], 1.0)
+        self.assertEqual(report["expected_missed"], [self.MID])
+        self.assertTrue(any(killer in m and substring in m for m in entry["expected_missed"]), entry["expected_missed"])
+        last = out.strip().splitlines()[-1]
+        self.assertTrue(last.startswith("FAIL:"), last)
+        self.assertIn(self.MID, last.split("expected_missed=")[1])
+        return entry
+
+    def test_a_field_with_another_value_misses_the_expectation(self):
+        self._missed({"TST-G1": self.guest("TST-G1", "exit 37 != expected 33",
+                                           self.FIELD.replace("second_names=1", "second_names=0") + "OSX|b|ktest|fail|another check\n")},
+                     {"TST-G1": ["exit 37", "|second_names=1|"]}, "TST-G1", "|second_names=1|")
+
+    def test_a_timeout_is_not_the_declared_kill(self):
+        self._missed({"TST-G1": self.guest("TST-G1", "timeout (hang)", "OSX|b|ktest|start|fat32_fault_create\n")},
+                     {"TST-G1": ["|second_names=1|"]}, "TST-G1", "|second_names=1|")
+
+    def test_a_setup_failure_before_the_sweep_is_not_the_declared_kill(self):
+        self._missed({"TST-G1": self.guest("TST-G1", "exit 37 != expected 33",
+                                           "OSX|b|ktest|start|fat32_fault_create\nOSX|b|ktest|fail|could not format the volume\n")},
+                     {"TST-G1": ["exit 37", "|second_names=1|"]}, "TST-G1", "|second_names=1|")
+
+    def test_an_expected_killer_that_did_not_fail_is_missed(self):
+        rc, report, out, entry = self._main(
+            {"TST-G1": self.guest("TST-G1", "exit 37 != expected 33", self.FIELD), "TST-G2": (0, "", {})},
+            expect={self.MID: {"TST-G2": ["exit 37"]}})
+        self.assertEqual(rc, 1)
+        self.assertEqual(report["expected_missed"], [self.MID])
+        self.assertTrue(any("TST-G2" in m for m in entry["expected_missed"]), entry["expected_missed"])
+
+    def test_check_refuses_an_expectation_that_names_nothing_real(self):
+        for expect, named in (({"M996": {"TST-G1": ["x"]}}, "M996"),
+                              ({self.MID: {"TST-OTHER": ["x"]}}, "TST-OTHER"),
+                              ({self.MID: {"TST-G1": []}}, "TST-G1")):
+            rc, _, out, _ = self._main({"TST-G1": (0, "", {})}, expect=expect, check=True)
+            self.assertEqual(rc, 1, (expect, out))
+            self.assertIn(named, out.strip().splitlines()[-1] + "\n" + out, expect)
+            self.assertIn("EXPECT", out, expect)
+
+    def test_a_mutant_without_expectation_is_judged_as_before(self):
+        rc, report, out, entry = self._main(
+            {"TST-G1": self.guest("TST-G1", "missing markers ['x']; forbidden present []", "OSX|b|ktest|fail|y\n")},
+            expect={})
+        self.assertEqual((rc, entry["status"], entry["killed_by"]), (0, "killed", ["TST-G1"]))
+        self.assertNotIn("expected_missed", entry)
+        self.assertEqual(entry["kills"]["TST-G1"]["reason"], "missing markers ['x']; forbidden present []")
+        self.assertEqual(report["expected_missed"], [])
+
+    def test_the_declared_expectations_name_registered_mutants_and_declared_killers(self):
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        self.assertEqual(mutants.expect_errors(), [])
+        for mid in ("M262", "M265", "M268", "M219", "M261"):
+            self.assertIn(mid, mutants.EXPECT)
+            for k, subs in mutants.EXPECT[mid].items():
+                self.assertIn(k, by_id[mid][4])
+                self.assertIn("exit 37", subs)
 
 
 if __name__ == "__main__":

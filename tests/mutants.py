@@ -1074,7 +1074,7 @@ MUTANTS = [
     ("M262", "kernel/src/fs/fat32.rs",
      "                let n = self.alloc_cluster()?;\n                self.fat_set(tail, n)?;\n                EntryLoc {\n                    cluster: n,\n                    index: 0,\n                }\n            }\n        };\n",
      "                let n = self.alloc_cluster()?;\n                let loc = EntryLoc {\n                    cluster: n,\n                    index: 0,\n                };\n                let e = Entry {\n                    name,\n                    attr: ATTR_ARCHIVE,\n                    first: 0,\n                    size: 0,\n                    loc,\n                };\n                self.store_entry(&e)?;\n                self.fat_set(tail, n)?;\n                return Ok(e);\n            }\n        };\n",
-     ["TST-M3-FAT32-FAULT-CREATE", "TST-M3-FAT32-FAULT-ONE-CREATE", "TST-M3-FAT32-FAULT-CREATE-COPIES"], "the order of a growth's last writes is reversed: with the last write refused, the reversed order leaves a marked cluster that holds an entry and that the directory does not reach along the first FAT copy (lost once the create made again links another), where the present order leaves an empty cluster at the directory's end; no answer and no name along the first copy differs (the entry's name is then listed along the second FAT copy and not along the first until the next create: second_names=1 in both create cases, which read the second copy since WP-138); the line carries grown=0, retry_grew=8 and second_names=1 (the case's own judgement fails on the last) and the host counts six lost clusters where five are pinned, TST-M3-FAT32-FAULT-CREATE FAIL; TST-M3-FAT32-FAULT-ONE-CREATE FAIL by the same three fields; TST-M3-FAT32-FAULT-CREATE-COPIES, which once its sweep has started prints and judges nothing but the second copy's fields, FAIL by second_names=1 alone"),
+     ["TST-M3-FAT32-FAULT-CREATE", "TST-M3-FAT32-FAULT-ONE-CREATE", "TST-M3-FAT32-FAULT-CREATE-COPIES"], "the order of a growth's last writes is reversed: with the last write refused, the reversed order leaves a marked cluster that holds an entry and that the directory does not reach along the first FAT copy (lost once the create made again links another), where the present order leaves an empty cluster at the directory's end; no answer and no name along the first copy differs (the entry's name is then listed along the second FAT copy and not along the first until the next create: second_names=1 in both create cases, which read the second copy since WP-138); the line carries grown=0, retry_grew=8 and second_names=1 (the case's own judgement fails on the last) and the host counts six lost clusters where five are pinned, TST-M3-FAT32-FAULT-CREATE FAIL; TST-M3-FAT32-FAULT-ONE-CREATE FAIL by the same three fields; TST-M3-FAT32-FAULT-CREATE-COPIES, which once its sweep has started judges nothing but the second copy's fields, FAIL by second_names=1 alone"),
     # M263 (SECURITY): the refusal of the new entry's write is swallowed.
     ("M263", "kernel/src/fs/fat32.rs",
      "        self.store_entry(&e)?;\n        Ok(e)\n",
@@ -1102,14 +1102,14 @@ MUTANTS = [
     ("M268", "kernel/src/fs/fat32.rs",
      "                let n = self.alloc_cluster()?;\n                self.fat_set(tail, n)?;\n",
      "                let n = self\n                    .nth_free(1, self.alloc_end())?\n                    .ok_or(FsError::DiskFull)?;\n                self.fat_set(n, EOC)?;\n                let off = tail as usize * 4;\n                let mut s = [0u8; SECTOR];\n                for k in [1, 0] {\n                    let sector =\n                        u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;\n                    block::read(sector, &mut s)?;\n                    s[off % SECTOR..off % SECTOR + 4].copy_from_slice(&n.to_le_bytes());\n                    block::write(sector, &s)?;\n                    if k == 1 {\n                        block::write(self.cluster_sector(n)?, &[0u8; SECTOR])?;\n                        self.fsinfo_adjust(-1, n + 1)?;\n                    }\n                }\n",
-     ["TST-M3-FAT32-FAULT-CREATE", "TST-M3-FAT32-FAULT-ONE-CREATE", "TST-M3-FAT32-FAULT-CREATE-COPIES"], "SECURITY: a growth that writes the second FAT copy's link of the directory's tail before it zeroes the new cluster: when the zeroing is refused, the second copy's chain of the directory is left on a cluster that still holds what a deleted file left, and a reader of that copy lists those entries as names; the create made again writes the link over, so the final image does not hold the link, and the host check and every number the create cases took before WP-138 are the present code's (by reading, the image differs only where nothing is pinned: FSInfo's free count, one decrement fewer, and one more lost cluster left unzeroed; seen locally: both cases as they were at fa8132331 pass with it); read before the create is made again, the line carries second_names=1 (the case's own judgement fails) and second_longer=4 where 1 is pinned, TST-M3-FAT32-FAULT-CREATE FAIL; TST-M3-FAT32-FAULT-ONE-CREATE FAIL by the same two fields; TST-M3-FAT32-FAULT-CREATE-COPIES, which once its sweep has started prints and judges nothing but the second copy's fields, FAIL (second_names=1, second_longer=4, second_links=4)"),
+     ["TST-M3-FAT32-FAULT-CREATE", "TST-M3-FAT32-FAULT-ONE-CREATE", "TST-M3-FAT32-FAULT-CREATE-COPIES"], "SECURITY: a growth that writes the second FAT copy's link of the directory's tail before it zeroes the new cluster: when the zeroing is refused, the second copy's chain of the directory is left on a cluster that still holds what a deleted file left, and a reader of that copy lists those entries as names; the create made again writes the link over, so the final image does not hold the link, and the host check and every number the create cases took before WP-138 are the present code's (by reading, the image differs only where nothing is pinned: FSInfo's free count, one decrement fewer, and one more lost cluster left unzeroed; seen locally: both cases as they were at fa8132331 pass with it); read before the create is made again, the line carries second_names=1 (the case's own judgement fails) and second_longer=4 where 1 is pinned, TST-M3-FAT32-FAULT-CREATE FAIL; TST-M3-FAT32-FAULT-ONE-CREATE FAIL by the same two fields; TST-M3-FAT32-FAULT-CREATE-COPIES, which once its sweep has started judges nothing but the second copy's fields, FAIL (second_names=1, second_longer=4, second_links=4)"),
     # M265 (SECURITY, WP-134, files.md v1.13, ADR-0014 item 14): a refusal that is answered only
     # after more disk writes. After the refused link of the directory's tail the create asks for
     # the writes that free the new cluster, then returns the error.
     ("M265", "kernel/src/fs/fat32.rs",
      "                self.fat_set(tail, n)?;\n",
      "                if let Err(e) = self.fat_set(tail, n) {\n                    let _ = self.fat_set(n, 0);\n                    return Err(e);\n                }\n",
-     ["TST-M3-FAT32-FAULT-ONE-CREATE", "TST-M3-FAT32-FAULT-CREATE-COPIES"], "SECURITY: a create whose link the disk refused goes on writing before it answers the error (files.md v1.12: it asks for no disk write after the refused one): with one write refused alone the line carries stopped=6 beside failed=8 and the host counts 3 lost clusters where 5 are pinned, since the new cluster is freed again (when the refused write is the link's second, the second FAT copy is left with the directory's tail linked to a free cluster until the next create: second_free=1, read since WP-138), TST-M3-FAT32-FAULT-ONE-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-CREATE fails too, by stopped=6 alone); TST-M3-FAT32-FAULT-CREATE-COPIES, which once its sweep has started prints and judges nothing but the second copy's fields, FAIL by second_free=1 and second_longer=0"),
+     ["TST-M3-FAT32-FAULT-ONE-CREATE", "TST-M3-FAT32-FAULT-CREATE-COPIES"], "SECURITY: a create whose link the disk refused goes on writing before it answers the error (files.md v1.12: it asks for no disk write after the refused one): with one write refused alone the line carries stopped=6 beside failed=8 and the host counts 3 lost clusters where 5 are pinned, since the new cluster is freed again (when the refused write is the link's second, the second FAT copy is left with the directory's tail linked to a free cluster until the next create: second_free=1, read since WP-138), TST-M3-FAT32-FAULT-ONE-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-CREATE fails too, by stopped=6 alone); TST-M3-FAT32-FAULT-CREATE-COPIES, which once its sweep has started judges nothing but the second copy's fields, FAIL by second_free=1 and second_longer=0"),
     # M264 (SECURITY, from WP-133's red team): the zeroing of a new cluster lands on the sector
     # after it. The count of disk writes does not change, and on an image whose free clusters
     # are zeros the create case read every number it reads without the fault; it now dirties
@@ -1553,6 +1553,93 @@ def needs_release(target, killers):
     return any(k in cases and cases[k].get("artifact", default) == "${OUT}/NAWAH.EFI" for k in killers)
 
 
+# Kill evidence (the owner's audit of WP-138): a killer's FAIL alone does not say why it failed (a
+# timeout, a setup failure and the failure of the field a mutant is about all read "killed"), and
+# the scratch evidence is deleted right after each mutant. run_killers keeps, for every FAIL, the
+# driver's reason, the run id and the test kernel's `|ktest|` lines of that run (the last
+# KILL_LINES of each boot, each cut at KILL_LINE_CHARS) in KILLS; main() copies them into the
+# mutant's report entry and prints them under its line before the scratch is emptied.
+KILLS = {}
+KILL_LINES = 12
+KILL_LINE_CHARS = 600
+KILL_REASON_CHARS = 1000
+
+# Declared expectations: {mutant id: {declared killer: [substring, ...]}}. Every substring must
+# occur in that killer's kept reason + "\n" + its kept lines, or the mutant is `expected_missed`
+# and the run fails whatever the ratio: a kill that cannot be shown to be the declared one does
+# not pass the gate. The strings are the lines the test kernel printed for each kill.
+_NAMES = "|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory"
+_FREE = "|ktest|fail|after a create under the hook the directory's chain along the second FAT copy stands on a cluster that is free there"
+EXPECT = {
+    "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|second_names=1|", _NAMES],
+             "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|second_names=1|", _NAMES],
+             "TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_names=1|", _NAMES]},
+    "M265": {"TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|second_free=1|", _FREE],
+             "TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_free=1|", _FREE]},
+    "M268": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|second_names=1|", "|second_longer=4|", _NAMES],
+             "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|second_names=1|", "|second_longer=4|", _NAMES],
+             "TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_names=1|", "|second_longer=4|", "|second_links=4|", _NAMES]},
+    "M219": {"TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_shorter=2|", "|second_links=2|", _NAMES]},
+    "M261": {"TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_names=1|", _NAMES]},
+}
+
+
+def expect_errors():
+    """EXPECT checked statically: every mutant registered, every killer among that mutant's
+    declared killers, every substring list non-empty and without an empty string."""
+    by_id = {m[0]: m for m in MUTANTS}
+    errs = []
+    for mid, per in EXPECT.items():
+        if mid not in by_id:
+            errs.append(f"EXPECT names {mid}, which is not a registered mutant")
+            continue
+        for k, subs in per.items():
+            if k not in by_id[mid][4]:
+                errs.append(f"EXPECT {mid} names {k}, which is not among {mid}'s declared killers")
+            if not subs or any(not s for s in subs):
+                errs.append(f"EXPECT {mid} {k}: empty substring list or empty substring")
+    return errs
+
+
+def kill_evidence(out: str, env, tid, target, host: bool):
+    """What a FAIL of `tid` leaves to judge the kill by, read before the scratch is emptied: the
+    driver's reason and run id from its verdict line, and (guest cases) the `|ktest|` lines of
+    each boot of that run (serial-N.log for a multi-phase case, serial.log otherwise). A missing
+    log gives no lines, never an error."""
+    if host:
+        m = re.search(rf"^{re.escape(tid)}: FAIL run=(\S+)", out, re.M)
+        return {"reason": "host: the runner reported failing tests and the case passes on the clean checkout",
+                "run": m.group(1) if m else "", "lines": []}
+    hits = re.findall(rf"^{re.escape(tid)} {re.escape(target)}: FAIL \((.*)\) run=(\S+)\s*$", out, re.M)
+    reason, run = hits[-1] if hits else ("", "")
+    lines = []
+    scratch = env.get("NAWAH_SCRATCH_EVIDENCE")
+    if scratch and run and "/" not in run and run not in (".", ".."):
+        d = Path(scratch) / run
+        boots = sorted(d.glob("serial-*.log"), key=lambda p: (len(p.name), p.name)) or [d / "serial.log"]
+        for p in boots:
+            try:
+                text = p.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            kept = [l.rstrip("\r")[:KILL_LINE_CHARS] for l in text.splitlines() if "|ktest|" in l]
+            lines += kept[-KILL_LINES:]
+    return {"reason": reason[:KILL_REASON_CHARS], "run": run, "lines": lines}
+
+
+def expected_misses(mid, results):
+    """The declared expectations of `mid` that its kills do not show (killer and substring)."""
+    missed = []
+    for k, subs in EXPECT.get(mid, {}).items():
+        ev = KILLS.get(k)
+        if results.get(k) != "FAIL" or ev is None:
+            missed.append(f"{k}: did not FAIL ({results.get(k, 'not run')})")
+            continue
+        hay = ev["reason"] + "\n" + "\n".join(ev["lines"])
+        missed += [f"{k}: {s!r} not in its reason or kept lines" for s in subs if s not in hay]
+    return missed
+
+
 def run_killers(wt: Path, env, target, killers, early_exit=False):
     """Returns (killed_by: list, results: {test_id: PASS|FAIL|SKIPPED|ERROR}). Every case runs
     through its suite entry (the strong oracle); a missing artifact (exit 20) is SKIPPED and a
@@ -1590,6 +1677,7 @@ def run_killers(wt: Path, env, target, killers, early_exit=False):
             results[tid] = "ERROR"
         else:
             results[tid] = "FAIL"
+            KILLS[tid] = kill_evidence(r.stdout, env, tid, target, host_suite is not None)
             if early_exit:
                 break
     return [t for t, v in results.items() if v == "FAIL"], results
@@ -1619,7 +1707,8 @@ def gate_verdict(report) -> bool:
     report["surviving_security"] = [m for m in report["survived"] if security_of(m)]
     report["invalid_security"] = [m for m in report["invalid"] if security_of(m)]
     return bool(report["ratio"] >= THRESHOLD and report["valid"] and not report["surviving_security"]
-                and not report["invalid_security"])
+                and not report["invalid_security"] and not report.get("expected_missed")
+                and not report.get("expect_errors"))
 
 
 def main():
@@ -1637,6 +1726,11 @@ def main():
     scratch.mkdir()
     subprocess.run(["git", "worktree", "add", "-q", "--detach", str(wt), "HEAD"], cwd=REPO, check=True)
     report = {"threshold": THRESHOLD, "target": a.target, "mutants": [], "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    bad_expect = expect_errors()
+    for e in bad_expect:
+        print(e)
+    if bad_expect:
+        report["expect_errors"] = bad_expect
     try:
         env = harness_env(os.environ, wt, scratch)
         env.setdefault("RUSTUP_TOOLCHAIN", os.environ.get("RUSTUP_TOOLCHAIN", ""))
@@ -1697,7 +1791,9 @@ def main():
             if built and not build_image():
                 entry.update(status="invalid", seconds=round(time.time() - t0, 1)); report["mutants"].append(entry)
                 print(f"{mid}: INVALID (does not build) ({note})"); continue
+            KILLS.clear()
             killed_by, results = run_killers(wt, env, a.target, killers)
+            missed = expected_misses(mid, results)
             declared_miss = not killed_by
             if not killed_by and not built and not is_tooling(rel):
                 # A source mutant its host killers missed: the sweep below boots its image.
@@ -1728,9 +1824,17 @@ def main():
             for d in scratch.iterdir():
                 shutil.rmtree(d, ignore_errors=True)
             entry.update(status="killed" if killed_by else "survived", killed_by=killed_by, results=results,
-                         seconds=round(time.time() - t0, 1))
+                         seconds=round(time.time() - t0, 1), kills=dict(KILLS))
+            if missed:
+                entry["expected_missed"] = missed
             report["mutants"].append(entry)
             print(f"{mid}: {'killed by ' + ','.join(killed_by) if killed_by else 'SURVIVED'} [{entry['seconds']}s] ({note})")
+            for k, ev in entry["kills"].items():
+                print(f"  {k}: {ev['reason']} run={ev['run']}")
+                for line in ev["lines"]:
+                    print(f"    {line}")
+            for m_ in missed:
+                print(f"  expected_missed {m_}")
             _write_report(a.report, report)
     finally:
         try:
@@ -1743,6 +1847,7 @@ def main():
     ratio = len(killed) / len(valid) if valid else 0.0
     report.update(valid=len(valid), killed=len(killed), survived=[m["id"] for m in valid if m["status"] == "survived"],
                   declared_killers_missed=[m["id"] for m in report["mutants"] if m.get("declared_killers_missed")],
+                  expected_missed=[m["id"] for m in report["mutants"] if m.get("expected_missed")],
                   invalid=[m["id"] for m in report["mutants"] if m["status"] == "invalid"], ratio=round(ratio, 4),
                   finished=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
     rp = REPO / a.report
@@ -1750,11 +1855,13 @@ def main():
     rp.write_text(json.dumps(report, indent=1) + "\n")
     if a.check:
         bad = [m["id"] for m in report["mutants"] if m["status"] == "invalid"]
-        print(f"\n{'OK' if not bad else 'FAIL'}: {len(report['mutants']) - len(bad)}/{len(report['mutants'])} mutants apply and type-check" + (f"; invalid: {bad}" if bad else ""))
-        return 0 if not bad else 1
+        ok = not bad and not bad_expect
+        print(f"\n{'OK' if ok else 'FAIL'}: {len(report['mutants']) - len(bad)}/{len(report['mutants'])} mutants apply and type-check" + (f"; invalid: {bad}" if bad else "")
+              + (f"; EXPECT errors: {bad_expect}" if bad_expect else ""))
+        return 0 if ok else 1
     verdict = gate_verdict(report)
     _write_report(a.report, report)
-    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; surviving_security={report['surviving_security']}; invalid={report['invalid']}; invalid_security={report['invalid_security']}; declared_killers_missed={report['declared_killers_missed']}; report={a.report}")
+    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; surviving_security={report['surviving_security']}; invalid={report['invalid']}; invalid_security={report['invalid_security']}; declared_killers_missed={report['declared_killers_missed']}; expected_missed={report['expected_missed']}" + (f"; EXPECT errors: {bad_expect}" if bad_expect else "") + f"; report={a.report}")
     return 0 if verdict else 1
 
 
