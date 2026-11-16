@@ -292,7 +292,8 @@
     "WP-134"
    ],
    "requested_at": "2026-11-16T09:30:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-16: the owner chose option A in the session (in plain words: do recommendation A, and do nothing catastrophic; use every skill and feature the project needs): WP-131 and WP-133 stay done and WP-134 is closed on its CI evidence, each read as what its sweeps run; what the acceptances' wider wording is not shown for is owned by WP-138 (the second FAT copy after every failed create), WP-136 (the write shapes no sweep runs) and a later item for the second copy after each call of the write, unlink and truncation sweeps; WP-138 is the next item. The records of the three items keep the lines that say what CI did not show"
   }
  ]
 }
