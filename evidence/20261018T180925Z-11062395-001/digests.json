@@ -1,0 +1,7 @@
+{
+ "boot/e0/main.c": "3c4fcd65b04f783de7322208667e59b84a8a2fb72c737394580d221f3195bea3",
+ "boot/common/efi.h": "3015acd6e82e7065b1ed8ad6daaa6b1a2451dd9d565e0db50db664f62f19fdad",
+ "boot/common/serial.h": "1b50bb95c63a40227ce3d821b080f0a04f4db9ca63d271c08e97b3954087ae10",
+ "platform/pc-qemu-e0/target.json": "4efc8957425bdc92eedcfecbecfbde8d536a7eee9e1f9209d019517af72f54ad",
+ "evidence/20261018T180925Z-11062395-001/artifact/E0.EFI": "2d770ad3589c9a98226c73b5e26b5fba85effee24b837ab01f35b7d8420042d2"
+}
