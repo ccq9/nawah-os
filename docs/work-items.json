@@ -7993,7 +7993,8 @@
     "split from WP-131 at its activation on 2026-11-16, with WP-133: the same create and directory growth under the hook's once mode (write N alone refused), after WP-133 has the sweep in the older mode",
     "from WP-124's red team (2026-11-16, by reading at a2358c37f, nothing run; no CI evidence; to check at activation): a create with a directory that grows (alloc_cluster, the link of the directory's tail, the entry) under the once mode is in no case; two refused writes of one call that are not next to each other, and a write the device refuses and then takes, are shown by no case either (the oracles of WP-124's cases say so)",
     "kernel/src/block/mod.rs (arm_write_fault_once, WP-124); kernel/src/ktest.rs (fault_once_shown, fault_once_tail, fault_once_judge); docs/contracts/files.md v1.10; RSK-027",
-    "moved from WP-133 at its activation on 2026-11-16 (the kernel engineer's reading, by reading): free clusters made dirty with bytes that parse as directory entries before the sweep, so that a zeroing whose refusal is swallowed shows as entries no name owns in the grown directory; it shows nothing under the older mode (every write after the refusal is refused, so no link follows the swallowed zeroing) and belongs to the once mode"
+    "moved from WP-133 at its activation on 2026-11-16 (the kernel engineer's reading, by reading): free clusters made dirty with bytes that parse as directory entries before the sweep, so that a zeroing whose refusal is swallowed shows as entries no name owns in the grown directory; it shows nothing under the older mode (every write after the refusal is refused, so no link follows the swallowed zeroing) and belongs to the once mode",
+    "the kernel engineer's reading of 2026-11-16 (by reading at 6e2f77df8, nothing run; scratch plan): the present code stops at its first refused write and asks for none after it, so under the hook's once mode a create that grows its directory leaves, write for write, what it leaves under the older mode: the line of TST-M3-FAT32-FAULT-CREATE and its host numbers (5, 5 and 5) are expected again. Under one refused write M258 (the zeroing's refusal swallowed) answers success at N=3 with the new cluster linked and never zeroed: the directory lists the new name and fifteen names no create made; M261 (the tail link's refusal swallowed) answers success at N=6 and N=7 for a name no lookup finds; M263 (the entry's refusal swallowed) at N=8 the same; M262 and M264 show what they show under the older mode. No single-site mutant of the growth's writes passes TST-M3-FAT32-FAULT-CREATE as pinned and fails a once-mode case: under the older mode every write asked after the refused one is counted, and a call that asks for none and answers success is seen by its answer; only a mutant of the hook itself would, and that is test tooling. Two fields judge by what is read: the names the directory lists that no create made, after each failed call, and the calls that answered success for a name no lookup finds. The once mode is shown first, before the clusters are dirtied, so that its file takes no dirtied cluster"
    ],
    "files": [
     "kernel/src/ktest.rs",
@@ -8018,7 +8019,8 @@
     "2026-11-16: test_ids name existing cases until this item's own case exists; its id is added in the commit that adds the case",
     "2026-11-16: the part of the input above on two refused writes that are not adjacent and on a write refused and then taken is owned by WP-136, not by this item's acceptance",
     "2026-11-16 inputs from WP-133's work: dirty the free clusters before the sweep, so that a new directory cluster whose zeroing was not done shows as entries no name owns (under WP-133's mode the write after a swallowed zeroing is refused too, and nothing is read from such a cluster); by reading, with one write refused alone M261 (the swallowed refusal of the tail's link) answers success for a name no listing shows and M258 (the swallowed zeroing) leaves a directory cluster that was never zeroed: this item's case must fail on both by what is read, not by the count of disk writes alone",
-    "2026-11-16 correction of the line above (after WP-133's reviews): the dirtying of the free clusters is in WP-133's case, for a zeroing that is wrong with no refusal; this item's sweep runs on the same dirtied clusters for a zeroing whose refusal is swallowed under one refused write. Two more inputs, by reading: keep the handle the create made again returns and write and read through it (WP-133's case drops every handle at once); under one refused write M262 (the entry written before the link) leaves a name reached along the second FAT copy alone for a create that answered an error"
+    "2026-11-16 correction of the line above (after WP-133's reviews): the dirtying of the free clusters is in WP-133's case, for a zeroing that is wrong with no refusal; this item's sweep runs on the same dirtied clusters for a zeroing whose refusal is swallowed under one refused write. Two more inputs, by reading: keep the handle the create made again returns and write and read through it (WP-133's case drops every handle at once); under one refused write M262 (the entry written before the link) leaves a name reached along the second FAT copy alone for a create that answered an error",
+    "2026-11-16 activation estimate, split and design (the manager, from the kernel engineer's reading of the same day at 6e2f77df8, nothing run; an audit pass and a red-team pass before the single push). Estimate: the engineer put the item as it stood, with the handle check and a local run of every suite, at about 80 calls and 170 min, far over the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first); WP-133, measured, took 110 min. Split before activating, as the budget line says: this item keeps the case under one refused write, the two fields that judge by what is read, the mutants and the contract's text; the handle of the create made again is WP-137 (planned, after this item), by this line. With that cut and the local run named below: about 60 calls / 85 min, with little room. The local run before the push, cut to what the change can touch: the whole M3, M6, every host suite and the item's mutants on the final tree; M1, M2, M4 and M5 are not run locally (a full local run is about 50 min; the item changes the test kernel's functions of one case, the case list, the mutants' list and texts, and nothing those suites' cases run); CI runs every suite. The four local checks of every push are run as always. The owner may ask for the full local run instead and a longer budget line. Design, three options: (1) fat32_fault_create and its second boot take the hook's mode and a name, as the write sweeps did in WP-131, and one new guest case, TST-M3-FAT32-FAULT-ONE-CREATE, with its own image, shows the once mode first (before the clusters are dirtied, so that its file takes none of them) and then runs the sweep with write N alone refused; its line carries two more fields, strays (the names /DIR lists that no create made, summed after every failed call and read again in the second boot) and ghost (the calls that answered success for a name no lookup finds), and the once mode's two; the older case's line stays byte for byte what CI proved: chosen; (2) a second copy of the sweep for the once mode: two copies that drift apart; (3) the once sweep inside TST-M3-FAT32-FAULT-CREATE: it doubles that case's lost clusters and changes its pinned numbers: rejected beforehand. Test first, and a correction of the plan line above: it said the red is mutants that pass WP-133's case and fail this one; by the engineer's reading no single-site mutant of the growth's writes does, because under the older mode every write asked after the refused one is counted and a call that asks for none and answers success is seen by its answer. The acceptance does not ask for that; it asks that the mutants that swallow or defer a refusal on those writes are killed. So the case is expected to pass on the present code with WP-133's numbers, and the red is: M258 and M261, which WP-133's case sees by the count of disk writes alone, must fail this case by a field that is read (strays for M258, ghost for M261), and M263, M262 and M264 must fail it; each seen with the mutant in the tree. If a run shows a mutant that does pass WP-133's case and fail this one, it is registered; if the present code fails the sweep, that is the first finding and is fixed test first. What the case will not judge and its oracle must say: a name reached along the second FAT copy alone between a failed create and the next (WP-128), the FSInfo count (WP-129), the lost clusters of each call (WP-135), a read the disk refuses and clusters of more than one sector (WP-136), the returned handle (WP-137)"
    ],
    "acceptance": "with the hook refusing one write alone, for every disk write of a create that must grow its directory, the call answers an I/O error and asks for no write after the refused one, the name is absent, no entry that is not a name's own is read, and no name reaches a free cluster and no two names share one in either FAT copy, shown by a guest case with its own image and its host check on CI; the mutants that swallow or defer a refusal on those writes are killed; files.md (the version free at the merge) states it",
    "test_ids": [
@@ -8028,9 +8030,10 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -8127,11 +8130,60 @@
     "test first, red seen locally: the present code is expected to pass (every read and write is checked by reading); the red is the mutants' (a swallowed read error in fat_set, in store_entry, in the partial-sector write) unless a sweep finds a first defect, which is then fixed test first",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-16 estimate: unmeasured; four groups of inputs, so a split is expected; sized at activation",
-    "2026-11-16 input from WP-133's red team (by reading; nothing run): a create that grows its directory reads before it writes in fat_set, fsinfo_adjust and store_entry, and no case refuses one of those reads"
+    "2026-11-16 input from WP-133's red team (by reading; nothing run): a create that grows its directory reads before it writes in fat_set, fsinfo_adjust and store_entry, and no case refuses one of those reads",
+    "2026-11-16 input from WP-134's design reading (by reading; nothing run): the zeroing of a new cluster of more than one sector, where a refusal or a fault can leave part of it not zeroed, in a create that grows its directory; the lab's volume has clusters of one sector and no case runs it"
    ],
    "acceptance": "for every input of this item taken at activation, a guest case on CI shows that the call answers an error and leaves no name on a free cluster, no two names on one and no directory entry or FAT entry lost that the call did not own, with a mutant for each swallowed read error killed; every input not taken is moved to a named package or refuted by a dated line; files.md (the version free at the merge) states it",
    "test_ids": [
     "TST-M3-FAT32-FAULT-ONE-WRITE",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-137",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-134"
+   ],
+   "inputs": [
+    "split from WP-134 at its activation on 2026-11-16 (from WP-133's red team, by reading): the fault cases of the create drop every handle at once, so live_files=0 says no more than that; nothing shows that the handle a create made again returns, after a failed create, writes and reads",
+    "the kernel engineer's reading of 2026-11-16 (by reading at 6e2f77df8, nothing run; scratch plan): keep the handle of the create made again, write sixteen bytes through it (vfs::write), seek to the start and read them back, close it, and read the file by a fresh lookup; a write of no bytes asks for no disk write and shows nothing; the eight files then take eight data clusters (22 of the 24 dirtied clusters are taken with the growths), the image's lost clusters stay 5, 5 and 5, and the second boot's count of created names splits into empty and written ones; by reading it kills no mutant that exists"
+   ],
+   "files": [
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32: مقبض الإنشاء المُعاد بعد إنشاء فاشل يكتب ويقرأ (مفصول من WP-134 عند تفعيلها، بعدها)",
+    "design to decide in the package (2-3 options with trade-offs): the check inside the once-mode create case (its second boot's line changes: re-pinned as a tightening, said so), against a case of its own, against the same check in the older-mode case too; whether the bytes go through one write or two",
+    "test first, red seen locally: a mutant that only this field sees (for example a node left for the failed create that the create made again then reuses), or a dated line saying that none exists and what the field is for",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; sized at activation",
+    "2026-11-16: test_ids name existing cases until this item's own fields exist"
+   ],
+   "acceptance": "the handle that a create made again returns, after a create that failed at each disk write of a directory growth, writes bytes and reads them back, and the file read by a fresh lookup after a restart holds those bytes, shown by fields of a guest case on CI with the image's lost clusters as pinned; a mutant that only these fields see is killed, or a dated line says that none exists and what the fields are for; no pinned number of a case is relaxed (a line that gains fields is re-pinned as a tightening and said so); files.md (the version free at the merge) states it",
+   "test_ids": [
+    "TST-M3-FAT32-FAULT-CREATE",
     "TST-M6-MUTANTS"
    ],
    "commands": [
