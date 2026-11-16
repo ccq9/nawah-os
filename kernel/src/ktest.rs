@@ -174,8 +174,12 @@ pub fn run() -> ! {
         "fat32_fault_write_check" => fat32_fault_write_check("fat32_fault_write_check"),
         "fat32_fault_write_one" => fat32_fault_write(true),
         "fat32_fault_write_one_check" => fat32_fault_write_check("fat32_fault_write_one_check"),
-        "fat32_fault_create" => fat32_fault_create(),
-        "fat32_fault_create_check" => fat32_fault_create_check(),
+        "fat32_fault_create" => fat32_fault_create(false),
+        "fat32_fault_create_check" => fat32_fault_create_check("fat32_fault_create_check", false),
+        "fat32_fault_create_one" => fat32_fault_create(true),
+        "fat32_fault_create_one_check" => {
+            fat32_fault_create_check("fat32_fault_create_one_check", true)
+        }
         "fat32_disk_full" => fat32_disk_full(),
         "fat32_stop" => fat32_stop(),
         "fat32_stop_check" => fat32_stop_check(),
@@ -3597,6 +3601,15 @@ fn fault_dirty() -> bool {
     .unwrap_or(false)
 }
 
+/// The names `/DIR` lists that no create made: the entries `fault_dirty` left in the free
+/// clusters read as `STRAYnnn.TXT`.
+fn fault_dir_strays() -> u32 {
+    let mut n = 0u32;
+    let _ =
+        crate::fs::with(|fs| fs.list(b"/DIR", |e| n += u32::from(e.name.starts_with(b"STRAY"))));
+    n
+}
+
 fn fault_create_path(n: u32) -> alloc::vec::Vec<u8> {
     alloc::format!("/DIR/C{:02}.TXT", n).into_bytes()
 }
@@ -3608,11 +3621,27 @@ fn fault_create_path(n: u32) -> alloc::vec::Vec<u8> {
 /// end; a control create counts the writes of a growth (W); then for every N from 1
 /// to W the directory is filled again and a create runs with the test kernel's hook refusing
 /// write N and all after it, then once more with the disk working.
-fn fat32_fault_create() -> ! {
+///
+/// TST-M3-FAT32-FAULT-ONE-CREATE (WP-134; files.md v1.13) is the same sweep with write N alone
+/// refused (`once`). There a create that swallows a refusal goes on and answers success, and
+/// the case judges by what is read: the names the directory lists that no create made (strays)
+/// and the creates that answered success for a name no lookup finds (ghost). The mode is shown
+/// first, before the clusters are dirtied, so that its file takes none of them.
+fn fat32_fault_create(once: bool) -> ! {
     use crate::fs::vfs;
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
     }
+    let case = if once {
+        "fat32_fault_create_one"
+    } else {
+        "fat32_fault_create"
+    };
+    let shown = if once {
+        fault_once_shown()
+    } else {
+        (true, true)
+    };
     let open_new =
         |path: &[u8]| vfs::open(path, vfs::O_READ | vfs::O_WRITE | vfs::O_CREATE).map(|_| ());
     let absent =
@@ -3631,18 +3660,25 @@ fn fat32_fault_create() -> ! {
     let control_ok = control.is_ok() && fault_dir_state() == Some((names0 + 1, clusters0 + 1));
     let (mut failed, mut io, mut stopped, mut gone, mut grown) = (0u32, 0u32, 0u32, 0u32, 0u32);
     let (mut retry_ok, mut retry_grew, mut filled) = (0u32, 0u32, 0u32);
+    let (mut strays, mut ghost) = (0u32, 0u32);
     for n in 1..=writes {
         filled += u32::from(fault_dir_fill(&mut filler));
         let path = fault_create_path(n);
         let before = fault_dir_state();
         let w1 = crate::block::writes();
-        crate::block::arm_write_fault(n);
+        if once {
+            crate::block::arm_write_fault_once(n);
+        } else {
+            crate::block::arm_write_fault(n);
+        }
         let r = open_new(&path);
         stopped += u32::from(crate::block::writes() - w1 == n);
         crate::block::disarm_write_fault();
         failed += u32::from(r.is_err());
         io += u32::from(matches!(r, Err(FsError::Io(_))));
         let after = fault_dir_state();
+        strays += fault_dir_strays();
+        ghost += u32::from(r.is_ok() && absent(&path));
         // No name of the failed create, and no other name either: the listing counts what it
         // counted before (an entry read from a new cluster that was not zeroed would add to
         // it: the free clusters were dirtied with entries).
@@ -3661,9 +3697,22 @@ fn fat32_fault_create() -> ! {
     }
     let synced = vfs::sync().is_ok();
     let (names, clusters) = fault_dir_state().unwrap_or((0, 0));
+    // The older case's line is the one CI proved, byte for byte; the once case adds its fields.
+    let mode = if once {
+        alloc::format!(
+            "|strays={}|ghost={}|once_refused={}|once_next_ok={}",
+            strays,
+            ghost,
+            u8::from(shown.0),
+            u8::from(shown.1)
+        )
+    } else {
+        String::new()
+    };
     kprintln!(
-        "OSX|{}|ktest|fat32_fault_create|dirty={}|control={}|writes={}|filled={}|failed={}|io={}|stopped={}|absent={}|grown={}|retry_ok={}|retry_grew={}|names={}|dir_clusters={}|synced={}|live_files={}",
+        "OSX|{}|ktest|{}|dirty={}|control={}|writes={}|filled={}|failed={}|io={}|stopped={}|absent={}|grown={}|retry_ok={}|retry_grew={}|names={}|dir_clusters={}|synced={}|live_files={}{}",
         BUILD_ID,
+        case,
         u8::from(dirty),
         u8::from(control_ok),
         writes,
@@ -3678,10 +3727,22 @@ fn fat32_fault_create() -> ! {
         names,
         clusters,
         u8::from(synced),
-        vfs::live_files()
+        vfs::live_files(),
+        mode
     );
     if !dirty {
         fail("the free clusters were not dirtied before the sweep")
+    }
+    if once {
+        // What is read is judged first: under one refused write a swallowed refusal shows in
+        // the directory, not only in the count of disk writes.
+        if strays != 0 {
+            fail("after a failed create the directory lists a name that no create made")
+        }
+        if ghost != 0 {
+            fail("a create answered success for a name no lookup finds")
+        }
+        fault_once_judge(shown, stopped, writes);
     }
     if !control_ok || writes < 3 || filled != writes || !synced {
         fail("the sweep did not run as planned: the control did not add one name and one cluster, or the directory was not filled")
@@ -3705,7 +3766,7 @@ fn fat32_fault_create() -> ! {
 /// lists the directory: every name of the sweep (the control and one per N) is an empty file,
 /// the directory holds the names and the clusters the first boot left, and a new file changes
 /// none of them.
-fn fat32_fault_create_check() -> ! {
+fn fat32_fault_create_check(case: &'static str, once: bool) -> ! {
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
     }
@@ -3732,9 +3793,16 @@ fn fat32_fault_create_check() -> ! {
         && fault_state(b"/DIR/AFTER.TXT", &fresh) == 1;
     let (created_after, bad_after) = count();
     let names_after = fault_dir_state().map_or(0, |s| s.0);
+    let strays = fault_dir_strays();
+    let mode = if once {
+        alloc::format!("|strays={}", strays)
+    } else {
+        String::new()
+    };
     kprintln!(
-        "OSX|{}|ktest|fat32_fault_create_check|created={}|bad={}|names={}|dir_clusters={}|after_ok={}|created_after={}|bad_after={}|names_after={}",
+        "OSX|{}|ktest|{}|created={}|bad={}|names={}|dir_clusters={}|after_ok={}|created_after={}|bad_after={}|names_after={}{}",
         BUILD_ID,
+        case,
         created,
         bad,
         names,
@@ -3742,8 +3810,12 @@ fn fat32_fault_create_check() -> ! {
         u8::from(after_ok),
         created_after,
         bad_after,
-        names_after
+        names_after,
+        mode
     );
+    if once && strays != 0 {
+        fail("after the restart the directory lists a name that no create made")
+    }
     if bad != 0 || bad_after != 0 || !after_ok {
         fail("a name of the sweep is not its own empty file after the restart")
     }

@@ -8024,6 +8024,7 @@
    ],
    "acceptance": "with the hook refusing one write alone, for every disk write of a create that must grow its directory, the call answers an I/O error and asks for no write after the refused one, the name is absent, no entry that is not a name's own is read, and no name reaches a free cluster and no two names share one in either FAT copy, shown by a guest case with its own image and its host check on CI; the mutants that swallow or defer a refusal on those writes are killed; files.md (the version free at the merge) states it",
    "test_ids": [
+    "TST-M3-FAT32-FAULT-ONE-CREATE",
     "TST-M3-FAT32-FAULT-ONE-UNLINK",
     "TST-M6-MUTANTS"
    ],

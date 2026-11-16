@@ -2959,6 +2959,84 @@
         ]
       },
       {
+        "id": "TST-M3-FAT32-FAULT-ONE-CREATE",
+        "test_id": "TST-M3-FAT32-FAULT-ONE-CREATE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "phases": [
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=fat32_fault_create_one"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=fat32_fault_create_one",
+              "OSX|${BUILD_ID}|ktest|fat32_fault_create_one|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=8|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|strays=0|ghost=0|once_refused=1|once_next_ok=1",
+              "|ktest|pass|a failed create leaves no name, and the same create made again succeeds"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=fat32_fault_create_one_check"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=fat32_fault_create_one_check",
+              "OSX|${BUILD_ID}|ktest|fat32_fault_create_one_check|created=9|bad=0|names=143|dir_clusters=10|after_ok=1|created_after=9|bad_after=0|names_after=144|strays=0",
+              "|ktest|pass|after the restart every created name is an empty file of its own"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          }
+        ],
+        "oracle": "REQ-M3-007, WP-134 (RSK-027; files.md v1.13; ADR-0014 item 14): a create that must add a cluster to its directory, in which one disk write is refused and every write after it is taken, stops at the refused write, answers an I/O error and leaves no name, and nothing it leaves is read as a name. First boot (test kernel, mount; the hook's second mode refuses write N alone): the mode is shown first on a new, empty file, before any cluster is dirtied (once_refused=1, once_next_ok=1, as in TST-M3-FAT32-FAULT-ONE-UNLINK); then the sweep of TST-M3-FAT32-FAULT-CREATE runs with write N alone refused: the 24 lowest free clusters are dirtied with bytes that read as entries (dirty=1), /DIR is filled to its cluster's end, a control create counts the disk writes of a growth (control=1, writes=8), and for every N from 1 to 8 the directory is filled again (filled=8), /DIR/Cnn.TXT is created under the refusal and created again with the disk working: failed=8, io=8, stopped=8 (every call asked for exactly N disk writes: none goes on after the refused one), absent=8, grown=1, retry_ok=8, retry_grew=7, names=143, dir_clusters=10, synced=1, live_files=0, the numbers of TST-M3-FAT32-FAULT-CREATE (code that stops at its first refused write leaves, write for write, what a refusal of that write and all after it leaves); and two fields read from the volume after every refused create: strays=0 (the names /DIR lists that no create made, summed over the calls) and ghost=0 (the creates that answered success for a name no lookup finds). Second boot (a kernel with no memory of the first): created=9, bad=0, names=143, dir_clusters=10, after_ok=1, created_after=9, bad_after=0, names_after=144, strays=0. Host, once, on the final image: tools/fat32.py check --faulted --expect-lost 5 --expect-lost-second 5 --expect-lost-both 5 (the numbers of TST-M3-FAT32-FAULT-CREATE; in this final image, where every create made again has written over what a failed one left along the second copy, no file is longer than its size and no name is reached along one copy only) and tools/fat32.py fsck-faulted (every message named). What this case shows that TST-M3-FAT32-FAULT-CREATE cannot (seen locally with each mutant in the tree): there every write after a swallowed refusal is refused too, and a swallowed refusal before the last write is seen by the count of disk writes alone; here the create goes on, answers success, and what it leaves is read: a new cluster linked into the directory and never zeroed lists the names it held (M258: strays=90, the fifteen names read after each of six calls, with failed=7, absent=7, grown=2); a create answers success for a name the directory does not reach (M261: ghost=2, failed=6) or does not hold (M263: ghost=1, failed=7); and a create that, after the refused link, asks for the disk writes that free the new cluster and then answers the error leaves two lost clusters fewer than a stop at the refused write (M265: stopped=6 and the host's 3 lost where 5 are pinned; under the older case the count alone). Each of these fails the older case too, as M262 (grown=0, retry_grew=8) and M264 (control=0) fail both: no mutant is known that passes the older case and fails this one. Not shown: what the second FAT copy holds between a failed create and the create made again (by reading, under M262 and M265 a name or the directory's chain reaches, along the second copy alone and until the next create, what the first copy does not: WP-128); the FSInfo free count and the difference between the FAT copies, which the host check prints and does not pin (WP-129, WP-128); the lost clusters of each call and what they hold (WP-135); that the handle a create returns writes and reads (every handle is dropped at once: WP-137); a read the disk refuses, and a directory on clusters of more than one sector (WP-136); a create in the root directory and a create that finds a free slot or takes a deleted entry's (one disk write; here only the last N refuses that write, after a growth); two refused writes in one create, and two failed creates with no successful one between them; both boots exit 33.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "|ktest|pass|a failed create leaves no name, and the same create made again succeeds",
+          "|ktest|pass|after the restart every created name is an empty file of its own"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "max_counts": {
+          "|boot|start|": 2
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "--faulted",
+            "--expect-lost",
+            "5",
+            "--expect-lost-second",
+            "5",
+            "--expect-lost-both",
+            "5",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "fsck-faulted",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
         "id": "TST-M3-FAT32-DISK-FULL",
         "test_id": "TST-M3-FAT32-DISK-FULL",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",
