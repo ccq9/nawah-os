@@ -7730,8 +7730,7 @@
     "kernel/src/block/mod.rs: the test kernel's hook (arm_write_fault) refuses write N and every write after it until it is disarmed; a disk that refuses one write and takes the next is in no case",
     "docs/contracts/files.md v1.5, v1.6 and v1.8; docs/adr/0014-files.md items 6, 7 and 9; RSK-027",
     "from WP-117's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): a create or a directory that grows while the disk stops in the middle is in no sweep (files.md v1.8 says the same of a refused write)",
-    "from WP-127's red team (2026-11-15, by reading at 35fe1fe44, not run; no CI evidence; to check at activation): the lost clusters are pinned as a number for the whole image: a cluster leaked at one N of a sweep and one saved at another give the same count; proposed: the lost clusters per file or per window of the sweep",
-    "from WP-127's red team (2026-11-15, by reading at 35fe1fe44, not run; no CI evidence; to check at activation): the content of an extra cluster past the size is read by no one: a failed write that links a cluster holding older data passes the checker and the case"
+    "2026-11-16, read at activation: docs/contracts/files.md is at v1.9 (the inputs above name v1.5, v1.6 and v1.8); the next free version is v1.10; create (kernel/src/fs/fat32.rs) is in no sweep, though an input above lists the entry in create among the writes that follow a fat_set"
    ],
    "files": [
     "kernel/src/block/mod.rs",
@@ -7742,7 +7741,8 @@
     "docs/tests.json",
     "docs/contracts/files.md",
     "docs/adr/0014-files.md",
-    "docs/PLAN-REVERSE.md"
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
    ],
    "contract_refs": [
     "docs/contracts/files.md"
@@ -7755,15 +7755,123 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; sized at activation",
     "2026-11-15: depends on WP-126 (the host image checker is this package's judge; RSK-037); the order stood in RSK-037's response plan and the plan's row only, and is written into depends_on after WP-126's second audit named the gap; WP-127 (the checker's second part) is proposed before this package too and is not in depends_on until the owner answers the order",
-    "2026-11-15: the manager's order, written into depends_on where a package is judged by what an earlier one adds to the checker (no question is registered for the owner; the owner may reorder at any time): WP-127 (counts by identity, the second copy counted) before WP-124; WP-128 (entries, the bad mark) before WP-122; WP-129 (FSInfo's backup, the boot sector) after WP-127; by data risk: WP-127, WP-124, WP-128, WP-123, WP-122, with WP-106 ready at any point and WP-129 before WP-123 if its activation finds that FSInfo's judgement needs it"
+    "2026-11-15: the manager's order, written into depends_on where a package is judged by what an earlier one adds to the checker (no question is registered for the owner; the owner may reorder at any time): WP-127 (counts by identity, the second copy counted) before WP-124; WP-128 (entries, the bad mark) before WP-122; WP-129 (FSInfo's backup, the boot sector) after WP-127; by data risk: WP-127, WP-124, WP-128, WP-123, WP-122, with WP-106 ready at any point and WP-129 before WP-123 if its activation finds that FSInfo's judgement needs it",
+    "2026-11-16 activation estimate, split and design (the manager, from the kernel engineer's reading of 2026-11-15 at 7fa41aa17, nothing run; an audit pass and a red-team pass before the single push): the engineer put the whole item at 85 to 100 calls and 80 to 90 min, at the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first), so it is split before activating: this item keeps the hook's once mode, the delete, the truncation and the two mutants, about 65 calls / 60 min, under the budget line; the clauses of the acceptance on a new file's write and an append move word for word to WP-131 (planned, depending on this item), with the red team's input on the lost clusters of each call; the red team's input on the content of an extra cluster moves to WP-132 (planned, a change of the host checker). No clause is dropped. Design, three options: (1) a second mode of the test kernel's hook that refuses write N alone (a bound FAIL_TO beside FAIL_FROM, arm_write_fault_once) and two new guest cases with their own images, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE, made of the present sweep functions with a parameter (chosen: the three present cases' images and pinned numbers are not touched); (2) a hook that refuses a chosen set of writes (wider than any case needs); (3) the once-mode sweeps inside the present cases (rejected: it doubles their lost clusters and breaks their pinned numbers). Test first: the present code is expected to pass the new cases (by reading: correct code stops at its first refused write, so the image and the answer equal those of the present cases); the red is the mutants': one that ignores a refused FAT write and one that checks only the first copy's write must each pass the three present cases and fail a new one; the once mode itself is shown by a line of the new cases (one write refused, the next one taken), with a mutant that makes it refuse every later write too, since under that mutant the new cases' images would be the present ones' and the two mutants would live; if the present code fails a sweep, that is the package's first finding. The new cases' host checks pin the three numbers of the lost clusters with the WP-127 options, derived locally first; a field on the cases' lines counts the calls that asked exactly N writes"
    ],
-   "acceptance": "with the hook refusing one write alone, for every write of a delete, a truncation, a new file's write and an append, no name reaches a free cluster, no two names share one and no chain is shorter than its size in either FAT copy, and the call answers an I/O error, shown by the sweeps and the host check on CI; a mutant that ignores a refused FAT write and one that checks only the first copy's write are killed; files.md (the version free at the merge) states what a single refused write leaves",
+   "acceptance": "with the hook refusing one write alone, for every write of a delete and a truncation, no name reaches a free cluster, no two names share one and no chain is shorter than its size in either FAT copy, and the call answers an I/O error, shown by the sweeps and the host check on CI; a mutant that ignores a refused FAT write and one that checks only the first copy's write are killed; files.md (the version free at the merge) states what a single refused write leaves in a delete and a truncation",
    "test_ids": [
     "TST-M3-FAT32-FAULT-WRITE",
     "TST-M3-FAT32-FAULT-UNLINK",
-    "TST-M3-FAT32-FAULT-TRUNCATE"
+    "TST-M3-FAT32-FAULT-TRUNCATE",
+    "TST-M6-MUTANTS"
    ],
    "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "active",
+   "status_history": [
+    "planned",
+    "active"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-131",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-124"
+   ],
+   "inputs": [
+    "split from WP-124 before its activation on 2026-11-16 (the budget line: the kernel engineer's reading of 2026-11-15 put the whole of WP-124 at 85 to 100 calls and 80 to 90 min); the clauses of WP-124's acceptance on a new file's write and an append are moved here word for word",
+    "the kernel engineer's design of 2026-11-15 (by reading at 7fa41aa17, nothing run; scratch plan): the hook's once mode and the sweep functions with the parameters `once` and `name` come from WP-124; this item adds the case TST-M3-FAT32-FAULT-ONE-WRITE with its own image (two boots); expected by reading, to derive locally: the numbers of TST-M3-FAT32-FAULT-WRITE (53, 52 and 52 lost; X08.TXT and X09.TXT longer in the first copy, X07.TXT too in the second), since correct code stops at its first refused write",
+    "from WP-127's red team (2026-11-15, by reading at 35fe1fe44, not run; no CI evidence; to check at activation): the lost clusters are pinned as a number for the whole image: a cluster leaked at one N of a sweep and one saved at another give the same count; proposed: the lost clusters per file or per window of the sweep",
+    "kernel/src/fs/fat32.rs (write, alloc_cluster, fat_set); kernel/src/ktest.rs (fat32_fault_write and its check); platform/pc-qemu/target.json (TST-M3-FAT32-FAULT-WRITE); docs/contracts/files.md v1.6 to v1.9; RSK-027"
+   ],
+   "files": [
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32: كتابة ملف جديد وإلحاق تحت رفض كتابة واحدة فقط: حالة ضيف بصورتها الخاصة (مفصولة من WP-124 قبل تفعيلها)",
+    "split from WP-124 on 2026-11-16 before its activation: WP-124 keeps the hook's once mode, the delete, the truncation and the two mutants; this item takes the new file's write and the append with the same hook",
+    "design to decide in the package (2-3 options with trade-offs): one new case with the three sweeps of the write case under the once mode, against a case per sweep; whether the lost clusters of each call are pinned per call for the first copy (a field on the case's line from the difference of the free count before and after each call) in this item or moved",
+    "test first, red seen locally: the present code is expected to pass the new sweeps; the red is the mutants' of WP-124 (they must fail this case too) or a first finding if the present code fails a sweep",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "with the hook refusing one write alone, for every write of a new file's write and an append, no name reaches a free cluster, no two names share one and no chain is shorter than its size in either FAT copy, and the call answers an I/O error, shown by the sweeps and the host check on CI; files.md (the version free at the merge) states what a single refused write leaves in a write; the input on the lost clusters of each call is taken into the acceptance, moved to a named package or refuted by a dated line",
+   "test_ids": [
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-132",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-127"
+   ],
+   "inputs": [
+    "split from WP-124 before its activation on 2026-11-16: an input of WP-127's red team that changes the host checker, not the kernel's sweeps",
+    "from WP-127's red team (2026-11-15, by reading at 35fe1fe44, not run; no CI evidence; to check at activation): the content of an extra cluster past the size is read by no one: a failed write that links a cluster holding older data passes the checker and the case",
+    "the kernel engineer's reading of 2026-11-15 (by reading at 7fa41aa17, nothing run): alloc_cluster zeroes a cluster before it is linked (kernel/src/fs/fat32.rs, alloc_cluster), so the extra cluster of X08.TXT holds zeros and that of X09.TXT the bytes of the call that failed; a first failing check would be a host case on an image whose extra cluster holds another file's bytes",
+    "tools/fat32.py (cmd_check, tree_findings: `check` reads no file content); tests/test_fat32_tool.py; platform/pc-qemu/target.json (TST-M3-FAT32-FAULT-WRITE's host check); RSK-037"
+   ],
+   "files": [
+    "tools/fat32.py",
+    "tests/test_fat32_tool.py",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "فاحص الصورة المضيف: محتوى العنقود الزائد بعد حجم الملف (مدخل الفريق الأحمر لـWP-127، مفصول من WP-124 قبل تفعيلها)",
+    "design to decide in the package (2-3 options with trade-offs): the checker prints a digest of every extra cluster and the case pins it, against a rule (an extra cluster holds zeros or the bytes the case names), against leaving the content to the guest's second boot; what a failed write may rightly leave there decides",
+    "test first, red seen locally before the fix: a host case on a crafted image whose extra cluster holds another file's bytes, which leaves the checker with 0 today; a SECURITY tool mutant for the new finding; the write case runs again and keeps every pinned number",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "the content of a cluster a file's chain holds past its size is judged by the host check of the write fault case, shown by a host case on CI that fails before the fix; a SECURITY tool mutant for the finding is killed; every pinned number of the fault cases stays; or the input is refuted by a dated line that says who reads those bytes",
+   "test_ids": [
+    "TST-M3-FAT32-TOOL",
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M3",
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
    "status": "planned",
