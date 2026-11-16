@@ -1004,6 +1004,25 @@ MUTANTS = [
      "        for k in (0..self.fats).rev() {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
      "        for k in 0..self.fats {\n            let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;",
      ["TST-M3-FAT32-FAULT-WRITE", "TST-M3-FAT32-FAULT-UNLINK", "TST-M3-FAT32-FAULT-TRUNCATE"], "SECURITY: a link written in the first FAT copy and refused in the second stays missing there once the append is made again: the host check finds a chain shorter than its size in the second copy and other numbers of lost clusters and longer chains than the case pins (56 and 3 where 53 and 2 are), TST-M3-FAT32-FAULT-WRITE FAIL; the delete and the truncate cases count 9 lost where 12 are pinned, FAIL"),
+    # M252..M254 (SECURITY, WP-124, files.md v1.10, ADR-0014 item 11): a FAT write stops at its
+    # first refused write. The older fault cases refuse write N and every write after it, so a
+    # refusal that fat_set swallows is followed by another refused, checked write and nothing
+    # shows; the two cases under the hook's once mode refuse write N alone.
+    # M252: a refused FAT write is ignored.
+    ("M252", "kernel/src/fs/fat32.rs",
+     "            s[off % SECTOR..off % SECTOR + 4].copy_from_slice(&new.to_le_bytes());\n            block::write(sector, &s)?;\n",
+     "            s[off % SECTOR..off % SECTOR + 4].copy_from_slice(&new.to_le_bytes());\n            let _ = block::write(sector, &s);\n",
+     ["TST-M3-FAT32-FAULT-ONE-UNLINK", "TST-M3-FAT32-FAULT-ONE-TRUNCATE"], "SECURITY: a delete or a truncation whose FAT write the disk refused goes on and answers success, the two FAT copies no longer agreeing on a cluster the kernel may hand out again: the sweeps' lines carry failed, io and stopped below 9 and once_refused=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL"),
+    # M253: only the write of the copy the kernel reads is checked.
+    ("M253", "kernel/src/fs/fat32.rs",
+     "            s[off % SECTOR..off % SECTOR + 4].copy_from_slice(&new.to_le_bytes());\n            block::write(sector, &s)?;\n",
+     "            s[off % SECTOR..off % SECTOR + 4].copy_from_slice(&new.to_le_bytes());\n            let r = block::write(sector, &s);\n            if k == 0 {\n                r?;\n            }\n",
+     ["TST-M3-FAT32-FAULT-ONE-UNLINK", "TST-M3-FAT32-FAULT-ONE-TRUNCATE"], "SECURITY: a refused write of the second FAT copy is swallowed and the call goes on: WP-120's defect comes back (the copies part and no error says so): the sweeps' lines carry failed, io and stopped below 9 and once_refused=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL"),
+    # M254: the test kernel's once mode refuses every later write too (it is the older mode).
+    ("M254", "kernel/src/block/mod.rs",
+     "        n >= FAIL_FROM.load(Ordering::SeqCst) && n <= FAIL_TO.load(Ordering::SeqCst)\n",
+     "        n >= FAIL_FROM.load(Ordering::SeqCst)\n",
+     ["TST-M3-FAT32-FAULT-ONE-UNLINK", "TST-M3-FAT32-FAULT-ONE-TRUNCATE"], "SECURITY: the hook that should refuse one write alone refuses all after it, so the two cases would judge what the older cases judge and let M252 and M253 live: the sweeps' lines carry once_next_ok=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1239,7 +1258,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M239", "M240", "M241", "M242", "M243", "M244", "M246",
             # from WP-127's red team: each copy's longer files are its own (M247, M248), the clusters lost
             # in both copies are pinned (M249), a name along one copy only is named (M250, M251).
-            "M247", "M248", "M249", "M250", "M251"}
+            "M247", "M248", "M249", "M250", "M251",
+            # M6 (WP-124): a FAT write stops at its first refused write (M252, M253), and the hook
+            # that shows it refuses one write alone (M254).
+            "M252", "M253", "M254"}
 
 
 def security_of(mid: str) -> bool:
