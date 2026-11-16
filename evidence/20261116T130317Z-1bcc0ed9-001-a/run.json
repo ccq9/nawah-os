@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261116T130317Z-1bcc0ed9-001-a",
+ "started_at": "2026-11-16T13:03:17+00:00",
+ "finished_at": "2026-11-16T13:03:24+00:00",
+ "source_revision": "1bcc0ed9e7685a8484f86aae74cc2ff727563932",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M5-SHAPING",
+ "commands": [
+  "python3 -I tests/test_text.py Shaping"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "43867724994",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "1bcc0ed9e7685a8484f86aae74cc2ff727563932",
+  "head_sha": "fa8132331ed45ef931cab412b2cebe9046b378ba",
+  "ref": "refs/pull/23/merge"
+ }
+}

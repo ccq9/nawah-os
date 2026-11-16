@@ -1,0 +1,20 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261108T233109Z-2cbdeaad-001",
+ "started_at": "2026-11-08T23:31:09+00:00",
+ "finished_at": "2026-11-09T00:00:29+00:00",
+ "source_revision": "2cbdeaadce146f5aa17425f62660135777516f2f",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M4-MUTANTS",
+ "commands": [
+  "python3 -I tests/mutants.py --target pc-qemu --stage M4 --report build/mutants-m4-report.json"
+ ],
+ "exit_code": 0,
+ "notes": "imported from CI run mutants-42531135332 (verification runner)"
+}
