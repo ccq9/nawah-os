@@ -1571,13 +1571,13 @@ KILL_REASON_CHARS = 1000
 _NAMES = "|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory"
 _FREE = "|ktest|fail|after a create under the hook the directory's chain along the second FAT copy stands on a cluster that is free there"
 EXPECT = {
-    "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|second_names=1|", _NAMES],
-             "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|second_names=1|", _NAMES],
+    "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
+             "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_names=1|", _NAMES]},
-    "M265": {"TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|second_free=1|", _FREE],
+    "M265": {"TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_free=1|", _FREE],
              "TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_free=1|", _FREE]},
-    "M268": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|second_names=1|", "|second_longer=4|", _NAMES],
-             "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|second_names=1|", "|second_longer=4|", _NAMES],
+    "M268": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", "|second_longer=4|", _NAMES],
+             "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", "|second_longer=4|", _NAMES],
              "TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_names=1|", "|second_longer=4|", "|second_links=4|", _NAMES]},
     "M219": {"TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_shorter=2|", "|second_links=2|", _NAMES]},
     "M261": {"TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_names=1|", _NAMES]},
@@ -1601,9 +1601,15 @@ def expect_errors():
     return errs
 
 
+# The test kernel's own lines only (red team B1): a ring-3 program's SYS_TRACE line
+# `OSX|<id>|user|trace|...|text=...` may carry `|ktest|fail|...` and field strings in its text.
+KTEST_LINE = re.compile(r"^OSX\|[0-9a-f]+\|ktest\|")
+INVALID_MISS = "the mutant is invalid, so its declared kill was not shown"
+
+
 def kill_evidence(out: str, env, tid, target, host: bool):
     """What a FAIL of `tid` leaves to judge the kill by, read before the scratch is emptied: the
-    driver's reason and run id from its verdict line, and (guest cases) the `|ktest|` lines of
+    driver's reason and run id from its verdict line, and (guest cases) the test kernel's lines of
     each boot of that run (serial-N.log for a multi-phase case, serial.log otherwise). A missing
     log gives no lines, never an error."""
     if host:
@@ -1622,7 +1628,7 @@ def kill_evidence(out: str, env, tid, target, host: bool):
                 text = p.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            kept = [l.rstrip("\r")[:KILL_LINE_CHARS] for l in text.splitlines() if "|ktest|" in l]
+            kept = [l[:KILL_LINE_CHARS] for l in (x.rstrip("\r") for x in text.splitlines()) if KTEST_LINE.match(l)]
             lines += kept[-KILL_LINES:]
     return {"reason": reason[:KILL_REASON_CHARS], "run": run, "lines": lines}
 
@@ -1842,6 +1848,13 @@ def main():
         finally:
             subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO)
         shutil.rmtree(tmp, ignore_errors=True)
+    # An invalid mutant (anchor gone, does not compile or build) with EXPECT never showed its
+    # declared kill (red team B3): expected_missed on every path that marks it invalid, so a
+    # non-SECURITY one cannot leave its expectation unjudged while the ratio passes.
+    for m in report["mutants"]:
+        if m["status"] == "invalid" and m["id"] in EXPECT and not m.get("expected_missed"):
+            m["expected_missed"] = [INVALID_MISS]
+            print(f"{m['id']}: expected_missed {INVALID_MISS}")
     valid = [m for m in report["mutants"] if m["status"] in ("killed", "survived")]
     killed = [m for m in valid if m["status"] == "killed"]
     ratio = len(killed) / len(valid) if valid else 0.0

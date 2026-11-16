@@ -500,9 +500,11 @@ class KillEvidence(unittest.TestCase):
     MID = "M997"
     NAMES = "|ktest|fail|after a create under the hook the two FAT copies do not list the same names"
 
-    def _main(self, cases, expect=None, check=False, killers=None, mutants_list=None):
+    def _main(self, cases, expect=None, check=False, killers=None, mutants_list=None, unbuilt=()):
         """`cases` maps a killer id to (rc, verdict stdout, {file under the run dir: text}) for a
-        guest killer, or to ("host", rc) for a host killer. Returns (rc, report, stdout, entry)."""
+        guest killer, to ("host", rc) for a host killer, or to a list of those taken one per run
+        (one mutant after the other). A mutant whose file is in `unbuilt` gets its image built,
+        and the build fails. Returns (rc, report, stdout, entry)."""
         import contextlib
         import io
         import subprocess
@@ -516,9 +518,11 @@ class KillEvidence(unittest.TestCase):
 
             def fake_sh(cmd, cwd, env=None, timeout=0):
                 if cmd[0] == "cargo":
-                    return R(0, "")
+                    return R(1 if unbuilt and not check else 0, "")
                 tid = cmd[-1]
                 spec = cases[tid]
+                if isinstance(spec, list):
+                    spec = spec.pop(0)
                 scratch = pathlib.Path(env["NAWAH_SCRATCH_EVIDENCE"])
                 if spec[0] == "host":
                     if env.get("NAWAH_ROOT") == str(mutants.REPO):
@@ -529,7 +533,7 @@ class KillEvidence(unittest.TestCase):
                 rc, out, files = spec
                 for name, text in files.items():
                     run = re.search(r" run=(\S+)", out).group(1)
-                    (scratch / run).mkdir(exist_ok=True)
+                    (scratch / run).mkdir(parents=True, exist_ok=True)
                     (scratch / run / name).write_text(text)
                 return R(rc, out)
 
@@ -546,7 +550,7 @@ class KillEvidence(unittest.TestCase):
             mutants.suite_of = lambda target, tid: None if cases.get(tid, ("",))[0] == "host" else "M3"
             mutants.host_suite_of = lambda wt, tid: "M0"
             mutants.needs_release = lambda target, ks: False
-            mutants.needs_image = lambda target, rel, ks: False
+            mutants.needs_image = lambda target, rel, ks: rel in unbuilt
             mutants._CLEAN_HOST.clear()
             sys.argv = ["mutants.py", "--report", "build/r.json"] + (["--check"] if check else [])
             buf = io.StringIO()
@@ -683,6 +687,113 @@ class KillEvidence(unittest.TestCase):
             for k, subs in mutants.EXPECT[mid].items():
                 self.assertIn(k, by_id[mid][4])
                 self.assertIn("exit 37", subs)
+
+    # The audit and red-team pass on 6af4ad009.
+
+    def test_a_user_trace_line_carrying_the_message_is_not_kept(self):
+        """H1 (red team B1): a ring-3 program prints through SYS_TRACE `OSX|<id>|user|trace|...`,
+        whose text may carry the judgement's message and the field: only the test kernel's own
+        lines (`OSX|<hex>|ktest|...`) are kept, so that line cannot meet an expectation."""
+        forged = "OSX|00000000003e5|user|trace|len=120|text=OSX|0|ktest|fat32_fault_create|second_names=1|x" + self.NAMES + "\r\n"
+        entry = self._missed({"TST-G1": self.guest("TST-G1", "exit 37 != expected 33",
+                                                   "OSX|00000000003e5|ktest|start|name=fat32_fault_create\n" + forged)},
+                             {"TST-G1": ["exit 37", "|second_names=1|", self.NAMES]}, "TST-G1", "|second_names=1|")
+        self.assertEqual(entry["kills"]["TST-G1"]["lines"], ["OSX|00000000003e5|ktest|start|name=fat32_fault_create"])
+
+    def _invalid_with_expect(self, unbuilt):
+        killed = ("M996", "kernel/a.rs", "clean", "mutated", ["TST-G1"], "killed")
+        bad = (self.MID, "user/b.rs", "no such anchor" if not unbuilt else "clean", "mutated", ["TST-G1"], "invalid")
+        rc, report, out, _ = self._main(
+            {"TST-G1": self.guest("TST-G1", "exit 37 != expected 33", self.FIELD)},
+            expect={self.MID: {"TST-G1": ["exit 37"]}}, mutants_list=[killed, bad],
+            unbuilt=("user/b.rs",) if unbuilt else ())
+        entry = next(m for m in report["mutants"] if m["id"] == self.MID)
+        self.assertEqual(entry["status"], "invalid")
+        self.assertEqual(report["ratio"], 1.0, "the ratio alone would pass")
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(report["expected_missed"], [self.MID])
+        self.assertTrue(any("invalid" in m for m in entry["expected_missed"]), entry["expected_missed"])
+
+    def test_an_invalid_mutant_with_an_expectation_is_expected_missed(self):
+        """H2 (red team B3): a non-SECURITY mutant with EXPECT that ends invalid (anchor gone)
+        would leave its expectation unjudged while the ratio passes."""
+        self._invalid_with_expect(unbuilt=False)
+
+    def test_a_mutant_with_an_expectation_that_does_not_build_is_expected_missed(self):
+        self._invalid_with_expect(unbuilt=True)
+
+    def test_the_owner_case_a_timeout_with_the_field_in_the_log_is_missed(self):
+        """H4a: the reason is a timeout (or another exit) while the log carries the case line with
+        the expected field and the judgement's message: "exit 37" is not shown, so the
+        expectation is missed and the gate fails."""
+        log = self.FIELD + "OSX|b" + self.NAMES + "\n"
+        for reason in ("timeout (hang)", "exit 35 != expected 33"):
+            self._missed({"TST-G1": self.guest("TST-G1", reason, log)},
+                         {"TST-G1": ["exit 37", "|second_names=1|", self.NAMES]}, "TST-G1", "exit 37")
+
+    def test_a_later_mutant_cannot_borrow_an_earlier_mutants_evidence(self):
+        """H4b: two mutants, the same killer: the first fails with the field, the second
+        without; the second is expected_missed."""
+        ms = [("M996", "kernel/a.rs", "clean", "mutated", ["TST-G1"], "first"),
+              (self.MID, "user/b.rs", "clean", "mutated", ["TST-G1"], "second")]
+        exp = ["exit 37", "|second_names=1|"]
+        rc, report, out, _ = self._main(
+            {"TST-G1": [self.guest("TST-G1", "exit 37 != expected 33", self.FIELD, run="R1"),
+                        self.guest("TST-G1", "exit 37 != expected 33", "OSX|b|ktest|fail|another check\n", run="R2")]},
+            expect={"M996": {"TST-G1": exp}, self.MID: {"TST-G1": exp}}, mutants_list=ms)
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(report["expected_missed"], [self.MID])
+
+    def test_an_expect_error_fails_the_gate_itself(self):
+        """H4c: not only --check: a gate run with EXPECT naming an unregistered mutant exits 1."""
+        rc, report, out, entry = self._main({"TST-G1": self.guest("TST-G1", "exit 37 != expected 33", self.FIELD)},
+                                            expect={"M996": {"TST-G1": ["exit 37"]}})
+        self.assertEqual(entry["status"], "killed")
+        self.assertEqual(rc, 1, out)
+        self.assertTrue(any("M996" in e for e in report["expect_errors"]))
+
+    def test_a_run_id_leaving_the_scratch_reads_no_lines(self):
+        """H4d: a run id `..` or one with `/` in the verdict line: no line is read (a log planted
+        where it points is ignored), no exception."""
+        for run in ("..", "a/b"):
+            rc, _, _, entry = self._main({"TST-G1": self.guest("TST-G1", "exit 37 != expected 33", self.FIELD, run=run)})
+            self.assertEqual(entry["status"], "killed", run)
+            self.assertEqual(entry["kills"]["TST-G1"], {"reason": "exit 37 != expected 33", "run": run, "lines": []})
+
+    CREATE = ("TST-M3-FAT32-FAULT-CREATE", "TST-M3-FAT32-FAULT-ONE-CREATE")
+    COPIES = "TST-M3-FAT32-FAULT-CREATE-COPIES"
+
+    def test_the_expectations_content_is_pinned(self):
+        """H4e (red team B2): deleting or weakening an expectation, or renaming the message or a
+        field it names, fails here (verify's host suite) rather than in the long gate."""
+        E = mutants.EXPECT
+        self.assertEqual(set(E["M262"]), {*self.CREATE, self.COPIES})
+        self.assertEqual(set(E["M268"]), {*self.CREATE, self.COPIES})
+        self.assertEqual(set(E["M265"]), {"TST-M3-FAT32-FAULT-ONE-CREATE", self.COPIES})
+        for mid in ("M219", "M261"):
+            self.assertIn("|calls=8|", E[mid][self.COPIES])
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        cases = {c["id"]: c for cs in t["suites"].values() for c in cs}
+        for mid in ("M262", "M265", "M268", "M219", "M261"):
+            for k, subs in E[mid].items():
+                where = f"{mid} {k}"
+                self.assertIn("exit 37", subs, where)
+                fails = [s for s in subs if s.startswith("|ktest|fail|")]
+                self.assertEqual(len(fails), 1, where)
+                self.assertIn(fails[0][len("|ktest|fail|"):], src, where)
+                fields = [m.group(1) for s in subs for m in [re.fullmatch(r"\|(\w+)=[^|]*\|", s)] if m]
+                self.assertTrue(fields, where)
+                c = cases[k]
+                pinned = [m for m in list(c["required_markers"]) + [m for p in c.get("phases", []) for m in p.get("required_markers", [])]
+                          if re.match(r"OSX\|\$\{BUILD_ID\}\|ktest\|fat32_fault_create", m) and "=" in m]
+                for f in fields:
+                    self.assertTrue(any(f"|{f}=" in m for m in pinned), f"{where}: field {f} not in the case's pinned marker")
+                if k == self.COPIES:
+                    self.assertIn("|calls=8|", subs, where)
+                else:
+                    self.assertIn("|writes=8|", subs, where)
+                    self.assertIn("|filled=8|", subs, where)
 
 
 if __name__ == "__main__":
