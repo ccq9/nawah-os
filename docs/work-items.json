@@ -7955,6 +7955,7 @@
    ],
    "acceptance": "for every disk write of a create that must grow its directory, with that write and every write after it refused, the call answers an I/O error, the name is absent, no entry that is not a name's own is read from the directory, no name reaches a free cluster and no two names share one in either FAT copy, and the same create made again succeeds, shown by a guest case with its own image and its host check on CI; a mutant on the growth's writes is killed; files.md (the version free at the merge) states what a failed create leaves",
    "test_ids": [
+    "TST-M3-FAT32-FAULT-CREATE",
     "TST-M3-FAT32-FAULT-WRITE",
     "TST-M6-MUTANTS"
    ],
