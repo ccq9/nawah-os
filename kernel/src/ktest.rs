@@ -3677,7 +3677,7 @@ fn fault_dir_in_copy(copy: u32) -> Option<(u32, u32, bool, u64)> {
 /// entries left out): the clusters marked in the second copy and free in the first, the
 /// clusters marked in the first and free in the second, and the clusters marked in both with
 /// different values (a link one copy holds and the other does not). An entry that differs
-/// between the copies is one of the three. The second copy is written first, so a refusal
+/// between the copies in its 28 low bits is one of the three (the 4 high bits are left out). The second copy is written first, so a refusal
 /// between the two writes of a mark leaves one cluster of the first kind and a refusal between
 /// the two writes of a link one of the third; a create frees nothing, so after one a cluster
 /// of the second kind says the second copy is behind the first (WP-138).
@@ -3746,9 +3746,9 @@ fn fault_create_path(n: u32) -> alloc::vec::Vec<u8> {
 /// first, before the clusters are dirtied, so that its file takes none of them.
 ///
 /// TST-M3-FAT32-FAULT-CREATE-COPIES (WP-138, after its close audit) is the sweep under one
-/// refused write once more (`copies`), with nothing printed or judged but what is read along
-/// the second FAT copy after every create under the hook: a kernel that fails this case fails
-/// it by those fields.
+/// refused write once more (`copies`), printing and judging, once the sweep has started,
+/// nothing but what is read along the second FAT copy after every create under the hook (the
+/// checks before the sweep stop it as in the other create cases).
 fn fat32_fault_create(once: bool, copies: bool) -> ! {
     use crate::fs::vfs;
     if crate::fs::mount().is_err() {
