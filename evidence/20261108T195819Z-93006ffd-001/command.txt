@@ -1,0 +1,1 @@
+python3 -I tests/mutants.py --target pc-qemu --stage M5 --report build/mutants-m5-report.json
