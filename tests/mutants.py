@@ -1074,12 +1074,27 @@ MUTANTS = [
     ("M262", "kernel/src/fs/fat32.rs",
      "                let n = self.alloc_cluster()?;\n                self.fat_set(tail, n)?;\n                EntryLoc {\n                    cluster: n,\n                    index: 0,\n                }\n            }\n        };\n",
      "                let n = self.alloc_cluster()?;\n                let loc = EntryLoc {\n                    cluster: n,\n                    index: 0,\n                };\n                let e = Entry {\n                    name,\n                    attr: ATTR_ARCHIVE,\n                    first: 0,\n                    size: 0,\n                    loc,\n                };\n                self.store_entry(&e)?;\n                self.fat_set(tail, n)?;\n                return Ok(e);\n            }\n        };\n",
-     ["TST-M3-FAT32-FAULT-CREATE"], "the order of a growth's last writes is reversed: with the last write refused, the reversed order leaves a marked cluster that holds an entry and that the directory does not reach along the first FAT copy (lost once the create made again links another), where the present order leaves an empty cluster at the directory's end; no answer and no name along the first copy differs (by reading, with one write refused alone the entry's name would be reached along the second copy alone: WP-134, WP-128); the line carries grown=0 and retry_grew=8 (the kernel's own judgement passes) and the host counts six lost clusters where five are pinned, TST-M3-FAT32-FAULT-CREATE FAIL"),
+     ["TST-M3-FAT32-FAULT-CREATE", "TST-M3-FAT32-FAULT-ONE-CREATE"], "the order of a growth's last writes is reversed: with the last write refused, the reversed order leaves a marked cluster that holds an entry and that the directory does not reach along the first FAT copy (lost once the create made again links another), where the present order leaves an empty cluster at the directory's end; no answer and no name along the first copy differs (by reading, with one write refused alone the entry's name is reached along the second copy alone until the next create; no case reads the second copy: WP-138, WP-128); the line carries grown=0 and retry_grew=8 (the kernel's own judgement passes) and the host counts six lost clusters where five are pinned, TST-M3-FAT32-FAULT-CREATE FAIL; TST-M3-FAT32-FAULT-ONE-CREATE FAIL by the same two fields"),
     # M263 (SECURITY): the refusal of the new entry's write is swallowed.
     ("M263", "kernel/src/fs/fat32.rs",
      "        self.store_entry(&e)?;\n        Ok(e)\n",
      "        let _ = self.store_entry(&e);\n        Ok(e)\n",
      ["TST-M3-FAT32-FAULT-CREATE", "TST-M3-FAT32-FAULT-ONE-CREATE"], "SECURITY: a create whose entry the disk refused to store answers success, and the caller holds a file the volume does not name: the line carries failed=7 and io=7 (absent stays 8: the name is not on the disk), TST-M3-FAT32-FAULT-CREATE FAIL; under one refused write the same answer, counted as ghost=1, TST-M3-FAT32-FAULT-ONE-CREATE FAIL"),
+    # M266 (SECURITY, from WP-134's red team): the hook's once mode refuses one write alone only
+    # when that write is the next one; armed for a later write it refuses every write after it
+    # too. The mode was shown for its first write only, and the once-mode sweeps read the same
+    # numbers under both modes; the create case now makes each create again inside the armed
+    # window.
+    ("M266", "kernel/src/block/mod.rs",
+     "        FAIL_TO.store(at, Ordering::SeqCst);\n",
+     "        FAIL_TO.store(if nth == 1 { at } else { u32::MAX }, Ordering::SeqCst);\n",
+     ["TST-M3-FAT32-FAULT-ONE-CREATE"], "SECURITY: the hook that should refuse write N alone refuses every write after it for N of two and more, so the once-mode cases would judge what the older cases judge: the create made again inside the armed window is refused and the line carries retry_ok=1, names=46 and dir_clusters=4, TST-M3-FAT32-FAULT-ONE-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-ONE-UNLINK, TST-M3-FAT32-FAULT-ONE-TRUNCATE and TST-M3-FAT32-FAULT-ONE-WRITE pass under it)"),
+    # M267 (SECURITY, from WP-134's red team): the refusal of a new cluster's zeroing is answered
+    # only after FSInfo's writes.
+    ("M267", "kernel/src/fs/fat32.rs",
+     "                    for i in 0..self.sectors_per_cluster {\n                        block::write(base + u64::from(i), &zero)?;\n                    }\n                    self.fsinfo_adjust(-1, k + 1)?;\n",
+     "                    let mut r = Ok(());\n                    for i in 0..self.sectors_per_cluster {\n                        r = r.and(block::write(base + u64::from(i), &zero));\n                    }\n                    self.fsinfo_adjust(-1, k + 1)?;\n                    r?;\n",
+     ["TST-M3-FAT32-FAULT-ONE-CREATE"], "SECURITY: an allocation whose zeroing the disk refused goes on to FSInfo's writes before it answers the error: the answer and everything the case reads are those of a call that stopped, and only the count of its disk writes differs (stopped=7 beside failed=8), TST-M3-FAT32-FAULT-ONE-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-CREATE fails too, by the same count)"),
     # M265 (SECURITY, WP-134, files.md v1.13, ADR-0014 item 14): a refusal that is answered only
     # after more disk writes. After the refused link of the directory's tail the create asks for
     # the writes that free the new cluster, then returns the error.
@@ -1094,7 +1109,7 @@ MUTANTS = [
     ("M264", "kernel/src/fs/fat32.rs",
      "                        block::write(base + u64::from(i), &zero)?;\n",
      "                        block::write(base + 1 + u64::from(i), &zero)?;\n",
-     ["TST-M3-FAT32-FAULT-CREATE"], "SECURITY: a new cluster is linked into a directory with the bytes it held before (the zeroing lands on the next sector, which on the lab's volume is the next cluster), and the directory lists names no create made: the line carries control=0 and retry_ok=7, TST-M3-FAT32-FAULT-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-ONE-TRUNCATE fails too, by a message of fsck.fat on its image, and the other 46 cases of M3 pass)"),
+     ["TST-M3-FAT32-FAULT-CREATE", "TST-M3-FAT32-FAULT-ONE-CREATE"], "SECURITY: a new cluster is linked into a directory with the bytes it held before (the zeroing lands on the next sector, which on the lab's volume is the next cluster), and the directory lists names no create made: the line carries control=0 and retry_ok=7, TST-M3-FAT32-FAULT-CREATE FAIL, and TST-M3-FAT32-FAULT-ONE-CREATE FAIL with strays=195 beside them (seen locally when M3 had 48 cases: TST-M3-FAT32-FAULT-ONE-TRUNCATE fails too, by a message of fsck.fat on its image, and the other 46 pass)"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1348,7 +1363,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M264",
             # M6 (WP-134): no disk write is asked for between a refused write of a growth and
             # the error (M265).
-            "M265"}
+            "M265",
+            # from WP-134's red team: the hook refuses one write alone for every N (M266), and a
+            # refused zeroing is answered before any further write (M267).
+            "M266", "M267"}
 
 
 def security_of(mid: str) -> bool:

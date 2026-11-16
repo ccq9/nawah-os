@@ -3673,7 +3673,9 @@ fn fat32_fault_create(once: bool) -> ! {
         }
         let r = open_new(&path);
         stopped += u32::from(crate::block::writes() - w1 == n);
-        crate::block::disarm_write_fault();
+        if !once {
+            crate::block::disarm_write_fault();
+        }
         failed += u32::from(r.is_err());
         io += u32::from(matches!(r, Err(FsError::Io(_))));
         let after = fault_dir_state();
@@ -3686,7 +3688,14 @@ fn fat32_fault_create(once: bool) -> ! {
             absent(&path) && before.is_some() && after.map(|s| s.0) == before.map(|s| s.0),
         );
         grown += u32::from(matches!((before, after), (Some(b), Some(a)) if a.1 > b.1));
+        // Under the once mode the create is made again with the hook still armed, past its
+        // one refused write: a hook that refused every later write too would refuse this
+        // create (the mode is shown beforehand for its first write only, on another file, and
+        // the sweep's own numbers are the same under both modes).
         let again = open_new(&path);
+        if once {
+            crate::block::disarm_write_fault();
+        }
         let last = fault_dir_state();
         retry_ok += u32::from(
             again.is_ok()
@@ -3734,8 +3743,8 @@ fn fat32_fault_create(once: bool) -> ! {
         fail("the free clusters were not dirtied before the sweep")
     }
     if once {
-        // What is read is judged first: under one refused write a swallowed refusal shows in
-        // the directory, not only in the count of disk writes.
+        // strays and ghost are judged before the count of disk writes: under one refused write
+        // a swallowed refusal shows in the directory too, not only in that count.
         if strays != 0 {
             fail("after a failed create the directory lists a name that no create made")
         }
