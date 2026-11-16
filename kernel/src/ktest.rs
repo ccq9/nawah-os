@@ -160,10 +160,16 @@ pub fn run() -> ! {
         "file_shared" => file_shared(),
         "fat32_persist_write" => fat32_persist(true),
         "fat32_persist_read" => fat32_persist(false),
-        "fat32_fault_unlink" => fat32_fault_unlink(),
+        "fat32_fault_unlink" => fat32_fault_unlink(false),
         "fat32_fault_unlink_check" => fat32_fault_check(b'U', "fat32_fault_unlink_check"),
-        "fat32_fault_truncate" => fat32_fault_truncate(),
+        "fat32_fault_unlink_one" => fat32_fault_unlink(true),
+        "fat32_fault_unlink_one_check" => fat32_fault_check(b'U', "fat32_fault_unlink_one_check"),
+        "fat32_fault_truncate" => fat32_fault_truncate(false),
         "fat32_fault_truncate_check" => fat32_fault_check(b'T', "fat32_fault_truncate_check"),
+        "fat32_fault_truncate_one" => fat32_fault_truncate(true),
+        "fat32_fault_truncate_one_check" => {
+            fat32_fault_check(b'T', "fat32_fault_truncate_one_check")
+        }
         "fat32_fault_write" => fat32_fault_write(),
         "fat32_fault_write_check" => fat32_fault_write_check(),
         "fat32_disk_full" => fat32_disk_full(),
@@ -2944,16 +2950,71 @@ fn fault_state(path: &[u8], want: &[u8]) -> u8 {
     .unwrap_or(3)
 }
 
+/// WP-124: the hook's once mode, shown before a sweep leans on it. With the next disk write
+/// refused and no other, a write to a new, empty file answers an I/O error (its first disk
+/// write is the one refused); the same call made again, the hook still armed, is taken whole.
+/// Returns (refused, next_taken). Were the mode to refuse every later write too, the sweeps
+/// that follow would leave the images of the older cases and show nothing of their own.
+fn fault_once_shown() -> (bool, bool) {
+    use crate::fs::vfs;
+    let bytes = [0x4Fu8; 64];
+    let Ok(a) = vfs::open(b"/ONCE.TXT", vfs::O_READ | vfs::O_WRITE | vfs::O_CREATE) else {
+        fail("could not create the file that shows the once mode")
+    };
+    if vfs::sync().is_err() {
+        fail("could not sync before the once mode is shown")
+    }
+    crate::block::arm_write_fault_once(1);
+    let first = vfs::write(&a, &bytes);
+    let second = vfs::write(&a, &bytes);
+    crate::block::disarm_write_fault();
+    drop(a);
+    let whole = fault_state(b"/ONCE.TXT", &bytes) == 1;
+    (
+        matches!(first, Err(FsError::Io(_))),
+        matches!(second, Ok(64)) && whole,
+    )
+}
+
+/// The fields a once-mode sweep adds to its line, and its two conditions: the mode was shown,
+/// and every failed call stopped at the refused write (it asked for exactly N writes).
+fn fault_once_tail(shown: (bool, bool), stopped: u32, writes: u32) -> String {
+    if !shown.0 || !shown.1 {
+        fail("the hook did not refuse one write alone")
+    }
+    if stopped != writes {
+        fail("a failed call asked for a disk write after the refused one")
+    }
+    alloc::format!(
+        "|once_refused={}|once_next_ok={}|stopped={}",
+        u8::from(shown.0),
+        u8::from(shown.1),
+        stopped
+    )
+}
+
 /// TST-M3-FAT32-FAULT-UNLINK, first boot (WP-105, RSK-027; files.md v1.5): a delete that fails
 /// at any of its disk writes leaves either the whole file or no name, never a name whose chain
 /// runs into free clusters. A control delete counts the writes of one delete (W); then for
 /// every N from 1 to W a fresh three-cluster file is deleted with the test kernel's hook
-/// refusing write N and all after it, and the volume is read back.
-fn fat32_fault_unlink() -> ! {
+/// refusing write N and all after it, and the volume is read back. With `once`
+/// (TST-M3-FAT32-FAULT-ONE-UNLINK, WP-124) the hook refuses write N alone.
+fn fat32_fault_unlink(once: bool) -> ! {
     use crate::fs::vfs;
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
     }
+    let name = if once {
+        "fat32_fault_unlink_one"
+    } else {
+        "fat32_fault_unlink"
+    };
+    let shown = if once {
+        fault_once_shown()
+    } else {
+        (true, true)
+    };
+    let mut stopped = 0u32;
     let make = |n: u32| {
         let path = fault_path(b'U', n);
         crate::fs::with(|fs| {
@@ -2976,8 +3037,14 @@ fn fat32_fault_unlink() -> ! {
             fail("could not create a file of the sweep")
         }
         let path = fault_path(b'U', n);
-        crate::block::arm_write_fault(n);
+        let w1 = crate::block::writes();
+        if once {
+            crate::block::arm_write_fault_once(n);
+        } else {
+            crate::block::arm_write_fault(n);
+        }
         let r = vfs::unlink(&path);
+        stopped += u32::from(crate::block::writes() - w1 == n);
         crate::block::disarm_write_fault();
         failed += u32::from(r.is_err());
         io += u32::from(matches!(r, Err(FsError::Io(_))));
@@ -2992,9 +3059,15 @@ fn fat32_fault_unlink() -> ! {
         }
     }
     let synced = vfs::sync().is_ok();
+    let tail = if once {
+        fault_once_tail(shown, stopped, writes)
+    } else {
+        String::new()
+    };
     kprintln!(
-        "OSX|{}|ktest|fat32_fault_unlink|control={}|writes={}|failed={}|io={}|gone={}|retry_gone={}|kept={}|bad={}|synced={}|live_files={}",
+        "OSX|{}|ktest|{}|control={}|writes={}|failed={}|io={}|gone={}|retry_gone={}|kept={}|bad={}|synced={}|live_files={}{}",
         BUILD_ID,
+        name,
         control.map_or_else(|e| e.code(), |_| "ok"),
         writes,
         failed,
@@ -3004,7 +3077,8 @@ fn fat32_fault_unlink() -> ! {
         kept,
         bad,
         u8::from(synced),
-        vfs::live_files()
+        vfs::live_files(),
+        tail
     );
     if control.is_err() || writes < 3 || failed != writes || io != writes || !synced {
         fail("the sweep did not run as planned")
@@ -3021,12 +3095,24 @@ fn fat32_fault_unlink() -> ! {
 /// TST-M3-FAT32-FAULT-TRUNCATE, first boot (WP-105, RSK-027; files.md v1.5): a truncation that
 /// fails at any of its disk writes leaves the file whole or empty, on the disk and in the node
 /// every open shares alike. For every N a file is written through one open, and a second open
-/// with O_TRUNCATE runs with write N and all after it refused.
-fn fat32_fault_truncate() -> ! {
+/// with O_TRUNCATE runs with write N and all after it refused. With `once`
+/// (TST-M3-FAT32-FAULT-ONE-TRUNCATE, WP-124) the hook refuses write N alone.
+fn fat32_fault_truncate(once: bool) -> ! {
     use crate::fs::vfs;
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
     }
+    let name = if once {
+        "fat32_fault_truncate_one"
+    } else {
+        "fat32_fault_truncate"
+    };
+    let shown = if once {
+        fault_once_shown()
+    } else {
+        (true, true)
+    };
+    let mut stopped = 0u32;
     let rw = vfs::O_READ | vfs::O_WRITE;
     let (mut writes, mut failed, mut io, mut kept, mut emptied, mut bad, mut node_differs) =
         (0u32, 0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
@@ -3044,10 +3130,13 @@ fn fat32_fault_truncate() -> ! {
             fail("could not write a file of the sweep")
         }
         let w0 = crate::block::writes();
-        if n > 0 {
+        if n > 0 && once {
+            crate::block::arm_write_fault_once(n);
+        } else if n > 0 {
             crate::block::arm_write_fault(n);
         }
         let b = vfs::open(&path, rw | vfs::O_TRUNCATE);
+        stopped += u32::from(n > 0 && crate::block::writes() - w0 == n);
         crate::block::disarm_write_fault();
         let node = {
             let f = a.lock();
@@ -3093,9 +3182,15 @@ fn fat32_fault_truncate() -> ! {
         n += 1;
     }
     let synced = vfs::sync().is_ok();
+    let tail = if once {
+        fault_once_tail(shown, stopped, writes)
+    } else {
+        String::new()
+    };
     kprintln!(
-        "OSX|{}|ktest|fat32_fault_truncate|control={}|writes={}|failed={}|io={}|kept={}|a_whole={}|emptied={}|a_refused={}|a_empty={}|retry_ok={}|bad={}|node_differs={}|synced={}|live_files={}",
+        "OSX|{}|ktest|{}|control={}|writes={}|failed={}|io={}|kept={}|a_whole={}|emptied={}|a_refused={}|a_empty={}|retry_ok={}|bad={}|node_differs={}|synced={}|live_files={}{}",
         BUILD_ID,
+        name,
         u8::from(control_ok),
         writes,
         failed,
@@ -3109,7 +3204,8 @@ fn fat32_fault_truncate() -> ! {
         bad,
         node_differs,
         u8::from(synced),
-        vfs::live_files()
+        vfs::live_files(),
+        tail
     );
     if !control_ok || writes < 3 || failed != writes || io != writes || !synced {
         fail("the sweep did not run as planned")

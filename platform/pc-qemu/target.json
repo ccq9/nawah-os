@@ -2547,6 +2547,162 @@
         ]
       },
       {
+        "id": "TST-M3-FAT32-FAULT-ONE-UNLINK",
+        "test_id": "TST-M3-FAT32-FAULT-ONE-UNLINK",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "phases": [
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=fat32_fault_unlink_one"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=fat32_fault_unlink_one",
+              "OSX|${BUILD_ID}|ktest|fat32_fault_unlink_one|control=ok|writes=9|failed=9|io=9|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0|once_refused=1|once_next_ok=1|stopped=9",
+              "|ktest|pass|a failed delete leaves the whole file or no name"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=fat32_fault_unlink_one_check"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=fat32_fault_unlink_one_check",
+              "OSX|${BUILD_ID}|ktest|fat32_fault_unlink_one_check|kept=1|empty=0|bad=0|after_ok=1|kept_after=1|empty_after=0|bad_after=0",
+              "|ktest|pass|after the restart every name of the sweep is whole, empty or gone"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          }
+        ],
+        "oracle": "REQ-M3-007, WP-124 (RSK-027; files.md v1.10; ADR-0014 item 11): a delete in which one disk write is refused and every write after it is taken stops at the refused write and leaves the whole file or no name. First boot (test kernel, mount; the hook's second mode refuses write N alone): the mode is shown first on a new, empty file: a write whose first disk write is the refused one answers an I/O error, and the same call made again, the hook still armed, is taken whole (once_refused=1, once_next_ok=1); a control delete counts nine disk writes (writes=9); then for every N from 1 to 9 a fresh three-cluster file is deleted with write N alone refused: every call answers an I/O error (failed=9, io=9) and asks for exactly N disk writes (stopped=9: none goes on after the refused one); the name is whole once and gone eight times (kept=1, gone=8, bad=0), and a second delete of a name that is gone answers not found (retry_gone=8); the sync at the end succeeds and no file object is left (synced=1, live_files=0). Second boot (a kernel with no memory of the first): every name of the sweep is whole or gone, a new file is written and read back, and no name changed (kept=1, empty=0, bad=0, after_ok=1, kept_after=1, empty_after=0, bad_after=0). Host, once, on the final image: tools/fat32.py check --faulted --expect-lost 12 --expect-lost-second 9 --expect-lost-both 9 (the three numbers of TST-M3-FAT32-FAULT-UNLINK: code that stops at its first refused write leaves, write for write, what a refusal of that write and all after it leaves; no name reaches a free cluster, no two names share one, and no chain is shorter or longer than its size in either FAT copy) and tools/fat32.py fsck-faulted (every message named). What this case shows that the older one cannot: a fat_set that ignores a refused write, or checks only the first copy's write, goes on writing and answers success here, so the counts on the line fail (mutants M252 and M253, which the older cases let live because there every later write is refused too); and the mode itself is held by M254. Not shown: a new file's write and an append under the same mode (WP-131); a write the device refuses and then takes after all (the unknown outcome of a timed-out write); two refused writes that are not next to each other; and what TST-M3-FAT32-FAULT-UNLINK does not show either (writes reordered in a device's cache, a torn sector, a failing read); both boots exit 33.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "|ktest|pass|a failed delete leaves the whole file or no name",
+          "|ktest|pass|after the restart every name of the sweep is whole, empty or gone"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "max_counts": {
+          "|boot|start|": 2
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "--faulted",
+            "--expect-lost",
+            "12",
+            "--expect-lost-second",
+            "9",
+            "--expect-lost-both",
+            "9",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "fsck-faulted",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M3-FAT32-FAULT-ONE-TRUNCATE",
+        "test_id": "TST-M3-FAT32-FAULT-ONE-TRUNCATE",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "phases": [
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=fat32_fault_truncate_one"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=fat32_fault_truncate_one",
+              "OSX|${BUILD_ID}|ktest|fat32_fault_truncate_one|control=1|writes=9|failed=9|io=9|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0|once_refused=1|once_next_ok=1|stopped=9",
+              "|ktest|pass|a failed truncation leaves the file whole or empty, on disk and in its node"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=fat32_fault_truncate_one_check"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=fat32_fault_truncate_one_check",
+              "OSX|${BUILD_ID}|ktest|fat32_fault_truncate_one_check|kept=1|empty=9|bad=0|after_ok=1|kept_after=1|empty_after=9|bad_after=0",
+              "|ktest|pass|after the restart every name of the sweep is whole, empty or gone"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector"
+            ]
+          }
+        ],
+        "oracle": "REQ-M3-007, WP-124 (RSK-027; files.md v1.10; ADR-0014 item 11): a truncation in which one disk write is refused and every write after it is taken stops at the refused write and leaves the file whole or empty, on the disk and in the node every open shares alike. First boot (test kernel, mount; the hook's second mode refuses write N alone): the mode is shown first on a new, empty file (once_refused=1, once_next_ok=1, as in TST-M3-FAT32-FAULT-ONE-UNLINK); a control truncation counts nine disk writes (control=1, writes=9); then for every N from 1 to 9 a three-cluster file written through one open is truncated by a second open with write N alone refused: every call answers an I/O error (failed=9, io=9) and asks for exactly N disk writes (stopped=9); the file is whole once and empty eight times (kept=1, emptied=8, bad=0) and its node equals the stored entry (node_differs=0); the first open reads the whole file back where it is whole (a_whole=1), and where it is empty a write at the old position is refused, a read from 0 returns nothing and a second truncation succeeds (a_refused=8, a_empty=8, retry_ok=8); synced=1, live_files=0. Second boot: every name is whole or empty, a new file is written and read back, and no name changed (kept=1, empty=9, bad=0, after_ok=1, kept_after=1, empty_after=9, bad_after=0). Host, once, on the final image: tools/fat32.py check --faulted --expect-lost 12 --expect-lost-second 9 --expect-lost-both 9 (the three numbers of TST-M3-FAT32-FAULT-TRUNCATE, for the same reason as in the delete's case) and tools/fat32.py fsck-faulted (every message named). What this case shows that the older one cannot: as in TST-M3-FAT32-FAULT-ONE-UNLINK (mutants M252 and M253 fail the counts on the line; M254 holds the mode). Not shown: a new file's write and an append under the same mode (WP-131); a write the device refuses and then takes after all (the unknown outcome of a timed-out write); two refused writes that are not next to each other; and what TST-M3-FAT32-FAULT-TRUNCATE does not show either (writes reordered in a device's cache, a torn sector, a failing read); both boots exit 33.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "|ktest|pass|a failed truncation leaves the file whole or empty, on disk and in its node",
+          "|ktest|pass|after the restart every name of the sweep is whole, empty or gone"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "max_counts": {
+          "|boot|start|": 2
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "--faulted",
+            "--expect-lost",
+            "12",
+            "--expect-lost-second",
+            "9",
+            "--expect-lost-both",
+            "9",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "fsck-faulted",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
         "id": "TST-M3-FAT32-FAULT-WRITE",
         "test_id": "TST-M3-FAT32-FAULT-WRITE",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

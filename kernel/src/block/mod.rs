@@ -89,14 +89,18 @@ pub fn read(sector: u64, buf: &mut [u8]) -> Result<(), BlkError> {
 /// Test kernel only (WP-105, the FAT32 fault cases): disk writes are counted, and from a chosen
 /// write on every write is refused with `Io(0xEE)` before it reaches the driver (nothing is
 /// published), while reads keep working. The disk then holds, to the sector, what a power cut
-/// after the earlier writes would leave. Not imitated: writes reordered in a device cache, a
-/// torn sector, and a request whose outcome is unknown (the driver's timeout).
+/// after the earlier writes would leave. A second mode (WP-124) refuses the chosen write alone
+/// and takes every write after it: a disk that fails one request and serves the next. Not
+/// imitated: writes reordered in a device cache, a torn sector, and a request whose outcome is
+/// unknown (the driver's timeout).
 #[cfg(feature = "ktest")]
 mod fault {
     use core::sync::atomic::{AtomicU32, Ordering};
 
     static WRITES: AtomicU32 = AtomicU32::new(0);
     static FAIL_FROM: AtomicU32 = AtomicU32::new(u32::MAX);
+    /// The last write that is refused; `u32::MAX` while every write from `FAIL_FROM` on is.
+    static FAIL_TO: AtomicU32 = AtomicU32::new(u32::MAX);
     static TIMEOUT_AT: AtomicU32 = AtomicU32::new(u32::MAX);
 
     /// True, once, when the write just counted is the one chosen to time out.
@@ -115,7 +119,7 @@ mod fault {
     /// Counts one write; true when it is refused.
     pub fn refuses() -> bool {
         let n = WRITES.fetch_add(1, Ordering::SeqCst) + 1;
-        n >= FAIL_FROM.load(Ordering::SeqCst)
+        n >= FAIL_FROM.load(Ordering::SeqCst) && n <= FAIL_TO.load(Ordering::SeqCst)
     }
 
     pub fn writes() -> u32 {
@@ -123,11 +127,20 @@ mod fault {
     }
 
     pub fn arm(nth: u32) {
+        FAIL_TO.store(u32::MAX, Ordering::SeqCst);
         FAIL_FROM.store(writes().saturating_add(nth), Ordering::SeqCst);
+    }
+
+    /// The `nth` write from now is refused and no other.
+    pub fn arm_once(nth: u32) {
+        let at = writes().saturating_add(nth);
+        FAIL_TO.store(at, Ordering::SeqCst);
+        FAIL_FROM.store(at, Ordering::SeqCst);
     }
 
     pub fn disarm() {
         FAIL_FROM.store(u32::MAX, Ordering::SeqCst);
+        FAIL_TO.store(u32::MAX, Ordering::SeqCst);
     }
 }
 
@@ -142,6 +155,13 @@ pub fn writes() -> u32 {
 #[cfg(feature = "ktest")]
 pub fn arm_write_fault(nth: u32) {
     fault::arm(nth);
+}
+
+/// Test kernel only (WP-124): the `nth` write from now (1 is the next one) is refused and
+/// every write after it is taken, until `disarm_write_fault`.
+#[cfg(feature = "ktest")]
+pub fn arm_write_fault_once(nth: u32) {
+    fault::arm_once(nth);
 }
 
 #[cfg(feature = "ktest")]
