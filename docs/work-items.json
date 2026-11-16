@@ -8228,7 +8228,8 @@
    ],
    "inputs": [
     "from WP-134's audit and from a review the owner relayed on 2026-11-16: the acceptance of WP-133 and of WP-134 says that no name reaches a free cluster and no two names share one in either FAT copy for every disk write of the create; the cases show it on the final image (the host check) and, between a failed create and the next, along the first copy only; no boot reads the second copy",
-    "by reading (WP-133's and WP-134's reviews): after a refusal at N=2 the new cluster's mark, and at N=7 the directory tail's link, are in the second copy alone until the create made again writes over them; under M262 a name, and under M265 the directory's chain onto a freed cluster, are reached along the second copy alone for that time; the files of the create cases are empty, so the directory's chain is the only chain to walk"
+    "by reading (WP-133's and WP-134's reviews): after a refusal at N=2 the new cluster's mark, and at N=7 the directory tail's link, are in the second copy alone until the create made again writes over them; under M262 a name, and under M265 the directory's chain onto a freed cluster, are reached along the second copy alone for that time; the files of the create cases are empty, so the directory's chain is the only chain to walk",
+    "the kernel engineer's reading of 2026-11-16 (by reading at c25bb0656, nothing run; scratch plan): the file system's own readers take the next cluster from the first FAT copy in one place and its directory walk stops at an end mark, so a reader of one copy is written in the test kernel alone, on block reads and the volume's public numbers: the entry of a cluster in a copy, the directory's chain along that copy followed in the FAT alone (sound when it ends without standing on a cluster that is free, reserved or bad there), and the names a reader of that copy would list; both copies are read by this one reader, and its reading of the first copy is checked against the file system's. Expected on the present code, in both modes, after the create under the hook and before the create made again: the second copy's chain never unsound, longer than the first's after one call (N=7: the tail's link is in the second copy alone), the names the same after every call. Under M262 the second copy lists a name the first does not after one call (N=8) in both modes; under M265 with one write refused alone the second copy's chain stands on a freed cluster after one call (N=7), and with every later write refused nothing changes (the count of disk writes alone, as today). No mutant that only these fields see was found by reading: a write asked for after the refused one changes the count of disk writes, and a change before it stays in the final image"
    ],
    "files": [
     "kernel/src/fs/fat32.rs",
@@ -8250,7 +8251,8 @@
     "test first, red seen locally: M262 and M265, which the cases see today by counts alone, must fail by the second copy's fields; a mutant that only those fields see is registered if one is found",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-16 estimate: unmeasured; the manager's reading: about 45 calls / 60 min for the two create cases; the write, unlink and truncation sweeps, whose files have chains of their own, are a later item; sized at activation",
-    "2026-11-16: test_ids name existing cases until this item's own fields exist"
+    "2026-11-16: test_ids name existing cases until this item's own fields exist",
+    "2026-11-16 activation estimate and design (the manager, from the kernel engineer's reading of the same day at c25bb0656, nothing run; an audit pass and a red-team pass before the single push). The owner's answer to DEC-031 (option A) named this item the next one; it is activated after WP-134's close and before the owner has ruled on the order of work after it (DEC-033). Estimate: the engineer put the item with four fields at about 85 calls and 85 to 95 min, at the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first), and proposed to cut the fourth field (the cluster marked in the second copy alone, N=2) into a later item. It is NOT cut: the acceptance says that the calls after which the second copy shows what the first does not are counted and pinned, and the mark at N=2 is one of them; cutting it would narrow an acceptance without the owner's approval. The design was read and the test's patch drafted before this activation, and WP-134, measured, took 70 min: the manager's estimate is about 80 calls / 85 min, at the line; if the item runs over, the record says by how much. The later item DEC-031's option A names for the write, unlink and truncation sweeps is WP-140 (planned by this line's commit). The local run before the push, by the lab auditor's rule of 2026-11-16: the cut run (the whole M3, M6, every host suite and the item's mutants) is allowed only when every changed file is the cases' own entries in target.json, functions of ktest.rs that only this item's cases call, mutants.py or docs; that holds for this design; if the change comes to touch anything else, the full run of every suite is made. CI runs every suite; the four local checks are run as always. Design, three options: (1) a reader of one FAT copy written in the test kernel alone, on block reads and the volume's public numbers, used for both copies and checked against the file system's own reading of the first; fields on both create cases' first-boot lines, read after every create under the hook and before the create made again: first_same (the calls after which the reader reads the first copy as the file system does), second_free (the calls after which the directory's chain along the second copy stands on a cluster free there or does not end), second_longer (the calls after which it is longer than the first copy's), second_names (the calls after which the names differ) and second_marks (the calls after which a cluster is marked in the second copy and free in the first, found by comparing the two copies over the FAT sectors up to the first cluster that was free before the call): chosen, the file system's code is not touched and the reader does not share its code with what it judges; (2) a copy parameter in the file system's own readers: it changes code the release kernel runs: rejected; (3) the same reader inside the file system under the test feature: equal in effect, kept as the fallback if the volume's numbers are not reachable from the test. Test first: the lines of both cases are pinned with the new fields at the numbers read (first_same=8, second_free=0, second_longer=1, second_names=0, second_marks=1) and derived locally; the older case's line changes for the first time, as a tightening, and its second boot does not. The red is the mutants', each seen in the tree: M262 must fail both cases by second_names, M265 must fail the once case by second_free; under the older mode M265 changes nothing in these fields and that is said. By reading no mutant exists that only the new fields see; if a run finds one it is registered, otherwise a dated line says none was found and what the fields are for: they show the acceptance's clause on either FAT copy after every call, which until now was read on the final image and the first copy alone. What the item will not judge and its oracle must say: the chains of files in the other sweeps (WP-140), the FSInfo count (WP-129), the lost clusters of each call (WP-135), a read the disk refuses (WP-136), the returned handle (WP-137)"
    ],
    "acceptance": "after every failed create of TST-M3-FAT32-FAULT-CREATE and TST-M3-FAT32-FAULT-ONE-CREATE the test kernel reads the directory along the second FAT copy as along the first: its chain reaches no free cluster and ends, and the calls after which the second copy shows what the first does not are counted and pinned, shown by fields on both cases' lines on CI; M262 and M265 are killed by those fields; no pinned number of a case is relaxed (a line that gains fields is re-pinned as a tightening and said so); files.md (the version free at the merge) states it",
    "test_ids": [
@@ -8260,12 +8262,63 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
+   "status": "active",
+   "status_history": [
+    "planned",
+    "active"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
    "status": "planned",
    "status_history": [
     "planned"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": null,
+   "id": "WP-140",
+   "depends_on": [
+    "WP-138"
+   ],
+   "inputs": [
+    "from the owner's answer to DEC-031 (option A, 2026-11-16): the acceptances of WP-131 and of the older fault items say 'in either FAT copy' for every disk write; the write, unlink and truncation sweeps show it on the final image and, between a failed call and the next, along the first copy only; WP-138 reads the second copy for the create cases, whose files are empty; here the files have chains of their own",
+    "by reading (WP-134's reviews): the reader WP-138 writes in the test kernel follows one chain in one FAT copy; this item walks every file of a sweep along the second copy after each failed call: no chain reaches a cluster free in that copy, no two chains share one, none is shorter than its size; the states the first copy does not show are counted and pinned"
+   ],
+   "files": [
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
+   ],
+   "actions": [
+    "FAT32: نواة الاختبار تقرأ النسخة الثانية من FAT بعد كل نداء فاشل في مسوح الكتابة والحذف والتفريغ (من قرار المالك DEC-031، الخيار أ)",
+    "design to decide in the package (2-3 options with trade-offs): the six fault cases in one item against one item per operation (expected: split by operation at activation); which pinned lines gain fields",
+    "test first, red seen locally: the mutants of WP-117, WP-120, WP-124 and WP-131 that change what the second copy holds between calls (M252, M253, M219 by reading) must fail by the new fields",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; expected over the budget line as one item; sized and split at activation",
+    "2026-11-16: test_ids name existing cases until this item's own fields exist"
+   ],
+   "acceptance": "after every failed call of the write, unlink and truncation sweeps, in both modes of the hook, the test kernel reads every file of the sweep along the second FAT copy as along the first: no chain reaches a cluster free in that copy, no two chains share one and none is shorter than its size, and the calls after which the second copy shows what the first does not are counted and pinned, shown by fields on the cases' lines on CI; the mutants that change the second copy between calls are killed by those fields; no pinned number of a case is relaxed (a line that gains fields is re-pinned as a tightening and said so); files.md (the version free at the merge) states it",
+   "test_ids": [
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE",
+    "TST-M6-MUTANTS"
+   ]
   },
   {
    "id": "WP-125",
