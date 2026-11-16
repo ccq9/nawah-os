@@ -1,0 +1,24 @@
+test_chain_longer_than_size (__main__.Fat32Check.test_chain_longer_than_size) ... ok
+test_copies_differ (__main__.Fat32Check.test_copies_differ) ... ok
+test_deep_tree (__main__.Fat32Check.test_deep_tree) ... ok
+test_directory_chain_into_a_free_cluster (__main__.Fat32Check.test_directory_chain_into_a_free_cluster) ... ok
+test_free_first_cluster_is_a_problem (__main__.Fat32Check.test_free_first_cluster_is_a_problem) ... ok
+test_free_in_the_second_copy_alone_is_a_problem_when_faulted (__main__.Fat32Check.test_free_in_the_second_copy_alone_is_a_problem_when_faulted) ... ok
+test_fsck_faulted_on_images (__main__.Fat32Check.test_fsck_faulted_on_images) ... ok
+test_fsck_messages_are_named (__main__.Fat32Check.test_fsck_messages_are_named) ... ok
+test_fsinfo_signatures (__main__.Fat32Check.test_fsinfo_signatures) ... ok
+test_lost_cluster (__main__.Fat32Check.test_lost_cluster) ... ok
+test_shared_cluster_is_a_problem (__main__.Fat32Check.test_shared_cluster_is_a_problem) ... ok
+test_two_directories_on_one_cluster (__main__.Fat32Check.test_two_directories_on_one_cluster) ... ok
+test_absent_raw (__main__.Fat32Tool.test_absent_raw) ... ok
+test_fsck (__main__.Fat32Tool.test_fsck) ... ok
+test_geometry_and_listing (__main__.Fat32Tool.test_geometry_and_listing) ... ok
+test_grep (__main__.Fat32Tool.test_grep) ... ok
+test_nested_directory (__main__.Fat32Tool.test_nested_directory) ... ok
+test_pattern_tail (__main__.Fat32Tool.test_pattern_tail) ... ok
+test_read_back (__main__.Fat32Tool.test_read_back) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 8.823s
+
+OK

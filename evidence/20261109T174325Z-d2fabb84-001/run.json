@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261109T174325Z-d2fabb84-001",
+ "started_at": "2026-11-09T17:43:25+00:00",
+ "finished_at": "2026-11-09T17:43:26+00:00",
+ "source_revision": "d2fabb84c5588cc9e12cb41c76ecace266ceab3f",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M0-004",
+ "commands": [
+  "python3 -I tests/test_pre_merge.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "42662451960",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "d2fabb84c5588cc9e12cb41c76ecace266ceab3f",
+  "head_sha": "78ff331fd09a46bdaec1ef56672bf51481f1374b",
+  "ref": "refs/pull/23/merge"
+ }
+}
