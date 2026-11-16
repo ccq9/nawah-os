@@ -7805,10 +7805,8 @@
    "inputs": [
     "split from WP-124 before its activation on 2026-11-16 (the budget line: the kernel engineer's reading of 2026-11-15 put the whole of WP-124 at 85 to 100 calls and 80 to 90 min); the clauses of WP-124's acceptance on a new file's write and an append are moved here word for word",
     "the kernel engineer's design of 2026-11-15 (by reading at 7fa41aa17, nothing run; scratch plan): the hook's once mode and the sweep functions with the parameters `once` and `name` come from WP-124; this item adds the case TST-M3-FAT32-FAULT-ONE-WRITE with its own image (two boots); expected by reading, to derive locally: the numbers of TST-M3-FAT32-FAULT-WRITE (53, 52 and 52 lost; X08.TXT and X09.TXT longer in the first copy, X07.TXT too in the second), since correct code stops at its first refused write",
-    "from WP-127's red team (2026-11-15, by reading at 35fe1fe44, not run; no CI evidence; to check at activation): the lost clusters are pinned as a number for the whole image: a cluster leaked at one N of a sweep and one saved at another give the same count; proposed: the lost clusters per file or per window of the sweep",
     "kernel/src/fs/fat32.rs (write, alloc_cluster, fat_set); kernel/src/ktest.rs (fat32_fault_write and its check); platform/pc-qemu/target.json (TST-M3-FAT32-FAULT-WRITE); docs/contracts/files.md v1.6 to v1.9; RSK-027",
-    "moved from WP-124 by its dated line of 2026-11-16: from WP-117's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): a create or a directory that grows while the disk stops in the middle is in no sweep (files.md v1.8 says the same of a refused write)",
-    "from WP-124's red team (2026-11-16, by reading at a2358c37f, nothing run; no CI evidence; to check at activation): a create with a directory that grows (alloc_cluster, the link of the directory's tail, the entry) under the once mode is in no case; two refused writes of one call that are not next to each other, and a write the device refuses and then takes, are shown by no case either (the oracles of WP-124's cases say so)"
+    "2026-11-16, read at activation (the kernel engineer's reading at 970f6a720 and the manager's): the write sweep's functions (fault_write_sweep, fat32_fault_write, fat32_fault_write_check) do not have the `once` and `name` parameters an input above says come from WP-124: WP-124 gave them to the delete and the truncation only, and giving them to the write sweep is this item's work; docs/contracts/files.md is at v1.10 and the next free version is v1.11; the mutants of WP-124 already die on its two cases, so the red of this item is three new mutants on the write path (a swallowed refusal of the zeroing write, of the data write, and a deferred error)"
    ],
    "files": [
     "kernel/src/ktest.rs",
@@ -7829,7 +7827,8 @@
     "design to decide in the package (2-3 options with trade-offs): one new case with the three sweeps of the write case under the once mode, against a case per sweep; whether the lost clusters of each call are pinned per call for the first copy (a field on the case's line from the difference of the free count before and after each call) in this item or moved",
     "test first, red seen locally: the present code is expected to pass the new sweeps; the red is the mutants' of WP-124 (they must fail this case too) or a first finding if the present code fails a sweep",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-16 estimate: unmeasured; sized at activation"
+    "2026-11-16 estimate: unmeasured; sized at activation",
+    "2026-11-16 activation estimate, split and design (the manager, from the kernel engineer's reading of the same day at 970f6a720, nothing run; an audit pass and a red-team pass before the single push): this item is the write sweeps under the hook's once mode in one new guest case, TST-M3-FAT32-FAULT-ONE-WRITE, with its own image: the engineer put it at 85 to 95 calls and 80 to 90 min, at the budget line (OS-EXEC-AR §2.3, line 44: 90 min / 120 calls, whichever first); WP-124, sized the same way, took about 50 calls after its activation, so it is activated as it is and split further only if the local runs do not settle. Moved by this line: the input on the lost clusters of each call to WP-135 (planned, depending on this item), as the acceptance allows; the two inputs on a create and a directory that grows to WP-133 (the older mode) and WP-134 (the once mode), both planned: no sweep runs a create in either mode, and the acceptance of this item did not name it. The engineer would run the create first (it is in no sweep at all); the manager keeps this item first: it is the clause WP-124's acceptance carried, it reuses what WP-124 built, and three mutants of the write path live in every case today, one of them a new cluster that is not zeroed. The owner may reorder. Design, three options: (1) the three sweeps of the write case with the mode as a parameter in one new case (chosen: the older case's image and pinned numbers are not touched; expected by reading: its lines with stopped=23, 9 and 9 and the host's 53, 52 and 52 with the same longer files); (2) one case per sweep (three images and six boots for the same evidence); (3) the once-mode sweeps inside the older case (rejected: it doubles its lost clusters). Test first: the new case is expected to pass on the present code; the red is the mutants': each of the three must be seen to pass TST-M3-FAT32-FAULT-WRITE and fail the new case; if the present code fails a sweep, that is the first finding"
    ],
    "acceptance": "with the hook refusing one write alone, for every write of a new file's write and an append, no name reaches a free cluster, no two names share one and no chain is shorter than its size in either FAT copy, and the call answers an I/O error, shown by the sweeps and the host check on CI; files.md (the version free at the merge) states what a single refused write leaves in a write; the input on the lost clusters of each call is taken into the acceptance, moved to a named package or refuted by a dated line",
    "test_ids": [
@@ -7839,9 +7838,10 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -7891,6 +7891,160 @@
    ],
    "commands": [
     "python3 tools/project.py test --target host --suite M3",
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-133",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-124"
+   ],
+   "inputs": [
+    "split from WP-131 at its activation on 2026-11-16: two of its inputs speak of a create and of a directory that grows, which no sweep runs in either mode of the hook and its acceptance did not name",
+    "moved from WP-124 by its dated line of 2026-11-16: from WP-117's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): a create or a directory that grows while the disk stops in the middle is in no sweep (files.md v1.8 says the same of a refused write)",
+    "from WP-124's red team (2026-11-16, by reading at a2358c37f, nothing run; no CI evidence; to check at activation): a create with a directory that grows (alloc_cluster, the link of the directory's tail, the entry) under the once mode is in no case; two refused writes of one call that are not next to each other, and a write the device refuses and then takes, are shown by no case either (the oracles of WP-124's cases say so)",
+    "the kernel engineer's reading of 2026-11-16 (by reading at 970f6a720, nothing run; scratch plan): create (kernel/src/fs/fat32.rs) with the directory's last cluster full writes, in order: the mark of the new cluster in the second FAT copy then the first, its zeroing, FSInfo twice, the link of the directory's tail in the second copy then the first, the entry at index 0 of the new cluster: eight writes; a cluster is one sector on the lab's volume, 16 entries. Left by a refusal at N, the same in both modes of the hook: N=1 nothing; N=2 the new cluster marked in the second copy only; N=3 to 6 marked in both and lost; N=7 the directory longer in the second copy alone by a zeroed cluster with no name, and the cluster lost in the first; N=8 the directory longer by a zeroed cluster in both copies, no name, nothing lost. No N leaves a name in a cluster the first copy does not link, nor an unzeroed cluster. The next growth of the same directory writes the tail's link in both copies and so erases the state of N=7 from the final image: only a check inside the boot sees it",
+    "the kernel engineer's reading of 2026-11-16 (by reading at 970f6a720, nothing run; scratch plan): a sweep proposed: dirty the free clusters first (a file whose bytes look like entries, then deleted); for each N fill the directory's last cluster with names, create one more name under the refusal, then again after disarm; fields for the names absent after the failure, the directory grown, stray entries read from the new cluster, the retry; the second boot counts the names; the host's three numbers derived locally (five by reading). A ktest-only helper is needed to know the free slots of a directory's last cluster. A mutant that swallows the refusal of the zeroing write would show stray entries",
+    "kernel/src/fs/fat32.rs (create, alloc_cluster, fat_set, store_entry); kernel/src/ktest.rs (the fault sweeps); docs/contracts/files.md v1.5 to v1.10; RSK-027"
+   ],
+   "files": [
+    "kernel/src/ktest.rs",
+    "kernel/src/fs/fat32.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32: إنشاء ملف مع نمو المجلد تحت قرص يرفض الكتابة N وكل ما بعدها: مسح لا تجريه أي حالة اليوم (من الفريقين الأحمرين لـWP-117 وWP-124، مفصول من WP-131)",
+    "design to decide in the package (2-3 options with trade-offs): a new guest case with its own image and the sweep the engineer proposed, against a sweep inside an existing case (rejected beforehand if it changes that case's pinned numbers), against a directory other than the root; how the state of N=7, which the next growth erases, is judged inside the boot",
+    "test first, red seen locally: by the engineer's reading the present code leaves no damaged state, so the red is the mutants' (the zeroing write's refusal swallowed must show stray entries or a wrong count) unless the sweep finds a first defect, which is then fixed test first",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; the engineer's reading: about 80 calls with the helper and the dirtying; sized at activation"
+   ],
+   "acceptance": "for every disk write of a create that must grow its directory, with that write and every write after it refused, the call answers an I/O error, the name is absent, no entry that is not a name's own is read from the directory, no name reaches a free cluster and no two names share one in either FAT copy, and the same create made again succeeds, shown by a guest case with its own image and its host check on CI; a mutant on the growth's writes is killed; files.md (the version free at the merge) states what a failed create leaves",
+   "test_ids": [
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-134",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-133"
+   ],
+   "inputs": [
+    "split from WP-131 at its activation on 2026-11-16, with WP-133: the same create and directory growth under the hook's once mode (write N alone refused), after WP-133 has the sweep in the older mode",
+    "from WP-124's red team (2026-11-16, by reading at a2358c37f, nothing run; no CI evidence; to check at activation): a create with a directory that grows (alloc_cluster, the link of the directory's tail, the entry) under the once mode is in no case; two refused writes of one call that are not next to each other, and a write the device refuses and then takes, are shown by no case either (the oracles of WP-124's cases say so)",
+    "kernel/src/block/mod.rs (arm_write_fault_once, WP-124); kernel/src/ktest.rs (fault_once_shown, fault_once_tail, fault_once_judge); docs/contracts/files.md v1.10; RSK-027"
+   ],
+   "files": [
+    "kernel/src/ktest.rs",
+    "kernel/src/fs/fat32.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32: إنشاء ملف مع نمو المجلد تحت رفض كتابة واحدة فقط (مفصول من WP-131، بعد WP-133)",
+    "design to decide in the package (2-3 options with trade-offs): the sweep of WP-133 with the once mode as a parameter and its own case and image, as WP-124 did for the delete; which fields show that the call stopped at the refused write",
+    "test first, red seen locally: the mutants' (a swallowed or deferred refusal on the growth's writes must pass WP-133's case and fail this one), or a first defect fixed test first",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; the engineer's reading: about 60 calls; sized at activation"
+   ],
+   "acceptance": "with the hook refusing one write alone, for every disk write of a create that must grow its directory, the call answers an I/O error and asks for no write after the refused one, the name is absent, no entry that is not a name's own is read, and no name reaches a free cluster and no two names share one in either FAT copy, shown by a guest case with its own image and its host check on CI; the mutants that swallow or defer a refusal on those writes are killed; files.md (the version free at the merge) states it",
+   "test_ids": [
+    "TST-M3-FAT32-FAULT-ONE-UNLINK",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-135",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "depends_on": [
+    "WP-131"
+   ],
+   "inputs": [
+    "split from WP-131 at its activation on 2026-11-16: the red team's input on the lost clusters of each call, which WP-131's acceptance asked to take, move or refute",
+    "from WP-127's red team (2026-11-15, by reading at 35fe1fe44, not run; no CI evidence; to check at activation): the lost clusters are pinned as a number for the whole image: a cluster leaked at one N of a sweep and one saved at another give the same count; proposed: the lost clusters per file or per window of the sweep",
+    "the kernel engineer's reading of 2026-11-16 (by reading at 970f6a720, nothing run; scratch plan): a field per call from the free count and the clusters the name owns, before and after the call, for the first FAT copy (free_clusters scans the first copy only); expected per N: delete and truncation 0,3,3,2,2,1,1,0,0 (sum 12); a new file's write 0,0, six times 1, eight times 2, seven times 3 (sum 43); an append 0,0,1,1,1,1,1,0,0 (sum 5; at N=8 and 9 the cluster is on the chain: longer, not lost); about 513 sector reads per scan and two scans per call, not measured; no single-site mutant was found that only this field sees: its worth is in saying where a leak happened",
+    "kernel/src/ktest.rs (the fault sweeps in both modes); kernel/src/fs/fat32.rs (free_clusters); RSK-027, RSK-037"
+   ],
+   "files": [
+    "kernel/src/ktest.rs",
+    "kernel/src/fs/fat32.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "actions": [
+    "FAT32: العناقيد الضائعة لكل نداء من مسوح الفشل، لا رقمًا واحدًا للصورة (مدخل الفريق الأحمر لـWP-127، مفصول من WP-131)",
+    "design to decide in the package (2-3 options with trade-offs): a field on the once-mode cases' lines with the sequence per N, against a sum checked in the guest, against the second copy too (needs a scanner of that copy in the test kernel); the cost of two scans per call on the cases' time",
+    "test first, red seen locally: a mutant that leaks a cluster at one N and saves one at another, if one can be written in one place; else the item says plainly that the field locates and does not detect",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; the engineer's reading: about 55 to 65 calls; sized at activation"
+   ],
+   "acceptance": "the lost clusters of each call of the fault sweeps are on the cases' lines for the first FAT copy and pinned per N, their sum equal to the number the host check pins, shown on CI; a mutant that only this field sees is killed, or a dated line says that none exists and what the field is for; no pinned number of a case is relaxed",
+   "test_ids": [
+    "TST-M3-FAT32-FAULT-ONE-UNLINK",
+    "TST-M3-FAT32-FAULT-ONE-TRUNCATE",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
    "status": "planned",
