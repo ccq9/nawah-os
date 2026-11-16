@@ -8305,6 +8305,55 @@
    "blocker": null
   },
   {
+   "id": "WP-141",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M4-007"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "from a review the owner relayed on 2026-11-16 (by reading and a separate model of the logic; the reviewer did not run the Rust handler): netd takes an ICMP echo reply as the answer to its probe when the reply's id and sequence match, without comparing the reply's source address with the address probed",
+    "verified by the manager by reading at c25bb0656 (nothing run): user/apps/netd/src/main.rs, handle_icmp: `typ == 0 && self.echo_wait == Some((id, seq))`, with `src` at hand and not used for a reply; ping sets echo_wait to (ICMP_ID, seq), the id a constant and the sequence a counter from 1; the same question is open for what answers UDP and TCP are matched by, to be read in the package",
+    "the local failure of TST-M4-NET-NO-INTERNET (WP-134's record: probe=OK rtt=1 where the judgement asks for ERR TIMEOUT) is not explained: no capture of the packets exists, so who answered is not known; it is neither evidence for this finding nor against it"
+   ],
+   "files": [
+    "user/apps/netd/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/net.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/net.md"
+   ],
+   "actions": [
+    "الشبكة: ردّ صدى ICMP لا يُقبل جوابًا للمسبار إلا من العنوان المسبور (من مراجعة أحالها المالك، 2026-11-16)",
+    "design to decide in the package (2-3 options with trade-offs): how a case delivers a reply from another address (a test-kernel hook on the receive path that hands netd a crafted frame, against a second guest or a host-side responder on the lab's network); whether a reply from another address is dropped and counted or ends the probe with an error; whether the id stays a constant",
+    "test first, red seen locally before the fix: a reply with the probe's id and sequence from another address arrives before the timeout: today the probe answers success; a SECURITY mutant that removes the source check after the fix",
+    "also in the package: a capture of the packets of TST-M4-NET-NO-INTERNET in this lab, to say who answers the probe here, or a dated line saying why it could not be taken",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-16 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "an ICMP echo reply is taken as the answer to a probe only when its source is the address probed: a reply with the probe's id and sequence from another address does not end the probe, which answers a timeout, shown by a guest case on CI that fails before the fix; a SECURITY mutant that removes the check is killed; the network cases PASS; net.md (the version free at the merge) states it; the local failure of TST-M4-NET-NO-INTERNET is explained from a capture, or a dated line says why none could be taken",
+   "test_ids": [
+    "TST-M4-NET-NO-INTERNET",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
    "id": "WP-126",
    "stage": "M6",
    "requirement_ids": [
