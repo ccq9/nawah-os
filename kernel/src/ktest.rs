@@ -2976,21 +2976,29 @@ fn fault_once_shown() -> (bool, bool) {
     )
 }
 
-/// The fields a once-mode sweep adds to its line, and its two conditions: the mode was shown,
-/// and every failed call stopped at the refused write (it asked for exactly N writes).
-fn fault_once_tail(shown: (bool, bool), stopped: u32, writes: u32) -> String {
-    if !shown.0 || !shown.1 {
-        fail("the hook did not refuse one write alone")
-    }
-    if stopped != writes {
-        fail("a failed call asked for a disk write after the refused one")
-    }
+/// The fields a once-mode sweep adds to its line: whether the mode was shown, and how many of
+/// the failed calls asked for exactly N disk writes (stopped at the refused one).
+fn fault_once_tail(shown: (bool, bool), stopped: u32) -> String {
     alloc::format!(
         "|once_refused={}|once_next_ok={}|stopped={}",
         u8::from(shown.0),
         u8::from(shown.1),
         stopped
     )
+}
+
+/// A once-mode sweep's own conditions, judged after its line is printed so the line is there
+/// to read when one of them fails.
+fn fault_once_judge(shown: (bool, bool), stopped: u32, writes: u32) {
+    if !shown.0 {
+        fail("with its first disk write refused alone, a write did not answer an I/O error")
+    }
+    if !shown.1 {
+        fail("the write after the refused one was not taken")
+    }
+    if stopped != writes {
+        fail("a failed call asked for a disk write after the refused one")
+    }
 }
 
 /// TST-M3-FAT32-FAULT-UNLINK, first boot (WP-105, RSK-027; files.md v1.5): a delete that fails
@@ -3060,7 +3068,7 @@ fn fat32_fault_unlink(once: bool) -> ! {
     }
     let synced = vfs::sync().is_ok();
     let tail = if once {
-        fault_once_tail(shown, stopped, writes)
+        fault_once_tail(shown, stopped)
     } else {
         String::new()
     };
@@ -3080,6 +3088,9 @@ fn fat32_fault_unlink(once: bool) -> ! {
         vfs::live_files(),
         tail
     );
+    if once {
+        fault_once_judge(shown, stopped, writes);
+    }
     if control.is_err() || writes < 3 || failed != writes || io != writes || !synced {
         fail("the sweep did not run as planned")
     }
@@ -3183,7 +3194,7 @@ fn fat32_fault_truncate(once: bool) -> ! {
     }
     let synced = vfs::sync().is_ok();
     let tail = if once {
-        fault_once_tail(shown, stopped, writes)
+        fault_once_tail(shown, stopped)
     } else {
         String::new()
     };
@@ -3207,6 +3218,9 @@ fn fat32_fault_truncate(once: bool) -> ! {
         vfs::live_files(),
         tail
     );
+    if once {
+        fault_once_judge(shown, stopped, writes);
+    }
     if !control_ok || writes < 3 || failed != writes || io != writes || !synced {
         fail("the sweep did not run as planned")
     }
