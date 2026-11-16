@@ -170,8 +170,10 @@ pub fn run() -> ! {
         "fat32_fault_truncate_one_check" => {
             fat32_fault_check(b'T', "fat32_fault_truncate_one_check")
         }
-        "fat32_fault_write" => fat32_fault_write(),
-        "fat32_fault_write_check" => fat32_fault_write_check(),
+        "fat32_fault_write" => fat32_fault_write(false),
+        "fat32_fault_write_check" => fat32_fault_write_check("fat32_fault_write_check"),
+        "fat32_fault_write_one" => fat32_fault_write(true),
+        "fat32_fault_write_one_check" => fat32_fault_write_check("fat32_fault_write_one_check"),
         "fat32_disk_full" => fat32_disk_full(),
         "fat32_stop" => fat32_stop(),
         "fat32_stop_check" => fat32_stop_check(),
@@ -3300,13 +3302,15 @@ fn fat32_fault_check(kind: u8, name: &'static str) -> ! {
 /// through the same
 /// open from 0 must return those bytes and no more (`ghost` counts the reads that returned
 /// anything else). With `retry`, the same call is made again and must leave the whole file.
-fn fault_write_sweep(kind: u8, before: usize, add: usize, retry: bool) -> [u32; 11] {
+/// With `once` (WP-131) the hook refuses write N alone; the last number returned, `stopped`,
+/// counts the calls that asked for exactly N disk writes (the refused one was their last).
+fn fault_write_sweep(kind: u8, before: usize, add: usize, retry: bool, once: bool) -> [u32; 12] {
     use crate::fs::vfs;
     let rw = vfs::O_READ | vfs::O_WRITE;
     let (mut writes, mut control_ok) = (0u32, 0u32);
     let (mut failed, mut io, mut node_differs, mut unchanged, mut bad, mut ghost, mut retry_ok) =
         (0u32, 0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
-    let (mut pos_moved, mut stale_sync) = (0u32, 0u32);
+    let (mut pos_moved, mut stale_sync, mut stopped) = (0u32, 0u32, 0u32);
     let mut n = 0u32;
     while n == 0 || n <= writes {
         let path = fault_path(kind, n);
@@ -3321,10 +3325,13 @@ fn fault_write_sweep(kind: u8, before: usize, add: usize, retry: bool) -> [u32; 
             fail("could not sync before the sweep's write")
         }
         let w0 = crate::block::writes();
-        if n > 0 {
+        if n > 0 && once {
+            crate::block::arm_write_fault_once(n);
+        } else if n > 0 {
             crate::block::arm_write_fault(n);
         }
         let r = vfs::write(&a, &all[before..before + add]);
+        stopped += u32::from(n > 0 && crate::block::writes() - w0 == n);
         crate::block::disarm_write_fault();
         let node = {
             let f = a.lock();
@@ -3384,6 +3391,7 @@ fn fault_write_sweep(kind: u8, before: usize, add: usize, retry: bool) -> [u32; 
         retry_ok,
         pos_moved,
         stale_sync,
+        stopped,
     ]
 }
 
@@ -3394,20 +3402,38 @@ const FAULT_HALF: usize = 512;
 /// disk writes leaves the file as it was, in its stored entry and in the node every open
 /// shares alike. Three sweeps: three clusters written to a new file (and the same write made
 /// again, which must succeed), one cluster appended to a file of one cluster, and (WP-120)
-/// that append made again after each failure, which must succeed too.
-fn fat32_fault_write() -> ! {
+/// that append made again after each failure, which must succeed too. With `once`
+/// (TST-M3-FAT32-FAULT-ONE-WRITE, WP-131) the hook refuses write N alone: the mode is shown
+/// first, and every failed call must have asked for exactly N disk writes.
+fn fat32_fault_write(once: bool) -> ! {
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
     }
-    let w = fault_write_sweep(b'W', 0, FAULT_LEN, true);
-    let x = fault_write_sweep(b'X', FAULT_HALF, FAULT_HALF, false);
+    let case = if once {
+        "fat32_fault_write_one"
+    } else {
+        "fat32_fault_write"
+    };
+    let shown = if once {
+        fault_once_shown()
+    } else {
+        (true, true)
+    };
+    let w = fault_write_sweep(b'W', 0, FAULT_LEN, true, once);
+    let x = fault_write_sweep(b'X', FAULT_HALF, FAULT_HALF, false, once);
     // WP-120: the same append, made again after each failure through the same open.
-    let y = fault_write_sweep(b'Y', FAULT_HALF, FAULT_HALF, true);
+    let y = fault_write_sweep(b'Y', FAULT_HALF, FAULT_HALF, true, once);
     let synced = crate::fs::vfs::sync().is_ok();
     for (name, v) in [("new", &w), ("append", &x), ("again", &y)] {
+        let stopped = if once {
+            alloc::format!("|stopped={}", v[11])
+        } else {
+            String::new()
+        };
         kprintln!(
-            "OSX|{}|ktest|fat32_fault_write|sweep={}|control={}|writes={}|failed={}|io={}|node_differs={}|pos_moved={}|stale_sync={}|unchanged={}|bad={}|ghost={}|retry_ok={}",
+            "OSX|{}|ktest|{}|sweep={}|control={}|writes={}|failed={}|io={}|node_differs={}|pos_moved={}|stale_sync={}|unchanged={}|bad={}|ghost={}|retry_ok={}{}",
             BUILD_ID,
+            case,
             name,
             v[1],
             v[0],
@@ -3419,15 +3445,32 @@ fn fat32_fault_write() -> ! {
             v[5],
             v[6],
             v[7],
-            v[8]
+            v[8],
+            stopped
         );
     }
+    let mode = if once {
+        alloc::format!(
+            "|once_refused={}|once_next_ok={}",
+            u8::from(shown.0),
+            u8::from(shown.1)
+        )
+    } else {
+        String::new()
+    };
     kprintln!(
-        "OSX|{}|ktest|fat32_fault_write|synced={}|live_files={}",
+        "OSX|{}|ktest|{}|synced={}|live_files={}{}",
         BUILD_ID,
+        case,
         u8::from(synced),
-        crate::fs::vfs::live_files()
+        crate::fs::vfs::live_files(),
+        mode
     );
+    if once {
+        for v in [&w, &x, &y] {
+            fault_once_judge(shown, v[11], v[0]);
+        }
+    }
     for v in [&w, &x, &y] {
         if v[1] != 1 || v[0] < 3 || v[2] != v[0] || v[3] != v[0] {
             fail("the sweep did not run as planned")
@@ -3447,7 +3490,7 @@ fn fat32_fault_write() -> ! {
 /// file of the second sweep holds its first cluster (the control both), every file of the
 /// third holds both clusters (its append was made again), none is anything else; a new file
 /// changes none of them.
-fn fat32_fault_write_check() -> ! {
+fn fat32_fault_write_check(case: &'static str) -> ! {
     if crate::fs::mount().is_err() {
         fail("volume did not mount")
     }
@@ -3471,8 +3514,9 @@ fn fat32_fault_write_check() -> ! {
         && fault_state(b"/AFTER.TXT", &fresh) == 1;
     let after = count();
     kprintln!(
-        "OSX|{}|ktest|fat32_fault_write_check|new_whole={}|append_first={}|append_both={}|again_both={}|bad={}|after_ok={}|same_after={}",
+        "OSX|{}|ktest|{}|new_whole={}|append_first={}|append_both={}|again_both={}|bad={}|after_ok={}|same_after={}",
         BUILD_ID,
+        case,
         w_whole,
         x_first,
         x_both,
