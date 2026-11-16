@@ -1023,6 +1023,23 @@ MUTANTS = [
      "        n >= FAIL_FROM.load(Ordering::SeqCst) && n <= FAIL_TO.load(Ordering::SeqCst)\n",
      "        n >= FAIL_FROM.load(Ordering::SeqCst)\n",
      ["TST-M3-FAT32-FAULT-ONE-UNLINK", "TST-M3-FAT32-FAULT-ONE-TRUNCATE"], "SECURITY: the hook that should refuse one write alone refuses all after it, so the two cases would judge what the older cases judge and let M252 and M253 live: the sweeps' lines carry once_next_ok=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL"),
+    # M255..M257 (SECURITY, WP-124, from its red team): the whole call stops at the refused
+    # write, not fat_set alone. M255: after the main FSInfo write is refused the backup is
+    # written and the first error returned at the end; only the count of the writes shows it.
+    ("M255", "kernel/src/fs/fat32.rs",
+     "            s[492..496].copy_from_slice(&hint.to_le_bytes());\n            block::write(sector, &s)?;\n",
+     "            s[492..496].copy_from_slice(&hint.to_le_bytes());\n            let r = block::write(sector, &s);\n            if r.is_err() {\n                if sector == u64::from(self.fsinfo) && self.bk_boot != 0 {\n                    let _ = block::write(u64::from(self.bk_boot) + 1, &s);\n                }\n                r?;\n            }\n",
+     ["TST-M3-FAT32-FAULT-ONE-UNLINK", "TST-M3-FAT32-FAULT-ONE-TRUNCATE"], "SECURITY: a call whose write the disk refused goes on writing and reports the error at its end: the answer and the image are the ones of a call that stopped, and only the count of its disk writes differs: the sweeps' lines carry stopped=8 beside failed=9 and io=9, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL"),
+    # M256: the refusal of the main FSInfo write is swallowed.
+    ("M256", "kernel/src/fs/fat32.rs",
+     "            s[492..496].copy_from_slice(&hint.to_le_bytes());\n            block::write(sector, &s)?;\n",
+     "            s[492..496].copy_from_slice(&hint.to_le_bytes());\n            let r = block::write(sector, &s);\n            if sector != u64::from(self.fsinfo) {\n                r?;\n            }\n",
+     ["TST-M3-FAT32-FAULT-ONE-UNLINK", "TST-M3-FAT32-FAULT-ONE-TRUNCATE"], "SECURITY: a delete or a truncation whose main FSInfo write the disk refused answers success (files.md v1.10 says it answers an I/O error until WP-123 decides otherwise with a case): the sweeps' lines carry failed=8, io=8 and stopped=8, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL"),
+    # M257: a refused FAT write is tried once more.
+    ("M257", "kernel/src/fs/fat32.rs",
+     "            s[off % SECTOR..off % SECTOR + 4].copy_from_slice(&new.to_le_bytes());\n            block::write(sector, &s)?;\n",
+     "            s[off % SECTOR..off % SECTOR + 4].copy_from_slice(&new.to_le_bytes());\n            if block::write(sector, &s).is_err() {\n                block::write(sector, &s)?;\n            }\n",
+     ["TST-M3-FAT32-FAULT-ONE-UNLINK", "TST-M3-FAT32-FAULT-ONE-TRUNCATE"], "SECURITY: a FAT write the disk refused is sent again and the call answers success, so the caller never learns the disk refused a write (files.md v1.10: the call stops and answers an I/O error): the sweeps' lines carry failed=3, io=3, stopped=3 and once_refused=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1261,7 +1278,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M247", "M248", "M249", "M250", "M251",
             # M6 (WP-124): a FAT write stops at its first refused write (M252, M253), and the hook
             # that shows it refuses one write alone (M254).
-            "M252", "M253", "M254"}
+            "M252", "M253", "M254",
+            # from WP-124's red team: the whole call stops at the refused write: no write after
+            # it (M255), no swallowed FSInfo refusal (M256), no second try (M257).
+            "M255", "M256", "M257"}
 
 
 def security_of(mid: str) -> bool:

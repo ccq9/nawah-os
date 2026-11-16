@@ -2977,7 +2977,7 @@ fn fault_once_shown() -> (bool, bool) {
 }
 
 /// The fields a once-mode sweep adds to its line: whether the mode was shown, and how many of
-/// the failed calls asked for exactly N disk writes (stopped at the refused one).
+/// the sweep's calls asked for exactly N disk writes (the refused one was their last).
 fn fault_once_tail(shown: (bool, bool), stopped: u32) -> String {
     alloc::format!(
         "|once_refused={}|once_next_ok={}|stopped={}",
@@ -2997,7 +2997,7 @@ fn fault_once_judge(shown: (bool, bool), stopped: u32, writes: u32) {
         fail("the write after the refused one was not taken")
     }
     if stopped != writes {
-        fail("a failed call asked for a disk write after the refused one")
+        fail("a call did not ask for exactly N disk writes: it wrote after the refused one or ended before it")
     }
 }
 
