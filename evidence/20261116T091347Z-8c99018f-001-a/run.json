@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261116T091347Z-8c99018f-001-a",
+ "started_at": "2026-11-16T09:13:46+00:00",
+ "finished_at": "2026-11-16T09:13:49+00:00",
+ "source_revision": "8c99018fc238283f97282232222198ea5e008c7b",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1014-aws",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M5-GLYPHS",
+ "commands": [
+  "python3 -I tests/test_text.py Glyphs"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "43834190143",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "8c99018fc238283f97282232222198ea5e008c7b",
+  "head_sha": "190274b95994976688fbde303181a2ee706577a4",
+  "ref": "refs/pull/23/merge"
+ }
+}
