@@ -1061,24 +1061,33 @@ MUTANTS = [
      "            if let Err(e) = block::write(sector, &s) {\n                let _ = self.store_entry(file);\n                return Err(FsError::Io(e));\n            }\n            done += n;\n",
      ["TST-M3-FAT32-FAULT-ONE-WRITE"], "SECURITY: a write whose data write was refused asks for one more disk write (the entry as it was) and then reports the error: the answer and the image are those of a call that stopped, and only the count of its disk writes differs: the sweeps' lines carry stopped=20, 8 and 8 beside failed=23, 9 and 9, TST-M3-FAT32-FAULT-ONE-WRITE FAIL"),
     # M261..M263 (WP-133, files.md v1.12, ADR-0014 item 13): a create that must add a cluster to
-    # its directory stops at its first refused disk write and leaves no name. No older case runs
-    # a create under a failing disk. M261 (SECURITY): the refusal of the write that links the
+    # its directory stops at its first refused disk write and leaves no name. No older sweep
+    # runs a create (TST-M3-FAT32-STOP opens with O_CREATE after its disk stopped, once, with no
+    # directory growing). M261 (SECURITY): the refusal of the write that links the
     # directory's tail to the new cluster is swallowed.
     ("M261", "kernel/src/fs/fat32.rs",
      "                self.fat_set(tail, n)?;\n",
      "                let _ = self.fat_set(tail, n);\n",
      ["TST-M3-FAT32-FAULT-CREATE"], "SECURITY: a create whose link of the directory's tail the disk refused goes on to the entry's write, into a cluster the directory does not reach; under a disk that refuses every later write too the answer and the image are those of a call that stopped and only the count of its disk writes differs: the line carries stopped=6 beside failed=8 (with one write refused alone the create would, by reading, answer success for a name no listing shows: WP-134), TST-M3-FAT32-FAULT-CREATE FAIL"),
-    # M262 (not SECURITY: no answer and no name differs): the new entry is written into the new
-    # cluster before the directory's tail is linked to it.
+    # M262 (not SECURITY: no answer and no name along the first FAT copy differs): the new entry
+    # is written into the new cluster before the directory's tail is linked to it.
     ("M262", "kernel/src/fs/fat32.rs",
      "                let n = self.alloc_cluster()?;\n                self.fat_set(tail, n)?;\n                EntryLoc {\n                    cluster: n,\n                    index: 0,\n                }\n            }\n        };\n",
      "                let n = self.alloc_cluster()?;\n                let loc = EntryLoc {\n                    cluster: n,\n                    index: 0,\n                };\n                let e = Entry {\n                    name,\n                    attr: ATTR_ARCHIVE,\n                    first: 0,\n                    size: 0,\n                    loc,\n                };\n                self.store_entry(&e)?;\n                self.fat_set(tail, n)?;\n                return Ok(e);\n            }\n        };\n",
-     ["TST-M3-FAT32-FAULT-CREATE"], "the order of a growth's last writes is reversed: a refused link then leaves a marked cluster that holds an entry and that the directory does not reach, where the present order leaves an empty cluster at the directory's end; the line carries grown=0 and retry_grew=8 (the kernel's own judgement passes) and the host counts six lost clusters where five are pinned, TST-M3-FAT32-FAULT-CREATE FAIL"),
+     ["TST-M3-FAT32-FAULT-CREATE"], "the order of a growth's last writes is reversed: with the last write refused, the reversed order leaves a marked cluster that holds an entry and that the directory does not reach along the first FAT copy (lost once the create made again links another), where the present order leaves an empty cluster at the directory's end; no answer and no name along the first copy differs (by reading, with one write refused alone the entry's name would be reached along the second copy alone: WP-134, WP-128); the line carries grown=0 and retry_grew=8 (the kernel's own judgement passes) and the host counts six lost clusters where five are pinned, TST-M3-FAT32-FAULT-CREATE FAIL"),
     # M263 (SECURITY): the refusal of the new entry's write is swallowed.
     ("M263", "kernel/src/fs/fat32.rs",
      "        self.store_entry(&e)?;\n        Ok(e)\n",
      "        let _ = self.store_entry(&e);\n        Ok(e)\n",
      ["TST-M3-FAT32-FAULT-CREATE"], "SECURITY: a create whose entry the disk refused to store answers success, and the caller holds a file the volume does not name: the line carries failed=7 and io=7 (absent stays 8: the name is not on the disk), TST-M3-FAT32-FAULT-CREATE FAIL"),
+    # M264 (SECURITY, from WP-133's red team): the zeroing of a new cluster lands on the sector
+    # after it. The count of disk writes does not change, and on an image whose free clusters
+    # are zeros the create case read every number it reads without the fault; it now dirties
+    # the clusters its growths take.
+    ("M264", "kernel/src/fs/fat32.rs",
+     "                        block::write(base + u64::from(i), &zero)?;\n",
+     "                        block::write(base + 1 + u64::from(i), &zero)?;\n",
+     ["TST-M3-FAT32-FAULT-CREATE"], "SECURITY: a new cluster is linked into a directory with the bytes it held before (the zeroing lands on the next sector, which on the lab's volume is the next cluster), and the directory lists names no create made: the line carries control=0 and retry_ok=7, TST-M3-FAT32-FAULT-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-ONE-TRUNCATE fails too, by a message of fsck.fat on its image, and the other 46 cases of M3 pass)"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1327,7 +1336,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # M6 (WP-133): a create that grows its directory stops at its first refused disk
             # write: the link of the directory's tail (M261) and the entry (M263). M262, the
             # order of those two writes, is not a security mutant.
-            "M261", "M263"}
+            "M261", "M263",
+            # from WP-133's red team: a new cluster is zeroed where it is, not beside it (M264).
+            "M264"}
 
 
 def security_of(mid: str) -> bool:

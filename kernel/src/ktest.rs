@@ -3571,14 +3571,41 @@ fn fault_dir_fill(next: &mut u32) -> bool {
     fault_dir_state() == Some((names + free, clusters))
 }
 
+/// Clusters dirtied before the create sweep: more than the growths of both boots take.
+const DIRTY_CLUSTERS: u32 = 24;
+
+/// Dirties the lowest free clusters, which the growths of the sweep then take: a file whose
+/// every 32 bytes read as the live entry of an empty file (`STRAYnnn.TXT`) is written and
+/// deleted. On the lab's image the free clusters are zeros, and a new directory cluster that
+/// was not zeroed would read as an empty one all the same; after this it lists names no create
+/// made. True when the file took exactly `DIRTY_CLUSTERS` clusters and deleting it gave every
+/// one of them back.
+fn fault_dirty() -> bool {
+    let mut bytes = alloc::vec![0u8; DIRTY_CLUSTERS as usize * 512];
+    for (i, slot) in bytes.chunks_mut(32).enumerate() {
+        slot[..11].copy_from_slice(alloc::format!("STRAY{:03}TXT", i).as_bytes());
+        slot[11] = 0x20;
+    }
+    crate::fs::with(|fs| {
+        let free = fs.free_clusters()?;
+        let mut e = fs.create(b"/DIRTY.BIN")?;
+        fs.write(&mut e, 0, &bytes)?;
+        let took = free - fs.free_clusters()?;
+        fs.unlink(b"/DIRTY.BIN")?;
+        Ok(took == DIRTY_CLUSTERS && fs.free_clusters()? == free)
+    })
+    .unwrap_or(false)
+}
+
 fn fault_create_path(n: u32) -> alloc::vec::Vec<u8> {
     alloc::format!("/DIR/C{:02}.TXT", n).into_bytes()
 }
 
 /// TST-M3-FAT32-FAULT-CREATE, first boot (WP-133, RSK-027; files.md v1.12): a create that must
 /// grow its directory and fails at any of its disk writes leaves no name and no entry that is
-/// not a name's own, and the same create made again succeeds. `/DIR` is filled to its
-/// cluster's end; a control create counts the writes of a growth (W); then for every N from 1
+/// not a name's own, and the same create made again succeeds. The free clusters the growths
+/// will take are dirtied with bytes that read as entries; `/DIR` is filled to its cluster's
+/// end; a control create counts the writes of a growth (W); then for every N from 1
 /// to W the directory is filled again and a create runs with the test kernel's hook refusing
 /// write N and all after it, then once more with the disk working.
 fn fat32_fault_create() -> ! {
@@ -3590,6 +3617,7 @@ fn fat32_fault_create() -> ! {
         |path: &[u8]| vfs::open(path, vfs::O_READ | vfs::O_WRITE | vfs::O_CREATE).map(|_| ());
     let absent =
         |path: &[u8]| crate::fs::with(|fs| fs.lookup(path)).err() == Some(FsError::NotFound);
+    let dirty = fault_dirty();
     let mut filler = 0u32;
     if !fault_dir_fill(&mut filler) {
         fail("could not fill the directory before the control")
@@ -3616,7 +3644,8 @@ fn fat32_fault_create() -> ! {
         io += u32::from(matches!(r, Err(FsError::Io(_))));
         let after = fault_dir_state();
         // No name of the failed create, and no other name either: the listing counts what it
-        // counted before (an entry read from a cluster that was not zeroed would add to it).
+        // counted before (an entry read from a new cluster that was not zeroed would add to
+        // it: the free clusters were dirtied with entries).
         gone += u32::from(
             absent(&path) && before.is_some() && after.map(|s| s.0) == before.map(|s| s.0),
         );
@@ -3633,8 +3662,9 @@ fn fat32_fault_create() -> ! {
     let synced = vfs::sync().is_ok();
     let (names, clusters) = fault_dir_state().unwrap_or((0, 0));
     kprintln!(
-        "OSX|{}|ktest|fat32_fault_create|control={}|writes={}|filled={}|failed={}|io={}|stopped={}|absent={}|grown={}|retry_ok={}|retry_grew={}|names={}|dir_clusters={}|synced={}|live_files={}",
+        "OSX|{}|ktest|fat32_fault_create|dirty={}|control={}|writes={}|filled={}|failed={}|io={}|stopped={}|absent={}|grown={}|retry_ok={}|retry_grew={}|names={}|dir_clusters={}|synced={}|live_files={}",
         BUILD_ID,
+        u8::from(dirty),
         u8::from(control_ok),
         writes,
         filled,
@@ -3650,8 +3680,11 @@ fn fat32_fault_create() -> ! {
         u8::from(synced),
         vfs::live_files()
     );
+    if !dirty {
+        fail("the free clusters were not dirtied before the sweep")
+    }
     if !control_ok || writes < 3 || filled != writes || !synced {
-        fail("the sweep did not run as planned")
+        fail("the sweep did not run as planned: the control did not add one name and one cluster, or the directory was not filled")
     }
     if failed != writes || io != writes {
         fail("a create whose disk write was refused did not answer an I/O error")
