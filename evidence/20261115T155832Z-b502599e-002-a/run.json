@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261115T155832Z-b502599e-002-a",
+ "started_at": "2026-11-15T15:58:32+00:00",
+ "finished_at": "2026-11-15T15:58:32+00:00",
+ "source_revision": "b502599eca214a18379da25a88f90cf6b860ec23",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1014-aws",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M6-UI-UNIT",
+ "commands": [
+  "cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu --test pointer_menu"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "43730562696",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "b502599eca214a18379da25a88f90cf6b860ec23",
+  "head_sha": "fca5731704e74fd08ba369b06ad0dd157f01000a",
+  "ref": "refs/pull/23/merge"
+ }
+}
