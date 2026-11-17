@@ -795,6 +795,52 @@ class KillEvidence(unittest.TestCase):
                     self.assertIn("|writes=8|", subs, where)
                     self.assertIn("|filled=8|", subs, where)
 
+    BPB = "TST-M3-FAT32-BPB"
+
+    def test_the_boot_sector_expectations_are_pinned(self):
+        """WP-106 (audit and red team on 6673854b3): the mount's bounds' mutants are declared by
+        what the case prints under them: M270, M272, M273 and M274 by exit 37, the kernel's own
+        failure message (in ktest.rs), the summary's fields that differ (each a field of the
+        case's pinned summary line) and every sector line they change, each a sector among the
+        last ten of the case (the gate keeps a boot's last 12 test-kernel lines: ten sectors,
+        the summary and the failure); M271 by exit 35 and the pinned line printed last before
+        its panic."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.BPB)
+        prefix = "OSX|${BUILD_ID}"
+        sectors = [m[len(prefix):] for m in case["required_markers"] if "|ktest|fat32_bpb|sector=" in m]
+        summary = next(m for m in case["required_markers"] if "|ktest|fat32_bpb|sectors=" in m)
+        kept = [re.search(r"\|sector=(\w+)\|", s).group(1) for s in sectors[-10:]]
+        changed = {"M270": {"mul_wrap", "add_wrap", "zero_start"}, "M272": {"over_max", "too_many"},
+                   "M273": {"fat_small"}, "M274": {"spc8", "max_ok"}}
+        for mid, names in changed.items():
+            self.assertEqual(set(E.get(mid, {})), {self.BPB}, mid)
+            subs = E[mid][self.BPB]
+            self.assertIn("exit 37", subs, mid)
+            fails = [s for s in subs if s.startswith("|ktest|fail|")]
+            self.assertEqual(len(fails), 1, mid)
+            self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src, mid)
+            fields = [m.group(1) for s in subs for m in [re.fullmatch(r"\|(\w+)=\d+\|?", s)] if m]
+            self.assertTrue(fields, mid)
+            for f in fields:
+                self.assertIn(f"|{f}=", summary, f"{mid}: {f}")
+                self.assertNotIn(next(s for s in subs if s.startswith(f"|{f}=")), summary, f"{mid}: {f} as pinned")
+            lines = [s for s in subs if s.startswith("|ktest|fat32_bpb|sector=")]
+            self.assertEqual({re.search(r"\|sector=(\w+)\|", s).group(1) for s in lines}, names, mid)
+            for s in lines:
+                name = re.search(r"\|sector=(\w+)\|", s).group(1)
+                self.assertIn(name, kept, f"{mid}: {name} outside the kept window")
+                self.assertNotIn(s, sectors, f"{mid}: {s} is the pinned line")
+        subs = E.get("M271", {}).get(self.BPB, [])
+        self.assertIn("exit 35", subs)
+        last = [s for s in subs if s.startswith("|ktest|fat32_bpb|sector=")]
+        self.assertEqual(len(last), 1)
+        self.assertIn(last[0], sectors)
+        after = sectors[sectors.index(last[0]) + 1]
+        self.assertIn("|sector=total0|", after, "the sector after the last line is the first one whose data start is past its total")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)
