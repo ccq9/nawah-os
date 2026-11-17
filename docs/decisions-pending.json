@@ -194,7 +194,8 @@
     "WP-70"
    ],
    "requested_at": "2026-11-09T21:47:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: A: visibility follows the handle; the kernel holds no user identity; a task handle with READ lists its own tree (the manager sees all, a session its own task)"
   },
   {
    "id": "DEC-012",
@@ -210,7 +211,8 @@
     "WP-48"
    ],
    "requested_at": "2026-11-10T11:10:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: A: the team draws the project's own icons under the project's licence; the entry in docs/sources.json is written when WP-48 is activated"
   },
   {
    "id": "DEC-019",
@@ -241,7 +243,8 @@
     "WP-79"
    ],
    "requested_at": "2026-11-10T11:10:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: the team decides the pointer's delivery at WP-79's design and writes it in display.md; the owner may overrule it"
   },
   {
    "id": "DEC-029",
@@ -276,7 +279,8 @@
     "WP-119"
    ],
    "requested_at": "2026-11-15T17:20:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: A: WP-119 changes TST-M4-NET-LIMITS's condition as its acceptance says (the second burst starts with no slot in flight); the send path's mutants stay killed"
   },
   {
    "id": "DEC-031",
@@ -309,7 +313,8 @@
     "WP-32"
    ],
    "requested_at": "2026-11-16T11:40:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: B: a new fix item, WP-149, with TST-M3-VMO-MAP-RIGHTS failing first and a SECURITY mutant; WP-32 stays done with a dated line; REQ-M3-005 is partial until the case passes"
   },
   {
    "id": "DEC-033",
@@ -325,7 +330,8 @@
     "WP-106"
    ],
    "requested_at": "2026-11-16T11:40:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: the order from here, in the method's section 7: WP-149 (K-3, the owner's decision of 2026-10-19) first, then WP-130 and WP-98 (the two tool fixes), then WP-95 (DEC-035), then the desktop path WP-107, WP-108, WP-101, WP-102, WP-47, WP-48, WP-51; a FAT32 or audit item opens only under the method's gate rule"
   },
   {
    "id": "DEC-034",
@@ -345,7 +351,8 @@
     "WP-24"
    ],
    "requested_at": "2026-11-16T11:40:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: A: WP-105, WP-118, WP-121, WP-124 and WP-24 stay done, read as what their cases show, each with a dated line; what is missing is owned by WP-150 (the storage bundle) and, for M4's exit wording, by entry L-001 of docs/LATER.md"
   },
   {
    "id": "DEC-035",
@@ -361,7 +368,8 @@
     "WP-95"
    ],
    "requested_at": "2026-11-16T11:40:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: A, placed after WP-98 so that its gates run on the shortened pipeline: WP-95 re-runs the M2 to M5 mutation gates and imports their evidence"
   },
   {
    "id": "DEC-036",

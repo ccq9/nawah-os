@@ -1589,7 +1589,8 @@
     "svcmgr app (no_std, no alloc, 16 services) started by the release kernel as the first process (kernel|svcmgr boot line, TST-M1-BOOT)",
     "manifest parser with duplicate/unknown-dependency/cycle detection (Kahn)",
     "START/READY handshake on the boot channel, readiness timeouts (final), on-failure restarts with exponential backoff up to max_restarts, dependents of dead services blocked",
-    "control channel LOAD/LIST/STOP; kernel::services (spawn_manager/request/poll_until) drives it in TST-M4-SVC-ORDER/TIMEOUT/RESTART with lab manifests under /SYSTEM"
+    "control channel LOAD/LIST/STOP; kernel::services (spawn_manager/request/poll_until) drives it in TST-M4-SVC-ORDER/TIMEOUT/RESTART with lab manifests under /SYSTEM",
+    "2026-11-17 (DEC-034 A, the owner's ruling of 2026-11-17 in the …): stays done, read as what its cases show: TST-M1-BOOT's evidence shows the manager as the third process after two self-tests; the exit wording 'the first process' is to read 'the first process that stays and holds authority', with a test: docs/LATER.md L-001"
    ],
    "acceptance": "TST-M4-SVC-ORDER/TIMEOUT/RESTART PASS and TST-M1-BOOT shows the manager as the first process (kernel|svcmgr|…|reply=OK 0|code=ok|selfcheck=1) on CI run 39130028974; services.md v1 frozen",
    "test_ids": [
@@ -2160,7 +2161,8 @@
     "العرض: إطار GOP وكائن العرض ومسار الرسم التشخيصي ومجس الشاشة في المختبر",
     "boot stub: EFI_GRAPHICS_OUTPUT_PROTOCOL located before EBS, BootInfo.fb filled (base, size, resolution, stride, pixel format), unsupported formats reported absent",
     "kernel: the frame mapped in the private MMIO window (WC when PAT allows), kernel|display boot line with the diagnostic pattern (build id corner marks), Object::Display (type 10) with display_info and display_map (a physical VMO over the frame), and user mappings vmo_map/vmo_unmap (ABI v1.8 additive: a mapping region above the image, protection from the handle's rights, never executable, 64 per process, gone with the process)",
-    "lab: tools/screen.py reads a QEMU screendump (PPM) and checks named regions; project.py `screendump` action through the monitor; display.md part A"
+    "lab: tools/screen.py reads a QEMU screendump (PPM) and checks named regions; project.py `screendump` action through the monitor; display.md part A",
+    "2026-11-17 (DEC-032 B): stays done; K-3 (RSK-040), which the owner's decision of 2026-10-19 placed here, is fixed by WP-149"
    ],
    "acceptance": "TST-M5-DISPLAY-BOOT PASS; display.md part A v1; ADR-0019 §1–2",
    "test_ids": [
@@ -6646,7 +6648,8 @@
     "2026-11-15 corrections after the third, narrow audit (by reading and by experiments on copies): (1) the sentence about FSInfo written after the second audit was wrong at three of the eight failure points past the entry (the first FAT write refused: clusters lost and the count right; the last FAT write of the second copy refused: the count stale and no cluster lost in the first copy; the backup FSInfo alone refused: the primary right): the contract, the decision and the two comments now say `clusters lost, a stale count, or both` and no more, and point (5) of the line above is withdrawn in its wording; (2) the checker's depth limit is 128, above the 127 levels a 256-byte path can name (64 would have cut a tree the kernel can name once directories can be made); (3) M208 and M209 let two directories on one cluster, and a directory on a freed cluster, pass `check --faulted`; without --faulted the lost cluster still fails the image, so the two host cases on directories turn red on the named finding there and on the exit code with --faulted; (4) the oracles no longer say where the three clusters of a file sit: no case checks it",
     "2026-11-15 local checks before the single push (scratch, never evidence; CI is the judge): red seen first for the host checker (7 failures and 1 error of 15 on the old tool; then 2 of 15 and 2 of 19 for its two tightenings) and for the two sweeps (fat32_fault_unlink: gone=0|kept=1|bad=8; fat32_fault_truncate: emptied=0|bad=8|node_differs=1; the host checker naming eight files each on a free cluster and fsck's messages classified as failing), green after each change. Full run on commit 2006bdde0 with the local QEMU: M3 44 PASS with both new cases, M6 14, M1 5, M2 27, M5 38 PASS; M4 27 PASS and two cases failing: TST-M4-NET-NO-INTERNET, which this container cannot judge (it passes on CI), and TST-M4-NET-LIMITS once (sent2=15|busy2=1), traced with systematic debugging to the case's own race with the device's drain (seventeen frames for sixteen slots; six of six alone afterwards; this package changes nothing under the network path; registered as WP-119); the six host suites PASS. After the third audit's text corrections, on commit 39487520e: M3 44 PASS again, the six host suites PASS, hygiene PASS, validate-records 0 errors, cargo fmt clean; the harness killed M47 (still valid after the reorder) by TST-M3-FAT32-WRITE, M205 by TST-M3-FAT32-FAULT-UNLINK, M206 and M207 by TST-M3-FAT32-FAULT-TRUNCATE, M208 and M209 by TST-M3-FAT32-TOOL (6 of 6). Review before the push: the kernel engineer's design brief and its audit, then the auditor three times and the red team once on the package, by reading and by experiments on copies; their corrections are in the commits before this line",
     "2026-11-15 CI record: verify run 43698860905 on ee03d4306, green on its first push (the cases were seen failing locally first, scratch); the run took 41 min 51 s from 09:21:28 to 10:03:19; 168 runs imported, none failing; TST-M3-FAT32-FAULT-UNLINK PASS (evidence/20261115T092926Z-7cc13c28-001-a: `control=ok|writes=9|failed=9|io=9|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0`, second boot `kept=1|empty=0|bad=0|after_ok=1|kept_after=1|empty_after=0|bad_after=0`; host: check --faulted problems=[] with lost=9, longer=0, mirror_diff=0, fsinfo=stale printed; fsck.fat exit 1 with allowed={'lost': 1, 'free_count': 1}, failing=[], unnamed=[]); TST-M3-FAT32-FAULT-TRUNCATE PASS (evidence/20261115T092934Z-7cc13c28-001-a: `control=1|writes=9|failed=9|io=9|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0`, second boot `kept=1|empty=9|bad=0|after_ok=1|kept_after=1|empty_after=9|bad_after=0`; the same host results); TST-M3-FAT32-TOOL PASS with its nineteen cases (evidence/20261115T094650Z-7cc13c28-001-a: Ran 19 tests, OK); TST-M3-FAT32-WRITE, TST-M3-FILE-SHARED and TST-M3-FAT32-PERSIST PASS (evidence/20261115T092908Z-7cc13c28-001-a, evidence/20261115T092914Z-7cc13c28-001-a, evidence/20261115T092919Z-7cc13c28-001-a); the M6 gate of the same run: 57 of 57 mutants killed, M205 by TST-M3-FAT32-FAULT-UNLINK (14.3 s), M206 and M207 by TST-M3-FAT32-FAULT-TRUNCATE (14.3 s, 14.4 s), M208 and M209 by TST-M3-FAT32-TOOL (11.4 s, 5.7 s), 2026-11-15T09:23:49Z to 2026-11-15T10:00:11Z, 36 min 22 s (evidence/20261115T092350Z-7cc13c28-001-m). After the import: validate-records --strict 0 errors. What CI does not show: the failing state before the fix (seen locally only), writes reordered in a device's cache, a torn sector, a failing read, a timed-out write's outcome, and the states in between on the second FAT copy; what the fix costs (lost clusters that nothing gives back or shows) is WP-106's; a failed write is WP-118's and the disk's stop WP-117's",
-    "2026-11-15 note added after the close (WP-120's second audit; nothing of this item's evidence or acceptance changes): where this record names WP-106 for giving lost clusters back, the package that holds it is WP-122, registered on 2026-11-15; WP-106 refuses a malformed boot sector at mount and recovers nothing"
+    "2026-11-15 note added after the close (WP-120's second audit; nothing of this item's evidence or acceptance changes): where this record names WP-106 for giving lost clusters back, the package that holds it is WP-122, registered on 2026-11-15; WP-106 refuses a malformed boot sector at mount and recovers nothing",
+    "2026-11-17 (DEC-034 A, the owner's ruling of 2026-11-17 in the …): stays done, read as what its cases show: one file of three clusters is what its cases use (the rest: WP-150)"
    ],
    "acceptance": "no failure point of delete or truncate (every write N of each operation, swept by the fault hook) leaves a directory entry that points at a free cluster, two names that share a cluster, or a shared node that differs from the stored entry after a failed call, shown by the new cases and by the strengthened host image check on CI, with fsck.fat's messages kept and classified; files.md (v1.5) states the order and what a failed delete or truncate leaves, its line about a copy per open is corrected to the shared node, and ADR-0014 item 2 is amended; the mutants killed",
    "test_ids": [
@@ -7412,7 +7415,8 @@
     "2026-11-15 local checks before the single push (scratch, never evidence; CI is the judge): red seen first for the write case (sweep=new node_differs=18 and ghost=1 of 23; sweep=append node_differs=1 and ghost=1 of 9; the host checker naming two files whose chain is shorter than their size in the second FAT copy) and for the host checker's exact counts (3 of 19 host cases), green after each change. Full run on commit 6e73d70ea with the local QEMU: M3 45 PASS with TST-M3-FAT32-FAULT-WRITE and the two sweeps of WP-105 under their pinned counts, M6 14, M1 5, M2 27, M5 38 PASS, M4 28 PASS and TST-M4-NET-NO-INTERNET not judged here (it passes on CI); the six host suites PASS; the harness killed nine of nine: M205 by TST-M3-FAT32-FAULT-UNLINK, M206 and M207 by TST-M3-FAT32-FAULT-TRUNCATE, M210 and M211 by TST-M3-FAT32-FAULT-WRITE, M208, M209, M212 and M213 by TST-M3-FAT32-TOOL; validate-records 0 errors, cargo fmt clean, hygiene PASS. One scratch experiment, not committed: the append of the second sweep made again after each failure leaves `FAT1: /X07.TXT: chain shorter than size` (WP-120). Review before the push: the auditor twice and the red team once, by reading and by experiments on copies; their corrections are in the commits before this line",
     "2026-11-15 CI record: verify run 43708471547 on e8b368105, green on its first push (the case was seen failing locally first, scratch); the run took 41 min 40 s from 11:20:44 to 12:02:24; 169 runs imported, none failing; TST-M3-FAT32-FAULT-WRITE PASS (evidence/20261115T113040Z-6fea0460-001-a: `sweep=new|control=1|writes=23|failed=23|io=23|node_differs=0|pos_moved=0|stale_sync=0|unchanged=23|bad=0|ghost=0|retry_ok=23`, `sweep=append|control=1|writes=9|failed=9|io=9|node_differs=0|pos_moved=0|stale_sync=0|unchanged=9|bad=0|ghost=0|retry_ok=0`, second boot `new_whole=24|append_first=9|append_both=1|bad=0|after_ok=1|same_after=1`; host: check --faulted --allow-longer 3 --expect-lost 51 problems=[] with lost=51, longer=3, mirror_diff=2, fsinfo=stale; fsck.fat exit 1 with allowed={'mirror': 1, 'lost': 1, 'free_count': 1, 'longer': 3}, failing=[], unnamed=[]); the two sweeps of WP-105 PASS under their pinned count (evidence/20261115T113020Z-6fea0460-001-a and evidence/20261115T113030Z-6fea0460-001-a: lost=9 each); TST-M3-FAT32-TOOL PASS (evidence/20261115T115054Z-6fea0460-001-a: Ran 19 tests, OK); TST-M3-FAT32-WRITE, TST-M3-FILE-SHARED and TST-M3-FAT32-PERSIST PASS (evidence/20261115T112956Z-6fea0460-001-a, evidence/20261115T113004Z-6fea0460-001-a, evidence/20261115T113011Z-6fea0460-001-a); the M6 gate of the same run: 61 of 61 mutants killed, M210 and M211 by TST-M3-FAT32-FAULT-WRITE (14.2 s, 13.5 s), M212 and M213 by TST-M3-FAT32-TOOL (11.6 s, 5.7 s), 2026-11-15T11:22:52Z to 2026-11-15T11:59:33Z, 36 min 41 s (evidence/20261115T112252Z-6fea0460-001-m). After the import: validate-records --strict 0 errors. The numbers the audit derived from the code (51, 3, 9, 9) are the numbers CI's image shows. What CI does not show: the failing state before the fix (seen locally only), a write that fails inside the old size, a write of part of a sector, clusters of more than one sector, a full disk (WP-121, RSK-033), an append made again after a failed link (WP-120), writes reordered in a device's cache and the disk's stop (WP-117)",
     "2026-11-15 note added after the close (WP-120's second audit; nothing of this item's evidence or acceptance changes): where this record names WP-106 for giving lost clusters back, the package that holds it is WP-122, registered on 2026-11-15; WP-106 refuses a malformed boot sector at mount and recovers nothing",
-    "2026-11-15 note added after the close (found while counting WP-120's local run; nothing of this item's evidence changes): the local-checks line above counted three lines of each suite's log that are not cases (the build, the hygiene gate, the suite's verdict), so its numbers of passing cases are each three too high; CI's counts are the imported runs, not these"
+    "2026-11-15 note added after the close (found while counting WP-120's local run; nothing of this item's evidence changes): the local-checks line above counted three lines of each suite's log that are not cases (the build, the hygiene gate, the suite's verdict), so its numbers of passing cases are each three too high; CI's counts are the imported runs, not these",
+    "2026-11-17 (DEC-034 A, the owner's ruling of 2026-11-17 in the …): stays done, read as what its cases show: the sweep runs two shapes of write, not every failure point of every write (the rest: WP-150, from WP-136)"
    ],
    "acceptance": "no failure point of a write (every write N, swept by the fault hook) leaves a directory entry that points at a free cluster, a shared node that differs from the stored entry after a failed call, or a sync that reports a stable file whose entry is stale, shown by the new case and the host image check on CI; files.md (the version free at the merge) states what a failed write leaves; the mutant killed",
    "test_ids": [
@@ -7603,7 +7607,8 @@
     "2026-11-15 second audit of the last commit (by reading; nothing run by it): the first audit's corrections and the red team's two additions confirmed against the code, with three corrections made here in the records: the 64 KiB bound is at kernel/src/syscall/mod.rs:490 and :504, not :503; a lookup reads a directory up to its end marker, not all of it; a file of 64 MiB takes no append, so the walk is 131071 links, now 262142. One sentence of commit 463772b64's message is wrong and is corrected here, not rewritten: the allocator's end is one expression in both builds, but the constant arm of full_end() (u32::MAX) is still compiled only outside the test kernel. Gaps the audit names and the package leaves: no mutant changes the cap given to chain_len; no case shows that a write reads no link past the last cluster it needs (chain_len reads that link, ADR-0014 item 8); free0 is taken after the case's names exist, so a cluster a create lost would not show in free_delta (the host checks would still find it)",
     "2026-11-15 local checks before the push (scratch, no CI evidence; run on the tree at 463772b64, before this records commit): guest suites M3 46 of 46, M6 14 of 14, M1 5 of 5, M2 27 of 27, M5 38 of 38 PASS; M4 28 of 29 PASS, TST-M4-NET-NO-INTERNET FAIL (exit 37: the explicit probe did not settle internet=none; this lab's network cannot judge that case, as in the earlier packages' local runs; CI judges it); host suites M0, M1, M3, M4, M5, M6 PASS; hygiene PASS (CI's 42 commands); the mutation harness on M210, M211, M214, M215, M216, M217, M218: 7 of 7 killed, each by its declared case; an audit and a red-team pass on the second design and a second audit of the last commit, all by reading",
     "2026-11-15 CI record: verify run 43719103960 on 657f6fd32, green on its first push (the case was seen failing locally first, scratch); the run took 44 min 2 s from 13:27:35 to 14:11:37; 170 runs imported, none failing; TST-M3-FAT32-DISK-FULL PASS (evidence/20261115T133752Z-8c621319-001-a: `d_fault=K_E_FS_IO|d_long=1|a_big=K_E_FS_DISK_FULL|a_big_size=0|a_big_node=0|a_big_chain=0|a_fit=1024|a_more=K_E_FS_DISK_FULL|a_span=K_E_FS_DISK_FULL|a_size=1024|a_node=1024|a_chain=2|a_whole=1|a_read=1024|a_over=1024|a_over_whole=1|b_span=K_E_FS_DISK_FULL|b_size=256|b_whole=1|b_fill=256|b_chain=1|b_filled=1|c_none=K_E_FS_DISK_FULL|c_node=0|c_chain=0|c_empty=1|d_into=512|d_chain=2|d_whole=1|c_after=512|b_grow=512|c_more=K_E_FS_DISK_FULL|c_whole=1|b_grown=1|refused_writes=0|pos_moved=0|removed=1|free_delta=0|synced=1|live_files=0`; host: fsck.fat -n exit 0, `check: clusters=128992 used=3303 free=125689 ... problems=[]` exit 0); TST-M3-FAT32-FAULT-WRITE PASS (evidence/20261115T133741Z-8c621319-001-a) and TST-M3-FAT32-WRITE PASS (evidence/20261115T133658Z-8c621319-001-a); TST-M6-MUTANTS PASS (evidence/20261115T132952Z-8c621319-001-m: 66 of 66 valid mutants killed, no surviving and no invalid SECURITY mutant; M214, M215, M216, M217 and M218 each killed by TST-M3-FAT32-DISK-FULL). What CI did not show is what the case's oracle lists as not shown: a volume that is full for real and its true last cluster, clusters of more than one sector, a damaged volume, the system call's ERR_NO_SPACE itself",
-    "2026-11-15 note added after the close (found while counting WP-120's local run; nothing of this item's evidence changes): the local-checks line above counted three lines of each suite's log that are not cases (the build, the hygiene gate, the suite's verdict); by case that local run was M3 43 of 43, M6 11 of 11, M1 2 of 2, M2 24 of 24, M5 35 of 35 and M4 26 of 27; CI's counts are the imported runs, not these"
+    "2026-11-15 note added after the close (found while counting WP-120's local run; nothing of this item's evidence changes): the local-checks line above counted three lines of each suite's log that are not cases (the build, the hygiene gate, the suite's verdict); by case that local run was M3 43 of 43, M6 11 of 11, M1 2 of 2, M2 24 of 24, M5 35 of 35 and M4 26 of 27; CI's counts are the imported runs, not these",
+    "2026-11-17 (DEC-034 A, the owner's ruling of 2026-11-17 in the …): stays done, read as what its cases show: the case sees ERR_NO_SPACE inside the kernel, not through the system-call layer the contract names (a case through that layer: WP-150)"
    ],
    "acceptance": "a write that runs out of space in the middle of a call loses no cluster and tells its caller what was written or that nothing was, shown by a case with the host check counting zero lost clusters on CI; files.md (the version free at the merge) states the answer; the mutant killed",
    "test_ids": [
@@ -7638,8 +7643,7 @@
    "depends_on": [
     "WP-106",
     "WP-120",
-    "WP-126",
-    "WP-128"
+    "WP-126"
    ],
    "inputs": [
     "docs/contracts/files.md (v1.7, and v1.8 before WP-122 was named), docs/adr/0014-files.md items 8 and 9 (before WP-122 was named), RSK-027, RSK-033, the records of WP-105 and WP-118 and two inputs of WP-106 name WP-106 for giving lost clusters back, but WP-106's actions and acceptance cover only the refusal of a malformed boot sector at mount: until 2026-11-15 no planned package owned the recovery (found by WP-120's red team)",
@@ -7674,7 +7678,9 @@
     "2026-11-15 estimate: unmeasured; sized at activation",
     "2026-11-15: depends on WP-126 (the host image checker is this package's judge; RSK-037); the order stood in RSK-037's response plan and the plan's row only, and is written into depends_on after WP-126's second audit named the gap; WP-127 (the checker's second part) is proposed before this package too and is not in depends_on until the owner answers the order",
     "2026-11-15: the manager's order, written into depends_on where a package is judged by what an earlier one adds to the checker (no question is registered for the owner; the owner may reorder at any time): WP-127 (counts by identity, the second copy counted) before WP-124; WP-128 (entries, the bad mark) before WP-122; WP-129 (FSInfo's backup, the boot sector) after WP-127; by data risk: WP-127, WP-124, WP-128, WP-123, WP-122, with WP-106 ready at any point and WP-129 before WP-123 if its activation finds that FSInfo's judgement needs it",
-    "2026-11-15: TST-M3-FAT32-FAULT-UNLINK and TST-M3-FAT32-FAULT-TRUNCATE added to test_ids: the acceptance speaks of what a delete and a truncation leave, and the two cases were not named (the planner's reading)"
+    "2026-11-15: TST-M3-FAT32-FAULT-UNLINK and TST-M3-FAT32-FAULT-TRUNCATE added to test_ids: the acceptance speaks of what a delete and a truncation leave, and the two cases were not named (the planner's reading)",
+    "2026-11-17: superseded by WP-150 on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand",
+    "2026-11-17: WP-128 dropped from depends_on, both items now inside WP-150, which carries that order in its inputs (a superseded item may not depend on another)"
    ],
    "acceptance": "after a failed delete, truncation or write and a restart, the system gives the lost clusters back without freeing a cluster a name reaches and without saving their bytes, shown by a case whose host check finds no lost cluster, equal FAT copies and a right free count on CI; files.md (the version free at the merge) states when the recovery runs and what it does; the mutants killed",
    "test_ids": [
@@ -7686,12 +7692,14 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": null,
+   "superseded_by": "WP-150"
   },
   {
    "id": "WP-123",
@@ -7733,7 +7741,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; sized at activation",
     "2026-11-15: depends on WP-126 (the host image checker is this package's judge; RSK-037); the order stood in RSK-037's response plan and the plan's row only, and is written into depends_on after WP-126's second audit named the gap; WP-127 (the checker's second part) is proposed before this package too and is not in depends_on until the owner answers the order",
-    "2026-11-15: the manager's order, written into depends_on where a package is judged by what an earlier one adds to the checker (no question is registered for the owner; the owner may reorder at any time): WP-127 (counts by identity, the second copy counted) before WP-124; WP-128 (entries, the bad mark) before WP-122; WP-129 (FSInfo's backup, the boot sector) after WP-127; by data risk: WP-127, WP-124, WP-128, WP-123, WP-122, with WP-106 ready at any point and WP-129 before WP-123 if its activation finds that FSInfo's judgement needs it"
+    "2026-11-15: the manager's order, written into depends_on where a package is judged by what an earlier one adds to the checker (no question is registered for the owner; the owner may reorder at any time): WP-127 (counts by identity, the second copy counted) before WP-124; WP-128 (entries, the bad mark) before WP-122; WP-129 (FSInfo's backup, the boot sector) after WP-127; by data risk: WP-127, WP-124, WP-128, WP-123, WP-122, with WP-106 ready at any point and WP-129 before WP-123 if its activation finds that FSInfo's judgement needs it",
+    "2026-11-17: superseded by WP-150 on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand"
    ],
    "acceptance": "a flush separates the entry write from the frees in delete and truncate (counted in the test kernel; reordering in a device cache is not shown by the lab and the contract says so); a failed FSInfo write no longer fails an operation; files.md states it (the version free at the merge); the mutants killed",
    "test_ids": [
@@ -7743,12 +7752,14 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": null,
+   "superseded_by": "WP-150"
   },
   {
    "id": "WP-124",
@@ -7796,7 +7807,8 @@
     "2026-11-16 the work (scratch runs, no CI evidence): the hook's once mode in kernel/src/block/mod.rs (a bound FAIL_TO, arm_write_fault_once); the delete and the truncation sweeps of kernel/src/ktest.rs take the mode as a parameter, show it first on a new file (a write whose first disk write is refused answers an I/O error; the same call made again, the hook still armed, is taken whole) and count the calls that asked for exactly N disk writes; two guest cases with their own images, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE, registered in docs/tests.json. As the design expected, both pass on the present code: once_refused=1, once_next_ok=1, stopped=9, the other fields those of the older cases, and the host check's three numbers 12, 9 and 9; the older delete and truncation cases print the lines they printed. The red is the mutants', seen with each in the tree: the three older fault cases pass and the two new ones fail: M252 (a refused FAT write ignored): failed=3, io=3, stopped=3, once_refused=0, six calls of nine answering success with a write refused; M253 (only the first copy's write checked): failed=6, io=6, stopped=6, once_refused=0; M254 (the once mode refusing every later write): once_refused=1, once_next_ok=0, failed=9, stopped=9. A first form of the sweeps failed before printing their line, with one message for the three; the line is printed first now and each condition has its message. Through the harness the three mutants are killed by both cases. files.md v1.10 and ADR-0014 item 11 state it: no change of the kernel's behaviour; a case that holds it",
     "2026-11-16 the audit and the red team (both read-only on a2358c37f, by reading; nothing of the kernel run by them) and the corrections made before any push. The audit: no claim on the code, the cases or the mutants refuted; each clause of the acceptance has its witness on the cases' lines or in the host check; the older mode of the hook and the older sweeps' lines are byte for byte what they were; the numbers the manager saw under M252 and M253 (failed=3, failed=6) are the ones the code gives by reading. Its corrections, made here: ADR-0014 item 11 said about twenty lines in the test kernel (about twenty in the hook and about 115 in ktest.rs); two inputs of this item were neither taken nor moved: a create or a directory that grows during the failure moves to WP-131 by this line, and the note of 2026-11-16 that create is in no sweep is answered by the same move; the contract's note of WP-127 named this item for what is now WP-131's and WP-132's. On the split: the clauses moved to WP-131 carry their text with a restriction of place added (`in a delete and a truncation` here, `in a write` there), which the activation line called word for word. The red team: no kernel defect found that passes the two cases; `stopped` was held by no mutant, and the contract promises the whole call while the mutants touched fat_set alone. Three mutants added, each seen with it in the tree to pass the three older fault cases and fail both new ones: M255 (after the main FSInfo write is refused the backup is written and the error returned at the end): failed=9, io=9, stopped=8, the one shape only the count of writes shows; M256 (the main FSInfo write's refusal swallowed): failed=8, io=8, stopped=8; M257 (a refused FAT write sent once more): failed=3, io=3, stopped=3, once_refused=0. The message of the count's condition now says both ways it can fail (a write after the refused one, or an end before it). Moved by this line as inputs: to WP-123, that v1.10 and these cases pin an I/O error on a refused FSInfo write, so a decision to let such a write pass bumps the contract and pins the cases again; to WP-122 and WP-106, two hypotheses on the second copy; to WP-131, create with directory growth under the once mode and the refusals no case shows",
     "2026-11-16 local checks before the push (scratch, no CI evidence; every suite and the mutants run on the tree at 41e68f7b5, the last commit before this line): guest suites, counted by case: M3 46 of 46 with TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE and the three older fault cases under their pinned numbers, M6 11 of 11, M1 2 of 2, M2 24 of 24, M5 35 of 35 PASS; M4 26 of 27 PASS, TST-M4-NET-NO-INTERNET FAIL (exit 37; this lab's network cannot judge that case; CI judges it); host suites M0, M1, M3, M4, M5, M6 PASS, M0 again with this line in the record; validate-records 0 errors; cargo fmt clean; hygiene PASS (CI's 43 commands); the mutation harness on M201, M202, M203, M204, M210, M211, M219, M225 and M252 to M257: 14 of 14 killed, each by its declared cases; before that, each of M252 to M257 was put in the tree by hand and seen to pass TST-M3-FAT32-FAULT-UNLINK, -TRUNCATE and -WRITE and to fail both new cases. A first full run on a2358c37f was stopped when the two reviews came, since their corrections change a message of the test kernel. Reviews: an audit and a red-team pass on a2358c37f, both by reading; their corrections (41e68f7b5) were checked by the runs named here and were not audited again",
-    "2026-11-16 CI record: verify run 43790816667 on 970f6a720, green on its first push (the cases were expected to pass on the present code; the red was the mutants', each seen locally in the tree to pass the three older fault cases and fail both new ones; scratch); the run took 59 min 57 s from 02:13:15 to 03:13:12; 173 runs imported, none failing; TST-M3-FAT32-FAULT-ONE-UNLINK PASS (evidence/20261116T022030Z-db96161d-001-a: `fat32_fault_unlink_one|control=ok|writes=9|failed=9|io=9|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0|once_refused=1|once_next_ok=1|stopped=9`, second boot `kept=1|empty=0|bad=0|after_ok=1|kept_after=1|empty_after=0|bad_after=0`; host: `problems=[] faulted: lost=12 longer=0 mirror_diff=1 fsinfo=stale longer_files=- second: lost=9 lost_both=9 longer_files=-`); TST-M3-FAT32-FAULT-ONE-TRUNCATE PASS (evidence/20261116T022036Z-db96161d-001-a: `fat32_fault_truncate_one|control=1|writes=9|failed=9|io=9|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0|once_refused=1|once_next_ok=1|stopped=9`, second boot `kept=1|empty=9|bad=0|after_ok=1|kept_after=1|empty_after=9|bad_after=0`; host: the same line as the delete's); the three older fault cases as before: TST-M3-FAT32-FAULT-UNLINK PASS (evidence/20261116T022018Z-db96161d-001-a), TST-M3-FAT32-FAULT-TRUNCATE PASS (evidence/20261116T022024Z-db96161d-001-a), TST-M3-FAT32-FAULT-WRITE PASS (evidence/20261116T022043Z-db96161d-001-a), each under its pinned numbers; TST-M6-MUTANTS PASS (evidence/20261116T021539Z-db96161d-001-m: 105 of 105 valid mutants killed, no surviving and no invalid SECURITY mutant; M252 to M257 each killed by both new cases). What CI did not show: a new file's write and an append under the once mode (WP-131); a create with a directory that grows, in either mode; two refused writes that are not adjacent; a write the device refuses and then takes; and that the mutants pass the three older cases (seen locally only: the gate runs each mutant against its declared killers)"
+    "2026-11-16 CI record: verify run 43790816667 on 970f6a720, green on its first push (the cases were expected to pass on the present code; the red was the mutants', each seen locally in the tree to pass the three older fault cases and fail both new ones; scratch); the run took 59 min 57 s from 02:13:15 to 03:13:12; 173 runs imported, none failing; TST-M3-FAT32-FAULT-ONE-UNLINK PASS (evidence/20261116T022030Z-db96161d-001-a: `fat32_fault_unlink_one|control=ok|writes=9|failed=9|io=9|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0|once_refused=1|once_next_ok=1|stopped=9`, second boot `kept=1|empty=0|bad=0|after_ok=1|kept_after=1|empty_after=0|bad_after=0`; host: `problems=[] faulted: lost=12 longer=0 mirror_diff=1 fsinfo=stale longer_files=- second: lost=9 lost_both=9 longer_files=-`); TST-M3-FAT32-FAULT-ONE-TRUNCATE PASS (evidence/20261116T022036Z-db96161d-001-a: `fat32_fault_truncate_one|control=1|writes=9|failed=9|io=9|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0|once_refused=1|once_next_ok=1|stopped=9`, second boot `kept=1|empty=9|bad=0|after_ok=1|kept_after=1|empty_after=9|bad_after=0`; host: the same line as the delete's); the three older fault cases as before: TST-M3-FAT32-FAULT-UNLINK PASS (evidence/20261116T022018Z-db96161d-001-a), TST-M3-FAT32-FAULT-TRUNCATE PASS (evidence/20261116T022024Z-db96161d-001-a), TST-M3-FAT32-FAULT-WRITE PASS (evidence/20261116T022043Z-db96161d-001-a), each under its pinned numbers; TST-M6-MUTANTS PASS (evidence/20261116T021539Z-db96161d-001-m: 105 of 105 valid mutants killed, no surviving and no invalid SECURITY mutant; M252 to M257 each killed by both new cases). What CI did not show: a new file's write and an append under the once mode (WP-131); a create with a directory that grows, in either mode; two refused writes that are not adjacent; a write the device refuses and then takes; and that the mutants pass the three older cases (seen locally only: the gate runs each mutant against its declared killers)",
+    "2026-11-17 (DEC-034 A, the owner's ruling of 2026-11-17 in the …): stays done, read as what its cases show: the final image and the first FAT copy are what its cases read, not each copy after each write (the rest: WP-150, from WP-140)"
    ],
    "acceptance": "with the hook refusing one write alone, for every write of a delete and a truncation, no name reaches a free cluster, no two names share one and no chain is shorter than its size in either FAT copy, and the call answers an I/O error, shown by the sweeps and the host check on CI; a mutant that ignores a refused FAT write and one that checks only the first copy's write are killed; files.md (the version free at the merge) states what a single refused write leaves in a delete and a truncation",
    "test_ids": [
@@ -7926,7 +7938,8 @@
     "design to decide in the package (2-3 options with trade-offs): the checker prints a digest of every extra cluster and the case pins it, against a rule (an extra cluster holds zeros or the bytes the case names), against leaving the content to the guest's second boot; what a failed write may rightly leave there decides",
     "test first, red seen locally before the fix: a host case on a crafted image whose extra cluster holds another file's bytes, which leaves the checker with 0 today; a SECURITY tool mutant for the new finding; the write case runs again and keeps every pinned number",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-16 estimate: unmeasured; sized at activation"
+    "2026-11-16 estimate: unmeasured; sized at activation",
+    "2026-11-17: superseded by WP-150 on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand"
    ],
    "acceptance": "the content of a cluster a file's chain holds past its size is judged by the host check of the write fault case, shown by a host case on CI that fails before the fix; a SECURITY tool mutant for the finding is killed; every pinned number of the fault cases stays; or the input is refuted by a dated line that says who reads those bytes",
    "test_ids": [
@@ -7938,12 +7951,14 @@
     "python3 tools/project.py test --target host --suite M3",
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": null,
+   "superseded_by": "WP-150"
   },
   {
    "id": "WP-133",
@@ -8122,7 +8137,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-16 estimate: unmeasured; the engineer's reading: about 55 to 65 calls; sized at activation",
     "2026-11-16: test_ids name existing cases until this item's own case exists; its id is added in the commit that adds the case",
-    "2026-11-16 input from WP-133's red team (by reading; nothing run): what a lost cluster holds is judged by nothing, the host counts lost clusters and reads none; under M262 a lost cluster holds a live entry"
+    "2026-11-16 input from WP-133's red team (by reading; nothing run): what a lost cluster holds is judged by nothing, the host counts lost clusters and reads none; under M262 a lost cluster holds a live entry",
+    "2026-11-17: superseded by WP-150 on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand"
    ],
    "acceptance": "the lost clusters of each call of the fault sweeps are on the cases' lines for the first FAT copy and pinned per N, their sum equal to the number the host check pins, shown on CI; a mutant that only this field sees is killed, or a dated line says that none exists and what the field is for; no pinned number of a case is relaxed",
    "test_ids": [
@@ -8134,12 +8150,14 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": null,
+   "superseded_by": "WP-150"
   },
   {
    "id": "WP-136",
@@ -8180,7 +8198,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-16 estimate: unmeasured; four groups of inputs, so a split is expected; sized at activation",
     "2026-11-16 input from WP-133's red team (by reading; nothing run): a create that grows its directory reads before it writes in fat_set, fsinfo_adjust and store_entry, and no case refuses one of those reads",
-    "2026-11-16 input from WP-134's design reading (by reading; nothing run): the zeroing of a new cluster of more than one sector, where a refusal or a fault can leave part of it not zeroed, in a create that grows its directory; the lab's volume has clusters of one sector and no case runs it"
+    "2026-11-16 input from WP-134's design reading (by reading; nothing run): the zeroing of a new cluster of more than one sector, where a refusal or a fault can leave part of it not zeroed, in a create that grows its directory; the lab's volume has clusters of one sector and no case runs it",
+    "2026-11-17: superseded by WP-150 on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand"
    ],
    "acceptance": "for every input of this item taken at activation, a guest case on CI shows that the call answers an error and leaves no name on a free cluster, no two names on one and no directory entry or FAT entry lost that the call did not own, with a mutant for each swallowed read error killed; every input not taken is moved to a named package or refuted by a dated line; files.md (the version free at the merge) states it",
    "test_ids": [
@@ -8190,12 +8209,14 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": null,
+   "superseded_by": "WP-150"
   },
   {
    "id": "WP-137",
@@ -8228,7 +8249,8 @@
     "test first, red seen locally: a mutant that only this field sees (for example a node left for the failed create that the create made again then reuses), or a dated line saying that none exists and what the field is for",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-16 estimate: unmeasured; sized at activation",
-    "2026-11-16: test_ids name existing cases until this item's own fields exist"
+    "2026-11-16: test_ids name existing cases until this item's own fields exist",
+    "2026-11-17: superseded by WP-150 on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand"
    ],
    "acceptance": "the handle that a create made again returns, after a create that failed at each disk write of a directory growth, writes bytes and reads them back, and the file read by a fresh lookup after a restart holds those bytes, shown by fields of a guest case on CI with the image's lost clusters as pinned; a mutant that only these fields see is killed, or a dated line says that none exists and what the fields are for; no pinned number of a case is relaxed (a line that gains fields is re-pinned as a tightening and said so); files.md (the version free at the merge) states it",
    "test_ids": [
@@ -8238,12 +8260,14 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": null,
+   "superseded_by": "WP-150"
   },
   {
    "id": "WP-138",
@@ -8332,9 +8356,10 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -8363,7 +8388,8 @@
     "2026-11-16 estimate: unmeasured; expected over the budget line as one item; sized and split at activation",
     "2026-11-16: test_ids name existing cases until this item's own fields exist",
     "2026-11-16 the acceptance is widened (a tightening, by the manager, from WP-138's close audit and the review the owner relayed on this date): the two create sweeps gain the check that no cluster is reached by two names along the second FAT copy after every failed create; WP-138 reads the directory's chain and names there and not the other names' chains, and the walker of every name's chain along one copy is this item's",
-    "2026-11-16: test_ids gains TST-M3-FAT32-FAULT-CREATE and TST-M3-FAT32-FAULT-ONE-CREATE, which the acceptance names since the widening of this date (the owner's relayed audit found the list without them)"
+    "2026-11-16: test_ids gains TST-M3-FAT32-FAULT-CREATE and TST-M3-FAT32-FAULT-ONE-CREATE, which the acceptance names since the widening of this date (the owner's relayed audit found the list without them)",
+    "2026-11-17: superseded by WP-150 on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand"
    ],
    "acceptance": "after every failed call of the write, unlink and truncation sweeps, in both modes of the hook, the test kernel reads every file of the sweep along the second FAT copy as along the first: no chain reaches a cluster free in that copy, no two chains share one and none is shorter than its size, and the calls after which the second copy shows what the first does not are counted and pinned, shown by fields on the cases' lines on CI; and after every failed create of TST-M3-FAT32-FAULT-CREATE and TST-M3-FAT32-FAULT-ONE-CREATE no cluster is reached by two names along the second FAT copy, shown by a field on their lines on CI; the mutants that change the second copy between calls are killed by those fields; no pinned number of a case is relaxed (a line that gains fields is re-pinned as a tightening and said so); files.md (the version free at the merge) states it",
    "test_ids": [
@@ -8373,7 +8399,8 @@
     "TST-M3-FAT32-FAULT-CREATE",
     "TST-M3-FAT32-FAULT-ONE-CREATE",
     "TST-M6-MUTANTS"
-   ]
+   ],
+   "superseded_by": "WP-150"
   },
   {
    "id": "WP-125",
@@ -8665,7 +8692,8 @@
     "test first, red seen locally before the fix: a host case on a crafted image for every input taken, each leaving the checker with 0 today, in both modes; a healthy image with a deleted entry, a volume label and a subdirectory stays healthy; a SECURITY tool mutant for each new finding; every guest case that calls the checker runs again",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; the planner's reading: about 90 calls / 85 min; sized at activation",
-    "2026-11-16 inputs from WP-133's reviews (by reading; nothing run): the checker prints mirror_diff and judges it in neither mode: a pin for the images in which later calls have written over every difference between the copies (TST-M3-FAT32-FAULT-CREATE's final image prints 0); and what the second FAT copy holds between a failed create and the create made again (the new cluster's mark at N=2, the directory tail's link at N=7, each in the second copy alone) is read by no boot and by no host check"
+    "2026-11-16 inputs from WP-133's reviews (by reading; nothing run): the checker prints mirror_diff and judges it in neither mode: a pin for the images in which later calls have written over every difference between the copies (TST-M3-FAT32-FAULT-CREATE's final image prints 0); and what the second FAT copy holds between a failed create and the create made again (the new cluster's mark at N=2, the directory tail's link at N=7, each in the second copy alone) is read by no boot and by no host check",
+    "2026-11-17: superseded by WP-150 on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand"
    ],
    "acceptance": "for every input of this item taken at activation, tools/fat32.py check names the damage in both modes, shown by a host case on CI that fails before the fix; a healthy image with a deleted entry, a volume label and a subdirectory passes; a SECURITY tool mutant for each new finding is killed; every guest case that calls the checker keeps its verdict and its pinned numbers; every input not taken is moved to a named package or refuted by a dated line",
    "test_ids": [
@@ -8680,12 +8708,14 @@
     "python3 tools/project.py test --target host --suite M3",
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": null,
+   "superseded_by": "WP-150"
   },
   {
    "id": "WP-129",
@@ -8726,7 +8756,8 @@
     "test first, red seen locally before the fix: a host case on a crafted image for every input taken, each leaving the checker with 0 today in the mode the input names; an image with one FAT copy passes plain mode (it fails today); a SECURITY tool mutant for each new finding; every guest case that calls the checker runs again",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; the planner's reading: about 60 calls / 60 min; sized at activation",
-    "2026-11-16 input from WP-133's reviews (by reading; nothing run): the checker prints the FSInfo state, pins it in no case and never reads the backup sector; in TST-M3-FAT32-FAULT-CREATE's final image the main free count is left too high by two clusters and the backup's by three"
+    "2026-11-16 input from WP-133's reviews (by reading; nothing run): the checker prints the FSInfo state, pins it in no case and never reads the backup sector; in TST-M3-FAT32-FAULT-CREATE's final image the main free count is left too high by two clusters and the backup's by three",
+    "2026-11-17: superseded by WP-150 on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand"
    ],
    "acceptance": "for every input of this item taken at activation, tools/fat32.py check names the damage in the mode the input names, shown by a host case on CI that fails before the fix; a healthy image with one FAT copy passes plain mode; a SECURITY tool mutant for each new finding is killed; every guest case that calls the checker keeps its verdict and its pinned numbers; every input not taken is moved to a named package or refuted by a dated line",
    "test_ids": [
@@ -8741,12 +8772,14 @@
     "python3 tools/project.py test --target host --suite M3",
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
-   "blocker": null
+   "blocker": null,
+   "superseded_by": "WP-150"
   },
   {
    "id": "WP-130",
@@ -9108,9 +9141,10 @@
     "python3 tools/project.py test --target pc-qemu --suite M3",
     "python3 tools/project.py test --target host --suite M3"
    ],
-   "status": "planned",
+   "status": "superseded",
    "status_history": [
-    "planned"
+    "planned",
+    "superseded"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -9143,12 +9177,135 @@
     "design to decide in the package (2-3 options with trade-offs): the bound in fat_get (a cluster below 2 is corrupt) against a guard at every reader of a stored first cluster; which of the carried inputs get a case here and which a named item",
     "test first, red seen locally: a test-kernel case that patches an entry's first cluster to 1 with FAT[1] linked to another file's cluster and reads it: today, by reading, the other file's bytes; expected the corrupt-volume error and no byte; a SECURITY mutant that removes the refusal",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-17 estimate: unmeasured; sized at activation"
+    "2026-11-17 estimate: unmeasured; sized at activation",
+    "2026-11-17: superseded by WP-150 on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand"
    ],
    "acceptance": "a read of a stored entry whose first cluster is 1 answers the corrupt-volume error and returns no byte of another file, shown by a case on a made-up entry on CI, with its SECURITY mutant; the storage cases PASS; each input carried from WP-106 is either shown by a case here or moved to a named item with its reason",
    "test_ids": [
     "TST-M3-FAT32-READ",
     "TST-M6-MUTANTS"
+   ],
+   "superseded_by": "WP-150"
+  },
+  {
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-005"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "id": "WP-149",
+   "depends_on": [],
+   "inputs": [
+    "RSK-040 (K-3): vmo_map lets a handle with MAP and WRITE but no READ map the object for writing, and a writable page on x86 is readable, so a holder without READ reads the object's content (kernel/src/syscall/mod.rs, sys_vmo_map)",
+    "DEC-004(1), 2026-10-19: the owner's decision to fix K-3 now (by reopening WP-32), not carried out until this item",
+    "DEC-032 B, 2026-11-17: a new fix item instead of reopening WP-32; REQ-M3-005 partial until the case passes"
+   ],
+   "files": [
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/contracts/syscall.md",
+    "docs/work-items.json",
+    "docs/requirements.json",
+    "docs/risks.json"
+   ],
+   "actions": [
+    "K-3: نداء vmo_map يرفض تخطيطًا للكتابة بمقبض لا يحمل حق القراءة (DEC-032 B؛ RSK-040)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-17: registered on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand; first in the order of the method's section 7; test_ids name existing rights cases until this item's own case (TST-M3-VMO-MAP-RIGHTS) exists"
+   ],
+   "acceptance": "vmo_map refuses a mapping for writing through a handle that lacks READ with the rights error, shown by a test-kernel case that fails before the fix, on CI; the rights cases PASS; the SECURITY mutant killed",
+   "test_ids": [
+    "TST-M3-RIGHTS-DENIED",
+    "TST-M6-MUTANTS"
+   ]
+  },
+  {
+   "stage": "M9",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3",
+    "python3 tools/project.py test --target host --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "id": "WP-150",
+   "depends_on": [],
+   "inputs": [
+    "WP-122: FAT32: العناقيد الضائعة تُعرض وتُستعاد داخل النظام (من الفريق الأحمر لـWP-120، 2026-11-15) | its acceptance: after a failed delete, truncation or write and a restart, the system gives the lost clusters back without freeing a cluster a name reaches and without saving their bytes, shown by a case whose host check finds no lost cluster, equal FAT copies and a right free count on CI; files.md (the version free at the merge) states when the recovery runs and what it does; the mutants killed",
+    "WP-123: FAT32: flush بين كتابة الإدخال والتحرير في الحذف والتفريغ، وفشل كتابة FSInfo لا يُفشل العملية (مفصولة من WP-117 في 2026-11-15 قبل تفعيلها) | its acceptance: a flush separates the entry write from the frees in delete and truncate (counted in the test kernel; reordering in a device cache is not shown by the lab and the contract says so); a failed FSInfo write no longer fails an operation; files.md states it (the version free at the merge); the mutants killed",
+    "WP-128: فاحص الصورة المضيف، الجزء الثالث: الإدخالات: حجم المجلد وبت المجلد، الأسماء المكررة، الإدخالات المتخطاة التي تشارك عنقودًا، `.` و`..`، وعلامة العنقود التالف (من الفريق الأحمر لـWP-126، مفصولة من WP-127) | its acceptance: for every input of this item taken at activation, tools/fat32.py check names the damage in both modes, shown by a host case on CI that fails before the fix; a healthy image with a deleted entry, a volume label and a subdirectory passes; a SECURITY tool mutant for each new finding is killed; every guest case that calls the checker keeps its verdict and its pinned numbers; every input not taken is moved to a named package or refuted by a dated line",
+    "WP-129: فاحص الصورة المضيف، الجزء الرابع: نسخة FSInfo الاحتياطية وعدّادها، FAT[0] وFAT[1]، وحدود قطاع الإقلاع وعنقود الجذر، وصورة بنسخة FAT واحدة (من الفريق الأحمر لـWP-126، مفصولة من WP-127) | its acceptance: for every input of this item taken at activation, tools/fat32.py check names the damage in the mode the input names, shown by a host case on CI that fails before the fix; a healthy image with one FAT copy passes plain mode; a SECURITY tool mutant for each new finding is killed; every guest case that calls the checker keeps its verdict and its pinned numbers; every input not taken is moved to a named package or refuted by a dated line",
+    "WP-132: فاحص الصورة المضيف: محتوى العنقود الزائد بعد حجم الملف (مدخل الفريق الأحمر لـWP-127، مفصول من WP-124 قبل تفعيلها) | its acceptance: the content of a cluster a file's chain holds past its size is judged by the host check of the write fault case, shown by a host case on CI that fails before the fix; a SECURITY tool mutant for the finding is killed; every pinned number of the fault cases stays; or the input is refuted by a dated line that says who reads those bytes",
+    "WP-135: FAT32: العناقيد الضائعة لكل نداء من مسوح الفشل، لا رقمًا واحدًا للصورة (مدخل الفريق الأحمر لـWP-127، مفصول من WP-131) | its acceptance: the lost clusters of each call of the fault sweeps are on the cases' lines for the first FAT copy and pinned per N, their sum equal to the number the host check pins, shown on CI; a mutant that only this field sees is killed, or a dated line says that none exists and what the field is for; no pinned number of a case is relaxed",
+    "WP-136: FAT32: قراءة يرفضها القرص في المسارات التي تقرأ ثم تكتب، وأشكال الكتابة التي لا يجريها مسح (من الفريق الأحمر لـWP-131) | its acceptance: for every input of this item taken at activation, a guest case on CI shows that the call answers an error and leaves no name on a free cluster, no two names on one and no directory entry or FAT entry lost that the call did not own, with a mutant for each swallowed read error killed; every input not taken is moved to a named package or refuted by a dated line; files.md (the version free at the merge) states it",
+    "WP-137: FAT32: مقبض الإنشاء المُعاد بعد إنشاء فاشل يكتب ويقرأ (مفصول من WP-134 عند تفعيلها، بعدها) | its acceptance: the handle that a create made again returns, after a create that failed at each disk write of a directory growth, writes bytes and reads them back, and the file read by a fresh lookup after a restart holds those bytes, shown by fields of a guest case on CI with the image's lost clusters as pinned; a mutant that only these fields see is killed, or a dated line says that none exists and what the fields are for; no pinned number of a case is relaxed (a line that gains fields is re-pinned as a tightening and said so); files.md (the version free at the merge) states it",
+    "WP-140: FAT32: نواة الاختبار تقرأ النسخة الثانية من FAT بعد كل نداء فاشل في مسوح الكتابة والحذف والتفريغ (من قرار المالك DEC-031، الخيار أ) | its acceptance: after every failed call of the write, unlink and truncation sweeps, in both modes of the hook, the test kernel reads every file of the sweep along the second FAT copy as along the first: no chain reaches a cluster free in that copy, no two chains share one and none is shorter than its size, and the calls after which the second copy shows what the first does not are counted and pinned, shown by fields on the cases' lines on CI; and after every failed create of TST-M3-FAT32-FAULT-CREATE and TST-M3-FAT32-FAULT-ONE-CREATE no cluster is reached by two names along the second FAT copy, shown by a field on their lines on CI; the mutants that change the second copy between calls are killed by those fields; no pinned number of a case is relaxed (a line that gains fields is re-pinned as a tightening and said so); files.md (the version free at the merge) states it",
+    "WP-148: FAT32: قراءة إدخال مخزَّن عنقوده الأول 1 لا تُرجع بايتات ملف آخر (من قراءة مهندس النواة عند تفعيل WP-106) | its acceptance: a read of a stored entry whose first cluster is 1 answers the corrupt-volume error and returns no byte of another file, shown by a case on a made-up entry on CI, with its SECURITY mutant; the storage cases PASS; each input carried from WP-106 is either shown by a case here or moved to a named item with its reason",
+    "RSK-046 (the read of an entry whose first cluster is 1) and RSK-047 (a first cluster inside another file's or a directory's chain), with the inputs WP-148 carried",
+    "DEC-034 A's gaps: WP-118's other shapes of write, WP-124's copy after each write, WP-105's single file of three clusters, WP-121's case through the system-call layer",
+    "order inside the bundle, carried from WP-122's depends_on: the host image checker's entries (WP-128) before the reclaim of lost clusters (WP-122)"
+   ],
+   "files": [
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/ktest.rs",
+    "tools/fat32.py",
+    "tests/test_fat32_tool.py",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md",
+    "kernel/src/fs/vfs.rs",
+    "kernel/src/block/mod.rs",
+    "docs/PLAN-REVERSE.md",
+    "tools/project.py",
+    "docs/work-items.json",
+    "docs/risks.json"
+   ],
+   "actions": [
+    "FAT32: تقوية التخزين قبل الإصدار، حزمة واحدة تجمع عشر حزم مخططة لحالات القرص النادرة (قرار المالك 2026-11-17)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; split again at activation by that rule",
+    "2026-11-17: registered on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand; it absorbs WP-122, WP-123, WP-128, WP-129, WP-132, WP-135, WP-136, WP-137, WP-140, WP-148 (each superseded by this item, its inputs carried here); stage M9 (installation, update and recovery), before the release candidate M10"
+   ],
+   "acceptance": "every acceptance carried in this item's inputs from the ten items it absorbs is shown on CI, or closed under the method's close rule with its limits written; the storage cases PASS",
+   "test_ids": [
+    "TST-M3-FAT32-TOOL",
+    "TST-M3-FAT32-FAULT-WRITE",
+    "TST-M3-FAT32-FAULT-UNLINK",
+    "TST-M3-FAT32-FAULT-TRUNCATE",
+    "TST-M3-FAT32-STOP",
+    "TST-M6-MUTANTS",
+    "TST-M3-FAT32-FAULT-ONE-UNLINK",
+    "TST-M3-FAT32-FAULT-ONE-TRUNCATE",
+    "TST-M3-FAT32-FAULT-ONE-WRITE",
+    "TST-M3-FAT32-FAULT-CREATE",
+    "TST-M3-FAT32-FAULT-ONE-CREATE",
+    "TST-M3-FAT32-READ"
    ]
   }
  ]

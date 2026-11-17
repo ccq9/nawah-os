@@ -818,7 +818,7 @@
     "TST-M3-BLOCK-WAKE",
     "TST-M3-CHANNEL-CHAIN"
    ],
-   "implementation_status": "verified_in_scope",
+   "implementation_status": "partial",
    "evidence_refs": [
     "evidence/20261117T103751Z-5a2219fa-001-a",
     "evidence/20261117T103757Z-5a2219fa-001-a",
