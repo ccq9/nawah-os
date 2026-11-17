@@ -1347,6 +1347,18 @@ class ShardMerge(unittest.TestCase):
         self.put(2, 2, s2)
         self.assert_refused(self.merge(2), "shard 2/2 is truncated: 2 of its 3 mutants decided")
 
+    def test_a_shard_that_did_not_finish_is_refused_though_every_mutant_is_decided(self):
+        """A shard writes its report after every decided mutant; one that raised or was stopped
+        after its last mutant (the final reset, a kill) leaves every entry decided but never
+        finished. Its report must not reach a verdict (security assurance, WP-98 review)."""
+        self.define(6)
+        self.run_shards(2)
+        s2 = self.shard(2, 2)
+        self.assertIs(s2["shard"].get("complete"), True, "a finished shard says so")
+        s2["shard"].pop("complete")
+        self.put(2, 2, s2)
+        self.assert_refused(self.merge(2), "shard 2/2 did not finish")
+
     def test_a_report_of_another_shard_or_no_shard_report_is_refused(self):
         self.define(6)
         self.run_shards(2)

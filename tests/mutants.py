@@ -1266,6 +1266,9 @@ MUTANTS = [
     ("M298", "tests/mutants.py", "summarize(mer" "ged)",
      'summarize(mer' 'ged); merged["ratio"] = sum(r["ratio"] for _, _, r in reports) / len(reports)',
      ["TST-M0-005"], "the union's ratio is the mean of the shards' ratios, not killed over valid counted over the union"),
+    ("M299", "tests/mutants.py", 'if r["shard"].get("comp' 'lete") is not True',
+     'if r["shard"].get("comp' 'lete") is not True and False',
+     ["TST-M0-005"], "SECURITY (from the WP-98 review): the merge takes a shard whose run never finished (every mutant decided, then the final reset raised or the shard was stopped), so a gate FAIL can read as PASS"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1541,7 +1544,7 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-98: the merge of the gate's shards judges the union of this run's reports alone
             # (M290, M291, M292), and two new runs of one test id are never adopted or imported
             # (M296, M297).
-            "M290", "M291", "M292", "M296", "M297"}
+            "M290", "M291", "M292", "M296", "M297", "M299"}
 
 
 def security_of(mid: str) -> bool:
@@ -2051,6 +2054,8 @@ def merge_shards(report_rel, n, stage=None, only=None, target="pc-qemu"):
         undecided = [mid for mid in sel if entries.get(mid, {}).get("status") not in DECIDED]
         if undecided:
             raise MergeRefused(f"shard {k}/{n} is truncated: {len(sel) - len(undecided)} of its {len(sel)} mutants decided (not: {undecided})")
+        if r["shard"].get("complete") is not True:
+            raise MergeRefused(f"shard {k}/{n} did not finish (its report never says complete)")
         reports.append((k, rel, r))
     if set(where) != set(want):
         raise MergeRefused(f"the shards' union is not the stage's mutants (missing {sorted(set(want) - set(where))}, "
@@ -2297,6 +2302,10 @@ def main():
             shutil.rmtree(tmp, ignore_errors=True)
             lock.close()
     summarize(report)
+    if a.shard:
+        # Written only here, after the finally block: a shard that raised in its last reset or was
+        # stopped after its last mutant never says it finished, and the merge refuses it (WP-98).
+        report["shard"]["complete"] = True
     _write_report(report_rel, report)
     if a.check:
         bad = [m["id"] for m in report["mutants"] if m["status"] == "invalid"]
