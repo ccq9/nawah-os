@@ -4630,6 +4630,17 @@ fn bad_first_patch(
     crate::block::write(sector, &s).is_ok()
 }
 
+/// Writes FAT entry 1 of the FAT copy that starts at `sec`: its four bytes alone, in the sector
+/// as the disk holds it at that moment, so no other entry of the sector is touched.
+fn bad_first_fat1(sec: u64, entry: [u8; 4]) -> bool {
+    let mut s = [0u8; 512];
+    if crate::block::read(sec, &mut s).is_err() {
+        return false;
+    }
+    s[4..8].copy_from_slice(&entry);
+    crate::block::write(sec, &s).is_ok()
+}
+
 /// One write call on /BADF.TXT as stored now, through a new open, at offset 512: 512 bytes, or
 /// none when `empty`. Returns the answer (the count, or the error's code) and the disk writes
 /// the call asked for.
@@ -4656,7 +4667,8 @@ fn bad_first_write(empty: bool) -> (String, u32) {
 /// the volume (1, the first number past the last cluster, a number far past it) is refused by a
 /// write call with K_E_FS_CORRUPT before any disk write, the empty write included: with the
 /// first FAT entry 1 as the format left it (an end mark), with it pointing at /HELLO.TXT's
-/// cluster (which then stays whole) and with the allocator seeing no free cluster. The volume's
+/// cluster (which then stays whole) and with the allocator seeing no free cluster. A call whose
+/// offset is past the stored size is answered by the same error, not the range error. The volume's
 /// last cluster number is not refused: an empty write on it answers 0. The entry is made up on
 /// the disk by the case (a block write over /BADF.TXT's entry) and put back after.
 fn fat32_bad_first() -> ! {
@@ -4684,13 +4696,13 @@ fn fat32_bad_first() -> ! {
     let fat_sectors: alloc::vec::Vec<u64> = (0..v.fats)
         .map(|k| u64::from(v.reserved) + u64::from(k) * u64::from(v.fat_sectors))
         .collect();
-    let mut saved = alloc::vec::Vec::new();
+    let mut saved: alloc::vec::Vec<[u8; 4]> = alloc::vec::Vec::new();
     for &sec in &fat_sectors {
         let mut s = [0u8; 512];
         if crate::block::read(sec, &mut s).is_err() {
             fail("a FAT sector could not be read")
         }
-        saved.push(s);
+        saved.push([s[4], s[5], s[6], s[7]]);
     }
     let mut out = String::new();
     let mut refused_all = true;
@@ -4710,19 +4722,34 @@ fn fat32_bad_first() -> ! {
         ));
     };
     take("one", 1, &mut out);
+    // A call the range check alone would refuse (its offset is past the stored size) is
+    // answered by the guard first: the corrupt-volume error, not the range error. The call is
+    // made on the volume itself, with the entry as the disk stores it now (first cluster 1).
+    let (one_past, one_past_writes) = {
+        let Ok(mut stored) = crate::fs::with(|fs| fs.lookup(b"/BADF.TXT")) else {
+            fail("the made-up entry could not be looked up")
+        };
+        let past = stored.size + 1;
+        let w0 = crate::block::writes();
+        let r = crate::fs::with(|fs| fs.write(&mut stored, past, b"Z"));
+        let n = crate::block::writes() - w0;
+        let r: String = r.map_or_else(|e| e.code().into(), |k| alloc::format!("{}", k));
+        (r, n)
+    };
+    out.push_str(&alloc::format!(
+        "|one_past={one_past}|one_past_writes={one_past_writes}"
+    ));
     // FAT entry 1 pointing at /HELLO.TXT's first cluster, in every copy.
     for (i, &sec) in fat_sectors.iter().enumerate() {
-        let mut s = saved[i];
-        let old = u32::from_le_bytes([s[4], s[5], s[6], s[7]]);
+        let old = u32::from_le_bytes(saved[i]);
         let new = (old & 0xF000_0000) | (hello.first & 0x0FFF_FFFF);
-        s[4..8].copy_from_slice(&new.to_le_bytes());
-        if crate::block::write(sec, &s).is_err() {
+        if !bad_first_fat1(sec, new.to_le_bytes()) {
             fail("FAT entry 1 could not be written")
         }
     }
     take("one_link", 1, &mut out);
     for (i, &sec) in fat_sectors.iter().enumerate() {
-        if crate::block::write(sec, &saved[i]).is_err() {
+        if !bad_first_fat1(sec, saved[i]) {
             fail("FAT entry 1 could not be put back")
         }
     }
@@ -4749,8 +4776,9 @@ fn fat32_bad_first() -> ! {
     let restored_ok = put_back && fault_state(b"/BADF.TXT", &all) == 1;
     let synced = vfs::sync().is_ok();
     kprintln!(
-        "OSX|{}|ktest|fat32_bad_first{}|empty_writes={}|restored_ok={}|synced={}|live_files={}",
+        "OSX|{}|ktest|fat32_bad_first|clusters={}{}|empty_writes={}|restored_ok={}|synced={}|live_files={}",
         BUILD_ID,
+        v.clusters,
         out,
         empty_writes,
         u8::from(restored_ok),
@@ -4759,6 +4787,9 @@ fn fat32_bad_first() -> ! {
     );
     if !refused_all || writes_total != 0 {
         fail("a write on an entry whose first cluster is no cluster of the volume was not refused before any disk write")
+    }
+    if one_past != "K_E_FS_CORRUPT" || one_past_writes != 0 {
+        fail("a write past the stored size on an entry whose first cluster is 1 was not answered by the corrupt-volume error with no disk write")
     }
     if last_empty != "0" || last_writes != 0 {
         fail("an empty write on an entry whose first cluster is the volume's last was not answered 0 with no disk write")

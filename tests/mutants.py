@@ -1179,6 +1179,13 @@ MUTANTS = [
      "        if file.first == 1 || file.first >= self.clusters + 2 {\n",
      "        if file.first == 1 || file.first > self.clusters {\n",
      ["TST-M3-FAT32-BAD-FIRST"], "a write call on an entry whose first cluster is the volume's last cluster is refused: the case's empty write on that number answers K_E_FS_CORRUPT instead of 0, and the line carries last_empty=K_E_FS_CORRUPT, TST-M3-FAT32-BAD-FIRST FAIL (seen locally)"),
+    # M280 (not SECURITY; from the red team's pass): the guard's place before the range check.
+    # The guard is silent when the offset is past the stored size, as if it stood after that
+    # check: nothing is written either way, only the answer changes.
+    ("M280", "kernel/src/fs/fat32.rs",
+     "        if file.first == 1 || file.first >= self.clusters + 2 {\n",
+     "        if (file.first == 1 || file.first >= self.clusters + 2) && offset <= file.size {\n",
+     ["TST-M3-FAT32-BAD-FIRST"], "a write call whose offset is past the stored size, on an entry whose first cluster is 1, is answered by the range error instead of the corrupt-volume error; no disk write either way: the line carries one_past=K_E_FS_RANGE, TST-M3-FAT32-BAD-FIRST FAIL (seen locally)"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1645,6 +1652,7 @@ _BPB = "|ktest|fat32_bpb|sector="
 _JUDGED = "|ktest|fail|a boot sector was not judged as expected"
 _UNREFUSED = "|ktest|fail|a write on an entry whose first cluster is no cluster of the volume was not refused before any disk write"
 _LAST = "|ktest|fail|an empty write on an entry whose first cluster is the volume's last was not answered 0 with no disk write"
+_PAST = "|ktest|fail|a write past the stored size on an entry whose first cluster is 1 was not answered by the corrupt-volume error with no disk write"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -1681,6 +1689,7 @@ EXPECT = {
     "M277": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|past_end_empty=0|", "|far_empty=0|", _UNREFUSED]},
     "M278": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|past_end_empty=0|", _UNREFUSED]},
     "M279": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|last_empty=K_E_FS_CORRUPT|", _LAST]},
+    "M280": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|one_past=K_E_FS_RANGE|", _PAST]},
 }
 
 

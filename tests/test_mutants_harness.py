@@ -847,12 +847,14 @@ class KillEvidence(unittest.TestCase):
     def test_the_bad_first_expectations_are_pinned(self):
         """WP-147: the guard of a write call on a stored first cluster that is no cluster of the
         volume. M276 (no test for 1), M277 (no test for the end), M278 (the end's test one number
-        too high) and M279 (one number too low) are declared by exit 37, the kernel's own failure
-        message (a failure in ktest.rs) and the fields of the case's one line that differ from its
-        pinned line: each field is in that line with another value. M276 shows the five disk
-        writes, the write into /HELLO.TXT's cluster and the disk-full answer; M277 the empty
-        writes past the end, answered 0; M278 the empty write on the first number past the end
-        alone; M279 the empty write on the volume's last cluster number, refused."""
+        too high), M279 (one number too low) and M280 (the guard silent when the offset is past
+        the stored size) are declared by exit 37, the kernel's own failure message (a failure in
+        ktest.rs, and the one that mutant reaches) and the fields of the case's one line that
+        differ from its pinned line: each field is in that line with another value. M276 shows
+        the five disk writes, the write into /HELLO.TXT's cluster and the disk-full answer; M277
+        the empty writes past the end, answered 0; M278 the empty write on the first number past
+        the end alone; M279 the empty write on the volume's last cluster number, refused; M280
+        the range error in place of the corrupt-volume error. M276 alone is a SECURITY mutant."""
         E = mutants.EXPECT
         src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
         t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
@@ -862,13 +864,19 @@ class KillEvidence(unittest.TestCase):
                          "|one_full=K_E_FS_DISK_FULL|", "|one_empty=0|"},
                 "M277": {"|past_end_empty=0|", "|far_empty=0|"},
                 "M278": {"|past_end_empty=0|"},
-                "M279": {"|last_empty=K_E_FS_CORRUPT|"}}
+                "M279": {"|last_empty=K_E_FS_CORRUPT|"},
+                "M280": {"|one_past=K_E_FS_RANGE|"}}
+        message = {"M276": mutants._UNREFUSED, "M277": mutants._UNREFUSED, "M278": mutants._UNREFUSED,
+                   "M279": mutants._LAST, "M280": getattr(mutants, "_PAST", None)}
+        self.assertEqual(len({message[m] for m in ("M276", "M279", "M280")}), 3, "three different failures")
+        self.assertEqual({m for m in must if m in mutants.SECURITY}, {"M276"})
         for mid, fields in must.items():
             self.assertEqual(set(E.get(mid, {})), {self.BAD}, mid)
             subs = E[mid][self.BAD]
             self.assertIn("exit 37", subs, mid)
             fails = [x for x in subs if x.startswith("|ktest|fail|")]
             self.assertEqual(len(fails), 1, mid)
+            self.assertEqual(fails[0], message[mid], mid)
             self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src, mid)
             got = {x for x in subs if re.fullmatch(r"\|\w+=[^|]*\|", x)}
             self.assertTrue(fields <= got, f"{mid}: {fields - got}")
