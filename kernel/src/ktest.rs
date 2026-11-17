@@ -184,6 +184,7 @@ pub fn run() -> ! {
         "fat32_disk_full" => fat32_disk_full(),
         "fat32_stop" => fat32_stop(),
         "fat32_stop_check" => fat32_stop_check(),
+        "fat32_bpb" => fat32_bpb(),
         "file_roundtrip" => file_app("file_roundtrip", crate::apps::FILE_ROUNDTRIP, 0x60),
         "path_invalid" => file_app("path_invalid", crate::apps::PATH_INVALID, 0x61),
         "fd_leak" => fd_leak(),
@@ -4390,6 +4391,164 @@ fn fat32_stop_check() -> ! {
         fail("after the restart a name of the case is not what the stop left")
     }
     pass("after the restart the stopped delete left no name and the other file whole")
+}
+
+/// One crafted boot sector of TST-M3-FAT32-BPB: its name, the fields written over the lab's
+/// sector 0 as (byte offset, width in bytes, value), the capacity it is validated against
+/// (`None`: the lab disk's own) and the geometry expected (clusters, data start), `None` for a
+/// refusal.
+type BpbCase = (
+    &'static str,
+    &'static [(usize, usize, u64)],
+    Option<u64>,
+    Option<(u32, u32)>,
+);
+
+/// The lab volume's boot sector (tools/fat32.py: 131072 sectors, 32 reserved, 2 FATs of 1024
+/// sectors, one sector per cluster, root cluster 2) with fields changed. BPB offsets: BytsPerSec
+/// 11, SecPerClus 13, RsvdSecCnt 14, NumFATs 16, TotSec32 32, FATSz32 36, RootClus 44, the
+/// signature at 510. The sectors refused before WP-106 come first; the five refused only since
+/// it come last, the three whose sum wraps a 32-bit value at the end.
+const BPB_CASES: &[BpbCase] = &[
+    ("lab", &[], None, Some((128992, 2080))),
+    ("min_ok", &[(32, 4, 67605)], None, Some((65525, 2080))),
+    (
+        "max_ok",
+        &[(16, 1, 1), (36, 4, 2097152), (32, 4, 270532629)],
+        Some(270532629),
+        Some((268435445, 2097184)),
+    ),
+    ("sig", &[(510, 2, 0)], None, None),
+    ("bps0", &[(11, 2, 0)], None, None),
+    ("spc0", &[(13, 1, 0)], None, None),
+    ("spc3", &[(13, 1, 3)], None, None),
+    ("rsvd0", &[(14, 2, 0)], None, None),
+    ("fats0", &[(16, 1, 0)], None, None),
+    ("fats3", &[(16, 1, 3)], None, None),
+    ("fatsz0", &[(36, 4, 0)], None, None),
+    ("total0", &[(32, 4, 0)], None, None),
+    ("root1", &[(44, 4, 1)], None, None),
+    ("root_end", &[(44, 4, 128994)], None, None),
+    ("fat_small", &[(36, 4, 1007)], None, None),
+    ("past_cap", &[], Some(131071), None),
+    ("few", &[(32, 4, 67604)], None, None),
+    ("total_max", &[(32, 4, 0xFFFF_FFFF)], None, None),
+    (
+        "over_max",
+        &[(16, 1, 1), (36, 4, 2097152), (32, 4, 270532630)],
+        Some(270532630),
+        None,
+    ),
+    (
+        "too_many",
+        &[(32, 4, 0xFFFF_FFFF), (16, 1, 1), (36, 4, 0x8000_0000)],
+        Some(0xFFFF_FFFF),
+        None,
+    ),
+    ("mul_wrap", &[(16, 1, 2), (36, 4, 0x8000_0010)], None, None),
+    ("add_wrap", &[(16, 1, 2), (36, 4, 0x7FFF_FFF8)], None, None),
+    (
+        "zero_start",
+        &[
+            (14, 2, 1),
+            (16, 1, 1),
+            (36, 4, 0xFFFF_FFFF),
+            (32, 4, 0xFFFF_FFFD),
+        ],
+        Some(u64::MAX),
+        None,
+    ),
+];
+
+/// TST-M3-FAT32-BPB (WP-106, RSK-027): the mount's validation, given crafted boot sectors made
+/// from the lab's own sector 0, refuses every malformed one with K_E_FS_BAD_BPB and accepts the
+/// well-formed ones with their geometry; no sector panics the test kernel (32-bit sums that wrap
+/// did). Each sector's line is printed before the next is tried, so a panic names the sector
+/// after the last line.
+fn fat32_bpb() -> ! {
+    let mut lab = [0u8; 512];
+    if crate::block::read(0, &mut lab).is_err() {
+        fail("the lab disk's sector 0 could not be read")
+    }
+    let capacity = crate::block::capacity_sectors();
+    let (mut refused, mut accepted, mut wrong) = (0u32, 0u32, 0u32);
+    for (name, fields, cap, want) in BPB_CASES {
+        let mut b = lab;
+        for &(off, width, value) in fields.iter() {
+            b[off..off + width].copy_from_slice(&value.to_le_bytes()[..width]);
+        }
+        let got = crate::fs::fat32::Fat32::from_boot_sector(&b, cap.unwrap_or(capacity));
+        match got {
+            Ok(v) => {
+                accepted += 1;
+                kprintln!(
+                    "OSX|{}|ktest|fat32_bpb|sector={}|clusters={}|data_start={}",
+                    BUILD_ID,
+                    name,
+                    v.clusters,
+                    v.data_start
+                );
+            }
+            Err(e) => {
+                refused += 1;
+                kprintln!(
+                    "OSX|{}|ktest|fat32_bpb|sector={}|refused={}",
+                    BUILD_ID,
+                    name,
+                    e.code()
+                );
+            }
+        }
+        let right = match (got, want) {
+            (Ok(v), Some((c, d))) => v.clusters == *c && v.data_start == *d,
+            (Err(e), None) => e == FsError::BadBpb,
+            _ => false,
+        };
+        wrong += u32::from(!right);
+    }
+    let same = |a: &crate::fs::fat32::Fat32, b: &crate::fs::fat32::Fat32| {
+        (
+            a.sectors_per_cluster,
+            a.reserved,
+            a.fats,
+            a.fat_sectors,
+            a.root_cluster,
+            a.data_start,
+            a.clusters,
+            a.fsinfo,
+            a.bk_boot,
+        ) == (
+            b.sectors_per_cluster,
+            b.reserved,
+            b.fats,
+            b.fat_sectors,
+            b.root_cluster,
+            b.data_start,
+            b.clusters,
+            b.fsinfo,
+            b.bk_boot,
+        )
+    };
+    let mount_same = match (
+        crate::fs::mount(),
+        crate::fs::fat32::Fat32::from_boot_sector(&lab, capacity),
+    ) {
+        (Ok(m), Ok(v)) => same(&m, &v),
+        _ => false,
+    };
+    kprintln!(
+        "OSX|{}|ktest|fat32_bpb|sectors={}|refused={}|accepted={}|wrong={}|mount_same={}",
+        BUILD_ID,
+        BPB_CASES.len(),
+        refused,
+        accepted,
+        wrong,
+        u8::from(mount_same)
+    );
+    if wrong != 0 || !mount_same {
+        fail("a boot sector was not judged as expected")
+    }
+    pass("every malformed boot sector is refused and the well-formed ones keep their geometry")
 }
 
 // ---- WP-19: files through system calls ---------------------------------------------------

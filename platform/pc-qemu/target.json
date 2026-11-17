@@ -3176,6 +3176,50 @@
         ]
       },
       {
+        "id": "TST-M3-FAT32-BPB",
+        "test_id": "TST-M3-FAT32-BPB",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=fat32_bpb"
+        ],
+        "oracle": "REQ-M3-007, WP-106 (RSK-027; files.md v1.15; ADR-0014 item 16): the mount's boot-sector validation (Fat32::from_boot_sector, which mount calls with sector 0 and the device's capacity) on 23 sectors made from the lab volume's own sector 0 (131072 sectors, 32 reserved, 2 FATs of 1024 sectors, 1 sector per cluster, root cluster 2) with fields changed, each line printed before the next sector is tried: accepted with their geometry, lab clusters=128992 data_start=2080, min_ok (total 67605) clusters=65525 data_start=2080 and max_ok (1 FAT of 2097152 sectors, total and capacity 270532629) clusters=268435445 data_start=2097184; refused with K_E_FS_BAD_BPB: the signature at 510 zeroed, BytsPerSec 0, SecPerClus 0 and 3, RsvdSecCnt 0, NumFATs 0 and 3, FATSz32 0, TotSec32 0, RootClus 1 and 128994 (the first number past the volume), FATSz32 1007 (one sector short of the clusters' entries), a capacity of 131071, total 67604 (65524 clusters), total 0xFFFFFFFF, over_max (max_ok with one more cluster: 0x0FFFFFF6 clusters), too_many (1 FAT of 0x80000000 sectors, total and capacity 0xFFFFFFFF: 2147483615 clusters), and three sectors whose data start wraps 32 bits: mul_wrap (2 FATs of 0x80000010 sectors), add_wrap (2 FATs of 0x7FFFFFF8) and zero_start (1 reserved sector, 1 FAT of 0xFFFFFFFF, total 0xFFFFFFFD, capacity u64::MAX); the last line sectors=23|refused=20|accepted=3|wrong=0|mount_same=1, mount_same being the mounted volume's geometry equal to the function's on the lab sector, and no panic. Before WP-106 (seen locally) over_max and too_many were accepted and the test kernel panicked at mul_wrap (attempt to multiply with overflow); under M270 (the data start summed in 32 bits, wrapping) mul_wrap and add_wrap are accepted with data_start=64 and 16 (refused=18|accepted=5|wrong=2); under M271 (no check that the data region starts inside the volume) the test kernel panics at total0 (attempt to subtract with overflow); under M272 (no upper bound of 0x0FFFFFF5 clusters) over_max and too_many are accepted (refused=18|accepted=5|wrong=2). Not shown: the release kernel on these sectors (that its arithmetic cannot wrap is by reading: every bound is computed in 64 bits and narrowed to 32 after them; the test kernel, built with overflow checks, would panic where it wrapped); a boot from a disk whose sector 0 is malformed (the tie of mount to the function is mount_same on the lab's sector alone, so a mount that went around the function would pass here); a volume with one FAT copy and the two copies compared at mount (WP-148); the FSInfo and backup boot sector fields; devices as large as the capacities given (the capacity is an argument here); a stored entry whose first cluster is 1, on a write (WP-147) and on a read (WP-148); the exit code is 33.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=fat32_bpb",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=lab|clusters=128992|data_start=2080",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=min_ok|clusters=65525|data_start=2080",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=max_ok|clusters=268435445|data_start=2097184",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=sig|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=bps0|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=spc0|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=spc3|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=rsvd0|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=fats0|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=fats3|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=fatsz0|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=total0|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=root1|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=root_end|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=fat_small|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=past_cap|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=few|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=total_max|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=over_max|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=too_many|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=mul_wrap|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=add_wrap|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sector=zero_start|refused=K_E_FS_BAD_BPB",
+          "OSX|${BUILD_ID}|ktest|fat32_bpb|sectors=23|refused=20|accepted=3|wrong=0|mount_same=1",
+          "|ktest|pass|every malformed boot sector is refused and the well-formed ones keep their geometry"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ]
+      },
+      {
         "id": "TST-M3-FILE-ROUNDTRIP",
         "test_id": "TST-M3-FILE-ROUNDTRIP",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

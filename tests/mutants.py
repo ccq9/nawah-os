@@ -1118,6 +1118,23 @@ MUTANTS = [
      "                        block::write(base + u64::from(i), &zero)?;\n",
      "                        block::write(base + 1 + u64::from(i), &zero)?;\n",
      ["TST-M3-FAT32-FAULT-CREATE", "TST-M3-FAT32-FAULT-ONE-CREATE"], "SECURITY: a new cluster is linked into a directory with the bytes it held before (the zeroing lands on the next sector, which on the lab's volume is the next cluster), and the directory lists names no create made: the line carries control=0 and retry_ok=7, TST-M3-FAT32-FAULT-CREATE FAIL, and TST-M3-FAT32-FAULT-ONE-CREATE FAIL with strays=195 beside them (seen locally when M3 had 48 cases: TST-M3-FAT32-FAULT-ONE-TRUNCATE fails too, by a message of fsck.fat on its image, and the other 46 pass)"),
+    # M270..M272 (SECURITY, WP-106, RSK-027): the mount refuses a malformed boot sector with
+    # K_E_FS_BAD_BPB, every bound in 64 bits (M269 is reserved for another item). M270: the data
+    # region's start is summed in 32 bits again, wrapping.
+    ("M270", "kernel/src/fs/fat32.rs",
+     "        let data_start = u64::from(reserved) + u64::from(fats) * u64::from(fat_sectors);\n",
+     "        let data_start = u64::from(reserved.wrapping_add(fats.wrapping_mul(fat_sectors)));\n",
+     ["TST-M3-FAT32-BPB"], "SECURITY: a FAT size whose sum with the reserved sectors wraps 32 bits mounts with the data region over the first FAT (data start 64) or over the reserved sectors (16): the lines carry sector=mul_wrap|clusters=131008|data_start=64 and sector=add_wrap|clusters=131056|data_start=16, and the last refused=18|accepted=5|wrong=2, TST-M3-FAT32-BPB FAIL (seen locally)"),
+    # M271: the check that the data region starts inside the volume is gone.
+    ("M271", "kernel/src/fs/fat32.rs",
+     "        if data_start >= total || total > capacity {\n",
+     "        if total > capacity {\n",
+     ["TST-M3-FAT32-BPB"], "SECURITY: a volume whose data region starts at or past its end is not refused: the cluster count's subtraction goes below zero and the test kernel panics (attempt to subtract with overflow) at the sector total0, the line after sector=fatsz0, TST-M3-FAT32-BPB FAIL (seen locally)"),
+    # M272: no upper bound on the cluster count.
+    ("M272", "kernel/src/fs/fat32.rs",
+     "        if !(65525..=0x0FFF_FFF5).contains(&clusters)\n",
+     "        if clusters < 65525\n",
+     ["TST-M3-FAT32-BPB"], "SECURITY: a volume of more than 0x0FFFFFF5 clusters mounts, so cluster numbers reach the bad mark and the end-of-chain marks: the lines carry sector=over_max|clusters=268435446|data_start=2097184 and sector=too_many|clusters=2147483615|data_start=2147483680, and the last refused=18|accepted=5|wrong=2, TST-M3-FAT32-BPB FAIL (seen locally)"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1377,7 +1394,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M266", "M267",
             # from WP-138's red team: the second FAT copy does not link a directory's tail to a
             # new cluster before that cluster is zeroed (M268).
-            "M268"}
+            "M268",
+            # WP-106 (RSK-027): the mount's bounds on a boot sector, in 64 bits (M270-M272).
+            "M270", "M271", "M272"}
 
 
 def security_of(mid: str) -> bool:

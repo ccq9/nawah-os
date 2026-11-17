@@ -203,21 +203,27 @@ impl Fat32 {
         }
         let mut b = [0u8; SECTOR];
         block::read(0, &mut b)?;
-        if le16(&b, 510) != 0xAA55 || b[66] != 0x29 {
+        Self::from_boot_sector(&b, block::capacity_sectors())
+    }
+
+    /// Validates a boot sector against a device of `capacity` sectors and returns the volume's
+    /// geometry; touches no disk, so the test kernel can give it crafted sectors.
+    pub fn from_boot_sector(b: &[u8; SECTOR], capacity: u64) -> Result<Fat32, FsError> {
+        if le16(b, 510) != 0xAA55 || b[66] != 0x29 {
             return Err(FsError::BadBpb);
         }
-        let bps = le16(&b, 11);
+        let bps = le16(b, 11);
         let spc = u32::from(b[13]);
-        let reserved = u32::from(le16(&b, 14));
+        let reserved = u32::from(le16(b, 14));
         let fats = u32::from(b[16]);
-        let root_entries = le16(&b, 17);
-        let tot16 = le16(&b, 19);
-        let fatsz16 = le16(&b, 22);
-        let total = le32(&b, 32);
-        let fat_sectors = le32(&b, 36);
-        let root_cluster = le32(&b, 44);
-        let fsinfo = u32::from(le16(&b, 48));
-        let bk_boot = u32::from(le16(&b, 50));
+        let root_entries = le16(b, 17);
+        let tot16 = le16(b, 19);
+        let fatsz16 = le16(b, 22);
+        let total = le32(b, 32);
+        let fat_sectors = le32(b, 36);
+        let root_cluster = le32(b, 44);
+        let fsinfo = u32::from(le16(b, 48));
+        let bk_boot = u32::from(le16(b, 50));
         let fat32_shape = bps as usize == SECTOR
             && spc.is_power_of_two()
             && (1..=128).contains(&spc)
@@ -227,22 +233,30 @@ impl Fat32 {
             && tot16 == 0
             && fatsz16 == 0
             && fat_sectors > 0
-            && total > reserved + fats * fat_sectors
             && root_cluster >= 2;
         if !fat32_shape {
             return Err(FsError::BadBpb);
         }
-        let data_start = reserved + fats * fat_sectors;
-        let clusters = (total - data_start) / spc;
-        if clusters < 65525
-            || root_cluster >= clusters + 2
-            || (clusters + 2) as u64 * 4 > fat_sectors as u64 * SECTOR as u64
+        // Every bound in 64 bits, where no field value can wrap (at most 65535 + 2 * (2^32 - 1)),
+        // and narrowed to 32 bits only after them: the data region starts inside the volume, the
+        // volume lies inside the device, and the cluster count stays below the numbers the FAT
+        // reserves for its marks.
+        let data_start = u64::from(reserved) + u64::from(fats) * u64::from(fat_sectors);
+        let total = u64::from(total);
+        if data_start >= total || total > capacity {
+            return Err(FsError::BadBpb);
+        }
+        let clusters = (total - data_start) / u64::from(spc);
+        // At most 0x0FFFFFF5 clusters: their numbers run from 2 to 0x0FFFFFF6, below the bad mark
+        // 0x0FFFFFF7 and the end-of-chain marks from 0x0FFFFFF8.
+        if !(65525..=0x0FFF_FFF5).contains(&clusters)
+            || u64::from(root_cluster) >= clusters + 2
+            || (clusters + 2) * 4 > u64::from(fat_sectors) * SECTOR as u64
         {
             return Err(FsError::BadBpb);
         }
-        if total as u64 > block::capacity_sectors() {
-            return Err(FsError::BadBpb);
-        }
+        // data_start < total <= u32::MAX and clusters <= 0x0FFFFFF5: both fit in 32 bits.
+        let (data_start, clusters) = (data_start as u32, clusters as u32);
         let mut label = [0u8; 11];
         label.copy_from_slice(&b[71..82]);
         Ok(Fat32 {
