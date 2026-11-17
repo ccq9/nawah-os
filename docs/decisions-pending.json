@@ -393,6 +393,22 @@
    "requested_at": "2026-11-16T15:20:00Z",
    "status": "answered",
    "answer": "2026-11-16: the owner's direction in the session, relayed from his strict audit (in his words, translated: he does not recommend closing WP-138 now; keep WP-138 open; keep the evidence of the cases M262, M265 and M268 with what proves the sweep was reached, the number of its rounds, the field values and the exit reason; add the two create cases to WP-140's test list; no change of the acceptance conditions and no conclusion of real corruption without evidence). The manager reads it as option B's substance: the item stays active until CI carries that evidence; it is not an approval to close, and the close still needs the close audit's confirmation clause by clause"
+  },
+  {
+   "id": "DEC-038",
+   "question": "إغلاق WP-106: شرطها يقول «حساب الإصدار لا يلتف، على CI». ما أظهره CI (التشغيل 44029427244): دالة التحقق نفسها، مبنية في نواة الاختبار بملف الإصدار مع فحص التجاوز، تمرّ على 32 قطاعًا مصنوعًا دون توقف، ومنها أكبر مجموع تسمح به الحقول؛ ونواة الإصدار نفسها لم تُشغَّل عليها؛ وعموم القطاعات بالقراءة (كل حد في 64 بت، وأكبر مجموع 8590000125، بعيد عن 2^64). «لا يلتف» لكل قطاع لا يُظهره اختبار منتهٍ. بقية الشرط (الرفض بخطأ التحميل، حالات التخزين، قتل الطفرات) أظهرها CI. فهل تُغلق بهذه الحدود مذكورة نصًا؟",
+   "options": [
+    "A: تُغلق ويقول سطر الإغلاق الحدود نصًا (الدالة نفسها بفحص التجاوز على القطاعات المصنوعة؛ نواة الإصدار لم تُشغَّل عليها؛ العموم بالقراءة)",
+    "B: تبقى مفعّلة حتى يُظهر CI القطاع ذا الـFAT الكبير وطفرة الضرب في 32 بت (المدير ينفّذهما الآن دون انتظار لأنهما تشديد)، ثم تُغلق بالحدود نفسها لأن العموم يبقى بالقراءة",
+    "C: صيغة أخرى يحددها المالك، مثل تشغيل نواة الإصدار على قرص مصنوع (يحتاج ميزة في المعمل غير موجودة)"
+   ],
+   "recommendation": "B ثم الإغلاق بالحدود مذكورة: التشديد يجعل كل تعبير في الدالة يلقى قيمة كبيرة على CI تحت فحص التجاوز؛ والعموم لا يُثبته إلا القراءة",
+   "impact": "WP-106 تبقى مفعّلة حتى القرار؛ WP-147 (الشطر الثاني) لا تعتمد على هذا القرار في شيفرتها، والمدير يمضي فيها بترتيب الخطة كي لا يتوقف العمل",
+   "blocked_task_ids": [
+    "WP-106"
+   ],
+   "requested_at": "2026-11-17T07:40:00Z",
+   "status": "open"
   }
  ]
 }
