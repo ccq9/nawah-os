@@ -15,6 +15,7 @@ mutants that in truth survive every real test. This test pins the three properti
 sweep honest and bounded, without booting QEMU: the build id is hex, the per-case timeout
 clears the slowest real case, and run_killers stops at the first genuine kill."""
 import json
+import os
 import pathlib
 import re
 import sys
@@ -1053,6 +1054,401 @@ class EvidenceFreeWorktree(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             self.main(repo=empty)
         self.assertEqual(list(self.root.iterdir()), [])
+
+
+class ShardSelection(unittest.TestCase):
+    """WP-98: `--shard k/N` runs the gate's mutants by the stable rule int(id[1:]) mod N == k-1, so
+    the gate can run in N jobs side by side. Every mutant of the stage is in exactly one shard, in
+    the harness's own order, and a spec outside 1 <= k <= N (or not two plain numbers) is refused
+    before anything runs."""
+
+    def test_every_m6_mutant_is_in_exactly_one_shard_for_n_1_to_8(self):
+        stage = [m[0] for m in mutants.MUTANTS if mutants.stage_of(m[0]) == "M6"]
+        self.assertGreater(len(stage), 100)
+        for n in range(1, 9):
+            shards = {k: [m[0] for m in mutants.selection("M6", None, (k, n))] for k in range(1, n + 1)}
+            got = [mid for ids in shards.values() for mid in ids]
+            self.assertEqual(len(got), len(set(got)), f"N={n}: a mutant in two shards")
+            self.assertEqual(sorted(got), sorted(stage), f"N={n}: the shards' union is not the stage")
+            for k, ids in shards.items():
+                self.assertEqual(ids, [mid for mid in stage if int(mid[1:]) % n == k - 1], f"shard {k}/{n}")
+
+    def test_bad_shard_specs_are_refused(self):
+        for good, want in (("1/1", (1, 1)), ("3/8", (3, 8)), ("6/6", (6, 6)), ("12/12", (12, 12))):
+            self.assertEqual(mutants.parse_shard(good), want)
+        for bad in ("0/6", "7/6", "1/0", "0/0", "-1/6", "1/-6", "a/6", "1/b", "1/6/6", "6", "", " 1/6", "1/6 ",
+                    "1/6\n", "01/6", "1/06", "1.0/6", "１/6", "١/6"):
+            with self.assertRaises(ValueError, msg=repr(bad)):
+                mutants.parse_shard(bad)
+
+    def test_main_refuses_a_bad_spec_before_any_run(self):
+        import contextlib
+        import io
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            repo, _ = scratch_repo(tmp)
+            orig, argv, err = (mutants.REPO, mutants.MUTANTS), sys.argv, io.StringIO()
+            mutants.REPO, mutants.MUTANTS = repo, []
+            try:
+                for bad in ("0/6", "7/6", "1/0"):
+                    sys.argv = ["mutants.py", "--stage", "M6", "--report", "build/r.json", "--shard", bad]
+                    with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as cm:
+                        mutants.main()
+                    self.assertEqual(cm.exception.code, 2, bad)
+            finally:
+                mutants.REPO, mutants.MUTANTS = orig
+                sys.argv = argv
+                subprocess.run(["git", "worktree", "prune"], cwd=repo)
+            self.assertIn("1 <= k <= N", err.getvalue())
+            self.assertFalse((repo / "build").exists(), "a refused spec wrote a report")
+
+
+GATE_SHARDS = "NAWAH_GATE_SHARDS"
+
+
+class ShardMerge(unittest.TestCase):
+    """WP-98: each shard writes its report with its identity (k, N, its selected ids, the run: the
+    CI run id, attempt and sha when set, else the git HEAD) beside the gate's report; with
+    NAWAH_GATE_SHARDS=N the gate's unchanged command runs no mutant and merges the N reports
+    instead. The merge refuses, with a named reason, exit MERGE_REFUSED, no verdict line and no
+    report, a missing shard, a duplicate id, an id outside its shard's selection or the stage, a
+    selection other than the rule's, a truncated report, a report of another run, attempt, sha or
+    target, and a union that is not exactly the stage; otherwise it judges the union with
+    gate_verdict (counts summed, never ratios averaged) and prints every mutant's line and kept
+    kill evidence as a full run does. main() runs on a scratch repository over synthetic tooling
+    mutants (killers stubbed: KILL fails, LIVE passes, a missing anchor is invalid)."""
+
+    REPORT = "build/r.json"
+
+    def setUp(self):
+        import shutil
+        import subprocess
+        self.tmp = pathlib.Path(tempfile.mkdtemp(prefix="wp98-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.repo = self.tmp / "repo"
+        self.repo.mkdir()
+        scratch_repo(self.repo)
+        (self.tmp / "root").mkdir()
+        missing = object()
+        names = ("REPO", "MUTANTS", "EXPECT", "sh", "run_killers", "all_cases", "suite_of", "needs_release", "TMP_ROOT",
+                 "in_shard", "run_identity")
+        orig = {n: getattr(mutants, n, missing) for n in names}
+        security, argv, env = set(mutants.SECURITY), sys.argv, os.environ.pop(GATE_SHARDS, None)
+
+        def restore():
+            for n, v in orig.items():
+                if v is missing:
+                    if hasattr(mutants, n):
+                        delattr(mutants, n)
+                else:
+                    setattr(mutants, n, v)
+            mutants.SECURITY.clear(); mutants.SECURITY.update(security)
+            sys.argv = argv
+            os.environ.pop(GATE_SHARDS, None)
+            if env is not None:
+                os.environ[GATE_SHARDS] = env
+            subprocess.run(["git", "worktree", "prune"], cwd=self.repo)
+        self.addCleanup(restore)
+        self.calls = []
+
+        def no_driver(cmd, cwd, env=None, timeout=0):
+            raise AssertionError(f"a tooling mutant called the driver or a build: {cmd}")
+
+        def killers(wt, env, target, ks, early_exit=False):
+            self.calls.append(list(ks))
+            if ks == ["KILL"]:
+                mutants.KILLS["KILL"] = {"reason": "exit 37 != expected 33", "run": "R1", "lines": ["OSX|1|ktest|fail|synthetic"]}
+                return ["KILL"], {"KILL": "FAIL"}
+            return [], {k: "PASS" for k in ks}
+
+        mutants.REPO = self.repo
+        mutants.EXPECT = {}
+        mutants.sh = no_driver
+        mutants.run_killers = killers
+        mutants.all_cases = lambda target: []
+        mutants.suite_of = lambda target, tid: None
+        mutants.needs_release = lambda target, ks: False
+        mutants.TMP_ROOT = self.tmp / "root"
+
+    def define(self, count, survived=(), invalid=()):
+        """`count` synthetic M6 mutants M900.. on tools/c.py; returns their ids."""
+        ids = [f"M{900 + i}" for i in range(count)]
+        mutants.MUTANTS = [(mid, "tools/c.py", "no such anchor" if mid in invalid else "clean", "mutated",
+                            ["LIVE"] if mid in survived else ["KILL"], "synthetic") for mid in ids]
+        return ids
+
+    def main(self, *args):
+        import contextlib
+        import io
+        sys.argv = ["mutants.py", "--stage", "M6", "--report", self.REPORT, *args]
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = mutants.main()
+        return rc, buf.getvalue()
+
+    def run_shards(self, n):
+        got = [self.main("--shard", f"{k}/{n}") for k in range(1, n + 1)]
+        for k, (rc, out) in enumerate(got, 1):
+            self.assertTrue(self.path(k, n).is_file(), out)
+        return got
+
+    def merge(self, n, raw=None):
+        os.environ[GATE_SHARDS] = str(n) if raw is None else raw
+        before = len(self.calls)
+        try:
+            rc, out = self.main()
+        finally:
+            os.environ.pop(GATE_SHARDS, None)
+        self.assertEqual(len(self.calls), before, "the merge ran a killer")
+        p = self.repo / self.REPORT
+        return rc, out, (json.loads(p.read_text()) if p.exists() else None)
+
+    def path(self, k, n):
+        return self.repo / "build" / "r.shards" / f"shard-{k}-of-{n}.json"
+
+    def shard(self, k, n):
+        return json.loads(self.path(k, n).read_text())
+
+    def put(self, k, n, report):
+        self.path(k, n).write_text(json.dumps(report))
+
+    def assert_refused(self, merged, *needles):
+        rc, out, report = merged
+        self.assertEqual(rc, mutants.MERGE_REFUSED, out)
+        self.assertIn("merge refused: ", out)
+        for s in needles:
+            self.assertIn(s, out)
+        self.assertNotRegex(out, r"(?m)^(OK|FAIL): ", "a refused merge printed a verdict")
+        self.assertIsNone(report, "a refused merge left a report")
+
+    # -- the shard runs
+
+    def test_a_shard_runs_its_own_mutants_and_writes_its_identity(self):
+        ids = self.define(10)
+        rc, out = self.main("--shard", "2/3")
+        want = [mid for mid in ids if int(mid[1:]) % 3 == 1]
+        self.assertEqual(rc, 0, out)
+        r = self.shard(2, 3)
+        self.assertEqual({k: r["shard"][k] for k in ("k", "n", "stage", "only", "selected")},
+                         {"k": 2, "n": 3, "stage": "M6", "only": None, "selected": want})
+        self.assertEqual([e["id"] for e in r["mutants"]], want)
+        self.assertEqual(self.calls, [["KILL"]] * len(want), "a shard ran another shard's mutant")
+        self.assertEqual(r["run"], mutants.run_identity())
+        self.assertTrue(r["run"] and all(r["run"].values()), r["run"])
+        self.assertFalse((self.repo / self.REPORT).exists(), "a shard wrote the gate's report")
+        self.assertIn(f"\nshard 2/3: OK: {len(want)}/{len(want)} valid mutants killed", out)
+        self.assertNotRegex(out, r"(?m)^OK", "a shard's line reads as the gate's PASS (project.py's marker)")
+
+    def test_the_run_identity_is_the_ci_runs_when_set_else_the_git_head(self):
+        import subprocess
+        keys = ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA")
+        saved = {k: os.environ.pop(k, None) for k in keys}
+        try:
+            os.environ.update(GITHUB_RUN_ID="7", GITHUB_RUN_ATTEMPT="2", GITHUB_SHA="abc")
+            self.assertEqual(mutants.run_identity(), {"github_run_id": "7", "github_run_attempt": "2", "github_sha": "abc"})
+            for k in keys:
+                os.environ.pop(k)
+            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True).stdout.strip()
+            self.assertEqual(mutants.run_identity(), {"git_head": head})
+        finally:
+            for k, v in saved.items():
+                os.environ.pop(k, None)
+                if v is not None:
+                    os.environ[k] = v
+
+    # -- the merge
+
+    def test_the_merge_of_every_shard_judges_the_union_and_prints_every_mutant(self):
+        ids = self.define(10, invalid={"M903"})
+        self.run_shards(2)
+        rc, out, rep = self.merge(2)
+        self.assertEqual(rc, 0, out)
+        self.assertEqual([e["id"] for e in rep["mutants"]], ids)
+        self.assertEqual((rep["valid"], rep["killed"], rep["invalid"], rep["ratio"], rep["survived"]), (9, 9, ["M903"], 1.0, []))
+        self.assertEqual([s["k"] for s in rep["merged"]["shards"]], [1, 2])
+        self.assertEqual(rep["merged"]["n"], 2)
+        self.assertEqual(rep["run"], mutants.run_identity())
+        for mid in ids:
+            if mid != "M903":
+                self.assertRegex(out, rf"(?m)^{mid}: killed by KILL \[[0-9.]+s\] \(synthetic\)\n  KILL: exit 37 != expected 33 run=R1\n    OSX\|1\|ktest\|fail\|synthetic$")
+        self.assertRegex(out, r"(?m)^M903: INVALID ")
+        self.assertIn("\nOK: 9/9 valid mutants killed (100.0%, threshold 95%)", out)
+        self.assertIn(f"{GATE_SHARDS}=2", out)
+
+    def test_the_variable_without_shards_is_refused_never_a_full_run(self):
+        self.define(4)
+        self.assert_refused(self.merge(2), "shard 1/2 is missing")
+        self.assertEqual(self.calls, [], "the merge fell back to a full run")
+
+    def test_a_bad_count_or_a_shard_option_in_the_merge_is_refused(self):
+        self.define(4)
+        self.run_shards(2)
+        for raw in ("0", "", "two", "-1", "2 ", "02", "1/2"):
+            self.assert_refused(self.merge(2, raw), GATE_SHARDS)
+        for args in (("--shard", "1/2"), ("--check",)):
+            os.environ[GATE_SHARDS] = "2"
+            try:
+                rc, out = self.main(*args)
+            finally:
+                os.environ.pop(GATE_SHARDS, None)
+            self.assert_refused((rc, out, None), GATE_SHARDS)
+        self.assertEqual(len(self.calls), 4)
+
+    def test_a_missing_shard_is_refused(self):
+        self.define(9)
+        self.run_shards(3)
+        self.assertEqual(self.merge(3)[0], 0)
+        self.path(2, 3).unlink()
+        self.assert_refused(self.merge(3), "shard 2/3 is missing")  # and the report of the merge before is gone
+
+    def test_a_duplicate_inside_a_shard_is_refused(self):
+        self.define(6)
+        self.run_shards(2)
+        s1 = self.shard(1, 2)
+        s1["mutants"].append(dict(s1["mutants"][0]))
+        self.put(1, 2, s1)
+        self.assert_refused(self.merge(2), f"{s1['mutants'][0]['id']} is decided twice")
+
+    def test_a_duplicate_across_shards_is_refused(self):
+        self.define(6)
+        self.run_shards(2)
+        s1, s2 = self.shard(1, 2), self.shard(2, 2)
+        s2["mutants"].append(s1["mutants"][0])
+        self.put(2, 2, s2)
+        self.assert_refused(self.merge(2), s1["mutants"][0]["id"])
+
+    def test_an_id_outside_its_selection_or_the_stage_is_refused(self):
+        self.define(6)
+        self.run_shards(2)
+        s1, s2 = self.shard(1, 2), self.shard(2, 2)
+        self.put(1, 2, dict(s1, mutants=s1["mutants"] + [dict(s1["mutants"][0], id="M999")]))
+        self.assert_refused(self.merge(2), "M999 in shard 1/2 is not in its selection")
+        moved = s2["mutants"][-1]
+        self.put(1, 2, dict(s1, mutants=s1["mutants"] + [moved]))
+        self.put(2, 2, dict(s2, mutants=s2["mutants"][:-1]))
+        self.assert_refused(self.merge(2), f"{moved['id']} in shard 1/2 is not in its selection")
+
+    def test_a_selection_other_than_the_rules_is_refused(self):
+        self.define(6)
+        self.run_shards(2)
+        s1 = self.shard(1, 2)
+        s1["shard"]["selected"] = s1["shard"]["selected"][:-1]
+        s1["mutants"] = s1["mutants"][:-1]
+        self.put(1, 2, s1)
+        self.assert_refused(self.merge(2), "shard 1/2 selected")
+
+    def test_a_truncated_shard_is_refused(self):
+        self.define(6)
+        self.run_shards(2)
+        s2 = self.shard(2, 2)
+        self.put(2, 2, dict(s2, mutants=s2["mutants"][:-1]))
+        self.assert_refused(self.merge(2), "shard 2/2 is truncated: 2 of its 3 mutants decided")
+        s2["mutants"][-1]["status"] = "compiles"
+        self.put(2, 2, s2)
+        self.assert_refused(self.merge(2), "shard 2/2 is truncated: 2 of its 3 mutants decided")
+
+    def test_a_report_of_another_shard_or_no_shard_report_is_refused(self):
+        self.define(6)
+        self.run_shards(2)
+        self.put(2, 2, self.shard(1, 2))
+        self.assert_refused(self.merge(2), "names shard 1/2, not 2/2")
+        for text in ("{}", "[]", "not json", '{"shard": {"k": 2, "n": 2}, "mutants": 3}'):
+            self.path(2, 2).write_text(text)
+            self.assert_refused(self.merge(2), "is not a shard report")
+
+    def test_an_identity_mismatch_is_refused(self):
+        self.define(6)
+        self.run_shards(2)
+        s1, s2 = self.shard(1, 2), self.shard(2, 2)
+        other = {k: v + "0" for k, v in s2["run"].items()}
+        self.put(2, 2, dict(s2, run=other))
+        self.assert_refused(self.merge(2), "shard 2/2 names run")
+        self.put(1, 2, dict(s1, run=other))  # both of another run: they agree, the merging run does not
+        self.assert_refused(self.merge(2), "shard 1/2 names run")
+        self.put(1, 2, s1)
+        self.put(2, 2, s2)
+        ident = mutants.run_identity
+        mutants.run_identity = lambda: {"github_run_id": "1", "github_run_attempt": "2", "github_sha": "f00"}
+        self.assert_refused(self.merge(2), "shard 1/2 names run")
+        mutants.run_identity = lambda: {"git_head": ""}
+        self.assert_refused(self.merge(2), "no run identity")
+        mutants.run_identity = ident
+        self.put(2, 2, dict(s2, target="other"))
+        self.assert_refused(self.merge(2), "shard 2/2 names target 'other'")
+
+    def test_a_union_that_is_not_the_stage_is_refused_though_every_shard_passes(self):
+        """Every shard alone passes, and the union fails: under a rule that leaves a mutant in no
+        shard, each shard's selection agrees with the rule, so only the union's check sees it.
+        (With counts summed, the union's ratio lies between the shards' ratios, so a union of
+        shards that each pass on their own can fail by these checks alone.)"""
+        ids = self.define(6)
+        rule = mutants.in_shard
+        mutants.in_shard = lambda mid, k, n: mid != ids[-1] and rule(mid, k, n)
+        for k, (rc, out) in enumerate(self.run_shards(2), 1):
+            self.assertEqual(rc, 0, out)
+            self.assertIn(f"\nshard {k}/2: OK: ", out)
+        self.assert_refused(self.merge(2), f"the shards' union is not the stage's mutants (missing ['{ids[-1]}']")
+
+    def test_the_ratio_is_over_the_unions_counts_never_the_mean_of_the_shards_ratios(self):
+        ids = self.define(42, survived={"M901", "M903"}, invalid={f"M{n}" for n in range(902, 942, 2)} | {"M941"})
+        (rc1, out1), (rc2, out2) = self.run_shards(2)
+        self.assertEqual((rc1, self.shard(1, 2)["ratio"]), (0, 1.0), out1)
+        self.assertEqual((rc2, self.shard(2, 2)["ratio"]), (1, 0.9), out2)
+        rc, out, rep = self.merge(2)
+        self.assertEqual((rc, rep["valid"], rep["killed"], rep["ratio"]), (1, 21, 19, 0.9048), out)
+        self.assertIn("\nFAIL: 19/21 valid mutants killed (90.5%", out)
+
+    def test_a_shard_failing_alone_does_not_fail_a_union_that_passes(self):
+        self.define(40, survived={"M902"}, invalid={"M904"})
+        (rc1, out1), (rc2, out2) = self.run_shards(2)
+        self.assertEqual((rc1, rc2), (1, 0), out1 + out2)
+        rc, out, rep = self.merge(2)
+        self.assertEqual((rc, rep["valid"], rep["killed"], rep["survived"]), (0, 39, 38, ["M902"]), out)
+        self.assertIn("\nOK: 38/39 valid mutants killed", out)
+
+    def test_a_security_survivor_of_one_shard_fails_the_union(self):
+        mutants.SECURITY.add("M900")
+        self.define(40, survived={"M900"})
+        (rc1, _), (rc2, _) = self.run_shards(2)
+        self.assertEqual((rc1, rc2), (1, 0))
+        rc, out, rep = self.merge(2)
+        self.assertEqual((rc, rep["ratio"], rep["surviving_security"]), (1, 0.975, ["M900"]), out)
+
+    def test_the_union_carries_every_shards_findings(self):
+        mutants.SECURITY.add("M904")
+        self.define(40, survived={"M902", "M903"})
+        self.run_shards(2)
+        s1, s2 = self.shard(1, 2), self.shard(2, 2)
+        s1["mutants"][2]["status"] = "invalid"  # M904
+        s2["mutants"][0]["expected_missed"] = ["KILL: 'x' not in its reason or kept lines"]  # M901
+        s2["expect_errors"] = ["EXPECT names M1, which is not a registered mutant"]
+        self.put(1, 2, s1)
+        self.put(2, 2, s2)
+        rc, out, rep = self.merge(2)
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(rep["invalid_security"], ["M904"])
+        self.assertEqual(rep["expected_missed"], ["M901"])
+        self.assertEqual(rep["expect_errors"], ["EXPECT names M1, which is not a registered mutant"])
+        self.assertEqual(rep["declared_killers_missed"], ["M902", "M903"])
+        self.assertIn("  expected_missed KILL: 'x' not in its reason or kept lines", out)
+
+
+class ShardMutants(unittest.TestCase):
+    """WP-98's mutants: the merge's checks and the shard rule on tests/mutants.py (M288 to M295,
+    M298) killed by TST-M0-005, the refusal of two new runs of one test id on tools/project.py
+    (M296 adopt-native, M297 import-ci-evidence) killed by TST-M0-007; M290, M291, M292, M296 and
+    M297 are SECURITY mutants of the M6 stage, and each new text keeps its anchor."""
+
+    def test_the_merge_and_clash_mutants_are_registered(self):
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        ids = [f"M{n}" for n in range(288, 299)]
+        for mid in ids:
+            self.assertIn(mid, by_id)
+            self.assertEqual(mutants.stage_of(mid), "M6")
+            want = ("tools/project.py", ["TST-M0-007"]) if mid in ("M296", "M297") else ("tests/mutants.py", ["TST-M0-005"])
+            self.assertEqual((by_id[mid][1], by_id[mid][4]), want, mid)
+            self.assertIn(by_id[mid][2], by_id[mid][3], f"{mid}: the new text drops its anchor")
+        self.assertEqual(set(ids) & mutants.SECURITY, {"M290", "M291", "M292", "M296", "M297"})
 
 
 if __name__ == "__main__":

@@ -506,14 +506,14 @@ class CheckedImport(unittest.TestCase):
         self.assertIn("gh is not on PATH", r.stdout)
         self.assertFalse(self.imported())
 
-    def add_foreign_dir(self, run_id="41", attempt=1):
+    def add_foreign_dir(self, run_id="41", attempt=1, test_id="TST-Y"):
         """The evidence branch also holds a run directory of another run or attempt (WP-81: three
         jobs' evidence merged; a stray directory would receive this run's receipt and fail the
-        validator only later)."""
+        validator only later), or of this run (run_id="42") for another test or the same one."""
         work = self.base / "work"
         foreign = work / "evidence" / "20260101T000000Z-deadbeef-001-b"
         foreign.mkdir(parents=True)
-        (foreign / "verdict.json").write_text(json.dumps({"test_id": "TST-Y", "verdict": "PASS"}))
+        (foreign / "verdict.json").write_text(json.dumps({"test_id": test_id, "verdict": "PASS"}))
         (foreign / "run.json").write_text(json.dumps({"run_id": foreign.name, "worker": "verification-runner",
                                                       "ci": {"run_id": run_id, "run_attempt": attempt, "workflow": "verify", "event": "pull_request",
                                                              "sha": "cafe", "head_sha": self.head, "ref": "x"}}))
@@ -620,6 +620,26 @@ class CheckedImport(unittest.TestCase):
         for n in old:
             self.assertFalse((self.root / "evidence" / n / "import.json").exists(), n)
         self.assertEqual(list((self.base / "tmp").iterdir()), [], "a temporary copy was left behind")
+
+    def test_two_new_run_dirs_of_one_test_id_are_refused_and_nothing_is_imported(self):
+        """WP-98 (the audit of WP-96): attach_evidence replaces a test's reference, so of two new
+        run directories of one test the last attached would win, and a PASS could cover a FAIL of
+        the same test. Two NEW directories naming one test id import nothing (the directories
+        already under evidence/ are skipped, never compared); two tests import both."""
+        name = self.add_foreign_dir(run_id="42", test_id="TST-X")
+        self.fake_gh()
+        r = self.run_import()
+        self.assert_refused_whole(r, name)
+        self.assertIn(self.run_dir.name, r.stdout)
+        self.assertIn("TST-X", r.stdout)
+
+    def test_two_new_run_dirs_of_two_test_ids_are_both_imported(self):
+        self.add_committed_dirs()  # two committed directories of one test id, skipped: no clash
+        self.add_foreign_dir(run_id="42", test_id="TST-Y")
+        self.fake_gh()
+        r = self.run_import()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("imported 2 run(s) from CI run 42", r.stdout)
 
     def test_gh_naming_another_attempt_than_the_run_dirs_is_refused(self):
         self.fake_gh(attempt=2)
@@ -770,6 +790,27 @@ class AdoptNative(unittest.TestCase):
             rc, out = self.adopt(self.src, other)
         self.assert_unchanged(rc, out)
         self.assertIn(f"{self.STAMP}-a", out)
+
+    def test_two_new_runs_of_one_test_id_are_refused_whole(self):
+        """WP-98 (the audit of WP-96): attach_evidence replaces a test's reference, so of two new
+        runs of one test (two slots, or two shards each writing the gate's verdict) the last
+        attached would win, and a PASS could cover a FAIL. Two NEW directories naming one test id
+        adopt nothing, in one source or across two; committed directories of one test id beside
+        new ones are skipped, never compared (test_committed_dirs_of_other_runs_...)."""
+        native_dir(self.src, f"{self.STAMP}-d", "TST-M0-001")
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt()
+        self.assert_unchanged(rc, out)
+        for s in ("TST-M0-001", f"{self.STAMP}-a", f"{self.STAMP}-d"):
+            self.assertIn(s, out)
+        shutil.rmtree(self.src / f"{self.STAMP}-d")
+        other = TMP / "artifacts2"
+        native_dir(other, f"{self.STAMP}-e", "TST-M0-002")
+        with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
+            rc, out = self.adopt(self.src, other)
+        self.assert_unchanged(rc, out)
+        for s in ("TST-M0-002", f"{self.STAMP}-b", f"{self.STAMP}-e"):
+            self.assertIn(s, out)
 
     def test_a_run_id_already_in_evidence_is_skipped_and_the_new_ones_adopted(self):
         """Each job's evidence/ artifact and the merge job's checkout hold every committed directory

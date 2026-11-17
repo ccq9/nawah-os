@@ -12,7 +12,8 @@ and are killed by M4 cases, console sessions included; M82 onwards cover the M5 
 inputd, sessiond, libui, libnawah-text, and from M92 the kernel's process kill, frame clear and
 mouse path and the manager's watchdog; TST-M5-MUTANTS, WP-38) and are killed by M5 cases, the
 host suites included (libui's unit tests, the text conformance suites). `--stage` selects one
-group. A mutant in SECURITY undoes a security fix: the run fails if it survives, whatever the
+group; `--shard k/N` runs one shard of it, and NAWAH_GATE_SHARDS=N makes the gate's command merge
+the N shard reports into its one verdict (WP-98). A mutant in SECURITY undoes a security fix: the run fails if it survives, whatever the
 ratio.
 
 Each mutant is one deliberate defect (a textual patch that must match exactly once). The runner
@@ -48,6 +49,16 @@ THRESHOLD = 0.95
 # Every gate the harness knows (argparse --stage); each must have a HOST_SUITES gate suite that
 # mutants.yml runs (TST-M0-005 GateMapping, WP-90).
 STAGES = ("M2", "M3", "M4", "M5", "M6")
+
+# WP-98: a gate in N shards. `--shard k/N` runs the selected mutants whose number is k-1 modulo N
+# and writes its report, with its identity, to <report stem>.shards/shard-k-of-N.json; with
+# NAWAH_GATE_SHARDS=N in its environment the gate's own command runs no mutant and merges the N
+# reports into the gate's one verdict, or refuses (MERGE_REFUSED, no verdict line, no report) a set
+# that is not exactly the stage's mutants, each decided once, by this very run.
+GATE_SHARDS_ENV = "NAWAH_GATE_SHARDS"
+SHARD_RULE = "int(id[1:]) mod N == k-1"
+MERGE_REFUSED = 3
+DECIDED = ("killed", "survived", "invalid")
 
 # The per-case QEMU timeout while a mutant runs. It bounds a mutant that hangs a case, but it
 # must not fail a case that is merely slow: the slowest M5 case on the clean tree is
@@ -1223,6 +1234,38 @@ MUTANTS = [
     ("M287", "tools/project.py", '"".join(f"evidence/{n}\\0" for n in new)',
      '"evidence\\0" if new else "".join(f"evidence/{n}\\0" for n in new)',
      ["TST-M0-007"], "the import checks the evidence branch's whole tree out again (13.7 GB on 2026-11-17), the directories already under evidence/ with the new ones"),
+    # M288..M295 (WP-98): the merge of the gate's shard reports and the shard rule, killed by
+    # TST-M0-005's ShardSelection and ShardMerge cases; as for M282..M286 each new text keeps its
+    # anchor inside it and each anchor below is split in two literals. M288 is also stopped by the
+    # union check, so the named reason kills it.
+    ("M288", "tests/mutants.py", 'raise MergeRefused(f"shard {k}/{n} is miss' 'ing ({rel})")',
+     'continue  # raise MergeRefused(f"shard {k}/{n} is miss' 'ing ({rel})")',
+     ["TST-M0-005"], "the merge skips a missing shard report instead of refusing it by name"),
+    ("M289", "tests/mutants.py", "if mid in wh" "ere", "if mid in wh" "ere and False",
+     ["TST-M0-005"], "the merge accepts an id decided twice in a shard and keeps its later entry (a survivor's entry followed by a killed one hides it)"),
+    ("M290", "tests/mutants.py", "summarize(mer" "ged)", 'summarize(mer' 'ged); merged["survived"] = reports[-1][2]["survived"]',
+     ["TST-M0-005"], "SECURITY: the union's survivors are the last shard's alone, so a SECURITY survivor of another shard passes the gate"),
+    ("M291", "tests/mutants.py", "verdict = gate_verdict(mer" "ged)",
+     "verdict = gate_verdict(mer" "ged) or any(gate_verdict(dict(r)) for _, _, r in reports)",
+     ["TST-M0-005"], "SECURITY: the gate passes when any shard passes on its own mutants, whatever the union's verdict"),
+    ("M292", "tests/mutants.py", 'if r.get("run") != ' 'me', 'if r.get("run") != ' 'me and False',
+     ["TST-M0-005"], "SECURITY: the merge takes shard reports of another run, attempt or sha (an older run's PASS)"),
+    ("M293", "tests/mutants.py", "if set(where) != " "set(want)", "if set(where) != " "set(want) and False",
+     ["TST-M0-005"], "the merge judges a union that is not the stage's mutants (a mutant in no shard is never run nor counted)"),
+    ("M294", "tests/mutants.py", "% n == k" " - 1", "% n == k" " - 1 + 1",
+     ["TST-M0-005"], "the shard rule is off by one: the mutants whose number is a multiple of N are in no shard"),
+    ("M295", "tests/mutants.py", "if gate_shards is not " "None",
+     "if gate_shards is not " "None and (REPO / shard_report(a.report, 1, 1)).parent.is_dir()",
+     ["TST-M0-005"], "NAWAH_GATE_SHARDS set without its shard directory falls back to a full run instead of refusing"),
+    # M296, M297 (SECURITY, WP-98, the audit of WP-96): two new run directories of one test id are
+    # adopted or imported in turn and the last one's verdict stands, killed by TST-M0-007.
+    ("M296", "tools/project.py", "clash = test_id_clash(found)", "clash = test_id_clash(found) and None",
+     ["TST-M0-007"], "SECURITY: adopt-native adopts two new runs of one test id and the last one's verdict stands (a PASS covers a FAIL)"),
+    ("M297", "tools/project.py", "clash = test_id_clash(new)", "clash = test_id_clash(new) and None",
+     ["TST-M0-007"], "SECURITY: import-ci-evidence imports two new runs of one test id and the last one's verdict stands (a PASS covers a FAIL)"),
+    ("M298", "tests/mutants.py", "summarize(mer" "ged)",
+     'summarize(mer' 'ged); merged["ratio"] = sum(r["ratio"] for _, _, r in reports) / len(reports)',
+     ["TST-M0-005"], "the union's ratio is the mean of the shards' ratios, not killed over valid counted over the union"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1494,7 +1537,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # disk write (M276). M277, the end's test, only changes the empty write's answer.
             "M276",
             # WP-149 (RSK-040, K-3): a mapping for writing needs READ too (M281).
-            "M281"}
+            "M281",
+            # WP-98: the merge of the gate's shards judges the union of this run's reports alone
+            # (M290, M291, M292), and two new runs of one test id are never adopted or imported
+            # (M296, M297).
+            "M290", "M291", "M292", "M296", "M297"}
 
 
 def security_of(mid: str) -> bool:
@@ -1868,6 +1915,184 @@ def gate_verdict(report) -> bool:
                 and not report.get("expect_errors"))
 
 
+def parse_shard(spec: str):
+    """`k/N` as (k, N): two plain decimal numbers with 1 <= k <= N; anything else is a ValueError."""
+    m = re.fullmatch(r"([1-9][0-9]*)/([1-9][0-9]*)", spec)
+    if not m or int(m.group(1)) > int(m.group(2)):
+        raise ValueError(f"--shard {spec!r} is not k/N with 1 <= k <= N")
+    return int(m.group(1)), int(m.group(2))
+
+
+def shard_arg(spec: str):
+    try:
+        return parse_shard(spec)
+    except ValueError as ex:
+        raise argparse.ArgumentTypeError(str(ex))
+
+
+def in_shard(mid: str, k: int, n: int) -> bool:
+    """Whether mutant `mid` is in shard k of n (WP-98): a rule on the id alone, the same on every
+    runner and stable as the list grows."""
+    return int(mid[1:]) % n == k - 1
+
+
+def selection(stage=None, only=None, shard=None) -> list:
+    """The MUTANTS entries a run takes, in their order: of `stage`, of `only` (a list of ids) and
+    of `shard` ((k, N)), each when given."""
+    return [m for m in MUTANTS if (not only or m[0] in only) and (not stage or stage_of(m[0]) == stage)
+            and (shard is None or in_shard(m[0], *shard))]
+
+
+def shard_report(report_rel: str, k: int, n: int) -> str:
+    """Where shard k of n writes its report: beside the gate's report, in <stem>.shards/."""
+    p = Path(report_rel)
+    return (p.parent / f"{p.stem}.shards" / f"shard-{k}-of-{n}.json").as_posix()
+
+
+def run_identity() -> dict:
+    """The run a shard report belongs to: the CI run id, attempt and sha when GITHUB_RUN_ID is set,
+    else the checkout's git HEAD (an empty value is no identity; the merge refuses it)."""
+    env = os.environ
+    if env.get("GITHUB_RUN_ID"):
+        return {"github_run_id": env.get("GITHUB_RUN_ID", ""), "github_run_attempt": env.get("GITHUB_RUN_ATTEMPT", ""),
+                "github_sha": env.get("GITHUB_SHA", "")}
+    r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True)
+    return {"git_head": r.stdout.strip() if r.returncode == 0 else ""}
+
+
+def summarize(report) -> None:
+    """A run's totals from its decided entries (a full run, a shard, or the union of the shards):
+    counted from the entries, never taken from another report's totals."""
+    # An invalid mutant (anchor gone, does not compile or build) with EXPECT never showed its
+    # declared kill (red team B3): expected_missed on every path that marks it invalid, so a
+    # non-SECURITY one cannot leave its expectation unjudged while the ratio passes.
+    for m in report["mutants"]:
+        if m["status"] == "invalid" and m["id"] in EXPECT and not m.get("expected_missed"):
+            m["expected_missed"] = [INVALID_MISS]
+            print(f"{m['id']}: expected_missed {INVALID_MISS}")
+    valid = [m for m in report["mutants"] if m["status"] in ("killed", "survived")]
+    killed = [m for m in valid if m["status"] == "killed"]
+    ratio = len(killed) / len(valid) if valid else 0.0
+    report.update(valid=len(valid), killed=len(killed), survived=[m["id"] for m in valid if m["status"] == "survived"],
+                  declared_killers_missed=[m["id"] for m in report["mutants"] if m.get("declared_killers_missed")],
+                  expected_missed=[m["id"] for m in report["mutants"] if m.get("expected_missed")],
+                  invalid=[m["id"] for m in report["mutants"] if m["status"] == "invalid"], ratio=round(ratio, 4),
+                  finished=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+
+
+def print_entry(e) -> None:
+    """A decided mutant's line, then its kept kill evidence and its missed expectations indented."""
+    if e.get("status") == "invalid":
+        print(f"{e.get('id')}: INVALID ({e.get('note', '')})")
+    else:
+        print(f"{e.get('id')}: {'killed by ' + ','.join(e['killed_by']) if e.get('killed_by') else 'SURVIVED'} [{e.get('seconds')}s] ({e.get('note', '')})")
+        for k, ev in (e.get("kills") or {}).items():
+            print(f"  {k}: {ev['reason']} run={ev['run']}")
+            for line in ev["lines"]:
+                print(f"    {line}")
+    for m_ in e.get("expected_missed") or []:
+        print(f"  expected_missed {m_}")
+
+
+def verdict_line(report, verdict, rel, prefix="") -> str:
+    v, k, errs = report["valid"], report["killed"], report.get("expect_errors")
+    return (f"\n{prefix}{'OK' if verdict else 'FAIL'}: {k}/{v} valid mutants killed ({(k / v if v else 0.0):.1%}, threshold {THRESHOLD:.0%}); "
+            f"survived={report['survived']}; surviving_security={report['surviving_security']}; invalid={report['invalid']}; "
+            f"invalid_security={report['invalid_security']}; declared_killers_missed={report['declared_killers_missed']}; "
+            f"expected_missed={report['expected_missed']}" + (f"; EXPECT errors: {errs}" if errs else "") + f"; report={rel}")
+
+
+class MergeRefused(Exception):
+    """A set of shard reports the merge does not judge; the message names why."""
+
+
+def merge_shards(report_rel, n, stage=None, only=None, target="pc-qemu"):
+    """The gate's report over the union of its n shard reports, summarized and judged by
+    gate_verdict as a full run's is (WP-98): returns (report, verdict). Raises MergeRefused, judging
+    nothing, unless the set is exactly the stage's mutants decided once by this very run: every one
+    of the n reports there, each naming its own k/n, this run's identity and target and the rule's
+    selection for it, holding only ids of that selection, none twice across the set, every one
+    decided; and their union exactly the mutants of `stage` (and `only`). Valid and killed are
+    counted over the union; no shard's ratio, list or verdict is taken."""
+    me = run_identity()
+    if not me or not all(me.values()):
+        raise MergeRefused(f"the merging run has no run identity ({me})")
+    want = [m[0] for m in selection(stage, only)]
+    reports, entries, where = [], {}, {}
+    for k in range(1, n + 1):
+        rel = shard_report(report_rel, k, n)
+        p = REPO / rel
+        if not p.is_file():
+            raise MergeRefused(f"shard {k}/{n} is missing ({rel})")
+        try:
+            r = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            r = None
+        if not (isinstance(r, dict) and isinstance(r.get("shard"), dict) and isinstance(r.get("mutants"), list)
+                and all(isinstance(e, dict) for e in r["mutants"])):
+            raise MergeRefused(f"{rel} is not a shard report")
+        named = (r["shard"].get("k"), r["shard"].get("n"))
+        if named != (k, n):
+            raise MergeRefused(f"{rel} names shard {named[0]}/{named[1]}, not {k}/{n}")
+        if r.get("run") != me:
+            raise MergeRefused(f"shard {k}/{n} names run {r.get('run')}, not this run's {me}")
+        if r.get("target") != target:
+            raise MergeRefused(f"shard {k}/{n} names target {r.get('target')!r}, not {target!r}")
+        sel = [m[0] for m in selection(stage, only, (k, n))]
+        if r["shard"].get("selected") != sel:
+            raise MergeRefused(f"shard {k}/{n} selected {r['shard'].get('selected')}, the rule selects {sel}")
+        for e in r["mutants"]:
+            mid = e.get("id")
+            if mid not in sel:
+                raise MergeRefused(f"{mid} in shard {k}/{n} is not in its selection")
+            if mid in where:
+                raise MergeRefused(f"{mid} is decided twice (shard {where[mid]}/{n} and shard {k}/{n})")
+            where[mid], entries[mid] = k, e
+        undecided = [mid for mid in sel if entries.get(mid, {}).get("status") not in DECIDED]
+        if undecided:
+            raise MergeRefused(f"shard {k}/{n} is truncated: {len(sel) - len(undecided)} of its {len(sel)} mutants decided (not: {undecided})")
+        reports.append((k, rel, r))
+    if set(where) != set(want):
+        raise MergeRefused(f"the shards' union is not the stage's mutants (missing {sorted(set(want) - set(where))}, "
+                           f"extra {sorted(set(where) - set(want))})")
+    merged = {"threshold": THRESHOLD, "target": target, "mutants": [entries[mid] for mid in want if mid in entries],
+              "started": min(str(r.get("started", "")) for _, _, r in reports), "run": me,
+              "merged": {"n": n, "rule": SHARD_RULE, "env": f"{GATE_SHARDS_ENV}={n}",
+                         "shards": [{"k": k, "report": rel, "mutants": len(r["mutants"]), "started": r.get("started"),
+                                     "finished": r.get("finished")} for k, rel, r in reports]}}
+    errs = list(dict.fromkeys(expect_errors() + [str(e) for _, _, r in reports for e in (r.get("expect_errors") or [])]))
+    if errs:
+        merged["expect_errors"] = errs
+    summarize(merged)
+    verdict = gate_verdict(merged)
+    return merged, verdict
+
+
+def merge_main(a, raw: str) -> int:
+    """NAWAH_GATE_SHARDS=N: the gate's command merges its N shard reports (WP-98). It runs no
+    mutant and never falls back to a full run; a refusal prints its reason, no verdict line, and
+    leaves no report (an older one is removed first)."""
+    (REPO / a.report).unlink(missing_ok=True)
+    try:
+        if not re.fullmatch(r"[1-9][0-9]*", raw):
+            raise MergeRefused(f"{GATE_SHARDS_ENV}={raw!r} is not a shard count (a whole number >= 1)")
+        if a.shard or a.check:
+            raise MergeRefused(f"{GATE_SHARDS_ENV} is set: a merge takes neither --shard nor --check")
+        n = int(raw)
+        print(f"merge of {n} shard reports ({GATE_SHARDS_ENV}={n}, rule {SHARD_RULE}) from {Path(shard_report(a.report, 1, n)).parent.as_posix()}/")
+        report, verdict = merge_shards(a.report, n, a.stage, a.only.split(",") if a.only else None, a.target)
+    except MergeRefused as ex:
+        print(f"merge refused: {ex}; no verdict")
+        return MERGE_REFUSED
+    for sh_ in report["merged"]["shards"]:
+        print(f"shard {sh_['k']}/{n}: {sh_['report']}, {sh_['mutants']} mutants, started {sh_['started']}, finished {sh_['finished']}")
+    for e in report["mutants"]:
+        print_entry(e)
+    _write_report(a.report, report)
+    print(verdict_line(report, verdict, a.report))
+    return 0 if verdict else 1
+
+
 def add_worktree(wt: Path) -> None:
     """The run's worktree of HEAD with every top-level tree but evidence/ (WP-130, RSK-038): no
     killer reads evidence/ (each writes to the scratch evidence), and a full checkout of it took
@@ -1935,14 +2160,28 @@ def main():
     ap.add_argument("--only", help="comma-separated mutant ids")
     ap.add_argument("--stage", choices=list(STAGES), help="run only the mutants of one gate (M01-M29 = M2, M30-M49 = M3, M50-M81 = M4, M82-M129 = M5, M130.. = M6)")
     ap.add_argument("--check", action="store_true", help="apply/revert each patch and cargo check on the host target only")
+    ap.add_argument("--shard", type=shard_arg, metavar="k/N", help="run shard k of N of the selected mutants (int(id[1:]) mod N == k-1) "
+                    "and write the report to <report stem>.shards/shard-k-of-N.json; NAWAH_GATE_SHARDS=N merges the N reports (WP-98)")
     a = ap.parse_args()
-    mutants = [m for m in MUTANTS if (not a.only or m[0] in a.only.split(",")) and (not a.stage or stage_of(m[0]) == a.stage)]
+    gate_shards = os.environ.get(GATE_SHARDS_ENV)
+    if gate_shards is not None:
+        return merge_main(a, gate_shards)
+    only = a.only.split(",") if a.only else None
+    mutants = selection(a.stage, only, a.shard)
+    report_rel = shard_report(a.report, *a.shard) if a.shard else a.report
+    prefix = f"shard {a.shard[0]}/{a.shard[1]}: " if a.shard else ""
     remove_stale_worktrees()
     tmp = Path(tempfile.mkdtemp(prefix=PREFIX, dir=TMP_ROOT))
     lock = hold_lock(tmp / "lock")
     wt = tmp / "wt"
     scratch = tmp / "scratch-evidence"
     report = {"threshold": THRESHOLD, "target": a.target, "mutants": [], "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    if a.shard:
+        # The shard's identity (WP-98): the merge refuses a report of another shard, selection or run.
+        report["shard"] = {"k": a.shard[0], "n": a.shard[1], "rule": SHARD_RULE, "stage": a.stage, "only": only,
+                           "selected": [m[0] for m in mutants]}
+        report["run"] = run_identity()
+        print(f"{prefix}{len(mutants)} mutants ({SHARD_RULE}) of run {report['run']}: {','.join(report['shard']['selected'])}")
     bad_expect = expect_errors()
     for e in bad_expect:
         print(e)
@@ -2019,7 +2258,7 @@ def main():
                 built = entry["image_built"] = build_image()
                 if not built:
                     entry.update(status="invalid", results=results, seconds=round(time.time() - t0, 1)); report["mutants"].append(entry)
-                    print(f"{mid}: INVALID (does not build) ({note})"); _write_report(a.report, report); continue
+                    print(f"{mid}: INVALID (does not build) ({note})"); _write_report(report_rel, report); continue
             if not killed_by and built:
                 # Be fair before declaring a survivor: build the remaining artifacts and run
                 # everything the suites have.
@@ -2047,14 +2286,8 @@ def main():
             if missed:
                 entry["expected_missed"] = missed
             report["mutants"].append(entry)
-            print(f"{mid}: {'killed by ' + ','.join(killed_by) if killed_by else 'SURVIVED'} [{entry['seconds']}s] ({note})")
-            for k, ev in entry["kills"].items():
-                print(f"  {k}: {ev['reason']} run={ev['run']}")
-                for line in ev["lines"]:
-                    print(f"    {line}")
-            for m_ in missed:
-                print(f"  expected_missed {m_}")
-            _write_report(a.report, report)
+            print_entry(entry)
+            _write_report(report_rel, report)
     finally:
         try:
             if wt.exists():
@@ -2063,24 +2296,8 @@ def main():
             subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO)
             shutil.rmtree(tmp, ignore_errors=True)
             lock.close()
-    # An invalid mutant (anchor gone, does not compile or build) with EXPECT never showed its
-    # declared kill (red team B3): expected_missed on every path that marks it invalid, so a
-    # non-SECURITY one cannot leave its expectation unjudged while the ratio passes.
-    for m in report["mutants"]:
-        if m["status"] == "invalid" and m["id"] in EXPECT and not m.get("expected_missed"):
-            m["expected_missed"] = [INVALID_MISS]
-            print(f"{m['id']}: expected_missed {INVALID_MISS}")
-    valid = [m for m in report["mutants"] if m["status"] in ("killed", "survived")]
-    killed = [m for m in valid if m["status"] == "killed"]
-    ratio = len(killed) / len(valid) if valid else 0.0
-    report.update(valid=len(valid), killed=len(killed), survived=[m["id"] for m in valid if m["status"] == "survived"],
-                  declared_killers_missed=[m["id"] for m in report["mutants"] if m.get("declared_killers_missed")],
-                  expected_missed=[m["id"] for m in report["mutants"] if m.get("expected_missed")],
-                  invalid=[m["id"] for m in report["mutants"] if m["status"] == "invalid"], ratio=round(ratio, 4),
-                  finished=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
-    rp = REPO / a.report
-    rp.parent.mkdir(parents=True, exist_ok=True)
-    rp.write_text(json.dumps(report, indent=1) + "\n")
+    summarize(report)
+    _write_report(report_rel, report)
     if a.check:
         bad = [m["id"] for m in report["mutants"] if m["status"] == "invalid"]
         ok = not bad and not bad_expect
@@ -2088,8 +2305,10 @@ def main():
               + (f"; EXPECT errors: {bad_expect}" if bad_expect else ""))
         return 0 if ok else 1
     verdict = gate_verdict(report)
-    _write_report(a.report, report)
-    print(f"\n{'OK' if verdict else 'FAIL'}: {len(killed)}/{len(valid)} valid mutants killed ({ratio:.1%}, threshold {THRESHOLD:.0%}); survived={report['survived']}; surviving_security={report['surviving_security']}; invalid={report['invalid']}; invalid_security={report['invalid_security']}; declared_killers_missed={report['declared_killers_missed']}; expected_missed={report['expected_missed']}" + (f"; EXPECT errors: {bad_expect}" if bad_expect else "") + f"; report={a.report}")
+    _write_report(report_rel, report)
+    # A shard's line is its own mutants' (prefixed, so never project.py's PASS marker); the gate's
+    # verdict over every shard is the merge's.
+    print(verdict_line(report, verdict, report_rel, prefix))
     return 0 if verdict else 1
 
 
