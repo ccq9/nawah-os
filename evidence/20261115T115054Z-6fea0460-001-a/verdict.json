@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261115T115054Z-6fea0460-001-a",
+ "test_id": "TST-M3-FAT32-TOOL",
+ "verdict": "PASS",
+ "oracle": "the host FAT32 tool formats the lab volume (128992 clusters, 44 used), lists DIR/HELLO.TXT/PATTERN.BIN, reads files back exactly (cat/verify/expect), keeps the raw pattern tail, makes nested directories in their parent (SYSTEM/FONTS, a missing parent refused), and fsck.fat -n accepts the images; and (WP-105) its `check` is the judge of the images guest cases leave: on images corrupted by the test, a name whose chain runs into a free cluster and two names on one cluster are problems with and without --faulted, a cluster free in the second FAT copy alone is a problem with --faulted, a lost cluster and FAT copies that differ are problems without --faulted and counted with it, a chain longer than its size is a problem unless --faulted --allow-longer N names the exact number of them, and --expect-lost K the exact number of lost clusters (one more or one fewer is a problem), a directory whose chain runs into a free cluster and two directories on one cluster are problems, broken FSInfo signatures are a problem, a tree ten levels deep is healthy and one past the walk's limit (128) is named so and not called lost; fsck.fat's messages are named one by one (lost clusters, the free count and differing copies allowed; shared clusters, a free cluster in a chain, a chain shorter or longer than its size failing; a line with no name, or a path line that says more than a path, unnamed), and `fsck-faulted` accepts an image with a lost cluster and refuses one with a free cluster in a chain, and takes chains longer than their size only in the exact number given; 19 cases",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "6bed08a5b5ca794b9c48748886662eef302c8ff71c744b424f3f16be171acaa9",
+ "inputs": {
+  "tests/test_fat32_tool.py": "62854d058cb2dcfd1a0f481a3f96c1c92b9e4854813fa51216851ff4b0d647f3",
+  "tools/fat32.py": "4358507d9e9a76b132d3bb3cfe94d8c416c397a463dd2f0581d0247473960319"
+ },
+ "claim_tag": "source_backed_fact"
+}
