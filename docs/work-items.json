@@ -6696,7 +6696,8 @@
     "from WP-121's auditor and red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): a stored entry whose first cluster is 1 is counted as a file with no chain by chain_len (kernel/src/fs/fat32.rs:389) and as a file with a first cluster by write: with an offset of a cluster or more, next_cluster(1) reads FAT[1], which usually holds an end-of-chain mark, a cluster is allocated and fat_set(1, n) then refuses, so the call answers Corrupt and the cluster is lost, once for every call (older than WP-121; files.md v1.7 promises nothing on a damaged volume); when FAT[1] holds a valid cluster number the write goes on into another file's chain, the /SYSTEM authority being asked of the path and not of the cluster; proposed: write and the chain walks refuse a first cluster of 1 or past the volume's end with Corrupt before any write, with a case on a made-up entry",
     "from WP-120's red team (2026-11-15, by reading, the manager read the same lines; nothing run, to check at activation): mount accepts a volume with one FAT copy (the check is fats of 1 or 2) and no case uses such an image: a fat_set that always wrote two copies would pass every case and, on a one-copy volume, write FAT entries into the data region; and the sentence of this item's actions on a huge FAT size (`every FAT1 write refused as out of range`) is older than files.md v1.8: the second copy is now written first, so on that image every fat_set fails before it touches the first copy",
     "2026-11-15 (WP-120's second audit): the two inputs above from WP-105's and WP-118's red teams on clusters that are lost and never given back belong to WP-122 since that package was registered; this package refuses malformed volumes at mount and recovers nothing",
-    "from WP-124's red team (2026-11-16, by reading at a2358c37f, nothing run; no CI evidence; to check at activation): the mount does not compare the two FAT copies (a hypothesis with no visible effect today: the kernel reads the first copy alone)"
+    "from WP-124's red team (2026-11-16, by reading at a2358c37f, nothing run; no CI evidence; to check at activation): the mount does not compare the two FAT copies (a hypothesis with no visible effect today: the kernel reads the first copy alone)",
+    "2026-11-17 (activation): the input above on a stored entry whose first cluster is 1 is WP-147's since the split; the inputs on a volume with one FAT copy and on the two copies not compared at mount are carried to WP-148, to check at its activation; the upper bound on the cluster count (WP-121's red team) stays here: a count past the format's maximum is a malformed boot sector"
    ],
    "files": [
     "kernel/src/fs/fat32.rs",
@@ -6705,7 +6706,11 @@
     "tools/fat32.py",
     "tests/mutants.py",
     "tools/project.py",
-    "docs/tests.json"
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
    ],
    "contract_refs": [
     "docs/contracts/files.md"
@@ -6717,9 +6722,10 @@
     "test first, red seen locally before the fix: a test-kernel case that passes crafted boot sectors (wrapping FAT size, total near u32::MAX, zero and odd values) to the validation and expects a clean refusal for each: today the wrapping one panics the test kernel; a mutant that removes the bound",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; sized at activation",
-    "2026-11-15 acceptance tightened, nothing removed (from the owner's external reviewer (relayed by the owner on 2026-11-15; read at cbd59ca4, nothing run by the reviewer) and the manager's verification of the same lines the same day): RSK-033 and this item's inputs named the entry with a first cluster of 1 for this package, but no action and no clause of the acceptance bound it, so the item could have been closed as written without it; the clause is added. The same holds for every input marked `to check at activation`: at activation each is taken into the acceptance, moved to a named package's acceptance, or refuted with evidence, and the activation line says which; none is dropped"
+    "2026-11-15 acceptance tightened, nothing removed (from the owner's external reviewer (relayed by the owner on 2026-11-15; read at cbd59ca4, nothing run by the reviewer) and the manager's verification of the same lines the same day): RSK-033 and this item's inputs named the entry with a first cluster of 1 for this package, but no action and no clause of the acceptance bound it, so the item could have been closed as written without it; the clause is added. The same holds for every input marked `to check at activation`: at activation each is taken into the acceptance, moved to a named package's acceptance, or refuted with evidence, and the activation line says which; none is dropped",
+    "2026-11-17 activation estimate and design (the manager, from the kernel engineer's reading of 2026-11-16, read-only at 0e3f056f6, nothing run; an audit pass and a red-team pass before the single push). Activated after WP-138's close, by the plan's written order (PLAN-REVERSE's appendix of 2026-11-15: after WP-117 comes WP-106) and the owner's order in the session to go on without stopping; the owner has not ruled DEC-033, where the manager's recommendation puts the vmo-map fix of DEC-032 first: that fix still waits for his ruling. Split before activating, by the budget line (OS-EXEC-AR §2.3, line 44: 90 min or 120 calls): the engineer put the item whole at about 150 min and 140 calls; this item keeps the first clause of its acceptance word for word (the mount) and WP-147 takes the second word for word (the stored entry); nothing of either clause is dropped or reworded. A read of an entry whose first cluster is 1, which the reading found outside both clauses, is RSK-046 and WP-148. Estimate for this item: about 85 to 95 min with the full local run, at the line; the record will say if it runs over. The defect, by reading (kernel/src/fs/fat32.rs, line numbers of 0e3f056f6): mount computes reserved + fats * fat_sectors in 32 bits (:230, :235); a boot sector with fats=2 and fat_sectors=0x80000010 wraps to a data start of 64 sectors, inside the first FAT, passes every later check and mounts with a wrong geometry in the release kernel, where overflow checks are off; the test kernel, built with them on, panics instead; no upper bound is set on the cluster count (:237). Design, three options: (1) the validation as a pure function over the boot sector and the disk's capacity, every bound computed in 64 bits (the data start below the total, the total within the capacity, the cluster count from 65525 to 0x0FFFFFF5), narrowed to 32 bits only after the bounds; mount reads sector 0 and calls it: chosen, the function is tested on crafted sectors with no disk image and the release change is one function; (2) checked 32-bit arithmetic at each step: the same behaviour, more places to get wrong; (3) an early cap on the FAT size from the total: indirect, every later expression needs its own argument. Test first: the first commit moves the present arithmetic into the function unchanged (TST-M3-FAT32-READ's numbers guard it); then a new guest case passes crafted sectors to it and prints one line per sector before the next is tried: three accepted (the lab's, the smallest and the largest legal volume) and twenty refused with the mount's error; by reading, fifteen are refused today and five are red: two accepted that must be refused (a cluster count past the format's maximum) and three that panic the test kernel (the wraps), placed last so the earlier lines show before the first panic. Mutants, from M270 (M269 is kept for DEC-032's fix): the data start computed in wrapping 32 bits, the test of the data start against the total removed, the upper bound removed, each SECURITY. The local run before the push is the FULL one (the change is in the release kernel's code). What the case will not show and its oracle must say: the release kernel is not run on crafted sectors (that it cannot wrap rests on reading: every bound in 64 bits); no disk image with a malformed boot sector is mounted (the tie of mount to the function is shown on the lab's sector alone); a volume with one FAT copy and the comparison of the copies at mount (WP-148)"
    ],
-   "acceptance": "every malformed boot sector of the case is refused with the mount's error in the test kernel and the release arithmetic cannot wrap, on CI; the storage cases PASS; the mutant killed; a stored entry whose first cluster is 1 or lies past the volume's end is refused with the corrupt-volume error before any disk write of a write call, shown by a case on a made-up entry on CI, with its mutant",
+   "acceptance": "every malformed boot sector of the case is refused with the mount's error in the test kernel and the release arithmetic cannot wrap, on CI; the storage cases PASS; the mutant killed",
    "test_ids": [
     "TST-M3-FAT32-READ",
     "TST-M3-FAT32-TOOL"
@@ -6728,9 +6734,10 @@
     "python3 tools/project.py test --target pc-qemu --suite M3",
     "python3 tools/project.py test --target host --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -8995,6 +9002,109 @@
    ],
    "evidence_refs": [],
    "blocker": null
+  },
+  {
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3",
+    "python3 tools/project.py test --target host --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "id": "WP-147",
+   "depends_on": [
+    "WP-106"
+   ],
+   "inputs": [
+    "split from WP-106 on 2026-11-17 by the budget rule, its clause word for word: the kernel engineer's reading of 2026-11-16 (read-only at 0e3f056f6, nothing run) put WP-106 whole at about 150 min and 140 calls",
+    "by that reading (kernel/src/fs/fat32.rs, line numbers of 0e3f056f6): a stored entry whose first cluster is 1 and a write from offset 512 or more: chain_len(1) answers 0 (:396), next_cluster(1) reads FAT[1] (:789; fat_get's bound at :316 lets 1 through), and with FAT[1] an end mark a cluster is allocated: five disk writes (the mark in both copies, the zeroing, FSInfo twice) before fat_set(1, n) refuses with the corrupt-volume error (:332), one cluster lost; with FAT[1] a valid cluster number the write lands in another file's cluster and answers success (:811, :671); a first cluster past the volume's end is refused today before any disk write except for an empty write, which answers 0",
+    "from WP-121's auditor and red team (2026-11-15, by reading): the same finding, carried from WP-106's inputs"
+   ],
+   "files": [
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/adr/0014-files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
+   ],
+   "actions": [
+    "FAT32: إدخال مخزَّن عنقوده الأول 1 أو بعد نهاية الوحدة يُرفض قبل أي كتابة قرص من نداء كتابة (مفصولة من WP-106 بقاعدة الميزانية)",
+    "design read (the engineer, 2026-11-16): one guard in write after the directory check: a first cluster of 1 or past the volume's end answers the corrupt-volume error before the range check and before the free-space check, an empty write too; no extra disk read, so no pinned number of an existing case moves, by reading",
+    "test first, red seen locally: a test-kernel case on a made-up entry (the entry's first cluster patched on the disk by a block write, the file reopened, a write from offset 512): the count of disk writes of the call must be 0 and the answer the corrupt-volume error, for 1 with FAT[1] an end mark, 1 with FAT[1] linked into another file (that file unchanged), 1 on a full volume, a cluster past the end, and the empty write of each; by reading today: five disk writes, success into another file's cluster, disk-full, and 0 for the empty writes; mutants: the guard without the test for 1 (SECURITY) and without the test for past the end",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-17 estimate: the engineer's reading: about 85 to 95 min with the full local run (release kernel code changes), at the line; sized again at activation",
+    "2026-11-17: test_ids name existing cases until this item's own case exists"
+   ],
+   "acceptance": "the storage cases PASS; a stored entry whose first cluster is 1 or lies past the volume's end is refused with the corrupt-volume error before any disk write of a write call, shown by a case on a made-up entry on CI, with its mutant",
+   "test_ids": [
+    "TST-M3-FAT32-READ",
+    "TST-M6-MUTANTS"
+   ]
+  },
+  {
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M3-007"
+   ],
+   "contract_refs": [
+    "docs/contracts/files.md"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M3",
+    "python3 tools/project.py test --target host --suite M3"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "id": "WP-148",
+   "depends_on": [
+    "WP-147"
+   ],
+   "inputs": [
+    "found by the kernel engineer's reading of 2026-11-16 (read-only at 0e3f056f6, nothing run; no CI evidence), outside both clauses of WP-106's acceptance, which speak of the mount and of a write call: a READ of a stored entry whose first cluster is 1 follows FAT[1] and, when it holds a valid cluster number, returns the bytes of another file's cluster (kernel/src/fs/fat32.rs:625-628): RSK-046",
+    "carried from WP-106's inputs, to check at activation: mount accepts a volume with one FAT copy and no case uses such an image (WP-120's red team); the mount does not compare the two FAT copies (WP-124's red team: a hypothesis with no visible effect today, the kernel reads the first copy alone)",
+    "also by that reading, not in any acceptance yet: a first cluster inside the volume but in another file's chain; an entry with first cluster 0 and a size above 0; a directory whose first cluster is 1"
+   ],
+   "files": [
+    "kernel/src/fs/fat32.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/contracts/files.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
+   ],
+   "actions": [
+    "FAT32: قراءة إدخال مخزَّن عنقوده الأول 1 لا تُرجع بايتات ملف آخر (من قراءة مهندس النواة عند تفعيل WP-106)",
+    "design to decide in the package (2-3 options with trade-offs): the bound in fat_get (a cluster below 2 is corrupt) against a guard at every reader of a stored first cluster; which of the carried inputs get a case here and which a named item",
+    "test first, red seen locally: a test-kernel case that patches an entry's first cluster to 1 with FAT[1] linked to another file's cluster and reads it: today, by reading, the other file's bytes; expected the corrupt-volume error and no byte; a SECURITY mutant that removes the refusal",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-17 estimate: unmeasured; sized at activation"
+   ],
+   "acceptance": "a read of a stored entry whose first cluster is 1 answers the corrupt-volume error and returns no byte of another file, shown by a case on a made-up entry on CI, with its SECURITY mutant; the storage cases PASS; each input carried from WP-106 is either shown by a case here or moved to a named item with its reason",
+   "test_ids": [
+    "TST-M3-FAT32-READ",
+    "TST-M6-MUTANTS"
+   ]
   }
  ]
 }
