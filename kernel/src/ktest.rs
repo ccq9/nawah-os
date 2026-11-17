@@ -4409,8 +4409,9 @@ type BpbCase = (
 /// for one reason. BPB offsets: BytsPerSec 11, SecPerClus 13, RsvdSecCnt 14, NumFATs 16,
 /// RootEntCnt 17, TotSec16 19, FATSz16 22, TotSec32 32, FATSz32 36, RootClus 44, the signature
 /// at 510. The edges a mutant of the bounds moves come last (the mutation gate keeps the last 12
-/// test-kernel lines of a boot): the eight-sector clusters, the FAT's size, the cluster count's
-/// upper bound and the three sectors whose data start wraps a 32-bit sum.
+/// test-kernel lines of a boot): the eight-sector clusters, a FAT whose size in bytes does not fit
+/// 32 bits, the FAT's size, the cluster count's upper bound and the three sectors whose data
+/// start wraps a 32-bit sum.
 const BPB_CASES: &[BpbCase] = &[
     ("lab", &[], None, Some((128992, 2080))),
     ("min_ok", &[(32, 4, 67605)], None, Some((65525, 2080))),
@@ -4445,16 +4446,22 @@ const BPB_CASES: &[BpbCase] = &[
         None,
     ),
     (
+        "spc8_few",
+        &[(13, 1, 8), (32, 4, 526279)],
+        Some(526279),
+        None,
+    ),
+    (
         "spc8",
         &[(13, 1, 8), (32, 4, 526280)],
         Some(526280),
         Some((65525, 2080)),
     ),
     (
-        "spc8_few",
-        &[(13, 1, 8), (32, 4, 526279)],
-        Some(526279),
-        None,
+        "big_fat",
+        &[(16, 1, 1), (36, 4, 16777216), (32, 4, 16842773)],
+        Some(16842773),
+        Some((65525, 16777248)),
     ),
     (
         "fat_exact",

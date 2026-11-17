@@ -1124,7 +1124,7 @@ MUTANTS = [
     ("M270", "kernel/src/fs/fat32.rs",
      "        let data_start = u64::from(reserved) + u64::from(fats) * u64::from(fat_sectors);\n",
      "        let data_start = u64::from(reserved.wrapping_add(fats.wrapping_mul(fat_sectors)));\n",
-     ["TST-M3-FAT32-BPB"], "SECURITY: a FAT size whose sum with the reserved sectors wraps 32 bits mounts with the data region over the first FAT (data start 64) or over the reserved sectors (16): the lines carry sector=mul_wrap|clusters=131008|data_start=64 and sector=add_wrap|clusters=131056|data_start=16, and the last refused=18|accepted=5|wrong=2, TST-M3-FAT32-BPB FAIL (seen locally)"),
+     ["TST-M3-FAT32-BPB"], "SECURITY: a FAT size whose sum with the reserved sectors wraps 32 bits mounts with the data region over the first FAT (data start 64), over the reserved sectors (16) or over the boot sector (0): the lines carry sector=mul_wrap|clusters=131008|data_start=64, sector=add_wrap|clusters=131056|data_start=16 and sector=zero_start|clusters=131072|data_start=0, and the last refused=23|accepted=10|wrong=3, TST-M3-FAT32-BPB FAIL (seen locally on the case of 33 sectors)"),
     # M271: the check that the data region starts inside the volume is gone.
     ("M271", "kernel/src/fs/fat32.rs",
      "        if data_start >= total || total > capacity {\n",
@@ -1134,19 +1134,25 @@ MUTANTS = [
     ("M272", "kernel/src/fs/fat32.rs",
      "        if !(65525..=0x0FFF_FFF5).contains(&clusters)\n",
      "        if clusters < 65525\n",
-     ["TST-M3-FAT32-BPB"], "SECURITY: a volume of more than 0x0FFFFFF5 clusters mounts, so cluster numbers reach the bad mark and the end-of-chain marks: the lines carry sector=over_max|clusters=268435446|data_start=2097184 and sector=too_many|clusters=2147483615|data_start=2147483680, and the last refused=18|accepted=5|wrong=2, TST-M3-FAT32-BPB FAIL (seen locally)"),
+     ["TST-M3-FAT32-BPB"], "SECURITY: a volume of more than 0x0FFFFFF5 clusters mounts, so cluster numbers reach the bad mark and the end-of-chain marks: the lines carry sector=over_max|clusters=268435446|data_start=2097184 and sector=too_many|clusters=2147483615|data_start=2147483680, and the last refused=24|accepted=9|wrong=2, TST-M3-FAT32-BPB FAIL (seen locally on the case of 33 sectors)"),
     # M273 (SECURITY, from WP-106's red team): the FAT must hold an entry for every cluster number
     # up to the last, the two reserved entries included; without them a FAT one entry short passes.
     ("M273", "kernel/src/fs/fat32.rs",
      "            || (clusters + 2) * 4 > u64::from(fat_sectors) * SECTOR as u64\n",
      "            || clusters * 4 > u64::from(fat_sectors) * SECTOR as u64\n",
-     ["TST-M3-FAT32-BPB"], "SECURITY: a FAT of 1008 sectors on a volume of 131071 sectors (129023 clusters, entries for 129025 numbers needed, 516100 bytes against 516096) mounts, and the last cluster's entry lies past the first FAT, in the second: the line carries sector=fat_small|clusters=129023|data_start=2048 and the last refused=25|accepted=7|wrong=1, TST-M3-FAT32-BPB FAIL (seen locally; the case as it was at 6673854b3, whose fat_small was two sectors short, passed under it)"),
+     ["TST-M3-FAT32-BPB"], "SECURITY: a FAT of 1008 sectors on a volume of 131071 sectors (129023 clusters, entries for 129025 numbers needed, 516100 bytes against 516096) mounts, and the last cluster's entry lies past the first FAT, in the second: the line carries sector=fat_small|clusters=129023|data_start=2048 and the last refused=25|accepted=8|wrong=1, TST-M3-FAT32-BPB FAIL (seen locally on the case of 33 sectors; the case as it was at 6673854b3, whose fat_small was two sectors short, passed under it)"),
     # M274 (SECURITY, from WP-106's red team): the mount judges the boot sector against a device of
     # any size, not the one it reads.
     ("M274", "kernel/src/fs/fat32.rs",
      "        Self::from_boot_sector(&b, block::capacity_sectors())\n",
      "        Self::from_boot_sector(&b, u64::MAX)\n",
-     ["TST-M3-FAT32-BPB"], "SECURITY: a volume larger than its device mounts, so the kernel would address sectors past the disk: written to sector 0, the sectors spc8 (526280 sectors) and max_ok (270532629) are mounted while the validation with the lab disk's 131072 sectors refuses them: their lines carry mount=0 and the last mount_same=30, TST-M3-FAT32-BPB FAIL (seen locally; the case as it was at 6673854b3, which compared the mount on the lab sector alone, passed under it)"),
+     ["TST-M3-FAT32-BPB"], "SECURITY: a volume larger than its device mounts, so the kernel would address sectors past the disk: written to sector 0, the sectors spc8 (526280 sectors), big_fat (16842773) and max_ok (270532629) are mounted while the validation with the lab disk's 131072 sectors refuses them: their lines carry mount=0 and the last mount_same=30, TST-M3-FAT32-BPB FAIL (seen locally on the case of 33 sectors; the case as it was at 6673854b3, which compared the mount on the lab sector alone, passed under it)"),
+    # M275 (SECURITY, from WP-106's close audit): the FAT's size in bytes is computed in 32 bits,
+    # wrapping, so a FAT of 2^24 sectors or more is measured short.
+    ("M275", "kernel/src/fs/fat32.rs",
+     "            || (clusters + 2) * 4 > u64::from(fat_sectors) * SECTOR as u64\n",
+     "            || (clusters + 2) * 4 > u64::from(fat_sectors.wrapping_mul(SECTOR as u32))\n",
+     ["TST-M3-FAT32-BPB"], "SECURITY (the bound's own arithmetic, kept in 64 bits like the others; the wrapped size is never above the real one, so the mutant refuses volumes it should take and lets none through): the FAT's size in bytes wraps 32 bits, so a well-formed volume whose FAT is 2^24 sectors (2^33 bytes, wrapping to 0) is refused: the line carries sector=big_fat|refused=K_E_FS_BAD_BPB and the last refused=27|accepted=6|wrong=1, TST-M3-FAT32-BPB FAIL (seen locally; the case as it was at 695c5b5f0, with no FAT larger than 2097152 sectors, passed under it)"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1411,7 +1417,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M270", "M271", "M272",
             # from WP-106's audit and red team: the FAT holds the two reserved entries too (M273),
             # and the mount judges against its own device's capacity (M274).
-            "M273", "M274"}
+            "M273", "M274",
+            # from WP-106's close audit: the FAT's size in bytes in 64 bits (M275).
+            "M275"}
 
 
 def security_of(mid: str) -> bool:
@@ -1619,20 +1627,23 @@ EXPECT = {
     "M261": {"TST-M3-FAT32-FAULT-CREATE-COPIES": ["exit 37", "|calls=8|", "|second_names=1|", _NAMES]},
     # WP-106: the boot sectors a mutant of the mount's bounds lets through are among the last ten
     # sector lines, inside the kept window; M271's panic is shown by the line printed before it.
-    "M270": {"TST-M3-FAT32-BPB": ["exit 37", "|refused=23|", "|accepted=9|", "|wrong=3|",
+    "M270": {"TST-M3-FAT32-BPB": ["exit 37", "|refused=23|", "|accepted=10|", "|wrong=3|",
                                   _BPB + "mul_wrap|clusters=131008|data_start=64|mount=1",
                                   _BPB + "add_wrap|clusters=131056|data_start=16|mount=1",
                                   _BPB + "zero_start|clusters=131072|data_start=0|mount=1", _JUDGED]},
     "M271": {"TST-M3-FAT32-BPB": ["exit 35", _BPB + "fatsz16|refused=K_E_FS_BAD_BPB|mount=1"]},
-    "M272": {"TST-M3-FAT32-BPB": ["exit 37", "|refused=24|", "|accepted=8|", "|wrong=2|",
+    "M272": {"TST-M3-FAT32-BPB": ["exit 37", "|refused=24|", "|accepted=9|", "|wrong=2|",
                                   _BPB + "over_max|clusters=268435446|data_start=2097184|mount=1",
                                   _BPB + "too_many|clusters=2147483615|data_start=2147483680|mount=1", _JUDGED]},
-    "M273": {"TST-M3-FAT32-BPB": ["exit 37", "|refused=25|", "|accepted=7|", "|wrong=1|",
+    "M273": {"TST-M3-FAT32-BPB": ["exit 37", "|refused=25|", "|accepted=8|", "|wrong=1|",
                                   _BPB + "fat_small|clusters=129023|data_start=2048|mount=1", _JUDGED]},
     "M274": {"TST-M3-FAT32-BPB": ["exit 37", "|mount_same=30",
                                   _BPB + "spc8|clusters=65525|data_start=2080|mount=0",
+                                  _BPB + "big_fat|clusters=65525|data_start=16777248|mount=0",
                                   _BPB + "max_ok|clusters=268435445|data_start=2097184|mount=0",
                                   "|ktest|fail|the mount did not answer a boot sector as its validation does"]},
+    "M275": {"TST-M3-FAT32-BPB": ["exit 37", "|refused=27|", "|accepted=6|", "|wrong=1|",
+                                  _BPB + "big_fat|refused=K_E_FS_BAD_BPB|mount=1", _JUDGED]},
 }
 
 

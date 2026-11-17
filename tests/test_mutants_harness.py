@@ -799,7 +799,7 @@ class KillEvidence(unittest.TestCase):
 
     def test_the_boot_sector_expectations_are_pinned(self):
         """WP-106 (audit and red team on 6673854b3): the mount's bounds' mutants are declared by
-        what the case prints under them: M270, M272, M273 and M274 by exit 37, the kernel's own
+        what the case prints under them: M270, M272, M273, M274 and M275 by exit 37, the kernel's own
         failure message (in ktest.rs), the summary's fields that differ (each a field of the
         case's pinned summary line) and every sector line they change, each a sector among the
         last ten of the case (the gate keeps a boot's last 12 test-kernel lines: ten sectors,
@@ -814,7 +814,7 @@ class KillEvidence(unittest.TestCase):
         summary = next(m for m in case["required_markers"] if "|ktest|fat32_bpb|sectors=" in m)
         kept = [re.search(r"\|sector=(\w+)\|", s).group(1) for s in sectors[-10:]]
         changed = {"M270": {"mul_wrap", "add_wrap", "zero_start"}, "M272": {"over_max", "too_many"},
-                   "M273": {"fat_small"}, "M274": {"spc8", "max_ok"}}
+                   "M273": {"fat_small"}, "M274": {"spc8", "big_fat", "max_ok"}, "M275": {"big_fat"}}
         for mid, names in changed.items():
             self.assertEqual(set(E.get(mid, {})), {self.BPB}, mid)
             subs = E[mid][self.BPB]
