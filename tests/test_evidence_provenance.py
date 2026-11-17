@@ -21,7 +21,7 @@ dirty_state=true, and two cancelled verify runs had published evidence branches 
   - the import: the GitHub run must be completed/success, from verify or mutants, with a head
     that is an ancestor of HEAD, and the id well-formed; anything else, or a missing gh, imports
     nothing and leaves no directory; a successful import writes import.json beside an
-    untouched run.json.
+    untouched run.json and checks out of the branch only the new run directories (WP-151).
 """
 import contextlib, copy, hashlib, importlib.util, io, json, os, shutil, stat, subprocess, sys, tempfile, unittest
 from pathlib import Path
@@ -584,6 +584,30 @@ class CheckedImport(unittest.TestCase):
             self.assertFalse((self.root / "evidence" / n / "import.json").exists(), n)
             self.assertEqual((self.root / "evidence" / n / "run.json").read_text(), before[n], n)
         self.assertEqual(list((self.base / "tmp").iterdir()), [], "a temporary copy was left behind")
+
+    def test_only_the_new_run_directories_are_checked_out_of_the_branch(self):
+        """WP-151 (L-016): the branch holds the whole committed tree (13.7 GB on 2026-11-17), so
+        the import stages the directories it adopts alone. On the branch side every file of the
+        directories already under evidence/ goes through a required smudge filter that fails:
+        any checkout of them fails inside git, whatever form the importer gives its pathspecs."""
+        old = self.add_committed_dirs()
+        (self.root / ".git" / "info").mkdir(exist_ok=True)
+        (self.root / ".git" / "info" / "attributes").write_text("".join(f"/evidence/{n}/** filter=refuse\n" for n in old))
+        for key, value in (("smudge", "false"), ("clean", "cat"), ("required", "true")):
+            self.git(self.root, "config", f"filter.refuse.{key}", value)
+        self.fake_gh()
+        r = self.run_import()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(f"skipped {len(old)} run(s) already under evidence/", r.stdout)
+        self.assertIn("imported 1 run(s) from CI run 42", r.stdout)
+        self.assertTrue((self.root / "evidence" / self.run_dir.name / "import.json").exists())
+        self.assertEqual(list((self.base / "tmp").iterdir()), [], "a temporary copy was left behind")
+        # the trap is armed: a checkout of a skipped directory from the fetched branch fails
+        probe = self.base / "probe"; probe.mkdir()
+        p = subprocess.run(["git", f"--work-tree={probe}", "checkout", "-q", "ci/42", "--", f"evidence/{old[0]}"], cwd=self.root,
+                           env={**self.env, "GIT_INDEX_FILE": str(probe / ".index")}, capture_output=True, text=True)
+        self.assertNotEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("refuse", p.stderr)
 
     def test_a_new_foreign_dir_next_to_committed_ones_is_refused_and_nothing_is_written(self):
         old = self.add_committed_dirs()

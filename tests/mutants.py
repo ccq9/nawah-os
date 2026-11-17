@@ -1218,6 +1218,11 @@ MUTANTS = [
      ["TST-M0-005"], "the removal at start takes every linked worktree of the repository, outside the harness's root and prefix too"),
     ("M286", "tests/mutants.py", 'lock = hold_lock(tmp / "lo' 'ck")', 'lock = hold_lock(tmp / "lo' 'ck"); lock.close()',
      ["TST-M0-005"], "a run lets its lock go at once, so another run's start removes its worktree while it runs"),
+    # M287 (WP-151, L-016): import-ci-evidence stages the new run directories alone; the new text
+    # keeps the anchor inside it, so the anchor occurs once in the mutated file too.
+    ("M287", "tools/project.py", '"".join(f"evidence/{n}\\0" for n in new)',
+     '"evidence\\0" if new else "".join(f"evidence/{n}\\0" for n in new)',
+     ["TST-M0-007"], "the import checks the evidence branch's whole tree out again (13.7 GB on 2026-11-17), the directories already under evidence/ with the new ones"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
