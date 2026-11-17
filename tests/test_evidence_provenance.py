@@ -779,9 +779,15 @@ class AdoptNative(unittest.TestCase):
             self.assert_unchanged(*self.adopt())
 
     def test_a_dir_without_ci_identity_is_refused(self):
+        """Refused for its missing identity, by name: the directory shares TST-M0-001 with the
+        set's own -a, so the refusal of two new runs of one test (WP-98) would refuse the set too,
+        and without the reason this case no longer showed the identity check (M186 survived the
+        gate of run 44173640261)."""
         native_dir(self.src, f"{self.STAMP}-d", "TST-M0-001", with_ci=False)
         with ci_env(GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="1"):
-            self.assert_unchanged(*self.adopt())
+            rc, out = self.adopt()
+        self.assert_unchanged(rc, out)
+        self.assertIn(f"{self.STAMP}-d carries no ci identity", out)
 
     def test_a_duplicate_run_id_is_refused(self):
         other = TMP / "artifacts2"
