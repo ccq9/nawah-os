@@ -6183,14 +6183,14 @@
     "the audit of WP-96: adopt-native with two slots carrying one test id has no test"
    ],
    "files": [
-    ".github/workflows/verify.yml",
-    "tests/test_ci_workflows.py",
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
-    "tests/test_evidence_provenance.py",
     "tools/project.py",
-    "docs/PLAN-ANSWER.md",
-    "docs/tests.json"
+    "tests/test_evidence_provenance.py",
+    "docs/tests.json",
+    "docs/work-items.json",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md"
    ],
    "contract_refs": [],
    "actions": [
@@ -6199,20 +6199,22 @@
     "design to decide in the package (2-3 options): the gate in shards whose reports one step combines into the single verdict of TST-M6-MUTANTS (ratio and SECURITY rules over the union, a missing shard fails closed), against two gate tests; the test job split by suite (M5 alone is 11 of its 26 minutes); what adopt-native does with one test id from two slots, with its test; the runner minutes each option costs",
     "test first: the budget per job, the shards' union, a missing shard, the slots; the PLAN-ANSWER V3 text is written here",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split (gate shards; test jobs) before activating",
-    "2026-11-14 estimate: unmeasured; not on the path to any product item, to be taken when the 28-minute run costs more than it saves"
+    "2026-11-14 estimate: unmeasured; not on the path to any product item, to be taken when the 28-minute run costs more than it saves",
+    "2026-11-17 split before activation by the budget rule (the systems engineer's study, challenged by security assurance; scratchpad wp98_study.json: about 180 to 240 min and 130 to 150 calls whole). The acceptance, word for word, is divided: WP-98 keeps 'TST-M0-005 and TST-M0-007 PASS with the new cases' (host side: --shard k/N and the merge of shard reports in tests/mutants.py, the rejection of two new runs of one test_id in adopt-native and import-ci-evidence, their mutants); WP-152 takes 'TST-M6-MUTANTS's verdict computed over all shards, and TST-M0-003 PASS with the new cases' (the workflow: N shard jobs and the merge job g); WP-153 takes 'a verify run whose critical path is measurably shorter than 26 minutes with every verdict of today's run present, and TST-M0-003 PASS with the new cases' (M5 in its own job, the limits, the measured run). The repository is public, so the extra runner minutes (+25 to 35%) cost nothing. The assurance side's must-keep list (fail-closed adoption, one verdict per run, the gate's conditions, the cancel rule) binds all three",
+    "2026-11-17 activation (the manager, method section 7; after the split): host side only, no workflow change. Test first in tests/test_mutants_harness.py (shard selection covers every M6 mutant once for N 1..8, bad shard specs refused; the merge refuses a missing shard, a duplicate or foreign id, a truncated report, a run or sha mismatch, and computes ratio, SECURITY and expectations over the union) and tests/test_evidence_provenance.py (two new runs of one test_id refused by adopt-native and by import-ci-evidence, nothing adopted). Estimate against the budget line (90 min or 120 tool calls): about 75 min and 50 calls with one review round"
    ],
-   "acceptance": "a verify run whose critical path is measurably shorter than 26 minutes with every verdict of today's run present, TST-M6-MUTANTS's verdict computed over all shards, and TST-M0-003, TST-M0-005 and TST-M0-007 PASS with the new cases",
+   "acceptance": "TST-M0-005 and TST-M0-007 PASS with the new cases",
    "test_ids": [
-    "TST-M0-003",
     "TST-M0-005",
     "TST-M0-007"
    ],
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -9388,6 +9390,86 @@
    "evidence_refs": [
     "evidence/20261117T194826Z-5e191018-001-a"
    ],
+   "blocker": null
+  },
+  {
+   "id": "WP-152",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-005"
+   ],
+   "depends_on": [
+    "WP-98"
+   ],
+   "inputs": [
+    "split from WP-98 on 2026-11-17 by the budget rule, its clause word for word; the study and the assurance challenge: scratchpad wp98_study.json"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/PLAN-ANSWER.md",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "تقصير verify ب: بوابة الطفرات على وظائف متوازية ووظيفة دمج تحمل حكمها الوحيد (مفصولة من WP-98)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-17 registered at WP-98's split"
+   ],
+   "acceptance": "TST-M6-MUTANTS's verdict computed over all shards, and TST-M0-003 PASS with the new cases",
+   "test_ids": [
+    "TST-M0-003",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-153",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-005"
+   ],
+   "depends_on": [
+    "WP-152"
+   ],
+   "inputs": [
+    "split from WP-98 on 2026-11-17 by the budget rule, its clause word for word; the study and the assurance challenge: scratchpad wp98_study.json"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py",
+    "docs/tests.json",
+    "docs/PLAN-ANSWER.md",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "تقصير verify ج: مجموعة M5 في وظيفة مستقلة وقياس الطريق الحرج دون 26 دقيقة (مفصولة من WP-98)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-17 registered at WP-98's split"
+   ],
+   "acceptance": "a verify run whose critical path is measurably shorter than 26 minutes with every verdict of today's run present, and TST-M0-003 PASS with the new cases",
+   "test_ids": [
+    "TST-M0-003"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
    "blocker": null
   }
  ]
