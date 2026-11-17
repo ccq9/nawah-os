@@ -408,7 +408,8 @@
     "WP-106"
    ],
    "requested_at": "2026-11-17T07:40:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-17: the owner's answer in the session, a four-question form, each answered with the manager's recommended option: (1) simplify the working method; (2) close WP-106 and WP-147, the limit of what CI shows written plainly in the closing line; (3) bundle the ten remaining FAT32 rare-case packages into one package done before release and move to the desktop; (4) act on the manager's recommendations in the open decisions and send him only what needs his own hand"
   },
   {
    "id": "DEC-039",
@@ -424,7 +425,8 @@
     "WP-147"
    ],
    "requested_at": "2026-11-17T09:40:00Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-17: the owner's answer in the session, a four-question form, each answered with the manager's recommended option: (1) simplify the working method; (2) close WP-106 and WP-147, the limit of what CI shows written plainly in the closing line; (3) bundle the ten remaining FAT32 rare-case packages into one package done before release and move to the desktop; (4) act on the manager's recommendations in the open decisions and send him only what needs his own hand"
   }
  ]
 }

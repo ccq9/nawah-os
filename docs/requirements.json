@@ -895,7 +895,9 @@
     "TST-M3-FAT32-FAULT-ONE-CREATE",
     "TST-M3-FAT32-FAULT-CREATE-COPIES",
     "TST-M3-FAT32-DISK-FULL",
-    "TST-M3-FAT32-STOP"
+    "TST-M3-FAT32-STOP",
+    "TST-M3-FAT32-BAD-FIRST",
+    "TST-M3-FAT32-BPB"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
@@ -917,7 +919,9 @@
     "evidence/20261117T104034Z-5a2219fa-001-a",
     "evidence/20261117T104048Z-5a2219fa-001-a",
     "evidence/20261117T104054Z-5a2219fa-001-a",
-    "evidence/20261117T104042Z-5a2219fa-001-a"
+    "evidence/20261117T104042Z-5a2219fa-001-a",
+    "evidence/20261117T104102Z-5a2219fa-001-a",
+    "evidence/20261117T104107Z-5a2219fa-001-a"
    ]
   },
   {
