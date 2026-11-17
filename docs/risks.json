@@ -417,9 +417,9 @@
    "evidence": "تدقيق 2026-11-16 الذي أمر به المالك (ثمانية أدوار، قراءة فقط عند c68d5819d؛ تحقق المدير من السطور نفسها بفتح الملفات؛ لم يُشغَّل شيء ولا دليل CI): kernel/src/syscall/mod.rs، sys_vmo_map: prot=2 يطلب MAP|WRITE فقط؛ docs/tests.json: TST-M3-VMO-MAP-RIGHTS حكمه NOT_RUN ونصه «planned» منذ 3ba844612 ولا حزمة تملكه؛ WP-32 منتهية باختبار TST-M5-DISPLAY-BOOT وحده؛ REQ-M3-005 مسجّل verified_in_scope",
    "owner": "agent",
    "warning_signal": "عملية تقرأ من كائن ذاكرة مُنحت عليه حق الكتابة وحده",
-   "mitigation": "لا شيء اليوم",
+   "mitigation": "WP-149 (التشغيل 44128088887 على cd21525e8): vmo_map يطلب READ لخريطة الكتابة؛ TST-M3-VMO-MAP-RIGHTS PASS والطفرة M281 (SECURITY) مقتولة على CI. بالقراءة فقط: الحماية 3 بمقبض بلا READ، وVMO فيزيائي من display_map، ومقبض VMO عبر قناة؛ والمتابعات L-009 وL-010 في docs/LATER.md",
    "response_plan": "WP-149 (2026-11-17، DEC-032 B): حالة TST-M3-VMO-MAP-RIGHTS تفشل أولًا وطفرة أمنية؛ أول حزمة في الترتيب، وREQ-M3-005 جزئي حتى تمر الحالة",
-   "status": "open"
+   "status": "mitigated"
   },
   {
    "id": "RSK-041",
