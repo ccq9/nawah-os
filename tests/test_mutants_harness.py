@@ -914,5 +914,146 @@ class KillEvidence(unittest.TestCase):
             self.assertIn("|" + x[1:].split("=")[0] + "=", line, x)
             self.assertNotIn(x, line, f"{x} is the pinned value")
 
+
+def lock_held(path) -> bool:
+    """Whether another open file holds `path`'s flock (False when the file is missing)."""
+    import fcntl
+    try:
+        f = open(path, "rb")
+    except OSError:
+        return False
+    with f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        return False
+
+
+class EvidenceFreeWorktree(unittest.TestCase):
+    """WP-130 (RSK-038): the harness's worktree held the whole checkout, evidence/ included (11 GB
+    on disk on 2026-11-15), and a harness killed before its cleanup left that worktree behind.
+    The worktree a run gives its killers holds every top-level tree of HEAD but evidence/, and the
+    run holds a lock for its life; at start the harness removes the worktree and temporary
+    directory of an earlier run of this repository under its own root (TMP_ROOT, prefix
+    nawah-mutants-) when no live run holds that run's lock, and never another worktree; a failing
+    `worktree add` leaves nothing. main() runs on a scratch repository with a tracked evidence
+    run; TMP_ROOT and the temporary directory are the test's own, never the system's."""
+
+    FILES = ["kernel/a.rs", "user/b.rs", "tools/c.py", "tests/d.py", ".github/workflows/e.yml", "README"]
+
+    def setUp(self):
+        import shutil
+        self.tmp = pathlib.Path(tempfile.mkdtemp(prefix="wp130-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.root = self.tmp / "root"
+        self.root.mkdir()
+        self.repo = self.tmp / "repo"
+        self.repo.mkdir()
+        scratch_repo(self.repo)
+        (self.repo / "evidence" / "r").mkdir(parents=True)
+        (self.repo / "evidence" / "r" / "run.json").write_text('{"run_id": "r"}\n')
+        (self.repo / "README").write_text("top level\n")
+        self.git("add", "-A")
+        self.git("-c", "user.name=t", "-c", "user.email=t@t.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "evidence")
+
+    def git(self, *args, cwd=None):
+        import subprocess
+        return subprocess.run(["git", *args], cwd=cwd or self.repo, check=True, capture_output=True, text=True).stdout
+
+    def listed(self):
+        return [pathlib.Path(l[len("worktree "):]).resolve() for l in self.git("worktree", "list", "--porcelain").splitlines()
+                if l.startswith("worktree ")]
+
+    def add_wt(self, tmpdir):
+        tmpdir.mkdir(parents=True)
+        self.git("worktree", "add", "-q", "--detach", str(tmpdir / "wt"), "HEAD")
+        return tmpdir / "wt"
+
+    def main(self, repo=None):
+        """main() on one tooling mutant with run_killers stubbed; returns what each killer run saw
+        of its worktree."""
+        seen = []
+
+        def killers(wt, env, target, ks, early_exit=False):
+            seen.append({"evidence": (wt / "evidence").exists(), "files": {f: (wt / f).exists() for f in self.FILES},
+                         "mutated": (wt / "tools/c.py").read_text(), "locked": lock_held(wt.parent / "lock")})
+            return [], {k: "PASS" for k in ks}
+
+        missing = object()
+        names = ("REPO", "MUTANTS", "EXPECT", "run_killers", "all_cases", "suite_of", "needs_release", "TMP_ROOT")
+        orig = {n: getattr(mutants, n, missing) for n in names}
+        argv, tempdir = sys.argv, tempfile.tempdir
+        mutants.REPO = repo or self.repo
+        mutants.MUTANTS = [("M996", "tools/c.py", "clean", "mutated", ["TST-HOST"], "synthetic")]
+        mutants.EXPECT = {}
+        mutants.run_killers = killers
+        mutants.all_cases = lambda target: []
+        mutants.suite_of = lambda target, tid: None
+        mutants.needs_release = lambda target, ks: False
+        mutants.TMP_ROOT = self.root
+        tempfile.tempdir = str(self.root)  # the run's temporary directory is the test's, before and after the change
+        sys.argv = ["mutants.py", "--report", "build/r.json"]
+        try:
+            mutants.main()
+        finally:
+            for n, v in orig.items():
+                if v is missing:
+                    delattr(mutants, n)
+                else:
+                    setattr(mutants, n, v)
+            sys.argv, tempfile.tempdir = argv, tempdir
+        return seen
+
+    def test_the_worktree_holds_every_tree_but_evidence_and_the_run_holds_its_lock(self):
+        seen = self.main()
+        self.assertEqual(len(seen), 1)
+        self.assertFalse(seen[0]["evidence"], "the run's worktree holds evidence/")
+        self.assertEqual(seen[0]["files"], {f: True for f in self.FILES})
+        self.assertEqual(seen[0]["mutated"], "mutated\n")
+        self.assertTrue(seen[0]["locked"], "no live lock while the run's killers run")
+        self.assertEqual((self.repo / "evidence" / "r" / "run.json").read_text(), '{"run_id": "r"}\n')
+        self.assertEqual(self.git("status", "--porcelain", "--untracked-files=no"), "")
+        self.assertEqual(list(self.root.iterdir()), [])
+        self.assertEqual(self.listed(), [self.repo])
+
+    def test_a_dead_runs_worktree_is_removed_at_the_next_start(self):
+        import shutil
+        old = self.add_wt(self.root / "nawah-mutants-old")
+        (old.parent / "lock").write_text("")  # a lock no live run holds
+        (old.parent / "scratch-evidence" / "R1").mkdir(parents=True)
+        gone = self.add_wt(self.root / "nawah-mutants-gone")
+        shutil.rmtree(gone.parent)  # its directory deleted, its registration left
+        self.main()
+        self.assertEqual(list(self.root.iterdir()), [])
+        self.assertEqual(self.listed(), [self.repo])
+
+    def test_a_live_runs_worktree_and_foreign_worktrees_stay(self):
+        import fcntl
+        import shutil
+        live = self.add_wt(self.root / "nawah-mutants-live")
+        review = self.add_wt(self.root / "review-1")  # under the root, without the prefix
+        other = self.add_wt(self.tmp / "other" / "nawah-mutants-x")  # the prefix, under another root
+        lost = self.add_wt(self.root / "review-lost")  # foreign, its directory gone: no prune for it
+        shutil.rmtree(lost.parent)
+        with open(live.parent / "lock", "w") as f:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self.main()
+            listed = self.listed()
+        for wt in (live, review, other, lost):
+            self.assertIn(wt, listed)
+        for wt in (live, review, other):
+            self.assertEqual((wt / "tools" / "c.py").read_text(), "clean\n", wt)
+
+    def test_a_failing_worktree_add_leaves_nothing(self):
+        import subprocess
+        empty = self.tmp / "empty"
+        empty.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=empty, check=True)  # no commit: HEAD names nothing
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.main(repo=empty)
+        self.assertEqual(list(self.root.iterdir()), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

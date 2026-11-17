@@ -18,7 +18,9 @@ ratio.
 Each mutant is one deliberate defect (a textual patch that must match exactly once). The runner
 works in a detached git worktree of HEAD so the real checkout, its build/ directory and the
 evidence records are never touched: evidence of the mutant runs goes to a scratch directory
-(NAWAH_SCRATCH_EVIDENCE) and tools/project.py attaches nothing in that mode.
+(NAWAH_SCRATCH_EVIDENCE) and tools/project.py attaches nothing in that mode. The worktree holds
+every top-level tree of HEAD but evidence/, and a worktree a killed run left is removed at the
+next start (WP-130).
 
 For each mutant: apply, build only the artifacts its killer tests need, run those tests
 (`project.py boot` for TST-M1-BOOT, `project.py test --only` for every other case). A mutant is
@@ -32,7 +34,16 @@ type-checks them on the host target (what this sandbox can do without the UEFI t
 import argparse, json, os, re, subprocess, sys, tempfile, time, shutil
 from pathlib import Path
 
+try:
+    import fcntl
+except ImportError:  # no flock off POSIX: every lock reads held, so no worktree is ever removed
+    fcntl = None
+
 REPO = Path(__file__).resolve().parents[1]
+# Where a run makes its temporary directory (`nawah-mutants-*`, holding the worktree `wt`, the
+# scratch evidence and the run's lock); only there are the leftovers of a killed run removed.
+TMP_ROOT = Path(tempfile.gettempdir())
+PREFIX = "nawah-mutants-"
 THRESHOLD = 0.95
 # Every gate the harness knows (argparse --stage); each must have a HOST_SUITES gate suite that
 # mutants.yml runs (TST-M0-005 GateMapping, WP-90).
@@ -1192,6 +1203,21 @@ MUTANTS = [
      "            need = Rights(need.0 | Rights::WRITE.0 | Rights::READ.0);\n",
      "            need = Rights(need.0 | Rights::WRITE.0);\n",
      ["TST-M3-VMO-MAP-RIGHTS"], "SECURITY: a handle with MAP and WRITE and no READ maps the object for writing and reads its bytes through that mapping (K-3): the line carries write_noread=mapped and leak=1, TST-M3-VMO-MAP-RIGHTS FAIL (seen locally)"),
+    # M282..M286 (WP-130, RSK-038): this harness's own worktree and the removal of a killed run's
+    # leftovers, killed by TST-M0-005's EvidenceFreeWorktree cases. Each new text keeps its old
+    # text inside it and each anchor below is split in two literals, so TST-M0-005's anchor guard
+    # still finds every anchor once in the mutated harness: the kill is those cases' alone.
+    ("M282", "tests/mutants.py", 'n != "evi' 'dence"', 'n != "evi' 'dence" or n',
+     ["TST-M0-005"], "the run's worktree checks evidence/ out with every other tree (11 GB on disk on 2026-11-15)"),
+    ("M283", "tests/mutants.py", "\n    remove_stale_" "worktrees()", "\n    remove_stale_" "worktrees() if False else None",
+     ["TST-M0-005"], "a killed run's worktree and temporary directory are never removed at the next start"),
+    ("M284", "tests/mutants.py", 'if lock_held(tmp / "lo' 'ck")', 'if lock_held(tmp / "lo' 'ck") and False',
+     ["TST-M0-005"], "the removal at start ignores the lock and removes the worktree of a run that is still alive"),
+    ("M285", "tests/mutants.py", "tmp.parent.resolve() != root or not tmp.name.starts" "with(PREFIX)",
+     "False and (tmp.parent.resolve() != root or not tmp.name.starts" "with(PREFIX))",
+     ["TST-M0-005"], "the removal at start takes every linked worktree of the repository, outside the harness's root and prefix too"),
+    ("M286", "tests/mutants.py", 'lock = hold_lock(tmp / "lo' 'ck")', 'lock = hold_lock(tmp / "lo' 'ck"); lock.close()',
+     ["TST-M0-005"], "a run lets its lock go at once, so another run's start removes its worktree while it runs"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1837,6 +1863,66 @@ def gate_verdict(report) -> bool:
                 and not report.get("expect_errors"))
 
 
+def add_worktree(wt: Path) -> None:
+    """The run's worktree of HEAD with every top-level tree but evidence/ (WP-130, RSK-038): no
+    killer reads evidence/ (each writes to the scratch evidence), and a full checkout of it took
+    11 GB on disk on 2026-11-15. The index of the worktree lists evidence/ as deleted; reset()
+    looks at the trees a mutant may touch only."""
+    subprocess.run(["git", "worktree", "add", "-q", "--detach", "--no-checkout", str(wt), "HEAD"], cwd=REPO, check=True)
+    names = subprocess.run(["git", "ls-tree", "-z", "--name-only", "HEAD"], cwd=wt, check=True,
+                           capture_output=True, text=True).stdout.split("\0")
+    subprocess.run(["git", "checkout", "-q", "HEAD", "--"] + [n for n in names if n and n != "evidence"], cwd=wt, check=True)
+
+
+def hold_lock(path: Path):
+    """The run's lock, held until the file is closed or the process dies (the kernel releases a
+    flock on SIGKILL too, when no cleanup of the run's own runs)."""
+    f = open(path, "w")
+    if fcntl is not None:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    return f
+
+
+def lock_held(path: Path) -> bool:
+    """Whether a live run holds the lock at `path`; a missing lock file is no live run's. Without
+    flock every lock reads held."""
+    if fcntl is None:
+        return True
+    try:
+        f = open(path, "rb")
+    except OSError:
+        return False
+    with f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return True
+        return False
+
+
+def remove_stale_worktrees() -> list:
+    """At start, the leftovers of a run killed before its cleanup (WP-130, RSK-038): every linked
+    worktree git lists for REPO at <TMP_ROOT>/nawah-mutants-*/<name>, whose run's lock no live run
+    holds, is removed with its temporary directory (`git worktree remove --force` also drops the
+    registration of one whose directory is gone, so no `git worktree prune` runs). Any other
+    worktree stays."""
+    out = subprocess.run(["git", "worktree", "list", "--porcelain"], cwd=REPO, capture_output=True, text=True).stdout
+    paths = [Path(l[len("worktree "):]) for l in out.splitlines() if l.startswith("worktree ")][1:]
+    root = Path(TMP_ROOT).resolve()
+    removed = []
+    for p in paths:
+        tmp = p.parent
+        if tmp.parent.resolve() != root or not tmp.name.startswith(PREFIX):
+            continue
+        if lock_held(tmp / "lock"):
+            continue
+        subprocess.run(["git", "worktree", "remove", "--force", str(p)], cwd=REPO, capture_output=True)
+        shutil.rmtree(tmp, ignore_errors=True)
+        removed.append(p)
+        print(f"removed the worktree of a stopped run: {p}")
+    return removed
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--target", default="pc-qemu")
@@ -1846,11 +1932,11 @@ def main():
     ap.add_argument("--check", action="store_true", help="apply/revert each patch and cargo check on the host target only")
     a = ap.parse_args()
     mutants = [m for m in MUTANTS if (not a.only or m[0] in a.only.split(",")) and (not a.stage or stage_of(m[0]) == a.stage)]
-    tmp = Path(tempfile.mkdtemp(prefix="nawah-mutants-"))
+    remove_stale_worktrees()
+    tmp = Path(tempfile.mkdtemp(prefix=PREFIX, dir=TMP_ROOT))
+    lock = hold_lock(tmp / "lock")
     wt = tmp / "wt"
     scratch = tmp / "scratch-evidence"
-    scratch.mkdir()
-    subprocess.run(["git", "worktree", "add", "-q", "--detach", str(wt), "HEAD"], cwd=REPO, check=True)
     report = {"threshold": THRESHOLD, "target": a.target, "mutants": [], "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     bad_expect = expect_errors()
     for e in bad_expect:
@@ -1858,6 +1944,8 @@ def main():
     if bad_expect:
         report["expect_errors"] = bad_expect
     try:
+        scratch.mkdir()
+        add_worktree(wt)
         env = harness_env(os.environ, wt, scratch)
         env.setdefault("RUSTUP_TOOLCHAIN", os.environ.get("RUSTUP_TOOLCHAIN", ""))
         if not env["RUSTUP_TOOLCHAIN"]:
@@ -1964,10 +2052,12 @@ def main():
             _write_report(a.report, report)
     finally:
         try:
-            reset(wt)
+            if wt.exists():
+                reset(wt)
         finally:
             subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=REPO)
-        shutil.rmtree(tmp, ignore_errors=True)
+            shutil.rmtree(tmp, ignore_errors=True)
+            lock.close()
     # An invalid mutant (anchor gone, does not compile or build) with EXPECT never showed its
     # declared kill (red team B3): expected_missed on every path that marks it invalid, so a
     # non-SECURITY one cannot leave its expectation unjudged while the ratio passes.
