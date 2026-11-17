@@ -1186,6 +1186,12 @@ MUTANTS = [
      "        if file.first == 1 || file.first >= self.clusters + 2 {\n",
      "        if (file.first == 1 || file.first >= self.clusters + 2) && offset <= file.size {\n",
      ["TST-M3-FAT32-BAD-FIRST"], "a write call whose offset is past the stored size, on an entry whose first cluster is 1, is answered by the range error instead of the corrupt-volume error; no disk write either way: the line carries one_past=K_E_FS_RANGE, TST-M3-FAT32-BAD-FIRST FAIL (seen locally)"),
+    # M281 (SECURITY, WP-149, RSK-040, syscall.md v1.14): vmo_map asks READ for a mapping for
+    # writing too, since a writable page on x86 is readable (K-3); the READ is dropped again.
+    ("M281", "kernel/src/syscall/mod.rs",
+     "            need = Rights(need.0 | Rights::WRITE.0 | Rights::READ.0);\n",
+     "            need = Rights(need.0 | Rights::WRITE.0);\n",
+     ["TST-M3-VMO-MAP-RIGHTS"], "SECURITY: a handle with MAP and WRITE and no READ maps the object for writing and reads its bytes through that mapping (K-3): the line carries write_noread=mapped and leak=1, TST-M3-VMO-MAP-RIGHTS FAIL (seen locally)"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1455,7 +1461,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M275",
             # WP-147 (RSK-033): a write call on a stored first cluster of 1 is refused before any
             # disk write (M276). M277, the end's test, only changes the empty write's answer.
-            "M276"}
+            "M276",
+            # WP-149 (RSK-040, K-3): a mapping for writing needs READ too (M281).
+            "M281"}
 
 
 def security_of(mid: str) -> bool:
@@ -1653,6 +1661,7 @@ _JUDGED = "|ktest|fail|a boot sector was not judged as expected"
 _UNREFUSED = "|ktest|fail|a write on an entry whose first cluster is no cluster of the volume was not refused before any disk write"
 _LAST = "|ktest|fail|an empty write on an entry whose first cluster is the volume's last was not answered 0 with no disk write"
 _PAST = "|ktest|fail|a write past the stored size on an entry whose first cluster is 1 was not answered by the corrupt-volume error with no disk write"
+_K3 = "|ktest|fail|a handle without READ was not refused a mapping for writing with ERR_ACCESS"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -1690,6 +1699,8 @@ EXPECT = {
     "M278": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|past_end_empty=0|", _UNREFUSED]},
     "M279": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|last_empty=K_E_FS_CORRUPT|", _LAST]},
     "M280": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|one_past=K_E_FS_RANGE|", _PAST]},
+    # WP-149: the case's one line; the failure is the kernel's own.
+    "M281": {"TST-M3-VMO-MAP-RIGHTS": ["exit 37", "|write_noread=mapped|", "|leak=1|", _K3]},
 }
 
 

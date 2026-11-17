@@ -134,6 +134,7 @@ pub fn run() -> ! {
         "user_sleep" => user_sleep(),
         "ipc_roundtrip" => user_program_case("ipc_roundtrip", user_programs::ipc_roundtrip(), 0x1C),
         "rights_denied" => user_program_case("rights_denied", user_programs::rights_denied(), 0x2D),
+        "vmo_map_rights" => vmo_map_rights(),
         "closed_handle" => user_program_case("closed_handle", user_programs::closed_handle(), 0x3E),
         "oversize_rejected" => {
             user_program_case("oversize_rejected", user_programs::oversize(), 0x4F)
@@ -368,6 +369,64 @@ fn user_program_case(name: &str, program: &[u8], expected_exit: u64) -> ! {
             fail("could not run the ring-3 program")
         }
     }
+}
+
+/// vmo_map's rights (WP-149, K-3, TST-M3-VMO-MAP-RIGHTS): a writable page on x86 is
+/// readable, so a mapping for writing needs READ as well as WRITE and MAP. The ring-3 program
+/// packs each answer into its exit code (user_programs.rs); one line names them.
+fn vmo_map_rights() -> ! {
+    let o = match crate::user::run(user_programs::vmo_map_rights()) {
+        Ok(o) => o,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|vmo_map_rights|error={}", BUILD_ID, e.code());
+            fail("could not run the ring-3 program")
+        }
+    };
+    if o.exit_code >> 32 != 0xA5 {
+        kprintln!(
+            "OSX|{}|ktest|vmo_map_rights|setup_step={:#x}|frames_delta={}",
+            BUILD_ID,
+            o.exit_code,
+            o.frames_delta
+        );
+        fail("the vmo_map rights program stopped before its mappings")
+    }
+    let answer = |shift: u32| match i64::from((o.exit_code >> shift) as u8 as i8) {
+        0 => "mapped",
+        crate::syscall::ERR_ACCESS => "ERR_ACCESS",
+        crate::syscall::ERR_INVALID => "ERR_INVALID",
+        crate::syscall::ERR_BAD_HANDLE => "ERR_BAD_HANDLE",
+        crate::syscall::ERR_WRONG_TYPE => "ERR_WRONG_TYPE",
+        crate::syscall::ERR_NO_RESOURCES => "ERR_NO_RESOURCES",
+        _ => "other",
+    };
+    let (write_read, write_noread, read_noread) = (answer(0), answer(8), answer(16));
+    let leak = (o.exit_code >> 24) & 0xFF;
+    kprintln!(
+        "OSX|{}|ktest|vmo_map_rights|write_noread={}|read_noread={}|write_read={}|leak={}|frames_delta={}",
+        BUILD_ID,
+        write_noread,
+        read_noread,
+        write_read,
+        leak,
+        o.frames_delta
+    );
+    if write_noread != "ERR_ACCESS" {
+        fail("a handle without READ was not refused a mapping for writing with ERR_ACCESS")
+    }
+    if read_noread != "ERR_ACCESS" {
+        fail("a handle without READ was not refused a mapping for reading with ERR_ACCESS")
+    }
+    if leak != 0 {
+        fail("the object's bytes were read through a mapping of a handle without READ")
+    }
+    if write_read != "mapped" {
+        fail("a handle with MAP, READ and WRITE was not given a mapping for writing")
+    }
+    if o.frames_delta != 0 {
+        fail("frames leaked by the ring-3 run")
+    }
+    pass("vmo_map asks READ for a mapping for writing as for one for reading")
 }
 
 /// Two ring-3 programs: ping (result handed back through SYS_EXIT) and a trace message copied

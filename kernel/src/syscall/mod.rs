@@ -1328,8 +1328,9 @@ fn sys_display_map(h: Handle) -> Result<i64, i64> {
 
 /// `vmo_map(h, prot)` (v1.8, ipc.md §3): maps the VMO into the calling process at an address
 /// the kernel chooses; `prot` bit 0 read, bit 1 write, each needing the same right on the
-/// handle (plus MAP); never executable; a physical VMO is mapped uncacheable. Returns the
-/// address; `ERR_NO_RESOURCES` when the process's mapping budget or region is spent.
+/// handle (plus MAP), and write needs READ too (v1.14, WP-149): a writable page on x86 is
+/// readable. Never executable; a physical VMO is mapped uncacheable. Returns the address;
+/// `ERR_NO_RESOURCES` when the process's mapping budget or region is spent.
 fn sys_vmo_map(h: Handle, prot: u64) -> Result<i64, i64> {
     if prot == 0 || prot & !3 != 0 {
         return Err(ERR_INVALID);
@@ -1348,7 +1349,7 @@ fn sys_vmo_map(h: Handle, prot: u64) -> Result<i64, i64> {
             need = Rights(need.0 | Rights::READ.0);
         }
         if prot & 2 != 0 {
-            need = Rights(need.0 | Rights::WRITE.0);
+            need = Rights(need.0 | Rights::WRITE.0 | Rights::READ.0);
         }
         if !e.rights.contains(need) {
             return Err(ERR_ACCESS);

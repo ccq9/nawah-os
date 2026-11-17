@@ -1841,6 +1841,28 @@
         ]
       },
       {
+        "id": "TST-M3-VMO-MAP-RIGHTS",
+        "test_id": "TST-M3-VMO-MAP-RIGHTS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=vmo_map_rights"
+        ],
+        "oracle": "REQ-M3-005, WP-149 (K-3, RSK-040; syscall.md v1.14; mutant M281): a ring-3 program of the test kernel creates a 4 KiB VMO and two duplicates of its handle. Through MAP|READ|WRITE, vmo_map with prot 2 (write) maps and a pattern is written through the mapping (write_read=mapped). Through MAP|WRITE without READ, vmo_map with prot 2 answers ERR_ACCESS (write_noread), since a writable page on x86 is readable, and with prot 1 (read) answers ERR_ACCESS as before (read_noread); the pattern is read through no mapping of that handle (leak=0); no frame leaks; exit 33. Before WP-149, and under M281 (READ dropped for a mapping for writing), the line carried write_noread=mapped and leak=1 (seen locally). Not shown: prot 3 through that handle (refused by the read bit, by reading); a physical VMO from display_map without READ; a VMO handle received over a channel.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=vmo_map_rights",
+          "OSX|${BUILD_ID}|ktest|vmo_map_rights|write_noread=ERR_ACCESS|read_noread=ERR_ACCESS|write_read=mapped|leak=0|frames_delta=0",
+          "|ktest|pass|vmo_map asks READ for a mapping for writing as for one for reading"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ]
+      },
+      {
         "id": "TST-M3-CLOSED-HANDLE",
         "test_id": "TST-M3-CLOSED-HANDLE",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

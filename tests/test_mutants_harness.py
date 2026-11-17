@@ -884,5 +884,35 @@ class KillEvidence(unittest.TestCase):
                 self.assertIn("|" + x[1:].split("=")[0] + "=", line, f"{mid}: {x}")
                 self.assertNotIn(x, line, f"{mid}: {x} is the pinned value")
 
+    VMO = "TST-M3-VMO-MAP-RIGHTS"
+
+    def test_the_vmo_map_rights_expectation_is_pinned(self):
+        """WP-149 (K-3, RSK-040): M281 drops READ from what vmo_map asks for a mapping for
+        writing. It is a SECURITY mutant declared on TST-M3-VMO-MAP-RIGHTS alone by exit 37, the
+        kernel's own failure message (a failure in ktest.rs) and the two fields of the case's one
+        line that change, write_noread=mapped and leak=1, each in the pinned line with another
+        value; its anchor is the fix's own line in kernel/src/syscall/mod.rs."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.VMO)
+        line = next(m for m in case["required_markers"] if "|ktest|vmo_map_rights|" in m) + "|"
+        m = next(m for m in mutants.MUTANTS if m[0] == "M281")
+        self.assertEqual(m[1], "kernel/src/syscall/mod.rs")
+        self.assertEqual(m[4], [self.VMO])
+        self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+        self.assertIn("M281", mutants.SECURITY)
+        self.assertEqual(set(E.get("M281", {})), {self.VMO})
+        subs = E["M281"][self.VMO]
+        self.assertIn("exit 37", subs)
+        fails = [x for x in subs if x.startswith("|ktest|fail|")]
+        self.assertEqual(fails, [getattr(mutants, "_K3", None)])
+        self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src)
+        got = {x for x in subs if re.fullmatch(r"\|\w+=[^|]*\|", x)}
+        self.assertEqual(got, {"|write_noread=mapped|", "|leak=1|"})
+        for x in got:
+            self.assertIn("|" + x[1:].split("=")[0] + "=", line, x)
+            self.assertNotIn(x, line, f"{x} is the pinned value")
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

@@ -816,7 +816,8 @@
     "TST-M3-IPC-NO-LEAK",
     "TST-M3-HANDLE-TABLE",
     "TST-M3-BLOCK-WAKE",
-    "TST-M3-CHANNEL-CHAIN"
+    "TST-M3-CHANNEL-CHAIN",
+    "TST-M3-VMO-MAP-RIGHTS"
    ],
    "implementation_status": "partial",
    "evidence_refs": [
