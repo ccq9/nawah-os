@@ -842,5 +842,39 @@ class KillEvidence(unittest.TestCase):
         self.assertIn("|sector=total0|", after, "the sector after the last line is the first one whose data start is past its total")
 
 
+    BAD = "TST-M3-FAT32-BAD-FIRST"
+
+    def test_the_bad_first_expectations_are_pinned(self):
+        """WP-147: the guard of a write call on a stored first cluster that is no cluster of the
+        volume. M276 (no test for 1), M277 (no test for the end), M278 (the end's test one number
+        too high) and M279 (one number too low) are declared by exit 37, the kernel's own failure
+        message (a failure in ktest.rs) and the fields of the case's one line that differ from its
+        pinned line: each field is in that line with another value. M276 shows the five disk
+        writes, the write into /HELLO.TXT's cluster and the disk-full answer; M277 the empty
+        writes past the end, answered 0; M278 the empty write on the first number past the end
+        alone; M279 the empty write on the volume's last cluster number, refused."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.BAD)
+        line = next(m for m in case["required_markers"] if "|ktest|fat32_bad_first|" in m) + "|"
+        must = {"M276": {"|one_writes=5|", "|one_link=512|", "|one_link_writes=2|", "|hello_ok=0|",
+                         "|one_full=K_E_FS_DISK_FULL|", "|one_empty=0|"},
+                "M277": {"|past_end_empty=0|", "|far_empty=0|"},
+                "M278": {"|past_end_empty=0|"},
+                "M279": {"|last_empty=K_E_FS_CORRUPT|"}}
+        for mid, fields in must.items():
+            self.assertEqual(set(E.get(mid, {})), {self.BAD}, mid)
+            subs = E[mid][self.BAD]
+            self.assertIn("exit 37", subs, mid)
+            fails = [x for x in subs if x.startswith("|ktest|fail|")]
+            self.assertEqual(len(fails), 1, mid)
+            self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src, mid)
+            got = {x for x in subs if re.fullmatch(r"\|\w+=[^|]*\|", x)}
+            self.assertTrue(fields <= got, f"{mid}: {fields - got}")
+            for x in got:
+                self.assertIn("|" + x[1:].split("=")[0] + "=", line, f"{mid}: {x}")
+                self.assertNotIn(x, line, f"{mid}: {x} is the pinned value")
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

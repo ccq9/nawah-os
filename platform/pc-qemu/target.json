@@ -3230,6 +3230,50 @@
         ]
       },
       {
+        "id": "TST-M3-FAT32-BAD-FIRST",
+        "test_id": "TST-M3-FAT32-BAD-FIRST",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=fat32_bad_first"
+        ],
+        "oracle": "on the lab volume the case writes /BADF.TXT (1024 bytes, synced), then makes up its stored first cluster on the disk (a block write over its directory entry, at the sector the volume's data start, sectors per cluster and the entry's place give) and, for each value, opens the file anew, moves to 512 and makes one write call of 512 bytes and one of none through vfs::write, counting the disk writes each call asks for by the block layer's write counter, read just before and just after the call (the open, the move and the close are outside the count): one (first cluster 1, FAT entry 1 the end mark the format left), one_link (first cluster 1 with FAT entry 1 pointing at /HELLO.TXT's first cluster in both copies, then put back), one_full (first cluster 1 with the allocator's range ended by the test kernel's hook, so it sees no free cluster), past_end (the first number past the last cluster, 128994) and far (0x0FFFFFF0); each of the ten calls answers K_E_FS_CORRUPT with 0 disk writes (`<name>=K_E_FS_CORRUPT|<name>_writes=0|<name>_empty=K_E_FS_CORRUPT`, empty_writes=0); an empty write on the volume's last cluster number (128993) answers 0 with no disk write (last_empty=0|last_empty_writes=0), so the end's test is not one number too low; /HELLO.TXT reads back whole (hello_ok=1), the entry put back reads back the 1024 bytes (restored_ok=1), the sync succeeds (synced=1) and no open is left (live_files=0); on the final image fsck.fat -n and tools/fat32.py check find nothing and the expect finds /HELLO.TXT's bytes as built. Before WP-147 (seen locally) one asked for five disk writes (both FAT copies, the zeroing, both FSInfo sectors) before answering K_E_FS_CORRUPT and left a lost cluster, one_link wrote its 512 bytes into /HELLO.TXT's cluster and answered 512 with two disk writes (hello_ok=0), one_full answered K_E_FS_DISK_FULL, and every empty write answered 0; past_end and far with bytes were already refused before any disk write by the FAT read's bound. Under M276 (the guard without its test for 1) the line is that of before WP-147 for one, one_link and one_full; under M277 (without its test for the end) only past_end_empty=0 and far_empty=0 differ; under M278 (the end's test one number too high) only past_end_empty=0; under M279 (one number too low) only last_empty=K_E_FS_CORRUPT (all four seen locally). Not shown: a write call at another offset or of another length (by reading the guard stands before the offset and the length are looked at); a write of bytes on the volume's last cluster number; the read path (WP-148, RSK-046); a first cluster inside the volume but in another file's chain; an entry whose first cluster is 0 with a size above 0; a directory whose first cluster is 1; truncate and unlink of such an entry; a volume that is really full (the hook ends the allocator's range); the release kernel on such an entry (the case runs the test kernel; the guard is the same code in both, by reading).",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=fat32_bad_first",
+          "OSX|${BUILD_ID}|ktest|fat32_bad_first|one=K_E_FS_CORRUPT|one_writes=0|one_empty=K_E_FS_CORRUPT|one_link=K_E_FS_CORRUPT|one_link_writes=0|one_link_empty=K_E_FS_CORRUPT|hello_ok=1|one_full=K_E_FS_CORRUPT|one_full_writes=0|one_full_empty=K_E_FS_CORRUPT|past_end=K_E_FS_CORRUPT|past_end_writes=0|past_end_empty=K_E_FS_CORRUPT|far=K_E_FS_CORRUPT|far_writes=0|far_empty=K_E_FS_CORRUPT|last_empty=0|last_empty_writes=0|empty_writes=0|restored_ok=1|synced=1|live_files=0",
+          "|ktest|pass|a stored first cluster of 1 or past the volume's end is refused before any disk write"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector"
+        ],
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "expect",
+            "${DISK}",
+            "/HELLO.TXT",
+            "hello from the lab disk\\n"
+          ]
+        ]
+      },
+      {
         "id": "TST-M3-FILE-ROUNDTRIP",
         "test_id": "TST-M3-FILE-ROUNDTRIP",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

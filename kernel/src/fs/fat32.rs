@@ -768,6 +768,13 @@ impl Fat32 {
         if file.is_dir() {
             return Err(FsError::IsADirectory);
         }
+        // A stored first cluster that is no cluster of the volume (1, or at or past its end) is
+        // a damaged entry: every write call on it, the empty one included, is refused before
+        // the volume is asked anything, so no cluster is taken and no other file's chain is
+        // followed from FAT entry 1.
+        if file.first == 1 || file.first >= self.clusters + 2 {
+            return Err(FsError::Corrupt);
+        }
         if offset > file.size || data.len() as u64 + u64::from(offset) > u64::from(FILE_MAX) {
             return Err(FsError::Range);
         }

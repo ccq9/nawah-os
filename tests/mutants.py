@@ -1153,6 +1153,32 @@ MUTANTS = [
      "            || (clusters + 2) * 4 > u64::from(fat_sectors) * SECTOR as u64\n",
      "            || (clusters + 2) * 4 > u64::from(fat_sectors.wrapping_mul(SECTOR as u32))\n",
      ["TST-M3-FAT32-BPB"], "SECURITY (the bound's own arithmetic, kept in 64 bits like the others; the wrapped size is never above the real one, so the mutant refuses volumes it should take and lets none through): the FAT's size in bytes wraps 32 bits, so a well-formed volume whose FAT is 2^24 sectors (2^33 bytes, wrapping to 0) is refused: the line carries sector=big_fat|refused=K_E_FS_BAD_BPB and the last refused=27|accepted=6|wrong=1, TST-M3-FAT32-BPB FAIL (seen locally; the case as it was at 695c5b5f0, with no FAT larger than 2097152 sectors, passed under it)"),
+    # M276, M277 (WP-147, RSK-033): a write call on a stored first cluster that is no cluster of
+    # the volume (1, or at or past its end) is refused before any disk write. M276 (SECURITY): the
+    # guard without its test for 1.
+    ("M276", "kernel/src/fs/fat32.rs",
+     "        if file.first == 1 || file.first >= self.clusters + 2 {\n",
+     "        if file.first >= self.clusters + 2 {\n",
+     ["TST-M3-FAT32-BAD-FIRST"], "SECURITY: a write on an entry whose first cluster is 1 follows FAT entry 1: with the end mark the format left there it takes a cluster (five disk writes: both FAT copies, the zeroing, both FSInfo sectors) before it answers K_E_FS_CORRUPT, leaving the cluster lost; with entry 1 pointing at /HELLO.TXT's cluster it writes the bytes into that file and answers success; under a full volume it answers disk-full: the line carries one_writes=5, one_empty=0, one_link=512, one_link_writes=2, hello_ok=0 and one_full=K_E_FS_DISK_FULL, TST-M3-FAT32-BAD-FIRST FAIL (seen locally; the host checks then name a lost cluster and /HELLO.TXT's bytes)"),
+    # M277 (not SECURITY): the guard without its test for the end. A write of bytes on such an
+    # entry is still refused before any disk write, by the FAT read's own bound; only the empty
+    # write, which asks the volume nothing, answers 0.
+    ("M277", "kernel/src/fs/fat32.rs",
+     "        if file.first == 1 || file.first >= self.clusters + 2 {\n",
+     "        if file.first == 1 {\n",
+     ["TST-M3-FAT32-BAD-FIRST"], "an empty write on an entry whose first cluster lies past the volume's end answers 0 instead of K_E_FS_CORRUPT; nothing is written and nothing else changes: the line carries past_end_empty=0 and far_empty=0, TST-M3-FAT32-BAD-FIRST FAIL (seen locally)"),
+    # M278, M279 (not SECURITY): the end's test moved by one number. M278, one too high: the
+    # first number past the last cluster escapes the guard, and only its empty write shows it.
+    ("M278", "kernel/src/fs/fat32.rs",
+     "        if file.first == 1 || file.first >= self.clusters + 2 {\n",
+     "        if file.first == 1 || file.first > self.clusters + 2 {\n",
+     ["TST-M3-FAT32-BAD-FIRST"], "an empty write on an entry whose first cluster is the first number past the volume's last cluster answers 0 instead of K_E_FS_CORRUPT; its write of bytes is still refused before any disk write by the FAT read's own bound and nothing else changes: the line carries past_end_empty=0 with far_empty=K_E_FS_CORRUPT, TST-M3-FAT32-BAD-FIRST FAIL (seen locally)"),
+    # M279, one too low: the volume's last cluster number is refused as a first cluster. Written
+    # `> self.clusters`, the form of `>= self.clusters + 1` the lint accepts.
+    ("M279", "kernel/src/fs/fat32.rs",
+     "        if file.first == 1 || file.first >= self.clusters + 2 {\n",
+     "        if file.first == 1 || file.first > self.clusters {\n",
+     ["TST-M3-FAT32-BAD-FIRST"], "a write call on an entry whose first cluster is the volume's last cluster is refused: the case's empty write on that number answers K_E_FS_CORRUPT instead of 0, and the line carries last_empty=K_E_FS_CORRUPT, TST-M3-FAT32-BAD-FIRST FAIL (seen locally)"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1419,7 +1445,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # and the mount judges against its own device's capacity (M274).
             "M273", "M274",
             # from WP-106's close audit: the FAT's size in bytes in 64 bits (M275).
-            "M275"}
+            "M275",
+            # WP-147 (RSK-033): a write call on a stored first cluster of 1 is refused before any
+            # disk write (M276). M277, the end's test, only changes the empty write's answer.
+            "M276"}
 
 
 def security_of(mid: str) -> bool:
@@ -1614,6 +1643,8 @@ _NAMES = "|ktest|fail|after a create under the hook the two FAT copies do not li
 _FREE = "|ktest|fail|after a create under the hook the directory's chain along the second FAT copy stands on a cluster that is free there"
 _BPB = "|ktest|fat32_bpb|sector="
 _JUDGED = "|ktest|fail|a boot sector was not judged as expected"
+_UNREFUSED = "|ktest|fail|a write on an entry whose first cluster is no cluster of the volume was not refused before any disk write"
+_LAST = "|ktest|fail|an empty write on an entry whose first cluster is the volume's last was not answered 0 with no disk write"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -1644,6 +1675,12 @@ EXPECT = {
                                   "|ktest|fail|the mount did not answer a boot sector as its validation does"]},
     "M275": {"TST-M3-FAT32-BPB": ["exit 37", "|refused=27|", "|accepted=6|", "|wrong=1|",
                                   _BPB + "big_fat|refused=K_E_FS_BAD_BPB|mount=1", _JUDGED]},
+    # WP-147: the made-up entry's one line; the failure is the kernel's own.
+    "M276": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|one_writes=5|", "|one_empty=0|", "|one_link=512|",
+                                        "|one_link_writes=2|", "|hello_ok=0|", "|one_full=K_E_FS_DISK_FULL|", _UNREFUSED]},
+    "M277": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|past_end_empty=0|", "|far_empty=0|", _UNREFUSED]},
+    "M278": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|past_end_empty=0|", _UNREFUSED]},
+    "M279": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|last_empty=K_E_FS_CORRUPT|", _LAST]},
 }
 
 
