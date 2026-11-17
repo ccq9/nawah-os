@@ -1,0 +1,4 @@
+$ python3 -I tests/test_text.py Shaping
+references: fontTools 4.46.0; hb-shape (HarfBuzz) 8.3.0
+shaping letters: 4026/4026 equal to HarfBuzz
+shaping letters+marks: 300/300 equal to HarfBuzz
