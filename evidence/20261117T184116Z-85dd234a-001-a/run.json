@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261117T184116Z-85dd234a-001-a",
+ "started_at": "2026-11-17T18:41:16+00:00",
+ "finished_at": "2026-11-17T18:41:31+00:00",
+ "source_revision": "85dd234ac407c1ca9e4cff23a95b7040a9c47f2f",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M5-UI-UNIT",
+ "commands": [
+  "cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "44144327161",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "85dd234ac407c1ca9e4cff23a95b7040a9c47f2f",
+  "head_sha": "7380eac670cc99026f0227c5fa12b6aad5b5271f",
+  "ref": "refs/pull/23/merge"
+ }
+}
