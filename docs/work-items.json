@@ -9198,9 +9198,10 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -9227,7 +9228,8 @@
    "actions": [
     "K-3: نداء vmo_map يرفض تخطيطًا للكتابة بمقبض لا يحمل حق القراءة (DEC-032 B؛ RSK-040)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-17: registered on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand; first in the order of the method's section 7; test_ids name existing rights cases until this item's own case (TST-M3-VMO-MAP-RIGHTS) exists"
+    "2026-11-17: registered on the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand; first in the order of the method's section 7; test_ids name existing rights cases until this item's own case (TST-M3-VMO-MAP-RIGHTS) exists",
+    "2026-11-17 activation (the manager, under the method's section 7): first in the order. The defect by reading (kernel/src/syscall/mod.rs, sys_vmo_map): prot 2 asks MAP and WRITE only, and a writable page on x86 is readable, so a handle without READ reads the object. Design to confirm in the work: a mapping for writing also needs READ (x86 has no write-only page), the contract syscall.md says so in one short paragraph; every caller of vmo_map with write and the rights each holder is given are checked so no present user loses a mapping it needs. Test first: a case that maps through a handle with MAP and WRITE and no READ and reads through the mapping (today: mapped and the bytes read; after: ERR_ACCESS), then the fix, then a SECURITY mutant with its expectation. Estimate against the budget line (90 min or 120 tool calls): about 75 to 90 min with one review round and the local run of the suites the change touches (M3, M5, M6); split if the case needs a new ring-3 test application and the estimate passes the line"
    ],
    "acceptance": "vmo_map refuses a mapping for writing through a handle that lacks READ with the rights error, shown by a test-kernel case that fails before the fix, on CI; the rights cases PASS; the SECURITY mutant killed",
    "test_ids": [
