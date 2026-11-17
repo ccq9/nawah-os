@@ -9026,20 +9026,22 @@
     "python3 tools/project.py test --target pc-qemu --suite M3",
     "python3 tools/project.py test --target host --suite M3"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
    "id": "WP-147",
    "depends_on": [
-    "WP-106"
+    "WP-105"
    ],
    "inputs": [
     "split from WP-106 on 2026-11-17 by the budget rule, its clause word for word: the kernel engineer's reading of 2026-11-16 (read-only at 0e3f056f6, nothing run) put WP-106 whole at about 150 min and 140 calls",
     "by that reading (kernel/src/fs/fat32.rs, line numbers of 0e3f056f6): a stored entry whose first cluster is 1 and a write from offset 512 or more: chain_len(1) answers 0 (:396), next_cluster(1) reads FAT[1] (:789; fat_get's bound at :316 lets 1 through), and with FAT[1] an end mark a cluster is allocated: five disk writes (the mark in both copies, the zeroing, FSInfo twice) before fat_set(1, n) refuses with the corrupt-volume error (:332), one cluster lost; with FAT[1] a valid cluster number the write lands in another file's cluster and answers success (:811, :671); a first cluster past the volume's end is refused today before any disk write except for an empty write, which answers 0",
-    "from WP-121's auditor and red team (2026-11-15, by reading): the same finding, carried from WP-106's inputs"
+    "from WP-121's auditor and red team (2026-11-15, by reading): the same finding, carried from WP-106's inputs",
+    "2026-11-17: depends_on is WP-105, as the unsplit WP-106's was: the dependency on WP-106 written at the split was for the order alone; this item's change (a guard in the write path) does not rest on WP-106's (the mount's validation), and WP-106 is green on CI (run 44029427244) with its close waiting for the owner's ruling on the wording of one clause (DEC-038)"
    ],
    "files": [
     "kernel/src/fs/fat32.rs",
@@ -9059,7 +9061,8 @@
     "test first, red seen locally: a test-kernel case on a made-up entry (the entry's first cluster patched on the disk by a block write, the file reopened, a write from offset 512): the count of disk writes of the call must be 0 and the answer the corrupt-volume error, for 1 with FAT[1] an end mark, 1 with FAT[1] linked into another file (that file unchanged), 1 on a full volume, a cluster past the end, and the empty write of each; by reading today: five disk writes, success into another file's cluster, disk-full, and 0 for the empty writes; mutants: the guard without the test for 1 (SECURITY) and without the test for past the end",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-17 estimate: the engineer's reading: about 85 to 95 min with the full local run (release kernel code changes), at the line; sized again at activation",
-    "2026-11-17: test_ids name existing cases until this item's own case exists"
+    "2026-11-17: test_ids name existing cases until this item's own case exists",
+    "2026-11-17 activation estimate and design (the manager, from the kernel engineer's reading of 2026-11-16; an audit pass and a red-team pass before the single push). Activated while WP-106 is still active: WP-106 is green on CI and its close waits for the owner (DEC-038); the owner's order in the session was to go on without stopping, and this item is the other half of the same split, next in the plan's order; two items are active for that time and the record says so. Estimate: about 85 to 95 min with the full local run (the release kernel's write path changes), at the budget line (OS-EXEC-AR §2.3, line 44: 90 min or 120 calls); the record will say if it runs over. Design, by the engineer's reading: one guard in write, after the directory check and before the range and free-space checks: a stored first cluster of 1, or at or past the volume's end, answers the corrupt-volume error; an empty write too. Options weighed: (1) the guard in write alone: chosen, the acceptance speaks of a write call, and no disk read is added, so no pinned number of an existing case moves, by reading; (2) the bound in fat_get (a cluster below 2 is corrupt): wider, it changes every reader and belongs with the read path (WP-148); (3) refusing such an entry at lookup: it would hide the file from delete and from a checker. Test first: a test-kernel case on a made-up entry: a file's stored first cluster patched on the disk by a block write, the file reopened, a write from offset 512; the call's count of disk writes must be 0 and its answer the corrupt-volume error, for: 1 with FAT[1] an end mark; 1 with FAT[1] linked into another file's cluster (that file unchanged after); 1 on a full volume; a cluster just past the end and a far one; and the empty write of each; by reading, today: five disk writes then the error, a success that writes into the other file's cluster, the disk-full error, and 0 for the empty writes. Mutants from M276 (M269 is kept for DEC-032's fix): the guard without the test for 1 (SECURITY), and without the test for the end. The local run before the push is the FULL one. What the case will not show and its oracle must say: a read of such an entry (WP-148, RSK-046); a first cluster inside the volume but in another file's chain; an entry with cluster 0 and a size above 0; a directory whose first cluster is 1"
    ],
    "acceptance": "the storage cases PASS; a stored entry whose first cluster is 1 or lies past the volume's end is refused with the corrupt-volume error before any disk write of a write call, shown by a case on a made-up entry on CI, with its mutant",
    "test_ids": [
