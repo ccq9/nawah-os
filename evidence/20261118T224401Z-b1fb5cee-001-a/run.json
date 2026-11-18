@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261118T224401Z-b1fb5cee-001-a",
+ "started_at": "2026-11-18T22:44:01+00:00",
+ "finished_at": "2026-11-18T22:44:02+00:00",
+ "source_revision": "b1fb5cee3f70a9221f6b821e3fa3d715a7280aef",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1014-aws",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M5-UI-TOOL",
+ "commands": [
+  "python3 -I tests/test_transcript_tool.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "44410971985",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "b1fb5cee3f70a9221f6b821e3fa3d715a7280aef",
+  "head_sha": "8261dd75dc53f9d092e59d6469c21983aad98f4e",
+  "ref": "refs/pull/23/merge"
+ }
+}
