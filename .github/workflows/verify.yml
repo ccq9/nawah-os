@@ -42,24 +42,29 @@ jobs:
         # runs hit the job's 40-min limit; on 2026-10-26 (20:38-21:11) `apt-get install` hit its
         # limit four times in two runs. Packages are fetched before they are installed (a second
         # try keeps what the first fetched), from Canonical's archive when the runner's mirror
-        # fails twice; each try gets 5 min (apt also drops a stalled connection after 60 s) and
-        # leaves an annotation with its exit code and how much it fetched; the step ends by 15 min
+        # fails twice; each try names its limit and leaves an annotation with its exit code and
+        # how much it fetched (apt also drops a stalled connection after 60 s). A try of the
+        # runner's mirror gets 100 s, so at worst 440 s pass before the fallback and it keeps half
+        # the cap; the fallback, the install and rustup keep 5 min. The fallback turns every
+        # regional *.archive.ubuntu.com host into archive.ubuntu.com: the EC2 runners' mirror is
+        # us-east-2.ec2.archive.ubuntu.com, which the former Azure-only rewrite left in place, and
+        # five shard jobs hit the cap (WP-152, run 44218469147; FallbackMirror). The step ends by 15 min
         # (WP-74, 2026-11-10: 12 -> 15; the step measured 11m12s on run 42754423494 against the 12-min cap
         # set that day (WP-64) from a 56 s measurement; 15 is a hang guard, not the bound of its retry loops,
         # and the job limit 55 -> 58 keeps the 20 % margin over the step caps 15+18+15).
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
             echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
-            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+            sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
           fi
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
-          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
-          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry 300 rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry 300 rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; cargo --version
           hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
@@ -188,17 +193,17 @@ jobs:
         # Job a's step, run text and cap (its comment says why).
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
             echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
-            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+            sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
           fi
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
-          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
-          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry 300 rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry 300 rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; cargo --version
           hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
@@ -235,17 +240,17 @@ jobs:
         # Job a's step, run text and cap (its comment says why).
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
             echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
-            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+            sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
           fi
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
-          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
-          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry 300 rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry 300 rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; cargo --version
           hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
@@ -280,17 +285,17 @@ jobs:
         # Job a's step, run text and cap (its comment says why).
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
             echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
-            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+            sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
           fi
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
-          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
-          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry 300 rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry 300 rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; cargo --version
           hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
@@ -325,17 +330,17 @@ jobs:
         # Job a's step, run text and cap (its comment says why).
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
             echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
-            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+            sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
           fi
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
-          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
-          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry 300 rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry 300 rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; cargo --version
           hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
@@ -370,17 +375,17 @@ jobs:
         # Job a's step, run text and cap (its comment says why).
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
             echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
-            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+            sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
           fi
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
-          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
-          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry 300 rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry 300 rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; cargo --version
           hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
@@ -415,17 +420,17 @@ jobs:
         # Job a's step, run text and cap (its comment says why).
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
             echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
-            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+            sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
           fi
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
-          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
-          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry 300 rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry 300 rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
           rustup run 1.97.0 rustc --version; cargo --version
           hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
@@ -469,15 +474,15 @@ jobs:
       - name: Toolchain (Python modules of the validator)
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml; then
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml; then
             echo "::warning title=Toolchain::the runner's mirror failed twice; fetching from archive.ubuntu.com"
-            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml
+            sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml
           fi
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq python3-jsonschema python3-yaml
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq python3-jsonschema python3-yaml
           python3 -c "import jsonschema, yaml; print('jsonschema', jsonschema.__version__)"
       # This run's shard reports alone (no run-id, no token), all into the directory the merge reads.
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
@@ -524,15 +529,15 @@ jobs:
       - name: Toolchain (Python modules of the validator)
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml; then
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml; then
             echo "::warning title=Toolchain::the runner's mirror failed twice; fetching from archive.ubuntu.com"
-            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml
+            sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml
           fi
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq python3-jsonschema python3-yaml
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq python3-jsonschema python3-yaml
           python3 -c "import jsonschema, yaml; print('jsonschema', jsonschema.__version__)"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:

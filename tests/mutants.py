@@ -1287,6 +1287,21 @@ MUTANTS = [
     # M304 (WP-152, L-023): the run's own record of the shard count it ran under.
     ("M304", "tools/project.py", "    if shards is not None", "    if shards is not None and False",
      ["TST-M0-007"], "a run written under NAWAH_GATE_SHARDS no longer says so in run.json: job g's TST-M6-MUTANTS evidence reads as a whole run of the gate"),
+    # M305..M308 (WP-152's follow-up, verify run 44218469147): the Toolchain step's fallback mirror and
+    # the runner mirror's budget, in mutants.yml where each anchor is once (verify.yml repeats the
+    # step in nine jobs, a and the shards under one identity check); TST-M0-003 (FallbackMirror).
+    ("M305", ".github/workflows/mutants.yml",
+     "sudo sed -i 's#://[a-z0-9.-]*\\.archive\\.ubuntu\\.com/#://archive.ubuntu.com/#g' ",
+     "sudo sed -i 's#http://azure\\.archive\\.ubuntu\\.com/#http://archive.ubuntu.com/#' ",
+     ["TST-M0-003"], "the fallback rewrites the Azure mirror alone: on the EC2 runners it changes nothing and retries the same slow mirror"),
+    ("M306", ".github/workflows/mutants.yml", "/etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true", "2>/dev/null || true",
+     ["TST-M0-003"], "the fallback's rewrite edits apt-mirrors.txt alone, so a mirror named in ubuntu.sources stays"),
+    ("M307", ".github/workflows/mutants.yml", "if ! retry 100 sudo", "if ! retry 300 sudo",
+     ["TST-M0-003"], "the runner's mirror gets 300 s tries again: the fallback starts after the step's cap is half gone"),
+    ("M308", ".github/workflows/mutants.yml",
+     "retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only",
+     "retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only",
+     ["TST-M0-003"], "the fallback's fetch gets 100 s tries: a slow download from archive.ubuntu.com dies before it ends"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",

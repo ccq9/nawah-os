@@ -12,6 +12,7 @@ through `LOAD_BUDGET_TICKS` = 10_000, never a literal (WP-82)."""
 import json
 import re
 import os
+import shlex
 import shutil
 import pathlib
 import subprocess
@@ -46,6 +47,54 @@ GATE_SHARDS = "NAWAH_GATE_SHARDS"
 
 def gate_case():
     return next(c for c in project.HOST_SUITES["M6-GATE"] if c["id"] == "TST-M6-MUTANTS")
+
+
+# A Toolchain step's retry(): two or more tries of a command, each under `timeout`, a pause after a
+# failed one. Its per-try limit is its own (`timeout 300 "$@"`) or the first argument of each call
+# (`t=$1; shift; … timeout "$t" "$@"`, then `retry 100 cmd …`).
+RETRY_DEF = re.compile(r'retry\(\) \{ (t=\$1; shift; )?for i in ([\d ]+); do (?:s=\$SECONDS; )?timeout (\d+|"\$t") [^}]*sleep (\d+)')
+
+
+def toolchain_steps():
+    """(workflow, job, step) of every Toolchain step of verify.yml and mutants.yml."""
+    for name in ("verify.yml", "mutants.yml"):
+        for job, body in load(name)["jobs"].items():
+            for s in body["steps"]:
+                if str(s.get("name", "")).startswith("Toolchain"):
+                    yield name, job, s
+
+
+def retry_plan(run):
+    """(attempts, pause, calls) of a Toolchain step's run text, calls as (line index, per-try limit
+    or None when the call names none, command), or None when retry() is not in RETRY_DEF's form."""
+    m = RETRY_DEF.search(run)
+    if not m or (m.group(3) == '"$t"') != bool(m.group(1)):
+        return None
+    fixed = None if m.group(3) == '"$t"' else int(m.group(3))
+    calls = []
+    for i, line in enumerate(l.strip() for l in run.splitlines()):
+        c = re.fullmatch(r"(?:if ! )?retry (.+)", line)
+        if not c:
+            continue
+        n = re.fullmatch(r"(\d+) (.+)", c.group(1)) if fixed is None else None
+        calls.append((i, fixed if fixed is not None else (int(n.group(1)) if n else None), n.group(2) if n else c.group(1)))
+    return len(m.group(2).split()), int(m.group(4)), calls
+
+
+def mirror_rewrite(run):
+    """The fallback's mirror rewrite of a Toolchain step as (sed options and expression, the files
+    it edits): its one `sed` line, `sudo` and the trailing redirection or `|| true` dropped."""
+    lines = [l.strip() for l in run.splitlines() if re.match(r"(sudo )?sed ", l.strip())]
+    if len(lines) != 1:
+        return None
+    argv = []
+    for tok in shlex.split(lines[0]):
+        if tok in ("||", "&&", ";") or tok.startswith("2>"):
+            break
+        argv.append(tok)
+    argv = argv[1:] if argv[0] == "sudo" else argv
+    files = [t for t in argv[1:] if t.startswith("/")]
+    return argv[1:len(argv) - len(files)], files
 
 
 def shard_command(k, n):
@@ -186,20 +235,17 @@ class Workflows(unittest.TestCase):
                 self.assertLessEqual(step.get("timeout-minutes", 10**6), 15,
                                      f"{name}: {job}: the Toolchain step has no short limit")
                 run = step["run"]
-                self.assertRegex(run, r"retry\(\) \{[^}]*timeout \d+ ",
-                                 f"{name}: {job}: no retry with a per-attempt timeout")
-                # Run 40362082749's healthy Toolchain step took 5 minutes; in run 40367178852 a
-                # 240 s attempt limit killed one download three times and failed the job. An
-                # attempt must outlast a slow download, all attempts must end inside the step's
-                # limit, and each failed attempt leaves an annotation (the logs may be
-                # unreadable, the check-run annotations are not).
-                m = re.search(r"retry\(\) \{ for i in ([\d ]+); do (?:s=\$SECONDS; )?timeout (\d+) [^}]*sleep (\d+)", run)
-                self.assertIsNotNone(m, f"{name}: {job}: retry() not in the expected form")
-                attempts, limit, pause = len(m.group(1).split()), int(m.group(2)), int(m.group(3))
-                self.assertGreaterEqual(limit, 300, f"{name}: {job}: an attempt dies before a slow download ends")
+                # All attempts of a call end inside the step's limit, and each failed attempt
+                # leaves an annotation (the logs may be unreadable, the check-run annotations are
+                # not). How long one attempt may be is the budget case's (FallbackMirror).
+                plan = retry_plan(run)
+                self.assertIsNotNone(plan, f"{name}: {job}: no retry() with a per-attempt timeout in the expected form")
+                attempts, pause, calls = plan
                 self.assertGreaterEqual(attempts, 2, f"{name}: {job}: no second attempt")
-                self.assertLessEqual(attempts * limit + (attempts - 1) * pause, step["timeout-minutes"] * 60,
-                                     f"{name}: {job}: the attempts outlast the step")
+                for _, limit, cmd in calls:
+                    self.assertIsNotNone(limit, f"{name}: {job}: a call names no per-attempt limit: {cmd}")
+                    self.assertLessEqual(attempts * limit + (attempts - 1) * pause, step["timeout-minutes"] * 60,
+                                         f"{name}: {job}: the attempts outlast the step: {cmd}")
                 self.assertIn("::warning", run, f"{name}: {job}: a failed attempt leaves no annotation")
                 for line in (l.strip() for l in run.splitlines()):
                     if any(d in line for d in downloads) and not line.startswith("retry() {"):
@@ -233,6 +279,93 @@ class Workflows(unittest.TestCase):
         push = [l for l in step["run"].splitlines() if " push " in l]
         self.assertEqual(len(push), 1)
         self.assertRegex(push[0], r" push (-q )?(-f|--force) ", "a re-run cannot replace the evidence branch")
+
+
+class FallbackMirror(unittest.TestCase):
+    """WP-152's follow-up (verify run 44218469147 on 172ba7707, both attempts): on the EC2 runners
+    the runner's mirror is a regional host, http://us-east-2.ec2.archive.ubuntu.com/ubuntu/
+    (priority 1 in /etc/apt/apt-mirrors.txt, the check-run annotations of shard-6), and two 300 s
+    fetches from it ended rc=124 with 80 and 88 packages; the fallback's rewrite matched the Azure
+    mirror alone, changed nothing, and the step hit its 15-min cap in five shard jobs. Every
+    Toolchain step's rewrite, applied for real with sed to copies of both mirror files, turns every
+    regional *.archive.ubuntu.com host into archive.ubuntu.com and leaves every other host alone;
+    and the runner's mirror is given at most half of the step's cap in the worst case, so the
+    fallback has the other half."""
+
+    MIRRORS = ("http://us-east-2.ec2.archive.ubuntu.com/ubuntu/\tpriority:1\n"
+               "http://azure.archive.ubuntu.com/ubuntu/\tpriority:2\n"
+               "http://eu-west-1.ec2.archive.ubuntu.com/ubuntu/\tpriority:3\n"
+               "http://de.archive.ubuntu.com/ubuntu/\tpriority:4\n"
+               "https://archive.ubuntu.com/ubuntu/\tpriority:5\n"
+               "https://security.ubuntu.com/ubuntu/\tpriority:6\n"
+               "https://packages.microsoft.com/ubuntu/24.04/prod\tpriority:7\n")
+    SOURCES = ("## See http://help.ubuntu.com/community/UpgradeNotes for how to upgrade.\n"
+               "Types: deb\nURIs: mirror+file:/etc/apt/apt-mirrors.txt\nSuites: noble noble-updates noble-backports\n"
+               "Components: main universe restricted multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n\n"
+               "Types: deb\nURIs: http://us-east-2.ec2.archive.ubuntu.com/ubuntu/ http://azure.archive.ubuntu.com/ubuntu/\n"
+               "Suites: noble\nComponents: main\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n\n"
+               "Types: deb\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble-updates\nComponents: main\n\n"
+               "Types: deb\nURIs: http://security.ubuntu.com/ubuntu\nSuites: noble-security\nComponents: main\n\n"
+               "Types: deb\nURIs: https://packages.microsoft.com/ubuntu/24.04/prod\nSuites: noble\nComponents: main\n")
+    FILES = ("/etc/apt/apt-mirrors.txt", "/etc/apt/sources.list.d/ubuntu.sources")
+    REGIONAL = re.compile(r"://[a-z0-9-]+(?:\.[a-z0-9-]+)*\.archive\.ubuntu\.com/")
+
+    def test_the_fallback_rewrites_every_regional_mirror_and_nothing_else(self):
+        steps = list(toolchain_steps())
+        self.assertGreaterEqual(len(steps), 10, "a, the six shards, g, merge and mutants.yml's job")
+        for name, job, step in steps:
+            where = f"{name}: {job}"
+            rewrite = mirror_rewrite(step["run"])
+            self.assertIsNotNone(rewrite, f"{where}: not one sed line in the fallback")
+            args, files = rewrite
+            self.assertEqual(files, list(self.FILES), f"{where}: the rewrite does not edit both mirror files")
+            self.assertIn("-i", args, f"{where}: the rewrite does not edit in place")
+            with tempfile.TemporaryDirectory() as tmp:
+                copies = []
+                for f, text in zip(self.FILES, (self.MIRRORS, self.SOURCES)):
+                    copy = pathlib.Path(tmp) / pathlib.PurePosixPath(f).name
+                    copy.write_text(text, encoding="utf-8")
+                    copies.append(copy)
+                r = subprocess.run(["sed", *args, *map(str, copies)], capture_output=True, text=True)
+                self.assertEqual(r.returncode, 0, f"{where}: sed {args}: {r.stderr}")
+                for copy, text in zip(copies, (self.MIRRORS, self.SOURCES)):
+                    got = copy.read_text(encoding="utf-8")
+                    self.assertNotRegex(got, self.REGIONAL, f"{where}: a regional host is left in {copy.name}")
+                    # Each regional host becomes archive.ubuntu.com, scheme and path kept; every
+                    # other line (archive.ubuntu.com itself, security.ubuntu.com,
+                    # packages.microsoft.com, the comment, mirror+file:) stays byte for byte.
+                    self.assertEqual(got, self.REGIONAL.sub("://archive.ubuntu.com/", text), f"{where}: {copy.name}")
+
+    def test_the_runner_mirror_leaves_the_fallback_half_the_step(self):
+        for name, job, step in toolchain_steps():
+            where = f"{name}: {job}"
+            run = step["run"]
+            plan = retry_plan(run)
+            self.assertIsNotNone(plan, f"{where}: retry() not in the expected form")
+            attempts, pause, calls = plan
+            lines = [l.strip() for l in run.splitlines()]
+            at = [i for i, l in enumerate(lines) if re.match(r"(sudo )?sed ", l)]
+            self.assertEqual(len(at), 1, f"{where}: not one mirror rewrite")
+            before = [c for c in calls if c[0] < at[0]]
+            self.assertTrue(before, f"{where}: the runner's mirror is not tried first")
+            # Worst case before the fallback starts: every try of the runner's mirror (the update
+            # and the fetch) runs to its limit and is followed by its pause.
+            worst = sum(attempts * ((limit or 0) + pause) for _, limit, _ in before)
+            self.assertLessEqual(worst, step["timeout-minutes"] * 60 / 2,
+                                 f"{where}: the runner's mirror may take {worst} s of the step's {step['timeout-minutes'] * 60}")
+            for i, limit, cmd in calls:
+                self.assertIsNotNone(limit, f"{where}: a call names no per-attempt limit: {cmd}")
+                if i < at[0]:
+                    # A try of the runner's mirror may be short (what it fetched stays in the cache
+                    # for the next try and the fallback), but longer than apt's own stall timeout,
+                    # so apt drops a stalled connection and retries inside one try.
+                    stall = re.search(r"Acquire::http::Timeout=(\d+)", cmd)
+                    self.assertTrue(stall and limit > int(stall.group(1)), f"{where}: {limit} s: {cmd}")
+                else:
+                    # Run 40362082749's healthy Toolchain step took 5 minutes; in run 40367178852 a
+                    # 240 s attempt limit killed one download three times and failed the job: the
+                    # fallback, the installation and rustup keep tries that outlast a slow download.
+                    self.assertGreaterEqual(limit, 300, f"{where}: an attempt dies before a slow download ends: {cmd}")
 
 
 class Suites(unittest.TestCase):

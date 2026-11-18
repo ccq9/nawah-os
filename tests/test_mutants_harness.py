@@ -1496,6 +1496,24 @@ class WorkflowShardMutants(unittest.TestCase):
         self.assertEqual(set(self.IDS) & mutants.SECURITY, {"M302"})
         self.assertIn("M189", mutants.SECURITY)
 
+    def test_the_fallback_mirror_mutants_are_registered(self):
+        # WP-152's follow-up (verify run 44218469147): the Toolchain step's fallback mirror and the
+        # runner mirror's budget, mutated in mutants.yml, where each anchor is once (verify.yml
+        # repeats the step in nine jobs): the Azure-only rewrite back (M305), a rewrite that edits
+        # apt-mirrors.txt alone (M306), 300 s tries of the runner's mirror again (M307) and a
+        # fallback fetch whose try dies before a slow download ends (M308); TST-M0-003 kills them.
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        text = (ROOT / ".github" / "workflows" / "mutants.yml").read_text(encoding="utf-8")
+        for mid in ("M305", "M306", "M307", "M308"):
+            self.assertIn(mid, by_id, f"{mid} is not registered")
+            m = by_id[mid]
+            self.assertEqual((m[1], m[4], mutants.stage_of(mid)), (".github/workflows/mutants.yml", ["TST-M0-003"], "M6"), mid)
+            self.assertTrue(mutants.is_tooling(m[1]), mid)
+            self.assertEqual(text.count(m[2]), 1, f"{mid}: its anchor is not once in mutants.yml")
+            self.assertNotEqual(m[2], m[3], mid)
+            self.assertNotIn(mid, mutants.SECURITY)
+        self.assertIn("azure", by_id["M305"][3])
+
     def test_the_run_json_record_of_the_shard_count_is_mutated(self):
         # L-023 (WP-152): M304 drops the note write_run adds under NAWAH_GATE_SHARDS, so job g's
         # run.json of TST-M6-MUTANTS would read as a whole run of the gate; TST-M0-007 kills it.
