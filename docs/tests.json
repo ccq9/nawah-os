@@ -12,7 +12,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061054Z-ce36fd2e-001-a"
+    "evidence/20261118T120128Z-48c4a57f-001"
    ]
   },
   {
@@ -26,7 +26,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061055Z-ce36fd2e-001-a"
+    "evidence/20261118T120128Z-48c4a57f-002"
    ]
   },
   {
@@ -39,7 +39,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061056Z-ce36fd2e-001-a"
+    "evidence/20261118T120129Z-48c4a57f-001"
    ]
   },
   {
@@ -52,7 +52,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061105Z-ce36fd2e-001-a"
+    "evidence/20261118T120135Z-48c4a57f-001"
    ]
   },
   {
@@ -65,7 +65,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061106Z-ce36fd2e-001-a"
+    "evidence/20261118T120136Z-48c4a57f-001"
    ]
   },
   {
@@ -104,7 +104,7 @@
    "command": "python3 tools/project.py build --target pc-qemu",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T055706Z-ce36fd2e-001-a"
+    "evidence/20261118T085633Z-48c4a57f-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload"
   },
@@ -118,7 +118,7 @@
    "command": "python3 tools/project.py test --target pc-qemu --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T055737Z-ce36fd2e-001-a"
+    "evidence/20261118T085701Z-48c4a57f-001"
    ],
    "verdict_reason": "logical inference from the runner: step 'M1 build + guest suite' (tools/project.py build + test --suite M1, nonzero exit on any FAIL) concluded success on commit 8faf343 (CI run 39091622750); local evidence dir pending rust-std upload",
    "oracle_notes": [
@@ -135,7 +135,7 @@
    "command": "python3 tools/project.py test --target host --suite M1",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061120Z-ce36fd2e-001-a"
+    "evidence/20261118T120144Z-48c4a57f-001"
    ]
   },
   {
@@ -474,7 +474,7 @@
    "command": "python3 tools/project.py test --target host --suite M2  (mutants workflow)",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T223908Z-2cbdeaad-001"
+    "evidence/20261118T085706Z-48c4a57f-001"
    ],
    "stale_policy": "warn"
   },
@@ -919,7 +919,7 @@
    "command": "python3 tools/project.py test --target host --suite M3-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T230914Z-2cbdeaad-001"
+    "evidence/20261118T092531Z-48c4a57f-001"
    ],
    "stale_policy": "warn"
   },
@@ -1221,7 +1221,7 @@
    "command": "python3 tools/project.py test --target host --suite M3",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061121Z-ce36fd2e-001-a"
+    "evidence/20261118T120145Z-48c4a57f-001"
    ]
   },
   {
@@ -1312,7 +1312,7 @@
    "command": "python3 tools/project.py test --target host --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061150Z-ce36fd2e-001-a"
+    "evidence/20261118T120209Z-48c4a57f-001"
    ]
   },
   {
@@ -1585,7 +1585,7 @@
    "command": "python3 tools/project.py test --target host --suite M4-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261108T233109Z-2cbdeaad-001"
+    "evidence/20261118T094615Z-48c4a57f-001"
    ],
    "stale_policy": "warn"
   },
@@ -1612,7 +1612,7 @@
    "command": "python3 tools/project.py test --target host --suite M4",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061156Z-ce36fd2e-001-a"
+    "evidence/20261118T120214Z-48c4a57f-001"
    ]
   },
   {
@@ -1678,7 +1678,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061201Z-ce36fd2e-001-a"
+    "evidence/20261118T120218Z-48c4a57f-001"
    ]
   },
   {
@@ -1743,7 +1743,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061319Z-ce36fd2e-001-a"
+    "evidence/20261118T120312Z-48c4a57f-002"
    ]
   },
   {
@@ -1756,7 +1756,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061251Z-ce36fd2e-001-a"
+    "evidence/20261118T120308Z-48c4a57f-001"
    ]
   },
   {
@@ -1769,7 +1769,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061256Z-ce36fd2e-001-a"
+    "evidence/20261118T120308Z-48c4a57f-002"
    ]
   },
   {
@@ -1782,7 +1782,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061303Z-ce36fd2e-001-a"
+    "evidence/20261118T120309Z-48c4a57f-001"
    ]
   },
   {
@@ -1835,7 +1835,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061306Z-ce36fd2e-001-a"
+    "evidence/20261118T120311Z-48c4a57f-001"
    ]
   },
   {
@@ -1848,7 +1848,7 @@
    "command": "python3 tools/project.py test --target host --suite M5",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061318Z-ce36fd2e-001-a"
+    "evidence/20261118T120312Z-48c4a57f-001"
    ]
   },
   {
@@ -2022,7 +2022,7 @@
    "command": "python3 tools/project.py test --target host --suite M5-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261109T000029Z-2cbdeaad-001"
+    "evidence/20261118T101348Z-48c4a57f-001"
    ],
    "stale_policy": "warn"
   },
@@ -2367,7 +2367,7 @@
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061322Z-ce36fd2e-002-a"
+    "evidence/20261118T120314Z-48c4a57f-003"
    ],
    "oracle_notes": [
     "2026-11-15 (WP-100): the planned oracle (WP-47's, before the split) replaced by the case's source in tools/project.py HOST_SUITES[\"M6\"]; every class it named (over-long fields, bad ids, a missing ELF path, duplicate ids, non-UTF-8 names, no panic, the well-formed examples exactly) is kept, and the source adds the named errors of apps.md v1.",
@@ -2439,7 +2439,7 @@
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061320Z-ce36fd2e-002-a"
+    "evidence/20261118T120313Z-48c4a57f-002"
    ]
   },
   {
@@ -2452,7 +2452,7 @@
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061321Z-ce36fd2e-001-a"
+    "evidence/20261118T120314Z-48c4a57f-001"
    ]
   },
   {
@@ -2476,7 +2476,7 @@
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061322Z-ce36fd2e-001-a"
+    "evidence/20261118T120314Z-48c4a57f-002"
    ]
   },
   {
@@ -3022,7 +3022,7 @@
    "command": "python3 tools/project.py test --target host --suite M6-GATE",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061121Z-ce36fd2e-001-g"
+    "evidence/20261118T105642Z-48c4a57f-001"
    ]
   },
   {
@@ -3035,7 +3035,7 @@
    "command": "python3 tools/project.py test --target host --suite M6",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061320Z-ce36fd2e-001-a"
+    "evidence/20261118T120313Z-48c4a57f-001"
    ]
   },
   {
@@ -3138,7 +3138,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261118T061115Z-ce36fd2e-001-a"
+    "evidence/20261118T120142Z-48c4a57f-001"
    ]
   },
   {
