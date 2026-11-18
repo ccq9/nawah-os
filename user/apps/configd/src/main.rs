@@ -257,18 +257,43 @@ enum Access {
     Denied,
 }
 
+const REPLY_INVALID: &[u8] = b"ERR INVALID";
+const REPLY_ACCESS: &[u8] = b"ERR ACCESS";
+
+/// The uid a `user/<uid>` store name carries, when it is one a store may have (config.md §1).
+fn user_uid(name: &[u8]) -> Option<u32> {
+    let uid = parse_u64(name.strip_prefix(b"user/")?)?;
+    (uid != 0 && uid <= u64::from(UID_MAX_PERSISTENT)).then_some(uid as u32)
+}
+
 impl State {
+    /// The store a modifying request names. A user store that is not loaded is created only
+    /// for a token that may modify it, decided from the name before any slot is taken, so a
+    /// refused request leaves no store behind (config.md v1.4, WP-157). ERR INVALID for a name
+    /// that is no store, or when no slot is free; ERR ACCESS for a token that may not modify it.
+    fn store_for_write(&mut self, name: &[u8], token: &TokenInfo) -> Result<usize, &'static [u8]> {
+        let create =
+            user_uid(name).is_some_and(|uid| token.perms & perm::ADMIN != 0 || uid == token.uid);
+        let Some(i) = self.store_index(name, create) else {
+            return Err(if create || user_uid(name).is_none() {
+                REPLY_INVALID
+            } else {
+                REPLY_ACCESS
+            });
+        };
+        match self.access(i, token) {
+            Access::Ok => Ok(i),
+            Access::Denied => Err(REPLY_ACCESS),
+        }
+    }
+
     fn store_index(&mut self, name: &[u8], create_user: bool) -> Option<usize> {
         match name {
             b"device" => Some(DEVICE),
             b"policy" => Some(POLICY),
             b"session" => Some(SESSION),
             _ => {
-                let uid = parse_u64(name.strip_prefix(b"user/")?)?;
-                if uid == 0 || uid > u64::from(UID_MAX_PERSISTENT) {
-                    return None;
-                }
-                let uid = uid as u32;
+                let uid = user_uid(name)?;
                 if let Some(i) = (3..STORES).find(|&i| self.stores[i].uid == uid) {
                     return Some(i);
                 }
@@ -613,14 +638,13 @@ impl State {
                     out.put(b"ERR INVALID");
                     return Some(rid);
                 }
-                let Some(i) = self.store_index(store, true) else {
-                    out.put(b"ERR INVALID");
-                    return Some(rid);
+                let i = match self.store_for_write(store, &token) {
+                    Ok(i) => i,
+                    Err(reply) => {
+                        out.put(reply);
+                        return Some(rid);
+                    }
                 };
-                if let Access::Denied = self.access(i, &token) {
-                    out.put(b"ERR ACCESS");
-                    return Some(rid);
-                }
                 self.modify(i, key, expected, value, token.uid, out);
                 Some(rid)
             }
@@ -664,7 +688,7 @@ impl State {
                     out.put(b"ERR BAD_REQUEST");
                     return None;
                 };
-                match self.store_index(store, true) {
+                match self.store_index(store, false) {
                     Some(i) => match self.stores[i].subs.iter().position(|s| *s == 0) {
                         Some(slot) => {
                             // The subscription takes the handle: the caller does not close it.
@@ -675,6 +699,9 @@ impl State {
                         }
                         None => out.put(b"ERR FULL"),
                     },
+                    // A subscriber shows no token, so it never creates a user store: one that
+                    // is not loaded is not found, as for GET and EXPORT (config.md v1.4, WP-157).
+                    None if user_uid(store).is_some() => out.put(b"ERR NOT_FOUND"),
                     None => out.put(b"ERR INVALID"),
                 }
                 None
@@ -722,14 +749,13 @@ impl State {
                     });
                     return Some(rid);
                 };
-                let Some(i) = self.store_index(store, true) else {
-                    out.put(b"ERR INVALID");
-                    return Some(rid);
+                let i = match self.store_for_write(store, &token) {
+                    Ok(i) => i,
+                    Err(reply) => {
+                        out.put(reply);
+                        return Some(rid);
+                    }
                 };
-                if let Access::Denied = self.access(i, &token) {
-                    out.put(b"ERR ACCESS");
-                    return Some(rid);
-                }
                 // Validate every line first; then apply all.
                 let body = match req.iter().position(|c| *c == b'\n') {
                     Some(p) => &req[p + 1..],

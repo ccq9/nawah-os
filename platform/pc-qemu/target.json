@@ -4030,6 +4030,46 @@
         ]
       },
       {
+        "id": "TST-M4-CONFIG-STORE-AUTHZ",
+        "test_id": "TST-M4-CONFIG-STORE-AUTHZ",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=config_store_authz"
+        ],
+        "oracle": "a request that is refused, or that shows no token, takes no user-store slot (config.md v1.4, WP-157): with the lab user's token (uid 1001), SET user/3001 and IMPORT user/3002 answer ERR ACCESS and EXPORT of each store answers ERR NOT_FOUND (no store was created); eight SUBSCRIBE user/2001 to user/2008, each with a channel end and no token, answer ERR NOT_FOUND (none answers OK), and SUBSCRIBE user/0 and user/10000, uids no store may carry, answer ERR INVALID; then SET user/1001 with the user's token answers OK 1 and SUBSCRIBE user/1001 answers OK; SET user/3001 with the administrator's token answers OK 1 (ADMIN may create the store the user was refused), and the user's SET on that store, now loaded, answers ERR ACCESS and EXPORT still lists `k 1 v`; the administrator's SET on user/3002 to user/3007 fills the eight slots (six OK 1), SET user/3008 then answers ERR INVALID (no free slot for a token that may create) and the user's SET on his loaded store answers OK 2; configd's live handle count, read while it lives, grew by one, the kept subscription; clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=config_store_authz",
+          "|ktest|config_store_authz|set_other=ERR ACCESS|other_export=ERR NOT_FOUND|import_other=ERR ACCESS|import_export=ERR NOT_FOUND|subs_ok=0|subs_not_found=8|own_set=OK 1|own_sub=OK|admin_set=OK 1|cfg_grew=1|",
+          "|ktest|config_store_authz|more|sub_zero=ERR INVALID|sub_big=ERR INVALID|loaded_other=ERR ACCESS|loaded_kept=1|filled=6|full_set=ERR INVALID|own_again=OK 2|",
+          "|ktest|config_store_authz|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|config_store_authz|frames_delta=0",
+          "|ktest|pass|a refused or token-less request takes no user store, and the user's own store is his"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
         "id": "TST-M4-CONFIG-NOTIFY",
         "test_id": "TST-M4-CONFIG-NOTIFY",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

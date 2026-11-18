@@ -206,6 +206,7 @@ pub fn run() -> ! {
         "config_cas" => config_cas(),
         "config_retry" => config_retry(),
         "config_notify" => config_notify(),
+        "config_store_authz" => config_store_authz(),
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
@@ -6639,6 +6640,133 @@ fn config_notify() -> ! {
         "config_notify",
         frames0,
         "subscribers hear every successful change of their store and nothing else",
+    )
+}
+
+/// TST-M4-CONFIG-STORE-AUTHZ (REQ-M4-004, config.md v1.4, WP-157; RSK-028): a request that is
+/// refused, or that shows no token, takes no user-store slot. The user's SET and IMPORT on the
+/// stores of other uids are refused and leave no store behind (EXPORT finds none); eight
+/// SUBSCRIBE to eight more user stores, each carrying a channel end and no token, find no
+/// store, and two with a uid no store may carry (0 and 10000) are invalid; then the user's own
+/// SET is accepted (with the eight slots free) and his own store, now loaded, can be subscribed
+/// to; an administrator's SET creates the store the user was refused, and the user's SET on
+/// that store, now loaded, is refused and changes nothing. Last the administrator fills the
+/// eight slots: a ninth store is ERR INVALID and the user's loaded store still takes his SET.
+/// configd's live handle count grew by the one subscription.
+fn config_store_authz() -> ! {
+    let env = cfg_env("config_store_authz");
+    let frames0 = {
+        let ep = &env.cfg;
+        let u = token_entry(&env.user);
+        let a = token_entry(&env.admin);
+        let end = |s: Arc<Endpoint>| Entry {
+            object: Object::Channel(s),
+            rights: Rights::CHANNEL_DEFAULT,
+        };
+        let h0 = cfg_handles();
+        let set_other = cfg_request(ep, b"SET user/3001 k 0 801 v", Some(u.clone()));
+        let other_export = cfg_request(ep, b"EXPORT user/3001", None);
+        let import_other = cfg_request(ep, b"IMPORT user/3002 802\nk v", Some(u.clone()));
+        let import_export = cfg_request(ep, b"EXPORT user/3002", None);
+        let (mut subs_ok, mut subs_not_found) = (0, 0);
+        let mut kept = Vec::new();
+        for k in 1..=8 {
+            let (mine, theirs) = channel::create();
+            let req = alloc::format!("SUBSCRIBE user/200{}", k);
+            match cfg_request(ep, req.as_bytes(), Some(end(theirs))).as_str() {
+                "OK" => subs_ok += 1,
+                "ERR NOT_FOUND" => subs_not_found += 1,
+                _ => {}
+            }
+            kept.push(mine);
+        }
+        // A uid no store may carry is no store name (config.md §1: 1 to 9999).
+        let (zero_k, zero_s) = channel::create();
+        let sub_zero = cfg_request(ep, b"SUBSCRIBE user/0", Some(end(zero_s)));
+        let (big_k, big_s) = channel::create();
+        let sub_big = cfg_request(ep, b"SUBSCRIBE user/10000", Some(end(big_s)));
+        let own_set = cfg_request(ep, b"SET user/1001 wp.k 0 803 v", Some(u.clone()));
+        let (own_k, own_s) = channel::create();
+        let own_sub = cfg_request(ep, b"SUBSCRIBE user/1001", Some(end(own_s)));
+        // ADMIN may modify any user's store (config.md §1): the store the user was refused.
+        let admin_set = cfg_request(ep, b"SET user/3001 k 0 804 v", Some(a.clone()));
+        // That store is loaded now: the user is refused by the store's own check.
+        let loaded_other = cfg_request(ep, b"SET user/3001 k 1 805 x", Some(u.clone()));
+        let loaded_kept = cfg_request(ep, b"EXPORT user/3001", None) == "OK\nk 1 v";
+        // The administrator fills the eight slots (1001, 3001 and six more).
+        let mut filled = 0;
+        for k in 2..=7 {
+            let req = alloc::format!("SET user/300{} k 0 {} v", k, 804 + k);
+            if cfg_request(ep, req.as_bytes(), Some(a.clone())) == "OK 1" {
+                filled += 1;
+            }
+        }
+        let full_set = cfg_request(ep, b"SET user/3008 k 0 812 v", Some(a));
+        let own_again = cfg_request(ep, b"SET user/1001 wp.k 1 813 w", Some(u));
+        let h1 = cfg_handles();
+        kprintln!(
+            "OSX|{}|ktest|config_store_authz|set_other={}|other_export={}|import_other={}|import_export={}|subs_ok={}|subs_not_found={}|own_set={}|own_sub={}|admin_set={}|cfg_grew={}|base={}",
+            BUILD_ID,
+            set_other,
+            other_export,
+            import_other,
+            import_export,
+            subs_ok,
+            subs_not_found,
+            own_set,
+            own_sub,
+            admin_set,
+            h1 - h0,
+            h0
+        );
+        kprintln!(
+            "OSX|{}|ktest|config_store_authz|more|sub_zero={}|sub_big={}|loaded_other={}|loaded_kept={}|filled={}|full_set={}|own_again={}|",
+            BUILD_ID,
+            sub_zero,
+            sub_big,
+            loaded_other,
+            loaded_kept as u8,
+            filled,
+            full_set,
+            own_again
+        );
+        if h0 < 0 {
+            fail("configd's live handle count could not be read")
+        }
+        if set_other != "ERR ACCESS" || import_other != "ERR ACCESS" {
+            fail("a write on another user's store was not refused")
+        }
+        if other_export != "ERR NOT_FOUND" || import_export != "ERR NOT_FOUND" {
+            fail("a refused write left a user store behind")
+        }
+        if subs_ok != 0 || subs_not_found != 8 {
+            fail("a subscriber without a token took a user store")
+        }
+        if sub_zero != "ERR INVALID" || sub_big != "ERR INVALID" {
+            fail("a name that is no user store was not answered ERR INVALID")
+        }
+        if own_set != "OK 1" || own_sub != "OK" {
+            fail("the user's own store was refused")
+        }
+        if admin_set != "OK 1" {
+            fail("an administrator was refused a user's store")
+        }
+        if loaded_other != "ERR ACCESS" || !loaded_kept {
+            fail("a write on another user's loaded store was not refused")
+        }
+        if filled != 6 || full_set != "ERR INVALID" || own_again != "OK 2" {
+            fail("a full table of user stores was not answered as the contract says")
+        }
+        if h1 - h0 != 1 {
+            fail("configd kept a handle of a request it refused")
+        }
+        drop((kept, zero_k, big_k, own_k));
+        cfg_close(env, "config_store_authz")
+    };
+    cfg_balance(
+        "config_store_authz",
+        frames0,
+        "a refused or token-less request takes no user store, and the user's own store is his",
     )
 }
 

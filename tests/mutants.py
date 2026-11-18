@@ -1352,6 +1352,47 @@ MUTANTS = [
      "                            if libnawah::channel_write(c, b\"OK\", &[client]) != 0 {\n                                libnawah::handle_close(client);\n                            }\n",
      "                            libnawah::channel_write(c, b\"OK\", &[client]);\n",
      ["TST-M4-SVC-CONNECT-NOREAD"], "SECURITY: the manager ignores that it could not write a service's CONNECT reply and keeps the client end, so a requester that never reads fills the manager's table and takes the target's client slots"),
+    # M325, M326 (WP-157, RSK-028; config.md v1.4): a user store is created only for a token that
+    # may modify it, judged from the name before a slot is taken, and never by SUBSCRIBE, which
+    # shows no token. M325 creates it for any modifying request, so a refused SET or IMPORT leaves
+    # the store loaded; M326 creates it for a subscriber, so eight of them take the eight slots
+    # and the user's own SET is refused. TST-M4-CONFIG-STORE-AUTHZ reads both.
+    ("M325", "user/apps/configd/src/main.rs",
+     "        let Some(i) = self.store_index(name, create) else {\n",
+     "        let Some(i) = self.store_index(name, true) else {\n",
+     ["TST-M4-CONFIG-STORE-AUTHZ"], "SECURITY: configd creates the user store a modifying request names before it judges the token, so a refused SET or IMPORT leaves a store loaded and eight of them take every user-store slot"),
+    ("M326", "user/apps/configd/src/main.rs",
+     "                match self.store_index(store, false) {\n                    Some(i) => match self.stores[i].subs.iter().position(|s| *s == 0) {\n",
+     "                match self.store_index(store, true) {\n                    Some(i) => match self.stores[i].subs.iter().position(|s| *s == 0) {\n",
+     ["TST-M4-CONFIG-STORE-AUTHZ"], "SECURITY: SUBSCRIBE, which shows no token, creates the user store it names, so eight subscribers take every user-store slot and a real user's SET is refused"),
+    # M327 (WP-157): ADMIN is among the tokens a user store is created for (config.md §1). Not a
+    # hole: without it an administrator is refused a store that is not loaded.
+    ("M327", "user/apps/configd/src/main.rs",
+     "            user_uid(name).is_some_and(|uid| token.perms & perm::ADMIN != 0 || uid == token.uid);\n",
+     "            user_uid(name).is_some_and(|uid| uid == token.uid);\n",
+     ["TST-M4-CONFIG-STORE-AUTHZ"], "an administrator's SET on a user store that is not loaded is refused: the store is created for the user's own token alone"),
+    # M328..M331 (WP-157's review round). M328: the check of a loaded user store, which the
+    # refusals above no longer reach (a store that is not loaded is refused before it): without
+    # it any token modifies another user's loaded store. M329, M330: the bounds of the uid a store
+    # name may carry (1 to 9999): with 0 a subscriber is given an empty slot, and above the bound
+    # the name is taken for a store. M331: no free slot for a token that may create is
+    # ERR INVALID (config.md v1.4), not the refusal's ERR ACCESS.
+    ("M328", "user/apps/configd/src/main.rs",
+     "            _ => admin || self.stores[i].uid == token.uid,\n",
+     "            _ => true,\n",
+     ["TST-M4-CONFIG-STORE-AUTHZ"], "SECURITY: configd lets any valid token modify a loaded user store, so one user overwrites another user's settings"),
+    ("M329", "user/apps/configd/src/main.rs",
+     "    (uid != 0 && uid <= u64::from(UID_MAX_PERSISTENT)).then_some(uid as u32)\n",
+     "    (uid <= u64::from(UID_MAX_PERSISTENT)).then_some(uid as u32)\n",
+     ["TST-M4-CONFIG-STORE-AUTHZ"], "user/0 names a store: a subscriber without a token is given an empty slot, whose subscription the next creation drops without closing its handle"),
+    ("M330", "user/apps/configd/src/main.rs",
+     "    (uid != 0 && uid <= u64::from(UID_MAX_PERSISTENT)).then_some(uid as u32)\n",
+     "    (uid != 0 && uid <= u64::from(UID_MAX_PERSISTENT) * 10).then_some(uid as u32)\n",
+     ["TST-M4-CONFIG-STORE-AUTHZ"], "a uid above 9999 names a user store, whose file name the volume's rule does not allow"),
+    ("M331", "user/apps/configd/src/main.rs",
+     "            return Err(if create || user_uid(name).is_none() {\n",
+     "            return Err(if user_uid(name).is_none() {\n",
+     ["TST-M4-CONFIG-STORE-AUTHZ"], "a token that may create a user store is answered ERR ACCESS when no slot is free, as if it were refused"),
     # M305..M308 (WP-152's follow-up, verify run 44218469147): the Toolchain step's fallback mirror and
     # the runner mirror's budget, in mutants.yml where each anchor is once (verify.yml repeats the
     # step in nine jobs, a and the shards under one identity check); TST-M0-003 (FallbackMirror).
@@ -1659,7 +1700,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M323",
             # WP-156 (RSK-028): the manager closes the client end of a connection whose reply
             # to the requesting service it could not write (services.md v1.13 note, M324).
-            "M324"}
+            "M324",
+            # WP-157 (RSK-028): configd creates a user store only for a token that may modify it
+            # (M325) and never for a subscriber, which shows none (M326; config.md v1.4); a loaded
+            # user store is modified by its own uid's token or ADMIN alone (M328).
+            "M325", "M326", "M328"}
 
 
 def security_of(mid: str) -> bool:
@@ -1860,6 +1905,12 @@ _PAST = "|ktest|fail|a write past the stored size on an entry whose first cluste
 _K3 = "|ktest|fail|a handle without READ was not refused a mapping for writing with ERR_ACCESS"
 _KEPT = "|ktest|fail|configd kept the handles its replayed requests carried"
 _HELD = "|ktest|fail|the manager kept the client ends whose CONNECT replies it could not write"
+_LEFT = "|ktest|fail|a refused write left a user store behind"
+_TOOK = "|ktest|fail|a subscriber without a token took a user store"
+_ADMIN = "|ktest|fail|an administrator was refused a user's store"
+_LOADED = "|ktest|fail|a write on another user's loaded store was not refused"
+_NONAME = "|ktest|fail|a name that is no user store was not answered ERR INVALID"
+_FULLTAB = "|ktest|fail|a full table of user stores was not answered as the contract says"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -1905,6 +1956,20 @@ EXPECT = {
     # WP-156: the case's one line: the three client ends stay with the manager and config keeps
     # their three slots.
     "M324": {"TST-M4-SVC-CONNECT-NOREAD": ["exit 37", "|mgr_grew=3|", "|cfg_grew=3|", _HELD]},
+    # WP-157: the case's one line. M325: the two refused writes leave their stores (EXPORT finds
+    # both). M326: the eight subscribers take the eight slots, so the user's own SET is refused.
+    # M327: the administrator's SET on the store the user was refused is refused too.
+    "M325": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|other_export=OK|", "|import_export=OK|", _LEFT]},
+    "M326": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|subs_ok=8|", "|subs_not_found=0|", "|own_set=ERR INVALID|", _TOOK]},
+    "M327": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|admin_set=ERR ACCESS|", _ADMIN]},
+    # The review round, the case's second line. M328: the user's SET on the loaded store is
+    # applied (version 2) and EXPORT no longer lists the administrator's value. M329: the
+    # subscriber to user/0 is accepted. M330: user/10000 is a store that is not loaded. M331: the
+    # ninth store is refused as if the administrator had no right.
+    "M328": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|loaded_other=OK 2|", "|loaded_kept=0|", _LOADED]},
+    "M329": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|sub_zero=OK|", _NONAME]},
+    "M330": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|sub_big=ERR NOT_FOUND|", _NONAME]},
+    "M331": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|full_set=ERR ACCESS|", _FULLTAB]},
 }
 
 

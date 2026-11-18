@@ -6416,7 +6416,8 @@
    "depends_on": [
     "WP-100",
     "WP-107",
-    "WP-108"
+    "WP-108",
+    "WP-158"
    ],
    "inputs": [
     "WP-100 (apps.md v1, the parser)",
@@ -6449,7 +6450,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation",
     "2026-11-15: DEC-005 confirmed for option 1 under the owner's instruction of the same day («قم باختيار الافضل»), recorded in docs/decisions-pending.json: this item no longer waits for the owner; ADR-0023's sentence that the model awaits the owner's record is corrected with this item's push",
-    "2026-11-15 (the manager, after the external review's verification): waits for WP-107 and WP-108: applications become clients of config, the manager and net here, and those services leak a handle per replayed request, keep a client end when a reply fails and hand a client's sockets to the next one; by the manager's order the data packages WP-104 to WP-106 come first as well (a priority, not a dependency)"
+    "2026-11-15 (the manager, after the external review's verification): waits for WP-107 and WP-108: applications become clients of config, the manager and net here, and those services leak a handle per replayed request, keep a client end when a reply fails and hand a client's sockets to the next one; by the manager's order the data packages WP-104 to WP-106 come first as well (a priority, not a dependency)",
+    "2026-11-18 (the manager): WP-158 added to the dependencies (configd's subscriptions, from WP-157's review round): the same family as WP-107 and WP-108, holes that reach any application once this item lands (RSK-028)"
    ],
    "acceptance": "TST-M6-LAUNCH-DENIED PASS on CI; services.md v1.14 states LAUNCH, the identity and the allow-list; M140 and M142 killed by the M6 gate",
    "test_ids": [
@@ -7107,13 +7109,15 @@
    "actions": [
     "الإعدادات: قيمة المستخدم تُقرأ بعد إعادة التشغيل، والاستيراد لا يجيب بالنجاح بعد فشل جزئي (المرحلة د)",
     "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): after a restart a user's saved value reads as not found and RESOLVE returns the device value until a write loads the store (a user's accessibility settings fall back silently); an import of 65 keys answers OK 64, and a retry with the same request id repeats that answer",
-    "design to decide in the package (2-3 options with trade-offs): stores loaded on demand for reads too, with eviction of the least recently used store without subscribers, against loading every user store at start; an atomic import (capacity checked first, one save, a full rollback on I/O error) against a reply that names the failing line: config.md v1.4 either way (v1.3 went to WP-107 on 2026-11-18)",
+    "design to decide in the package (2-3 options with trade-offs): stores loaded on demand for reads too, with eviction of the least recently used store without subscribers, against loading every user store at start; an atomic import (capacity checked first, one save, a full rollback on I/O error) against a reply that names the failing line: config.md v1.5 either way (v1.3 went to WP-107 and v1.4 to WP-157 on 2026-11-18)",
     "test first, red seen locally before the fix: a two-phase case on one disk (SET a user key, restart, then GET and RESOLVE: today not found); an import of 65 distinct keys (today OK 64)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; sized at activation",
-    "2026-11-18 (the manager): config.md v1.3 went to WP-107 (the handle a request carried is closed at one exit); this item's contract change is v1.4, in the design line and in the acceptance"
+    "2026-11-18 (the manager): config.md v1.3 went to WP-107 (the handle a request carried is closed at one exit); this item's contract change is v1.4, in the design line and in the acceptance",
+    "2026-11-18 (the manager): config.md v1.4 went to WP-157 (a user store is created only for a token that may modify it); this item's contract change is v1.5, in the design line and in the acceptance",
+    "2026-11-18 design input from WP-157's review round: (1) SUBSCRIBE, GET and EXPORT of a user store that is not loaded answer ERR NOT_FOUND, the user's own store before the first write of a boot included, so a subscriber misses changes until a write loads the store (docs/LATER.md L-066): loading on demand for reads must not give a request without a token a slot again (WP-157); (2) eviction of a store 'without subscribers' is defeated by a subscriber without a token that pins the loaded stores (WP-158): count the owner's subscriptions alone, or decide after WP-158; (3) an ADMIN token can load eight stores of other uids, after which a ninth user's SET answers ERR INVALID until a restart (TST-M4-CONFIG-STORE-AUTHZ pins that reply): the eviction's case"
    ],
-   "acceptance": "a user's saved value is read and takes its precedence after a restart, and an import either applies every line or reports the failure and applies none, shown by the new cases on CI; config.md v1.4 states both",
+   "acceptance": "a user's saved value is read and takes its precedence after a restart, and an import either applies every line or reports the failure and applies none, shown by the new cases on CI; config.md v1.5 states both",
    "test_ids": [
     "TST-M4-CONFIG-PERSIST",
     "TST-M4-POLICY-PRECEDENCE"
@@ -9721,22 +9725,22 @@
   {
    "stage": "M6",
    "requirement_ids": [
-    "REQ-M4-005",
-    "REQ-M4-002"
+    "REQ-M4-004",
+    "REQ-M4-005"
    ],
    "depends_on": [
     "WP-156"
    ],
    "contract_refs": [
-    "docs/contracts/config.md",
-    "docs/contracts/services.md"
+    "docs/contracts/config.md"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M4"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -9749,16 +9753,81 @@
     "kernel/src/ktest.rs",
     "platform/pc-qemu/target.json",
     "docs/contracts/config.md",
-    "tests/mutants.py"
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/requirements.json",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
    ],
    "acceptance": "configd creates a user store only after the authorisation check, so eight SUBSCRIBE requests without a token leave a real user's SET accepted, shown by a new case on CI; the SECURITY mutant that moves the creation before the check killed",
    "test_ids": [
-    "TST-M4-CONFIG-RETRY"
+    "TST-M4-CONFIG-RETRY",
+    "TST-M4-CONFIG-STORE-AUTHZ",
+    "TST-M4-AUTHZ-DENIED",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "actions": [
     "الإعدادات لا تنشئ مخزن مستخدم قبل فحص الصلاحية (مفصولة من WP-107)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-18 registered at WP-107's split"
+    "2026-11-18 registered at WP-107's split",
+    "2026-11-18 activation (the manager, method section 7; WP-156 done; done inline by the manager from the reading in scratchpad wp107_reading.md): SET, DEL and IMPORT decide access from the store's name before a user store is created; SUBSCRIBE, which shows no token, never creates one; one new case reading EXPORT after refused writes, eight token-less SUBSCRIBE, the user's own SET and SUBSCRIBE, and configd's live handle count; two SECURITY mutants (the creation before the check; SUBSCRIBE creating); config.md v1.4. About 70 min and under 120 tool calls, within the budget line",
+    "2026-11-18 options (rule 5; from the reading, scratchpad wp107_reading.md). Where the creation is decided: (a) one function for the modifying requests, store_for_write, which judges the token from the store's name before a slot is taken: chosen (one place; a refused write answers the same bytes whether the store is loaded or not); (b) create, check, then remove the store when access is denied: a moment in which the slot is taken and a second path to keep right; (c) evict a store without subscribers when the slots are full: WP-112's design line, and it does not stop a subscriber that holds eight. SUBSCRIBE: (1) never creates, ERR NOT_FOUND for a user store that is not loaded, as GET and EXPORT answer: chosen (it shows no token, so there is nothing to judge); (2) SUBSCRIBE takes a token: a new form of the request for every client, while config.md leaves reads open. No free slot for a token that may create stays ERR INVALID (the contract's reply, unchanged)",
+    "2026-11-18 the work (the manager, inline; scratch runs, no CI evidence). Test first: TST-M4-CONFIG-STORE-AUTHZ (config_store_authz) pins `set_other=ERR ACCESS|other_export=ERR NOT_FOUND|import_other=ERR ACCESS|import_export=ERR NOT_FOUND|subs_ok=0|subs_not_found=8|own_set=OK 1|own_sub=OK|admin_set=OK 1|cfg_grew=1`, clean exit, frames_delta=0; on configd as it was it FAILED, exit 37, `other_export=OK|import_export=OK|subs_ok=6|subs_not_found=0|own_set=ERR INVALID|own_sub=ERR INVALID|admin_set=OK 1|cfg_grew=6` and 'a refused write left a user store behind'; with the fix PASS. The fix (user/apps/configd/src/main.rs): user_uid reads the uid a store name carries; store_for_write (SET, DEL, IMPORT) lets a user store be created only for ADMIN or the uid's own token; SUBSCRIBE never creates. M325 and M326 (SECURITY: the creation for any modifying request; SUBSCRIBE creating) and M327 (not SECURITY: ADMIN taken out of the creating tokens), their expectations pinned by TST-M0-005 (92 cases; the case seen failing before each was registered: 'M326 is registered', 'M327 is registered'). config.md v1.4. WP-112's contract promise moved to v1.5",
+    "2026-11-18 the review round (auditor and red team in parallel, read-only): no blocker. Confirmed by the auditor, ten claims by reading: the only creating call is store_for_write and its condition equals access() for a user store in both directions; a refused write answers the same bytes whether the store is loaded or not; SUBSCRIBE never creates and its handle is closed at WP-107's exit; the pinned line is what the code prints and the red line is what HEAD's code must print (two slots taken by the refused writes, six by subscribers); the fields and first messages of M325 to M327; no client subscribes to a user store (dialog: device alone); no other record promises config.md v1.4; 92 test functions; clean room; the refusal is at configd. Red team: no verb takes a slot without the right (GET, EXPORT and SUBSCRIBE never create, RESOLVE reads the table alone, a revoked token is refused before the store; `user/`, `user/+1`, `user/0` and uids above 9999 are no store, `user/01001` is uid 1001's own); a refused request leaves a replay entry on its own channel and nothing else; no new existence oracle. Fixed in the round, test first (the harness case seen failing, then every new mutant run on the real harness): (1) red team: the change took its only test from the check of a LOADED user store (TST-M4-AUTHZ-DENIED's SET on user/1000 is now refused before access()), so `_ => true` there survived: the case now reads the user's SET on the store the administrator created (ERR ACCESS, EXPORT unchanged), with M328 (SECURITY); (2) red team: the bounds of the uid a store name may carry, moved into user_uid, had no test: SUBSCRIBE user/0 and user/10000 answer ERR INVALID, M329 and M330; (3) red team and auditor: ERR INVALID for a token that may create when no slot is free had no test: the administrator fills the eight slots, a ninth store is ERR INVALID and the user's loaded store still takes his SET, M331; (4) auditor: an unreadable handle count has its own failure message; this item's test_ids, requirement (REQ-M4-004), files and contract_refs corrected. Not closed here, old behaviour the change does not open: a subscriber without a token can hold the eight subscription slots of any loaded store, and `CHANGED session` reaches every subscriber whatever its uid; an application reaches both once WP-101 lands, so they are WP-158 (planned, before WP-101), not a LATER line; WP-112 has the round's design input (its dated line). To docs/LATER.md: L-066, L-067",
+    "2026-11-18 local runs on the final tree (scratch, no CI evidence): suite M4 after the review round: 28 of its 29 cases PASS, the new case with its two lines among them; TST-M4-NET-NO-INTERNET FAILED on this container's network (`probe=OK rtt=1`, 'the explicit probe did not settle internet=none': the off-link probe was answered; in the run before the round, same code outside the case's kernel text, it passed with probe=ERR TIMEOUT): CI judges it; host suite M0 PASS (TST-M0-005: 92 cases); the real harness in a scratch clone of the tree: M325 to M331 7/7 killed, each by its declared evidence (expected_missed empty), and the 78 tooling mutants 78/78 killed"
+   ]
+  },
+  {
+   "id": "WP-158",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M4-004",
+    "REQ-M4-005"
+   ],
+   "depends_on": [
+    "WP-157"
+   ],
+   "inputs": [
+    "found by the red team in WP-157's review round on 2026-11-18 by reading user/apps/configd/src/main.rs (the SUBSCRIBE branch and notify); nothing run, no CI evidence"
+   ],
+   "files": [
+    "user/apps/configd/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/config.md",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/config.md"
+   ],
+   "acceptance": "a client cannot hold every subscription slot of a store against its owner, and a subscriber to `session` hears the keys of its own token's uid alone, shown by a new case on CI; TST-M4-CONFIG-NOTIFY PASS; the SECURITY mutants killed; config.md states both in a new version",
+   "test_ids": [
+    "TST-M4-CONFIG-NOTIFY"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "الإعدادات: الاشتراكات محدودة لكل عميل، ومشترك الجلسة يسمع مفاتيح uid رمزه وحده (من مراجعة WP-157)",
+    "found by the red team by reading, not run: (1) SUBSCRIBE shows no token and a store has eight subscription slots, freed only when a notification cannot be written: a client that keeps eight channel ends and reads them holds every slot of `device`, `policy`, `session` or a loaded user store, and the owner's SUBSCRIBE answers ERR FULL (the dialog application subscribes to `device`); (2) notify() sends `CHANGED session <key> <version>` to every subscriber of `session` whatever its uid, so the names and the activity of another user's session keys are heard, while config.md v1.1 hides their values. Reached today by the manifest's services alone; by any application once WP-101 lands (RSK-028)",
+    "design to decide in the package (2-3 options with trade-offs): a bound per client channel (one subscription per store, freed when the client's channel closes) against a token on SUBSCRIBE for `session` and `user/<uid>` (own uid or ADMIN), or both; for `session`, delivery filtered by the uid of the subscriber's token",
+    "test first, red seen locally before the fix: one client takes eight subscriptions of `device` and a second client's SUBSCRIBE answers ERR FULL today; a subscriber without the writer's uid hears CHANGED session today",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-18 registered from WP-157's review round (the owner's ruling of 2026-11-17, rule 1: a hole an ordinary program can reach is not a LATER line); ordered before WP-101, with WP-107 and WP-108"
    ]
   }
  ]

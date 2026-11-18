@@ -994,6 +994,74 @@ class KillEvidence(unittest.TestCase):
             self.assertIn("|" + x[1:].split("=")[0] + "=", line, x)
             self.assertNotIn(x, line, f"{x} is the pinned value")
 
+    AUTHZ = "TST-M4-CONFIG-STORE-AUTHZ"
+
+    def test_the_user_store_creation_expectations_are_pinned(self):
+        """WP-157 (RSK-028; config.md v1.4): configd creates a user store only for a token that
+        may modify it. M325 puts the creation back before the token is judged (a refused SET
+        or IMPORT leaves the store behind); M326 lets SUBSCRIBE, which shows no token, create
+        one (eight take every slot and the user's own SET is refused): both are SECURITY
+        mutants, each replacement the same call creating whatever the token. M327 takes ADMIN
+        out of the tokens a store is created for (an administrator's SET on a store that is
+        not loaded is refused): no hole, so not a SECURITY mutant. From the review round:
+        M328 (SECURITY) lets any token modify a loaded user store, the check the refusals
+        above no longer reach; M329 and M330 take the lower and move the upper bound of the
+        uid a store name may carry; M331 answers ERR ACCESS, not ERR INVALID, to a token that
+        may create when no slot is free. Each anchor is once in
+        user/apps/configd/src/main.rs, declared on TST-M4-CONFIG-STORE-AUTHZ alone by exit 37,
+        the kernel's own failure message (a failure in ktest.rs) and fields of the case's two
+        lines, each in the pinned lines with another value; no two mutants are declared by
+        the same message and fields."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.AUTHZ)
+        lines = [m for m in case["required_markers"] if "|ktest|config_store_authz|" in m and "=" in m]
+        self.assertTrue(any("|subs_ok=" in m for m in lines) and any("|full_set=" in m for m in lines))
+        line = "".join(lines)
+        bound = "uid != 0 && uid <= u64::from(UID_MAX_PERSISTENT)"
+        want = {
+            "M325": ("store_index(name, create)", "store_index(name, true)", "_LEFT",
+                     {"|other_export=OK|", "|import_export=OK|"}, True),
+            "M326": ("store_index(store, false)", "store_index(store, true)", "_TOOK",
+                     {"|subs_ok=8|", "|subs_not_found=0|", "|own_set=ERR INVALID|"}, True),
+            "M327": ("token.perms & perm::ADMIN != 0 || uid == token.uid", "uid == token.uid", "_ADMIN",
+                     {"|admin_set=ERR ACCESS|"}, False),
+            "M328": ("admin || self.stores[i].uid == token.uid", "true", "_LOADED",
+                     {"|loaded_other=OK 2|", "|loaded_kept=0|"}, True),
+            "M329": (bound, "uid <= u64::from(UID_MAX_PERSISTENT)", "_NONAME", {"|sub_zero=OK|"}, False),
+            "M330": (bound, "uid != 0 && uid <= u64::from(UID_MAX_PERSISTENT) * 10", "_NONAME",
+                     {"|sub_big=ERR NOT_FOUND|"}, False),
+            "M331": ("create || user_uid(name).is_none()", "user_uid(name).is_none()", "_FULLTAB",
+                     {"|full_set=ERR ACCESS|"}, False),
+        }
+        seen = []
+        for mid, (old, new, const, fields, security) in want.items():
+            with self.subTest(mutant=mid):
+                m = next((m for m in mutants.MUTANTS if m[0] == mid), None)
+                self.assertIsNotNone(m, f"{mid} is registered")
+                self.assertEqual(m[1], "user/apps/configd/src/main.rs")
+                self.assertEqual(m[4], [self.AUTHZ])
+                self.assertEqual(m[2].count(old), 1)
+                self.assertEqual(m[3], m[2].replace(old, new))
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(set(E.get(mid, {})), {self.AUTHZ})
+                subs = E[mid][self.AUTHZ]
+                self.assertIn("exit 37", subs)
+                fails = [x for x in subs if x.startswith("|ktest|fail|")]
+                self.assertEqual(fails, [getattr(mutants, const, None)])
+                self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src)
+                seen.append((fails[0], tuple(sorted(fields))))
+                got = {x for x in subs if re.fullmatch(r"\|\w+=[^|]*\|", x)}
+                self.assertEqual(got, fields)
+                for x in got:
+                    self.assertIn("|" + x[1:].split("=")[0] + "=", line, x)
+                    self.assertNotIn(x, line, f"{x} is the pinned value")
+        self.assertEqual(len(set(seen)), 7, "each mutant is known by its own message and fields")
+
 
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""

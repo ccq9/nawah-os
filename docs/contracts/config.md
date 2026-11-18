@@ -1,4 +1,6 @@
-# عقد التكوين والسياسات — الإصدار 1.3 (WP-26 v1، v1.1 مراجعة 2026-10-19، WP-78 v1.2، WP-107 v1.3؛ ADR-0016 §6، ADR-0020 البند 5؛ فوق auth.md v1 وservices.md v1.1 وfiles.md v1.4)
+# عقد التكوين والسياسات — الإصدار 1.4 (WP-26 v1، v1.1 مراجعة 2026-10-19، WP-78 v1.2، WP-107 v1.3، WP-157 v1.4؛ ADR-0016 §6، ADR-0020 البند 5؛ فوق auth.md v1 وservices.md v1.1 وfiles.md v1.4)
+
+**v1.4 (WP-157، RSK-028؛ TST-M4-CONFIG-STORE-AUTHZ، الطفرتان M325 وM326):** مخزن مستخدم غير محمَّل لا يُنشأ، ولا يأخذ واحدة من الخانات الثماني، إلا لطلب تعديل (`SET` أو `DEL` أو `IMPORT`) رمزه يحقّ له تعديل ذلك المخزن (الـuid نفسه أو `ADMIN`)؛ يُحكم بذلك من اسم المخزن قبل أخذ أي خانة. فالطلب المرفوض (`ERR ACCESS`) لا يترك مخزنًا، والردّ واحد سواء كان المخزن محمَّلًا أم لا. و`SUBSCRIBE` لا يحمل رمزًا فلا ينشئ مخزن مستخدم أبدًا: لمخزن غير محمَّل يردّ `ERR NOT_FOUND` كما `GET` و`EXPORT`، ويُغلق المقبض (v1.3). فلا يملأ الخانات الثماني من لا صلاحية له. `ERR INVALID` يبقى لاسم ليس مخزنًا، ولامتلاء الخانات عند من يحقّ له. الباقي بلا تغيير.
 
 **v1.3 (WP-107، RSK-028؛ TST-M4-CONFIG-RETRY، الطفرة M323):** المقبض الذي يحمله طلب (رمز أو طرف قناة) تغلقه الخدمة قبل أن تكتب ردّه، أيًّا كان الطلب وأيًّا كان الردّ: إعادة `request_id` سبق (§3)، والرفض، والردّ الذي لا يُكتب (قناة العميل مغلقة أو طابوره ممتلئ). لا يحتفظ بالمقبض إلا `SUBSCRIBE` المقبول، اشتراكًا. فلا يكبر جدول مقابض الخدمة بطلبات أي عميل. الطلبات والردود والحفظ بلا تغيير.
 
@@ -33,7 +35,7 @@
 | `SET <store> <key> <expected_version> <request_id> <value…>` + مقبض رمز | `OK <version>`؛ `ERR VERSION <current>` إن لم يطابق `expected_version` الإصدار الحالي (0 = يجب ألا يكون موجودًا)؛ `ERR ACCESS` (رمز غير صالح أو بلا الصلاحية — §1)؛ `ERR INVALID` (مفتاح/قيمة/مخزن)؛ `ERR FULL`؛ `ERR IO` (فشل الحفظ: لا تغيير في الذاكرة) |
 | `DEL <store> <key> <expected_version> <request_id>` + مقبض رمز | كما `SET`؛ `OK <version>` بإصدار المفتاح المحذوف |
 | `RESOLVE <key>` + مقبض رمز | `OK <source> <version> <value>` حيث `source` ∈ {policy, user, device} أو `ERR NOT_FOUND` |
-| `SUBSCRIBE <store>` + مقبض طرف قناة | `OK`؛ بعدها تصل على تلك القناة رسالة `CHANGED <store> <key> <version>` لكل تعديل **ناجح** (الحذف بإصدار 0)؛ لا شيء للطلبات المرفوضة؛ قناة لا تستقبل (طابور ممتلئ أو مغلقة) تُسقَط |
+| `SUBSCRIBE <store>` + مقبض طرف قناة | `OK`؛ بعدها تصل على تلك القناة رسالة `CHANGED <store> <key> <version>` لكل تعديل **ناجح** (الحذف بإصدار 0)؛ لا شيء للطلبات المرفوضة؛ قناة لا تستقبل (طابور ممتلئ أو مغلقة) تُسقَط؛ `ERR NOT_FOUND` لمخزن مستخدم غير محمَّل، و`ERR INVALID` لاسم ليس مخزنًا (v1.4) |
 | `EXPORT <store>` (+ مقبض رمز اختياري) | `OK` ثم سطر لكل مفتاح `key version value`؛ في `session` كما `GET` (v1.1) |
 | `IMPORT <store> <request_id>` + مقبض رمز، والنص بعد السطر الأول `key value` لكل سطر | `OK <count>`؛ يُرفض كله (`ERR INVALID <line>`) إن كان سطر غير صالح؛ الصلاحيات كـ `SET`؛ كل مفتاح يأخذ إصدارًا جديدًا |
 | غير ذلك | `ERR BAD_REQUEST` |
@@ -43,4 +45,4 @@
 
 ## 4. الاختبارات الحاكمة
 
-TST-M4-AUTHZ-DENIED (SET device برمز `user` (SHELL فقط) → `ERR ACCESS` ولا تغيير؛ برمز `admin` → `OK`؛ SET policy برمز CONFIG_WRITE بلا ADMIN → `ERR ACCESS`)، TST-M4-CONFIG-CAS (كاتبان بالإصدار المتوقع نفسه: الثاني `ERR VERSION` والقيمة للأول)، TST-M4-CONFIG-RETRY (`request_id` مكرر: الردّ نفسه والإصدار لا يتقدم)، TST-M4-CONFIG-NOTIFY (`CHANGED` بعد الكتابة، لا شيء بعد الرفض)، TST-M4-POLICY-PRECEDENCE (policy > user > device، وحذف السياسة يعيد قيمة المستخدم)، TST-M4-CONFIG-PERSIST (مرحلتان على الصورة نفسها: القيمة والإصدار بعد إعادة التشغيل؛ `fat32.py grep` يرى السطر في `/SYSTEM/CFGDEV.A`).
+TST-M4-AUTHZ-DENIED (SET device برمز `user` (SHELL فقط) → `ERR ACCESS` ولا تغيير؛ برمز `admin` → `OK`؛ SET policy برمز CONFIG_WRITE بلا ADMIN → `ERR ACCESS`)، TST-M4-CONFIG-CAS (كاتبان بالإصدار المتوقع نفسه: الثاني `ERR VERSION` والقيمة للأول)، TST-M4-CONFIG-RETRY (`request_id` مكرر: الردّ نفسه والإصدار لا يتقدم)، TST-M4-CONFIG-NOTIFY (`CHANGED` بعد الكتابة، لا شيء بعد الرفض)، TST-M4-CONFIG-STORE-AUTHZ (v1.4: كتابة مرفوضة على مخزن مستخدم آخر لا تترك مخزنًا؛ ثمانية `SUBSCRIBE` بلا رمز لا تأخذ خانة؛ ثم `SET` المستخدم على مخزنه `OK`)، TST-M4-POLICY-PRECEDENCE (policy > user > device، وحذف السياسة يعيد قيمة المستخدم)، TST-M4-CONFIG-PERSIST (مرحلتان على الصورة نفسها: القيمة والإصدار بعد إعادة التشغيل؛ `fat32.py grep` يرى السطر في `/SYSTEM/CFGDEV.A`).

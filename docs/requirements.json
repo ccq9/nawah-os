@@ -1148,7 +1148,8 @@
    ],
    "acceptance": "authz_denied",
    "test_ids": [
-    "TST-M4-AUTHZ-DENIED"
+    "TST-M4-AUTHZ-DENIED",
+    "TST-M4-CONFIG-STORE-AUTHZ"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
