@@ -1,0 +1,107 @@
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261116T192120Z-fc62affd-001-a/screen-reply.ppm --pixel 512,400,C00000 --pixel 80,400,000080 --pixel 512,300,000000
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 512,
+   "y": 400,
+   "expected": "c00000",
+   "seen": "c00000",
+   "ok": true
+  },
+  {
+   "x": 80,
+   "y": 400,
+   "expected": "000080",
+   "seen": "000080",
+   "ok": true
+  },
+  {
+   "x": 512,
+   "y": 300,
+   "expected": "000000",
+   "seen": "000000",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261116T192120Z-fc62affd-001-a/screen-timeout.ppm --pixel 512,400,C00000 --pixel 80,400,008000 --pixel 512,300,000000
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 512,
+   "y": 400,
+   "expected": "c00000",
+   "seen": "c00000",
+   "ok": true
+  },
+  {
+   "x": 80,
+   "y": 400,
+   "expected": "008000",
+   "seen": "008000",
+   "ok": true
+  },
+  {
+   "x": 512,
+   "y": 300,
+   "expected": "000000",
+   "seen": "000000",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261116T192120Z-fc62affd-001-a/screen-spin.ppm --pixel 512,400,C00000 --pixel 80,400,008000 --pixel 512,300,000000
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 512,
+   "y": 400,
+   "expected": "c00000",
+   "seen": "c00000",
+   "ok": true
+  },
+  {
+   "x": 80,
+   "y": 400,
+   "expected": "008000",
+   "seen": "008000",
+   "ok": true
+  },
+  {
+   "x": 512,
+   "y": 300,
+   "expected": "000000",
+   "seen": "000000",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [],
+ "ok": true
+}
+
+[exit 0]
+$ python3 -I -c import sys; t, b = int(sys.argv[1]), int(sys.argv[2]); print(f'wait_ticks={t} budget_ticks={b} limit={b + 500}'); sys.exit(0 if b <= t <= b + 500 else 1) 10000 10000
+wait_ticks=10000 budget_ticks=10000 limit=10500
+
+[exit 0]
+$ python3 -I -c import sys; t, b = int(sys.argv[1]), int(sys.argv[2]); print(f'wait_ticks={t} budget_ticks={b} limit={b + 500}'); sys.exit(0 if b <= t <= b + 500 else 1) 10000 10000
+wait_ticks=10000 budget_ticks=10000 limit=10500
+
+[exit 0]
