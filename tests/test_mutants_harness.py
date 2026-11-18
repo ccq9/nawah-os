@@ -1069,10 +1069,11 @@ class ShardSelection(unittest.TestCase):
     the harness's own order, and a spec outside 1 <= k <= N (or not two plain numbers) is refused
     before anything runs."""
 
-    def test_every_m6_mutant_is_in_exactly_one_shard_for_n_1_to_8(self):
+    def test_every_m6_mutant_is_in_exactly_one_shard_for_n_1_to_16(self):
+        # 1..16 since WP-153 (verify runs twelve shards).
         stage = [m[0] for m in mutants.MUTANTS if mutants.stage_of(m[0]) == "M6"]
         self.assertGreater(len(stage), 100)
-        for n in range(1, 9):
+        for n in range(1, 17):
             shards = {k: [m[0] for m in mutants.selection("M6", None, (k, n))] for k in range(1, n + 1)}
             got = [mid for ids in shards.values() for mid in ids]
             self.assertEqual(len(got), len(set(got)), f"N={n}: a mutant in two shards")
@@ -1495,6 +1496,23 @@ class WorkflowShardMutants(unittest.TestCase):
             self.assertNotEqual(m[2], m[3], mid)
         self.assertEqual(set(self.IDS) & mutants.SECURITY, {"M302"})
         self.assertIn("M189", mutants.SECURITY)
+
+    def test_the_critical_path_mutants_are_registered(self):
+        # WP-153: job b builds into the evidence (M309), job a uploads every -a directory again
+        # (M310), job g's step `rev` keeps 7 characters (M311), the merge adopts without slot b
+        # (M312), job b waits for job a (M313), the M5 guest suite runs in job a too (M314), job b's
+        # upload back to its one evidence line, rooted at evidence/ (M315, the WP-153 review); each
+        # anchor once in verify.yml, TST-M0-003 kills them.
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        text = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
+        for mid in ("M309", "M310", "M311", "M312", "M313", "M314", "M315"):
+            self.assertIn(mid, by_id, f"{mid} is not registered")
+            m = by_id[mid]
+            self.assertEqual((m[1], m[4], mutants.stage_of(mid)), (".github/workflows/verify.yml", ["TST-M0-003"], "M6"), mid)
+            self.assertTrue(mutants.is_tooling(m[1]), mid)
+            self.assertEqual(text.count(m[2]), 1, f"{mid}: its anchor is not once in verify.yml")
+            self.assertNotEqual(m[2], m[3], mid)
+            self.assertNotIn(mid, mutants.SECURITY)
 
     def test_the_fallback_mirror_mutants_are_registered(self):
         # WP-152's follow-up (verify run 44218469147): the Toolchain step's fallback mirror and the

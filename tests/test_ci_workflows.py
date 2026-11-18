@@ -9,6 +9,7 @@ commit, with scratch evidence only. `project.py import-ci-evidence` leaves no te
 the runner's evidence behind. kernel/src/kmain.rs waits for the service manager's LOAD reply
 through `LOAD_BUDGET_TICKS` = 10_000, never a literal (WP-82)."""
 
+import fnmatch
 import json
 import re
 import os
@@ -40,9 +41,58 @@ def load(name):
 # uploading its report alone as `mutants-m6-shard-<k>`; job `g` (slot g) needs them all, downloads
 # the reports and runs the gate's unchanged suite with NAWAH_GATE_SHARDS=SHARDS on that step alone,
 # which merges them into the gate's one verdict.
-SHARDS = 6
+SHARDS = 12  # WP-153: 6 -> 12, the longest shard 1242 -> 655 s of run 44229918866's mutant seconds
 SHARD_JOB = re.compile(r"shard-([1-9][0-9]*)")
 GATE_SHARDS = "NAWAH_GATE_SHARDS"
+
+# WP-153 (run 44229918866): `evidence/*-a/` matched every committed -a directory of older runs too,
+# so job a's upload (188 s) and the merge's download (132 s) grew with every run. A run directory
+# is named <stamp>-<HEAD's first 8 hex>-<nnn>-<slot> (project.py new_run_dir, source_identity), so a
+# slot uploads only the directories of the checked-out commit, whose first 8 characters a step
+# `rev` writes to its output just before the upload.
+REV_RUN = 'echo "sha8=$(git rev-parse HEAD | cut -c1-8)" >> "$GITHUB_OUTPUT"'
+RUN_DIRS = "evidence/*-${{{{ steps.rev.outputs.sha8 }}}}-*-{slot}/"
+
+
+def upload_paths(step):
+    """An upload step's path lines (one per line: an expression such as
+    `${{ steps.rev.outputs.sha8 }}` holds spaces)."""
+    return [x.strip() for x in str(step.get("with", {}).get("path", "")).splitlines() if x.strip()]
+
+
+def artifact_root(paths):
+    """The directory, relative to the workspace ("" for the workspace itself), that the pinned
+    upload-artifact (ea165f8d, src/shared/search.ts:126-157) makes the root of an artifact of these
+    path lines: each line's search path is its literal prefix before the first segment holding `*`,
+    `?` or `[` (@actions/glob); a search path equal to or under another one is dropped; with more
+    than one left the root is their lowest common ancestor, with one it is that path itself, but
+    the parent of a single plain file (search.ts:144-151). The WP-153 review's blocker: job b's
+    one line `evidence/*-…-b/` made `evidence` the root, so its run directories arrived without
+    the `evidence/` level the merge job reads."""
+    search, plain = [], []
+    for line in paths:
+        parts = [s for s in line.rstrip("/").split("/") if s not in ("", ".")]
+        lit = []
+        for s in parts:
+            if any(c in s for c in "*?["):
+                break
+            lit.append(s)
+        search.append(tuple(lit))
+        plain.append(len(lit) == len(parts) and not line.endswith("/"))
+    kept = []
+    for s in sorted(set(search), key=len):
+        if not any(s[:len(k)] == k for k in kept):
+            kept.append(s)
+    if len(kept) > 1:
+        common = []
+        for parts in zip(*kept):
+            if len(set(parts)) != 1:
+                break
+            common.append(parts[0])
+        return "/".join(common)
+    if len(paths) == 1 and plain[0]:
+        return "/".join(kept[0][:-1])
+    return "/".join(kept[0])
 
 
 def gate_case():
@@ -312,7 +362,7 @@ class FallbackMirror(unittest.TestCase):
 
     def test_the_fallback_rewrites_every_regional_mirror_and_nothing_else(self):
         steps = list(toolchain_steps())
-        self.assertGreaterEqual(len(steps), 10, "a, the six shards, g, merge and mutants.yml's job")
+        self.assertGreaterEqual(len(steps), 4 + SHARDS + 1, "a, b, the shards, g, merge and mutants.yml's job")
         for name, job, step in steps:
             where = f"{name}: {job}"
             rewrite = mirror_rewrite(step["run"])
@@ -574,11 +624,16 @@ class MergeJob(unittest.TestCase):
                 bad.append(f"{name}: {len(ups)} uploads of evidence-{slot}")
                 continue
             up = ups[0]
-            paths = str(up["with"].get("path", "")).split()
-            # Exactly the slot's run directories under evidence/, nothing wider (the auditor, 83a).
+            paths = upload_paths(up)
+            # Exactly the slot's run directories of this run under evidence/, nothing wider (the
+            # auditor, 83a; WP-153: not the older runs' committed directories of the slot either).
             ev = [x for x in paths if x.startswith("evidence")]
-            if ev != [f"evidence/*-{slot}/"]:
-                bad.append(f"{name}: evidence paths {ev}, not exactly ['evidence/*-{slot}/']")
+            if ev != [RUN_DIRS.format(slot=slot)]:
+                bad.append(f"{name}: evidence paths {ev}, not exactly [{RUN_DIRS.format(slot=slot)!r}]")
+            revs = [i for i, s in enumerate(job["steps"]) if s.get("id") == "rev"]
+            if len(revs) != 1 or revs[0] > job["steps"].index(up) or job["steps"][revs[0]].get("run") != REV_RUN \
+                    or "always()" not in str(job["steps"][revs[0]].get("if", "")):
+                bad.append(f"{name}: no always() step `rev` running {REV_RUN!r} before the upload")
             if "always()" not in str(up.get("if", "")) or up.get("continue-on-error") is not True:
                 bad.append(f"{name}: the upload is not always() with continue-on-error")
         if not slots:
@@ -590,11 +645,43 @@ class MergeJob(unittest.TestCase):
 
     def test_an_upload_beyond_the_slots_run_directories_is_refused(self):
         # The auditor (83a): `evidence/*` beside `evidence/*-a/` uploads the whole tree again.
-        for extra in ("evidence/*", "evidence", "evidence/**", "evidence/*-b/"):
+        for extra in ("evidence/*", "evidence", "evidence/**", RUN_DIRS.format(slot="b"), "evidence/*-a/"):
             jobs = load("verify.yml")["jobs"]
             up = next(s for s in jobs["a"]["steps"] if s.get("with", {}).get("name") == "evidence-a")
             up["with"]["path"] = up["with"]["path"] + extra + "\n"
             self.assertTrue(self.slot_problems(jobs)[1], f"{extra!r} accepted")
+        # Job a's upload back to every directory of its slot, or its step `rev` changed, dropped or
+        # run only when the job succeeds (the upload runs always).
+        for tamper in (lambda j: [s["with"].update(path="evidence/*-a/\n") for s in j["steps"] if s.get("with", {}).get("name") == "evidence-a"],
+                       lambda j: [s.update(run=REV_RUN.replace("1-8", "1-7")) for s in j["steps"] if s.get("id") == "rev"],
+                       lambda j: [j["steps"].remove(s) for s in list(j["steps"]) if s.get("id") == "rev"],
+                       lambda j: [s.pop("if") for s in j["steps"] if s.get("id") == "rev"]):
+            jobs = load("verify.yml")["jobs"]
+            tamper(jobs["a"])
+            self.assertTrue(self.slot_problems(jobs)[1])
+
+    def test_the_rev_step_names_this_runs_directories_and_no_committed_one(self):
+        # The step run for real (bash -e, as GitHub runs a step without `shell:`) prints the first
+        # 8 characters of the revision project.py names its run directories with; the pattern then
+        # takes a directory of this run in its slot alone, and none of the directories committed
+        # under evidence/ (git ls-tree HEAD, checked out or not).
+        with tempfile.TemporaryDirectory() as tmp:
+            out = pathlib.Path(tmp) / "out"
+            out.write_text("")
+            r = subprocess.run(["bash", "-e", "-c", REV_RUN], cwd=ROOT, env=dict(os.environ, GITHUB_OUTPUT=str(out)),
+                               capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            sha8 = dict(l.split("=", 1) for l in out.read_text().splitlines())["sha8"]
+        self.assertEqual(sha8, project.source_identity()[0][:8])
+        other = "0" * 8 if sha8 != "0" * 8 else "1" * 8
+        committed = subprocess.run(["git", "ls-tree", "--name-only", "HEAD", "evidence/"], cwd=ROOT,
+                                   capture_output=True, text=True).stdout.split()
+        for slot in sorted(self.slot_problems(self.jobs())[0].values()):
+            pattern = RUN_DIRS.format(slot=slot).replace("${{ steps.rev.outputs.sha8 }}", sha8)
+            self.assertTrue(fnmatch.fnmatchcase(f"evidence/20261118T035023Z-{sha8}-002-{slot}/", pattern), pattern)
+            for name in (f"20261118T035023Z-{other}-002-{slot}", f"20261118T035023Z-{sha8}-002-z"):
+                self.assertFalse(fnmatch.fnmatchcase(f"evidence/{name}/", pattern), name)
+            self.assertEqual([c for c in committed if fnmatch.fnmatchcase(c.rstrip("/") + "/", pattern)], [], pattern)
 
     def test_a_shard_job_is_exempt_from_the_slot_only_in_its_narrow_shape(self):
         # WP-152 (the assurance challenge of WP-98): an exception wider than a shard's exact shape
@@ -655,23 +742,72 @@ class MergeJob(unittest.TestCase):
         (d / "tools").mkdir()
         (d / "tools" / "project.py").write_text("import json, sys\nopen('adopt-args', 'w').write(json.dumps(sys.argv[1:]))\n"
                                                 f"sys.exit({adopt_rc})\n")
+        # Each slot's artifact holds the workspace files under its root, as upload-artifact lays
+        # them out (artifact_root, the WP-153 review), not a layout assumed here.
+        roots = self.slot_roots()
         for slot, parts in layout.items():
             if parts is None:
                 continue
             art = d / "incoming" / f"evidence-{slot}"
-            (art / "evidence").mkdir(parents=True)
+            art.mkdir(parents=True)
+            root = pathlib.PurePosixPath(roots.get(slot, "")).parts
+
+            def put(rel, text):
+                rel = pathlib.PurePosixPath(rel).parts
+                if rel[:len(root)] != root:
+                    return  # outside the root: upload-artifact does not upload it
+                dst = art.joinpath(*rel[len(root):])
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_text(text)
+            if parts == "empty":
+                put("evidence/README", "")
             if parts != "empty" and "run" in parts:
-                run = art / "evidence" / f"20261110T000000Z-abcdef12-001-{slot}"
-                run.mkdir()
-                (run / "verdict.json").write_text("{}")
+                put(f"evidence/20261110T000000Z-abcdef12-001-{slot}/verdict.json", "{}")
             if parts != "empty" and "build" in parts:
-                (art / "build" / "pc-qemu").mkdir(parents=True)
-                (art / "build" / "pc-qemu" / "build-id.txt").write_text(slot)
+                put("build/pc-qemu/build-id.txt", slot)
         (d / "step.sh").write_text(self.adopt_step()["run"] if script is None else script)
         # GitHub's default for a run step without `shell:` on Linux: bash -e {0}.
         r = subprocess.run(["bash", "-e", str(d / "step.sh")], cwd=d, capture_output=True, text=True)
         args = json.loads((d / "adopt-args").read_text()) if (d / "adopt-args").exists() else None
         return r.returncode, r.stdout + r.stderr, args, d
+
+    def slot_roots(self):
+        """{slot: its artifact's root} of every `evidence-<slot>` upload of verify.yml."""
+        jobs = self.jobs()
+        roots = {}
+        for name, slot in self.slot_problems(jobs)[0].items():
+            up = next(s for s in jobs[name]["steps"] if s.get("with", {}).get("name") == f"evidence-{slot}")
+            roots[slot] = artifact_root(upload_paths(up))
+        return roots
+
+    def test_every_slot_artifact_keeps_the_workspace_layout(self):
+        # The WP-153 review's blocker: an upload whose lines share one search path is rooted
+        # there, and the merge reads incoming/evidence-<slot>/evidence/<run>/ alone.
+        self.assertEqual({s: r for s, r in self.slot_roots().items() if r != ""}, {}, "a slot's artifact is not rooted at the workspace")
+        # The rule itself on its own cases.
+        self.assertEqual(artifact_root(["evidence/*-x-*-b/"]), "evidence")
+        self.assertEqual(artifact_root(["evidence/*-x-*-a/", "build/pc-qemu/build-id.txt", "build/hygiene.log"]), "")
+        self.assertEqual(artifact_root(["build/mutants-m6-report.shards/shard-1-of-12.json"]), "build/mutants-m6-report.shards")
+        self.assertEqual(artifact_root(["build/a/", "build/a/x/*.json"]), "build/a")
+        self.assertEqual(artifact_root(["build/a/*", "build/b/?.log"]), "build")
+        self.assertEqual(artifact_root(["evidence/[0-9]*/"]), "evidence")
+
+    def test_a_build_file_two_slots_carry_is_the_same_build(self):
+        # The merge's build-file copy loop copies each slot's build/ over the last one, in its
+        # order: a slot other than a carrying a file a carries must make it the way a does, in
+        # the same checkout (build-id.txt is HEAD's first 12 hex, project.py cmd_build).
+        jobs = self.jobs()
+        a_files = [x for x in upload_paths(next(s for s in jobs["a"]["steps"] if s.get("with", {}).get("name") == "evidence-a"))
+                   if x.startswith("build/")]
+        builds = lambda job: [l.strip() for s in job["steps"] for l in str(s.get("run", "")).splitlines()
+                              if l.strip() == "python3 tools/project.py build --target pc-qemu"]
+        for name, slot in self.slot_problems(jobs)[0].items():
+            if name == "a":
+                continue
+            up = next(s for s in jobs[name]["steps"] if s.get("with", {}).get("name") == f"evidence-{slot}")
+            for f in (x for x in upload_paths(up) if x in a_files):
+                self.assertEqual(jobs[name]["steps"][0], jobs["a"]["steps"][0], f"{name}: {f} from another checkout")
+                self.assertTrue(builds(jobs[name]) and builds(jobs["a"]), f"{name}: {f} not made by the same build")
 
     def test_the_adopt_step_names_every_expected_slot_and_fails_closed(self):
         # Security review M2: a missing slot artifact fails the merge job (the producer's upload
@@ -754,6 +890,65 @@ class MergeJob(unittest.TestCase):
             else:
                 self.assertNotIn("write", str(perms), name)
 
+class TestJobs(unittest.TestCase):
+    """WP-153 (run 44229918866: job a 33.5 min, of which the M5 guest suite 635 s, then merge, made
+    the run's critical path 39 min): the M5 guest suite runs in a job `b` of its own (slot b) beside
+    job a, so the run ends when the longer of a, b and the shards' g does, plus merge. Job b has
+    the test job's lab (the same checkout and Toolchain step), needs nothing and always runs, builds
+    the images into a scratch root (TST-M1-BUILD stays job a's: two slots carrying one test are
+    refused by adopt-native, M296) and runs the M5 guest suite and nothing else; job a no longer
+    runs it. Every guest suite runs in exactly one job, and outside job a every build or boot of
+    pc-qemu writes to a scratch root."""
+
+    def jobs(self):
+        return load("verify.yml")["jobs"]
+
+    @staticmethod
+    def suite_lines(job):
+        return [l.strip() for s in job["steps"] for l in str(s.get("run", "")).splitlines() if "project.py test " in l]
+
+    def test_job_b_runs_the_m5_guest_suite_alone_with_the_test_jobs_lab(self):
+        jobs = self.jobs()
+        self.assertIn("b", jobs, "verify has no job b")
+        a, b = jobs["a"], jobs["b"]
+        self.assertEqual(b.get("env", {}).get("NAWAH_RUN_SLOT"), "b")
+        self.assertNotIn("needs", b, "b runs beside a, not after it")
+        self.assertNotIn("if", b)
+        self.assertNotIn("write", str(b.get("permissions", {})))
+        self.assertEqual(b["steps"][0], a["steps"][0], "b's checkout is not the test job's")
+        tool = lambda job: next(s for s in job["steps"] if str(s.get("name", "")).startswith("Toolchain"))
+        self.assertEqual(tool(b)["run"], tool(a)["run"], "b's lab is not the test job's")
+        self.assertEqual(self.suite_lines(b), ["python3 tools/project.py test --target pc-qemu --suite M5"])
+        self.assertNotIn("python3 tools/project.py test --target pc-qemu --suite M5", self.suite_lines(a))
+        runs = [str(s.get("run", "")) for s in b["steps"]]
+        build = [i for i, r in enumerate(runs) if "project.py build --target pc-qemu" in r]
+        suite = [i for i, r in enumerate(runs) if "--suite M5" in r]
+        self.assertEqual(len(build), 1, "b builds the images once")
+        self.assertLess(build[0], suite[0], "b builds before the suite")
+
+    def test_every_guest_suite_runs_in_one_job(self):
+        seen = {}
+        for name, job in self.jobs().items():
+            for line in self.suite_lines(job):
+                m = re.search(r"--target pc-qemu --suite (\S+)", line)
+                if m:
+                    seen.setdefault(m.group(1), []).append(name)
+        self.assertTrue(seen)
+        self.assertEqual({s: n for s, n in seen.items() if len(n) != 1}, {}, "a guest suite runs in more than one job")
+
+    def test_only_job_a_builds_or_boots_into_the_evidence(self):
+        # TST-M1-BUILD and TST-M1-BOOT are job a's; a second job writing them leaves two new runs
+        # of one test, which adopt-native refuses and the merge fails on (M296).
+        for name, job in self.jobs().items():
+            if name == "a":
+                continue
+            for s in job["steps"]:
+                for line in str(s.get("run", "")).splitlines():
+                    if re.search(r"project\.py (build|boot) --target pc-qemu\b", line):
+                        scratch = str((s.get("env") or {}).get("NAWAH_SCRATCH_EVIDENCE", ""))
+                        self.assertTrue(scratch.startswith("${{ runner.temp }}/"), f"{name}: {line.strip()} writes evidence")
+
+
 class MutationJob(unittest.TestCase):
     """WP-96 (the owner's DEC-029, option A) and WP-152: the M6 mutation gate runs in every verify
     run beside the test job, so TST-M6-MUTANTS's evidence is of the same run as every other
@@ -786,10 +981,10 @@ class MutationJob(unittest.TestCase):
     def test_the_single_gate_job_m_is_gone(self):
         self.assertNotIn("m", list(self.jobs()), "job m runs the whole gate beside the shards")
 
-    def test_six_shard_jobs_with_the_test_jobs_lab(self):
+    def test_the_shard_jobs_with_the_test_jobs_lab(self):
         jobs = self.jobs()
         shards = shard_jobs(jobs)
-        self.assertEqual(sorted(shards), sorted(f"shard-{k}" for k in range(1, SHARDS + 1)), "shards 1..6, each once")
+        self.assertEqual(sorted(shards), sorted(f"shard-{k}" for k in range(1, SHARDS + 1)), f"shards 1..{SHARDS}, each once")
         tool = lambda job: next(s for s in job["steps"] if str(s.get("name", "")).startswith("Toolchain"))
         for name, job in shards.items():
             self.assertEqual(shard_problems(name, job, SHARDS), [])
@@ -831,10 +1026,10 @@ class MutationJob(unittest.TestCase):
         self.assertEqual(g["steps"][downloads[0]].get("with"),
                          {"pattern": "mutants-m6-shard-*", "path": shard_dir(), "merge-multiple": True})
         self.assertLess(downloads[0], g["steps"].index(self.gate_step()))
-        self.assertEqual(self.gate_step().get("env"), {GATE_SHARDS: str(SHARDS)}, "the merge of the six shards")
+        self.assertEqual(self.gate_step().get("env"), {GATE_SHARDS: str(SHARDS)}, "the merge of every shard")
         self.assertIsInstance(self.gate_step()["env"][GATE_SHARDS], str)
         # The merge job adopts slots a and g (MergeJob: both loops, a missing slot fails closed).
-        self.assertEqual(sorted(MergeJob.slot_problems(jobs)[0].values()), ["a", "g"])
+        self.assertEqual(sorted(MergeJob.slot_problems(jobs)[0].values()), ["a", "b", "g"])
 
     def test_the_shard_count_is_set_on_the_gate_step_alone(self):
         # L-023: at the workflow's or g's level it would reach g's every step, and inside a
@@ -914,8 +1109,11 @@ class StepBudget(unittest.TestCase):
     # finished, which g refuses (TST-M0-005, M299). g's gate step keeps mutants.yml's 135 for
     # the same command, above TST-M6-MUTANTS's timeout_s (the merge itself takes seconds):
     # (15 + 135) x 1.2 = 180.
-    LIMITS = {"a": 62, **{f"shard-{k}": 90 for k in range(1, SHARDS + 1)}, "g": 180, "merge": 20}
-    CAPS = {"a": {"M5": 18, "M6": 18}, **{f"shard-{k}": {"shard": 60} for k in range(1, SHARDS + 1)},
+    # WP-153: the M5 guest suite moves to job b, (Toolchain 15 + M5 18) x 1.2 = 39.6 -> 40; job a
+    # keeps 62, a hang guard over its uncapped steps (its caps, 15 + M6 18, are 39.6 now); twelve
+    # shards keep 90 each.
+    LIMITS = {"a": 62, "b": 40, **{f"shard-{k}": 90 for k in range(1, SHARDS + 1)}, "g": 180, "merge": 20}
+    CAPS = {"a": {"M6": 18}, "b": {"M5": 18}, **{f"shard-{k}": {"shard": 60} for k in range(1, SHARDS + 1)},
             "g": {"M6-GATE": 135}, "merge": {}}
 
     def caps(self):

@@ -9485,19 +9485,30 @@
     ".github/workflows/verify.yml",
     "tests/test_ci_workflows.py",
     "docs/tests.json",
-    "docs/PLAN-ANSWER.md",
-    "docs/work-items.json"
+    "docs/work-items.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/adr/0026-evidence-provenance.md"
    ],
    "contract_refs": [],
    "actions": [
     "تقصير verify ج: مجموعة M5 في وظيفة مستقلة وقياس الطريق الحرج دون 26 دقيقة (مفصولة من WP-98)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-17 registered at WP-98's split",
-    "2026-11-18 activation (the manager, method section 7; WP-152 done): the measured run 44229918866 (39 min) sets the design. Its paths: job a 33.5 min (M5 10.6, M3 4.2, Toolchain 4.9 on a fallback runner, its evidence upload 3.1: evidence/*-a/ also matches every committed -a directory of older runs, so the upload grows each run), the longest shard 24 min (20.7 of mutants in shard 3 of 6), g 1.7, merge 5.8 (download 2.2, publish 1.6). The work: M5 in its own job with its own slot; the shard count raised until the longest shard fits; each job uploads only this run's directories; the critical path measured under 26 min with every verdict of today's run present. The Toolchain's mirror order stays with L-035 and L-036 unless the path needs it. Estimate at activation: one engineer cycle, about 80 min and under 120 tool calls, within the budget line"
+    "2026-11-18 activation (the manager, method section 7; WP-152 done): the measured run 44229918866 (39 min) sets the design. Its paths: job a 33.5 min (M5 10.6, M3 4.2, Toolchain 4.9 on a fallback runner, its evidence upload 3.1: evidence/*-a/ also matches every committed -a directory of older runs, so the upload grows each run), the longest shard 24 min (20.7 of mutants in shard 3 of 6), g 1.7, merge 5.8 (download 2.2, publish 1.6). The work: M5 in its own job with its own slot; the shard count raised until the longest shard fits; each job uploads only this run's directories; the critical path measured under 26 min with every verdict of today's run present. The Toolchain's mirror order stays with L-035 and L-036 unless the path needs it. Estimate at activation: one engineer cycle, about 80 min and under 120 tool calls, within the budget line",
+    "2026-11-18 options (rule 5; the lab engineer, computed from the step seconds of run 44229918866 and the gate's merged report, scratchpad cp153.py): (A) M5 to its own job b and 8 shards: 26.4 min on the worst observed Toolchain, over the bar; (B) M5 to job b and 12 shards: 24.2 min worst observed, chosen as the smallest change under 26; (C) B with the host suites moved to b too: 23.7, half a minute for more moves. The shard count by the mod-N rule's longest shard: 819 s at 8, 742 at 9, 945 at 10, 927 at 11, 655 at 12 (10 and 11 put two of the four 5-min mutants together). Corrected at the review: 24.2 is the worst observed in one run, not a bound; with the run's median Toolchain (291 s) the path is about 23.8 min, and it stays under 26 only while job a's Toolchain stays under about 429 s",
+    "2026-11-18 the work (the lab engineer, in the tree over 0d72f99895; scratch runs, no CI evidence). verify.yml: the M5 guest suite moves from job a to a new job b (slot b, limit 40 = (15 + 18) x 1.2, no needs, a's checkout and Toolchain, pc-qemu built into the runner's temp so TST-M1-BUILD gets no second run, M5 capped 18); twelve shard jobs (--shard k/12, NAWAH_GATE_SHARDS 12 on g's gate step); every slot job uploads only this run's directories, `evidence/*-<sha8>-*-<slot>/` with a rev step under always() giving the checked-out commit's first 8 characters (the old `evidence/*-<slot>/` matched every committed directory of older runs: 188 s of upload in a); merge needs a, b, the shards and g and adopts a b g. Test first: TST-M0-003 failed on the old verify.yml (66 cases, failures=7: the slot paths, the shard count, job b missing, the budget), then passed; M189 and M300 to M303 anchors updated; M309 to M314 on verify.yml killed by TST-M0-003",
+    "2026-11-18 the review round (auditor, security assurance and red team in parallel, read-only; each blocker to an independent refuter): one BLOCKER, found by all three and confirmed by two refuters: b's evidence upload had a single search path, so the pinned upload-artifact (src/shared/search.ts 128-157) roots its artifact at evidence/ and merge, which looks for incoming/evidence-b/evidence/*/verdict.json, would fail every run; no case saw it because run_adopt built the layout by hand. Fixed test first: MergeJob computes each slot artifact's root by that rule and builds run_adopt's layout from it (failed on b: {'b': 'evidence'} and the merge's own error 'evidence-b is missing or holds no run directory'), then b's upload carries build/pc-qemu/build-id.txt beside its runs (b's build writes the same text as a's: the first 12 characters of the same HEAD; the merge's copy loop shown on a scratch tree); M315 (the single line again) killed by TST-M0-003; the N=8 comment corrected. Confirmed by reading: every verdict of run 44229918866 has one producer (a 144, b 35, g 1); b's scratch build leaves M5 its image and writes no TST-M1-BUILD; every mutant anchor once. To docs/LATER.md: L-038 to L-046. At the close: the adopted test ids of the run compared with today's set",
+    "2026-11-18 local checks before the push (scratch, no CI evidence), on the tree with these records: the real harness on every tooling mutant of the stage (71): 71 of 71 killed; test_ci_workflows 68 cases and test_mutants_harness 85 OK; validate-records 0 errors; cargo fmt --all --check clean; hygiene PASS; `test --target host --suite M0` PASS (33, 6, 68, 3, 85, 51 cases). Not run here: the M5 suite in job b (no KVM in this container)"
    ],
    "acceptance": "a verify run whose critical path is measurably shorter than 26 minutes with every verdict of today's run present, and TST-M0-003 PASS with the new cases",
    "test_ids": [
-    "TST-M0-003"
+    "TST-M0-003",
+    "TST-M0-005",
+    "TST-M6-MUTANTS"
    ],
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
