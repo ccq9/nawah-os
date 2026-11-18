@@ -329,6 +329,47 @@ fn main() -> u64 {
                 Err(_) => return 0xE4,
             }
         },
+        // WP-156 (RSK-028; TST-M4-SVC-CONNECT-NOREAD): a requester that never reads. Before
+        // READY it asks the manager 64 times for LIST, whose unread replies fill its queue, then
+        // three times for a connection to `config`: the manager cannot write those replies.
+        // READY goes last on the same channel, so a manager that shows this service ready has
+        // handled every request before it. Then it blocks, still reading nothing.
+        b"noread" => {
+            let send = |req: &[u8]| loop {
+                match libnawah::channel_write(ch, req, &[]) {
+                    0 => break true,
+                    libnawah::ERR_SHOULD_WAIT => {
+                        let _ = libnawah::sleep(1);
+                    }
+                    _ => break false,
+                }
+            };
+            for _ in 0..64 {
+                if !send(b"LIST") {
+                    return 0xE5;
+                }
+            }
+            for _ in 0..3 {
+                if !send(b"CONNECT config") {
+                    return 0xE5;
+                }
+            }
+            if !send(b"READY") {
+                return 0xE2;
+            }
+            let Ok((a, _keep)) = libnawah::channel_create() else {
+                return 0xE3;
+            };
+            loop {
+                let _ = libnawah::object_wait_many(
+                    &[WaitEntry {
+                        handle: a,
+                        signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+                    }],
+                    libnawah::TIMEOUT_FOREVER,
+                );
+            }
+        }
         b"crash" => 1,
         b"serve" => serve(ch, Mode::Serve),
         b"crash_once" => serve(ch, Mode::CrashOnce),

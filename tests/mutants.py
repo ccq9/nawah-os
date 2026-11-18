@@ -1344,6 +1344,14 @@ MUTANTS = [
      "                if let Some(h) = handle.take() {\n                    libnawah::handle_close(h);\n                }\n",
      "",
      ["TST-M4-CONFIG-RETRY"], "SECURITY: configd keeps the handle every request carried, a replayed one's and one whose reply cannot be written included, so a manifest service fills its handle table and config stops reading"),
+    # M324 (WP-156, RSK-028; services.md v1.13 note): the manager's CONNECT reply to a service,
+    # written or the client end closed. As it was, a requester that cannot take its reply left the
+    # client end in the manager's table and the target's slot taken; TST-M4-SVC-CONNECT-NOREAD
+    # reads both live counts across three such requests.
+    ("M324", "user/apps/svcmgr/src/main.rs",
+     "                            if libnawah::channel_write(c, b\"OK\", &[client]) != 0 {\n                                libnawah::handle_close(client);\n                            }\n",
+     "                            libnawah::channel_write(c, b\"OK\", &[client]);\n",
+     ["TST-M4-SVC-CONNECT-NOREAD"], "SECURITY: the manager ignores that it could not write a service's CONNECT reply and keeps the client end, so a requester that never reads fills the manager's table and takes the target's client slots"),
     # M305..M308 (WP-152's follow-up, verify run 44218469147): the Toolchain step's fallback mirror and
     # the runner mirror's budget, in mutants.yml where each anchor is once (verify.yml repeats the
     # step in nine jobs, a and the shards under one identity check); TST-M0-003 (FallbackMirror).
@@ -1648,7 +1656,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M34", "M53", "M62", "M67", "M68", "M69", "M70", "M73", "M77",
             # WP-107 (RSK-028): configd closes the handle every request carried, at one exit,
             # a replay's and one whose reply cannot be written included (config.md v1.3, M323).
-            "M323"}
+            "M323",
+            # WP-156 (RSK-028): the manager closes the client end of a connection whose reply
+            # to the requesting service it could not write (services.md v1.13 note, M324).
+            "M324"}
 
 
 def security_of(mid: str) -> bool:
@@ -1848,6 +1859,7 @@ _LAST = "|ktest|fail|an empty write on an entry whose first cluster is the volum
 _PAST = "|ktest|fail|a write past the stored size on an entry whose first cluster is 1 was not answered by the corrupt-volume error with no disk write"
 _K3 = "|ktest|fail|a handle without READ was not refused a mapping for writing with ERR_ACCESS"
 _KEPT = "|ktest|fail|configd kept the handles its replayed requests carried"
+_HELD = "|ktest|fail|the manager kept the client ends whose CONNECT replies it could not write"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -1890,6 +1902,9 @@ EXPECT = {
     # WP-107: the live balance's one line; every token stays: the body's six, the 20 replays' and
     # the second client's two (its request's and that of the replay whose reply cannot be written).
     "M323": {"TST-M4-CONFIG-RETRY": ["exit 37", "|body_grew=6|", "|replays_grew=20|", "|unwritable_grew=2|", _KEPT]},
+    # WP-156: the case's one line: the three client ends stay with the manager and config keeps
+    # their three slots.
+    "M324": {"TST-M4-SVC-CONNECT-NOREAD": ["exit 37", "|mgr_grew=3|", "|cfg_grew=3|", _HELD]},
 }
 
 

@@ -957,6 +957,43 @@ class KillEvidence(unittest.TestCase):
             self.assertIn("|" + x[1:].split("=")[0] + "=", line, x)
             self.assertNotIn(x, line, f"{x} is the pinned value")
 
+    NOREAD = "TST-M4-SVC-CONNECT-NOREAD"
+
+    def test_the_manager_reply_close_expectation_is_pinned(self):
+        """WP-156 (RSK-028; services.md v1.13 note): M324 puts back the manager's CONNECT reply
+        to a service as it was, its write result ignored. It is a SECURITY mutant whose anchor
+        is the write-or-close, once in user/apps/svcmgr/src/main.rs, its replacement the reply
+        without the close, declared on TST-M4-SVC-CONNECT-NOREAD alone by exit 37, the kernel's
+        own failure message (a failure in ktest.rs) and the two growths of the case's line,
+        each in the pinned line with another value: three client ends, three slots."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.NOREAD)
+        line = next(m for m in case["required_markers"] if "|mgr_grew=" in m)
+        m = next((m for m in mutants.MUTANTS if m[0] == "M324"), None)
+        self.assertIsNotNone(m, "M324 is registered")
+        self.assertEqual(m[1], "user/apps/svcmgr/src/main.rs")
+        self.assertEqual(m[4], [self.NOREAD])
+        self.assertIn("handle_close(client)", m[2])
+        self.assertNotIn("handle_close", m[3])
+        self.assertIn('channel_write(c, b"OK", &[client])', m[3])
+        self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+        self.assertIn("M324", mutants.SECURITY)
+        self.assertTrue(m[5].startswith("SECURITY: "), m[5])
+        self.assertEqual(mutants.stage_of("M324"), "M6")
+        self.assertEqual(set(E.get("M324", {})), {self.NOREAD})
+        subs = E["M324"][self.NOREAD]
+        self.assertIn("exit 37", subs)
+        fails = [x for x in subs if x.startswith("|ktest|fail|")]
+        self.assertEqual(fails, [getattr(mutants, "_HELD", None)])
+        self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src)
+        got = {x for x in subs if re.fullmatch(r"\|\w+=[^|]*\|", x)}
+        self.assertEqual(got, {"|mgr_grew=3|", "|cfg_grew=3|"})
+        for x in got:
+            self.assertIn("|" + x[1:].split("=")[0] + "=", line, x)
+            self.assertNotIn(x, line, f"{x} is the pinned value")
+
 
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""

@@ -196,6 +196,7 @@ pub fn run() -> ! {
         "svc_order" => svc_order(),
         "svc_timeout" => svc_timeout(),
         "svc_restart" => svc_restart(),
+        "svc_connect_noread" => svc_connect_noread(),
         "token_objects" => token_objects(),
         "login" => login(),
         "session_lock" => session_lock(),
@@ -5287,6 +5288,111 @@ fn svc_restart() -> ! {
     }
     drop((lines, x, text, load));
     svc_balance("svc_restart", frames0)
+}
+
+/// The manager's live handle count, read while it runs (WP-156); -1 when it is not live.
+fn mgr_handles(h: &SvcHarness) -> i64 {
+    sched::handles_pid(h.m.pid).map_or(-1, |n| n as i64)
+}
+
+/// TST-M4-SVC-CONNECT-NOREAD (REQ-M4-002, services.md v1.13 note of WP-156; RSK-028): a
+/// requester that never reads cannot leave the manager holding the client ends of the
+/// connections it asked for, nor config holding their slots. N (svc role `noread`) fills its
+/// own queue with unread LIST replies and asks three times for a connection to config before
+/// READY, so the manager cannot write those replies. The counts are taken across a RESTART of
+/// N, which repeats the three requests: the manager's and config's live handle counts are the
+/// same before and after. The manager's is exact once N is ready again (READY is the last
+/// message of one channel, read in order). config's is read once it is back at its baseline or
+/// at a deadline: config takes one channel per wake, lowest slot first, and the test's own
+/// connection may sit below N's new ones, so an answered GET does not mean the closed peers
+/// were seen; a kept slot never comes back.
+fn svc_connect_noread() -> ! {
+    let name = "svc_connect_noread";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-NR.TXT");
+    svc_wait_ready(&h, &["config", "N"], sched::ticks() + 60_000);
+    let frames0 = {
+        let cfg = svc_connect(&h, "config");
+        let base_get = cfg_request(&cfg, b"GET device nr.key", None);
+        let (m1, c1) = (mgr_handles(&h), cfg_handles());
+        let restart = match crate::services::request(&h.m.ctl, b"RESTART N", sched::ticks() + 500) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => alloc::format!("error:{}", e),
+        };
+        let lines = h.poll_list(sched::ticks() + 10_000, |l| {
+            l.iter()
+                .any(|x| x.name == "N" && x.restarts == 1 && x.state == "ready")
+        });
+        let n = svc_find(&lines, "N");
+        let sync_get = cfg_request(&cfg, b"GET device nr.key", None);
+        let m2 = mgr_handles(&h);
+        let settled = sched::poll_until(sched::ticks() + 3_000, || cfg_handles() == c1);
+        let c2 = cfg_handles();
+        let load = h.load_reply.clone();
+        drop(cfg);
+        // N reads nothing, so it would outlive the manager: it is stopped (forced at the grace).
+        let stop = match crate::services::request(&h.m.ctl, b"STOP N", sched::ticks() + 500) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => alloc::format!("error:{}", e),
+        };
+        let ended = h.poll_list(sched::ticks() + 5_000, |l| {
+            l.iter().any(|x| x.name == "N" && x.state == "stopped")
+        });
+        let end = svc_find(&ended, "N").state;
+        let (mgr_exit, procs, frames0, clean) = h.finish();
+        kprintln!(
+            "OSX|{}|ktest|svc_connect_noread|load={}|base_get={}|restart={}|state={}|restarts={}|sync_get={}|mgr_grew={}|cfg_grew={}|settled={}|mgr_base={}|cfg_base={}",
+            BUILD_ID,
+            load,
+            base_get,
+            restart,
+            n.state,
+            n.restarts,
+            sync_get,
+            m2 - m1,
+            c2 - c1,
+            u8::from(settled),
+            m1,
+            c1
+        );
+        kprintln!(
+            "OSX|{}|ktest|svc_connect_noread|stop={}|end={}|mgr_exit={:#x}|processes_after={}|clean={}",
+            BUILD_ID,
+            stop,
+            end,
+            mgr_exit,
+            procs,
+            u8::from(clean)
+        );
+        if load != "OK 2"
+            || base_get != "ERR NOT_FOUND"
+            || sync_get != "ERR NOT_FOUND"
+            || restart != "OK"
+            || n.state != "ready"
+            || n.restarts != 1
+            || m1 < 0
+            || c1 < 0
+        {
+            fail("the requester that never reads was not started, restarted and answered as expected")
+        }
+        if m2 != m1 {
+            fail("the manager kept the client ends whose CONNECT replies it could not write")
+        }
+        if c2 != c1 {
+            fail("config kept the slots of connections whose requester never got them")
+        }
+        if stop != "OK" || end != "stopped" {
+            fail("the requester that never reads could not be stopped")
+        }
+        if mgr_exit != 0 || procs != 0 || !clean {
+            fail("manager or services left something behind")
+        }
+        frames0
+    };
+    cfg_balance(
+        name,
+        frames0,
+        "a requester that never reads leaves the manager and config holding nothing of its connections",
+    )
 }
 
 /// The named line of a `LIST` reply (empty when absent).

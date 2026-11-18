@@ -3747,6 +3747,50 @@
         ]
       },
       {
+        "id": "TST-M4-SVC-CONNECT-NOREAD",
+        "test_id": "TST-M4-SVC-CONNECT-NOREAD",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=svc_connect_noread"
+        ],
+        "oracle": "manifest /SYSTEM/SVC-NR.TXT: config, and N (svc role `noread`, dependency config), a requester that never reads: before READY it asks the manager 64 times for LIST, whose unread replies fill its queue, then three times for a connection to config, so the manager cannot write those replies, and READY comes last on the same channel; LOAD answers `OK 2`; with a connection of the test's own to config, the manager's and config's live handle counts are read after a GET config answered (ERR NOT_FOUND), N is restarted (RESTART N answers OK; N is ready again with restarts=1, having repeated its requests) and both counts are unchanged, the manager's read once N is ready again and config's once it is back at its baseline (within 3 s; an answered GET alone does not show that config saw the closed peers): the manager closed each client end whose reply it could not write and config freed each slot (services.md v1.13 note, WP-156); N, which reads nothing and would outlive the manager, is then stopped (STOP N answers OK; forced at the grace, it ends `stopped`); four spawns (the manager, config, N twice); clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=svc_connect_noread",
+          "|ktest|svc_connect_noread|load=OK 2|base_get=ERR NOT_FOUND|restart=OK|state=ready|restarts=1|sync_get=ERR NOT_FOUND|mgr_grew=0|cfg_grew=0|settled=1|",
+          "|ktest|svc_connect_noread|stop=OK|end=stopped|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|svc_connect_noread|frames_delta=0",
+          "|ktest|pass|a requester that never reads leaves the manager and config holding nothing of its connections"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "max_counts": {
+          "|kernel|spawn|pid=": 4
+        },
+        "min_counts": {
+          "|kernel|spawn|pid=": 4
+        },
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
         "id": "TST-M4-TOKEN-OBJECTS",
         "test_id": "TST-M4-TOKEN-OBJECTS",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

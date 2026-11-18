@@ -1075,6 +1075,20 @@ pub fn handles_named(name: &[u8]) -> Option<usize> {
     Some(n)
 }
 
+/// Test-only (WP-156): as `handles_named`, for the live process `pid` — the service manager is
+/// spawned by the kernel and has no image name (TST-M4-SVC-CONNECT-NOREAD). None when not live.
+#[cfg(feature = "ktest")]
+pub fn handles_pid(pid: u32) -> Option<usize> {
+    let table = with(|s| {
+        s.processes
+            .iter()
+            .find(|p| p.id == pid && p.exit_code.is_none())
+            .map(|p| p.handles.clone())
+    })?;
+    let n = table.lock().len();
+    Some(n)
+}
+
 /// Test-only (WP-40): releases the live process `freeze_named` froze, as if its hang ended: its
 /// blocked threads are made ready and each re-checks what it waited for, so a request queued to
 /// it meanwhile is answered now (TST-M5-UNLOCK-AUTH-HANG). Returns whether one matched.

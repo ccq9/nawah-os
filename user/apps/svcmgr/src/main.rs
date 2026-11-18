@@ -649,7 +649,12 @@ impl Manager {
                         msg.put(b"CONNECT ");
                         msg.put(self.services[i].name());
                         if libnawah::channel_write(target, msg.bytes(), &[server]) == 0 {
-                            libnawah::channel_write(c, b"OK", &[client]);
+                            // A requester that cannot take its reply (its queue is full or its
+                            // end is closed) must not leave the client end here: closed, the
+                            // target sees the peer gone and frees the slot (WP-156, RSK-028).
+                            if libnawah::channel_write(c, b"OK", &[client]) != 0 {
+                                libnawah::handle_close(client);
+                            }
                             return;
                         }
                         libnawah::handle_close(client);

@@ -9664,9 +9664,10 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M4"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -9681,16 +9682,32 @@
     "platform/pc-qemu/target.json",
     "platform/pc-qemu/manifests",
     "docs/contracts/services.md",
-    "tests/mutants.py"
+    "tests/mutants.py",
+    "kernel/src/sched/mod.rs",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/requirements.json",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
    ],
    "acceptance": "when the manager cannot write its CONNECT reply, it closes the client end it holds: its live handle count does not grow and the target sees PEER_CLOSED and frees the slot, shown by a new case on CI with a lab service that sends CONNECT and never reads; TST-M4-SVC-RESTART PASS; the SECURITY mutant on that close killed",
    "test_ids": [
-    "TST-M4-SVC-RESTART"
+    "TST-M4-SVC-RESTART",
+    "TST-M4-SVC-CONNECT-NOREAD",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "actions": [
     "مدير الخدمات يغلق طرف العميل حين يفشل رد CONNECT، فيرى الهدف إغلاق النظير ويحرر الخانة (مفصولة من WP-107)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-18 registered at WP-107's split"
+    "2026-11-18 registered at WP-107's split",
+    "2026-11-18 activation (the manager, method section 7; WP-107 done; done inline by the manager from the reading in scratchpad wp107_reading.md, the services engineer's session having been stopped): the service path alone: a lab role that never reads (64 LIST, three CONNECT config, READY last), a case that restarts it and reads the manager's and config's live handle counts, write-or-close at the manager's CONNECT reply to a service, one SECURITY mutant; the controller's CONNECT reply (the same pattern, reachable by the kernel's own controller only) stays as it is, recorded in docs/LATER.md, because a case for it needs a test-only probe of a queue. About 70 min and under 120 tool calls, within the budget line",
+    "2026-11-18 options (rule 5; the reply from the reading, scratchpad wp107_reading.md; the case by the manager). The reply that cannot be written: (a) write-or-close: the client end closed when the write fails, chosen (authd's precedent; no state); (b) (a) and the server end closed too: the same effect, the target sees it no sooner; (c) queue the reply and retry: state per requester, and a requester that never reads would still hold it. The case: (1) a requester that closes its end after asking: the manager may answer before the close, so the red would come and go; (2) a requester whose queue is full of unread LIST replies, its READY last, the counts taken across a RESTART: chosen, no timing in it; (3) the manager frozen while a role asks and closes on demand: more machinery for the same proof. Scope: the service path alone; the controller's CONNECT reply has the same pattern, is written to the kernel's own controller only (no manifest service reaches it; the auditor confirmed), and a case for it needs a test-only probe of a queue: docs/LATER.md L-061, not changed here, because no code changes without a failing test first",
+    "2026-11-18 the work (the manager, inline; scratch runs, no CI evidence). Test first: TST-M4-SVC-CONNECT-NOREAD (manifest svc-nr.txt; svc role `noread`: before READY 64 LIST and three CONNECT config, never reading; sched::handles_pid for the manager, test kernel only) pins `load=OK 2|base_get=ERR NOT_FOUND|restart=OK|state=ready|restarts=1|sync_get=ERR NOT_FOUND|mgr_grew=0|cfg_grew=0|settled=1`, then `stop=OK|end=stopped|mgr_exit=0x0|processes_after=0|clean=1`, frames_delta=0 and four spawns; on the manager as it was it FAILED, exit 37, `mgr_grew=3|cfg_grew=3|settled=0|mgr_base=16|cfg_base=6` and 'the manager kept the client ends whose CONNECT replies it could not write'; with the fix PASS (`mgr_grew=0|cfg_grew=0|settled=1|mgr_base=13|cfg_base=3`: the first life's three are gone from the baselines too). The fix (user/apps/svcmgr/src/main.rs, connect_for): the client end is closed when the reply to the service cannot be written. M324 (SECURITY), the exact revert of that line, its expectation pinned by TST-M0-005 (91 cases; the case seen failing before M324 was registered: 'M324 is registered'). services.md: a dated note under v1.13, no new version",
+    "2026-11-18 the review round (auditor and red team in parallel, read-only): no blocker. Confirmed: a failed write leaves the handle with the sender (the kernel reserves the queue slot before it moves any handle: all or nothing), so the close is right and never double; N's queue is full at the three replies in every schedule (it starts empty after START, the capacity is 64, the manager is its only writer, the watchdog is off); READY last means every earlier request was handled; M324's anchor once and its replacement the old text; no other write in the manager carries a handle and ignores its result, the controller's reply apart; no manifest service reaches that second site. Fixed in the round: both found config's count read on timing, not order (config takes one channel per wake, lowest slot first, and the test's connection may sit below N's new ones, so the answered GET did not show the closed peers were seen: a false failure, never a hidden leak): the count is now read once it is back at its baseline or at a 3 s deadline (settled=1 pinned; the old code never comes back: settled=0); and the note's reference to L-061 now exists. To docs/LATER.md: L-061 to L-065",
+    "2026-11-18 local checks before the push (scratch, no CI evidence), on the final tree: TST-M4-SVC-CONNECT-NOREAD red on the old manager and green on the fix, both with the round's change (the lines above); the M4 guest suite 27 of 28 PASS, TST-M4-NET-NO-INTERNET not judged in this lab (the container's gateway answers its probe, as in every local run; CI judges it), TST-M4-SVC-RESTART among the passing; the suite ran before the round's change to the case, which was then run alone; M324 killed through the real harness on the final case (exit 37, mgr_grew=3, cfg_grew=3, settled=0, the kernel's message; no expectation missed); the 78 tooling mutants of the stage: 78 of 78 killed, run before the round's change, which touches no file under tools/, tests/ or .github/; validate-records 0 errors; cargo fmt --all --check clean; hygiene PASS (43 commands); sync-oracles --check 0; `test --target host --suite M0` PASS (TST-M0-005: 91 cases)"
    ]
   },
   {
