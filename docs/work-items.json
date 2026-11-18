@@ -6008,7 +6008,9 @@
     "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
     "2026-11-14 estimate: about 25 calls of work and one mutants run of about 160 min on CI (unmeasured as a whole)",
     "2026-11-15 (assurance review of the external findings, by reading): to do with this item: a guest killer's FAIL counts as a kill without the case passing on the clean tree (tests/mutants.py: only host killers are checked clean): inside verify the same run's job a covers it, in mutants.yml nothing does; and the gates M3 to M6 of mutants.yml run under always() after a failed baseline: each gate's condition gets the baseline's success; a dispatch that selects no gate ends green and imports nothing",
-    "2026-11-16 inputs from the audit the owner ordered (by reading; nothing run): the four gates' evidence is stale since 2026-11-09, at evidence-run 1.0.0 with worker interactive-agent and no import.json, and CI runs M01 to M129 on no push (RSK-041); a successful run, mutants-42610085488 of 2026-11-09, was never imported; M30 to M49 cover the FAT32, VFS and virtio-blk code that WP-104 to WP-121 changed; nine authority mutants are outside the SECURITY set (M34, M53, M62, M67, M68, M69, M70, M73, M77) and are to be moved into it with this item, as are mutants for the checks that have none (the read branch of fs_authority, the ADMIN check of netd's POLICY and of inputd); 36 ids are in the set with no SECURITY prefix in their notes: the notes change and a harness test keeps prefix and membership equal; M08, M09 and M10 (memory protection) are in no set; whether the owner accepts stale_policy warn on the four gates until this item is done is DEC-035"
+    "2026-11-16 inputs from the audit the owner ordered (by reading; nothing run): the four gates' evidence is stale since 2026-11-09, at evidence-run 1.0.0 with worker interactive-agent and no import.json, and CI runs M01 to M129 on no push (RSK-041); a successful run, mutants-42610085488 of 2026-11-09, was never imported; M30 to M49 cover the FAT32, VFS and virtio-blk code that WP-104 to WP-121 changed; nine authority mutants are outside the SECURITY set (M34, M53, M62, M67, M68, M69, M70, M73, M77) and are to be moved into it with this item, as are mutants for the checks that have none (the read branch of fs_authority, the ADMIN check of netd's POLICY and of inputd); 36 ids are in the set with no SECURITY prefix in their notes: the notes change and a harness test keeps prefix and membership equal; M08, M09 and M10 (memory protection) are in no set; whether the owner accepts stale_policy warn on the four gates until this item is done is DEC-035",
+    "2026-11-18 split by the budget rule before activation (the manager): the new mutants for the authority checks that have none (the read branch of fs_authority, the ADMIN check of netd's POLICY and of inputd) and M08 to M10 into a set go to WP-154; the clean-tree check of a guest killer in mutants.yml goes to WP-155. WP-95 keeps the four gates' oracle texts, the default stages with M6 in the scheduled run, each gate's condition on the baseline's success, a dispatch that selects no gate failing, the nine authority mutants into SECURITY with a harness case that keeps the SECURITY prefix of the notes and the set equal, and the mutants run of the head and its import",
+    "2026-11-18 activation (the manager, method section 7; WP-90 and WP-96 done; the order of section 7 puts WP-95 after WP-98, now done with WP-152 and WP-153): after the split above, one engineer cycle of about 60 min and under 120 tool calls within the budget line, then one mutants.yml run of the head on CI (about 140 min measured for M2 to M5 plus M6, unmeasured as a whole) and its import. A gate that turns red under the new rules is a finding, never loosened: each surviving, invalid or ERROR mutant opens its own item"
    ],
    "acceptance": "TST-M0-003 PASS with the default-stages case; TST-M2-MUTANTS, TST-M3-MUTANTS, TST-M4-MUTANTS and TST-M5-MUTANTS PASS with evidence of a run on the head that carries the new texts; validate-records --strict reports no stale mutation verdict",
    "test_ids": [
@@ -6021,9 +6023,10 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -9527,6 +9530,85 @@
     "evidence/20261118T061121Z-ce36fd2e-001-g"
    ],
    "blocker": null
+  },
+  {
+   "id": "WP-154",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-021"
+   ],
+   "depends_on": [
+    "WP-95"
+   ],
+   "inputs": [
+    "split from WP-95 on 2026-11-18 by the budget rule, from its line of 2026-11-16 (the audit the owner ordered)"
+   ],
+   "files": [
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [],
+   "acceptance": "the read branch of fs_authority, the ADMIN check of netd's POLICY and the ADMIN check of inputd each have a mutant in the SECURITY set killed on CI by its case in its gate, M08, M09 and M10 belong to the set their notes name, and TST-M0-005 PASS with the new cases",
+   "test_ids": [
+    "TST-M0-005"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "طفرات لفحوص السلطة التي لا طفرة لها، وM08 إلى M10 في مجموعة (مفصولة من WP-95)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-18 registered at WP-95's split"
+   ]
+  },
+  {
+   "id": "WP-155",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-021"
+   ],
+   "depends_on": [
+    "WP-95"
+   ],
+   "inputs": [
+    "split from WP-95 on 2026-11-18 by the budget rule, from its line of 2026-11-15 (assurance review of the external findings)"
+   ],
+   "files": [
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    ".github/workflows/mutants.yml",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [],
+   "acceptance": "in a mutants.yml run a guest killer's FAIL counts as a kill only when that case passes on the clean tree of the same run, shown by TST-M0-005 cases that fail before the change, and TST-M0-005 PASS with them",
+   "test_ids": [
+    "TST-M0-005"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "قاتل ضيفي يُحتسب في mutants.yml فقط إذا نجحت حالته على الشجرة النظيفة (مفصولة من WP-95)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-18 registered at WP-95's split"
+   ]
   }
  ]
 }
