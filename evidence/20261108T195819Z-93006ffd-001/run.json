@@ -1,0 +1,20 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261108T195819Z-93006ffd-001",
+ "started_at": "2026-11-08T19:58:19+00:00",
+ "finished_at": "2026-11-08T20:34:18+00:00",
+ "source_revision": "93006ffd24647839dbd9b0215b978f71d9ebb04c",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M5-MUTANTS",
+ "commands": [
+  "python3 -I tests/mutants.py --target pc-qemu --stage M5 --report build/mutants-m5-report.json"
+ ],
+ "exit_code": 0,
+ "notes": "imported from CI run mutants-42512057372 (verification runner)"
+}

@@ -1,0 +1,8 @@
+test_adr_cites_e0_evidence (__main__.M0Records.test_adr_cites_e0_evidence) ... ok
+test_boot_contract_sections (__main__.M0Records.test_boot_contract_sections) ... ok
+test_required_files_exist (__main__.M0Records.test_required_files_exist) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+OK
