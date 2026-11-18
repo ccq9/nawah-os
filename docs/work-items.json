@@ -6018,7 +6018,8 @@
     "2026-11-18 the work (the lab engineer, in the tree over 434d24221b; scratch runs, no CI evidence): the oracle texts of TST-M2..M6-MUTANTS say what gate_verdict and run_killers enforce (a kill ratio of at least 0.95 over a non-empty valid set, every survivor named, no surviving or invalid SECURITY mutant; a kill by a declared killer or, when they all miss and the image builds, by any guest case of the target in the sweep); mutants.yml: a stages step refusing any character but M, 2 to 6 and a plain space and any word that is no gate, every gate and the host suites only after a successful baseline, verify's Toolchain and host suites before the strict check, its artifact this run's directories alone (a rev step, as WP-153 did in verify), the job limit 345 (capped steps by cap, the four uncapped older gates by their measured 127.8 min x 1.2, 20 for the rest); M34, M53, M62, M67, M68, M69, M70, M73 and M77 into SECURITY and 45 notes given the SECURITY prefix, a TST-M0-005 case keeping prefix and set equal; M316 to M322 on mutants.yml killed by TST-M0-003. Test first throughout (MutationHarness, SecuritySet, GateOracles, the stages and upload cases failing first, shown in the hand-backs). The staleness the change causes, recomputed from the recorded input digests: 13 tests (TST-M0-001..005, -007, TST-M4-SHELL-TOOL, TST-M5-LAB-TOOL, TST-M2..M6-MUTANTS), every one refreshed by a mutants.yml dispatch of `M2 M3 M4 M5 M6` on the pushed head; no guest case's inputs change",
     "2026-11-18 the review round (auditor, security assurance and red team in parallel, read-only): no blocker. Fixed before the push because a gate text changed later costs a full mutants run: the four texts overclaimed (every defect killed against the 0.95 ratio; an M1/M2 case against the sweep of the target; a report written as each mutant is decided, false for INVALID), TST-M6-MUTANTS's text too; a tab- or newline-separated stages value passed the step while no gate's condition matched; TST-M0-003's wording of the staleness; the comment above STALE_WARN_TESTS (L-029); the 14.4 GB artifact; the host suites' condition. Controls at the close, without code: verify on the pushed head has jobs a, b, the shards and g green and only merge red, on the oracle mismatches; the import commit touches docs/ and evidence/ only; WP-95 closes only after verify is green on it; a failed mutants run gets a new dispatch, never a re-run (its Publish cannot push a second attempt). To docs/LATER.md: L-048 to L-055; the guest-killer clean-tree check stays WP-155",
     "2026-11-18 local checks before the push (scratch, no CI evidence): the real harness on every tooling mutant of the stage (78): 78 of 78 killed; test_ci_workflows 71 cases and test_mutants_harness 89 OK; validate-records 0 errors; cargo fmt --all --check clean; hygiene PASS; `test --target host --suite M0` PASS (33, 6, 71, 3, 89, 51 cases). The four guest gates are not run here (hours, no KVM): the mutants run on CI judges them",
-    "2026-11-18 CI record: mutants run 44270400980 (dispatch, stages M2 M3 M4 M5 M6) on 48c4a57f0, run attempt 1, green in 195 min (M2 28, M3 20, M4 27, M5 42, M6 64 min; host suites 1; Toolchain 5); 29 runs imported, none failing; validate-records --strict 0 errors and 0 stale verdicts. The gates under the new rules and texts: TST-M2-MUTANTS 29 of 29 valid mutants killed, TST-M3-MUTANTS 20 of 20, TST-M4-MUTANTS 32 of 32 (the nine authority mutants now in SECURITY among M3 and M4, none surviving), TST-M5-MUTANTS 45 of 45, TST-M6-MUTANTS 169 of 169; in each no survivor, no invalid mutant, no expectation missed; TST-M0-003 and TST-M0-005 PASS from the same run's host suites. verify run 44270417620 on the same head: jobs a, b, shard-1 to shard-12 and g green, merge red on exactly the four gate oracle mismatches, as planned (PR comment of 09:15)"
+    "2026-11-18 CI record: mutants run 44270400980 (dispatch, stages M2 M3 M4 M5 M6) on 48c4a57f0, run attempt 1, green in 195 min (M2 28, M3 20, M4 27, M5 42, M6 64 min; host suites 1; Toolchain 5); 29 runs imported, none failing; validate-records --strict 0 errors and 0 stale verdicts. The gates under the new rules and texts: TST-M2-MUTANTS 29 of 29 valid mutants killed, TST-M3-MUTANTS 20 of 20, TST-M4-MUTANTS 32 of 32 (the nine authority mutants now in SECURITY among M3 and M4, none surviving), TST-M5-MUTANTS 45 of 45, TST-M6-MUTANTS 169 of 169; in each no survivor, no invalid mutant, no expectation missed; TST-M0-003 and TST-M0-005 PASS from the same run's host suites. verify run 44270417620 on the same head: jobs a, b, shard-1 to shard-12 and g green, merge red on exactly the four gate oracle mismatches, as planned (PR comment of 09:15)",
+    "2026-11-18 close under the method's close rule (section 7, rule 3): every clause shown on CI as worded: TST-M0-003 PASS with the default-stages case (M2 M3 M4 M5, M6 through verify), TST-M2-MUTANTS to TST-M5-MUTANTS PASS with evidence of mutants run 44270400980 on the head carrying the new texts, and validate-records --strict reporting no stale mutation verdict (0 stale verdicts after the import). verify run 44307340299 on the import commit 45edb71e3 green (24.4 min), which closes the planned red window of run 44270417620. Not shown: a guest killer's FAIL counted without its case passing on the clean tree in mutants.yml (WP-155; for this run, verify 44270417620's jobs a and b on the same head passed every guest case); the new authority mutants and M08 to M10 (WP-154); after the next kernel or user change the four gates' evidence goes stale again behind the warning (L-051); the follow-ups L-048 to L-055"
    ],
    "acceptance": "TST-M0-003 PASS with the default-stages case; TST-M2-MUTANTS, TST-M3-MUTANTS, TST-M4-MUTANTS and TST-M5-MUTANTS PASS with evidence of a run on the head that carries the new texts; validate-records --strict reports no stale mutation verdict",
    "test_ids": [
@@ -6033,12 +6034,21 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261118T120129Z-48c4a57f-001",
+    "evidence/20261118T085706Z-48c4a57f-001",
+    "evidence/20261118T092531Z-48c4a57f-001",
+    "evidence/20261118T094615Z-48c4a57f-001",
+    "evidence/20261118T101348Z-48c4a57f-001",
+    "evidence/20261118T120136Z-48c4a57f-001",
+    "evidence/20261118T105642Z-48c4a57f-001"
+   ],
    "blocker": null
   },
   {
