@@ -9427,7 +9427,8 @@
    "actions": [
     "تقصير verify ب: بوابة الطفرات على وظائف متوازية ووظيفة دمج تحمل حكمها الوحيد (مفصولة من WP-98)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-17 registered at WP-98's split"
+    "2026-11-17 registered at WP-98's split",
+    "2026-11-18 activation (the manager, method section 7; WP-98 done): the workflow side of the shortened verify run, per the study (wp98_study.json, option A) and WP-98's hand-off: six shard jobs running tests/mutants.py --shard k/6 directly (no verdict, no evidence slot, their report uploaded), and a merge job g that needs them all and runs the M6-GATE case with NAWAH_GATE_SHARDS=6 at step level under its own run slot; job m removed; the merge job's needs, adoption loops and publish name the new slots; StepBudget, MutationJob and MergeJob in tests/test_ci_workflows.py first, red, then the workflow; the must-keep list of the assurance challenge binds it, and docs/LATER.md L-021 to L-023 are folded in where they touch the wiring. Estimate against the budget line (90 min or 120 tool calls): about 90 min and 55 calls with one review round"
    ],
    "acceptance": "TST-M6-MUTANTS's verdict computed over all shards, and TST-M0-003 PASS with the new cases",
    "test_ids": [
@@ -9437,9 +9438,10 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
