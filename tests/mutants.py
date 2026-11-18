@@ -1337,6 +1337,13 @@ MUTANTS = [
      ["TST-M0-003"], "the mutants artifact takes the whole tracked evidence tree again (14.4 GB), inside the job's unmeasured minutes"),
     ("M322", ".github/workflows/mutants.yml", "        if: ${{ !cancelled() && steps.baseline.outcome == 'success' }}\n", "        if: ${{ !cancelled() }}\n",
      ["TST-M0-003"], "the host suites run after a failed baseline, on a lab that never built or booted"),
+    # M323 (WP-107, RSK-028; config.md v1.3): configd's one exit for the handle a request carried.
+    # Without it every token stays in configd's table, a replay's too, and about a thousand such
+    # requests fill it (it then reads nothing); TST-M4-CONFIG-RETRY reads the count while it lives.
+    ("M323", "user/apps/configd/src/main.rs",
+     "                if let Some(h) = handle.take() {\n                    libnawah::handle_close(h);\n                }\n",
+     "",
+     ["TST-M4-CONFIG-RETRY"], "SECURITY: configd keeps the handle every request carried, a replayed one's and one whose reply cannot be written included, so a manifest service fills its handle table and config stops reading"),
     # M305..M308 (WP-152's follow-up, verify run 44218469147): the Toolchain step's fallback mirror and
     # the runner mirror's budget, in mutants.yml where each anchor is once (verify.yml repeats the
     # step in nine jobs, a and the shards under one identity check); TST-M0-003 (FallbackMirror).
@@ -1638,7 +1645,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # svcmgr's hand-over to auth and its connect rule (M62, M67), authd's password, attempt
             # limit and LOGOUT revocation (M68, M69, M70), configd's device-store authorization
             # (M73) and netd's no-internet policy (M77).
-            "M34", "M53", "M62", "M67", "M68", "M69", "M70", "M73", "M77"}
+            "M34", "M53", "M62", "M67", "M68", "M69", "M70", "M73", "M77",
+            # WP-107 (RSK-028): configd closes the handle every request carried, at one exit,
+            # a replay's and one whose reply cannot be written included (config.md v1.3, M323).
+            "M323"}
 
 
 def security_of(mid: str) -> bool:
@@ -1837,6 +1847,7 @@ _UNREFUSED = "|ktest|fail|a write on an entry whose first cluster is no cluster 
 _LAST = "|ktest|fail|an empty write on an entry whose first cluster is the volume's last was not answered 0 with no disk write"
 _PAST = "|ktest|fail|a write past the stored size on an entry whose first cluster is 1 was not answered by the corrupt-volume error with no disk write"
 _K3 = "|ktest|fail|a handle without READ was not refused a mapping for writing with ERR_ACCESS"
+_KEPT = "|ktest|fail|configd kept the handles its replayed requests carried"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -1876,6 +1887,9 @@ EXPECT = {
     "M280": {"TST-M3-FAT32-BAD-FIRST": ["exit 37", "|one_past=K_E_FS_RANGE|", _PAST]},
     # WP-149: the case's one line; the failure is the kernel's own.
     "M281": {"TST-M3-VMO-MAP-RIGHTS": ["exit 37", "|write_noread=mapped|", "|leak=1|", _K3]},
+    # WP-107: the live balance's one line; every token stays: the body's six, the 20 replays' and
+    # the second client's two (its request's and that of the replay whose reply cannot be written).
+    "M323": {"TST-M4-CONFIG-RETRY": ["exit 37", "|body_grew=6|", "|replays_grew=20|", "|unwritable_grew=2|", _KEPT]},
 }
 
 

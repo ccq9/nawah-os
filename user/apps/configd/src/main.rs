@@ -558,9 +558,10 @@ impl State {
         }
     }
 
-    /// One request; `handle` is the handle it carried (token or subscriber channel). Returns
-    /// whether the reply should be cached under the request id (modifying requests).
-    fn request(&mut self, req: &[u8], handle: Option<Handle>, out: &mut Out) -> Option<u64> {
+    /// One request; `handle` is the handle it carried (token or subscriber channel): the caller
+    /// closes it after this returns unless SUBSCRIBE took it (left `None`; config.md v1.3).
+    /// Returns the request id the reply is cached under (modifying requests).
+    fn request(&mut self, req: &[u8], handle: &mut Option<Handle>, out: &mut Out) -> Option<u64> {
         // The first line is the request; IMPORT carries its lines after it.
         let head = match req.iter().position(|c| *c == b'\n') {
             Some(p) => &req[..p],
@@ -659,16 +660,18 @@ impl State {
                 None
             }
             b"SUBSCRIBE" => {
-                let (Some(store), Some(h)) = (f.next(), handle) else {
+                let (Some(store), Some(h)) = (f.next(), *handle) else {
                     out.put(b"ERR BAD_REQUEST");
                     return None;
                 };
                 match self.store_index(store, true) {
                     Some(i) => match self.stores[i].subs.iter().position(|s| *s == 0) {
                         Some(slot) => {
+                            // The subscription takes the handle: the caller does not close it.
                             self.stores[i].subs[slot] = h;
+                            *handle = None;
                             out.put(b"OK");
-                            return Some(u64::MAX); // keep the handle: it is the subscription
+                            return None;
                         }
                         None => out.put(b"ERR FULL"),
                     },
@@ -886,7 +889,10 @@ fn main() -> u64 {
         let c = st.clients[ci].chan;
         match libnawah::channel_read(c, &mut st.msg, &mut hs, false) {
             Ok((n, nh)) => {
-                let handle = if nh == 1 { Some(hs[0]) } else { None };
+                // The handle the request carried: closed at the one exit below, whatever the
+                // request and whether its reply can be written, unless SUBSCRIBE took it
+                // (config.md v1.3, WP-107).
+                let mut handle = if nh == 1 { Some(hs[0]) } else { None };
                 // A repeated request id: the stored reply, nothing applied (config.md §3).
                 let rid_of = |req: &[u8]| -> Option<u64> {
                     let head = match req.iter().position(|c| *c == b'\n') {
@@ -908,51 +914,45 @@ fn main() -> u64 {
                         _ => None,
                     }
                 };
-                let mut sent = 0;
+                // The reply, stored or built, is put on the stack; it is written after the close.
+                let mut out_buf = [0u8; MSG_MAX];
+                let mut reply_len = 0;
                 let mut handled = false;
                 if let Some(rid) = rid_of(&st.msg[..n]).filter(|r| *r != 0) {
                     if let Some(cached) = st.clients[ci].cache.iter().find(|e| e.rid == rid) {
-                        let reply = cached.reply;
-                        let len = usize::from(cached.len);
-                        sent = libnawah::channel_write(c, &reply[..len], &[]);
+                        reply_len = usize::from(cached.len);
+                        out_buf[..reply_len].copy_from_slice(&cached.reply[..reply_len]);
                         handled = true;
                     }
                 }
                 if !handled {
                     // The request is copied out of the state so the handler may borrow the
-                    // state mutably; the reply is built on the stack.
+                    // state mutably.
                     let mut req_copy = [0u8; MSG_MAX];
                     req_copy[..n].copy_from_slice(&st.msg[..n]);
-                    let mut out_buf = [0u8; MSG_MAX];
                     let mut out = Out::new(&mut out_buf);
-                    let keep = st.request(&req_copy[..n], handle, &mut out);
-                    let reply_len = out.len;
-                    let reply: [u8; REPLY_MAX] = {
-                        let mut r = [0u8; REPLY_MAX];
+                    let keep = st.request(&req_copy[..n], &mut handle, &mut out);
+                    reply_len = out.len;
+                    if let Some(rid) = keep.filter(|r| *r != 0) {
                         let l = reply_len.min(REPLY_MAX);
-                        r[..l].copy_from_slice(&out.bytes()[..l]);
-                        r
-                    };
-                    match keep {
-                        Some(u64::MAX) => {} // subscription: the handle stays with us
-                        _ => {
-                            if let Some(h) = handle {
-                                libnawah::handle_close(h);
-                            }
-                        }
-                    }
-                    if let Some(rid) = keep.filter(|r| *r != 0 && *r != u64::MAX) {
+                        let mut reply = [0u8; REPLY_MAX];
+                        reply[..l].copy_from_slice(&out_buf[..l]);
                         let cl = &mut st.clients[ci];
                         let slot = cl.next % RID_CACHE;
                         cl.cache[slot] = Cached {
                             rid,
                             reply,
-                            len: reply_len.min(REPLY_MAX) as u8,
+                            len: l as u8,
                         };
                         cl.next += 1;
                     }
-                    sent = libnawah::channel_write(c, &out_buf[..reply_len], &[]);
                 }
+                // The one exit for the handle the request carried (WP-107): a replay, a refusal
+                // and a reply that cannot be written all leave it closed.
+                if let Some(h) = handle.take() {
+                    libnawah::handle_close(h);
+                }
+                let sent = libnawah::channel_write(c, &out_buf[..reply_len], &[]);
                 if sent == ERR_PEER_CLOSED {
                     libnawah::handle_close(c);
                     st.clients[ci].chan = 0;

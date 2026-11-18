@@ -1059,6 +1059,22 @@ pub fn freeze_named(name: &[u8]) -> bool {
     })
 }
 
+/// Test-only (WP-107): the live handle count of the live process whose spawn image base name
+/// equals `name` (e.g. `CONFIGD.ELF`), read while it runs — how the test kernel shows that a
+/// service keeps no handle a request carried (TST-M4-CONFIG-RETRY). None when none matches.
+#[cfg(feature = "ktest")]
+pub fn handles_named(name: &[u8]) -> Option<usize> {
+    let table = with(|s| {
+        s.processes
+            .iter()
+            .find(|p| p.exit_code.is_none() && p.object.as_ref().is_some_and(|o| o.name_is(name)))
+            .map(|p| p.handles.clone())
+    })?;
+    // Counted outside the scheduler lock, as the syscall layer takes the table.
+    let n = table.lock().len();
+    Some(n)
+}
+
 /// Test-only (WP-40): releases the live process `freeze_named` froze, as if its hang ended: its
 /// blocked threads are made ready and each re-checks what it waited for, so a request queued to
 /// it meanwhile is answered now (TST-M5-UNLOCK-AUTH-HANG). Returns whether one matched.

@@ -6379,11 +6379,21 @@ fn config_cas() -> ! {
     )
 }
 
+/// configd's live handle count, read while it runs (WP-107); -1 when no live configd matches.
+fn cfg_handles() -> i64 {
+    sched::handles_named(b"CONFIGD.ELF").map_or(-1, |n| n as i64)
+}
+
+/// TST-M4-CONFIG-RETRY (REQ-M4-005, config.md v1.3, WP-107): a repeated request id applies once
+/// and replays its stored reply; and configd's own handle count, read while it lives, does not
+/// grow: not by the replays of the body, nor by 20 more replays carrying a token, nor by a
+/// replay whose reply cannot be written (its sender closed its end before reading).
 fn config_retry() -> ! {
     let env = cfg_env("config_retry");
     let frames0 = {
         let ep = &env.cfg;
         let a = token_entry(&env.admin);
+        let h0 = cfg_handles();
         let r1 = cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone()));
         let r1b = cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone()));
         let read = cfg_request(ep, b"GET device retry.key", None);
@@ -6393,7 +6403,7 @@ fn config_retry() -> ! {
         let read2 = cfg_request(ep, b"GET device retry.key", None);
         // Id 0 is never cached: the second call is a real (now stale) attempt.
         let z1 = cfg_request(ep, b"SET device retry.key 1 0 v3", Some(a.clone()));
-        let z2 = cfg_request(ep, b"SET device retry.key 1 0 v3", Some(a));
+        let z2 = cfg_request(ep, b"SET device retry.key 1 0 v3", Some(a.clone()));
         let read3 = cfg_request(ep, b"GET device retry.key", None);
         kprintln!(
             "OSX|{}|ktest|config_retry|r1={}|r1b={}|read={}|bad={}|bad_again={}|read2={}|z1={}|z2={}|read3={}",
@@ -6407,6 +6417,64 @@ fn config_retry() -> ! {
         }
         if z1 != "OK 2" || z2 != "ERR VERSION 2" || read3 != "OK 2 v3" {
             fail("request id 0 was cached")
+        }
+        // WP-107: the balance is taken while configd lives. The body's two replays (r1b,
+        // bad_again) carried a token; so do 20 more replays of request 301.
+        let h1 = cfg_handles();
+        const REPLAYS: usize = 20;
+        let mut same = 0;
+        for _ in 0..REPLAYS {
+            if cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone())) == "OK 1" {
+                same += 1;
+            }
+        }
+        let h2 = cfg_handles();
+        // A reply configd cannot write: a second client stores request 311, then, while configd
+        // is held (frozen, so it cannot read or write in between), queues its replay with a
+        // token and closes its end. Released, configd reads the queued replay, its write meets
+        // the closed peer and it closes the client; the endpoint count coming back to its value
+        // before the connection shows that it did.
+        let e0 = channel::live_endpoints();
+        let ep2 = svc_connect(&env.h, "config");
+        let first = cfg_request(&ep2, b"SET device retry.key2 0 311 w1", Some(a.clone()));
+        let frozen = sched::freeze_named(b"CONFIGD.ELF");
+        let queued = ep2
+            .write(Message {
+                bytes: b"SET device retry.key2 0 311 w1".to_vec(),
+                handles: alloc::vec![a],
+            })
+            .is_ok();
+        drop(ep2);
+        let thawed = sched::thaw_named(b"CONFIGD.ELF");
+        let released =
+            sched::poll_until(sched::ticks() + 5_000, || channel::live_endpoints() == e0);
+        let h3 = cfg_handles();
+        kprintln!(
+            "OSX|{}|ktest|config_retry|live|body_grew={}|replays={}|same={}|replays_grew={}|unwritable_first={}|frozen={}|queued={}|thawed={}|released={}|unwritable_grew={}|base={}",
+            BUILD_ID,
+            h1 - h0,
+            REPLAYS,
+            same,
+            h2 - h1,
+            first,
+            u8::from(frozen),
+            u8::from(queued),
+            u8::from(thawed),
+            u8::from(released),
+            h3 - h2,
+            h0
+        );
+        if h0 < 0 || same != REPLAYS || first != "OK 1" || !queued {
+            fail("the live balance's requests were not answered as stored")
+        }
+        if !frozen || !thawed {
+            fail("configd was not held while the reply it cannot write was set up")
+        }
+        if h1 != h0 || h2 != h1 {
+            fail("configd kept the handles its replayed requests carried")
+        }
+        if !released || h3 != h2 {
+            fail("configd kept the handle of a request whose reply it could not write")
         }
         cfg_close(env, "config_retry")
     };

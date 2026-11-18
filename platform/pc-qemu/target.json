@@ -3953,11 +3953,12 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=config_retry"
         ],
-        "oracle": "the same SET (request id 301) sent twice: both answer OK 1 and the version stays 1; a refused SET (id 302, stale version) is replayed as the same refusal even when resent with the right version, and nothing is applied; request id 0 is never cached (the second attempt is a real stale write: ERR VERSION 2); clean exit; exit 33",
+        "oracle": "the same SET (request id 301) sent twice: both answer OK 1 and the version stays 1; a refused SET (id 302, stale version) is replayed as the same refusal even when resent with the right version, and nothing is applied; request id 0 is never cached (the second attempt is a real stale write: ERR VERSION 2); configd's own handle count, read while it lives (config.md v1.3, WP-107), is unchanged after the body (whose two replays carry a token), after 20 more replays of request 301 with a token (each answered OK 1) and after a replay whose reply cannot be written: a second client stores request 311 (OK 1), then, while configd is held (frozen, so its write cannot come first), queues its replay with a token and closes its end; released, configd releases the client (the live endpoint count comes back within 5 s) without keeping the token; clean exit; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=config_retry",
           "|ktest|config_retry|r1=OK 1|r1b=OK 1|read=OK 1 v1|bad=ERR VERSION 1|bad_again=ERR VERSION 1|read2=OK 1 v1|z1=OK 2|z2=ERR VERSION 2|read3=OK 2 v3",
+          "|ktest|config_retry|live|body_grew=0|replays=20|same=20|replays_grew=0|unwritable_first=OK 1|frozen=1|queued=1|thawed=1|released=1|unwritable_grew=0|",
           "|ktest|config_retry|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|config_retry|frames_delta=0",
           "|ktest|pass|a repeated request id applies once and replays its stored reply"

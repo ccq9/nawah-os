@@ -6822,16 +6822,17 @@
    ],
    "files": [
     "user/apps/configd/src/main.rs",
-    "user/apps/svcmgr/src/main.rs",
-    "user/apps/svc/src/main.rs",
     "kernel/src/ktest.rs",
     "platform/pc-qemu/target.json",
-    "platform/pc-qemu/manifests",
     "docs/contracts/config.md",
-    "docs/contracts/services.md",
     "tests/mutants.py",
     "tools/project.py",
-    "docs/tests.json"
+    "docs/tests.json",
+    "kernel/src/sched/mod.rs",
+    "tests/test_mutants_harness.py",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
    ],
    "contract_refs": [
     "docs/contracts/config.md",
@@ -6845,12 +6846,18 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: unmeasured; sized at activation",
     "2026-11-18 split by the budget rule before activation (the manager; three defects, three fixes, each with its own case and mutant): WP-107 keeps configd's replay leak (its first clause and TST-M4-CONFIG-RETRY's balance); the manager's failed CONNECT reply goes to WP-156, configd's stores before authorisation to WP-157, in that order. The reading of 'a client that never reads cannot take another service's client slots', decided by the manager under the owner's ruling of 2026-11-17 (act on the recommendations): the narrow reading, the defect found: a CONNECT whose reply the manager cannot write leaves no client end held and no slot taken (WP-156). The wide reading, a connected client that stops reading later, needs per-service timeouts or eviction in every service and goes to docs/LATER.md (L-056)",
-    "2026-11-18 activation (the manager, method section 7; WP-100 done; the order of section 7 puts WP-107 first on the desktop path): after the split above, one engineer cycle (test-kernel case reading configd's live handle count, the close, a SECURITY mutant), about 75 min and under 120 tool calls within the budget line; the M4 guest suite and its mutants on CI"
+    "2026-11-18 activation (the manager, method section 7; WP-100 done; the order of section 7 puts WP-107 first on the desktop path): after the split above, one engineer cycle (test-kernel case reading configd's live handle count, the close, a SECURITY mutant), about 75 min and under 120 tool calls within the budget line; the M4 guest suite and its mutants on CI",
+    "2026-11-18 files and tests after the split (the manager): svcmgr, svc, the manifests, services.md and TST-M4-SVC-RESTART belong to WP-156 now; this item's tests are TST-M4-CONFIG-RETRY, TST-M6-MUTANTS (M323) and TST-M0-005 (the mutant's pinned expectation). The acceptance's 'new case' is read as the case's new pinned line: the live balance sits inside TST-M4-CONFIG-RETRY (a second line, `|ktest|config_retry|live|…`), one boot of configd showing both, not a separate case id",
+    "2026-11-18 options (rule 5; from the reading, scratchpad wp107_reading.md): (a) close the handle in the replay branch alone: two lines, and the next new early path leaks again; (b) one exit after both branches that closes the handle unless the request kept it: every path is covered by construction; its failure mode, a path that should keep the handle and does not say so, closes a live subscription and is caught by TST-M4-CONFIG-NOTIFY; (c) the handler takes ownership of the handle and returns it if unused: the largest diff, no more protection. Built: (b) with the handler given `&mut Option<Handle>` (SUBSCRIBE takes it by leaving None), the exit placed before the reply is written, so a count read after a reply is never early. Not in this item: a service that finds its handle table full exiting so that the manager restarts it (docs/LATER.md L-060)",
+    "2026-11-18 the work (the services engineer, then the manager: the engineer's session was stopped by an interruption with his change in the tree; the manager read every line of it and ran it; scratch runs, no CI evidence). Test first: TST-M4-CONFIG-RETRY reads configd's live handle count through sched::handles_named (test kernel only) and pins `body_grew=0|replays=20|same=20|replays_grew=0|unwritable_first=OK 1|frozen=1|queued=1|thawed=1|released=1|unwritable_grew=0`; on the code as it was it FAILED, exit 37, `body_grew=2|replays=20|same=20|replays_grew=20|…|frozen=1|queued=1|thawed=1|released=1|unwritable_grew=1|base=3` and 'configd kept the handles its replayed requests carried' (a replay's handle was never closed); with the fix PASS. The fix (user/apps/configd/src/main.rs): the handle a request carried is closed at one exit before the reply is written, whatever the request and the reply, unless SUBSCRIBE took it; the reply cache unchanged. M323 (SECURITY) removes that close, its expectation pinned by TST-M0-005 (exit 37, body_grew=6, replays_grew=20, unwritable_grew=2, the kernel's message). config.md v1.3 says it in one paragraph",
+    "2026-11-18 the review round (auditor and red team in parallel, read-only): no blocker; the auditor confirmed the six claims (one exit, no double close, no use after the close; the cache unchanged: no request id can equal the old keep-signal; handles_named counts live handles; the counts are never read early; M323's three numbers follow from the six, 20 and two token-carrying requests; anchor once); the red team found no path that still grows configd's count within this item's clause (a message with two handles is refused by the kernel before it leaves the queue and discarded). Fixed in the round, because it touches the clause: both found that the pinned line did not prove the write met a closed peer (the queue and the close were two statements a switch could separate); configd is now frozen while the replay is queued and its sender's end closed, then released (frozen=1, thawed=1 in the pinned line), and on the old code that sequence still shows unwritable_grew=1, so a queued message is delivered after its sender closed. To docs/LATER.md: L-057 to L-060",
+    "2026-11-18 local checks before the push (scratch, no CI evidence), on the final tree: TST-M4-CONFIG-RETRY red on the old configd and green on the fix, both with the round's change (the lines above); the M4 guest suite 26 of 27 PASS, TST-M4-NET-NO-INTERNET not judged in this lab (the container's gateway answers its probe, as in every local run; CI judges it); the suite ran before the round's change to the case, which was then run alone; M323 killed through the real harness on the final case (exit 37, body_grew=6, replays_grew=20, unwritable_grew=2 with frozen=1 and thawed=1, the kernel's message; no expectation missed); the 78 tooling mutants of the stage: 78 of 78 killed, run before the round's change, which touches no file under tools/, tests/ or .github/; validate-records 0 errors; cargo fmt --all --check clean; hygiene PASS (43 commands); sync-oracles --check 0; `test --target host --suite M0` PASS (TST-M0-005: 90 cases)"
    ],
    "acceptance": "the live handle count of configd does not grow under replays of a request that carries a handle and under replies that cannot be written, shown by a new case on CI that reads it while configd lives; TST-M4-CONFIG-RETRY PASS with a balance taken while the service lives; the SECURITY mutant on that close killed",
    "test_ids": [
     "TST-M4-CONFIG-RETRY",
-    "TST-M4-SVC-RESTART"
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M4"
@@ -7093,12 +7100,13 @@
    "actions": [
     "الإعدادات: قيمة المستخدم تُقرأ بعد إعادة التشغيل، والاستيراد لا يجيب بالنجاح بعد فشل جزئي (المرحلة د)",
     "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): after a restart a user's saved value reads as not found and RESOLVE returns the device value until a write loads the store (a user's accessibility settings fall back silently); an import of 65 keys answers OK 64, and a retry with the same request id repeats that answer",
-    "design to decide in the package (2-3 options with trade-offs): stores loaded on demand for reads too, with eviction of the least recently used store without subscribers, against loading every user store at start; an atomic import (capacity checked first, one save, a full rollback on I/O error) against a reply that names the failing line: config.md v1.3 either way",
+    "design to decide in the package (2-3 options with trade-offs): stores loaded on demand for reads too, with eviction of the least recently used store without subscribers, against loading every user store at start; an atomic import (capacity checked first, one save, a full rollback on I/O error) against a reply that names the failing line: config.md v1.4 either way (v1.3 went to WP-107 on 2026-11-18)",
     "test first, red seen locally before the fix: a two-phase case on one disk (SET a user key, restart, then GET and RESOLVE: today not found); an import of 65 distinct keys (today OK 64)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: unmeasured; sized at activation"
+    "2026-11-15 estimate: unmeasured; sized at activation",
+    "2026-11-18 (the manager): config.md v1.3 went to WP-107 (the handle a request carried is closed at one exit); this item's contract change is v1.4, in the design line and in the acceptance"
    ],
-   "acceptance": "a user's saved value is read and takes its precedence after a restart, and an import either applies every line or reports the failure and applies none, shown by the new cases on CI; config.md v1.3 states both",
+   "acceptance": "a user's saved value is read and takes its precedence after a restart, and an import either applies every line or reports the failure and applies none, shown by the new cases on CI; config.md v1.4 states both",
    "test_ids": [
     "TST-M4-CONFIG-PERSIST",
     "TST-M4-POLICY-PRECEDENCE"
