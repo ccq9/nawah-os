@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261118T030628Z-beb5cf2b-002-a",
+ "started_at": "2026-11-18T03:06:28+00:00",
+ "finished_at": "2026-11-18T03:06:28+00:00",
+ "source_revision": "beb5cf2b376218954b54ebda0ed551b9ec05d589",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M6-LISTVIEW-UNIT",
+ "commands": [
+  "cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu --test listview"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "44218469147",
+  "run_attempt": 2,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "beb5cf2b376218954b54ebda0ed551b9ec05d589",
+  "head_sha": "172ba7707b5bdf70960ef5ed9fd33446bc9cff38",
+  "ref": "refs/pull/23/merge"
+ }
+}
