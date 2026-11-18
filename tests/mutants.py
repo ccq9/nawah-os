@@ -205,7 +205,7 @@ MUTANTS = [
     ("M34", "kernel/src/syscall/mod.rs",
      "        let ep = endpoint_of(t.get(h, Rights::WRITE).map_err(handle_err)?)?;",
      "        let ep = endpoint_of(t.get(h, Rights(0)).map_err(handle_err)?)?;",
-     ["TST-M3-RIGHTS-DENIED"], "channel_write ignores the WRITE right"),
+     ["TST-M3-RIGHTS-DENIED"], "SECURITY: channel_write ignores the WRITE right"),
     ("M35", "kernel/src/object/handle.rs",
      "        s.generation = match s.generation.wrapping_add(1) {\n            0 => 1,\n            g => g,\n        };\n        self.live -= 1;",
      "        self.live -= 1;",
@@ -291,7 +291,7 @@ MUTANTS = [
     ("M53", "kernel/src/syscall/mod.rs",
      "        Object::Authority(_) => {}\n        _ => return Err(ERR_ACCESS),\n    }\n    let token = Arc::new(",
      "        _ => {}\n    }\n    let token = Arc::new(",
-     ["TST-M4-WAIT-TIMEOUT"], "any handle mints tokens (the authority check removed; the waiter app probes it)"),
+     ["TST-M4-WAIT-TIMEOUT"], "SECURITY: any handle mints tokens (the authority check removed; the waiter app probes it)"),
     ("M54", "kernel/src/object/mod.rs",
      "            Object::Nic(_) => 7,", "            Object::Nic(_) => 8,",
      ["TST-M4-DHCP", "TST-M4-NET-LINK"], "handle_type reports the interface as a keyboard (the manager misroutes it)"),
@@ -323,7 +323,7 @@ MUTANTS = [
     ("M62", "user/apps/svcmgr/src/main.rs",
      "            b\"auth\" => [\n                (self.authority, ALL_RIGHTS),",
      "            b\"auth\" => [\n                (None, ALL_RIGHTS),",
-     ["TST-M4-LOGIN"], "the authority is never handed to auth"),
+     ["TST-M4-LOGIN"], "SECURITY: the authority is never handed to auth"),
     ("M63", "user/apps/svcmgr/src/main.rs",
      "                } else if self.services[i].deps & !ready == 0 {\n                    self.start(i, now);",
      "                } else {\n                    self.start(i, now);",
@@ -345,17 +345,17 @@ MUTANTS = [
     ("M67", "user/apps/svcmgr/src/main.rs",
      "            Some(j) if self.services[i].deps & (1 << j) == 0 => out.put(b\"ERR ACCESS\"),",
      "            Some(j) if self.services[i].deps & (1 << j) == 0 && false => out.put(b\"ERR ACCESS\"),",
-     ["TST-M4-SHELL-SVC"], "a service connects to any service, declared or not"),
+     ["TST-M4-SHELL-SVC"], "SECURITY: a service connects to any service, declared or not"),
     ("M68", "user/apps/authd/src/main.rs",
      "        let ok = ct_eq(&dk, &u.hash);", "        let ok = ct_eq(&dk, &u.hash) || !dk.is_empty();",
-     ["TST-M4-LOGIN", "TST-M4-SHELL-LOGIN"], "any password is accepted"),
+     ["TST-M4-LOGIN", "TST-M4-SHELL-LOGIN"], "SECURITY: any password is accepted"),
     ("M69", "user/apps/authd/src/main.rs",
      "        if self.fails < MAX_FAILS {", "        if self.fails < MAX_FAILS + 1000 {",
-     ["TST-M4-LOGIN"], "the attempt limit never delays"),
+     ["TST-M4-LOGIN"], "SECURITY: the attempt limit never delays"),
     ("M70", "user/apps/authd/src/main.rs",
      "    fn close_session(&mut self, slot: usize) {\n        let s = &mut self.sessions[slot];\n        libnawah::token_revoke(s.token);",
      "    fn close_session(&mut self, slot: usize) {\n        let s = &mut self.sessions[slot];",
-     ["TST-M4-SESSION-LOCK"], "LOGOUT does not revoke the token"),
+     ["TST-M4-SESSION-LOCK"], "SECURITY: LOGOUT does not revoke the token"),
     ("M71", "user/apps/configd/src/main.rs",
      "        if current != expected {\n            out.put(b\"ERR VERSION \");",
      "        if false {\n            out.put(b\"ERR VERSION \");",
@@ -367,7 +367,7 @@ MUTANTS = [
     ("M73", "user/apps/configd/src/main.rs",
      "            DEVICE => admin || token.perms & perm::CONFIG_WRITE != 0,",
      "            DEVICE => true,",
-     ["TST-M4-AUTHZ-DENIED"], "any token may write the device store"),
+     ["TST-M4-AUTHZ-DENIED"], "SECURITY: any token may write the device store"),
     ("M74", "user/apps/configd/src/main.rs",
      "                    (Some(POLICY), &b\"policy\"[..]),\n                    (user_store, b\"user\"),",
      "                    (user_store, &b\"user\"[..]),\n                    (Some(POLICY), b\"policy\"),",
@@ -382,7 +382,7 @@ MUTANTS = [
     ("M77", "user/apps/netd/src/main.rs",
      "        self.allow_internet || self.on_link(ip) || ip == self.gateway",
      "        true || self.on_link(ip) || ip == self.gateway",
-     ["TST-M4-NET-NO-INTERNET"], "the no-internet policy is not applied"),
+     ["TST-M4-NET-NO-INTERNET"], "SECURITY: the no-internet policy is not applied"),
     ("M78", "user/apps/netd/src/main.rs",
      "            if now < due || c.snd_una == c.snd_nxt {", "            if true {",
      ["TST-M4-TCP-RETRANSMIT"], "the retransmission timer never fires"),
@@ -404,42 +404,42 @@ MUTANTS = [
     ("M82", "user/apps/displayd/src/main.rs",
      "                if !self.clients[ci].narrator {\n                    out.put(b\"ERR ACCESS\");\n                } else if self.narrator.is_some_and(|n| n != ci) {",
      "                if self.narrator.is_some_and(|n| n != ci) {",
-     ["TST-M5-NARRATOR-AUTHORITY"], "any client may become the narrator (WP-43 M2 undone)"),
+     ["TST-M5-NARRATOR-AUTHORITY"], "SECURITY: any client may become the narrator (WP-43 M2 undone)"),
     ("M83", "user/apps/displayd/src/main.rs",
      "                if self.surfaces.iter().filter(|s| used(s)).count() >= CLIENT_SURFACES {",
      "                if self.surfaces.iter().filter(|s| used(s)).count() > CLIENT_SURFACES {",
-     ["TST-M5-CLIENT-LIMITS"], "a client gets one surface more than its share (WP-43 S-7, boundary)"),
+     ["TST-M5-CLIENT-LIMITS"], "SECURITY: a client gets one surface more than its share (WP-43 S-7, boundary)"),
     ("M84", "user/apps/displayd/src/main.rs",
      "                if mine >= CLIENT_WINDOWS {\n                    out.put(b\"ERR LIMIT\");\n                    return false;\n                }",
      "",
-     ["TST-M5-CLIENT-LIMITS"], "no per-client window limit (WP-43 S-7 undone)"),
+     ["TST-M5-CLIENT-LIMITS"], "SECURITY: no per-client window limit (WP-43 S-7 undone)"),
     ("M85", "user/apps/displayd/src/main.rs",
      "const SESSION_RESERVE: usize = 2;", "const SESSION_RESERVE: usize = 0;",
-     ["TST-M5-CLIENT-LIMITS"], "no surfaces or windows kept for the session (WP-43 S-7)"),
+     ["TST-M5-CLIENT-LIMITS"], "SECURITY: no surfaces or windows kept for the session (WP-43 S-7)"),
     ("M86", "user/apps/displayd/src/main.rs",
      "        if !self.visible(wi) {\n            return false;\n        }\n        let area = w.client().intersect(self.screen);",
      "        let area = w.client().intersect(self.screen);",
-     ["TST-M5-LIST-HASH-HELD"], "LIST hashes a held or minimised window's place (WP-43 M3 undone)"),
+     ["TST-M5-LIST-HASH-HELD"], "SECURITY: LIST hashes a held or minimised window's place (WP-43 M3 undone)"),
     ("M87", "user/apps/displayd/src/main.rs",
      "        if !self.locked {\n            self.composed += 1;\n        }",
      "        self.composed += 1;",
-     ["TST-M5-LIST-HASH-HELD"], "STATUS counts the held screen's redraws, one per key typed (WP-43 M3 undone)"),
+     ["TST-M5-LIST-HASH-HELD"], "SECURITY: STATUS counts the held screen's redraws, one per key typed (WP-43 M3 undone)"),
     ("M88", "user/apps/sessiond/src/main.rs",
      "                if self.dialog.element(i).role != Role::Password {\n                    self.announce(b\"change\", Some(i));\n                }",
      "                self.announce(b\"change\", Some(i));",
-     ["TST-M5-AUTH-INPUT-ISOLATED"], "the password field announces every keystroke (WP-43 M2 undone)"),
+     ["TST-M5-AUTH-INPUT-ISOLATED"], "SECURITY: the password field announces every keystroke (WP-43 M2 undone)"),
     ("M89", "user/apps/sessiond/src/main.rs",
      "        self.take_keyboard();\n        if self.owner != Owner::Session {\n            self.elevate_end(b\"ERR UNAVAILABLE\", now);\n            return;\n        }\n        let mut r = [0u8; 64];\n        self.display_call(b\"LOCKED\", &[], &mut r);\n        self.show(Screen::Elevate, None);",
      "        let mut r = [0u8; 64];\n        self.display_call(b\"LOCKED\", &[], &mut r);\n        self.show(Screen::Elevate, None);\n        self.take_keyboard();\n        if self.owner != Owner::Session {\n            self.elevate_end(b\"ERR UNAVAILABLE\", now);\n            return;\n        }",
-     ["TST-M5-ELEVATE"], "the elevation prompt is shown before the keyboard is taken (WP-41 S1 undone, order swapped)"),
+     ["TST-M5-ELEVATE"], "SECURITY: the elevation prompt is shown before the keyboard is taken (WP-41 S1 undone, order swapped)"),
     ("M90", "user/apps/inputd/src/main.rs",
      "                if name == b\"display\" && self.clients[ci].ident() != b\"display\" {\n                    out.put(b\"ERR ACCESS\");\n                    return;\n                }",
      "",
-     ["TST-M5-INPUT-NAME-RESERVED"], "any client may register the name `display` (WP-43 S-5 undone)"),
+     ["TST-M5-INPUT-NAME-RESERVED"], "SECURITY: any client may register the name `display` (WP-43 S-5 undone)"),
     ("M91", "user/libui/src/lib.rs",
      "                        if e.role == Role::Password {\n                            s[..e.text_len].fill(BULLET);\n                        }",
      "",
-     ["TST-M5-UI-UNIT"], "a password field draws its characters instead of bullets"),
+     ["TST-M5-UI-UNIT"], "SECURITY: a password field draws its characters instead of bullets"),
     # ---- M5 gate, phase 2 (WP-38, owner-approved table of 2026-10-28): 30 mutants over the
     # six categories (check removal <= 6, condition flip <= 6, boundary shift <= 5, constant
     # <= 4, assignment drop <= 4, order swap >= 5). Replacements approved for the original
@@ -466,10 +466,10 @@ MUTANTS = [
     ("M95", "user/apps/displayd/src/main.rs",
      "        for si in 0..MAX_SURFACES {\n            if self.surfaces[si].used && self.surfaces[si].owner == ci {\n                self.destroy_surface(si);\n            }\n        }\n        if self.clients[ci].unresponsive {",
      "        if self.clients[ci].unresponsive {",
-     ["TST-M5-WINDOW-STATES"], "a gone client's surfaces are kept mapped (assignment drop: the destroy loop)"),
+     ["TST-M5-WINDOW-STATES"], "SECURITY: a gone client's surfaces are kept mapped (assignment drop: the destroy loop)"),
     ("M96", "user/apps/displayd/src/main.rs",
      "const CLIENT_WINDOWS: usize = 4;", "const CLIENT_WINDOWS: usize = 5;",
-     ["TST-M5-CLIENT-LIMITS"], "one window over the share (constant)"),
+     ["TST-M5-CLIENT-LIMITS"], "SECURITY: one window over the share (constant)"),
     # M97 was LOGOUT's `self.locked = true;` (order swap: the hold first). It is EQUIVALENT:
     # the session sends LOGOUT only from the lock screen (both sign_out callers run in
     # State::Locked), after LOCKED on the same channel (re-sent first on a reconnect), and
@@ -479,11 +479,11 @@ MUTANTS = [
     ("M98", "user/apps/sessiond/src/main.rs",
      "        self.state = State::Locked;\n        if self.elevation.is_some() {\n            self.elevate_end(b\"ERR CANCELLED\", now);\n            self.want_display = false;\n        }\n        self.changes += 1;",
      "        if self.elevation.is_some() {\n            self.elevate_end(b\"ERR CANCELLED\", now);\n            self.want_display = false;\n        }\n        self.changes += 1;\n        self.state = State::Locked;",
-     ["TST-M5-LOCK-SURVIVES", "TST-M5-ELEVATE"], "lock(): the state is set after the prompt ends, so ending the prompt releases the desktop in between (order swap)"),
+     ["TST-M5-LOCK-SURVIVES", "TST-M5-ELEVATE"], "SECURITY: lock(): the state is set after the prompt ends, so ending the prompt releases the desktop in between (order swap)"),
     ("M99", "user/apps/sessiond/src/main.rs",
      "        let op = AuthOp::Login { name, len: nn };\n        let sent = self.auth_send(req.bytes(), false, op);",
      "        let op = AuthOp::Login { name, len: nn };\n        req.wipe();\n        let sent = self.auth_send(req.bytes(), false, op);",
-     ["TST-M5-AUTH-INPUT-ISOLATED", "TST-M5-LOGIN-SCREEN"], "the sign-in request is wiped before it is sent: LOGIN goes out empty (order swap of wipe and send)"),
+     ["TST-M5-AUTH-INPUT-ISOLATED", "TST-M5-LOGIN-SCREEN"], "SECURITY: the sign-in request is wiped before it is sent: LOGIN goes out empty (order swap of wipe and send)"),
     # M100's first form dropped the stale-answer check `e.n == n` in elevate_answer. It was
     # EQUIVALENT: elevate_request refuses ERR BUSY while an administrator's answer is awaited,
     # so no answer can ever arrive while another elevation is current, and the check is defence
@@ -492,11 +492,11 @@ MUTANTS = [
     ("M100", "user/apps/sessiond/src/main.rs",
      "        if self.elevation.is_some() || self.elevate_answer_pending() {\n            return Some(b\"ERR BUSY\");",
      "        if self.elevation.is_some() {\n            return Some(b\"ERR BUSY\");",
-     ["TST-M5-ELEVATE"], "a new elevation is accepted while an administrator's answer for an ended one is awaited (check removal; WP-41 C1 undone)"),
+     ["TST-M5-ELEVATE"], "SECURITY: a new elevation is accepted while an administrator's answer for an ended one is awaited (check removal; WP-41 C1 undone)"),
     ("M101", "user/apps/sessiond/src/main.rs",
      "        self.state = State::Locked;\n        if self.elevation.is_some() {",
      "        self.state = State::Locked;\n        if self.elevation.is_none() {",
-     ["TST-M5-ELEVATE"], "the secure attention sequence no longer ends an elevation prompt (condition flip)"),
+     ["TST-M5-ELEVATE"], "SECURITY: the secure attention sequence no longer ends an elevation prompt (condition flip)"),
     # M102 was `self.elevate_seq += 1;` (assignment drop: every elevation numbered alike). It is
     # EQUIVALENT for the reason M100's first form was: the number is compared only by an answer
     # that cannot meet a newer elevation, ERR BUSY having refused it. Dropped (survived run
@@ -511,15 +511,15 @@ MUTANTS = [
     ("M105", "user/apps/sessiond/src/main.rs",
      "            // The screen is released only to an unlocked desktop; a lock keeps it held.\n            if self.state == State::Unlocked {",
      "            // The screen is released only to an unlocked desktop; a lock keeps it held.\n            if self.state == State::Locked {",
-     ["TST-M5-ELEVATE", "TST-M5-LOCK-SURVIVES"], "ending a prompt releases the screen while locked and keeps it held when unlocked (condition flip)"),
+     ["TST-M5-ELEVATE", "TST-M5-LOCK-SURVIVES"], "SECURITY: ending a prompt releases the screen while locked and keeps it held when unlocked (condition flip)"),
     ("M106", "user/apps/inputd/src/main.rs",
      "        if &c.name[..c.name_len] == b\"session\" {\n            self.focus = None;\n        }\n        self.clients[ci] = NO_CLIENT;",
      "        self.clients[ci] = NO_CLIENT;",
-     ["TST-M5-SESSION-LOSS"], "a lost session leaves the focus with whoever had it (check removal; input.md v2.2 undone)"),
+     ["TST-M5-SESSION-LOSS"], "SECURITY: a lost session leaves the focus with whoever had it (check removal; input.md v2.2 undone)"),
     ("M107", "user/apps/inputd/src/main.rs",
      "                if let Some(s) = self.session_client() {\n                    // v2.2: the session owns the keyboard from here (the releases of Ctrl\n                    // and Alt included) until it names another owner — a window that\n                    // imitates the sign-in screen never sees the sequence or what follows.\n                    self.focus = Some(self.clients[s].id);\n                    self.deliver(s, b\"SAK\");\n                }",
      "                if let Some(s) = self.session_client() {\n                    self.deliver(s, b\"SAK\");\n                }",
-     ["TST-M5-INPUT-ROUTE", "TST-M5-AUTH-INPUT-ISOLATED"], "the secure attention sequence tells the session but leaves the keyboard with the focused client (condition flip: the owner no longer changes)"),
+     ["TST-M5-INPUT-ROUTE", "TST-M5-AUTH-INPUT-ISOLATED"], "SECURITY: the secure attention sequence tells the session but leaves the keyboard with the focused client (condition flip: the owner no longer changes)"),
     ("M108", "user/apps/inputd/src/main.rs",
      "                self.combo_armed = self.mods == (MOD_SHIFT | MOD_ALT);\n            } else {\n                self.mods &= !bit;",
      "                self.combo_armed = false;\n                if self.mods == (MOD_SHIFT | MOD_ALT) {\n                    self.toggle_layout();\n                }\n            } else {\n                self.mods &= !bit;",
@@ -538,7 +538,7 @@ MUTANTS = [
     ("M112", "user/libui/src/lib.rs",
      "            // A password field is described without its value (v1.1).\n            Role::TextField | Role::Value => {",
      "            // A password field is described without its value (v1.1).\n            Role::TextField | Role::Value | Role::Password => {",
-     ["TST-M5-UI-UNIT"], "the narrator's description of a password field carries its value (check removal of the role exclusion)"),
+     ["TST-M5-UI-UNIT"], "SECURITY: the narrator's description of a password field carries its value (check removal of the role exclusion)"),
     ("M113", "user/libui/src/lib.rs",
      "        let next = if back {\n            (pos + n - 1) % n\n        } else {\n            (pos + 1) % n\n        };",
      "        let next = if back {\n            (pos + n - 1) % n\n        } else {\n            (pos + 2) % n\n        };",
@@ -583,7 +583,7 @@ MUTANTS = [
     ("M122", "kernel/src/syscall/mod.rs",
      "        if !e.rights.contains(Rights::WRITE) {\n            return Err(ERR_ACCESS);\n        }\n        p\n    };\n    if let Some(pid) = obj.pid() {",
      "        p\n    };\n    if let Some(pid) = obj.pid() {",
-     ["TST-M5-PROCESS-KILL"], "process_kill needs no WRITE: a watcher's read-only duplicate kills (killer exits 0xE4)"),
+     ["TST-M5-PROCESS-KILL"], "SECURITY: process_kill needs no WRITE: a watcher's read-only duplicate kills (killer exits 0xE4)"),
     ("M123", "kernel/src/sched/mod.rs",
      "                State::Blocked | State::BlockedUntil { .. } | State::Sleeping { .. } => {\n                    t.state = State::Ready;",
      "                State::BlockedUntil { .. } | State::Sleeping { .. } => {\n                    t.state = State::Ready;",
@@ -602,7 +602,7 @@ MUTANTS = [
     ("M126", "kernel/src/display.rs",
      "    fill(&i, 0, 0, i.width, i.height, 0x000000);",
      "    fill(&i, 0, 0, i.width, 0, 0x000000);",
-     ["TST-M5-LOCK-DISPLAY-DOWN"], "the frame is not cleared when the last VMO over it goes: a dead compositor's last picture stays through the lock (display.md v1.5 undone; clears=1 but lit, spy_px != 0)"),
+     ["TST-M5-LOCK-DISPLAY-DOWN"], "SECURITY: the frame is not cleared when the last VMO over it goes: a dead compositor's last picture stays through the lock (display.md v1.5 undone; clears=1 but lit, spy_px != 0)"),
     # `&& false` rather than `false`, so `mouse` stays used.
     ("M127", "kernel/src/net.rs",
      "        let dev = if mouse {\n            MOUSE_OBJECT.lock().clone()",
@@ -615,7 +615,7 @@ MUTANTS = [
     ("M129", "user/apps/svcmgr/src/main.rs",
      "                        if hung {\n                            self.services[i].wd_deadline = None;\n                            self.services[i].killing = true;\n                            if let Some(p) = self.services[i].process {\n                                libnawah::process_kill(p);\n                            }\n",
      "                        if hung {\n                            self.services[i].wd_deadline = None;\n                            self.services[i].killing = true;\n",
-     ["TST-M5-SVC-WATCHDOG"], "the watchdog finds a service hung but never kills it, so it is never restarted (hung is not given_up:1:131072)"),
+     ["TST-M5-SVC-WATCHDOG"], "SECURITY: the watchdog finds a service hung but never kills it, so it is never restarted (hung is not given_up:1:131072)"),
     # ---- M6 (WP-45 red team): the boot-mode gate (boot.md v1.1); SECURITY, killer is the
     # release image's TST-M6-INTERACTIVE-BOOT, run by the M6 gate (TST-M6-MUTANTS, WP-90); the
     # anchor guard of TST-M0-005 keeps each anchor unique.
@@ -623,17 +623,17 @@ MUTANTS = [
     ("M130", "kernel/src/arch/x86_64/fwcfg.rs",
      "    ecx & CPUID_ECX_HYPERVISOR != 0",
      "    ecx & CPUID_ECX_HYPERVISOR != 0 || true",
-     ["TST-M6-INTERACTIVE-BOOT"], "hypervisor_present forced true: without the hypervisor bit fw_cfg is still read, so phase 5 (-cpu qemu64,-hypervisor with the key) prints hv=1|key=ok, m1_done and exits 33 (its line requires hv=0, exit 0)"),
+     ["TST-M6-INTERACTIVE-BOOT"], "SECURITY: hypervisor_present forced true: without the hypervisor bit fw_cfg is still read, so phase 5 (-cpu qemu64,-hypervisor with the key) prints hv=1|key=ok, m1_done and exits 33 (its line requires hv=0, exit 0)"),
     ("M131", "kernel/src/bootmode.rs",
      "        Some(_) => Key::Invalid,",
      "        Some(_) => Key::Ok,",
-     ["TST-M6-INTERACTIVE-BOOT"], "any key value selects the self-test: phases 2 (selftest=0) and 6 (selftest=10) print key=ok and m1_done (forbidden) and exit 33, not 0"),
+     ["TST-M6-INTERACTIVE-BOOT"], "SECURITY: any key value selects the self-test: phases 2 (selftest=0) and 6 (selftest=10) print key=ok and m1_done (forbidden) and exit 33, not 0"),
     # `|| true` rather than `true`, so the code after the diverging block stays reachable for
     # the compiler and the mutant builds warning-free.
     ("M132", "kernel/src/kmain.rs",
      "        if mode.selftest() {",
      "        if mode.selftest() || true {",
-     ["TST-M6-INTERACTIVE-BOOT"], "the interactive boot takes the self-test exit: phase 1 prints m1_done (forbidden) and exits 33, not 0 by the lab's quit"),
+     ["TST-M6-INTERACTIVE-BOOT"], "SECURITY: the interactive boot takes the self-test exit: phase 1 prints m1_done (forbidden) and exits 33, not 0 by the lab's quit"),
     # ---- M6 (WP-64 purge, M135; WP-73 revocation, M137): a restarted session ends the lost one's windows before its sign-in
     # screen (session.md v1.7), and auth revokes the sessions of a lost `session` client (auth.md
     # v1.2); SECURITY. M133, M134 and M136 stay reserved for WP-71. M135 skips the purge (the
@@ -642,11 +642,11 @@ MUTANTS = [
     ("M135", "user/apps/sessiond/src/main.rs",
      "                if self.conn_n[DISPLAY] == 1 && !self.purge_restarted() {",
      "                if self.conn_n[DISPLAY] == 0 && !self.purge_restarted() {",
-     ["TST-M5-SESSION-LOSS"], "the restarted session shows its sign-in screen without LOGOUT to the compositor: no session|purge line, the spy keeps its window and is not told LOGGED_OUT, so phase 2 reads spy_after=ready:… and windows=2, not stopped:0x0 and windows=1"),
+     ["TST-M5-SESSION-LOSS"], "SECURITY: the restarted session shows its sign-in screen without LOGOUT to the compositor: no session|purge line, the spy keeps its window and is not told LOGGED_OUT, so phase 2 reads spy_after=ready:… and windows=2, not stopped:0x0 and windows=1"),
     ("M137", "user/apps/authd/src/main.rs",
      "                self.close_session(s);",
      "                let _ = s;",
-     ["TST-M6-TOKEN-REVOKE"], "auth forgets nothing when the session client is lost (the trace still says revoked=1): the dead session's token stays alive under auth's handle, so tokens_after=2|revoked=0 and failed=session_token, not tokens_after=1|revoked=1|failed=none"),
+     ["TST-M6-TOKEN-REVOKE"], "SECURITY: auth forgets nothing when the session client is lost (the trace still says revoked=1): the dead session's token stays alive under auth's handle, so tokens_after=2|revoked=0 and failed=session_token, not tokens_after=1|revoked=1|failed=none"),
     # ---- M6 (WP-67): displayd's start-up hold fails closed (display.md v1.12); SECURITY.
     # M133, M134 and M136 are reserved for WP-71. The mutant keeps every trace line and changes only the
     # decision: held only for a valid listing naming `session`, so every LIST failure starts
@@ -655,13 +655,13 @@ MUTANTS = [
     ("M147", "user/apps/displayd/src/main.rs",
      "    Some(line.ends_with(b\"locked=1\"))",
      "    Some(line.starts_with(b\"display|hold|source=manifest\") && line.ends_with(b\"locked=1\"))",
-     ["TST-M6-HOLD-FAIL-CLOSED"], "a LIST failure starts the screen unheld while the trace says locked=1: case=reply and case=too_long read holds=OK locked=0 (forbidden) and keys=2 (press and release both reach the window), not locked=1 and keys=0"),
+     ["TST-M6-HOLD-FAIL-CLOSED"], "SECURITY: a LIST failure starts the screen unheld while the trace says locked=1: case=reply and case=too_long read holds=OK locked=0 (forbidden) and keys=2 (press and release both reach the window), not locked=1 and keys=0"),
     # ---- M6 (WP-64): the purge fails closed (session.md v1.7); SECURITY. A listing the
     # session cannot read is taken as "not restarted": the sign-in screen comes without LOGOUT.
     ("M150", "user/apps/sessiond/src/main.rs",
      "            None => (None, b\"list_failure\"),",
      "            None => return true,",
-     ["TST-M6-PURGE-FAIL-CLOSED"], "a LIST the session cannot read skips the purge: sub-cases reply, no_session_line, bad_count, too_long and closed read logout=-|order=screen_only|ok=0 (closed: exit 0xe5, no LOGOUT), the list_failure trace appears 0 times, not 5, and failed= names those five"),
+     ["TST-M6-PURGE-FAIL-CLOSED"], "SECURITY: a LIST the session cannot read skips the purge: sub-cases reply, no_session_line, bad_count, too_long and closed read logout=-|order=screen_only|ok=0 (closed: exit 0xe5, no LOGOUT), the list_failure trace appears 0 times, not 5, and failed= names those five"),
     # ---- M6 (WP-46): jobs (syscall.md v1.13 §5); SECURITY, killer TST-M6-JOB-KILL. M151 drops the
     # WRITE check every job call shares (job_of): `contains(NONE)` is always true, so the check
     # never fires and the line stays warning-free. M152 places syscall 20's child in the root
@@ -671,15 +671,15 @@ MUTANTS = [
     ("M151", "kernel/src/syscall/mod.rs",
      "    if !Rights::contains(e.rights, Rights::WRITE) {",
      "    if !Rights::contains(e.rights, Rights::NONE) {",
-     ["TST-M6-JOB-KILL"], "a job handle without WRITE creates, kills and spawns into its job: the app's read-only duplicate is not refused, so phase 1 fails (jobs|phase=1|types=fail, exit 0xe4), not exit=0x4a"),
+     ["TST-M6-JOB-KILL"], "SECURITY: a job handle without WRITE creates, kills and spawns into its job: the app's read-only duplicate is not refused, so phase 1 fails (jobs|phase=1|types=fail, exit 0xe4), not exit=0x4a"),
     ("M152", "kernel/src/syscall/mod.rs",
      "    let job = job.unwrap_or_else(sched::current_job);",
      "    let job = job.unwrap_or_else(crate::object::job::root);",
-     ["TST-M6-JOB-KILL"], "process_spawn puts the child in the root, not the caller's job: the grandchild started inside job A escapes job_kill(A), so phase 5 fails (jobs|phase=5|kill=fail, exit 0xf4), not exit=0x4a"),
+     ["TST-M6-JOB-KILL"], "SECURITY: process_spawn puts the child in the root, not the caller's job: the grandchild started inside job A escapes job_kill(A), so phase 5 fails (jobs|phase=5|kill=fail, exit 0xf4), not exit=0x4a"),
     ("M153", "kernel/src/sched/mod.rs",
      "        if process.object.as_ref().is_some_and(|o| o.job().dead()) {",
      "        if false {",
-     ["TST-M6-JOB-KILL"], "a process enters a killed job when a kill lands after spawn's early check: job_spawn_dead's spawn starts (refused=0|…|ok=0, |ktest|fail|), not refused=1|ok=1"),
+     ["TST-M6-JOB-KILL"], "SECURITY: a process enters a killed job when a kill lands after spawn's early check: job_spawn_dead's spawn starts (refused=0|…|ok=0, |ktest|fail|), not refused=1|ok=1"),
     # ---- M6 (WP-68): the manifest errors (services.md v1.13); M157 and M159 SECURITY. M157 and
     # M158 turn the refusal back into the pre-v1.13 `break`: the file is closed (a second close
     # follows, harmless) and what was read is parsed, so the manager answers OK 1. M159 keeps
@@ -687,7 +687,7 @@ MUTANTS = [
     ("M157", "user/apps/svcmgr/src/main.rs",
      "                return Err(LoadError::TooLarge);",
      "                break;",
-     ["TST-M6-MANIFEST-TOO-LARGE"], "a manifest of 4096 bytes or more is truncated and accepted: case=4097 and case=4096 read reply=OK 1 (forbidden), list=A:… and again=ERR LOADED (forbidden), ok=0, failed=4097,4096,"),
+     ["TST-M6-MANIFEST-TOO-LARGE"], "SECURITY: a manifest of 4096 bytes or more is truncated and accepted: case=4097 and case=4096 read reply=OK 1 (forbidden), list=A:… and again=ERR LOADED (forbidden), ok=0, failed=4097,4096,"),
     ("M158", "user/apps/svcmgr/src/main.rs",
      "                    return Err(LoadError::Io);",
      "                    break;",
@@ -695,7 +695,7 @@ MUTANTS = [
     ("M159", "user/apps/svcmgr/src/main.rs",
      "            } else if !system_path(path) {",
      "            } else if false && !system_path(path) {",
-     ["TST-M6-LOAD-OUTSIDE-SYSTEM"], "LOAD reads outside /SYSTEM/: case=outside reads reply=OK 1|started=1|ok=0 (forbidden reply=OK), the later LOADs answer ERR LOADED (forbidden), failed=outside,dotdot,dep_name,system,"),
+     ["TST-M6-LOAD-OUTSIDE-SYSTEM"], "SECURITY: LOAD reads outside /SYSTEM/: case=outside reads reply=OK 1|started=1|ok=0 (forbidden reply=OK), the later LOADs answer ERR LOADED (forbidden), failed=outside,dotdot,dep_name,system,"),
     # ---- M6 (WP-77): displayd's boot channel keeps serving (display.md v1.13); killer
     # TST-M6-DISPLAYD-BOOT-LOOP; neither is SECURITY. M160 puts back the pre-v1.13 `Err(_) => {}`
     # for the discard only (`Err(ERR_BUFFER_TOO_SMALL) | Err(ERR_SHOULD_WAIT) => {}`, the 0xE8 arm
@@ -785,7 +785,7 @@ MUTANTS = [
     ("M193", "user/libui/src/lib.rs",
      "        let named = c == '\"' || list::is_control(cp) || list::is_bidi_control(cp);",
      "        let named = false;",
-     ["TST-M5-UI-UNIT"], "a value is written between the quotes as it is: a quote forges an attribute and a newline a second narrator line; a_quote_in_a_typed_value_cannot_forge_an_attribute, a_set_value_with_a_newline_stays_one_line, separators_and_bidi_controls_in_a_value_are_named_not_obeyed and a_long_escaped_value_is_cut_at_a_whole_character_and_still_closed fail, test result: FAILED. 15 passed; 4 failed"),
+     ["TST-M5-UI-UNIT"], "SECURITY: a value is written between the quotes as it is: a quote forges an attribute and a newline a second narrator line; a_quote_in_a_typed_value_cannot_forge_an_attribute, a_set_value_with_a_newline_stays_one_line, separators_and_bidi_controls_in_a_value_are_named_not_obeyed and a_long_escaped_value_is_cut_at_a_whole_character_and_still_closed fail, test result: FAILED. 15 passed; 4 failed"),
     # ---- M6 (WP-82): the interactive LOAD budget (boot.md v1.1, «مهلة LOAD»); killer TST-M0-003's
     # source guard (tests/test_ci_workflows.py LoadBudget). M174 (the received-transcript check in
     # tools/project.py) is not registrable: the harness restores only kernel/ and user/ and drives
@@ -1313,6 +1313,30 @@ MUTANTS = [
      "            evidence/*-${{ steps.rev.outputs.sha8 }}-*-b/\n            build/pc-qemu/build-id.txt\n",
      "            evidence/*-${{ steps.rev.outputs.sha8 }}-*-b/\n",
      ["TST-M0-003"], "job b's upload has its one evidence line again: the artifact is rooted at evidence/, the merge finds no incoming/evidence-b/evidence/ and fails every run (the WP-153 review)"),
+    # M316, M317 (WP-95): mutants.yml's gates after the baseline alone, and a dispatch naming no
+    # gate refused; TST-M0-003 (MutationHarness).
+    ("M316", ".github/workflows/mutants.yml",
+     "        if: ${{ !cancelled() && steps.baseline.outcome == 'success' && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M3 ') }}\n",
+     "        if: always() && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M3 ')\n",
+     ["TST-M0-003"], "the M3 gate runs under always() again, after a failed baseline, on an image that never built or booted"),
+    ("M317", ".github/workflows/mutants.yml",
+     "          if [ \"$n\" -eq 0 ]; then echo \"::error title=Stages::'$STAGES' selects no gate (M2 M3 M4 M5 M6)\"; exit 1; fi\n", "",
+     ["TST-M0-003"], "a dispatch whose stages input names no gate runs no gate and ends green, with nothing to import"),
+    # M318, M319 (WP-95, option B): mutants.yml's host suites and its job's limit.
+    ("M318", ".github/workflows/mutants.yml", "          for s in M0 M1 M3 M4 M5 M6; do\n", "          for s in M0 M1 M3 M4 M6; do\n",
+     ["TST-M0-003"], "mutants.yml's host suites drop M5: its tests stay stale on a head that changed them, the strict check fails and the run is never imported"),
+    ("M319", ".github/workflows/mutants.yml", "    timeout-minutes: 345\n", "    timeout-minutes: 300\n",
+     ["TST-M0-003"], "the mutants job's limit falls back to 300, under what a run of all five gates and the host suites needs: the job can end before its strict check and publish"),
+    # M320..M322 (the WP-95 review): the stages step's character check, the artifact of this run's
+    # directories alone, the host suites after the baseline alone.
+    ("M320", ".github/workflows/mutants.yml",
+     "            *[!M2-6\\ ]*) echo \"::error title=Stages::'$STAGES' holds a character other than M, 2 to 6 and a space\"; exit 1 ;;\n",
+     "            *[!M2-6[:space:]]*) echo \"::error title=Stages::'$STAGES' holds a character other than M, 2 to 6 and a space\"; exit 1 ;;\n",
+     ["TST-M0-003"], "the stages step lets a tab or a newline through: the shell's loop splits on it, every gate's contains(' M3 ') does not, and the run ends green with no gate"),
+    ("M321", ".github/workflows/mutants.yml", "            evidence/*-${{ steps.rev.outputs.sha8 }}-*/\n", "            evidence/\n",
+     ["TST-M0-003"], "the mutants artifact takes the whole tracked evidence tree again (14.4 GB), inside the job's unmeasured minutes"),
+    ("M322", ".github/workflows/mutants.yml", "        if: ${{ !cancelled() && steps.baseline.outcome == 'success' }}\n", "        if: ${{ !cancelled() }}\n",
+     ["TST-M0-003"], "the host suites run after a failed baseline, on a lab that never built or booted"),
     # M305..M308 (WP-152's follow-up, verify run 44218469147): the Toolchain step's fallback mirror and
     # the runner mirror's budget, in mutants.yml where each anchor is once (verify.yml repeats the
     # step in nine jobs, a and the shards under one identity check); TST-M0-003 (FallbackMirror).
@@ -1608,7 +1632,13 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # a mutant, a SECURITY one included (M293).
             "M289", "M293",
             # WP-152: the gate's merge job never runs in a cancelled run (M302).
-            "M302"}
+            "M302",
+            # WP-95 (the audit the owner ordered, 2026-11-16): nine authority checks of M3 and M4,
+            # outside the set until then: channel_write's WRITE right (M34), token minting (M53),
+            # svcmgr's hand-over to auth and its connect rule (M62, M67), authd's password, attempt
+            # limit and LOGOUT revocation (M68, M69, M70), configd's device-store authorization
+            # (M73) and netd's no-internet policy (M77).
+            "M34", "M53", "M62", "M67", "M68", "M69", "M70", "M73", "M77"}
 
 
 def security_of(mid: str) -> bool:

@@ -1544,5 +1544,76 @@ class WorkflowShardMutants(unittest.TestCase):
         self.assertNotIn("M304", mutants.SECURITY)
 
 
+
+class SecuritySet(unittest.TestCase):
+    """WP-95 (the audit the owner ordered, 2026-11-16): a mutant is SECURITY by the set alone
+    (gate_verdict reads mutants.SECURITY), yet 36 ids of the set had notes without the prefix and
+    nine authority mutants carried neither. The prefix of a note and membership of the set are
+    equal both ways, and the nine are in it."""
+
+    NINE = ("M34", "M53", "M62", "M67", "M68", "M69", "M70", "M73", "M77")
+
+    def test_the_security_prefix_and_the_set_are_equal(self):
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        prefixed = {mid for mid, m in by_id.items() if m[5].startswith("SECURITY")}
+        key = lambda mid: int(mid[1:])
+        self.assertEqual(sorted(mutants.SECURITY - prefixed, key=key), [], "in the set, the note does not say SECURITY")
+        self.assertEqual(sorted(prefixed - mutants.SECURITY, key=key), [], "the note says SECURITY, the set does not hold it")
+        self.assertEqual(sorted(mutants.SECURITY - set(by_id), key=key), [], "the set names an unregistered mutant")
+
+    def test_the_nine_authority_mutants_are_security(self):
+        self.assertEqual([m for m in self.NINE if m not in mutants.SECURITY], [])
+
+
+class MutantsWorkflowMutants(unittest.TestCase):
+    """WP-95's wiring of mutants.yml, killed by TST-M0-003: the M3 gate runs again after a failed
+    baseline (always(), M316), a dispatch naming no gate passes the stages check (M317), the host
+    suites step drops a suite verify runs (M318) and the job's limit falls back to 300, under what
+    a run of all five gates needs (M319), the stages step lets a tab or a newline through (M320),
+    the artifact takes the whole evidence tree again (M321) and the host suites run after a failed
+    baseline (M322) (the WP-95 review); each anchor once in mutants.yml."""
+
+    def test_the_wiring_mutants_are_registered(self):
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        text = (ROOT / ".github" / "workflows" / "mutants.yml").read_text(encoding="utf-8")
+        for mid in ("M316", "M317", "M318", "M319", "M320", "M321", "M322"):
+            self.assertIn(mid, by_id, f"{mid} is not registered")
+            m = by_id[mid]
+            self.assertEqual((m[1], m[4], mutants.stage_of(mid)), (".github/workflows/mutants.yml", ["TST-M0-003"], "M6"), mid)
+            self.assertTrue(mutants.is_tooling(m[1]), mid)
+            self.assertEqual(text.count(m[2]), 1, f"{mid}: its anchor is not once in mutants.yml")
+            self.assertNotEqual(m[2], m[3], mid)
+            self.assertNotIn(mid, mutants.SECURITY)
+
+
+class GateOracles(unittest.TestCase):
+    """WP-95: every gate's oracle text (TST-M2-MUTANTS to TST-M6-MUTANTS) says what its verdict
+    enforces (gate_verdict and run_killers' cause rules): the ratio, the SECURITY rule for a
+    surviving and for an invalid mutant, a kill only by its cause (a guest killer's own FAIL
+    verdict line, a host killer's failing-tests line with the case passing on the clean
+    checkout, anything else ERROR), expected_missed and an EXPECT error. The four older texts
+    predated WP-90 and said none of the new rules."""
+
+    MUST = ("a kill ratio of at least 0.95 over a non-empty set of valid mutants", "every survivor named in the report",
+            "no surviving or invalid SECURITY mutant", "declared killers", "sweep", "own FAIL verdict line", "`FAILED (`",
+            "`test result: FAILED`", "clean checkout", "ERROR", "never a kill", "expected_missed", "EXPECT error")
+    # The WP-95 review (auditor A-L01, assurance F2): the gate never checks that every seeded defect
+    # is killed (the ratio is 0.95), a kill comes from a declared killer or the sweep, and an
+    # invalid mutant is not written to the report when it is decided (tests/mutants.py: two
+    # INVALID paths `continue` without _write_report).
+    FORBID = ("every seeded", "is killed by at least one", "written as each mutant is decided", "decided so far")
+
+    def test_every_gate_oracle_names_what_the_gate_enforces(self):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import project  # noqa: E402
+        gates = [c for cs in project.HOST_SUITES.values() for c in cs
+                 if c["command"][:3] == ["python3", "-I", "tests/mutants.py"] and "--stage" in c["command"]]
+        self.assertEqual(sorted(c["id"] for c in gates), [f"TST-M{n}-MUTANTS" for n in range(2, 7)])
+        missing = {c["id"]: [w for w in self.MUST if w not in c["oracle"]] for c in gates}
+        self.assertEqual({k: v for k, v in missing.items() if v}, {})
+        claims = {c["id"]: [w for w in self.FORBID if w in c["oracle"]] for c in gates}
+        self.assertEqual({k: v for k, v in claims.items() if v}, {}, "a gate's oracle claims what the gate does not check")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

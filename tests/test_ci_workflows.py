@@ -1747,13 +1747,23 @@ class MutationHarness(unittest.TestCase):
                          "the gates run in order M2, M3, M4, M5, M6 (WP-90 adds M6)")
         runs = [s["run"] for s in steps if str(s.get("name", "")).startswith("Mutation run, ")]
         self.assertEqual(runs, [f"python3 tools/project.py test --target host --suite {x}" for x in ("M2", "M3-GATE", "M4-GATE", "M5-GATE", "M6-GATE")])
-        for s in steps[1:]:
+        # A failed gate must not skip the next, only the selected gates run, and none runs after a
+        # failed baseline (always() let M3..M6 run on an image that never built or booted; WP-95,
+        # the assurance review of 2026-11-15) nor in a cancelled run.
+        base = [i for i, s in enumerate(steps) if s.get("id") == "baseline"]
+        self.assertEqual(len(base), 1, "the baseline step has no id the gates can test")
+        baseline = steps[base[0]]
+        self.assertIn("project.py build --target pc-qemu", baseline["run"])
+        self.assertIn("project.py boot --target pc-qemu", baseline["run"])
+        self.assertNotIn("if", baseline, "the baseline runs only after the steps before it succeeded")
+        self.assertNotIn("continue-on-error", baseline)
+        for i, s in enumerate(steps):
             if str(s.get("name", "")).startswith("Mutation run, "):
                 stage = s["name"].split(",")[1].strip()[:2]
-                want = f"contains(format(' {{0}} ', inputs.stages || '{DEFAULT_STAGES}'), ' {stage} ')"
-                if stage != "M2":
-                    want = f"always() && {want}"
-                self.assertEqual(s.get("if"), want, f"{s['name']}: a failed gate must not skip the next, and only the selected gates run")
+                want = (f"${{{{ !cancelled() && steps.baseline.outcome == 'success' && "
+                        f"contains(format(' {{0}} ', inputs.stages || '{DEFAULT_STAGES}'), ' {stage} ') }}}}")
+                self.assertEqual(s.get("if"), want, f"{s['name']}: its condition")
+                self.assertGreater(i, base[0])
 
         # WP-90 (audit of WP-92): strict validation before the gates deadlocks when a gate's oracle
         # text changes (its PASS cites evidence with the old oracle, and only a successful run of
@@ -1784,27 +1794,137 @@ class MutationHarness(unittest.TestCase):
             self.assertIn(rep, loop, f"{rep} is not published on the evidence branch")
             self.assertIn(rep, upload["with"]["path"], f"{rep} is not in the uploaded artifact")
 
-    def test_the_stages_are_selected_by_hand_and_m6_is_not_in_the_default(self):
-        # WP-90 (review condition 7): import-ci-evidence takes only a successful run, so a red or
-        # timed-out first M6 gate in the same run would make M2-M5's evidence unimportable. The
-        # gates run by a workflow_dispatch input; the schedule and the default run M2-M5, and M6
-        # runs in a run of its own until it is green (then it joins the default).
+    def test_the_default_stages_are_m2_to_m5_because_verify_runs_m6(self):
+        # WP-90 (review condition 7) chose the stages by a workflow_dispatch input, M6 out of the
+        # default until it was green. WP-95 (the manager, 2026-11-18): it stays out, now because
+        # verify runs the M6 gate in every run (the owner's DEC-029, WP-96; in shards since WP-152
+        # and WP-153), so the schedule and the default run exactly M2 M3 M4 M5, the gates verify
+        # does not run (STALE_WARN_TESTS), and a dispatch names M6 to run it here.
         on = load("mutants.yml")["on"]
         inp = on["workflow_dispatch"]["inputs"]["stages"]
         self.assertEqual((inp.get("type"), inp.get("default")), ("string", DEFAULT_STAGES))
-        self.assertNotIn("M6", DEFAULT_STAGES.split())
+        self.assertEqual(DEFAULT_STAGES, "M2 M3 M4 M5")
+        self.assertIn("schedule", on, "the scheduled run takes the default")
+        gate_ids = {c["id"] for s in ("M2", "M3-GATE", "M4-GATE", "M5-GATE") for c in project.HOST_SUITES[s]
+                    if "tests/mutants.py" in c["command"]}
+        self.assertEqual(gate_ids, set(project.STALE_WARN_TESTS), "the default's gates are the ones verify does not run")
+        verify = load("verify.yml")
+        self.assertIn("push", verify[True] if True in verify else verify["on"])
+        runs = [l.strip() for j in verify["jobs"].values() for s in j["steps"] for l in str(s.get("run", "")).splitlines()]
+        self.assertIn("python3 tools/project.py test --target host --suite M6-GATE", runs, "verify does not run the M6 gate")
+
+    def test_the_artifact_holds_this_runs_directories_alone(self):
+        # The WP-95 review (F7, A-L08, RT95-07): `evidence/` uploaded the whole tracked evidence
+        # tree (14.4 GB) uncapped. As verify since WP-153: an always() step `rev` before the
+        # upload, the run's own directories (no slot in mutants.yml: <stamp>-<sha8>-<nnn>), the
+        # artifact rooted at the workspace (artifact_root) and the step capped. Publish, the
+        # ci-evidence branch import-ci-evidence reads, is unchanged.
+        steps = next(iter(load("mutants.yml")["jobs"].values()))["steps"]
+        ups = [i for i, s in enumerate(steps) if str(s.get("uses", "")).startswith("actions/upload-artifact@")]
+        self.assertEqual(len(ups), 1)
+        up = steps[ups[0]]
+        paths = upload_paths(up)
+        ev = [x for x in paths if x.startswith("evidence")]
+        self.assertEqual(ev, ["evidence/*-${{ steps.rev.outputs.sha8 }}-*/"], "not this run's directories alone")
+        self.assertEqual(artifact_root(paths), "", "the artifact is not rooted at the workspace")
+        self.assertIn("timeout-minutes", up, "the upload has no cap")
+        self.assertIn("always()", str(up.get("if", "")))
+        revs = [i for i, s in enumerate(steps) if s.get("id") == "rev"]
+        self.assertEqual(len(revs), 1)
+        self.assertLess(revs[0], ups[0])
+        self.assertEqual(steps[revs[0]].get("run"), REV_RUN)
+        self.assertIn("always()", str(steps[revs[0]].get("if", "")))
+        sha8 = project.source_identity()[0][:8]
+        other = "0" * 8 if sha8 != "0" * 8 else "1" * 8
+        pattern = ev[0].replace("${{ steps.rev.outputs.sha8 }}", sha8)
+        self.assertTrue(fnmatch.fnmatchcase(f"evidence/20261118T035023Z-{sha8}-002/", pattern))
+        self.assertFalse(fnmatch.fnmatchcase(f"evidence/20261118T035023Z-{other}-002/", pattern))
+        committed = subprocess.run(["git", "ls-tree", "--name-only", "HEAD", "evidence/"], cwd=ROOT,
+                                   capture_output=True, text=True).stdout.split()
+        self.assertEqual([c for c in committed if fnmatch.fnmatchcase(c.rstrip("/") + "/", pattern)], [])
+        publish = next(s for s in steps if str(s.get("name", "")).startswith("Publish evidence"))
+        self.assertIn("git add -f evidence/", publish["run"], "the evidence branch no longer carries the tree")
+
+    def stages_step(self):
+        steps = next(iter(load("mutants.yml")["jobs"].values()))["steps"]
+        found = [i for i, s in enumerate(steps) if s.get("id") == "stages"]
+        self.assertEqual(len(found), 1, "mutants.yml has no step `stages` checking the selection")
+        return found[0], steps
+
+    def run_stages(self, value):
+        i, steps = self.stages_step()
+        r = subprocess.run(["bash", "-e", "-c", steps[i]["run"]], env=dict(os.environ, STAGES=value), capture_output=True, text=True)
+        return r.returncode, r.stdout + r.stderr
+
+    def test_a_dispatch_that_selects_no_gate_fails(self):
+        # WP-95 (the assurance review of 2026-11-15): `stages` naming no gate (a typo, a comma,
+        # lower case) ran no gate and ended green, with nothing to import. The step runs before the
+        # toolchain, reads the input through the environment (never spliced into the script) with
+        # the gates' own default, and refuses any word that names no gate.
+        i, steps = self.stages_step()
+        step = steps[i]
+        self.assertEqual(step.get("env"), {"STAGES": f"${{{{ inputs.stages || '{DEFAULT_STAGES}' }}}}"})
+        self.assertNotIn("inputs.", step["run"], "the input is spliced into the script")
+        tool = next(j for j, s in enumerate(steps) if str(s.get("name", "")).startswith("Toolchain"))
+        self.assertLess(i, tool, "the selection is checked before the toolchain")
+        self.assertNotIn("if", step)
+        gates = [s["name"].split(",")[1].strip()[:2] for s in steps if str(s.get("name", "")).startswith("Mutation run, ")]
+        for ok in [DEFAULT_STAGES, " ".join(gates), "M6", "M3", "M2  M5", "M6 M2"] + gates:
+            rc, out = self.run_stages(ok)
+            self.assertEqual(rc, 0, f"{ok!r}: {out}")
+        # The WP-95 review (A-L02, F1, RT95-01): a tab or a newline splits the words for the
+        # shell's loop but not for each gate's contains(' M3 '), so the run passed with no gate.
+        for bad in (" ", "M7", "m2", "M2,M3", "M1", "M3 M7", "*", "M2 -M3", "all", "M2\tM3", "M2\nM5", "M6\n"):
+            rc, out = self.run_stages(bad)
+            self.assertNotEqual(rc, 0, f"{bad!r} accepted")
+            self.assertIn("::error", out, bad)
+    # The four older gates measured 30.1 + 21.9 + 29.3 + 46.5 = 127.8 min (their evidence of
+    # 2026-11-08/09, 20261108T223908Z-2cbdeaad-001 to 20261109T000029Z-2cbdeaad-001); uncapped,
+    # each bounded by its suite's timeout_s.
+    OLDER_GATES_MEASURED_MIN = 127.8
+    HOSTED_JOB_MAX_MIN = 360  # GitHub-hosted runners end a job at 6 hours
+
     def test_the_m6_gate_is_time_boxed_inside_the_job(self):
-        # WP-90: the M6 gate's 25+ mutants were never run, so survivors (each one a fairness sweep
-        # over every guest case) are expected. Its suite timeout ends the gate with a verdict and
-        # the partial report before its step cap, and the step cap leaves the job time for the
-        # report and publish steps after the four older gates (137 min on run 42610085488).
+        # WP-90: the M6 gate's suite timeout ends it with a verdict and the partial report before
+        # its step cap. WP-95: the job's limit fits every step of a run of all five gates: each
+        # capped step at its cap (Toolchain, the M6 gate, the host suites), the four uncapped older
+        # gates at their measured time with the 20 % margin, 20 min for the rest (checkout,
+        # baseline, records checks, report, publish), and stays within a hosted job's maximum.
         job = next(iter(load("mutants.yml")["jobs"].values()))
         step = next(s for s in job["steps"] if str(s.get("name", "")).startswith("Mutation run, M6"))
         self.assertIn("timeout-minutes", step, "the M6 gate step has no cap of its own")
         case = next(c for c in project.HOST_SUITES["M6-GATE"] if c["id"] == "TST-M6-MUTANTS")
         self.assertLess(case["timeout_s"], step["timeout-minutes"] * 60, "the suite timeout must fire before the step cap")
-        self.assertLessEqual(step["timeout-minutes"] + 140 + 20, job["timeout-minutes"],
-                             "older gates (137 min measured) + M6 cap + toolchain/report/publish must fit the job")
+        caps = [s["timeout-minutes"] for s in job["steps"] if "timeout-minutes" in s]
+        older = [s for s in job["steps"] if str(s.get("name", "")).startswith("Mutation run, M") and "timeout-minutes" not in s]
+        self.assertEqual(len(older), 4, "M2 to M5 run uncapped, bounded by their suites' timeout_s")
+        need = sum(caps) + 1.2 * self.OLDER_GATES_MEASURED_MIN + 20
+        self.assertLessEqual(need, job["timeout-minutes"], f"the steps need {need:.0f} min of the job's {job['timeout-minutes']}")
+        self.assertLessEqual(job["timeout-minutes"], self.HOSTED_JOB_MAX_MIN)
+
+    def test_mutants_runs_verifys_host_suites_after_the_gates_before_the_strict_check(self):
+        # WP-95 (option B, the manager, 2026-11-18): a run of mutants.yml is imported only when its
+        # strict check passes over the head it ran on, and a head that changes tools/project.py or
+        # the harness leaves every host test stale but the gates. So mutants.yml runs every host
+        # suite verify runs, with verify's own script (WP-91: each suite once, the step failing at
+        # the end when any failed), after the last gate (a red gate does not skip it, a cancelled
+        # run does) and before the strict check, under a cap of its own; and its lab is verify's.
+        steps = next(iter(load("mutants.yml")["jobs"].values()))["steps"]
+        host = [i for i, s in enumerate(steps) if str(s.get("name", "")) == "Host suites"]
+        self.assertEqual(len(host), 1, "mutants.yml has no Host suites step")
+        mine = steps[host[0]]
+        self.assertEqual(mine["run"], HostStep().step()["run"], "not verify's Host suites script")
+        self.assertEqual(HostStep().problems(script=mine["run"]), [])
+        self.assertEqual(mine.get("if"), "${{ !cancelled() && steps.baseline.outcome == 'success' }}",
+                         "the host suites run after a red gate, never after a failed baseline nor in a cancelled run")
+        self.assertIn("timeout-minutes", mine)
+        gates = [i for i, s in enumerate(steps) if str(s.get("name", "")).startswith("Mutation run, ")]
+        strict = next(i for i, s in enumerate(steps) if str(s.get("run", "")).strip() == "python3 tools/project.py validate-records --strict")
+        self.assertLess(max(gates), host[0])
+        self.assertEqual(strict, host[0] + 1, "the strict check comes right after the host suites")
+        tool = lambda doc_steps: next(s for s in doc_steps if str(s.get("name", "")).startswith("Toolchain"))
+        self.assertEqual(tool(steps)["run"], tool(load("verify.yml")["jobs"]["a"]["steps"])["run"],
+                         "mutants.yml's lab is not verify's (the host suites need fonttools, harfbuzz and the rest)")
 
     def test_mutants_build_every_app_the_kernel_embeds_and_the_build_compiles(self):
         # Review 2026-10-19 (M8): the harness kept its own app list; WP-40 added exiter to the
