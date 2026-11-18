@@ -1075,6 +1075,35 @@ pub fn handles_named(name: &[u8]) -> Option<usize> {
     Some(n)
 }
 
+/// Test-only (WP-108): whether every thread of the live process whose spawn image base name
+/// equals `name` is blocked or asleep. Read after `freeze_named` it shows the process parked:
+/// a frozen process's threads take no wake-up and their timed waits do not expire, so it
+/// stays where it is until `thaw_named`, and what the test queues or closes meanwhile is all
+/// there when it runs again (TST-M4-NET-CLIENT-DROP). False when none matches or it has no
+/// thread.
+#[cfg(feature = "ktest")]
+pub fn parked_named(name: &[u8]) -> bool {
+    with(|s| {
+        let Some(pid) = s
+            .processes
+            .iter()
+            .find(|p| p.exit_code.is_none() && p.object.as_ref().is_some_and(|o| o.name_is(name)))
+            .map(|p| p.id)
+        else {
+            return false;
+        };
+        let mut any = false;
+        for t in s.threads.iter().filter(|t| t.process == Some(pid)) {
+            match t.state {
+                State::Blocked | State::BlockedUntil { .. } | State::Sleeping { .. } => any = true,
+                State::Ready | State::Running => return false,
+                State::Exited { .. } => {}
+            }
+        }
+        any
+    })
+}
+
 /// Test-only (WP-156): as `handles_named`, for the live process `pid` — the service manager is
 /// spawned by the kernel and has no image name (TST-M4-SVC-CONNECT-NOREAD). None when not live.
 #[cfg(feature = "ktest")]

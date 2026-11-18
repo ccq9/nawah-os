@@ -217,6 +217,7 @@ pub fn run() -> ! {
         "net_no_internet" => net_no_internet(),
         "net_tcp_echo" => net_tcp_echo(),
         "net_tcp_retransmit" => net_tcp_retransmit(),
+        "net_client_drop" => net_client_drop(),
         "shell_svc" => shell_session("shell_svc"),
         "peer_loss" => peer_loss(),
         "display_boot" => display_boot(),
@@ -7048,6 +7049,116 @@ fn net_udp_echo() -> ! {
         "net_udp_echo",
         frames0,
         "UDP datagrams reach the host's echo server and come back",
+    )
+}
+
+/// The net service's live handle count, or -1 when it does not run (test kernel only).
+fn net_handles() -> i64 {
+    sched::handles_named(b"NETD.ELF").map_or(-1, |n| n as i64)
+}
+
+/// TST-M4-NET-CLIENT-DROP (REQ-M4-007, REQ-M4-008, net.md ب and ج, WP-108; RSK-028): a client's
+/// sockets and connections go with it on every path that frees its slot. Client A opens a UDP
+/// socket, sends a datagram whose echo it never reads and opens a TCP connection; then, while
+/// the service is held, it queues one more request and closes its end. Released, the service
+/// answers into the closed channel and frees A's slot (its live handle count drops by one).
+/// Client B then takes that slot: A's socket is not B's, A's connection is closed, and A's
+/// port is free again. Client C opens a port and closes while idle (the service reads the
+/// closed peer): that port is free again too, and the connection B opened meanwhile is
+/// still B's.
+fn net_client_drop() -> ! {
+    let (env, dhcp) = net_env("net_client_drop");
+    let frames0 = {
+        let a = svc_connect(&env.h, "net");
+        let open = cfg_request(&a, b"UDP_OPEN 40001", None);
+        let sent = cfg_request(&a, b"UDP_SEND 0 10.0.2.2 17007 from-a", None);
+        let conn = cfg_request(&a, b"TCP_CONNECT 10.0.2.2 17008 5000", None);
+        let n0 = net_handles();
+        // Held and parked (a frozen process's blocked threads stay blocked until the thaw),
+        // the service cannot read the request before A's end is closed: its reply is the one
+        // that cannot be written.
+        let frozen = sched::freeze_named(b"NETD.ELF");
+        let parked = sched::poll_until(sched::ticks() + 5_000, || sched::parked_named(b"NETD.ELF"));
+        let queued = a
+            .write(Message {
+                bytes: b"STATUS".to_vec(),
+                handles: Vec::new(),
+            })
+            .is_ok();
+        drop(a);
+        let thawed = sched::thaw_named(b"NETD.ELF");
+        let dropped = sched::poll_until(sched::ticks() + 5_000, || net_handles() == n0 - 1);
+        // B connects once A's slot is free, so it takes that slot.
+        let b = svc_connect(&env.h, "net");
+        let inherit_recv = cfg_request(&b, b"UDP_RECV 0 2000", None);
+        let tcp_a = cfg_request(&b, b"TCP_STATUS 1", None)
+            .split(' ')
+            .take(2)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let reopen = cfg_request(&b, b"UDP_OPEN 40001", None);
+        // B's own connection must outlive another client's close.
+        let conn_b = cfg_request(&b, b"TCP_CONNECT 10.0.2.2 17008 5000", None);
+        // C closes while idle: the service reads the closed peer.
+        let c = svc_connect(&env.h, "net");
+        let open_c = cfg_request(&c, b"UDP_OPEN 40002", None);
+        let n1 = net_handles();
+        drop(c);
+        let idle_dropped = sched::poll_until(sched::ticks() + 5_000, || net_handles() == n1 - 1);
+        let idle_reopen = cfg_request(&b, b"UDP_OPEN 40002", None);
+        let tcp_b = cfg_request(&b, b"TCP_STATUS 2", None)
+            .split(' ')
+            .take(2)
+            .collect::<Vec<_>>()
+            .join(" ");
+        kprintln!(
+            "OSX|{}|ktest|net_client_drop|dhcp_ok={}|open={}|sent={}|conn={}|frozen={}|parked={}|queued={}|thawed={}|dropped={}|inherit_recv={}|tcp_a={}|reopen={}|conn_b={}|open_c={}|idle_dropped={}|idle_reopen={}|tcp_b={}|net_base={}",
+            BUILD_ID,
+            u8::from(dhcp == LAB_DHCP),
+            open,
+            sent,
+            conn,
+            u8::from(frozen),
+            u8::from(parked),
+            u8::from(queued),
+            u8::from(thawed),
+            u8::from(dropped),
+            inherit_recv,
+            tcp_a,
+            reopen,
+            conn_b,
+            open_c,
+            u8::from(idle_dropped),
+            idle_reopen,
+            tcp_b,
+            n0
+        );
+        if dhcp != LAB_DHCP || open != "OK 0" || sent != "OK 6" || conn != "OK 1" || n0 < 0 {
+            fail("the first client's socket, datagram or connection was not set up")
+        }
+        if !frozen || !parked || !queued || !thawed || !dropped {
+            fail("the reply that cannot be written did not free the client's slot")
+        }
+        if inherit_recv != "ERR BAD_REQUEST" || tcp_a != "ERR CLOSED" {
+            fail("a later client used the socket or the connection of a client that had closed")
+        }
+        if reopen != "OK 0" {
+            fail("a closed client's socket was left behind")
+        }
+        if conn_b != "OK 2" || open_c != "OK 1" || !idle_dropped || idle_reopen != "OK 1" {
+            fail("an idle client's close left its socket behind")
+        }
+        if tcp_b != "OK state=ESTABLISHED" {
+            fail("a client's close reset another client's connection")
+        }
+        // The DHCP reply string lives outside the block: release it before the balance.
+        drop((b, dhcp));
+        net_close(env, "net_client_drop")
+    };
+    cfg_balance(
+        "net_client_drop",
+        frames0,
+        "a closed client's sockets and connections are freed on every path and no later client uses them",
     )
 }
 

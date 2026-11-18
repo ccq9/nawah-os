@@ -1393,6 +1393,29 @@ MUTANTS = [
      "            return Err(if create || user_uid(name).is_none() {\n",
      "            return Err(if user_uid(name).is_none() {\n",
      ["TST-M4-CONFIG-STORE-AUTHZ"], "a token that may create a user store is answered ERR ACCESS when no slot is free, as if it were refused"),
+    # M332..M334 (WP-108, RSK-028; net.md parts B and C): netd frees a client's sockets and resets
+    # its connections wherever it frees the client's slot, in one function. M332 is the
+    # reply-failure path as it was (the slot freed, nothing else): whoever takes the slot next
+    # reads the closed client's datagrams and holds its connection, and its port stays taken.
+    # M333 is the same for a peer closed while idle. M334 leaves the connections out of the one
+    # cleanup. TST-M4-NET-CLIENT-DROP reads all three.
+    ("M332", "user/apps/netd/src/main.rs",
+     "                if libnawah::channel_write(c, &out_buf[..len], &[]) == ERR_PEER_CLOSED {\n                    st.drop_client(ci);\n                }\n",
+     "                if libnawah::channel_write(c, &out_buf[..len], &[]) == ERR_PEER_CLOSED {\n                    libnawah::handle_close(c);\n                    st.clients[ci] = 0;\n                }\n",
+     ["TST-M4-NET-CLIENT-DROP"], "SECURITY: netd frees the slot of a client whose reply cannot be written and keeps its sockets and connections, so the next client in that slot reads its datagrams and holds its connection"),
+    ("M333", "user/apps/netd/src/main.rs",
+     "            Err(ERR_PEER_CLOSED) => st.drop_client(ci),\n",
+     "            Err(ERR_PEER_CLOSED) => {\n                libnawah::handle_close(c);\n                st.clients[ci] = 0;\n            }\n",
+     ["TST-M4-NET-CLIENT-DROP"], "SECURITY: netd frees the slot of a client that closed while idle and keeps its sockets and connections, so its ports stay taken and the next client in that slot inherits them"),
+    ("M334", "user/apps/netd/src/main.rs",
+     "            if self.conns[cn].owner == ci {\n                self.tcp_abort(cn);\n",
+     "            if self.conns[cn].owner == ci && false {\n                self.tcp_abort(cn);\n",
+     ["TST-M4-NET-CLIENT-DROP"], "SECURITY: a closed client's TCP connections are not reset, so the next client in its slot holds them"),
+    # M335 (WP-108's review round): the cleanup takes the closed client's connections alone.
+    ("M335", "user/apps/netd/src/main.rs",
+     "            if self.conns[cn].owner == ci {\n                self.tcp_abort(cn);\n",
+     "            if true {\n                self.tcp_abort(cn);\n",
+     ["TST-M4-NET-CLIENT-DROP"], "SECURITY: one client's close resets every client's TCP connections"),
     # M305..M308 (WP-152's follow-up, verify run 44218469147): the Toolchain step's fallback mirror and
     # the runner mirror's budget, in mutants.yml where each anchor is once (verify.yml repeats the
     # step in nine jobs, a and the shards under one identity check); TST-M0-003 (FallbackMirror).
@@ -1704,7 +1727,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-157 (RSK-028): configd creates a user store only for a token that may modify it
             # (M325) and never for a subscriber, which shows none (M326; config.md v1.4); a loaded
             # user store is modified by its own uid's token or ADMIN alone (M328).
-            "M325", "M326", "M328"}
+            "M325", "M326", "M328",
+            # WP-108 (RSK-028): netd frees a client's sockets and resets its connections on
+            # every path that frees its slot, and those alone (net.md parts B and C; M332 to M335).
+            "M332", "M333", "M334", "M335"}
 
 
 def security_of(mid: str) -> bool:
@@ -1911,6 +1937,9 @@ _ADMIN = "|ktest|fail|an administrator was refused a user's store"
 _LOADED = "|ktest|fail|a write on another user's loaded store was not refused"
 _NONAME = "|ktest|fail|a name that is no user store was not answered ERR INVALID"
 _FULLTAB = "|ktest|fail|a full table of user stores was not answered as the contract says"
+_USED = "|ktest|fail|a later client used the socket or the connection of a client that had closed"
+_IDLE = "|ktest|fail|an idle client's close left its socket behind"
+_OTHER = "|ktest|fail|a client's close reset another client's connection"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -1970,6 +1999,15 @@ EXPECT = {
     "M329": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|sub_zero=OK|", _NONAME]},
     "M330": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|sub_big=ERR NOT_FOUND|", _NONAME]},
     "M331": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|full_set=ERR ACCESS|", _FULLTAB]},
+    # WP-108: the case's one line. M332: client B, in A's slot, sees A's connection as its own
+    # and finds A's port taken (it reads A's datagram too, when the echo has come: in the line,
+    # not declared, as no expectation rests on an echo). M333: the port of the client that
+    # closed while idle stays taken. M334: A's socket is gone but its connection is B's. M335:
+    # C's close resets the connection B opened.
+    "M332": {"TST-M4-NET-CLIENT-DROP": ["exit 37", "|tcp_a=OK state=ESTABLISHED|", "|reopen=ERR EXISTS|", _USED]},
+    "M333": {"TST-M4-NET-CLIENT-DROP": ["exit 37", "|idle_reopen=ERR EXISTS|", _IDLE]},
+    "M334": {"TST-M4-NET-CLIENT-DROP": ["exit 37", "|tcp_a=OK state=ESTABLISHED|", _USED]},
+    "M335": {"TST-M4-NET-CLIENT-DROP": ["exit 37", "|tcp_b=ERR CLOSED|", _OTHER]},
 }
 
 

@@ -1249,7 +1249,8 @@
     "TST-M4-DHCP",
     "TST-M4-ICMP-ECHO",
     "TST-M4-UDP-ECHO",
-    "TST-M4-NET-NO-INTERNET"
+    "TST-M4-NET-NO-INTERNET",
+    "TST-M4-NET-CLIENT-DROP"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
@@ -1280,7 +1281,8 @@
    "acceptance": "tcp_echo/tcp_retransmit",
    "test_ids": [
     "TST-M4-TCP-ECHO",
-    "TST-M4-TCP-RETRANSMIT"
+    "TST-M4-TCP-RETRANSMIT",
+    "TST-M4-NET-CLIENT-DROP"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [

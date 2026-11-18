@@ -1062,6 +1062,68 @@ class KillEvidence(unittest.TestCase):
                     self.assertNotIn(x, line, f"{x} is the pinned value")
         self.assertEqual(len(set(seen)), 7, "each mutant is known by its own message and fields")
 
+    DROP = "TST-M4-NET-CLIENT-DROP"
+
+    def test_the_net_client_drop_expectations_are_pinned(self):
+        """WP-108 (RSK-028; net.md parts B and C): netd frees a client's sockets and resets its
+        connections wherever it frees the client's slot, in one function. M332 puts the
+        reply-failure path back as it was (the slot freed, nothing else); M333 does the same
+        to the path of a peer closed while idle; M334 leaves the connections out of the one
+        cleanup; M335 (the review round) resets every client's connections when one client
+        closes. All four are SECURITY mutants, each anchor once in
+        user/apps/netd/src/main.rs, declared on TST-M4-NET-CLIENT-DROP alone by exit 37, the
+        kernel's own failure message (a failure in ktest.rs) and fields of the case's line,
+        each in the pinned line with another value; no two are declared by the same message
+        and fields. No expectation rests on the echo of a datagram (the review round): what
+        the second client reads from the first client's socket is in the line, not declared."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.DROP)
+        line = next(m for m in case["required_markers"] if "|inherit_recv=" in m)
+        want = {
+            "M332": ("st.drop_client(ci)", "_USED", {"|tcp_a=OK state=ESTABLISHED|", "|reopen=ERR EXISTS|"}),
+            "M333": ("st.drop_client(ci)", "_IDLE", {"|idle_reopen=ERR EXISTS|"}),
+            "M334": ("self.tcp_abort(cn)", "_USED", {"|tcp_a=OK state=ESTABLISHED|"}),
+            "M335": ("self.tcp_abort(cn)", "_OTHER", {"|tcp_b=ERR CLOSED|"}),
+        }
+        seen = []
+        for mid, (must, const, fields) in want.items():
+            with self.subTest(mutant=mid):
+                m = next((m for m in mutants.MUTANTS if m[0] == mid), None)
+                self.assertIsNotNone(m, f"{mid} is registered")
+                self.assertEqual(m[1], "user/apps/netd/src/main.rs")
+                self.assertEqual(m[4], [self.DROP])
+                self.assertIn(must, m[2])
+                if mid == "M334":
+                    self.assertEqual(m[3], m[2].replace("owner == ci {", "owner == ci && false {"))
+                elif mid == "M335":
+                    self.assertEqual(m[3], m[2].replace("self.conns[cn].owner == ci", "true"))
+                else:
+                    self.assertNotIn("drop_client", m[3])
+                    self.assertIn("libnawah::handle_close(c);", m[3])
+                    self.assertIn("st.clients[ci] = 0;", m[3])
+                    self.assertNotIn("NO_SOCKET", m[3])
+                    self.assertNotIn("tcp_abort", m[3])
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertIn(mid, mutants.SECURITY)
+                self.assertTrue(m[5].startswith("SECURITY: "), m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(set(E.get(mid, {})), {self.DROP})
+                subs = E[mid][self.DROP]
+                self.assertIn("exit 37", subs)
+                fails = [x for x in subs if x.startswith("|ktest|fail|")]
+                self.assertEqual(fails, [getattr(mutants, const, None)])
+                self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src)
+                seen.append((fails[0], tuple(sorted(fields))))
+                got = {x for x in subs if re.fullmatch(r"\|\w+=[^|]*\|", x)}
+                self.assertEqual(got, fields)
+                for x in got:
+                    self.assertIn("|" + x[1:].split("=")[0] + "=", line, x)
+                    self.assertNotIn(x, line, f"{x} is the pinned value")
+        self.assertEqual(len(set(seen)), 4, "each mutant is known by its own message and fields")
+        self.assertFalse(any("from-a" in x for mid in want for x in E[mid][self.DROP]), "no expectation rests on an echo")
+
 
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""

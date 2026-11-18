@@ -4500,6 +4500,41 @@
         ]
       },
       {
+        "id": "TST-M4-NET-CLIENT-DROP",
+        "test_id": "TST-M4-NET-CLIENT-DROP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=net_client_drop"
+        ],
+        "oracle": "a client's sockets and connections go with it on every path that frees its slot (net.md ب and ج, WP-108): client A opens UDP port 40001 (OK 0), sends a datagram to the host's echo server whose echo it never reads and opens a TCP connection to the host's echo server (OK 1); with the net service held and seen parked (every thread blocked, so it reads nothing until released), A queues one more request and closes its end; released, the service's reply cannot be written and its live handle count drops by one (A's slot is free); client B, connected after that, takes the slot: UDP_RECV on A's socket answers ERR BAD_REQUEST (not A's echo), TCP_STATUS of A's connection answers ERR CLOSED, and UDP_OPEN 40001 answers OK 0 (the port is free); B opens its own TCP connection (OK 2); client C opens port 40002 (OK 1) and closes while idle, the count drops by one, UDP_OPEN 40002 by B answers OK 1 and B's connection is still ESTABLISHED; clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=net_client_drop",
+          "|ktest|net_client_drop|dhcp_ok=1|open=OK 0|sent=OK 6|conn=OK 1|frozen=1|parked=1|queued=1|thawed=1|dropped=1|inherit_recv=ERR BAD_REQUEST|tcp_a=ERR CLOSED|reopen=OK 0|conn_b=OK 2|open_c=OK 1|idle_dropped=1|idle_reopen=OK 1|tcp_b=OK state=ESTABLISHED|",
+          "|ktest|net_client_drop|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|net_client_drop|frames_delta=0",
+          "|ktest|pass|a closed client's sockets and connections are freed on every path and no later client uses them"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_services": [
+          {
+            "type": "udp_echo",
+            "port": 17007
+          },
+          {
+            "type": "tcp_echo",
+            "port": 17008
+          }
+        ]
+      },
+      {
         "id": "TST-M4-SHELL-SVC",
         "test_id": "TST-M4-SHELL-SVC",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

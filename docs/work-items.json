@@ -6902,7 +6902,14 @@
     "docs/contracts/net.md",
     "tests/mutants.py",
     "tools/project.py",
-    "docs/tests.json"
+    "docs/tests.json",
+    "kernel/src/sched/mod.rs",
+    "tests/test_mutants_harness.py",
+    "docs/requirements.json",
+    "docs/risks.json",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
    ],
    "contract_refs": [
     "docs/contracts/net.md"
@@ -6913,20 +6920,31 @@
     "design to decide in the package (2-3 options with trade-offs): one drop_client used by every path, with or without an ownership key of slot and generation so that a missed cleanup can never be inherited",
     "test first, red seen locally before the fix: a test-kernel case with two clients: A opens a UDP port, sends a blocking receive and closes its end; B connects into the same slot and tries to receive on A's id and to open A's port: today a timeout and EXISTS, expected BAD_REQUEST and success; SECURITY mutant: the cleanup dropped from the reply-failure path",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate: unmeasured; sized at activation"
+    "2026-11-15 estimate: unmeasured; sized at activation",
+    "2026-11-18 activation (the manager, method section 7; WP-157 done; done inline by the manager from the reading in scratchpad wp108_notes.md): one drop_client for every path that frees a client's slot (the reply that cannot be written, the peer closed on read): its sockets freed and its connections reset; one new case with two clients (A opens a UDP port and a TCP connection, sends a blocking receive and closes its end; B takes A's slot and tries A's ids and A's port); one SECURITY mutant (the cleanup dropped from the reply-failure path); net.md a dated note or a version. About 70 min and under 120 tool calls, within the budget line",
+    "2026-11-18 options (rule 5; from the reading, scratchpad wp108_notes.md). The cleanup: (a) one drop_client called from every path that frees a client's slot (the reply that cannot be written, the peer read as closed): chosen (one place, every line of it shown by a field of the case); (b) (a) and an ownership key of slot and generation, so that a missed cleanup could never be inherited: not taken, because with (a) no request can reach a socket or connection whose owner's slot was freed, so the generation check has no test that fails without it (only together with a removed cleanup), and the method allows no code without one; the plan row's 'generation number' was the plan's guess, the record left it to the package; it can be added later behind the same function without a change of the contract (docs/LATER.md L-069); (c) the client's handle value as the owner: the kernel reuses handle numbers, so it is the slot index with a worse name. The case: (1) a blocking UDP_RECV and a close during it, as the record sketched: the service may answer before the close on another schedule, and the read path, which was right, would hide the defect; (2) the service held while the client queues a request and closes, as TST-M4-CONFIG-RETRY does: chosen; the second client connects once the service's live handle count has dropped, so it takes the freed slot by order, not by timing",
+    "2026-11-18 the work (the manager, inline; scratch runs, no CI evidence). Test first: TST-M4-NET-CLIENT-DROP (net_client_drop; host services udp_echo 17007 and tcp_echo 17008; sched::handles_named for the service's live count, test kernel only) pins, as it stands after the review round, `dhcp_ok=1|open=OK 0|sent=OK 6|conn=OK 1|frozen=1|parked=1|queued=1|thawed=1|dropped=1|inherit_recv=ERR BAD_REQUEST|tcp_a=ERR CLOSED|reopen=OK 0|conn_b=OK 2|open_c=OK 1|idle_dropped=1|idle_reopen=OK 1|tcp_b=OK state=ESTABLISHED`, clean exit, frames_delta=0; on netd as it was it FAILED, exit 37, `inherit_recv=OK 10.0.2.2 17007 from-a|tcp_a=OK state=ESTABLISHED|reopen=ERR EXISTS` and 'a later client used the socket or the connection of a client that had closed' (seen on the first form of the case and again on the final one): the second client read the first client's datagram, saw its connection as its own and found its port taken; with the fix PASS. The fix (user/apps/netd/src/main.rs): drop_client closes the handle, frees the slot, frees the client's sockets and resets its connections; both paths call it. M332, M333 and M334 (SECURITY: each path as it was; the connections left out) and, from the round, M335, their expectations pinned by TST-M0-005 (93 cases; the case seen failing before they were registered: 'M332 is registered', 'M335 is registered'). net.md: a dated note under part C, no new version (the contract already said it)",
+    "2026-11-18 the review round (auditor and red team in parallel, read-only): no blocker. Confirmed by the auditor, ten claims by reading: drop_client is the only place a client's slot is freed or its handle closed, and it does what the read path did, in a safe order; no other resource is keyed by the slot (ARP, ping, DHCP and the policy are the service's; the wait list is rebuilt each turn; a TIME-WAIT connection is nobody's); a queued message is delivered after its sender closed and a write to a closed peer is ERR_PEER_CLOSED; the second client takes the freed slot and nothing else changes the service's handle count then; the pinned line and the order of the failure messages; the anchors, replacements and fields of M332 to M334; net.md already promised the behaviour (the UDP_CLOSE row, the line on a closing client), so a note without a version; 93 test functions; the other cases close their clients through the read path, unchanged; clean room. Red team: today no path reuses a slot while a socket or connection still carries its index (owner is written in two places with the request's own client, the slot is freed in one, a blocked request never drops a client; NO_SOCKET.owner is 0 but every use checks port != 0), so no generation number is needed now; the path of a message that does not fit reaches the cleanup on the next turn; tcp_abort frees the connection whether or not its RST could be sent. Fixed in the round, test first (the harness case seen failing, then every mutant on the real harness): (1) auditor: holding the service did not by itself force the path, since a held process that is running keeps running until it blocks and could read the request before the client's end closed: on such a schedule the fixed code passes all the same but M332 would survive, a gate that fails now and then; the case now waits until the held service is parked (sched::parked_named, test kernel: every thread blocked; a held process's blocked threads take no wake-up and their timed waits do not expire), parked=1 pinned; (2) red team: resetting EVERY client's connections on one client's close survived: the second client now opens its own connection before the third closes and it must still be ESTABLISHED, with M335 (SECURITY); (3) red team: M332's expectation named the datagram the second client read, which rests on an echo having come back: taken out of the expectation (it stays in the line; the pinned value ERR BAD_REQUEST does not depend on it); (4) auditor: this item's tests, files and commands corrected (TST-M4-NET-LIMITS is the kernel driver's case and is taken out). Not closed here, old limits the change does not open: one client can keep the single-threaded service from the others for the length of a blocking request, starve higher slots, take every socket and connection and open any port: an application reaches them once WP-101 lands, so they are RSK-048 and WP-159 (planned), not a LATER line. To docs/LATER.md: L-068 to L-073",
+    "2026-11-18 local runs on the final tree (scratch, no CI evidence): suite M4: 29 of its 30 cases PASS, the new case among them; TST-M4-NET-NO-INTERNET FAILED on this container's network (`probe=OK rtt=1`, 'the explicit probe did not settle internet=none': the off-link probe was answered here; the case passed on CI in run 44402579186): CI judges it; host suite M0 PASS (TST-M0-005: 93 cases); the real harness in a scratch clone of the tree: M332 to M335 4/4 killed, each by its declared evidence (expected_missed empty), and the 78 tooling mutants 78/78 killed"
    ],
    "acceptance": "a client's sockets and connections are freed on every path that frees its slot and a later client cannot use them, shown by the new case on CI; the network cases PASS; the mutant killed",
    "test_ids": [
     "TST-M4-UDP-ECHO",
     "TST-M4-TCP-ECHO",
-    "TST-M4-NET-LIMITS"
+    "TST-M4-NET-CLIENT-DROP",
+    "TST-M4-TCP-RETRANSMIT",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "commands": [
-    "python3 tools/project.py test --target pc-qemu --suite M4"
+    "python3 tools/project.py test --target pc-qemu --suite M4",
+    "python3 tools/project.py test --target host --suite M6-GATE",
+    "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -9837,6 +9855,56 @@
     "test first, red seen locally before the fix: one client takes eight subscriptions of `device` and a second client's SUBSCRIBE answers ERR FULL today; a subscriber without the writer's uid hears CHANGED session today",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-18 registered from WP-157's review round (the owner's ruling of 2026-11-17, rule 1: a hole an ordinary program can reach is not a LATER line); ordered before WP-101, with WP-107 and WP-108"
+   ]
+  },
+  {
+   "id": "WP-159",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M4-007",
+    "REQ-M4-008"
+   ],
+   "depends_on": [
+    "WP-108"
+   ],
+   "inputs": [
+    "found by the red team in WP-108's review round on 2026-11-18 by reading user/apps/netd/src/main.rs and kernel/src/syscall/mod.rs (object_wait_many); nothing run, no CI evidence"
+   ],
+   "files": [
+    "user/apps/netd/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/net.md",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/net.md"
+   ],
+   "acceptance": "one client can neither keep the net service from the other clients beyond a stated bound nor take every socket and connection, shown by new cases on CI; the network cases PASS; the SECURITY mutants killed; net.md states the bounds in a new version",
+   "test_ids": [
+    "TST-M4-UDP-ECHO",
+    "TST-M4-TCP-ECHO"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "خدمة الشبكة: حصة لكل عميل، وطلب لا يحجب العملاء الآخرين (من مراجعة WP-108)",
+    "found by the red team by reading, not run: the service is one thread and a request blocks inside it up to its timeout (TCP_CONNECT and TCP_RECV 60 s, UDP_RECV 10 s, TCP_SEND about two minutes a segment with a silent peer), during which no other client is served; object_wait_many returns the lowest ready index, so a client in a lower slot that keeps its queue non-empty starves the slots above it; there is no quota per client (the 16 sockets and 8 connections go to whoever asks first, the others get ERR FULL); any client opens any port, those below 1024 included (68 alone is kept). Reached today by sh and the lab controller; by any application with net in its list once WP-101 lands (RSK-048)",
+    "design to decide in the package (2-3 options with trade-offs): a request that waits becomes a pending entry served by the main loop (no blocking inside a request) against a hard cap on every timeout and a fair rotation of the wait list; a quota per client against a reserve per slot; whether low ports need a permission",
+    "test first, red seen locally before the fix: client A sends a receive that waits 5 s and client B's STATUS is answered only after it today; one client opens 16 sockets and a second gets ERR FULL today",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-18 registered from WP-108's review round (the owner's ruling of 2026-11-17, rule 1: a hole an ordinary program can reach is not a LATER line). Not made a dependency of WP-101 by the manager: it costs the others time, not their data or the service's life, and closing or killing the client frees everything (WP-108); the owner may order it before WP-101"
    ]
   }
  ]
