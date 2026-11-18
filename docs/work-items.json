@@ -9492,7 +9492,8 @@
    "actions": [
     "تقصير verify ج: مجموعة M5 في وظيفة مستقلة وقياس الطريق الحرج دون 26 دقيقة (مفصولة من WP-98)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-17 registered at WP-98's split"
+    "2026-11-17 registered at WP-98's split",
+    "2026-11-18 activation (the manager, method section 7; WP-152 done): the measured run 44229918866 (39 min) sets the design. Its paths: job a 33.5 min (M5 10.6, M3 4.2, Toolchain 4.9 on a fallback runner, its evidence upload 3.1: evidence/*-a/ also matches every committed -a directory of older runs, so the upload grows each run), the longest shard 24 min (20.7 of mutants in shard 3 of 6), g 1.7, merge 5.8 (download 2.2, publish 1.6). The work: M5 in its own job with its own slot; the shard count raised until the longest shard fits; each job uploads only this run's directories; the critical path measured under 26 min with every verdict of today's run present. The Toolchain's mirror order stays with L-035 and L-036 unless the path needs it. Estimate at activation: one engineer cycle, about 80 min and under 120 tool calls, within the budget line"
    ],
    "acceptance": "a verify run whose critical path is measurably shorter than 26 minutes with every verdict of today's run present, and TST-M0-003 PASS with the new cases",
    "test_ids": [
@@ -9501,9 +9502,10 @@
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
