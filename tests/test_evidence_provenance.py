@@ -330,6 +330,31 @@ class RunWriter(unittest.TestCase):
         self.assertEqual(run["worker"], "interactive-agent")
         self.assertNotIn("ci", run)
 
+    def test_write_run_records_the_gate_shard_count_it_ran_under(self):
+        # L-023 (WP-152): NAWAH_GATE_SHARDS on job g's gate step turns TST-M6-MUTANTS's unchanged
+        # command into the merge of the shard reports, so the run's own record says it ran under
+        # it, in notes (a field evidence-run already has), whatever its value (an empty or bad one
+        # is refused by the merge, and recorded as seen); a caller's note is kept before it, and a
+        # run without it carries no note.
+        note = "environment NAWAH_GATE_SHARDS={} (a mutation gate's command merges its shard reports, tests/mutants.py; L-023)"
+        old = os.environ.get("NAWAH_GATE_SHARDS")
+        try:
+            for value, given, want in (("6", None, note.format("6")), ("", None, note.format("")),
+                                       ("6", "baseline", "baseline; " + note.format("6"))):
+                os.environ["NAWAH_GATE_SHARDS"] = value
+                project.write_run(self.d, "rid", "host", "unit", ["x"], 0, "2026-01-01T00:00:00+00:00", notes=given)
+                run = json.loads((self.d / "run.json").read_text())
+                self.assertEqual(run.get("notes"), want, (value, given))
+                self.assertEqual(run["commands"], ["x"], "the command stays the case's own")
+            os.environ.pop("NAWAH_GATE_SHARDS")
+            project.write_run(self.d, "rid", "host", "unit", ["x"], 0, "2026-01-01T00:00:00+00:00")
+            self.assertNotIn("notes", json.loads((self.d / "run.json").read_text()))
+        finally:
+            if old is None:
+                os.environ.pop("NAWAH_GATE_SHARDS", None)
+            else:
+                os.environ["NAWAH_GATE_SHARDS"] = old
+
 
 class SourceIdentity(unittest.TestCase):
     """source_identity in a scratch repository rooted at TMP/ident."""

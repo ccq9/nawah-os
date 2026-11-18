@@ -916,8 +916,8 @@ MUTANTS = [
      "  contents: write  # the code under test runs here",
      ["TST-M0-003"], "SECURITY: the top-level token may write, so the code under test in job a can push"),
     ("M189", ".github/workflows/verify.yml",
-     "    if: ${{ !cancelled() }}",
-     "    if: always()",
+     "    needs: [a, shard-1, shard-2, shard-3, shard-4, shard-5, shard-6, g]\n    if: ${{ !cancelled() }}",
+     "    needs: [a, shard-1, shard-2, shard-3, shard-4, shard-5, shard-6, g]\n    if: always()",
      ["TST-M0-003"], "SECURITY: the merge job runs on a cancelled run (always() instead of !cancelled())"),
     ("M190", ".github/workflows/verify.yml",
      'echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1',
@@ -1242,7 +1242,7 @@ MUTANTS = [
      'continue  # raise MergeRefused(f"shard {k}/{n} is miss' 'ing ({rel})")',
      ["TST-M0-005"], "the merge skips a missing shard report instead of refusing it by name"),
     ("M289", "tests/mutants.py", "if mid in wh" "ere", "if mid in wh" "ere and False",
-     ["TST-M0-005"], "the merge accepts an id decided twice in a shard and keeps its later entry (a survivor's entry followed by a killed one hides it)"),
+     ["TST-M0-005"], "SECURITY (L-021): the merge accepts an id decided twice in a shard and keeps its later entry (a survivor's entry followed by a killed one hides it)"),
     ("M290", "tests/mutants.py", "summarize(mer" "ged)", 'summarize(mer' 'ged); merged["survived"] = reports[-1][2]["survived"]',
      ["TST-M0-005"], "SECURITY: the union's survivors are the last shard's alone, so a SECURITY survivor of another shard passes the gate"),
     ("M291", "tests/mutants.py", "verdict = gate_verdict(mer" "ged)",
@@ -1251,7 +1251,7 @@ MUTANTS = [
     ("M292", "tests/mutants.py", 'if r.get("run") != ' 'me', 'if r.get("run") != ' 'me and False',
      ["TST-M0-005"], "SECURITY: the merge takes shard reports of another run, attempt or sha (an older run's PASS)"),
     ("M293", "tests/mutants.py", "if set(where) != " "set(want)", "if set(where) != " "set(want) and False",
-     ["TST-M0-005"], "the merge judges a union that is not the stage's mutants (a mutant in no shard is never run nor counted)"),
+     ["TST-M0-005"], "SECURITY (L-021): the merge judges a union that is not the stage's mutants (a mutant in no shard, a SECURITY one too, is never run nor counted)"),
     ("M294", "tests/mutants.py", "% n == k" " - 1", "% n == k" " - 1 + 1",
      ["TST-M0-005"], "the shard rule is off by one: the mutants whose number is a multiple of N are in no shard"),
     ("M295", "tests/mutants.py", "if gate_shards is not " "None",
@@ -1269,6 +1269,24 @@ MUTANTS = [
     ("M299", "tests/mutants.py", 'if r["shard"].get("comp' 'lete") is not True',
      'if r["shard"].get("comp' 'lete") is not True and False',
      ["TST-M0-005"], "SECURITY (from the WP-98 review): the merge takes a shard whose run never finished (every mutant decided, then the final reset raised or the shard was stopped), so a gate FAIL can read as PASS"),
+    # M300..M303 (WP-152): the gate's shard wiring in verify.yml, tooling mutants killed by
+    # TST-M0-003 (MutationJob, MergeJob); each anchor occurs once in the clean file.
+    ("M300", ".github/workflows/verify.yml", "    needs: [shard-1, shard-2, shard-3, shard-4, shard-5, shard-6]\n",
+     "    needs: [shard-1, shard-2, shard-3, shard-4, shard-5]\n",
+     ["TST-M0-003"], "job g no longer waits for shard 6: it can merge before that shard's report exists"),
+    ("M301", ".github/workflows/verify.yml", '          NAWAH_GATE_SHARDS: "6"\n', '          NAWAH_GATE_SHARDS: "5"\n',
+     ["TST-M0-003"], "job g merges five shard reports where six shard jobs ran"),
+    ("M302", ".github/workflows/verify.yml",
+     "    needs: [shard-1, shard-2, shard-3, shard-4, shard-5, shard-6]\n    if: ${{ !cancelled() }}",
+     "    needs: [shard-1, shard-2, shard-3, shard-4, shard-5, shard-6]\n    if: always()",
+     ["TST-M0-003"], "SECURITY: job g runs and writes the gate's verdict in a cancelled run (always() instead of !cancelled())"),
+    ("M303", ".github/workflows/verify.yml",
+     "        run: python3 -I tests/mutants.py --target pc-qemu --stage M6 --report build/mutants-m6-report.json --shard 1/6\n",
+     "        run: python3 tools/project.py test --target host --suite M6-GATE\n",
+     ["TST-M0-003"], "shard 1 runs the gate suite as a case: the whole gate and a second TST-M6-MUTANTS verdict beside g's"),
+    # M304 (WP-152, L-023): the run's own record of the shard count it ran under.
+    ("M304", "tools/project.py", "    if shards is not None", "    if shards is not None and False",
+     ["TST-M0-007"], "a run written under NAWAH_GATE_SHARDS no longer says so in run.json: job g's TST-M6-MUTANTS evidence reads as a whole run of the gate"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -1544,7 +1562,12 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-98: the merge of the gate's shards judges the union of this run's reports alone
             # (M290, M291, M292), and two new runs of one test id are never adopted or imported
             # (M296, M297).
-            "M290", "M291", "M292", "M296", "M297", "M299"}
+            "M290", "M291", "M292", "M296", "M297", "M299",
+            # L-021 (WP-152): no survivor hidden behind a later entry (M289), no union that skips
+            # a mutant, a SECURITY one included (M293).
+            "M289", "M293",
+            # WP-152: the gate's merge job never runs in a cancelled run (M302).
+            "M302"}
 
 
 def security_of(mid: str) -> bool:
@@ -1901,8 +1924,9 @@ def all_cases(target):
 def harness_env(base, wt: Path, scratch: Path):
     """The killers' environment: the worktree as NAWAH_ROOT, scratch evidence, the per-case QEMU
     timeout, and no CARGO_TARGET_DIR, so the worktree and the clean checkout each build in their
-    own target/ (a shared one let the clean run reuse a mutated build, WP-90)."""
-    env = {k: v for k, v in base.items() if k != "CARGO_TARGET_DIR"}
+    own target/ (a shared one let the clean run reuse a mutated build, WP-90), nor NAWAH_GATE_SHARDS,
+    which would turn a killer's own run of a gate into a merge (L-023, WP-152)."""
+    env = {k: v for k, v in base.items() if k not in ("CARGO_TARGET_DIR", GATE_SHARDS_ENV)}
     env.update(NAWAH_ROOT=str(wt), NAWAH_SCRATCH_EVIDENCE=str(scratch), NAWAH_QEMU_TIMEOUT_S=str(MUTANT_CASE_TIMEOUT_S))
     return env
 

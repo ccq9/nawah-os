@@ -3,7 +3,8 @@
 # WP-83 (83a): the test job `a` writes run directories with its slot (NAWAH_RUN_SLOT) and uploads
 # them; the `merge` job adopts them (adopt-native, ADR-0026 rule 5), validates strictly and alone
 # publishes the run's one ci-evidence branch. Splitting `a` into parallel jobs is WP-98's.
-# WP-96 (the owner's DEC-029): the job `m` runs the M6 mutation gate beside `a` in every run.
+# WP-96 (the owner's DEC-029): the M6 mutation gate runs beside `a` in every run; since WP-152 in
+# six shard jobs `shard-1` … `shard-6` whose reports job `g` merges into the gate's one verdict.
 name: verify
 on:
   push:
@@ -166,30 +167,25 @@ jobs:
             build/pc-qemu/build-id.txt
             build/hygiene.log
           retention-days: 7
-  m:
-    # The M6 mutation gate in every run (the owner's DEC-029, option A; WP-96): TST-M6-MUTANTS's
-    # evidence is of the same run as every other verdict, so a stale gate verdict stays a strict
-    # error (no stale_policy on it). The gate measured 20 min on run 43615540519, about the test
-    # job's time; 180 = (Toolchain 15 + the gate's 135) x 1.2 is the hang guard
-    # (tests/test_ci_workflows.py MutationJob, StepBudget).
+  shard-1:
+    # The M6 mutation gate in every run (the owner's DEC-029, option A; WP-96), in six shard jobs
+    # since WP-152 (the whole gate took 62 min in job m on run 44190352865): job shard-k runs shard k
+    # of 6 (the mutants numbered k-1 mod 6, tests/mutants.py --shard), TST-M6-MUTANTS's own command
+    # with --shard k/6, and uploads that shard's report alone. A shard writes no evidence and no
+    # verdict (no run slot): job g merges the six reports into the gate's one verdict. Its step is
+    # continue-on-error: its exit is its own mutants' line, never the gate's; a shard that did not
+    # finish leaves no report or one that never says so, and g refuses the merge. A sharded run is
+    # re-run whole: the merge refuses reports of another run attempt (L-023). The lab is job a's;
+    # 90 = (Toolchain 15 + the shard's 60) x 1.2, a hang guard (tests/test_ci_workflows.py
+    # MutationJob, StepBudget; shard-2 to shard-6 are this job with their own k).
     runs-on: ubuntu-24.04
-    env:
-      NAWAH_RUN_SLOT: m
-    timeout-minutes: 180
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
           persist-credentials: false
       - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
-        # About 80 s normally, 5 min on a slow day; on 2026-10-23 it hung for 34-40 min and three
-        # runs hit the job's 40-min limit; on 2026-10-26 (20:38-21:11) `apt-get install` hit its
-        # limit four times in two runs. Packages are fetched before they are installed (a second
-        # try keeps what the first fetched), from Canonical's archive when the runner's mirror
-        # fails twice; each try gets 5 min (apt also drops a stalled connection after 60 s) and
-        # leaves an annotation with its exit code and how much it fetched; the step ends by 15 min
-        # (WP-74, 2026-11-10: 12 -> 15; the step measured 11m12s on run 42754423494 against the 12-min cap
-        # set that day (WP-64) from a 56 s measurement; 15 is a hang guard, not the bound of its retry loops,
-        # and the job limit 55 -> 58 keeps the 20 % margin over the step caps 15+18+15).
+        # Job a's step, run text and cap (its comment says why).
         timeout-minutes: 15
         run: |
           retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
@@ -208,36 +204,314 @@ jobs:
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
       - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
         # A check of this job's lab, not evidence: the test job writes TST-M1-BUILD and TST-M1-BOOT
-        # in the same run, so this step writes to a scratch root and the slot's artifact holds the
-        # gate's run directory alone (the audit of WP-96).
+        # in the same run, so this step writes to a scratch root (the audit of WP-96); a shard
+        # writes no evidence at all.
         env:
           NAWAH_SCRATCH_EVIDENCE: ${{ runner.temp }}/baseline-evidence
         run: |
           python3 tools/project.py build --target pc-qemu
           python3 tools/project.py boot --target pc-qemu
-      - name: "Mutation run, M6 gate (TST-M6-MUTANTS, M130 onwards)"
-        # The same cap as mutants.yml gives this step: TST-M6-MUTANTS's timeout_s (130 min) ends
-        # the gate with a verdict and the partial report first.
-        timeout-minutes: 135
-        run: python3 tools/project.py test --target host --suite M6-GATE
-      - name: Report
-        if: always()
-        run: cat build/mutants-m6-report.json || true
-      # This job's own run directories (slot m) and the gate's report; the merge job adopts them.
+      - name: "Mutation run, M6 gate shard 1 of 6 (no verdict: job g merges the shards)"
+        # A hang guard: the longest shard adds up to 16.2 min of mutant time on run 44190352865's gate
+        # log (computed by reading it, not measured as a shard); a shard stopped here is refused by g.
+        timeout-minutes: 60
+        continue-on-error: true
+        run: python3 -I tests/mutants.py --target pc-qemu --stage M6 --report build/mutants-m6-report.json --shard 1/6
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         if: always()
         continue-on-error: true
         with:
-          name: evidence-m
+          name: mutants-m6-shard-1
+          path: build/mutants-m6-report.shards/shard-1-of-6.json
+          retention-days: 7
+  shard-2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
+        # Job a's step, run text and cap (its comment says why).
+        timeout-minutes: 15
+        run: |
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          rustup run 1.97.0 rustc --version; cargo --version
+          hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
+          clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
+      - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
+        # A check of this job's lab, not evidence: the test job writes TST-M1-BUILD and TST-M1-BOOT
+        # in the same run, so this step writes to a scratch root (the audit of WP-96); a shard
+        # writes no evidence at all.
+        env:
+          NAWAH_SCRATCH_EVIDENCE: ${{ runner.temp }}/baseline-evidence
+        run: |
+          python3 tools/project.py build --target pc-qemu
+          python3 tools/project.py boot --target pc-qemu
+      - name: "Mutation run, M6 gate shard 2 of 6 (no verdict: job g merges the shards)"
+        timeout-minutes: 60
+        continue-on-error: true
+        run: python3 -I tests/mutants.py --target pc-qemu --stage M6 --report build/mutants-m6-report.json --shard 2/6
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: mutants-m6-shard-2
+          path: build/mutants-m6-report.shards/shard-2-of-6.json
+          retention-days: 7
+  shard-3:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
+        # Job a's step, run text and cap (its comment says why).
+        timeout-minutes: 15
+        run: |
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          rustup run 1.97.0 rustc --version; cargo --version
+          hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
+          clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
+      - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
+        # A check of this job's lab, not evidence: the test job writes TST-M1-BUILD and TST-M1-BOOT
+        # in the same run, so this step writes to a scratch root (the audit of WP-96); a shard
+        # writes no evidence at all.
+        env:
+          NAWAH_SCRATCH_EVIDENCE: ${{ runner.temp }}/baseline-evidence
+        run: |
+          python3 tools/project.py build --target pc-qemu
+          python3 tools/project.py boot --target pc-qemu
+      - name: "Mutation run, M6 gate shard 3 of 6 (no verdict: job g merges the shards)"
+        timeout-minutes: 60
+        continue-on-error: true
+        run: python3 -I tests/mutants.py --target pc-qemu --stage M6 --report build/mutants-m6-report.json --shard 3/6
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: mutants-m6-shard-3
+          path: build/mutants-m6-report.shards/shard-3-of-6.json
+          retention-days: 7
+  shard-4:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
+        # Job a's step, run text and cap (its comment says why).
+        timeout-minutes: 15
+        run: |
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          rustup run 1.97.0 rustc --version; cargo --version
+          hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
+          clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
+      - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
+        # A check of this job's lab, not evidence: the test job writes TST-M1-BUILD and TST-M1-BOOT
+        # in the same run, so this step writes to a scratch root (the audit of WP-96); a shard
+        # writes no evidence at all.
+        env:
+          NAWAH_SCRATCH_EVIDENCE: ${{ runner.temp }}/baseline-evidence
+        run: |
+          python3 tools/project.py build --target pc-qemu
+          python3 tools/project.py boot --target pc-qemu
+      - name: "Mutation run, M6 gate shard 4 of 6 (no verdict: job g merges the shards)"
+        timeout-minutes: 60
+        continue-on-error: true
+        run: python3 -I tests/mutants.py --target pc-qemu --stage M6 --report build/mutants-m6-report.json --shard 4/6
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: mutants-m6-shard-4
+          path: build/mutants-m6-report.shards/shard-4-of-6.json
+          retention-days: 7
+  shard-5:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
+        # Job a's step, run text and cap (its comment says why).
+        timeout-minutes: 15
+        run: |
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          rustup run 1.97.0 rustc --version; cargo --version
+          hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
+          clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
+      - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
+        # A check of this job's lab, not evidence: the test job writes TST-M1-BUILD and TST-M1-BOOT
+        # in the same run, so this step writes to a scratch root (the audit of WP-96); a shard
+        # writes no evidence at all.
+        env:
+          NAWAH_SCRATCH_EVIDENCE: ${{ runner.temp }}/baseline-evidence
+        run: |
+          python3 tools/project.py build --target pc-qemu
+          python3 tools/project.py boot --target pc-qemu
+      - name: "Mutation run, M6 gate shard 5 of 6 (no verdict: job g merges the shards)"
+        timeout-minutes: 60
+        continue-on-error: true
+        run: python3 -I tests/mutants.py --target pc-qemu --stage M6 --report build/mutants-m6-report.json --shard 5/6
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: mutants-m6-shard-5
+          path: build/mutants-m6-report.shards/shard-5-of-6.json
+          retention-days: 7
+  shard-6:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Toolchain (C for E0, Rust for the kernel, QEMU/OVMF lab)
+        # Job a's step, run text and cap (its comment says why).
+        timeout-minutes: 15
+        run: |
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          rustup run 1.97.0 rustc --version; cargo --version
+          hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
+          clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
+      - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
+        # A check of this job's lab, not evidence: the test job writes TST-M1-BUILD and TST-M1-BOOT
+        # in the same run, so this step writes to a scratch root (the audit of WP-96); a shard
+        # writes no evidence at all.
+        env:
+          NAWAH_SCRATCH_EVIDENCE: ${{ runner.temp }}/baseline-evidence
+        run: |
+          python3 tools/project.py build --target pc-qemu
+          python3 tools/project.py boot --target pc-qemu
+      - name: "Mutation run, M6 gate shard 6 of 6 (no verdict: job g merges the shards)"
+        timeout-minutes: 60
+        continue-on-error: true
+        run: python3 -I tests/mutants.py --target pc-qemu --stage M6 --report build/mutants-m6-report.json --shard 6/6
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: mutants-m6-shard-6
+          path: build/mutants-m6-report.shards/shard-6-of-6.json
+          retention-days: 7
+  g:
+    # The M6 gate's one verdict (WP-152): TST-M6-MUTANTS's unchanged suite with NAWAH_GATE_SHARDS=6
+    # on its step alone merges the six shard reports of this very run (tests/mutants.py merge_shards:
+    # every shard there, each its own k/6, this run's id, attempt and sha, every mutant decided once,
+    # the union exactly the stage's), else refuses, and judges the union as a whole run is judged.
+    # It runs after a failed shard too (the merge refuses the set by name), never in a cancelled run.
+    # 180 = (Toolchain 15 + the gate step's 135) x 1.2; the merge itself takes seconds.
+    needs: [shard-1, shard-2, shard-3, shard-4, shard-5, shard-6]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    env:
+      NAWAH_RUN_SLOT: g
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Toolchain (Python modules of the validator)
+        timeout-minutes: 15
+        run: |
+          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml; then
+            echo "::warning title=Toolchain::the runner's mirror failed twice; fetching from archive.ubuntu.com"
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq python3-jsonschema python3-yaml
+          fi
+          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq python3-jsonschema python3-yaml
+          python3 -c "import jsonschema, yaml; print('jsonschema', jsonschema.__version__)"
+      # This run's shard reports alone (no run-id, no token), all into the directory the merge reads.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          pattern: mutants-m6-shard-*
+          path: build/mutants-m6-report.shards
+          merge-multiple: true
+      - name: "Mutation gate M6 (TST-M6-MUTANTS, M130 onwards): the merge of the six shards"
+        # The cap mutants.yml gives the same command (there it runs the gate whole), above
+        # TST-M6-MUTANTS's timeout_s (130 min); the shard count is set on this step alone (L-023).
+        timeout-minutes: 135
+        env:
+          NAWAH_GATE_SHARDS: "6"
+        run: python3 tools/project.py test --target host --suite M6-GATE
+      - name: Report
+        if: always()
+        run: cat build/mutants-m6-report.json || true
+      # This job's own run directory (slot g), the gate's report and the shard reports it merged;
+      # the merge job adopts them.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: evidence-g
           path: |
-            evidence/*-m/
+            evidence/*-g/
             build/mutants-m6-report.json
+            build/mutants-m6-report.shards/
           retention-days: 7
   merge:
     # Adopts every test job's evidence, checks it strictly and publishes one ci-evidence/<run>
     # branch. Runs after a failed test job too (what exists is published, the run still fails;
     # import-ci-evidence refuses a run that did not succeed), never in a cancelled run.
-    needs: [a, m]
+    needs: [a, shard-1, shard-2, shard-3, shard-4, shard-5, shard-6, g]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -269,10 +543,10 @@ jobs:
         run: |
           set -euo pipefail
           # Each artifact keeps the workspace layout: incoming/evidence-<slot>/evidence/<run>-<slot>/.
-          # Every expected slot (the test job a, the mutation job m; WP-88 adds b c) must have left a run directory:
+          # Every expected slot (the test job a, the merge-gate job g; the shard jobs have none) must have left a run directory:
           # a missing or empty artifact fails the merge job, nothing is adopted (security review M2).
           srcs=()
-          for slot in a m; do
+          for slot in a g; do
             d="incoming/evidence-$slot/evidence"
             if ! ls "$d"/*/verdict.json >/dev/null 2>&1; then
               echo "::error title=Merge::evidence-$slot is missing or holds no run directory"; exit 1
@@ -281,7 +555,7 @@ jobs:
           done
           python3 tools/project.py adopt-native "${srcs[@]}"
           mkdir -p build
-          for slot in a m; do
+          for slot in a g; do
             if [ -d "incoming/evidence-$slot/build" ]; then cp -r "incoming/evidence-$slot/build/." build/; fi
           done
       - name: "validate-records --strict (after fresh evidence, nothing may be stale)"
@@ -310,6 +584,7 @@ jobs:
           /usr/bin/git -c core.hooksPath=/dev/null add -f evidence/ build/pc-qemu/build-id.txt 2>/dev/null || /usr/bin/git -c core.hooksPath=/dev/null add -f evidence/
           /usr/bin/git -c core.hooksPath=/dev/null add -f build/hygiene.log 2>/dev/null || true
           /usr/bin/git -c core.hooksPath=/dev/null add -f build/mutants-m6-report.json 2>/dev/null || true
+          /usr/bin/git -c core.hooksPath=/dev/null add -f build/mutants-m6-report.shards 2>/dev/null || true
           /usr/bin/git -c core.hooksPath=/dev/null -c user.name=nawah-ci -c user.email=ci@nawah-os.invalid commit -qm "CI evidence for ${GITHUB_SHA} (run ${GITHUB_RUN_ID})"
           auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
           echo "::add-mask::$auth"

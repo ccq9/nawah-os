@@ -34,6 +34,85 @@ def load(name):
     return doc
 
 
+# WP-152: verify runs the M6 mutation gate in SHARDS jobs `shard-1` … `shard-<SHARDS>` (job `shard-k`
+# runs shard k), each TST-M6-MUTANTS's own command with `--shard k/SHARDS` (WP-98's hand-off) and
+# uploading its report alone as `mutants-m6-shard-<k>`; job `g` (slot g) needs them all, downloads
+# the reports and runs the gate's unchanged suite with NAWAH_GATE_SHARDS=SHARDS on that step alone,
+# which merges them into the gate's one verdict.
+SHARDS = 6
+SHARD_JOB = re.compile(r"shard-([1-9][0-9]*)")
+GATE_SHARDS = "NAWAH_GATE_SHARDS"
+
+
+def gate_case():
+    return next(c for c in project.HOST_SUITES["M6-GATE"] if c["id"] == "TST-M6-MUTANTS")
+
+
+def shard_command(k, n):
+    """Shard k of n's step: TST-M6-MUTANTS's own command with `--shard k/n`, never a copy of it."""
+    return " ".join(gate_case()["command"] + ["--shard", f"{k}/{n}"])
+
+
+def shard_report(k, n):
+    """Where shard k of n writes its report (tests/mutants.py shard_report on the case's --report)."""
+    sys.path.insert(0, str(ROOT / "tests"))
+    import mutants  # noqa: E402
+    cmd = gate_case()["command"]
+    return mutants.shard_report(cmd[cmd.index("--report") + 1], k, n)
+
+
+def shard_dir():
+    return pathlib.PurePosixPath(shard_report(1, SHARDS)).parent.as_posix()
+
+
+def shard_jobs(jobs):
+    return {name: job for name, job in jobs.items() if SHARD_JOB.fullmatch(name)}
+
+
+def shard_problems(name, job, n):
+    """What keeps job `name` from being shard k of n of the M6 gate (WP-152), the narrow and named
+    exception to the slot rule (MergeJob.slot_problems): a shard writes no evidence and no verdict
+    (no NAWAH_RUN_SLOT anywhere in the job, no `project.py test`, a scratch root on every other
+    project.py step), runs TST-M6-MUTANTS's own command with `--shard k/n` once, in a step capped
+    and continue-on-error (its exit is its own mutants' line, not the gate's verdict: job g fails
+    closed on a shard that did not finish), needs nothing, may not write, and uploads exactly one
+    artifact, `mutants-m6-shard-<k>`, holding its report alone (always, continue-on-error)."""
+    bad = []
+    k = int(SHARD_JOB.fullmatch(name).group(1))
+    if not 1 <= k <= n:
+        bad.append(f"{name}: shard {k} of {n}")
+    if "NAWAH_RUN_SLOT" in json.dumps(job):
+        bad.append(f"{name}: a shard has no run slot")
+    if job.get("needs") or job.get("if") is not None:
+        bad.append(f"{name}: a shard needs nothing and always runs")
+    if "write" in str(job.get("permissions", {})):
+        bad.append(f"{name}: a shard may not write")
+    steps = job["steps"]
+    runs = [(s, l.strip()) for s in steps for l in str(s.get("run", "")).splitlines()]
+    if [l for _, l in runs if "project.py test" in l]:
+        bad.append(f"{name}: a shard writes no verdict (project.py test)")
+    gate = [(s, l) for s, l in runs if "tests/mutants.py" in l]
+    if [l for _, l in gate] != [shard_command(k, n)]:
+        bad.append(f"{name}: {[l for _, l in gate]}, not [{shard_command(k, n)!r}]")
+    elif gate[0][0].get("continue-on-error") is not True or "timeout-minutes" not in gate[0][0]:
+        bad.append(f"{name}: the shard step is not capped and continue-on-error")
+    for s, l in runs:
+        if "project.py " in l and not str((s.get("env") or {}).get("NAWAH_SCRATCH_EVIDENCE", "")).startswith("${{ runner.temp }}/"):
+            bad.append(f"{name}: {l!r} writes evidence outside a scratch root")
+    ups = [s for s in steps if str(s.get("uses", "")).startswith("actions/upload-artifact@")]
+    if len(ups) != 1:
+        bad.append(f"{name}: {len(ups)} uploads, not one")
+    else:
+        up = ups[0]
+        if up.get("with", {}).get("name") != f"mutants-m6-shard-{k}":
+            bad.append(f"{name}: uploads {up.get('with', {}).get('name')!r}, not 'mutants-m6-shard-{k}'")
+        if str(up.get("with", {}).get("path", "")).split() != [shard_report(k, n)]:
+            bad.append(f"{name}: uploads {str(up.get('with', {}).get('path', '')).split()}, not its report alone")
+        if "always()" not in str(up.get("if", "")) or up.get("continue-on-error") is not True:
+            bad.append(f"{name}: the upload is not always() with continue-on-error")
+    return bad
+
+
 class Workflows(unittest.TestCase):
     def test_every_workflow_parses(self):
         files = sorted(WORKFLOWS.glob("*.yml"))
@@ -338,10 +417,16 @@ class MergeJob(unittest.TestCase):
 
     @staticmethod
     def slot_problems(jobs):
-        """({job: slot}, problems) of the test jobs' slots and evidence uploads."""
+        """({job: slot}, problems) of the test jobs' slots and evidence uploads. A job named
+        `shard-<k>` is a shard of the M6 gate (WP-152): it has no slot and is held to
+        shard_problems instead, never merely skipped."""
         slots, bad = {}, []
+        n = len(shard_jobs(jobs))
         for name, job in jobs.items():
             if name == "merge":
+                continue
+            if SHARD_JOB.fullmatch(name):
+                bad += shard_problems(name, job, n)
                 continue
             slot = str(job.get("env", {}).get("NAWAH_RUN_SLOT", ""))
             if not project.RUN_SLOT_RE.fullmatch(slot) or not re.fullmatch(r"[a-z]", slot):
@@ -377,6 +462,52 @@ class MergeJob(unittest.TestCase):
             up = next(s for s in jobs["a"]["steps"] if s.get("with", {}).get("name") == "evidence-a")
             up["with"]["path"] = up["with"]["path"] + extra + "\n"
             self.assertTrue(self.slot_problems(jobs)[1], f"{extra!r} accepted")
+
+    def test_a_shard_job_is_exempt_from_the_slot_only_in_its_narrow_shape(self):
+        # WP-152 (the assurance challenge of WP-98): an exception wider than a shard's exact shape
+        # (say, every job named shard-*) would reopen 83a's hole: evidence uploaded beside a slot.
+        self.assertEqual(self.slot_problems(self.jobs())[1], [])
+        up = lambda job: next(s for s in job["steps"] if str(s.get("uses", "")).startswith("actions/upload-artifact@"))
+        step = lambda job: next(s for s in job["steps"] if "tests/mutants.py" in str(s.get("run", "")))
+
+        def slot_env(j):
+            j.setdefault("env", {})["NAWAH_RUN_SLOT"] = "s"
+
+        def slot_in_step(j):
+            step(j).setdefault("env", {})["NAWAH_RUN_SLOT"] = "s"
+
+        def evidence_beside(j):
+            up(j)["with"]["path"] = up(j)["with"]["path"] + "\nevidence/*\n"
+
+        def evidence_name(j):
+            up(j)["with"]["name"] = "evidence-s"
+
+        def a_verdict(j):
+            j["steps"].insert(-1, {"run": "python3 tools/project.py test --target host --suite M6-GATE"})
+
+        def baseline_into_evidence(j):
+            next(s for s in j["steps"] if "project.py build" in str(s.get("run", ""))).pop("env", None)
+
+        def a_second_upload(j):
+            j["steps"].append(dict(up(j)))
+
+        def writes(j):
+            j["permissions"] = {"contents": "write"}
+
+        def waits(j):
+            j["needs"] = ["a"]
+
+        def fails_the_run(j):
+            step(j).pop("continue-on-error", None)
+
+        def another_shard(j):
+            step(j)["run"] = step(j)["run"].replace("--shard 1/", "--shard 2/")
+
+        for tamper in (slot_env, slot_in_step, evidence_beside, evidence_name, a_verdict, baseline_into_evidence,
+                       a_second_upload, writes, waits, fails_the_run, another_shard):
+            jobs = self.jobs()
+            tamper(jobs["shard-1"])
+            self.assertTrue(self.slot_problems(jobs)[1], f"{tamper.__name__} accepted")
 
     def adopt_step(self):
         return next(s for s in self.merge()["steps"] if s.get("id") == "adopt")
@@ -491,56 +622,103 @@ class MergeJob(unittest.TestCase):
                 self.assertNotIn("write", str(perms), name)
 
 class MutationJob(unittest.TestCase):
-    """WP-96 (the owner's DEC-029, option A): the M6 mutation gate runs in every verify run, in a
-    job `m` of its own beside the test job, so TST-M6-MUTANTS's evidence is of the same run as
-    every other verdict and a stale gate verdict stays a strict error (no stale_policy on it).
-    The job has the test job's lab (the same Toolchain step), builds and boots the unmutated
-    kernel first as mutants.yml does, runs the gate suite alone under the cap mutants.yml gives
-    the same step, and uploads its slot's run directory and the gate's report; the merge job
-    adopts slot m with slot a (MergeJob: a missing slot fails closed) and publishes the report."""
+    """WP-96 (the owner's DEC-029, option A) and WP-152: the M6 mutation gate runs in every verify
+    run beside the test job, so TST-M6-MUTANTS's evidence is of the same run as every other
+    verdict and a stale gate verdict stays a strict error (no stale_policy on it). Since WP-152 it
+    runs in SHARDS shard jobs `shard-1` … `shard-6` and one merge-gate job `g`. Each shard job has
+    the test job's lab (the same checkout and Toolchain step), builds and boots the unmutated
+    kernel first into a scratch root as mutants.yml does, runs TST-M6-MUTANTS's own command with
+    `--shard k/6` (k from its name, so 1..6 each once) and uploads that shard's report alone; it
+    writes no evidence and no verdict (shard_problems). Job g (slot g) needs every shard job and
+    runs unless the run is cancelled, downloads this run's shard reports into the report's
+    `.shards/` directory, and runs the gate's unchanged suite with NAWAH_GATE_SHARDS=6 set on that
+    step alone, which merges them into the gate's one verdict (tests/mutants.py, WP-98) under the
+    cap mutants.yml gives the same step; it uploads its slot with the report and the shard
+    reports, which the merge job adopts (slots a and g) and publishes. mutants.yml runs the gate
+    whole: no shard count and no --shard there. The former single job `m` is gone."""
 
     def jobs(self):
         return load("verify.yml")["jobs"]
 
     def job(self):
         jobs = self.jobs()
-        self.assertIn("m", list(jobs), "verify has no mutation job `m`")
-        return jobs["m"]
+        self.assertIn("g", list(jobs), "verify has no merge-gate job `g`")
+        return jobs["g"]
 
-    def test_the_gate_runs_alone_in_its_own_job_with_the_test_jobs_lab(self):
-        jobs, m = self.jobs(), self.job()
-        self.assertEqual(m.get("env", {}).get("NAWAH_RUN_SLOT"), "m")
-        self.assertNotIn("needs", m, "the gate runs beside the test job, not after it")
-        self.assertNotIn("write", str(m.get("permissions", {})))
-        steps = m["steps"]
-        checkout = steps[0]
-        self.assertTrue(str(checkout.get("uses", "")).startswith("actions/checkout@"))
-        self.assertIs(checkout.get("with", {}).get("persist-credentials"), False)
+    def gate_step(self):
+        steps = [s for s in self.job()["steps"] if "--suite M6-GATE" in str(s.get("run", ""))]
+        self.assertEqual(len(steps), 1, "job g runs the gate suite in one step")
+        return steps[0]
+
+    def test_the_single_gate_job_m_is_gone(self):
+        self.assertNotIn("m", list(self.jobs()), "job m runs the whole gate beside the shards")
+
+    def test_six_shard_jobs_with_the_test_jobs_lab(self):
+        jobs = self.jobs()
+        shards = shard_jobs(jobs)
+        self.assertEqual(sorted(shards), sorted(f"shard-{k}" for k in range(1, SHARDS + 1)), "shards 1..6, each once")
         tool = lambda job: next(s for s in job["steps"] if str(s.get("name", "")).startswith("Toolchain"))
-        self.assertEqual(tool(m)["run"], tool(jobs["a"])["run"], "the mutation job's lab is not the test job's")
-        runs = [str(s.get("run", "")) for s in steps]
+        for name, job in shards.items():
+            self.assertEqual(shard_problems(name, job, SHARDS), [])
+            steps = job["steps"]
+            checkout = steps[0]
+            self.assertTrue(str(checkout.get("uses", "")).startswith("actions/checkout@"))
+            self.assertEqual(checkout, jobs["a"]["steps"][0], f"{name}: the checkout is not the test job's")
+            self.assertEqual(tool(job)["run"], tool(jobs["a"])["run"], f"{name}: the lab is not the test job's")
+            runs = [str(s.get("run", "")) for s in steps]
+            gate = next(i for i, r in enumerate(runs) if "tests/mutants.py" in r)
+            base = next((i for i, r in enumerate(runs) if "project.py build --target pc-qemu" in r and "project.py boot --target pc-qemu" in r), None)
+            self.assertIsNotNone(base, f"{name}: no baseline build and boot of the unmutated kernel")
+            self.assertLess(base, gate)
+            # The baseline is a check of the lab, not evidence (the audit of WP-96): a scratch
+            # root, and only there.
+            for i, s in enumerate(steps):
+                if i != base:
+                    self.assertNotIn("NAWAH_SCRATCH_EVIDENCE", s.get("env", {}), f"{name}: only the baseline is scratch")
+            self.assertNotIn("env", job, f"{name}: nothing at the job's level")
+
+    def test_the_merge_gate_job_needs_every_shard_and_carries_the_one_verdict(self):
+        jobs, g = self.jobs(), self.job()
+        self.assertEqual(g.get("env", {}).get("NAWAH_RUN_SLOT"), "g")
+        needs = g.get("needs", [])
+        needs = [needs] if isinstance(needs, str) else needs
+        self.assertEqual(sorted(needs), sorted(shard_jobs(jobs)), "g waits for every shard and for nothing else")
+        # A failed shard still reaches the merge, which refuses it by name; a cancelled run never does.
+        self.assertIn("!cancelled()", str(g.get("if", "")))
+        self.assertNotIn("always()", str(g.get("if", "")))
+        self.assertNotIn("write", str(g.get("permissions", {})))
+        self.assertIs(g["steps"][0].get("with", {}).get("persist-credentials"), False)
+        runs = [str(s.get("run", "")) for s in g["steps"]]
         suites = [l.strip() for r in runs for l in r.splitlines() if "project.py test " in l]
         self.assertEqual(suites, ["python3 tools/project.py test --target host --suite M6-GATE"], "the gate suite, and nothing else")
-        gate = next(i for i, r in enumerate(runs) if "--suite M6-GATE" in r)
-        base = next((i for i, r in enumerate(runs) if "project.py build --target pc-qemu" in r and "project.py boot --target pc-qemu" in r), None)
-        self.assertIsNotNone(base, "no baseline build and boot of the unmutated kernel")
-        self.assertLess(base, gate)
-        # The baseline is a check of the lab, not evidence: the test job writes TST-M1-BUILD and
-        # TST-M1-BOOT in the same run, and two slots carrying one test would leave the records
-        # citing one run and the import another (the audit of WP-96). It writes to a scratch
-        # root, so the slot's artifact holds the gate's run directory alone.
-        scratch = str(steps[base].get("env", {}).get("NAWAH_SCRATCH_EVIDENCE", ""))
-        self.assertTrue(scratch.startswith("${{ runner.temp }}/"), f"the baseline writes evidence into the slot: {scratch!r}")
-        for i, s in enumerate(steps):
-            if i != base:
-                self.assertNotIn("NAWAH_SCRATCH_EVIDENCE", s.get("env", {}), "only the baseline is scratch")
-        self.assertNotIn("NAWAH_SCRATCH_EVIDENCE", m.get("env", {}))
+        self.assertFalse([r for r in runs if "tests/mutants.py" in r], "g runs no mutant")
+        # This run's shard reports alone, all into the directory the merge reads (no run-id, no token).
+        downloads = [i for i, s in enumerate(g["steps"]) if str(s.get("uses", "")).startswith("actions/download-artifact@")]
+        self.assertEqual(len(downloads), 1)
+        self.assertEqual(g["steps"][downloads[0]].get("with"),
+                         {"pattern": "mutants-m6-shard-*", "path": shard_dir(), "merge-multiple": True})
+        self.assertLess(downloads[0], g["steps"].index(self.gate_step()))
+        self.assertEqual(self.gate_step().get("env"), {GATE_SHARDS: str(SHARDS)}, "the merge of the six shards")
+        self.assertIsInstance(self.gate_step()["env"][GATE_SHARDS], str)
+        # The merge job adopts slots a and g (MergeJob: both loops, a missing slot fails closed).
+        self.assertEqual(sorted(MergeJob.slot_problems(jobs)[0].values()), ["a", "g"])
+
+    def test_the_shard_count_is_set_on_the_gate_step_alone(self):
+        # L-023: at the workflow's or g's level it would reach g's every step, and inside a
+        # script it would hide from this check; mutants.yml runs the gate whole.
+        doc = load("verify.yml")
+        self.assertEqual(json.dumps(doc).count(GATE_SHARDS), 1, f"{GATE_SHARDS} named elsewhere than g's gate step")
+        self.assertIn(GATE_SHARDS, self.gate_step().get("env", {}))
+        self.assertEqual(self.gate_step()["env"][GATE_SHARDS], str(len(shard_jobs(doc["jobs"]))))
+        other = json.dumps(load("mutants.yml"))
+        self.assertNotIn(GATE_SHARDS, other, "mutants.yml merges shards")
+        self.assertNotIn("--shard", other, "mutants.yml runs a shard")
 
     def test_no_other_job_runs_the_gate(self):
         # The audit of WP-96: the Suites case compares sets, so the gate added to the test
-        # job's host loop as well would run twice unnoticed (two slots, one test).
+        # job's host loop or to a shard as well would run twice unnoticed (two slots, one test).
         for name, job in self.jobs().items():
-            if name == "m":
+            if name == "g":
                 continue
             for s in job["steps"]:
                 run = str(s.get("run", ""))
@@ -548,22 +726,24 @@ class MutationJob(unittest.TestCase):
                 self.assertNotRegex(run, r"for \w+ in [^;\n]*-GATE", name)
 
     def test_the_gate_step_is_capped_above_its_suite_timeout_as_in_mutants(self):
-        m = self.job()
-        step = next(s for s in m["steps"] if "--suite M6-GATE" in str(s.get("run", "")))
-        case = next(c for c in project.HOST_SUITES["M6-GATE"] if c["id"] == "TST-M6-MUTANTS")
+        step = self.gate_step()
         self.assertIn("timeout-minutes", step, "the gate step has no cap of its own")
-        self.assertLess(case["timeout_s"], step["timeout-minutes"] * 60, "the suite timeout must fire before the step cap")
+        self.assertLess(gate_case()["timeout_s"], step["timeout-minutes"] * 60, "the suite timeout must fire before the step cap")
         other = next(s for s in next(iter(load("mutants.yml")["jobs"].values()))["steps"] if str(s.get("name", "")).startswith("Mutation run, M6"))
         self.assertEqual(step["timeout-minutes"], other["timeout-minutes"], "one cap for the same step in both workflows")
 
-    def test_the_report_is_uploaded_and_published(self):
-        m = self.job()
-        up = next(s for s in m["steps"] if s.get("with", {}).get("name") == "evidence-m")
-        self.assertIn("build/mutants-m6-report.json", str(up["with"].get("path", "")).split())
+    def test_the_reports_are_uploaded_and_published(self):
+        g = self.job()
+        up = next(s for s in g["steps"] if s.get("with", {}).get("name") == "evidence-g")
+        paths = str(up["with"].get("path", "")).split()
+        report = gate_case()["command"][gate_case()["command"].index("--report") + 1]
+        self.assertIn(report, paths)
+        self.assertIn(shard_dir() + "/", paths, "the shard reports the verdict was merged from")
         pub = next(s for s in self.jobs()["merge"]["steps"] if str(s.get("name", "")).startswith("Publish evidence"))
         lines = [l.strip() for l in pub["run"].splitlines()]
-        self.assertIn("/usr/bin/git -c core.hooksPath=/dev/null add -f build/mutants-m6-report.json 2>/dev/null || true", lines,
-                      "the gate's report is not on the run's evidence branch")
+        for x in (report, shard_dir()):
+            self.assertIn(f"/usr/bin/git -c core.hooksPath=/dev/null add -f {x} 2>/dev/null || true", lines,
+                          f"{x} is not on the run's evidence branch")
 
     def test_no_record_softens_the_gates_stale_verdict(self):
         tests = json.loads((ROOT / "docs" / "tests.json").read_text(encoding="utf-8"))["records"]
@@ -582,7 +762,9 @@ class StepBudget(unittest.TestCase):
     the sum over its cases of each phase's timeout_s stays below the cap. M5 is outside that
     rule: its cap is a hang guard set from a measured run (its worst case is 33 cases of up to
     300 s each), not a bound on its timeouts. The budget only sees steps that carry a cap: an
-    uncapped step (the build, M1-M4, the host suites) runs until the job's limit (G9)."""
+    uncapped step (the build, M1-M4, the host suites, a shard's baseline) runs until the job's
+    limit (G9). Besides the guest suites it reads the cap of each shard's step (`shard`) and of
+    the gate suite's step in job g (`M6-GATE`), WP-152."""
 
     BOUNDED = ("M6",)
     # WP-83 (83a): the test job `a` is the former single job; the merge job adopts and publishes.
@@ -591,8 +773,17 @@ class StepBudget(unittest.TestCase):
     # the same step), x1.2 = 180; a hang guard, the gate measured 20 min on run 43615540519.
     # WP-88 (re-scoped 2026-11-14): M6 15 -> 18 and job a 58 -> 62 ((15 + 18 + 18) x 1.2 = 61.2):
     # the M6 suite's worst case stood at 895 s of the cap's 900, and the cases to come need room.
-    LIMITS = {"a": 62, "m": 180, "merge": 20}
-    CAPS = {"a": {"M5": 18, "M6": 18}, "m": {}, "merge": {}}
+    # WP-152: job m becomes six shard jobs and the merge-gate job g. A shard's step is capped at 60,
+    # a hang guard: the longest shard of the rule (k = 3, M152 and M194 alone 11 min) adds up to
+    # 16.2 min of the 61.7 min of mutant time on the gate log of run 44190352865 (evidence
+    # 20261117T224450Z-5d674b90-001-m, computed by reading it, never measured as a shard), so
+    # (Toolchain 15 + 60) x 1.2 = 90; a shard stopped there leaves a report that never says it
+    # finished, which g refuses (TST-M0-005, M299). g's gate step keeps mutants.yml's 135 for
+    # the same command, above TST-M6-MUTANTS's timeout_s (the merge itself takes seconds):
+    # (15 + 135) x 1.2 = 180.
+    LIMITS = {"a": 62, **{f"shard-{k}": 90 for k in range(1, SHARDS + 1)}, "g": 180, "merge": 20}
+    CAPS = {"a": {"M5": 18, "M6": 18}, **{f"shard-{k}": {"shard": 60} for k in range(1, SHARDS + 1)},
+            "g": {"M6-GATE": 135}, "merge": {}}
 
     def caps(self):
         jobs = load("verify.yml")["jobs"]
@@ -601,7 +792,8 @@ class StepBudget(unittest.TestCase):
             caps[name] = {}
             for s in job["steps"]:
                 for line in str(s.get("run", "")).splitlines():
-                    m = re.search(r"--target pc-qemu --suite (\S+)", line)
+                    m = (re.search(r"--target pc-qemu --suite (\S+)", line) or re.search(r"--target host --suite (\S+-GATE)\b", line)
+                         or re.search(r"tests/mutants\.py .*--(shard) ", line))
                     if m and s.get("timeout-minutes") is not None:
                         caps[name][m.group(1)] = s["timeout-minutes"]
         return jobs, caps

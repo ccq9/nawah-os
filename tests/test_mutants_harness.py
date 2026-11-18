@@ -473,6 +473,13 @@ class SeparateBuilds(unittest.TestCase):
         self.assertEqual((env["NAWAH_ROOT"], env["NAWAH_SCRATCH_EVIDENCE"], env["PATH"]), ("/wt", "/s", "/bin"))
         self.assertEqual(env["NAWAH_QEMU_TIMEOUT_S"], str(mutants.MUTANT_CASE_TIMEOUT_S))
 
+    def test_the_harness_env_drops_the_shard_count(self):
+        # L-023 (WP-152): NAWAH_GATE_SHARDS turns the gate's command into the merge of its shards;
+        # a killer that runs the harness or a gate (this case's own) never inherits it.
+        env = mutants.harness_env({"NAWAH_GATE_SHARDS": "6", "PATH": "/bin"}, pathlib.Path("/wt"), pathlib.Path("/s"))
+        self.assertNotIn("NAWAH_GATE_SHARDS", env)
+        self.assertEqual(env["PATH"], "/bin")
+
 
 class PartialReport(unittest.TestCase):
     def test_write_report_persists_what_is_decided(self):
@@ -1460,7 +1467,45 @@ class ShardMutants(unittest.TestCase):
             want = ("tools/project.py", ["TST-M0-007"]) if mid in ("M296", "M297") else ("tests/mutants.py", ["TST-M0-005"])
             self.assertEqual((by_id[mid][1], by_id[mid][4]), want, mid)
             self.assertIn(by_id[mid][2], by_id[mid][3], f"{mid}: the new text drops its anchor")
-        self.assertEqual(set(ids) & mutants.SECURITY, {"M290", "M291", "M292", "M296", "M297"})
+        # L-021 (WP-152): M289 (a survivor hidden behind a later entry) and M293 (a union that
+        # skips a SECURITY mutant) fail the gate whatever the ratio.
+        self.assertEqual(set(ids) & mutants.SECURITY, {"M289", "M290", "M291", "M292", "M293", "M296", "M297"})
+
+
+class WorkflowShardMutants(unittest.TestCase):
+    """WP-152's mutants of the gate's wiring in .github/workflows/verify.yml, tooling mutants of
+    the M6 stage killed by TST-M0-003 alone: job g without one shard in its needs (M300), a shard
+    count other than the number of shard jobs (M301), g run on a cancelled run, always() for
+    !cancelled() (M302, SECURITY), a shard job running the gate suite as a case (M303); each
+    anchor occurs once in the clean file, and M189's anchor names the merge job's needs so g's
+    own condition does not make it ambiguous."""
+
+    IDS = ("M300", "M301", "M302", "M303")
+
+    def test_the_wiring_mutants_are_registered(self):
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        text = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
+        for mid in self.IDS + ("M189",):
+            self.assertIn(mid, by_id)
+            m = by_id[mid]
+            self.assertEqual(mutants.stage_of(mid), "M6")
+            self.assertEqual((m[1], m[4]), (".github/workflows/verify.yml", ["TST-M0-003"]), mid)
+            self.assertTrue(mutants.is_tooling(m[1]), mid)
+            self.assertEqual(text.count(m[2]), 1, f"{mid}: its anchor is not once in verify.yml")
+            self.assertNotEqual(m[2], m[3], mid)
+        self.assertEqual(set(self.IDS) & mutants.SECURITY, {"M302"})
+        self.assertIn("M189", mutants.SECURITY)
+
+    def test_the_run_json_record_of_the_shard_count_is_mutated(self):
+        # L-023 (WP-152): M304 drops the note write_run adds under NAWAH_GATE_SHARDS, so job g's
+        # run.json of TST-M6-MUTANTS would read as a whole run of the gate; TST-M0-007 kills it.
+        m = {x[0]: x for x in mutants.MUTANTS}.get("M304")
+        self.assertIsNotNone(m, "M304 is not registered")
+        self.assertEqual((m[1], m[4], mutants.stage_of("M304")), ("tools/project.py", ["TST-M0-007"], "M6"))
+        self.assertTrue(mutants.is_tooling(m[1]))
+        self.assertEqual((ROOT / "tools" / "project.py").read_text(encoding="utf-8").count(m[2]), 1)
+        self.assertIn(m[2], m[3])
+        self.assertNotIn("M304", mutants.SECURITY)
 
 
 if __name__ == "__main__":

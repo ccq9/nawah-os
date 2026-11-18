@@ -9420,20 +9420,31 @@
     "tests/test_ci_workflows.py",
     "tools/project.py",
     "docs/tests.json",
-    "docs/PLAN-ANSWER.md",
-    "docs/work-items.json"
+    "docs/work-items.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tests/test_evidence_provenance.py",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/adr/0026-evidence-provenance.md"
    ],
    "contract_refs": [],
    "actions": [
     "تقصير verify ب: بوابة الطفرات على وظائف متوازية ووظيفة دمج تحمل حكمها الوحيد (مفصولة من WP-98)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-17 registered at WP-98's split",
-    "2026-11-18 activation (the manager, method section 7; WP-98 done): the workflow side of the shortened verify run, per the study (wp98_study.json, option A) and WP-98's hand-off: six shard jobs running tests/mutants.py --shard k/6 directly (no verdict, no evidence slot, their report uploaded), and a merge job g that needs them all and runs the M6-GATE case with NAWAH_GATE_SHARDS=6 at step level under its own run slot; job m removed; the merge job's needs, adoption loops and publish name the new slots; StepBudget, MutationJob and MergeJob in tests/test_ci_workflows.py first, red, then the workflow; the must-keep list of the assurance challenge binds it, and docs/LATER.md L-021 to L-023 are folded in where they touch the wiring. Estimate against the budget line (90 min or 120 tool calls): about 90 min and 55 calls with one review round"
+    "2026-11-18 activation (the manager, method section 7; WP-98 done): the workflow side of the shortened verify run, per the study (wp98_study.json, option A) and WP-98's hand-off: six shard jobs running tests/mutants.py --shard k/6 directly (no verdict, no evidence slot, their report uploaded), and a merge job g that needs them all and runs the M6-GATE case with NAWAH_GATE_SHARDS=6 at step level under its own run slot; job m removed; the merge job's needs, adoption loops and publish name the new slots; StepBudget, MutationJob and MergeJob in tests/test_ci_workflows.py first, red, then the workflow; the must-keep list of the assurance challenge binds it, and docs/LATER.md L-021 to L-023 are folded in where they touch the wiring. Estimate against the budget line (90 min or 120 tool calls): about 90 min and 55 calls with one review round",
+    "2026-11-18 the work (the lab engineer, in the tree over 5d589a962; scratch runs, no CI evidence). Test first: the new cases seen failing on the code as it was (test_ci_workflows 60 cases, failures=8 errors=1, in MutationJob, StepBudget and MergeJob; test_mutants_harness 83, failures=4; test_evidence_provenance 51, failures=1), then passing: host suite M0 PASS (33, 6, 60, 3, 83 and 51 cases). verify.yml: job m removed; six jobs shard-1 to shard-6, each with job a's checkout and Toolchain, the baseline built and booted into the runner's temp, TST-M6-MUTANTS's own command with --shard k/6 capped at 60 min and continue-on-error, its report uploaded alone as mutants-m6-shard-k, no slot, no needs, job limit 90 ((15 + 60) x 1.2); job g (slot g, needs the six, !cancelled(), limit 180) downloads mutants-m6-shard-* into build/mutants-m6-report.shards and runs the M6-GATE suite with NAWAH_GATE_SHARDS=6 on that step alone, capped at 135; merge needs a, the shards and g, adopts slots a and g, and publishes the shard reports. Also: M289 and M293 into SECURITY (L-021, first half); harness_env drops NAWAH_GATE_SHARDS from the killers' environment, mutants.yml names neither it nor --shard (a guard case), and write_run notes it in run.json (L-023); wiring mutants M300 to M303 (M302 SECURITY) killed by TST-M0-003 and M304 by TST-M0-007; M189's anchor widened to stay unique; oracles of TST-M0-003, -005, -007 and M6-MUTANTS synced. The real harness on every tooling mutant of the stage (60, in five foreground parts after the container restart): 60 of 60 killed, none survived or invalid",
+    "2026-11-18 options for the shard jobs (rule 5; written at the review, A152-26): (a) six literal jobs shard-1 to shard-6, chosen: each shard is checked by name in TST-M0-003, M303 aims at one of them, and a failing shard is named on the run's page; (b) one job with strategy.matrix k = 1..6 and fail-fast false: one copy of the text, but the wiring checks would read the matrix and a missing k is one edit away; (c) the shared Toolchain and baseline steps in a local composite action: one copy, but a new file under the pin and token checks. (a) now; (b) is weighed again in WP-153 if the six copies drift",
+    "2026-11-18 the review round (auditor, security assurance and red team in parallel, read-only on the uncommitted tree over 5d589a962; a blocker would have gone to an independent refuter): no blocker. The auditor confirmed 20 of 24 claims, 2 in part (the local M0 run, hygiene) and 2 unverifiable before CI (the reports' transfer between jobs and partial re-runs; the acceptance itself); he saw the red and the green again on copies of his own with the same counts, 60 of 60 tooling mutants killed in the engineer's logs, every mutant anchor once. Assurance: the action pins equal HEAD's, only merge may write, no shard job writes evidence or a verdict, g fails closed on a missing, cancelled or partial shard. The red team found no way, inside CI, for the gate to say PASS while a mutant was not judged or judged on other code: each scenario ends in the merge's refusal (exit 3) or adopt-native's. Corrected now: this record's files and test_ids, the options line, docs/LATER.md (L-021's first half and L-023 done, L-022 and L-025 moved, dated), the plan row, ADR-0026's paragraph. To docs/LATER.md: L-026 to L-034. At the close: WP-96's evidence moves to the -g directory of the first sharded run (its acceptance was shown from slot m in run 43626254653)",
+    "2026-11-18 local checks before the push (scratch, no CI evidence), on the tree with the review's records: validate-records 0 errors (89 warnings, 87 stale verdicts: inputs changed), cargo fmt --all --check clean, hygiene PASS (43 commands), preflight --suite M0 PASS (TST-M0-001, -002, -003, -004, -005, -007). The tooling mutants: 60 of 60 killed on the work's tree (the work line); the records edits since touch docs/ only, no mutant's file"
    ],
    "acceptance": "TST-M6-MUTANTS's verdict computed over all shards, and TST-M0-003 PASS with the new cases",
    "test_ids": [
     "TST-M0-003",
-    "TST-M6-MUTANTS"
+    "TST-M6-MUTANTS",
+    "TST-M0-005",
+    "TST-M0-007"
    ],
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
