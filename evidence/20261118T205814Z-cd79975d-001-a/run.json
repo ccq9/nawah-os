@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261118T205814Z-cd79975d-001-a",
+ "started_at": "2026-11-18T20:58:13+00:00",
+ "finished_at": "2026-11-18T20:58:14+00:00",
+ "source_revision": "cd79975d51867bdbf6407575bd84243a2157e415",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1014-aws",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M1-NOBS",
+ "commands": [
+  "python3 -I tests/test_m1_nobs.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "44393302150",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "cd79975d51867bdbf6407575bd84243a2157e415",
+  "head_sha": "b00445e19891c059c3eb607737e9cbf055a8f67c",
+  "ref": "refs/pull/23/merge"
+ }
+}
