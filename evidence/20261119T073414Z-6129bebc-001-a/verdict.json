@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261119T073414Z-6129bebc-001-a",
+ "test_id": "TST-M4-SHELL-TOOL",
+ "verdict": "PASS",
+ "oracle": "the lab's console session (ConsoleSession) against a fake shell over TCP: waits for the serial marker, splits output at the prompt, judges expect/absent/prompt/expect_serial, reports misses by step, a missing marker sends nothing (3 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "fa773a2b756ba1ad78527d0a59e657c43f525f831b99c4243ad90972c93971ac",
+ "inputs": {
+  "tests/test_console_session.py": "d6b7bfc0b0b5466d4de4c8c64782913d53ed67dcfb420dc9ccd4a3fa815f4230",
+  "tools/project.py": "9f52f2ab4c10f9df1d3384fdf724de27cd374a78cab655a4010c8bff80f86872"
+ },
+ "claim_tag": "source_backed_fact"
+}
