@@ -1,0 +1,16 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+OSX|d4593761cfbe|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs
+OSX|d4593761cfbe|boot|acpi|rsdp=0x1f77e014
+OSX|d4593761cfbe|boot|memmap|bytes=6240|desc_size=48|key=0xae2
+OSX|d4593761cfbe|boot|ebs|ok=1|attempts=1
+OSX|d4593761cfbe|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel
+OSX|d4593761cfbe|kernel|post_ebs|map_key=0xae2|descriptors=130|conventional_pages=118254|ebs_attempts=1
+OSX|d4593761cfbe|kernel|pmm|managed_frames=118095|free_frames=118091|allocated_frames=4|bitmap_frames=4|selfcheck=1
+OSX|d4593761cfbe|kernel|vmm|cr3=0x104000|image=0x1dd5e000+0x37000|wp=1|nxe=1|text_rx=1|data_rw_nx=1|sections_rx=1|sections_ro=3|sections_rw=1|ram_mib=511|reclaimed_frames=11045|direct_ok=1
+OSX|d4593761cfbe|kernel|stack|guarded=1|base=0xffff900000001000|guard=0xffff900000000000|ist1_guard=0xffff900000020000
+OSX|d4593761cfbe|kernel|irq|pic_masks=0xff,0xff|lapic_mode=XApic|lapic_id=0|lapic_version=0x50014|lapic_hz=1007327600|svr=0x1ff|cpus=1|ioapics=1|ioapic_entries=24|ioapic_masked=24|ioapic_version=0x20|overrides=5|pcat_compat=1|timer_hz=1000
+OSX|d4593761cfbe|kernel|timer|window_ms=50|pit_ok=1|ticks=50|total=50|unexpected=0|last_unexpected=0x0|spurious=0|max_depth=1|selfcheck=1
+OSX|d4593761cfbe|ktest|start|name=pmm_counts
+OSX|d4593761cfbe|ktest|pmm_counts|managed=129140|free=129079
+OSX|d4593761cfbe|ktest|pass|pmm counters consistent across 1024 alloc/free
