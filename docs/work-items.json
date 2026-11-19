@@ -3207,7 +3207,9 @@
     "WP-99",
     "WP-100",
     "WP-101",
-    "WP-102"
+    "WP-102",
+    "WP-161",
+    "WP-162"
    ],
    "inputs": [
     "DEC-005",
@@ -3235,7 +3237,9 @@
     "2026-11-10 services.md renumbered v1.13 -> v1.14: v1.13 is WP-68's, on the critical path since WP-46, WP-64 and WP-73 closed (PLAN.md:132)",
     "2026-11-14 waits for WP-99 too: applications add to what runs before and beside the manager, and a manager that spins must end in the halt line before more is built on the interactive boot (RSK-024)",
     "2026-11-10 (steward round B): depends on WP-84 too (the halt line and band split from WP-82)",
-    "2026-11-15 split before activation, as its budget line requires (planner's reading of the code and the records; the manager): three packages come first and this item stays as the closing scenario, so the five items that wait for it (WP-48, WP-58, WP-59, WP-60, WP-61) keep their dependency unchanged: WP-100 the registry's format, parser and host fuzz with ADR-0023 proposed; WP-101 the manager's broker (services.md v1.14, TST-M6-LAUNCH-DENIED); WP-102 the session's job, autostart and sign-out (session.md v1.8, TST-M6-LOGOUT-KILLS); here TST-M6-APP-LAUNCH and the ADR's acceptance. Found on the way and carried by the slices: the registry's place (/APPS is writable by every process today; PLAN-ANSWER denies writes to /SYSTEM/APPS) is decided in WP-100; TST-M6-LOGOUT-KILLS's planned oracle needs process_list (WP-69, DEC-027), settled at WP-102's activation; TST-M6-APP-LAUNCH's planned oracle reads two identities in the compositor's LIST, which lists the asker's own windows only today (displayd), so display.md may change here under ADR-0019; the identity app:<id>#<n> must fit NAME_MAX = 15. Not ours to settle: DEC-005, on which the whole model rests, was answered under the owner's delegation of 2026-11-08, whose text is in no record (PLAN-ANSWER.md §6): the owner records it or confirms DEC-005 before WP-101 builds on it; WP-100 holds under either answer"
+    "2026-11-15 split before activation, as its budget line requires (planner's reading of the code and the records; the manager): three packages come first and this item stays as the closing scenario, so the five items that wait for it (WP-48, WP-58, WP-59, WP-60, WP-61) keep their dependency unchanged: WP-100 the registry's format, parser and host fuzz with ADR-0023 proposed; WP-101 the manager's broker (services.md v1.14, TST-M6-LAUNCH-DENIED); WP-102 the session's job, autostart and sign-out (session.md v1.8, TST-M6-LOGOUT-KILLS); here TST-M6-APP-LAUNCH and the ADR's acceptance. Found on the way and carried by the slices: the registry's place (/APPS is writable by every process today; PLAN-ANSWER denies writes to /SYSTEM/APPS) is decided in WP-100; TST-M6-LOGOUT-KILLS's planned oracle needs process_list (WP-69, DEC-027), settled at WP-102's activation; TST-M6-APP-LAUNCH's planned oracle reads two identities in the compositor's LIST, which lists the asker's own windows only today (displayd), so display.md may change here under ADR-0019; the identity app:<id>#<n> must fit NAME_MAX = 15. Not ours to settle: DEC-005, on which the whole model rests, was answered under the owner's delegation of 2026-11-08, whose text is in no record (PLAN-ANSWER.md §6): the owner records it or confirms DEC-005 before WP-101 builds on it; WP-100 holds under either answer",
+    "2026-11-19 (the manager): WP-161 and WP-162 added to the dependencies at WP-101's split (the launch and the confinement of an application's CONNECT)",
+    "2026-11-19 (the manager, on the auditor's correction): the line above that names services.md v1.14 for LAUNCH, the application's CONNECT and the applications table was written before WP-101's split: v1.14 is WP-101's (the registry on the volume, APPS and LAUNCH's requester); the launch and the confinement come in the versions WP-161 and WP-162 take"
    ],
    "acceptance": "TST-M6-APP-LAUNCH PASS on CI (the closing scenario on the release image: sign in, the autostart application opens a window, two launches of one application give two identities, sign out ends the session's job); ADR-0023 accepted; the registry, the broker and the session job are WP-100, WP-101 and WP-102 (TST-M6-APP-REGISTRY-FUZZ, TST-M6-LAUNCH-DENIED, TST-M6-LOGOUT-KILLS)",
    "test_ids": [
@@ -6435,7 +6439,16 @@
     "tools/project.py",
     "docs/tests.json",
     ".github/workflows/verify.yml",
-    "tests/test_ci_workflows.py"
+    "tests/test_ci_workflows.py",
+    "user/apps/svcmgr/Cargo.toml",
+    "user/apps/svc/src/main.rs",
+    "platform/pc-qemu/manifests/svc-ld.txt",
+    "tests/test_mutants_harness.py",
+    "docs/requirements.json",
+    "docs/adr/0023-desktop-shell-and-app-model.md",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json"
    ],
    "contract_refs": [
     "docs/contracts/services.md",
@@ -6452,18 +6465,30 @@
     "2026-11-15: DEC-005 confirmed for option 1 under the owner's instruction of the same day («قم باختيار الافضل»), recorded in docs/decisions-pending.json: this item no longer waits for the owner; ADR-0023's sentence that the model awaits the owner's record is corrected with this item's push",
     "2026-11-15 (the manager, after the external review's verification): waits for WP-107 and WP-108: applications become clients of config, the manager and net here, and those services leak a handle per replayed request, keep a client end when a reply fails and hand a client's sockets to the next one; by the manager's order the data packages WP-104 to WP-106 come first as well (a priority, not a dependency)",
     "2026-11-18 (the manager): WP-158 added to the dependencies (configd's subscriptions, from WP-157's review round): the same family as WP-107 and WP-108, holes that reach any application once this item lands (RSK-028)",
-    "2026-11-19 (the manager) design input from WP-158's review round: the manager sets no bound on a requester's connections to one service, so one program repeating CONNECT takes every client slot of that service (eight in configd and in netd) and the others are closed after the manager's OK: the broker's confinement of an application's connection must bound it per target (one live connection, or a stated few); to be shown by a case, or split by the budget rule (RSK-049; the services' own path is WP-160)"
+    "2026-11-19 (the manager) design input from WP-158's review round: the manager sets no bound on a requester's connections to one service, so one program repeating CONNECT takes every client slot of that service (eight in configd and in netd) and the others are closed after the manager's OK: the broker's confinement of an application's connection must bound it per target (one live connection, or a stated few); to be shown by a case, or split by the budget rule (RSK-049; the services' own path is WP-160)",
+    "2026-11-19 split by the budget rule before activation (the manager, on the planner's reading at 60d06ccbf; estimates unmeasured): as recorded the item is the registry on the volume, two new verbs with their requester check, the launch into a job with its table, numbers and rate limit, and the confinement of an application's CONNECT with a bound per target: three packages of the size of WP-157 or WP-108. This item keeps the first: the build puts the registry's entries under /SYSTEM/APPS, the manager reads them through the WP-100 parser, APPS and LAUNCH are accepted from the vouched session or desktop alone (ERR ACCESS otherwise), an unknown request on a service's boot channel is answered ERR BAD_REQUEST, and LAUNCH starts nothing yet (services.md v1.14). WP-161 takes the launch (the job, the applications table, the number and what follows 99, the rate limit); WP-162 the confinement (the app: identity vouched on CONNECT, declared dependencies within the allow-list, the bound per target; M140 and M142). Each part is safe alone: nothing is launched before WP-161, and an application reaches no service before WP-162. TST-M6-LAUNCH-DENIED keeps the refusal of LAUNCH and APPS; the undeclared CONNECT gets its own case in WP-162",
+    "2026-11-19 activation (the manager, method section 7; WP-158 done; after the split of this date; done inline by the manager from the planner's reading in scratchpad wp101_plan.md): the build puts platform/pc-qemu/apps/*.APP under /SYSTEM/APPS; the manager reads them at LOAD through nawah-apps; APPS and LAUNCH on a service's boot channel, accepted from session or desktop alone; ERR BAD_REQUEST for an unknown request; one new M6 case with a lab manifest of two services (one named session) and a lab role that asks one request; one SECURITY mutant on the requester check and one on the unknown-request reply; services.md v1.14. About 85 min and under 120 tool calls, within the budget line; the M6 guest step grows by the case's 30 s (1007 of 1080 s)",
+    "2026-11-19 options (rule 5). Where the registry is read: (a) once, after a successful LOAD, into the manager's own table of ids: chosen (LOAD is accepted once, and the directory is written by the build alone, so it cannot change after); (b) at each APPS or LAUNCH: a file read inside a request, and two requests of one session could be answered differently; (c) by the session service, the manager believing what it is told: the check would leave the authority. What the manager keeps: the ids alone, in the directory's order, which is all this part's two verbs use; the image path and the dependencies come with WP-161 and WP-162, which use them. The requester: the manifest's name of the service whose boot channel the request came on, as CONNECT is vouched since v1.6: chosen, against a token of the session, a second authority for the same fact. LAUNCH of a registered id before WP-161: ERR UNSUPPORTED, which says nothing was launched, against accepting and doing nothing. An unknown request: ERR BAD_REQUEST as on the control channel, against silence (a requester would wait out its deadline, as the red run showed). Reversible: the two verbs and the table are additions; v1.14 is additive",
+    "2026-11-19 the work (the manager, inline; scratch runs, no CI evidence). Test first: TST-M6-LAUNCH-DENIED (launch_denied; lab manifest svc-ld.txt with five services of the lab image, one named session and one desktop; lab role `ask <request>=<expected>[;...]`, whose exit code is 0x40 when every reply was the expected one, 0x50 + k when the k-th was another and 0x60 + k when the k-th got none within 1500 ticks) pins `load=OK 5|session_apps=0x40|desktop_launch=0x40|plain_launch=0x40|plain_apps=0x40|unknown=0x40`, clean exit, frames_delta=0; on the manager as it was it FAILED, exit 37, all five 0x61 (no request got a reply) and 'a plain service's LAUNCH or APPS was not refused ERR ACCESS by the manager'; with the change PASS. The change: tools/project.py prepare_disk puts platform/pc-qemu/apps/*.APP under /SYSTEM/APPS; the manager (user/apps/svcmgr/src/main.rs, now depending on nawah-apps) lists that directory after a successful LOAD, reads each *.APP and keeps the ids the WP-100 parser accepts (load_apps); APPS and LAUNCH on a service's boot channel (apps_request) for the services named session and desktop alone; an unknown request answered ERR BAD_REQUEST. M342 (SECURITY: the requester check dropped), M343 (the reply to an unknown request dropped) and M344 (desktop not vouched), their expectations pinned by TST-M0-005 (95 cases; the case seen failing before they were registered: 'M342 is registered'). services.md v1.14; ADR-0023's status sentence no longer waits for the owner's record (DEC-005 confirmed 2026-11-15). The M6 guest step's worst case is 1007 s of the cap's 1080 (the case's 30 s): the cap did not need to rise, .github/workflows/verify.yml is not touched",
+    "2026-11-19 the review round (auditor and red team in parallel, read-only): no blocker. Confirmed by the auditor by reading: the requester is the service whose boot channel the request came on, named by the manifest alone, and the check comes before the registry is consulted; load_apps reads what files.md's listing gives (`F <size> <NAME>`), skips directories and other names, bounds its path, reads at most one byte more than an entry may have and leaves a refused entry out; the registry is read once, before the services start, and a second LOAD is ERR LOADED; no real service writes an unknown request on its boot channel (READY, PONG, LIST and CONNECT alone), `ticker` is not run by the manager and `loud` was answered ERR BAD_REQUEST before; the lab role and the case's line; the anchors and fields of M342 to M344; no case pins what the two sample files change on the disk; 95 test functions; clean room. Red team: the vouching by the manifest's name is sound today (the kernel loads SERVICES.TXT or SELFTEST.TXT alone, LOAD is accepted once, a restart keeps the line's name, no service spawns a process, and `session` and `desktop` are reserved ids, so no application can carry them; no line is named desktop on the release image: a reservation); nothing can write under /SYSTEM/APPS at run time (the kernel's file authority admits config's two-component store names alone, and unlink passes the same check), so a hostile directory is the build's alone: more than sixteen entries, a wrong file name, a directory named like an entry and a listing that does not fit all end in fewer applications, never more. Fixed in the round, test first: (1) red team: `a refused entry is left out` had no test on the guest, and taking the parser's file-name check away survived: the case's disk now carries a lab entry ZED.APP whose id is `other`, the session's APPS must still answer `OK clock notes`, with M345; (2) both: the contract said ERR ACCESS comes 'before the request is looked at', which holds for the two literal forms alone: it now says so, and that every other form is an unknown request for any service; APPS's longest reply (146 bytes) is stated; (3) auditor: ADR-0023's sentence said the owner confirmed DEC-005's answer; the record says the manager chose option 1 on the owner's instruction 'choose the best': corrected; (4) auditor: this item's and WP-47's older lines still promised v1.14 the job, the identity and the rate limit: dated lines say they moved to WP-161 and WP-162; those two now have planned tests of their own (TST-M6-APP-SPAWN, TST-M6-APP-CONNECT-DENIED), so the refusal of an undeclared CONNECT, taken out of this case's oracle, stays a planned condition. To docs/LATER.md: L-079 to L-083; WP-161 has the round's list of what the launch must keep",
+    "2026-11-19 local runs on the tree (scratch, no CI evidence), every guest suite because the disk, the manager and the lab image changed: M1 (2 cases), M2 (24), M3 (53), M5 (35) and M6 (12, the new case with its lab entry among them, run again on the final tree) PASS; M4: 30 of its 31 cases PASS, TST-M4-NET-NO-INTERNET FAILED on this container's network (the off-link probe was answered here; the case passed on CI in run 44435733829): CI judges it; host suites M0 (TST-M0-005: 95 cases) and M6 PASS; the real harness in a scratch clone of the tree: M342 to M345 4/4 killed, each by its declared evidence (expected_missed empty), and the 78 tooling mutants 78/78 killed",
+    "2026-11-19 (the manager, on the auditor's correction): this item's older lines above name for services.md v1.14 the root job handle, the applications table, the identity app:<id>#<n>, the allow-list, the rate limit and the mutants M140 and M142: after the split they belong to WP-161 and WP-162, in versions numbered when each lands; v1.14 is what the split line says"
    ],
-   "acceptance": "TST-M6-LAUNCH-DENIED PASS on CI; services.md v1.14 states LAUNCH, the identity and the allow-list; M140 and M142 killed by the M6 gate",
+   "acceptance": "TST-M6-LAUNCH-DENIED PASS on CI (LAUNCH and APPS from a plain service refused ERR ACCESS by the manager; APPS from the vouched session lists the registry read from /SYSTEM/APPS); services.md v1.14 states APPS, LAUNCH's requester and the registry on the volume; the SECURITY mutant on the requester check killed by the M6 gate",
    "test_ids": [
-    "TST-M6-LAUNCH-DENIED"
+    "TST-M6-LAUNCH-DENIED",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "commands": [
-    "python3 tools/project.py test --target pc-qemu --suite M6"
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6-GATE",
+    "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -6475,7 +6500,8 @@
     "REQ-M6-004"
    ],
    "depends_on": [
-    "WP-101"
+    "WP-101",
+    "WP-161"
    ],
    "inputs": [
     "WP-101 (LAUNCH into a job)",
@@ -6506,7 +6532,8 @@
     "test first: TST-M6-LOGOUT-KILLS in the test kernel (an application that ignores the close request is gone after Sign out, its frames returned, the next sign-in starts with no process of the previous session); its oracle as planned reads process_list (WP-69, DEC-027): at activation it is rewritten to observe the job's end without it, or this item waits for WP-69; SECURITY mutant M141 (job_kill at sign-out dropped)",
     "M6 guest step: with this case the suite is expected to pass the 1080 s cap (planner's estimate, unmeasured): the cap and job a's limit rise with the case, or WP-98's fan-out comes first; never a skipped case",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation"
+    "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation",
+    "2026-11-19 (the manager): WP-161 added to the dependencies at WP-101's split: the session's job and the autostart need the launch, which is WP-161 now"
    ],
    "acceptance": "TST-M6-LOGOUT-KILLS PASS on CI; session.md v1.8 closes §8's limit; M141 killed by the M6 gate",
    "test_ids": [
@@ -9999,6 +10026,104 @@
     "test first, red seen locally before the fix: a lab service sends CONNECT config nine times and a second service's CONNECT is closed today; one token writes 64 session keys and another uid's SET session answers ERR FULL today",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-19 registered from WP-158's review round (the owner's ruling of 2026-11-17, rule 1: a hole an ordinary program can reach is not a LATER line). Not made a dependency of WP-101 by the manager: WP-101's own broker bounds an application's connections (its design input of this date); this item is the services' path and the session table; the owner may order it before WP-101"
+   ]
+  },
+  {
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/apps.md"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "test_ids": [
+    "TST-M6-APP-SPAWN"
+   ],
+   "id": "WP-161",
+   "depends_on": [
+    "WP-101"
+   ],
+   "inputs": [
+    "split from WP-101 on 2026-11-19 by the budget rule, its second part"
+   ],
+   "files": [
+    "user/apps/svcmgr/src/main.rs",
+    "user/libnawah",
+    "docs/contracts/services.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/work-items.json"
+   ],
+   "acceptance": "LAUNCH from the vouched session starts a registered application in a job of its own under the root job, with the identity's number, a stated answer past the last number and a rate limit, and every CONNECT of an application is refused, shown by a new case on CI; services.md states it in a new version; the SECURITY mutants killed by the M6 gate",
+   "actions": [
+    "سمسار التشغيل: LAUNCH يشغّل التطبيق في مهمة خاصة، برقمه وحدّ معدله (مفصولة من WP-101 في 2026-11-19)",
+    "from WP-101's record: the manager takes the root job handle (today it ignores it); an applications table apart from the services table with its own wait slots; LAUNCH creates a child job and spawns the application's image there; the identity's number n (1 to 99) and what happens past 99 (refuse, or reuse a freed number) decided and tested here; a LAUNCH rate limit; an entry whose image is missing (the samples name images no crate builds: an image, or a stated reply, is decided here); until WP-162 every CONNECT of an application is refused ERR ACCESS",
+    "test first, red seen locally before the change: LAUNCH from the vouched session answers that nothing is launched (WP-101's reply) today",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-19 registered at WP-101's split; the new case's id is named at activation",
+    "2026-11-19 design input from WP-101's review round (red team): the vouching stays by the manifest's line, never by a name an application carries; LIST, CONNECT, APPS and LAUNCH are not offered on an application's boot channel unless WP-162 decides so; no image outside /SYSTEM/APPS/*.ELF is launched; a bound on running applications with a stated reply when full; the session reads APPS's reply with a buffer of 146 bytes or more (docs/LATER.md L-081)"
+   ]
+  },
+  {
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/apps.md"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "test_ids": [
+    "TST-M6-APP-CONNECT-DENIED"
+   ],
+   "id": "WP-162",
+   "depends_on": [
+    "WP-161"
+   ],
+   "inputs": [
+    "split from WP-101 on 2026-11-19 by the budget rule, its third part"
+   ],
+   "files": [
+    "user/apps/svcmgr/src/main.rs",
+    "docs/contracts/services.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/work-items.json"
+   ],
+   "acceptance": "an application's CONNECT is accepted for its declared dependencies within the allow-list alone, vouched as app:<id>#<n> to the target, and bounded per target, an undeclared CONNECT refused ERR ACCESS in the manager, shown by a new case on CI; services.md states it in a new version; M140 and M142 and the bound's mutant killed by the M6 gate",
+   "actions": [
+    "سمسار التشغيل: حصر اتصال التطبيق بتبعياته المعلنة ضمن القائمة البيضاء، وحدّ لكل خدمة (مفصولة من WP-101 في 2026-11-19)",
+    "from WP-101's record: the identity app:<id>#<n> vouched on CONNECT (svcmgr's name_ok is not the check for it); an application's CONNECT limited to its declared dependencies within the allow-list that excludes auth and session; SECURITY mutants M140 (the app: prefix dropped) and M142 (the allow-list dropped); the design input of 2026-11-19: a bound on an application's connections per target (RSK-049; the services' own path is WP-160: the bound is written once, here or there, decided at the first activation)",
+    "test first, red seen locally before the change: an application's CONNECT to a declared dependency is refused today (WP-161's rule) and an undeclared one too",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-19 registered at WP-101's split; the new case's id is named at activation"
    ]
   }
  ]

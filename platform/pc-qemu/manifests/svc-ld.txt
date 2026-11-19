@@ -1,0 +1,6 @@
+# TST-M6-LAUNCH-DENIED (WP-101): APPS and LAUNCH are for the vouched session and desktop; a plain service is refused
+session /SYSTEM/SVC.ELF - 3000 never 0 0 ask APPS=OK clock notes
+desktop /SYSTEM/SVC.ELF - 3000 never 0 0 ask LAUNCH nosuch=ERR UNKNOWN;LAUNCH clock=ERR UNSUPPORTED
+plain1 /SYSTEM/SVC.ELF - 3000 never 0 0 ask LAUNCH clock=ERR ACCESS
+plain2 /SYSTEM/SVC.ELF - 3000 never 0 0 ask APPS=ERR ACCESS
+plain3 /SYSTEM/SVC.ELF - 3000 never 0 0 ask HELLO=ERR BAD_REQUEST

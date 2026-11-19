@@ -8298,6 +8298,34 @@
           "lab-admin-1"
         ],
         "timeout_s": 30
+      },
+      {
+        "id": "TST-M6-LAUNCH-DENIED",
+        "test_id": "TST-M6-LAUNCH-DENIED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=launch_denied"
+        ],
+        "oracle": "APPS and LAUNCH on a service's boot channel are for the vouched session and desktop (services.md v1.14, ADR-0023, WP-101). The lab manifest SVC-LD.TXT loads five services of the lab image (OK 5), each of which answers READY, asks what its line says and exits 0x40 when every reply was the expected one (0x50 + k: the k-th reply was another; 0x60 + k: no reply to the k-th): `session` asks APPS and is answered `OK clock notes`, the registry the build put under /SYSTEM/APPS, without the lab entry ZED.APP, a valid entry whose id is not its file's name (refused, and it changes nothing); `desktop` asks LAUNCH nosuch (ERR UNKNOWN) and LAUNCH clock (ERR UNSUPPORTED: nothing is launched in this version); `plain1` asks LAUNCH clock and `plain2` asks APPS, both refused ERR ACCESS by the manager; `plain3` asks HELLO and is answered ERR BAD_REQUEST; clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=launch_denied",
+          "|ktest|launch_denied|load=OK 5|session_apps=0x40|desktop_launch=0x40|plain_launch=0x40|plain_apps=0x40|unknown=0x40|",
+          "|ktest|launch_denied|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|launch_denied|frames_delta=0",
+          "|ktest|pass|APPS and LAUNCH are for the vouched session and desktop, and the registry comes from the volume"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 30,
+        "disk_files": {
+          "SYSTEM/APPS/ZED.APP": "platform/pc-qemu/lab/zed.app"
+        }
       }
     ]
   },

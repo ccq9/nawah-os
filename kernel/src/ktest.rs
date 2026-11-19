@@ -208,6 +208,7 @@ pub fn run() -> ! {
         "config_notify" => config_notify(),
         "config_store_authz" => config_store_authz(),
         "config_subs" => config_subs(),
+        "launch_denied" => launch_denied(),
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
@@ -5149,6 +5150,9 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         "session_deadline" => pass(
             "the session gave each silent component its request deadline, closed it, and exited instead of hanging",
         ),
+        "launch_denied" => pass(
+            "APPS and LAUNCH are for the vouched session and desktop, and the registry comes from the volume",
+        ),
         "svc_watchdog" => pass(
             "the watchdog ends a hung service and gives it up, leaves a healthy one, kills one that closed its channel, forces one hung before READY after the grace, and STOP force-kills a stubborn one",
         ),
@@ -5198,6 +5202,72 @@ fn svc_order() -> ! {
     }
     drop((lines, a, b, c, text, load));
     svc_balance("svc_order", frames0)
+}
+
+/// TST-M6-LAUNCH-DENIED (REQ-M6-004, services.md v1.14, ADR-0023, WP-101): APPS and LAUNCH on a
+/// service's boot channel are for the vouched session and desktop. Five lab services each
+/// answer READY, ask what their manifest line says and exit with what came back (0x40: every
+/// reply as expected; 0x50 + k: the k-th reply was another; 0x60 + k: no reply to the k-th).
+/// `session` asks APPS and is given the registry the build put under /SYSTEM/APPS; `desktop`
+/// asks LAUNCH for an id that is not registered and for one that is (nothing is launched in
+/// this version); three plain services ask LAUNCH, APPS and a request the manager does not
+/// know.
+fn launch_denied() -> ! {
+    let name = "launch_denied";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-LD.TXT");
+    let names = ["session", "desktop", "plain1", "plain2", "plain3"];
+    let lines = h.poll_list(sched::ticks() + 20_000, |l| {
+        names
+            .iter()
+            .all(|n| l.iter().any(|x| x.name == *n && x.exit.is_some()))
+    });
+    let code = |n: &str| svc_find(&lines, n).exit.unwrap_or(u64::MAX);
+    let (s, d, p1, p2, p3) = (
+        code("session"),
+        code("desktop"),
+        code("plain1"),
+        code("plain2"),
+        code("plain3"),
+    );
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|launch_denied|load={}|session_apps={:#x}|desktop_launch={:#x}|plain_launch={:#x}|plain_apps={:#x}|unknown={:#x}|",
+        BUILD_ID,
+        load,
+        s,
+        d,
+        p1,
+        p2,
+        p3
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|launch_denied|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 5" {
+        fail("the lab manifest did not load")
+    }
+    if p1 != 0x40 || p2 != 0x40 {
+        fail("a plain service's LAUNCH or APPS was not refused ERR ACCESS by the manager")
+    }
+    if s != 0x40 {
+        fail("the vouched session was not given the registry of /SYSTEM/APPS")
+    }
+    if d != 0x40 {
+        fail("LAUNCH from the vouched desktop was not answered as the contract says")
+    }
+    if p3 != 0x40 {
+        fail("an unknown request on a service's boot channel was not answered ERR BAD_REQUEST")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
 }
 
 fn svc_timeout() -> ! {

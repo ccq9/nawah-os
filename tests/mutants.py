@@ -1442,6 +1442,28 @@ MUTANTS = [
      "            Err(ERR_PEER_CLOSED) => st.drop_client(ci),\n",
      "            Err(ERR_PEER_CLOSED) => {\n                libnawah::handle_close(c);\n                st.clients[ci].chan = 0;\n            }\n",
      ["TST-M4-CONFIG-SUBS"], "SECURITY: configd frees the slot of a client that closed while idle and keeps its subscriptions"),
+    # M342..M344 (WP-101, REQ-M6-004; services.md v1.14, ADR-0023): APPS and LAUNCH on a service's
+    # boot channel are for the vouched session and desktop. M342: the requester is not checked,
+    # so a plain service is given the registry and its LAUNCH is taken. M344: desktop is not
+    # among the vouched. M343: an unknown request on a boot channel gets no reply, as before.
+    ("M342", "user/apps/svcmgr/src/main.rs",
+     "        if who != b\"session\" && who != b\"desktop\" {\n",
+     "        if false {\n",
+     ["TST-M6-LAUNCH-DENIED"], "SECURITY: the manager answers APPS and LAUNCH to any service, so a plain service reads the registry and asks for a launch"),
+    ("M343", "user/apps/svcmgr/src/main.rs",
+     "                    // repeated READY stays unanswered).\n                    libnawah::channel_write(c, b\"ERR BAD_REQUEST\", &[]);\n",
+     "                    // repeated READY stays unanswered).\n",
+     ["TST-M6-LAUNCH-DENIED"], "an unknown request on a service's boot channel gets no reply"),
+    ("M344", "user/apps/svcmgr/src/main.rs",
+     "        if who != b\"session\" && who != b\"desktop\" {\n",
+     "        if who != b\"session\" {\n",
+     ["TST-M6-LAUNCH-DENIED"], "the desktop is refused APPS and LAUNCH: the session alone is vouched"),
+    # M345 (WP-101's review round): an entry enters the registry under its own file's name alone
+    # (apps.md §4, FILE_NAME); the case's lab entry ZED.APP carries the id `other`.
+    ("M345", "user/apps/svcmgr/src/main.rs",
+     "            if let Ok(app) = one.add(file, &bytes[..n]) {\n",
+     "            if let Ok(app) = nawah_apps::parse(&bytes[..n]) {\n",
+     ["TST-M6-LAUNCH-DENIED"], "an entry is registered whatever its file is named, so a file that is not the id's own brings an application into the registry"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -1764,7 +1786,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M332", "M333", "M334", "M335",
             # WP-158 (RSK-028): a subscription is its client's, one per client and store, and
             # goes with the client; no session subscription without a token (config.md v1.5).
-            "M336", "M337", "M338", "M339", "M340", "M341"}
+            "M336", "M337", "M338", "M339", "M340", "M341",
+            # WP-101 (REQ-M6-004): APPS and LAUNCH are answered to the vouched session and
+            # desktop alone (services.md v1.14; M342).
+            "M342"}
 
 
 def security_of(mid: str) -> bool:
@@ -1978,6 +2003,10 @@ _MANY = "|ktest|fail|one client held more than one subscription of a store"
 _SUBSTAY = "|ktest|fail|a closed client's subscription stayed"
 _ZSTAY = "|ktest|fail|the subscription of a client whose reply could not be written stayed"
 _SESS = "|ktest|fail|a subscriber without a token heard a session key"
+_PLAIN = "|ktest|fail|a plain service's LAUNCH or APPS was not refused ERR ACCESS by the manager"
+_NOBAD = "|ktest|fail|an unknown request on a service's boot channel was not answered ERR BAD_REQUEST"
+_DESK = "|ktest|fail|LAUNCH from the vouched desktop was not answered as the contract says"
+_REG = "|ktest|fail|the vouched session was not given the registry of /SYSTEM/APPS"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -2059,6 +2088,15 @@ EXPECT = {
     "M339": {"TST-M4-CONFIG-SUBS": ["exit 37", "|x_gone=1|", "|z_gone=0|", "|z_end_closed=0|", _ZSTAY]},
     "M340": {"TST-M4-CONFIG-SUBS": ["exit 37", "|x_gone=0|", "|x_end_closed=0|", "|z_end_closed=1|", _SUBSTAY]},
     "M341": {"TST-M4-CONFIG-SUBS": ["exit 37", "|x_gone=0|", "|x_pol_closed=0|", "|x_end_closed=1|", _SUBSTAY]},
+    # WP-101: the case's one line; each lab service's exit code is what came back (0x51: the
+    # first reply was another than the expected one; 0x61: no reply to the first request).
+    # M342: the two plain services are answered as the vouched are. M343: the unknown request
+    # gets no reply. M344: the desktop's LAUNCH is refused.
+    "M342": {"TST-M6-LAUNCH-DENIED": ["exit 37", "|plain_launch=0x51|", "|plain_apps=0x51|", _PLAIN]},
+    "M343": {"TST-M6-LAUNCH-DENIED": ["exit 37", "|unknown=0x61|", _NOBAD]},
+    "M344": {"TST-M6-LAUNCH-DENIED": ["exit 37", "|desktop_launch=0x51|", _DESK]},
+    # M345: the session is answered `OK clock notes other`, another reply than the expected one.
+    "M345": {"TST-M6-LAUNCH-DENIED": ["exit 37", "|session_apps=0x51|", _REG]},
 }
 
 

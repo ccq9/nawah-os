@@ -1202,6 +1202,66 @@ class KillEvidence(unittest.TestCase):
                     self.assertFalse(fa < fb, f"{sorted(fa)} is a part of {sorted(fb)} under the same message")
 
 
+    LAUNCH = "TST-M6-LAUNCH-DENIED"
+
+    def test_the_launch_requester_expectations_are_pinned(self):
+        """WP-101 (REQ-M6-004; services.md v1.14, ADR-0023): APPS and LAUNCH on a service's boot
+        channel are for the vouched session and desktop. M342 (SECURITY) drops the check of
+        the requester, so a plain service is given the registry and its LAUNCH is taken; M344
+        takes desktop out of the vouched names; M343 drops the reply to an unknown request; M345
+        (the review round) registers an entry whatever its file is named, so the lab entry
+        ZED.APP, whose id is `other`, enters the registry.
+        Each anchor is once in user/apps/svcmgr/src/main.rs, declared on TST-M6-LAUNCH-DENIED
+        alone by exit 37, the kernel's own failure message (a failure in ktest.rs) and fields
+        of the case's line, each in the pinned line with another value; no two are declared by
+        the same message and fields."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.LAUNCH)
+        line = next(m for m in case["required_markers"] if "|plain_launch=" in m)
+        check = 'who != b"session" && who != b"desktop"'
+        want = {
+            "M342": (check, "false", "_PLAIN", {"|plain_launch=0x51|", "|plain_apps=0x51|"}, True),
+            "M343": ('libnawah::channel_write(c, b"ERR BAD_REQUEST", &[]);', None, "_NOBAD", {"|unknown=0x61|"}, False),
+            "M344": (check, 'who != b"session"', "_DESK", {"|desktop_launch=0x51|"}, False),
+            "M345": ("one.add(file, &bytes[..n])", "nawah_apps::parse(&bytes[..n])", "_REG", {"|session_apps=0x51|"}, False),
+        }
+        self.assertEqual(case.get("disk_files"), {"SYSTEM/APPS/ZED.APP": "platform/pc-qemu/lab/zed.app"})
+        zed = (ROOT / "platform" / "pc-qemu" / "lab" / "zed.app").read_text(encoding="utf-8")
+        self.assertIn("\nid=other\n", zed, "the lab entry's id is not its file's name")
+        seen = []
+        for mid, (old, new, const, fields, security) in want.items():
+            with self.subTest(mutant=mid):
+                m = next((m for m in mutants.MUTANTS if m[0] == mid), None)
+                self.assertIsNotNone(m, f"{mid} is registered")
+                self.assertEqual(m[1], "user/apps/svcmgr/src/main.rs")
+                self.assertEqual(m[4], [self.LAUNCH])
+                self.assertEqual(m[2].count(old), 1)
+                if new is None:
+                    self.assertNotIn("channel_write", m[3])
+                    self.assertTrue(m[2].startswith(m[3]) and m[3], "the reply's line alone is taken out")
+                else:
+                    self.assertEqual(m[3], m[2].replace(old, new))
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(set(E.get(mid, {})), {self.LAUNCH})
+                subs = E[mid][self.LAUNCH]
+                self.assertIn("exit 37", subs)
+                fails = [x for x in subs if x.startswith("|ktest|fail|")]
+                self.assertEqual(fails, [getattr(mutants, const, None)])
+                self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src)
+                seen.append((fails[0], frozenset(fields)))
+                got = {x for x in subs if re.fullmatch(r"\|\w+=[^|]*\|", x)}
+                self.assertEqual(got, fields)
+                for x in got:
+                    self.assertIn("|" + x[1:].split("=")[0] + "=", line, x)
+                    self.assertNotIn(x, line, f"{x} is the pinned value")
+        self.assertEqual(len(set(seen)), 4, "each mutant is known by its own message and fields")
+
+
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""
     import fcntl

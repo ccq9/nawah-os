@@ -24,6 +24,8 @@ const DEPS_MAX: usize = 64;
 /// The manifest buffer (services.md v1.13, WP-68): a file that fills it is refused whole with
 /// `ERR MANIFEST_TOO_LARGE`, so 4095 bytes is the largest manifest accepted.
 const MANIFEST_MAX: usize = 4096;
+/// The applications' registry on the volume (ADR-0023 item 2): written by the build alone.
+const APPS_DIR: &[u8] = b"/SYSTEM/APPS";
 const MSG_MAX: usize = 4096;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -248,6 +250,10 @@ struct Manager {
     services: [Service; MAX_SERVICES],
     n: usize,
     loaded: bool,
+    /// The registry's accepted entries (apps.md §4), by id, in the directory's order.
+    apps: [[u8; nawah_apps::ID_MAX]; nawah_apps::MAX_APPS],
+    app_lens: [u8; nawah_apps::MAX_APPS],
+    apps_n: usize,
     ctl: Handle,
     /// Kernel resources handed over as initial handles after the control channel, routed by
     /// type: the token authority to the service named `auth` (auth.md §1), the network
@@ -281,6 +287,90 @@ enum LoadError {
 impl Manager {
     fn find(&self, name: &[u8]) -> Option<usize> {
         (0..self.n).find(|&i| self.services[i].name() == name)
+    }
+
+    /// Reads the registry the build wrote under /SYSTEM/APPS (ADR-0023 item 2; services.md
+    /// v1.14): every `<ID>.APP` the parser accepts, up to the registry's capacity. A refused
+    /// entry is left out and changes nothing (apps.md §4); no directory, no application.
+    fn load_apps(&mut self) {
+        self.apps_n = 0;
+        let mut listing = [0u8; MSG_MAX];
+        let Ok(len) = libnawah::dir_list(APPS_DIR, &mut listing) else {
+            return;
+        };
+        for line in listing[..len].split(|c| *c == b'\n') {
+            // `F <size> <NAME>` (files.md §2): the entry files alone.
+            let mut f = line.split(|c| *c == b' ');
+            let (Some(b"F"), Some(_), Some(file)) = (f.next(), f.next(), f.next()) else {
+                continue;
+            };
+            let plen = APPS_DIR.len() + 1 + file.len();
+            if !file.ends_with(b".APP") || plen > PATH_MAX || self.apps_n == nawah_apps::MAX_APPS {
+                continue;
+            }
+            let mut path = [0u8; PATH_MAX];
+            path[..APPS_DIR.len()].copy_from_slice(APPS_DIR);
+            path[APPS_DIR.len()] = b'/';
+            path[APPS_DIR.len() + 1..plen].copy_from_slice(file);
+            // One byte more than an entry may have: a longer file is refused by the parser.
+            let mut bytes = [0u8; nawah_apps::FILE_MAX + 1];
+            let Ok(h) = libnawah::open(&path[..plen], libnawah::O_READ) else {
+                continue;
+            };
+            let mut n = 0;
+            let whole = loop {
+                match libnawah::read(h, &mut bytes[n..]) {
+                    Ok(0) => break true,
+                    Ok(k) => n += k,
+                    Err(_) => break false,
+                }
+                if n == bytes.len() {
+                    break true;
+                }
+            };
+            libnawah::handle_close(h);
+            if !whole {
+                continue;
+            }
+            let mut one = nawah_apps::Registry::new();
+            if let Ok(app) = one.add(file, &bytes[..n]) {
+                let id = app.id.as_bytes();
+                self.apps[self.apps_n] = [0; nawah_apps::ID_MAX];
+                self.apps[self.apps_n][..id.len()].copy_from_slice(id);
+                self.app_lens[self.apps_n] = id.len() as u8;
+                self.apps_n += 1;
+            }
+        }
+    }
+
+    /// APPS and LAUNCH on a service's boot channel (services.md v1.14, ADR-0023 item 1): for the
+    /// vouched session and desktop alone, and the requester is the service whose channel this
+    /// is, named by the manifest. Nothing is launched in this version.
+    fn apps_request(&mut self, i: usize, req: &[u8]) {
+        let Some(c) = self.services[i].chan else {
+            return;
+        };
+        let mut out = Out::new();
+        let who = self.services[i].name();
+        if who != b"session" && who != b"desktop" {
+            out.put(b"ERR ACCESS");
+        } else if req == b"APPS" {
+            out.put(b"OK");
+            for k in 0..self.apps_n {
+                out.put(b" ");
+                out.put(&self.apps[k][..usize::from(self.app_lens[k])]);
+            }
+        } else {
+            let id = req.strip_prefix(b"LAUNCH ").unwrap_or(b"");
+            let known =
+                (0..self.apps_n).any(|k| &self.apps[k][..usize::from(self.app_lens[k])] == id);
+            out.put(if known {
+                &b"ERR UNSUPPORTED"[..]
+            } else {
+                &b"ERR UNKNOWN"[..]
+            });
+        }
+        libnawah::channel_write(c, out.bytes(), &[]);
     }
 
     /// Reads and parses the manifest; the table is replaced only when the whole file parses.
@@ -609,6 +699,12 @@ impl Manager {
                     libnawah::channel_write(c, out.bytes(), &[]);
                 } else if let Some(name) = req.strip_prefix(b"CONNECT ") {
                     self.connect_for(i, name);
+                } else if req == b"APPS" || req.starts_with(b"LAUNCH ") {
+                    self.apps_request(i, req);
+                } else if req != b"READY" {
+                    // v1.14: an unknown request is answered, as on the control channel (a
+                    // repeated READY stays unanswered).
+                    libnawah::channel_write(c, b"ERR BAD_REQUEST", &[]);
                 }
                 true
             }
@@ -845,6 +941,7 @@ impl Manager {
                     Ok(count) => {
                         out.put(b"OK ");
                         out.num(count as u64);
+                        self.load_apps();
                         self.advance(now);
                     }
                     Err(LoadError::Missing) => out.put(b"ERR MANIFEST_MISSING"),
@@ -958,6 +1055,9 @@ fn main() -> u64 {
         services: [EMPTY; MAX_SERVICES],
         n: 0,
         loaded: false,
+        apps: [[0; nawah_apps::ID_MAX]; nawah_apps::MAX_APPS],
+        app_lens: [0; nawah_apps::MAX_APPS],
+        apps_n: 0,
         ctl,
         authority,
         nic,

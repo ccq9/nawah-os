@@ -1914,7 +1914,9 @@
     "TST-M6-APP-LAUNCH",
     "TST-M6-LOGOUT-KILLS",
     "TST-M6-LAUNCH-DENIED",
-    "TST-M6-APP-REGISTRY-FUZZ"
+    "TST-M6-APP-REGISTRY-FUZZ",
+    "TST-M6-APP-SPAWN",
+    "TST-M6-APP-CONNECT-DENIED"
    ],
    "implementation_status": "planned",
    "evidence_refs": []

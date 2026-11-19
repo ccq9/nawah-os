@@ -211,6 +211,42 @@ fn main() -> u64 {
         };
         return serve(ch, Mode::Silent { lo, hi });
     }
+    // `ask <request>=<expected>[;<request>=<expected>]` (WP-101, TST-M6-LAUNCH-DENIED): READY,
+    // then each request on the boot channel in turn. The exit code tells the test kernel what
+    // came back: 0x40 when every reply was the expected one, 0x50 + k when the k-th reply was
+    // another, 0x60 + k when the k-th request got no reply within 1500 ticks.
+    if let Some(script) = role.strip_prefix(b"ask ") {
+        if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+            return 0xE2;
+        }
+        let mut k = 0u64;
+        for pair in script.split(|&c| c == b';') {
+            k += 1;
+            let Some(eq) = pair.iter().position(|&c| c == b'=') else {
+                return 2;
+            };
+            if libnawah::channel_write(ch, &pair[..eq], &[]) != 0 {
+                return 0xE5;
+            }
+            let waited = libnawah::object_wait_many(
+                &[WaitEntry {
+                    handle: ch,
+                    signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+                }],
+                1500,
+            );
+            if waited.is_err() {
+                return 0x60 + k;
+            }
+            let mut reply = [0u8; 128];
+            match libnawah::channel_read(ch, &mut reply, &mut hs, false) {
+                Ok((n, _)) if reply[..n] == pair[eq + 1..] => {}
+                Ok(_) => return 0x50 + k,
+                Err(_) => return 0x60 + k,
+            }
+        }
+        return 0x40;
+    }
     match role {
         // `loud` (review 2026-10-19, M1): first a message larger than any request the manager
         // reads, then behaves as `ready` — the manager must discard it and still see READY.
