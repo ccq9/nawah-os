@@ -3209,7 +3209,8 @@
     "WP-101",
     "WP-102",
     "WP-161",
-    "WP-162"
+    "WP-162",
+    "WP-164"
    ],
    "inputs": [
     "DEC-005",
@@ -10045,16 +10046,22 @@
     "docs/contracts/apps.md"
    ],
    "commands": [
-    "python3 tools/project.py test --target pc-qemu --suite M6"
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6-GATE",
+    "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
    "test_ids": [
-    "TST-M6-APP-SPAWN"
+    "TST-M6-APP-SPAWN",
+    "TST-M6-LAUNCH-DENIED",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "id": "WP-161",
    "depends_on": [
@@ -10065,7 +10072,6 @@
    ],
    "files": [
     "user/apps/svcmgr/src/main.rs",
-    "user/libnawah",
     "docs/contracts/services.md",
     "kernel/src/ktest.rs",
     "platform/pc-qemu/target.json",
@@ -10073,16 +10079,39 @@
     "tests/test_mutants_harness.py",
     "tools/project.py",
     "docs/tests.json",
-    "docs/work-items.json"
+    "docs/work-items.json",
+    "user/apps/svc/src/main.rs",
+    "platform/pc-qemu/manifests/svc-as.txt",
+    "platform/pc-qemu/lab/exit.app",
+    "kernel/src/sched/mod.rs",
+    "docs/requirements.json",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "kernel/src/mm/vmm.rs",
+    "kernel/src/object/job.rs",
+    "platform/pc-qemu/lab/orphan.app",
+    "platform/pc-qemu/lab/closer.app",
+    "platform/pc-qemu/lab/bad.app",
+    "platform/pc-qemu/manifests/svc-ld.txt",
+    "docs/adr/0023-desktop-shell-and-app-model.md",
+    "docs/risks.json",
+    "docs/project-state.json"
    ],
-   "acceptance": "LAUNCH from the vouched session starts a registered application in a job of its own under the root job, with the identity's number, a stated answer past the last number and a rate limit, and every CONNECT of an application is refused, shown by a new case on CI; services.md states it in a new version; the SECURITY mutants killed by the M6 gate",
+   "acceptance": "LAUNCH from the vouched session starts a registered application in a job of its own under the root job with its boot channel alone, answered OK app:<id>#<n>; a number is not given again while a running application carries it, nor before 91 other launches; a ninth running application is ERR FULL and a missing image ERR NOT_FOUND; an application's exit frees its slot and its job; every request on an application's boot channel is refused ERR ACCESS, shown by TST-M6-APP-SPAWN on CI; services.md states it in a new version; the SECURITY mutants killed by the M6 gate",
    "actions": [
-    "سمسار التشغيل: LAUNCH يشغّل التطبيق في مهمة خاصة، برقمه وحدّ معدله (مفصولة من WP-101 في 2026-11-19)",
+    "سمسار التشغيل: LAUNCH يشغّل التطبيق في مهمة خاصة به، برقمه (مفصولة من WP-101 في 2026-11-19؛ حدّ المعدل في WP-163)",
     "from WP-101's record: the manager takes the root job handle (today it ignores it); an applications table apart from the services table with its own wait slots; LAUNCH creates a child job and spawns the application's image there; the identity's number n (1 to 99) and what happens past 99 (refuse, or reuse a freed number) decided and tested here; a LAUNCH rate limit; an entry whose image is missing (the samples name images no crate builds: an image, or a stated reply, is decided here); until WP-162 every CONNECT of an application is refused ERR ACCESS",
     "test first, red seen locally before the change: LAUNCH from the vouched session answers that nothing is launched (WP-101's reply) today",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-19 registered at WP-101's split; the new case's id is named at activation",
-    "2026-11-19 design input from WP-101's review round (red team): the vouching stays by the manifest's line, never by a name an application carries; LIST, CONNECT, APPS and LAUNCH are not offered on an application's boot channel unless WP-162 decides so; no image outside /SYSTEM/APPS/*.ELF is launched; a bound on running applications with a stated reply when full; the session reads APPS's reply with a buffer of 146 bytes or more (docs/LATER.md L-081)"
+    "2026-11-19 design input from WP-101's review round (red team): the vouching stays by the manifest's line, never by a name an application carries; LIST, CONNECT, APPS and LAUNCH are not offered on an application's boot channel unless WP-162 decides so; no image outside /SYSTEM/APPS/*.ELF is launched; a bound on running applications with a stated reply when full; the session reads APPS's reply with a buffer of 146 bytes or more (docs/LATER.md L-081)",
+    "2026-11-19 split by the budget rule before activation (the manager, on the planner's reading at 61bff885b; estimates unmeasured): as recorded the item is the root job taken, the launch into a job, a table with its exits, the number, a rate limit, the reply for a missing image and real images: more than one package. This item keeps the launch: the manager takes the root job, keeps each entry's image path, and on LAUNCH from the vouched session or desktop creates a job under the root job, spawns the image there with its boot channel and nothing else, writes START app:<id>#<n> and answers OK app:<id>#<n>; at most eight applications run (ERR FULL beyond); the number of an id goes 1 to 99 in a circle and is never one in use, so a number just freed is not given again at once; a missing image is ERR NOT_FOUND; the manager sees an application's exit and frees its slot and job, and ends every application's job when it stops; every request on an application's boot channel is answered ERR ACCESS by a handler of its own. WP-163 takes the rate limit, images for the sample entries on the release disk, and the leftovers of WP-101's round (LATER L-081, L-083). Decided here with their options in the options line: the success reply, who sees the exit, the number, the job's life, the boot channel, the missing image",
+    "2026-11-19 activation (the manager, method section 7; WP-101 done; after the split of this date; done inline by the manager from the planner's reading in scratchpad wp161_plan.md): the launch into a job of its own, a table of eight with exits, the number in a circle of 99, ERR FULL and ERR NOT_FOUND, the application's boot channel refused by a handler of its own, the applications' jobs ended when the manager stops; one new M6 case with a lab manifest, two lab roles (one that fills the table, one that behaves as an application), two lab images under /SYSTEM/APPS and test accessors in the kernel's scheduler; SECURITY mutants on the job, the handles, the refusal and the number; services.md v1.15. About 90 min and near 120 tool calls: at the budget line; if the review round shows more, the fullness part moves to WP-163. The M6 guest step grows by the case's 30 s (1037 of 1080 s)",
+    "2026-11-19 options (rule 5; the planner's reading in scratchpad wp161_plan.md gave the first form of each). The job: (a) a job for each launch, a child of the root job, its handle in the application's place, ended and closed at the exit: chosen (what an application starts ends with it; WP-102 gives another parent, the session's job, by changing one argument); (b) one job for every application: ending it ends them all, and one application's children are not told from another's; (c) no job, the manager's own: nothing to end. The number: (a) one circle 1 to 99 for the whole manager, the next after the last given, never one a running application carries: chosen (a number alone names a running application; a number comes back after 91 other launches at least, so a late message by name does not meet the next instance at once; ADR-0023 item 5's question is answered 'renumbering'); (b) the smallest free number, the planner's proposal: no wrap to test, but the identity of an application that just ended goes to the next one at once; (c) a count for each id refused past 99: the hundredth launch of an id fails until a restart. The table: (a) eight places apart from the services table: chosen (16 wait entries, 49 of the kernel's 64; an application is not listed, restarted, watched or stopped as a service); (b) places in the services table; (c) no bound. The application's boot channel: (a) a handler of its own that refuses whatever is asked: chosen (it reads no services table, so LIST, CONNECT, APPS and LAUNCH cannot be reached from an application by any form of message; WP-162 adds CONNECT there); (b) the services' handler with a flag: every branch would have to remember the flag; (c) closing the channel at the first message: WP-162 needs it open. A failed start: ERR NOT_FOUND for a missing image beside ERR FAILED for the rest, against one reply for both: the session can say which. Who is told of an exit: nobody yet (an unsolicited message to the requester is WP-102's and WP-47's). The wait order: applications' exits before their channels, both after the services, so no application's messages come before a service or an exit. The kernel's frame count: the two reserves at init, as WP-31 did for the scheduler's tables, against a relaxed frame check in the case or a warm-up in the test kernel alone: the reserve makes the count stable for every later case too. Reversible: the table, the replies and the number are additions of v1.15; the reserves are capacities",
+    "2026-11-19 the work (the manager, inline; scratch runs, no CI evidence). Test first: TST-M6-APP-SPAWN (app_spawn; lab manifest svc-as.txt with one service of the lab image named session, role `launcher`; the lab image started as an application by its identity: `clock` asks and stays, `orphan` leaves a child and exits, `closer` closes its channel and stays a while; lab entries exit, orphan, closer and bad, and five files placed as images; test-only sched::live_named and Job::child_of_root) pins `load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=8|jobs=8|live_jobs=8|orphans=0|mgr_handles=24`, clean exit, frames_delta=0; on the manager as it was it FAILED, exit 37, `session=0x51|apps=0` (the first LAUNCH was answered ERR UNSUPPORTED) with 'a LAUNCH of the vouched session was not answered as the contract states', and TST-M6-LAUNCH-DENIED, whose desktop line now expects ERR NOT_FOUND for a registered entry without an image, FAILED with desktop_launch=0x52. The change (user/apps/svcmgr/src/main.rs): the root job taken from the initial handles, each entry's image path kept, `launch`, `on_app_channel`, `on_app_exit`, and 16 more wait entries. With it the case first showed two things the kernel kept: frames_delta=2, then 1, then 0: the scheduler's list of finished processes holds 64 records and reserved 16, so it grew at the seventeenth exit (this is the first case with more): reserved whole; and the kernel stacks' page tables: 16 slots share a table, a freed stack leaves its table, and the case's ten processes at once were the first to need a second: vmm::reserve_stack_tables makes the tables of the first 128 slots at init (7 frames more in every kernel, for good). A third reading was the test's own: the manager's handle count taken after LOAD came after the whole scenario had run; it is taken before LOAD (SvcHarness.handles0). M346 to M357, their expectations pinned by TST-M0-005 (96 cases; the pin test seen failing without the registered mutants: 'Lists differ: [] != [M346, ...]'). services.md v1.15; ADR-0023 items 1 and 5 noted. The M6 guest step's worst case is 1037 s of the cap's 1080 (the case's 30 s; it ran about 8 s here): .github/workflows/verify.yml is not touched",
+    "2026-11-19 the review round (auditor and red team in parallel, read-only): no blocker in the code. Confirmed by the auditor by reading: every path of the launch (ERR FULL before any object is made; a failed job_create holds nothing, a failed channel_create closes the job, a failed spawn closes both ends and the job; the number is taken on success alone; the spawn is handed the boot channel alone), on_app_channel reading its own place and never the services table, on_app_exit, the wait order and the kernel's lowest-ready-first; no panic path (the reply is at least 9 bytes before `[3..]`, an image path is at most 25 bytes of 64, 49 wait entries of the kernel's 64, the circle's arithmetic); the case's claims (waiting is the scheduler's Blocked state without a deadline, a sleeper is another state; live_jobs counted from before the manager; mgr_handles from before LOAD; step 3's number); the stack tables' reserve (16 slots to a table, the page mapped is a guard page no stack maps, unmapping frees no table, sched::init runs before the other CPUs start); the test-only items used in ktest.rs alone; the 12 anchors, the replacements by reading, the SECURITY notes and set, 96 test functions; clean room. Red team, not reachable today: the manager blocked, spun or panicked by an application; the wait list; a stale process handle; escape from the job (an application holds no job handle; a manager image it starts finds no root job); a LAUNCH reached by anything but the vouched names; the two reserves (bounded). Fixed in the round, test first: (1) red team: nothing exercised an application that closes its boot channel and stays, so three single edits survived (the place's channel left set, after which the manager waits on a closed handle and ends; the manager's end kept; a place chosen by its channel instead of its process): the lab entry `closer` (closes, stays 200 ticks, exits) as a step of the launcher, with M358, M359 and M360; (2) red team: a request carrying two handles was not sent, so a reader with room for four kept both: one of the lab application's requests carries both ends of a channel, with M361; seen first on the case as it was: the four mutants SURVIVED (see the local-runs line); (3) auditor, refuted: the contract's '98 launches' before a number returns: the skip of numbers in use makes it 91 other launches at least; corrected there and in WP-162's line; (4) auditor: ADR-0023 item 1 and REQ-M6-004 place the application in the session's job, the build under the root job: stated as a limit of v1.15 until WP-102, and item 5's question (renumbering) written into the ADR; (5) auditor: sentences of this record the tree does not match: corrected by the dated line below, the files list reconciled; (6) the comment on what a failed spawn moved, and the accessor's 'how many'. Registered, not a LATER line (the owner's ruling of 2026-11-17, rule 1): the red team's fork loop: an application that repeats process_spawn inside its job is bounded by nothing but the kernel's 1024 stack slots, and while it lives every start in the system fails (by reading, not run; older than this item, which is the first to start registry images): RSK-050 and WP-164, which WP-163 (images on the release disk) and WP-47 now depend on; no application image is on the release disk before it. To docs/LATER.md: L-084 to L-089",
+    "2026-11-19 local runs on the final tree (scratch, no CI evidence), every guest suite because the kernel's init, the manager and the lab image changed: M1 (2 cases), M2 (24), M3 (53), M5 (35) and M6 (13, the new case among them) PASS; M4: 30 of its 31 cases PASS, TST-M4-NET-NO-INTERNET FAILED on this container's network (the off-link probe was answered here, probe=OK rtt=2; the case passed on CI in run 44448566575): CI judges it; host suites M0 (TST-M0-005: 96 cases), M1, M3, M4, M5 and M6 PASS. The real harness in a scratch clone of the tree: M346 to M361 16/16 killed, each by its declared evidence (expected_missed empty), after two corrections of what was declared: M347's first shape (a copy of the application's own job) did not build a start at all and was replaced by a copy of the root job; M349 (a table of nine) was first killed only because the closer still ran when the test kernel read the table, so the launcher now waits 300 ticks before the ninth launch and the kill is the ninth application itself (session=0x590c, apps=9). The round's four on the case as it was before the closer and the two-handle request: M358 seen to survive it (its declared killer passed; the sweep's one failure was TST-M4-NET-NO-INTERNET, which fails on this network whatever the mutant); the sweep was cut after it (13 min a mutant), so M359, M360 and M361 survive the old case by the red team's reading alone. The older mutants of the files this item touches, run on the tree as it was before the round's corrections (the kernel's code the same): M6 13 of 13 (the manager's, the lab's and the kernel's; M347 in its second shape ran with them), M5 5 of 5, M4 6 of 6, M3 7 of 7 and M2 9 of 9 killed, none with a missed expectation: the two reserves moved no older kill. The 78 tooling mutants 78/78 killed",
+    "2026-11-19 corrections (the manager, on the auditor's reading): sentences of the lines above that the tree does not match. The split line's 'the number of an id': the circle is one for the whole manager, not one for each id. The split and activation lines' 'ends every application's job when it stops': not built; the manager's own stop ends nothing (services.md v1.15 lists it as a limit: an application that reads its channel sees it close), and no case needs it. The activation line's 'two lab images': the case places five files as images (CLOCK, EXIT, ORPHAN and CLOSER from built images, BAD from a text file) and four lab entries. The title said 'and its rate limit': that is WP-163's since the split; the title is corrected. 'user/libnawah' in the files list: not changed, taken out; the kernel's frame reserves (kernel/src/mm/vmm.rs), the job's test-only reading (kernel/src/object/job.rs), the lab entries, the other launch case's manifest, the ADR and the risks are added. The budget: this case brings the M6 guest step's worst case to 1037 s of the cap's 1080; one more 30 s case (WP-163's) would make it 1067"
    ]
   },
   {
@@ -10130,7 +10159,115 @@
     "from WP-101's record: the identity app:<id>#<n> vouched on CONNECT (svcmgr's name_ok is not the check for it); an application's CONNECT limited to its declared dependencies within the allow-list that excludes auth and session; SECURITY mutants M140 (the app: prefix dropped) and M142 (the allow-list dropped); the design input of 2026-11-19: a bound on an application's connections per target (RSK-049; the services' own path is WP-160: the bound is written once, here or there, decided at the first activation)",
     "test first, red seen locally before the change: an application's CONNECT to a declared dependency is refused today (WP-161's rule) and an undeclared one too",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-19 registered at WP-101's split; the new case's id is named at activation"
+    "2026-11-19 registered at WP-101's split; the new case's id is named at activation",
+    "2026-11-19 (the manager) from WP-161's split: an identity's number comes back only after the circle of 99, so a service that keeps state by the vouched name does not meet the same name at once; whether any service keeps such state past a connection is checked here before the identity is vouched",
+    "2026-11-19 (the manager, on the auditor's and the red team's readings in WP-161's round): the line above said a number comes back only after the circle of 99: with the skip of numbers in use it is after 91 other launches at least, and there is no LAUNCH rate limit yet, so app:<id>#<n> is a name, never a key of authority: a service that would keep state by it past a connection needs a launch counter beside it. Inputs: fairness among applications' boot channels, and the case that floods one (docs/LATER.md L-086); an application's requests are answered by on_app_channel alone, which reads no services table: CONNECT is added there"
+   ]
+  },
+  {
+   "id": "WP-163",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-161",
+    "WP-164"
+   ],
+   "inputs": [
+    "split from WP-161 on 2026-11-19 by the budget rule, its second part"
+   ],
+   "files": [
+    "user/apps/svcmgr/src/main.rs",
+    "user/apps/svc/src/main.rs",
+    "tools/project.py",
+    "docs/contracts/services.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "docs/tests.json",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/apps.md"
+   ],
+   "acceptance": "LAUNCH is bounded in rate with a stated reply, and the sample entries of the release disk name images that exist or are answered as missing, shown by a case on CI; services.md states the limit in a new version; the mutants killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-APP-SPAWN"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "سمسار التشغيل: حدّ معدل LAUNCH، وصور للعيّنات على قرص الإصدار (مفصولة من WP-161 في 2026-11-19)",
+    "from WP-161's record: a LAUNCH rate limit (a count per window of ticks, a stated reply); the sample entries CLOCK.APP and NOTES.APP name images no crate builds and the build does not place: real images, or the entries leave the release disk; the lab role's reply buffer of 128 bytes against APPS's 146 (docs/LATER.md L-081); LAUNCH from session and APPS from desktop, a repeated READY, the wrap of the number at 99 (L-083). The M6 guest step has room for one more 30 s case after WP-161's (1067 of 1080 s)",
+    "test first, red seen locally before the change: more LAUNCH requests in a window than the limit are all answered OK today",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-19 registered at WP-161's split",
+    "2026-11-19 (the manager, from WP-161's review round): corrections and inputs. The wrap of the number at 99 is shown by WP-161's case (step 3), not left to this item; 'room for one more 30 s case after WP-161's (1067 of 1080 s)' means: WP-161's case makes the worst case 1037 s, and this item's would make it 1067. This item depends on WP-164 now: no application image goes on the release disk before a job's processes are bounded (RSK-050). Inputs: the case's deadlines inside its 30 s timeout (docs/LATER.md L-089); LAUNCH from the session is exercised by WP-161's case, APPS from the desktop and the repeated READY are not (L-083)"
+   ]
+  },
+  {
+   "id": "WP-164",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-003",
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-161"
+   ],
+   "inputs": [
+    "found by the red team in WP-161's review round on 2026-11-19 by reading kernel/src/syscall/mod.rs (spawn_into), kernel/src/object/job.rs and kernel/src/mm/vmm.rs; nothing run, no CI evidence"
+   ],
+   "files": [
+    "kernel/src/object/job.rs",
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/sched/mod.rs",
+    "docs/contracts/syscall.md",
+    "docs/contracts/services.md",
+    "kernel/src/ktest.rs",
+    "user/apps/svc/src/main.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/work-items.json",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md",
+    "docs/contracts/services.md"
+   ],
+   "acceptance": "an application cannot start more processes in its job than a stated bound, the start beyond it refused with a stated error and every other job unaffected, shown by a new case on CI; syscall.md states the bound in a new version; the SECURITY mutant killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-JOB-KILL"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "النواة: حدّ لعدد عمليات المهمة، فلا يستنفد تطبيقٌ خانات المكدسات (من مراجعة WP-161)",
+    "found by the red team by reading, not run: starting an image whose path ends in .ELF needs no authority, the child joins the caller's job, and nothing bounds the processes of a job (a job has a depth bound alone); the one bound in the system is the kernel's 1024 stack slots. An application that repeats process_spawn takes them all: while it lives every start fails, the manager's LAUNCH and a service's restart among them, and no verb ends an application. Whether the kernel's heap gives out first (a panic) is a hypothesis to try in the case (RSK-050)",
+    "design to decide in the package (2-3 options with trade-offs): a bound of live processes for each job below the root, counted along the path to the root, against a bound the creator states at job_create (a new argument: syscall.md), against a bound on the whole system with a reserve for the root's own; what the refused start answers; whether threads count; the place freed while killed children still end (docs/LATER.md L-087)",
+    "test first, red seen locally before the change: a lab application that starts idle children in a loop is refused nothing today, and a LAUNCH after it is answered ERR FAILED",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-19 registered from WP-161's review round (the owner's ruling of 2026-11-17, rule 1: a hole an ordinary program can reach is not a LATER line). It is older than WP-161 and not reached on the release image today: no application image is on that disk (a LAUNCH there is ERR NOT_FOUND). WP-163, which puts images there, and WP-47 depend on it; the owner may order it earlier"
    ]
   }
  ]

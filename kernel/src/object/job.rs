@@ -79,6 +79,12 @@ impl Job {
         self.parent.is_none()
     }
 
+    /// Test-only (WP-161): whether this job's parent is the root job itself.
+    #[cfg(feature = "ktest")]
+    pub fn child_of_root(&self) -> bool {
+        self.parent.as_ref().is_some_and(|p| p.is_root())
+    }
+
     /// Whether this job itself was killed.
     pub fn killed(&self) -> bool {
         self.killed.load(Ordering::SeqCst)

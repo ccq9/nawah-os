@@ -1464,6 +1464,68 @@ MUTANTS = [
      "            if let Ok(app) = one.add(file, &bytes[..n]) {\n",
      "            if let Ok(app) = nawah_apps::parse(&bytes[..n]) {\n",
      ["TST-M6-LAUNCH-DENIED"], "an entry is registered whatever its file is named, so a file that is not the id's own brings an application into the registry"),
+    # M346..M357 (WP-161, REQ-M6-004; services.md v1.15, ADR-0023 item 1): the launch. The case's
+    # line reads the applications the manager started (TST-M6-APP-SPAWN).
+    ("M346", "user/apps/svcmgr/src/main.rs",
+     "        match libnawah::process_spawn_in(job, elf, &[theirs]) {\n",
+     "        match libnawah::process_spawn(elf, &[theirs]) {\n",
+     ["TST-M6-APP-SPAWN"], "SECURITY: an application is started in the manager's own job, the root, so ending the job made for it ends nothing and what it left behind stays"),
+    ("M347", "user/apps/svcmgr/src/main.rs",
+     "        match libnawah::process_spawn_in(job, elf, &[theirs]) {\n",
+     "        match libnawah::process_spawn_in(job, elf, &[theirs, libnawah::handle_duplicate(self.root_job, libnawah::handle_rights(self.root_job) as u32).unwrap_or(0)]) {\n",
+     ["TST-M6-APP-SPAWN"], "SECURITY: an application is handed a copy of the root job beside its boot channel"),
+    ("M348", "user/apps/svcmgr/src/main.rs",
+     "        libnawah::job_kill(app.job);\n", "",
+     ["TST-M6-APP-SPAWN"], "SECURITY: an application's job is not ended at its exit, so a process it started outlives it"),
+    ("M349", "user/apps/svcmgr/src/main.rs",
+     "const MAX_RUNNING: usize = 8;\n", "const MAX_RUNNING: usize = 9;\n",
+     ["TST-M6-APP-SPAWN"], "SECURITY: a ninth application is started: the table's bound is not the contract's"),
+    ("M350", "user/apps/svcmgr/src/main.rs",
+     "                    let taken = |a: &Running| a.process.is_some() && a.num == self.last_num;\n",
+     "                    let taken = |_: &Running| false;\n",
+     ["TST-M6-APP-SPAWN"], "SECURITY: a number a running application carries is given again, so two applications run under one number"),
+    ("M351", "user/apps/svcmgr/src/main.rs",
+     "const APP_NUM_MAX: u8 = 99;\n", "const APP_NUM_MAX: u8 = 100;\n",
+     ["TST-M6-APP-SPAWN"], "the circle of numbers ends at 100: an identity of three digits"),
+    ("M352", "user/apps/svcmgr/src/main.rs",
+     "                libnawah::handle_close(theirs);\n", "",
+     ["TST-M6-APP-SPAWN"], "a launch that failed leaves the application's end of the channel in the manager's table"),
+    ("M353", "user/apps/svcmgr/src/main.rs",
+     "                libnawah::handle_close(ours);\n                libnawah::handle_close(job);\n",
+     "                libnawah::handle_close(ours);\n",
+     ["TST-M6-APP-SPAWN"], "a launch that failed leaves the job made for it"),
+    ("M354", "user/apps/svcmgr/src/main.rs",
+     "            Ok((_, nh)) => {\n                if nh == 1 {\n                    libnawah::handle_close(hs[0]);\n                }\n            }\n",
+     "            Ok(_) => {}\n",
+     ["TST-M6-APP-SPAWN"], "SECURITY: a handle an application sends on its boot channel stays in the manager's table"),
+    ("M355", "user/apps/svcmgr/src/main.rs",
+     "            Err(ERR_BUFFER_TOO_SMALL) if libnawah::channel_discard(c) => {}\n", "",
+     ["TST-M6-APP-SPAWN"], "a message larger than a request closes the application's boot channel instead of being refused"),
+    ("M356", "user/apps/svcmgr/src/main.rs",
+     "        libnawah::handle_close(app.job);\n", "",
+     ["TST-M6-APP-SPAWN"], "the handle of an application's job stays in the manager's table after its exit"),
+    ("M357", "user/apps/svcmgr/src/main.rs",
+     "        libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n    }\n\n    /// Application `a`'s process exited",
+     "        let mut out = Out::new();\n        self.list(&mut out);\n        libnawah::channel_write(c, out.bytes(), &[]);\n    }\n\n    /// Application `a`'s process exited",
+     ["TST-M6-APP-SPAWN"], "SECURITY: whatever an application asks on its boot channel is answered with the services' listing instead of being refused"),
+    # M358..M361 (WP-161's review round, the red team's survivors): an application that closes
+    # its boot channel and stays (the lab entry `closer`), and a request carrying two handles.
+    ("M358", "user/apps/svcmgr/src/main.rs",
+     "                libnawah::handle_close(c);\n                self.running[a].chan = None;\n",
+     "                libnawah::handle_close(c);\n",
+     ["TST-M6-APP-SPAWN"], "SECURITY: an application that closes its boot channel ends the manager, which then waits on a closed handle"),
+    ("M359", "user/apps/svcmgr/src/main.rs",
+     "                libnawah::handle_close(c);\n                self.running[a].chan = None;\n",
+     "                self.running[a].chan = None;\n",
+     ["TST-M6-APP-SPAWN"], "the manager's end of a boot channel its application closed stays in the manager's table"),
+    ("M360", "user/apps/svcmgr/src/main.rs",
+     "        let Some(place) = self.running.iter().position(|a| a.process.is_none()) else {\n",
+     "        let Some(place) = self.running.iter().position(|a| a.chan.is_none()) else {\n",
+     ["TST-M6-APP-SPAWN"], "SECURITY: the place of an application that closed its boot channel is given to another, so the first is watched no more and its job is never ended"),
+    ("M361", "user/apps/svcmgr/src/main.rs",
+     "        let mut hs = [0u32; 1];\n        match libnawah::channel_read(c, &mut buf, &mut hs, false) {\n            Ok((_, nh)) => {\n",
+     "        let mut hs = [0u32; 4];\n        match libnawah::channel_read(c, &mut buf, &mut hs, false) {\n            Ok((_, nh)) => {\n",
+     ["TST-M6-APP-SPAWN"], "SECURITY: a request of an application that carries two handles is read, and both stay in the manager's table"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -1789,7 +1851,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M336", "M337", "M338", "M339", "M340", "M341",
             # WP-101 (REQ-M6-004): APPS and LAUNCH are answered to the vouched session and
             # desktop alone (services.md v1.14; M342).
-            "M342"}
+            "M342",
+            # WP-161 (REQ-M6-004): an application runs in a job of its own with its boot channel
+            # alone, under a number of its own, eight at most, refused whatever it asks, and
+            # its job ends with it (services.md v1.15).
+            "M346", "M347", "M348", "M349", "M350", "M354", "M357", "M358", "M360", "M361"}
 
 
 def security_of(mid: str) -> bool:
@@ -2007,6 +2073,14 @@ _PLAIN = "|ktest|fail|a plain service's LAUNCH or APPS was not refused ERR ACCES
 _NOBAD = "|ktest|fail|an unknown request on a service's boot channel was not answered ERR BAD_REQUEST"
 _DESK = "|ktest|fail|LAUNCH from the vouched desktop was not answered as the contract says"
 _REG = "|ktest|fail|the vouched session was not given the registry of /SYSTEM/APPS"
+_LAUNCH = "|ktest|fail|a LAUNCH of the vouched session was not answered as the contract states"
+_REFUSED = "|ktest|fail|an application was not refused every request on its boot channel"
+_MORE = "|ktest|fail|an application holds more than its boot channel"
+_NOJOB = "|ktest|fail|an application is not in a job of its own under the root job"
+_ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
+_JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
+_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
+_NOLIST = "|ktest|fail|LIST request failed"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -2097,6 +2171,31 @@ EXPECT = {
     "M344": {"TST-M6-LAUNCH-DENIED": ["exit 37", "|desktop_launch=0x51|", _DESK]},
     # M345: the session is answered `OK clock notes other`, another reply than the expected one.
     "M345": {"TST-M6-LAUNCH-DENIED": ["exit 37", "|session_apps=0x51|", _REG]},
+    # WP-161: the case's one line (kept as the local run of 2026-11-19 printed it). M346: the
+    # eight share the root job and the orphan's child lives. M347: two handles each. M348: the child lives, in a ninth job. M349: the ninth is
+    # started as #12 (0x0c). M350: step 3 is answered #1 while clock#1 runs. M351: it is answered
+    # #100 (0x64). M352, M354: the manager's count above 24. M353, M356: jobs left. M355: the
+    # request with two handles closes each channel, so four requests of each are not refused
+    # (four handles more each). M357: none of the six is.
+    "M346": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x40|", "|under_root=0|jobs=1|live_jobs=8|orphans=1|", _NOJOB]},
+    "M347": {"TST-M6-APP-SPAWN": ["exit 37", "|apps=8|waiting=8|handles=16|under_root=8|", _MORE]},
+    "M348": {"TST-M6-APP-SPAWN": ["exit 37", "|under_root=8|jobs=8|live_jobs=9|orphans=1|", _ORPHAN]},
+    "M349": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x590c|apps=9|", _LAUNCH]},
+    "M350": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x5301|apps=1|", _LAUNCH]},
+    "M351": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x5364|apps=1|", _LAUNCH]},
+    "M352": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=26|", _KEPT]},
+    "M353": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=10|orphans=0|mgr_handles=26|", _JOBLEFT]},
+    "M354": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=32|", _KEPT]},
+    "M355": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x40|apps=8|waiting=0|handles=40|", _REFUSED]},
+    "M356": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=109|orphans=0|mgr_handles=125|", _JOBLEFT]},
+    "M357": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x40|apps=8|waiting=0|handles=56|", _REFUSED]},
+    # The review round's four. M358: the manager is gone after the closer's close, so the test
+    # kernel's LIST has no answer. M359: its end of that channel stays. M360: the closer's place
+    # went to a clock, so its process and its job stay. M361: sixteen handles stay.
+    "M358": {"TST-M6-APP-SPAWN": ["exit 37", "|ktest|app_spawn|list_error=", _NOLIST]},
+    "M359": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=25|", _KEPT]},
+    "M360": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=9|orphans=0|mgr_handles=26|", _JOBLEFT]},
+    "M361": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=40|", _KEPT]},
 }
 
 

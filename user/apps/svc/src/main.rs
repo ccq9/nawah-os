@@ -11,8 +11,10 @@
 //! 2026-10-19) `closer` answers READY then closes its boot channel and stays alive; `early_hang`
 //! hangs before READY without reading its channel; `ticker` writes `T` every 5 ticks from a timed
 //! wait; `sleeper` sleeps a million ticks; `loud` sends 100 junk bytes, then acts as `ready`; `silent <lo> <hi>` serves clients like `serve` but
-//! never answers (TST-M5-SESSION-DEADLINE). Anything else exits 2; a missing bootstrap handle
-//! 0xE0.
+//! never answers (TST-M5-SESSION-DEADLINE). (WP-161, TST-M6-APP-SPAWN) `launcher` is the vouched
+//! session's side of the launch case; started by the manager as an application (`START
+//! app:<id>#<n>`) the image is `clock`, which asks and stays, `orphan`, which leaves a child
+//! behind, or `closer`, which closes its boot channel and stays a while. Anything else exits 2; a missing bootstrap handle 0xE0.
 
 #![no_std]
 #![no_main]
@@ -80,6 +82,224 @@ fn trace_held(held: u64, lo: u64, hi: u64) {
     libnawah::trace(&t[..at]);
 }
 const CRASH_MARK: &[u8] = b"/CRASHED.TXT";
+
+/// One request on the boot channel, with the handles `sent`, and its reply (WP-161): the
+/// reply's length, or None when the request could not be written or no reply came within 1500
+/// ticks.
+fn ask(ch: u32, req: &[u8], sent: &[u32], reply: &mut [u8; 128]) -> Option<usize> {
+    if libnawah::channel_write(ch, req, sent) != 0 {
+        return None;
+    }
+    libnawah::object_wait_many(
+        &[WaitEntry {
+            handle: ch,
+            signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+        }],
+        1500,
+    )
+    .ok()?;
+    let mut hs = [0u32; 1];
+    libnawah::channel_read(ch, reply, &mut hs, false)
+        .ok()
+        .map(|(n, _)| n)
+}
+
+/// `LAUNCH <id>` (WP-161): the number of `OK app:<id>#<n>` (0 for any other reply, or none) and
+/// the reply's length. With `wait` the request is repeated every 2 ticks while the answer is
+/// `ERR FULL`: applications that exited are still leaving the manager's table.
+fn launch(ch: u32, id: &[u8], wait: bool, reply: &mut [u8; 128]) -> (u64, usize) {
+    let mut req = [0u8; 32];
+    let head = b"LAUNCH ";
+    let len = head.len() + id.len();
+    req[..head.len()].copy_from_slice(head);
+    req[head.len()..len].copy_from_slice(id);
+    for _ in 0..2000 {
+        let Some(n) = ask(ch, &req[..len], &[], reply) else {
+            return (0, 0);
+        };
+        if wait && reply[..n] == *b"ERR FULL" {
+            let _ = libnawah::sleep(2);
+            continue;
+        }
+        let num = reply[..n]
+            .strip_prefix(b"OK app:")
+            .and_then(|r| r.strip_prefix(id))
+            .and_then(|r| r.strip_prefix(b"#"))
+            .filter(|d| d.first() != Some(&b'0'))
+            .and_then(parse_num);
+        return (num.unwrap_or(0), n);
+    }
+    (0, 0)
+}
+
+/// A step of the launcher that saw another reply than the stated one: traced
+/// `launcher|step=<k>|got=<reply>`; its exit code is (0x50 + k) * 256 + the number `num` of the
+/// reply (0 when it was not `OK app:<id>#<n>`), so the test kernel's line says what came back.
+fn missed(step: u8, num: u64, reply: &[u8]) -> u64 {
+    let mut t = [0u8; 96];
+    let head = b"launcher|step=0|got=";
+    let n = reply.len().min(64);
+    t[..head.len()].copy_from_slice(head);
+    t[14] = b'0' + step;
+    t[head.len()..head.len() + n].copy_from_slice(&reply[..n]);
+    libnawah::trace(&t[..head.len() + n]);
+    (0x50 + u64::from(step)) << 8 | (num & 0xff)
+}
+
+/// The vouched session's side of TST-M6-APP-SPAWN (WP-161): READY, then nine steps; 0x40 when
+/// every reply was the one services.md v1.15 states, `missed`'s code at the first step k that saw
+/// another.
+fn launcher(ch: u32) -> u64 {
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
+    let mut r = [0u8; 128];
+    // 1: the first application carries number 1, and stays.
+    let (num, n) = launch(ch, b"clock", false, &mut r);
+    if num != 1 {
+        return missed(1, num, &r[..n]);
+    }
+    // 2: ninety-eight that exit at once, through the table's eight places: 2 to 99, in order.
+    for want in 2..=99 {
+        let (num, n) = launch(ch, b"exit", true, &mut r);
+        if num != want {
+            return missed(2, num, &r[..n]);
+        }
+    }
+    // 3: the circle is back at 1, which the first application still carries: 2.
+    let (num, n) = launch(ch, b"exit", true, &mut r);
+    if num != 2 {
+        return missed(3, num, &r[..n]);
+    }
+    // 4: a registered entry whose image is not on the volume.
+    let (num, n) = launch(ch, b"notes", true, &mut r);
+    if r[..n] != *b"ERR NOT_FOUND" {
+        return missed(4, num, &r[..n]);
+    }
+    // 5: one whose image is not an image.
+    let (num, n) = launch(ch, b"bad", true, &mut r);
+    if r[..n] != *b"ERR FAILED" {
+        return missed(5, num, &r[..n]);
+    }
+    // 6: one that leaves a child behind and exits; the failed launches took no number.
+    let (num, n) = launch(ch, b"orphan", true, &mut r);
+    if num != 3 {
+        return missed(6, num, &r[..n]);
+    }
+    // 7: one that closes its boot channel and stays 200 ticks. The manager has taken the close
+    // well before the next request, which comes while that application still runs.
+    let (num, n) = launch(ch, b"closer", true, &mut r);
+    if num != 4 {
+        return missed(7, num, &r[..n]);
+    }
+    let _ = libnawah::sleep(100);
+    // 8: seven more that stay; the last of them waits for the closer's place. Eight run.
+    for want in 5..=11 {
+        let (num, n) = launch(ch, b"clock", true, &mut r);
+        if num != want {
+            return missed(8, num, &r[..n]);
+        }
+    }
+    // 9: the ninth. The closer is gone by now whatever the table's size (it had to go for the
+    // last clock to start; were the table larger than eight it would still be running, and
+    // these 300 ticks outlast it), so eight that stay are all that run.
+    let _ = libnawah::sleep(300);
+    let (num, n) = launch(ch, b"clock", false, &mut r);
+    if r[..n] != *b"ERR FULL" {
+        return missed(9, num, &r[..n]);
+    }
+    0x40
+}
+
+/// The image started as an application (WP-161): `who` is `<id>#<n>` of `START app:<id>#<n>`.
+/// `orphan` gives a child that never exits both ends of a channel, so nothing ever wakes it,
+/// and exits 0x42; `closer` closes its boot channel, stays 200 ticks and exits 0x43. Any other
+/// id asks six requests on its boot channel, one of them larger than any the manager reads, one
+/// carrying a handle and one carrying two, and stays: waiting on its channel until it
+/// closes when each was refused `ERR ACCESS`; asleep, and holding one handle more for each
+/// request that was not, otherwise (the test kernel reads both of the process). Traced
+/// `app:<id>#<n>|...`.
+fn application(ch: u32, who: &[u8]) -> u64 {
+    let mut t = [0u8; 64];
+    let head = b"app:";
+    let who = &who[..who.len().min(16)];
+    t[..head.len()].copy_from_slice(head);
+    t[head.len()..head.len() + who.len()].copy_from_slice(who);
+    let mut at = head.len() + who.len();
+    let mut put = |t: &mut [u8; 64], s: &[u8]| {
+        t[at..at + s.len()].copy_from_slice(s);
+        at += s.len();
+        at
+    };
+    if who.starts_with(b"closer#") {
+        libnawah::handle_close(ch);
+        let _ = libnawah::sleep(200);
+        let end = put(&mut t, b"|closed=1");
+        libnawah::trace(&t[..end]);
+        return 0x43;
+    }
+    if who.starts_with(b"orphan#") {
+        let child = libnawah::channel_create()
+            .and_then(|(a, b)| libnawah::process_spawn(b"/SYSTEM/IDLE.ELF", &[b, a]));
+        let end = put(
+            &mut t,
+            if child.is_ok() {
+                b"|child=1"
+            } else {
+                b"|child=0"
+            },
+        );
+        libnawah::trace(&t[..end]);
+        return 0x42;
+    }
+    let big = [b'x'; 100];
+    let asks: [&[u8]; 6] = [
+        b"READY",
+        b"LIST",
+        b"CONNECT session",
+        b"APPS",
+        b"LAUNCH clock",
+        &big,
+    ];
+    let mut reply = [0u8; 128];
+    let mut refused = 0u8;
+    for (i, req) in asks.iter().enumerate() {
+        // Two requests carry handles: one end of a channel, then both ends of another. The
+        // application keeps none of them (an end that went with a request is a number that
+        // names nothing here, and closing it does nothing).
+        let pair = (i == 1 || i == 2)
+            .then(libnawah::channel_create)
+            .and_then(Result::ok);
+        let ends = pair.map(|(a, b)| [b, a]);
+        let sent: &[u32] = match &ends {
+            Some(e) if i == 1 => &e[..1],
+            Some(e) => &e[..],
+            None => &[],
+        };
+        if ask(ch, req, sent, &mut reply).is_some_and(|n| reply[..n] == *b"ERR ACCESS") {
+            refused += 1;
+        } else if let Ok((_kept, other)) = libnawah::channel_create() {
+            libnawah::handle_close(other);
+        }
+        for h in ends.into_iter().flatten() {
+            libnawah::handle_close(h);
+        }
+    }
+    put(&mut t, b"|asked=6|refused=");
+    let end = put(&mut t, &[b'0' + refused]);
+    libnawah::trace(&t[..end]);
+    if refused != 6 {
+        loop {
+            let _ = libnawah::sleep(1_000_000);
+        }
+    }
+    let mut hs = [0u32; 1];
+    loop {
+        if libnawah::channel_read(ch, &mut reply, &mut hs, true).is_err() {
+            return 0;
+        }
+    }
+}
 
 /// The `serve`/`crash_once`/`silent` roles: clients arrive as `CONNECT` + handle on the boot
 /// channel.
@@ -247,7 +467,11 @@ fn main() -> u64 {
         }
         return 0x40;
     }
+    if let Some(who) = role.strip_prefix(b"app:") {
+        return application(ch, who);
+    }
     match role {
+        b"launcher" => launcher(ch),
         // `loud` (review 2026-10-19, M1): first a message larger than any request the manager
         // reads, then behaves as `ready` — the manager must discard it and still see READY.
         b"ready" | b"loud" => {

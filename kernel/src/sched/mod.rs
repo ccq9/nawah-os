@@ -247,6 +247,8 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
     // Capacities up front, so spawns within the reserve never grow the tables: a growth keeps
     // the larger buffer for the kernel's lifetime, and a test's frame balance counts it (CI
     // run 39142666458: the fifth process of the shell cases grew `processes` past 4).
+    // The stacks' page tables too (WP-161): a failure here leaves them to be made on demand.
+    let _ = vmm::reserve_stack_tables();
     let mut threads = Vec::with_capacity(THREAD_RESERVE);
     threads.push(t0);
     let mut g = SCHED.lock();
@@ -265,7 +267,10 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         switches: 0,
         preemptions: 0,
         finished_threads: Vec::with_capacity(16),
-        finished_processes: Vec::with_capacity(16),
+        // The whole list up front (WP-161): nobody waits for a process another process
+        // started, so its record stays until 64 newer ones push it out, and a list that grew
+        // on the seventeenth exit kept its larger buffer (TST-M6-APP-SPAWN: frames_delta=2).
+        finished_processes: Vec::with_capacity(FINISHED_KEEP),
         reaping_threads: Vec::with_capacity(8),
         reaping_processes: Vec::with_capacity(8),
         kernel_cr3,
@@ -1102,6 +1107,63 @@ pub fn parked_named(name: &[u8]) -> bool {
         }
         any
     })
+}
+
+/// Test-only (WP-161): what the test kernel reads of one live process of an image.
+#[cfg(feature = "ktest")]
+#[derive(Clone, Copy, Default)]
+pub struct LiveNamed {
+    /// Its live handle count.
+    pub handles: usize,
+    /// Its job's id (0 for a process without a process object).
+    pub job: u64,
+    /// Whether that job is a child of the root job itself.
+    pub under_root: bool,
+    /// Whether every thread of it waits without a deadline.
+    pub waiting: bool,
+}
+
+/// Test-only (WP-161): the live processes whose spawn image base name equals `name`, and how
+/// many were read: 16 at most. The handle counts are read outside the scheduler lock, as the
+/// syscall layer takes the tables (TST-M6-APP-SPAWN: the applications the manager launched).
+#[cfg(feature = "ktest")]
+pub fn live_named(name: &[u8]) -> ([LiveNamed; 16], usize) {
+    let mut tables: [Option<Arc<IrqSpinLock<HandleTable>>>; 16] = Default::default();
+    let mut out = [LiveNamed::default(); 16];
+    let n = with(|s| {
+        let mut n = 0;
+        for p in s.processes.iter() {
+            let Some(o) = p.object.as_ref() else {
+                continue;
+            };
+            if p.exit_code.is_some() || !o.name_is(name) || n == out.len() {
+                continue;
+            }
+            let (mut any, mut all) = (false, true);
+            for t in s.threads.iter().filter(|t| t.process == Some(p.id)) {
+                match t.state {
+                    State::Blocked => any = true,
+                    State::Exited { .. } => {}
+                    _ => all = false,
+                }
+            }
+            out[n] = LiveNamed {
+                handles: 0,
+                job: o.job().id,
+                under_root: o.job().child_of_root(),
+                waiting: any && all,
+            };
+            tables[n] = Some(p.handles.clone());
+            n += 1;
+        }
+        n
+    });
+    for (one, table) in out.iter_mut().zip(tables.iter()) {
+        if let Some(t) = table {
+            one.handles = t.lock().len();
+        }
+    }
+    (out, n)
 }
 
 /// Test-only (WP-156): as `handles_named`, for the live process `pid` — the service manager is

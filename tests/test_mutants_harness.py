@@ -1261,6 +1261,104 @@ class KillEvidence(unittest.TestCase):
                     self.assertNotIn(x, line, f"{x} is the pinned value")
         self.assertEqual(len(set(seen)), 4, "each mutant is known by its own message and fields")
 
+    SPAWN = "TST-M6-APP-SPAWN"
+
+    def test_the_launch_expectations_are_pinned(self):
+        """WP-161 (REQ-M6-004; services.md v1.15, ADR-0023 item 1): LAUNCH starts an application
+        in a job of its own under the root job with its boot channel alone, under a number no
+        running application carries, eight at most; whatever it asks is refused; its job ends
+        with it; a launch that failed keeps nothing. M346 to M361 (M358 to M361 from the review
+        round: an application that closes its boot channel and stays, and a request carrying
+        two handles), each anchor once in
+        user/apps/svcmgr/src/main.rs, are declared on TST-M6-APP-SPAWN alone by exit 37, one
+        `|ktest|fail|` message occurring as a failure in ktest.rs, and fields of the case's one
+        line: those that change, each with another value than the pinned line's, and those
+        that hold beside them with the pinned value; M358 alone, under which the manager is
+        gone, by the line of the listing that failed. No two share message and changed fields.
+        The case's volume carries the lab entries and images the launcher's steps need."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.SPAWN)
+        line = next(m for m in case["required_markers"] if "|session=" in m)
+        pinned = dict(f.split("=", 1) for f in line.strip("|").split("|")[2:])
+        self.assertEqual(pinned, {"load": "OK 1", "session": "0x40", "apps": "8", "waiting": "8", "handles": "8", "under_root": "8",
+                                  "jobs": "8", "live_jobs": "8", "orphans": "0", "mgr_handles": "24"})
+        want = {  # id: (message, SECURITY, the fields that change, the fields that hold)
+            "M346": ("_NOJOB", True, {"under_root": "0", "jobs": "1", "orphans": "1"}, {"session": "0x40", "live_jobs": "8"}),
+            "M347": ("_MORE", True, {"handles": "16"}, {"apps": "8", "waiting": "8", "under_root": "8"}),
+            "M348": ("_ORPHAN", True, {"live_jobs": "9", "orphans": "1"}, {"under_root": "8", "jobs": "8"}),
+            "M349": ("_LAUNCH", True, {"session": "0x590c", "apps": "9"}, {}),
+            "M350": ("_LAUNCH", True, {"session": "0x5301", "apps": "1"}, {}),
+            "M351": ("_LAUNCH", False, {"session": "0x5364", "apps": "1"}, {}),
+            "M352": ("_KEPT", False, {"mgr_handles": "26"}, {"live_jobs": "8", "orphans": "0"}),
+            "M353": ("_JOBLEFT", False, {"live_jobs": "10", "mgr_handles": "26"}, {"orphans": "0"}),
+            "M354": ("_KEPT", True, {"mgr_handles": "32"}, {"live_jobs": "8", "orphans": "0"}),
+            "M355": ("_REFUSED", False, {"waiting": "0", "handles": "40"}, {"session": "0x40", "apps": "8"}),
+            "M356": ("_JOBLEFT", False, {"live_jobs": "109", "mgr_handles": "125"}, {"orphans": "0"}),
+            "M357": ("_REFUSED", True, {"waiting": "0", "handles": "56"}, {"session": "0x40", "apps": "8"}),
+            "M358": ("_NOLIST", True, None, None),
+            "M359": ("_KEPT", False, {"mgr_handles": "25"}, {"live_jobs": "8", "orphans": "0"}),
+            "M360": ("_JOBLEFT", True, {"live_jobs": "9", "mgr_handles": "26"}, {"orphans": "0"}),
+            "M361": ("_KEPT", True, {"mgr_handles": "40"}, {"live_jobs": "8", "orphans": "0"}),
+        }
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if m[4] == [self.SPAWN]), sorted(want))
+        seen = []
+        for mid, (const, security, changed, held) in want.items():
+            with self.subTest(mutant=mid):
+                m = next((m for m in mutants.MUTANTS if m[0] == mid), None)
+                self.assertIsNotNone(m, f"{mid} is registered")
+                self.assertEqual(m[1], "user/apps/svcmgr/src/main.rs")
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(set(E.get(mid, {})), {self.SPAWN})
+                subs = E[mid][self.SPAWN]
+                self.assertIn("exit 37", subs)
+                fails = [x for x in subs if x.startswith("|ktest|fail|")]
+                self.assertEqual(fails, [getattr(mutants, const, None)])
+                self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src)
+                rest = [x for x in subs if x != "exit 37" and x not in fails]
+                if changed is None:
+                    # The manager is gone: the harness's poller prints the listing's error.
+                    self.assertEqual(rest, ["|ktest|app_spawn|list_error="])
+                    self.assertIn('"OSX|{}|ktest|{}|list_error={}"', src)
+                    seen.append((fails[0], frozenset()))
+                    continue
+                self.assertTrue(rest and all(x.startswith("|") and x.endswith("|") for x in rest), rest)
+                got = dict(f.split("=", 1) for x in rest for f in x.strip("|").split("|"))
+                self.assertEqual(got, {**changed, **held})
+                for k, v in changed.items():
+                    self.assertNotEqual(pinned[k], v, f"{k}={v} is the pinned value")
+                for k, v in held.items():
+                    self.assertEqual(pinned[k], v, f"{k}={v} is not the pinned value")
+                # Fields declared in one substring stand next to each other in the line, in order.
+                order = list(pinned)
+                for x in rest:
+                    ks = [f.split("=", 1)[0] for f in x.strip("|").split("|")]
+                    at = order.index(ks[0])
+                    self.assertEqual(ks, order[at:at + len(ks)], x)
+                seen.append((fails[0], frozenset(changed.items())))
+        self.assertEqual(len(set(seen)), len(want), "each mutant is known by its own message and changed fields")
+        self.assertEqual(case["timeout_s"], 30)
+        self.assertEqual(case.get("disk_files"), {
+            "SYSTEM/APPS/EXIT.APP": "platform/pc-qemu/lab/exit.app", "SYSTEM/APPS/ORPHAN.APP": "platform/pc-qemu/lab/orphan.app",
+            "SYSTEM/APPS/CLOSER.APP": "platform/pc-qemu/lab/closer.app", "SYSTEM/APPS/BAD.APP": "platform/pc-qemu/lab/bad.app",
+            "SYSTEM/APPS/CLOCK.ELF": "${OUT}/apps/svc.elf", "SYSTEM/APPS/EXIT.ELF": "${OUT}/apps/exiter.elf",
+            "SYSTEM/APPS/ORPHAN.ELF": "${OUT}/apps/svc.elf", "SYSTEM/APPS/CLOSER.ELF": "${OUT}/apps/svc.elf",
+            "SYSTEM/APPS/BAD.ELF": "platform/pc-qemu/lab/bad.app"})
+        for name in ("exit", "orphan", "closer", "bad"):
+            entry = (ROOT / "platform" / "pc-qemu" / "lab" / f"{name}.app").read_text(encoding="utf-8")
+            self.assertIn(f"\nid={name}\nelf=/SYSTEM/APPS/{name.upper()}.ELF\n", entry)
+        manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-as.txt").read_text(encoding="utf-8")
+        self.assertEqual([l for l in manifest.splitlines() if l and not l.startswith("#")],
+                         ["session /SYSTEM/SVC.ELF - 3000 never 0 0 launcher"])
+        # The other launch case's volume has no image for `clock`: the reply of a missing image.
+        denied = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-ld.txt").read_text(encoding="utf-8")
+        self.assertIn("LAUNCH clock=ERR NOT_FOUND", denied)
+
 
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""

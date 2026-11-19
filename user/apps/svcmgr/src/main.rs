@@ -4,13 +4,16 @@
 //! which it must answer `READY` within its timeout; failures restart with exponential backoff
 //! up to a limit; `LIST` reports every service; `STOP <name>` closes a service's channel.
 //! No allocation: fixed tables, at most 16 services. Exits 0 when the control channel closes.
+//! (WP-161, services.md v1.15) `LAUNCH` from the vouched session or desktop starts a registered
+//! application in a job of its own under the root job, with a boot channel and nothing else;
+//! at most eight run, in a table apart from the services.
 
 #![no_std]
 #![no_main]
 
 use libnawah::{
-    rights, Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_TIMED_OUT, SIGNAL_EXITED,
-    SIGNAL_PEER_CLOSED, SIGNAL_READABLE, TIMEOUT_FOREVER,
+    rights, Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_NOT_FOUND, ERR_PEER_CLOSED, ERR_TIMED_OUT,
+    SIGNAL_EXITED, SIGNAL_PEER_CLOSED, SIGNAL_READABLE, TIMEOUT_FOREVER,
 };
 
 libnawah::entry!(main);
@@ -26,6 +29,10 @@ const DEPS_MAX: usize = 64;
 const MANIFEST_MAX: usize = 4096;
 /// The applications' registry on the volume (ADR-0023 item 2): written by the build alone.
 const APPS_DIR: &[u8] = b"/SYSTEM/APPS";
+/// Applications running at once (services.md v1.15).
+const MAX_RUNNING: usize = 8;
+/// The last number of an identity `app:<id>#<n>` (ADR-0023 item 5: two digits).
+const APP_NUM_MAX: u8 = 99;
 const MSG_MAX: usize = 4096;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -246,6 +253,23 @@ impl<'a> Fields<'a> {
     }
 }
 
+/// One running application (services.md v1.15): its process (None: the place is free), its
+/// boot channel while both ends are open, the job made for it, and its identity's number.
+#[derive(Clone, Copy)]
+struct Running {
+    process: Option<Handle>,
+    chan: Option<Handle>,
+    job: Handle,
+    num: u8,
+}
+
+const NOT_RUNNING: Running = Running {
+    process: None,
+    chan: None,
+    job: 0,
+    num: 0,
+};
+
 struct Manager {
     services: [Service; MAX_SERVICES],
     n: usize,
@@ -253,7 +277,16 @@ struct Manager {
     /// The registry's accepted entries (apps.md §4), by id, in the directory's order.
     apps: [[u8; nawah_apps::ID_MAX]; nawah_apps::MAX_APPS],
     app_lens: [u8; nawah_apps::MAX_APPS],
+    /// Each entry's image path (apps.md §2), beside its id.
+    app_elf: [[u8; PATH_MAX]; nawah_apps::MAX_APPS],
+    app_elf_lens: [u8; nawah_apps::MAX_APPS],
     apps_n: usize,
+    /// The applications running now (v1.15), apart from the services.
+    running: [Running; MAX_RUNNING],
+    /// The number the last launched application was given: the circle goes on from it.
+    last_num: u8,
+    /// The root job (v1.12): each application's job is made under it.
+    root_job: Handle,
     ctl: Handle,
     /// Kernel resources handed over as initial handles after the control channel, routed by
     /// type: the token authority to the service named `auth` (auth.md §1), the network
@@ -338,6 +371,10 @@ impl Manager {
                 self.apps[self.apps_n] = [0; nawah_apps::ID_MAX];
                 self.apps[self.apps_n][..id.len()].copy_from_slice(id);
                 self.app_lens[self.apps_n] = id.len() as u8;
+                let elf = app.elf.as_bytes();
+                let elf_len = elf.len().min(PATH_MAX);
+                self.app_elf[self.apps_n][..elf_len].copy_from_slice(&elf[..elf_len]);
+                self.app_elf_lens[self.apps_n] = elf_len as u8;
                 self.apps_n += 1;
             }
         }
@@ -345,7 +382,7 @@ impl Manager {
 
     /// APPS and LAUNCH on a service's boot channel (services.md v1.14, ADR-0023 item 1): for the
     /// vouched session and desktop alone, and the requester is the service whose channel this
-    /// is, named by the manifest. Nothing is launched in this version.
+    /// is, named by the manifest.
     fn apps_request(&mut self, i: usize, req: &[u8]) {
         let Some(c) = self.services[i].chan else {
             return;
@@ -362,15 +399,113 @@ impl Manager {
             }
         } else {
             let id = req.strip_prefix(b"LAUNCH ").unwrap_or(b"");
-            let known =
-                (0..self.apps_n).any(|k| &self.apps[k][..usize::from(self.app_lens[k])] == id);
-            out.put(if known {
-                &b"ERR UNSUPPORTED"[..]
-            } else {
-                &b"ERR UNKNOWN"[..]
-            });
+            match (0..self.apps_n).find(|&k| &self.apps[k][..usize::from(self.app_lens[k])] == id) {
+                Some(k) => self.launch(k, &mut out),
+                None => out.put(b"ERR UNKNOWN"),
+            }
         }
         libnawah::channel_write(c, out.bytes(), &[]);
+    }
+
+    /// `LAUNCH` of registry entry `k` (services.md v1.15, ADR-0023 item 1): a job under the
+    /// root job, the entry's image started in it with a boot channel and no other handle, and
+    /// `START app:<id>#<n>` on that channel. The reply goes into `out`, which is empty; a
+    /// launch that fails keeps nothing: neither the job, nor an end of the channel, nor a
+    /// number.
+    fn launch(&mut self, k: usize, out: &mut Out) {
+        let Some(place) = self.running.iter().position(|a| a.process.is_none()) else {
+            out.put(b"ERR FULL");
+            return;
+        };
+        let Ok(job) = libnawah::job_create(self.root_job) else {
+            out.put(b"ERR FAILED");
+            return;
+        };
+        let Ok((ours, theirs)) = libnawah::channel_create() else {
+            libnawah::handle_close(job);
+            out.put(b"ERR FAILED");
+            return;
+        };
+        let elf = &self.app_elf[k][..usize::from(self.app_elf_lens[k])];
+        match libnawah::process_spawn_in(job, elf, &[theirs]) {
+            Ok(p) => {
+                // The next number of the circle that no running application carries: at
+                // most eight run, so the search ends.
+                loop {
+                    self.last_num = self.last_num % APP_NUM_MAX + 1;
+                    let taken = |a: &Running| a.process.is_some() && a.num == self.last_num;
+                    if !self.running.iter().any(taken) {
+                        break;
+                    }
+                }
+                out.put(b"OK app:");
+                out.put(&self.apps[k][..usize::from(self.app_lens[k])]);
+                out.put(b"#");
+                out.num(u64::from(self.last_num));
+                // The application is told who it is: the reply without its `OK `.
+                let mut msg = Out::new();
+                msg.put(b"START ");
+                msg.put(&out.bytes()[3..]);
+                libnawah::channel_write(ours, msg.bytes(), &[]);
+                self.running[place] = Running {
+                    process: Some(p),
+                    chan: Some(ours),
+                    job,
+                    num: self.last_num,
+                };
+            }
+            Err(e) => {
+                // Nothing was moved when the image is missing or is not one (syscall.md §5):
+                // both ends are still here. When resources ran out after the move, `theirs`
+                // went with the stillborn process and its number here names nothing.
+                libnawah::handle_close(theirs);
+                libnawah::handle_close(ours);
+                libnawah::handle_close(job);
+                out.put(if e == ERR_NOT_FOUND {
+                    &b"ERR NOT_FOUND"[..]
+                } else {
+                    &b"ERR FAILED"[..]
+                });
+            }
+        }
+    }
+
+    /// A message on application `a`'s boot channel (services.md v1.15): whatever it asks is
+    /// refused. An application is not a service, and nothing here reads the services table,
+    /// so none of LIST, CONNECT, APPS and LAUNCH is reached from an application. A handle it
+    /// sent is closed; a message larger than a request is dropped and refused the same; when
+    /// the application closed its end, ours goes too.
+    fn on_app_channel(&mut self, a: usize) {
+        let Some(c) = self.running[a].chan else {
+            return;
+        };
+        let mut buf = [0u8; 64];
+        let mut hs = [0u32; 1];
+        match libnawah::channel_read(c, &mut buf, &mut hs, false) {
+            Ok((_, nh)) => {
+                if nh == 1 {
+                    libnawah::handle_close(hs[0]);
+                }
+            }
+            Err(ERR_BUFFER_TOO_SMALL) if libnawah::channel_discard(c) => {}
+            Err(_) => {
+                libnawah::handle_close(c);
+                self.running[a].chan = None;
+                return;
+            }
+        }
+        libnawah::channel_write(c, b"ERR ACCESS", &[]);
+    }
+
+    /// Application `a`'s process exited (services.md v1.15): its job is ended with whatever
+    /// it left there, and its place is free.
+    fn on_app_exit(&mut self, a: usize) {
+        let app = core::mem::replace(&mut self.running[a], NOT_RUNNING);
+        for h in [app.process, app.chan].into_iter().flatten() {
+            libnawah::handle_close(h);
+        }
+        libnawah::job_kill(app.job);
+        libnawah::handle_close(app.job);
     }
 
     /// Reads and parses the manifest; the table is replaced only when the whole file parses.
@@ -1038,6 +1173,7 @@ fn main() -> u64 {
     let (mut authority, mut nic, mut keyboard, mut serial, mut display, mut mouse) =
         (None, None, None, None, None, None);
     let mut system_files = None;
+    let mut root_job = 0;
     for h in ctl + 1..ctl + 10 {
         match libnawah::handle_type(h) {
             libnawah::object_type::AUTHORITY => authority = Some(h),
@@ -1047,6 +1183,7 @@ fn main() -> u64 {
             libnawah::object_type::SERIAL => serial = Some(h),
             libnawah::object_type::DISPLAY => display = Some(h),
             libnawah::object_type::MOUSE => mouse = Some(h),
+            libnawah::object_type::JOB => root_job = h,
             t if t < 0 => break,
             _ => {}
         }
@@ -1057,7 +1194,12 @@ fn main() -> u64 {
         loaded: false,
         apps: [[0; nawah_apps::ID_MAX]; nawah_apps::MAX_APPS],
         app_lens: [0; nawah_apps::MAX_APPS],
+        app_elf: [[0; PATH_MAX]; nawah_apps::MAX_APPS],
+        app_elf_lens: [0; nawah_apps::MAX_APPS],
         apps_n: 0,
+        running: [NOT_RUNNING; MAX_RUNNING],
+        last_num: 0,
+        root_job,
         ctl,
         authority,
         nic,
@@ -1067,12 +1209,14 @@ fn main() -> u64 {
         mouse,
         system_files,
     };
-    // Wait-set slots: 0 = control; then per service (boot channel, process).
+    // Wait-set slots: 0 = control; then per service (boot channel, process); then the
+    // applications' processes, then their boot channels: the lowest ready slot is served
+    // first, so no application's messages come before a service or before an exit.
     let mut entries = [WaitEntry {
         handle: 0,
         signals: 0,
-    }; 1 + 2 * MAX_SERVICES];
-    let mut owner = [(0usize, 0u8); 1 + 2 * MAX_SERVICES];
+    }; 1 + 2 * MAX_SERVICES + 2 * MAX_RUNNING];
+    let mut owner = [(0usize, 0u8); 1 + 2 * MAX_SERVICES + 2 * MAX_RUNNING];
     loop {
         let now = libnawah::clock_ticks();
         m.on_time(now);
@@ -1101,6 +1245,26 @@ fn main() -> u64 {
                 k += 1;
             }
         }
+        for (a, app) in m.running.iter().enumerate() {
+            if let Some(p) = app.process {
+                entries[k] = WaitEntry {
+                    handle: p,
+                    signals: SIGNAL_EXITED,
+                };
+                owner[k] = (a, 3);
+                k += 1;
+            }
+        }
+        for (a, app) in m.running.iter().enumerate() {
+            if let Some(c) = app.chan {
+                entries[k] = WaitEntry {
+                    handle: c,
+                    signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+                };
+                owner[k] = (a, 4);
+                k += 1;
+            }
+        }
         let timeout = match m.next_deadline() {
             Some(d) => d.saturating_sub(now),
             None => TIMEOUT_FOREVER,
@@ -1117,7 +1281,9 @@ fn main() -> u64 {
                     (i, 1) => {
                         m.on_boot_channel(i, now);
                     }
-                    (i, _) => m.on_exit(i, now),
+                    (i, 2) => m.on_exit(i, now),
+                    (a, 3) => m.on_app_exit(a),
+                    (a, _) => m.on_app_channel(a),
                 }
             }
             Err(ERR_TIMED_OUT) => {}

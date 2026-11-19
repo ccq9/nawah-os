@@ -209,6 +209,7 @@ pub fn run() -> ! {
         "config_store_authz" => config_store_authz(),
         "config_subs" => config_subs(),
         "launch_denied" => launch_denied(),
+        "app_spawn" => app_spawn(),
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
@@ -5034,6 +5035,8 @@ struct SvcHarness {
     m: crate::services::Manager,
     obj0: object::Stats,
     frames0: u64,
+    /// The manager's handle count before `LOAD`: what the kernel handed it (WP-161).
+    handles0: i64,
     load_reply: String,
 }
 
@@ -5051,6 +5054,7 @@ impl SvcHarness {
                 fail("service manager did not start")
             }
         };
+        let handles0 = sched::handles_pid(m.pid).map_or(-1, |n| n as i64);
         let deadline = sched::ticks() + 500;
         let load_reply = match crate::services::request(
             &m.ctl,
@@ -5065,6 +5069,7 @@ impl SvcHarness {
             m,
             obj0,
             frames0,
+            handles0,
             load_reply,
         }
     }
@@ -5152,6 +5157,9 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         ),
         "launch_denied" => pass(
             "APPS and LAUNCH are for the vouched session and desktop, and the registry comes from the volume",
+        ),
+        "app_spawn" => pass(
+            "a launched application runs in a job of its own with its boot channel alone, is refused every request, and leaves nothing behind",
         ),
         "svc_watchdog" => pass(
             "the watchdog ends a hung service and gives it up, leaves a healthy one, kills one that closed its channel, forces one hung before READY after the grace, and STOP force-kills a stubborn one",
@@ -5265,6 +5273,95 @@ fn launch_denied() -> ! {
     }
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-APP-SPAWN (REQ-M6-004, services.md v1.15, ADR-0023 item 1; WP-161): `LAUNCH` from the
+/// vouched session starts a registered application in a job of its own under the root job,
+/// with its boot channel and nothing else. The lab manifest SVC-AS.TXT has one service, named
+/// `session`, whose role is the launcher: eight steps, the exit code saying which reply was not
+/// the stated one (0x40: none). When it has exited eight applications of the lab image stay,
+/// each waiting on its boot channel because all it asked there was refused, and holding that
+/// channel alone; an application that exited left nothing of its job behind, and the manager
+/// kept no handle of what failed or ended.
+fn app_spawn() -> ! {
+    let name = "app_spawn";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-AS.TXT");
+    let lines = h.poll_list(sched::ticks() + 25_000, |l| {
+        l.iter().any(|x| x.name == "session" && x.exit.is_some())
+    });
+    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    // The eight that stay have asked their requests once each waits without a deadline; the
+    // child the exited application left is ended with its job.
+    sched::poll_until(sched::ticks() + 5000, || {
+        let (apps, n) = sched::live_named(b"CLOCK.ELF");
+        n == 8 && apps[..n].iter().all(|a| a.waiting) && sched::live_named(b"IDLE.ELF").1 == 0
+    });
+    let (apps, n) = sched::live_named(b"CLOCK.ELF");
+    let apps = &apps[..n];
+    let count = |f: fn(&sched::LiveNamed) -> bool| apps.iter().filter(|a| f(a)).count();
+    let waiting = count(|a| a.waiting);
+    let handles: usize = apps.iter().map(|a| a.handles).sum();
+    let under_root = count(|a| a.under_root);
+    let jobs = (0..n)
+        .filter(|&i| apps[..i].iter().all(|b| b.job != apps[i].job))
+        .count();
+    let live_jobs = i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
+    let orphans = sched::live_named(b"IDLE.ELF").1;
+    let kept = mgr_handles(&h) - h.handles0;
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|app_spawn|load={}|session={:#x}|apps={}|waiting={}|handles={}|under_root={}|jobs={}|live_jobs={}|orphans={}|mgr_handles={}|",
+        BUILD_ID,
+        load,
+        session,
+        n,
+        waiting,
+        handles,
+        under_root,
+        jobs,
+        live_jobs,
+        orphans,
+        kept
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|app_spawn|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 1" {
+        fail("the lab manifest did not load")
+    }
+    if session != 0x40 {
+        fail("a LAUNCH of the vouched session was not answered as the contract states")
+    }
+    if n != 8 || waiting != 8 {
+        fail("an application was not refused every request on its boot channel")
+    }
+    if handles != 8 {
+        fail("an application holds more than its boot channel")
+    }
+    if under_root != 8 || jobs != 8 {
+        fail("an application is not in a job of its own under the root job")
+    }
+    if orphans != 0 {
+        fail("an application that exited left a process of its job behind")
+    }
+    if live_jobs != 8 {
+        fail("a job was left of a launch that failed or of an application that exited")
+    }
+    // Eight applications' process, channel and job, and nothing else since before LOAD: the
+    // launcher's own two handles went at its exit.
+    if kept != 24 {
+        fail("the manager kept a handle of a launch that failed or of an application that exited")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
     }
     drop((lines, load));
     svc_balance(name, frames0)
