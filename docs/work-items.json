@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013620Z-d5e3c594-002-a"
+    "evidence/20261119T032058Z-67b9d94d-002-a"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013620Z-d5e3c594-001-a"
+    "evidence/20261119T032058Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012424Z-d5e3c594-001-a",
-    "evidence/20261119T012427Z-d5e3c594-001-a"
+    "evidence/20261119T030855Z-67b9d94d-001-a",
+    "evidence/20261119T030858Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013620Z-d5e3c594-002-a"
+    "evidence/20261119T032058Z-67b9d94d-002-a"
    ],
    "blocker": null
   },
@@ -356,10 +356,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012429Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a",
-    "evidence/20261119T012503Z-d5e3c594-001-a",
-    "evidence/20261119T013638Z-d5e3c594-001-a"
+    "evidence/20261119T030900Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a",
+    "evidence/20261119T030935Z-67b9d94d-001-a",
+    "evidence/20261119T032116Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -429,17 +429,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012508Z-d5e3c594-001-a",
-    "evidence/20261119T012512Z-d5e3c594-001-a",
-    "evidence/20261119T012517Z-d5e3c594-001-a",
-    "evidence/20261119T012521Z-d5e3c594-001-a",
-    "evidence/20261119T012526Z-d5e3c594-001-a",
-    "evidence/20261119T012530Z-d5e3c594-001-a",
-    "evidence/20261119T012534Z-d5e3c594-001-a",
-    "evidence/20261119T012539Z-d5e3c594-001-a",
-    "evidence/20261119T012543Z-d5e3c594-001-a",
-    "evidence/20261119T012548Z-d5e3c594-001-a",
-    "evidence/20261119T012552Z-d5e3c594-001-a"
+    "evidence/20261119T030939Z-67b9d94d-001-a",
+    "evidence/20261119T030943Z-67b9d94d-001-a",
+    "evidence/20261119T030948Z-67b9d94d-001-a",
+    "evidence/20261119T030952Z-67b9d94d-001-a",
+    "evidence/20261119T030956Z-67b9d94d-001-a",
+    "evidence/20261119T031001Z-67b9d94d-001-a",
+    "evidence/20261119T031005Z-67b9d94d-001-a",
+    "evidence/20261119T031009Z-67b9d94d-001-a",
+    "evidence/20261119T031014Z-67b9d94d-001-a",
+    "evidence/20261119T031018Z-67b9d94d-001-a",
+    "evidence/20261119T031022Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -490,9 +490,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012556Z-d5e3c594-001-a",
-    "evidence/20261119T012601Z-d5e3c594-001-a",
-    "evidence/20261119T012605Z-d5e3c594-001-a"
+    "evidence/20261119T031027Z-67b9d94d-001-a",
+    "evidence/20261119T031031Z-67b9d94d-001-a",
+    "evidence/20261119T031036Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -555,11 +555,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012610Z-d5e3c594-001-a",
-    "evidence/20261119T012614Z-d5e3c594-001-a",
-    "evidence/20261119T012618Z-d5e3c594-001-a",
-    "evidence/20261119T012623Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031040Z-67b9d94d-001-a",
+    "evidence/20261119T031045Z-67b9d94d-001-a",
+    "evidence/20261119T031049Z-67b9d94d-001-a",
+    "evidence/20261119T031053Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -636,11 +636,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012627Z-d5e3c594-001-a",
-    "evidence/20261119T012632Z-d5e3c594-001-a",
-    "evidence/20261119T012636Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a",
-    "evidence/20261119T012548Z-d5e3c594-001-a"
+    "evidence/20261119T031058Z-67b9d94d-001-a",
+    "evidence/20261119T031102Z-67b9d94d-001-a",
+    "evidence/20261119T031106Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a",
+    "evidence/20261119T031018Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -704,9 +704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012640Z-d5e3c594-001-a",
-    "evidence/20261119T012645Z-d5e3c594-001-a",
-    "evidence/20261119T012649Z-d5e3c594-001-a"
+    "evidence/20261119T031111Z-67b9d94d-001-a",
+    "evidence/20261119T031115Z-67b9d94d-001-a",
+    "evidence/20261119T031120Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -818,11 +818,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012654Z-d5e3c594-001-a",
-    "evidence/20261119T012658Z-d5e3c594-001-a",
-    "evidence/20261119T012703Z-d5e3c594-001-a",
-    "evidence/20261119T012707Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031124Z-67b9d94d-001-a",
+    "evidence/20261119T031129Z-67b9d94d-001-a",
+    "evidence/20261119T031133Z-67b9d94d-001-a",
+    "evidence/20261119T031138Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -883,8 +883,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013612Z-d5e3c594-001-a",
-    "evidence/20261119T013613Z-d5e3c594-001-a"
+    "evidence/20261119T032050Z-67b9d94d-001-a",
+    "evidence/20261119T032051Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -950,11 +950,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012711Z-d5e3c594-001-a",
-    "evidence/20261119T012716Z-d5e3c594-001-a",
-    "evidence/20261119T012720Z-d5e3c594-001-a",
-    "evidence/20261119T012729Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031142Z-67b9d94d-001-a",
+    "evidence/20261119T031146Z-67b9d94d-001-a",
+    "evidence/20261119T031151Z-67b9d94d-001-a",
+    "evidence/20261119T031159Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1024,11 +1024,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012733Z-d5e3c594-001-a",
-    "evidence/20261119T012737Z-d5e3c594-001-a",
-    "evidence/20261119T012746Z-d5e3c594-001-a",
-    "evidence/20261119T012750Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031204Z-67b9d94d-001-a",
+    "evidence/20261119T031208Z-67b9d94d-001-a",
+    "evidence/20261119T031217Z-67b9d94d-001-a",
+    "evidence/20261119T031222Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1097,14 +1097,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012755Z-d5e3c594-001-a",
-    "evidence/20261119T012759Z-d5e3c594-001-a",
-    "evidence/20261119T012808Z-d5e3c594-001-a",
-    "evidence/20261119T012812Z-d5e3c594-001-a",
-    "evidence/20261119T012817Z-d5e3c594-001-a",
-    "evidence/20261119T012821Z-d5e3c594-001-a",
-    "evidence/20261119T012825Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031226Z-67b9d94d-001-a",
+    "evidence/20261119T031230Z-67b9d94d-001-a",
+    "evidence/20261119T031239Z-67b9d94d-001-a",
+    "evidence/20261119T031244Z-67b9d94d-001-a",
+    "evidence/20261119T031248Z-67b9d94d-001-a",
+    "evidence/20261119T031252Z-67b9d94d-001-a",
+    "evidence/20261119T031257Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1174,10 +1174,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012834Z-d5e3c594-001-a",
-    "evidence/20261119T012838Z-d5e3c594-001-a",
-    "evidence/20261119T012843Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031306Z-67b9d94d-001-a",
+    "evidence/20261119T031310Z-67b9d94d-001-a",
+    "evidence/20261119T031314Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1256,14 +1256,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012847Z-d5e3c594-001-a",
-    "evidence/20261119T012856Z-d5e3c594-001-a",
-    "evidence/20261119T012900Z-d5e3c594-001-a",
-    "evidence/20261119T012907Z-d5e3c594-001-a",
-    "evidence/20261119T012911Z-d5e3c594-001-a",
-    "evidence/20261119T012920Z-d5e3c594-001-a",
-    "evidence/20261119T013639Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031319Z-67b9d94d-001-a",
+    "evidence/20261119T031328Z-67b9d94d-001-a",
+    "evidence/20261119T031332Z-67b9d94d-001-a",
+    "evidence/20261119T031338Z-67b9d94d-001-a",
+    "evidence/20261119T031343Z-67b9d94d-001-a",
+    "evidence/20261119T031352Z-67b9d94d-001-a",
+    "evidence/20261119T032117Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1331,10 +1331,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013043Z-d5e3c594-001-a",
-    "evidence/20261119T013047Z-d5e3c594-001-a",
-    "evidence/20261119T013052Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031515Z-67b9d94d-001-a",
+    "evidence/20261119T031519Z-67b9d94d-001-a",
+    "evidence/20261119T031524Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1407,12 +1407,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013056Z-d5e3c594-001-a",
-    "evidence/20261119T013101Z-d5e3c594-001-a",
-    "evidence/20261119T013105Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a",
-    "evidence/20261119T012733Z-d5e3c594-001-a",
-    "evidence/20261119T012746Z-d5e3c594-001-a"
+    "evidence/20261119T031528Z-67b9d94d-001-a",
+    "evidence/20261119T031533Z-67b9d94d-001-a",
+    "evidence/20261119T031537Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a",
+    "evidence/20261119T031204Z-67b9d94d-001-a",
+    "evidence/20261119T031217Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1469,10 +1469,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012724Z-d5e3c594-001-a",
+    "evidence/20261119T031155Z-67b9d94d-001-a",
     "evidence/20261118T092531Z-48c4a57f-001",
-    "evidence/20261119T012742Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031213Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1542,9 +1542,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013110Z-d5e3c594-001-a",
-    "evidence/20261119T013114Z-d5e3c594-001-a",
-    "evidence/20261119T013119Z-d5e3c594-001-a"
+    "evidence/20261119T031542Z-67b9d94d-001-a",
+    "evidence/20261119T031546Z-67b9d94d-001-a",
+    "evidence/20261119T031551Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1609,10 +1609,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013123Z-d5e3c594-001-a",
-    "evidence/20261119T013128Z-d5e3c594-001-a",
-    "evidence/20261119T013132Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031555Z-67b9d94d-001-a",
+    "evidence/20261119T031600Z-67b9d94d-001-a",
+    "evidence/20261119T031604Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1685,10 +1685,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013703Z-d5e3c594-001-a",
-    "evidence/20261119T013142Z-d5e3c594-001-a",
-    "evidence/20261119T013146Z-d5e3c594-001-a",
-    "evidence/20261119T013154Z-d5e3c594-001-a"
+    "evidence/20261119T032142Z-67b9d94d-001-a",
+    "evidence/20261119T031614Z-67b9d94d-001-a",
+    "evidence/20261119T031618Z-67b9d94d-001-a",
+    "evidence/20261119T031626Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1748,12 +1748,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013159Z-d5e3c594-001-a",
-    "evidence/20261119T013233Z-d5e3c594-001-a",
-    "evidence/20261119T013203Z-d5e3c594-001-a",
-    "evidence/20261119T013208Z-d5e3c594-001-a",
-    "evidence/20261119T013218Z-d5e3c594-001-a",
-    "evidence/20261119T013228Z-d5e3c594-001-a"
+    "evidence/20261119T031631Z-67b9d94d-001-a",
+    "evidence/20261119T031706Z-67b9d94d-001-a",
+    "evidence/20261119T031636Z-67b9d94d-001-a",
+    "evidence/20261119T031641Z-67b9d94d-001-a",
+    "evidence/20261119T031651Z-67b9d94d-001-a",
+    "evidence/20261119T031701Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1835,10 +1835,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013240Z-d5e3c594-001-a",
-    "evidence/20261119T013245Z-d5e3c594-001-a",
-    "evidence/20261119T013249Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031713Z-67b9d94d-001-a",
+    "evidence/20261119T031718Z-67b9d94d-001-a",
+    "evidence/20261119T031722Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1898,10 +1898,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013255Z-d5e3c594-001-a",
-    "evidence/20261119T013300Z-d5e3c594-001-a",
-    "evidence/20261119T013305Z-d5e3c594-001-a",
-    "evidence/20261119T013310Z-d5e3c594-001-a"
+    "evidence/20261119T031728Z-67b9d94d-001-a",
+    "evidence/20261119T031733Z-67b9d94d-001-a",
+    "evidence/20261119T031738Z-67b9d94d-001-a",
+    "evidence/20261119T031743Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -1952,8 +1952,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013315Z-d5e3c594-001-a",
-    "evidence/20261119T013321Z-d5e3c594-001-a"
+    "evidence/20261119T031748Z-67b9d94d-001-a",
+    "evidence/20261119T031754Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -2036,10 +2036,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013332Z-d5e3c594-001-a",
-    "evidence/20261119T013338Z-d5e3c594-001-a",
-    "evidence/20261119T013709Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a"
+    "evidence/20261119T031805Z-67b9d94d-001-a",
+    "evidence/20261119T031811Z-67b9d94d-001-a",
+    "evidence/20261119T032147Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -2100,11 +2100,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013345Z-d5e3c594-001-a",
+    "evidence/20261119T031817Z-67b9d94d-001-a",
     "evidence/20261118T094615Z-48c4a57f-001",
-    "evidence/20261119T013332Z-d5e3c594-001-a",
-    "evidence/20261119T013154Z-d5e3c594-001-a",
-    "evidence/20261119T013114Z-d5e3c594-001-a"
+    "evidence/20261119T031805Z-67b9d94d-001-a",
+    "evidence/20261119T031626Z-67b9d94d-001-a",
+    "evidence/20261119T031546Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -2179,7 +2179,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012602Z-d5e3c594-001-b"
+    "evidence/20261119T031015Z-67b9d94d-001-b"
    ],
    "blocker": null
   },
@@ -2253,9 +2253,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012610Z-d5e3c594-001-b",
-    "evidence/20261119T012624Z-d5e3c594-001-b",
-    "evidence/20261119T013714Z-d5e3c594-001-a"
+    "evidence/20261119T031023Z-67b9d94d-001-b",
+    "evidence/20261119T031037Z-67b9d94d-001-b",
+    "evidence/20261119T032152Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -2328,10 +2328,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012631Z-d5e3c594-001-b",
-    "evidence/20261119T012639Z-d5e3c594-001-b",
-    "evidence/20261119T012653Z-d5e3c594-001-b",
-    "evidence/20261119T013830Z-d5e3c594-001-a"
+    "evidence/20261119T031044Z-67b9d94d-001-b",
+    "evidence/20261119T031053Z-67b9d94d-001-b",
+    "evidence/20261119T031107Z-67b9d94d-001-b",
+    "evidence/20261119T032308Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -2414,10 +2414,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013803Z-d5e3c594-001-a",
-    "evidence/20261119T013807Z-d5e3c594-001-a",
-    "evidence/20261119T013815Z-d5e3c594-001-a",
-    "evidence/20261119T012715Z-d5e3c594-001-b"
+    "evidence/20261119T032242Z-67b9d94d-001-a",
+    "evidence/20261119T032246Z-67b9d94d-001-a",
+    "evidence/20261119T032252Z-67b9d94d-001-a",
+    "evidence/20261119T031129Z-67b9d94d-001-b"
    ],
    "blocker": null
   },
@@ -2488,10 +2488,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012726Z-d5e3c594-001-b",
-    "evidence/20261119T012746Z-d5e3c594-001-b",
-    "evidence/20261119T013817Z-d5e3c594-001-a",
-    "evidence/20261119T013829Z-d5e3c594-001-a"
+    "evidence/20261119T031140Z-67b9d94d-001-b",
+    "evidence/20261119T031200Z-67b9d94d-001-b",
+    "evidence/20261119T032255Z-67b9d94d-001-a",
+    "evidence/20261119T032307Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -2582,9 +2582,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012846Z-d5e3c594-001-b",
-    "evidence/20261119T012820Z-d5e3c594-001-b",
-    "evidence/20261119T012754Z-d5e3c594-001-b"
+    "evidence/20261119T031300Z-67b9d94d-001-b",
+    "evidence/20261119T031235Z-67b9d94d-001-b",
+    "evidence/20261119T031208Z-67b9d94d-001-b"
    ],
    "blocker": null
   },
@@ -2651,9 +2651,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013601Z-d5e3c594-001-b",
-    "evidence/20261119T013610Z-d5e3c594-001-b",
-    "evidence/20261119T013817Z-d5e3c594-001-a"
+    "evidence/20261119T032015Z-67b9d94d-001-b",
+    "evidence/20261119T032024Z-67b9d94d-001-b",
+    "evidence/20261119T032255Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -2708,14 +2708,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013627Z-d5e3c594-001-b",
-    "evidence/20261119T013631Z-d5e3c594-001-b",
-    "evidence/20261119T013636Z-d5e3c594-001-b",
-    "evidence/20261119T013051Z-d5e3c594-001-b",
-    "evidence/20261119T013546Z-d5e3c594-001-b",
-    "evidence/20261119T013118Z-d5e3c594-001-b",
-    "evidence/20261119T013145Z-d5e3c594-001-b",
-    "evidence/20261119T013214Z-d5e3c594-001-b",
+    "evidence/20261119T032040Z-67b9d94d-001-b",
+    "evidence/20261119T032045Z-67b9d94d-001-b",
+    "evidence/20261119T032049Z-67b9d94d-001-b",
+    "evidence/20261119T031505Z-67b9d94d-001-b",
+    "evidence/20261119T032000Z-67b9d94d-001-b",
+    "evidence/20261119T031532Z-67b9d94d-001-b",
+    "evidence/20261119T031559Z-67b9d94d-001-b",
+    "evidence/20261119T031629Z-67b9d94d-001-b",
     "evidence/20261118T094615Z-48c4a57f-001"
    ],
    "blocker": null
@@ -2757,7 +2757,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013315Z-d5e3c594-001-b"
+    "evidence/20261119T031729Z-67b9d94d-001-b"
    ],
    "blocker": null
   },
@@ -2805,15 +2805,15 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012602Z-d5e3c594-001-b",
-    "evidence/20261119T012631Z-d5e3c594-001-b",
-    "evidence/20261119T012639Z-d5e3c594-001-b",
-    "evidence/20261119T012653Z-d5e3c594-001-b",
-    "evidence/20261119T012705Z-d5e3c594-001-b",
-    "evidence/20261119T013601Z-d5e3c594-001-b",
-    "evidence/20261119T013610Z-d5e3c594-001-b",
-    "evidence/20261119T013817Z-d5e3c594-001-a",
-    "evidence/20261119T013830Z-d5e3c594-001-a"
+    "evidence/20261119T031015Z-67b9d94d-001-b",
+    "evidence/20261119T031044Z-67b9d94d-001-b",
+    "evidence/20261119T031053Z-67b9d94d-001-b",
+    "evidence/20261119T031107Z-67b9d94d-001-b",
+    "evidence/20261119T031119Z-67b9d94d-001-b",
+    "evidence/20261119T032015Z-67b9d94d-001-b",
+    "evidence/20261119T032024Z-67b9d94d-001-b",
+    "evidence/20261119T032255Z-67b9d94d-001-a",
+    "evidence/20261119T032308Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -2832,23 +2832,23 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013256Z-d5e3c594-001-b",
-    "evidence/20261119T012653Z-d5e3c594-001-b",
-    "evidence/20261119T012820Z-d5e3c594-001-b",
-    "evidence/20261119T012846Z-d5e3c594-001-b",
-    "evidence/20261119T013051Z-d5e3c594-001-b",
-    "evidence/20261119T013807Z-d5e3c594-001-a",
-    "evidence/20261119T013601Z-d5e3c594-001-b",
-    "evidence/20261119T012610Z-d5e3c594-001-b",
-    "evidence/20261119T012705Z-d5e3c594-001-b",
-    "evidence/20261119T013636Z-d5e3c594-001-b",
-    "evidence/20261119T012647Z-d5e3c594-001-b",
-    "evidence/20261119T013033Z-d5e3c594-001-b",
-    "evidence/20261119T013006Z-d5e3c594-001-b",
-    "evidence/20261119T012930Z-d5e3c594-001-b",
-    "evidence/20261119T012619Z-d5e3c594-001-b",
-    "evidence/20261119T012914Z-d5e3c594-001-b",
-    "evidence/20261119T012710Z-d5e3c594-001-b"
+    "evidence/20261119T031711Z-67b9d94d-001-b",
+    "evidence/20261119T031107Z-67b9d94d-001-b",
+    "evidence/20261119T031235Z-67b9d94d-001-b",
+    "evidence/20261119T031300Z-67b9d94d-001-b",
+    "evidence/20261119T031505Z-67b9d94d-001-b",
+    "evidence/20261119T032246Z-67b9d94d-001-a",
+    "evidence/20261119T032015Z-67b9d94d-001-b",
+    "evidence/20261119T031023Z-67b9d94d-001-b",
+    "evidence/20261119T031119Z-67b9d94d-001-b",
+    "evidence/20261119T032049Z-67b9d94d-001-b",
+    "evidence/20261119T031101Z-67b9d94d-001-b",
+    "evidence/20261119T031448Z-67b9d94d-001-b",
+    "evidence/20261119T031420Z-67b9d94d-001-b",
+    "evidence/20261119T031344Z-67b9d94d-001-b",
+    "evidence/20261119T031032Z-67b9d94d-001-b",
+    "evidence/20261119T031328Z-67b9d94d-001-b",
+    "evidence/20261119T031124Z-67b9d94d-001-b"
    ],
    "blocker": null,
    "id": "WP-43",
@@ -2923,9 +2923,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013252Z-d5e3c594-001-b",
-    "evidence/20261119T012820Z-d5e3c594-001-b",
-    "evidence/20261119T013332Z-d5e3c594-001-a"
+    "evidence/20261119T031706Z-67b9d94d-001-b",
+    "evidence/20261119T031235Z-67b9d94d-001-b",
+    "evidence/20261119T031805Z-67b9d94d-001-a"
    ],
    "blocker": null,
    "id": "WP-44",
@@ -3080,14 +3080,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013349Z-d5e3c594-001-a",
-    "evidence/20261119T013830Z-d5e3c594-002-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a",
-    "evidence/20261119T012503Z-d5e3c594-001-a",
-    "evidence/20261119T013638Z-d5e3c594-001-a",
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T013629Z-d5e3c594-001-a",
-    "evidence/20261119T013714Z-d5e3c594-001-a"
+    "evidence/20261119T031822Z-67b9d94d-001-a",
+    "evidence/20261119T032308Z-67b9d94d-002-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a",
+    "evidence/20261119T030935Z-67b9d94d-001-a",
+    "evidence/20261119T032116Z-67b9d94d-001-a",
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T032107Z-67b9d94d-001-a",
+    "evidence/20261119T032152Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -3179,12 +3179,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013602Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a",
-    "evidence/20261119T013123Z-d5e3c594-001-a",
-    "evidence/20261119T013128Z-d5e3c594-001-a",
-    "evidence/20261119T013132Z-d5e3c594-001-a",
-    "evidence/20261119T012610Z-d5e3c594-001-b"
+    "evidence/20261119T032035Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a",
+    "evidence/20261119T031555Z-67b9d94d-001-a",
+    "evidence/20261119T031600Z-67b9d94d-001-a",
+    "evidence/20261119T031604Z-67b9d94d-001-a",
+    "evidence/20261119T031023Z-67b9d94d-001-b"
    ],
    "blocker": null
   },
@@ -3377,10 +3377,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013831Z-d5e3c594-001-a",
-    "evidence/20261119T013817Z-d5e3c594-001-a",
-    "evidence/20261119T012726Z-d5e3c594-001-b",
-    "evidence/20261119T013610Z-d5e3c594-001-b"
+    "evidence/20261119T032309Z-67b9d94d-001-a",
+    "evidence/20261119T032255Z-67b9d94d-001-a",
+    "evidence/20261119T031140Z-67b9d94d-001-b",
+    "evidence/20261119T032024Z-67b9d94d-001-b"
    ],
    "blocker": null
   },
@@ -3451,7 +3451,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013832Z-d5e3c594-001-a"
+    "evidence/20261119T032310Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -4177,16 +4177,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012930Z-d5e3c594-001-b",
-    "evidence/20261119T013557Z-d5e3c594-001-a",
-    "evidence/20261119T013349Z-d5e3c594-001-a",
-    "evidence/20261119T013523Z-d5e3c594-001-a",
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T012754Z-d5e3c594-001-b",
-    "evidence/20261119T012846Z-d5e3c594-001-b",
-    "evidence/20261119T013051Z-d5e3c594-001-b",
-    "evidence/20261119T013214Z-d5e3c594-001-b",
-    "evidence/20261119T013636Z-d5e3c594-001-b"
+    "evidence/20261119T031344Z-67b9d94d-001-b",
+    "evidence/20261119T032030Z-67b9d94d-001-a",
+    "evidence/20261119T031822Z-67b9d94d-001-a",
+    "evidence/20261119T031956Z-67b9d94d-001-a",
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T031208Z-67b9d94d-001-b",
+    "evidence/20261119T031300Z-67b9d94d-001-b",
+    "evidence/20261119T031505Z-67b9d94d-001-b",
+    "evidence/20261119T031629Z-67b9d94d-001-b",
+    "evidence/20261119T032049Z-67b9d94d-001-b"
    ],
    "blocker": null
   },
@@ -4247,10 +4247,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013620Z-d5e3c594-001-a",
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T013629Z-d5e3c594-001-a",
-    "evidence/20261119T013635Z-d5e3c594-001-a"
+    "evidence/20261119T032058Z-67b9d94d-001-a",
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T032107Z-67b9d94d-001-a",
+    "evidence/20261119T032113Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -4327,14 +4327,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013523Z-d5e3c594-001-a",
-    "evidence/20261119T012631Z-d5e3c594-001-b",
-    "evidence/20261119T012639Z-d5e3c594-001-b",
-    "evidence/20261119T012726Z-d5e3c594-001-b",
-    "evidence/20261119T013601Z-d5e3c594-001-b",
-    "evidence/20261119T013349Z-d5e3c594-001-a",
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T013629Z-d5e3c594-001-a"
+    "evidence/20261119T031956Z-67b9d94d-001-a",
+    "evidence/20261119T031044Z-67b9d94d-001-b",
+    "evidence/20261119T031053Z-67b9d94d-001-b",
+    "evidence/20261119T031140Z-67b9d94d-001-b",
+    "evidence/20261119T032015Z-67b9d94d-001-b",
+    "evidence/20261119T031822Z-67b9d94d-001-a",
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T032107Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -4409,11 +4409,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013533Z-d5e3c594-001-a",
-    "evidence/20261119T013538Z-d5e3c594-001-a",
-    "evidence/20261119T013830Z-d5e3c594-002-a",
-    "evidence/20261119T013349Z-d5e3c594-001-a",
-    "evidence/20261119T013123Z-d5e3c594-001-a"
+    "evidence/20261119T032006Z-67b9d94d-001-a",
+    "evidence/20261119T032011Z-67b9d94d-001-a",
+    "evidence/20261119T032308Z-67b9d94d-002-a",
+    "evidence/20261119T031822Z-67b9d94d-001-a",
+    "evidence/20261119T031555Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -4712,10 +4712,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013542Z-d5e3c594-001-a",
-    "evidence/20261119T013154Z-d5e3c594-001-a",
-    "evidence/20261119T013146Z-d5e3c594-001-a",
-    "evidence/20261119T013315Z-d5e3c594-001-b"
+    "evidence/20261119T032015Z-67b9d94d-001-a",
+    "evidence/20261119T031626Z-67b9d94d-001-a",
+    "evidence/20261119T031618Z-67b9d94d-001-a",
+    "evidence/20261119T031729Z-67b9d94d-001-b"
    ],
    "blocker": null
   },
@@ -4767,8 +4767,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T013620Z-d5e3c594-001-a"
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T032058Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -4935,9 +4935,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013528Z-d5e3c594-001-a",
-    "evidence/20261119T013349Z-d5e3c594-001-a",
-    "evidence/20261119T013523Z-d5e3c594-001-a"
+    "evidence/20261119T032001Z-67b9d94d-001-a",
+    "evidence/20261119T031822Z-67b9d94d-001-a",
+    "evidence/20261119T031956Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -5014,9 +5014,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013607Z-d5e3c594-001-a",
-    "evidence/20261119T013233Z-d5e3c594-001-a",
-    "evidence/20261119T013252Z-d5e3c594-001-b"
+    "evidence/20261119T032040Z-67b9d94d-001-a",
+    "evidence/20261119T031706Z-67b9d94d-001-a",
+    "evidence/20261119T031706Z-67b9d94d-001-b"
    ],
    "blocker": null
   },
@@ -5130,8 +5130,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013831Z-d5e3c594-002-a",
-    "evidence/20261119T013831Z-d5e3c594-001-a"
+    "evidence/20261119T032309Z-67b9d94d-002-a",
+    "evidence/20261119T032309Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -5194,9 +5194,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013620Z-d5e3c594-001-a",
-    "evidence/20261119T013635Z-d5e3c594-001-a",
-    "evidence/20261119T013621Z-d5e3c594-001-a"
+    "evidence/20261119T032058Z-67b9d94d-001-a",
+    "evidence/20261119T032113Z-67b9d94d-001-a",
+    "evidence/20261119T032059Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -5275,10 +5275,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013349Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a",
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T013714Z-d5e3c594-001-a"
+    "evidence/20261119T031822Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a",
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T032152Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -5353,9 +5353,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013620Z-d5e3c594-001-a",
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T013635Z-d5e3c594-001-a"
+    "evidence/20261119T032058Z-67b9d94d-001-a",
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T032113Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -5437,10 +5437,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013439Z-d5e3c594-001-a",
-    "evidence/20261119T013349Z-d5e3c594-001-a",
-    "evidence/20261119T012459Z-d5e3c594-001-a",
-    "evidence/20261119T013714Z-d5e3c594-001-a"
+    "evidence/20261119T031912Z-67b9d94d-001-a",
+    "evidence/20261119T031822Z-67b9d94d-001-a",
+    "evidence/20261119T030930Z-67b9d94d-001-a",
+    "evidence/20261119T032152Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -5646,9 +5646,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T013620Z-d5e3c594-001-a",
-    "evidence/20261119T013635Z-d5e3c594-001-a"
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T032058Z-67b9d94d-001-a",
+    "evidence/20261119T032113Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -5765,7 +5765,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -5812,7 +5812,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013621Z-d5e3c594-001-a"
+    "evidence/20261119T032059Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -5871,7 +5871,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013620Z-d5e3c594-001-a"
+    "evidence/20261119T032058Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -5976,7 +5976,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013817Z-d5e3c594-001-a"
+    "evidence/20261119T032255Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -6045,13 +6045,13 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013621Z-d5e3c594-001-a",
+    "evidence/20261119T032059Z-67b9d94d-001-a",
     "evidence/20261118T085706Z-48c4a57f-001",
     "evidence/20261118T092531Z-48c4a57f-001",
     "evidence/20261118T094615Z-48c4a57f-001",
     "evidence/20261118T101348Z-48c4a57f-001",
-    "evidence/20261119T013629Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T032107Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -6113,9 +6113,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T013620Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T032058Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -6188,9 +6188,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013601Z-d5e3c594-001-b",
-    "evidence/20261119T013038Z-d5e3c594-001-b",
-    "evidence/20261119T013044Z-d5e3c594-001-b"
+    "evidence/20261119T032015Z-67b9d94d-001-b",
+    "evidence/20261119T031453Z-67b9d94d-001-b",
+    "evidence/20261119T031459Z-67b9d94d-001-b"
    ],
    "blocker": null
   },
@@ -6252,8 +6252,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013629Z-d5e3c594-001-a",
-    "evidence/20261119T013635Z-d5e3c594-001-a"
+    "evidence/20261119T032107Z-67b9d94d-001-a",
+    "evidence/20261119T032113Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -6329,8 +6329,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013439Z-d5e3c594-001-a",
-    "evidence/20261119T013518Z-d5e3c594-001-a"
+    "evidence/20261119T031912Z-67b9d94d-001-a",
+    "evidence/20261119T031951Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -6407,7 +6407,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013832Z-d5e3c594-002-a"
+    "evidence/20261119T032310Z-67b9d94d-002-a"
    ],
    "blocker": null
   },
@@ -6472,7 +6472,9 @@
     "2026-11-19 the work (the manager, inline; scratch runs, no CI evidence). Test first: TST-M6-LAUNCH-DENIED (launch_denied; lab manifest svc-ld.txt with five services of the lab image, one named session and one desktop; lab role `ask <request>=<expected>[;...]`, whose exit code is 0x40 when every reply was the expected one, 0x50 + k when the k-th was another and 0x60 + k when the k-th got none within 1500 ticks) pins `load=OK 5|session_apps=0x40|desktop_launch=0x40|plain_launch=0x40|plain_apps=0x40|unknown=0x40`, clean exit, frames_delta=0; on the manager as it was it FAILED, exit 37, all five 0x61 (no request got a reply) and 'a plain service's LAUNCH or APPS was not refused ERR ACCESS by the manager'; with the change PASS. The change: tools/project.py prepare_disk puts platform/pc-qemu/apps/*.APP under /SYSTEM/APPS; the manager (user/apps/svcmgr/src/main.rs, now depending on nawah-apps) lists that directory after a successful LOAD, reads each *.APP and keeps the ids the WP-100 parser accepts (load_apps); APPS and LAUNCH on a service's boot channel (apps_request) for the services named session and desktop alone; an unknown request answered ERR BAD_REQUEST. M342 (SECURITY: the requester check dropped), M343 (the reply to an unknown request dropped) and M344 (desktop not vouched), their expectations pinned by TST-M0-005 (95 cases; the case seen failing before they were registered: 'M342 is registered'). services.md v1.14; ADR-0023's status sentence no longer waits for the owner's record (DEC-005 confirmed 2026-11-15). The M6 guest step's worst case is 1007 s of the cap's 1080 (the case's 30 s): the cap did not need to rise, .github/workflows/verify.yml is not touched",
     "2026-11-19 the review round (auditor and red team in parallel, read-only): no blocker. Confirmed by the auditor by reading: the requester is the service whose boot channel the request came on, named by the manifest alone, and the check comes before the registry is consulted; load_apps reads what files.md's listing gives (`F <size> <NAME>`), skips directories and other names, bounds its path, reads at most one byte more than an entry may have and leaves a refused entry out; the registry is read once, before the services start, and a second LOAD is ERR LOADED; no real service writes an unknown request on its boot channel (READY, PONG, LIST and CONNECT alone), `ticker` is not run by the manager and `loud` was answered ERR BAD_REQUEST before; the lab role and the case's line; the anchors and fields of M342 to M344; no case pins what the two sample files change on the disk; 95 test functions; clean room. Red team: the vouching by the manifest's name is sound today (the kernel loads SERVICES.TXT or SELFTEST.TXT alone, LOAD is accepted once, a restart keeps the line's name, no service spawns a process, and `session` and `desktop` are reserved ids, so no application can carry them; no line is named desktop on the release image: a reservation); nothing can write under /SYSTEM/APPS at run time (the kernel's file authority admits config's two-component store names alone, and unlink passes the same check), so a hostile directory is the build's alone: more than sixteen entries, a wrong file name, a directory named like an entry and a listing that does not fit all end in fewer applications, never more. Fixed in the round, test first: (1) red team: `a refused entry is left out` had no test on the guest, and taking the parser's file-name check away survived: the case's disk now carries a lab entry ZED.APP whose id is `other`, the session's APPS must still answer `OK clock notes`, with M345; (2) both: the contract said ERR ACCESS comes 'before the request is looked at', which holds for the two literal forms alone: it now says so, and that every other form is an unknown request for any service; APPS's longest reply (146 bytes) is stated; (3) auditor: ADR-0023's sentence said the owner confirmed DEC-005's answer; the record says the manager chose option 1 on the owner's instruction 'choose the best': corrected; (4) auditor: this item's and WP-47's older lines still promised v1.14 the job, the identity and the rate limit: dated lines say they moved to WP-161 and WP-162; those two now have planned tests of their own (TST-M6-APP-SPAWN, TST-M6-APP-CONNECT-DENIED), so the refusal of an undeclared CONNECT, taken out of this case's oracle, stays a planned condition. To docs/LATER.md: L-079 to L-083; WP-161 has the round's list of what the launch must keep",
     "2026-11-19 local runs on the tree (scratch, no CI evidence), every guest suite because the disk, the manager and the lab image changed: M1 (2 cases), M2 (24), M3 (53), M5 (35) and M6 (12, the new case with its lab entry among them, run again on the final tree) PASS; M4: 30 of its 31 cases PASS, TST-M4-NET-NO-INTERNET FAILED on this container's network (the off-link probe was answered here; the case passed on CI in run 44435733829): CI judges it; host suites M0 (TST-M0-005: 95 cases) and M6 PASS; the real harness in a scratch clone of the tree: M342 to M345 4/4 killed, each by its declared evidence (expected_missed empty), and the 78 tooling mutants 78/78 killed",
-    "2026-11-19 (the manager, on the auditor's correction): this item's older lines above name for services.md v1.14 the root job handle, the applications table, the identity app:<id>#<n>, the allow-list, the rate limit and the mutants M140 and M142: after the split they belong to WP-161 and WP-162, in versions numbered when each lands; v1.14 is what the split line says"
+    "2026-11-19 (the manager, on the auditor's correction): this item's older lines above name for services.md v1.14 the root job handle, the applications table, the identity app:<id>#<n>, the allow-list, the rate limit and the mutants M140 and M142: after the split they belong to WP-161 and WP-162, in versions numbered when each lands; v1.14 is what the split line says",
+    "2026-11-19 CI record: verify run 44448566575 on 61bff885, run attempt 1, green; 185 runs imported, none failing; validate-records --strict 0 errors. TST-M6-LAUNCH-DENIED PASS (evidence/20261119T032045Z-67b9d94d-001-a): its line is the pinned one, `ktest|launch_denied|load=OK 5|session_apps=0x40|desktop_launch=0x40|plain_launch=0x40|plain_apps=0x40|unknown=0x40`, on a disk that carries the lab entry ZED.APP, then the clean exit, frames_delta=0 and the pass line; no failure and no panic line. TST-M6-MUTANTS PASS (evidence/20261119T032046Z-67b9d94d-001-g: 192 of 192 valid mutants killed, no surviving SECURITY mutant, no expectation missed); M342 (SECURITY), M343, M344 and M345 each killed by the case with exit 37, its declared fields and the kernel's own message, kept by the gate. TST-M0-005 PASS with 95 cases (evidence/20261119T032107Z-67b9d94d-001-a)",
+    "2026-11-19 close under the method's close rule (section 7, rule 3): every clause of this part shown on CI on the case's written requests: LAUNCH and APPS from a plain service are refused ERR ACCESS by the manager; APPS from the vouched session lists the registry read from /SYSTEM/APPS, without an entry whose file is not its id's; the vouched desktop's LAUNCH is answered ERR UNKNOWN or ERR UNSUPPORTED; an unknown request is answered ERR BAD_REQUEST; services.md v1.14 states it; the SECURITY mutant on the requester check killed. 'Fails before the change' rests on the scratch red of this date (no request was answered) and, on CI, on M342's and M343's kills. Not shown: anything launched (WP-161); an application's CONNECT (WP-162); LAUNCH from session and APPS from desktop, a repeated READY (L-083); the registry's error paths on the guest (L-079); the tie of the two vouched names to their images (L-082)"
    ],
    "acceptance": "TST-M6-LAUNCH-DENIED PASS on CI (LAUNCH and APPS from a plain service refused ERR ACCESS by the manager; APPS from the vouched session lists the registry read from /SYSTEM/APPS); services.md v1.14 states APPS, LAUNCH's requester and the registry on the volume; the SECURITY mutant on the requester check killed by the M6 gate",
    "test_ids": [
@@ -6485,12 +6487,17 @@
     "python3 tools/project.py test --target host --suite M6-GATE",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261119T032045Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g",
+    "evidence/20261119T032107Z-67b9d94d-001-a"
+   ],
    "blocker": null
   },
   {
@@ -6656,9 +6663,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012852Z-d5e3c594-001-a",
-    "evidence/20261119T012847Z-d5e3c594-001-a",
-    "evidence/20261119T012900Z-d5e3c594-001-a"
+    "evidence/20261119T031323Z-67b9d94d-001-a",
+    "evidence/20261119T031319Z-67b9d94d-001-a",
+    "evidence/20261119T031332Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -6737,12 +6744,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012932Z-d5e3c594-001-a",
-    "evidence/20261119T012926Z-d5e3c594-001-a",
-    "evidence/20261119T012911Z-d5e3c594-001-a",
-    "evidence/20261119T012915Z-d5e3c594-001-a",
-    "evidence/20261119T012920Z-d5e3c594-001-a",
-    "evidence/20261119T013639Z-d5e3c594-001-a"
+    "evidence/20261119T031404Z-67b9d94d-001-a",
+    "evidence/20261119T031358Z-67b9d94d-001-a",
+    "evidence/20261119T031343Z-67b9d94d-001-a",
+    "evidence/20261119T031347Z-67b9d94d-001-a",
+    "evidence/20261119T031352Z-67b9d94d-001-a",
+    "evidence/20261119T032117Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -6825,10 +6832,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013034Z-d5e3c594-001-a",
-    "evidence/20261119T012907Z-d5e3c594-001-a",
-    "evidence/20261119T013639Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031506Z-67b9d94d-001-a",
+    "evidence/20261119T031338Z-67b9d94d-001-a",
+    "evidence/20261119T032117Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -6901,9 +6908,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013208Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g",
-    "evidence/20261119T013629Z-d5e3c594-001-a"
+    "evidence/20261119T031641Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g",
+    "evidence/20261119T032107Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -6978,12 +6985,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013305Z-d5e3c594-001-a",
-    "evidence/20261119T013315Z-d5e3c594-001-a",
-    "evidence/20261119T013327Z-d5e3c594-001-a",
-    "evidence/20261119T013321Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g",
-    "evidence/20261119T013629Z-d5e3c594-001-a"
+    "evidence/20261119T031738Z-67b9d94d-001-a",
+    "evidence/20261119T031748Z-67b9d94d-001-a",
+    "evidence/20261119T031800Z-67b9d94d-001-a",
+    "evidence/20261119T031754Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g",
+    "evidence/20261119T032107Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -7476,12 +7483,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012852Z-d5e3c594-001-a",
-    "evidence/20261119T012920Z-d5e3c594-001-a",
-    "evidence/20261119T012926Z-d5e3c594-001-a",
-    "evidence/20261119T012932Z-d5e3c594-001-a",
-    "evidence/20261119T013027Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031323Z-67b9d94d-001-a",
+    "evidence/20261119T031352Z-67b9d94d-001-a",
+    "evidence/20261119T031358Z-67b9d94d-001-a",
+    "evidence/20261119T031404Z-67b9d94d-001-a",
+    "evidence/20261119T031500Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -7555,14 +7562,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012952Z-d5e3c594-001-a",
-    "evidence/20261119T012911Z-d5e3c594-001-a",
-    "evidence/20261119T012915Z-d5e3c594-001-a",
-    "evidence/20261119T012920Z-d5e3c594-001-a",
-    "evidence/20261119T012926Z-d5e3c594-001-a",
-    "evidence/20261119T012932Z-d5e3c594-001-a",
-    "evidence/20261119T013639Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031423Z-67b9d94d-001-a",
+    "evidence/20261119T031343Z-67b9d94d-001-a",
+    "evidence/20261119T031347Z-67b9d94d-001-a",
+    "evidence/20261119T031352Z-67b9d94d-001-a",
+    "evidence/20261119T031358Z-67b9d94d-001-a",
+    "evidence/20261119T031404Z-67b9d94d-001-a",
+    "evidence/20261119T032117Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -7670,11 +7677,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012952Z-d5e3c594-001-a",
-    "evidence/20261119T012926Z-d5e3c594-001-a",
-    "evidence/20261119T012932Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g",
-    "evidence/20261119T013023Z-d5e3c594-001-a"
+    "evidence/20261119T031423Z-67b9d94d-001-a",
+    "evidence/20261119T031358Z-67b9d94d-001-a",
+    "evidence/20261119T031404Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g",
+    "evidence/20261119T031455Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -7743,10 +7750,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013023Z-d5e3c594-001-a",
-    "evidence/20261119T012952Z-d5e3c594-001-a",
-    "evidence/20261119T012911Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031455Z-67b9d94d-001-a",
+    "evidence/20261119T031423Z-67b9d94d-001-a",
+    "evidence/20261119T031343Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -7945,12 +7952,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012945Z-d5e3c594-001-a",
-    "evidence/20261119T012939Z-d5e3c594-001-a",
-    "evidence/20261119T012952Z-d5e3c594-001-a",
-    "evidence/20261119T012926Z-d5e3c594-001-a",
-    "evidence/20261119T012932Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031417Z-67b9d94d-001-a",
+    "evidence/20261119T031411Z-67b9d94d-001-a",
+    "evidence/20261119T031423Z-67b9d94d-001-a",
+    "evidence/20261119T031358Z-67b9d94d-001-a",
+    "evidence/20261119T031404Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -8013,9 +8020,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012958Z-d5e3c594-001-a",
-    "evidence/20261119T012952Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031430Z-67b9d94d-001-a",
+    "evidence/20261119T031423Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -8140,9 +8147,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013005Z-d5e3c594-001-a",
-    "evidence/20261119T012952Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031437Z-67b9d94d-001-a",
+    "evidence/20261119T031423Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -8211,10 +8218,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013011Z-d5e3c594-001-a",
-    "evidence/20261119T013005Z-d5e3c594-001-a",
-    "evidence/20261119T012939Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031444Z-67b9d94d-001-a",
+    "evidence/20261119T031437Z-67b9d94d-001-a",
+    "evidence/20261119T031411Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -8454,10 +8461,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013005Z-d5e3c594-001-a",
-    "evidence/20261119T013011Z-d5e3c594-001-a",
-    "evidence/20261119T013018Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031437Z-67b9d94d-001-a",
+    "evidence/20261119T031444Z-67b9d94d-001-a",
+    "evidence/20261119T031450Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -8679,12 +8686,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013639Z-d5e3c594-001-a",
-    "evidence/20261119T012952Z-d5e3c594-001-a",
-    "evidence/20261119T012926Z-d5e3c594-001-a",
-    "evidence/20261119T012932Z-d5e3c594-001-a",
-    "evidence/20261119T013027Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T032117Z-67b9d94d-001-a",
+    "evidence/20261119T031423Z-67b9d94d-001-a",
+    "evidence/20261119T031358Z-67b9d94d-001-a",
+    "evidence/20261119T031404Z-67b9d94d-001-a",
+    "evidence/20261119T031500Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -8758,12 +8765,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013639Z-d5e3c594-001-a",
-    "evidence/20261119T012952Z-d5e3c594-001-a",
-    "evidence/20261119T012926Z-d5e3c594-001-a",
-    "evidence/20261119T012932Z-d5e3c594-001-a",
-    "evidence/20261119T013027Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T032117Z-67b9d94d-001-a",
+    "evidence/20261119T031423Z-67b9d94d-001-a",
+    "evidence/20261119T031358Z-67b9d94d-001-a",
+    "evidence/20261119T031404Z-67b9d94d-001-a",
+    "evidence/20261119T031500Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -8953,8 +8960,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013629Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T032107Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -9206,9 +9213,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013038Z-d5e3c594-001-a",
-    "evidence/20261119T012907Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031510Z-67b9d94d-001-a",
+    "evidence/20261119T031338Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null,
    "id": "WP-147",
@@ -9335,9 +9342,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T012803Z-d5e3c594-001-a",
-    "evidence/20261119T012759Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T031235Z-67b9d94d-001-a",
+    "evidence/20261119T031230Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null,
    "id": "WP-149",
@@ -9502,7 +9509,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013635Z-d5e3c594-001-a"
+    "evidence/20261119T032113Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -9565,10 +9572,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g",
-    "evidence/20261119T013629Z-d5e3c594-001-a",
-    "evidence/20261119T013635Z-d5e3c594-001-a"
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g",
+    "evidence/20261119T032107Z-67b9d94d-001-a",
+    "evidence/20261119T032113Z-67b9d94d-001-a"
    ],
    "blocker": null
   },
@@ -9625,9 +9632,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013621Z-d5e3c594-001-a",
-    "evidence/20261119T013629Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g"
+    "evidence/20261119T032059Z-67b9d94d-001-a",
+    "evidence/20261119T032107Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g"
    ],
    "blocker": null
   },
@@ -9733,10 +9740,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013132Z-d5e3c594-001-a",
-    "evidence/20261119T013137Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g",
-    "evidence/20261119T013629Z-d5e3c594-001-a"
+    "evidence/20261119T031604Z-67b9d94d-001-a",
+    "evidence/20261119T031609Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g",
+    "evidence/20261119T032107Z-67b9d94d-001-a"
    ],
    "blocker": null,
    "id": "WP-156",
@@ -9802,11 +9809,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013208Z-d5e3c594-001-a",
-    "evidence/20261119T013213Z-d5e3c594-001-a",
-    "evidence/20261119T013159Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g",
-    "evidence/20261119T013629Z-d5e3c594-001-a"
+    "evidence/20261119T031641Z-67b9d94d-001-a",
+    "evidence/20261119T031646Z-67b9d94d-001-a",
+    "evidence/20261119T031631Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g",
+    "evidence/20261119T032107Z-67b9d94d-001-a"
    ],
    "blocker": null,
    "id": "WP-157",
@@ -9900,12 +9907,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261119T013218Z-d5e3c594-001-a",
-    "evidence/20261119T013223Z-d5e3c594-001-a",
-    "evidence/20261119T013213Z-d5e3c594-001-a",
-    "evidence/20261119T013208Z-d5e3c594-001-a",
-    "evidence/20261119T013729Z-d5e3c594-001-g",
-    "evidence/20261119T013629Z-d5e3c594-001-a"
+    "evidence/20261119T031651Z-67b9d94d-001-a",
+    "evidence/20261119T031656Z-67b9d94d-001-a",
+    "evidence/20261119T031646Z-67b9d94d-001-a",
+    "evidence/20261119T031641Z-67b9d94d-001-a",
+    "evidence/20261119T032046Z-67b9d94d-001-g",
+    "evidence/20261119T032107Z-67b9d94d-001-a"
    ],
    "blocker": null,
    "actions": [
