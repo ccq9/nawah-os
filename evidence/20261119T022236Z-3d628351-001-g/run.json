@@ -1,0 +1,30 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261119T022236Z-3d628351-001-g",
+ "started_at": "2026-11-19T02:22:36+00:00",
+ "finished_at": "2026-11-19T02:22:36+00:00",
+ "source_revision": "3d628351eab47eb41e67e3fbfc5e907f576b50e9",
+ "dirty_state": false,
+ "dirty_paths": [],
+ "host": {
+  "os": "Linux 7.0.0-1014-aws",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M6-MUTANTS",
+ "commands": [
+  "python3 -I tests/mutants.py --target pc-qemu --stage M6 --report build/mutants-m6-report.json"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "44441542516",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "3d628351eab47eb41e67e3fbfc5e907f576b50e9",
+  "head_sha": "538329fcbb97e5edf63ccc1079b9edc050800bb5",
+  "ref": "refs/pull/23/merge"
+ },
+ "notes": "environment NAWAH_GATE_SHARDS=12 (a mutation gate's command merges its shard reports, tests/mutants.py; L-023)"
+}

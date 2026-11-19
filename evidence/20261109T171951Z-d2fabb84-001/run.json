@@ -1,0 +1,30 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261109T171951Z-d2fabb84-001",
+ "started_at": "2026-11-09T17:19:51+00:00",
+ "finished_at": "2026-11-09T17:19:54+00:00",
+ "source_revision": "d2fabb84c5588cc9e12cb41c76ecace266ceab3f",
+ "dirty_state": false,
+ "dirty_paths": [],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "pc-qemu-e0",
+ "worker": "verification-runner",
+ "purpose": "build",
+ "commands": [
+  "clang -target x86_64-unknown-windows -ffreestanding -fshort-wchar -mno-red-zone -fno-stack-protector -fno-builtin -nostdlib -O2 -Wall -Wextra -Werror -DBUILD_ID=d2fabb84c558 -c boot/e0/main.c -o /home/runner/work/nawah-os/nawah-os/build/pc-qemu-e0/e0.o",
+  "lld-link /subsystem:efi_application /entry:efi_main /nodefaultlib /home/runner/work/nawah-os/nawah-os/build/pc-qemu-e0/e0.o /out:/home/runner/work/nawah-os/nawah-os/build/pc-qemu-e0/E0.EFI"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "42662451960",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "d2fabb84c5588cc9e12cb41c76ecace266ceab3f",
+  "head_sha": "78ff331fd09a46bdaec1ef56672bf51481f1374b",
+  "ref": "refs/pull/23/merge"
+ }
+}

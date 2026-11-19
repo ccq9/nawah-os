@@ -1,0 +1,9 @@
+{
+ "boot/stub/main.c": "94cc471267d4d61e0691357de032524b053e491a533f87dc913128e2782218af",
+ "kernel/main.c": "58202c4fef9a9d749e33ace2742fa4776d178aec26f5e3c4d889dc9f0f729661",
+ "boot/common/efi.h": "3015acd6e82e7065b1ed8ad6daaa6b1a2451dd9d565e0db50db664f62f19fdad",
+ "boot/common/types.h": "99a5fb485f846d72d5d5cbfe8db5ffcb58264ff982e891504f9c90b19559b59a",
+ "boot/common/serial.h": "63496be76bef02b550c09558330ea8a502ccb2c4686967d11601964d800d7b92",
+ "boot/common/bootinfo.h": "5c9573c7478baec49ccdc9581be6e4705fade1cd604e4cd69f5959190b2f76de",
+ "platform/pc-qemu/target.json": "f3006e27e3230e3edd0552e650cbfc80c7949e2dccad8765e150a6dc8508b757"
+}
