@@ -949,7 +949,9 @@ class KillEvidence(unittest.TestCase):
         subs = E["M323"][self.RETRY]
         self.assertIn("exit 37", subs)
         fails = [x for x in subs if x.startswith("|ktest|fail|")]
-        self.assertEqual(fails, [getattr(mutants, "_KEPT", None)])
+        # The text itself: a name compared with the module's own name passes when a later
+        # definition replaces it (verify run 44483593342: expected_missed=[M323]).
+        self.assertEqual(fails, ["|ktest|fail|configd kept the handles its replayed requests carried"])
         self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src)
         got = {x for x in subs if re.fullmatch(r"\|\w+=[^|]*\|", x)}
         self.assertEqual(got, {"|body_grew=6|", "|replays_grew=20|", "|unwritable_grew=2|"})
@@ -1291,16 +1293,16 @@ class KillEvidence(unittest.TestCase):
             "M349": ("_LAUNCH", True, {"session": "0x590c", "apps": "9"}, {}),
             "M350": ("_LAUNCH", True, {"session": "0x5301", "apps": "1"}, {}),
             "M351": ("_LAUNCH", False, {"session": "0x5364", "apps": "1"}, {}),
-            "M352": ("_KEPT", False, {"mgr_handles": "26"}, {"live_jobs": "8", "orphans": "0"}),
+            "M352": ("_APP_KEPT", False, {"mgr_handles": "26"}, {"live_jobs": "8", "orphans": "0"}),
             "M353": ("_JOBLEFT", False, {"live_jobs": "10", "mgr_handles": "26"}, {"orphans": "0"}),
-            "M354": ("_KEPT", True, {"mgr_handles": "32"}, {"live_jobs": "8", "orphans": "0"}),
+            "M354": ("_APP_KEPT", True, {"mgr_handles": "32"}, {"live_jobs": "8", "orphans": "0"}),
             "M355": ("_REFUSED", False, {"waiting": "0", "handles": "40"}, {"session": "0x40", "apps": "8"}),
             "M356": ("_JOBLEFT", False, {"live_jobs": "109", "mgr_handles": "125"}, {"orphans": "0"}),
             "M357": ("_REFUSED", True, {"waiting": "0", "handles": "56"}, {"session": "0x40", "apps": "8"}),
             "M358": ("_NOLIST", True, None, None),
-            "M359": ("_KEPT", False, {"mgr_handles": "25"}, {"live_jobs": "8", "orphans": "0"}),
+            "M359": ("_APP_KEPT", False, {"mgr_handles": "25"}, {"live_jobs": "8", "orphans": "0"}),
             "M360": ("_JOBLEFT", True, {"live_jobs": "9", "mgr_handles": "26"}, {"orphans": "0"}),
-            "M361": ("_KEPT", True, {"mgr_handles": "40"}, {"live_jobs": "8", "orphans": "0"}),
+            "M361": ("_APP_KEPT", True, {"mgr_handles": "40"}, {"live_jobs": "8", "orphans": "0"}),
         }
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if m[4] == [self.SPAWN]), sorted(want))
         seen = []
@@ -1319,6 +1321,8 @@ class KillEvidence(unittest.TestCase):
                 self.assertIn("exit 37", subs)
                 fails = [x for x in subs if x.startswith("|ktest|fail|")]
                 self.assertEqual(fails, [getattr(mutants, const, None)])
+                if mid in ("M352", "M354", "M359", "M361"):
+                    self.assertEqual(fails, ["|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"])
                 self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src)
                 rest = [x for x in subs if x != "exit 37" and x not in fails]
                 if changed is None:

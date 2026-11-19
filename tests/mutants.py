@@ -2147,7 +2147,7 @@ _MORE = "|ktest|fail|an application holds more than its boot channel"
 _NOJOB = "|ktest|fail|an application is not in a job of its own under the root job"
 _ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
-_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
+_APP_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
 _NOLIST = "|ktest|fail|LIST request failed"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -2251,9 +2251,9 @@ EXPECT = {
     "M349": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x590c|apps=9|", _LAUNCH]},
     "M350": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x5301|apps=1|", _LAUNCH]},
     "M351": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x5364|apps=1|", _LAUNCH]},
-    "M352": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=26|", _KEPT]},
+    "M352": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=26|", _APP_KEPT]},
     "M353": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=10|orphans=0|mgr_handles=26|", _JOBLEFT]},
-    "M354": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=32|", _KEPT]},
+    "M354": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=32|", _APP_KEPT]},
     "M355": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x40|apps=8|waiting=0|handles=40|", _REFUSED]},
     "M356": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=109|orphans=0|mgr_handles=125|", _JOBLEFT]},
     "M357": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x40|apps=8|waiting=0|handles=56|", _REFUSED]},
@@ -2261,9 +2261,9 @@ EXPECT = {
     # kernel's LIST has no answer. M359: its end of that channel stays. M360: the closer's place
     # went to a clock, so its process and its job stay. M361: sixteen handles stay.
     "M358": {"TST-M6-APP-SPAWN": ["exit 37", "|ktest|app_spawn|list_error=", _NOLIST]},
-    "M359": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=25|", _KEPT]},
+    "M359": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=25|", _APP_KEPT]},
     "M360": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=9|orphans=0|mgr_handles=26|", _JOBLEFT]},
-    "M361": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=40|", _KEPT]},
+    "M361": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=40|", _APP_KEPT]},
 }
 
 
