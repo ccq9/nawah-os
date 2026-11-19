@@ -207,6 +207,7 @@ pub fn run() -> ! {
         "config_retry" => config_retry(),
         "config_notify" => config_notify(),
         "config_store_authz" => config_store_authz(),
+        "config_subs" => config_subs(),
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
@@ -6501,6 +6502,9 @@ fn config_retry() -> ! {
     let frames0 = {
         let ep = &env.cfg;
         let a = token_entry(&env.admin);
+        // An answered request shows configd has read this client's CONNECT: the client end is
+        // in its table before the count is taken (the boot channel is served first).
+        let _ = cfg_request(ep, b"GET device sync.key", None);
         let h0 = cfg_handles();
         let r1 = cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone()));
         let r1b = cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone()));
@@ -6546,6 +6550,10 @@ fn config_retry() -> ! {
         let ep2 = svc_connect(&env.h, "config");
         let first = cfg_request(&ep2, b"SET device retry.key2 0 311 w1", Some(a.clone()));
         let frozen = sched::freeze_named(b"CONFIGD.ELF");
+        // Parked, it reads nothing until the thaw: the replay is read after the close.
+        let parked = sched::poll_until(sched::ticks() + 5_000, || {
+            sched::parked_named(b"CONFIGD.ELF")
+        });
         let queued = ep2
             .write(Message {
                 bytes: b"SET device retry.key2 0 311 w1".to_vec(),
@@ -6558,7 +6566,7 @@ fn config_retry() -> ! {
             sched::poll_until(sched::ticks() + 5_000, || channel::live_endpoints() == e0);
         let h3 = cfg_handles();
         kprintln!(
-            "OSX|{}|ktest|config_retry|live|body_grew={}|replays={}|same={}|replays_grew={}|unwritable_first={}|frozen={}|queued={}|thawed={}|released={}|unwritable_grew={}|base={}",
+            "OSX|{}|ktest|config_retry|live|body_grew={}|replays={}|same={}|replays_grew={}|unwritable_first={}|frozen={}|parked={}|queued={}|thawed={}|released={}|unwritable_grew={}|base={}",
             BUILD_ID,
             h1 - h0,
             REPLAYS,
@@ -6566,6 +6574,7 @@ fn config_retry() -> ! {
             h2 - h1,
             first,
             u8::from(frozen),
+            u8::from(parked),
             u8::from(queued),
             u8::from(thawed),
             u8::from(released),
@@ -6575,7 +6584,7 @@ fn config_retry() -> ! {
         if h0 < 0 || same != REPLAYS || first != "OK 1" || !queued {
             fail("the live balance's requests were not answered as stored")
         }
-        if !frozen || !thawed {
+        if !frozen || !parked || !thawed {
             fail("configd was not held while the reply it cannot write was set up")
         }
         if h1 != h0 || h2 != h1 {
@@ -6664,6 +6673,8 @@ fn config_store_authz() -> ! {
             object: Object::Channel(s),
             rights: Rights::CHANNEL_DEFAULT,
         };
+        // An answered request first: configd has read this client's CONNECT (see config_retry).
+        let _ = cfg_request(ep, b"GET device sync.key", None);
         let h0 = cfg_handles();
         let set_other = cfg_request(ep, b"SET user/3001 k 0 801 v", Some(u.clone()));
         let other_export = cfg_request(ep, b"EXPORT user/3001", None);
@@ -6768,6 +6779,161 @@ fn config_store_authz() -> ! {
         "config_store_authz",
         frames0,
         "a refused or token-less request takes no user store, and the user's own store is his",
+    )
+}
+
+/// TST-M4-CONFIG-SUBS (REQ-M4-004, REQ-M4-005, config.md v1.5, WP-158; RSK-028): a subscription
+/// belongs to the client that asked for it. Client X sends eight SUBSCRIBE device, each with a
+/// new channel end: it holds one subscription, the last, and the service has closed the
+/// seven earlier ends; it subscribes to policy too. Client Y's SUBSCRIBE device is then
+/// accepted, and a change of the store is heard by Y and by X's last end alone. X closes its
+/// channel: its two subscriptions go with it (the service's live handle count drops by
+/// three) and Y still hears the next change.
+/// Client Z subscribes, then, with the service held and parked, queues a request and closes:
+/// its reply cannot be written, and its subscription goes with it too. SUBSCRIBE session is
+/// refused (it shows no token, and session values are kept apart per user) and a change of a
+/// session key is heard by nobody.
+fn config_subs() -> ! {
+    let env = cfg_env("config_subs");
+    let frames0 = {
+        let y = &env.cfg;
+        let a = token_entry(&env.admin);
+        let end = |s: Arc<Endpoint>| Entry {
+            object: Object::Channel(s),
+            rights: Rights::CHANNEL_DEFAULT,
+        };
+        let closed = |e: &Endpoint| matches!(e.read(4096, 4, None), Err(ChannelError::PeerClosed));
+        let x = svc_connect(&env.h, "config");
+        // An answered request on X: configd has read both clients' CONNECT, so their ends are
+        // in its table before the count is taken (the boot channel is served first).
+        let _ = cfg_request(&x, b"GET device sync.key", None);
+        let h0 = cfg_handles();
+        let mut x_ok = 0;
+        let mut x_ends = Vec::new();
+        for _ in 0..8 {
+            let (mine, theirs) = channel::create();
+            if cfg_request(&x, b"SUBSCRIBE device", Some(end(theirs))) == "OK" {
+                x_ok += 1;
+            }
+            x_ends.push(mine);
+        }
+        // A second store: X's subscriptions go with it wherever they are.
+        let (x_pol_k, x_pol_s) = channel::create();
+        let x_pol = cfg_request(&x, b"SUBSCRIBE policy", Some(end(x_pol_s)));
+        let x_grew = cfg_handles() - h0;
+        let (y_k, y_s) = channel::create();
+        let y_sub = cfg_request(y, b"SUBSCRIBE device", Some(end(y_s)));
+        let set = cfg_request(y, b"SET device subs.key 0 901 v", Some(a.clone()));
+        let y_heard = recv_text(&y_k, 500);
+        let x_last = recv_text(&x_ends[7], 500);
+        let x_first = (0..7).filter(|&i| recv_text(&x_ends[i], 20) != "-").count();
+        let x_closed = (0..7).filter(|&i| closed(&x_ends[i])).count();
+        // X goes: its client end and its two subscriptions.
+        let h2 = cfg_handles();
+        drop(x);
+        let x_gone = sched::poll_until(sched::ticks() + 3_000, || cfg_handles() == h2 - 3);
+        let x_end_closed = closed(&x_ends[7]);
+        let x_pol_closed = closed(&x_pol_k);
+        let set2 = cfg_request(y, b"SET device subs.key 1 902 w", Some(a.clone()));
+        let y_heard2 = recv_text(&y_k, 500);
+        // Z's reply cannot be written: held and parked, the service reads the request only
+        // after Z's end is closed.
+        let z = svc_connect(&env.h, "config");
+        let (z_k, z_s) = channel::create();
+        let z_sub = cfg_request(&z, b"SUBSCRIBE device", Some(end(z_s)));
+        let h3 = cfg_handles();
+        let frozen = sched::freeze_named(b"CONFIGD.ELF");
+        let parked = sched::poll_until(sched::ticks() + 5_000, || {
+            sched::parked_named(b"CONFIGD.ELF")
+        });
+        let queued = z
+            .write(Message {
+                bytes: b"GET device subs.key".to_vec(),
+                handles: Vec::new(),
+            })
+            .is_ok();
+        drop(z);
+        let thawed = sched::thaw_named(b"CONFIGD.ELF");
+        let z_gone = sched::poll_until(sched::ticks() + 3_000, || cfg_handles() == h3 - 2);
+        let z_end_closed = closed(&z_k);
+        // A session subscriber shows no token: refused, and nobody hears a session key.
+        let (s_k, s_s) = channel::create();
+        let sess_sub = cfg_request(y, b"SUBSCRIBE session", Some(end(s_s)));
+        let sess_set = cfg_request(y, b"SET session subs.s 0 903 secret", Some(a));
+        let sess_heard = recv_text(&s_k, 50);
+        let end_grew = cfg_handles() - h0;
+        kprintln!(
+            "OSX|{}|ktest|config_subs|x_ok={}|x_pol={}|x_grew={}|y_sub={}|set={}|y_heard={}|x_last={}|x_first={}|x_closed={}|x_gone={}|x_end_closed={}|x_pol_closed={}|set2={}|y_heard2={}|base={}",
+            BUILD_ID,
+            x_ok,
+            x_pol,
+            x_grew,
+            y_sub,
+            set,
+            y_heard,
+            x_last,
+            x_first,
+            x_closed,
+            u8::from(x_gone),
+            u8::from(x_end_closed),
+            u8::from(x_pol_closed),
+            set2,
+            y_heard2,
+            h0
+        );
+        kprintln!(
+            "OSX|{}|ktest|config_subs|more|z_sub={}|frozen={}|parked={}|queued={}|thawed={}|z_gone={}|z_end_closed={}|sess_sub={}|sess_set={}|sess_heard={}|end_grew={}|",
+            BUILD_ID,
+            z_sub,
+            u8::from(frozen),
+            u8::from(parked),
+            u8::from(queued),
+            u8::from(thawed),
+            u8::from(z_gone),
+            u8::from(z_end_closed),
+            sess_sub,
+            sess_set,
+            sess_heard,
+            end_grew
+        );
+        if h0 < 0 {
+            fail("configd's live handle count could not be read")
+        }
+        if x_ok != 8 || x_pol != "OK" || x_grew != 2 || x_first != 0 || x_closed != 7 {
+            fail("one client held more than one subscription of a store")
+        }
+        if y_sub != "OK"
+            || set != "OK 1"
+            || y_heard != "CHANGED device subs.key 1"
+            || x_last != "CHANGED device subs.key 1"
+        {
+            fail("a second client's subscription was refused or a subscriber missed the change")
+        }
+        if !x_gone || !x_end_closed || !x_pol_closed {
+            fail("a closed client's subscription stayed")
+        }
+        if set2 != "OK 2" || y_heard2 != "CHANGED device subs.key 2" {
+            fail("the remaining subscriber missed a change")
+        }
+        if z_sub != "OK" || !frozen || !parked || !queued || !thawed {
+            fail("the reply that cannot be written was not set up")
+        }
+        if !z_gone || !z_end_closed {
+            fail("the subscription of a client whose reply could not be written stayed")
+        }
+        if sess_sub != "ERR ACCESS" || sess_set != "OK 1" || sess_heard != "-" {
+            fail("a subscriber without a token heard a session key")
+        }
+        if end_grew != 0 {
+            fail("configd kept a handle of a client that had gone")
+        }
+        drop((x_ends, x_pol_k, y_k, z_k, s_k));
+        cfg_close(env, "config_subs")
+    };
+    cfg_balance(
+        "config_subs",
+        frames0,
+        "a subscription belongs to its client and goes with it, and a session key is heard by nobody without a token",
     )
 }
 

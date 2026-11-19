@@ -1124,6 +1124,83 @@ class KillEvidence(unittest.TestCase):
         self.assertEqual(len(set(seen)), 4, "each mutant is known by its own message and fields")
         self.assertFalse(any("from-a" in x for mid in want for x in E[mid][self.DROP]), "no expectation rests on an echo")
 
+    SUBS = "TST-M4-CONFIG-SUBS"
+
+    def test_the_subscription_ownership_expectations_are_pinned(self):
+        """WP-158 (RSK-028; config.md v1.5): a subscription belongs to the client that asked for
+        it, one per client and store, and goes with the client; SUBSCRIBE session is refused.
+        M336 lets a client's second SUBSCRIBE take another slot (eight fill the store and the
+        next client is refused); M337 leaves the subscriptions out of the one cleanup; M339
+        and M340 put back the two paths that free a client's slot as they were (the reply that
+        cannot be written; the peer closed while idle); M338 accepts SUBSCRIBE session, so a
+        subscriber without a token hears another user's session key; M341 (the review round)
+        ends the cleanup after the first store. All six are SECURITY mutants, each anchor once
+        in user/apps/configd/src/main.rs, declared on TST-M4-CONFIG-SUBS alone by exit 37, the
+        kernel's own failure message (a failure in ktest.rs) and fields of the case's two
+        lines: those that change, each in the pinned lines with another value, and, where two
+        mutants would share them, one that holds, with its pinned value (the path or the
+        store the mutant leaves right). No two are declared by the same message and fields,
+        and none's fields are a part of another's with the same message."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.SUBS)
+        lines = [m for m in case["required_markers"] if "|ktest|config_subs|" in m and "=" in m]
+        self.assertTrue(any("|x_grew=" in m for m in lines) and any("|sess_sub=" in m for m in lines))
+        line = "".join(lines)
+        want = {
+            "M336": ("usize::from(st.sub_client[s]) == ci)", "_MANY", {"|x_grew=9|", "|y_sub=ERR FULL|"}, set()),
+            "M337": ("libnawah::handle_close(st.subs[s]);", "_SUBSTAY",
+                     {"|x_gone=0|", "|z_gone=0|", "|z_end_closed=0|"}, set()),
+            "M338": ('if store == b"session" {', "_SESS",
+                     {"|sess_sub=OK|", "|sess_heard=CHANGED session subs.s 1|"}, set()),
+            "M339": ("st.drop_client(ci)", "_ZSTAY", {"|z_gone=0|", "|z_end_closed=0|"}, {"|x_gone=1|"}),
+            "M340": ("st.drop_client(ci)", "_SUBSTAY", {"|x_gone=0|", "|x_end_closed=0|"}, {"|z_end_closed=1|"}),
+            "M341": ("for st in self.stores.iter_mut()", "_SUBSTAY",
+                     {"|x_gone=0|", "|x_pol_closed=0|"}, {"|x_end_closed=1|"}),
+        }
+        seen = []
+        for mid, (must, const, fields, held) in want.items():
+            with self.subTest(mutant=mid):
+                m = next((m for m in mutants.MUTANTS if m[0] == mid), None)
+                self.assertIsNotNone(m, f"{mid} is registered")
+                self.assertEqual(m[1], "user/apps/configd/src/main.rs")
+                self.assertEqual(m[4], [self.SUBS])
+                self.assertIn(must, m[2])
+                if mid in ("M339", "M340"):
+                    self.assertNotIn("drop_client", m[3])
+                    self.assertIn("libnawah::handle_close(c);", m[3])
+                    self.assertIn("st.clients[ci].chan = 0;", m[3])
+                elif mid == "M338":
+                    self.assertEqual(m[3], "")
+                elif mid == "M341":
+                    self.assertEqual(m[3], m[2].replace("self.stores.iter_mut()", "self.stores.iter_mut().take(1)"))
+                else:
+                    self.assertEqual(m[3], m[2].replace("usize::from(st.sub_client[s]) == ci", "false"))
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertIn(mid, mutants.SECURITY)
+                self.assertTrue(m[5].startswith("SECURITY: "), m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(set(E.get(mid, {})), {self.SUBS})
+                subs = E[mid][self.SUBS]
+                self.assertIn("exit 37", subs)
+                fails = [x for x in subs if x.startswith("|ktest|fail|")]
+                self.assertEqual(fails, [getattr(mutants, const, None)])
+                self.assertIn(f'fail("{fails[0][len("|ktest|fail|"):]}")', src)
+                seen.append((fails[0], frozenset(fields | held)))
+                got = {x for x in subs if re.fullmatch(r"\|\w+=[^|]*\|", x)}
+                self.assertEqual(got, fields | held)
+                for x in fields:
+                    self.assertIn("|" + x[1:].split("=")[0] + "=", line, x)
+                    self.assertNotIn(x, line, f"{x} is the pinned value")
+                for x in held:
+                    self.assertIn(x, line, f"{x} is not the pinned value")
+        self.assertEqual(len(set(seen)), 6, "each mutant is known by its own message and fields")
+        for a, fa in seen:
+            for b, fb in seen:
+                if (a, fa) != (b, fb) and a == b:
+                    self.assertFalse(fa < fb, f"{sorted(fa)} is a part of {sorted(fb)} under the same message")
+
 
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""

@@ -3997,12 +3997,12 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=config_retry"
         ],
-        "oracle": "the same SET (request id 301) sent twice: both answer OK 1 and the version stays 1; a refused SET (id 302, stale version) is replayed as the same refusal even when resent with the right version, and nothing is applied; request id 0 is never cached (the second attempt is a real stale write: ERR VERSION 2); configd's own handle count, read while it lives (config.md v1.3, WP-107), is unchanged after the body (whose two replays carry a token), after 20 more replays of request 301 with a token (each answered OK 1) and after a replay whose reply cannot be written: a second client stores request 311 (OK 1), then, while configd is held (frozen, so its write cannot come first), queues its replay with a token and closes its end; released, configd releases the client (the live endpoint count comes back within 5 s) without keeping the token; clean exit; exit 33",
+        "oracle": "the same SET (request id 301) sent twice: both answer OK 1 and the version stays 1; a refused SET (id 302, stale version) is replayed as the same refusal even when resent with the right version, and nothing is applied; request id 0 is never cached (the second attempt is a real stale write: ERR VERSION 2); configd's own handle count, read while it lives (config.md v1.3, WP-107), is unchanged after the body (whose two replays carry a token), after 20 more replays of request 301 with a token (each answered OK 1) and after a replay whose reply cannot be written: a second client stores request 311 (OK 1), then, while configd is held and seen parked (every thread blocked, so it reads nothing until released), queues its replay with a token and closes its end; released, configd releases the client (the live endpoint count comes back within 5 s) without keeping the token; clean exit; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=config_retry",
           "|ktest|config_retry|r1=OK 1|r1b=OK 1|read=OK 1 v1|bad=ERR VERSION 1|bad_again=ERR VERSION 1|read2=OK 1 v1|z1=OK 2|z2=ERR VERSION 2|read3=OK 2 v3",
-          "|ktest|config_retry|live|body_grew=0|replays=20|same=20|replays_grew=0|unwritable_first=OK 1|frozen=1|queued=1|thawed=1|released=1|unwritable_grew=0|",
+          "|ktest|config_retry|live|body_grew=0|replays=20|same=20|replays_grew=0|unwritable_first=OK 1|frozen=1|parked=1|queued=1|thawed=1|released=1|unwritable_grew=0|",
           "|ktest|config_retry|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|config_retry|frames_delta=0",
           "|ktest|pass|a repeated request id applies once and replays its stored reply"
@@ -4085,6 +4085,46 @@
           "|ktest|config_notify|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|config_notify|frames_delta=0",
           "|ktest|pass|subscribers hear every successful change of their store and nothing else"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M4-CONFIG-SUBS",
+        "test_id": "TST-M4-CONFIG-SUBS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=config_subs"
+        ],
+        "oracle": "a subscription belongs to the client that asked for it (config.md v1.5, WP-158): client X sends eight SUBSCRIBE device, each with a new channel end, all answered OK, and holds one subscription of that store (the seven earlier ends are closed by the service and hear nothing), and one of policy (configd's live handle count, read once it has answered X, grew by two); client Y's SUBSCRIBE device answers OK and a SET of the store is heard once by Y and once by X's last end; X closes its channel and its two subscriptions go with it (the count drops by three, both of X's ends are closed) while Y hears the next change; client Z subscribes, then, with the service held and seen parked, queues a request and closes its end: released, the reply cannot be written and Z's subscription goes too (the count drops by two); SUBSCRIBE session answers ERR ACCESS and a SET of a session key is heard by nobody; at the end the count equals the one read after X connected (X's client end gone, Y's one subscription kept); clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=config_subs",
+          "|ktest|config_subs|x_ok=8|x_pol=OK|x_grew=2|y_sub=OK|set=OK 1|y_heard=CHANGED device subs.key 1|x_last=CHANGED device subs.key 1|x_first=0|x_closed=7|x_gone=1|x_end_closed=1|x_pol_closed=1|set2=OK 2|y_heard2=CHANGED device subs.key 2|",
+          "|ktest|config_subs|more|z_sub=OK|frozen=1|parked=1|queued=1|thawed=1|z_gone=1|z_end_closed=1|sess_sub=ERR ACCESS|sess_set=OK 1|sess_heard=-|end_grew=0|",
+          "|ktest|config_subs|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|config_subs|frames_delta=0",
+          "|ktest|pass|a subscription belongs to its client and goes with it, and a session key is heard by nobody without a token"
         ],
         "forbidden_markers": [
           "|ktest|fail|",

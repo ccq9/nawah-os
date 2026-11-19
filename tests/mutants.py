@@ -1362,8 +1362,8 @@ MUTANTS = [
      "        let Some(i) = self.store_index(name, true) else {\n",
      ["TST-M4-CONFIG-STORE-AUTHZ"], "SECURITY: configd creates the user store a modifying request names before it judges the token, so a refused SET or IMPORT leaves a store loaded and eight of them take every user-store slot"),
     ("M326", "user/apps/configd/src/main.rs",
-     "                match self.store_index(store, false) {\n                    Some(i) => match self.stores[i].subs.iter().position(|s| *s == 0) {\n",
-     "                match self.store_index(store, true) {\n                    Some(i) => match self.stores[i].subs.iter().position(|s| *s == 0) {\n",
+     "                match self.store_index(store, false) {\n                    // One subscription per client and store: a second replaces the first,\n",
+     "                match self.store_index(store, true) {\n                    // One subscription per client and store: a second replaces the first,\n",
      ["TST-M4-CONFIG-STORE-AUTHZ"], "SECURITY: SUBSCRIBE, which shows no token, creates the user store it names, so eight subscribers take every user-store slot and a real user's SET is refused"),
     # M327 (WP-157): ADMIN is among the tokens a user store is created for (config.md §1). Not a
     # hole: without it an administrator is refused a store that is not loaded.
@@ -1416,6 +1416,37 @@ MUTANTS = [
      "            if self.conns[cn].owner == ci {\n                self.tcp_abort(cn);\n",
      "            if true {\n                self.tcp_abort(cn);\n",
      ["TST-M4-NET-CLIENT-DROP"], "SECURITY: one client's close resets every client's TCP connections"),
+    # M336..M340 (WP-158, RSK-028; config.md v1.5): a subscription belongs to the client that
+    # asked for it, one per client and store, and goes with the client; SUBSCRIBE session is
+    # refused. M336: a client's second SUBSCRIBE takes another slot, so eight fill the store and
+    # the next client is refused. M337: the one cleanup leaves the subscriptions. M339, M340: the
+    # two paths that free a client's slot as they were, the client end closed and nothing else.
+    # M338: SUBSCRIBE session accepted, so a subscriber without a token hears a session key.
+    ("M336", "user/apps/configd/src/main.rs",
+     "            .find(|&s| st.subs[s] != 0 && usize::from(st.sub_client[s]) == ci)\n",
+     "            .find(|&s| st.subs[s] != 0 && false)\n",
+     ["TST-M4-CONFIG-SUBS"], "SECURITY: every SUBSCRIBE of one client takes another slot, so one client holds a store's eight subscriptions and the others are refused"),
+    ("M337", "user/apps/configd/src/main.rs",
+     "                if st.subs[s] != 0 && usize::from(st.sub_client[s]) == ci {\n                    libnawah::handle_close(st.subs[s]);\n",
+     "                if st.subs[s] != 0 && false {\n                    libnawah::handle_close(st.subs[s]);\n",
+     ["TST-M4-CONFIG-SUBS"], "SECURITY: a client that has gone keeps its subscriptions in configd, a handle and a slot each"),
+    ("M338", "user/apps/configd/src/main.rs",
+     "                if store == b\"session\" {\n                    out.put(b\"ERR ACCESS\");\n                    return None;\n                }\n",
+     "",
+     ["TST-M4-CONFIG-SUBS"], "SECURITY: SUBSCRIBE session is accepted without a token, so the subscriber hears the names and changes of every user's session keys"),
+    ("M339", "user/apps/configd/src/main.rs",
+     "                if sent == ERR_PEER_CLOSED {\n                    st.drop_client(ci);\n                }\n",
+     "                if sent == ERR_PEER_CLOSED {\n                    libnawah::handle_close(c);\n                    st.clients[ci].chan = 0;\n                }\n",
+     ["TST-M4-CONFIG-SUBS"], "SECURITY: configd frees the slot of a client whose reply cannot be written and keeps its subscriptions"),
+    ("M340", "user/apps/configd/src/main.rs",
+     "            Err(ERR_PEER_CLOSED) => st.drop_client(ci),\n",
+     "            Err(ERR_PEER_CLOSED) => {\n                libnawah::handle_close(c);\n                st.clients[ci].chan = 0;\n            }\n",
+     ["TST-M4-CONFIG-SUBS"], "SECURITY: configd frees the slot of a client that closed while idle and keeps its subscriptions"),
+    # M341 (WP-158's review round): the cleanup goes through every store.
+    ("M341", "user/apps/configd/src/main.rs",
+     "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
+     "        for st in self.stores.iter_mut().take(1) {\n            for s in 0..MAX_SUBS {\n",
+     ["TST-M4-CONFIG-SUBS"], "SECURITY: a client that has gone keeps its subscriptions in every store but the first"),
     # M305..M308 (WP-152's follow-up, verify run 44218469147): the Toolchain step's fallback mirror and
     # the runner mirror's budget, in mutants.yml where each anchor is once (verify.yml repeats the
     # step in nine jobs, a and the shards under one identity check); TST-M0-003 (FallbackMirror).
@@ -1730,7 +1761,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M325", "M326", "M328",
             # WP-108 (RSK-028): netd frees a client's sockets and resets its connections on
             # every path that frees its slot, and those alone (net.md parts B and C; M332 to M335).
-            "M332", "M333", "M334", "M335"}
+            "M332", "M333", "M334", "M335",
+            # WP-158 (RSK-028): a subscription is its client's, one per client and store, and
+            # goes with the client; no session subscription without a token (config.md v1.5).
+            "M336", "M337", "M338", "M339", "M340", "M341"}
 
 
 def security_of(mid: str) -> bool:
@@ -1940,6 +1974,10 @@ _FULLTAB = "|ktest|fail|a full table of user stores was not answered as the cont
 _USED = "|ktest|fail|a later client used the socket or the connection of a client that had closed"
 _IDLE = "|ktest|fail|an idle client's close left its socket behind"
 _OTHER = "|ktest|fail|a client's close reset another client's connection"
+_MANY = "|ktest|fail|one client held more than one subscription of a store"
+_SUBSTAY = "|ktest|fail|a closed client's subscription stayed"
+_ZSTAY = "|ktest|fail|the subscription of a client whose reply could not be written stayed"
+_SESS = "|ktest|fail|a subscriber without a token heard a session key"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -2008,6 +2046,19 @@ EXPECT = {
     "M333": {"TST-M4-NET-CLIENT-DROP": ["exit 37", "|idle_reopen=ERR EXISTS|", _IDLE]},
     "M334": {"TST-M4-NET-CLIENT-DROP": ["exit 37", "|tcp_a=OK state=ESTABLISHED|", _USED]},
     "M335": {"TST-M4-NET-CLIENT-DROP": ["exit 37", "|tcp_b=ERR CLOSED|", _OTHER]},
+    # WP-158: the case's two lines. M336: X's eight subscriptions of device all stand, with its
+    # one of policy, and Y is refused. M337: neither X's nor Z's subscriptions go with their
+    # client. M338: the session subscriber is accepted and hears the key. M339: Z's subscription
+    # stays (the reply-failure path) while X's went. M340: X's subscriptions stay (the idle
+    # path) while Z's end, on the other path, is closed. M341: X's subscription of the first
+    # store goes and that of policy stays. Where two would share their changed fields, each
+    # names one that holds, with its pinned value.
+    "M336": {"TST-M4-CONFIG-SUBS": ["exit 37", "|x_grew=9|", "|y_sub=ERR FULL|", _MANY]},
+    "M337": {"TST-M4-CONFIG-SUBS": ["exit 37", "|x_gone=0|", "|z_gone=0|", "|z_end_closed=0|", _SUBSTAY]},
+    "M338": {"TST-M4-CONFIG-SUBS": ["exit 37", "|sess_sub=OK|", "|sess_heard=CHANGED session subs.s 1|", _SESS]},
+    "M339": {"TST-M4-CONFIG-SUBS": ["exit 37", "|x_gone=1|", "|z_gone=0|", "|z_end_closed=0|", _ZSTAY]},
+    "M340": {"TST-M4-CONFIG-SUBS": ["exit 37", "|x_gone=0|", "|x_end_closed=0|", "|z_end_closed=1|", _SUBSTAY]},
+    "M341": {"TST-M4-CONFIG-SUBS": ["exit 37", "|x_gone=0|", "|x_pol_closed=0|", "|x_end_closed=1|", _SUBSTAY]},
 }
 
 

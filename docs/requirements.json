@@ -1149,7 +1149,8 @@
    "acceptance": "authz_denied",
    "test_ids": [
     "TST-M4-AUTHZ-DENIED",
-    "TST-M4-CONFIG-STORE-AUTHZ"
+    "TST-M4-CONFIG-STORE-AUTHZ",
+    "TST-M4-CONFIG-SUBS"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
@@ -1183,7 +1184,8 @@
     "TST-M4-CONFIG-CAS",
     "TST-M4-CONFIG-RETRY",
     "TST-M4-CONFIG-NOTIFY",
-    "TST-M4-POLICY-PRECEDENCE"
+    "TST-M4-POLICY-PRECEDENCE",
+    "TST-M4-CONFIG-SUBS"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [

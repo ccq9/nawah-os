@@ -65,6 +65,8 @@ struct Store {
     slot_bad: [bool; 2],
     entries: [Entry; KEYS_PER_STORE],
     subs: [Handle; MAX_SUBS],
+    /// The client slot each subscription belongs to (meaningful where `subs` is not 0).
+    sub_client: [u8; MAX_SUBS],
 }
 
 const NO_STORE: Store = Store {
@@ -74,6 +76,7 @@ const NO_STORE: Store = Store {
     slot_bad: [false; 2],
     entries: [NO_ENTRY; KEYS_PER_STORE],
     subs: [0; MAX_SUBS],
+    sub_client: [0; MAX_SUBS],
 };
 
 #[derive(Clone, Copy)]
@@ -465,6 +468,30 @@ impl State {
         }
     }
 
+    /// The slot of store `i` a subscription of client `ci` takes: the one it holds there,
+    /// else a free one.
+    fn sub_slot(&self, i: usize, ci: usize) -> Option<usize> {
+        let st = &self.stores[i];
+        (0..MAX_SUBS)
+            .find(|&s| st.subs[s] != 0 && usize::from(st.sub_client[s]) == ci)
+            .or_else(|| st.subs.iter().position(|s| *s == 0))
+    }
+
+    /// A client is gone: its channel end is closed and its slot freed, and its subscriptions
+    /// go with it. The one place a client slot is freed (config.md v1.5, WP-158).
+    fn drop_client(&mut self, ci: usize) {
+        libnawah::handle_close(self.clients[ci].chan);
+        self.clients[ci].chan = 0;
+        for st in self.stores.iter_mut() {
+            for s in 0..MAX_SUBS {
+                if st.subs[s] != 0 && usize::from(st.sub_client[s]) == ci {
+                    libnawah::handle_close(st.subs[s]);
+                    st.subs[s] = 0;
+                }
+            }
+        }
+    }
+
     fn notify(&mut self, i: usize, key: &[u8], version: u64) {
         let name: &[u8] = match i {
             DEVICE => b"device",
@@ -586,7 +613,13 @@ impl State {
     /// One request; `handle` is the handle it carried (token or subscriber channel): the caller
     /// closes it after this returns unless SUBSCRIBE took it (left `None`; config.md v1.3).
     /// Returns the request id the reply is cached under (modifying requests).
-    fn request(&mut self, req: &[u8], handle: &mut Option<Handle>, out: &mut Out) -> Option<u64> {
+    fn request(
+        &mut self,
+        ci: usize,
+        req: &[u8],
+        handle: &mut Option<Handle>,
+        out: &mut Out,
+    ) -> Option<u64> {
         // The first line is the request; IMPORT carries its lines after it.
         let head = match req.iter().position(|c| *c == b'\n') {
             Some(p) => &req[..p],
@@ -688,11 +721,25 @@ impl State {
                     out.put(b"ERR BAD_REQUEST");
                     return None;
                 };
+                // A subscriber shows no token, and session values are kept apart per user: no
+                // session subscription until a form carries the token (config.md v1.5, WP-158).
+                if store == b"session" {
+                    out.put(b"ERR ACCESS");
+                    return None;
+                }
                 match self.store_index(store, false) {
-                    Some(i) => match self.stores[i].subs.iter().position(|s| *s == 0) {
+                    // One subscription per client and store: a second replaces the first,
+                    // whose end is closed, so no client holds a store's slots against the
+                    // others (config.md v1.5, WP-158).
+                    Some(i) => match self.sub_slot(i, ci) {
                         Some(slot) => {
+                            let old = self.stores[i].subs[slot];
+                            if old != 0 {
+                                libnawah::handle_close(old);
+                            }
                             // The subscription takes the handle: the caller does not close it.
                             self.stores[i].subs[slot] = h;
+                            self.stores[i].sub_client[slot] = ci as u8;
                             *handle = None;
                             out.put(b"OK");
                             return None;
@@ -957,7 +1004,7 @@ fn main() -> u64 {
                     let mut req_copy = [0u8; MSG_MAX];
                     req_copy[..n].copy_from_slice(&st.msg[..n]);
                     let mut out = Out::new(&mut out_buf);
-                    let keep = st.request(&req_copy[..n], &mut handle, &mut out);
+                    let keep = st.request(ci, &req_copy[..n], &mut handle, &mut out);
                     reply_len = out.len;
                     if let Some(rid) = keep.filter(|r| *r != 0) {
                         let l = reply_len.min(REPLY_MAX);
@@ -980,14 +1027,10 @@ fn main() -> u64 {
                 }
                 let sent = libnawah::channel_write(c, &out_buf[..reply_len], &[]);
                 if sent == ERR_PEER_CLOSED {
-                    libnawah::handle_close(c);
-                    st.clients[ci].chan = 0;
+                    st.drop_client(ci);
                 }
             }
-            Err(ERR_PEER_CLOSED) => {
-                libnawah::handle_close(c);
-                st.clients[ci].chan = 0;
-            }
+            Err(ERR_PEER_CLOSED) => st.drop_client(ci),
             // Larger than any request, or carrying handles no request takes: discarded and
             // refused, so this client's next request is read and the clients after it are not
             // starved behind a message that never fits (review 2026-10-19, as svcmgr does).
