@@ -3210,7 +3210,8 @@
     "WP-102",
     "WP-161",
     "WP-162",
-    "WP-164"
+    "WP-164",
+    "WP-163"
    ],
    "inputs": [
     "DEC-005",
@@ -3240,7 +3241,8 @@
     "2026-11-10 (steward round B): depends on WP-84 too (the halt line and band split from WP-82)",
     "2026-11-15 split before activation, as its budget line requires (planner's reading of the code and the records; the manager): three packages come first and this item stays as the closing scenario, so the five items that wait for it (WP-48, WP-58, WP-59, WP-60, WP-61) keep their dependency unchanged: WP-100 the registry's format, parser and host fuzz with ADR-0023 proposed; WP-101 the manager's broker (services.md v1.14, TST-M6-LAUNCH-DENIED); WP-102 the session's job, autostart and sign-out (session.md v1.8, TST-M6-LOGOUT-KILLS); here TST-M6-APP-LAUNCH and the ADR's acceptance. Found on the way and carried by the slices: the registry's place (/APPS is writable by every process today; PLAN-ANSWER denies writes to /SYSTEM/APPS) is decided in WP-100; TST-M6-LOGOUT-KILLS's planned oracle needs process_list (WP-69, DEC-027), settled at WP-102's activation; TST-M6-APP-LAUNCH's planned oracle reads two identities in the compositor's LIST, which lists the asker's own windows only today (displayd), so display.md may change here under ADR-0019; the identity app:<id>#<n> must fit NAME_MAX = 15. Not ours to settle: DEC-005, on which the whole model rests, was answered under the owner's delegation of 2026-11-08, whose text is in no record (PLAN-ANSWER.md §6): the owner records it or confirms DEC-005 before WP-101 builds on it; WP-100 holds under either answer",
     "2026-11-19 (the manager): WP-161 and WP-162 added to the dependencies at WP-101's split (the launch and the confinement of an application's CONNECT)",
-    "2026-11-19 (the manager, on the auditor's correction): the line above that names services.md v1.14 for LAUNCH, the application's CONNECT and the applications table was written before WP-101's split: v1.14 is WP-101's (the registry on the volume, APPS and LAUNCH's requester); the launch and the confinement come in the versions WP-161 and WP-162 take"
+    "2026-11-19 (the manager, on the auditor's correction): the line above that names services.md v1.14 for LAUNCH, the application's CONNECT and the applications table was written before WP-101's split: v1.14 is WP-101's (the registry on the volume, APPS and LAUNCH's requester); the launch and the confinement come in the versions WP-161 and WP-162 take",
+    "2026-11-19 (the manager): WP-163 added to the dependencies: this item's acceptance is a scene on the release image in which a registered application opens a window, and no application image is on the release disk today (a LAUNCH there is answered ERR NOT_FOUND: services.md v1.15); WP-163 is the item that decides the sample entries' images, and its acceptance now asks that one registered entry at least has its image on that disk; WP-163 itself waits for WP-164 (RSK-050)"
    ],
    "acceptance": "TST-M6-APP-LAUNCH PASS on CI (the closing scenario on the release image: sign in, the autostart application opens a window, two launches of one application give two identities, sign out ends the session's job); ADR-0023 accepted; the registry, the broker and the session job are WP-100, WP-101 and WP-102 (TST-M6-APP-REGISTRY-FUZZ, TST-M6-LAUNCH-DENIED, TST-M6-LOGOUT-KILLS)",
    "test_ids": [
@@ -4449,7 +4451,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-09 estimate: about 60-80 tool calls (the manager's, after the kernel engineer's design report; an estimate, not measured)",
     "2026-11-14 waits for WP-96: until the M6 gate runs inside verify, no push that changes code, tools, tests or workflows can pass the strict check (DEC-029)",
-    "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): its M6 mutants (M154, M156) are registered; executed only once the M6 gate (WP-90) exists"
+    "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): its M6 mutants (M154, M156) are registered; executed only once the M6 gate (WP-90) exists",
+    "2026-11-19 (the manager, on the note the owner relayed on 2026-11-19 (its links are to the tree at 538329fcbb), verified by the manager on the records the same day): the blocker DEC-027 is lifted: the decision was answered on 2026-11-17 by the owner's ruling, option A as its record applies it (visibility follows the handle; the kernel holds no user identity), which fixes the call's shape. The item stays planned: it is in no place of the owner's order (methodology section 7, item 5) and is not the next step, whatever its place in this file; WP-102's planned oracle that reads process_list is rewritten at WP-102's activation or waits for this item, as its record says"
    ],
    "acceptance": "TST-M6-PROC-LIST-REFUSALS PASS on CI; TST-M6-JOB-KILL re-run and PASS; M3 and M5 suites unregressed",
    "test_ids": [
@@ -4465,7 +4468,7 @@
     "planned"
    ],
    "evidence_refs": [],
-   "blocker": "DEC-027"
+   "blocker": null
   },
   {
    "id": "WP-70",
@@ -6509,7 +6512,8 @@
    ],
    "depends_on": [
     "WP-101",
-    "WP-161"
+    "WP-161",
+    "WP-162"
    ],
    "inputs": [
     "WP-101 (LAUNCH into a job)",
@@ -6541,7 +6545,8 @@
     "M6 guest step: with this case the suite is expected to pass the 1080 s cap (planner's estimate, unmeasured): the cap and job a's limit rise with the case, or WP-98's fan-out comes first; never a skipped case",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation",
-    "2026-11-19 (the manager): WP-161 added to the dependencies at WP-101's split: the session's job and the autostart need the launch, which is WP-161 now"
+    "2026-11-19 (the manager): WP-161 added to the dependencies at WP-101's split: the session's job and the autostart need the launch, which is WP-161 now",
+    "2026-11-19 (the manager): WP-162 added to the dependencies as a matter of order, not of need: the owner's order (methodology section 7, item 5) places WP-101 before this item, and WP-101 as he ordered it held the launch and the confinement of an application's CONNECT, which the splits of 2026-11-19 made WP-161 and WP-162; the dependency says in the records what the order says in the ruling, so the state file's next step and the activation rule follow it"
    ],
    "acceptance": "TST-M6-LOGOUT-KILLS PASS on CI; session.md v1.8 closes §8's limit; M141 killed by the M6 gate",
    "test_ids": [
@@ -7600,7 +7605,8 @@
     "no failing test can precede this change (it removes a race from a test); shown instead by the case's line over repeated local runs before and after, and by a mutant that leaves a slot unreclaimed still being killed",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate: about 15 calls, unmeasured; sized at activation",
-    "2026-11-15 (from the owner's external reviewer (relayed by the owner on 2026-11-15; read at cbd59ca4, nothing run by the reviewer) and the manager's verification of the same lines the same day): the approval this item needs was written in its text only; it is now the pending decision DEC-030 and this item's blocker, so the item cannot be activated before the owner answers"
+    "2026-11-15 (from the owner's external reviewer (relayed by the owner on 2026-11-15; read at cbd59ca4, nothing run by the reviewer) and the manager's verification of the same lines the same day): the approval this item needs was written in its text only; it is now the pending decision DEC-030 and this item's blocker, so the item cannot be activated before the owner answers",
+    "2026-11-19 (the manager, on the note the owner relayed on 2026-11-19 (its links are to the tree at 538329fcbb), verified by the manager on the records the same day): the blocker DEC-030 is lifted: the decision was answered on 2026-11-17 by the owner's ruling, option A (the test's condition changes as this item's acceptance says). The item stays planned, outside the owner's order"
    ],
    "acceptance": "TST-M4-NET-LIMITS no longer depends on how fast the lab's device drains the ring: the second burst starts with no slot in flight, its sixteen sends all succeed, and the mutants of the transmit path are still killed, shown on CI; the owner approved the change to the test's condition",
    "test_ids": [
@@ -7614,7 +7620,7 @@
     "planned"
    ],
    "evidence_refs": [],
-   "blocker": "DEC-030"
+   "blocker": null
   },
   {
    "id": "WP-120",
@@ -10161,7 +10167,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-19 registered at WP-101's split; the new case's id is named at activation",
     "2026-11-19 (the manager) from WP-161's split: an identity's number comes back only after the circle of 99, so a service that keeps state by the vouched name does not meet the same name at once; whether any service keeps such state past a connection is checked here before the identity is vouched",
-    "2026-11-19 (the manager, on the auditor's and the red team's readings in WP-161's round): the line above said a number comes back only after the circle of 99: with the skip of numbers in use it is after 91 other launches at least, and there is no LAUNCH rate limit yet, so app:<id>#<n> is a name, never a key of authority: a service that would keep state by it past a connection needs a launch counter beside it. Inputs: fairness among applications' boot channels, and the case that floods one (docs/LATER.md L-086); an application's requests are answered by on_app_channel alone, which reads no services table: CONNECT is added there"
+    "2026-11-19 (the manager, on the auditor's and the red team's readings in WP-161's round): the line above said a number comes back only after the circle of 99: with the skip of numbers in use it is after 91 other launches at least, and there is no LAUNCH rate limit yet, so app:<id>#<n> is a name, never a key of authority: a service that would keep state by it past a connection needs a launch counter beside it. Inputs: fairness among applications' boot channels, and the case that floods one (docs/LATER.md L-086); an application's requests are answered by on_app_channel alone, which reads no services table: CONNECT is added there",
+    "2026-11-19 (the manager, on the note the owner relayed on 2026-11-19 (its links are to the tree at 538329fcbb), verified by the manager on the records the same day, which asks that the connection bound's test be fixed in the acceptance before the item is taken up): it is a condition of this item's acceptance, not movable to a later item: TST-M6-APP-CONNECT-DENIED shows a declared connection accepted and the one beyond the bound refused with a stated reply, and the bound's mutant is killed; the bound for the services' own CONNECT stays WP-160's (RSK-049)"
    ]
   },
   {
@@ -10193,7 +10200,7 @@
     "docs/contracts/services.md",
     "docs/contracts/apps.md"
    ],
-   "acceptance": "LAUNCH is bounded in rate with a stated reply, and the sample entries of the release disk name images that exist or are answered as missing, shown by a case on CI; services.md states the limit in a new version; the mutants killed by the M6 gate",
+   "acceptance": "LAUNCH is bounded in rate with a stated reply, and one registered entry of the release disk at least has its image there (WP-47's scene starts it), an entry without one answered as missing, shown by a case on CI; services.md states the limit in a new version; the mutants killed by the M6 gate",
    "test_ids": [
     "TST-M6-APP-SPAWN"
    ],
@@ -10212,7 +10219,8 @@
     "test first, red seen locally before the change: more LAUNCH requests in a window than the limit are all answered OK today",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-19 registered at WP-161's split",
-    "2026-11-19 (the manager, from WP-161's review round): corrections and inputs. The wrap of the number at 99 is shown by WP-161's case (step 3), not left to this item; 'room for one more 30 s case after WP-161's (1067 of 1080 s)' means: WP-161's case makes the worst case 1037 s, and this item's would make it 1067. This item depends on WP-164 now: no application image goes on the release disk before a job's processes are bounded (RSK-050). Inputs: the case's deadlines inside its 30 s timeout (docs/LATER.md L-089); LAUNCH from the session is exercised by WP-161's case, APPS from the desktop and the repeated READY are not (L-083)"
+    "2026-11-19 (the manager, from WP-161's review round): corrections and inputs. The wrap of the number at 99 is shown by WP-161's case (step 3), not left to this item; 'room for one more 30 s case after WP-161's (1067 of 1080 s)' means: WP-161's case makes the worst case 1037 s, and this item's would make it 1067. This item depends on WP-164 now: no application image goes on the release disk before a job's processes are bounded (RSK-050). Inputs: the case's deadlines inside its 30 s timeout (docs/LATER.md L-089); LAUNCH from the session is exercised by WP-161's case, APPS from the desktop and the repeated READY are not (L-083)",
+    "2026-11-19 (the manager, on the auditor's reading in WP-165's round): the acceptance let every sample entry stay without an image ('exist or are answered as missing'), while WP-47's scene on the release image needs an application that starts; it now asks for one entry's image at least on the release disk. WP-47 depends on this item"
    ]
   },
   {
@@ -10268,6 +10276,103 @@
     "test first, red seen locally before the change: a lab application that starts idle children in a loop is refused nothing today, and a LAUNCH after it is answered ERR FAILED",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-19 registered from WP-161's review round (the owner's ruling of 2026-11-17, rule 1: a hole an ordinary program can reach is not a LATER line). It is older than WP-161 and not reached on the release image today: no application image is on that disk (a LAUNCH there is ERR NOT_FOUND). WP-163, which puts images there, and WP-47 depend on it; the owner may order it earlier"
+   ]
+  },
+  {
+   "id": "WP-165",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-002"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "the note the owner relayed on 2026-11-19 (its links are to the tree at 538329fcbb), verified by the manager on the records the same day: docs/project-state.json named WP-69 as the next step, because tools/project.py derive_position takes the file's first planned item whose dependencies are done, and listed DEC-027 as pending though docs/decisions-pending.json records it answered with option A"
+   ],
+   "files": [
+    "tools/project.py",
+    "tests/test_validate_records.py",
+    "tests/mutants.py",
+    "docs/tests.json",
+    "docs/work-items.json",
+    "docs/project-state.json",
+    "docs/PLAN-REVERSE.md",
+    "docs/LATER.md"
+   ],
+   "contract_refs": [],
+   "acceptance": "docs/project-state.json names as the next step the first active item, else the next step of the owner's order as docs/policies/team-methodology.md writes it (section 7, item 5), never the file's first ready item, and lists as pending the open decisions and no other; a state file that says otherwise fails validate-records --strict; shown by TST-M0-001 with its new cases on CI; M362 to M377 killed by the M6 gate; the stale blockers and the stale list corrected in the records",
+   "test_ids": [
+    "TST-M0-001",
+    "TST-M0-005",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0",
+    "python3 tools/project.py test --target host --suite M6-GATE"
+   ],
+   "status": "active",
+   "status_history": [
+    "planned",
+    "active"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "اللوحة: الخطوة التالية بترتيب المالك لا بترتيب الملف، والقرارات المعلّقة من سجلها (ملاحظة نقلها المالك في 2026-11-19)",
+    "2026-11-19 what the manager verified of the note, on the records: (1) true: docs/project-state.json said current_task WP-69 and next_action 'WP-69: ...' at the two closes where nothing was active, 538329fcbb (WP-158) and f510979967 (WP-101); derive_position takes the first planned item of the file whose dependencies are done, and 30 items were in that state at both closes (29 at 6ad5ebd886), none of them the owner's next; the owner's order is written in the methodology (section 7, item 5) and no tool reads it; `status` computes its next_task the same way; (2) true, and wider: pending_decision_ids is kept by hand and listed DEC-002, DEC-023, DEC-027, DEC-012, DEC-019, DEC-028 and DEC-030, of which DEC-027, DEC-012, DEC-028 and DEC-030 are answered, and the open DEC-036 was missing; WP-69 and WP-119 still carried the answered DEC-027 and DEC-030 as blockers, and plan rows said the same; (3) overtaken: 'WP-101 is the next planning step': it was activated after 538329fcbb and is done (verify run 44448566575), WP-161 followed (pushed as 6ad5ebd886, not closed); (4) the connection bound's test: an application first connects in WP-162, whose acceptance names the bound and its mutant; made a condition there. DEC-027 is not asked again: it is answered",
+    "test first, red seen before the change: on the tool as it is the new cases of TST-M0-001 fail, the checkpoint case with ('WP-69', ...) != ('WP-00', ...)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-19 registered on the owner's instruction in the note ('correct the board and the decision's reference'), done before WP-162. With the new strict rule a change of an item's status or of a decision's is followed by a checkpoint before the strict check (the rule's message says 'checkpoint pending'); CLAUDE.md's order for an import (strict, then checkpoint) stays as it is, since an import changes no status",
+    "2026-11-19 activation (the manager, method section 7; no dependency; on the owner's instruction in the note he relayed). WP-161 is active beside it: pushed as 6ad5ebd886 and waiting for a green verify run (run 44473827840 was red in both of its attempts in the Toolchain step alone, the Ubuntu archive's downloads timing out; WP-166). The change was written and reviewed in the scratch clone before this activation, while the main tree was kept clean for an import that could not happen; it touches one host suite (M0) and the tooling mutants. About 45 tool calls so far, within the budget line of 90 min or 120 calls",
+    "2026-11-19 options (rule 5). Where the order comes from: (a) the methodology's own line (section 7, item 5), read by the tool: chosen (the owner's order is written in one place and nothing has to be kept in step with it; an order that cannot be read, or names an item the records do not hold, is an error); (b) a list in the state file or a new record file: a second copy of the ruling's text to keep in step by hand, and a change of the state file's schema; (c) the file's order with the items of no order marked as put off: thirty marks that are a second plan. An ordered item that waits: its first dependency that is not done, looked at the same way: chosen, so the parts a split makes and a new condition such as WP-164 appear by themselves, against writing every part into the owner's line at each split. The waiting decisions: written by the checkpoint from the decisions' records, against the list kept by hand with a check beside it. What notices a stale file: (a) validate-records, a warning between checkpoints and an error under --strict, which CI runs on every pushed tree: chosen; (b) an error always: a checkpoint is refused on errors and is the one thing that repairs the file; (c) a host case over the live records: every change of the records would make its evidence stale (the reason plan rows ride with code). The blocker: every decision a blocker names must be open, against clearing the two stale ones by hand and no rule. Reversible: the state file's fields and schema are unchanged; the rules are additions",
+    "2026-11-19 the work (the manager; written in the scratch clone while WP-161's run was being judged, the main tree kept clean for its import; scratch runs, no CI evidence). Test first: six new cases of TST-M0-001 in tests/test_validate_records.py (class Position) and one older case changed; on the tool as it was they failed, 4 failures and 4 errors, the checkpoint case with ('WP-69', 'WP-69: title of WP-69') != ('WP-00', 'WP-00: title of WP-00'), the file's first ready item where the order named another. The change (tools/project.py): plan_order reads the order from the methodology; next_in_order and derive_position give the next step; the checkpoint writes the step (also when there is none) and the open decisions; validate-records, with a state file present, refuses an unreadable order or an unknown id in it, warns of a state file that says another step or other waiting decisions than the records give and fails it under --strict, and refuses a blocker that names a decision that is not open; `status` shows the same step and decisions. On the records as they stood the new tool said what the note said: a warning for the seven listed decisions against the four open ones, and two errors for the blockers of WP-69 and WP-119, cleared in the records before the code. M362 to M369, killed by TST-M0-001. The order the tool reads: WP-149, WP-130, WP-98, WP-95, WP-107, WP-108, WP-101, WP-102, WP-47, WP-48, WP-51; with the records' dependencies the steps after WP-161 are WP-162, WP-102, WP-164, WP-163, WP-47, WP-48, WP-51",
+    "2026-11-19 the review round (auditor and red team in parallel, read-only, on the scratch clone). Confirmed by the auditor: the order read from the real file is the owner's eleven items in order; the fields written satisfy the state file's schema and nothing else in tools/, tests/, .github/ or .claude/ reads them; the flows: an import (strict, then checkpoint) holds; an activation warns and its checkpoint repairs; a close must checkpoint before its strict check, and so must an answered decision; CI's strict runs (verify.yml:911, mutants.yml:127, tools/pre-merge.sh:16) now fail a pushed tree whose state file was not checkpointed after such a change; the 39 cases and the oracle's count; the eight anchors and replacements. Fixed in the round, test first (three failures seen on the first form of the change): (1) both: a cycle of dependencies made the new descent run without end, and validate-records calls it after only reporting the cycle: a path now ends where it closes, with M376 (its case turns a hang into a failure after 5 s); (2) red team: a superseded item of the order hid the item that took its place: it stands for it, in the order and as a dependency, with M370; (3) a blocked item was written with no sign of it: its text says blocked and by what, with M377; (4) the label of the order's line is matched whole, so `الترتيبات القديمة` or a line without the colon is not the order; a section 70 and another item of section 7 under the same label are not read, with M373 and M374; (5) every decision a blocker names is judged, not only a blocker that is an id alone, with M375; (6) an id the records do not hold, two dependencies not done at once, an item without an action: cases, with M371 and M372. From the auditor, corrected in this record's text: thirty items, not 29, were ready at the two closes; WP-161's run is not cited before its import; DEC-027's option in its record's words; WP-163's acceptance let every sample entry stay without an image while WP-47's scene needs one: tightened, and the reason of WP-47's new dependency written truly. Each of the two added dependencies is the manager's reading and is said so: WP-102 after WP-162 is the owner's order applied to the parts of what WP-101 was, not his text; the owner may undo either. 40 cases; M362 to M377 16/16 killed in the clone. To docs/LATER.md: L-090 to L-092",
+    "2026-11-19 local runs on the final tree (scratch, no CI evidence): the host suites M0 (TST-M0-001: 40 cases; TST-M0-005: 96), M1, M3, M4, M5 and M6 PASS on the main tree; no guest suite is touched (the change is in tools/project.py, tests/ and the records). The real harness in the scratch clone, on the same three files as the main tree's (compared): M362 to M377 16/16 killed by TST-M0-001 (M376 after 6.6 s, its case's alarm), and every tooling mutant, 94 of 94 killed, in two runs: the first ended at its 79th mutant when this session's machine was restarted (07:29:53Z, no verdict line), the second ran the fifteen left. On the real records the tool as changed gives, after its checkpoint, the four open decisions (DEC-002, DEC-023, DEC-019, DEC-036) and WP-161 as the current task (active beside this item), and validate-records reports no error"
+   ]
+  },
+  {
+   "id": "WP-166",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-005"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "verify run 44473827840 on 6ad5ebd886, attempt 1 (2026-11-19, 06:40Z to 07:13Z): the logs of the shard jobs 1, 5, 6, 7, 10 and of g, read whole; the Toolchain step of the eight jobs that passed"
+   ],
+   "files": [
+    ".github/workflows/verify.yml",
+    ".github/workflows/mutants.yml",
+    "tests/test_ci_workflows.py",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    "docs/work-items.json",
+    "docs/LATER.md"
+   ],
+   "contract_refs": [],
+   "acceptance": "a verify run's Toolchain steps finish inside their cap when the Ubuntu archive is as slow as it was on 2026-11-19 (a try of 300 s that fetches under 80 of 124 packages), or do not fetch from it at all when the packages are held by the run; shown by TST-M0-003 with new cases on CI and by one measured run; the mutants of the step killed",
+   "test_ids": [
+    "TST-M0-003",
+    "TST-M0-005",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "CI: خطوة تجهيز الأدوات لا تتوقف على سرعة أرشيف Ubuntu في أربع عشرة مهمة (من التشغيل 44473827840)",
+    "what the logs show (read whole by an agent on 2026-11-19; nothing here is CI evidence of a fix): in five of twelve shard jobs every 100 s try on the runner's apt mirror ended by its limit (0 to 52 of 124 packages after both), the fallback to archive.ubuntu.com was reached with 563 to 671 s of the step's 15 minutes left, and its first 300 s try ended by its limit too (10 to 76 packages gained): two jobs used up the fallback's two tries (exit 1 at 866 s and 890 s), two were cut by the cap inside the second try, and one finished its download 7 s before the cap and was cut while unpacking. On the same runners git fetch took 2.5 to 4.1 s and rustup's downloads 7 to 9 s; nine jobs of the run passed the step in 54 s to 11 min, three of them through the fallback. The step's own comment says the fallback 'keeps half the cap', which two tries of 300 s, the install and rustup do not fit. The same step failed the same way on 2026-10-23 and 2026-10-26 and in run 44218469147 (WP-64, WP-74, WP-152)",
+    "design to decide in the package (2-3 options with trade-offs): the fetched packages kept by the run (one job fetches, the others restore: a cache or an artifact keyed by the package list) against a cap and job limits that cover the step's own tries (15+18+15 under job a's limit, 15+60 under a shard's 90) against going to the fallback after one failed try; what a slow archive then costs a run; the step is one text in fourteen places under an identity check, and mutants.yml has its own copy",
+    "test first, red seen locally before the change: the new cases of TST-M0-003 fail on the workflow as it is",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-19 registered from the red attempt of WP-161's verify run. Not placed in the owner's order: the whole run was re-run once and the owner decides whether this comes before WP-162"
    ]
   }
  ]

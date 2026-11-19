@@ -4,7 +4,7 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "f5109799672efbf58e39b926094fe707878c0944",
+ "source_revision": "6ad5ebd886c892c396742fbf3d8fdb478c5b0c2d",
  "dirty_state": true,
  "current_stage": "M6",
  "current_task": "WP-161",
@@ -67,8 +67,8 @@
  "next_action": "WP-161: سمسار التشغيل: LAUNCH يشغّل التطبيق في مهمة خاصة به، برقمه (مفصولة من WP-101 في 2026-11-19؛ حدّ المعدل في WP-163)",
  "required_inputs": [],
  "runner_status": "running",
- "checkpoint_generation": 228,
- "event_sequence": 228,
+ "checkpoint_generation": 231,
+ "event_sequence": 231,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 7,
@@ -82,11 +82,8 @@
  "pending_decision_ids": [
   "DEC-002",
   "DEC-023",
-  "DEC-027",
-  "DEC-012",
   "DEC-019",
-  "DEC-028",
-  "DEC-030"
+  "DEC-036"
  ],
  "unknown_fields": {
   "budget_counters.tool_calls_session": "no API exposes the session's tool-call or token budget",
