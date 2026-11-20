@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182055Z-91675214-001-a"
+    "evidence/20261120T210836Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182054Z-91675214-001-a"
+    "evidence/20261120T210835Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180158Z-91675214-001-a",
-    "evidence/20261120T180202Z-91675214-001-a"
+    "evidence/20261120T204915Z-1894984b-001-a",
+    "evidence/20261120T204921Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182055Z-91675214-001-a"
+    "evidence/20261120T210836Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -356,10 +356,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180206Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a",
-    "evidence/20261120T180251Z-91675214-001-a",
-    "evidence/20261120T182125Z-91675214-001-a"
+    "evidence/20261120T204925Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a",
+    "evidence/20261120T205010Z-1894984b-001-a",
+    "evidence/20261120T210907Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -429,17 +429,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180259Z-91675214-001-a",
-    "evidence/20261120T180306Z-91675214-001-a",
-    "evidence/20261120T180313Z-91675214-001-a",
-    "evidence/20261120T180320Z-91675214-001-a",
-    "evidence/20261120T180328Z-91675214-001-a",
-    "evidence/20261120T180335Z-91675214-001-a",
-    "evidence/20261120T180342Z-91675214-001-a",
-    "evidence/20261120T180349Z-91675214-001-a",
-    "evidence/20261120T180356Z-91675214-001-a",
-    "evidence/20261120T180403Z-91675214-001-a",
-    "evidence/20261120T180411Z-91675214-001-a"
+    "evidence/20261120T205018Z-1894984b-001-a",
+    "evidence/20261120T205025Z-1894984b-001-a",
+    "evidence/20261120T205033Z-1894984b-001-a",
+    "evidence/20261120T205040Z-1894984b-001-a",
+    "evidence/20261120T205047Z-1894984b-001-a",
+    "evidence/20261120T205054Z-1894984b-001-a",
+    "evidence/20261120T205101Z-1894984b-001-a",
+    "evidence/20261120T205109Z-1894984b-001-a",
+    "evidence/20261120T205116Z-1894984b-001-a",
+    "evidence/20261120T205123Z-1894984b-001-a",
+    "evidence/20261120T205130Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -490,9 +490,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180418Z-91675214-001-a",
-    "evidence/20261120T180425Z-91675214-001-a",
-    "evidence/20261120T180432Z-91675214-001-a"
+    "evidence/20261120T205138Z-1894984b-001-a",
+    "evidence/20261120T205145Z-1894984b-001-a",
+    "evidence/20261120T205153Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -555,11 +555,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180440Z-91675214-001-a",
-    "evidence/20261120T180447Z-91675214-001-a",
-    "evidence/20261120T180454Z-91675214-001-a",
-    "evidence/20261120T180501Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T205200Z-1894984b-001-a",
+    "evidence/20261120T205207Z-1894984b-001-a",
+    "evidence/20261120T205214Z-1894984b-001-a",
+    "evidence/20261120T205221Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -636,11 +636,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180508Z-91675214-001-a",
-    "evidence/20261120T180515Z-91675214-001-a",
-    "evidence/20261120T180523Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a",
-    "evidence/20261120T180403Z-91675214-001-a"
+    "evidence/20261120T205229Z-1894984b-001-a",
+    "evidence/20261120T205236Z-1894984b-001-a",
+    "evidence/20261120T205243Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a",
+    "evidence/20261120T205123Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -704,9 +704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180530Z-91675214-001-a",
-    "evidence/20261120T180537Z-91675214-001-a",
-    "evidence/20261120T180544Z-91675214-001-a"
+    "evidence/20261120T205250Z-1894984b-001-a",
+    "evidence/20261120T205258Z-1894984b-001-a",
+    "evidence/20261120T205305Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -818,11 +818,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180552Z-91675214-001-a",
-    "evidence/20261120T180559Z-91675214-001-a",
-    "evidence/20261120T180606Z-91675214-001-a",
-    "evidence/20261120T180614Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T205313Z-1894984b-001-a",
+    "evidence/20261120T205320Z-1894984b-001-a",
+    "evidence/20261120T205327Z-1894984b-001-a",
+    "evidence/20261120T205334Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -883,8 +883,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182045Z-91675214-001-a",
-    "evidence/20261120T182047Z-91675214-001-a"
+    "evidence/20261120T210825Z-1894984b-001-a",
+    "evidence/20261120T210828Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -950,11 +950,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180621Z-91675214-001-a",
-    "evidence/20261120T180628Z-91675214-001-a",
-    "evidence/20261120T180635Z-91675214-001-a",
-    "evidence/20261120T180650Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T205342Z-1894984b-001-a",
+    "evidence/20261120T205349Z-1894984b-001-a",
+    "evidence/20261120T205356Z-1894984b-001-a",
+    "evidence/20261120T205411Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1024,11 +1024,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180657Z-91675214-001-a",
-    "evidence/20261120T180704Z-91675214-001-a",
-    "evidence/20261120T180718Z-91675214-001-a",
-    "evidence/20261120T180725Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T205418Z-1894984b-001-a",
+    "evidence/20261120T205425Z-1894984b-001-a",
+    "evidence/20261120T205440Z-1894984b-001-a",
+    "evidence/20261120T205447Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1097,14 +1097,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180733Z-91675214-001-a",
-    "evidence/20261120T180740Z-91675214-001-a",
-    "evidence/20261120T180754Z-91675214-001-a",
-    "evidence/20261120T180801Z-91675214-001-a",
-    "evidence/20261120T180808Z-91675214-001-a",
-    "evidence/20261120T180816Z-91675214-001-a",
-    "evidence/20261120T180823Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T205454Z-1894984b-001-a",
+    "evidence/20261120T205501Z-1894984b-001-a",
+    "evidence/20261120T205516Z-1894984b-001-a",
+    "evidence/20261120T205523Z-1894984b-001-a",
+    "evidence/20261120T205530Z-1894984b-001-a",
+    "evidence/20261120T205537Z-1894984b-001-a",
+    "evidence/20261120T205545Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1174,10 +1174,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180837Z-91675214-001-a",
-    "evidence/20261120T180844Z-91675214-001-a",
-    "evidence/20261120T180851Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T205559Z-1894984b-001-a",
+    "evidence/20261120T205607Z-1894984b-001-a",
+    "evidence/20261120T205614Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1256,14 +1256,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180859Z-91675214-001-a",
-    "evidence/20261120T180913Z-91675214-001-a",
-    "evidence/20261120T180920Z-91675214-001-a",
-    "evidence/20261120T180930Z-91675214-001-a",
-    "evidence/20261120T180937Z-91675214-001-a",
-    "evidence/20261120T180952Z-91675214-001-a",
-    "evidence/20261120T182126Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T205621Z-1894984b-001-a",
+    "evidence/20261120T205636Z-1894984b-001-a",
+    "evidence/20261120T205643Z-1894984b-001-a",
+    "evidence/20261120T205653Z-1894984b-001-a",
+    "evidence/20261120T205700Z-1894984b-001-a",
+    "evidence/20261120T205715Z-1894984b-001-a",
+    "evidence/20261120T210908Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1331,10 +1331,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181207Z-91675214-001-a",
-    "evidence/20261120T181214Z-91675214-001-a",
-    "evidence/20261120T181221Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T205932Z-1894984b-001-a",
+    "evidence/20261120T205939Z-1894984b-001-a",
+    "evidence/20261120T205947Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1407,12 +1407,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181229Z-91675214-001-a",
-    "evidence/20261120T181236Z-91675214-001-a",
-    "evidence/20261120T181243Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a",
-    "evidence/20261120T180657Z-91675214-001-a",
-    "evidence/20261120T180718Z-91675214-001-a"
+    "evidence/20261120T205954Z-1894984b-001-a",
+    "evidence/20261120T210002Z-1894984b-001-a",
+    "evidence/20261120T210009Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a",
+    "evidence/20261120T205418Z-1894984b-001-a",
+    "evidence/20261120T205440Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1469,10 +1469,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180642Z-91675214-001-a",
+    "evidence/20261120T205403Z-1894984b-001-a",
     "evidence/20261120T074842Z-74035182-001",
-    "evidence/20261120T180711Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T205432Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1542,9 +1542,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181251Z-91675214-001-a",
-    "evidence/20261120T181258Z-91675214-001-a",
-    "evidence/20261120T181306Z-91675214-001-a"
+    "evidence/20261120T210017Z-1894984b-001-a",
+    "evidence/20261120T210024Z-1894984b-001-a",
+    "evidence/20261120T210032Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1609,10 +1609,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181313Z-91675214-001-a",
-    "evidence/20261120T181321Z-91675214-001-a",
-    "evidence/20261120T181328Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T210039Z-1894984b-001-a",
+    "evidence/20261120T210047Z-1894984b-001-a",
+    "evidence/20261120T210054Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1685,10 +1685,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182206Z-91675214-001-a",
-    "evidence/20261120T181343Z-91675214-001-a",
-    "evidence/20261120T181351Z-91675214-001-a",
-    "evidence/20261120T181402Z-91675214-001-a"
+    "evidence/20261120T210948Z-1894984b-001-a",
+    "evidence/20261120T210110Z-1894984b-001-a",
+    "evidence/20261120T210117Z-1894984b-001-a",
+    "evidence/20261120T210128Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1748,12 +1748,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181410Z-91675214-001-a",
-    "evidence/20261120T181507Z-91675214-001-a",
-    "evidence/20261120T181418Z-91675214-001-a",
-    "evidence/20261120T181426Z-91675214-001-a",
-    "evidence/20261120T181442Z-91675214-001-a",
-    "evidence/20261120T181459Z-91675214-001-a"
+    "evidence/20261120T210136Z-1894984b-001-a",
+    "evidence/20261120T210234Z-1894984b-001-a",
+    "evidence/20261120T210144Z-1894984b-001-a",
+    "evidence/20261120T210152Z-1894984b-001-a",
+    "evidence/20261120T210209Z-1894984b-001-a",
+    "evidence/20261120T210225Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1835,10 +1835,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181519Z-91675214-001-a",
-    "evidence/20261120T181526Z-91675214-001-a",
-    "evidence/20261120T181533Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T210245Z-1894984b-001-a",
+    "evidence/20261120T210253Z-1894984b-001-a",
+    "evidence/20261120T210300Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1898,10 +1898,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181542Z-91675214-001-a",
-    "evidence/20261120T181550Z-91675214-001-a",
-    "evidence/20261120T181558Z-91675214-001-a",
-    "evidence/20261120T181606Z-91675214-001-a"
+    "evidence/20261120T210309Z-1894984b-001-a",
+    "evidence/20261120T210318Z-1894984b-001-a",
+    "evidence/20261120T210326Z-1894984b-001-a",
+    "evidence/20261120T210334Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -1952,8 +1952,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181614Z-91675214-001-a",
-    "evidence/20261120T181623Z-91675214-001-a"
+    "evidence/20261120T210343Z-1894984b-001-a",
+    "evidence/20261120T210351Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -2036,10 +2036,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181640Z-91675214-001-a",
-    "evidence/20261120T181650Z-91675214-001-a",
-    "evidence/20261120T182213Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a"
+    "evidence/20261120T210409Z-1894984b-001-a",
+    "evidence/20261120T210419Z-1894984b-001-a",
+    "evidence/20261120T210955Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -2100,11 +2100,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181659Z-91675214-001-a",
+    "evidence/20261120T210428Z-1894984b-001-a",
     "evidence/20261120T080927Z-74035182-001",
-    "evidence/20261120T181640Z-91675214-001-a",
-    "evidence/20261120T181402Z-91675214-001-a",
-    "evidence/20261120T181258Z-91675214-001-a"
+    "evidence/20261120T210409Z-1894984b-001-a",
+    "evidence/20261120T210128Z-1894984b-001-a",
+    "evidence/20261120T210024Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -2179,7 +2179,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180246Z-91675214-001-b"
+    "evidence/20261120T204820Z-1894984b-001-b"
    ],
    "blocker": null
   },
@@ -2253,9 +2253,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180254Z-91675214-001-b",
-    "evidence/20261120T180308Z-91675214-001-b",
-    "evidence/20261120T182218Z-91675214-001-a"
+    "evidence/20261120T204831Z-1894984b-001-b",
+    "evidence/20261120T204851Z-1894984b-001-b",
+    "evidence/20261120T211000Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -2328,10 +2328,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180315Z-91675214-001-b",
-    "evidence/20261120T180323Z-91675214-001-b",
-    "evidence/20261120T180337Z-91675214-001-b",
-    "evidence/20261120T182342Z-91675214-001-a"
+    "evidence/20261120T204901Z-1894984b-001-b",
+    "evidence/20261120T204912Z-1894984b-001-b",
+    "evidence/20261120T204932Z-1894984b-001-b",
+    "evidence/20261120T211126Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -2414,10 +2414,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182308Z-91675214-001-a",
-    "evidence/20261120T182313Z-91675214-001-a",
-    "evidence/20261120T182322Z-91675214-001-a",
-    "evidence/20261120T180359Z-91675214-001-b"
+    "evidence/20261120T211050Z-1894984b-001-a",
+    "evidence/20261120T211056Z-1894984b-001-a",
+    "evidence/20261120T211105Z-1894984b-001-a",
+    "evidence/20261120T205004Z-1894984b-001-b"
    ],
    "blocker": null
   },
@@ -2488,10 +2488,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180411Z-91675214-001-b",
-    "evidence/20261120T180430Z-91675214-001-b",
-    "evidence/20261120T182326Z-91675214-001-a",
-    "evidence/20261120T182341Z-91675214-001-a"
+    "evidence/20261120T205019Z-1894984b-001-b",
+    "evidence/20261120T205044Z-1894984b-001-b",
+    "evidence/20261120T211110Z-1894984b-001-a",
+    "evidence/20261120T211125Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -2582,9 +2582,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180531Z-91675214-001-b",
-    "evidence/20261120T180505Z-91675214-001-b",
-    "evidence/20261120T180439Z-91675214-001-b"
+    "evidence/20261120T205154Z-1894984b-001-b",
+    "evidence/20261120T205125Z-1894984b-001-b",
+    "evidence/20261120T205056Z-1894984b-001-b"
    ],
    "blocker": null
   },
@@ -2651,9 +2651,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181246Z-91675214-001-b",
-    "evidence/20261120T181254Z-91675214-001-b",
-    "evidence/20261120T182326Z-91675214-001-a"
+    "evidence/20261120T205959Z-1894984b-001-b",
+    "evidence/20261120T210011Z-1894984b-001-b",
+    "evidence/20261120T211110Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -2708,14 +2708,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181311Z-91675214-001-b",
-    "evidence/20261120T181315Z-91675214-001-b",
-    "evidence/20261120T181320Z-91675214-001-b",
-    "evidence/20261120T180735Z-91675214-001-b",
-    "evidence/20261120T181231Z-91675214-001-b",
-    "evidence/20261120T180802Z-91675214-001-b",
-    "evidence/20261120T180829Z-91675214-001-b",
-    "evidence/20261120T180859Z-91675214-001-b",
+    "evidence/20261120T210031Z-1894984b-001-b",
+    "evidence/20261120T210039Z-1894984b-001-b",
+    "evidence/20261120T210046Z-1894984b-001-b",
+    "evidence/20261120T205422Z-1894984b-001-b",
+    "evidence/20261120T205941Z-1894984b-001-b",
+    "evidence/20261120T205452Z-1894984b-001-b",
+    "evidence/20261120T205523Z-1894984b-001-b",
+    "evidence/20261120T205556Z-1894984b-001-b",
     "evidence/20261120T080927Z-74035182-001"
    ],
    "blocker": null
@@ -2757,7 +2757,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180959Z-91675214-001-b"
+    "evidence/20261120T205706Z-1894984b-001-b"
    ],
    "blocker": null
   },
@@ -2805,15 +2805,15 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180246Z-91675214-001-b",
-    "evidence/20261120T180315Z-91675214-001-b",
-    "evidence/20261120T180323Z-91675214-001-b",
-    "evidence/20261120T180337Z-91675214-001-b",
-    "evidence/20261120T180349Z-91675214-001-b",
-    "evidence/20261120T181246Z-91675214-001-b",
-    "evidence/20261120T181254Z-91675214-001-b",
-    "evidence/20261120T182326Z-91675214-001-a",
-    "evidence/20261120T182342Z-91675214-001-a"
+    "evidence/20261120T204820Z-1894984b-001-b",
+    "evidence/20261120T204901Z-1894984b-001-b",
+    "evidence/20261120T204912Z-1894984b-001-b",
+    "evidence/20261120T204932Z-1894984b-001-b",
+    "evidence/20261120T204948Z-1894984b-001-b",
+    "evidence/20261120T205959Z-1894984b-001-b",
+    "evidence/20261120T210011Z-1894984b-001-b",
+    "evidence/20261120T211110Z-1894984b-001-a",
+    "evidence/20261120T211126Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -2832,23 +2832,23 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180941Z-91675214-001-b",
-    "evidence/20261120T180337Z-91675214-001-b",
-    "evidence/20261120T180505Z-91675214-001-b",
-    "evidence/20261120T180531Z-91675214-001-b",
-    "evidence/20261120T180735Z-91675214-001-b",
-    "evidence/20261120T182313Z-91675214-001-a",
-    "evidence/20261120T181246Z-91675214-001-b",
-    "evidence/20261120T180254Z-91675214-001-b",
-    "evidence/20261120T180349Z-91675214-001-b",
-    "evidence/20261120T181320Z-91675214-001-b",
-    "evidence/20261120T180331Z-91675214-001-b",
-    "evidence/20261120T180717Z-91675214-001-b",
-    "evidence/20261120T180650Z-91675214-001-b",
-    "evidence/20261120T180614Z-91675214-001-b",
-    "evidence/20261120T180303Z-91675214-001-b",
-    "evidence/20261120T180558Z-91675214-001-b",
-    "evidence/20261120T180354Z-91675214-001-b"
+    "evidence/20261120T205644Z-1894984b-001-b",
+    "evidence/20261120T204932Z-1894984b-001-b",
+    "evidence/20261120T205125Z-1894984b-001-b",
+    "evidence/20261120T205154Z-1894984b-001-b",
+    "evidence/20261120T205422Z-1894984b-001-b",
+    "evidence/20261120T211056Z-1894984b-001-a",
+    "evidence/20261120T205959Z-1894984b-001-b",
+    "evidence/20261120T204831Z-1894984b-001-b",
+    "evidence/20261120T204948Z-1894984b-001-b",
+    "evidence/20261120T210046Z-1894984b-001-b",
+    "evidence/20261120T204923Z-1894984b-001-b",
+    "evidence/20261120T205355Z-1894984b-001-b",
+    "evidence/20261120T205324Z-1894984b-001-b",
+    "evidence/20261120T205245Z-1894984b-001-b",
+    "evidence/20261120T204843Z-1894984b-001-b",
+    "evidence/20261120T205225Z-1894984b-001-b",
+    "evidence/20261120T204956Z-1894984b-001-b"
    ],
    "blocker": null,
    "id": "WP-43",
@@ -2923,9 +2923,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180936Z-91675214-001-b",
-    "evidence/20261120T180505Z-91675214-001-b",
-    "evidence/20261120T181640Z-91675214-001-a"
+    "evidence/20261120T205636Z-1894984b-001-b",
+    "evidence/20261120T205125Z-1894984b-001-b",
+    "evidence/20261120T210409Z-1894984b-001-a"
    ],
    "blocker": null,
    "id": "WP-44",
@@ -3080,14 +3080,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181707Z-91675214-001-a",
-    "evidence/20261120T182344Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a",
-    "evidence/20261120T180251Z-91675214-001-a",
-    "evidence/20261120T182125Z-91675214-001-a",
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T182110Z-91675214-001-a",
-    "evidence/20261120T182218Z-91675214-001-a"
+    "evidence/20261120T210436Z-1894984b-001-a",
+    "evidence/20261120T211128Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a",
+    "evidence/20261120T205010Z-1894984b-001-a",
+    "evidence/20261120T210907Z-1894984b-001-a",
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T210851Z-1894984b-001-a",
+    "evidence/20261120T211000Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -3179,12 +3179,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182002Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a",
-    "evidence/20261120T181313Z-91675214-001-a",
-    "evidence/20261120T181321Z-91675214-001-a",
-    "evidence/20261120T181328Z-91675214-001-a",
-    "evidence/20261120T180254Z-91675214-001-b"
+    "evidence/20261120T210733Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a",
+    "evidence/20261120T210039Z-1894984b-001-a",
+    "evidence/20261120T210047Z-1894984b-001-a",
+    "evidence/20261120T210054Z-1894984b-001-a",
+    "evidence/20261120T204831Z-1894984b-001-b"
    ],
    "blocker": null
   },
@@ -3382,10 +3382,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182344Z-91675214-002-a",
-    "evidence/20261120T182326Z-91675214-001-a",
-    "evidence/20261120T180411Z-91675214-001-b",
-    "evidence/20261120T181254Z-91675214-001-b"
+    "evidence/20261120T211129Z-1894984b-001-a",
+    "evidence/20261120T211110Z-1894984b-001-a",
+    "evidence/20261120T205019Z-1894984b-001-b",
+    "evidence/20261120T210011Z-1894984b-001-b"
    ],
    "blocker": null
   },
@@ -3456,7 +3456,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182345Z-91675214-002-a"
+    "evidence/20261120T211130Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -4182,16 +4182,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180614Z-91675214-001-b",
-    "evidence/20261120T181952Z-91675214-001-a",
-    "evidence/20261120T181707Z-91675214-001-a",
-    "evidence/20261120T181901Z-91675214-001-a",
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T180439Z-91675214-001-b",
-    "evidence/20261120T180531Z-91675214-001-b",
-    "evidence/20261120T180735Z-91675214-001-b",
-    "evidence/20261120T180859Z-91675214-001-b",
-    "evidence/20261120T181320Z-91675214-001-b"
+    "evidence/20261120T205245Z-1894984b-001-b",
+    "evidence/20261120T210723Z-1894984b-001-a",
+    "evidence/20261120T210436Z-1894984b-001-a",
+    "evidence/20261120T210632Z-1894984b-001-a",
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T205056Z-1894984b-001-b",
+    "evidence/20261120T205154Z-1894984b-001-b",
+    "evidence/20261120T205422Z-1894984b-001-b",
+    "evidence/20261120T205556Z-1894984b-001-b",
+    "evidence/20261120T210046Z-1894984b-001-b"
    ],
    "blocker": null
   },
@@ -4252,10 +4252,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182054Z-91675214-001-a",
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T182110Z-91675214-001-a",
-    "evidence/20261120T182121Z-91675214-001-a"
+    "evidence/20261120T210835Z-1894984b-001-a",
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T210851Z-1894984b-001-a",
+    "evidence/20261120T210902Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -4332,14 +4332,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181901Z-91675214-001-a",
-    "evidence/20261120T180315Z-91675214-001-b",
-    "evidence/20261120T180323Z-91675214-001-b",
-    "evidence/20261120T180411Z-91675214-001-b",
-    "evidence/20261120T181246Z-91675214-001-b",
-    "evidence/20261120T181707Z-91675214-001-a",
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T182110Z-91675214-001-a"
+    "evidence/20261120T210632Z-1894984b-001-a",
+    "evidence/20261120T204901Z-1894984b-001-b",
+    "evidence/20261120T204912Z-1894984b-001-b",
+    "evidence/20261120T205019Z-1894984b-001-b",
+    "evidence/20261120T205959Z-1894984b-001-b",
+    "evidence/20261120T210436Z-1894984b-001-a",
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T210851Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -4414,11 +4414,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181919Z-91675214-001-a",
-    "evidence/20261120T181927Z-91675214-001-a",
-    "evidence/20261120T182344Z-91675214-001-a",
-    "evidence/20261120T181707Z-91675214-001-a",
-    "evidence/20261120T181313Z-91675214-001-a"
+    "evidence/20261120T210650Z-1894984b-001-a",
+    "evidence/20261120T210657Z-1894984b-001-a",
+    "evidence/20261120T211128Z-1894984b-001-a",
+    "evidence/20261120T210436Z-1894984b-001-a",
+    "evidence/20261120T210039Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -4718,10 +4718,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181934Z-91675214-001-a",
-    "evidence/20261120T181402Z-91675214-001-a",
-    "evidence/20261120T181351Z-91675214-001-a",
-    "evidence/20261120T180959Z-91675214-001-b"
+    "evidence/20261120T210705Z-1894984b-001-a",
+    "evidence/20261120T210128Z-1894984b-001-a",
+    "evidence/20261120T210117Z-1894984b-001-a",
+    "evidence/20261120T205706Z-1894984b-001-b"
    ],
    "blocker": null
   },
@@ -4773,8 +4773,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T182054Z-91675214-001-a"
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T210835Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -4941,9 +4941,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181910Z-91675214-001-a",
-    "evidence/20261120T181707Z-91675214-001-a",
-    "evidence/20261120T181901Z-91675214-001-a"
+    "evidence/20261120T210641Z-1894984b-001-a",
+    "evidence/20261120T210436Z-1894984b-001-a",
+    "evidence/20261120T210632Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -5020,9 +5020,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182009Z-91675214-001-a",
-    "evidence/20261120T181507Z-91675214-001-a",
-    "evidence/20261120T180936Z-91675214-001-b"
+    "evidence/20261120T210740Z-1894984b-001-a",
+    "evidence/20261120T210234Z-1894984b-001-a",
+    "evidence/20261120T205636Z-1894984b-001-b"
    ],
    "blocker": null
   },
@@ -5136,8 +5136,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182345Z-91675214-001-a",
-    "evidence/20261120T182344Z-91675214-002-a"
+    "evidence/20261120T211129Z-1894984b-002-a",
+    "evidence/20261120T211129Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -5200,9 +5200,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182054Z-91675214-001-a",
-    "evidence/20261120T182121Z-91675214-001-a",
-    "evidence/20261120T182056Z-91675214-001-a"
+    "evidence/20261120T210835Z-1894984b-001-a",
+    "evidence/20261120T210902Z-1894984b-001-a",
+    "evidence/20261120T210837Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -5281,10 +5281,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181707Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a",
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T182218Z-91675214-001-a"
+    "evidence/20261120T210436Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a",
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T211000Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -5359,9 +5359,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182054Z-91675214-001-a",
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T182121Z-91675214-001-a"
+    "evidence/20261120T210835Z-1894984b-001-a",
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T210902Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -5443,10 +5443,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181808Z-91675214-001-a",
-    "evidence/20261120T181707Z-91675214-001-a",
-    "evidence/20261120T180244Z-91675214-001-a",
-    "evidence/20261120T182218Z-91675214-001-a"
+    "evidence/20261120T210538Z-1894984b-001-a",
+    "evidence/20261120T210436Z-1894984b-001-a",
+    "evidence/20261120T205003Z-1894984b-001-a",
+    "evidence/20261120T211000Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -5652,9 +5652,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T182054Z-91675214-001-a",
-    "evidence/20261120T182121Z-91675214-001-a"
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T210835Z-1894984b-001-a",
+    "evidence/20261120T210902Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -5771,7 +5771,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -5818,7 +5818,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182056Z-91675214-001-a"
+    "evidence/20261120T210837Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -5877,7 +5877,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182054Z-91675214-001-a"
+    "evidence/20261120T210835Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -5982,7 +5982,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182326Z-91675214-001-a"
+    "evidence/20261120T211110Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -6051,13 +6051,13 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182056Z-91675214-001-a",
+    "evidence/20261120T210837Z-1894984b-001-a",
     "evidence/20261120T072013Z-74035182-001",
     "evidence/20261120T074842Z-74035182-001",
     "evidence/20261120T080927Z-74035182-001",
     "evidence/20261120T083650Z-74035182-001",
-    "evidence/20261120T182110Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T210851Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -6119,9 +6119,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T182054Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T210835Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -6194,9 +6194,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181246Z-91675214-001-b",
-    "evidence/20261120T180723Z-91675214-001-b",
-    "evidence/20261120T180729Z-91675214-001-b"
+    "evidence/20261120T205959Z-1894984b-001-b",
+    "evidence/20261120T205403Z-1894984b-001-b",
+    "evidence/20261120T205413Z-1894984b-001-b"
    ],
    "blocker": null
   },
@@ -6258,8 +6258,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182110Z-91675214-001-a",
-    "evidence/20261120T182121Z-91675214-001-a"
+    "evidence/20261120T210851Z-1894984b-001-a",
+    "evidence/20261120T210902Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -6335,8 +6335,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181808Z-91675214-001-a",
-    "evidence/20261120T181854Z-91675214-001-a"
+    "evidence/20261120T210538Z-1894984b-001-a",
+    "evidence/20261120T210624Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -6413,7 +6413,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182346Z-91675214-001-a"
+    "evidence/20261120T211131Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -6500,9 +6500,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182017Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g",
-    "evidence/20261120T182110Z-91675214-001-a"
+    "evidence/20261120T210748Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T210851Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -6564,8 +6564,10 @@
     "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (the config contract's next version: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order",
     "2026-11-20 activated (the manager): its dependencies WP-101, WP-161 and WP-162 are done (WP-162 closed on verify run 44788505779); option A of the design; test first",
     "2026-11-20 the work (the manager, inline; scratch runs, no CI evidence). Test first: TST-M6-SESSION-JOB (session_job; lab manifest svc-sj.txt with the lab image as the vouched `session`, role `ender`, launching stay and nest, asking END_SESSION and launching stay again, and as the vouched `desktop`, `ask END_SESSION=ERR ACCESS`; lab entries stay and nest), and TST-M6-APP-SPAWN and TST-M6-APP-CONNECT-DENIED rewritten for the session's job (the test kernel's LiveNamed now gives a job's parent and whether that parent is a child of the root job, test-only). On the manager as it was all three FAILED, exit 37: SESSION-JOB `session=0x5300|desktop=0x51|stay=1|nest=1|idle=1|under_root=1` (END_SESSION answered ERR BAD_REQUEST), APP-SPAWN `under_root=8|in_session=0` ('an application is not in a job of its own under the session's job'), APP-CONNECT `mgr_handles=19`; with the change all three PASS and TST-M6-LAUNCH-DENIED still PASS. The change (user/apps/svcmgr/src/main.rs): session_job, made under the root job by the first LAUNCH that finds none, each application's job its child; END_SESSION from the vouched session alone kills it, lets it go and answers ENDED <n>. M141 (reserved since WP-102's planning) and M385 to M387, their evidence pinned by TST-M0-005 (98 cases; the new pin seen failing before they were registered: 'Lists differ: [] != [M141, M385, M386, M387]'); the expectations of M346 to M361, M379 to M381 and M384 re-derived from the local run (one job and one handle more each). services.md v1.17. The M6 guest step's cap 18 -> 19 minutes with the case's 30 s (1097 s of 1140), job a's limit unchanged (15 + 19) x 1.2 = 40.8 of 62",
-    "2026-11-20 the review round (auditor and red team, read only). No reachable hole: an application holds no job handle and its children are spawned in its own job, the manager hands no service a job handle, the kill and a new launch cannot race (one-threaded manager; a killed job takes no child). Found and corrected, test first: (1) the case refused END_SESSION from the desktop alone, and at whatever time the desktop started: `sessions`, a third service, is added, and both now depend on the session, which launches stay and nest before READY, so both are refused while the session's applications run (M392, every service but the desktop ending the session, and M394, ENDED telling 2 whatever ran, shown passing the case as it was, run alone on the manager with each applied; M393, ending after refusing, was killed there by the start order of that run alone); (2) the case asks END_SESSION twice, 300 ticks apart (ENDED 2, ENDED 0), and ends a session of one application (ENDED 1); (3) stay asks END_SESSION on its own boot channel, refused; (4) waiting checked; (5) M395, a session job per LAUNCH (the auditor's gap), added. The contract corrected: `ENDED 0 when there is no job` was not what the code does, n is the places taken when asked, applications of an ended session not yet seen exiting among them (the code kept as it is: the case passed it both ways, so there was no failing test for a change); the session's job outlives a first LAUNCH that failed; LAUNCH right after ENDED may be ERR FULL and an application's CONNECT ERR LIMIT until the exits are seen; the identity does not name a session; WP-167 bound to close the LAUNCH between ENDED and the next sign-in and the session's exit (L-097, L-098). The auditor's other corrections: WP-102's actions that promised session.md v1.8 and config.md v1.6 reworded (they are WP-167's and WP-168's), TST-M0-005's oracle numbers re-derived, the stale comments, the test's layer, the files list, REQ-M6-004's and WP-47's acceptance. M386's expectation is no longer timing-dependent (the start order). Left as limits: L-097 to L-100",
-    "2026-11-20 local runs on the final tree (scratch, not evidence): every guest suite, 165 cases PASS (M1 3, M2 25, M3 54, M4 31, M5 36, M6 16) and one FAIL, TST-M4-NET-NO-INTERNET (this sandbox reaches the internet, CI does not; failed the same way locally on 2026-11-16, 11-17, 11-19 and in WP-162's runs); an earlier full M6 run on the tree before the review round failed once in TST-M6-INTERACTIVE-BOOT at the kernel's timer selfcheck (ticks=0 in its 50 ms window under load, a part WP-102 does not touch) and passed in this run; the host suites M0, M1, M3, M4, M5 and M6 PASS (TST-M0-005: 98 cases, OK); in a scratch clone 41/41 mutants killed with every expectation met (M141, M385 to M387, M392 to M395, WP-161's M346 to M361, WP-162's M140, M142 and M378 to M384, and M157 to M159, M324, M342 to M345) and the 94 tooling mutants killed (94/94). Until CI judges"
+    "2026-11-20 the review round (auditor and red team, read only). No reachable hole: an application holds no job handle and its children are spawned in its own job, the manager hands no service a job handle, the kill and a new launch cannot race (one-threaded manager; a killed job takes no child). Found and corrected, test first: (1) the case refused END_SESSION from the desktop alone, and at whatever time the desktop started: `sessions`, a third service, is added, and both now depend on the session, which launches stay and nest before READY, so both are refused while the session's applications run (M392, every service but the desktop ending the session, and M394, ENDED telling 2 whatever ran, shown passing the case as it was, run alone on the manager with each applied; M393, ending after refusing, was killed there by the start order of that run alone); (2) the case asks END_SESSION twice, 300 ticks apart (ENDED 2, ENDED 0), and ends a session of one application (ENDED 1); (3) stay asks END_SESSION on its own boot channel, refused; (4) waiting checked; (5) M395, a session job per LAUNCH (the auditor's gap), added. The contract corrected: `ENDED 0 when there is no job` was not what the code does, n is the places taken when asked, applications of an ended session not yet seen exiting among them (the code kept as it is: the case passed it both ways, so there was no failing test for a change); the session's job outlives a first LAUNCH that failed; LAUNCH right after ENDED may be ERR FULL and an application's CONNECT ERR LIMIT until the exits are seen; the identity does not name a session; WP-167 bound to close the LAUNCH between ENDED and the next sign-in and the session's exit (L-097, L-098). The auditor's other corrections: WP-102's actions that promised the session and config contracts' next versions reworded (they are WP-167's and WP-168's), TST-M0-005's oracle numbers re-derived, the stale comments, the test's layer, the files list, REQ-M6-004's and WP-47's acceptance. M386's expectation is no longer timing-dependent (the start order). Left as limits: L-097 to L-100",
+    "2026-11-20 local runs on the final tree (scratch, not evidence): every guest suite, 165 cases PASS (M1 3, M2 25, M3 54, M4 31, M5 36, M6 16) and one FAIL, TST-M4-NET-NO-INTERNET (this sandbox reaches the internet, CI does not; failed the same way locally on 2026-11-16, 11-17, 11-19 and in WP-162's runs); an earlier full M6 run on the tree before the review round failed once in TST-M6-INTERACTIVE-BOOT at the kernel's timer selfcheck (ticks=0 in its 50 ms window under load, a part WP-102 does not touch) and passed in this run; the host suites M0, M1, M3, M4, M5 and M6 PASS (TST-M0-005: 98 cases, OK); in a scratch clone 41/41 mutants killed with every expectation met (M141, M385 to M387, M392 to M395, WP-161's M346 to M361, WP-162's M140, M142 and M378 to M384, and M157 to M159, M324, M342 to M345) and the 94 tooling mutants killed (94/94). Until CI judges",
+    "2026-11-20 CI record: verify run 44814302183 on 4314eb8089, run attempt 1, green; 188 runs imported, none failing; validate-records --strict 0 errors. TST-M6-SESSION-JOB PASS (evidence/20261120T210816Z-1894984b-001-a, 8 s of its 30 s): its line is the pinned one, `ktest|session_job|load=OK 3|session=0x40|desktop=0x40|sessions=0x40|stay=1|waiting=1|nest=0|idle=0|under_root=0|in_session=1|live_jobs=2|mgr_handles=4`, with every required marker (stay#1 and stay#4 refused END_SESSION and their six requests, nest#2's child, the session's trace ender|end=ENDED 2|again=ENDED 0|after=OK app:stay#3|end2=ENDED 1|last=OK app:stay#4), none of the forbidden, four applications started under /SYSTEM/APPS, the clean exit and frames_delta=0. TST-M6-APP-SPAWN PASS (evidence/20261120T210756Z-1894984b-001-a): the eight in jobs of their own under one session job (under_root=0, in_session=8, parents=1, live_jobs=9, mgr_handles=25). TST-M6-APP-CONNECT-DENIED PASS (evidence/20261120T210805Z-1894984b-001-a): mgr_handles=20. TST-M6-MUTANTS PASS (evidence/20261120T210711Z-1894984b-001-g: 241 of 241 valid mutants killed, no surviving SECURITY mutant, no expectation missed); M141, M385 to M387 and M392 to M395, six of them SECURITY, each killed by the case with its declared evidence kept by the gate. TST-M0-005 PASS with 98 cases (evidence/20261120T210851Z-1894984b-001-a)",
+    "2026-11-20 close under the method's close rule (section 7, rule 3): every clause of this item shown on CI on the case's written steps: the manager makes a job for the session at the first LAUNCH that finds none and starts every application in a child of it, holding it alone; END_SESSION from the vouched session kills it with every application and what they started, answered ENDED <n> (the places taken), from the desktop or any other service ERR ACCESS; the next LAUNCH makes a new job; the places come back with the exits; services.md v1.17 states it; the M6 guest step's cap rose with the case (19 minutes); the six SECURITY mutants killed, two of the review round's shown passing the case as it was. 'Fails before the change' rests on the scratch red of this date (END_SESSION answered ERR BAD_REQUEST; the applications under the root job) and, on CI, on the eight kills. Written as limits, not shown: no one sends END_SESSION yet, Sign out does in WP-167, which is bound to close a LAUNCH between ENDED and the next sign-in and the session's exit leaving its job (L-097); the identity across sessions and requests served after ENDED (L-098); the count by channels and the failed first job_create (L-099); the autostart (WP-168)"
    ],
    "acceptance": "the manager creates a job for the session at the first LAUNCH that finds none and starts every application in a child of it; END_SESSION from the vouched session alone kills that job and is answered ENDED <n> (ERR ACCESS otherwise), the next LAUNCH making a new one; places come back with the applications' exits (the grants by the same exit path, shown by TST-M6-APP-CONNECT-DENIED); shown by TST-M6-SESSION-JOB on CI, TST-M6-APP-SPAWN and TST-M6-APP-CONNECT-DENIED rewritten for the job and passing; services.md v1.17 states it; the M6 guest step's cap raised with the case, never a skipped case; M141, M385 to M387 and M392 to M395 killed by the M6 gate",
    "test_ids": [
@@ -6580,12 +6582,19 @@
     "python3 tools/project.py test --target host --suite M6-GATE",
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261120T210816Z-1894984b-001-a",
+    "evidence/20261120T210756Z-1894984b-001-a",
+    "evidence/20261120T210805Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T210851Z-1894984b-001-a"
+   ],
    "blocker": null
   },
   {
@@ -6695,9 +6704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180906Z-91675214-001-a",
-    "evidence/20261120T180859Z-91675214-001-a",
-    "evidence/20261120T180920Z-91675214-001-a"
+    "evidence/20261120T205628Z-1894984b-001-a",
+    "evidence/20261120T205621Z-1894984b-001-a",
+    "evidence/20261120T205643Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -6776,12 +6785,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181012Z-91675214-001-a",
-    "evidence/20261120T181002Z-91675214-001-a",
-    "evidence/20261120T180937Z-91675214-001-a",
-    "evidence/20261120T180945Z-91675214-001-a",
-    "evidence/20261120T180952Z-91675214-001-a",
-    "evidence/20261120T182126Z-91675214-001-a"
+    "evidence/20261120T205736Z-1894984b-001-a",
+    "evidence/20261120T205725Z-1894984b-001-a",
+    "evidence/20261120T205700Z-1894984b-001-a",
+    "evidence/20261120T205708Z-1894984b-001-a",
+    "evidence/20261120T205715Z-1894984b-001-a",
+    "evidence/20261120T210908Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -6864,10 +6873,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181152Z-91675214-001-a",
-    "evidence/20261120T180930Z-91675214-001-a",
-    "evidence/20261120T182126Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205917Z-1894984b-001-a",
+    "evidence/20261120T205653Z-1894984b-001-a",
+    "evidence/20261120T210908Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -6940,9 +6949,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181426Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g",
-    "evidence/20261120T182110Z-91675214-001-a"
+    "evidence/20261120T210152Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T210851Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -7017,12 +7026,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181558Z-91675214-001-a",
-    "evidence/20261120T181614Z-91675214-001-a",
-    "evidence/20261120T181632Z-91675214-001-a",
-    "evidence/20261120T181623Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g",
-    "evidence/20261120T182110Z-91675214-001-a"
+    "evidence/20261120T210326Z-1894984b-001-a",
+    "evidence/20261120T210343Z-1894984b-001-a",
+    "evidence/20261120T210401Z-1894984b-001-a",
+    "evidence/20261120T210351Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T210851Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -7515,12 +7524,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180906Z-91675214-001-a",
-    "evidence/20261120T180952Z-91675214-001-a",
-    "evidence/20261120T181002Z-91675214-001-a",
-    "evidence/20261120T181012Z-91675214-001-a",
-    "evidence/20261120T181142Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205628Z-1894984b-001-a",
+    "evidence/20261120T205715Z-1894984b-001-a",
+    "evidence/20261120T205725Z-1894984b-001-a",
+    "evidence/20261120T205736Z-1894984b-001-a",
+    "evidence/20261120T205907Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -7594,14 +7603,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181043Z-91675214-001-a",
-    "evidence/20261120T180937Z-91675214-001-a",
-    "evidence/20261120T180945Z-91675214-001-a",
-    "evidence/20261120T180952Z-91675214-001-a",
-    "evidence/20261120T181002Z-91675214-001-a",
-    "evidence/20261120T181012Z-91675214-001-a",
-    "evidence/20261120T182126Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205807Z-1894984b-001-a",
+    "evidence/20261120T205700Z-1894984b-001-a",
+    "evidence/20261120T205708Z-1894984b-001-a",
+    "evidence/20261120T205715Z-1894984b-001-a",
+    "evidence/20261120T205725Z-1894984b-001-a",
+    "evidence/20261120T205736Z-1894984b-001-a",
+    "evidence/20261120T210908Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -7710,11 +7719,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181043Z-91675214-001-a",
-    "evidence/20261120T181002Z-91675214-001-a",
-    "evidence/20261120T181012Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g",
-    "evidence/20261120T181134Z-91675214-001-a"
+    "evidence/20261120T205807Z-1894984b-001-a",
+    "evidence/20261120T205725Z-1894984b-001-a",
+    "evidence/20261120T205736Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T205859Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -7783,10 +7792,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181134Z-91675214-001-a",
-    "evidence/20261120T181043Z-91675214-001-a",
-    "evidence/20261120T180937Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205859Z-1894984b-001-a",
+    "evidence/20261120T205807Z-1894984b-001-a",
+    "evidence/20261120T205700Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -7985,12 +7994,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181033Z-91675214-001-a",
-    "evidence/20261120T181022Z-91675214-001-a",
-    "evidence/20261120T181043Z-91675214-001-a",
-    "evidence/20261120T181002Z-91675214-001-a",
-    "evidence/20261120T181012Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205757Z-1894984b-001-a",
+    "evidence/20261120T205746Z-1894984b-001-a",
+    "evidence/20261120T205807Z-1894984b-001-a",
+    "evidence/20261120T205725Z-1894984b-001-a",
+    "evidence/20261120T205736Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -8053,9 +8062,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181054Z-91675214-001-a",
-    "evidence/20261120T181043Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205818Z-1894984b-001-a",
+    "evidence/20261120T205807Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -8180,9 +8189,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181105Z-91675214-001-a",
-    "evidence/20261120T181043Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205829Z-1894984b-001-a",
+    "evidence/20261120T205807Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -8251,10 +8260,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181116Z-91675214-001-a",
-    "evidence/20261120T181105Z-91675214-001-a",
-    "evidence/20261120T181022Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205840Z-1894984b-001-a",
+    "evidence/20261120T205829Z-1894984b-001-a",
+    "evidence/20261120T205746Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -8494,10 +8503,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181105Z-91675214-001-a",
-    "evidence/20261120T181116Z-91675214-001-a",
-    "evidence/20261120T181127Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205829Z-1894984b-001-a",
+    "evidence/20261120T205840Z-1894984b-001-a",
+    "evidence/20261120T205851Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -8719,12 +8728,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182126Z-91675214-001-a",
-    "evidence/20261120T181043Z-91675214-001-a",
-    "evidence/20261120T181002Z-91675214-001-a",
-    "evidence/20261120T181012Z-91675214-001-a",
-    "evidence/20261120T181142Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T210908Z-1894984b-001-a",
+    "evidence/20261120T205807Z-1894984b-001-a",
+    "evidence/20261120T205725Z-1894984b-001-a",
+    "evidence/20261120T205736Z-1894984b-001-a",
+    "evidence/20261120T205907Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -8798,12 +8807,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182126Z-91675214-001-a",
-    "evidence/20261120T181043Z-91675214-001-a",
-    "evidence/20261120T181002Z-91675214-001-a",
-    "evidence/20261120T181012Z-91675214-001-a",
-    "evidence/20261120T181142Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T210908Z-1894984b-001-a",
+    "evidence/20261120T205807Z-1894984b-001-a",
+    "evidence/20261120T205725Z-1894984b-001-a",
+    "evidence/20261120T205736Z-1894984b-001-a",
+    "evidence/20261120T205907Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -8993,8 +9002,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182110Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T210851Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -9246,9 +9255,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181159Z-91675214-001-a",
-    "evidence/20261120T180930Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205925Z-1894984b-001-a",
+    "evidence/20261120T205653Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null,
    "id": "WP-147",
@@ -9375,9 +9384,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T180747Z-91675214-001-a",
-    "evidence/20261120T180740Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T205509Z-1894984b-001-a",
+    "evidence/20261120T205501Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null,
    "id": "WP-149",
@@ -9542,7 +9551,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182121Z-91675214-001-a"
+    "evidence/20261120T210902Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -9605,10 +9614,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g",
-    "evidence/20261120T182110Z-91675214-001-a",
-    "evidence/20261120T182121Z-91675214-001-a"
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T210851Z-1894984b-001-a",
+    "evidence/20261120T210902Z-1894984b-001-a"
    ],
    "blocker": null
   },
@@ -9665,9 +9674,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182056Z-91675214-001-a",
-    "evidence/20261120T182110Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T210837Z-1894984b-001-a",
+    "evidence/20261120T210851Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null
   },
@@ -9773,10 +9782,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181328Z-91675214-001-a",
-    "evidence/20261120T181336Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g",
-    "evidence/20261120T182110Z-91675214-001-a"
+    "evidence/20261120T210054Z-1894984b-001-a",
+    "evidence/20261120T210102Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T210851Z-1894984b-001-a"
    ],
    "blocker": null,
    "id": "WP-156",
@@ -9842,11 +9851,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181426Z-91675214-001-a",
-    "evidence/20261120T181434Z-91675214-001-a",
-    "evidence/20261120T181410Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g",
-    "evidence/20261120T182110Z-91675214-001-a"
+    "evidence/20261120T210152Z-1894984b-001-a",
+    "evidence/20261120T210201Z-1894984b-001-a",
+    "evidence/20261120T210136Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T210851Z-1894984b-001-a"
    ],
    "blocker": null,
    "id": "WP-157",
@@ -9940,12 +9949,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T181442Z-91675214-001-a",
-    "evidence/20261120T181451Z-91675214-001-a",
-    "evidence/20261120T181434Z-91675214-001-a",
-    "evidence/20261120T181426Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g",
-    "evidence/20261120T182110Z-91675214-001-a"
+    "evidence/20261120T210209Z-1894984b-001-a",
+    "evidence/20261120T210217Z-1894984b-001-a",
+    "evidence/20261120T210201Z-1894984b-001-a",
+    "evidence/20261120T210152Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T210851Z-1894984b-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -10089,10 +10098,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182024Z-91675214-001-a",
-    "evidence/20261120T182017Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g",
-    "evidence/20261120T182110Z-91675214-001-a"
+    "evidence/20261120T210756Z-1894984b-001-a",
+    "evidence/20261120T210748Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T210851Z-1894984b-001-a"
    ],
    "blocker": null,
    "test_ids": [
@@ -10175,11 +10184,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182033Z-91675214-001-a",
-    "evidence/20261120T182024Z-91675214-001-a",
-    "evidence/20261120T182017Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g",
-    "evidence/20261120T182110Z-91675214-001-a"
+    "evidence/20261120T210805Z-1894984b-001-a",
+    "evidence/20261120T210756Z-1894984b-001-a",
+    "evidence/20261120T210748Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g",
+    "evidence/20261120T210851Z-1894984b-001-a"
    ],
    "blocker": null,
    "test_ids": [
@@ -10380,9 +10389,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261120T182054Z-91675214-001-a",
-    "evidence/20261120T182110Z-91675214-001-a",
-    "evidence/20261120T181652Z-91675214-001-g"
+    "evidence/20261120T210835Z-1894984b-001-a",
+    "evidence/20261120T210851Z-1894984b-001-a",
+    "evidence/20261120T210711Z-1894984b-001-g"
    ],
    "blocker": null,
    "actions": [
