@@ -2395,7 +2395,7 @@
     "REQ-M6-004"
    ],
    "layer": "negative",
-   "oracle": "planned (M6, WP-47; closes session.md §8 'sign-out does not end user processes'): an app that ignores CLOSE_REQUESTED is absent from process_list after Sign out (job_kill), its frames are returned, and the next sign-in starts with no process of the previous session",
+   "oracle": "planned (M6, WP-167; closes session.md §8 'sign-out does not end user processes'): after Sign out an application that ignores the close request and one with a child of its own have no live process (the test kernel's live processes by image name, not process_list), the manager's handle count is back at its base, and the next sign-in starts with none of them and launches into a new job; frames_delta=0",
    "command": "python3 tools/project.py test --target pc-qemu --suite M6",
    "verdict": "NOT_RUN",
    "evidence_refs": []
@@ -3251,6 +3251,17 @@
    "oracle_notes": [
     "2026-11-10 (WP-73): the held-copy WHOAMI check (a service holds a token copy during a REQUEST, session.md:14) is deferred to WP-71 with its mechanism; this case measures the kernel's live-token count and the trace line, and TST-M4-TOKEN-OBJECTS proves that a revocation is visible to every copy."
    ]
+  },
+  {
+   "id": "TST-M6-SESSION-JOB",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "layer": "negative",
+   "oracle": "planned (M6, WP-102): applications launched by the vouched session run in children of one session job; END_SESSION from the session kills it, answered ENDED <n>, from the desktop ERR ACCESS; no application process lives after it, places and grants come back, the next LAUNCH makes a new job; frames_delta=0",
+   "command": "python3 tools/project.py test --target pc-qemu --suite M6",
+   "verdict": "NOT_RUN",
+   "evidence_refs": []
   }
  ]
 }

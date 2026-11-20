@@ -3211,7 +3211,9 @@
     "WP-161",
     "WP-162",
     "WP-164",
-    "WP-163"
+    "WP-163",
+    "WP-167",
+    "WP-168"
    ],
    "inputs": [
     "DEC-005",
@@ -6521,43 +6523,54 @@
     "user/apps/sessiond/src/main.rs sign_out (LOGOUT to auth and display only; nothing is killed)",
     "kernel/src/object/job.rs and syscall.md v1.13 (job_create, job_kill, process_spawn_in)",
     "docs/contracts/config.md (the user store)",
-    "TST-M6-LOGOUT-KILLS's planned oracle reads process_list, which is WP-69's (blocked by DEC-027)"
+    "TST-M6-LOGOUT-KILLS's planned oracle reads process_list, which is WP-69's (blocked by DEC-027)",
+    "the services engineer's design of 2026-11-20 (option A: the manager creates and alone holds the session's job; options B and D weighed)"
    ],
    "files": [
-    "user/apps/sessiond/src/main.rs",
     "user/apps/svcmgr/src/main.rs",
-    "docs/contracts/session.md",
+    "user/apps/svc/src/main.rs",
+    "docs/contracts/services.md",
     "kernel/src/ktest.rs",
     "platform/pc-qemu/target.json",
     "tests/mutants.py",
+    "tests/test_mutants_harness.py",
     "tools/project.py",
     "docs/tests.json",
     ".github/workflows/verify.yml",
     "tests/test_ci_workflows.py"
    ],
    "contract_refs": [
-    "docs/contracts/session.md"
+    "docs/contracts/services.md"
    ],
    "actions": [
-    "مهمة لكل جلسة، والتشغيل التلقائي، والخروج يقتل المهمة (102، مفصولة من WP-47 في 2026-11-15)",
+    "مهمة لكل جلسة يمسكها المدير، وEND_SESSION من الجلسة يقتلها (102، مفصولة من WP-47 في 2026-11-15؛ الخروج في WP-167 والتشغيل التلقائي في WP-168 منذ قسمة 2026-11-20)",
     "session.md v1.8: a job per session; autostart from the user's config store (session.autostart); job_kill at Sign out (closes the §8 limit)",
     "test first: TST-M6-LOGOUT-KILLS in the test kernel (an application that ignores the close request is gone after Sign out, its frames returned, the next sign-in starts with no process of the previous session); its oracle as planned reads process_list (WP-69, DEC-027): at activation it is rewritten to observe the job's end without it, or this item waits for WP-69; SECURITY mutant M141 (job_kill at sign-out dropped)",
     "M6 guest step: with this case the suite is expected to pass the 1080 s cap (planner's estimate, unmeasured): the cap and job a's limit rise with the case, or WP-98's fan-out comes first; never a skipped case",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-15 estimate (planner, unmeasured): within the budget line; sized again at activation",
     "2026-11-19 (the manager): WP-161 added to the dependencies at WP-101's split: the session's job and the autostart need the launch, which is WP-161 now",
-    "2026-11-19 (the manager): WP-162 added to the dependencies as a matter of order, not of need: the owner's order (methodology section 7, item 5) places WP-101 before this item, and WP-101 as he ordered it held the launch and the confinement of an application's CONNECT, which the splits of 2026-11-19 made WP-161 and WP-162; the dependency says in the records what the order says in the ruling, so the state file's next step and the activation rule follow it"
+    "2026-11-19 (the manager): WP-162 added to the dependencies as a matter of order, not of need: the owner's order (methodology section 7, item 5) places WP-101 before this item, and WP-101 as he ordered it held the launch and the confinement of an application's CONNECT, which the splits of 2026-11-19 made WP-161 and WP-162; the dependency says in the records what the order says in the ruling, so the state file's next step and the activation rule follow it",
+    "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (config.md v1.6: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order",
+    "2026-11-20 activated (the manager): its dependencies WP-101, WP-161 and WP-162 are done (WP-162 closed on verify run 44788505779); option A of the design; test first"
    ],
-   "acceptance": "TST-M6-LOGOUT-KILLS PASS on CI; session.md v1.8 closes §8's limit; M141 killed by the M6 gate",
+   "acceptance": "the manager creates a job for the session at the first LAUNCH that finds none and starts every application in a child of it; END_SESSION from the vouched session alone kills that job and is answered ENDED <n> (ERR ACCESS otherwise), the next LAUNCH making a new one; places and grants come back with the applications' exits; shown by TST-M6-SESSION-JOB on CI, TST-M6-APP-SPAWN and TST-M6-APP-CONNECT-DENIED rewritten for the job and passing; services.md v1.17 states it; the M6 guest step's cap raised with the case, never a skipped case; M141 and the job's mutants killed by the M6 gate",
    "test_ids": [
-    "TST-M6-LOGOUT-KILLS"
+    "TST-M6-SESSION-JOB",
+    "TST-M6-APP-SPAWN",
+    "TST-M6-APP-CONNECT-DENIED",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "commands": [
-    "python3 tools/project.py test --target pc-qemu --suite M6"
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6-GATE",
+    "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -10418,6 +10431,108 @@
     "test first, red seen locally before the change: the new cases of TST-M0-003 fail on the workflow as it is",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-19 registered from the red attempt of WP-161's verify run. Not placed in the owner's order: the whole run was re-run once and the owner decides whether this comes before WP-162"
+   ]
+  },
+  {
+   "id": "WP-167",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-102"
+   ],
+   "inputs": [
+    "split from WP-102 on 2026-11-20 by its budget line, its second part",
+    "docs/contracts/session.md §8",
+    "user/apps/sessiond/src/main.rs sign_out"
+   ],
+   "files": [
+    "user/apps/sessiond/src/main.rs",
+    "user/apps/svc/src/main.rs",
+    "docs/contracts/session.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json",
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py"
+   ],
+   "contract_refs": [
+    "docs/contracts/session.md"
+   ],
+   "acceptance": "Sign out sends END_SESSION before display's LOGOUT and traces jobs=ended|apps=<n> (jobs=unsent when it cannot); an application that ignores the close request and one with a child of its own are gone after Sign out, their frames returned, and the next sign-in starts with none of them; shown by TST-M6-LOGOUT-KILLS on CI; session.md v1.8 closes §8's limit; M388 and M389 killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-LOGOUT-KILLS",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6-GATE"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "الخروج ينهي مهمة الجلسة (مفصولة من WP-102 في 2026-11-20)",
+    "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (config.md v1.6: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order"
+   ]
+  },
+  {
+   "id": "WP-168",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-167"
+   ],
+   "inputs": [
+    "split from WP-102 on 2026-11-20 by its budget line, its third part",
+    "docs/contracts/config.md (the user store)",
+    "user/apps/configd/src/main.rs (GET reads loaded stores alone: a user store is loaded on its first change only)"
+   ],
+   "files": [
+    "user/apps/sessiond/src/main.rs",
+    "user/apps/configd/src/main.rs",
+    "docs/contracts/session.md",
+    "docs/contracts/config.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/session.md",
+    "docs/contracts/config.md"
+   ],
+   "acceptance": "after sign-in the session reads session.autostart from the user's store and launches up to eight ids in order, a missing key, a refused or missing entry each traced and passed over; a user store is loaded on read for its owner's or an admin's token alone; shown on CI in TST-M6-LOGOUT-KILLS (the autostart replacing the relay's launches) and a config case; config.md v1.6 and session.md v1.9 state it; M390 and M391 killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-LOGOUT-KILLS",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6-GATE"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "التشغيل التلقائي من مخزن المستخدم (مفصولة من WP-102 في 2026-11-20)",
+    "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (config.md v1.6: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order"
    ]
   }
  ]
