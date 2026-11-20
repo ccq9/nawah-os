@@ -1434,28 +1434,37 @@ class KillEvidence(unittest.TestCase):
     SESSION_JOB = "TST-M6-SESSION-JOB"
 
     def test_the_session_job_expectations_are_pinned(self):
-        """WP-102 (REQ-M6-004; services.md v1.17, ADR-0023 item 1): the session's job. M141 and
-        M385 to M387, each anchor once in user/apps/svcmgr/src/main.rs, are declared on
-        TST-M6-SESSION-JOB (M385 on TST-M6-APP-SPAWN too), each known there by exit 37, one
-        message occurring as a failure in ktest.rs and fields of the case's one line with
-        another value than the pinned line's, no two sharing their evidence; M141, M385 and M386
-        are SECURITY. The case's lab manifest gives the session the role `ender` and the
-        desktop END_SESSION expecting ERR ACCESS; its volume carries the two lab entries."""
+        """WP-102 (REQ-M6-004; services.md v1.17, ADR-0023 item 1): the session's job. M141,
+        M385 to M387 and M392 to M395, each anchor once in user/apps/svcmgr/src/main.rs, are
+        declared on TST-M6-SESSION-JOB (M385 and M395 on TST-M6-APP-SPAWN too), each known there
+        by exit 37, the case's message for END_SESSION's replies (the session's step, 0x5k00,
+        in the line) and fields of the case's one line with another value than the pinned
+        line's, no two sharing their evidence; M141, M385, M386, M392, M393 and M395 are
+        SECURITY. The case's lab manifest gives the session the role `ender` and `desktop` and
+        `sessions`, started once it is READY, END_SESSION expecting ERR ACCESS; its volume
+        carries the two lab entries."""
         E = mutants.EXPECT
         src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
         t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
         case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.SESSION_JOB)
         line = next(m for m in case["required_markers"] if m.startswith("|ktest|session_job|load="))
-        self.assertEqual(line, "|ktest|session_job|load=OK 2|session=0x40|desktop=0x40|stay=1|nest=0|idle=0|under_root=0|in_session=1|live_jobs=2|mgr_handles=4|")
-        want = {  # id: (SECURITY, message constant, the substrings besides exit 37 and the message)
-            "M141": (True, "_SJALIVE", ["|stay=2|nest=1|idle=1|under_root=0|in_session=2|live_jobs=5|"]),
-            "M385": (True, "_SJALIVE", ["|stay=2|nest=1|idle=1|under_root=2|in_session=0|"]),
-            "M386": (True, "_SJANS", ["|session=0x5300|desktop=0x51|"]),
-            "M387": (False, "_SJANS", ["|session=0x5400|desktop=0x40|"]),
+        self.assertEqual(line, "|ktest|session_job|load=OK 3|session=0x40|desktop=0x40|sessions=0x40|stay=1|waiting=1|nest=0|idle=0|"
+                               "under_root=0|in_session=1|live_jobs=2|mgr_handles=4|")
+        want = {  # id: (SECURITY, the substrings besides exit 37 and the message)
+            "M141": (True, ["|session=0x5400|", "|nest=1|idle=1|under_root=0|in_session=1|live_jobs=3|"]),
+            "M385": (True, ["|session=0x5400|", "|nest=1|idle=1|under_root=1|in_session=0|"]),
+            "M386": (True, ["|session=0x5300|desktop=0x51|sessions=0x51|"]),
+            "M387": (False, ["|session=0x5500|desktop=0x40|sessions=0x40|"]),
+            "M392": (True, ["|session=0x5300|desktop=0x40|sessions=0x51|"]),
+            "M393": (True, ["|session=0x5300|desktop=0x40|sessions=0x40|"]),
+            "M394": (False, ["|session=0x5400|desktop=0x40|sessions=0x40|stay=0|"]),
+            "M395": (True, ["|session=0x5400|", "|nest=1|idle=1|under_root=0|in_session=1|live_jobs=4|"]),
         }
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.SESSION_JOB in m[4]), sorted(want))
+        msg = mutants._SJANS
+        self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
         seen = set()
-        for mid, (security, const, rest) in want.items():
+        for mid, (security, rest) in want.items():
             with self.subTest(mutant=mid):
                 m = next(m for m in mutants.MUTANTS if m[0] == mid)
                 self.assertEqual(m[1], "user/apps/svcmgr/src/main.rs")
@@ -1464,25 +1473,25 @@ class KillEvidence(unittest.TestCase):
                 self.assertEqual(mid in mutants.SECURITY, security)
                 self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
                 self.assertEqual(mutants.stage_of(mid), "M6")
-                self.assertEqual(m[4], [self.SESSION_JOB] + ([self.SPAWN] if mid == "M385" else []))
-                msg = getattr(mutants, const)
+                both = mid in ("M385", "M395")
+                self.assertEqual(m[4], [self.SESSION_JOB] + ([self.SPAWN] if both else []))
+                self.assertEqual(sorted(E[mid]), sorted([self.SESSION_JOB] + ([self.SPAWN] if both else [])))
                 self.assertEqual(sorted(E[mid][self.SESSION_JOB]), sorted(["exit 37", msg] + rest))
-                self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
                 for x in rest:
                     self.assertNotIn(x, line, f"{x} is the pinned line")
                     for f in x.strip("|").split("|"):
                         self.assertIn("|" + f.split("=")[0] + "=", line, f)
-                seen.add((const, tuple(rest)))
+                seen.add(tuple(rest))
         self.assertEqual(len(seen), len(want), "each mutant is known by its own evidence")
-        self.assertEqual(sorted(E["M385"]), sorted([self.SESSION_JOB, self.SPAWN]))
-        self.assertIn("|under_root=8|in_session=0|parents=1|", E["M385"][self.SPAWN])
+        self.assertEqual(E["M385"][self.SPAWN], ["exit 37", "|under_root=8|in_session=0|parents=1|", mutants._NOJOB])
+        self.assertEqual(E["M395"][self.SPAWN], ["exit 37", "|in_session=8|parents=8|", mutants._NOJOB])
         manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-sj.txt").read_text(encoding="utf-8")
         self.assertIn("\nsession /SYSTEM/SVC.ELF - 3000 never 0 0 ender\n", manifest)
-        self.assertIn("\ndesktop /SYSTEM/SVC.ELF - 3000 never 0 0 ask END_SESSION=ERR ACCESS\n", manifest)
+        for name in ("desktop", "sessions"):
+            self.assertIn(f"\n{name} /SYSTEM/SVC.ELF session 3000 never 0 0 ask END_SESSION=ERR ACCESS\n", manifest)
         self.assertEqual(case.get("disk_files"), {
             f"SYSTEM/APPS/{n.upper()}.{x}": (f"platform/pc-qemu/lab/{n}.app" if x == "APP" else "${OUT}/apps/svc.elf")
             for n in ("stay", "nest") for x in ("APP", "ELF")})
-
 
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""

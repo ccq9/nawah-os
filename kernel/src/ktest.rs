@@ -5287,8 +5287,8 @@ fn launch_denied() -> ! {
 }
 
 /// TST-M6-APP-SPAWN (REQ-M6-004, services.md v1.15, ADR-0023 item 1; WP-161): `LAUNCH` from the
-/// vouched session starts a registered application in a job of its own under the root job,
-/// with its boot channel and nothing else. The lab manifest SVC-AS.TXT has one service, named
+/// vouched session starts a registered application in a job of its own (under the session's
+/// job since WP-102), with its boot channel and nothing else. The lab manifest SVC-AS.TXT has one service, named
 /// `session`, whose role is the launcher: eight steps, the exit code saying which reply was not
 /// the stated one (0x40: none). When it has exited eight applications of the lab image stay,
 /// each waiting on its boot channel because all it asked there was refused, and holding that
@@ -5455,20 +5455,24 @@ fn app_connect() -> ! {
 
 /// TST-M6-SESSION-JOB (REQ-M6-004, services.md v1.17, ADR-0023 item 1; WP-102): the session's
 /// job. The lab manifest SVC-SJ.TXT runs the lab image as the vouched `session`, whose role
-/// `ender` launches `stay` (asks its six requests and waits) and `nest` (starts a child of its own
-/// and waits), asks END_SESSION, answered ENDED 2, and launches `stay` again; and as the vouched
-/// `desktop`, whose END_SESSION is refused ERR ACCESS. When both have exited the test kernel waits
+/// `ender` launches `stay` (asks END_SESSION and its six requests and waits) and `nest` (starts a
+/// child of its own and waits) before READY, then asks END_SESSION twice, 300 ticks apart (ENDED 2,
+/// ENDED 0),
+/// launches `stay`, ends that session (ENDED 1) and launches `stay` again; and as the vouched
+/// `desktop` and as `sessions`, both started once the session is READY, whose END_SESSION is
+/// refused ERR ACCESS. When both have exited the test kernel waits
 /// for the ended session's processes to be gone and reads, while the manager runs, what is left.
 fn session_job() -> ! {
     let name = "session_job";
     let h = SvcHarness::start(name, b"/SYSTEM/SVC-SJ.TXT");
     let lines = h.poll_list(sched::ticks() + 20_000, |l| {
-        ["session", "desktop"]
+        ["session", "desktop", "sessions"]
             .iter()
             .all(|s| l.iter().any(|x| x.name == *s && x.exit.is_some()))
     });
     let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
     let desktop = svc_find(&lines, "desktop").exit.unwrap_or(u64::MAX);
+    let sessions = svc_find(&lines, "sessions").exit.unwrap_or(u64::MAX);
     let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
     sched::poll_until(sched::ticks() + 5000, || {
         let (stay, n) = sched::live_named(b"STAY.ELF");
@@ -5479,6 +5483,7 @@ fn session_job() -> ! {
             && jobs_now() == 2
     });
     let (stay, n) = sched::live_named(b"STAY.ELF");
+    let waiting = stay[..n].iter().filter(|a| a.waiting).count();
     let nest = sched::live_named(b"NEST.ELF").1;
     let idle = sched::live_named(b"IDLE.ELF").1;
     let under_root = stay[..n].iter().filter(|a| a.under_root).count();
@@ -5487,12 +5492,14 @@ fn session_job() -> ! {
     let kept = mgr_handles(&h) - h.handles0;
     let load = h.load_reply.clone();
     kprintln!(
-        "OSX|{}|ktest|session_job|load={}|session={:#x}|desktop={:#x}|stay={}|nest={}|idle={}|under_root={}|in_session={}|live_jobs={}|mgr_handles={}|",
+        "OSX|{}|ktest|session_job|load={}|session={:#x}|desktop={:#x}|sessions={:#x}|stay={}|waiting={}|nest={}|idle={}|under_root={}|in_session={}|live_jobs={}|mgr_handles={}|",
         BUILD_ID,
         load,
         session,
         desktop,
+        sessions,
         n,
+        waiting,
         nest,
         idle,
         under_root,
@@ -5508,17 +5515,20 @@ fn session_job() -> ! {
         procs,
         u8::from(clean)
     );
-    if load != "OK 2" {
+    if load != "OK 3" {
         fail("the lab manifest did not load")
     }
     if session != 0x40 {
         fail("END_SESSION or the LAUNCH after it was not answered as the contract states")
     }
-    if desktop != 0x40 {
-        fail("the desktop's END_SESSION was not refused")
+    if desktop != 0x40 || sessions != 0x40 {
+        fail("another service's END_SESSION was not refused")
     }
     if n != 1 || nest != 0 || idle != 0 {
         fail("an application of the ended session is still alive")
+    }
+    if waiting != 1 {
+        fail("the application launched after END_SESSION does not wait on its boot channel")
     }
     if under_root != 0 || in_session != 1 {
         fail("the application launched after END_SESSION is not in a new session job")

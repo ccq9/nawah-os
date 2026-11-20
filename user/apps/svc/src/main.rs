@@ -214,15 +214,19 @@ fn launcher(ch: u32) -> u64 {
     0x40
 }
 
-/// The vouched session's side of TST-M6-SESSION-JOB (WP-102): READY; LAUNCH stay (#1) and nest
-/// (#2), and 300 ticks for nest's child to start; END_SESSION, answered `ENDED 2`; LAUNCH stay
-/// again (#3), which the manager starts in a new session job. Traced
-/// `ender|end=<reply>|after=<reply>`; 0x40 when each reply was the stated one, `missed`'s code at
-/// the first step that saw another.
+/// A step of `ender`: the trace field, the request (END_SESSION, or an id to LAUNCH), the stated
+/// reply (the number, for a LAUNCH) and the step's number for `missed`.
+type Step = (&'static [u8], &'static [u8], &'static [u8], u8);
+
+/// The vouched session's side of TST-M6-SESSION-JOB (WP-102): LAUNCH stay (#1) and nest (#2)
+/// before READY, so the services that depend on the session start once both run; 300 ticks
+/// for nest's child to start and for those services' END_SESSION to be refused; END_SESSION,
+/// answered `ENDED 2`; 300 ticks for the ended session's exits to be seen, and END_SESSION again,
+/// `ENDED 0` (no place is taken); LAUNCH stay (#3), in a new session job; END_SESSION, `ENDED 1`;
+/// 300 ticks, and LAUNCH stay (#4), which stays. Traced
+/// `ender|end=..|again=..|after=..|end2=..|last=..` as far as it went; 0x40 when each reply was
+/// the stated one, `missed`'s code at the first step that saw another.
 fn ender(ch: u32) -> u64 {
-    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
-        return 0xE2;
-    }
     let mut r = [0u8; 128];
     let (num, n) = launch(ch, b"stay", false, &mut r);
     if num != 1 {
@@ -232,29 +236,46 @@ fn ender(ch: u32) -> u64 {
     if num != 2 {
         return missed(2, num, &r[..n]);
     }
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
     let _ = libnawah::sleep(300);
-    let mut t = [0u8; 128];
-    let head = b"ender|end=";
-    t[..head.len()].copy_from_slice(head);
-    let mut at = head.len();
-    let n = ask(ch, b"END_SESSION", &[], &mut r).unwrap_or(0).min(40);
-    t[at..at + n].copy_from_slice(&r[..n]);
-    at += n;
-    if r[..n] != *b"ENDED 2" {
-        libnawah::trace(&t[..at]);
-        return missed(3, 0, &r[..n]);
+    let mut t = [0u8; 160];
+    let mut at = 0;
+    let mut put = |t: &mut [u8; 160], s: &[u8]| {
+        let k = s.len().min(t.len() - at);
+        t[at..at + k].copy_from_slice(&s[..k]);
+        at += k;
+        at
+    };
+    put(&mut t, b"ender");
+    // (field, request, the stated reply, or the number of a LAUNCH's, step)
+    let steps: [Step; 5] = [
+        (b"|end=", b"END_SESSION", b"ENDED 2", 3),
+        (b"|again=", b"END_SESSION", b"ENDED 0", 4),
+        (b"|after=", b"stay", b"3", 5),
+        (b"|end2=", b"END_SESSION", b"ENDED 1", 6),
+        (b"|last=", b"stay", b"4", 7),
+    ];
+    for (field, req, want, step) in steps {
+        if step == 4 || step == 7 {
+            let _ = libnawah::sleep(300);
+        }
+        let (ok, n, num) = if req == b"END_SESSION" {
+            let n = ask(ch, req, &[], &mut r).unwrap_or(0).min(40);
+            (r[..n] == *want, n, 0)
+        } else {
+            let (num, n) = launch(ch, req, false, &mut r);
+            (Some(num) == parse_num(want), n.min(40), num)
+        };
+        put(&mut t, field);
+        let end = put(&mut t, &r[..n]);
+        if !ok {
+            libnawah::trace(&t[..end]);
+            return missed(step, num, &r[..n]);
+        }
     }
-    let (num, n) = launch(ch, b"stay", false, &mut r);
-    let after = b"|after=";
-    t[at..at + after.len()].copy_from_slice(after);
-    at += after.len();
-    let k = n.min(40);
-    t[at..at + k].copy_from_slice(&r[..k]);
-    at += k;
     libnawah::trace(&t[..at]);
-    if num != 3 {
-        return missed(4, num, &r[..n]);
-    }
     0x40
 }
 
@@ -515,6 +536,15 @@ fn application(ch: u32, who: &[u8]) -> u64 {
         );
         libnawah::trace(&t[..end]);
         return 0x42;
+    }
+    if who.starts_with(b"stay#") {
+        // WP-102: an application's END_SESSION is refused as anything else it asks.
+        let mut reply = [0u8; 128];
+        let n = ask(ch, b"END_SESSION", &[], &mut reply)
+            .unwrap_or(0)
+            .min(16);
+        put(&mut t, b"|end=");
+        put(&mut t, &reply[..n]);
     }
     let big = [b'x'; 100];
     let asks: [&[u8]; 6] = [

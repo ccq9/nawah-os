@@ -1652,6 +1652,24 @@ MUTANTS = [
      "        if let Some(j) = self.session_job.take() {\n",
      "        if let Some(j) = self.session_job {\n",
      ["TST-M6-SESSION-JOB"], "the ended session's dead job is kept, so every later LAUNCH fails"),
+    # M392..M395 (WP-102's review round): the single edits the red team and the auditor found
+    # the case did not kill before it gained `sessions`, the start order and ENDED 1.
+    ("M392", "user/apps/svcmgr/src/main.rs",
+     "        if self.services[i].name() != b\"session\" {\n            libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n            return;\n        }\n        let n = ",
+     "        if self.services[i].name() == b\"desktop\" {\n            libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n            return;\n        }\n        let n = ",
+     ["TST-M6-SESSION-JOB"], "SECURITY: every vouched service but the desktop ends the session"),
+    ("M393", "user/apps/svcmgr/src/main.rs",
+     "            libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n            return;\n        }\n        let n = ",
+     "            libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n        }\n        let n = ",
+     ["TST-M6-SESSION-JOB"], "SECURITY: another service's END_SESSION is refused and the session ended all the same"),
+    ("M394", "user/apps/svcmgr/src/main.rs",
+     "        out.num(n as u64);\n",
+     "        out.num(2);\n",
+     ["TST-M6-SESSION-JOB"], "ENDED tells two applications whatever ran"),
+    ("M395", "user/apps/svcmgr/src/main.rs",
+     "                Ok(j) => *self.session_job.insert(j),\n",
+     "                Ok(j) => j,\n",
+     ["TST-M6-SESSION-JOB", "TST-M6-APP-SPAWN"], "SECURITY: each LAUNCH makes a session job of its own that END_SESSION never sees, so the applications outlive the session"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -1987,7 +2005,7 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M140", "M142", "M378", "M381", "M382", "M383", "M384",
             # WP-102 (REQ-M6-004): the session's applications run in one job, which END_SESSION
             # from the session alone ends (services.md v1.17).
-            "M141", "M385", "M386"}
+            "M141", "M385", "M386", "M392", "M393", "M395"}
 
 
 def security_of(mid: str) -> bool:
@@ -2209,7 +2227,6 @@ _LAUNCH = "|ktest|fail|a LAUNCH of the vouched session was not answered as the c
 _REFUSED = "|ktest|fail|an application was not refused every request on its boot channel"
 _MORE = "|ktest|fail|an application holds more than its boot channel"
 _NOJOB = "|ktest|fail|an application is not in a job of its own under the session's job"
-_SJALIVE = "|ktest|fail|an application of the ended session is still alive"
 _SJANS = "|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states"
 _ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
@@ -2309,7 +2326,7 @@ EXPECT = {
     # M345: the session is answered `OK clock notes other`, another reply than the expected one.
     "M345": {"TST-M6-LAUNCH-DENIED": ["exit 37", "|session_apps=0x51|", _REG]},
     # WP-161: the case's one line (kept as the local run of 2026-11-19 printed it). M346: the
-    # eight share one job under the session's job and the orphan's child lives. M347: two handles each. M348: the child lives, in a ninth job. M349: the ninth is
+    # eight share the manager's own job and the orphan's child lives. M347: two handles each. M348: the child lives, in a ninth job. M349: the ninth is
     # started as #12 (0x0c). M350: step 3 is answered #1 while clock#1 runs. M351: it is answered
     # #100 (0x64). M352, M354: the manager's count above 25 (v1.17: the session's job). M353, M356: jobs left. M355: the
     # request with two handles closes each channel, so four requests of each are not refused
@@ -2350,16 +2367,24 @@ EXPECT = {
     "M382": {"TST-M6-APP-CONNECT-DENIED": ["missing markers ['|text=app:both#2|config=OK|display=OK|again=ERR LIMIT']"]},
     "M383": {"TST-M6-APP-CONNECT-DENIED": ["missing markers ['|text=app:both#2|config=OK|display=OK|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS'"]},
     "M384": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|handles=9|mgr_handles=21|", _CKEPT]},
-    # WP-102: TST-M6-SESSION-JOB (kept as the local run of 2026-11-20 printed it). M141: the
-    # ended session's stay#1 and nest#2 with nest's child run on beside stay#3, five jobs live.
-    # M385: the same, the applications' jobs children of the root job, and in TST-M6-APP-SPAWN
-    # the eight under the root job. M386: the desktop's END_SESSION is answered ENDED (0x51) and
-    # the session's is ENDED 0 (step 3). M387: the LAUNCH after END_SESSION fails (step 4).
-    "M141": {"TST-M6-SESSION-JOB": ["exit 37", "|stay=2|nest=1|idle=1|under_root=0|in_session=2|live_jobs=5|", _SJALIVE]},
-    "M385": {"TST-M6-SESSION-JOB": ["exit 37", "|stay=2|nest=1|idle=1|under_root=2|in_session=0|", _SJALIVE],
+    # WP-102: TST-M6-SESSION-JOB (kept as the local run of 2026-11-20 printed it, after the
+    # review round). The session's step k that saw another reply is 0x5k00. M141: the ended
+    # session's applications run on, so END_SESSION again is not ENDED 0. M385: the same, the
+    # applications' jobs under the root job (and in TST-M6-APP-SPAWN the eight there). M386:
+    # the desktop and `sessions` end the session (0x51 each) before the session does. M387: the
+    # LAUNCH after END_SESSION fails. M392: `sessions` ends it. M393: each is refused and ends it
+    # all the same. M394: ENDED 2 where none is left. M395: a session job per LAUNCH (and in
+    # TST-M6-APP-SPAWN eight parents).
+    "M141": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5400|", "|nest=1|idle=1|under_root=0|in_session=1|live_jobs=3|", _SJANS]},
+    "M385": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5400|", "|nest=1|idle=1|under_root=1|in_session=0|", _SJANS],
              "TST-M6-APP-SPAWN": ["exit 37", "|under_root=8|in_session=0|parents=1|", _NOJOB]},
-    "M386": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5300|desktop=0x51|", _SJANS]},
-    "M387": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5400|desktop=0x40|", _SJANS]},
+    "M386": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5300|desktop=0x51|sessions=0x51|", _SJANS]},
+    "M387": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5500|desktop=0x40|sessions=0x40|", _SJANS]},
+    "M392": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5300|desktop=0x40|sessions=0x51|", _SJANS]},
+    "M393": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5300|desktop=0x40|sessions=0x40|", _SJANS]},
+    "M394": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5400|desktop=0x40|sessions=0x40|stay=0|", _SJANS]},
+    "M395": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5400|", "|nest=1|idle=1|under_root=0|in_session=1|live_jobs=4|", _SJANS],
+             "TST-M6-APP-SPAWN": ["exit 37", "|in_session=8|parents=8|", _NOJOB]},
 }
 
 
