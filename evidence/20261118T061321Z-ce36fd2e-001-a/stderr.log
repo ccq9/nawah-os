@@ -1,0 +1,2 @@
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.01s
+     Running tests/confirm.rs (target/x86_64-unknown-linux-gnu/release/deps/confirm-31ea6f62aa94db21)
