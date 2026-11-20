@@ -10488,20 +10488,24 @@
     "docs/LATER.md",
     "docs/PLAN-REVERSE.md",
     "docs/work-items.json",
-    "docs/project-state.json"
+    "docs/project-state.json",
+    "docs/contracts/services.md"
    ],
    "contract_refs": [
     "docs/contracts/session.md"
    ],
-   "acceptance": "Sign out sends END_SESSION before display's LOGOUT and traces jobs=ended|apps=<n> (jobs=unsent when it cannot); an application that ignores the close request and one with a child of its own are gone after Sign out, their frames returned, and the next sign-in starts with none of them; shown by TST-M6-LOGOUT-KILLS on CI; session.md v1.8 closes §8's limit; M388 and M389 killed by the M6 gate",
+   "acceptance": "Sign out sends END_SESSION before display's LOGOUT and traces jobs=ended|apps=<n> (jobs=unsent when it cannot); an application that ignores the close request and one with a child of its own are gone after Sign out, their frames returned, and the next sign-in starts with none of them; shown by TST-M6-LOGOUT-KILLS on CI; session.md v1.8 closes §8's limit; M388, M389 and M396 killed by the M6 gate; TST-M5-LOGIN-SCREEN's expected trace gains the jobs line",
    "test_ids": [
     "TST-M6-LOGOUT-KILLS",
     "TST-M6-MUTANTS",
-    "TST-M0-005"
+    "TST-M0-005",
+    "TST-M5-LOGIN-SCREEN"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M6",
-    "python3 tools/project.py test --target host --suite M6-GATE"
+    "python3 tools/project.py test --target host --suite M6-GATE",
+    "python3 tools/project.py test --target pc-qemu --suite M5",
+    "python3 tools/project.py test --target host --suite M0"
    ],
    "status": "active",
    "status_history": [
@@ -10547,7 +10551,7 @@
     "docs/contracts/session.md",
     "docs/contracts/config.md"
    ],
-   "acceptance": "after sign-in the session reads session.autostart from the user's store and launches up to eight ids in order, a missing key, a refused or missing entry each traced and passed over; a user store is loaded on read for its owner's or an admin's token alone; shown on CI in TST-M6-LOGOUT-KILLS (the autostart replacing the relay's launches) and a config case; config.md v1.6 and session.md v1.9 state it; M390 and M391 killed by the M6 gate",
+   "acceptance": "after sign-in the session reads session.autostart from the user's store and launches up to eight ids in order, a missing key, a refused or missing entry each traced and passed over; a user store is loaded on read for its owner's or an admin's token alone; shown on CI in TST-M6-LOGOUT-KILLS (the autostart replacing the relay's launches) and a config case; the config and session contracts state it in their next versions; M390 and M391 killed by the M6 gate",
    "test_ids": [
     "TST-M6-LOGOUT-KILLS",
     "TST-M6-MUTANTS",
@@ -10566,7 +10570,8 @@
    "actions": [
     "التشغيل التلقائي من مخزن المستخدم (مفصولة من WP-102 في 2026-11-20)",
     "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (the config contract's next version: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order",
-    "2026-11-20 (the manager): after WP-169, whose BEGIN_SESSION the autostart follows"
+    "2026-11-20 (the manager): after WP-169, whose BEGIN_SESSION the autostart follows",
+    "2026-11-20 (WP-167's audit): the boot channel's answer to LAUNCH is `OK app:<id>#<n>`, not `OK`: the session's queue (session.md v1.8) must learn it with the autostart, or its matching shifts (L-103)"
    ]
   },
   {

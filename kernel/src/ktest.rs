@@ -13743,8 +13743,15 @@ fn token_revoke() -> ! {
     )
 }
 
-/// `STATE` of the session until it says `state` after `changes` transitions, or `by`; the last reply.
-fn state_wait(session: &Endpoint, state: &str, changes: u32, by: u64) -> String {
+/// `STATE` of the session until it says `state` after `changes` transitions (and, when
+/// `focus` is given, ends with that focus), or `by`; the last reply.
+fn state_wait(
+    session: &Endpoint,
+    state: &str,
+    changes: u32,
+    focus: Option<&str>,
+    by: u64,
+) -> String {
     let mut ev = Vec::new();
     loop {
         let r = hold_request(
@@ -13754,7 +13761,8 @@ fn state_wait(session: &Endpoint, state: &str, changes: u32, by: u64) -> String 
             &mut ev,
             (sched::ticks() + 5000).min(by),
         );
-        if state_is(&r, state, changes) || sched::ticks() >= by {
+        let focused = focus.is_none_or(|f| r.ends_with(&alloc::format!(" focus={}", f)));
+        if (state_is(&r, state, changes) && focused) || sched::ticks() >= by {
             return r;
         }
         hold_wait((sched::ticks() + 20).min(by), || false);
@@ -13780,7 +13788,7 @@ fn logout_kills() -> ! {
     let within = |t: u64| sched::ticks() + t;
     let live = |img: &[u8]| sched::live_named(img).1;
     // Phase 1: signed in (the monitor types the lab's name and password), two launches.
-    let unlocked = state_wait(&session, "unlocked", 1, within(40_000));
+    let unlocked = state_wait(&session, "unlocked", 1, Some("display"), within(40_000));
     let desk = svc_connect(&h, "desktop");
     let jobs0 = i64::from(object::stats().jobs);
     let mgr0 = mgr_handles(&h);
@@ -13801,7 +13809,7 @@ fn logout_kills() -> ! {
         running.2
     );
     // Phase 2: the monitor locks the session and signs out on the lock screen.
-    let out = state_wait(&session, "no_session", 3, within(40_000));
+    let out = state_wait(&session, "no_session", 3, None, within(40_000));
     let left = || {
         (
             live(b"DEAF.ELF"),
@@ -13824,7 +13832,7 @@ fn logout_kills() -> ! {
         after.4
     );
     // Phase 3: a second sign-in, and a launch in a new session job.
-    let again = state_wait(&session, "unlocked", 4, within(40_000));
+    let again = state_wait(&session, "unlocked", 4, Some("display"), within(40_000));
     let relaunch = cfg_request(&desk, b"LAUNCH deaf", None);
     sched::poll_until(within(5000), || live(b"DEAF.ELF") == 1);
     let (d, n) = sched::live_named(b"DEAF.ELF");

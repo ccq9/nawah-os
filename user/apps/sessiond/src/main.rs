@@ -717,8 +717,6 @@ impl Session {
         }
     }
 
-    /// The manager's answer to the asked `CONNECT`: a channel, or a refusal to retry later
-    /// (`ERR NOT_READY` while the service restarts).
     /// Writes `req` on the boot channel and queues what answers it (v1.8); false when it could not
     /// be written or BOOT_OPS answers are already awaited.
     fn boot_send(&mut self, req: &[u8], op: BootOp) -> bool {
@@ -751,6 +749,8 @@ impl Session {
         libnawah::trace(t.bytes());
     }
 
+    /// The manager's answer to the asked `CONNECT`: a channel, or a refusal to retry later
+    /// (`ERR NOT_READY` while the service restarts; since v1.8 an `OK` without a handle too).
     fn answer(&mut self, chan: Option<Handle>, now: u64) {
         let Some(i) = self.asked.take() else {
             if let Some(h) = chan {
@@ -1322,9 +1322,10 @@ impl Session {
             self.token = 0;
         }
         self.lock_unsent = false;
-        // v1.8: the manager ends the session's job, with every application and what it started,
-        // before the display hears LOGOUT, so none acts on LOGGED_OUT. Not waited on: its answer
-        // comes on the boot channel and is traced when it does.
+        // v1.8: the manager is asked to end the session's job, with every application and what it
+        // started, before the display is asked for LOGOUT. Neither waits for the other, so an
+        // application may still hear LOGGED_OUT before it is killed. The answer comes on the boot
+        // channel and is traced when it does.
         if !self.boot_send(b"END_SESSION", BootOp::End) {
             libnawah::trace(b"session|jobs=unsent");
         }

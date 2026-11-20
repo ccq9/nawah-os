@@ -1501,7 +1501,7 @@ class KillEvidence(unittest.TestCase):
         TST-M6-LOGOUT-KILLS alone: M388 (SECURITY, no END_SESSION) by exit 37, the case's message
         for what outlived the sign-out and the counts of its phase-2 line, each another value than
         the pinned line's; M389 (the count traced as 0) by the forbidden `apps=0` trace; M396
-        (SECURITY, the answer taken for a CONNECT's) by the missing `apps=2` trace with no
+        (the answer taken for a CONNECT's) by the missing `apps=2` trace with no
         forbidden marker present. The case's manifest runs the real session with the lab image as
         `desktop` in the role `relay`, and its volume carries deaf (winapp, declaring display) and
         nest."""
@@ -1518,7 +1518,7 @@ class KillEvidence(unittest.TestCase):
         want = {  # id: (SECURITY, the expected substrings)
             "M388": (True, ["exit 37", "|deaf=1|nest=1|idle=1|jobs=3|mgr_handles=7|", mutants._LKALIVE]),
             "M389": (False, ["forbidden present ['|text=session|jobs=ended|apps=0']"]),
-            "M396": (True, ["missing markers ['|text=session|jobs=ended|apps=2']; forbidden present []"]),
+            "M396": (False, ["missing markers ['|text=session|jobs=ended|apps=2']; forbidden present []"]),
         }
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.LOGOUT_KILLS in m[4]), sorted(want))
         self.assertIn(f'fail("{mutants._LKALIVE[len("|ktest|fail|"):]}")', src)

@@ -1683,7 +1683,7 @@ MUTANTS = [
     ("M396", "user/apps/sessiond/src/main.rs",
      "        self.boot_ops[k] = Some(op);\n",
      "        self.boot_ops[k] = Some(BootOp::Connect);\n",
-     ["TST-M6-LOGOUT-KILLS"], "SECURITY: the manager's answer to END_SESSION is taken for a CONNECT's, so its outcome is never told"),
+     ["TST-M6-LOGOUT-KILLS"], "the manager's answer to END_SESSION is taken for a CONNECT's, so its outcome is never traced (the job is ended all the same)"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2021,7 +2021,7 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # from the session alone ends (services.md v1.17).
             "M141", "M385", "M386", "M392", "M393", "M395",
             # WP-167 (REQ-M6-004): Sign out ends the session's job (session.md v1.8).
-            "M388", "M396"}
+            "M388"}
 
 
 def security_of(mid: str) -> bool:
