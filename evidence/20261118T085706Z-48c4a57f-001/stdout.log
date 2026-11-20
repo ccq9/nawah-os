@@ -1,0 +1,125 @@
+$ python3 -I tests/mutants.py --target pc-qemu --stage M2 --report build/mutants-report.json
+M01: killed by TST-M2-EXC-DF [22.3s] (IST1 points at the base of the #DF stack instead of its top)
+  TST-M2-EXC-DF: exit 0 != expected 161 run=20261118T085724Z-48c4a57f-001
+    OSX|000000000001|ktest|start|name=exc_df
+M02: killed by TST-M2-IDT-LAYOUT,TST-M2-EXC-DF [19.7s] (#DF gate loses its IST (the const assertion on Gate::interrupt still holds))
+  TST-M2-IDT-LAYOUT: exit 37 != expected 33 run=20261118T085739Z-48c4a57f-001
+    OSX|000000000002|ktest|start|name=idt_layout
+    OSX|000000000002|ktest|idt_layout|vector=8|mismatch=wrong_ist
+    OSX|000000000002|ktest|fail|idt layout mismatches
+  TST-M2-EXC-DF: exit 0 != expected 161 run=20261118T085743Z-48c4a57f-001
+    OSX|000000000002|ktest|start|name=exc_df
+M03: killed by TST-M2-EXC-BP [15.1s] (error code left on the stack before iretq)
+  TST-M2-EXC-BP: exit 171 != expected 33 run=20261118T085759Z-48c4a57f-001
+M04: killed by TST-M2-EXC-NESTED [15.4s] (nesting limit effectively removed)
+  TST-M2-EXC-NESTED: missing markers []; forbidden present ['|exc|vector=6|name=#UD|x947>3'] run=20261118T085814Z-48c4a57f-001
+    OSX|000000000004|ktest|start|name=exc_nested
+M05: killed by TST-M2-PMM-COUNTS [14.8s] (free counter not decremented on allocation)
+  TST-M2-PMM-COUNTS: exit 35 != expected 33 run=20261118T085829Z-48c4a57f-001
+M06: killed by TST-M2-PMM-DOUBLE-FREE [15.2s] (double-free detection removed)
+  TST-M2-PMM-DOUBLE-FREE: exit 37 != expected 33 run=20261118T085844Z-48c4a57f-001
+    OSX|000000000006|ktest|start|name=pmm_double_free
+    OSX|000000000006|ktest|fail|double free not detected
+M07: killed by TST-M1-BOOT,TST-M2-PMM-EXHAUST [23.4s] (first MiB handed out)
+  TST-M1-BOOT: exit 173 != expected 33 run=20261118T085903Z-48c4a57f-001
+  TST-M2-PMM-EXHAUST: exit 173 != expected 33 run=20261118T085907Z-48c4a57f-001
+    OSX|000000000007|ktest|start|name=pmm_exhaust
+M08: killed by TST-M2-VMM-WP,TST-M2-VMM-SWITCH [19.7s] (enable_wp a no-op (WP bit constant zeroed); the test clears WP first, so firmware state cannot mask it)
+  TST-M2-VMM-WP: missing markers ['|ktest|vmm_wp|wp_off_write_ok=1|wp_now=1|target=0x', 'equal_values(expect_rip=(0x[0-9a-f]+) vs \\|rip=(0x[0-9a-f]+)\\|): None != 0x1d6fa691', 'equal_values(vmm_wp\\|wp_off_write_ok=1\\|wp_now=1\\|target=(0x[0-9a-f]+) vs \\|cr2=(0x[0-9a-f]+)\\|): None != 0x1d682008']; forbidden present [] run=20261118T085923Z-48c4a57f-001
+    OSX|000000000008|ktest|start|name=vmm_wp
+  TST-M2-VMM-SWITCH: exit 37 != expected 33 run=20261118T085927Z-48c4a57f-001
+    OSX|000000000008|ktest|start|name=vmm_switch
+    OSX|000000000008|ktest|fail|CR0.WP or EFER.NXE not set
+M09: killed by TST-M2-VMM-NX,TST-M2-VMM-SWITCH [20.0s] (.data/.bss executable (NX dropped))
+  TST-M2-VMM-NX: exit 37 != expected 173 run=20261118T085943Z-48c4a57f-001
+    OSX|000000000009|ktest|start|name=vmm_nx
+    OSX|000000000009|ktest|vmm_nx|target=0x1d796340|expect_rip=0x1d796340
+    OSX|000000000009|ktest|fail|execution from .data did not fault
+  TST-M2-VMM-SWITCH: exit 37 != expected 33 run=20261118T085947Z-48c4a57f-001
+    OSX|000000000009|ktest|start|name=vmm_switch
+    OSX|000000000009|ktest|fail|section permissions not applied
+M10: killed by TST-M2-VMM-SWITCH [15.4s] (image headers writable)
+  TST-M2-VMM-SWITCH: exit 37 != expected 33 run=20261118T090003Z-48c4a57f-001
+    OSX|00000000000a|ktest|start|name=vmm_switch
+    OSX|00000000000a|ktest|fail|image headers not mapped read-only
+M11: killed by TST-M2-VMM-WP,TST-M2-VMM-SWITCH [19.7s] (.text writable)
+  TST-M2-VMM-WP: missing markers ['|exc|vector=14|name=#PF|error=0x3|', 'equal_values(expect_rip=(0x[0-9a-f]+) vs \\|rip=(0x[0-9a-f]+)\\|): 0x1d677f2c != 0x1d677f33', 'equal_values(vmm_wp\\|wp_off_write_ok=1\\|wp_now=1\\|target=(0x[0-9a-f]+) vs \\|cr2=(0x[0-9a-f]+)\\|): 0x1d677f2c != 0xffffffffffffffc6']; forbidden present [] run=20261118T090018Z-48c4a57f-001
+    OSX|00000000000b|ktest|start|name=vmm_wp
+    OSX|00000000000b|ktest|vmm_wp|wp_off_write_ok=1|wp_now=1|target=0x1d677f2c
+    OSX|00000000000b|ktest|expect_rip=0x1d677f2c
+  TST-M2-VMM-SWITCH: exit 37 != expected 33 run=20261118T090022Z-48c4a57f-001
+    OSX|00000000000b|ktest|start|name=vmm_switch
+    OSX|00000000000b|ktest|fail|section permissions not applied
+M12: killed by TST-M2-VMM-SWITCH [15.3s] (null page identity-mapped)
+  TST-M2-VMM-SWITCH: exit 37 != expected 33 run=20261118T090038Z-48c4a57f-001
+    OSX|00000000000c|ktest|start|name=vmm_switch
+    OSX|00000000000c|ktest|fail|null page is mapped
+M13: killed by TST-M2-VMM-SWITCH [15.7s] (guard page mapped as stack)
+  TST-M2-VMM-SWITCH: exit 37 != expected 33 run=20261118T090053Z-48c4a57f-001
+    OSX|00000000000d|ktest|start|name=vmm_switch
+    OSX|00000000000d|ktest|fail|a stack guard page is mapped
+M14: killed by TST-M2-VMM-SWITCH [15.8s] (boot-services memory never reclaimed)
+  TST-M2-VMM-SWITCH: exit 37 != expected 33 run=20261118T090109Z-48c4a57f-001
+    OSX|00000000000e|ktest|start|name=vmm_switch
+    OSX|00000000000e|ktest|fail|no boot-services memory reclaimed
+M15: killed by TST-M2-IRQ-EOI,TST-M2-TIMER-TICKS [615.4s] (EOI never written)
+  TST-M2-IRQ-EOI: timeout (hang) run=20261118T090124Z-48c4a57f-001
+  TST-M2-TIMER-TICKS: timeout (hang) run=20261118T090627Z-48c4a57f-001
+M16: killed by TST-M2-TIMER-TICKS [313.4s] (timer one-shot instead of periodic)
+  TST-M2-TIMER-TICKS: timeout (hang) run=20261118T091140Z-48c4a57f-001
+M17: killed by TST-M2-TIMER-TICKS [15.0s] (calibration off by 10x)
+  TST-M2-TIMER-TICKS: exit 37 != expected 33 run=20261118T091653Z-48c4a57f-001
+    OSX|000000000011|ktest|start|name=timer_ticks
+    OSX|000000000011|ktest|timer_ticks|window1=499|window2=497|unexpected=0|max_depth=1|if=0
+    OSX|000000000011|ktest|fail|tick count outside 25..=100 per 50 ms
+M18: killed by TST-M2-SPURIOUS [14.9s] (wrong spurious vector programmed)
+  TST-M2-SPURIOUS: exit 37 != expected 33 run=20261118T091708Z-48c4a57f-001
+    OSX|000000000012|ktest|start|name=spurious
+    OSX|000000000012|ktest|spurious|spurious=1|unexpected=2|last_unexpected=0xf0|total_after_window=0|svr=0x1fe
+    OSX|000000000012|ktest|fail|spurious vector register not 0x1FF
+M19: killed by TST-M2-TIMER-TICKS,TST-M2-IRQ-EOI [19.5s] (depth counter never decremented)
+  TST-M2-TIMER-TICKS: exit 37 != expected 33 run=20261118T091723Z-48c4a57f-001
+    OSX|000000000013|ktest|start|name=timer_ticks
+    OSX|000000000013|ktest|timer_ticks|window1=50|window2=50|unexpected=0|max_depth=165|if=0
+    OSX|000000000013|ktest|fail|unexpected vector or handler re-entry
+  TST-M2-IRQ-EOI: exit 37 != expected 33 run=20261118T091727Z-48c4a57f-001
+    OSX|000000000013|ktest|start|name=irq_eoi
+    OSX|000000000013|ktest|irq_eoi|first=1|second=1|test_ipis=2|unexpected=0|max_depth=66
+    OSX|000000000013|ktest|fail|unexpected vector or handler re-entry
+M20: killed by TST-M1-BOOT [18.5s] (IRQ0 left unmasked on the PIC)
+  TST-M1-BOOT: missing markers ['|kernel|irq|pic_masks=0xff,0xff|']; forbidden present [] run=20261118T091746Z-48c4a57f-001
+M21: killed by TST-M2-LOCK-IRQSAVE [14.9s] (IF not restored when the guard drops)
+  TST-M2-LOCK-IRQSAVE: exit 37 != expected 33 run=20261118T091801Z-48c4a57f-001
+    OSX|000000000015|ktest|start|name=lock_irqsave
+    OSX|000000000015|ktest|lock_irqsave|if_inside=0|if_after=0|if_inside_disabled=0|if_after_disabled=0|ticks_while_held=0|ticks_after=0|try_while_held=0|try_when_free=1|value=2
+    OSX|000000000015|ktest|fail|IF not cleared inside the lock or not restored after it
+M22: killed by TST-M2-LOCK-IRQSAVE [15.1s] (lock taken without disabling interrupts)
+  TST-M2-LOCK-IRQSAVE: exit 37 != expected 33 run=20261118T091816Z-48c4a57f-001
+    OSX|000000000016|ktest|start|name=lock_irqsave
+    OSX|000000000016|ktest|lock_irqsave|if_inside=1|if_after=1|if_inside_disabled=0|if_after_disabled=0|ticks_while_held=20|ticks_after=20|try_while_held=0|try_when_free=1|value=2
+    OSX|000000000016|ktest|fail|IF not cleared inside the lock or not restored after it
+M23: killed by TST-M2-LOCK-REENTRY [313.9s] (re-entry detection removed (hangs; killed by timeout))
+  TST-M2-LOCK-REENTRY: timeout (hang) run=20261118T091832Z-48c4a57f-001
+    OSX|000000000017|ktest|start|name=lock_reentry
+    OSX|000000000017|ktest|lock_reentry|held=1|reacquiring=1
+M24: killed by TST-M1-BOOT,TST-M2-VMM-SWITCH [23.7s] (RSDP checksum test inverted)
+  TST-M1-BOOT: exit 35 != expected 33 run=20261118T092349Z-48c4a57f-001
+  TST-M2-VMM-SWITCH: exit 35 != expected 33 run=20261118T092354Z-48c4a57f-001
+M25: killed by TST-M1-BOOT [19.3s] (I/O APIC entries ignored)
+  TST-M1-BOOT: missing markers ['|cpus=4|ioapics=1|ioapic_entries=24|ioapic_masked=24|']; forbidden present [] run=20261118T092413Z-48c4a57f-001
+M26: killed by TST-M2-EXC-DF,TST-M2-VMM-GUARD [19.8s] (stack diagnostics never name the #DF stack)
+  TST-M2-EXC-DF: missing markers ['|stack=df']; forbidden present [] run=20261118T092428Z-48c4a57f-001
+    OSX|00000000001a|ktest|start|name=exc_df
+  TST-M2-VMM-GUARD: missing markers ['|stack=df']; forbidden present [] run=20261118T092433Z-48c4a57f-001
+    OSX|00000000001a|ktest|start|name=vmm_guard
+    OSX|00000000001a|ktest|vmm_guard|stack_base=0xffff900000001000|guard=0xffff900000000000|expect_cr2=0xffff900000000ff8
+M27: killed by TST-M1-BOOT [18.8s] (RSDP never handed to the kernel)
+  TST-M1-BOOT: exit 35 != expected 33 run=20261118T092452Z-48c4a57f-001
+M28: killed by TST-M1-BOOT [19.4s] (I/O APIC entries unmasked instead of masked)
+  TST-M1-BOOT: missing markers ['|cpus=4|ioapics=1|ioapic_entries=24|ioapic_masked=24|']; forbidden present [] run=20261118T092511Z-48c4a57f-001
+M29: killed by TST-M2-EXC-BP [15.8s] (#BP made fatal)
+  TST-M2-EXC-BP: exit 151 != expected 33 run=20261118T092527Z-48c4a57f-001
+    OSX|00000000001d|ktest|start|name=exc_bp
+    OSX|00000000001d|ktest|expect_rip=0x1d674ddf
+
+OK: 29/29 valid mutants killed (100.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=[]; invalid_security=[]; declared_killers_missed=[]; expected_missed=[]; report=build/mutants-report.json
