@@ -1634,6 +1634,24 @@ MUTANTS = [
      "                if libnawah::channel_write(c, b\"OK\", &[client]) != 0 {\n                    libnawah::handle_close(client);\n",
      "                if libnawah::channel_write(c, b\"OK\", &[client]) != 0 {\n",
      ["TST-M6-APP-CONNECT-DENIED"], "SECURITY: the client end an application could not take stays in the manager, one handle per full queue"),
+    # M141, M385..M387 (WP-102, REQ-M6-004; services.md v1.17, ADR-0023 item 1): the session's
+    # job, killed by TST-M6-SESSION-JOB (M385 by TST-M6-APP-SPAWN too).
+    ("M141", "user/apps/svcmgr/src/main.rs",
+     "            libnawah::job_kill(j);\n",
+     "",
+     ["TST-M6-SESSION-JOB"], "SECURITY: END_SESSION lets the session's job go without killing it, so the ended session's applications run on"),
+    ("M385", "user/apps/svcmgr/src/main.rs",
+     "        let Ok(job) = libnawah::job_create(session) else {\n",
+     "        let Ok(job) = libnawah::job_create(self.root_job) else {\n",
+     ["TST-M6-SESSION-JOB", "TST-M6-APP-SPAWN"], "SECURITY: an application's job is made under the root job, out of the session's reach"),
+    ("M386", "user/apps/svcmgr/src/main.rs",
+     "        if self.services[i].name() != b\"session\" {\n            libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n            return;\n        }\n        let n = ",
+     "        if false {\n            libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n            return;\n        }\n        let n = ",
+     ["TST-M6-SESSION-JOB"], "SECURITY: any vouched service, the desktop among them, ends the session"),
+    ("M387", "user/apps/svcmgr/src/main.rs",
+     "        if let Some(j) = self.session_job.take() {\n",
+     "        if let Some(j) = self.session_job {\n",
+     ["TST-M6-SESSION-JOB"], "the ended session's dead job is kept, so every later LAUNCH fails"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -1966,7 +1984,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M346", "M347", "M348", "M349", "M350", "M354", "M357", "M358", "M360", "M361",
             # WP-162 (REQ-M6-004): an application connects to its declared services alone,
             # vouched as app:<id>#<n>, within one grant each and four for all (services.md v1.16).
-            "M140", "M142", "M378", "M381", "M382", "M383", "M384"}
+            "M140", "M142", "M378", "M381", "M382", "M383", "M384",
+            # WP-102 (REQ-M6-004): the session's applications run in one job, which END_SESSION
+            # from the session alone ends (services.md v1.17).
+            "M141", "M385", "M386"}
 
 
 def security_of(mid: str) -> bool:
@@ -2187,7 +2208,9 @@ _REG = "|ktest|fail|the vouched session was not given the registry of /SYSTEM/AP
 _LAUNCH = "|ktest|fail|a LAUNCH of the vouched session was not answered as the contract states"
 _REFUSED = "|ktest|fail|an application was not refused every request on its boot channel"
 _MORE = "|ktest|fail|an application holds more than its boot channel"
-_NOJOB = "|ktest|fail|an application is not in a job of its own under the root job"
+_NOJOB = "|ktest|fail|an application is not in a job of its own under the session's job"
+_SJALIVE = "|ktest|fail|an application of the ended session is still alive"
+_SJANS = "|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states"
 _ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
 _APP_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
@@ -2286,30 +2309,30 @@ EXPECT = {
     # M345: the session is answered `OK clock notes other`, another reply than the expected one.
     "M345": {"TST-M6-LAUNCH-DENIED": ["exit 37", "|session_apps=0x51|", _REG]},
     # WP-161: the case's one line (kept as the local run of 2026-11-19 printed it). M346: the
-    # eight share the root job and the orphan's child lives. M347: two handles each. M348: the child lives, in a ninth job. M349: the ninth is
+    # eight share one job under the session's job and the orphan's child lives. M347: two handles each. M348: the child lives, in a ninth job. M349: the ninth is
     # started as #12 (0x0c). M350: step 3 is answered #1 while clock#1 runs. M351: it is answered
-    # #100 (0x64). M352, M354: the manager's count above 24. M353, M356: jobs left. M355: the
+    # #100 (0x64). M352, M354: the manager's count above 25 (v1.17: the session's job). M353, M356: jobs left. M355: the
     # request with two handles closes each channel, so four requests of each are not refused
     # (four handles more each). M357: none of the six is.
-    "M346": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x40|", "|under_root=0|jobs=1|live_jobs=8|orphans=1|", _NOJOB]},
-    "M347": {"TST-M6-APP-SPAWN": ["exit 37", "|apps=8|waiting=8|handles=16|under_root=8|", _MORE]},
-    "M348": {"TST-M6-APP-SPAWN": ["exit 37", "|under_root=8|jobs=8|live_jobs=9|orphans=1|", _ORPHAN]},
+    "M346": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x40|", "|in_session=0|parents=1|jobs=1|live_jobs=9|orphans=1|", _NOJOB]},
+    "M347": {"TST-M6-APP-SPAWN": ["exit 37", "|apps=8|waiting=8|handles=16|under_root=0|", _MORE]},
+    "M348": {"TST-M6-APP-SPAWN": ["exit 37", "|in_session=8|parents=1|jobs=8|live_jobs=10|orphans=1|", _ORPHAN]},
     "M349": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x590c|apps=9|", _LAUNCH]},
     "M350": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x5301|apps=1|", _LAUNCH]},
     "M351": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x5364|apps=1|", _LAUNCH]},
-    "M352": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=26|", _APP_KEPT]},
-    "M353": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=10|orphans=0|mgr_handles=26|", _JOBLEFT]},
-    "M354": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=32|", _APP_KEPT]},
+    "M352": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=9|orphans=0|mgr_handles=27|", _APP_KEPT]},
+    "M353": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=11|orphans=0|mgr_handles=27|", _JOBLEFT]},
+    "M354": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=9|orphans=0|mgr_handles=33|", _APP_KEPT]},
     "M355": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x40|apps=8|waiting=0|handles=40|", _REFUSED]},
-    "M356": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=109|orphans=0|mgr_handles=125|", _JOBLEFT]},
+    "M356": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=110|orphans=0|mgr_handles=126|", _JOBLEFT]},
     "M357": {"TST-M6-APP-SPAWN": ["exit 37", "|session=0x40|apps=8|waiting=0|handles=56|", _REFUSED]},
     # The review round's four. M358: the manager is gone after the closer's close, so the test
     # kernel's LIST has no answer. M359: its end of that channel stays. M360: the closer's place
     # went to a clock, so its process and its job stay. M361: sixteen handles stay.
     "M358": {"TST-M6-APP-SPAWN": ["exit 37", "|ktest|app_spawn|list_error=", _NOLIST]},
-    "M359": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=25|", _APP_KEPT]},
-    "M360": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=9|orphans=0|mgr_handles=26|", _JOBLEFT]},
-    "M361": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=40|", _APP_KEPT]},
+    "M359": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=9|orphans=0|mgr_handles=26|", _APP_KEPT]},
+    "M360": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=10|orphans=0|mgr_handles=27|", _JOBLEFT]},
+    "M361": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=9|orphans=0|mgr_handles=41|", _APP_KEPT]},
     # WP-162: TST-M6-APP-CONNECT-DENIED (kept as the local run of 2026-11-20 printed it, after
     # the review round). M140, M378, M382 and M383 leave the test kernel's line as it is: the
     # case fails on its markers, the names the services hear (M140), the applications' traces
@@ -2321,12 +2344,22 @@ EXPECT = {
     "M140": {"TST-M6-APP-CONNECT-DENIED": ["missing markers ['|text=svc|connect|app:connx#1', '|text=svc|connect|app:both#2', '|text=svc|connect|app:stuck#4', '|text=svc|connect|app:conn#8']"]},
     "M142": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|session=0x5300|apps=0|", _CLAUNCH]},
     "M378": {"TST-M6-APP-CONNECT-DENIED": ["missing markers ['|text=app:connx#1|net=ERR ACCESS|session=ERR ACCESS|config=OK|ping=OK served|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS'"]},
-    "M379": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|waiting=5|handles=12|mgr_handles=19|", _CHAND]},
-    "M380": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|waiting=5|handles=10|mgr_handles=19|", _CHAND]},
-    "M381": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|waiting=5|handles=15|mgr_handles=19|", _CHAND]},
+    "M379": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|waiting=5|handles=12|mgr_handles=20|", _CHAND]},
+    "M380": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|waiting=5|handles=10|mgr_handles=20|", _CHAND]},
+    "M381": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|waiting=5|handles=15|mgr_handles=20|", _CHAND]},
     "M382": {"TST-M6-APP-CONNECT-DENIED": ["missing markers ['|text=app:both#2|config=OK|display=OK|again=ERR LIMIT']"]},
     "M383": {"TST-M6-APP-CONNECT-DENIED": ["missing markers ['|text=app:both#2|config=OK|display=OK|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS'"]},
-    "M384": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|handles=9|mgr_handles=20|", _CKEPT]},
+    "M384": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|handles=9|mgr_handles=21|", _CKEPT]},
+    # WP-102: TST-M6-SESSION-JOB (kept as the local run of 2026-11-20 printed it). M141: the
+    # ended session's stay#1 and nest#2 with nest's child run on beside stay#3, five jobs live.
+    # M385: the same, the applications' jobs children of the root job, and in TST-M6-APP-SPAWN
+    # the eight under the root job. M386: the desktop's END_SESSION is answered ENDED (0x51) and
+    # the session's is ENDED 0 (step 3). M387: the LAUNCH after END_SESSION fails (step 4).
+    "M141": {"TST-M6-SESSION-JOB": ["exit 37", "|stay=2|nest=1|idle=1|under_root=0|in_session=2|live_jobs=5|", _SJALIVE]},
+    "M385": {"TST-M6-SESSION-JOB": ["exit 37", "|stay=2|nest=1|idle=1|under_root=2|in_session=0|", _SJALIVE],
+             "TST-M6-APP-SPAWN": ["exit 37", "|under_root=8|in_session=0|parents=1|", _NOJOB]},
+    "M386": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5300|desktop=0x51|", _SJANS]},
+    "M387": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5400|desktop=0x40|", _SJANS]},
 }
 
 

@@ -296,8 +296,12 @@ struct Manager {
     running: [Running; MAX_RUNNING],
     /// The number the last launched application was given: the circle goes on from it.
     last_num: u8,
-    /// The root job (v1.12): each application's job is made under it.
+    /// The root job (v1.12): the session's job is made under it.
     root_job: Handle,
+    /// The session's job (v1.17): made under the root job by the first LAUNCH that finds none,
+    /// each application's job a child of it; END_SESSION kills it and lets it go, so the next
+    /// LAUNCH makes another. The manager alone holds it.
+    session_job: Option<Handle>,
     ctl: Handle,
     /// Kernel resources handed over as initial handles after the control channel, routed by
     /// type: the token authority to the service named `auth` (auth.md §1), the network
@@ -419,8 +423,8 @@ impl Manager {
         libnawah::channel_write(c, out.bytes(), &[]);
     }
 
-    /// `LAUNCH` of registry entry `k` (services.md v1.15, ADR-0023 item 1): a job under the
-    /// root job, the entry's image started in it with a boot channel and no other handle, and
+    /// `LAUNCH` of registry entry `k` (services.md v1.15, v1.17, ADR-0023 item 1): a job under the
+    /// session's job, the entry's image started in it with a boot channel and no other handle, and
     /// `START app:<id>#<n>` on that channel. The reply goes into `out`, which is empty; a
     /// launch that fails keeps nothing: neither the job, nor an end of the channel, nor a
     /// number.
@@ -429,7 +433,17 @@ impl Manager {
             out.put(b"ERR FULL");
             return;
         };
-        let Ok(job) = libnawah::job_create(self.root_job) else {
+        let session = match self.session_job {
+            Some(j) => j,
+            None => match libnawah::job_create(self.root_job) {
+                Ok(j) => *self.session_job.insert(j),
+                Err(_) => {
+                    out.put(b"ERR FAILED");
+                    return;
+                }
+            },
+        };
+        let Ok(job) = libnawah::job_create(session) else {
             out.put(b"ERR FAILED");
             return;
         };
@@ -567,6 +581,29 @@ impl Manager {
             libnawah::handle_close(server);
         }
         libnawah::channel_write(c, b"ERR NOT_READY", &[]);
+    }
+
+    /// `END_SESSION` on a service's boot channel (services.md v1.17): from the vouched session
+    /// alone, ERR ACCESS for any other. The session's job is killed with every application and
+    /// whatever they started in it, and let go; the answer is `ENDED <n>`, `n` the applications
+    /// running when it was killed. Their places and grants come back as each exit is seen.
+    fn end_session(&mut self, i: usize) {
+        let Some(c) = self.services[i].chan else {
+            return;
+        };
+        if self.services[i].name() != b"session" {
+            libnawah::channel_write(c, b"ERR ACCESS", &[]);
+            return;
+        }
+        let n = self.running.iter().filter(|a| a.process.is_some()).count();
+        if let Some(j) = self.session_job.take() {
+            libnawah::job_kill(j);
+            libnawah::handle_close(j);
+        }
+        let mut out = Out::new();
+        out.put(b"ENDED ");
+        out.num(n as u64);
+        libnawah::channel_write(c, out.bytes(), &[]);
     }
 
     /// Application `a`'s process exited (services.md v1.15): its job is ended with whatever
@@ -908,6 +945,8 @@ impl Manager {
                     self.connect_for(i, name);
                 } else if req == b"APPS" || req.starts_with(b"LAUNCH ") {
                     self.apps_request(i, req);
+                } else if req == b"END_SESSION" {
+                    self.end_session(i);
                 } else if req != b"READY" {
                     // v1.14: an unknown request is answered, as on the control channel (a
                     // repeated READY stays unanswered).
@@ -1273,6 +1312,7 @@ fn main() -> u64 {
         running: [NOT_RUNNING; MAX_RUNNING],
         last_num: 0,
         root_job,
+        session_job: None,
         ctl,
         authority,
         nic,

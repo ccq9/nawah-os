@@ -145,7 +145,8 @@ jobs:
         # 15 (WP-64, 2026-11-10): a hang guard, not the run's wall time; the suite's worst case, the
         # sum of target.json's phase timeouts, is 895 s on 2026-11-14 (StepBudget, bounded suite).
         # 18 (WP-88, 2026-11-14): 895 s of the cap's 900 left no room for the cases to come.
-        timeout-minutes: 18
+        # 19 (WP-102, 2026-11-20): 1067 s of 1080 before TST-M6-SESSION-JOB's 30 s.
+        timeout-minutes: 19
         run: python3 tools/project.py test --target pc-qemu --suite M6
       - name: A64 early port experiment (build + boot on QEMU virt, ADR-0008)
         run: |

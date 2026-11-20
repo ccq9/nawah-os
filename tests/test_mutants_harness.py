@@ -1267,7 +1267,7 @@ class KillEvidence(unittest.TestCase):
 
     def test_the_launch_expectations_are_pinned(self):
         """WP-161 (REQ-M6-004; services.md v1.15, ADR-0023 item 1): LAUNCH starts an application
-        in a job of its own under the root job with its boot channel alone, under a number no
+        in a job of its own (under the session's job since v1.17, WP-102) with its boot channel alone, under a number no
         running application carries, eight at most; whatever it asks is refused; its job ends
         with it; a launch that failed keeps nothing. M346 to M361 (M358 to M361 from the review
         round: an application that closes its boot channel and stays, and a request carrying
@@ -1284,25 +1284,25 @@ class KillEvidence(unittest.TestCase):
         case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.SPAWN)
         line = next(m for m in case["required_markers"] if "|session=" in m)
         pinned = dict(f.split("=", 1) for f in line.strip("|").split("|")[2:])
-        self.assertEqual(pinned, {"load": "OK 1", "session": "0x40", "apps": "8", "waiting": "8", "handles": "8", "under_root": "8",
-                                  "jobs": "8", "live_jobs": "8", "orphans": "0", "mgr_handles": "24"})
+        self.assertEqual(pinned, {"load": "OK 1", "session": "0x40", "apps": "8", "waiting": "8", "handles": "8", "under_root": "0",
+                                  "in_session": "8", "parents": "1", "jobs": "8", "live_jobs": "9", "orphans": "0", "mgr_handles": "25"})
         want = {  # id: (message, SECURITY, the fields that change, the fields that hold)
-            "M346": ("_NOJOB", True, {"under_root": "0", "jobs": "1", "orphans": "1"}, {"session": "0x40", "live_jobs": "8"}),
-            "M347": ("_MORE", True, {"handles": "16"}, {"apps": "8", "waiting": "8", "under_root": "8"}),
-            "M348": ("_ORPHAN", True, {"live_jobs": "9", "orphans": "1"}, {"under_root": "8", "jobs": "8"}),
+            "M346": ("_NOJOB", True, {"in_session": "0", "jobs": "1", "orphans": "1"}, {"session": "0x40", "parents": "1", "live_jobs": "9"}),
+            "M347": ("_MORE", True, {"handles": "16"}, {"apps": "8", "waiting": "8", "under_root": "0"}),
+            "M348": ("_ORPHAN", True, {"live_jobs": "10", "orphans": "1"}, {"in_session": "8", "parents": "1", "jobs": "8"}),
             "M349": ("_LAUNCH", True, {"session": "0x590c", "apps": "9"}, {}),
             "M350": ("_LAUNCH", True, {"session": "0x5301", "apps": "1"}, {}),
             "M351": ("_LAUNCH", False, {"session": "0x5364", "apps": "1"}, {}),
-            "M352": ("_APP_KEPT", False, {"mgr_handles": "26"}, {"live_jobs": "8", "orphans": "0"}),
-            "M353": ("_JOBLEFT", False, {"live_jobs": "10", "mgr_handles": "26"}, {"orphans": "0"}),
-            "M354": ("_APP_KEPT", True, {"mgr_handles": "32"}, {"live_jobs": "8", "orphans": "0"}),
+            "M352": ("_APP_KEPT", False, {"mgr_handles": "27"}, {"live_jobs": "9", "orphans": "0"}),
+            "M353": ("_JOBLEFT", False, {"live_jobs": "11", "mgr_handles": "27"}, {"orphans": "0"}),
+            "M354": ("_APP_KEPT", True, {"mgr_handles": "33"}, {"live_jobs": "9", "orphans": "0"}),
             "M355": ("_REFUSED", False, {"waiting": "0", "handles": "40"}, {"session": "0x40", "apps": "8"}),
-            "M356": ("_JOBLEFT", False, {"live_jobs": "109", "mgr_handles": "125"}, {"orphans": "0"}),
+            "M356": ("_JOBLEFT", False, {"live_jobs": "110", "mgr_handles": "126"}, {"orphans": "0"}),
             "M357": ("_REFUSED", True, {"waiting": "0", "handles": "56"}, {"session": "0x40", "apps": "8"}),
             "M358": ("_NOLIST", True, None, None),
-            "M359": ("_APP_KEPT", False, {"mgr_handles": "25"}, {"live_jobs": "8", "orphans": "0"}),
-            "M360": ("_JOBLEFT", True, {"live_jobs": "9", "mgr_handles": "26"}, {"orphans": "0"}),
-            "M361": ("_APP_KEPT", True, {"mgr_handles": "40"}, {"live_jobs": "8", "orphans": "0"}),
+            "M359": ("_APP_KEPT", False, {"mgr_handles": "26"}, {"live_jobs": "9", "orphans": "0"}),
+            "M360": ("_JOBLEFT", True, {"live_jobs": "10", "mgr_handles": "27"}, {"orphans": "0"}),
+            "M361": ("_APP_KEPT", True, {"mgr_handles": "41"}, {"live_jobs": "9", "orphans": "0"}),
         }
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if m[4] == [self.SPAWN]), sorted(want))
         seen = []
@@ -1378,17 +1378,17 @@ class KillEvidence(unittest.TestCase):
         t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
         case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.CONNECT)
         line = next(m for m in case["required_markers"] if m.startswith("|ktest|app_connect|load="))
-        self.assertEqual(line, "|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=9|mgr_handles=19|")
+        self.assertEqual(line, "|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=9|mgr_handles=20|")
         want = {  # id: (SECURITY, message constant or None, substrings besides exit 37 and the message)
             "M140": (True, None, ["'|text=svc|connect|app:connx#1', '|text=svc|connect|app:both#2', '|text=svc|connect|app:stuck#4', '|text=svc|connect|app:conn#8'"]),
             "M142": (True, "_CLAUNCH", ["|session=0x5300|apps=0|"]),
             "M378": (True, None, ["'|text=app:connx#1|net=ERR ACCESS|session=ERR ACCESS|config=OK|ping=OK served|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS'"]),
-            "M379": (False, "_CHAND", ["|waiting=5|handles=12|mgr_handles=19|"]),
-            "M380": (False, "_CHAND", ["|waiting=5|handles=10|mgr_handles=19|"]),
-            "M381": (True, "_CHAND", ["|waiting=5|handles=15|mgr_handles=19|"]),
+            "M379": (False, "_CHAND", ["|waiting=5|handles=12|mgr_handles=20|"]),
+            "M380": (False, "_CHAND", ["|waiting=5|handles=10|mgr_handles=20|"]),
+            "M381": (True, "_CHAND", ["|waiting=5|handles=15|mgr_handles=20|"]),
             "M382": (True, None, ["'|text=app:both#2|config=OK|display=OK|again=ERR LIMIT'"]),
             "M383": (True, None, ["'|text=app:both#2|config=OK|display=OK|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS'"]),
-            "M384": (True, "_CKEPT", ["|handles=9|mgr_handles=20|"]),
+            "M384": (True, "_CKEPT", ["|handles=9|mgr_handles=21|"]),
         }
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if m[4] == [self.CONNECT]), sorted(want))
         seen = set()
@@ -1430,6 +1430,58 @@ class KillEvidence(unittest.TestCase):
         # Refused CONNECTs the services must never hear of.
         for name in ("conn#9", "netonly"):
             self.assertIn(f"|text=svc|connect|app:{name}", case["forbidden_markers"])
+
+    SESSION_JOB = "TST-M6-SESSION-JOB"
+
+    def test_the_session_job_expectations_are_pinned(self):
+        """WP-102 (REQ-M6-004; services.md v1.17, ADR-0023 item 1): the session's job. M141 and
+        M385 to M387, each anchor once in user/apps/svcmgr/src/main.rs, are declared on
+        TST-M6-SESSION-JOB (M385 on TST-M6-APP-SPAWN too), each known there by exit 37, one
+        message occurring as a failure in ktest.rs and fields of the case's one line with
+        another value than the pinned line's, no two sharing their evidence; M141, M385 and M386
+        are SECURITY. The case's lab manifest gives the session the role `ender` and the
+        desktop END_SESSION expecting ERR ACCESS; its volume carries the two lab entries."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.SESSION_JOB)
+        line = next(m for m in case["required_markers"] if m.startswith("|ktest|session_job|load="))
+        self.assertEqual(line, "|ktest|session_job|load=OK 2|session=0x40|desktop=0x40|stay=1|nest=0|idle=0|under_root=0|in_session=1|live_jobs=2|mgr_handles=4|")
+        want = {  # id: (SECURITY, message constant, the substrings besides exit 37 and the message)
+            "M141": (True, "_SJALIVE", ["|stay=2|nest=1|idle=1|under_root=0|in_session=2|live_jobs=5|"]),
+            "M385": (True, "_SJALIVE", ["|stay=2|nest=1|idle=1|under_root=2|in_session=0|"]),
+            "M386": (True, "_SJANS", ["|session=0x5300|desktop=0x51|"]),
+            "M387": (False, "_SJANS", ["|session=0x5400|desktop=0x40|"]),
+        }
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.SESSION_JOB in m[4]), sorted(want))
+        seen = set()
+        for mid, (security, const, rest) in want.items():
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], "user/apps/svcmgr/src/main.rs")
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(m[4], [self.SESSION_JOB] + ([self.SPAWN] if mid == "M385" else []))
+                msg = getattr(mutants, const)
+                self.assertEqual(sorted(E[mid][self.SESSION_JOB]), sorted(["exit 37", msg] + rest))
+                self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
+                for x in rest:
+                    self.assertNotIn(x, line, f"{x} is the pinned line")
+                    for f in x.strip("|").split("|"):
+                        self.assertIn("|" + f.split("=")[0] + "=", line, f)
+                seen.add((const, tuple(rest)))
+        self.assertEqual(len(seen), len(want), "each mutant is known by its own evidence")
+        self.assertEqual(sorted(E["M385"]), sorted([self.SESSION_JOB, self.SPAWN]))
+        self.assertIn("|under_root=8|in_session=0|parents=1|", E["M385"][self.SPAWN])
+        manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-sj.txt").read_text(encoding="utf-8")
+        self.assertIn("\nsession /SYSTEM/SVC.ELF - 3000 never 0 0 ender\n", manifest)
+        self.assertIn("\ndesktop /SYSTEM/SVC.ELF - 3000 never 0 0 ask END_SESSION=ERR ACCESS\n", manifest)
+        self.assertEqual(case.get("disk_files"), {
+            f"SYSTEM/APPS/{n.upper()}.{x}": (f"platform/pc-qemu/lab/{n}.app" if x == "APP" else "${OUT}/apps/svc.elf")
+            for n in ("stay", "nest") for x in ("APP", "ELF")})
 
 
 def lock_held(path) -> bool:

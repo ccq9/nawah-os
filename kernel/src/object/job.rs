@@ -85,6 +85,15 @@ impl Job {
         self.parent.as_ref().is_some_and(|p| p.is_root())
     }
 
+    /// Test-only (WP-102): the parent job's id (0 for the root) and whether that parent is
+    /// itself a child of the root job — an application's job under the session's job.
+    #[cfg(feature = "ktest")]
+    pub fn parent_of(&self) -> (u64, bool) {
+        self.parent
+            .as_ref()
+            .map_or((0, false), |p| (p.id, p.child_of_root()))
+    }
+
     /// Whether this job itself was killed.
     pub fn killed(&self) -> bool {
         self.killed.load(Ordering::SeqCst)

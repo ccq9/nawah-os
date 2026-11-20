@@ -211,6 +211,7 @@ pub fn run() -> ! {
         "launch_denied" => launch_denied(),
         "app_spawn" => app_spawn(),
         "app_connect" => app_connect(),
+        "session_job" => session_job(),
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
@@ -5162,6 +5163,9 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         "app_connect" => pass(
             "an application connects to its declared services alone, vouched by its identity and within the bounds",
         ),
+        "session_job" => pass(
+            "the session's applications run in one job, which END_SESSION from the session alone ends, and the next launch makes a new one",
+        ),
         "app_spawn" => pass(
             "a launched application runs in a job of its own with its boot channel alone, is refused every request, and leaves nothing behind",
         ),
@@ -5309,15 +5313,19 @@ fn app_spawn() -> ! {
     let waiting = count(|a| a.waiting);
     let handles: usize = apps.iter().map(|a| a.handles).sum();
     let under_root = count(|a| a.under_root);
+    let in_session = count(|a| a.parent_under_root);
     let jobs = (0..n)
         .filter(|&i| apps[..i].iter().all(|b| b.job != apps[i].job))
+        .count();
+    let parents = (0..n)
+        .filter(|&i| apps[..i].iter().all(|b| b.parent != apps[i].parent))
         .count();
     let live_jobs = i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
     let orphans = sched::live_named(b"IDLE.ELF").1;
     let kept = mgr_handles(&h) - h.handles0;
     let load = h.load_reply.clone();
     kprintln!(
-        "OSX|{}|ktest|app_spawn|load={}|session={:#x}|apps={}|waiting={}|handles={}|under_root={}|jobs={}|live_jobs={}|orphans={}|mgr_handles={}|",
+        "OSX|{}|ktest|app_spawn|load={}|session={:#x}|apps={}|waiting={}|handles={}|under_root={}|in_session={}|parents={}|jobs={}|live_jobs={}|orphans={}|mgr_handles={}|",
         BUILD_ID,
         load,
         session,
@@ -5325,6 +5333,8 @@ fn app_spawn() -> ! {
         waiting,
         handles,
         under_root,
+        in_session,
+        parents,
         jobs,
         live_jobs,
         orphans,
@@ -5350,18 +5360,21 @@ fn app_spawn() -> ! {
     if handles != 8 {
         fail("an application holds more than its boot channel")
     }
-    if under_root != 8 || jobs != 8 {
-        fail("an application is not in a job of its own under the root job")
+    // v1.17: each in a job of its own, all of them children of the one session job, which is a
+    // child of the root job.
+    if under_root != 0 || in_session != 8 || parents != 1 || jobs != 8 {
+        fail("an application is not in a job of its own under the session's job")
     }
     if orphans != 0 {
         fail("an application that exited left a process of its job behind")
     }
-    if live_jobs != 8 {
+    // The eight applications' jobs and the session's.
+    if live_jobs != 9 {
         fail("a job was left of a launch that failed or of an application that exited")
     }
-    // Eight applications' process, channel and job, and nothing else since before LOAD: the
-    // launcher's own two handles went at its exit.
-    if kept != 24 {
+    // Eight applications' process, channel and job, and the session's job, and nothing else since
+    // before LOAD: the launcher's own two handles went at its exit.
+    if kept != 25 {
         fail("the manager kept a handle of a launch that failed or of an application that exited")
     }
     if mgr_exit != 0 || procs != 0 || !clean {
@@ -5426,11 +5439,98 @@ fn app_connect() -> ! {
     if handles != 9 {
         fail("an application holds another number of handles than its grants give")
     }
-    // Since before LOAD: the five applications' process, channel and job, and the config and
-    // display services' channel and process; nothing of the launcher, of the four that exited,
-    // of a refused CONNECT nor of the client end `stuck` could not take.
-    if kept != 15 + 4 {
+    // Since before LOAD: the five applications' process, channel and job, the config and
+    // display services' channel and process, and the session's job (v1.17); nothing of the
+    // launcher, of the four that exited, of a refused CONNECT nor of the client end `stuck`
+    // could not take.
+    if kept != 15 + 4 + 1 {
         fail("the manager kept a handle of a CONNECT it refused or of an application that exited")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-SESSION-JOB (REQ-M6-004, services.md v1.17, ADR-0023 item 1; WP-102): the session's
+/// job. The lab manifest SVC-SJ.TXT runs the lab image as the vouched `session`, whose role
+/// `ender` launches `stay` (asks its six requests and waits) and `nest` (starts a child of its own
+/// and waits), asks END_SESSION, answered ENDED 2, and launches `stay` again; and as the vouched
+/// `desktop`, whose END_SESSION is refused ERR ACCESS. When both have exited the test kernel waits
+/// for the ended session's processes to be gone and reads, while the manager runs, what is left.
+fn session_job() -> ! {
+    let name = "session_job";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-SJ.TXT");
+    let lines = h.poll_list(sched::ticks() + 20_000, |l| {
+        ["session", "desktop"]
+            .iter()
+            .all(|s| l.iter().any(|x| x.name == *s && x.exit.is_some()))
+    });
+    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    let desktop = svc_find(&lines, "desktop").exit.unwrap_or(u64::MAX);
+    let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
+    sched::poll_until(sched::ticks() + 5000, || {
+        let (stay, n) = sched::live_named(b"STAY.ELF");
+        n == 1
+            && stay[0].waiting
+            && sched::live_named(b"NEST.ELF").1 == 0
+            && sched::live_named(b"IDLE.ELF").1 == 0
+            && jobs_now() == 2
+    });
+    let (stay, n) = sched::live_named(b"STAY.ELF");
+    let nest = sched::live_named(b"NEST.ELF").1;
+    let idle = sched::live_named(b"IDLE.ELF").1;
+    let under_root = stay[..n].iter().filter(|a| a.under_root).count();
+    let in_session = stay[..n].iter().filter(|a| a.parent_under_root).count();
+    let live_jobs = jobs_now();
+    let kept = mgr_handles(&h) - h.handles0;
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|session_job|load={}|session={:#x}|desktop={:#x}|stay={}|nest={}|idle={}|under_root={}|in_session={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        load,
+        session,
+        desktop,
+        n,
+        nest,
+        idle,
+        under_root,
+        in_session,
+        live_jobs,
+        kept
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|session_job|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 2" {
+        fail("the lab manifest did not load")
+    }
+    if session != 0x40 {
+        fail("END_SESSION or the LAUNCH after it was not answered as the contract states")
+    }
+    if desktop != 0x40 {
+        fail("the desktop's END_SESSION was not refused")
+    }
+    if n != 1 || nest != 0 || idle != 0 {
+        fail("an application of the ended session is still alive")
+    }
+    if under_root != 0 || in_session != 1 {
+        fail("the application launched after END_SESSION is not in a new session job")
+    }
+    // The new session's job and its one application's.
+    if live_jobs != 2 {
+        fail("a job of the ended session was left")
+    }
+    // The one application's process, channel and job, and the new session's job: nothing of the
+    // ended session, nor of the two services, which exited.
+    if kept != 4 {
+        fail("the manager kept a handle of the ended session")
     }
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or applications left something behind")

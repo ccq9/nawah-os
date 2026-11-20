@@ -1119,6 +1119,9 @@ pub struct LiveNamed {
     pub job: u64,
     /// Whether that job is a child of the root job itself.
     pub under_root: bool,
+    /// WP-102: its job's parent's id, and whether that parent is a child of the root job.
+    pub parent: u64,
+    pub parent_under_root: bool,
     /// Whether every thread of it waits without a deadline.
     pub waiting: bool,
 }
@@ -1147,10 +1150,13 @@ pub fn live_named(name: &[u8]) -> ([LiveNamed; 16], usize) {
                     _ => all = false,
                 }
             }
+            let (parent, parent_under_root) = o.job().parent_of();
             out[n] = LiveNamed {
                 handles: 0,
                 job: o.job().id,
                 under_root: o.job().child_of_root(),
+                parent,
+                parent_under_root,
                 waiting: any && all,
             };
             tables[n] = Some(p.handles.clone());

@@ -214,6 +214,50 @@ fn launcher(ch: u32) -> u64 {
     0x40
 }
 
+/// The vouched session's side of TST-M6-SESSION-JOB (WP-102): READY; LAUNCH stay (#1) and nest
+/// (#2), and 300 ticks for nest's child to start; END_SESSION, answered `ENDED 2`; LAUNCH stay
+/// again (#3), which the manager starts in a new session job. Traced
+/// `ender|end=<reply>|after=<reply>`; 0x40 when each reply was the stated one, `missed`'s code at
+/// the first step that saw another.
+fn ender(ch: u32) -> u64 {
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
+    let mut r = [0u8; 128];
+    let (num, n) = launch(ch, b"stay", false, &mut r);
+    if num != 1 {
+        return missed(1, num, &r[..n]);
+    }
+    let (num, n) = launch(ch, b"nest", false, &mut r);
+    if num != 2 {
+        return missed(2, num, &r[..n]);
+    }
+    let _ = libnawah::sleep(300);
+    let mut t = [0u8; 128];
+    let head = b"ender|end=";
+    t[..head.len()].copy_from_slice(head);
+    let mut at = head.len();
+    let n = ask(ch, b"END_SESSION", &[], &mut r).unwrap_or(0).min(40);
+    t[at..at + n].copy_from_slice(&r[..n]);
+    at += n;
+    if r[..n] != *b"ENDED 2" {
+        libnawah::trace(&t[..at]);
+        return missed(3, 0, &r[..n]);
+    }
+    let (num, n) = launch(ch, b"stay", false, &mut r);
+    let after = b"|after=";
+    t[at..at + after.len()].copy_from_slice(after);
+    at += after.len();
+    let k = n.min(40);
+    t[at..at + k].copy_from_slice(&r[..k]);
+    at += k;
+    libnawah::trace(&t[..at]);
+    if num != 3 {
+        return missed(4, num, &r[..n]);
+    }
+    0x40
+}
+
 /// The application of TST-M6-APP-CONNECT-DENIED (WP-162), ids `conn` and `connx`, both
 /// declaring `config`: asks the manager for `net` (allowed, not declared), `session` (not
 /// allowed), `config` (declared), a `PING` on what `config` gave, and `config` again, and traces
@@ -436,6 +480,27 @@ fn application(ch: u32, who: &[u8]) -> u64 {
         let end = put(&mut t, b"|closed=1");
         libnawah::trace(&t[..end]);
         return 0x43;
+    }
+    if who.starts_with(b"nest#") {
+        // WP-102: a child of its own in its job, then it waits on its boot channel.
+        let child = libnawah::channel_create()
+            .and_then(|(a, b)| libnawah::process_spawn(b"/SYSTEM/IDLE.ELF", &[b, a]));
+        let end = put(
+            &mut t,
+            if child.is_ok() {
+                b"|child=1"
+            } else {
+                b"|child=0"
+            },
+        );
+        libnawah::trace(&t[..end]);
+        let mut reply = [0u8; 128];
+        let mut hs = [0u32; 1];
+        loop {
+            if libnawah::channel_read(ch, &mut reply, &mut hs, true).is_err() {
+                return 0;
+            }
+        }
     }
     if who.starts_with(b"orphan#") {
         let child = libnawah::channel_create()
@@ -842,6 +907,7 @@ fn main() -> u64 {
         b"serve" => serve(ch, Mode::Serve),
         b"names" => serve(ch, Mode::Names),
         b"connector" => connector(ch),
+        b"ender" => ender(ch),
         b"crash_once" => serve(ch, Mode::CrashOnce),
         _ => 2,
     }

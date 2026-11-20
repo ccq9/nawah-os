@@ -1113,7 +1113,7 @@ class StepBudget(unittest.TestCase):
     # keeps 62, a hang guard over its uncapped steps (its caps, 15 + M6 18, are 39.6 now); twelve
     # shards keep 90 each.
     LIMITS = {"a": 62, "b": 40, **{f"shard-{k}": 90 for k in range(1, SHARDS + 1)}, "g": 180, "merge": 20}
-    CAPS = {"a": {"M6": 18}, "b": {"M5": 18}, **{f"shard-{k}": {"shard": 60} for k in range(1, SHARDS + 1)},
+    CAPS = {"a": {"M6": 19}, "b": {"M5": 18}, **{f"shard-{k}": {"shard": 60} for k in range(1, SHARDS + 1)},
             "g": {"M6-GATE": 135}, "merge": {}}
 
     def caps(self):
