@@ -1,0 +1,17 @@
+$ cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu --test listview
+
+running 11 tests
+test bidi_controls_in_cells_shown_not_obeyed ... ok
+test empty_and_denied_states_text ... ok
+test focus_stays_visible ... ok
+test rtl_column_order_and_trailing_numeric ... ok
+test home_end_pgup_pgdn_exact ... ok
+test single_and_multi_selection ... ok
+test row_narrator_lines_en_ar ... ok
+test text_put_cuts_at_char_boundary ... ok
+test sort_stable_and_selection_follows_identity ... ok
+test typeahead_latin_and_arabic ... ok
+test visible_rows_bounded_0_1_10000 ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
