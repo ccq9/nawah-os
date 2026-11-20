@@ -1,0 +1,9 @@
+{
+ "user/nawah-apps/Cargo.toml": "ddeeb95177646a2251395ae93046ca22b49a0bea80927cb6d10c5c6d8f20b6e9",
+ "user/nawah-apps/tests/registry.rs": "6c906b2eed090afd9216ec2302e1efce05ba7dfac41199ce997b6c4d30850c83",
+ "platform/pc-qemu/manifests/services.txt": "e37e0492bdef5f0059d4cbe86ec09c7992f5b7d5ebb74106869219062ebdf765",
+ "docs/contracts/apps.md": "d36a6f4f5b77f455f9e4e822555035d4f1927d766d9c2c3f41d389ac99ba153e",
+ "user/nawah-apps/src/lib.rs": "1226f6dc3421487ce0ee08fd507f96b6428f5cd036c1fb13a6812b4aaf90a444",
+ "platform/pc-qemu/apps/CLOCK.APP": "c49d7302d0d166362835da74ab9797f6d235909aa9e57ad5ba3f502284719cd0",
+ "platform/pc-qemu/apps/NOTES.APP": "3d7a253eb87eeb6466002fa48ac69889e5dc7764bc3b304862054b17fdd087af"
+}
