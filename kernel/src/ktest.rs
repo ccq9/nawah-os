@@ -210,6 +210,7 @@ pub fn run() -> ! {
         "config_subs" => config_subs(),
         "launch_denied" => launch_denied(),
         "app_spawn" => app_spawn(),
+        "app_connect" => app_connect(),
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
@@ -5158,6 +5159,9 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         "launch_denied" => pass(
             "APPS and LAUNCH are for the vouched session and desktop, and the registry comes from the volume",
         ),
+        "app_connect" => pass(
+            "an application connects to its declared services alone, vouched by its identity and within the bounds",
+        ),
         "app_spawn" => pass(
             "a launched application runs in a job of its own with its boot channel alone, is refused every request, and leaves nothing behind",
         ),
@@ -5359,6 +5363,74 @@ fn app_spawn() -> ! {
     // launcher's own two handles went at its exit.
     if kept != 24 {
         fail("the manager kept a handle of a launch that failed or of an application that exited")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-APP-CONNECT-DENIED (REQ-M6-004, services.md v1.16, ADR-0023 item 1; WP-162): an
+/// application's CONNECT. The lab manifest SVC-AC.TXT runs the lab image as `config`, tracing the
+/// name each client is vouched by (and as `display`, the same), and as the vouched `session`,
+/// whose launcher starts `connx` (declares config, connects, exits), the review round's `both`,
+/// `netonly` and `stuck` (each exits), and five of `conn` (declares config, connects, stays).
+/// Each application traces what the manager answered; the test kernel waits for the five to
+/// stay and checks the manager kept nothing of what was refused.
+fn app_connect() -> ! {
+    let name = "app_connect";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-AC.TXT");
+    let lines = h.poll_list(sched::ticks() + 20_000, |l| {
+        l.iter().any(|x| x.name == "session" && x.exit.is_some())
+    });
+    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    sched::poll_until(sched::ticks() + 5000, || {
+        let (apps, n) = sched::live_named(b"CONN.ELF");
+        n == 5 && apps[..n].iter().all(|a| a.waiting)
+    });
+    let (apps, n) = sched::live_named(b"CONN.ELF");
+    let waiting = apps[..n].iter().filter(|a| a.waiting).count();
+    let handles: usize = apps[..n].iter().map(|a| a.handles).sum();
+    let kept = mgr_handles(&h) - h.handles0;
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|app_connect|load={}|session={:#x}|apps={}|waiting={}|handles={}|mgr_handles={}|",
+        BUILD_ID,
+        load,
+        session,
+        n,
+        waiting,
+        handles,
+        kept
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|app_connect|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 3" {
+        fail("the lab manifest did not load")
+    }
+    if session != 0x40 {
+        fail("a LAUNCH of the connection case was not answered as the contract states")
+    }
+    if n != 5 || waiting != 5 {
+        fail("an application of the connection case did not stay")
+    }
+    // Each of the four granted holds its boot channel and its connection; the fifth, refused,
+    // its boot channel alone.
+    if handles != 9 {
+        fail("an application holds another number of handles than its grants give")
+    }
+    // Since before LOAD: the five applications' process, channel and job, and the config and
+    // display services' channel and process; nothing of the launcher, of the four that exited,
+    // of a refused CONNECT nor of the client end `stuck` could not take.
+    if kept != 15 + 4 {
+        fail("the manager kept a handle of a CONNECT it refused or of an application that exited")
     }
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or applications left something behind")

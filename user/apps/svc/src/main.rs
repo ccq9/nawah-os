@@ -32,6 +32,9 @@ enum Mode {
     Serve,
     /// As `Serve`, but the first request of this volume's life kills it (exit 3).
     CrashOnce,
+    /// As `Serve`, and traces `svc|connect|<name>` for the name each client arrives with
+    /// (WP-162, TST-M6-APP-CONNECT-DENIED: the name the manager vouches for).
+    Names,
     /// Never answers. When a client whose request went unanswered closes its channel, traces
     /// `svc|silent|held=<ticks>|in_window=<0|1>`: the ticks from the request's arrival to the
     /// close, and whether they fall within [lo, hi] (the test's expected deadline window).
@@ -211,6 +214,196 @@ fn launcher(ch: u32) -> u64 {
     0x40
 }
 
+/// The application of TST-M6-APP-CONNECT-DENIED (WP-162), ids `conn` and `connx`, both
+/// declaring `config`: asks the manager for `net` (allowed, not declared), `session` (not
+/// allowed), `config` (declared), a `PING` on what `config` gave, and `config` again, and traces
+/// `app:<id>#<n>|net=<reply>|session=<reply>|config=<reply>[|ping=<reply>|again=<reply>]`. `connx`
+/// then exits 0x44; `conn` stays, waiting on its boot channel.
+fn connecting(ch: u32, who: &[u8]) -> u64 {
+    let mut t = [0u8; 160];
+    let mut at = 0;
+    let mut put = |t: &mut [u8; 160], s: &[u8]| {
+        let n = s.len().min(t.len() - at);
+        t[at..at + n].copy_from_slice(&s[..n]);
+        at += n;
+        at
+    };
+    put(&mut t, b"app:");
+    put(&mut t, &who[..who.len().min(16)]);
+    let mut reply = [0u8; 128];
+    for (field, req) in [
+        (&b"|net="[..], &b"CONNECT net"[..]),
+        (b"|session=", b"CONNECT session"),
+    ] {
+        put(&mut t, field);
+        let n = ask(ch, req, &[], &mut reply).unwrap_or(0);
+        put(&mut t, if n == 0 { b"-" } else { &reply[..n] });
+    }
+    // `config`: the reply carries the client end of a channel to the service.
+    put(&mut t, b"|config=");
+    let mut hs = [0u32; 1];
+    let mut got = None;
+    if libnawah::channel_write(ch, b"CONNECT config", &[]) == 0
+        && libnawah::object_wait_many(
+            &[WaitEntry {
+                handle: ch,
+                signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+            }],
+            1500,
+        )
+        .is_ok()
+    {
+        if let Ok((n, nh)) = libnawah::channel_read(ch, &mut reply, &mut hs, false) {
+            put(&mut t, &reply[..n]);
+            if nh == 1 {
+                got = Some(hs[0]);
+            }
+        }
+    }
+    if let Some(cfg) = got {
+        put(&mut t, b"|ping=");
+        let n = ask(cfg, b"PING", &[], &mut reply).unwrap_or(0);
+        put(&mut t, if n == 0 { b"-" } else { &reply[..n] });
+        put(&mut t, b"|again=");
+        let n = ask(ch, b"CONNECT config", &[], &mut reply).unwrap_or(0);
+        let end = put(&mut t, if n == 0 { b"-" } else { &reply[..n] });
+        libnawah::trace(&t[..end]);
+    } else {
+        let end = at;
+        libnawah::trace(&t[..end]);
+    }
+    if who.starts_with(b"connx#") {
+        return 0x44;
+    }
+    loop {
+        if libnawah::channel_read(ch, &mut reply, &mut hs, true).is_err() {
+            return 0;
+        }
+    }
+}
+
+/// The three applications the review round added to TST-M6-APP-CONNECT-DENIED (WP-162), each
+/// of which traces what it was answered and exits: `both` (declares display and config) asks
+/// for config, display and config again (`app:both#<n>|config=..|display=..|again=..`, exit
+/// 0x45); `netonly` (declares net) asks for config (`app:netonly#<n>|config=..`, exit 0x46);
+/// `stuck` (declares config) first asks 64 times for LIST without reading the replies, so its
+/// queue is full when it asks for config, then reads what came and counts any reply that is
+/// not ERR ACCESS (`app:stuck#<n>|asked=64|other=<k>`, exit 0x47).
+fn connecting_more(ch: u32, who: &[u8]) -> u64 {
+    let mut t = [0u8; 128];
+    let mut at = 0;
+    let mut put = |t: &mut [u8; 128], s: &[u8]| {
+        let n = s.len().min(t.len() - at);
+        t[at..at + n].copy_from_slice(&s[..n]);
+        at += n;
+        at
+    };
+    put(&mut t, b"app:");
+    put(&mut t, &who[..who.len().min(16)]);
+    let mut reply = [0u8; 128];
+    let mut hs = [0u32; 1];
+    let mut ask_one = |t: &mut [u8; 128], field: &[u8], req: &[u8]| {
+        put(t, field);
+        if libnawah::channel_write(ch, req, &[]) != 0
+            || libnawah::object_wait_many(
+                &[WaitEntry {
+                    handle: ch,
+                    signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+                }],
+                1500,
+            )
+            .is_err()
+        {
+            return put(t, b"-");
+        }
+        match libnawah::channel_read(ch, &mut reply, &mut hs, false) {
+            Ok((n, nh)) => {
+                if nh == 1 {
+                    libnawah::handle_close(hs[0]);
+                }
+                put(t, &reply[..n])
+            }
+            Err(_) => put(t, b"-"),
+        }
+    };
+    let (end, code) = if who.starts_with(b"both#") {
+        ask_one(&mut t, b"|config=", b"CONNECT config");
+        ask_one(&mut t, b"|display=", b"CONNECT display");
+        (ask_one(&mut t, b"|again=", b"CONNECT config"), 0x45)
+    } else if who.starts_with(b"netonly#") {
+        (ask_one(&mut t, b"|config=", b"CONNECT config"), 0x46)
+    } else {
+        // 64 requests whose replies stay unread fill this side's queue (QUEUE_MAX).
+        for _ in 0..64 {
+            loop {
+                match libnawah::channel_write(ch, b"LIST", &[]) {
+                    0 => break,
+                    libnawah::ERR_SHOULD_WAIT => {
+                        let _ = libnawah::sleep(1);
+                    }
+                    _ => return 0xE5,
+                }
+            }
+        }
+        let _ = libnawah::sleep(200);
+        loop {
+            match libnawah::channel_write(ch, b"CONNECT config", &[]) {
+                0 => break,
+                libnawah::ERR_SHOULD_WAIT => {
+                    let _ = libnawah::sleep(1);
+                }
+                _ => return 0xE5,
+            }
+        }
+        let _ = libnawah::sleep(200);
+        let mut other = 0u8;
+        while let Ok((n, nh)) = libnawah::channel_read(ch, &mut reply, &mut hs, false) {
+            if nh == 1 {
+                libnawah::handle_close(hs[0]);
+            }
+            if reply[..n] != *b"ERR ACCESS" {
+                other += 1;
+            }
+        }
+        put(&mut t, b"|asked=64|other=");
+        (put(&mut t, &[b'0' + other.min(9)]), 0x47)
+    };
+    libnawah::trace(&t[..end]);
+    code
+}
+
+/// The vouched session's side of TST-M6-APP-CONNECT-DENIED (WP-162): READY, then `connx`,
+/// which takes a connection to `config` and exits, the review round's `both`, `netonly` and
+/// `stuck`, each of which exits, then five of `conn` 150 ticks apart, so that each has asked
+/// before the next starts. 0x40 when every launch was answered `OK app:<id>#<n>` with the
+/// numbers 1 to 9 in order; `missed`'s code otherwise.
+fn connector(ch: u32) -> u64 {
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
+    let mut r = [0u8; 128];
+    let (num, n) = launch(ch, b"connx", false, &mut r);
+    if num != 1 {
+        return missed(1, num, &r[..n]);
+    }
+    let _ = libnawah::sleep(300);
+    for (want, id) in [(2, &b"both"[..]), (3, b"netonly"), (4, b"stuck")] {
+        let (num, n) = launch(ch, id, false, &mut r);
+        if num != want {
+            return missed(3, num, &r[..n]);
+        }
+        let _ = libnawah::sleep(700);
+    }
+    for want in 5..=9 {
+        let (num, n) = launch(ch, b"conn", false, &mut r);
+        if num != want {
+            return missed(2, num, &r[..n]);
+        }
+        let _ = libnawah::sleep(150);
+    }
+    0x40
+}
+
 /// The image started as an application (WP-161): `who` is `<id>#<n>` of `START app:<id>#<n>`.
 /// `orphan` gives a child that never exits both ends of a channel, so nothing ever wakes it,
 /// and exits 0x42; `closer` closes its boot channel, stays 200 ticks and exits 0x43. Any other
@@ -231,6 +424,12 @@ fn application(ch: u32, who: &[u8]) -> u64 {
         at += s.len();
         at
     };
+    if who.starts_with(b"conn#") || who.starts_with(b"connx#") {
+        return connecting(ch, who);
+    }
+    if who.starts_with(b"both#") || who.starts_with(b"netonly#") || who.starts_with(b"stuck#") {
+        return connecting_more(ch, who);
+    }
     if who.starts_with(b"closer#") {
         libnawah::handle_close(ch);
         let _ = libnawah::sleep(200);
@@ -340,6 +539,15 @@ fn serve(ch: u32, mode: Mode) -> u64 {
                         return 0;
                     }
                     if (buf[..n] == *b"CONNECT" || buf[..n].starts_with(b"CONNECT ")) && nh == 1 {
+                        if mode == Mode::Names {
+                            let mut t = [0u8; 64];
+                            let head = b"svc|connect|";
+                            let name = &buf[8.min(n)..n];
+                            let name = &name[..name.len().min(t.len() - head.len())];
+                            t[..head.len()].copy_from_slice(head);
+                            t[head.len()..head.len() + name.len()].copy_from_slice(name);
+                            libnawah::trace(&t[..head.len() + name.len()]);
+                        }
                         match clients.iter().position(|&c| c == 0) {
                             Some(slot) => {
                                 clients[slot] = hs[0];
@@ -632,6 +840,8 @@ fn main() -> u64 {
         }
         b"crash" => 1,
         b"serve" => serve(ch, Mode::Serve),
+        b"names" => serve(ch, Mode::Names),
+        b"connector" => connector(ch),
         b"crash_once" => serve(ch, Mode::CrashOnce),
         _ => 2,
     }

@@ -1495,8 +1495,8 @@ MUTANTS = [
      "                libnawah::handle_close(ours);\n",
      ["TST-M6-APP-SPAWN"], "a launch that failed leaves the job made for it"),
     ("M354", "user/apps/svcmgr/src/main.rs",
-     "            Ok((_, nh)) => {\n                if nh == 1 {\n                    libnawah::handle_close(hs[0]);\n                }\n            }\n",
-     "            Ok(_) => {}\n",
+     "                if nh == 1 {\n                    libnawah::handle_close(hs[0]);\n                }\n                if let Some(name) = buf[..n].strip_prefix(b\"CONNECT \") {\n                    self.app_connect(a, c, name);\n",
+     "                if let Some(name) = buf[..n].strip_prefix(b\"CONNECT \") {\n                    self.app_connect(a, c, name);\n",
      ["TST-M6-APP-SPAWN"], "SECURITY: a handle an application sends on its boot channel stays in the manager's table"),
     ("M355", "user/apps/svcmgr/src/main.rs",
      "            Err(ERR_BUFFER_TOO_SMALL) if libnawah::channel_discard(c) => {}\n", "",
@@ -1505,8 +1505,8 @@ MUTANTS = [
      "        libnawah::handle_close(app.job);\n", "",
      ["TST-M6-APP-SPAWN"], "the handle of an application's job stays in the manager's table after its exit"),
     ("M357", "user/apps/svcmgr/src/main.rs",
-     "        libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n    }\n\n    /// Application `a`'s process exited",
-     "        let mut out = Out::new();\n        self.list(&mut out);\n        libnawah::channel_write(c, out.bytes(), &[]);\n    }\n\n    /// Application `a`'s process exited",
+     "        libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n    }\n\n    /// `CONNECT <name>` from application",
+     "        let mut out = Out::new();\n        self.list(&mut out);\n        libnawah::channel_write(c, out.bytes(), &[]);\n    }\n\n    /// `CONNECT <name>` from application",
      ["TST-M6-APP-SPAWN"], "SECURITY: whatever an application asks on its boot channel is answered with the services' listing instead of being refused"),
     # M358..M361 (WP-161's review round, the red team's survivors): an application that closes
     # its boot channel and stays (the lab entry `closer`), and a request carrying two handles.
@@ -1523,8 +1523,8 @@ MUTANTS = [
      "        let Some(place) = self.running.iter().position(|a| a.chan.is_none()) else {\n",
      ["TST-M6-APP-SPAWN"], "SECURITY: the place of an application that closed its boot channel is given to another, so the first is watched no more and its job is never ended"),
     ("M361", "user/apps/svcmgr/src/main.rs",
-     "        let mut hs = [0u32; 1];\n        match libnawah::channel_read(c, &mut buf, &mut hs, false) {\n            Ok((_, nh)) => {\n",
-     "        let mut hs = [0u32; 4];\n        match libnawah::channel_read(c, &mut buf, &mut hs, false) {\n            Ok((_, nh)) => {\n",
+     "        let Some(c) = self.running[a].chan else {\n            return;\n        };\n        let mut buf = [0u8; 64];\n        let mut hs = [0u32; 1];\n",
+     "        let Some(c) = self.running[a].chan else {\n            return;\n        };\n        let mut buf = [0u8; 64];\n        let mut hs = [0u32; 4];\n",
      ["TST-M6-APP-SPAWN"], "SECURITY: a request of an application that carries two handles is read, and both stay in the manager's table"),
     # M362..M377 (WP-165, the owner's note of 2026-11-19): what docs/project-state.json says of the
     # next step and of the waiting decisions, in tools/project.py; killed by TST-M0-001.
@@ -1594,6 +1594,46 @@ MUTANTS = [
      "    head = f\"blocked ({task['blocker']}): \" if task[\"status\"] == \"blocked\" else \"\"\n",
      "    head = \"\"\n",
      ["TST-M0-001"], "a blocked item is written as the next step with no word that it is blocked"),
+    # M140, M142, M378..M381 (WP-162, REQ-M6-004; services.md v1.16, ADR-0023 item 1): an
+    # application's CONNECT, killed by TST-M6-APP-CONNECT-DENIED (the names `config` is given and
+    # the applications' traces, required markers of the case).
+    ("M140", "user/apps/svcmgr/src/main.rs",
+     "            msg.put(b\"CONNECT app:\");\n",
+     "            msg.put(b\"CONNECT \");\n",
+     ["TST-M6-APP-CONNECT-DENIED"], "SECURITY: the service is told the application's id and number without the app: prefix, a name that can read as a service's"),
+    ("M142", "user/apps/svcmgr/src/main.rs",
+     "            .position(|d| d.as_bytes() == name)\n",
+     "            .position(|d| d.as_bytes() == name)\n            .or(Some(1))\n",
+     ["TST-M6-APP-CONNECT-DENIED"], "SECURITY: a name outside the allow-list is taken for config's place, so an application connects to the session"),
+    ("M378", "user/apps/svcmgr/src/main.rs",
+     "            .filter(|&b| self.app_deps[k] & (1 << b) != 0);\n",
+     "            .filter(|_| true);\n",
+     ["TST-M6-APP-CONNECT-DENIED"], "SECURITY: an application connects to an allowed service its entry does not declare"),
+    ("M379", "user/apps/svcmgr/src/main.rs",
+     "        if app.grants & (1 << b) != 0 || held >= APP_CONNECT_MAX {\n",
+     "        if held >= APP_CONNECT_MAX {\n",
+     ["TST-M6-APP-CONNECT-DENIED"], "an application is granted a second connection to the same service"),
+    ("M380", "user/apps/svcmgr/src/main.rs",
+     "const APP_CONNECT_MAX: usize = 4;\n",
+     "const APP_CONNECT_MAX: usize = 5;\n",
+     ["TST-M6-APP-CONNECT-DENIED"], "the running applications together are granted five connections to a service"),
+    ("M381", "user/apps/svcmgr/src/main.rs",
+     "                self.running[a].grants |= 1 << b;\n",
+     "",
+     ["TST-M6-APP-CONNECT-DENIED"], "SECURITY: a grant is not counted, so neither bound holds and applications take every place of a service"),
+    # M382..M384 (WP-162's review round): the three single edits the red team found unkilled.
+    ("M382", "user/apps/svcmgr/src/main.rs",
+     "                self.running[a].grants |= 1 << b;\n",
+     "                self.running[a].grants = 1 << b;\n",
+     ["TST-M6-APP-CONNECT-DENIED"], "SECURITY: a grant replaces the one before, so an application declaring two services alternates between them without bound"),
+    ("M383", "user/apps/svcmgr/src/main.rs",
+     "                self.app_deps[self.apps_n] = app.deps.bits();\n",
+     "                self.app_deps[self.apps_n] = 2;\n",
+     ["TST-M6-APP-CONNECT-DENIED"], "SECURITY: every entry is taken to declare config alone, whatever it declares"),
+    ("M384", "user/apps/svcmgr/src/main.rs",
+     "                if libnawah::channel_write(c, b\"OK\", &[client]) != 0 {\n                    libnawah::handle_close(client);\n",
+     "                if libnawah::channel_write(c, b\"OK\", &[client]) != 0 {\n",
+     ["TST-M6-APP-CONNECT-DENIED"], "SECURITY: the client end an application could not take stays in the manager, one handle per full queue"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -1923,7 +1963,10 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-161 (REQ-M6-004): an application runs in a job of its own with its boot channel
             # alone, under a number of its own, eight at most, refused whatever it asks, and
             # its job ends with it (services.md v1.15).
-            "M346", "M347", "M348", "M349", "M350", "M354", "M357", "M358", "M360", "M361"}
+            "M346", "M347", "M348", "M349", "M350", "M354", "M357", "M358", "M360", "M361",
+            # WP-162 (REQ-M6-004): an application connects to its declared services alone,
+            # vouched as app:<id>#<n>, within one grant each and four for all (services.md v1.16).
+            "M140", "M142", "M378", "M381", "M382", "M383", "M384"}
 
 
 def security_of(mid: str) -> bool:
@@ -2149,6 +2192,9 @@ _ORPHAN = "|ktest|fail|an application that exited left a process of its job behi
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
 _APP_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
 _NOLIST = "|ktest|fail|LIST request failed"
+_CLAUNCH = "|ktest|fail|a LAUNCH of the connection case was not answered as the contract states"
+_CHAND = "|ktest|fail|an application holds another number of handles than its grants give"
+_CKEPT = "|ktest|fail|the manager kept a handle of a CONNECT it refused or of an application that exited"
 EXPECT = {
     "M262": {"TST-M3-FAT32-FAULT-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
              "TST-M3-FAT32-FAULT-ONE-CREATE": ["exit 37", "|writes=8|", "|filled=8|", "|second_names=1|", _NAMES],
@@ -2264,6 +2310,23 @@ EXPECT = {
     "M359": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=25|", _APP_KEPT]},
     "M360": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=9|orphans=0|mgr_handles=26|", _JOBLEFT]},
     "M361": {"TST-M6-APP-SPAWN": ["exit 37", "|live_jobs=8|orphans=0|mgr_handles=40|", _APP_KEPT]},
+    # WP-162: TST-M6-APP-CONNECT-DENIED (kept as the local run of 2026-11-20 printed it, after
+    # the review round). M140, M378, M382 and M383 leave the test kernel's line as it is: the
+    # case fails on its markers, the names the services hear (M140), the applications' traces
+    # (M378: `net` answered ERR UNKNOWN and netonly granted config; M382: both granted config
+    # again; M383: both refused display, netonly granted config). M142: connx's CONNECT session
+    # reaches the launcher, which reads it as the reply to its next LAUNCH. M379, M380, M381:
+    # more connections than the grants give (one more each, one more in all, every one). M384:
+    # the client end `stuck` could not take stays in the manager.
+    "M140": {"TST-M6-APP-CONNECT-DENIED": ["missing markers ['|text=svc|connect|app:connx#1', '|text=svc|connect|app:both#2', '|text=svc|connect|app:stuck#4', '|text=svc|connect|app:conn#8']"]},
+    "M142": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|session=0x5300|apps=0|", _CLAUNCH]},
+    "M378": {"TST-M6-APP-CONNECT-DENIED": ["missing markers ['|text=app:connx#1|net=ERR ACCESS|session=ERR ACCESS|config=OK|ping=OK served|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS'"]},
+    "M379": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|waiting=5|handles=12|mgr_handles=19|", _CHAND]},
+    "M380": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|waiting=5|handles=10|mgr_handles=19|", _CHAND]},
+    "M381": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|waiting=5|handles=15|mgr_handles=19|", _CHAND]},
+    "M382": {"TST-M6-APP-CONNECT-DENIED": ["missing markers ['|text=app:both#2|config=OK|display=OK|again=ERR LIMIT']"]},
+    "M383": {"TST-M6-APP-CONNECT-DENIED": ["missing markers ['|text=app:both#2|config=OK|display=OK|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS'"]},
+    "M384": {"TST-M6-APP-CONNECT-DENIED": ["exit 37", "|handles=9|mgr_handles=20|", _CKEPT]},
 }
 
 

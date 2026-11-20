@@ -10138,16 +10138,23 @@
     "docs/contracts/apps.md"
    ],
    "commands": [
-    "python3 tools/project.py test --target pc-qemu --suite M6"
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6-GATE",
+    "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
    "test_ids": [
-    "TST-M6-APP-CONNECT-DENIED"
+    "TST-M6-APP-CONNECT-DENIED",
+    "TST-M6-APP-SPAWN",
+    "TST-M6-LAUNCH-DENIED",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "id": "WP-162",
    "depends_on": [
@@ -10165,7 +10172,17 @@
     "tests/test_mutants_harness.py",
     "tools/project.py",
     "docs/tests.json",
-    "docs/work-items.json"
+    "docs/work-items.json",
+    "user/apps/svc/src/main.rs",
+    "platform/pc-qemu/manifests/svc-ac.txt",
+    "platform/pc-qemu/lab/conn.app",
+    "platform/pc-qemu/lab/connx.app",
+    "platform/pc-qemu/lab/both.app",
+    "platform/pc-qemu/lab/netonly.app",
+    "platform/pc-qemu/lab/stuck.app",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/project-state.json"
    ],
    "acceptance": "an application's CONNECT is accepted for its declared dependencies within the allow-list alone, vouched as app:<id>#<n> to the target, and bounded per target, an undeclared CONNECT refused ERR ACCESS in the manager, shown by a new case on CI; services.md states it in a new version; M140 and M142 and the bound's mutant killed by the M6 gate",
    "actions": [
@@ -10176,7 +10193,11 @@
     "2026-11-19 registered at WP-101's split; the new case's id is named at activation",
     "2026-11-19 (the manager) from WP-161's split: an identity's number comes back only after the circle of 99, so a service that keeps state by the vouched name does not meet the same name at once; whether any service keeps such state past a connection is checked here before the identity is vouched",
     "2026-11-19 (the manager, on the auditor's and the red team's readings in WP-161's round): the line above said a number comes back only after the circle of 99: with the skip of numbers in use it is after 91 other launches at least, and there is no LAUNCH rate limit yet, so app:<id>#<n> is a name, never a key of authority: a service that would keep state by it past a connection needs a launch counter beside it. Inputs: fairness among applications' boot channels, and the case that floods one (docs/LATER.md L-086); an application's requests are answered by on_app_channel alone, which reads no services table: CONNECT is added there",
-    "2026-11-19 (the manager, on the note the owner relayed on 2026-11-19 (its links are to the tree at 538329fcbb), verified by the manager on the records the same day, which asks that the connection bound's test be fixed in the acceptance before the item is taken up): it is a condition of this item's acceptance, not movable to a later item: TST-M6-APP-CONNECT-DENIED shows a declared connection accepted and the one beyond the bound refused with a stated reply, and the bound's mutant is killed; the bound for the services' own CONNECT stays WP-160's (RSK-049)"
+    "2026-11-19 (the manager, on the note the owner relayed on 2026-11-19 (its links are to the tree at 538329fcbb), verified by the manager on the records the same day, which asks that the connection bound's test be fixed in the acceptance before the item is taken up): it is a condition of this item's acceptance, not movable to a later item: TST-M6-APP-CONNECT-DENIED shows a declared connection accepted and the one beyond the bound refused with a stated reply, and the bound's mutant is killed; the bound for the services' own CONNECT stays WP-160's (RSK-049)",
+    "2026-11-20 activation (the manager, method section 7; WP-161 done; on the owner's instruction to continue the plan). Reading first, as the record asks: displayd grants privileges to the exact names 'CONNECT session' and 'CONNECT narrator' alone (user/apps/displayd/src/main.rs, the client's session and narrator flags), configd and netd do not read the name; all three hold 8 clients. So app:<id>#<n> is vouched as a plain client's name, never a key of authority, and the risk is the targets' slots. Design (rule 5): (a) an application's CONNECT is answered in on_app_channel, the services table read only to find the target, and accepted when the name is one of the entry's declared dependencies, each of which the parser already keeps within the allow-list (display, config, net); everything else is ERR ACCESS before any lookup; (b) the bound: an application may be granted one connection to a target, and the running applications together four to a target (half its slots, so the session and the services always keep four), both counted from the grants and given back at the application's exit, since the manager cannot see a connection close: beyond either, ERR LIMIT; options weighed: a lifetime count per application alone (eight applications would still take all eight slots), a live count (not observable by the manager), a bound in each service (three services changed, and WP-160 keeps the services' own path). Test first: TST-M6-APP-CONNECT-DENIED with a lab manifest whose config is the lab image tracing the names it is given, two lab entries declaring config, and the launcher's steps; SECURITY mutants M140 (the app: prefix dropped), M142 (the allow-list dropped) and the bounds'; services.md v1.16. About 90 min and near 120 tool calls: at the budget line; if more is found, the release at exit moves out",
+    "2026-11-20 the work (the manager, inline; scratch runs, no CI evidence). Test first: TST-M6-APP-CONNECT-DENIED (app_connect; lab manifest svc-ac.txt with the lab image as `config`, role `names`, tracing the name each client arrives with, and as the vouched `session`, role `connector`, which launches `connx` and five of `conn`; lab entries conn and connx declaring config alone) pins `load=OK 2|session=0x40|apps=5|waiting=5|handles=9|mgr_handles=17` and each application's trace; on the manager as it was it FAILED, exit 37, every CONNECT answered ERR ACCESS (`config=ERR ACCESS` for all six), handles=5, with 'an application holds another number of handles than its grants give'; with the change PASS, and TST-M6-APP-SPAWN and TST-M6-LAUNCH-DENIED still PASS. The change (user/apps/svcmgr/src/main.rs): each entry's declared dependencies kept beside its id; on_app_channel hands `CONNECT <name>` to app_connect; Running carries its entry and its grants; APP_CONNECT_MAX = 4. M140, M142 (reserved since WP-101) and M378 to M381, their evidence pinned by TST-M0-005 (97 cases; the pin test seen failing before they were registered: 'Lists differ: [] != [M140, ...]'); M354, M357 and M361 (WP-161) re-anchored on the handler's new text with the same mutation each. services.md v1.16. The M6 guest step's worst case is 1067 s of the cap's 1080 (this case's 30 s): no further 30 s case fits without raising the cap",
+    "2026-11-20 the review round (auditor and red team, read only). The red team found no reachable hole and three SECURITY single edits the case did not kill: a grant replacing the one before (M382), every entry taken to declare config alone (M383) and the client end an application could not take left in the manager (M384); each shown passing TST-M6-APP-CONNECT-DENIED as it was (the harness: declared_killers_missed=['M384']; M382 and M383 ran on past it, about 790 s, to the environmental TST-M4-NET-NO-INTERNET). Test first, the case extended: a second service `display` (role names, OK 3) and three lab entries that exit, `both` (declares display and config: config OK, display OK, config again ERR LIMIT), `netonly` (declares net: config ERR ACCESS, `config` never hears it) and `stuck` (64 requests unread, then CONNECT: the 64 refusals alone reach it, the manager closes the client end), the conn applications now #5 to #9 and the manager's count 19 (the two services' channel and process each); the three killed by it, with M140, M142 and M378 to M381 re-expected on the new line. The auditor confirmed the code's order (ACCESS before the count and the lookup), no handle leak by reading, grants given back at exit, the re-anchored M354, M357 and M361, the contract's claims of display, config and net, the pin test and the clean room; and asked for: the stale comment on the application channel's handler (corrected), grants kept across a target's restart written in v1.16 (L-093), the untested NOT_READY and UNKNOWN branches (L-094), L-086's due point contradicting v1.16 (moved to WP-163 in LATER and in both sections), the v1.15 text that the handler does not read the services table (now: not in that version; from v1.16 for CONNECT alone) and the forbidden marker `svc|connect|clock` that checked nothing (replaced by conn#9 and netonly, pinned). Unverifiable by the auditor, as stated: the local runs, until CI",
+    "2026-11-20 local runs on the final tree (scratch, not evidence): every guest suite, 164 cases PASS (M1 3, M2 25, M3 54, M4 31, M5 36, M6 15) and one FAIL, TST-M4-NET-NO-INTERNET (the probe answered: this sandbox reaches the internet, CI does not; it failed the same way locally on 2026-11-16, 11-17 and 11-19); the host suites M0, M1, M3, M4, M5 and M6 PASS (TST-M0-005: 97 cases, OK); in a scratch clone 25/25 mutants killed with every expectation met (M140, M142, M378 to M384, and WP-161's M346 to M361, the manager having changed) and the 94 tooling mutants killed (94/94); validate-records 0 errors, cargo fmt --check clean, hygiene PASS. Until CI judges"
    ]
   },
   {

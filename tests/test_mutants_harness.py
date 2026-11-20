@@ -1363,6 +1363,74 @@ class KillEvidence(unittest.TestCase):
         denied = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-ld.txt").read_text(encoding="utf-8")
         self.assertIn("LAUNCH clock=ERR NOT_FOUND", denied)
 
+    CONNECT = "TST-M6-APP-CONNECT-DENIED"
+
+    def test_the_connect_expectations_are_pinned(self):
+        """WP-162 (REQ-M6-004; services.md v1.16): an application's CONNECT. M140 and M142
+        (reserved since WP-101), M378 to M384, each anchor once in user/apps/svcmgr/src/main.rs,
+        are declared on TST-M6-APP-CONNECT-DENIED alone. Five are known by the test kernel's
+        line, exit 37 and one message occurring as a failure in ktest.rs, the fields that change
+        each with another value than the pinned line's; M140, M378, M382 and M383 leave that
+        line as it is and are known by the case's own missing markers, each a required marker
+        of the case. The case's volume carries the five lab entries with what each declares."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.CONNECT)
+        line = next(m for m in case["required_markers"] if m.startswith("|ktest|app_connect|load="))
+        self.assertEqual(line, "|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=9|mgr_handles=19|")
+        want = {  # id: (SECURITY, message constant or None, substrings besides exit 37 and the message)
+            "M140": (True, None, ["'|text=svc|connect|app:connx#1', '|text=svc|connect|app:both#2', '|text=svc|connect|app:stuck#4', '|text=svc|connect|app:conn#8'"]),
+            "M142": (True, "_CLAUNCH", ["|session=0x5300|apps=0|"]),
+            "M378": (True, None, ["'|text=app:connx#1|net=ERR ACCESS|session=ERR ACCESS|config=OK|ping=OK served|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS'"]),
+            "M379": (False, "_CHAND", ["|waiting=5|handles=12|mgr_handles=19|"]),
+            "M380": (False, "_CHAND", ["|waiting=5|handles=10|mgr_handles=19|"]),
+            "M381": (True, "_CHAND", ["|waiting=5|handles=15|mgr_handles=19|"]),
+            "M382": (True, None, ["'|text=app:both#2|config=OK|display=OK|again=ERR LIMIT'"]),
+            "M383": (True, None, ["'|text=app:both#2|config=OK|display=OK|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS'"]),
+            "M384": (True, "_CKEPT", ["|handles=9|mgr_handles=20|"]),
+        }
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if m[4] == [self.CONNECT]), sorted(want))
+        seen = set()
+        for mid, (security, const, rest) in want.items():
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], "user/apps/svcmgr/src/main.rs")
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(set(E.get(mid, {})), {self.CONNECT})
+                subs = E[mid][self.CONNECT]
+                if const is None:
+                    # Known by the missing markers alone: each named one is a required marker.
+                    self.assertEqual(len(subs), 1)
+                    self.assertTrue(subs[0].startswith("missing markers ["), subs[0])
+                    for marker in re.findall(r"'([^']+)'", subs[0]):
+                        self.assertIn(marker, case["required_markers"])
+                else:
+                    msg = getattr(mutants, const)
+                    self.assertEqual(sorted(subs), sorted(["exit 37", msg] + rest))
+                    self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
+                    for x in rest:
+                        self.assertNotIn(x, line, f"{x} is the pinned line")
+                        for f in x.strip("|").split("|"):
+                            self.assertIn("|" + f.split("=")[0] + "=", line, f)
+                seen.add((const, tuple(rest)))
+        self.assertEqual(len(seen), len(want), "each mutant is known by its own evidence")
+        declares = {"conn": "config", "connx": "config", "both": "display,config", "netonly": "net", "stuck": "config"}
+        self.assertEqual(case.get("disk_files"), {
+            f"SYSTEM/APPS/{n.upper()}.{x}": (f"platform/pc-qemu/lab/{n}.app" if x == "APP" else "${OUT}/apps/svc.elf")
+            for n in declares for x in ("APP", "ELF")})
+        for name, deps in declares.items():
+            entry = (ROOT / "platform" / "pc-qemu" / "lab" / f"{name}.app").read_text(encoding="utf-8")
+            self.assertIn(f"\nid={name}\nelf=/SYSTEM/APPS/{name.upper()}.ELF\n", entry)
+            self.assertIn(f"\ndeps={deps}\n", entry)
+        # Refused CONNECTs the services must never hear of.
+        for name in ("conn#9", "netonly"):
+            self.assertIn(f"|text=svc|connect|app:{name}", case["forbidden_markers"])
+
 
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""

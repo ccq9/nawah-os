@@ -33,6 +33,9 @@ const APPS_DIR: &[u8] = b"/SYSTEM/APPS";
 const MAX_RUNNING: usize = 8;
 /// The last number of an identity `app:<id>#<n>` (ADR-0023 item 5: two digits).
 const APP_NUM_MAX: u8 = 99;
+/// Connections the running applications together are granted to one service (v1.16): half
+/// of a service's eight client places, so the session and the services keep the rest.
+const APP_CONNECT_MAX: usize = 4;
 const MSG_MAX: usize = 4096;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -254,13 +257,17 @@ impl<'a> Fields<'a> {
 }
 
 /// One running application (services.md v1.15): its process (None: the place is free), its
-/// boot channel while both ends are open, the job made for it, and its identity's number.
+/// boot channel while both ends are open, the job made for it, and its identity's number;
+/// (v1.16) its registry entry, and the services it was granted a connection to, a set over
+/// the allow-list given back with its place.
 #[derive(Clone, Copy)]
 struct Running {
     process: Option<Handle>,
     chan: Option<Handle>,
     job: Handle,
     num: u8,
+    entry: u8,
+    grants: u8,
 }
 
 const NOT_RUNNING: Running = Running {
@@ -268,6 +275,8 @@ const NOT_RUNNING: Running = Running {
     chan: None,
     job: 0,
     num: 0,
+    entry: 0,
+    grants: 0,
 };
 
 struct Manager {
@@ -280,6 +289,8 @@ struct Manager {
     /// Each entry's image path (apps.md §2), beside its id.
     app_elf: [[u8; PATH_MAX]; nawah_apps::MAX_APPS],
     app_elf_lens: [u8; nawah_apps::MAX_APPS],
+    /// Each entry's declared dependencies (apps.md §2), a set over the allow-list.
+    app_deps: [u8; nawah_apps::MAX_APPS],
     apps_n: usize,
     /// The applications running now (v1.15), apart from the services.
     running: [Running; MAX_RUNNING],
@@ -375,6 +386,7 @@ impl Manager {
                 let elf_len = elf.len().min(PATH_MAX);
                 self.app_elf[self.apps_n][..elf_len].copy_from_slice(&elf[..elf_len]);
                 self.app_elf_lens[self.apps_n] = elf_len as u8;
+                self.app_deps[self.apps_n] = app.deps.bits();
                 self.apps_n += 1;
             }
         }
@@ -452,6 +464,8 @@ impl Manager {
                     chan: Some(ours),
                     job,
                     num: self.last_num,
+                    entry: k as u8,
+                    grants: 0,
                 };
             }
             Err(e) => {
@@ -470,11 +484,11 @@ impl Manager {
         }
     }
 
-    /// A message on application `a`'s boot channel (services.md v1.15): whatever it asks is
-    /// refused. An application is not a service, and nothing here reads the services table,
-    /// so none of LIST, CONNECT, APPS and LAUNCH is reached from an application. A handle it
-    /// sent is closed; a message larger than a request is dropped and refused the same; when
-    /// the application closed its end, ours goes too.
+    /// A message on application `a`'s boot channel (services.md v1.15, v1.16): `CONNECT <name>`
+    /// goes to [`Manager::app_connect`]; whatever else it asks is refused ERR ACCESS, so none of
+    /// LIST, APPS and LAUNCH is reached from an application. A handle it sent is closed; a
+    /// message larger than a request is dropped and refused the same; when the application
+    /// closed its end, ours goes too.
     fn on_app_channel(&mut self, a: usize) {
         let Some(c) = self.running[a].chan else {
             return;
@@ -482,9 +496,13 @@ impl Manager {
         let mut buf = [0u8; 64];
         let mut hs = [0u32; 1];
         match libnawah::channel_read(c, &mut buf, &mut hs, false) {
-            Ok((_, nh)) => {
+            Ok((n, nh)) => {
                 if nh == 1 {
                     libnawah::handle_close(hs[0]);
+                }
+                if let Some(name) = buf[..n].strip_prefix(b"CONNECT ") {
+                    self.app_connect(a, c, name);
+                    return;
                 }
             }
             Err(ERR_BUFFER_TOO_SMALL) if libnawah::channel_discard(c) => {}
@@ -495,6 +513,60 @@ impl Manager {
             }
         }
         libnawah::channel_write(c, b"ERR ACCESS", &[]);
+    }
+
+    /// `CONNECT <name>` from application `a` (services.md v1.16): granted for a service its
+    /// entry declares, each of which the parser keeps within the allow-list, and nothing else
+    /// (ERR ACCESS, before any service is looked at); one connection to a service for an
+    /// application, and APP_CONNECT_MAX for the running applications together (ERR LIMIT). The
+    /// service is told the application's identity, `CONNECT app:<id>#<n>`, a name no service
+    /// carries; the client end goes back on the application's boot channel with `OK`.
+    fn app_connect(&mut self, a: usize, c: Handle, name: &[u8]) {
+        let app = self.running[a];
+        let k = usize::from(app.entry);
+        let declared = nawah_apps::ALLOWED_DEPS
+            .iter()
+            .position(|d| d.as_bytes() == name)
+            .filter(|&b| self.app_deps[k] & (1 << b) != 0);
+        let Some(b) = declared else {
+            libnawah::channel_write(c, b"ERR ACCESS", &[]);
+            return;
+        };
+        let held = self
+            .running
+            .iter()
+            .filter(|r| r.process.is_some() && r.grants & (1 << b) != 0)
+            .count();
+        if app.grants & (1 << b) != 0 || held >= APP_CONNECT_MAX {
+            libnawah::channel_write(c, b"ERR LIMIT", &[]);
+            return;
+        }
+        let target = match self.find(name) {
+            Some(j) if self.services[j].state == State::Ready => self.services[j].chan,
+            Some(_) => None,
+            None => {
+                libnawah::channel_write(c, b"ERR UNKNOWN", &[]);
+                return;
+            }
+        };
+        if let (Some(target), Ok((client, server))) = (target, libnawah::channel_create()) {
+            let mut msg = Out::new();
+            msg.put(b"CONNECT app:");
+            msg.put(&self.apps[k][..usize::from(self.app_lens[k])]);
+            msg.put(b"#");
+            msg.num(u64::from(app.num));
+            if libnawah::channel_write(target, msg.bytes(), &[server]) == 0 {
+                self.running[a].grants |= 1 << b;
+                // An application that cannot take its reply does not leave the client end here.
+                if libnawah::channel_write(c, b"OK", &[client]) != 0 {
+                    libnawah::handle_close(client);
+                }
+                return;
+            }
+            libnawah::handle_close(client);
+            libnawah::handle_close(server);
+        }
+        libnawah::channel_write(c, b"ERR NOT_READY", &[]);
     }
 
     /// Application `a`'s process exited (services.md v1.15): its job is ended with whatever
@@ -1196,6 +1268,7 @@ fn main() -> u64 {
         app_lens: [0; nawah_apps::MAX_APPS],
         app_elf: [[0; PATH_MAX]; nawah_apps::MAX_APPS],
         app_elf_lens: [0; nawah_apps::MAX_APPS],
+        app_deps: [0; nawah_apps::MAX_APPS],
         apps_n: 0,
         running: [NOT_RUNNING; MAX_RUNNING],
         last_num: 0,

@@ -8367,6 +8367,56 @@
           "SYSTEM/APPS/CLOSER.ELF": "${OUT}/apps/svc.elf",
           "SYSTEM/APPS/BAD.ELF": "platform/pc-qemu/lab/bad.app"
         }
+      },
+      {
+        "id": "TST-M6-APP-CONNECT-DENIED",
+        "test_id": "TST-M6-APP-CONNECT-DENIED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=app_connect"
+        ],
+        "oracle": "An application's CONNECT (services.md v1.16, ADR-0023 item 1, WP-162). The lab manifest SVC-AC.TXT loads three services of the lab image (OK 3): `config` and `display`, whose role traces the name each client is vouched by, and the vouched `session`, whose launcher starts `connx`, `both`, `netonly` and `stuck` 300 to 700 ticks apart and then, 150 ticks apart, five of `conn`, each answered OK app:<id>#<n> with 1 to 9 in order (exit 0x40). `conn` and `connx` declare config alone. Each application asks the manager for `net` (allowed, not declared) and `session` (not allowed), both refused ERR ACCESS; for `config`, given with a channel on which PING is answered OK served, the service having been told the client's name app:<id>#<n>; and for `config` again, refused ERR LIMIT (one connection to a target for an application). `connx` exits after its turn, which gives its grant back. From the review round: `both`, declaring display and config, is granted config and display and refused config again (ERR LIMIT: a grant of one service does not replace another's); `netonly`, declaring net alone, is refused config ERR ACCESS and `config` never hears its name; `stuck` asks 64 times without reading the replies, so its queue is full when it asks for config: `config` is told its name and its client end is closed by the manager, and all `stuck` then reads are the 64 refusals (other=0). Each of the three exits. conn#5 to conn#8 are then granted, four in all to `config`, and conn#9's CONNECT config is refused ERR LIMIT (the running applications together hold four connections to a target) and `config` never hears its name. When the launcher has exited the test kernel reads five live processes of CONN.ELF, each waiting on its boot channel, nine handles among them (the boot channel of each and the four connections), and the manager's handle count 19 above what it was before LOAD (process, channel and job of each of the five, the config and display services' channel and process: nothing kept of the refusals, of the four that exited nor of the client end `stuck` could not take). Then the control channel closes: the manager exits 0, no process, object or frame is left; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=app_connect",
+          "|text=svc|connect|app:connx#1",
+          "|text=app:connx#1|net=ERR ACCESS|session=ERR ACCESS|config=OK|ping=OK served|again=ERR LIMIT",
+          "|text=app:both#2|config=OK|display=OK|again=ERR LIMIT",
+          "|text=svc|connect|app:both#2",
+          "|text=app:netonly#3|config=ERR ACCESS",
+          "|text=svc|connect|app:stuck#4",
+          "|text=app:stuck#4|asked=64|other=0",
+          "|text=app:conn#5|net=ERR ACCESS|session=ERR ACCESS|config=OK|ping=OK served|again=ERR LIMIT",
+          "|text=app:conn#8|net=ERR ACCESS|session=ERR ACCESS|config=OK|ping=OK served|again=ERR LIMIT",
+          "|text=svc|connect|app:conn#8",
+          "|text=app:conn#9|net=ERR ACCESS|session=ERR ACCESS|config=ERR LIMIT",
+          "|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=9|mgr_handles=19|",
+          "|ktest|app_connect|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|app_connect|frames_delta=0",
+          "|ktest|pass|an application connects to its declared services alone, vouched by its identity and within the bounds"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|text=svc|connect|app:conn#9",
+          "|text=svc|connect|app:netonly"
+        ],
+        "timeout_s": 30,
+        "disk_files": {
+          "SYSTEM/APPS/CONN.APP": "platform/pc-qemu/lab/conn.app",
+          "SYSTEM/APPS/CONNX.APP": "platform/pc-qemu/lab/connx.app",
+          "SYSTEM/APPS/CONN.ELF": "${OUT}/apps/svc.elf",
+          "SYSTEM/APPS/CONNX.ELF": "${OUT}/apps/svc.elf",
+          "SYSTEM/APPS/BOTH.APP": "platform/pc-qemu/lab/both.app",
+          "SYSTEM/APPS/NETONLY.APP": "platform/pc-qemu/lab/netonly.app",
+          "SYSTEM/APPS/STUCK.APP": "platform/pc-qemu/lab/stuck.app",
+          "SYSTEM/APPS/BOTH.ELF": "${OUT}/apps/svc.elf",
+          "SYSTEM/APPS/NETONLY.ELF": "${OUT}/apps/svc.elf",
+          "SYSTEM/APPS/STUCK.ELF": "${OUT}/apps/svc.elf"
+        }
       }
     ]
   },
