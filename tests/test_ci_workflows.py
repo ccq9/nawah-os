@@ -1111,9 +1111,9 @@ class StepBudget(unittest.TestCase):
     # (15 + 135) x 1.2 = 180.
     # WP-153: the M5 guest suite moves to job b, (Toolchain 15 + M5 18) x 1.2 = 39.6 -> 40; job a
     # keeps 62, a hang guard over its uncapped steps (its caps, 15 + M6 18, are 39.6 now; WP-102,
-    # 15 + M6 19, 40.8); twelve shards keep 90 each.
+    # 15 + M6 19, 40.8; WP-167, 15 + M6 22, 44.4); twelve shards keep 90 each.
     LIMITS = {"a": 62, "b": 40, **{f"shard-{k}": 90 for k in range(1, SHARDS + 1)}, "g": 180, "merge": 20}
-    CAPS = {"a": {"M6": 19}, "b": {"M5": 18}, **{f"shard-{k}": {"shard": 60} for k in range(1, SHARDS + 1)},
+    CAPS = {"a": {"M6": 22}, "b": {"M5": 18}, **{f"shard-{k}": {"shard": 60} for k in range(1, SHARDS + 1)},
             "g": {"M6-GATE": 135}, "merge": {}}
 
     def caps(self):

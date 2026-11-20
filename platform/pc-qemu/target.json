@@ -8454,6 +8454,117 @@
           "SYSTEM/APPS/STAY.ELF": "${OUT}/apps/svc.elf",
           "SYSTEM/APPS/NEST.ELF": "${OUT}/apps/svc.elf"
         }
+      },
+      {
+        "id": "TST-M6-LOGOUT-KILLS",
+        "test_id": "TST-M6-LOGOUT-KILLS",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=logout_kills"
+        ],
+        "oracle": "Sign out ends the session's job (session.md v1.8, services.md v1.17, WP-167). The lab manifest SVC-LK.TXT runs the real auth, input, display and session, and the lab image as the vouched `desktop` in the role `relay`, which passes a client's LAUNCH to the manager and its reply back. The monitor types the lab's name and password at the sign-in screen; when the session is unlocked (STATE OK unlocked user=admin changes=1 display=1 input=1 focus=display) the test kernel launches through the desktop `deaf` (winapp: a window of its own, and it ignores LOGGED_OUT), OK app:deaf#1, and `nest` (it starts IDLE.ELF in its job and waits), OK app:nest#2, and waits until one live process of each of DEAF.ELF, NEST.ELF and IDLE.ELF is seen. The monitor then sends the secure attention sequence, and on the lock screen Tab, Tab and Enter (Sign out). The session traces logged_out and, once the manager answers its END_SESSION, session|jobs=ended|apps=2. With STATE at OK no_session user=- changes=3 display=1 input=1 focus=session, the test kernel waits at most 5000 ticks and reads no live process of DEAF.ELF, NEST.ELF or IDLE.ELF, as many jobs as before the launches and the manager's handle count back at its value before them. The monitor signs in again (changes=4) and a LAUNCH deaf through the desktop is OK app:deaf#3, its one process in a job whose parent is a child of the root job (a new session job). Never jobs=unsent, jobs=refused nor jobs=ended|apps=0, never the lab password on the serial line; then the control channel closes: the manager exits 0, no process, object or frame is left; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=logout_kills",
+          "|path=/SYSTEM/APPS/DEAF.ELF|handles=1",
+          "|text=app:nest#2|child=1",
+          "|ktest|logout_kills|services=5|ready=1",
+          "|ktest|logout_kills|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|launched=OK app:deaf#1,OK app:nest#2|deaf=1|nest=1|idle=1|phase=1",
+          "|text=session|state=logged_out|user=admin",
+          "|text=session|jobs=ended|apps=2",
+          "|ktest|logout_kills|back=OK no_session user=- changes=3 display=1 input=1 focus=session|deaf=0|nest=0|idle=0|jobs=0|mgr_handles=0|phase=2",
+          "|ktest|logout_kills|again=OK unlocked user=admin changes=4 display=1 input=1 focus=display|launch=OK app:deaf#3|deaf=1|in_session=1|phase=3",
+          "|ktest|logout_kills|failed=none",
+          "|ktest|logout_kills|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|logout_kills|frames_delta=0",
+          "|ktest|pass|Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1",
+          "|text=session|jobs=unsent",
+          "|text=session|jobs=refused",
+          "|text=session|jobs=ended|apps=0"
+        ],
+        "timeout_s": 150,
+        "disk_files": {
+          "SYSTEM/APPS/DEAF.APP": "platform/pc-qemu/lab/deaf.app",
+          "SYSTEM/APPS/DEAF.ELF": "${OUT}/apps/winapp.elf",
+          "SYSTEM/APPS/NEST.APP": "platform/pc-qemu/lab/nest.app",
+          "SYSTEM/APPS/NEST.ELF": "${OUT}/apps/svc.elf"
+        },
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|launched=OK app:deaf#1,OK app:nest#2|",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|text=session|state=locked|",
+              "commands": [
+                "sendkey tab",
+                "sendkey tab",
+                "sendkey ret"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|logout_kills|back=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            }
+          ]
+        }
       }
     ]
   },

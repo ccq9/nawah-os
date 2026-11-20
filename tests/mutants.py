@@ -1670,6 +1670,20 @@ MUTANTS = [
      "                Ok(j) => *self.session_job.insert(j),\n",
      "                Ok(j) => j,\n",
      ["TST-M6-SESSION-JOB", "TST-M6-APP-SPAWN"], "SECURITY: each LAUNCH makes a session job of its own that END_SESSION never sees, so the applications outlive the session"),
+    # M388, M389, M396 (WP-167, REQ-M6-004; session.md v1.8): Sign out ends the session's job,
+    # killed by TST-M6-LOGOUT-KILLS.
+    ("M388", "user/apps/sessiond/src/main.rs",
+     "        if !self.boot_send(b\"END_SESSION\", BootOp::End) {\n            libnawah::trace(b\"session|jobs=unsent\");\n        }\n",
+     "",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: Sign out asks the manager for nothing, so the signed-out session's applications run on into the next"),
+    ("M389", "user/apps/sessiond/src/main.rs",
+     "            Some(n) => t.put(b\"session|jobs=ended|apps=\").put(n),\n",
+     "            Some(_) => t.put(b\"session|jobs=ended|apps=\").put(b\"0\"),\n",
+     ["TST-M6-LOGOUT-KILLS"], "the session traces that no application was ended whatever the manager answered"),
+    ("M396", "user/apps/sessiond/src/main.rs",
+     "        self.boot_ops[k] = Some(op);\n",
+     "        self.boot_ops[k] = Some(BootOp::Connect);\n",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: the manager's answer to END_SESSION is taken for a CONNECT's, so its outcome is never told"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2005,7 +2019,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M140", "M142", "M378", "M381", "M382", "M383", "M384",
             # WP-102 (REQ-M6-004): the session's applications run in one job, which END_SESSION
             # from the session alone ends (services.md v1.17).
-            "M141", "M385", "M386", "M392", "M393", "M395"}
+            "M141", "M385", "M386", "M392", "M393", "M395",
+            # WP-167 (REQ-M6-004): Sign out ends the session's job (session.md v1.8).
+            "M388", "M396"}
 
 
 def security_of(mid: str) -> bool:
@@ -2228,6 +2244,7 @@ _REFUSED = "|ktest|fail|an application was not refused every request on its boot
 _MORE = "|ktest|fail|an application holds more than its boot channel"
 _NOJOB = "|ktest|fail|an application is not in a job of its own under the session's job"
 _SJANS = "|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states"
+_LKALIVE = "|ktest|fail|an application of the signed-out session is still alive"
 _ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
 _APP_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
@@ -2385,6 +2402,13 @@ EXPECT = {
     "M394": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5400|desktop=0x40|sessions=0x40|stay=0|", _SJANS]},
     "M395": {"TST-M6-SESSION-JOB": ["exit 37", "|session=0x5400|", "|nest=1|idle=1|under_root=0|in_session=1|live_jobs=4|", _SJANS],
              "TST-M6-APP-SPAWN": ["exit 37", "|in_session=8|parents=8|", _NOJOB]},
+    # WP-167: TST-M6-LOGOUT-KILLS (kept as the local run of 2026-11-20 printed it). M388: the
+    # signed-out session's three processes, its three jobs and the manager's seven handles stay.
+    # M389: the session traces apps=0. M396: the answer is taken for a CONNECT's and nothing is
+    # traced.
+    "M388": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=1|nest=1|idle=1|jobs=3|mgr_handles=7|", _LKALIVE]},
+    "M389": {"TST-M6-LOGOUT-KILLS": ["forbidden present ['|text=session|jobs=ended|apps=0']"]},
+    "M396": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|jobs=ended|apps=2']; forbidden present []"]},
 }
 
 

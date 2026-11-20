@@ -1,0 +1,7 @@
+# TST-M6-LOGOUT-KILLS (WP-167): the real auth, input, display and session; the lab image as the vouched `desktop`,
+# relaying the test kernel's LAUNCH to the manager
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 never 0 0
+session /SYSTEM/SESSIOND.ELF auth,input,display 5000 never 0 0
+desktop /SYSTEM/SVC.ELF session 3000 never 0 0 relay

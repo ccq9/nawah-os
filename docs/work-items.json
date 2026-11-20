@@ -3213,7 +3213,8 @@
     "WP-164",
     "WP-163",
     "WP-167",
-    "WP-168"
+    "WP-168",
+    "WP-169"
    ],
    "inputs": [
     "DEC-005",
@@ -10480,7 +10481,14 @@
     "tools/project.py",
     "docs/tests.json",
     ".github/workflows/verify.yml",
-    "tests/test_ci_workflows.py"
+    "tests/test_ci_workflows.py",
+    "platform/pc-qemu/manifests/svc-lk.txt",
+    "platform/pc-qemu/lab/deaf.app",
+    "platform/pc-qemu/expect/login-screen.txt",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/project-state.json"
    ],
    "contract_refs": [
     "docs/contracts/session.md"
@@ -10495,15 +10503,18 @@
     "python3 tools/project.py test --target pc-qemu --suite M6",
     "python3 tools/project.py test --target host --suite M6-GATE"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
    "actions": [
     "الخروج ينهي مهمة الجلسة (مفصولة من WP-102 في 2026-11-20)",
-    "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (the config contract's next version: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order"
+    "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (the config contract's next version: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order",
+    "2026-11-20 (the manager): the services engineer's design (read only): the session's side alone fits this item (about 85 to 95 tool calls against 120, unmeasured): END_SESSION from sign_out before display's LOGOUT through an ordered queue of the boot channel's requests (CONNECT and END), traced jobs=ended|apps=<n>, jobs=refused|answer=<reply> or jobs=unsent; TST-M6-LOGOUT-KILLS on the real auth, input, display and session with a lab `desktop` relaying LAUNCH, `deaf` (winapp, ignores LOGGED_OUT) and `nest`; TST-M5-LOGIN-SCREEN's expected trace gains the jobs line. The two limits services.md v1.17 bound to this item, a LAUNCH between ENDED and the next sign-in and the session's exit leaving its job, close in the manager alone: they are WP-169's (L-097 moved)",
+    "2026-11-20 activated (the manager): its dependency WP-102 is done; test first"
    ]
   },
   {
@@ -10513,7 +10524,7 @@
     "REQ-M6-004"
    ],
    "depends_on": [
-    "WP-167"
+    "WP-169"
    ],
    "inputs": [
     "split from WP-102 on 2026-11-20 by its budget line, its third part",
@@ -10554,7 +10565,67 @@
    "blocker": null,
    "actions": [
     "التشغيل التلقائي من مخزن المستخدم (مفصولة من WP-102 في 2026-11-20)",
-    "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (the config contract's next version: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order"
+    "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (the config contract's next version: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order",
+    "2026-11-20 (the manager): after WP-169, whose BEGIN_SESSION the autostart follows"
+   ]
+  },
+  {
+   "id": "WP-169",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-167"
+   ],
+   "inputs": [
+    "created 2026-11-20 from the limits services.md v1.17 bound to WP-167 (L-097), the services engineer's design"
+   ],
+   "files": [
+    "user/apps/svcmgr/src/main.rs",
+    "user/apps/svc/src/main.rs",
+    "user/apps/sessiond/src/main.rs",
+    "docs/contracts/services.md",
+    "docs/contracts/session.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "platform/pc-qemu/manifests/svc-as.txt",
+    "platform/pc-qemu/manifests/svc-ac.txt",
+    "platform/pc-qemu/manifests/svc-sj.txt",
+    "platform/pc-qemu/manifests/svc-ld.txt",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md",
+    "docs/contracts/session.md"
+   ],
+   "acceptance": "the manager refuses LAUNCH while no session is open (closed at boot, by END_SESSION and by the session's exit; opened by BEGIN_SESSION from the vouched session alone, sent at sign-in), and kills the session's job when the session service exits or crashes; shown on CI by TST-M6-SESSION-JOB and TST-M6-LOGOUT-KILLS extended and TST-M6-APP-SPAWN and TST-M6-APP-CONNECT-DENIED with their launchers stopped after their reading; the services and session contracts state it in new versions; its mutants killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-SESSION-JOB",
+    "TST-M6-LOGOUT-KILLS",
+    "TST-M6-APP-SPAWN",
+    "TST-M6-APP-CONNECT-DENIED",
+    "TST-M6-LAUNCH-DENIED",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6-GATE"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "بوابة الجلسة في المدير وقتل مهمتها عند خروج الجلسة (من حدود WP-102 التي أُلزمت بها WP-167، 2026-11-20)",
+    "budget: the design's estimate 110 to 130 tool calls (unmeasured), at or over the line: split at activation if so, (a) the gate and BEGIN_SESSION, (b) the kill at the session's exit",
+    "2026-11-20 (the manager): the services engineer's design (read only): the session's side alone fits this item (about 85 to 95 tool calls against 120, unmeasured): END_SESSION from sign_out before display's LOGOUT through an ordered queue of the boot channel's requests (CONNECT and END), traced jobs=ended|apps=<n>, jobs=refused|answer=<reply> or jobs=unsent; TST-M6-LOGOUT-KILLS on the real auth, input, display and session with a lab `desktop` relaying LAUNCH, `deaf` (winapp, ignores LOGGED_OUT) and `nest`; TST-M5-LOGIN-SCREEN's expected trace gains the jobs line. The two limits services.md v1.17 bound to this item, a LAUNCH between ENDED and the next sign-in and the session's exit leaving its job, close in the manager alone: they are WP-169's (L-097 moved)"
    ]
   }
  ]

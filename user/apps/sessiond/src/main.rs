@@ -84,6 +84,20 @@ enum AuthOp {
     },
 }
 
+/// A request on the boot channel whose answer has not come yet (session.md v1.8): the manager
+/// answers each request in the order it read them, so the answers match these front to back.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BootOp {
+    /// `CONNECT <name>`: `OK` with a handle, or `ERR …`.
+    Connect,
+    /// `END_SESSION`: `ENDED <n>`, or `ERR …`.
+    End,
+}
+
+/// Boot-channel requests that may wait for their answers at once: one `CONNECT` (they go one at
+/// a time) and the `END_SESSION`s of Sign outs.
+const BOOT_OPS: usize = 4;
+
 /// An elevation a client asked for (session.md v1.3).
 #[derive(Clone, Copy)]
 struct Elevation {
@@ -446,6 +460,8 @@ struct Session {
     connected: [bool; 3],
     conn_n: [i64; 3],
     asked: Option<usize>,
+    /// The boot channel's requests waiting for their answers, oldest first (v1.8).
+    boot_ops: [Option<BootOp>; BOOT_OPS],
     retry: [u64; 3],
     format: u32,
     screen_w: i64,
@@ -680,7 +696,7 @@ impl Session {
             e.connect = false;
             let mut req = Out::new();
             req.put(b"CONNECT ").put(&e.service[..e.service_len]);
-            if libnawah::channel_write(self.boot, req.bytes(), &[]) == 0 {
+            if self.boot_send(req.bytes(), BootOp::Connect) {
                 self.asked = Some(ELEV);
             } else {
                 self.elevate_end(b"ERR UNAVAILABLE", now);
@@ -691,7 +707,7 @@ impl Session {
             if !self.connected[i] && now >= self.retry[i] {
                 let mut req = Out::new();
                 req.put(b"CONNECT ").put(dep);
-                if libnawah::channel_write(self.boot, req.bytes(), &[]) == 0 {
+                if self.boot_send(req.bytes(), BootOp::Connect) {
                     self.asked = Some(i);
                 } else {
                     self.retry[i] = now + RECONNECT;
@@ -703,6 +719,38 @@ impl Session {
 
     /// The manager's answer to the asked `CONNECT`: a channel, or a refusal to retry later
     /// (`ERR NOT_READY` while the service restarts).
+    /// Writes `req` on the boot channel and queues what answers it (v1.8); false when it could not
+    /// be written or BOOT_OPS answers are already awaited.
+    fn boot_send(&mut self, req: &[u8], op: BootOp) -> bool {
+        let Some(k) = self.boot_ops.iter().position(Option::is_none) else {
+            return false;
+        };
+        if libnawah::channel_write(self.boot, req, &[]) != 0 {
+            return false;
+        }
+        self.boot_ops[k] = Some(op);
+        true
+    }
+
+    /// The oldest request on the boot channel still unanswered, taken off the queue.
+    fn boot_take(&mut self) -> Option<BootOp> {
+        let op = self.boot_ops[0];
+        self.boot_ops.copy_within(1.., 0);
+        self.boot_ops[BOOT_OPS - 1] = None;
+        op
+    }
+
+    /// The manager's answer to END_SESSION (v1.8), traced: `session|jobs=ended|apps=<n>`, or
+    /// `session|jobs=refused|answer=<reply>`.
+    fn ended(&mut self, msg: &[u8]) {
+        let mut t = Out::new();
+        match msg.strip_prefix(b"ENDED ") {
+            Some(n) => t.put(b"session|jobs=ended|apps=").put(n),
+            None => t.put(b"session|jobs=refused|answer=").put(msg),
+        };
+        libnawah::trace(t.bytes());
+    }
+
     fn answer(&mut self, chan: Option<Handle>, now: u64) {
         let Some(i) = self.asked.take() else {
             if let Some(h) = chan {
@@ -1274,6 +1322,12 @@ impl Session {
             self.token = 0;
         }
         self.lock_unsent = false;
+        // v1.8: the manager ends the session's job, with every application and what it started,
+        // before the display hears LOGOUT, so none acts on LOGGED_OUT. Not waited on: its answer
+        // comes on the boot channel and is traced when it does.
+        if !self.boot_send(b"END_SESSION", BootOp::End) {
+            libnawah::trace(b"session|jobs=unsent");
+        }
         let mut r = [0u8; 64];
         self.display_call(b"LOGOUT", &[], &mut r);
         let mut t = Out::new();
@@ -1861,13 +1915,29 @@ impl Session {
                     }
                 } else if msg == b"STOP" {
                     return false;
-                } else if self.asked.is_some() && msg == b"OK" && nh == 1 {
-                    self.answer(Some(hs[0]), now);
-                } else if self.asked.is_some() && msg.starts_with(b"ERR") {
-                    if nh == 1 {
-                        libnawah::handle_close(hs[0]);
+                } else if msg == b"OK" || msg.starts_with(b"ERR") || msg.starts_with(b"ENDED ") {
+                    // An answer: to the oldest request still waiting (v1.8).
+                    let chan = (nh == 1).then_some(hs[0]);
+                    match self.boot_take() {
+                        Some(BootOp::Connect) if msg == b"OK" => self.answer(chan, now),
+                        Some(BootOp::Connect) => {
+                            if let Some(h) = chan {
+                                libnawah::handle_close(h);
+                            }
+                            self.answer(None, now);
+                        }
+                        Some(BootOp::End) => {
+                            if let Some(h) = chan {
+                                libnawah::handle_close(h);
+                            }
+                            self.ended(msg);
+                        }
+                        None => {
+                            if let Some(h) = chan {
+                                libnawah::handle_close(h);
+                            }
+                        }
                     }
-                    self.answer(None, now);
                 } else if nh == 1 {
                     libnawah::handle_close(hs[0]);
                 }
@@ -2100,6 +2170,7 @@ fn main() -> u64 {
         connected: [true, true, true],
         conn_n: [1, 0, 0],
         asked: None,
+        boot_ops: [None; BOOT_OPS],
         retry: [0; 3],
         format: 1,
         screen_w: 0,

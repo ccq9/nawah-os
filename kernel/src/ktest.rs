@@ -265,6 +265,7 @@ pub fn run() -> ! {
         "manifest_too_large" => manifest_too_large(),
         "load_outside_system" => load_outside_system(),
         "token_revoke" => token_revoke(),
+        "logout_kills" => logout_kills(),
         "purge_fail_closed" => purge_fail_closed(),
         "elevate" => elevate(),
         "shell_login" => shell_session("shell_login"),
@@ -5162,6 +5163,9 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         ),
         "app_connect" => pass(
             "an application connects to its declared services alone, vouched by its identity and within the bounds",
+        ),
+        "logout_kills" => pass(
+            "Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
         ),
         "session_job" => pass(
             "the session's applications run in one job, which END_SESSION from the session alone ends, and the next launch makes a new one",
@@ -13737,6 +13741,157 @@ fn token_revoke() -> ! {
         h,
         "the token of a killed session was revoked; a token another client held survived",
     )
+}
+
+/// `STATE` of the session until it says `state` after `changes` transitions, or `by`; the last reply.
+fn state_wait(session: &Endpoint, state: &str, changes: u32, by: u64) -> String {
+    let mut ev = Vec::new();
+    loop {
+        let r = hold_request(
+            session,
+            b"STATE",
+            Vec::new(),
+            &mut ev,
+            (sched::ticks() + 5000).min(by),
+        );
+        if state_is(&r, state, changes) || sched::ticks() >= by {
+            return r;
+        }
+        hold_wait((sched::ticks() + 20).min(by), || false);
+    }
+}
+
+/// TST-M6-LOGOUT-KILLS (REQ-M6-004, session.md v1.8, services.md v1.17; WP-167): Sign out ends
+/// the session's job. The real auth, input, display and session (SVC-LK.TXT) with the lab image as
+/// the vouched `desktop`, whose role `relay` passes the test kernel's LAUNCH to the manager. After
+/// the lab's sign-in the desktop launches `deaf` (winapp: a window, and it ignores LOGGED_OUT) and
+/// `nest` (a child of its own, waiting); the secure attention sequence locks the session and Sign
+/// out ends it; the test kernel reads that none of the three processes lives, no job is left and
+/// the manager holds what it held before the launches; after a second sign-in a launch makes a
+/// new session job.
+fn logout_kills() -> ! {
+    let name = "logout_kills";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-LK.TXT",
+        &["auth", "input", "display", "session", "desktop"],
+    );
+    kprintln!("OSX|{}|ktest|logout_kills|services=5|ready=1", BUILD_ID);
+    let within = |t: u64| sched::ticks() + t;
+    let live = |img: &[u8]| sched::live_named(img).1;
+    // Phase 1: signed in (the monitor types the lab's name and password), two launches.
+    let unlocked = state_wait(&session, "unlocked", 1, within(40_000));
+    let desk = svc_connect(&h, "desktop");
+    let jobs0 = i64::from(object::stats().jobs);
+    let mgr0 = mgr_handles(&h);
+    let deaf = cfg_request(&desk, b"LAUNCH deaf", None);
+    let nest = cfg_request(&desk, b"LAUNCH nest", None);
+    sched::poll_until(within(5000), || {
+        live(b"DEAF.ELF") == 1 && live(b"NEST.ELF") == 1 && live(b"IDLE.ELF") == 1
+    });
+    let running = (live(b"DEAF.ELF"), live(b"NEST.ELF"), live(b"IDLE.ELF"));
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|unlocked={}|launched={},{}|deaf={}|nest={}|idle={}|phase=1",
+        BUILD_ID,
+        unlocked,
+        deaf,
+        nest,
+        running.0,
+        running.1,
+        running.2
+    );
+    // Phase 2: the monitor locks the session and signs out on the lock screen.
+    let out = state_wait(&session, "no_session", 3, within(40_000));
+    let left = || {
+        (
+            live(b"DEAF.ELF"),
+            live(b"NEST.ELF"),
+            live(b"IDLE.ELF"),
+            i64::from(object::stats().jobs) - jobs0,
+            mgr_handles(&h) - mgr0,
+        )
+    };
+    sched::poll_until(within(5000), || left() == (0, 0, 0, 0, 0));
+    let after = left();
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|back={}|deaf={}|nest={}|idle={}|jobs={}|mgr_handles={}|phase=2",
+        BUILD_ID,
+        out,
+        after.0,
+        after.1,
+        after.2,
+        after.3,
+        after.4
+    );
+    // Phase 3: a second sign-in, and a launch in a new session job.
+    let again = state_wait(&session, "unlocked", 4, within(40_000));
+    let relaunch = cfg_request(&desk, b"LAUNCH deaf", None);
+    sched::poll_until(within(5000), || live(b"DEAF.ELF") == 1);
+    let (d, n) = sched::live_named(b"DEAF.ELF");
+    let in_session = d[..n].iter().filter(|a| a.parent_under_root).count();
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|again={}|launch={}|deaf={}|in_session={}|phase=3",
+        BUILD_ID,
+        again,
+        relaunch,
+        n,
+        in_session
+    );
+    let signed_in =
+        |r: &str, changes: u32| state_is(r, "unlocked", changes) && r.ends_with(" focus=display");
+    let failed = alloc::format!(
+        "{}{}{}{}{}",
+        if signed_in(&unlocked, 1)
+            && deaf == "OK app:deaf#1"
+            && nest == "OK app:nest#2"
+            && running == (1, 1, 1)
+        {
+            ""
+        } else {
+            "launch,"
+        },
+        if state_is(&out, "no_session", 3) {
+            ""
+        } else {
+            "sign_out,"
+        },
+        if after == (0, 0, 0, 0, 0) {
+            ""
+        } else {
+            "left,"
+        },
+        if signed_in(&again, 4) { "" } else { "again," },
+        if relaunch == "OK app:deaf#3" && n == 1 && in_session == 1 {
+            ""
+        } else {
+            "relaunch,"
+        }
+    );
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|failed={}",
+        BUILD_ID,
+        if failed.is_empty() { "none" } else { &failed }
+    );
+    drop((unlocked, deaf, nest, out, again, relaunch, desk, session));
+    if failed.contains("left,") {
+        fail("an application of the signed-out session is still alive")
+    }
+    if !failed.is_empty() {
+        fail("the sign-in, a launch or the sign-out was not as the case states")
+    }
+    drop(failed);
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    svc_balance(name, frames0)
 }
 
 /// What one sub-case of `purge_fail_closed` saw: the answer the substitute compositor gave to

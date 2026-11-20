@@ -1493,6 +1493,57 @@ class KillEvidence(unittest.TestCase):
             f"SYSTEM/APPS/{n.upper()}.{x}": (f"platform/pc-qemu/lab/{n}.app" if x == "APP" else "${OUT}/apps/svc.elf")
             for n in ("stay", "nest") for x in ("APP", "ELF")})
 
+    LOGOUT_KILLS = "TST-M6-LOGOUT-KILLS"
+
+    def test_the_logout_expectations_are_pinned(self):
+        """WP-167 (REQ-M6-004; session.md v1.8): Sign out ends the session's job. M388, M389 and
+        M396, each anchor once in user/apps/sessiond/src/main.rs, are declared on
+        TST-M6-LOGOUT-KILLS alone: M388 (SECURITY, no END_SESSION) by exit 37, the case's message
+        for what outlived the sign-out and the counts of its phase-2 line, each another value than
+        the pinned line's; M389 (the count traced as 0) by the forbidden `apps=0` trace; M396
+        (SECURITY, the answer taken for a CONNECT's) by the missing `apps=2` trace with no
+        forbidden marker present. The case's manifest runs the real session with the lab image as
+        `desktop` in the role `relay`, and its volume carries deaf (winapp, declaring display) and
+        nest."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.LOGOUT_KILLS)
+        line = next(m for m in case["required_markers"] if m.startswith("|ktest|logout_kills|back="))
+        self.assertEqual(line, "|ktest|logout_kills|back=OK no_session user=- changes=3 display=1 input=1 focus=session|deaf=0|nest=0|idle=0|"
+                               "jobs=0|mgr_handles=0|phase=2")
+        self.assertIn("|text=session|jobs=ended|apps=2", case["required_markers"])
+        for bad in ("|text=session|jobs=ended|apps=0", "|text=session|jobs=unsent", "|text=session|jobs=refused", "lab-admin-1"):
+            self.assertIn(bad, case["forbidden_markers"])
+        want = {  # id: (SECURITY, the expected substrings)
+            "M388": (True, ["exit 37", "|deaf=1|nest=1|idle=1|jobs=3|mgr_handles=7|", mutants._LKALIVE]),
+            "M389": (False, ["forbidden present ['|text=session|jobs=ended|apps=0']"]),
+            "M396": (True, ["missing markers ['|text=session|jobs=ended|apps=2']; forbidden present []"]),
+        }
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.LOGOUT_KILLS in m[4]), sorted(want))
+        self.assertIn(f'fail("{mutants._LKALIVE[len("|ktest|fail|"):]}")', src)
+        for mid, (security, subs) in want.items():
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], "user/apps/sessiond/src/main.rs")
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(m[4], [self.LOGOUT_KILLS])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(E[mid], {self.LOGOUT_KILLS: subs})
+        for x in want["M388"][1][1].strip("|").split("|"):
+            self.assertIn("|" + x.split("=")[0] + "=", line, x)
+        self.assertNotIn(want["M388"][1][1], line)
+        manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-lk.txt").read_text(encoding="utf-8")
+        self.assertIn("\nsession /SYSTEM/SESSIOND.ELF auth,input,display 5000 never 0 0\n", manifest)
+        self.assertIn("\ndesktop /SYSTEM/SVC.ELF session 3000 never 0 0 relay\n", manifest)
+        self.assertEqual(case.get("disk_files"), {
+            "SYSTEM/APPS/DEAF.APP": "platform/pc-qemu/lab/deaf.app", "SYSTEM/APPS/DEAF.ELF": "${OUT}/apps/winapp.elf",
+            "SYSTEM/APPS/NEST.APP": "platform/pc-qemu/lab/nest.app", "SYSTEM/APPS/NEST.ELF": "${OUT}/apps/svc.elf"})
+        self.assertIn("\ndeps=display\n", (ROOT / "platform" / "pc-qemu" / "lab" / "deaf.app").read_text(encoding="utf-8"))
+
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""
     import fcntl

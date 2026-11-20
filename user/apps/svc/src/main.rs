@@ -39,6 +39,9 @@ enum Mode {
     /// `svc|silent|held=<ticks>|in_window=<0|1>`: the ticks from the request's arrival to the
     /// close, and whether they fall within [lo, hi] (the test's expected deadline window).
     Silent { lo: u64, hi: u64 },
+    /// WP-167 (TST-M6-LOGOUT-KILLS): a client's `LAUNCH <id>` is asked on the boot channel and
+    /// the manager's reply passed back, so the test kernel launches as the vouched `desktop`.
+    Relay,
 }
 
 /// `n` in decimal into `out` at `at`; the new end.
@@ -688,8 +691,14 @@ fn serve(ch: u32, mode: Mode) -> u64 {
                     }
                     return 3;
                 }
+                let mut relayed = [0u8; 128];
                 let reply: &[u8] = if &buf[..n] == b"PING" {
                     b"OK served"
+                } else if mode == Mode::Relay && buf[..n].starts_with(b"LAUNCH ") {
+                    match ask(ch, &buf[..n], &[], &mut relayed) {
+                        Some(k) => &relayed[..k],
+                        None => b"ERR UNAVAILABLE",
+                    }
                 } else {
                     b"ERR BAD_REQUEST"
                 };
@@ -936,6 +945,7 @@ fn main() -> u64 {
         b"crash" => 1,
         b"serve" => serve(ch, Mode::Serve),
         b"names" => serve(ch, Mode::Names),
+        b"relay" => serve(ch, Mode::Relay),
         b"connector" => connector(ch),
         b"ender" => ender(ch),
         b"crash_once" => serve(ch, Mode::CrashOnce),
