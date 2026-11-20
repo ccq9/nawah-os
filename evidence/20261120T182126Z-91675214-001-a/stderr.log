@@ -1,0 +1,43 @@
+test_a_chain_of_the_volume_s_size_is_walked_in_time (__main__.Fat32Check.test_a_chain_of_the_volume_s_size_is_walked_in_time) ... ok
+test_a_chain_that_loops_is_named (__main__.Fat32Check.test_a_chain_that_loops_is_named) ... ok
+test_a_name_reached_along_one_copy_only (__main__.Fat32Check.test_a_name_reached_along_one_copy_only) ... ok
+test_a_name_that_reads_as_two_is_one_file (__main__.Fat32Check.test_a_name_that_reads_as_two_is_one_file) ... ok
+test_a_pin_on_the_first_copy_needs_the_second (__main__.Fat32Check.test_a_pin_on_the_first_copy_needs_the_second) ... ok
+test_chain_longer_in_the_second_copy_alone (__main__.Fat32Check.test_chain_longer_in_the_second_copy_alone) ... ok
+test_chain_longer_than_size (__main__.Fat32Check.test_chain_longer_than_size) ... ok
+test_clusters_marked_in_the_second_copy_alone (__main__.Fat32Check.test_clusters_marked_in_the_second_copy_alone) ... ok
+test_copies_differ (__main__.Fat32Check.test_copies_differ) ... ok
+test_deep_tree (__main__.Fat32Check.test_deep_tree) ... ok
+test_directory_chain_into_a_free_cluster (__main__.Fat32Check.test_directory_chain_into_a_free_cluster) ... ok
+test_directory_entry_whose_first_cluster_is_no_cluster (__main__.Fat32Check.test_directory_entry_whose_first_cluster_is_no_cluster) ... ok
+test_each_copy_s_longer_files_are_its_own (__main__.Fat32Check.test_each_copy_s_longer_files_are_its_own) ... ok
+test_empty_file_is_healthy (__main__.Fat32Check.test_empty_file_is_healthy) ... ok
+test_file_entry_whose_first_cluster_is_no_cluster (__main__.Fat32Check.test_file_entry_whose_first_cluster_is_no_cluster) ... ok
+test_free_first_cluster_is_a_problem (__main__.Fat32Check.test_free_first_cluster_is_a_problem) ... ok
+test_free_in_the_second_copy_alone_is_a_problem_when_faulted (__main__.Fat32Check.test_free_in_the_second_copy_alone_is_a_problem_when_faulted) ... ok
+test_fsck_faulted_on_images (__main__.Fat32Check.test_fsck_faulted_on_images) ... ok
+test_fsck_messages_are_named (__main__.Fat32Check.test_fsck_messages_are_named) ... ok
+test_fsinfo_signatures (__main__.Fat32Check.test_fsinfo_signatures) ... ok
+test_invalid_value_outside_every_chain (__main__.Fat32Check.test_invalid_value_outside_every_chain) ... ok
+test_longer_files_are_named_with_their_extra_clusters (__main__.Fat32Check.test_longer_files_are_named_with_their_extra_clusters) ... ok
+test_lost_cluster (__main__.Fat32Check.test_lost_cluster) ... ok
+test_lost_clusters_that_cancel_between_the_copies (__main__.Fat32Check.test_lost_clusters_that_cancel_between_the_copies) ... ok
+test_out_of_range_value_in_a_chain (__main__.Fat32Check.test_out_of_range_value_in_a_chain) ... ok
+test_reserved_value_in_a_chain_of_the_first_copy_names_the_file (__main__.Fat32Check.test_reserved_value_in_a_chain_of_the_first_copy_names_the_file) ... ok
+test_reserved_value_in_a_chain_of_the_second_copy (__main__.Fat32Check.test_reserved_value_in_a_chain_of_the_second_copy) ... ok
+test_second_copy_pins_need_a_second_copy (__main__.Fat32Check.test_second_copy_pins_need_a_second_copy) ... ok
+test_shared_cluster_is_a_problem (__main__.Fat32Check.test_shared_cluster_is_a_problem) ... ok
+test_two_directories_on_one_cluster (__main__.Fat32Check.test_two_directories_on_one_cluster) ... ok
+test_two_longer_files_are_named_in_any_order (__main__.Fat32Check.test_two_longer_files_are_named_in_any_order) ... ok
+test_absent_raw (__main__.Fat32Tool.test_absent_raw) ... ok
+test_fsck (__main__.Fat32Tool.test_fsck) ... ok
+test_geometry_and_listing (__main__.Fat32Tool.test_geometry_and_listing) ... ok
+test_grep (__main__.Fat32Tool.test_grep) ... ok
+test_nested_directory (__main__.Fat32Tool.test_nested_directory) ... ok
+test_pattern_tail (__main__.Fat32Tool.test_pattern_tail) ... ok
+test_read_back (__main__.Fat32Tool.test_read_back) ... ok
+
+----------------------------------------------------------------------
+Ran 38 tests in 38.318s
+
+OK
