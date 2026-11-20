@@ -1,0 +1,17 @@
+test_dependency_cycle (__main__.ValidateRecords.test_dependency_cycle) ... ok
+test_done_requires_passing_tests_and_evidence (__main__.ValidateRecords.test_done_requires_passing_tests_and_evidence) ... ok
+test_duplicate_id (__main__.ValidateRecords.test_duplicate_id) ... ok
+test_evidence_mismatch_is_rejected (__main__.ValidateRecords.test_evidence_mismatch_is_rejected) ... ok
+test_illegal_transition (__main__.ValidateRecords.test_illegal_transition) ... ok
+test_missing_reference (__main__.ValidateRecords.test_missing_reference) ... ok
+test_missing_required_field (__main__.ValidateRecords.test_missing_required_field) ... ok
+test_stale_input_requires_reevaluation (__main__.ValidateRecords.test_stale_input_requires_reevaluation) ... ok
+test_stale_policy_warn_survives_strict (__main__.ValidateRecords.test_stale_policy_warn_survives_strict) ... ok
+test_superseded_requires_superseder_and_blocks_dependants (__main__.ValidateRecords.test_superseded_requires_superseder_and_blocks_dependants) ... ok
+test_valid_evidence_accepted_and_done_allowed (__main__.ValidateRecords.test_valid_evidence_accepted_and_done_allowed) ... ok
+test_valid_set_passes (__main__.ValidateRecords.test_valid_set_passes) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.100s
+
+OK
