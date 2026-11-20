@@ -1,0 +1,895 @@
+{
+ "threshold": 0.95,
+ "target": "pc-qemu",
+ "mutants": [
+  {
+   "id": "M01",
+   "file": "kernel/src/arch/x86_64/gdt.rs",
+   "note": "IST1 points at the base of the #DF stack instead of its top",
+   "killers": [
+    "TST-M2-EXC-DF"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-DF"
+   ],
+   "results": {
+    "TST-M2-EXC-DF": "FAIL"
+   },
+   "seconds": 33.0,
+   "kills": {
+    "TST-M2-EXC-DF": {
+     "reason": "exit 0 != expected 161",
+     "run": "20261120T190530Z-064ec231-001",
+     "lines": [
+      "OSX|000000000001|ktest|start|name=exc_df"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M02",
+   "file": "kernel/src/arch/x86_64/idt.rs",
+   "note": "#DF gate loses its IST (the const assertion on Gate::interrupt still holds)",
+   "killers": [
+    "TST-M2-IDT-LAYOUT",
+    "TST-M2-EXC-DF"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-IDT-LAYOUT",
+    "TST-M2-EXC-DF"
+   ],
+   "results": {
+    "TST-M2-IDT-LAYOUT": "FAIL",
+    "TST-M2-EXC-DF": "FAIL"
+   },
+   "seconds": 29.9,
+   "kills": {
+    "TST-M2-IDT-LAYOUT": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T190553Z-064ec231-001",
+     "lines": [
+      "OSX|000000000002|ktest|start|name=idt_layout",
+      "OSX|000000000002|ktest|idt_layout|vector=8|mismatch=wrong_ist",
+      "OSX|000000000002|ktest|fail|idt layout mismatches"
+     ]
+    },
+    "TST-M2-EXC-DF": {
+     "reason": "exit 0 != expected 161",
+     "run": "20261120T190600Z-064ec231-001",
+     "lines": [
+      "OSX|000000000002|ktest|start|name=exc_df"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M03",
+   "file": "kernel/src/arch/x86_64/trap.rs",
+   "note": "error code left on the stack before iretq",
+   "killers": [
+    "TST-M2-EXC-BP"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-BP"
+   ],
+   "results": {
+    "TST-M2-EXC-BP": "FAIL"
+   },
+   "seconds": 22.5,
+   "kills": {
+    "TST-M2-EXC-BP": {
+     "reason": "exit 171 != expected 33",
+     "run": "20261120T190623Z-064ec231-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M04",
+   "file": "kernel/src/arch/x86_64/trap.rs",
+   "note": "nesting limit effectively removed",
+   "killers": [
+    "TST-M2-EXC-NESTED"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-NESTED"
+   ],
+   "results": {
+    "TST-M2-EXC-NESTED": "FAIL"
+   },
+   "seconds": 23.3,
+   "kills": {
+    "TST-M2-EXC-NESTED": {
+     "reason": "missing markers []; forbidden present ['|exc|vector=6|name=#UD|x947>3']",
+     "run": "20261120T190646Z-064ec231-001",
+     "lines": [
+      "OSX|000000000004|ktest|start|name=exc_nested"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M05",
+   "file": "kernel/src/mm/pmm.rs",
+   "note": "free counter not decremented on allocation",
+   "killers": [
+    "TST-M2-PMM-COUNTS"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-PMM-COUNTS"
+   ],
+   "results": {
+    "TST-M2-PMM-COUNTS": "FAIL"
+   },
+   "seconds": 22.6,
+   "kills": {
+    "TST-M2-PMM-COUNTS": {
+     "reason": "exit 35 != expected 33",
+     "run": "20261120T190709Z-064ec231-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M06",
+   "file": "kernel/src/mm/pmm.rs",
+   "note": "double-free detection removed",
+   "killers": [
+    "TST-M2-PMM-DOUBLE-FREE"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-PMM-DOUBLE-FREE"
+   ],
+   "results": {
+    "TST-M2-PMM-DOUBLE-FREE": "FAIL"
+   },
+   "seconds": 22.6,
+   "kills": {
+    "TST-M2-PMM-DOUBLE-FREE": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T190731Z-064ec231-001",
+     "lines": [
+      "OSX|000000000006|ktest|start|name=pmm_double_free",
+      "OSX|000000000006|ktest|fail|double free not detected"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M07",
+   "file": "kernel/src/mm/pmm.rs",
+   "note": "first MiB handed out",
+   "killers": [
+    "TST-M1-BOOT",
+    "TST-M2-PMM-EXHAUST"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT",
+    "TST-M2-PMM-EXHAUST"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL",
+    "TST-M2-PMM-EXHAUST": "FAIL"
+   },
+   "seconds": 34.9,
+   "kills": {
+    "TST-M1-BOOT": {
+     "reason": "exit 173 != expected 33",
+     "run": "20261120T190759Z-064ec231-001",
+     "lines": []
+    },
+    "TST-M2-PMM-EXHAUST": {
+     "reason": "exit 173 != expected 33",
+     "run": "20261120T190806Z-064ec231-001",
+     "lines": [
+      "OSX|000000000007|ktest|start|name=pmm_exhaust"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M08",
+   "file": "kernel/src/arch/x86_64/paging.rs",
+   "note": "enable_wp a no-op (WP bit constant zeroed); the test clears WP first, so firmware state cannot mask it",
+   "killers": [
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-WP": "FAIL",
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 29.2,
+   "kills": {
+    "TST-M2-VMM-WP": {
+     "reason": "missing markers ['|ktest|vmm_wp|wp_off_write_ok=1|wp_now=1|target=0x', 'equal_values(expect_rip=(0x[0-9a-f]+) vs \\\\|rip=(0x[0-9a-f]+)\\\\|): None != 0x1d6d7c84', 'equal_values(vmm_wp\\\\|wp_off_write_ok=1\\\\|wp_now=1\\\\|target=(0x[0-9a-f]+) vs \\\\|cr2=(0x[0-9a-f]+)\\\\|): None != 0x1d659008']; forbidden present []",
+     "run": "20261120T190829Z-064ec231-001",
+     "lines": [
+      "OSX|000000000008|ktest|start|name=vmm_wp"
+     ]
+    },
+    "TST-M2-VMM-SWITCH": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T190836Z-064ec231-001",
+     "lines": [
+      "OSX|000000000008|ktest|start|name=vmm_switch",
+      "OSX|000000000008|ktest|fail|CR0.WP or EFER.NXE not set"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M09",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": ".data/.bss executable (NX dropped)",
+   "killers": [
+    "TST-M2-VMM-NX",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-NX",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-NX": "FAIL",
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 29.6,
+   "kills": {
+    "TST-M2-VMM-NX": {
+     "reason": "exit 37 != expected 173",
+     "run": "20261120T190858Z-064ec231-001",
+     "lines": [
+      "OSX|000000000009|ktest|start|name=vmm_nx",
+      "OSX|000000000009|ktest|vmm_nx|target=0x1d796340|expect_rip=0x1d796340",
+      "OSX|000000000009|ktest|fail|execution from .data did not fault"
+     ]
+    },
+    "TST-M2-VMM-SWITCH": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T190905Z-064ec231-001",
+     "lines": [
+      "OSX|000000000009|ktest|start|name=vmm_switch",
+      "OSX|000000000009|ktest|fail|section permissions not applied"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M10",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "image headers writable",
+   "killers": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 22.5,
+   "kills": {
+    "TST-M2-VMM-SWITCH": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T190928Z-064ec231-001",
+     "lines": [
+      "OSX|00000000000a|ktest|start|name=vmm_switch",
+      "OSX|00000000000a|ktest|fail|image headers not mapped read-only"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M11",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": ".text writable",
+   "killers": [
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-WP",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-WP": "FAIL",
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 29.7,
+   "kills": {
+    "TST-M2-VMM-WP": {
+     "reason": "missing markers ['|exc|vector=14|name=#PF|error=0x3|', 'equal_values(expect_rip=(0x[0-9a-f]+) vs \\\\|rip=(0x[0-9a-f]+)\\\\|): 0x1d65df2c != 0x1d65df33', 'equal_values(vmm_wp\\\\|wp_off_write_ok=1\\\\|wp_now=1\\\\|target=(0x[0-9a-f]+) vs \\\\|cr2=(0x[0-9a-f]+)\\\\|): 0x1d65df2c != 0xffffffffffffffc6']; forbidden present []",
+     "run": "20261120T190950Z-064ec231-001",
+     "lines": [
+      "OSX|00000000000b|ktest|start|name=vmm_wp",
+      "OSX|00000000000b|ktest|vmm_wp|wp_off_write_ok=1|wp_now=1|target=0x1d65df2c",
+      "OSX|00000000000b|ktest|expect_rip=0x1d65df2c"
+     ]
+    },
+    "TST-M2-VMM-SWITCH": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T190957Z-064ec231-001",
+     "lines": [
+      "OSX|00000000000b|ktest|start|name=vmm_switch",
+      "OSX|00000000000b|ktest|fail|section permissions not applied"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M12",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "null page identity-mapped",
+   "killers": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 22.5,
+   "kills": {
+    "TST-M2-VMM-SWITCH": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T191020Z-064ec231-001",
+     "lines": [
+      "OSX|00000000000c|ktest|start|name=vmm_switch",
+      "OSX|00000000000c|ktest|fail|null page is mapped"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M13",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "guard page mapped as stack",
+   "killers": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 22.4,
+   "kills": {
+    "TST-M2-VMM-SWITCH": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T191042Z-064ec231-001",
+     "lines": [
+      "OSX|00000000000d|ktest|start|name=vmm_switch",
+      "OSX|00000000000d|ktest|fail|a stack guard page is mapped"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M14",
+   "file": "kernel/src/mm/vmm.rs",
+   "note": "boot-services memory never reclaimed",
+   "killers": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 22.5,
+   "kills": {
+    "TST-M2-VMM-SWITCH": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T191105Z-064ec231-001",
+     "lines": [
+      "OSX|00000000000e|ktest|start|name=vmm_switch",
+      "OSX|00000000000e|ktest|fail|no boot-services memory reclaimed"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M15",
+   "file": "kernel/src/arch/x86_64/apic.rs",
+   "note": "EOI never written",
+   "killers": [
+    "TST-M2-IRQ-EOI",
+    "TST-M2-TIMER-TICKS"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-IRQ-EOI",
+    "TST-M2-TIMER-TICKS"
+   ],
+   "results": {
+    "TST-M2-IRQ-EOI": "FAIL",
+    "TST-M2-TIMER-TICKS": "FAIL"
+   },
+   "seconds": 623.5,
+   "kills": {
+    "TST-M2-IRQ-EOI": {
+     "reason": "timeout (hang)",
+     "run": "20261120T191127Z-064ec231-001",
+     "lines": []
+    },
+    "TST-M2-TIMER-TICKS": {
+     "reason": "timeout (hang)",
+     "run": "20261120T191631Z-064ec231-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M16",
+   "file": "kernel/src/arch/x86_64/apic.rs",
+   "note": "timer one-shot instead of periodic",
+   "killers": [
+    "TST-M2-TIMER-TICKS"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-TIMER-TICKS"
+   ],
+   "results": {
+    "TST-M2-TIMER-TICKS": "FAIL"
+   },
+   "seconds": 319.4,
+   "kills": {
+    "TST-M2-TIMER-TICKS": {
+     "reason": "timeout (hang)",
+     "run": "20261120T192151Z-064ec231-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M17",
+   "file": "kernel/src/arch/x86_64/apic.rs",
+   "note": "calibration off by 10x",
+   "killers": [
+    "TST-M2-TIMER-TICKS"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-TIMER-TICKS"
+   ],
+   "results": {
+    "TST-M2-TIMER-TICKS": "FAIL"
+   },
+   "seconds": 22.6,
+   "kills": {
+    "TST-M2-TIMER-TICKS": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T192710Z-064ec231-001",
+     "lines": [
+      "OSX|000000000011|ktest|start|name=timer_ticks",
+      "OSX|000000000011|ktest|timer_ticks|window1=498|window2=496|unexpected=0|max_depth=1|if=0",
+      "OSX|000000000011|ktest|fail|tick count outside 25..=100 per 50 ms"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M18",
+   "file": "kernel/src/arch/x86_64/apic.rs",
+   "note": "wrong spurious vector programmed",
+   "killers": [
+    "TST-M2-SPURIOUS"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-SPURIOUS"
+   ],
+   "results": {
+    "TST-M2-SPURIOUS": "FAIL"
+   },
+   "seconds": 22.5,
+   "kills": {
+    "TST-M2-SPURIOUS": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T192733Z-064ec231-001",
+     "lines": [
+      "OSX|000000000012|ktest|start|name=spurious",
+      "OSX|000000000012|ktest|spurious|spurious=1|unexpected=2|last_unexpected=0xf0|total_after_window=0|svr=0x1fe",
+      "OSX|000000000012|ktest|fail|spurious vector register not 0x1FF"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M19",
+   "file": "kernel/src/arch/x86_64/irq.rs",
+   "note": "depth counter never decremented",
+   "killers": [
+    "TST-M2-TIMER-TICKS",
+    "TST-M2-IRQ-EOI"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-TIMER-TICKS",
+    "TST-M2-IRQ-EOI"
+   ],
+   "results": {
+    "TST-M2-TIMER-TICKS": "FAIL",
+    "TST-M2-IRQ-EOI": "FAIL"
+   },
+   "seconds": 29.6,
+   "kills": {
+    "TST-M2-TIMER-TICKS": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T192755Z-064ec231-001",
+     "lines": [
+      "OSX|000000000013|ktest|start|name=timer_ticks",
+      "OSX|000000000013|ktest|timer_ticks|window1=50|window2=50|unexpected=0|max_depth=164|if=0",
+      "OSX|000000000013|ktest|fail|unexpected vector or handler re-entry"
+     ]
+    },
+    "TST-M2-IRQ-EOI": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T192802Z-064ec231-001",
+     "lines": [
+      "OSX|000000000013|ktest|start|name=irq_eoi",
+      "OSX|000000000013|ktest|irq_eoi|first=1|second=1|test_ipis=2|unexpected=0|max_depth=68",
+      "OSX|000000000013|ktest|fail|unexpected vector or handler re-entry"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M20",
+   "file": "kernel/src/arch/x86_64/pic.rs",
+   "note": "IRQ0 left unmasked on the PIC",
+   "killers": [
+    "TST-M1-BOOT"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL"
+   },
+   "seconds": 27.5,
+   "kills": {
+    "TST-M1-BOOT": {
+     "reason": "missing markers ['|kernel|irq|pic_masks=0xff,0xff|']; forbidden present []",
+     "run": "20261120T192830Z-064ec231-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M21",
+   "file": "kernel/src/sync.rs",
+   "note": "IF not restored when the guard drops",
+   "killers": [
+    "TST-M2-LOCK-IRQSAVE"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-LOCK-IRQSAVE"
+   ],
+   "results": {
+    "TST-M2-LOCK-IRQSAVE": "FAIL"
+   },
+   "seconds": 22.3,
+   "kills": {
+    "TST-M2-LOCK-IRQSAVE": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T192852Z-064ec231-001",
+     "lines": [
+      "OSX|000000000015|ktest|start|name=lock_irqsave",
+      "OSX|000000000015|ktest|lock_irqsave|if_inside=0|if_after=0|if_inside_disabled=0|if_after_disabled=0|ticks_while_held=0|ticks_after=0|try_while_held=0|try_when_free=1|value=2",
+      "OSX|000000000015|ktest|fail|IF not cleared inside the lock or not restored after it"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M22",
+   "file": "kernel/src/sync.rs",
+   "note": "lock taken without disabling interrupts",
+   "killers": [
+    "TST-M2-LOCK-IRQSAVE"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-LOCK-IRQSAVE"
+   ],
+   "results": {
+    "TST-M2-LOCK-IRQSAVE": "FAIL"
+   },
+   "seconds": 22.6,
+   "kills": {
+    "TST-M2-LOCK-IRQSAVE": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261120T192915Z-064ec231-001",
+     "lines": [
+      "OSX|000000000016|ktest|start|name=lock_irqsave",
+      "OSX|000000000016|ktest|lock_irqsave|if_inside=1|if_after=1|if_inside_disabled=0|if_after_disabled=0|ticks_while_held=20|ticks_after=20|try_while_held=0|try_when_free=1|value=2",
+      "OSX|000000000016|ktest|fail|IF not cleared inside the lock or not restored after it"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M23",
+   "file": "kernel/src/sync.rs",
+   "note": "re-entry detection removed (hangs; killed by timeout)",
+   "killers": [
+    "TST-M2-LOCK-REENTRY"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-LOCK-REENTRY"
+   ],
+   "results": {
+    "TST-M2-LOCK-REENTRY": "FAIL"
+   },
+   "seconds": 320.4,
+   "kills": {
+    "TST-M2-LOCK-REENTRY": {
+     "reason": "timeout (hang)",
+     "run": "20261120T192938Z-064ec231-001",
+     "lines": [
+      "OSX|000000000017|ktest|start|name=lock_reentry",
+      "OSX|000000000017|ktest|lock_reentry|held=1|reacquiring=1"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M24",
+   "file": "kernel/src/arch/x86_64/acpi.rs",
+   "note": "RSDP checksum test inverted",
+   "killers": [
+    "TST-M1-BOOT",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT",
+    "TST-M2-VMM-SWITCH"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL",
+    "TST-M2-VMM-SWITCH": "FAIL"
+   },
+   "seconds": 34.4,
+   "kills": {
+    "TST-M1-BOOT": {
+     "reason": "exit 35 != expected 33",
+     "run": "20261120T193503Z-064ec231-001",
+     "lines": []
+    },
+    "TST-M2-VMM-SWITCH": {
+     "reason": "exit 35 != expected 33",
+     "run": "20261120T193510Z-064ec231-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M25",
+   "file": "kernel/src/arch/x86_64/acpi.rs",
+   "note": "I/O APIC entries ignored",
+   "killers": [
+    "TST-M1-BOOT"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL"
+   },
+   "seconds": 27.9,
+   "kills": {
+    "TST-M1-BOOT": {
+     "reason": "missing markers ['|cpus=4|ioapics=1|ioapic_entries=24|ioapic_masked=24|']; forbidden present []",
+     "run": "20261120T193537Z-064ec231-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M26",
+   "file": "kernel/src/arch/x86_64/gdt.rs",
+   "note": "stack diagnostics never name the #DF stack",
+   "killers": [
+    "TST-M2-EXC-DF",
+    "TST-M2-VMM-GUARD"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-DF",
+    "TST-M2-VMM-GUARD"
+   ],
+   "results": {
+    "TST-M2-EXC-DF": "FAIL",
+    "TST-M2-VMM-GUARD": "FAIL"
+   },
+   "seconds": 29.8,
+   "kills": {
+    "TST-M2-EXC-DF": {
+     "reason": "missing markers ['|stack=df']; forbidden present []",
+     "run": "20261120T193600Z-064ec231-001",
+     "lines": [
+      "OSX|00000000001a|ktest|start|name=exc_df"
+     ]
+    },
+    "TST-M2-VMM-GUARD": {
+     "reason": "missing markers ['|stack=df']; forbidden present []",
+     "run": "20261120T193607Z-064ec231-001",
+     "lines": [
+      "OSX|00000000001a|ktest|start|name=vmm_guard",
+      "OSX|00000000001a|ktest|vmm_guard|stack_base=0xffff900000001000|guard=0xffff900000000000|expect_cr2=0xffff900000000ff8"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M27",
+   "file": "kernel/src/boot/stub.rs",
+   "note": "RSDP never handed to the kernel",
+   "killers": [
+    "TST-M1-BOOT"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL"
+   },
+   "seconds": 28.3,
+   "kills": {
+    "TST-M1-BOOT": {
+     "reason": "exit 35 != expected 33",
+     "run": "20261120T193635Z-064ec231-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M28",
+   "file": "kernel/src/arch/x86_64/ioapic.rs",
+   "note": "I/O APIC entries unmasked instead of masked",
+   "killers": [
+    "TST-M1-BOOT"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M1-BOOT"
+   ],
+   "results": {
+    "TST-M1-BOOT": "FAIL"
+   },
+   "seconds": 28.5,
+   "kills": {
+    "TST-M1-BOOT": {
+     "reason": "missing markers ['|cpus=4|ioapics=1|ioapic_entries=24|ioapic_masked=24|']; forbidden present []",
+     "run": "20261120T193704Z-064ec231-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M29",
+   "file": "kernel/src/arch/x86_64/trap.rs",
+   "note": "#BP made fatal",
+   "killers": [
+    "TST-M2-EXC-BP"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M2-EXC-BP"
+   ],
+   "results": {
+    "TST-M2-EXC-BP": "FAIL"
+   },
+   "seconds": 23.1,
+   "kills": {
+    "TST-M2-EXC-BP": {
+     "reason": "exit 151 != expected 33",
+     "run": "20261120T193727Z-064ec231-001",
+     "lines": [
+      "OSX|00000000001d|ktest|start|name=exc_bp",
+      "OSX|00000000001d|ktest|expect_rip=0x1d65dddf"
+     ]
+    }
+   }
+  }
+ ],
+ "started": "2026-11-20T19:05:04Z",
+ "valid": 29,
+ "killed": 29,
+ "survived": [],
+ "declared_killers_missed": [],
+ "expected_missed": [],
+ "invalid": [],
+ "ratio": 1.0,
+ "finished": "2026-11-20T19:37:33Z",
+ "surviving_security": [],
+ "invalid_security": []
+}

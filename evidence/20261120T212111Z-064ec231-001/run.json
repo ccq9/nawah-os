@@ -1,0 +1,34 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261120T212111Z-064ec231-001",
+ "started_at": "2026-11-20T21:21:10+00:00",
+ "finished_at": "2026-11-20T21:21:11+00:00",
+ "source_revision": "064ec2318d34cf5f61b770061ccabfb81df040c3",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M1-NOBS",
+ "commands": [
+  "python3 -I tests/test_m1_nobs.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "44798326793",
+  "run_attempt": 1,
+  "workflow": "mutants",
+  "event": "workflow_dispatch",
+  "sha": "064ec2318d34cf5f61b770061ccabfb81df040c3",
+  "head_sha": "064ec2318d34cf5f61b770061ccabfb81df040c3",
+  "ref": "refs/heads/claude/great-wozniak-gh2ba1"
+ }
+}
