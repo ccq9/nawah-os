@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052735Z-b794c042-002-a"
+    "evidence/20261121T075028Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052735Z-b794c042-001-a"
+    "evidence/20261121T075027Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051345Z-b794c042-001-a",
-    "evidence/20261121T051347Z-b794c042-001-a"
+    "evidence/20261121T073817Z-f681b5d4-001-a",
+    "evidence/20261121T073820Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052735Z-b794c042-002-a"
+    "evidence/20261121T075028Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -356,10 +356,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051350Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a",
-    "evidence/20261121T051427Z-b794c042-001-a",
-    "evidence/20261121T052755Z-b794c042-001-a"
+    "evidence/20261121T073822Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a",
+    "evidence/20261121T073853Z-f681b5d4-001-a",
+    "evidence/20261121T075046Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -429,17 +429,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051432Z-b794c042-001-a",
-    "evidence/20261121T051437Z-b794c042-001-a",
-    "evidence/20261121T051441Z-b794c042-001-a",
-    "evidence/20261121T051446Z-b794c042-001-a",
-    "evidence/20261121T051451Z-b794c042-001-a",
-    "evidence/20261121T051455Z-b794c042-001-a",
-    "evidence/20261121T051500Z-b794c042-001-a",
-    "evidence/20261121T051505Z-b794c042-001-a",
-    "evidence/20261121T051509Z-b794c042-001-a",
-    "evidence/20261121T051514Z-b794c042-001-a",
-    "evidence/20261121T051518Z-b794c042-001-a"
+    "evidence/20261121T073857Z-f681b5d4-001-a",
+    "evidence/20261121T073901Z-f681b5d4-001-a",
+    "evidence/20261121T073905Z-f681b5d4-001-a",
+    "evidence/20261121T073909Z-f681b5d4-001-a",
+    "evidence/20261121T073913Z-f681b5d4-001-a",
+    "evidence/20261121T073917Z-f681b5d4-001-a",
+    "evidence/20261121T073921Z-f681b5d4-001-a",
+    "evidence/20261121T073925Z-f681b5d4-001-a",
+    "evidence/20261121T073929Z-f681b5d4-001-a",
+    "evidence/20261121T073933Z-f681b5d4-001-a",
+    "evidence/20261121T073937Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -490,9 +490,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051523Z-b794c042-001-a",
-    "evidence/20261121T051528Z-b794c042-001-a",
-    "evidence/20261121T051532Z-b794c042-001-a"
+    "evidence/20261121T073941Z-f681b5d4-001-a",
+    "evidence/20261121T073945Z-f681b5d4-001-a",
+    "evidence/20261121T073949Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -555,11 +555,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051537Z-b794c042-001-a",
-    "evidence/20261121T051542Z-b794c042-001-a",
-    "evidence/20261121T051546Z-b794c042-001-a",
-    "evidence/20261121T051551Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T073953Z-f681b5d4-001-a",
+    "evidence/20261121T073957Z-f681b5d4-001-a",
+    "evidence/20261121T074001Z-f681b5d4-001-a",
+    "evidence/20261121T074005Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -636,11 +636,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051556Z-b794c042-001-a",
-    "evidence/20261121T051600Z-b794c042-001-a",
-    "evidence/20261121T051605Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a",
-    "evidence/20261121T051514Z-b794c042-001-a"
+    "evidence/20261121T074009Z-f681b5d4-001-a",
+    "evidence/20261121T074013Z-f681b5d4-001-a",
+    "evidence/20261121T074017Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a",
+    "evidence/20261121T073933Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -704,9 +704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051610Z-b794c042-001-a",
-    "evidence/20261121T051614Z-b794c042-001-a",
-    "evidence/20261121T051619Z-b794c042-001-a"
+    "evidence/20261121T074021Z-f681b5d4-001-a",
+    "evidence/20261121T074025Z-f681b5d4-001-a",
+    "evidence/20261121T074028Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -818,11 +818,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051624Z-b794c042-001-a",
-    "evidence/20261121T051629Z-b794c042-001-a",
-    "evidence/20261121T051633Z-b794c042-001-a",
-    "evidence/20261121T051638Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074033Z-f681b5d4-001-a",
+    "evidence/20261121T074037Z-f681b5d4-001-a",
+    "evidence/20261121T074041Z-f681b5d4-001-a",
+    "evidence/20261121T074045Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -883,8 +883,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052727Z-b794c042-001-a",
-    "evidence/20261121T052728Z-b794c042-001-a"
+    "evidence/20261121T075019Z-f681b5d4-001-a",
+    "evidence/20261121T075021Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -950,11 +950,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051643Z-b794c042-001-a",
-    "evidence/20261121T051647Z-b794c042-001-a",
-    "evidence/20261121T051652Z-b794c042-001-a",
-    "evidence/20261121T051701Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074049Z-f681b5d4-001-a",
+    "evidence/20261121T074053Z-f681b5d4-001-a",
+    "evidence/20261121T074057Z-f681b5d4-001-a",
+    "evidence/20261121T074105Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1024,11 +1024,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051706Z-b794c042-001-a",
-    "evidence/20261121T051710Z-b794c042-001-a",
-    "evidence/20261121T051720Z-b794c042-001-a",
-    "evidence/20261121T051724Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074109Z-f681b5d4-001-a",
+    "evidence/20261121T074112Z-f681b5d4-001-a",
+    "evidence/20261121T074120Z-f681b5d4-001-a",
+    "evidence/20261121T074124Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1097,14 +1097,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051729Z-b794c042-001-a",
-    "evidence/20261121T051734Z-b794c042-001-a",
-    "evidence/20261121T051743Z-b794c042-001-a",
-    "evidence/20261121T051748Z-b794c042-001-a",
-    "evidence/20261121T051752Z-b794c042-001-a",
-    "evidence/20261121T051757Z-b794c042-001-a",
-    "evidence/20261121T051801Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074128Z-f681b5d4-001-a",
+    "evidence/20261121T074132Z-f681b5d4-001-a",
+    "evidence/20261121T074140Z-f681b5d4-001-a",
+    "evidence/20261121T074144Z-f681b5d4-001-a",
+    "evidence/20261121T074148Z-f681b5d4-001-a",
+    "evidence/20261121T074152Z-f681b5d4-001-a",
+    "evidence/20261121T074156Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1174,10 +1174,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051811Z-b794c042-001-a",
-    "evidence/20261121T051815Z-b794c042-001-a",
-    "evidence/20261121T051820Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074204Z-f681b5d4-001-a",
+    "evidence/20261121T074208Z-f681b5d4-001-a",
+    "evidence/20261121T074212Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1256,14 +1256,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051825Z-b794c042-001-a",
-    "evidence/20261121T051834Z-b794c042-001-a",
-    "evidence/20261121T051838Z-b794c042-001-a",
-    "evidence/20261121T051845Z-b794c042-001-a",
-    "evidence/20261121T051849Z-b794c042-001-a",
-    "evidence/20261121T051859Z-b794c042-001-a",
-    "evidence/20261121T052756Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074216Z-f681b5d4-001-a",
+    "evidence/20261121T074224Z-f681b5d4-001-a",
+    "evidence/20261121T074228Z-f681b5d4-001-a",
+    "evidence/20261121T074233Z-f681b5d4-001-a",
+    "evidence/20261121T074237Z-f681b5d4-001-a",
+    "evidence/20261121T074245Z-f681b5d4-001-a",
+    "evidence/20261121T075047Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1331,10 +1331,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052026Z-b794c042-001-a",
-    "evidence/20261121T052030Z-b794c042-001-a",
-    "evidence/20261121T052035Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074400Z-f681b5d4-001-a",
+    "evidence/20261121T074404Z-f681b5d4-001-a",
+    "evidence/20261121T074408Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1407,12 +1407,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052040Z-b794c042-001-a",
-    "evidence/20261121T052045Z-b794c042-001-a",
-    "evidence/20261121T052049Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a",
-    "evidence/20261121T051706Z-b794c042-001-a",
-    "evidence/20261121T051720Z-b794c042-001-a"
+    "evidence/20261121T074412Z-f681b5d4-001-a",
+    "evidence/20261121T074416Z-f681b5d4-001-a",
+    "evidence/20261121T074420Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a",
+    "evidence/20261121T074109Z-f681b5d4-001-a",
+    "evidence/20261121T074120Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1469,10 +1469,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051657Z-b794c042-001-a",
+    "evidence/20261121T074101Z-f681b5d4-001-a",
     "evidence/20261120T074842Z-74035182-001",
-    "evidence/20261121T051715Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074116Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1542,9 +1542,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052054Z-b794c042-001-a",
-    "evidence/20261121T052059Z-b794c042-001-a",
-    "evidence/20261121T052104Z-b794c042-001-a"
+    "evidence/20261121T074424Z-f681b5d4-001-a",
+    "evidence/20261121T074429Z-f681b5d4-001-a",
+    "evidence/20261121T074433Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1609,10 +1609,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052109Z-b794c042-001-a",
-    "evidence/20261121T052114Z-b794c042-001-a",
-    "evidence/20261121T052118Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074437Z-f681b5d4-001-a",
+    "evidence/20261121T074441Z-f681b5d4-001-a",
+    "evidence/20261121T074445Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1685,10 +1685,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052821Z-b794c042-001-a",
-    "evidence/20261121T052128Z-b794c042-001-a",
-    "evidence/20261121T052133Z-b794c042-001-a",
-    "evidence/20261121T052141Z-b794c042-001-a"
+    "evidence/20261121T075108Z-f681b5d4-001-a",
+    "evidence/20261121T074454Z-f681b5d4-001-a",
+    "evidence/20261121T074458Z-f681b5d4-001-a",
+    "evidence/20261121T074505Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1748,12 +1748,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052146Z-b794c042-001-a",
-    "evidence/20261121T052223Z-b794c042-001-a",
-    "evidence/20261121T052151Z-b794c042-001-a",
-    "evidence/20261121T052157Z-b794c042-001-a",
-    "evidence/20261121T052207Z-b794c042-001-a",
-    "evidence/20261121T052217Z-b794c042-001-a"
+    "evidence/20261121T074509Z-f681b5d4-001-a",
+    "evidence/20261121T074541Z-f681b5d4-001-a",
+    "evidence/20261121T074514Z-f681b5d4-001-a",
+    "evidence/20261121T074518Z-f681b5d4-001-a",
+    "evidence/20261121T074527Z-f681b5d4-001-a",
+    "evidence/20261121T074536Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1835,10 +1835,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052230Z-b794c042-001-a",
-    "evidence/20261121T052235Z-b794c042-001-a",
-    "evidence/20261121T052240Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074547Z-f681b5d4-001-a",
+    "evidence/20261121T074551Z-f681b5d4-001-a",
+    "evidence/20261121T074555Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1898,10 +1898,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052246Z-b794c042-001-a",
-    "evidence/20261121T052251Z-b794c042-001-a",
-    "evidence/20261121T052256Z-b794c042-001-a",
-    "evidence/20261121T052301Z-b794c042-001-a"
+    "evidence/20261121T074600Z-f681b5d4-001-a",
+    "evidence/20261121T074605Z-f681b5d4-001-a",
+    "evidence/20261121T074609Z-f681b5d4-001-a",
+    "evidence/20261121T074614Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -1952,8 +1952,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052307Z-b794c042-001-a",
-    "evidence/20261121T052312Z-b794c042-001-a"
+    "evidence/20261121T074619Z-f681b5d4-001-a",
+    "evidence/20261121T074624Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -2036,10 +2036,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052324Z-b794c042-001-a",
-    "evidence/20261121T052331Z-b794c042-001-a",
-    "evidence/20261121T052827Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a"
+    "evidence/20261121T074635Z-f681b5d4-001-a",
+    "evidence/20261121T074640Z-f681b5d4-001-a",
+    "evidence/20261121T075112Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -2100,11 +2100,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052337Z-b794c042-001-a",
+    "evidence/20261121T074646Z-f681b5d4-001-a",
     "evidence/20261120T080927Z-74035182-001",
-    "evidence/20261121T052324Z-b794c042-001-a",
-    "evidence/20261121T052141Z-b794c042-001-a",
-    "evidence/20261121T052059Z-b794c042-001-a"
+    "evidence/20261121T074635Z-f681b5d4-001-a",
+    "evidence/20261121T074505Z-f681b5d4-001-a",
+    "evidence/20261121T074429Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -2179,7 +2179,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051329Z-b794c042-001-b"
+    "evidence/20261121T073844Z-f681b5d4-001-b"
    ],
    "blocker": null
   },
@@ -2253,9 +2253,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051337Z-b794c042-001-b",
-    "evidence/20261121T051351Z-b794c042-001-b",
-    "evidence/20261121T052832Z-b794c042-001-a"
+    "evidence/20261121T073852Z-f681b5d4-001-b",
+    "evidence/20261121T073906Z-f681b5d4-001-b",
+    "evidence/20261121T075117Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -2328,10 +2328,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051357Z-b794c042-001-b",
-    "evidence/20261121T051406Z-b794c042-001-b",
-    "evidence/20261121T051420Z-b794c042-001-b",
-    "evidence/20261121T052949Z-b794c042-001-a"
+    "evidence/20261121T073913Z-f681b5d4-001-b",
+    "evidence/20261121T073921Z-f681b5d4-001-b",
+    "evidence/20261121T073935Z-f681b5d4-001-b",
+    "evidence/20261121T075229Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -2414,10 +2414,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052921Z-b794c042-001-a",
-    "evidence/20261121T052926Z-b794c042-001-a",
-    "evidence/20261121T052933Z-b794c042-001-a",
-    "evidence/20261121T051443Z-b794c042-001-b"
+    "evidence/20261121T075207Z-f681b5d4-001-a",
+    "evidence/20261121T075210Z-f681b5d4-001-a",
+    "evidence/20261121T075216Z-f681b5d4-001-a",
+    "evidence/20261121T073957Z-f681b5d4-001-b"
    ],
    "blocker": null
   },
@@ -2488,10 +2488,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051454Z-b794c042-001-b",
-    "evidence/20261121T051513Z-b794c042-001-b",
-    "evidence/20261121T052936Z-b794c042-001-a",
-    "evidence/20261121T052948Z-b794c042-001-a"
+    "evidence/20261121T074009Z-f681b5d4-001-b",
+    "evidence/20261121T074028Z-f681b5d4-001-b",
+    "evidence/20261121T075218Z-f681b5d4-001-a",
+    "evidence/20261121T075228Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -2582,9 +2582,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051614Z-b794c042-001-b",
-    "evidence/20261121T051548Z-b794c042-001-b",
-    "evidence/20261121T051522Z-b794c042-001-b"
+    "evidence/20261121T074129Z-f681b5d4-001-b",
+    "evidence/20261121T074103Z-f681b5d4-001-b",
+    "evidence/20261121T074037Z-f681b5d4-001-b"
    ],
    "blocker": null
   },
@@ -2651,9 +2651,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052326Z-b794c042-001-b",
-    "evidence/20261121T052334Z-b794c042-001-b",
-    "evidence/20261121T052936Z-b794c042-001-a"
+    "evidence/20261121T074845Z-f681b5d4-001-b",
+    "evidence/20261121T074853Z-f681b5d4-001-b",
+    "evidence/20261121T075218Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -2708,14 +2708,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052351Z-b794c042-001-b",
-    "evidence/20261121T052355Z-b794c042-001-b",
-    "evidence/20261121T052400Z-b794c042-001-b",
-    "evidence/20261121T051817Z-b794c042-001-b",
-    "evidence/20261121T052311Z-b794c042-001-b",
-    "evidence/20261121T051844Z-b794c042-001-b",
-    "evidence/20261121T051910Z-b794c042-001-b",
-    "evidence/20261121T051940Z-b794c042-001-b",
+    "evidence/20261121T074910Z-f681b5d4-001-b",
+    "evidence/20261121T074915Z-f681b5d4-001-b",
+    "evidence/20261121T074919Z-f681b5d4-001-b",
+    "evidence/20261121T074334Z-f681b5d4-001-b",
+    "evidence/20261121T074830Z-f681b5d4-001-b",
+    "evidence/20261121T074401Z-f681b5d4-001-b",
+    "evidence/20261121T074429Z-f681b5d4-001-b",
+    "evidence/20261121T074458Z-f681b5d4-001-b",
     "evidence/20261120T080927Z-74035182-001"
    ],
    "blocker": null
@@ -2757,7 +2757,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052039Z-b794c042-001-b"
+    "evidence/20261121T074558Z-f681b5d4-001-b"
    ],
    "blocker": null
   },
@@ -2805,15 +2805,15 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051329Z-b794c042-001-b",
-    "evidence/20261121T051357Z-b794c042-001-b",
-    "evidence/20261121T051406Z-b794c042-001-b",
-    "evidence/20261121T051420Z-b794c042-001-b",
-    "evidence/20261121T051433Z-b794c042-001-b",
-    "evidence/20261121T052326Z-b794c042-001-b",
-    "evidence/20261121T052334Z-b794c042-001-b",
-    "evidence/20261121T052936Z-b794c042-001-a",
-    "evidence/20261121T052949Z-b794c042-001-a"
+    "evidence/20261121T073844Z-f681b5d4-001-b",
+    "evidence/20261121T073913Z-f681b5d4-001-b",
+    "evidence/20261121T073921Z-f681b5d4-001-b",
+    "evidence/20261121T073935Z-f681b5d4-001-b",
+    "evidence/20261121T073947Z-f681b5d4-001-b",
+    "evidence/20261121T074845Z-f681b5d4-001-b",
+    "evidence/20261121T074853Z-f681b5d4-001-b",
+    "evidence/20261121T075218Z-f681b5d4-001-a",
+    "evidence/20261121T075229Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -2832,23 +2832,23 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052021Z-b794c042-001-b",
-    "evidence/20261121T051420Z-b794c042-001-b",
-    "evidence/20261121T051548Z-b794c042-001-b",
-    "evidence/20261121T051614Z-b794c042-001-b",
-    "evidence/20261121T051817Z-b794c042-001-b",
-    "evidence/20261121T052926Z-b794c042-001-a",
-    "evidence/20261121T052326Z-b794c042-001-b",
-    "evidence/20261121T051337Z-b794c042-001-b",
-    "evidence/20261121T051433Z-b794c042-001-b",
-    "evidence/20261121T052400Z-b794c042-001-b",
-    "evidence/20261121T051414Z-b794c042-001-b",
-    "evidence/20261121T051800Z-b794c042-001-b",
-    "evidence/20261121T051733Z-b794c042-001-b",
-    "evidence/20261121T051657Z-b794c042-001-b",
-    "evidence/20261121T051346Z-b794c042-001-b",
-    "evidence/20261121T051641Z-b794c042-001-b",
-    "evidence/20261121T051438Z-b794c042-001-b"
+    "evidence/20261121T074540Z-f681b5d4-001-b",
+    "evidence/20261121T073935Z-f681b5d4-001-b",
+    "evidence/20261121T074103Z-f681b5d4-001-b",
+    "evidence/20261121T074129Z-f681b5d4-001-b",
+    "evidence/20261121T074334Z-f681b5d4-001-b",
+    "evidence/20261121T075210Z-f681b5d4-001-a",
+    "evidence/20261121T074845Z-f681b5d4-001-b",
+    "evidence/20261121T073852Z-f681b5d4-001-b",
+    "evidence/20261121T073947Z-f681b5d4-001-b",
+    "evidence/20261121T074919Z-f681b5d4-001-b",
+    "evidence/20261121T073929Z-f681b5d4-001-b",
+    "evidence/20261121T074316Z-f681b5d4-001-b",
+    "evidence/20261121T074249Z-f681b5d4-001-b",
+    "evidence/20261121T074213Z-f681b5d4-001-b",
+    "evidence/20261121T073901Z-f681b5d4-001-b",
+    "evidence/20261121T074157Z-f681b5d4-001-b",
+    "evidence/20261121T073952Z-f681b5d4-001-b"
    ],
    "blocker": null,
    "id": "WP-43",
@@ -2923,9 +2923,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052017Z-b794c042-001-b",
-    "evidence/20261121T051548Z-b794c042-001-b",
-    "evidence/20261121T052324Z-b794c042-001-a"
+    "evidence/20261121T074535Z-f681b5d4-001-b",
+    "evidence/20261121T074103Z-f681b5d4-001-b",
+    "evidence/20261121T074635Z-f681b5d4-001-a"
    ],
    "blocker": null,
    "id": "WP-44",
@@ -3080,14 +3080,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052342Z-b794c042-001-a",
-    "evidence/20261121T052950Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a",
-    "evidence/20261121T051427Z-b794c042-001-a",
-    "evidence/20261121T052755Z-b794c042-001-a",
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T052744Z-b794c042-002-a",
-    "evidence/20261121T052832Z-b794c042-001-a"
+    "evidence/20261121T074651Z-f681b5d4-001-a",
+    "evidence/20261121T075230Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a",
+    "evidence/20261121T073853Z-f681b5d4-001-a",
+    "evidence/20261121T075046Z-f681b5d4-001-a",
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T075036Z-f681b5d4-001-a",
+    "evidence/20261121T075117Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -3179,12 +3179,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052558Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a",
-    "evidence/20261121T052109Z-b794c042-001-a",
-    "evidence/20261121T052114Z-b794c042-001-a",
-    "evidence/20261121T052118Z-b794c042-001-a",
-    "evidence/20261121T051337Z-b794c042-001-b"
+    "evidence/20261121T074858Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a",
+    "evidence/20261121T074437Z-f681b5d4-001-a",
+    "evidence/20261121T074441Z-f681b5d4-001-a",
+    "evidence/20261121T074445Z-f681b5d4-001-a",
+    "evidence/20261121T073852Z-f681b5d4-001-b"
    ],
    "blocker": null
   },
@@ -3388,10 +3388,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052950Z-b794c042-002-a",
-    "evidence/20261121T052936Z-b794c042-001-a",
-    "evidence/20261121T051454Z-b794c042-001-b",
-    "evidence/20261121T052334Z-b794c042-001-b"
+    "evidence/20261121T075230Z-f681b5d4-002-a",
+    "evidence/20261121T075218Z-f681b5d4-001-a",
+    "evidence/20261121T074009Z-f681b5d4-001-b",
+    "evidence/20261121T074853Z-f681b5d4-001-b"
    ],
    "blocker": null
   },
@@ -3462,7 +3462,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052951Z-b794c042-002-a"
+    "evidence/20261121T075231Z-f681b5d4-002-a"
    ],
    "blocker": null
   },
@@ -4188,16 +4188,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051657Z-b794c042-001-b",
-    "evidence/20261121T052553Z-b794c042-001-a",
-    "evidence/20261121T052342Z-b794c042-001-a",
-    "evidence/20261121T052517Z-b794c042-001-a",
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T051522Z-b794c042-001-b",
-    "evidence/20261121T051614Z-b794c042-001-b",
-    "evidence/20261121T051817Z-b794c042-001-b",
-    "evidence/20261121T051940Z-b794c042-001-b",
-    "evidence/20261121T052400Z-b794c042-001-b"
+    "evidence/20261121T074213Z-f681b5d4-001-b",
+    "evidence/20261121T074853Z-f681b5d4-001-a",
+    "evidence/20261121T074651Z-f681b5d4-001-a",
+    "evidence/20261121T074821Z-f681b5d4-001-a",
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T074037Z-f681b5d4-001-b",
+    "evidence/20261121T074129Z-f681b5d4-001-b",
+    "evidence/20261121T074334Z-f681b5d4-001-b",
+    "evidence/20261121T074458Z-f681b5d4-001-b",
+    "evidence/20261121T074919Z-f681b5d4-001-b"
    ],
    "blocker": null
   },
@@ -4258,10 +4258,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052735Z-b794c042-001-a",
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T052744Z-b794c042-002-a",
-    "evidence/20261121T052752Z-b794c042-001-a"
+    "evidence/20261121T075027Z-f681b5d4-001-a",
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T075036Z-f681b5d4-001-a",
+    "evidence/20261121T075043Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -4338,14 +4338,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052517Z-b794c042-001-a",
-    "evidence/20261121T051357Z-b794c042-001-b",
-    "evidence/20261121T051406Z-b794c042-001-b",
-    "evidence/20261121T051454Z-b794c042-001-b",
-    "evidence/20261121T052326Z-b794c042-001-b",
-    "evidence/20261121T052342Z-b794c042-001-a",
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074821Z-f681b5d4-001-a",
+    "evidence/20261121T073913Z-f681b5d4-001-b",
+    "evidence/20261121T073921Z-f681b5d4-001-b",
+    "evidence/20261121T074009Z-f681b5d4-001-b",
+    "evidence/20261121T074845Z-f681b5d4-001-b",
+    "evidence/20261121T074651Z-f681b5d4-001-a",
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -4420,11 +4420,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052528Z-b794c042-001-a",
-    "evidence/20261121T052533Z-b794c042-001-a",
-    "evidence/20261121T052950Z-b794c042-001-a",
-    "evidence/20261121T052342Z-b794c042-001-a",
-    "evidence/20261121T052109Z-b794c042-001-a"
+    "evidence/20261121T074830Z-f681b5d4-001-a",
+    "evidence/20261121T074834Z-f681b5d4-001-a",
+    "evidence/20261121T075230Z-f681b5d4-001-a",
+    "evidence/20261121T074651Z-f681b5d4-001-a",
+    "evidence/20261121T074437Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -4724,10 +4724,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052538Z-b794c042-001-a",
-    "evidence/20261121T052141Z-b794c042-001-a",
-    "evidence/20261121T052133Z-b794c042-001-a",
-    "evidence/20261121T052039Z-b794c042-001-b"
+    "evidence/20261121T074838Z-f681b5d4-001-a",
+    "evidence/20261121T074505Z-f681b5d4-001-a",
+    "evidence/20261121T074458Z-f681b5d4-001-a",
+    "evidence/20261121T074558Z-f681b5d4-001-b"
    ],
    "blocker": null
   },
@@ -4779,8 +4779,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T052735Z-b794c042-001-a"
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T075027Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -4947,9 +4947,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052523Z-b794c042-001-a",
-    "evidence/20261121T052342Z-b794c042-001-a",
-    "evidence/20261121T052517Z-b794c042-001-a"
+    "evidence/20261121T074826Z-f681b5d4-001-a",
+    "evidence/20261121T074651Z-f681b5d4-001-a",
+    "evidence/20261121T074821Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -5026,9 +5026,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052603Z-b794c042-001-a",
-    "evidence/20261121T052223Z-b794c042-001-a",
-    "evidence/20261121T052017Z-b794c042-001-b"
+    "evidence/20261121T074902Z-f681b5d4-001-a",
+    "evidence/20261121T074541Z-f681b5d4-001-a",
+    "evidence/20261121T074535Z-f681b5d4-001-b"
    ],
    "blocker": null
   },
@@ -5142,8 +5142,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052951Z-b794c042-001-a",
-    "evidence/20261121T052950Z-b794c042-002-a"
+    "evidence/20261121T075231Z-f681b5d4-001-a",
+    "evidence/20261121T075230Z-f681b5d4-002-a"
    ],
    "blocker": null
   },
@@ -5206,9 +5206,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052735Z-b794c042-001-a",
-    "evidence/20261121T052752Z-b794c042-001-a",
-    "evidence/20261121T052736Z-b794c042-001-a"
+    "evidence/20261121T075027Z-f681b5d4-001-a",
+    "evidence/20261121T075043Z-f681b5d4-001-a",
+    "evidence/20261121T075029Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -5287,10 +5287,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052342Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a",
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T052832Z-b794c042-001-a"
+    "evidence/20261121T074651Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a",
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T075117Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -5365,9 +5365,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052735Z-b794c042-001-a",
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T052752Z-b794c042-001-a"
+    "evidence/20261121T075027Z-f681b5d4-001-a",
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T075043Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -5449,10 +5449,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052433Z-b794c042-001-a",
-    "evidence/20261121T052342Z-b794c042-001-a",
-    "evidence/20261121T051423Z-b794c042-001-a",
-    "evidence/20261121T052832Z-b794c042-001-a"
+    "evidence/20261121T074739Z-f681b5d4-001-a",
+    "evidence/20261121T074651Z-f681b5d4-001-a",
+    "evidence/20261121T073849Z-f681b5d4-001-a",
+    "evidence/20261121T075117Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -5658,9 +5658,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T052735Z-b794c042-001-a",
-    "evidence/20261121T052752Z-b794c042-001-a"
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T075027Z-f681b5d4-001-a",
+    "evidence/20261121T075043Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -5777,7 +5777,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -5824,7 +5824,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052736Z-b794c042-001-a"
+    "evidence/20261121T075029Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -5883,7 +5883,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052735Z-b794c042-001-a"
+    "evidence/20261121T075027Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -5988,7 +5988,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052936Z-b794c042-001-a"
+    "evidence/20261121T075218Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -6057,13 +6057,13 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052736Z-b794c042-001-a",
+    "evidence/20261121T075029Z-f681b5d4-001-a",
     "evidence/20261120T072013Z-74035182-001",
     "evidence/20261120T074842Z-74035182-001",
     "evidence/20261120T080927Z-74035182-001",
     "evidence/20261120T083650Z-74035182-001",
-    "evidence/20261121T052744Z-b794c042-002-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T075036Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -6125,9 +6125,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T052735Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T075027Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -6200,9 +6200,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052326Z-b794c042-001-b",
-    "evidence/20261121T051805Z-b794c042-001-b",
-    "evidence/20261121T051810Z-b794c042-001-b"
+    "evidence/20261121T074845Z-f681b5d4-001-b",
+    "evidence/20261121T074321Z-f681b5d4-001-b",
+    "evidence/20261121T074328Z-f681b5d4-001-b"
    ],
    "blocker": null
   },
@@ -6264,8 +6264,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052744Z-b794c042-002-a",
-    "evidence/20261121T052752Z-b794c042-001-a"
+    "evidence/20261121T075036Z-f681b5d4-001-a",
+    "evidence/20261121T075043Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -6341,8 +6341,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052433Z-b794c042-001-a",
-    "evidence/20261121T052512Z-b794c042-001-a"
+    "evidence/20261121T074739Z-f681b5d4-001-a",
+    "evidence/20261121T074816Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -6419,7 +6419,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052952Z-b794c042-001-a"
+    "evidence/20261121T075232Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -6506,9 +6506,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052608Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074906Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -6595,11 +6595,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052633Z-b794c042-001-a",
-    "evidence/20261121T052613Z-b794c042-001-a",
-    "evidence/20261121T052625Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074929Z-f681b5d4-001-a",
+    "evidence/20261121T074910Z-f681b5d4-001-a",
+    "evidence/20261121T074921Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -6710,9 +6710,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051829Z-b794c042-001-a",
-    "evidence/20261121T051825Z-b794c042-001-a",
-    "evidence/20261121T051838Z-b794c042-001-a"
+    "evidence/20261121T074220Z-f681b5d4-001-a",
+    "evidence/20261121T074216Z-f681b5d4-001-a",
+    "evidence/20261121T074228Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -6791,12 +6791,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051912Z-b794c042-001-a",
-    "evidence/20261121T051906Z-b794c042-001-a",
-    "evidence/20261121T051849Z-b794c042-001-a",
-    "evidence/20261121T051854Z-b794c042-001-a",
-    "evidence/20261121T051859Z-b794c042-001-a",
-    "evidence/20261121T052756Z-b794c042-001-a"
+    "evidence/20261121T074256Z-f681b5d4-001-a",
+    "evidence/20261121T074251Z-f681b5d4-001-a",
+    "evidence/20261121T074237Z-f681b5d4-001-a",
+    "evidence/20261121T074241Z-f681b5d4-001-a",
+    "evidence/20261121T074245Z-f681b5d4-001-a",
+    "evidence/20261121T075047Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -6879,10 +6879,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052016Z-b794c042-001-a",
-    "evidence/20261121T051845Z-b794c042-001-a",
-    "evidence/20261121T052756Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074352Z-f681b5d4-001-a",
+    "evidence/20261121T074233Z-f681b5d4-001-a",
+    "evidence/20261121T075047Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -6955,9 +6955,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052157Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074518Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -7032,12 +7032,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052256Z-b794c042-001-a",
-    "evidence/20261121T052307Z-b794c042-001-a",
-    "evidence/20261121T052319Z-b794c042-001-a",
-    "evidence/20261121T052312Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074609Z-f681b5d4-001-a",
+    "evidence/20261121T074619Z-f681b5d4-001-a",
+    "evidence/20261121T074630Z-f681b5d4-001-a",
+    "evidence/20261121T074624Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -7530,12 +7530,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051829Z-b794c042-001-a",
-    "evidence/20261121T051859Z-b794c042-001-a",
-    "evidence/20261121T051906Z-b794c042-001-a",
-    "evidence/20261121T051912Z-b794c042-001-a",
-    "evidence/20261121T052010Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074220Z-f681b5d4-001-a",
+    "evidence/20261121T074245Z-f681b5d4-001-a",
+    "evidence/20261121T074251Z-f681b5d4-001-a",
+    "evidence/20261121T074256Z-f681b5d4-001-a",
+    "evidence/20261121T074346Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -7609,14 +7609,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051932Z-b794c042-001-a",
-    "evidence/20261121T051849Z-b794c042-001-a",
-    "evidence/20261121T051854Z-b794c042-001-a",
-    "evidence/20261121T051859Z-b794c042-001-a",
-    "evidence/20261121T051906Z-b794c042-001-a",
-    "evidence/20261121T051912Z-b794c042-001-a",
-    "evidence/20261121T052756Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074313Z-f681b5d4-001-a",
+    "evidence/20261121T074237Z-f681b5d4-001-a",
+    "evidence/20261121T074241Z-f681b5d4-001-a",
+    "evidence/20261121T074245Z-f681b5d4-001-a",
+    "evidence/20261121T074251Z-f681b5d4-001-a",
+    "evidence/20261121T074256Z-f681b5d4-001-a",
+    "evidence/20261121T075047Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -7725,11 +7725,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051932Z-b794c042-001-a",
-    "evidence/20261121T051906Z-b794c042-001-a",
-    "evidence/20261121T051912Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052005Z-b794c042-001-a"
+    "evidence/20261121T074313Z-f681b5d4-001-a",
+    "evidence/20261121T074251Z-f681b5d4-001-a",
+    "evidence/20261121T074256Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T074342Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -7798,10 +7798,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052005Z-b794c042-001-a",
-    "evidence/20261121T051932Z-b794c042-001-a",
-    "evidence/20261121T051849Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074342Z-f681b5d4-001-a",
+    "evidence/20261121T074313Z-f681b5d4-001-a",
+    "evidence/20261121T074237Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -8000,12 +8000,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051925Z-b794c042-001-a",
-    "evidence/20261121T051919Z-b794c042-001-a",
-    "evidence/20261121T051932Z-b794c042-001-a",
-    "evidence/20261121T051906Z-b794c042-001-a",
-    "evidence/20261121T051912Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074308Z-f681b5d4-001-a",
+    "evidence/20261121T074302Z-f681b5d4-001-a",
+    "evidence/20261121T074313Z-f681b5d4-001-a",
+    "evidence/20261121T074251Z-f681b5d4-001-a",
+    "evidence/20261121T074256Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -8068,9 +8068,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051939Z-b794c042-001-a",
-    "evidence/20261121T051932Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074319Z-f681b5d4-001-a",
+    "evidence/20261121T074313Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -8195,9 +8195,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051946Z-b794c042-001-a",
-    "evidence/20261121T051932Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074325Z-f681b5d4-001-a",
+    "evidence/20261121T074313Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -8266,10 +8266,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051953Z-b794c042-001-a",
-    "evidence/20261121T051946Z-b794c042-001-a",
-    "evidence/20261121T051919Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074331Z-f681b5d4-001-a",
+    "evidence/20261121T074325Z-f681b5d4-001-a",
+    "evidence/20261121T074302Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -8509,10 +8509,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051946Z-b794c042-001-a",
-    "evidence/20261121T051953Z-b794c042-001-a",
-    "evidence/20261121T052000Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074325Z-f681b5d4-001-a",
+    "evidence/20261121T074331Z-f681b5d4-001-a",
+    "evidence/20261121T074338Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -8734,12 +8734,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052756Z-b794c042-001-a",
-    "evidence/20261121T051932Z-b794c042-001-a",
-    "evidence/20261121T051906Z-b794c042-001-a",
-    "evidence/20261121T051912Z-b794c042-001-a",
-    "evidence/20261121T052010Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T075047Z-f681b5d4-001-a",
+    "evidence/20261121T074313Z-f681b5d4-001-a",
+    "evidence/20261121T074251Z-f681b5d4-001-a",
+    "evidence/20261121T074256Z-f681b5d4-001-a",
+    "evidence/20261121T074346Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -8813,12 +8813,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052756Z-b794c042-001-a",
-    "evidence/20261121T051932Z-b794c042-001-a",
-    "evidence/20261121T051906Z-b794c042-001-a",
-    "evidence/20261121T051912Z-b794c042-001-a",
-    "evidence/20261121T052010Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T075047Z-f681b5d4-001-a",
+    "evidence/20261121T074313Z-f681b5d4-001-a",
+    "evidence/20261121T074251Z-f681b5d4-001-a",
+    "evidence/20261121T074256Z-f681b5d4-001-a",
+    "evidence/20261121T074346Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -9008,8 +9008,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052744Z-b794c042-002-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T075036Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -9261,9 +9261,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052021Z-b794c042-001-a",
-    "evidence/20261121T051845Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074355Z-f681b5d4-001-a",
+    "evidence/20261121T074233Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null,
    "id": "WP-147",
@@ -9390,9 +9390,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T051738Z-b794c042-001-a",
-    "evidence/20261121T051734Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T074136Z-f681b5d4-001-a",
+    "evidence/20261121T074132Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null,
    "id": "WP-149",
@@ -9557,7 +9557,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052752Z-b794c042-001-a"
+    "evidence/20261121T075043Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -9620,10 +9620,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a",
-    "evidence/20261121T052752Z-b794c042-001-a"
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a",
+    "evidence/20261121T075043Z-f681b5d4-001-a"
    ],
    "blocker": null
   },
@@ -9680,9 +9680,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052736Z-b794c042-001-a",
-    "evidence/20261121T052744Z-b794c042-002-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T075029Z-f681b5d4-001-a",
+    "evidence/20261121T075036Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null
   },
@@ -9788,10 +9788,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052118Z-b794c042-001-a",
-    "evidence/20261121T052123Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074445Z-f681b5d4-001-a",
+    "evidence/20261121T074449Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null,
    "id": "WP-156",
@@ -9857,11 +9857,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052157Z-b794c042-001-a",
-    "evidence/20261121T052202Z-b794c042-001-a",
-    "evidence/20261121T052146Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074518Z-f681b5d4-001-a",
+    "evidence/20261121T074523Z-f681b5d4-001-a",
+    "evidence/20261121T074509Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null,
    "id": "WP-157",
@@ -9955,12 +9955,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052207Z-b794c042-001-a",
-    "evidence/20261121T052212Z-b794c042-001-a",
-    "evidence/20261121T052202Z-b794c042-001-a",
-    "evidence/20261121T052157Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074527Z-f681b5d4-001-a",
+    "evidence/20261121T074532Z-f681b5d4-001-a",
+    "evidence/20261121T074523Z-f681b5d4-001-a",
+    "evidence/20261121T074518Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -10104,10 +10104,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052613Z-b794c042-001-a",
-    "evidence/20261121T052608Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074910Z-f681b5d4-001-a",
+    "evidence/20261121T074906Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null,
    "test_ids": [
@@ -10190,11 +10190,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052625Z-b794c042-001-a",
-    "evidence/20261121T052613Z-b794c042-001-a",
-    "evidence/20261121T052608Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074921Z-f681b5d4-001-a",
+    "evidence/20261121T074910Z-f681b5d4-001-a",
+    "evidence/20261121T074906Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null,
    "test_ids": [
@@ -10303,10 +10303,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052613Z-b794c042-001-a",
-    "evidence/20261121T052715Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T074910Z-f681b5d4-001-a",
+    "evidence/20261121T075009Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -10385,11 +10385,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052708Z-b794c042-001-a",
-    "evidence/20261121T052558Z-b794c042-001-a",
-    "evidence/20261121T052613Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a"
+    "evidence/20261121T075003Z-f681b5d4-001-a",
+    "evidence/20261121T074858Z-f681b5d4-001-a",
+    "evidence/20261121T074910Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -10445,9 +10445,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052735Z-b794c042-001-a",
-    "evidence/20261121T052744Z-b794c042-002-a",
-    "evidence/20261121T053004Z-b794c042-001-g"
+    "evidence/20261121T075027Z-f681b5d4-001-a",
+    "evidence/20261121T075036Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g"
    ],
    "blocker": null,
    "actions": [
@@ -10569,10 +10569,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052639Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a",
-    "evidence/20261121T051522Z-b794c042-001-b"
+    "evidence/20261121T074934Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a",
+    "evidence/20261121T074037Z-f681b5d4-001-b"
    ],
    "blocker": null,
    "actions": [
@@ -10706,16 +10706,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T052721Z-b794c042-001-a",
-    "evidence/20261121T052633Z-b794c042-001-a",
-    "evidence/20261121T052639Z-b794c042-001-a",
-    "evidence/20261121T052613Z-b794c042-001-a",
-    "evidence/20261121T052625Z-b794c042-001-a",
-    "evidence/20261121T052608Z-b794c042-001-a",
-    "evidence/20261121T053004Z-b794c042-001-g",
-    "evidence/20261121T052744Z-b794c042-002-a",
-    "evidence/20261121T052708Z-b794c042-001-a",
-    "evidence/20261121T052715Z-b794c042-001-a"
+    "evidence/20261121T075014Z-f681b5d4-001-a",
+    "evidence/20261121T074929Z-f681b5d4-001-a",
+    "evidence/20261121T074934Z-f681b5d4-001-a",
+    "evidence/20261121T074910Z-f681b5d4-001-a",
+    "evidence/20261121T074921Z-f681b5d4-001-a",
+    "evidence/20261121T074906Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a",
+    "evidence/20261121T075003Z-f681b5d4-001-a",
+    "evidence/20261121T075009Z-f681b5d4-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -10879,12 +10879,22 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
-   "status": "active",
+   "status": "done",
    "status_history": [
     "planned",
-    "active"
+    "active",
+    "done"
    ],
-   "evidence_refs": [],
+   "evidence_refs": [
+    "evidence/20261121T075014Z-f681b5d4-001-a",
+    "evidence/20261121T075009Z-f681b5d4-001-a",
+    "evidence/20261121T075003Z-f681b5d4-001-a",
+    "evidence/20261121T074929Z-f681b5d4-001-a",
+    "evidence/20261121T074921Z-f681b5d4-001-a",
+    "evidence/20261121T074910Z-f681b5d4-001-a",
+    "evidence/20261121T075355Z-f681b5d4-001-g",
+    "evidence/20261121T075036Z-f681b5d4-001-a"
+   ],
    "blocker": null,
    "actions": [
     "قتل مهمة الجلسة عند خروج خدمة session أو انهيارها (من قسمة WP-169 في 2026-11-21، L-097)",
@@ -10893,7 +10903,9 @@
     "2026-11-21 (the manager): design, estimated at 35 to 50 tool calls (under the line). At the exit of the service named `session`, whatever its code, the manager kills the session's job with every application and what they started, and lets it go (as END_SESSION does, without a reply: the channel is gone), besides closing the gate (v1.19); so a restarted session, or the next sign-in, starts with no application and a new job. Case: TST-M6-SESSION-GATE's reading after the session's exit becomes nothing left (no process of STAY.ELF, no job, no handle kept). Options weighed: (a) the kill at the exit (chosen: one place, fails closed); (b) the kill at the next BEGIN_SESSION (rejected: the applications outlive the session until someone signs in, and a desktop left running could talk to them); (c) the session's own END_SESSION before it exits (rejected: a crash sends nothing). Mutants: no kill at the exit (SECURITY), the job killed but kept",
     "2026-11-21 activated (the manager): its dependency WP-169 is done; test first",
     "2026-11-21 (the manager): the work, test first. The red: TST-M6-SESSION-GATE expecting nothing left after the session's exit failed with stay#2 alive (stays=1, live_jobs=2). The fix kills and lets go the session's job at the session service's exit. Five cases read their applications after their lab session's exit and would see them killed: their role now holds after its steps (the lab image's hold: waiting on its boot channel without a deadline until the manager stops it), its image /SYSTEM/LABSES.ELF so the test kernel knows it by name (session_held), which reads while it holds, its code as 0x40 and the manager's count less the held session's process and channel, so the five cases' lines and their mutants' evidence are unchanged. Mutants M415 (SECURITY, no kill) and M416 (killed but kept), both killed locally",
-    "2026-11-21 (the manager): review round on 2e01f1b8b8 (auditor and red team, read only), each finding checked. Confirmed and corrected: (1) M349, M350 and M351 declared apps=9 or apps=1, read after the launcher's exit, which now kills its applications: their evidence is taken again from their kills (the mutants' run below); (2) a lab session could be read as holding while it waited for START, without a deadline too: session_held now also asks the manager's listing for the session ready, which every role answers only after START; (3) the manager does not STOP its services at its own exit: the held session ends when its channel closes, the texts say so; the manager's own stop still leaves applications' jobs (L-113), so L-097 is not closed whole; (4) the red team: only a clean exit of the session is shown, so a kill limited to code 0, one skipped while stopping, and a job closed but kept would survive; a case restarting a session that launched (RESTART session) kills all three, and it found that such a restart leaves eight kernel heap blocks (one frame) with or without the kill: that case and the leak are WP-173, and services.md v1.20 says what is shown. The lab's design, the options: (a) the role holds and is known by its image and its waiting (chosen: no new message, the cases' lines unchanged); (b) a trace the role writes before it waits (rejected: the test kernel reads no trace); (c) the test kernel reads before the exit through a message to the role (rejected: the roles serve nothing)"
+    "2026-11-21 (the manager): review round on 2e01f1b8b8 (auditor and red team, read only), each finding checked. Confirmed and corrected: (1) M349, M350 and M351 declared apps=9 or apps=1, read after the launcher's exit, which now kills its applications: their evidence is taken again from their kills (the mutants' run below); (2) a lab session could be read as holding while it waited for START, without a deadline too: session_held now also asks the manager's listing for the session ready, which every role answers only after START; (3) the manager does not STOP its services at its own exit: the held session ends when its channel closes, the texts say so; the manager's own stop still leaves applications' jobs (L-113), so L-097 is not closed whole; (4) the red team: only a clean exit of the session is shown, so a kill limited to code 0, one skipped while stopping, and a job closed but kept would survive; a case restarting a session that launched (RESTART session) kills all three, and it found that such a restart leaves eight kernel heap blocks (one frame) with or without the kill: that case and the leak are WP-173, and services.md v1.20 says what is shown. The lab's design, the options: (a) the role holds and is known by its image and its waiting (chosen: no new message, the cases' lines unchanged); (b) a trace the role writes before it waits (rejected: the test kernel reads no trace); (c) the test kernel reads before the exit through a message to the role (rejected: the roles serve nothing)",
+    "2026-11-21 CI record: verify run 44880969859 on 2a267c584c, run attempt 1, green; 192 runs imported, none failing; validate-records --strict 0 errors. TST-M6-SESSION-GATE PASS (evidence/20261121T075014Z-f681b5d4-001-a, 4 s of its 30 s): after the session's clean exit nothing is left of its job (stays=0, live_jobs=0, mgr_handles=0), the desktop refused, the clean exit and frames_delta=0. TST-M6-APP-SPAWN (11 s), APP-CONNECT-DENIED, SESSION-JOB, JOB-BOUND and LAUNCH-RATE PASS with their lab session holding while the test kernel reads (their lines unchanged). TST-M6-MUTANTS PASS (evidence/20261121T075355Z-f681b5d4-001-g: 264 of 264 valid mutants killed, no surviving SECURITY mutant, no expectation missed); M415 (SECURITY) and M416 killed with their declared evidence, and M349, M350 and M351 with theirs taken again (apps=0: the failing launcher's exit ends its job; run 44876578737's gate had missed the old ones). TST-M0-005 PASS with 102 cases (evidence/20261121T075036Z-f681b5d4-001-a)",
+    "2026-11-21 close under the method's close rule (section 7, rule 3): every clause of this item shown on CI on the cases' written steps: the manager kills and lets go the session's job at the session service's exit, shown for a clean exit (code 0), so nothing of it outlives the session; the code makes no difference of code or path, and services.md v1.20 says that a crash, a STOP and a RESTART are shown in WP-173; the SECURITY mutant killed. 'Fails before the change' rests on the scratch red of this date (stay#2 alive after the session's exit) and, on CI, on the kills. Written as limits, not shown: the manager's own stop leaves applications' jobs (L-113), an END_SESSION unsent (L-111). Refuted after the review round: the 'eight kernel heap blocks left by a restart' was the restart case's own measure (its String `restart` alive when svc_balance, which never returns, counted the frames; the eight blocks its locals and three objects made once per boot): with `restart` dropped first the case passes with frames_delta=0 (scratch run 20261121T080215Z-2a267c58-001 on a clone). services.md v1.20's limit saying otherwise is corrected in the next work commit, and WP-173 keeps the restart case and its mutants, no kernel fix"
    ]
   },
   {
