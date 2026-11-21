@@ -1724,6 +1724,28 @@ MUTANTS = [
      "            Err(e) => {\n                // Nothing was moved when the image is missing",
      "            Err(e) => {\n                self.launch_next = (self.launch_next + LAUNCH_RATE_MAX - 1) % LAUNCH_RATE_MAX;\n                self.launches[self.launch_next] = None;\n                // Nothing was moved when the image is missing",
      ["TST-M6-LAUNCH-RATE"], "SECURITY: a failed launch is not counted, so a requester repeats a missing or broken image, each a job, a channel and a read of up to 4 MiB, without limit"),
+    # M406..M410 (WP-169, REQ-M6-004; services.md v1.19, session.md v1.9): LAUNCH needs an open
+    # session, killed by TST-M6-SESSION-GATE (M410, the session's side, by TST-M6-LOGOUT-KILLS).
+    ("M406", "user/apps/svcmgr/src/main.rs",
+     "                Some(_) if !self.session_open => out.put(b\"ERR NO_SESSION\"),\n",
+     "",
+     ["TST-M6-SESSION-GATE"], "SECURITY: LAUNCH is answered whether a session is open or not, so an application starts before anyone signs in or after Sign out"),
+    ("M407", "user/apps/svcmgr/src/main.rs",
+     "        if self.services[i].name() != b\"session\" {\n            libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n            return;\n        }\n        self.session_open = true;\n",
+     "        if self.services[i].name() != b\"session\" && self.services[i].name() != b\"desktop\" {\n            libnawah::channel_write(c, b\"ERR ACCESS\", &[]);\n            return;\n        }\n        self.session_open = true;\n",
+     ["TST-M6-SESSION-GATE"], "SECURITY: the desktop opens the gate, so LAUNCH is answered while no one is signed in"),
+    ("M408", "user/apps/svcmgr/src/main.rs",
+     "        self.session_open = false;\n        if let Some(j) = self.session_job.take() {\n",
+     "        if let Some(j) = self.session_job.take() {\n",
+     ["TST-M6-SESSION-GATE"], "SECURITY: END_SESSION leaves the gate open, so a LAUNCH after Sign out makes a session the next user inherits"),
+    ("M409", "user/apps/svcmgr/src/main.rs",
+     "        if self.services[i].name() == b\"session\" {\n            self.session_open = false;\n        }\n",
+     "",
+     ["TST-M6-SESSION-GATE"], "SECURITY: the session service's exit leaves the gate open, so the desktop launches while no session runs"),
+    ("M410", "user/apps/sessiond/src/main.rs",
+     "                    if !self.boot_send(b\"BEGIN_SESSION\", BootOp::Begin) {\n                        libnawah::trace(b\"session|begin=unsent\");\n                    }\n",
+     "",
+     ["TST-M6-LOGOUT-KILLS"], "a sign-in begins no session, so every launch of the signed-in user is refused"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2065,7 +2087,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-164 (RSK-050): a job holds 32 live processes at most (syscall.md v1.15).
             "M397", "M398",
             # WP-163 (REQ-M6-004): LAUNCH is bounded in rate (services.md v1.18).
-            "M401", "M405"}
+            "M401", "M405",
+            # WP-169 (REQ-M6-004): LAUNCH needs an open session (services.md v1.19).
+            "M406", "M407", "M408", "M409"}
 
 
 def security_of(mid: str) -> bool:
@@ -2292,6 +2316,8 @@ _LKALIVE = "|ktest|fail|an application of the signed-out session is still alive"
 _JBUNIT = "|ktest|fail|a job's count does not hold its bound"
 _JBNOT = "|ktest|fail|a job's processes are not bounded"
 _LRANS = "|ktest|fail|a LAUNCH was not answered as the rate limit states"
+_SGSES = "|ktest|fail|a LAUNCH or BEGIN_SESSION of the session was not answered as the gate states"
+_SGDESK = "|ktest|fail|the desktop opened the gate, or the session's exit did not close it"
 _ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
 _APP_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
@@ -2468,6 +2494,10 @@ EXPECT = {
     "M403": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5a00|", _LRANS]},
     "M404": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5900|", _LRANS]},
     "M405": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5710|", _LRANS]},
+    "M406": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5101|", _SGSES]},
+    "M407": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x40|desktop=0x5100|", _SGDESK]},
+    "M408": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5600|", _SGSES]},
+    "M409": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x40|desktop=0x5200|", _SGDESK]},
 }
 
 

@@ -306,6 +306,10 @@ struct Manager {
     /// each application's job a child of it; END_SESSION kills it and lets it go, so the next
     /// LAUNCH makes another. The manager alone holds it.
     session_job: Option<Handle>,
+    /// The session's gate (v1.19): LAUNCH is answered ERR NO_SESSION while it is closed. Closed
+    /// when the manager starts, by END_SESSION and by the session service's exit; opened by
+    /// BEGIN_SESSION from the vouched session alone.
+    session_open: bool,
     /// LAUNCH's rate (WP-163): the ticks of the last [`LAUNCH_RATE_MAX`] attempts, a ring whose
     /// next slot, `launch_next`, holds the oldest of them.
     launches: [Option<u64>; LAUNCH_RATE_MAX],
@@ -424,6 +428,7 @@ impl Manager {
         } else {
             let id = req.strip_prefix(b"LAUNCH ").unwrap_or(b"");
             match (0..self.apps_n).find(|&k| &self.apps[k][..usize::from(self.app_lens[k])] == id) {
+                Some(_) if !self.session_open => out.put(b"ERR NO_SESSION"),
                 Some(k) => self.launch(k, &mut out),
                 None => out.put(b"ERR UNKNOWN"),
             }
@@ -602,6 +607,21 @@ impl Manager {
         libnawah::channel_write(c, b"ERR NOT_READY", &[]);
     }
 
+    /// `BEGIN_SESSION` on a service's boot channel (services.md v1.19): from the vouched session
+    /// alone, ERR ACCESS for any other; the gate opens (it may be open already) and the answer is
+    /// `BEGUN`.
+    fn begin_session(&mut self, i: usize) {
+        let Some(c) = self.services[i].chan else {
+            return;
+        };
+        if self.services[i].name() != b"session" {
+            libnawah::channel_write(c, b"ERR ACCESS", &[]);
+            return;
+        }
+        self.session_open = true;
+        libnawah::channel_write(c, b"BEGUN", &[]);
+    }
+
     /// `END_SESSION` on a service's boot channel (services.md v1.17): from the vouched session
     /// alone, ERR ACCESS for any other. The session's job is killed with every application and
     /// whatever they started in it, and let go; the answer is `ENDED <n>`, `n` the applications
@@ -615,6 +635,7 @@ impl Manager {
             return;
         }
         let n = self.running.iter().filter(|a| a.process.is_some()).count();
+        self.session_open = false;
         if let Some(j) = self.session_job.take() {
             libnawah::job_kill(j);
             libnawah::handle_close(j);
@@ -966,6 +987,8 @@ impl Manager {
                     self.apps_request(i, req);
                 } else if req == b"END_SESSION" {
                     self.end_session(i);
+                } else if req == b"BEGIN_SESSION" {
+                    self.begin_session(i);
                 } else if req != b"READY" {
                     // v1.14: an unknown request is answered, as on the control channel (a
                     // repeated READY stays unanswered).
@@ -1047,6 +1070,10 @@ impl Manager {
         self.services[i].killing = false;
         self.services[i].kill_at = None;
         self.close_chan(i);
+        // The session service went (v1.19): no LAUNCH until a session begins again.
+        if self.services[i].name() == b"session" {
+            self.session_open = false;
+        }
         let s = &mut self.services[i];
         s.exit = Some(code);
         match s.state {
@@ -1332,6 +1359,7 @@ fn main() -> u64 {
         last_num: 0,
         root_job,
         session_job: None,
+        session_open: false,
         launches: [None; LAUNCH_RATE_MAX],
         launch_next: 0,
         ctl,

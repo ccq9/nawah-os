@@ -92,10 +92,12 @@ enum BootOp {
     Connect,
     /// `END_SESSION`: `ENDED <n>`, or `ERR …`.
     End,
+    /// `BEGIN_SESSION` (v1.9): `BEGUN`, or `ERR …`.
+    Begin,
 }
 
 /// Boot-channel requests that may wait for their answers at once: one `CONNECT` (they go one at
-/// a time) and the `END_SESSION`s of Sign outs.
+/// a time), the `END_SESSION`s of Sign outs and the `BEGIN_SESSION`s of sign-ins (v1.9).
 const BOOT_OPS: usize = 4;
 
 /// An elevation a client asked for (session.md v1.3).
@@ -552,6 +554,11 @@ impl Session {
                 Some(t) if answer.starts_with(b"OK ") => {
                     self.user[..len].copy_from_slice(&name[..len]);
                     self.user_len = len;
+                    // v1.9: the manager opens its gate for LAUNCH at a sign-in (not at an unlock:
+                    // the session is open already); its answer is traced only when it refuses.
+                    if !self.boot_send(b"BEGIN_SESSION", BootOp::Begin) {
+                        libnawah::trace(b"session|begin=unsent");
+                    }
                     self.opened(answer, t, now);
                 }
                 other => {
@@ -1916,7 +1923,11 @@ impl Session {
                     }
                 } else if msg == b"STOP" {
                     return false;
-                } else if msg == b"OK" || msg.starts_with(b"ERR") || msg.starts_with(b"ENDED ") {
+                } else if msg == b"OK"
+                    || msg == b"BEGUN"
+                    || msg.starts_with(b"ERR")
+                    || msg.starts_with(b"ENDED ")
+                {
                     // An answer: to the oldest request still waiting (v1.8).
                     let chan = (nh == 1).then_some(hs[0]);
                     match self.boot_take() {
@@ -1932,6 +1943,16 @@ impl Session {
                                 libnawah::handle_close(h);
                             }
                             self.ended(msg);
+                        }
+                        Some(BootOp::Begin) => {
+                            if let Some(h) = chan {
+                                libnawah::handle_close(h);
+                            }
+                            if msg != b"BEGUN" {
+                                let mut t = Out::new();
+                                t.put(b"session|begin=refused|answer=").put(msg);
+                                libnawah::trace(t.bytes());
+                            }
                         }
                         None => {
                             if let Some(h) = chan {

@@ -3216,7 +3216,8 @@
     "WP-168",
     "WP-169",
     "WP-170",
-    "WP-171"
+    "WP-171",
+    "WP-172"
    ],
    "inputs": [
     "DEC-005",
@@ -3248,7 +3249,8 @@
     "2026-11-19 (the manager): WP-161 and WP-162 added to the dependencies at WP-101's split (the launch and the confinement of an application's CONNECT)",
     "2026-11-19 (the manager, on the auditor's correction): the line above that names services.md v1.14 for LAUNCH, the application's CONNECT and the applications table was written before WP-101's split: v1.14 is WP-101's (the registry on the volume, APPS and LAUNCH's requester); the launch and the confinement come in the versions WP-161 and WP-162 take",
     "2026-11-19 (the manager): WP-163 added to the dependencies: this item's acceptance is a scene on the release image in which a registered application opens a window, and no application image is on the release disk today (a LAUNCH there is answered ERR NOT_FOUND: services.md v1.15); WP-163 is the item that decides the sample entries' images, and its acceptance now asks that one registered entry at least has its image on that disk; WP-163 itself waits for WP-164 (RSK-050)",
-    "2026-11-21 (the manager): depends on WP-170 and WP-171 from WP-163's split"
+    "2026-11-21 (the manager): depends on WP-170 and WP-171 from WP-163's split",
+    "2026-11-21 (the manager): depends on WP-172 from WP-169's split"
    ],
    "acceptance": "TST-M6-APP-LAUNCH PASS on CI (the closing scenario on the release image: sign in, the autostart application opens a window, two launches of one application give two identities, sign out ends the session's job); ADR-0023 accepted; the registry, the broker, the session job, its end at Sign out and the autostart are WP-100, WP-101, WP-102, WP-167 and WP-168 (TST-M6-APP-REGISTRY-FUZZ, TST-M6-LAUNCH-DENIED, TST-M6-SESSION-JOB, TST-M6-LOGOUT-KILLS)",
    "test_ids": [
@@ -10665,36 +10667,50 @@
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
     "tools/project.py",
-    "docs/tests.json"
+    "docs/tests.json",
+    "platform/pc-qemu/manifests/svc-sg.txt",
+    "platform/pc-qemu/manifests/svc-jb.txt",
+    "platform/pc-qemu/manifests/svc-lr.txt",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/requirements.json",
+    "docs/LATER.md"
    ],
    "contract_refs": [
     "docs/contracts/services.md",
     "docs/contracts/session.md"
    ],
-   "acceptance": "the manager refuses LAUNCH while no session is open (closed at boot, by END_SESSION and by the session's exit; opened by BEGIN_SESSION from the vouched session alone, sent at sign-in), and kills the session's job when the session service exits or crashes; shown on CI by TST-M6-SESSION-JOB and TST-M6-LOGOUT-KILLS extended and TST-M6-APP-SPAWN and TST-M6-APP-CONNECT-DENIED with their launchers stopped after their reading; the services and session contracts state it in new versions; its mutants killed by the M6 gate",
+   "acceptance": "the manager refuses LAUNCH while no session is open (closed at boot, by END_SESSION and by the session's exit; opened by BEGIN_SESSION from the vouched session alone, sent at sign-in), shown on CI by a case of its own and by TST-M6-LOGOUT-KILLS, TST-M6-SESSION-JOB, TST-M6-APP-SPAWN, TST-M6-APP-CONNECT-DENIED, TST-M6-LAUNCH-DENIED, TST-M6-JOB-BOUND and TST-M6-LAUNCH-RATE under the gate; the services and session contracts state it in new versions; its mutants killed by the M6 gate",
    "test_ids": [
+    "TST-M6-SESSION-GATE",
     "TST-M6-SESSION-JOB",
     "TST-M6-LOGOUT-KILLS",
     "TST-M6-APP-SPAWN",
     "TST-M6-APP-CONNECT-DENIED",
     "TST-M6-LAUNCH-DENIED",
     "TST-M6-MUTANTS",
-    "TST-M0-005"
+    "TST-M0-005",
+    "TST-M6-JOB-BOUND",
+    "TST-M6-LAUNCH-RATE"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M6",
     "python3 tools/project.py test --target host --suite M6-GATE"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
    "actions": [
     "بوابة الجلسة في المدير وقتل مهمتها عند خروج الجلسة (من حدود WP-102 التي أُلزمت بها WP-167، 2026-11-20)",
     "budget: the design's estimate 110 to 130 tool calls (unmeasured), at or over the line: split at activation if so, (a) the gate and BEGIN_SESSION, (b) the kill at the session's exit",
-    "2026-11-20 (the manager): the services engineer's design (read only): the session's side alone fits this item (about 85 to 95 tool calls against 120, unmeasured): END_SESSION from sign_out before display's LOGOUT through an ordered queue of the boot channel's requests (CONNECT and END), traced jobs=ended|apps=<n>, jobs=refused|answer=<reply> or jobs=unsent; TST-M6-LOGOUT-KILLS on the real auth, input, display and session with a lab `desktop` relaying LAUNCH, `deaf` (winapp, ignores LOGGED_OUT) and `nest`; TST-M5-LOGIN-SCREEN's expected trace gains the jobs line. The two limits services.md v1.17 bound to this item, a LAUNCH between ENDED and the next sign-in and the session's exit leaving its job, close in the manager alone: they are WP-169's (L-097 moved)"
+    "2026-11-20 (the manager): the services engineer's design (read only): the session's side alone fits this item (about 85 to 95 tool calls against 120, unmeasured): END_SESSION from sign_out before display's LOGOUT through an ordered queue of the boot channel's requests (CONNECT and END), traced jobs=ended|apps=<n>, jobs=refused|answer=<reply> or jobs=unsent; TST-M6-LOGOUT-KILLS on the real auth, input, display and session with a lab `desktop` relaying LAUNCH, `deaf` (winapp, ignores LOGGED_OUT) and `nest`; TST-M5-LOGIN-SCREEN's expected trace gains the jobs line. The two limits services.md v1.17 bound to this item, a LAUNCH between ENDED and the next sign-in and the session's exit leaving its job, close in the manager alone: they are WP-169's (L-097 moved)",
+    "2026-11-21 (the manager): split before activation, as its budget line foresaw (110 to 130 tool calls against 120): (a) stays here, the gate: the manager refuses LAUNCH while no session is open, closed at boot, by END_SESSION and by the session service's exit, opened by BEGIN_SESSION from the vouched session alone, sent by the session at sign-in (not at unlock); (b) WP-172, the kill of the session's job when the session service exits or crashes",
+    "2026-11-21 (the manager): design. BEGIN_SESSION on a service's boot channel, from `session` alone (any other, desktop among them, ERR ACCESS), answered BEGUN and opening the gate (again while open: BEGUN, nothing else); END_SESSION closes it besides the kill; the session service's exit closes it. LAUNCH while closed is answered ERR NO_SESSION after ERR ACCESS and ERR UNKNOWN and before ERR FULL and ERR BUSY (the registry is no secret: APPS is answered without a session); APPS unchanged. sessiond sends BEGIN_SESSION through its ordered queue at a sign-in (not at an unlock) and traces only a refusal or an unsent request, so no expected trace changes. Case TST-M6-SESSION-GATE (new, M6, 30 s): the vouched `session` (role gater) is refused a LAUNCH before BEGIN_SESSION, opens, launches stay#1, ends (ENDED 1), is refused again, opens and launches stay#2, then exits; the vouched `desktop` (role ungated) is refused BEGIN_SESSION ERR ACCESS and, after the session's exit, LAUNCH ERR NO_SESSION; stay#2 still runs (WP-172). The lab launchers of APP-SPAWN, JOB-BOUND, SESSION-JOB, APP-CONNECT-DENIED and LAUNCH-RATE send BEGIN_SESSION first; LAUNCH-DENIED's desktop is answered ERR NO_SESSION for a registered id, its session opening none. Alternative weighed: a gate opened by the manager seeing auth's token (rejected: the manager reads no token today, and the vouched session already speaks for the signed-in user)",
+    "2026-11-21 activated (the manager): its dependency WP-167 is done; test first"
    ]
   },
   {
@@ -10793,6 +10809,51 @@
    "actions": [
     "صورة تطبيق حقيقية على قرص الإصدار (من قسمة WP-163 في 2026-11-21، بعد حصة الذاكرة WP-170)",
     "from WP-163's record: the sample entries CLOCK.APP and NOTES.APP name images no crate builds and the build does not place: a real image for one at least, or the entry leaves the release disk",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+   ]
+  },
+  {
+   "id": "WP-172",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-169"
+   ],
+   "inputs": [
+    "created 2026-11-21 at WP-169's split: its second part (L-097)"
+   ],
+   "files": [
+    "user/apps/svcmgr/src/main.rs",
+    "user/apps/svc/src/main.rs",
+    "docs/contracts/services.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md"
+   ],
+   "acceptance": "the manager kills the session's job when the session service exits or crashes, so a restarted session inherits no application; shown on CI by TST-M6-SESSION-GATE extended; the services contract states it in a new version; its mutants killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-SESSION-GATE",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "قتل مهمة الجلسة عند خروج خدمة session أو انهيارها (من قسمة WP-169 في 2026-11-21، L-097)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
    ]
   }

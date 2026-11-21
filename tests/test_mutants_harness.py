@@ -1359,9 +1359,11 @@ class KillEvidence(unittest.TestCase):
         manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-as.txt").read_text(encoding="utf-8")
         self.assertEqual([l for l in manifest.splitlines() if l and not l.startswith("#")],
                          ["session /SYSTEM/SVC.ELF - 3000 never 0 0 launcher"])
-        # The other launch case's volume has no image for `clock`: the reply of a missing image.
+        # The other launch case begins no session: a registered id is refused by the gate before
+        # any image is looked for (WP-169; ERR NOT_FOUND, its reply until then, is APP-SPAWN's).
         denied = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-ld.txt").read_text(encoding="utf-8")
-        self.assertIn("LAUNCH clock=ERR NOT_FOUND", denied)
+        self.assertIn("LAUNCH clock=ERR NO_SESSION", denied)
+        self.assertNotIn("BEGIN_SESSION", denied)
 
     CONNECT = "TST-M6-APP-CONNECT-DENIED"
 

@@ -167,6 +167,9 @@ fn launcher(ch: u32) -> u64 {
     if libnawah::channel_write(ch, b"READY", &[]) != 0 {
         return 0xE2;
     }
+    if !begin(ch) {
+        return 0xE3;
+    }
     let mut r = [0u8; 128];
     // 1: the first application carries number 1, and stays.
     let (num, n) = launch(ch, b"clock", 0, &mut r);
@@ -315,6 +318,9 @@ fn bounder(ch: u32) -> u64 {
     if libnawah::channel_write(ch, b"READY", &[]) != 0 {
         return 0xE2;
     }
+    if !begin(ch) {
+        return 0xE3;
+    }
     let mut r = [0u8; 128];
     for (step, id, want, pause) in [
         (1u8, &b"peer"[..], 1u64, 100u64),
@@ -332,7 +338,7 @@ fn bounder(ch: u32) -> u64 {
 
 /// The vouched session's side of TST-M6-LAUNCH-RATE (WP-163, services.md v1.18): READY; from
 /// tick t0, (1) eight LAUNCH stay (#1 to #8), (2) four more answered ERR FULL (not attempts),
-/// (3) END_SESSION answered `ENDED 8`, (4) six LAUNCH exit (#9 to #14), (5) LAUNCH notes, whose
+/// (3) END_SESSION answered `ENDED 8`, BEGIN_SESSION (WP-169), (4) six LAUNCH exit (#9 to #14), (5) LAUNCH notes, whose
 /// image is not on the volume, ERR NOT_FOUND, (6) LAUNCH bad, whose image is not one, ERR FAILED:
 /// sixteen attempts; (7) LAUNCH exit answered ERR BUSY, asked up to three times while answered OK
 /// so the step's code tells how many got through; (8) at t0 + 600 sixteen LAUNCH exit, each
@@ -344,6 +350,9 @@ fn bounder(ch: u32) -> u64 {
 fn rater(ch: u32) -> u64 {
     if libnawah::channel_write(ch, b"READY", &[]) != 0 {
         return 0xE2;
+    }
+    if !begin(ch) {
+        return 0xE3;
     }
     let mut r = [0u8; 128];
     let t0 = libnawah::clock_ticks();
@@ -372,6 +381,10 @@ fn rater(ch: u32) -> u64 {
         };
         if at > 0 {
             let _ = libnawah::sleep((t0 + at).saturating_sub(libnawah::clock_ticks()));
+        }
+        // END_SESSION closed the gate (WP-169): a new session begins before step 4's launches.
+        if step == 4 && !begin(ch) {
+            return 0xE3;
         }
         let retry = if step == 2 { 0 } else { RETRY_FULL };
         for k in 0..times {
@@ -434,6 +447,98 @@ fn rater(ch: u32) -> u64 {
 /// answered OK) and how many times it is asked.
 type RateStep = (u8, &'static [u8], &'static [u8], u64);
 
+/// `BEGIN_SESSION` (WP-169, services.md v1.19): whether the manager answered `BEGUN`, opening
+/// the gate LAUNCH needs. A launcher that is not answered so exits 0xE3.
+fn begin(ch: u32) -> bool {
+    let mut r = [0u8; 128];
+    matches!(ask(ch, b"BEGIN_SESSION", &[], &mut r), Some(n) if r[..n] == *b"BEGUN")
+}
+
+/// A step of `gater` and `ungated`: its number, the request, the stated reply (the number, for
+/// a LAUNCH answered OK) and the replies its LAUNCH repeats on.
+type GateStep = (u8, &'static [u8], &'static [u8], u8);
+
+/// The steps of `gater` or `ungated` in turn, each traced `<who>|step=<k>|got=<reply>` at the
+/// first that saw another reply; 0x40, or (0x50 + k) * 256 + the number of that reply.
+fn gate_steps(ch: u32, who: &[u8], steps: &[GateStep]) -> u64 {
+    let mut r = [0u8; 128];
+    for &(step, req, want, retry) in steps {
+        if step == 0 {
+            let _ = libnawah::sleep(300);
+            continue;
+        }
+        let (ok, n, num) = match (req.strip_prefix(b"LAUNCH "), parse_num(want)) {
+            (Some(id), Some(first)) => {
+                let (num, n) = launch(ch, id, retry, &mut r);
+                (num == first, n, num)
+            }
+            _ => {
+                let n = ask(ch, req, &[], &mut r).unwrap_or(0);
+                (r[..n] == *want, n, 0)
+            }
+        };
+        if !ok {
+            let mut t = [0u8; 120];
+            t[..who.len()].copy_from_slice(who);
+            let head = b"|step=";
+            t[who.len()..who.len() + head.len()].copy_from_slice(head);
+            let mut at = put_num(&mut t, who.len() + head.len(), u64::from(step));
+            let got = b"|got=";
+            t[at..at + got.len()].copy_from_slice(got);
+            at += got.len();
+            let m = n.min(t.len() - at);
+            t[at..at + m].copy_from_slice(&r[..m]);
+            libnawah::trace(&t[..at + m]);
+            return (0x50 + u64::from(step)) << 8 | (num & 0xff);
+        }
+    }
+    0x40
+}
+
+/// The vouched session's side of TST-M6-SESSION-GATE (WP-169, services.md v1.19): (1) LAUNCH stay
+/// before any BEGIN_SESSION, ERR NO_SESSION; (2) BEGIN_SESSION, BEGUN; (3) LAUNCH stay, #1;
+/// (4) BEGIN_SESSION again, BEGUN; (5) END_SESSION, `ENDED 1`; (6) LAUNCH stay, ERR NO_SESSION;
+/// (7) BEGIN_SESSION, BEGUN; (8) LAUNCH stay, #2 (repeated while ERR FULL); then READY, so the
+/// desktop starts, and exit.
+fn gater(ch: u32) -> u64 {
+    let code = gate_steps(
+        ch,
+        b"gater",
+        &[
+            (1, b"LAUNCH stay", b"ERR NO_SESSION", 0),
+            (2, b"BEGIN_SESSION", b"BEGUN", 0),
+            (3, b"LAUNCH stay", b"1", 0),
+            (4, b"BEGIN_SESSION", b"BEGUN", 0),
+            (5, b"END_SESSION", b"ENDED 1", 0),
+            (6, b"LAUNCH stay", b"ERR NO_SESSION", 0),
+            (7, b"BEGIN_SESSION", b"BEGUN", 0),
+            (8, b"LAUNCH stay", b"2", RETRY_FULL),
+        ],
+    );
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
+    code
+}
+
+/// The vouched desktop's side of TST-M6-SESSION-GATE (WP-169): READY; (1) BEGIN_SESSION, refused
+/// ERR ACCESS; 300 ticks, by which the session that opened the gate has exited; (2) LAUNCH stay,
+/// ERR NO_SESSION: the session's exit closed the gate.
+fn ungated(ch: u32) -> u64 {
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
+    gate_steps(
+        ch,
+        b"ungated",
+        &[
+            (1, b"BEGIN_SESSION", b"ERR ACCESS", 0),
+            (0, b"", b"", 0),
+            (2, b"LAUNCH stay", b"ERR NO_SESSION", 0),
+        ],
+    )
+}
+
 /// The vouched session's side of TST-M6-SESSION-JOB (WP-102): LAUNCH stay (#1) and nest (#2)
 /// before READY, so the services that depend on the session start once both run; 300 ticks
 /// for nest's child to start and for those services' END_SESSION to be refused; END_SESSION,
@@ -441,8 +546,12 @@ type RateStep = (u8, &'static [u8], &'static [u8], u64);
 /// `ENDED 0` (no place is taken); LAUNCH stay (#3), in a new session job; END_SESSION, `ENDED 1`;
 /// 300 ticks, and LAUNCH stay (#4), which stays. Traced
 /// `ender|end=..|again=..|after=..|end2=..|last=..` as far as it went; 0x40 when each reply was
-/// the stated one, `missed`'s code at the first step that saw another.
+/// the stated one, `missed`'s code at the first step that saw another. BEGIN_SESSION opens the
+/// gate first and again before steps 5 and 7, after END_SESSION closed it (WP-169).
 fn ender(ch: u32) -> u64 {
+    if !begin(ch) {
+        return 0xE3;
+    }
     let mut r = [0u8; 128];
     let (num, n) = launch(ch, b"stay", 0, &mut r);
     if num != 1 {
@@ -476,6 +585,10 @@ fn ender(ch: u32) -> u64 {
     for (field, req, want, step) in steps {
         if step == 4 || step == 7 {
             let _ = libnawah::sleep(300);
+        }
+        // END_SESSION closed the gate (v1.19): a new session begins before the next LAUNCH.
+        if (step == 5 || step == 7) && !begin(ch) {
+            return 0xE3;
         }
         let (ok, n, num) = if req == b"END_SESSION" {
             let n = ask(ch, req, &[], &mut r).unwrap_or(0).min(40);
@@ -661,6 +774,9 @@ fn connecting_more(ch: u32, who: &[u8]) -> u64 {
 fn connector(ch: u32) -> u64 {
     if libnawah::channel_write(ch, b"READY", &[]) != 0 {
         return 0xE2;
+    }
+    if !begin(ch) {
+        return 0xE3;
     }
     let mut r = [0u8; 128];
     let (num, n) = launch(ch, b"connx", 0, &mut r);
@@ -1186,6 +1302,8 @@ fn main() -> u64 {
         b"ender" => ender(ch),
         b"bounder" => bounder(ch),
         b"rater" => rater(ch),
+        b"gater" => gater(ch),
+        b"ungated" => ungated(ch),
         b"crash_once" => serve(ch, Mode::CrashOnce),
         _ => 2,
     }

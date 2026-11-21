@@ -214,6 +214,7 @@ pub fn run() -> ! {
         "session_job" => session_job(),
         "job_bound" => job_bound(),
         "launch_rate" => launch_rate(),
+        "session_gate" => session_gate(),
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
@@ -5169,6 +5170,9 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         "logout_kills" => pass(
             "Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
         ),
+        "session_gate" => pass(
+            "LAUNCH needs an open session: closed at boot, by END_SESSION and by the session's exit, opened by BEGIN_SESSION from the vouched session alone",
+        ),
         "launch_rate" => pass(
             "LAUNCH is bounded in rate: the attempt beyond sixteen in any 1000 ticks is refused ERR BUSY, failed launches count, a full table and an unknown id do not, and launching resumes as the attempts age",
         ),
@@ -5730,6 +5734,70 @@ fn launch_rate() -> ! {
     // The last session's job alone: its one application exited.
     if live_jobs != 1 || kept != 1 {
         fail("the manager kept something of a launch that was refused or that exited")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-SESSION-GATE (REQ-M6-004, services.md v1.19; WP-169): LAUNCH needs an open session.
+/// The lab manifest SVC-SG.TXT runs the lab image as the vouched `session` (role `gater`: refused
+/// before BEGIN_SESSION, opens, launches, ends, is refused, opens, launches, exits) and the vouched
+/// `desktop` (role `ungated`: refused BEGIN_SESSION, then refused LAUNCH after the session's exit).
+fn session_gate() -> ! {
+    let name = "session_gate";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-SG.TXT");
+    let lines = h.poll_list(sched::ticks() + 25_000, |l| {
+        ["session", "desktop"]
+            .iter()
+            .all(|n| l.iter().any(|x| x.name == *n && x.exit.is_some()))
+    });
+    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    let desktop = svc_find(&lines, "desktop").exit.unwrap_or(u64::MAX);
+    // stay#2 waits on its boot channel; stay#1 went with the ended session's job.
+    let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
+    sched::poll_until(sched::ticks() + 5000, || {
+        let (stay, n) = sched::live_named(b"STAY.ELF");
+        n == 1 && stay[0].waiting && jobs_now() == 2 && mgr_handles(&h) - h.handles0 == 4
+    });
+    let (stay, n) = sched::live_named(b"STAY.ELF");
+    let waiting = stay[..n].iter().filter(|a| a.waiting).count();
+    let live_jobs = jobs_now();
+    let kept = mgr_handles(&h) - h.handles0;
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|session_gate|load={}|session={:#x}|desktop={:#x}|stays={}|waiting={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        load,
+        session,
+        desktop,
+        n,
+        waiting,
+        live_jobs,
+        kept
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|session_gate|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 2" {
+        fail("the lab manifest did not load")
+    }
+    if session != 0x40 {
+        fail("a LAUNCH or BEGIN_SESSION of the session was not answered as the gate states")
+    }
+    if desktop != 0x40 {
+        fail("the desktop opened the gate, or the session's exit did not close it")
+    }
+    // stay#2 still runs: the session's exit does not end its job (WP-172).
+    if n != 1 || waiting != 1 || live_jobs != 2 || kept != 4 {
+        fail("the manager kept something of a launch the gate refused or of the ended session")
     }
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or applications left something behind")
