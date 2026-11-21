@@ -1,0 +1,102 @@
+$ python3 -I tests/mutants.py --target pc-qemu --stage M3 --report build/mutants-m3-report.json
+M30: killed by TST-M3-PREEMPT [325.5s] (time slice never expires (no preemption))
+  TST-M3-PREEMPT: timeout (hang) run=20261120T074901Z-74035182-001
+    OSX|00000000001e|ktest|start|name=preempt
+M31: killed by TST-M3-PRIORITY-ORDER [15.2s] (priorities ignored by pick_next (round-robin only))
+  TST-M3-PRIORITY-ORDER: exit 37 != expected 33 run=20261120T075419Z-74035182-001
+    OSX|00000000001f|ktest|start|name=priority_order
+    OSX|00000000001f|ktest|priority_order|high_run_ticks=15|quantum_ticks=10|spinner_advanced_during_high=1|spinner_ran_after=1|spins=18561614|frames_before=128642|frames_after=128642
+    OSX|00000000001f|ktest|fail|a lower-priority thread ran while a higher-priority thread was runnable
+M32: killed by TST-M1-BOOT,TST-M3-USER-SYSCALL [619.1s] (a process never finishes (thread count not decremented))
+  TST-M1-BOOT: timeout (hang) run=20261120T075437Z-74035182-001
+  TST-M3-USER-SYSCALL: timeout (hang) run=20261120T075940Z-74035182-001
+M33: killed by TST-M3-BLOCK-WAKE [15.2s] (a wake-up before the block is lost (no token))
+  TST-M3-BLOCK-WAKE: exit 37 != expected 33 run=20261120T080453Z-74035182-001
+    OSX|000000000021|ktest|start|name=block_wake
+    OSX|000000000021|ktest|block_wake|r1=0x42|loops1=1|woken_within_ticks=0|r2=0x43|loops2=1|r3=0xc105ed|channels_after=0|endpoints_after=0|frames_before=128642|frames_after=128642
+    OSX|000000000021|ktest|fail|wake token not kept across sleep/block
+M34: killed by TST-M3-RIGHTS-DENIED [15.2s] (SECURITY: channel_write ignores the WRITE right)
+  TST-M3-RIGHTS-DENIED: exit 37 != expected 33 run=20261120T080508Z-74035182-001
+    OSX|000000000022|ktest|start|name=rights_denied
+    OSX|000000000022|ktest|rights_denied|exit=0x3|expected=0x2d|frames_delta=0
+    OSX|000000000022|ktest|fail|ring-3 program ended with an unexpected exit code
+M35: killed by TST-M3-CLOSED-HANDLE [15.2s] (a closed handle's slot keeps its generation (stale handle accepted))
+  TST-M3-CLOSED-HANDLE: exit 37 != expected 33 run=20261120T080523Z-74035182-001
+    OSX|000000000023|ktest|start|name=closed_handle
+    OSX|000000000023|ktest|closed_handle|exit=0x7|expected=0x3e|frames_delta=0
+    OSX|000000000023|ktest|fail|ring-3 program ended with an unexpected exit code
+M36: killed by TST-M3-IPC-OVERSIZE [15.2s] (oversize message accepted by channel_write)
+  TST-M3-IPC-OVERSIZE: exit 37 != expected 33 run=20261120T080539Z-74035182-001
+    OSX|000000000024|ktest|start|name=oversize_rejected
+    OSX|000000000024|ktest|oversize_rejected|exit=0x2|expected=0x4f|frames_delta=0
+    OSX|000000000024|ktest|fail|ring-3 program ended with an unexpected exit code
+M37: killed by TST-M3-PATH-INVALID [15.5s] (a syscall may write into a read-only user page (WRITE bit not checked))
+  TST-M3-PATH-INVALID: exit 173 != expected 33 run=20261120T080554Z-74035182-001
+    OSX|000000000025|ktest|start|name=path_invalid
+M38: killed by TST-M3-ELF-WX [15.3s] (W^X not enforced on PT_LOAD segments)
+  TST-M3-ELF-WX: exit 37 != expected 33 run=20261120T080609Z-74035182-001
+    OSX|000000000026|ktest|start|name=elf_wx
+    OSX|000000000026|ktest|elf_wx|wx_refused=0|perms_ok=1|x_pages=1|w_pages=1|r_pages=1|stack_ok=1|pages=19|frames_before=128642|frames_after=128609
+    OSX|000000000026|ktest|fail|a writable+executable segment was accepted
+M39: killed by TST-M3-ELF-MALFORMED [15.3s] (overlapping segments accepted)
+  TST-M3-ELF-MALFORMED: exit 37 != expected 33 run=20261120T080625Z-74035182-001
+    OSX|000000000027|ktest|start|name=elf_malformed
+    OSX|000000000027|ktest|elf_malformed|cases=13|all_refused_as_expected=0|frames_before=128642|frames_after=128642|detail=magic=K_E_ELF_BAD_MAGIC+,class32=K_E_ELF_NOT_64+,bigendian=K_E_ELF_NOT_LE+,et_dyn=K_E_ELF_NOT_EXEC+,aarch64=K_E_ELF_MACHINE+,phnum0=K_E_ELF_PHDRS+,phoff_out=K_E_ELF_PHDRS+,vaddr_low=K_E_ELF_SEGMENT_RANGE+,filesz_gt_memsz=K_E_ELF_MEMSZ+,offset_out=K_E_ELF_FILE_RANGE+,entry_out=K_E_ELF_ENTRY+,overlap=LOADED!,truncated=K_E_ELF_TOO_SHORT+,
+    OSX|000000000027|ktest|fail|a malformed image was accepted or refused with the wrong code
+M40: killed by TST-M1-BOOT,TST-M3-BLK-USER-CR3 [23.5s] (MMIO mapped at its physical address again (CI run 39110182649 regression))
+  TST-M1-BOOT: exit 173 != expected 33 run=20261120T080644Z-74035182-001
+  TST-M3-BLK-USER-CR3: exit 173 != expected 33 run=20261120T080648Z-74035182-001
+    OSX|000000000028|ktest|start|name=blk_user_cr3
+M41: killed by TST-M3-TLB-SHOOTDOWN [15.1s] (unmap_page does not tell the other CPUs)
+  TST-M3-TLB-SHOOTDOWN: exit 37 != expected 33 run=20261120T080703Z-74035182-001
+    OSX|000000000029|ktest|start|name=tlb_shootdown
+    OSX|000000000029|ktest|tlb_shootdown|reader_cpu=1|reader=Some(1)|first=0xaaaa00000000000a|second=0xaaaa00000000000a|unmapped_ok=1|served_before=15|served_after=18|frames_before=128640|frames_after=128640
+    OSX|000000000029|ktest|fail|the reader saw a stale translation after the remap
+M42: killed by TST-M3-TLB-SHOOTDOWN [15.2s] (a served shootdown request flushes nothing)
+  TST-M3-TLB-SHOOTDOWN: exit 173 != expected 33 run=20261120T080718Z-74035182-001
+M43: killed by TST-M3-SMP-ONLINE [15.2s] (spawn_on places the thread on the caller's CPU)
+  TST-M3-SMP-ONLINE: exit 37 != expected 33 run=20261120T080734Z-74035182-001
+    OSX|00000000002b|ktest|start|name=smp_online
+    OSX|00000000002b|ktest|smp_online|online_mask=0xf|online=4|seen=[0, 0, 0, 0]|apic_ids=[0, 0, 0, 0]|ticks=68,39,28,18,|all_tick=1|threads=4|frames_before=128642|frames_after=128642
+    OSX|00000000002b|ktest|fail|a CPU did not run its probe or reported a wrong index/APIC ID
+M44: killed by TST-M3-SMP-ONLINE,TST-M3-LOCK-CONTENTION [21.0s] (every CPU believes it is CPU 0)
+  TST-M3-SMP-ONLINE: exit 35 != expected 33 run=20261120T080750Z-74035182-001
+  TST-M3-LOCK-CONTENTION: exit 35 != expected 33 run=20261120T080755Z-74035182-001
+M45: killed by TST-M3-BLK-READ [15.2s] (reads past the capacity accepted)
+  TST-M3-BLK-READ: missing markers ['|ktest|blk_read_pattern|present=1|capacity_sectors=131072|read=ok|mismatches=0|first_bytes=c8c9cacb|past_end=K_E_BLK_RANGE|unaligned=K_E_BLK_RANGE|']; forbidden present [] run=20261120T080810Z-74035182-001
+    OSX|00000000002d|ktest|start|name=blk_read_pattern
+    OSX|00000000002d|ktest|blk_read_pattern|present=1|capacity_sectors=131072|read=ok|mismatches=0|first_bytes=c8c9cacb|past_end=K_E_BLK_IO|unaligned=K_E_BLK_RANGE|frames_before=128641|frames_after=128641
+    OSX|00000000002d|ktest|pass|virtio-blk reads the harness pattern exactly and refuses bad requests
+M46: killed by TST-M3-FILE-ROUNDTRIP,TST-M3-FD-LEAK,TST-M3-FAT32-PERSIST [26.5s] (only the first FAT is updated (fsck on an image with files left: FATs differ))
+  TST-M3-FILE-ROUNDTRIP: host checks ['host_check failed: fsck.fat -n /tmp/nawah-mutants-ifgba454/wt/build/pc-qemu/disk.img -> 1'] run=20261120T080825Z-74035182-001
+    OSX|00000000002e|ktest|start|name=file_roundtrip
+    OSX|00000000002e|ktest|file_roundtrip|exit=0x60|expected=0x60|frames_delta=0|files_after=0|handles_after=0|channels_after=0
+    OSX|00000000002e|ktest|pass|file application behaved as the files contract says
+  TST-M3-FD-LEAK: host checks ['host_check failed: fsck.fat -n /tmp/nawah-mutants-ifgba454/wt/build/pc-qemu/disk.img -> 1', 'host_check failed: python3 -I tools/fat32.py check /tmp/nawah-mutants-ifgba454/wt/build/pc-qemu/disk.img -> 1'] run=20261120T080830Z-74035182-001
+    OSX|00000000002e|ktest|start|name=fd_leak
+    OSX|00000000002e|ktest|fd_leak|exit=0x62|files_before=0|files_after=0|handles_after=0|free_before=125614|free_after=125602|sizes=1500,1500,1500,1500|frames_delta=0|processes_after=0
+    OSX|00000000002e|ktest|pass|a process exiting with 44 open file handles leaks nothing
+  TST-M3-FAT32-PERSIST: host checks ['host_check failed: fsck.fat -n /tmp/nawah-mutants-ifgba454/wt/build/pc-qemu/disk.img -> 1'] run=20261120T080835Z-74035182-001
+    OSX|00000000002e|ktest|start|name=fat32_persist_write
+    OSX|00000000002e|ktest|fat32_persist_write|size=30|content_ok=1|written=1
+    OSX|00000000002e|ktest|pass|persistence file written and synced
+    OSX|00000000002e|ktest|start|name=fat32_persist_read
+    OSX|00000000002e|ktest|fat32_persist_read|size=30|content_ok=1|written=0
+    OSX|00000000002e|ktest|pass|persistence file survived the QEMU restart
+M47: killed by TST-M3-FAT32-WRITE [15.5s] (unlink leaks the cluster chain)
+  TST-M3-FAT32-WRITE: exit 37 != expected 33 run=20261120T080852Z-74035182-001
+    OSX|00000000002f|ktest|start|name=fat32_write
+    OSX|00000000002f|ktest|fat32_write|created=size3006+3000+6|free_before=125614|free_during=125608|free_after=125607|taken_during=6|restored=0|read_ok=1|dup=K_E_FS_EXISTS|in_dir_ok=1|overwrite_ok=1|unlinked=0+0|gone=K_E_FS_NOT_FOUND
+    OSX|00000000002f|ktest|fail|cluster accounting wrong (3006 bytes = 6 clusters of 512)
+M48: killed by TST-M3-PATH-INVALID [15.4s] (relative paths accepted)
+  TST-M3-PATH-INVALID: exit 37 != expected 33 run=20261120T080907Z-74035182-001
+    OSX|000000000030|ktest|start|name=path_invalid
+    OSX|000000000030|ktest|path_invalid|exit=0x2|expected=0x61|frames_delta=0|files_after=0|handles_after=0|channels_after=0
+    OSX|000000000030|ktest|fail|application did not reach its end (exit code = failing step)
+M49: killed by TST-M3-FILE-ROUNDTRIP [15.3s] (every open handle gets the WRITE right (read-only open can write))
+  TST-M3-FILE-ROUNDTRIP: exit 37 != expected 33 run=20261120T080922Z-74035182-001
+    OSX|000000000031|ktest|start|name=file_roundtrip
+    OSX|000000000031|ktest|file_roundtrip|exit=0x9|expected=0x60|frames_delta=0|files_after=0|handles_after=0|channels_after=0
+    OSX|000000000031|ktest|fail|application did not reach its end (exit code = failing step)
+
+OK: 20/20 valid mutants killed (100.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=[]; invalid_security=[]; declared_killers_missed=[]; expected_missed=[]; report=build/mutants-m3-report.json
