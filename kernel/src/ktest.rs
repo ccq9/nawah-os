@@ -5314,18 +5314,20 @@ fn launch_denied() -> ! {
 /// after its steps (the lab image `hold`), waiting on its boot channel without a deadline, while
 /// the test kernel reads. Its image is /SYSTEM/LABSES.ELF, so its process is known by name.
 /// Waits, until `by`, for the session to have exited (a step saw another reply: its exit code) or
-/// to hold (0x40), and for `also` of the listing; the listing and that code.
+/// to hold (0x40), and for `also` of the listing; the listing and that code. Holding is the
+/// session listed ready (it answers READY only after reading START, which it waits for without a
+/// deadline too) and its process waiting without a deadline, which no step does.
 fn session_held(h: &SvcHarness, by: u64, also: impl Fn(&[SvcLine]) -> bool) -> (Vec<SvcLine>, u64) {
-    let held = || {
+    let held = |l: &[SvcLine]| {
         let (p, n) = sched::live_named(b"LABSES.ELF");
-        n == 1 && p[0].waiting
+        svc_find(l, "session").state == "ready" && n == 1 && p[0].waiting
     };
     let lines = h.poll_list(by, |l| {
-        (l.iter().any(|x| x.name == "session" && x.exit.is_some()) || held()) && also(l)
+        (l.iter().any(|x| x.name == "session" && x.exit.is_some()) || held(l)) && also(l)
     });
     let code = match svc_find(&lines, "session").exit {
         Some(c) => c,
-        None if held() => 0x40,
+        None if held(&lines) => 0x40,
         None => u64::MAX,
     };
     (lines, code)
@@ -5409,7 +5411,7 @@ fn app_spawn() -> ! {
         fail("a job was left of a launch that failed or of an application that exited")
     }
     // Eight applications' process, channel and job, and the session's job, and nothing else since
-    // before LOAD: the launcher's own two handles went at its exit.
+    // before LOAD: the launcher's own two, which the manager keeps while it holds, are subtracted.
     if kept != 25 {
         fail("the manager kept a handle of a launch that failed or of an application that exited")
     }

@@ -10892,7 +10892,55 @@
     "2026-11-21 (the red team in WP-169's round): the session's job is not let go at the session service's exit, so the first LAUNCH after a new sign-in reuses it and the new user's applications share a job with what the previous session left, connections included; this item ends that",
     "2026-11-21 (the manager): design, estimated at 35 to 50 tool calls (under the line). At the exit of the service named `session`, whatever its code, the manager kills the session's job with every application and what they started, and lets it go (as END_SESSION does, without a reply: the channel is gone), besides closing the gate (v1.19); so a restarted session, or the next sign-in, starts with no application and a new job. Case: TST-M6-SESSION-GATE's reading after the session's exit becomes nothing left (no process of STAY.ELF, no job, no handle kept). Options weighed: (a) the kill at the exit (chosen: one place, fails closed); (b) the kill at the next BEGIN_SESSION (rejected: the applications outlive the session until someone signs in, and a desktop left running could talk to them); (c) the session's own END_SESSION before it exits (rejected: a crash sends nothing). Mutants: no kill at the exit (SECURITY), the job killed but kept",
     "2026-11-21 activated (the manager): its dependency WP-169 is done; test first",
-    "2026-11-21 (the manager): the work, test first. The red: TST-M6-SESSION-GATE expecting nothing left after the session's exit failed with stay#2 alive (stays=1, live_jobs=2). The fix kills and lets go the session's job at the session service's exit. Five cases read their applications after their lab session's exit and would see them killed: their role now holds after its steps (the lab image's hold: waiting on its boot channel without a deadline until the manager stops it), its image /SYSTEM/LABSES.ELF so the test kernel knows it by name (session_held), which reads while it holds, its code as 0x40 and the manager's count less the held session's process and channel, so the five cases' lines and their mutants' evidence are unchanged. Mutants M415 (SECURITY, no kill) and M416 (killed but kept), both killed locally"
+    "2026-11-21 (the manager): the work, test first. The red: TST-M6-SESSION-GATE expecting nothing left after the session's exit failed with stay#2 alive (stays=1, live_jobs=2). The fix kills and lets go the session's job at the session service's exit. Five cases read their applications after their lab session's exit and would see them killed: their role now holds after its steps (the lab image's hold: waiting on its boot channel without a deadline until the manager stops it), its image /SYSTEM/LABSES.ELF so the test kernel knows it by name (session_held), which reads while it holds, its code as 0x40 and the manager's count less the held session's process and channel, so the five cases' lines and their mutants' evidence are unchanged. Mutants M415 (SECURITY, no kill) and M416 (killed but kept), both killed locally",
+    "2026-11-21 (the manager): review round on 2e01f1b8b8 (auditor and red team, read only), each finding checked. Confirmed and corrected: (1) M349, M350 and M351 declared apps=9 or apps=1, read after the launcher's exit, which now kills its applications: their evidence is taken again from their kills (the mutants' run below); (2) a lab session could be read as holding while it waited for START, without a deadline too: session_held now also asks the manager's listing for the session ready, which every role answers only after START; (3) the manager does not STOP its services at its own exit: the held session ends when its channel closes, the texts say so; the manager's own stop still leaves applications' jobs (L-113), so L-097 is not closed whole; (4) the red team: only a clean exit of the session is shown, so a kill limited to code 0, one skipped while stopping, and a job closed but kept would survive; a case restarting a session that launched (RESTART session) kills all three, and it found that such a restart leaves eight kernel heap blocks (one frame) with or without the kill: that case and the leak are WP-173, and services.md v1.20 says what is shown. The lab's design, the options: (a) the role holds and is known by its image and its waiting (chosen: no new message, the cases' lines unchanged); (b) a trace the role writes before it waits (rejected: the test kernel reads no trace); (c) the test kernel reads before the exit through a message to the role (rejected: the roles serve nothing)"
+   ]
+  },
+  {
+   "id": "WP-173",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-172"
+   ],
+   "inputs": [
+    "created 2026-11-21 from WP-172's review round: the red team's surviving mutants and the leak the restart case found"
+   ],
+   "files": [
+    "user/apps/svcmgr/src/main.rs",
+    "user/apps/svc/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "platform/pc-qemu/manifests/svc-sx.txt",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "docs/tests.json",
+    "docs/contracts/services.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/services.md"
+   ],
+   "acceptance": "a restarted session that had launched leaves no kernel heap block or frame behind (the leak of eight blocks found on 2026-11-21 found and fixed, test first), and TST-M6-SESSION-RESTART (new) shows on CI the session's job ended at a RESTART (exit 0x40, state stopping) and the new session launching into a job of its own; the mutants of a kill limited to code 0, one skipped while stopping and a job closed but kept killed",
+   "test_ids": [
+    "TST-M6-SESSION-GATE",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "actions": [
+    "إعادة تشغيل الجلسة: حالة RESTART وتسرّب ثماني كتل كومة نواة كشفته (من جولة مراجعة WP-172، 2026-11-21)",
+    "2026-11-21 (the manager): the case's work is kept outside the tree (the scratch patch of that date): role stayer, manifest SVC-SX.TXT, ktest session_restart; it passed every clause but frames_delta=1, heap slab_pages=1 and live_blocks=8 after the manager's exit, the same without the kill; the RESTART of a lab service alone (the config case) balances",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
    ]
   }
  ]
