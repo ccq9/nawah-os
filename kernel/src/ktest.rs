@@ -5170,7 +5170,7 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
             "Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
         ),
         "launch_rate" => pass(
-            "LAUNCH is bounded in rate: the attempt beyond the window's count is refused ERR BUSY, a full table and an unknown id are not counted, and the next window launches again",
+            "LAUNCH is bounded in rate: the attempt beyond sixteen in any 1000 ticks is refused ERR BUSY, failed launches count, a full table and an unknown id do not, and launching resumes as the attempts age",
         ),
         "job_bound" => pass(
             "a job's processes are bounded: the start beyond the bound is refused, its place comes back at an exit, and other jobs and LAUNCH are unaffected",
@@ -5675,10 +5675,10 @@ fn job_bound() -> ! {
     svc_balance(name, frames0)
 }
 
-/// TST-M6-LAUNCH-RATE (REQ-M6-004, services.md's next version; WP-163): LAUNCH is bounded in
-/// rate. The lab manifest SVC-LR.TXT runs the lab image as the vouched `session`, whose role
-/// `rater` makes sixteen attempts in a window with full-table refusals between them, is refused
-/// ERR BUSY twice and ERR UNKNOWN once, and launches again after the window.
+/// TST-M6-LAUNCH-RATE (REQ-M6-004, services.md v1.18; WP-163): LAUNCH is bounded in rate. The
+/// lab manifest SVC-LR.TXT runs the lab image as the vouched `session`, whose role `rater` makes
+/// sixteen attempts, two of them failed, with full-table refusals among them, is refused ERR BUSY
+/// seventeen times and ERR UNKNOWN once, and launches again once its first attempt is a window old.
 fn launch_rate() -> ! {
     let name = "launch_rate";
     let h = SvcHarness::start(name, b"/SYSTEM/SVC-LR.TXT");

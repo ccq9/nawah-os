@@ -330,18 +330,17 @@ fn bounder(ch: u32) -> u64 {
     0x40
 }
 
-/// The vouched session's side of TST-M6-LAUNCH-RATE (WP-163): READY; at tick t0 eight LAUNCH stay
-/// (#1 to #8, eight attempts), four more answered ERR FULL (not attempts), END_SESSION answered
-/// `ENDED 8`, eight LAUNCH exit (#9 to #16, ERR FULL repeated while the ended session's places
-/// come back), then LAUNCH exit answered ERR BUSY (the 17th in the window), at t0 + 900 again
-/// ERR BUSY, and an unknown id ERR UNKNOWN; at t0 + 1100, after the window that began with the
-/// first attempt (a refusal does not lengthen it), LAUNCH exit is #17. Traced
-/// `rater|step=<k>|busy_at=<ticks after t0>|got=<reply>`; 0x40 when each reply was the stated one,
-/// `missed`'s code at the first step that saw another.
-/// A step of `rater`: its number, the request, the stated reply (the first number, for a LAUNCH
-/// answered OK), the replies its LAUNCH repeats on, and how many times it is asked.
-type RateStep = (u8, &'static [u8], &'static [u8], u8, u64);
-
+/// The vouched session's side of TST-M6-LAUNCH-RATE (WP-163, services.md v1.18): READY; from
+/// tick t0, (1) eight LAUNCH stay (#1 to #8), (2) four more answered ERR FULL (not attempts),
+/// (3) END_SESSION answered `ENDED 8`, (4) six LAUNCH exit (#9 to #14), (5) LAUNCH notes, whose
+/// image is not on the volume, ERR NOT_FOUND, (6) LAUNCH bad, whose image is not one, ERR FAILED:
+/// sixteen attempts; (7) LAUNCH exit answered ERR BUSY, asked up to three times while answered OK
+/// so the step's code tells how many got through; (8) at t0 + 900 sixteen LAUNCH exit, each
+/// ERR BUSY; (9) an unknown id, ERR UNKNOWN; (10) at t0 + 1100, when the first attempt is more
+/// than a window old, LAUNCH exit is #15. Every LAUNCH but step 2's is asked again while answered
+/// ERR FULL (the ended session's places come back). Traced
+/// `rater|step=<k>|busy_at=<ticks after t0 at step 7>|got=<reply>`, or `rater|busy_at=<ticks>`;
+/// 0x40 when each reply was the stated one, `missed`'s code at the first step that saw another.
 fn rater(ch: u32) -> u64 {
     if libnawah::channel_write(ch, b"READY", &[]) != 0 {
         return 0xE2;
@@ -349,52 +348,77 @@ fn rater(ch: u32) -> u64 {
     let mut r = [0u8; 128];
     let t0 = libnawah::clock_ticks();
     let mut busy_at = 0;
-    let steps: [RateStep; 8] = [
-        (1, b"LAUNCH stay", b"1", 0, 8),
-        (2, b"LAUNCH stay", b"ERR FULL", 0, 4),
-        (3, b"END_SESSION", b"ENDED 8", 0, 1),
-        (4, b"LAUNCH exit", b"9", RETRY_FULL, 8),
-        (5, b"LAUNCH exit", b"ERR BUSY", 0, 1),
-        (6, b"LAUNCH exit", b"ERR BUSY", 0, 1),
-        (7, b"LAUNCH none", b"ERR UNKNOWN", 0, 1),
-        (8, b"LAUNCH exit", b"17", RETRY_FULL, 1),
+    let steps: [RateStep; 10] = [
+        (1, b"LAUNCH stay", b"1", 8),
+        (2, b"LAUNCH stay", b"ERR FULL", 4),
+        (3, b"END_SESSION", b"ENDED 8", 1),
+        (4, b"LAUNCH exit", b"9", 6),
+        (5, b"LAUNCH notes", b"ERR NOT_FOUND", 1),
+        (6, b"LAUNCH bad", b"ERR FAILED", 1),
+        (7, b"LAUNCH exit", b"ERR BUSY", 1),
+        (8, b"LAUNCH exit", b"ERR BUSY", 16),
+        (9, b"LAUNCH none", b"ERR UNKNOWN", 1),
+        (10, b"LAUNCH exit", b"15", 1),
     ];
-    for (step, req, want, retry, times) in steps {
-        if step == 5 {
-            busy_at = libnawah::clock_ticks().saturating_sub(t0);
-        }
+    for (step, req, want, times) in steps {
         let at = match step {
-            6 => 900,
-            8 => 1100,
+            7 => {
+                busy_at = libnawah::clock_ticks().saturating_sub(t0);
+                0
+            }
+            8 => 900,
+            10 => 1100,
             _ => 0,
         };
         if at > 0 {
             let _ = libnawah::sleep((t0 + at).saturating_sub(libnawah::clock_ticks()));
         }
+        let retry = if step == 2 { 0 } else { RETRY_FULL };
         for k in 0..times {
-            let (ok, n, num) = match (req.strip_prefix(b"LAUNCH "), parse_num(want)) {
-                (Some(id), Some(first)) => {
-                    let (num, n) = launch(ch, id, retry, &mut r);
-                    (num == first + k, n, num)
+            let (ok, n, num) = match req.strip_prefix(b"LAUNCH ") {
+                Some(id) if step == 7 => {
+                    // Up to three asks: a limit that lets one or two more through is told
+                    // apart from one that lets every one through by the last number.
+                    let mut last = (0, 0);
+                    for _ in 0..3 {
+                        let (num, n) = launch(ch, id, retry, &mut r);
+                        if num == 0 {
+                            last.1 = n;
+                            break;
+                        }
+                        last = (num, n);
+                    }
+                    (last.0 == 0 && r[..last.1] == *want, last.1, last.0)
                 }
-                _ => {
+                Some(id) => {
+                    let (num, n) = launch(ch, id, retry, &mut r);
+                    let ok = match parse_num(want) {
+                        Some(first) => num == first + k,
+                        None => r[..n] == *want,
+                    };
+                    (ok, n, num)
+                }
+                None => {
                     let n = ask(ch, req, &[], &mut r).unwrap_or(0);
                     (r[..n] == *want, n, 0)
                 }
             };
             if !ok {
                 let mut t = [0u8; 120];
-                let head = b"rater|step=0|busy_at=";
+                let head = b"rater|step=";
                 t[..head.len()].copy_from_slice(head);
-                t[11] = b'0' + step;
-                let mut at = put_num(&mut t, head.len(), busy_at);
+                let mut at = put_num(&mut t, head.len(), u64::from(step));
+                let field = b"|busy_at=";
+                t[at..at + field.len()].copy_from_slice(field);
+                at = put_num(&mut t, at + field.len(), busy_at);
                 let got = b"|got=";
                 t[at..at + got.len()].copy_from_slice(got);
                 at += got.len();
                 let m = n.min(t.len() - at);
                 t[at..at + m].copy_from_slice(&r[..m]);
                 libnawah::trace(&t[..at + m]);
-                return missed(step, num, &r[..n]);
+                // `missed`'s code, without its launcher trace.
+                return (0x50 + u64::from(step)) << 8 | (num & 0xff);
             }
         }
     }
@@ -405,6 +429,10 @@ fn rater(ch: u32) -> u64 {
     libnawah::trace(&t[..at]);
     0x40
 }
+
+/// A step of `rater`: its number, the request, the stated reply (the first number, for a LAUNCH
+/// answered OK) and how many times it is asked.
+type RateStep = (u8, &'static [u8], &'static [u8], u64);
 
 /// The vouched session's side of TST-M6-SESSION-JOB (WP-102): LAUNCH stay (#1) and nest (#2)
 /// before READY, so the services that depend on the session start once both run; 300 ticks

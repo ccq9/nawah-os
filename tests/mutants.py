@@ -1702,24 +1702,28 @@ MUTANTS = [
      "self.procs.load(Ordering::SeqCst) >= JOB_PROCESSES_MAX {",
      "self.procs.load(Ordering::SeqCst) > JOB_PROCESSES_MAX {",
      ["TST-M6-JOB-BOUND"], "a job holds 33 processes, one more than the bound"),
-    # M401..M404 (WP-163, REQ-M6-004; services.md v1.18): LAUNCH is bounded in rate, killed by
-    # TST-M6-LAUNCH-RATE.
+    # M401..M405 (WP-163, REQ-M6-004; services.md v1.18): LAUNCH is bounded in rate, killed by
+    # TST-M6-LAUNCH-RATE (M405 from the review round's red team).
     ("M401", "user/apps/svcmgr/src/main.rs",
-     "        if made >= LAUNCH_RATE_MAX {\n",
-     "        if made >= u32::MAX {\n",
-     ["TST-M6-LAUNCH-RATE"], "SECURITY: LAUNCH is never refused for its rate, so a requester starts images as fast as it asks"),
+     "        *oldest = Some(now);\n",
+     "",
+     ["TST-M6-LAUNCH-RATE"], "SECURITY: no attempt is kept, so LAUNCH is never refused for its rate and a requester starts images as fast as it asks"),
     ("M402", "user/apps/svcmgr/src/main.rs",
      "            out.put(b\"ERR FULL\");\n            return;\n",
-     "            out.put(b\"ERR FULL\");\n            self.launch_window.1 += 1;\n            return;\n",
+     "            out.put(b\"ERR FULL\");\n            self.launches[self.launch_next] = Some(libnawah::clock_ticks());\n            self.launch_next = (self.launch_next + 1) % LAUNCH_RATE_MAX;\n            return;\n",
      ["TST-M6-LAUNCH-RATE"], "a full table's refusal counts as an attempt, so retrying after Sign out fills the window"),
     ("M403", "user/apps/svcmgr/src/main.rs",
-     "        if made >= LAUNCH_RATE_MAX {\n            out.put(b\"ERR BUSY\");\n",
-     "        if made >= LAUNCH_RATE_MAX {\n            self.launch_window = (now, made);\n            out.put(b\"ERR BUSY\");\n",
-     ["TST-M6-LAUNCH-RATE"], "a refusal starts the window again, so a requester that retries is never let through"),
+     "            out.put(b\"ERR BUSY\");\n            return;\n        }\n        *oldest = Some(now);\n",
+     "            *oldest = Some(now);\n            self.launch_next = (self.launch_next + 1) % LAUNCH_RATE_MAX;\n            out.put(b\"ERR BUSY\");\n            return;\n        }\n        *oldest = Some(now);\n",
+     ["TST-M6-LAUNCH-RATE"], "a refusal counts as an attempt, so a requester that retries is never let through"),
     ("M404", "user/apps/svcmgr/src/main.rs",
      "                Some(k) => self.launch(k, &mut out),\n                None => out.put(b\"ERR UNKNOWN\"),\n",
-     "                Some(k) => self.launch(k, &mut out),\n                None if self.launch_window.1 >= LAUNCH_RATE_MAX => out.put(b\"ERR BUSY\"),\n                None => out.put(b\"ERR UNKNOWN\"),\n",
-     ["TST-M6-LAUNCH-RATE"], "an unknown id is answered ERR BUSY in a full window, which the contract answers ERR UNKNOWN"),
+     "                Some(k) => self.launch(k, &mut out),\n                None if self.launches[self.launch_next].is_some_and(|t| libnawah::clock_ticks().saturating_sub(t) < LAUNCH_WINDOW) => out.put(b\"ERR BUSY\"),\n                None => out.put(b\"ERR UNKNOWN\"),\n",
+     ["TST-M6-LAUNCH-RATE"], "an unknown id is answered ERR BUSY while the window is full, which the contract answers ERR UNKNOWN"),
+    ("M405", "user/apps/svcmgr/src/main.rs",
+     "            Err(e) => {\n                // Nothing was moved when the image is missing",
+     "            Err(e) => {\n                self.launch_next = (self.launch_next + LAUNCH_RATE_MAX - 1) % LAUNCH_RATE_MAX;\n                self.launches[self.launch_next] = None;\n                // Nothing was moved when the image is missing",
+     ["TST-M6-LAUNCH-RATE"], "SECURITY: a failed launch is not counted, so a requester repeats a missing or broken image, each a job, a channel and a read of up to 4 MiB, without limit"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2061,7 +2065,7 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-164 (RSK-050): a job holds 32 live processes at most (syscall.md v1.15).
             "M397", "M398",
             # WP-163 (REQ-M6-004): LAUNCH is bounded in rate (services.md v1.18).
-            "M401"}
+            "M401", "M405"}
 
 
 def security_of(mid: str) -> bool:
@@ -2459,10 +2463,11 @@ EXPECT = {
     "M398": {"TST-M6-JOB-BOUND": ["exit 37", "|hog_live=65|hog_count=0|", _JBNOT]},
     "M399": {"TST-M6-JOB-BOUND": ["exit 37", "|again=0|counted=32|back=32|", _JBUNIT]},
     "M400": {"TST-M6-JOB-BOUND": ["exit 37", "|unit|taken=33|", _JBUNIT]},
-    "M401": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5511|", _LRANS]},
+    "M401": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5711|", _LRANS]},
     "M402": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5400|", _LRANS]},
-    "M403": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5800|", _LRANS]},
-    "M404": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5700|", _LRANS]},
+    "M403": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5a00|", _LRANS]},
+    "M404": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5900|", _LRANS]},
+    "M405": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5710|", _LRANS]},
 }
 
 

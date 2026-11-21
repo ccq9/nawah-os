@@ -8613,7 +8613,7 @@
           "name=opt/nawah/test,string=launch_rate"
         ],
         "expected_exit_code": 33,
-        "oracle": "LAUNCH is bounded in rate (services.md's next version, WP-163): at most 16 launch attempts in a window of 1000 ticks for the whole manager, an attempt being a LAUNCH of a registered id that found a free place, whatever its outcome; beyond it ERR BUSY before any work, and neither ERR FULL, ERR UNKNOWN nor ERR BUSY is counted. The lab manifest SVC-LR.TXT loads one service of the lab image named `session` (OK 1), whose role `rater` answers READY and then, from its tick t0: (1) eight LAUNCH stay, OK app:stay#1 to #8, eight attempts, each application waiting on its boot channel; (2) four more LAUNCH stay, each ERR FULL; (3) END_SESSION, ENDED 8; (4) eight LAUNCH exit (an image that exits at once), OK app:exit#9 to #16, each repeated every 2 ticks while answered ERR FULL as the ended session's places come back; (5) LAUNCH exit, ERR BUSY: the 17th in the window, which the full-table refusals of steps 2 and 4 did not fill; (6) at t0 + 900, still in the window, LAUNCH exit, ERR BUSY again; (7) LAUNCH none, an unknown id, ERR UNKNOWN in the full window; (8) at t0 + 1100, after the window that began with the first attempt and was not lengthened by the refusals (one that began again at step 6 would last to t0 + 1900), LAUNCH exit is OK app:exit#17. Traced rater|busy_at=<ticks from t0 to step 5>; exit 0x40, at the first step k that saw another reply (0x50 + k) * 256 + its number, traced rater|step=<k>|busy_at=..|got=<reply>. When the session has exited and no process of STAY.ELF or EXIT.ELF lives, the test kernel reads, while the manager runs: one live job more than before the manager started (the last session's) and the manager's handle count 1 above what it was before LOAD (that job: nothing of the ended session, of the launches that exited or of those refused). Then the control channel closes: the manager exits 0, no process, object or frame is left; exit 33",
+        "oracle": "LAUNCH is bounded in rate (services.md v1.18, WP-163): at most 16 launch attempts in any 1000 ticks for the whole manager, an attempt being a LAUNCH of a registered id that found a free place, whatever its outcome (OK, ERR NOT_FOUND or ERR FAILED); one more is refused ERR BUSY before any work while the oldest of the last sixteen is less than 1000 ticks old, and neither ERR FULL, ERR UNKNOWN nor ERR BUSY is an attempt. The lab manifest SVC-LR.TXT loads one service of the lab image named `session` (OK 1), whose role `rater` answers READY and then, from its tick t0: (1) eight LAUNCH stay, OK app:stay#1 to #8, each application waiting on its boot channel; (2) four more LAUNCH stay, each ERR FULL; (3) END_SESSION, ENDED 8; (4) six LAUNCH exit (an image that exits at once), OK app:exit#9 to #14; (5) LAUNCH notes, registered with no image on the volume, ERR NOT_FOUND; (6) LAUNCH bad, whose image is a text file, ERR FAILED: sixteen attempts, two of them failed; (7) LAUNCH exit, ERR BUSY at the first ask (asked up to three times while answered OK, so a limit that let one or two more through ends with the last number); (8) at t0 + 900 sixteen LAUNCH exit, each ERR BUSY; (9) LAUNCH none, an unknown id, ERR UNKNOWN; (10) at t0 + 1100, when the first attempt is more than 1000 ticks old, LAUNCH exit is OK app:exit#15 (the failed launches took no number; were the sixteen refusals of step 8 counted, it would still be ERR BUSY). Every LAUNCH but step 2's is asked again 2 ticks later while answered ERR FULL, as the ended session's places come back. Traced rater|busy_at=<ticks from t0 to step 7>; exit 0x40, at the first step k that saw another reply (0x50 + k) * 256 + the number of its last OK app:<id>#<n> (0 for none), traced rater|step=<k>|busy_at=..|got=<reply>. When the session has exited and no process of STAY.ELF or EXIT.ELF lives, the test kernel reads, while the manager runs: one live job more than before the manager started (the last session's) and the manager's handle count 1 above what it was before LOAD (that job: nothing of the ended session, of the launches that exited, failed or were refused). Then the control channel closes: the manager exits 0, no process, object or frame is left; exit 33",
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=launch_rate",
           "|path=/SYSTEM/APPS/STAY.ELF|handles=1",
@@ -8621,7 +8621,7 @@
           "|ktest|launch_rate|load=OK 1|session=0x40|stays=0|exits=0|live_jobs=1|mgr_handles=1|",
           "|ktest|launch_rate|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|launch_rate|frames_delta=0",
-          "|ktest|pass|LAUNCH is bounded in rate: the attempt beyond the window's count is refused ERR BUSY, a full table and an unknown id are not counted, and the next window launches again"
+          "|ktest|pass|LAUNCH is bounded in rate: the attempt beyond sixteen in any 1000 ticks is refused ERR BUSY, failed launches count, a full table and an unknown id do not, and launching resumes as the attempts age"
         ],
         "forbidden_markers": [
           "|ktest|fail|",
@@ -8634,8 +8634,10 @@
         "disk_files": {
           "SYSTEM/APPS/STAY.APP": "platform/pc-qemu/lab/stay.app",
           "SYSTEM/APPS/EXIT.APP": "platform/pc-qemu/lab/exit.app",
+          "SYSTEM/APPS/BAD.APP": "platform/pc-qemu/lab/bad.app",
           "SYSTEM/APPS/STAY.ELF": "${OUT}/apps/svc.elf",
-          "SYSTEM/APPS/EXIT.ELF": "${OUT}/apps/exiter.elf"
+          "SYSTEM/APPS/EXIT.ELF": "${OUT}/apps/exiter.elf",
+          "SYSTEM/APPS/BAD.ELF": "platform/pc-qemu/lab/bad.app"
         }
       }
     ]
