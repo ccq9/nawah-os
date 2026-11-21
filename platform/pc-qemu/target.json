@@ -8689,14 +8689,17 @@
           "name=opt/nawah/test,string=session_restart"
         ],
         "expected_exit_code": 33,
-        "oracle": "The session service's exit ends the session's job whatever its exit code and however it comes (services.md v1.20, WP-172). The lab manifest SVC-SX.TXT loads one service of the lab image named `session` (OK 1), on-failure, image /SYSTEM/LABSES.ELF, whose role `stayer` answers READY, is answered BEGUN to BEGIN_SESSION, launches stay (OK app:stay#<n>) and holds, waiting on its boot channel without a deadline. When it holds with one live STAY.ELF waiting, the test kernel asks the manager RESTART session, answered OK: the session's channel closes, it exits 0x40 (not 0) with the manager's state stopping, the manager ends its job, and starts it again, and the new session begins a session and launches stay again. The test kernel waits, at most 5000 ticks, and reads while the manager runs: restarts=1, the new session holding, one live STAY.ELF, waiting, whose job's parent is a new session job under the root job (not the first application's), two live jobs more than before the manager started (the new session's and its application's) and the manager's handle count 4 above what it was before LOAD less the held session's process and channel (that application's process, channel and job and the new session's job: nothing of the first). The case drops every value of its own on the kernel's heap before the frame balance, which never returns. Then the control channel closes: the manager exits 0, no process, object or frame is left; exit 33",
+        "oracle": "The session service's exit ends the session's job whatever its exit code and however it comes (services.md v1.20; a RESTART, a crash and a STOP here, the clean exit in TST-M6-SESSION-GATE). The lab manifest SVC-SX.TXT loads two services (OK 2): `lab` (role ready), so the session is not the manifest's first service, then `session`, on-failure, image /SYSTEM/LABSES.ELF, whose role `stayer` answers READY, asks LAUNCH stay before any session (answered ERR NO_SESSION: the gate is closed at boot and after the exit of the incarnation before, else it exits 0xE4), is answered BEGUN to BEGIN_SESSION, launches stay (OK app:stay#<n>) and holds, waiting on its boot channel without a deadline. When it holds with first=1 live STAY.ELF waiting, the test kernel asks the manager RESTART session, answered OK: the session exits 0x40 with the manager's state stopping, the manager ends its job and starts it again; within 5000 ticks the listing shows exit=0x40 and restarts=1, the new session holds, one live STAY.ELF waits in a session job under the root job other than the first's, two live jobs more than before the manager started and the manager's handle count 4 above its count before LOAD less the lab service's process and channel and the held session's (that application's process, channel and job and the new session's job). Then the test kernel kills the session's process while it is ready (a crash: EXIT_KILLED 0x20000): the manager ends its job and starts it again on failure; within 5000 ticks exit=0x20000, restarts=2, the session holds again and one live STAY.ELF waits in a session job that is neither of the two before, with the same counts. Then STOP session, answered OK: the session exits 0x40 and stays stopped; within 5000 ticks no STAY.ELF lives, no job is left and the manager's handle count is back to its count before LOAD less the lab service's. A phase that reads otherwise fails at once with its own message. The case drops every value of its own on the kernel's heap before the frame balance, which never returns. Then the control channel closes: the manager exits 0, no process, object or frame is left; exit 33",
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=session_restart",
           "|path=/SYSTEM/APPS/STAY.ELF|handles=1",
-          "|ktest|session_restart|load=OK 1|session=0x40|first=1|restart=OK|restarts=1|held=1|stays=1|new_job=1|live_jobs=2|mgr_handles=4|",
+          "|ktest|session_restart|load=OK 2|session=0x40|first=1|",
+          "|ktest|session_restart|restart|restart=OK|exit=0x40|restarts=1|held=1|stays=1|new_job=1|live_jobs=2|mgr_handles=4|",
+          "|ktest|session_restart|crash|killed=1|exit=0x20000|restarts=2|held=1|stays=1|new_job=1|live_jobs=2|mgr_handles=4|",
+          "|ktest|session_restart|stop|stop=OK|state=stopped|exit=0x40|stays=0|live_jobs=0|mgr_handles=0|",
           "|ktest|session_restart|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|session_restart|frames_delta=0",
-          "|ktest|pass|the manager's restart of the session ended its job with its application, and the new session launched into a job of its own"
+          "|ktest|pass|the session's restart, crash and stop each ended its job with its application, and each session started again launched into a job of its own"
         ],
         "forbidden_markers": [
           "|ktest|fail|",
@@ -8705,7 +8708,7 @@
           "|user_fault|",
           "|text=launcher|step="
         ],
-        "timeout_s": 30,
+        "timeout_s": 45,
         "disk_files": {
           "SYSTEM/APPS/STAY.APP": "platform/pc-qemu/lab/stay.app",
           "SYSTEM/APPS/STAY.ELF": "${OUT}/apps/svc.elf",

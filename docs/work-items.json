@@ -10918,7 +10918,7 @@
     "WP-172"
    ],
    "inputs": [
-    "created 2026-11-21 from WP-172's review round: the red team's surviving mutants and the leak the restart case found"
+    "created 2026-11-21 from WP-172's review round: the red team's surviving mutants and what the restart case read as a leak (its own measure, refuted on a clone)"
    ],
    "files": [
     "docs/contracts/services.md",
@@ -10934,12 +10934,14 @@
     "docs/work-items.json",
     "docs/requirements.json",
     "tools/project.py",
-    "docs/project-state.json"
+    "docs/project-state.json",
+    "kernel/src/sched/mod.rs",
+    "docs/LATER.md"
    ],
    "contract_refs": [
     "docs/contracts/services.md"
    ],
-   "acceptance": "TST-M6-SESSION-RESTART (new) shows on CI the session's job ended at a RESTART of the session (exit 0x40, the manager's state stopping) with its application, and the restarted session launching into a job of its own, the frames balanced; services.md v1.20's limit about a leak corrected; mutants M417 (SECURITY: the job ended only at a clean exit) and M418 (ended but kept) killed by the M6 gate",
+   "acceptance": "TST-M6-SESSION-RESTART (new) shows on CI, in three phases, the session's job ended with its application at a RESTART (exit 0x40, the manager's state stopping), at a crash (the session's process killed while ready: EXIT_KILLED, started again on failure) and at a STOP (nothing of the session left), the gate closed after each exit (LAUNCH before BEGIN_SESSION answered ERR NO_SESSION in every incarnation) with the session after another service in the manifest, each session started again launching into a job of its own, the frames balanced; services.md v1.20's limit about a leak corrected; mutants M417 (SECURITY: the job ended only at a clean exit), M418 (ended but kept), M419 (SECURITY: ended only at a clean exit or a stop), M420 (SECURITY: the gate left open after an unclean exit) and M421 (SECURITY: the session known by its place in the manifest) killed by the M6 gate",
    "test_ids": [
     "TST-M6-SESSION-RESTART",
     "TST-M6-SESSION-GATE",
@@ -10957,12 +10959,15 @@
    "evidence_refs": [],
    "blocker": null,
    "actions": [
-    "إعادة تشغيل الجلسة: حالة RESTART وتسرّب ثماني كتل كومة نواة كشفته (من جولة مراجعة WP-172، 2026-11-21)",
+    "إنهاء مهمة الجلسة أيًّا كان خروجها: حالة RESTART والانهيار وSTOP (من جولة مراجعة WP-172، 2026-11-21؛ «التسرّب» كان قياس الحالة نفسها)",
     "2026-11-21 (the manager): the case's work is kept outside the tree (the scratch patch of that date): role stayer, manifest SVC-SX.TXT, ktest session_restart; it passed every clause but frames_delta=1, heap slab_pages=1 and live_blocks=8 after the manager's exit, the same without the kill; the RESTART of a lab service alone (the config case) balances",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-21 (the manager): narrowed before activation. The 'eight kernel heap blocks' were the restart case's own measure, found by the kernel engineer's reading and confirmed on a clone: the case's String `restart` was alive when svc_balance, which never returns, counted the frames; with it dropped first the case passes with frames_delta=0 (scratch run 20261121T080215Z-2a267c58-001). No kernel fix: this item keeps the case, the mutants and the correction of services.md v1.20's limit",
     "2026-11-21 (the manager): test first, the gap shown on a clone (scratch, gap173.log): each of the red team's three mutations of the kill at the session's exit (only at exit code 0; skipped while stopping; killed and closed but kept) built once: TST-M6-SESSION-GATE passes under each (the gap: only a clean exit is exercised), TST-M6-SESSION-RESTART fails under each (stays=2|new_job=0|live_jobs=3|mgr_handles=7 for the first two, restarts=3|held=0 with launcher|step=1|got=ERR FAILED for the third) and passes clean. The first two leave one evidence: M417 is registered, the second is written here as killed by the same reading",
-    "2026-11-21 activated (the manager): its dependency WP-172 is done; test first (the gap above)"
+    "2026-11-21 activated (the manager): its dependency WP-172 is done; test first (the gap above)",
+    "2026-11-21 (the manager): the review round on 191bba8dfb (the auditor and the red team, read only). Confirmed: the crash path was not shown (a nonzero exit while ready, restarted on failure; the system manifest's own setting): the mutant `code == 0 || state == Stopping` passes the case as pushed, as WP-172's close had promised a crash, a STOP and a RESTART here; the gate left open after an unclean exit (`session_open &= code != 0`) passes it, the stayer beginning before any LAUNCH; the session's place (`if i == 0`) passes every case, each putting the session first; the line printed first=1 as text and the exit code was not read; services.md v1.20 said an unclean exit was shown; L-113 pointed to WP-173; this item's title still said leak. Refuted: the red team's way to crash the stayer (CONNECT on its channel) does not end it: hold() closes what it is sent and waits on",
+    "2026-11-21 (the manager): decisions with their options (rule 5). The crash: (a) the test kernel kills the session's process (sched::kill_named, test-only, EXIT_KILLED as process_kill), (b) the stayer exits nonzero on a message the kernel sends through CONNECT, (c) no crash phase and a limit in LATER; (a) chosen: a crash in the strict sense, no lab protocol; (c) would leave WP-172's promise broken. The gate: (a) the stayer asks LAUNCH before BEGIN_SESSION in every incarnation, (b) a desktop in SVC-SX.TXT asking LAUNCH after each exit; (a) chosen: one service, no timing between two. The place: a lab service (`lab`, role ready) before the session. The policy on-failure 3 10 stays: the crash needs a restart on failure, and RESTART's restart_after_stop does not depend on it. Not registered: a kill skipped while stopping (killed by the RESTART phase with M417's evidence) and one skipped while the state is failed (an artificial condition; the crash phase reads it). The case fails at the first phase that reads otherwise, with that phase's message",
+    "2026-11-21 (the manager): test first for the corrections: M419 to M421 were run against the case as pushed on a scratch clone (the gap), then against the three-phase case; their evidence and the new EXPECT of M417 and M418 come from that run (scratch, never evidence); CI judges"
    ]
   }
  ]

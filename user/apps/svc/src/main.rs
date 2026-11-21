@@ -473,17 +473,22 @@ fn hold(ch: u32, code: u64) -> u64 {
 }
 
 /// The vouched session's side of TST-M6-SESSION-RESTART (WP-173, services.md v1.20): READY,
-/// BEGIN_SESSION and LAUNCH stay (any number), then holds; a refused BEGIN_SESSION exits 0xE3, a
-/// LAUNCH answered otherwise (0x51 << 8) + its number. Each incarnation does the same, so the
-/// session the manager restarts launches again into a job of its own.
+/// LAUNCH stay before any session (it must be answered ERR NO_SESSION: the gate is closed at boot
+/// and by the exit of the incarnation before, however it went; otherwise it exits 0xE4), then
+/// BEGIN_SESSION and LAUNCH stay (any number), then holds; a refused BEGIN_SESSION exits 0xE3,
+/// a LAUNCH answered otherwise (0x51 << 8) + its number. Each incarnation does the same, so the
+/// session the manager starts again launches again into a job of its own.
 fn stayer(ch: u32) -> u64 {
     if libnawah::channel_write(ch, b"READY", &[]) != 0 {
         return 0xE2;
     }
+    let mut r = [0u8; 128];
+    if !matches!(ask(ch, b"LAUNCH stay", &[], &mut r), Some(n) if r[..n] == *b"ERR NO_SESSION") {
+        return 0xE4;
+    }
     if !begin(ch) {
         return 0xE3;
     }
-    let mut r = [0u8; 128];
     let (num, n) = launch(ch, b"stay", RETRY_FULL, &mut r);
     if num == 0 {
         return missed(1, num, &r[..n]);

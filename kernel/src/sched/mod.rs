@@ -1162,6 +1162,25 @@ pub fn kill_job_id(job: u64, code: u64) -> bool {
     found.is_some_and(|j| kill_job(&j, code))
 }
 
+/// Test-only (WP-173): kills the one live process named `name` with `code`, as `process_kill`
+/// does (a crash: no code of its own); false unless exactly one live process has that name.
+/// TST-M6-SESSION-RESTART crashes the vouched session this way while it is ready.
+#[cfg(feature = "ktest")]
+pub fn kill_named(name: &[u8], code: u64) -> bool {
+    let found = with(|s| {
+        let mut named = s
+            .processes
+            .iter()
+            .filter(|p| p.exit_code.is_none())
+            .filter(|p| p.object.as_ref().is_some_and(|o| o.name_is(name)));
+        match (named.next(), named.next()) {
+            (Some(p), None) => Some(p.id),
+            _ => None,
+        }
+    });
+    found.is_some_and(|pid| kill_process(pid, code))
+}
+
 /// Test-only (WP-164): what the job `job` (an id) of a live process counts as its own processes
 /// (syscall.md v1.15), or None when no live process is in it.
 #[cfg(feature = "ktest")]

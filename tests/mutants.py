@@ -1783,6 +1783,20 @@ MUTANTS = [
      "            if let Some(job) = self.session_job.take() {\n                libnawah::job_kill(job);\n                libnawah::handle_close(job);\n            }\n        }\n        let s = &mut",
      "            if let Some(job) = self.session_job {\n                libnawah::job_kill(job);\n                libnawah::handle_close(job);\n            }\n        }\n        let s = &mut",
      ["TST-M6-SESSION-RESTART"], "the session's job is ended and its handle closed at the session's exit but kept, so the restarted session's launches fail"),
+    # M419 to M421 (WP-173's review round): the crash path (a nonzero exit while ready, restarted
+    # on failure), the gate after an unclean exit and the session's place in the manifest.
+    ("M419", "user/apps/svcmgr/src/main.rs",
+     "            if let Some(job) = self.session_job.take() {\n                libnawah::job_kill(job);\n                libnawah::handle_close(job);\n            }\n        }\n",
+     "            if code == 0 || self.services[i].state == State::Stopping {\n                if let Some(job) = self.session_job.take() {\n                    libnawah::job_kill(job);\n                    libnawah::handle_close(job);\n                }\n            }\n        }\n",
+     ["TST-M6-SESSION-RESTART"], "SECURITY: the session's job is ended at a clean exit or a stop alone, so a crashed session's applications pass to the session started again"),
+    ("M420", "user/apps/svcmgr/src/main.rs",
+     "        if self.services[i].name() == b\"session\" {\n            self.session_open = false;\n",
+     "        if self.services[i].name() == b\"session\" {\n            self.session_open &= code != 0;\n",
+     ["TST-M6-SESSION-RESTART"], "SECURITY: an unclean exit of the session leaves the gate open, so LAUNCH is answered before the next session begins"),
+    ("M421", "user/apps/svcmgr/src/main.rs",
+     "        if self.services[i].name() == b\"session\" {\n            self.session_open = false;\n",
+     "        if i == 0 {\n            self.session_open = false;\n",
+     ["TST-M6-SESSION-RESTART"], "SECURITY: the session's exit is known by its place in the manifest, not its name, so a session listed after another service closes nothing and kills nothing"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2130,7 +2144,7 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-172 (REQ-M6-004): the session service's exit ends its job (services.md v1.20).
             "M415",
             # WP-173 (REQ-M6-004): however the session service exits (services.md v1.20).
-            "M417"}
+            "M417", "M419", "M420", "M421"}
 
 
 def security_of(mid: str) -> bool:
@@ -2362,6 +2376,7 @@ _SGSES = "|ktest|fail|a LAUNCH or BEGIN_SESSION of the session was not answered 
 _SGDESK = "|ktest|fail|the desktop opened the gate, or the session's exit did not close it"
 _SGEXIT = "|ktest|fail|an application or a job of the session outlived the session service"
 _SRKEPT = "|ktest|fail|an application of the restarted session outlived it, or the new session could not launch"
+_SRCRASH = "|ktest|fail|an application of the crashed session outlived it, or the session started again could not launch"
 _ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
 _APP_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
@@ -2546,9 +2561,13 @@ EXPECT = {
     "M412": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5300|", _SGSES]},
     "M415": {"TST-M6-SESSION-GATE": ["exit 37", "|stays=1|waiting=1|live_jobs=2|mgr_handles=4|", _SGEXIT]},
     "M416": {"TST-M6-SESSION-GATE": ["exit 37", "|stays=0|waiting=0|live_jobs=1|mgr_handles=1|", _SGEXIT]},
-    # WP-173 (services.md v1.20): a RESTART's exit (0x40, the manager stopping) ends the job too.
-    "M417": {"TST-M6-SESSION-RESTART": ["exit 37", "|restarts=1|held=1|stays=2|new_job=0|live_jobs=3|mgr_handles=7|", _SRKEPT]},
-    "M418": {"TST-M6-SESSION-RESTART": ["exit 37", "|restarts=3|held=0|stays=0|new_job=0|live_jobs=0|mgr_handles=0|", _SRKEPT]},
+    # WP-173 (services.md v1.20): a RESTART's exit (0x40, the manager stopping), a crash (killed while
+    # ready, started again on failure) and a STOP end the job too, and close the gate.
+    "M417": {"TST-M6-SESSION-RESTART": ["exit 37", "|exit=0x40|restarts=1|held=1|stays=2|new_job=0|live_jobs=3|mgr_handles=7|", _SRKEPT]},
+    "M418": {"TST-M6-SESSION-RESTART": ["exit 37", "|exit=0x5100|restarts=3|held=0|stays=0|new_job=0|live_jobs=0|mgr_handles=0|", _SRKEPT]},
+    "M419": {"TST-M6-SESSION-RESTART": ["exit 37", "|exit=0x20000|restarts=2|held=1|stays=2|new_job=0|live_jobs=3|mgr_handles=7|", _SRCRASH]},
+    "M420": {"TST-M6-SESSION-RESTART": ["exit 37", "|exit=0xe4|restarts=3|held=0|stays=0|new_job=0|live_jobs=0|mgr_handles=0|", _SRKEPT]},
+    "M421": {"TST-M6-SESSION-RESTART": ["exit 37", "|exit=0xe4|restarts=3|held=0|stays=4|new_job=0|live_jobs=5|mgr_handles=13|", _SRKEPT]},
     "M410": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launched=ERR NO_SESSION,ERR NO_SESSION|", _LKSTEPS]},
     "M413": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=OK app:deaf#1|", _LKALIVE]},
     "M414": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", _LKSTEPS]},

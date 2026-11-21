@@ -5172,7 +5172,7 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
             "Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
         ),
         "session_restart" => pass(
-            "the manager's restart of the session ended its job with its application, and the new session launched into a job of its own",
+            "the session's restart, crash and stop each ended its job with its application, and each session started again launched into a job of its own",
         ),
         "session_gate" => pass(
             "LAUNCH needs an open session: closed at boot, by END_SESSION and by the session's exit, which ends the session's job, opened by BEGIN_SESSION from the vouched session alone",
@@ -5831,65 +5831,182 @@ fn session_gate() -> ! {
 }
 
 /// TST-M6-SESSION-RESTART (REQ-M6-004, services.md v1.20; WP-173): the session's exit ends its
-/// job whatever its code and however it comes. The lab manifest SVC-SX.TXT runs the lab image as
-/// the vouched `session` (role `stayer`: BEGIN_SESSION, LAUNCH stay, hold), on-failure; the test
-/// kernel asks the manager to RESTART it (its channel closes, it exits 0x40, the manager's state
-/// is stopping) and reads that the first application went with the job and that the new session
-/// launched again, into a new job.
+/// job whatever its code and however it comes: a RESTART, a crash and a STOP (TST-M6-SESSION-GATE
+/// shows the clean exit). The lab manifest SVC-SX.TXT runs a lab service (`lab`, role `ready`),
+/// so the session is not the manifest's first, then the lab image as the vouched `session` (role
+/// `stayer`: LAUNCH refused ERR NO_SESSION, BEGIN_SESSION, LAUNCH stay, hold), on-failure. The
+/// test kernel asks the manager to RESTART it (it exits 0x40, the manager's state stopping), then
+/// kills it while it is ready (a crash: EXIT_KILLED, started again on failure), then asks STOP.
+/// After each it reads that the application went with the job and, but after the stop, that the
+/// session started again launched into a job of its own; after the stop, that nothing is left.
 fn session_restart() -> ! {
+    struct Phase {
+        restarts: u64,
+        exit: u64,
+        stopped: bool,
+        held: bool,
+        stays: usize,
+        waiting: bool,
+        new_job: usize,
+        live_jobs: i64,
+        kept: i64,
+        job: u64,
+    }
     let name = "session_restart";
     let h = SvcHarness::start(name, b"/SYSTEM/SVC-SX.TXT");
+    let load = h.load_reply.clone();
+    if load != "OK 2" {
+        fail("the lab manifest did not load")
+    }
     let (_, session) = session_held(&h, sched::ticks() + 20_000, |_| true);
+    // The lab service's process and channel, which the manager keeps while it runs.
+    const LAB: i64 = 2;
     let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
-    sched::poll_until(sched::ticks() + 5000, || {
-        let (stay, n) = sched::live_named(b"STAY.ELF");
-        n == 1 && stay[0].waiting
-    });
-    let (stay, n0) = sched::live_named(b"STAY.ELF");
-    let first = if n0 == 1 { stay[0].parent } else { 0 };
-    let restart = match crate::services::request(&h.m.ctl, b"RESTART session", sched::ticks() + 500)
-    {
-        Ok(r) => String::from_utf8_lossy(&r).into_owned(),
-        Err(e) => alloc::format!("error:{:?}", e),
-    };
-    // The new session holds once it has launched; the first application went with the old job.
     let held = || {
         let (p, n) = sched::live_named(b"LABSES.ELF");
         n == 1 && p[0].waiting
     };
-    let lines = h.poll_list(sched::ticks() + 5000, |l| {
+    // What the manager keeps beside the lab service and a held session's process and channel.
+    let kept = || mgr_handles(&h) - h.handles0 - LAB - if held() { 2 } else { 0 };
+    // The one live STAY.ELF, waiting, in a session job under the root that is none of `old`.
+    let one_new_stay = |old: &[u64]| {
         let (stay, n) = sched::live_named(b"STAY.ELF");
-        svc_find(l, "session").restarts == 1
-            && held()
-            && n == 1
-            && stay[0].waiting
-            && stay[0].parent != first
-            && jobs_now() == 2
-            && mgr_handles(&h) - h.handles0 - 2 == 4
-    });
-    let restarts = svc_find(&lines, "session").restarts;
-    let (stay, n) = sched::live_named(b"STAY.ELF");
-    let new_job = stay[..n]
-        .iter()
-        .filter(|a| a.parent != first && a.parent_under_root)
-        .count();
-    let held_now = held();
-    let live_jobs = jobs_now();
-    let kept = mgr_handles(&h) - h.handles0 - if held_now { 2 } else { 0 };
-    let load = h.load_reply.clone();
+        n == 1 && stay[0].waiting && stay[0].parent_under_root && !old.contains(&stay[0].parent)
+    };
+    let read = |lines: &[SvcLine], old: &[u64]| {
+        let s = svc_find(lines, "session");
+        let (stay, n) = sched::live_named(b"STAY.ELF");
+        Phase {
+            restarts: s.restarts,
+            exit: s.exit.unwrap_or(u64::MAX),
+            stopped: s.state == "stopped",
+            held: held(),
+            stays: n,
+            waiting: n == 1 && stay[0].waiting,
+            new_job: stay[..n]
+                .iter()
+                .filter(|a| a.parent_under_root && !old.contains(&a.parent))
+                .count(),
+            live_jobs: jobs_now(),
+            kept: kept(),
+            job: if n == 1 { stay[0].parent } else { 0 },
+        }
+    };
+    let ask = |req: &[u8]| {
+        crate::services::request(&h.m.ctl, req, sched::ticks() + 500).is_ok_and(|r| r == b"OK")
+    };
+    let said = |ok: bool| if ok { "OK" } else { "refused" };
+    sched::poll_until(sched::ticks() + 5000, || one_new_stay(&[]));
+    let (stay, first) = sched::live_named(b"STAY.ELF");
+    let j1 = if first == 1 && stay[0].waiting {
+        stay[0].parent
+    } else {
+        0
+    };
     kprintln!(
-        "OSX|{}|ktest|session_restart|load={}|session={:#x}|first=1|restart={}|restarts={}|held={}|stays={}|new_job={}|live_jobs={}|mgr_handles={}|",
+        "OSX|{}|ktest|session_restart|load={}|session={:#x}|first={}|",
         BUILD_ID,
         load,
         session,
-        restart,
-        restarts,
-        u8::from(held_now),
-        n,
-        new_job,
-        live_jobs,
-        kept
+        first
     );
+    if session != 0x40 || j1 == 0 {
+        fail("the session did not launch and hold as the case states")
+    }
+    // A RESTART: the session exits 0x40 with the manager's state stopping, and starts again.
+    let restart = ask(b"RESTART session");
+    let lines = h.poll_list(sched::ticks() + 5000, |l| {
+        svc_find(l, "session").restarts == 1
+            && held()
+            && one_new_stay(&[j1])
+            && jobs_now() == 2
+            && kept() == 4
+    });
+    let r = read(&lines, &[j1]);
+    drop(lines);
+    kprintln!(
+        "OSX|{}|ktest|session_restart|restart|restart={}|exit={:#x}|restarts={}|held={}|stays={}|new_job={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        said(restart),
+        r.exit,
+        r.restarts,
+        u8::from(r.held),
+        r.stays,
+        r.new_job,
+        r.live_jobs,
+        r.kept
+    );
+    if !restart
+        || r.exit != 0x40
+        || r.restarts != 1
+        || !r.held
+        || r.stays != 1
+        || !r.waiting
+        || r.new_job != 1
+        || r.live_jobs != 2
+        || r.kept != 4
+    {
+        fail("an application of the restarted session outlived it, or the new session could not launch")
+    }
+    let j2 = r.job;
+    // A crash: the session is killed while ready, and the manager starts it again on failure.
+    let killed = sched::kill_named(b"LABSES.ELF", crate::syscall::EXIT_KILLED);
+    let lines = h.poll_list(sched::ticks() + 5000, |l| {
+        svc_find(l, "session").restarts == 2
+            && held()
+            && one_new_stay(&[j1, j2])
+            && jobs_now() == 2
+            && kept() == 4
+    });
+    let r = read(&lines, &[j1, j2]);
+    drop(lines);
+    kprintln!(
+        "OSX|{}|ktest|session_restart|crash|killed={}|exit={:#x}|restarts={}|held={}|stays={}|new_job={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        u8::from(killed),
+        r.exit,
+        r.restarts,
+        u8::from(r.held),
+        r.stays,
+        r.new_job,
+        r.live_jobs,
+        r.kept
+    );
+    if !killed
+        || r.exit != crate::syscall::EXIT_KILLED
+        || r.restarts != 2
+        || !r.held
+        || r.stays != 1
+        || !r.waiting
+        || r.new_job != 1
+        || r.live_jobs != 2
+        || r.kept != 4
+    {
+        fail("an application of the crashed session outlived it, or the session started again could not launch")
+    }
+    // A STOP: the session exits 0x40 and stays stopped; nothing of it is left.
+    let stop = ask(b"STOP session");
+    let lines = h.poll_list(sched::ticks() + 5000, |l| {
+        svc_find(l, "session").state == "stopped"
+            && sched::live_named(b"STAY.ELF").1 == 0
+            && jobs_now() == 0
+            && kept() == 0
+    });
+    let r = read(&lines, &[]);
+    drop(lines);
+    kprintln!(
+        "OSX|{}|ktest|session_restart|stop|stop={}|state={}|exit={:#x}|stays={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        said(stop),
+        if r.stopped { "stopped" } else { "other" },
+        r.exit,
+        r.stays,
+        r.live_jobs,
+        r.kept
+    );
+    if !stop || !r.stopped || r.exit != 0x40 || r.stays != 0 || r.live_jobs != 0 || r.kept != 0 {
+        fail("an application of the stopped session outlived it")
+    }
     let (mgr_exit, procs, frames0, clean) = h.finish();
     kprintln!(
         "OSX|{}|ktest|session_restart|mgr_exit={:#x}|processes_after={}|clean={}",
@@ -5898,23 +6015,12 @@ fn session_restart() -> ! {
         procs,
         u8::from(clean)
     );
-    if load != "OK 1" {
-        fail("the lab manifest did not load")
-    }
-    if session != 0x40 || n0 != 1 || restart != "OK" {
-        fail("the session did not launch, hold and restart as the case states")
-    }
-    // The new session's application alone, in the new session's job: the restart ended the old
-    // one with its application, and the new session launched.
-    if restarts != 1 || !held_now || n != 1 || new_job != 1 || live_jobs != 2 || kept != 4 {
-        fail("an application of the restarted session outlived it, or the new session could not launch")
-    }
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or applications left something behind")
     }
     // Every value of this case on the kernel's heap goes before the balance, which never returns:
-    // a String left alive keeps a heap page and reads as a frame leaked (WP-172's review round).
-    drop((lines, load, restart));
+    // a String left alive keeps a heap page and reads as a frame leaked (WP-173's narrowing).
+    drop(load);
     svc_balance(name, frames0)
 }
 
