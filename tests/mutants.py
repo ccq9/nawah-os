@@ -2313,6 +2313,7 @@ _MORE = "|ktest|fail|an application holds more than its boot channel"
 _NOJOB = "|ktest|fail|an application is not in a job of its own under the session's job"
 _SJANS = "|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states"
 _LKALIVE = "|ktest|fail|an application of the signed-out session is still alive"
+_LKSTEPS = "|ktest|fail|the sign-in, a launch or the sign-out was not as the case states"
 _JBUNIT = "|ktest|fail|a job's count does not hold its bound"
 _JBNOT = "|ktest|fail|a job's processes are not bounded"
 _LRANS = "|ktest|fail|a LAUNCH was not answered as the rate limit states"
@@ -2494,10 +2495,11 @@ EXPECT = {
     "M403": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5a00|", _LRANS]},
     "M404": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5900|", _LRANS]},
     "M405": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5710|", _LRANS]},
-    "M406": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5101|", _SGSES]},
+    "M406": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5100|desktop=0x5200|", _SGSES]},
     "M407": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x40|desktop=0x5100|", _SGDESK]},
     "M408": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5600|", _SGSES]},
     "M409": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x40|desktop=0x5200|", _SGDESK]},
+    "M410": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launched=ERR NO_SESSION,ERR NO_SESSION|", _LKSTEPS]},
 }
 
 

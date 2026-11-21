@@ -10674,7 +10674,9 @@
     "docs/PLAN-REVERSE.md",
     "docs/work-items.json",
     "docs/requirements.json",
-    "docs/LATER.md"
+    "docs/LATER.md",
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py"
    ],
    "contract_refs": [
     "docs/contracts/services.md",
