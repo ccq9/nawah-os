@@ -1514,8 +1514,17 @@ class KillEvidence(unittest.TestCase):
         refused or unsent BEGIN_SESSION is a forbidden marker. Since WP-168 (session.md v1.10) the
         session's autostart launches them: the manifest runs config and the session declares it,
         the volume carries the administrator's store CFGU1000.A naming nine ids, the phase-1 line
-        holds no launch of the test kernel's, and an unavailable or cancelled autostart and the
-        second lab password are forbidden markers."""
+        holds no launch of the test kernel's, and an unavailable autostart and the second lab
+        password are forbidden markers. Since WP-175 (session.md v1.11) a cancelled autostart is
+        a required marker of the Sign out with the GET unanswered (phase 4), and a stale answer
+        one of the lock (phase 5); M500 to M504 (M500, M501, M503 SECURITY) are known by phase 4's
+        or phase 5's lines, M502 by the counts of the session's stale and none traces over the
+        lock (the answer applied: stale=0, none=1), M500 by the resumed line. Since WP-178 (session.md v1.12) the next sign-in is held while the
+        end of the session before it is unconfirmed: M480, M481, M488 (SECURITY) and M484 by the
+        held line and the case's message for it, M482 by ENDING timing out after the thaw, M483 by
+        the session's stream (a second END_SESSION), and M388 (its Sign out silent, the held
+        sign-in asks END_SESSION itself) by phase 4's sign-in never taken and the case's timeout;
+        M391 and M396 by ENDING timing out after the thaw, told apart by phase 1."""
         E = mutants.EXPECT
         src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
         t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
@@ -1526,30 +1535,52 @@ class KillEvidence(unittest.TestCase):
         self.assertIn("|text=session|jobs=ended|apps=2", case["required_markers"])
         for bad in ("|text=session|jobs=ended|apps=0", "|text=session|jobs=unsent", "|text=session|jobs=refused", "lab-admin-1",
                     "|text=session|begin=refused", "|text=session|begin=unsent", "lab-user-1",
-                    "|text=session|autostart=unavailable", "|text=session|autostart=cancelled"):
+                    "|text=session|autostart=unavailable"):
             self.assertIn(bad, case["forbidden_markers"])
+        for m in ("|text=session|autostart=cancelled", "|text=session|autostart=stale"):
+            self.assertIn(m, case["required_markers"])
+            self.assertNotIn(m, case["forbidden_markers"])
         want = {  # id: (SECURITY, the expected substrings)
-            "M388": (True, ["exit 37", "|deaf=1|nest=1|idle=1|jobs=3|mgr_handles=7|", mutants._LKALIVE]),
+            "M388": (True, ["timeout (hang)", "|pending|n=1|signed=error:K_E_SVC_TIMEOUT|launch=ERR NO_SESSION|"]),
             "M389": (False, ["forbidden present ['|text=session|jobs=ended|apps=0']"]),
             # since WP-168 the autostart launches: an answer queued wrongly stops it at the sign-in
-            "M396": (False, ["exit 37", "|deaf=0|nest=0|idle=0|phase=1", "|launch=OK app:deaf#1|deaf=1|in_session=1|phase=3",
+            "M396": (False, ["exit 37", "|deaf=0|nest=0|idle=0|phase=1", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|",
                              mutants._LKSTEPS]),
             "M410": (False, ["exit 37", "|launch=ERR NO_SESSION|deaf=0|in_session=0|phase=3", mutants._LKSTEPS]),
             "M413": (True, ["exit 37", "|gate|before=OK app:deaf#1|", mutants._LKALIVE]),
             "M414": (True, ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", mutants._LKSTEPS]),
             # WP-168 (session.md v1.10): the autostart. M440 (the GET without the token) is not registered:
             # its kill leaves M396's lines.
-            "M391": (False, ["exit 37", "|deaf=1|nest=0|idle=0|phase=1", "|launch=OK app:deaf#2|", mutants._LKSTEPS]),
-            "M438": (False, ["exit 37", "|launch=OK app:deaf#4|", mutants._LKSTEPS]),
+            "M391": (False, ["exit 37", "|deaf=1|nest=0|idle=0|phase=1", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|",
+                             mutants._LKSTEPS]),
+            "M438": (False, ["exit 37", "|deaf=2|nest=1|idle=1|phase=1", "|launch=OK app:deaf#4|deaf=1|in_session=1|phase=3",
+                             mutants._LKSTEPS]),
             "M439": (True, ["missing markers ['|text=session|autostart|invalid=4']; forbidden present []"]),
             "M441": (False, ["missing markers ['|text=session|autostart=none']; forbidden present ['|text=session|autostart=unavailable']"]),
             "M442": (False, ["missing markers ['|text=session|autostart=done|launched=2|passed=6|over=1']; forbidden present []"]),
+            # WP-178 (session.md v1.12): the held sign-in and ENDED
+            "M480": (True, ["exit 37", "|ending=OK end=sent held=0|auth=OK waiting=1 lock_unsent=0|", mutants._LKHELD]),
+            "M481": (True, ["exit 37", "|ending=OK end=none held=0|auth=OK waiting=1 lock_unsent=0|", mutants._LKHELD]),
+            "M482": (False, ["exit 37", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|", "|failed=confirmed,again,relaunch,",
+                             mutants._LKSTEPS]),
+            "M483": (False, ["host checks ['host_check failed: python3 -I tools/transcript.py streams ",
+                             "platform/pc-qemu/expect/logout-kills.txt -> 1']"]),
+            "M484": (False, ["exit 37", "|held=error:K_E_SVC_TIMEOUT|ending=error:K_E_SVC_TIMEOUT|", mutants._LKHELD]),
+            "M488": (True, ["exit 37", "|ending=OK end=sent held=1|auth=OK waiting=1 lock_unsent=0|", mutants._LKHELD]),
+            # WP-175 (session.md v1.11): the autostart's pauses, its stale answer and its channel to config
+            "M500": (True, ["exit 37", "|resumed|elevate=ERR CANCELLED|deaf=0|nest=0|idle=0|config_handles=0|phase=5",
+                            "|failed=resume,", mutants._LKSTEPS]),
+            "M501": (True, ["exit 37", "|elevation=OK prompt done=0|thawed=1|deaf=1|nest=1|", "|failed=resume,", mutants._LKSTEPS]),
+            "M502": (False, ["exit 37", "|held=1|stale=0|none=1|", "|failed=resume,", mutants._LKSTEPS]),
+            "M503": (True, ["exit 37", "|config_handles=1|deaf=0|phase=4", "|failed=cancel,resume,", mutants._LKSTEPS]),
+            "M504": (False, ["exit 37", "|config_handles=1|held=1|", "|config_handles=2|deaf=0|phase=4", "|failed=cancel,resume,",
+                             mutants._LKSTEPS]),
         }
         self.assertNotIn("M440", {m[0] for m in mutants.MUTANTS} | set(E) | mutants.SECURITY)
         evidence = [tuple(subs) for _, subs in want.values()]
         self.assertEqual(len(set(evidence)), len(evidence), "no two mutants share their evidence")
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.LOGOUT_KILLS in m[4]), sorted(want))
-        for msg in (mutants._LKALIVE, mutants._LKSTEPS):
+        for msg in (mutants._LKALIVE, mutants._LKSTEPS, mutants._LKHELD):
             self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
         self.assertIn("|ktest|logout_kills|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|"
                       "deaf=1|nest=1|idle=1|phase=1", case["required_markers"])
@@ -1568,9 +1599,19 @@ class KillEvidence(unittest.TestCase):
                 self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
                 self.assertEqual(mutants.stage_of(mid), "M6")
                 self.assertEqual(E[mid], {self.LOGOUT_KILLS: subs})
-        for x in want["M388"][1][1].strip("|").split("|"):
-            self.assertIn("|" + x.split("=")[0] + "=", line, x)
-        self.assertNotIn(want["M388"][1][1], line)
+        # each changed field's substring is no required marker's: the pinned lines carry other values
+        for mid, (_, subs) in want.items():
+            for sub in subs[1:-1] if subs[0] == "exit 37" else subs[1:]:
+                with self.subTest(mutant=mid, sub=sub):
+                    self.assertFalse(any(sub in m for m in case["required_markers"]), sub)
+        self.assertIn("|ktest|logout_kills|locked|n=2|signed=OK unlocked user=admin changes=10 display=1 input=1 focus=display|"
+                      "locked=OK locked user=admin changes=11 display=1 input=1 focus=session|auth=OK waiting=0 lock_unsent=0|"
+                      "thawed=1|deaf=0|nest=0|held=1|stale=1|none=0|", case["required_markers"])
+        self.assertIn("|ktest|logout_kills|held=OK no_session user=- changes=3 display=1 input=1 focus=session|ending=OK end=sent "
+                      "held=1|auth=OK waiting=0 lock_unsent=0|deaf=1|nest=1|idle=1|", case["required_markers"])
+        self.assertIn("|ktest|logout_kills|thawed=1|ending=OK end=none held=1|", case["required_markers"])
+        self.assertIn("|ktest|logout_kills|pending|n=1|signed=OK unlocked user=admin changes=7 display=1 input=1 "
+                      "focus=display|launch=OK app:deaf#4|", case["required_markers"])
         manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-lk.txt").read_text(encoding="utf-8")
         self.assertIn("\nconfig /SYSTEM/CONFIGD.ELF - 5000 never 0 0\n", manifest)
         self.assertIn("\nsession /SYSTEM/SESSIOND.ELF auth,input,display,config 5000 never 0 0\n", manifest)
@@ -1584,6 +1625,52 @@ class KillEvidence(unittest.TestCase):
         self.assertEqual(body, b"session.autostart 1 deaf ghost notes Ghost ghost ghost ghost nest deaf\n")
         self.assertEqual(head, b"NAWAH-CFG 1 1 " + hashlib.sha256(body).hexdigest().encode())
         self.assertIn("\ndeps=display\n", (ROOT / "platform" / "pc-qemu" / "lab" / "deaf.app").read_text(encoding="utf-8"))
+
+    def test_the_manager_stop_and_crash_expectations_are_pinned(self):
+        """WP-178 (services.md v1.21, session.md v1.12): the manager's orderly stop and its crash,
+        two cases with two verdicts. M485 (SECURITY: the stop leaves the session's job alive), its
+        anchor once in user/apps/svcmgr/src/main.rs, declared on TST-M6-MANAGER-STOP alone, known
+        by exit 37, the stopped line with IDLE alive, the manager's final count and the case's
+        message; M487 (the session ends with its manager gone and traces nothing), its anchor once
+        in user/apps/sessiond/src/main.rs, declared on TST-M6-MANAGER-KILLED alone, known by the
+        missing manager=gone trace. The two cases' lines, the crash's attempt and the rescue boot
+        are pinned with them."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        cases = {c["id"]: c for cs in t["suites"].values() for c in cs}
+        stop, killed = cases["TST-M6-MANAGER-STOP"], cases["TST-M6-MANAGER-KILLED"]
+        for m in ("|ktest|manager_stop|stopped|deaf=0|nest=0|idle=0|", "|ktest|manager_stop|mgr_exit=0x0|processes_after=0|clean=1"):
+            self.assertIn(m, stop["required_markers"])
+        self.assertEqual(stop["timeout_s"], 40)
+        crash, rescue = killed["phases"]
+        self.assertEqual([crash["timeout_s"], rescue["timeout_s"]], [60, 45])
+        for m in ("|text=session|manager=gone|end=sent", "|ktest|manager_killed|attempt|session=0|auth=0|input=0|tokens_new=0|",
+                  "|ktest|manager_killed|mgr_exit=0x20000|processes_after=0|clean=1"):
+            self.assertIn(m, crash["required_markers"])
+        self.assertIn("|text=session|login=held", crash["forbidden_markers"])
+        self.assertTrue(any(m.startswith("|ktest|manager_rescue|before=000|signed=OK unlocked user=user ") and
+                            "|launch=OK app:deaf#1|deaf=1|in_session=1|" in m for m in rescue["required_markers"]))
+        self.assertIn("|text=session|manager=gone", rescue["forbidden_markers"])
+        self.assertIn(f'fail("{mutants._MSALIVE[len("|ktest|fail|"):]}")', src)
+        want = {  # id: (file, case, SECURITY, the expected substrings)
+            "M485": ("user/apps/svcmgr/src/main.rs", "TST-M6-MANAGER-STOP", True,
+                     ["exit 37", "|stopped|deaf=0|nest=0|idle=1|", "|processes_after=1|clean=0", mutants._MSALIVE]),
+            "M487": ("user/apps/sessiond/src/main.rs", "TST-M6-MANAGER-KILLED", False,
+                     ["missing markers ['|text=session|manager=gone|end=sent'"]),
+        }
+        for mid, (path, cid, security, subs) in want.items():
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], path)
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(m[4], [cid])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(E[mid], {cid: subs})
+        self.assertNotIn("M486", {m[0] for m in mutants.MUTANTS} | set(E) | mutants.SECURITY)
 
     JOB_BOUND = "TST-M6-JOB-BOUND"
 

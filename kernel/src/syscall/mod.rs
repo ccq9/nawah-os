@@ -627,6 +627,10 @@ fn dispatch_inner(nr: u64, args: [u64; 6]) -> i64 {
             }
             let text = core::str::from_utf8(&buf[..len]).unwrap_or("?");
             kprintln!("OSX|{}|user|trace|len={}|text={}", BUILD_ID, len, text);
+            // Test kernel (WP-175): the autostart's stale and none traces counted for
+            // TST-M6-LOGOUT-KILLS's phase 5.
+            #[cfg(feature = "ktest")]
+            crate::ktest::traced(text);
             len as i64
         }
         SYS_CHECK_RIP => {

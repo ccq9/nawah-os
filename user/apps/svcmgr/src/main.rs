@@ -646,6 +646,18 @@ impl Manager {
         libnawah::channel_write(c, out.bytes(), &[]);
     }
 
+    /// The control channel closed and the manager stops (services.md v1.21): before it exits, the
+    /// session's job is killed with every application and whatever they started in it, and let
+    /// go, so no application outlives the manager by ignoring the close of its boot channel.
+    fn end_on_stop(&mut self) {
+        self.session_open = false;
+        let Some(job) = self.session_job.take() else {
+            return;
+        };
+        libnawah::job_kill(job);
+        libnawah::handle_close(job);
+    }
+
     /// Application `a`'s process exited (services.md v1.15): its job is ended with whatever
     /// it left there, and its place is free.
     fn on_app_exit(&mut self, a: usize) {
@@ -1443,6 +1455,7 @@ fn main() -> u64 {
                 match owner[idx] {
                     (_, 0) => {
                         if !m.on_control(now) {
+                            m.end_on_stop();
                             break;
                         }
                     }

@@ -8540,7 +8540,7 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=logout_kills"
         ],
-        "oracle": "The sign-in's autostart, and Sign out ending the session's job (session.md v1.8 and v1.10, services.md v1.17, WP-167, WP-168). The lab manifest SVC-LK.TXT runs the real auth, config, input, display and session (whose dependencies name config), and the lab image as the vouched `desktop` in the role `relay`, which passes a client's LAUNCH to the manager and its reply back. The volume carries the administrator's store CFGU1000.A (slot A, generation 1), whose session.autostart names nine ids: deaf ghost notes Ghost ghost ghost ghost nest deaf. The monitor types the lab's name and password at the sign-in screen; once the keyboard is the desktop's (session|focus=display|n=1) the session connects to config through the manager, asks GET user/1000 session.autostart with the user's token and launches the first eight ids in order, one at a time on its boot channel, tracing each answer: deaf (winapp: a window of its own, and it ignores LOGGED_OUT) session|autostart|deaf=OK app:deaf#1; ghost (no registry entry) session|autostart|ghost=ERR UNKNOWN, four times; notes (the volume's sample entry, whose image no build places) session|autostart|notes=ERR NOT_FOUND; Ghost (not an id) session|autostart|invalid=4, never asked; nest (it starts IDLE.ELF in its job and waits) session|autostart|nest=OK app:nest#2; the ninth is over the bound of eight: session|autostart=done|launched=2|passed=6|over=1. With STATE at OK unlocked user=admin changes=1 display=1 input=1 focus=display the test kernel waits until one live process of each of DEAF.ELF, NEST.ELF and IDLE.ELF is seen. The monitor then sends the secure attention sequence, and on the lock screen Tab, Tab and Enter (Sign out). The session traces logged_out and, once the manager answers its END_SESSION, session|jobs=ended|apps=2. With STATE at OK no_session user=- changes=3 display=1 input=1 focus=session, the test kernel waits at most 5000 ticks and reads no live process of DEAF.ELF, NEST.ELF or IDLE.ELF, as many jobs as before the sign-in and the manager's handle count back at its value before it. The monitor signs in again as user (uid 1001, whose store the volume does not hold; changes=4): session|autostart=none, nothing starts by itself, and a LAUNCH deaf through the desktop is OK app:deaf#3, its one process in a job whose parent is a child of the root job (a new session job). The session's traces equal platform/pc-qemu/expect/logout-kills.txt, line for line and in order. Never jobs=unsent, jobs=refused nor jobs=ended|apps=0, never autostart=unavailable nor autostart=cancelled, never either lab password on the serial line; then the control channel closes: the manager exits 0, no process, object or frame is left; exit 33. Since session.md v1.9 (WP-169) the session asks BEGIN_SESSION at each sign-in, so the manager's gate is open for the launches (a refusal would be traced session|begin=refused, an unsent request session|begin=unsent, both forbidden); and the desktop's LAUNCH deaf before the first sign-in (asked once the services are ready, while the monitor types) and after the sign-out (once nothing of the session is left, before the line that lets the monitor sign in again) are each answered ERR NO_SESSION, traced logout_kills|gate|before=ERR NO_SESSION|after=ERR NO_SESSION|.",
+        "oracle": "The sign-in's autostart, and Sign out ending the session's job (session.md v1.8 and v1.10, services.md v1.17, WP-167, WP-168). The lab manifest SVC-LK.TXT runs the real auth, config, input, display and session (whose dependencies name config), and the lab image as the vouched `desktop` in the role `relay`, which passes a client's LAUNCH to the manager and its reply back. The volume carries the administrator's store CFGU1000.A (slot A, generation 1), whose session.autostart names nine ids: deaf ghost notes Ghost ghost ghost ghost nest deaf. The monitor types the lab's name and password at the sign-in screen; once the keyboard is the desktop's (session|focus=display|n=1) the session connects to config through the manager, asks GET user/1000 session.autostart with the user's token and launches the first eight ids in order, one at a time on its boot channel, tracing each answer: deaf (winapp: a window of its own, and it ignores LOGGED_OUT) session|autostart|deaf=OK app:deaf#1; ghost (no registry entry) session|autostart|ghost=ERR UNKNOWN, four times; notes (the volume's sample entry, whose image no build places) session|autostart|notes=ERR NOT_FOUND; Ghost (not an id) session|autostart|invalid=4, never asked; nest (it starts IDLE.ELF in its job and waits) session|autostart|nest=OK app:nest#2; the ninth is over the bound of eight: session|autostart=done|launched=2|passed=6|over=1. With STATE at OK unlocked user=admin changes=1 display=1 input=1 focus=display the test kernel waits until one live process of each of DEAF.ELF, NEST.ELF and IDLE.ELF is seen. The monitor then sends the secure attention sequence, and on the lock screen Tab, Tab and Enter (Sign out). The session traces logged_out and, once the manager answers its END_SESSION, session|jobs=ended|apps=2. With STATE at OK no_session user=- changes=3 display=1 input=1 focus=session, the test kernel waits at most 5000 ticks and reads no live process of DEAF.ELF, NEST.ELF or IDLE.ELF, as many jobs as before the sign-in and the manager's handle count back at its value before it. The monitor signs in again as user (uid 1001, whose store the volume does not hold; changes=4): session|autostart=none, nothing starts by itself, and a LAUNCH deaf through the desktop is OK app:deaf#3, its one process in a job whose parent is a child of the root job (a new session job). The session's traces equal platform/pc-qemu/expect/logout-kills.txt, line for line and in order. Never jobs=unsent, jobs=refused nor jobs=ended|apps=0, never autostart=unavailable, never either lab password on the serial line; then the control channel closes: the manager exits 0, no process, object or frame is left; exit 33. Since session.md v1.9 (WP-169) the session asks BEGIN_SESSION at each sign-in, so the manager's gate is open for the launches (a refusal would be traced session|begin=refused, an unsent request session|begin=unsent, both forbidden); and the desktop's LAUNCH deaf before the first sign-in (asked once the services are ready, while the monitor types) and after the sign-out (once nothing of the session is left, before the line that lets the monitor sign in again) are each answered ERR NO_SESSION, traced logout_kills|gate|before=ERR NO_SESSION|after=ERR NO_SESSION|. Since session.md v1.11 (WP-175) the autostart asks only while the desktop holds the keyboard, and two more sign-ins follow phase 3. Phase 4: the monitor locks the user's session and signs out (changes=6, session|jobs=ended|apps=1); the test kernel reads config's live handle count back at its value before the first sign-in (config_handles=0), freezes CONFIGD.ELF (sched::freeze_named) and prints logout_kills|frozen|n=1|…; the monitor signs in as admin (changes=7, session|focus=display|n=3), the session's GET waits in the frozen config's queue, the desktop's LAUNCH deaf is OK app:deaf#4; after 300 ticks the test kernel prints logout_kills|pending|n=1|…, and the monitor locks (changes=8) and signs out on the lock screen: the session traces session|autostart=cancelled before session|state=logged_out|user=admin (changes=9, jobs=ended|apps=1); config is thawed and the test kernel connects to it and asks GET device lab.none (ERR NOT_FOUND): config reads the manager's messages in order, so it has taken the end of the session's channel given to it while held; within 5000 ticks its handle count is back at its value before the first sign-in plus the probe's end (config_handles=0) and no DEAF.ELF lives (logout_kills|cancel|…|probe=ERR NOT_FOUND|…|phase=4); the count with the probe closed is not printed here, it is judged by phase 5's lines (config_handles=0). Phases 1 to 3 are judged before phase 4, as before WP-175: a failure there ends the case with its failed= line. Phase 5: config frozen again (logout_kills|frozen|n=2|held=1|), the monitor signs in as admin (changes=10, focus=display|n=4); 300 ticks later the test kernel prints logout_kills|pending|n=2| and the monitor locks (changes=11); once the session's AUTH is OK waiting=0 lock_unsent=0 (auth locked the token) config is thawed: its answer to the GET asked before the lock (ERR NOT_FOUND: a locked token reads no store) is dropped, traced session|autostart=stale, and nothing is asked while locked: after 500 ticks no DEAF.ELF or NEST.ELF lives, and over those ticks the session traced session|autostart=stale once and session|autostart=none never (counted by the test kernel as SYS_TRACE prints them: stale=1|none=0; an answer applied after the lock reads stale=0|none=1); config is frozen again (logout_kills|locked|n=2|…). The monitor types the administrator's password: unlocked (changes=12, focus=display|n=5), the GET is asked again and waits; 300 ticks later a client of the session asks ELEVATE config SET device lab.elev 0 901 on, the prompt takes the keyboard (session|elevate=asked|from=-|service=config, session|elevate=prompt|…), ELEVATION is OK prompt done=0, config is thawed and answers the GET with the user's usable token, and after 500 ticks still no DEAF.ELF or NEST.ELF lives: the prompt holding the keyboard pauses the autostart (logout_kills|prompt|…). The monitor's Esc ends the prompt (session|elevate=ended|n=1|result=ERR CANCELLED, the client answered ERR CANCELLED), the keyboard goes to the desktop (focus=display|n=6) and the eight ids are launched once each, as in phase 1, deaf as app:deaf#5 and nest as app:nest#6, session|autostart=done|launched=2|passed=6|over=1; DEAF.ELF, NEST.ELF and IDLE.ELF live once each and config's handle count is back (logout_kills|resumed|…|phase=5). The monitor then locks (changes=13) and signs out (changes=14): session|jobs=ended|apps=2, and the test kernel reads no live DEAF.ELF, NEST.ELF or IDLE.ELF, the jobs and the manager's handles as before the first sign-in and config's handle count back (logout_kills|ended|…|phase=6), before the control channel closes. WP-178 (session.md v1.12): once deaf, nest and IDLE live the test kernel freezes the manager by its pid and reads it parked (logout_kills|manager=frozen|parked=1|) before the line that lets the monitor sign out, so the Sign out's END_SESSION waits unanswered; with STATE at no_session changes=3, once the session's AUTH is OK waiting=0 lock_unsent=0 (auth answered the LOGOUT) the test kernel freezes AUTHD.ELF too and prints logout_kills|unconfirmed|… with the three processes alive; the monitor types user's name and password: the session refuses the sign-in before anything reaches auth, traces session|login=held|end=sent, keeps the name with the focus on the emptied password, and ENDING answers OK end=sent held=1 while STATE stays no_session changes=3 focus=session, AUTH stays OK waiting=0 lock_unsent=0 (no LOGIN waits at the frozen auth) and the three processes live (logout_kills|held=…); a sign-in that goes on, or a LOGIN written to auth, ends the case at once (logout_kills|failed=held, and exit 37). Then auth and the manager are thawed: the manager answers ENDED 2, which alone confirms the end, and ENDING answers OK end=none held=1 (logout_kills|thawed=1|…); the case goes on with phase 2, the monitor typing user's password alone at phase 3 (the name was kept), and the next sign-in succeeds. Never session|login=held|end=unsent nor end=refused, never session|manager=gone. The manager's own stop is TST-M6-MANAGER-STOP's.",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=logout_kills",
@@ -8553,13 +8553,31 @@
           "|text=session|autostart|invalid=4",
           "|text=session|autostart|nest=OK app:nest#2",
           "|text=session|autostart=done|launched=2|passed=6|over=1",
+          "|ktest|logout_kills|manager=frozen|parked=1|",
           "|ktest|logout_kills|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|deaf=1|nest=1|idle=1|phase=1",
           "|text=session|state=logged_out|user=admin",
+          "|ktest|logout_kills|unconfirmed|out=OK no_session user=- changes=3 display=1 input=1 focus=session|auth=OK waiting=0 lock_unsent=0|auth_frozen=1|deaf=1|nest=1|idle=1|",
+          "|text=session|login=held|end=sent",
+          "|ktest|logout_kills|held=OK no_session user=- changes=3 display=1 input=1 focus=session|ending=OK end=sent held=1|auth=OK waiting=0 lock_unsent=0|deaf=1|nest=1|idle=1|",
           "|text=session|jobs=ended|apps=2",
+          "|ktest|logout_kills|thawed=1|ending=OK end=none held=1|",
           "|ktest|logout_kills|gate|before=ERR NO_SESSION|after=ERR NO_SESSION|",
           "|ktest|logout_kills|back=OK no_session user=- changes=3 display=1 input=1 focus=session|deaf=0|nest=0|idle=0|jobs=0|mgr_handles=0|phase=2",
           "|text=session|autostart=none",
           "|ktest|logout_kills|again=OK unlocked user=user changes=4 display=1 input=1 focus=display|launch=OK app:deaf#3|deaf=1|in_session=1|phase=3",
+          "|ktest|logout_kills|frozen|n=1|out=OK no_session user=- changes=6 display=1 input=1 focus=session|config_handles=0|held=1|",
+          "|ktest|logout_kills|pending|n=1|signed=OK unlocked user=admin changes=7 display=1 input=1 focus=display|launch=OK app:deaf#4|",
+          "|text=session|autostart=cancelled",
+          "|ktest|logout_kills|cancel|out=OK no_session user=- changes=9 display=1 input=1 focus=session|thawed=1|probe=ERR NOT_FOUND|config_handles=0|deaf=0|phase=4",
+          "|ktest|logout_kills|frozen|n=2|held=1|",
+          "|text=session|autostart=stale",
+          "|ktest|logout_kills|locked|n=2|signed=OK unlocked user=admin changes=10 display=1 input=1 focus=display|locked=OK locked user=admin changes=11 display=1 input=1 focus=session|auth=OK waiting=0 lock_unsent=0|thawed=1|deaf=0|nest=0|held=1|stale=1|none=0|",
+          "|ktest|logout_kills|prompt|unlocked=OK unlocked user=admin changes=12 display=1 input=1 focus=display|asked=1|elevation=OK prompt done=0|thawed=1|deaf=0|nest=0|",
+          "|text=session|elevate=ended|n=1|result=ERR CANCELLED",
+          "|text=session|autostart|deaf=OK app:deaf#5",
+          "|text=session|autostart|nest=OK app:nest#6",
+          "|ktest|logout_kills|resumed|elevate=ERR CANCELLED|deaf=1|nest=1|idle=1|config_handles=0|phase=5",
+          "|ktest|logout_kills|ended|out=OK no_session user=- changes=14 display=1 input=1 focus=session|deaf=0|nest=0|idle=0|jobs=0|mgr_handles=0|config_handles=0|phase=6",
           "|ktest|logout_kills|failed=none",
           "|ktest|logout_kills|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|logout_kills|frames_delta=0",
@@ -8575,12 +8593,14 @@
           "|text=session|jobs=unsent",
           "|text=session|jobs=refused",
           "|text=session|jobs=ended|apps=0",
+          "|text=session|login=held|end=unsent",
+          "|text=session|login=held|end=refused",
+          "|text=session|manager=gone",
           "|text=session|begin=refused",
           "|text=session|begin=unsent",
-          "|text=session|autostart=unavailable",
-          "|text=session|autostart=cancelled"
+          "|text=session|autostart=unavailable"
         ],
-        "timeout_s": 150,
+        "timeout_s": 180,
         "disk_files": {
           "SYSTEM/APPS/DEAF.APP": "platform/pc-qemu/lab/deaf.app",
           "SYSTEM/APPS/DEAF.ELF": "${OUT}/apps/winapp.elf",
@@ -8631,7 +8651,7 @@
               "gap_s": 1.0
             },
             {
-              "after": "|ktest|logout_kills|back=",
+              "after": "|ktest|logout_kills|unconfirmed|",
               "commands": [
                 "sendkey u",
                 "sendkey s",
@@ -8651,6 +8671,153 @@
                 "sendkey ret"
               ],
               "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|logout_kills|back=",
+              "commands": [
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey u",
+                "sendkey s",
+                "sendkey e",
+                "sendkey r",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|logout_kills|again=",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|text=session|state=locked|user=user",
+              "commands": [
+                "sendkey tab",
+                "sendkey tab",
+                "sendkey ret"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|logout_kills|frozen|n=1|",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|logout_kills|pending|n=1|",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|text=session|state=locked|user=admin",
+              "since_previous": true,
+              "commands": [
+                "sendkey tab",
+                "sendkey tab",
+                "sendkey ret"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|logout_kills|frozen|n=2|",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|logout_kills|pending|n=2|",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|logout_kills|locked|n=2|",
+              "commands": [
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            },
+            {
+              "after": "|ktest|logout_kills|prompt|",
+              "commands": [
+                "sendkey esc"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|ktest|logout_kills|resumed|",
+              "commands": [
+                "sendkey ctrl-alt-delete"
+              ],
+              "gap_s": 1.0
+            },
+            {
+              "after": "|text=session|state=locked|user=admin",
+              "since_previous": true,
+              "commands": [
+                "sendkey tab",
+                "sendkey tab",
+                "sendkey ret"
+              ],
+              "gap_s": 1.0
             }
           ]
         },
@@ -8664,6 +8831,259 @@
             "platform/pc-qemu/expect/logout-kills.txt"
           ]
         ]
+      },
+      {
+        "id": "TST-M6-MANAGER-KILLED",
+        "test_id": "TST-M6-MANAGER-KILLED",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "phases": [
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=manager_killed"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=manager_killed",
+              "|ktest|manager_killed|services=6|ready=1",
+              "|text=session|autostart|nest=OK app:nest#2",
+              "|ktest|manager_killed|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|frozen=1|",
+              "|text=session|state=logged_out|user=admin",
+              "|text=session|manager=gone|end=sent",
+              "|ktest|manager_killed|out=OK no_session user=- changes=3 display=1 input=1 focus=session|ending=OK end=sent held=0|killed=1|session=0|deaf=0|nest=0|idle=1|",
+              "|ktest|manager_killed|attempt|session=0|auth=0|input=0|tokens_new=0|",
+              "|ktest|manager_killed|failed=none",
+              "|ktest|manager_killed|mgr_exit=0x20000|processes_after=0|clean=1",
+              "|ktest|manager_killed|frames_delta=0",
+              "|ktest|pass|the manager crashed with the end of a session's job unconfirmed: the session traced it and ended, a sign-in typed after it began no session and got no token, and the test kernel ended what the crash left"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector",
+              "|user_fault|",
+              "lab-admin-1",
+              "lab-user-1",
+              "|text=session|jobs=unsent",
+              "|text=session|jobs=refused",
+              "|text=session|jobs=ended",
+              "|text=session|login=held",
+              "|text=session|state=unlocked|user=user"
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "sendkey a",
+                    "sendkey d",
+                    "sendkey m",
+                    "sendkey i",
+                    "sendkey n",
+                    "sendkey tab",
+                    "sendkey l",
+                    "sendkey a",
+                    "sendkey b",
+                    "sendkey minus",
+                    "sendkey a",
+                    "sendkey d",
+                    "sendkey m",
+                    "sendkey i",
+                    "sendkey n",
+                    "sendkey minus",
+                    "sendkey 1",
+                    "sendkey ret"
+                  ],
+                  "gap_s": 0.5
+                },
+                {
+                  "after": "|ktest|manager_killed|unlocked=",
+                  "commands": [
+                    "sendkey ctrl-alt-delete"
+                  ],
+                  "gap_s": 1.0
+                },
+                {
+                  "after": "|text=session|state=locked|",
+                  "commands": [
+                    "sendkey tab",
+                    "sendkey tab",
+                    "sendkey ret"
+                  ],
+                  "gap_s": 1.0
+                },
+                {
+                  "after": "|ktest|manager_killed|out=",
+                  "commands": [
+                    "sendkey u",
+                    "sendkey s",
+                    "sendkey e",
+                    "sendkey r",
+                    "sendkey tab",
+                    "sendkey l",
+                    "sendkey a",
+                    "sendkey b",
+                    "sendkey minus",
+                    "sendkey u",
+                    "sendkey s",
+                    "sendkey e",
+                    "sendkey r",
+                    "sendkey minus",
+                    "sendkey 1",
+                    "sendkey ret"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 60
+          },
+          {
+            "qemu_extra": [
+              "-fw_cfg",
+              "name=opt/nawah/test,string=manager_rescue"
+            ],
+            "expected_exit_code": 33,
+            "required_markers": [
+              "OSX|${BUILD_ID}|ktest|start|name=manager_rescue",
+              "|ktest|manager_rescue|services=6|ready=1",
+              "|ktest|manager_rescue|before=000|signed=OK unlocked user=user changes=1 display=1 input=1 focus=display|ending=OK end=none held=0|launch=OK app:deaf#1|deaf=1|in_session=1|",
+              "|text=session|autostart=none",
+              "|ktest|manager_rescue|failed=none",
+              "|ktest|manager_rescue|mgr_exit=0x0|processes_after=0|clean=1",
+              "|ktest|manager_rescue|frames_delta=0",
+              "|ktest|pass|after the crash the rescue is a new boot: a clean sign-in succeeded and launched into a new session job, with nothing of the crashed session"
+            ],
+            "forbidden_markers": [
+              "|ktest|fail|",
+              "|kernel|panic|",
+              "|exc|vector",
+              "|user_fault|",
+              "lab-admin-1",
+              "lab-user-1",
+              "|text=session|login=held",
+              "|text=session|manager=gone",
+              "|text=session|jobs="
+            ],
+            "monitor": {
+              "steps": [
+                {
+                  "after": "|text=session|state=no_session|window=",
+                  "commands": [
+                    "sendkey u",
+                    "sendkey s",
+                    "sendkey e",
+                    "sendkey r",
+                    "sendkey tab",
+                    "sendkey l",
+                    "sendkey a",
+                    "sendkey b",
+                    "sendkey minus",
+                    "sendkey u",
+                    "sendkey s",
+                    "sendkey e",
+                    "sendkey r",
+                    "sendkey minus",
+                    "sendkey 1",
+                    "sendkey ret"
+                  ],
+                  "gap_s": 0.5
+                }
+              ]
+            },
+            "timeout_s": 45
+          }
+        ],
+        "oracle": "The manager crashes while the end of a signed-out session's job is unconfirmed (session.md v1.12, WP-178). The lab manifest SVC-LK.TXT and the volume of TST-M6-LOGOUT-KILLS: the monitor types the lab's name and password, the administrator's autostart starts deaf and nest (nest starts IDLE.ELF, which holds both ends of its own channel). The test kernel freezes the manager by its pid and reads it parked before the line that lets the monitor send the secure attention sequence and, on the lock screen, Tab, Tab and Enter (Sign out): the session's END_SESSION waits unanswered, STATE is OK no_session user=- changes=3 display=1 input=1 focus=session and ENDING OK end=sent held=0. The test kernel then kills the manager (a crash: none of its code runs again). The session traces session|manager=gone|end=sent and exits, so no sign-in is taken after it; the services, deaf and nest see their boot channels close and exit; IDLE.ELF, which ignores the close, is still alive (one live process) and the test kernel kills its job. Nothing in this build starts the manager again: the rescue is a new boot. The manager's exit code is EXIT_KILLED (0x20000), no process, object or frame is left; exit 33. Never either lab password on the serial line, never a refused or unsent END_SESSION. After the line manager_killed|out=… the monitor types user's name and password: nothing is left to take them (the session, auth and input exited with the manager), so 12000 ticks later no SESSIOND.ELF, AUTHD.ELF or INPUTD.ELF lives and the number of live tokens did not grow over those 12000 ticks after the out line (manager_killed|attempt|session=0|auth=0|input=0|tokens_new=0|: the gauge of live tokens, so a token made and dropped within the window would not show; with AUTHD.ELF gone none is made). Phase 2 is the rescue, a new boot on the same volume (manager_rescue): a fresh kernel and manager with SVC-LK.TXT, no DEAF, NEST or IDLE process before the sign-in (before=000), the monitor signs in as user (changes=1, session|autostart=none), ENDING answers OK end=none held=0 (no end awaits), and the desktop's LAUNCH deaf is the new manager's first application, OK app:deaf#1, in a new session job; the control channel closes: the manager exits 0, no process, object or frame is left; exit 33. Nothing in the build restarts the manager without a new boot: the interactive boot needs a reboot after a crash, and until then an application of the session that ignores its boot channel lives on.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "|text=session|manager=gone|end=sent",
+          "|ktest|manager_killed|attempt|session=0|auth=0|input=0|tokens_new=0|",
+          "|ktest|manager_rescue|failed=none"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1",
+          "lab-user-1"
+        ],
+        "disk_files": {
+          "SYSTEM/APPS/DEAF.APP": "platform/pc-qemu/lab/deaf.app",
+          "SYSTEM/APPS/DEAF.ELF": "${OUT}/apps/winapp.elf",
+          "SYSTEM/APPS/NEST.APP": "platform/pc-qemu/lab/nest.app",
+          "SYSTEM/APPS/NEST.ELF": "${OUT}/apps/svc.elf",
+          "SYSTEM/CFGU1000.A": "platform/pc-qemu/lab/cfgu1000.a"
+        }
+      },
+      {
+        "id": "TST-M6-MANAGER-STOP",
+        "test_id": "TST-M6-MANAGER-STOP",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=manager_stop"
+        ],
+        "oracle": "The manager's orderly stop ends the session's job (services.md v1.21, WP-178). The lab manifest SVC-LK.TXT and the volume of TST-M6-LOGOUT-KILLS: the monitor types the lab's name and password, the administrator's autostart launches deaf (app:deaf#1) and nest (app:nest#2), and nest starts IDLE.ELF, which holds both ends of its own channel and ignores its peer's close; with STATE at OK unlocked user=admin changes=1 display=1 input=1 focus=display the test kernel reads one live process of each of DEAF.ELF, NEST.ELF and IDLE.ELF (manager_stop|unlocked=…|deaf=1|nest=1|idle=1|). Then the control channel closes: before it exits the manager kills the session's job with every application and what they started, so no DEAF, NEST or IDLE process lives (manager_stop|stopped|deaf=0|nest=0|idle=0|), the manager exits 0, no process, object or frame is left; exit 33. Never either lab password on the serial line, never a refused or unsent BEGIN_SESSION.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=manager_stop",
+          "|ktest|manager_stop|services=6|ready=1",
+          "|text=session|autostart|deaf=OK app:deaf#1",
+          "|text=session|autostart|nest=OK app:nest#2",
+          "|ktest|manager_stop|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|deaf=1|nest=1|idle=1|",
+          "|ktest|manager_stop|stopped|deaf=0|nest=0|idle=0|",
+          "|ktest|manager_stop|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|manager_stop|frames_delta=0",
+          "|ktest|pass|the manager's stop ended the session's job: no application of it, nor the child of one that ignores its channel, outlived the manager"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "lab-admin-1",
+          "lab-user-1",
+          "|text=session|begin=refused",
+          "|text=session|begin=unsent"
+        ],
+        "timeout_s": 40,
+        "disk_files": {
+          "SYSTEM/APPS/DEAF.APP": "platform/pc-qemu/lab/deaf.app",
+          "SYSTEM/APPS/DEAF.ELF": "${OUT}/apps/winapp.elf",
+          "SYSTEM/APPS/NEST.APP": "platform/pc-qemu/lab/nest.app",
+          "SYSTEM/APPS/NEST.ELF": "${OUT}/apps/svc.elf",
+          "SYSTEM/CFGU1000.A": "platform/pc-qemu/lab/cfgu1000.a"
+        },
+        "monitor": {
+          "steps": [
+            {
+              "after": "|text=session|state=no_session|window=",
+              "commands": [
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey tab",
+                "sendkey l",
+                "sendkey a",
+                "sendkey b",
+                "sendkey minus",
+                "sendkey a",
+                "sendkey d",
+                "sendkey m",
+                "sendkey i",
+                "sendkey n",
+                "sendkey minus",
+                "sendkey 1",
+                "sendkey ret"
+              ],
+              "gap_s": 0.5
+            }
+          ]
+        }
       },
       {
         "id": "TST-M6-JOB-BOUND",

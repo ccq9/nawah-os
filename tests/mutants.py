@@ -1761,6 +1761,46 @@ MUTANTS = [
      "        if !self.boot_send(b\"END_SESSION\", BootOp::End) {\n            libnawah::trace(b\"session|jobs=unsent\");\n        }\n",
      "        if !self.boot_send(b\"END_SESSION\", BootOp::End) {\n            libnawah::trace(b\"session|jobs=unsent\");\n        }\n        let _ = self.boot_send(b\"BEGIN_SESSION\", BootOp::Begin);\n",
      ["TST-M6-LOGOUT-KILLS"], "SECURITY: Sign out begins a session again, so the desktop launches on the sign-in screen and the next user inherits it"),
+    # M480..M484 (WP-178, REQ-M6-004; session.md v1.12): no sign-in before the manager confirms
+    # the end of the session before it, killed by TST-M6-LOGOUT-KILLS (the manager frozen at Sign
+    # out, a sign-in held, then thawed: ENDED 2 confirms and the next sign-in goes on).
+    ("M480", "user/apps/sessiond/src/main.rs",
+     "        if self.end != EndState::Confirmed {\n            self.login_held();\n",
+     "        if false {\n            self.login_held();\n",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: a sign-in goes on while the end of the session before it is unconfirmed, so the next user signs in beside the previous one's applications"),
+    ("M481", "user/apps/sessiond/src/main.rs",
+     "        if op == BootOp::End {\n            self.end = EndState::Sent;\n",
+     "        if op == BootOp::End {\n            self.end = EndState::Confirmed;\n",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: END_SESSION written counts as the end confirmed, so a hung manager's session is followed by the next sign-in"),
+    ("M482", "user/apps/sessiond/src/main.rs",
+     "        } else if msg.starts_with(b\"ENDED \") {\n            EndState::Confirmed\n",
+     "        } else if msg.starts_with(b\"ENDED \") {\n            EndState::Refused\n",
+     ["TST-M6-LOGOUT-KILLS"], "ENDED never confirms the end, so every sign-in after the first Sign out is refused for good (the recovery the case requires)"),
+    ("M483", "user/apps/sessiond/src/main.rs",
+     "        if self.end != EndState::Sent && !self.boot_send(b\"END_SESSION\", BootOp::End) {\n",
+     "        if !self.boot_send(b\"END_SESSION\", BootOp::End) {\n",
+     ["TST-M6-LOGOUT-KILLS"], "a held sign-in asks END_SESSION again while one still waits, so the manager ends an empty job a second time"),
+    ("M484", "user/apps/sessiond/src/main.rs",
+     "        self.logins_held += 1;\n",
+     "        self.logins_held += 0;\n",
+     ["TST-M6-LOGOUT-KILLS"], "ENDING never counts a held sign-in"),
+    # M488 (WP-178, the review round of integ175178): the hold checked once the LOGIN is sent.
+    ("M488", "user/apps/sessiond/src/main.rs",
+     "        if self.end != EndState::Confirmed {\n            self.login_held();\n            return;\n        }\n        let mut name = [0u8; NAME_MAX];\n        let nn = self.dialog.value(self.ids.user, &mut name);\n        let mut pw = [0u8; 4 * TEXT_MAX];\n        let np = self.dialog.value(self.ids.password, &mut pw);\n        // The secret leaves the element at once; it lives in `pw` and the request only.\n        self.dialog.clear_value(self.ids.password);\n        let mut req = Out::new();\n        req.put(b\"LOGIN \").put(&name[..nn]).put(b\" \").put(&pw[..np]);\n        wipe(&mut pw);\n        let op = AuthOp::Login { name, len: nn };\n        let sent = self.auth_send(req.bytes(), false, op);\n        req.wipe();\n",
+     "        let mut name = [0u8; NAME_MAX];\n        let nn = self.dialog.value(self.ids.user, &mut name);\n        let mut pw = [0u8; 4 * TEXT_MAX];\n        let np = self.dialog.value(self.ids.password, &mut pw);\n        // The secret leaves the element at once; it lives in `pw` and the request only.\n        self.dialog.clear_value(self.ids.password);\n        let mut req = Out::new();\n        req.put(b\"LOGIN \").put(&name[..nn]).put(b\" \").put(&pw[..np]);\n        wipe(&mut pw);\n        let op = AuthOp::Login { name, len: nn };\n        let sent = self.auth_send(req.bytes(), false, op);\n        req.wipe();\n        if self.end != EndState::Confirmed {\n            self.login_held();\n            return;\n        }\n",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: the hold comes after the LOGIN is written, so the next user's password reaches auth while the end of the session before is unconfirmed"),
+    # M485 (WP-178, REQ-M6-004; services.md v1.21): the manager's stop ends the session's job,
+    # killed by TST-M6-MANAGER-STOP (nest's IDLE child holds both ends of its channel).
+    ("M485", "user/apps/svcmgr/src/main.rs",
+     "                        if !m.on_control(now) {\n                            m.end_on_stop();\n",
+     "                        if !m.on_control(now) {\n",
+     ["TST-M6-MANAGER-STOP"], "SECURITY: the manager stops without ending the session's job, so an application that ignores its boot channel, or its child, outlives it"),
+    # M487 (WP-178, REQ-M6-004; session.md v1.12): the manager gone with the end unconfirmed is
+    # traced, killed by TST-M6-MANAGER-KILLED.
+    ("M487", "user/apps/sessiond/src/main.rs",
+     "                if self.end != EndState::Confirmed {\n                    let mut t = Out::new();\n                    t.put(b\"session|manager=gone|end=\")",
+     "                if false {\n                    let mut t = Out::new();\n                    t.put(b\"session|manager=gone|end=\")",
+     ["TST-M6-MANAGER-KILLED"], "the session ends with its manager gone and the end of the session's job unconfirmed, and traces nothing"),
     # M415, M416 (WP-172, REQ-M6-004; services.md v1.20): the session service's exit ends the
     # session's job, killed by TST-M6-SESSION-GATE.
     ("M415", "user/apps/svcmgr/src/main.rs",
@@ -1890,6 +1930,31 @@ MUTANTS = [
      "                let over = ids_from(v, start);\n",
      "                let over = ids_from(v, v.len());\n",
      ["TST-M6-LOGOUT-KILLS"], "the ids past the eighth are not counted, so the trace hides that some were passed over"),
+    # M500 to M504 (WP-175, session.md v1.11): the autostart's pauses, its stale answer and its channel to config
+    # (the red team's S1, L-118, T1, S2 and G1 of WP-168's review round); killed by TST-M6-LOGOUT-KILLS's phases 4 to 6
+    # (config held with sched::freeze_named across a Sign out, a lock and the elevation prompt). Not registered:
+    # the state check alone dropped (the keyboard check still pauses a locked session, whose keyboard is the
+    # session's), and the close after the GET's answer dropped (autostart_end closes the channel when it ends).
+    ("M500", "user/apps/sessiond/src/main.rs",
+     "        self.state == State::Unlocked && self.owner == Owner::Display && !self.want_display\n",
+     "        self.state != State::NoSession && !self.want_display\n",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: the autostart asks while the session is locked (the red team's S1): the GET is sent with the locked token behind the lock screen, the store reads as none and nothing starts at the unlock"),
+    ("M501", "user/apps/sessiond/src/main.rs",
+     "        self.state == State::Unlocked && self.owner == Owner::Display && !self.want_display\n",
+     "        self.state == State::Unlocked && !self.want_display\n",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: the elevation prompt does not pause the autostart (L-118): applications start while the prompt holds the keyboard"),
+    ("M502", "user/apps/sessiond/src/main.rs",
+     "        if at != self.changes {\n            a.step = AutoStep::Get;\n",
+     "        if at > self.changes {\n            a.step = AutoStep::Get;\n",
+     ["TST-M6-LOGOUT-KILLS"], "config's answer to a GET asked before a lock is applied after it (the red team's T1): the locked token's NOT_FOUND ends the autostart as none"),
+    ("M503", "user/apps/sessiond/src/main.rs",
+     "            libnawah::trace(b\"session|autostart=cancelled\");\n        }\n        self.autostart_end();\n",
+     "            libnawah::trace(b\"session|autostart=cancelled\");\n        }\n",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: Sign out does not end the autostart (the red team's S2): the signed-out user's GET and its channel to config outlive the session into the next sign-in"),
+    ("M504", "user/apps/sessiond/src/main.rs",
+     "        self.autostart = None;\n        if self.config != 0 {\n",
+     "        self.autostart = None;\n        if self.config == 0 {\n",
+     ["TST-M6-LOGOUT-KILLS"], "the autostart's channel to config is not closed when it ends (the red team's G1): config holds one more handle after each sign-in whose store is not read"),
     # M443 to M456 (WP-170, RSK-051, syscall.md v1.16): a job other than the root holds 8192 pages at most,
     # the system keeps 64 MiB of the free frames for the kernel; killed by TST-M6-JOB-MEMORY.
     ("M443", "kernel/src/object/job.rs",
@@ -2407,6 +2472,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M417", "M419", "M420", "M421",
             # WP-168 (REQ-M6-004): the autostart checks each id before it asks (session.md v1.10).
             "M439",
+            # WP-175 (REQ-M6-004): the autostart asks only while the desktop holds the keyboard of an
+            # unlocked session, and Sign out ends it (session.md v1.11).
+            "M500", "M501", "M503",
             # WP-170 (RSK-051): a job's memory is bounded (syscall.md v1.16).
             "M443", "M444", "M448", "M449", "M450", "M453", "M454",
             # WP-176 (RSK-051): what channels hold is charged, a queue grows fallibly, no cycle (syscall.md after v1.16).
@@ -2417,7 +2485,12 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-112 (REQ-M4-004): a user store is read for its owner or an administrator alone (config.md v1.6).
             "M422", "M424", "M425", "M427", "M429",
             # WP-112's review round: unusable admin, a full table told, CONFIG_WRITE, a group, SUBSCRIBE.
-            "M430", "M431", "M432", "M433", "M437"}
+            "M430", "M431", "M432", "M433", "M437",
+            # WP-178 (REQ-M6-004): no sign-in before the manager confirms the end of the session
+            # before it (session.md v1.12).
+            "M480", "M481", "M488",
+            # WP-178 (REQ-M6-004): the manager's stop ends the session's job (services.md v1.21).
+            "M485"}
 
 
 def security_of(mid: str) -> bool:
@@ -2642,6 +2715,8 @@ _NOJOB = "|ktest|fail|an application is not in a job of its own under the sessio
 _SJANS = "|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states"
 _LKALIVE = "|ktest|fail|an application of the signed-out session is still alive"
 _LKSTEPS = "|ktest|fail|the sign-in, a launch or the sign-out was not as the case states"
+_LKHELD = "|ktest|fail|the next sign-in went on while the end of the session before it was unconfirmed"
+_MSALIVE = "|ktest|fail|an application of the session outlived the manager's stop"
 _JBUNIT = "|ktest|fail|a job's count does not hold its bound"
 _JBNOT = "|ktest|fail|a job's processes are not bounded"
 _JMQUOTA = "|ktest|fail|a job's charge does not hold its quota"
@@ -2823,9 +2898,13 @@ EXPECT = {
     # signed-out session's three processes, its three jobs and the manager's seven handles stay.
     # M389: the session traces apps=0. M396: the answer is taken for a CONNECT's and nothing is
     # traced.
-    "M388": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=1|nest=1|idle=1|jobs=3|mgr_handles=7|", _LKALIVE]},
+    # Since WP-178 a sign-in held after M388's silent Sign out asks END_SESSION itself, so the job ends before the
+    # case's back= line; M388 is known by the next sign-in refused once and never typed again (phase 4's
+    # pending line), the case then running to its timeout.
+    "M388": {"TST-M6-LOGOUT-KILLS": ["timeout (hang)", "|pending|n=1|signed=error:K_E_SVC_TIMEOUT|launch=ERR NO_SESSION|"]},
     "M389": {"TST-M6-LOGOUT-KILLS": ["forbidden present ['|text=session|jobs=ended|apps=0']"]},
-    "M396": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=0|nest=0|idle=0|phase=1", "|launch=OK app:deaf#1|deaf=1|in_session=1|phase=3", _LKSTEPS]},
+    # Since WP-178 the misqueued answer leaves END_SESSION unconfirmed: after the thaw ENDING times out.
+    "M396": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=0|nest=0|idle=0|phase=1", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|", _LKSTEPS]},
     # WP-164: TST-M6-JOB-BOUND (kept as the local run of 2026-11-21 printed it). M397: the count's
     # own check gives 40 places of 40. M398: every process counted in the root, hog's job counts
     # none while 65 live. M399: a place given back stays taken. M400: 33 places.
@@ -2881,11 +2960,32 @@ EXPECT = {
     "M413": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=OK app:deaf#1|", _LKALIVE]},
     "M414": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", _LKSTEPS]},
     # WP-168 (session.md v1.10): the autostart from the administrator's store CFGU1000.A.
-    "M391": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=1|nest=0|idle=0|phase=1", "|launch=OK app:deaf#2|", _LKSTEPS]},
-    "M438": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launch=OK app:deaf#4|", _LKSTEPS]},
+    "M391": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=1|nest=0|idle=0|phase=1", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|", _LKSTEPS]},
+    # Since WP-175 app:deaf#4 is phase 4's pinned launch: M438 is known by the ninth id at the sign-in (deaf=2)
+    # and the launch after the second sign-in numbered 4, not 3.
+    "M438": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=2|nest=1|idle=1|phase=1", "|launch=OK app:deaf#4|deaf=1|in_session=1|phase=3", _LKSTEPS]},
     "M439": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart|invalid=4']; forbidden present []"]},
     "M441": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart=none']; forbidden present ['|text=session|autostart=unavailable']"]},
     "M442": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart=done|launched=2|passed=6|over=1']; forbidden present []"]},
+    # WP-178 (session.md v1.12, services.md v1.21): the held sign-in, ENDED, the manager's stop and crash.
+    "M480": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|ending=OK end=sent held=0|auth=OK waiting=1 lock_unsent=0|", _LKHELD]},
+    "M481": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|ending=OK end=none held=0|auth=OK waiting=1 lock_unsent=0|", _LKHELD]},
+    "M482": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|", "|failed=confirmed,again,relaunch,", _LKSTEPS]},
+    "M483": {"TST-M6-LOGOUT-KILLS": ["host checks ['host_check failed: python3 -I tools/transcript.py streams ",
+                                     "platform/pc-qemu/expect/logout-kills.txt -> 1']"]},
+    "M484": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|held=error:K_E_SVC_TIMEOUT|ending=error:K_E_SVC_TIMEOUT|", _LKHELD]},
+    "M488": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|ending=OK end=sent held=1|auth=OK waiting=1 lock_unsent=0|", _LKHELD]},
+    "M485": {"TST-M6-MANAGER-STOP": ["exit 37", "|stopped|deaf=0|nest=0|idle=1|", "|processes_after=1|clean=0", _MSALIVE]},
+    "M487": {"TST-M6-MANAGER-KILLED": ["missing markers ['|text=session|manager=gone|end=sent'"]},
+    # WP-175 (session.md v1.11): the autostart's pauses, its stale answer and its channel to config. M500 and M502
+    # both end the autostart on the locked token's NOT_FOUND; M502 applies the answer at once, which phase 5's counts
+    # of the session's traces show over the lock (stale=0|none=1), while M500 drops it (stale=1|none=0, the pinned
+    # value) and asks again only when the session next wakes, still locked: it is known by the resumed line.
+    "M500": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|resumed|elevate=ERR CANCELLED|deaf=0|nest=0|idle=0|config_handles=0|phase=5", "|failed=resume,", _LKSTEPS]},
+    "M501": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|elevation=OK prompt done=0|thawed=1|deaf=1|nest=1|", "|failed=resume,", _LKSTEPS]},
+    "M502": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|held=1|stale=0|none=1|", "|failed=resume,", _LKSTEPS]},
+    "M503": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|config_handles=1|deaf=0|phase=4", "|failed=cancel,resume,", _LKSTEPS]},
+    "M504": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|config_handles=1|held=1|", "|config_handles=2|deaf=0|phase=4", "|failed=cancel,resume,", _LKSTEPS]},
     # WP-170 (syscall.md v1.16): a job's memory is bounded; each by exit 37, fields of one of the case's lines with
     # other values than the pinned ones, and the failure message of the check it breaks.
     "M443": {"TST-M6-JOB-MEMORY": ["exit 37", "|quota=8192|taken=1|refused=0|again=1|", _JMQUOTA]},

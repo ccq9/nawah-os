@@ -1129,6 +1129,30 @@ pub fn parked_named(name: &[u8]) -> bool {
     })
 }
 
+/// Test-only (WP-178): as `parked_named`, for live process `pid` — the service manager, which
+/// the kernel spawns with no image name (TST-M6-LOGOUT-KILLS freezes it by its pid).
+#[cfg(feature = "ktest")]
+pub fn parked_pid(pid: u32) -> bool {
+    with(|s| {
+        if !s
+            .processes
+            .iter()
+            .any(|p| p.id == pid && p.exit_code.is_none())
+        {
+            return false;
+        }
+        let mut any = false;
+        for t in s.threads.iter().filter(|t| t.process == Some(pid)) {
+            match t.state {
+                State::Blocked | State::BlockedUntil { .. } | State::Sleeping { .. } => any = true,
+                State::Ready | State::Running => return false,
+                State::Exited { .. } => {}
+            }
+        }
+        any
+    })
+}
+
 /// Test-only (WP-161): what the test kernel reads of one live process of an image.
 #[cfg(feature = "ktest")]
 #[derive(Clone, Copy, Default)]
@@ -1303,6 +1327,32 @@ pub fn thaw_named(name: &[u8]) -> bool {
         else {
             return false;
         };
+        for i in 0..s.threads.len() {
+            if s.threads[i].process == Some(pid)
+                && matches!(
+                    s.threads[i].state,
+                    State::Blocked | State::BlockedUntil { .. }
+                )
+            {
+                s.threads[i].state = State::Ready;
+                let cpu = usize::from(s.threads[i].cpu);
+                request_resched(s, cpu);
+            }
+        }
+        true
+    })
+}
+
+/// Test-only (WP-178): as `thaw_named`, for the live process `freeze_pid` froze — the service
+/// manager, which has no image name: what was queued to it meanwhile is answered now, in order
+/// (TST-M6-LOGOUT-KILLS). Returns whether a live frozen process matched.
+#[cfg(feature = "ktest")]
+pub fn thaw_pid(pid: u32) -> bool {
+    with(|s| {
+        match s.processes.iter_mut().find(|p| p.id == pid) {
+            Some(p) if p.exit_code.is_none() && p.frozen => p.frozen = false,
+            _ => return false,
+        }
         for i in 0..s.threads.len() {
             if s.threads[i].process == Some(pid)
                 && matches!(

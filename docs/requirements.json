@@ -1913,7 +1913,7 @@
     "تطبيق يتجاهل الإغلاق يبقى بعد الخروج",
     "سجل تالف يُسقط المدير"
    ],
-   "acceptance": "app_launch + logout_kills + launch_denied + app_registry_fuzz + app_spawn + app_connect_denied + session_job + launch_rate + session_gate + session_restart",
+   "acceptance": "app_launch + logout_kills + launch_denied + app_registry_fuzz + app_spawn + app_connect_denied + session_job + launch_rate + session_gate + session_restart + manager_killed + manager_stop",
    "test_ids": [
     "TST-M6-APP-LAUNCH",
     "TST-M6-LOGOUT-KILLS",
@@ -1926,7 +1926,9 @@
     "TST-M6-LAUNCH-RATE",
     "TST-M6-SESSION-GATE",
     "TST-M6-SESSION-RESTART",
-    "TST-M6-JOB-MEMORY"
+    "TST-M6-JOB-MEMORY",
+    "TST-M6-MANAGER-KILLED",
+    "TST-M6-MANAGER-STOP"
    ],
    "implementation_status": "planned",
    "evidence_refs": []

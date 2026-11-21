@@ -23,7 +23,12 @@
 //! (v1.10, WP-168) After a sign-in, once the keyboard is the desktop's, the session reads
 //! `session.autostart` from the user's store at `config` with the user's token and launches the
 //! first eight ids in order through the manager, one at a time; each answer is traced and a
-//! refused, unknown or malformed id passed over. A lock pauses it, Sign out ends it.
+//! refused, unknown or malformed id passed over. A lock pauses it, Sign out ends it. (v1.11,
+//! WP-175) It asks only while the desktop holds the keyboard, so the elevation prompt pauses it
+//! too; config's answer that comes after a lock is dropped (`session|autostart=stale`) and the
+//! GET asked again once the keyboard is the desktop's. (v1.12, WP-178) No sign-in is taken
+//! while the end of the last signed-out session's job is unconfirmed: only the manager's `ENDED`
+//! confirms it (`session|login=held|end=…`, `ENDING`, `session|manager=gone|end=…`).
 //!
 //! Initial handle: the boot channel. Dependencies: `auth`, `input`, `display`, `config` for the
 //! autostart, and the services elevations may reach (declared in the manifest). Clients ask
@@ -107,6 +112,31 @@ enum BootOp {
     Begin,
     /// `LAUNCH <id>` of the autostart (v1.10): `OK app:<id>#<n>`, or `ERR …`.
     Launch,
+}
+
+/// Where the end of the last signed-out session's job is (session.md v1.12): the manager's
+/// `ENDED` alone confirms it, and no sign-in is taken until it does.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum EndState {
+    /// Nothing to wait for: no session ended since the start, or the manager answered `ENDED`.
+    Confirmed,
+    /// `END_SESSION` is on the boot channel and its answer has not come.
+    Sent,
+    /// `END_SESSION` could not be written (`session|jobs=unsent`).
+    Unsent,
+    /// The manager answered `END_SESSION` with `ERR …` (`session|jobs=refused`).
+    Refused,
+}
+
+impl EndState {
+    fn name(self) -> &'static [u8] {
+        match self {
+            EndState::Confirmed => b"none",
+            EndState::Sent => b"sent",
+            EndState::Unsent => b"unsent",
+            EndState::Refused => b"refused",
+        }
+    }
 }
 
 /// Boot-channel requests that may wait for their answers at once: one `CONNECT` (they go one at
@@ -575,6 +605,10 @@ struct Session {
     config: Handle,
     /// The autostart of the current sign-in, until it ends (v1.10).
     autostart: Option<Autostart>,
+    /// The end of the last signed-out session's job (v1.12).
+    end: EndState,
+    /// Sign-ins refused since the start because that end was unconfirmed (v1.12).
+    logins_held: i64,
 }
 
 impl Session {
@@ -829,6 +863,9 @@ impl Session {
             return false;
         }
         self.boot_ops[k] = Some(op);
+        if op == BootOp::End {
+            self.end = EndState::Sent;
+        }
         true
     }
 
@@ -849,6 +886,15 @@ impl Session {
             None => t.put(b"session|jobs=refused|answer=").put(msg),
         };
         libnawah::trace(t.bytes());
+        // v1.12: ENDED alone confirms the end (and only once no other END_SESSION waits); a
+        // refusal leaves it unconfirmed, asked again at the next sign-in.
+        self.end = if self.boot_ops.contains(&Some(BootOp::End)) {
+            EndState::Sent
+        } else if msg.starts_with(b"ENDED ") {
+            EndState::Confirmed
+        } else {
+            EndState::Refused
+        };
     }
 
     /// The manager's answer `msg` to the asked `CONNECT`: a channel, or a refusal to retry later
@@ -1365,6 +1411,11 @@ impl Session {
         if self.auth_waiting() {
             return;
         }
+        // v1.12: no sign-in before the manager confirmed the end of the session before it.
+        if self.end != EndState::Confirmed {
+            self.login_held();
+            return;
+        }
         let mut name = [0u8; NAME_MAX];
         let nn = self.dialog.value(self.ids.user, &mut name);
         let mut pw = [0u8; 4 * TEXT_MAX];
@@ -1380,6 +1431,22 @@ impl Session {
         if !sent {
             self.auth_reply(op, b"ERR UNAVAILABLE", None, now);
         }
+    }
+
+    /// A sign-in while the end of the last session's job is unconfirmed (v1.12): refused before
+    /// anything reaches auth (the password leaves its element, never copied) and traced; an
+    /// END_SESSION not waiting for its answer (unsent or refused) is asked again, once for each
+    /// refused sign-in, while one that waits is not.
+    fn login_held(&mut self) {
+        self.dialog.clear_value(self.ids.password);
+        self.logins_held += 1;
+        let mut t = Out::new();
+        t.put(b"session|login=held|end=").put(self.end.name());
+        libnawah::trace(t.bytes());
+        if self.end != EndState::Sent && !self.boot_send(b"END_SESSION", BootOp::End) {
+            libnawah::trace(b"session|jobs=unsent");
+        }
+        self.show(Screen::Login, Some(refusal(b"ERR UNAVAILABLE", false)));
     }
 
     fn submit_unlock(&mut self, now: u64) {
@@ -1433,6 +1500,8 @@ impl Session {
             self.token = 0;
         }
         self.lock_unsent = false;
+        // v1.12: unconfirmed until the manager answers ENDED; `boot_send` marks it sent.
+        self.end = EndState::Unsent;
         // v1.8: the manager is asked to end the session's job, with every application and what it
         // started, before the display is asked for LOGOUT. Neither waits for the other, so an
         // application may still hear LOGGED_OUT before it is killed. The answer comes on the boot
@@ -1458,9 +1527,11 @@ impl Session {
     // ---- the autostart (v1.10) --------------------------------------------------------
 
     /// Whether the autostart may ask its next request: the session is unlocked and the keyboard
-    /// went to the desktop (a lock pauses it; the unlock's handover resumes it).
+    /// went to the desktop (a lock pauses it; the unlock's handover resumes it). (v1.11) The
+    /// desktop holds it: the elevation prompt, which takes the keyboard, pauses it too, and
+    /// the handover at its end resumes it.
     fn autostart_runs(&self) -> bool {
-        self.state == State::Unlocked && !self.want_display
+        self.state == State::Unlocked && self.owner == Owner::Display && !self.want_display
     }
 
     fn autostart_to(&mut self, step: AutoStep) {
@@ -1555,7 +1626,8 @@ impl Session {
 
     /// config's answer to the GET: `OK <version> <ids>`, then the launches; `ERR NOT_FOUND` (no
     /// such key, no store, or a token config does not take) is `session|autostart=none`; any other
-    /// answer ends it as unavailable. A lock since the GET makes it stale: asked again.
+    /// answer ends it as unavailable. A lock since the GET makes it stale: dropped, traced
+    /// `session|autostart=stale` (v1.11), and asked again.
     fn autostart_answer(&mut self, answer: &[u8]) {
         let Some(a) = self.autostart.as_mut() else {
             return;
@@ -1565,6 +1637,7 @@ impl Session {
         };
         if at != self.changes {
             a.step = AutoStep::Get;
+            libnawah::trace(b"session|autostart=stale");
             return;
         }
         if answer == b"ERR NOT_FOUND" {
@@ -2198,6 +2271,13 @@ impl Session {
                         .num(waiting as i64)
                         .put(b" lock_unsent=")
                         .num(i64::from(self.lock_unsent));
+                } else if &buf[..n] == b"ENDING" {
+                    // v1.12: where the end of the last session's job is, and how many sign-ins
+                    // were held while it was unconfirmed.
+                    out.put(b"OK end=")
+                        .put(self.end.name())
+                        .put(b" held=")
+                        .num(self.logins_held);
                 } else if &buf[..n] == b"ELEVATION" {
                     // v1.3: where the elevation in progress is.
                     out.put(b"OK ").put(match self.elevation {
@@ -2311,7 +2391,17 @@ impl Session {
                 }
                 true
             }
-            Err(ERR_PEER_CLOSED) => false,
+            Err(ERR_PEER_CLOSED) => {
+                // v1.12: the manager is gone (killed, crashed or stopped) while the end of the
+                // last session's job is unconfirmed: nothing can confirm it now, so no sign-in
+                // is taken again; the session ends, traced.
+                if self.end != EndState::Confirmed {
+                    let mut t = Out::new();
+                    t.put(b"session|manager=gone|end=").put(self.end.name());
+                    libnawah::trace(t.bytes());
+                }
+                false
+            }
             Err(_) => true,
         }
     }
@@ -2571,6 +2661,8 @@ fn main() -> u64 {
         elevate_seq: 0,
         config: 0,
         autostart: None,
+        end: EndState::Confirmed,
+        logins_held: 0,
     };
     let now = libnawah::clock_ticks();
     // The keyboard first (nobody gets a key before the sign-in screen exists), then the

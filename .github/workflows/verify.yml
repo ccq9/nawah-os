@@ -149,7 +149,11 @@ jobs:
         # 22 (WP-167, 2026-11-20): TST-M6-LOGOUT-KILLS's 150 s, 1247 s of 1320, room for WP-169's.
         # 24 (WP-169, 2026-11-21): TST-M6-SESSION-GATE's 30 s after LAUNCH-RATE's and JOB-BOUND's:
         # StepBudget's worst case 1337 s of 1440, room for WP-172's.
-        timeout-minutes: 24
+        # 27 (WP-178 with WP-175, 2026-11-21): TST-M6-MANAGER-KILLED's two phases (60 s and 45 s, the crash
+        # and the rescue boot), TST-M6-MANAGER-STOP's 40 s, and TST-M6-LOGOUT-KILLS's timeout 150 -> 180 for
+        # WP-175's and WP-178's phases (79 s locally; mutant M484 adds a 40 s wait): StepBudget's worst
+        # case 1587 s of 1620; job a's caps 15 + 27, 50.4 with the margin, under 62.
+        timeout-minutes: 27
         run: python3 tools/project.py test --target pc-qemu --suite M6
       - name: A64 early port experiment (build + boot on QEMU virt, ADR-0008)
         run: |

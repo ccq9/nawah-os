@@ -15,7 +15,44 @@ session|autostart=done|launched=2|passed=6|over=1
 session|state=locked|user=admin|window=510,336,260,128
 session|state=logged_out|user=admin
 session|state=no_session|window=510,336,260,128
+session|login=held|end=sent
 session|jobs=ended|apps=2
 session|state=unlocked|user=user|uid=1001|token=usable
 session|focus=display|n=2
 session|autostart=none
+# WP-175 (session.md v1.11): Sign out with the GET unanswered (config held) cancels it; then a lock drops the
+# answer that came after it, the elevation prompt pauses the launches, and its end resumes them once; Sign out.
+session|state=locked|user=user|window=510,336,260,128
+session|state=logged_out|user=user
+session|state=no_session|window=510,336,260,128
+session|jobs=ended|apps=1
+session|state=unlocked|user=admin|uid=1000|token=usable
+session|focus=display|n=3
+session|state=locked|user=admin|window=510,336,260,128
+session|autostart=cancelled
+session|state=logged_out|user=admin
+session|state=no_session|window=510,336,260,128
+session|jobs=ended|apps=1
+session|state=unlocked|user=admin|uid=1000|token=usable
+session|focus=display|n=4
+session|state=locked|user=admin|window=510,336,260,128
+session|autostart=stale
+session|state=unlocked|user=admin|uid=1000|token=usable
+session|focus=display|n=5
+session|elevate=asked|from=-|service=config
+session|elevate=prompt|from=-|request=config SET device lab.elev 0 901 on|window=510,255,260,290
+session|elevate=ended|n=1|result=ERR CANCELLED
+session|focus=display|n=6
+session|autostart|deaf=OK app:deaf#5
+session|autostart|ghost=ERR UNKNOWN
+session|autostart|notes=ERR NOT_FOUND
+session|autostart|invalid=4
+session|autostart|ghost=ERR UNKNOWN
+session|autostart|ghost=ERR UNKNOWN
+session|autostart|ghost=ERR UNKNOWN
+session|autostart|nest=OK app:nest#6
+session|autostart=done|launched=2|passed=6|over=1
+session|state=locked|user=admin|window=510,336,260,128
+session|state=logged_out|user=admin
+session|state=no_session|window=510,336,260,128
+session|jobs=ended|apps=2

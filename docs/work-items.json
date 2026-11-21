@@ -11134,9 +11134,10 @@
    "requirement_ids": [
     "REQ-M6-004"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -11153,16 +11154,21 @@
     "user/apps/sessiond/src/main.rs",
     "kernel/src/ktest.rs",
     "platform/pc-qemu/target.json",
+    "platform/pc-qemu/expect/logout-kills.txt",
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
     "tools/project.py",
     "docs/contracts/session.md",
-    "docs/tests.json"
+    "docs/tests.json",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/project-state.json"
    ],
    "contract_refs": [
     "docs/contracts/session.md"
    ],
-   "acceptance": "the autostart's paths the review round found without a case shown on CI: with config held (frozen) after a sign-in, a lock pauses the autostart (nothing asked while locked), a GET answered after the lock is dropped and asked again, the unlock resumes it; a Sign out during it traces cancelled before logged_out; config's handle count is back after each sign-in; and the pause tied to the display holding the keyboard, so the elevation prompt pauses it too (test first); session.md's next version states it; the mutants killed by the M6 gate",
+   "acceptance": "the autostart asks only while the session is unlocked and the desktop holds the keyboard: a lock pauses it (nothing asked while locked), config's answer to a GET asked before the lock is dropped and traced session|autostart=stale and the GET asked again when it resumes, the elevation prompt pauses it too (no launch while the prompt holds the keyboard; Esc resumes, each id once), a Sign out during it traces session|autostart=cancelled before logged_out and closes config's channel, config's handle count back after each sign-in; shown on CI in TST-M6-LOGOUT-KILLS's phases 4 to 6 (config frozen across a Sign out, a lock and the prompt); session.md v1.11 states it, with the LAUNCH written before a lock or the prompt left as its limit (L-118's second half); its mutants M500 to M504 (M500, M501, M503 SECURITY) killed by the M6 gate",
    "test_ids": [
     "TST-M6-LOGOUT-KILLS",
     "TST-M6-MUTANTS",
@@ -11171,7 +11177,14 @@
    "actions": [
     "التشغيل التلقائي: القفل والخروج أثناءه بحالة تثبتهما (من جولة مراجعة WP-168 في 2026-11-21)",
     "from the red team: mutants S1 (run while locked: `self.state != State::NoSession && !self.want_display`), T1 (the stale GET answer kept), S2 (no cancel at Sign out: the config channel left open) and G1 (the channel not closed at the end), each passing the case of WP-168; the step: freeze CONFIGD.ELF before the sign-in (sched::freeze_named), SAK, thaw, unlock; and a Sign out instead of the unlock",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-21 (the manager): built test first by the services engineer on a scratch clone (scratch, never evidence): against 1d72fe8d1 TST-M6-LOGOUT-KILLS failed in phase 5 alone (run 20261121T172132Z-1d72fe8d-001: the elevation prompt did not pause the autostart, prompt|…|deaf=1|nest=1|, then logout_kills|failed=resume; the session|autostart=stale trace missing); phase 4 and the lock's half of phase 5 passed, being v1.10's behaviour (the cancel at Sign out, the answer after a lock dropped), which the case now shows; all pass after (20261121T172623Z)",
+    "2026-11-21 (the manager): design, with its options (rule 5): (A) the autostart runs only while the desktop holds the keyboard (owner == Display) of an unlocked session, a GET answered after a change of state dropped by the session's change count (chosen: one condition shared by the lock and the prompt, no new state); (B) pause flags for the lock and the prompt each (rejected: two flags to keep in step with the keyboard's owner); (C) cancel the autostart at the lock (rejected: the user's ids would not run after the unlock). The LAUNCH already written completes (L-118's second half). Fails: a LAUNCH written before a lock or the prompt completes after it (a limit). Reversible: sessiond alone, undone by a revert; the kernel changes only under cfg(feature = \"ktest\")",
+    "2026-11-21 (the manager): the review round on integ175178 (the auditor and the red team, read only) confirmed the lock, the prompt, the stale answer and the cancel on code; it refuted the records (no contract version, no case record, the items planned under commits naming them). Fixed: session.md v1.11 written with its limit, the items activated here, phases 1 to 3 judged first",
+    "2026-11-21 (the manager): integrated with WP-178 on the scratch clone (merge e4138bcf5) and tested together, as the owner's directive asks; TST-M6-LOGOUT-KILLS carries both items' phases, so both close on the same CI run; M6 23/23 and the M5 session cases 7/7 pass locally (scratch, 20261121T184733Z and 20261121T185453Z)",
+    "2026-11-21 (the manager): the port onto 4c633d9095 (with WP-176 and WP-177) run locally before the push (scratch, never evidence): M6 23/23 (build 20261121T203018Z, the cases 20261121T203059Z to 203748Z, LOGOUT-KILLS 203446Z, MANAGER-KILLED 203606Z, MANAGER-STOP 203653Z) and the M5 session cases 7/7 (build 20261121T203821Z, the cases 203859Z to 204204Z); M388, M391, M396, M500 and M502 killed there with the expectations written (20:28Z). The M6 gate's shards: the 13 new mutants took 1130 s together on the scratch run, about 1.6 minutes a shard over twelve, against the longest shard's 1123 s on run 44936853823 and the shard step's 60-minute cap",
+    "2026-11-21 budget (the manager): over the line of 120 calls with two engineers' rounds, one review round and the integration",
+    "2026-11-21 activated (the manager): its dependency WP-168 is done"
    ]
   },
   {
@@ -11335,9 +11348,10 @@
    "requirement_ids": [
     "REQ-M6-004"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -11356,28 +11370,46 @@
     "user/apps/sessiond/src/main.rs",
     "user/apps/svcmgr/src/main.rs",
     "kernel/src/ktest.rs",
+    "kernel/src/sched/mod.rs",
     "platform/pc-qemu/target.json",
+    "platform/pc-qemu/expect/logout-kills.txt",
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py",
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
     "tools/project.py",
     "docs/contracts/session.md",
     "docs/contracts/services.md",
-    "docs/tests.json"
+    "docs/tests.json",
+    "docs/requirements.json",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/project-state.json"
    ],
    "contract_refs": [
     "docs/contracts/session.md",
     "docs/contracts/services.md"
    ],
-   "acceptance": "no session inherits the applications, the rights or the input of the one before it when the manager fails: when the end of a session's job is not confirmed (END_SESSION unsent or refused, or the manager gone) the session refuses the next sign-in and traces it, until a manager confirms the end; and the manager's own stop (its control channel closed) ends the session's job and every application's job before it exits; shown by cases on CI (a manager killed or frozen during a session with an application that ignores its boot channel, then a sign-in refused; the manager stopped by the test kernel, then no application of the session alive); session.md's and services.md's next versions state it; its SECURITY mutants killed by the M6 gate",
+   "acceptance": "no session inherits the applications, the rights or the input of the one before it when the manager fails, in two verdicts. The crash or an unconfirmed end: from Sign out until ENDED answers END_SESSION the session refuses every sign-in before anything reaches auth and traces session|login=held|end=<...>; ENDED alone confirms the end; a manager gone with the end unconfirmed is traced session|manager=gone and the session ends, so no sign-in is taken after the crash, and a sign-in typed after it begins no session, finds no auth to take it and adds no live token; the rescue after a crash is a new boot, shown signing in clean with nothing of the crashed session (its unmet condition, named: until the reboot an application of the session that ignores its boot channel lives on). The orderly stop: the manager's control channel closed, it ends the session's job with every application and what they started before it exits. Shown on CI in TST-M6-LOGOUT-KILLS (the manager and auth frozen over the hold, then ENDED 2 and a clean sign-in), TST-M6-MANAGER-KILLED (the crash, the attempt after it, the rescue boot) and TST-M6-MANAGER-STOP; session.md v1.12 and services.md v1.21 state it with their limits; its mutants M480 to M485, M487, M488 (M480, M481, M485, M488 SECURITY) killed by the M6 gate",
    "test_ids": [
     "TST-M6-LOGOUT-KILLS",
+    "TST-M6-MANAGER-KILLED",
+    "TST-M6-MANAGER-STOP",
     "TST-M6-MUTANTS",
     "TST-M0-005"
    ],
    "actions": [
     "فشل المدير لا يورث الجلسة التالية تطبيقات سابقتها (من L-113، بسؤال المالك وتدقيق 2026-11-21 الخارجي؛ مهندس الخدمات)",
     "test first: a test kernel case killing the manager while a session holds an application that ignores its boot channel, then a sign-in: today the session traces jobs=unsent and the next sign-in goes on (a hypothesis until run); and the manager stopped by its control channel with the same application: today the application outlives it (L-113)",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-21 (the manager): built test first by the services engineer on a scratch clone (scratch, never evidence), against 119b66f7d: the sign-in after a Sign out with the manager frozen went on (run 20261121T163532Z-119b66f7-001: logout_kills|failed=held, 'the next sign-in went on while the end of the session before it was unconfirmed'); the manager's stop left the session's IDLE alive (20261121T164317Z: processes_after=1|clean=0, 'an application of the session outlived the manager's stop'); the killed manager left no trace (20261121T165552Z: missing session|manager=gone|end=sent); all pass after",
+    "2026-11-21 (the manager): design, with its options (rule 5): (A) the session holds the sign-in until ENDED confirms the end, refusing before auth, and the manager kills the session's job when its control channel closes (chosen: fail closed, no timeout, the kernel unchanged); (B) a timeout after which the sign-in goes on (rejected: the next user would sign in beside the previous one's applications); (C) the kernel ends the session's job when the manager exits (rejected for this item: a new kernel authority over a service's job; written as L-137's option). Fails closed: a hung manager holds every sign-in until a reboot or a restart of the session service, and after a crash the only rescue is a reboot (session.md v1.12's limits, L-137). Reversible: sessiond and svcmgr alone, undone by a revert; the kernel changes only under cfg(feature = \"ktest\") (parked_pid, thaw_pid)",
+    "2026-11-21 (the manager): the review round on integ175178 (the auditor and the red team, read only). Fixed by the engineer (commit 1e1e62cfd on the clone): the orderly stop in a case of its own (TST-M6-MANAGER-STOP, the owner's two verdicts); MANAGER-KILLED gains a sign-in typed after the crash (session=0, auth=0, input=0, tokens_new=0) and a second boot, the rescue (manager_rescue: a clean sign-in, app:deaf#1 in a new session job); auth frozen over the held sign-in so no LOGIN reaches it (AUTH waiting=0), with M488 (SECURITY: the hold after the LOGIN); M486 dropped (its evidence was M485's); session.md v1.12 and services.md v1.21 written with their limits (a hung manager holds every sign-in until a reboot; the 0xE1 exit runs no end_on_stop; after a crash the rescue is a reboot). The LOGOUT-KILLS expectations of M388, M391, M396 and M438 re-derived by the manager from the scratch mutant run on 1e1e62cf (24 of 24 killed; M388, M391 and M396 missed their old expectations, M438's matched a line WP-175 pinned), M500 and M502 told apart by a count of the session's stale and none traces the test kernel reads over the lock (red without it, 20261121T200954Z-4c633d90-001, green with it, 20261121T201259Z). Written as lines: the crash (L-137), ENDED meaning the kill asked (L-138), ENDING within any service declaring session (L-139); the unsent and refused paths and the resend at a held sign-in stand by reading alone (L-120 with L-102)",
+    "2026-11-21 (the manager): integrated with WP-175 on the scratch clone (merge e4138bcf5; WP-175's phases inside TST-M6-LOGOUT-KILLS, so the two items close together on one CI run); M6 23/23 and the M5 session cases 7/7 pass locally (scratch); the M6 step's cap 24 -> 27 for the new cases (StepBudget's worst case 1587 s of 1620)",
+    "2026-11-21 (the manager): the port onto 4c633d9095 (with WP-176 and WP-177) run locally before the push (scratch, never evidence): M6 23/23 (build 20261121T203018Z, the cases 20261121T203059Z to 203748Z, LOGOUT-KILLS 203446Z, MANAGER-KILLED 203606Z, MANAGER-STOP 203653Z) and the M5 session cases 7/7 (build 20261121T203821Z, the cases 203859Z to 204204Z); M388, M391, M396, M500 and M502 killed there with the expectations written (20:28Z). The M6 gate's shards: the 13 new mutants took 1130 s together on the scratch run, about 1.6 minutes a shard over twelve, against the longest shard's 1123 s on run 44936853823 and the shard step's 60-minute cap",
+    "2026-11-21 budget (the manager): over the line of 120 calls with the engineer's three rounds, one review round and the integration",
+    "2026-11-21 activated (the manager): its dependency WP-168 is done"
    ]
   }
  ]

@@ -8,7 +8,7 @@
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 
 use crate::arch::{
     self, apic, context, fwcfg, interrupts, irq, ktest as inject, paging, pit, qemu, user_programs,
@@ -272,6 +272,9 @@ pub fn run() -> ! {
         "load_outside_system" => load_outside_system(),
         "token_revoke" => token_revoke(),
         "logout_kills" => logout_kills(),
+        "manager_killed" => manager_killed(),
+        "manager_rescue" => manager_rescue(),
+        "manager_stop" => manager_stop(),
         "purge_fail_closed" => purge_fail_closed(),
         "elevate" => elevate(),
         "shell_login" => shell_session("shell_login"),
@@ -1083,6 +1086,34 @@ fn pmm_double_free() -> ! {
 /// Order in which the alternating threads logged (ids), filled under a lock.
 static LOG: IrqSpinLock<([u8; 64], usize)> = IrqSpinLock::new("ktest_log", ([0; 64], 0));
 static STOP: AtomicBool = AtomicBool::new(false);
+/// Test-only (WP-175): how often the session traced that config's answer came after a lock
+/// (`session|autostart=stale`) and that the user's store was not found (`session|autostart=none`),
+/// counted as SYS_TRACE prints them. TST-M6-LOGOUT-KILLS's phase 5 reads both over the lock: the
+/// answer that came after the lock dropped reads one stale and no none; applied, no stale and one
+/// none.
+static TRACED_STALE: AtomicU32 = AtomicU32::new(0);
+static TRACED_NONE: AtomicU32 = AtomicU32::new(0);
+
+/// Called by SYS_TRACE in the test kernel with the text it printed.
+pub fn traced(text: &str) {
+    match text {
+        "session|autostart=stale" => {
+            TRACED_STALE.fetch_add(1, Ordering::Relaxed);
+        }
+        "session|autostart=none" => {
+            TRACED_NONE.fetch_add(1, Ordering::Relaxed);
+        }
+        _ => {}
+    }
+}
+
+fn traced_counts() -> (u32, u32) {
+    (
+        TRACED_STALE.load(Ordering::Relaxed),
+        TRACED_NONE.load(Ordering::Relaxed),
+    )
+}
+
 static SPINS: AtomicU64 = AtomicU64::new(0);
 
 const ALTERNATE_ROUNDS: usize = 8;
@@ -5173,6 +5204,15 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         ),
         "logout_kills" => pass(
             "the sign-in launched what the user's store names, Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
+        ),
+        "manager_killed" => pass(
+            "the manager crashed with the end of a session's job unconfirmed: the session traced it and ended, a sign-in typed after it began no session and got no token, and the test kernel ended what the crash left",
+        ),
+        "manager_rescue" => pass(
+            "after the crash the rescue is a new boot: a clean sign-in succeeded and launched into a new session job, with nothing of the crashed session",
+        ),
+        "manager_stop" => pass(
+            "the manager's stop ended the session's job: no application of it, nor the child of one that ignores its channel, outlived the manager",
         ),
         "session_restart" => pass(
             "the session's restart, crash and stop each ended its job with its application, and each session started again launched into a job of its own",
@@ -15241,7 +15281,17 @@ fn state_wait(
 /// over. The secure attention sequence locks the session and Sign out ends it; the test kernel
 /// reads that none of the three processes lives, no job is left and the manager holds what it
 /// held before the sign-in; after a second sign-in, as the user with no store, nothing starts by
-/// itself and a launch through the desktop makes a new session job.
+/// itself and a launch through the desktop makes a new session job. (WP-175, session.md v1.11)
+/// With config held (frozen) before two more sign-ins, so that the autostart's GET waits: a Sign
+/// out with it unanswered cancels it and gives config its channel back; then a lock pauses it, the
+/// answer config gives after the lock is dropped and asked again at the unlock, and the elevation
+/// prompt, holding the keyboard, pauses it too until it ends: only then does it launch, once.
+///
+/// (WP-178, session.md v1.12) The manager is frozen over the first Sign out, and auth once it has
+/// answered its LOGOUT: the next sign-in is held while END_SESSION waits unanswered, before any
+/// LOGIN reaches auth (the session's AUTH waits for nothing; the previous session's applications
+/// alive, the screen and keyboard the session's), and goes on once both are thawed and the
+/// manager answers ENDED. The manager's own stop is TST-M6-MANAGER-STOP's.
 fn logout_kills() -> ! {
     let name = "logout_kills";
     let (h, session) = session_env(
@@ -15256,6 +15306,9 @@ fn logout_kills() -> ! {
     // What the manager and the kernel hold before the sign-in: the autostart launches at once.
     let jobs0 = i64::from(object::stats().jobs);
     let mgr0 = mgr_handles(&h);
+    // config's live handle count (WP-175): the autostart's channel to it goes after each sign-in.
+    let cfg = || sched::handles_named(b"CONFIGD.ELF").map_or(-1, |n| n as i64);
+    let cfg0 = cfg();
     kprintln!("OSX|{}|ktest|logout_kills|services=6|ready=1", BUILD_ID);
     let within = |t: u64| sched::ticks() + t;
     let live = |img: &[u8]| sched::live_named(img).1;
@@ -15266,6 +15319,16 @@ fn logout_kills() -> ! {
         live(b"DEAF.ELF") == 1 && live(b"NEST.ELF") == 1 && live(b"IDLE.ELF") == 1
     });
     let running = (live(b"DEAF.ELF"), live(b"NEST.ELF"), live(b"IDLE.ELF"));
+    // session.md v1.12 (WP-178): the manager is frozen (it has no image name: by its pid) before
+    // the line that lets the monitor sign out, so the Sign out's END_SESSION waits in its queue
+    // unanswered: the end of the session's job is not confirmed.
+    let mgr = h.m.pid;
+    let frozen = sched::freeze_pid(mgr) && hold_wait(within(500), || sched::parked_pid(mgr));
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|manager=frozen|parked={}|",
+        BUILD_ID,
+        u8::from(frozen)
+    );
     kprintln!(
         "OSX|{}|ktest|logout_kills|unlocked={}|deaf={}|nest={}|idle={}|phase=1",
         BUILD_ID,
@@ -15276,6 +15339,84 @@ fn logout_kills() -> ! {
     );
     // Phase 2: the monitor locks the session and signs out on the lock screen.
     let out = state_wait(&session, "no_session", 3, None, within(40_000));
+    // auth is frozen too once it has answered the Sign out's LOGOUT (nothing waits for it), so a
+    // LOGIN written to it would stay in its queue, counted by the session's AUTH (waiting=1).
+    let auth0 = poll_reply(&session, b"AUTH", within(5000), |r| {
+        r == "OK waiting=0 lock_unsent=0"
+    });
+    let auth_frozen = sched::freeze_named(b"AUTHD.ELF")
+        && hold_wait(within(500), || sched::parked_named(b"AUTHD.ELF"));
+    let alive = (live(b"DEAF.ELF"), live(b"NEST.ELF"), live(b"IDLE.ELF"));
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|unconfirmed|out={}|auth={}|auth_frozen={}|deaf={}|nest={}|idle={}|",
+        BUILD_ID,
+        out,
+        auth0,
+        u8::from(auth_frozen),
+        alive.0,
+        alive.1,
+        alive.2
+    );
+    // The monitor signs in as user while the manager is frozen: the session refuses it before
+    // anything reaches auth (ENDING counts it, AUTH waits for nothing), or the sign-in goes on
+    // (STATE unlocked, changes=4) or its LOGIN waits at the frozen auth (AUTH waiting=1).
+    let held_by = within(40_000);
+    let mut ev = Vec::new();
+    let (held_state, held_ending, held_auth) = loop {
+        let by = (sched::ticks() + 5000).min(held_by);
+        let e = hold_request(&session, b"ENDING", Vec::new(), &mut ev, by);
+        let r = hold_request(&session, b"STATE", Vec::new(), &mut ev, by);
+        let a = hold_request(&session, b"AUTH", Vec::new(), &mut ev, by);
+        if e.ends_with(" held=1")
+            || state_is(&r, "unlocked", 4)
+            || !a.starts_with("OK waiting=0 ")
+            || sched::ticks() >= held_by
+        {
+            break (r, e, a);
+        }
+        hold_wait((sched::ticks() + 20).min(held_by), || false);
+    };
+    let still = (live(b"DEAF.ELF"), live(b"NEST.ELF"), live(b"IDLE.ELF"));
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|held={}|ending={}|auth={}|deaf={}|nest={}|idle={}|",
+        BUILD_ID,
+        held_state,
+        held_ending,
+        held_auth,
+        still.0,
+        still.1,
+        still.2
+    );
+    // Refused, the screen and the keyboard the session's, while the previous session's
+    // applications live in its job (counted below): nothing of the user before reaches a sign-in.
+    if !(frozen
+        && auth_frozen
+        && auth0 == "OK waiting=0 lock_unsent=0"
+        && state_is(&held_state, "no_session", 3)
+        && held_state.ends_with(" focus=session")
+        && held_ending == "OK end=sent held=1"
+        && held_auth == "OK waiting=0 lock_unsent=0")
+    {
+        kprintln!("OSX|{}|ktest|logout_kills|failed=held,", BUILD_ID);
+        fail("the next sign-in went on while the end of the session before it was unconfirmed")
+    }
+    // The manager runs again (the trusted authority over the session's job): it answers the
+    // queued END_SESSION with ENDED 2, which alone confirms the end (ENDING: end=none).
+    let thawed = sched::thaw_named(b"AUTHD.ELF") && sched::thaw_pid(mgr);
+    let confirm_by = within(5000);
+    let confirmed = loop {
+        let e = hold_request(&session, b"ENDING", Vec::new(), &mut ev, confirm_by);
+        if e.starts_with("OK end=none ") || sched::ticks() >= confirm_by {
+            break e;
+        }
+        hold_wait((sched::ticks() + 20).min(confirm_by), || false);
+    };
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|thawed={}|ending={}|",
+        BUILD_ID,
+        u8::from(thawed),
+        confirmed
+    );
     let left = || {
         (
             live(b"DEAF.ELF"),
@@ -15324,7 +15465,17 @@ fn logout_kills() -> ! {
     let signed_in =
         |r: &str, changes: u32| state_is(r, "unlocked", changes) && r.ends_with(" focus=display");
     let failed = alloc::format!(
-        "{}{}{}{}{}{}",
+        "{}{}{}{}{}{}{}{}",
+        if alive == (1, 1, 1) && still == (1, 1, 1) {
+            ""
+        } else {
+            "alive,"
+        },
+        if thawed && confirmed == "OK end=none held=1" {
+            ""
+        } else {
+            "confirmed,"
+        },
         if before == "ERR NO_SESSION" && shut == "ERR NO_SESSION" {
             ""
         } else {
@@ -15356,15 +15507,220 @@ fn logout_kills() -> ! {
             "relaunch,"
         }
     );
+    // Phases 1 to 3 are judged first, as before WP-175: what fails there ends the case here.
+    if !failed.is_empty() {
+        kprintln!("OSX|{}|ktest|logout_kills|failed={}", BUILD_ID, failed);
+        if failed.contains("left,") {
+            fail("an application of the signed-out session is still alive")
+        }
+        fail("the sign-in, a launch or the sign-out was not as the case states")
+    }
+    drop(failed);
+    // Phase 4 (WP-175, session.md v1.11): Sign out during the autostart. The monitor locks the
+    // user's session and signs out; config is held before the administrator signs in again, so
+    // the autostart's GET waits unanswered in config's queue; a launch through the desktop gives
+    // the session's job an application; the monitor locks and signs out. The session traces
+    // cancelled before logged_out and closes config's channel: thawed, config is back at the
+    // handles it held before the first sign-in (and after the first two).
+    let out_user = state_wait(&session, "no_session", 6, None, within(40_000));
+    sched::poll_until(within(5000), || live(b"DEAF.ELF") == 0);
+    let cfg_back = cfg() - cfg0;
+    let held = sched::freeze_named(b"CONFIGD.ELF")
+        && sched::poll_until(within(5000), || sched::parked_named(b"CONFIGD.ELF"));
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|frozen|n=1|out={}|config_handles={}|held={}|",
+        BUILD_ID,
+        out_user,
+        cfg_back,
+        u8::from(held)
+    );
+    let signed4 = state_wait(&session, "unlocked", 7, Some("display"), within(40_000));
+    let launch4 = cfg_request(&desk, b"LAUNCH deaf", None);
+    // The GET is written within ticks of the handover; the monitor's lock comes after this line.
+    hold_wait(within(300), || false);
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|pending|n=1|signed={}|launch={}|",
+        BUILD_ID,
+        signed4,
+        launch4
+    );
+    let out4 = state_wait(&session, "no_session", 9, None, within(40_000));
+    let thawed4 = sched::thaw_named(b"CONFIGD.ELF");
+    // config reads the manager's messages in order: once it answers a connection asked after the
+    // thaw, it has taken the end of the session's channel it was given while held, and it lets
+    // that end go once it sees the session's closed. Counted with the probe's end, then without.
+    let probe = svc_connect(&h, "config");
+    let probed = cfg_request(&probe, b"GET device lab.none", None);
+    sched::poll_until(within(5000), || cfg() == cfg0 + 1 && live(b"DEAF.ELF") == 0);
+    let cancel = (cfg() - cfg0 - 1, live(b"DEAF.ELF"));
+    drop(probe);
+    sched::poll_until(within(5000), || cfg() == cfg0);
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|cancel|out={}|thawed={}|probe={}|config_handles={}|deaf={}|phase=4",
+        BUILD_ID,
+        out4,
+        u8::from(thawed4),
+        probed,
+        cancel.0,
+        cancel.1
+    );
+    // Phase 5: config held again, the administrator signs in; with the GET unanswered the
+    // monitor locks. Once auth has locked the token, config is thawed: its answer (the locked
+    // token reads no store) comes after the lock and is dropped; nothing is asked while locked
+    // (no application starts) and config is held again. The monitor unlocks: the GET is asked
+    // again, and while it waits an application's ELEVATE puts the prompt on the screen, which
+    // takes the keyboard; config, thawed, answers it, and the autostart launches nothing while
+    // the prompt holds the keyboard. Esc ends the prompt: the keyboard goes to the desktop and
+    // the eight ids are launched, each once.
+    let held5 = sched::freeze_named(b"CONFIGD.ELF")
+        && sched::poll_until(within(5000), || sched::parked_named(b"CONFIGD.ELF"));
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|frozen|n=2|held={}|",
+        BUILD_ID,
+        u8::from(held5)
+    );
+    let signed5 = state_wait(&session, "unlocked", 10, Some("display"), within(40_000));
+    hold_wait(within(300), || false);
+    kprintln!("OSX|{}|ktest|logout_kills|pending|n=2|", BUILD_ID);
+    let locked5 = state_wait(&session, "locked", 11, None, within(40_000));
+    let told = poll_reply(&session, b"AUTH", within(5000), |r| {
+        r == "OK waiting=0 lock_unsent=0"
+    });
+    let traced0 = traced_counts();
+    let thawed5 = sched::thaw_named(b"CONFIGD.ELF");
+    hold_wait(within(500), || false);
+    let while_locked = (live(b"DEAF.ELF"), live(b"NEST.ELF"));
+    let traced5 = traced_counts();
+    let held5b = sched::freeze_named(b"CONFIGD.ELF")
+        && sched::poll_until(within(5000), || sched::parked_named(b"CONFIGD.ELF"));
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|locked|n=2|signed={}|locked={}|auth={}|thawed={}|deaf={}|nest={}|held={}|stale={}|none={}|",
+        BUILD_ID,
+        signed5,
+        locked5,
+        told,
+        u8::from(thawed5),
+        while_locked.0,
+        while_locked.1,
+        u8::from(held5b),
+        traced5.0 - traced0.0,
+        traced5.1 - traced0.1
+    );
+    let unlocked5 = state_wait(&session, "unlocked", 12, Some("display"), within(40_000));
+    hold_wait(within(300), || false);
+    let elev = svc_connect(&h, "session");
+    let asked = elev
+        .write(Message {
+            bytes: b"ELEVATE config SET device lab.elev 0 901 on".to_vec(),
+            handles: Vec::new(),
+        })
+        .is_ok();
+    let prompt = poll_reply(&session, b"ELEVATION", within(10_000), |r| {
+        r.starts_with("OK prompt ")
+    });
+    let thawed5b = sched::thaw_named(b"CONFIGD.ELF");
+    hold_wait(within(500), || false);
+    let while_prompt = (live(b"DEAF.ELF"), live(b"NEST.ELF"));
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|prompt|unlocked={}|asked={}|elevation={}|thawed={}|deaf={}|nest={}|",
+        BUILD_ID,
+        unlocked5,
+        u8::from(asked),
+        prompt,
+        u8::from(thawed5b),
+        while_prompt.0,
+        while_prompt.1
+    );
+    // The monitor's Esc ends the prompt: the application is answered ERR CANCELLED.
+    let cancelled = session_reply(&elev, within(20_000));
+    sched::poll_until(within(10_000), || {
+        live(b"DEAF.ELF") == 1 && live(b"NEST.ELF") == 1 && live(b"IDLE.ELF") == 1 && cfg() == cfg0
+    });
+    let resumed = (
+        live(b"DEAF.ELF"),
+        live(b"NEST.ELF"),
+        live(b"IDLE.ELF"),
+        cfg() - cfg0,
+    );
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|resumed|elevate={}|deaf={}|nest={}|idle={}|config_handles={}|phase=5",
+        BUILD_ID,
+        cancelled,
+        resumed.0,
+        resumed.1,
+        resumed.2,
+        resumed.3
+    );
+    // The monitor locks and signs out: the session's job ends with what the autostart started
+    // (on a scratch run the manager's exit alone left one process behind: nest's child has no
+    // channel that closes with it).
+    let out5 = state_wait(&session, "no_session", 14, None, within(40_000));
+    sched::poll_until(within(5000), || left() == (0, 0, 0, 0, 0) && cfg() == cfg0);
+    let ended = (left(), cfg() - cfg0);
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|ended|out={}|deaf={}|nest={}|idle={}|jobs={}|mgr_handles={}|config_handles={}|phase=6",
+        BUILD_ID,
+        out5,
+        ended.0 .0,
+        ended.0 .1,
+        ended.0 .2,
+        ended.0 .3,
+        ended.0 .4,
+        ended.1
+    );
+    // WP-175: Sign out during the autostart, then a lock and the prompt pausing it.
+    let failed = alloc::format!(
+        "{}{}{}",
+        if state_is(&out_user, "no_session", 6)
+            && cfg_back == 0
+            && held
+            && signed_in(&signed4, 7)
+            && launch4 == "OK app:deaf#4"
+            && state_is(&out4, "no_session", 9)
+            && thawed4
+            && probed == "ERR NOT_FOUND"
+            && cancel == (0, 0)
+        {
+            ""
+        } else {
+            "cancel,"
+        },
+        if held5
+            && signed_in(&signed5, 10)
+            && state_is(&locked5, "locked", 11)
+            && told == "OK waiting=0 lock_unsent=0"
+            && thawed5
+            && while_locked == (0, 0)
+            && held5b
+        {
+            ""
+        } else {
+            "lock,"
+        },
+        if signed_in(&unlocked5, 12)
+            && asked
+            && prompt.starts_with("OK prompt ")
+            && thawed5b
+            && while_prompt == (0, 0)
+            && cancelled == "ERR CANCELLED"
+            && resumed == (1, 1, 1, 0)
+            && state_is(&out5, "no_session", 14)
+            && ended == ((0, 0, 0, 0, 0), 0)
+        {
+            ""
+        } else {
+            "resume,"
+        }
+    );
     kprintln!(
         "OSX|{}|ktest|logout_kills|failed={}",
         BUILD_ID,
         if failed.is_empty() { "none" } else { &failed }
     );
     drop((before, shut, unlocked, out, again, relaunch, desk, session));
-    if failed.contains("left,") {
-        fail("an application of the signed-out session is still alive")
-    }
+    drop((out_user, signed4, launch4, out4, signed5, locked5, told));
+    drop((unlocked5, prompt, cancelled, elev, out5, probed));
+    drop((held_state, held_ending, held_auth, auth0, confirmed, ev));
     if !failed.is_empty() {
         fail("the sign-in, a launch or the sign-out was not as the case states")
     }
@@ -15377,6 +15733,243 @@ fn logout_kills() -> ! {
         procs,
         u8::from(clean)
     );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-MANAGER-KILLED (REQ-M6-004, session.md v1.12; WP-178): the manager crashes while the
+/// end of a signed-out session's job is unconfirmed. As in TST-M6-LOGOUT-KILLS (SVC-LK.TXT; the
+/// administrator's autostart starts deaf and nest, whose IDLE child holds both ends of its own
+/// channel), the manager is frozen before the monitor signs out, so the Sign out's END_SESSION
+/// waits unanswered; then the test kernel kills it (a crash: none of its code runs again). The
+/// session traces `session|manager=gone|end=sent` and exits, so no sign-in is taken after it:
+/// nothing in this build starts the manager again, and the rescue is a new boot. What the crash
+/// leaves of the session's job (IDLE, which ignores its channel) is read, then killed here.
+fn manager_killed() -> ! {
+    let name = "manager_killed";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-LK.TXT",
+        &["auth", "config", "input", "display", "session", "desktop"],
+    );
+    kprintln!("OSX|{}|ktest|manager_killed|services=6|ready=1", BUILD_ID);
+    let within = |t: u64| sched::ticks() + t;
+    let live = |img: &[u8]| sched::live_named(img).1;
+    let unlocked = state_wait(&session, "unlocked", 1, Some("display"), within(40_000));
+    sched::poll_until(within(20_000), || {
+        live(b"DEAF.ELF") == 1 && live(b"NEST.ELF") == 1 && live(b"IDLE.ELF") == 1
+    });
+    let mgr = h.m.pid;
+    let frozen = sched::freeze_pid(mgr) && hold_wait(within(500), || sched::parked_pid(mgr));
+    kprintln!(
+        "OSX|{}|ktest|manager_killed|unlocked={}|frozen={}|",
+        BUILD_ID,
+        unlocked,
+        u8::from(frozen)
+    );
+    // The monitor locks the session and signs out on the lock screen: END_SESSION waits.
+    let out = state_wait(&session, "no_session", 3, None, within(40_000));
+    let mut ev = Vec::new();
+    let ending = hold_request(&session, b"ENDING", Vec::new(), &mut ev, within(5000));
+    // The crash, with the request in the manager's queue.
+    let killed = sched::kill_process(mgr, crate::syscall::EXIT_KILLED);
+    sched::poll_until(within(5000), || {
+        live(b"SESSIOND.ELF") == 0 && live(b"DEAF.ELF") == 0 && live(b"NEST.ELF") == 0
+    });
+    let gone = (
+        live(b"SESSIOND.ELF"),
+        live(b"DEAF.ELF"),
+        live(b"NEST.ELF"),
+        live(b"IDLE.ELF"),
+    );
+    kprintln!(
+        "OSX|{}|ktest|manager_killed|out={}|ending={}|killed={}|session={}|deaf={}|nest={}|idle={}|",
+        BUILD_ID,
+        out,
+        ending,
+        u8::from(killed),
+        gone.0,
+        gone.1,
+        gone.2,
+        gone.3
+    );
+    // The monitor types a sign-in after the line above: nothing is left to take it (the session,
+    // auth and input exited with the manager), so no session begins and no token is made.
+    let tokens0 = object::stats().tokens;
+    hold_wait(within(12_000), || false);
+    let tried = (
+        live(b"SESSIOND.ELF"),
+        live(b"AUTHD.ELF"),
+        live(b"INPUTD.ELF"),
+        i64::from(object::stats().tokens) - i64::from(tokens0),
+    );
+    kprintln!(
+        "OSX|{}|ktest|manager_killed|attempt|session={}|auth={}|input={}|tokens_new={}|",
+        BUILD_ID,
+        tried.0,
+        tried.1,
+        tried.2,
+        tried.3
+    );
+    // What ignored its channel outlives the crash (the rest of L-113): the test kernel, the
+    // trusted authority here, kills its job.
+    let (a, n) = sched::live_named(b"IDLE.ELF");
+    if n == 1 {
+        sched::kill_job_id(a[0].job, crate::syscall::EXIT_KILLED);
+    }
+    sched::poll_until(within(5000), || live(b"IDLE.ELF") == 0);
+    let ok = frozen
+        && state_is(&unlocked, "unlocked", 1)
+        && state_is(&out, "no_session", 3)
+        && ending == "OK end=sent held=0"
+        && killed
+        && gone == (0, 0, 0, 1)
+        && tried == (0, 0, 0, 0)
+        && live(b"IDLE.ELF") == 0;
+    kprintln!(
+        "OSX|{}|ktest|manager_killed|failed={}",
+        BUILD_ID,
+        if ok { "none" } else { "steps," }
+    );
+    drop((unlocked, out, ending, ev, session));
+    if !ok {
+        fail("the manager's crash was not as the case states")
+    }
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|manager_killed|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if mgr_exit != crate::syscall::EXIT_KILLED || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-MANAGER-KILLED, phase 2 (REQ-M6-004, session.md v1.12; WP-178): the rescue after the
+/// manager's crash is a new boot. The same volume, a fresh kernel and manager (SVC-LK.TXT): the
+/// monitor signs in as user, nothing of the crashed session is there (no end awaits: ENDING is
+/// OK end=none held=0), and a launch through the desktop is the new manager's first
+/// application, in a new session job.
+fn manager_rescue() -> ! {
+    let name = "manager_rescue";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-LK.TXT",
+        &["auth", "config", "input", "display", "session", "desktop"],
+    );
+    let desk = svc_connect(&h, "desktop");
+    kprintln!("OSX|{}|ktest|manager_rescue|services=6|ready=1", BUILD_ID);
+    let within = |t: u64| sched::ticks() + t;
+    let live = |img: &[u8]| sched::live_named(img).1;
+    let left = (live(b"DEAF.ELF"), live(b"NEST.ELF"), live(b"IDLE.ELF"));
+    let signed = state_wait(&session, "unlocked", 1, Some("display"), within(40_000));
+    let mut ev = Vec::new();
+    let ending = hold_request(&session, b"ENDING", Vec::new(), &mut ev, within(5000));
+    let launch = cfg_request(&desk, b"LAUNCH deaf", None);
+    sched::poll_until(within(5000), || live(b"DEAF.ELF") == 1);
+    let (d, n) = sched::live_named(b"DEAF.ELF");
+    let in_session = d[..n].iter().filter(|a| a.parent_under_root).count();
+    kprintln!(
+        "OSX|{}|ktest|manager_rescue|before={}{}{}|signed={}|ending={}|launch={}|deaf={}|in_session={}|",
+        BUILD_ID,
+        left.0,
+        left.1,
+        left.2,
+        signed,
+        ending,
+        launch,
+        n,
+        in_session
+    );
+    let ok = left == (0, 0, 0)
+        && state_is(&signed, "unlocked", 1)
+        && signed.contains(" user=user ")
+        && ending == "OK end=none held=0"
+        && launch == "OK app:deaf#1"
+        && n == 1
+        && in_session == 1;
+    kprintln!(
+        "OSX|{}|ktest|manager_rescue|failed={}",
+        BUILD_ID,
+        if ok { "none" } else { "steps," }
+    );
+    drop((signed, ending, launch, ev, desk, session));
+    if !ok {
+        fail("the sign-in after the rescue was not as the case states")
+    }
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|manager_rescue|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-MANAGER-STOP (REQ-M6-004, services.md v1.21; WP-178): the manager's orderly stop ends
+/// the session's job. SVC-LK.TXT and the administrator's store: the monitor signs in, the
+/// autostart starts deaf and nest, and nest starts IDLE.ELF, which holds both ends of its own
+/// channel and ignores its peer's close. Then the control channel closes: before it exits, the
+/// manager kills the session's job, so neither nest nor its child outlives it.
+fn manager_stop() -> ! {
+    let name = "manager_stop";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-LK.TXT",
+        &["auth", "config", "input", "display", "session", "desktop"],
+    );
+    kprintln!("OSX|{}|ktest|manager_stop|services=6|ready=1", BUILD_ID);
+    let within = |t: u64| sched::ticks() + t;
+    let live = |img: &[u8]| sched::live_named(img).1;
+    let unlocked = state_wait(&session, "unlocked", 1, Some("display"), within(40_000));
+    sched::poll_until(within(20_000), || {
+        live(b"DEAF.ELF") == 1 && live(b"NEST.ELF") == 1 && live(b"IDLE.ELF") == 1
+    });
+    let open = (live(b"DEAF.ELF"), live(b"NEST.ELF"), live(b"IDLE.ELF"));
+    kprintln!(
+        "OSX|{}|ktest|manager_stop|unlocked={}|deaf={}|nest={}|idle={}|",
+        BUILD_ID,
+        unlocked,
+        open.0,
+        open.1,
+        open.2
+    );
+    let ok = state_is(&unlocked, "unlocked", 1) && open == (1, 1, 1);
+    drop((unlocked, session));
+    if !ok {
+        fail("the sign-in or its autostart was not as the case states")
+    }
+    // The control channel closes: the manager ends the session's job before it exits.
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    let stopped = (live(b"DEAF.ELF"), live(b"NEST.ELF"), live(b"IDLE.ELF"));
+    kprintln!(
+        "OSX|{}|ktest|manager_stop|stopped|deaf={}|nest={}|idle={}|",
+        BUILD_ID,
+        stopped.0,
+        stopped.1,
+        stopped.2
+    );
+    kprintln!(
+        "OSX|{}|ktest|manager_stop|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if stopped != (0, 0, 0) {
+        fail("an application of the session outlived the manager's stop")
+    }
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or services left something behind")
     }
