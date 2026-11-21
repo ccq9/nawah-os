@@ -4,7 +4,7 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "581f14a75da6cc282757c7e187c176772b156342",
+ "source_revision": "053bca6b20d41d84e697905ac66c55d4cb9cc986",
  "dirty_state": true,
  "current_stage": "M6",
  "current_task": "WP-170",

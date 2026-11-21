@@ -12,7 +12,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261121T143757Z-581f14a7-001"
+    "evidence/20261121T133534Z-bb14cc41-001-a"
    ]
   },
   {
@@ -26,7 +26,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261121T143759Z-581f14a7-001"
+    "evidence/20261121T133536Z-bb14cc41-001-a"
    ]
   },
   {
@@ -39,7 +39,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261121T143800Z-581f14a7-001"
+    "evidence/20261121T133537Z-bb14cc41-001-a"
    ]
   },
   {
@@ -52,7 +52,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261121T143814Z-581f14a7-001"
+    "evidence/20261121T133549Z-bb14cc41-001-a"
    ]
   },
   {
@@ -65,7 +65,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261121T143816Z-581f14a7-001"
+    "evidence/20261121T133550Z-bb14cc41-001-a"
    ]
   },
   {
@@ -3222,7 +3222,7 @@
    "command": "python3 tools/project.py test --target host --suite M0",
    "verdict": "PASS",
    "evidence_refs": [
-    "evidence/20261121T143830Z-581f14a7-001"
+    "evidence/20261121T133601Z-bb14cc41-001-a"
    ]
   },
   {
