@@ -1,4 +1,20 @@
-# عقد الجلسة والقفل — الإصدار 1.9 (WP-37 v1، WP-40 v1.1 وv1.2، WP-41 v1.3، WP-43 v1.4، WP-38 v1.5 وv1.6، WP-64 وWP-73 v1.7، WP-167 v1.8، WP-169 v1.9؛ ADR-0019 §5، ADR-0021)
+# عقد الجلسة والقفل — الإصدار 1.10 (WP-37 v1، WP-40 v1.1 وv1.2، WP-41 v1.3، WP-43 v1.4، WP-38 v1.5 وv1.6، WP-64 وWP-73 v1.7، WP-167 v1.8، WP-169 v1.9، WP-168 v1.10؛ ADR-0019 §5، ADR-0021)
+
+(v1.10، WP-168، M6؛ إضافي؛ REQ-M6-004؛ يغلق L-103) **التشغيل التلقائي بعد الدخول**: بعد كل دخول (`LOGIN`، لا `UNLOCK`)، وحين تُسلَّم لوحة المفاتيح لسطح المكتب (`session|focus=display|n=<k>`)، تطلب الجلسة من المدير `CONNECT config` (تبعية تعلنها في البيان، كما يعلنها بيان النظام)، ثم ترسل إلى `config` الطلب `GET user/<uid> session.autostart` مع نسخة من رمز المستخدم، و`uid` من الرمز نفسه (`token_info`)؛ فيُقرأ المخزن لصاحبه ويُحمَّل عند القراءة (config.md v1.6). القيمة معرّفات بينها فراغات: تأخذ الجلسة الثمانية الأولى بالترتيب وتطلب كلًّا منها `LAUNCH <id>` على قناة الإقلاع، واحدًا لا يُطلب قبل جواب سابقه؛ والمعرّف يُفحص قبل أن يُطلب على `[a-z][a-z0-9]{0,7}` (apps.md §2) فلا يُرسل ما لا يطابقه. كل جواب يُتتبع: `OK app:<id>#<n>` تشغيل، وغيره تجاوز إلى التالي؛ وما بعد الثامن يُعدّ ولا يُطلب. القفل يوقفه (لا طلب جديد والجلسة مقفلة؛ وما لم يبق فيه معرّف يُتتبع منتهيًا ولو كانت مقفلة) والفتح يستأنفه بعد تسليم لوحة المفاتيح، وجواب `GET` جاء بعد قفل يُهمل ويُعاد الطلب برمز الفتح (الرمز المقفول لا يقرأ المخزن)؛ و«Sign out» ينهيه: لا يُطلب ما بقي، والجواب المتأخر يُهمل، وتُغلق قناة `config` (تُغلق أيضًا حين تُقرأ القيمة أو ينتهي التشغيل). طابور قناة الإقلاع (v1.8) صار ستة وفيه `LAUNCH`، وجوابه `OK app:<id>#<n>` يُعرف جوابًا؛ قبل v1.10 لم يكن يُعرف فيزيح المطابقة (L-103). حدود هذا الإصدار: لا يوقفه طلب الرفع (لوحة المفاتيح للجلسة والنوافذ الأخرى مخفية، session.md v1.3)، وطلب كُتب قبل القفل يكتمل بعده؛ ويُقرأ بـ`GET` لا بـ`RESOLVE` فقيمة `policy` لـ`session.autostart` لا تُرى؛ ولا يُطابق نوع الجواب برأس الطابور (شطر L-111)؛ والقفل والفتح و«Sign out» أثناء التشغيل وإغلاق قناة `config` لا تثبتها حالة بعد (WP-175).
+
+| سطر الأثر | متى |
+|---|---|
+| `session\|autostart\|<id>=<الجواب>` | جواب المدير على `LAUNCH <id>` |
+| `session\|autostart\|invalid=<الموضع>` | معرّف لا يطابق الصيغة، بموضعه بين الثمانية؛ لا يُطلب |
+| `session\|autostart\|<id>=unsent` | طلب لم يُكتب على قناة الإقلاع (طابورها ممتلئ أو مقطوعة)؛ يُتجاوز |
+| `session\|autostart=done\|launched=<n>\|passed=<m>\|over=<k>` | بعد آخر معرّف أو الثامن: ما شُغّل، وما تُجووز، وما زاد على الثمانية |
+| `session\|autostart=none` | `config` أجاب `ERR NOT_FOUND`: لا مفتاح أو لا مخزن للمستخدم |
+| `session\|autostart=unavailable\|answer=<الردّ>` | رفض المدير `CONNECT config` (`ERR UNKNOWN` حين لا `config` في البيان، `ERR ACCESS` حين لا يعلنه تبعية للجلسة، `ERR NOT_READY`)، أو ردّ `config` بغير `OK` و`ERR NOT_FOUND`، أو `ERR UNAVAILABLE` حين لم يُرسل الطلب أو انقطعت القناة أو لم يكن الرمز صالحًا؛ ينتهي التشغيل لهذا الدخول بلا إعادة |
+| `session\|autostart=cancelled` | «Sign out» والتشغيل لم ينته، قبل `session\|state=logged_out\|…` |
+
+- الأسطر تأتي بعد `session|focus=display|n=<k>` الذي يلي الدخول. ملفات التوقع في M5 التي بياناتها بلا `config` (login-screen وlock-survives وlock-hang وauth-input-isolated) تضيف بعده `session|autostart=unavailable|answer=ERR UNKNOWN`: تغيير يفرضه العقد، لا إضعاف.
+- **حدود:** لا مهلة لجواب `config`: `config` معلّق يترك التشغيل التلقائي معلّقًا حتى «Sign out» ولا يمنع غيره (الجلسة لا تنتظره). التشغيل لا يبدأ قبل تسليم لوحة المفاتيح، فخدمة إدخال غائبة تؤخره حتى تعود. مطابقة نوع الجواب بنوع الطلب (شطر L-111 الثاني) لم تُنفَّذ: الجواب يؤخذ للأقدم كما في v1.8، واختبارها يحتاج مديرًا بديلًا في نواة الاختبار (L-102). القفل والخروج أثناء التشغيل، وإعادة `GET` بعد القفل، والأسطر `unavailable` لغير `ERR UNKNOWN` و`unsent` و`cancelled`: بالقراءة، بلا حالة.
+- الاختبار الحاكم: TST-M6-LOGOUT-KILLS (أثر الجلسة كله يساوي platform/pc-qemu/expect/logout-kills.txt)، والطفرة M391 مع طفرات هذا الإصدار.
 
 (v1.9، WP-169، M6؛ إضافي؛ REQ-M6-004) **الدخول يفتح بوابة التشغيل**:
 - كل دخول ناجح (`LOGIN`، لا `UNLOCK`: الجلسة مفتوحة أصلًا) يرسل `BEGIN_SESSION` على قناة الإقلاع (services.md v1.19) قبل أن يُعرض سطح المكتب، فيقبل المدير `LAUNCH` حتى «Sign out» التالي أو خروج الجلسة.
@@ -58,7 +74,7 @@
 
 ## 1. الخدمة وتبعياتها
 
-- الاسم `session` (`/SYSTEM/SESSIOND.ELF`)، التبعيات `auth,input,display`. لا مقابض أولية غير قناة الإقلاع. المدير يعرّفها لخوادمها بالاسم (`CONNECT session`، services.md v1.6): به وحده تُقبل منها طلبات القفل عند `display` وسلطة التركيز عند `input`.
+- الاسم `session` (`/SYSTEM/SESSIOND.ELF`)، التبعيات `auth,input,display`، و(v1.10) `config` للتشغيل التلقائي إن أعلنه البيان. لا مقابض أولية غير قناة الإقلاع. المدير يعرّفها لخوادمها بالاسم (`CONNECT session`، services.md v1.6): به وحده تُقبل منها طلبات القفل عند `display` وسلطة التركيز عند `input`.
 - تملك: حالة الجلسة، رمز المستخدم (من `auth`، auth.md §4) ما دامت مفتوحة، شاشتي الدخول والقفل (أسطحها ونوافذها عند `display`)، وقرار التركيز عند `input` (من يتسلم المفاتيح والمؤشر).
 - كلمة المرور لا تغادر عنصرها في الحوار (ui.md v1.1، الدور `password`) إلا في طلب إلى `auth`، ثم تُمحى من العنصر ومن مخزن الطلب؛ لا تظهر في تتبع ولا في إعلان للقارئ ولا على الشاشة (نقاط).
 
@@ -110,7 +126,7 @@ Ctrl+Alt+Del تحجزه `input` (input.md v2.2): ينتقل التركيز إل�
 
 ## 7. التتبع (ASCII؛ لا كلمة مرور أبدًا)
 
-`session|state=no_session|window=x,y,w,h` · `session|login=refused|answer=<جواب auth>` · `session|state=unlocked|user=<name>|uid=<uid>|token=usable` · `session|focus=display|n=<k>` · `session|state=locked|user=<name>|window=x,y,w,h` · `session|unlock=refused|answer=<جواب auth>` · `session|state=logged_out|user=<name>` · `session|display=reconnected|n=<k>` · `session|input=reconnected|n=<k>` · (v1.1) `session|display=timed_out|waited=<n>` · `session|input=timed_out|waited=<n>`.
+`session|state=no_session|window=x,y,w,h` · `session|login=refused|answer=<جواب auth>` · `session|state=unlocked|user=<name>|uid=<uid>|token=usable` · `session|focus=display|n=<k>` · `session|state=locked|user=<name>|window=x,y,w,h` · `session|unlock=refused|answer=<جواب auth>` · `session|state=logged_out|user=<name>` · `session|display=reconnected|n=<k>` · `session|input=reconnected|n=<k>` · (v1.1) `session|display=timed_out|waited=<n>` · `session|input=timed_out|waited=<n>` · (v1.10) أسطر `session|autostart…` في جدول فقرة v1.10.
 
 ## 8. الحدود المعلنة (v1، v1.1)
 

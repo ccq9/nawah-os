@@ -5170,7 +5170,7 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
             "an application connects to its declared services alone, vouched by its identity and within the bounds",
         ),
         "logout_kills" => pass(
-            "Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
+            "the sign-in launched what the user's store names, Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
         ),
         "session_restart" => pass(
             "the session's restart, crash and stop each ended its job with its application, and each session started again launched into a job of its own",
@@ -14447,44 +14447,45 @@ fn state_wait(
     }
 }
 
-/// TST-M6-LOGOUT-KILLS (REQ-M6-004, session.md v1.8, services.md v1.17; WP-167): Sign out ends
-/// the session's job. The real auth, input, display and session (SVC-LK.TXT) with the lab image as
-/// the vouched `desktop`, whose role `relay` passes the test kernel's LAUNCH to the manager. After
-/// the lab's sign-in the desktop launches `deaf` (winapp: a window, and it ignores LOGGED_OUT) and
-/// `nest` (a child of its own, waiting); the secure attention sequence locks the session and Sign
-/// out ends it; the test kernel reads that none of the three processes lives, no job is left and
-/// the manager holds what it held before the launches; after a second sign-in a launch makes a
-/// new session job.
+/// TST-M6-LOGOUT-KILLS (REQ-M6-004, session.md v1.8 and v1.10, services.md v1.17; WP-167,
+/// WP-168): the sign-in's autostart, and Sign out ending the session's job. The real auth,
+/// config, input, display and session (SVC-LK.TXT) with the lab image as the vouched `desktop`,
+/// whose role `relay` passes the test kernel's LAUNCH to the manager. The administrator's store
+/// on the volume (CFGU1000.A) names nine ids in session.autostart; after the lab's sign-in the
+/// session launches the first eight in order: `deaf` (winapp: a window, and it ignores
+/// LOGGED_OUT) and `nest` (a child of its own, waiting) start, the others are traced and passed
+/// over. The secure attention sequence locks the session and Sign out ends it; the test kernel
+/// reads that none of the three processes lives, no job is left and the manager holds what it
+/// held before the sign-in; after a second sign-in, as the user with no store, nothing starts by
+/// itself and a launch through the desktop makes a new session job.
 fn logout_kills() -> ! {
     let name = "logout_kills";
     let (h, session) = session_env(
         name,
         b"/SYSTEM/SVC-LK.TXT",
-        &["auth", "input", "display", "session", "desktop"],
+        &["auth", "config", "input", "display", "session", "desktop"],
     );
     // v1.19 (WP-169): before the first sign-in no session is open, so the desktop's launch is
     // refused (the monitor's typing of the name and password takes about nine seconds).
     let desk = svc_connect(&h, "desktop");
     let before = cfg_request(&desk, b"LAUNCH deaf", None);
-    kprintln!("OSX|{}|ktest|logout_kills|services=5|ready=1", BUILD_ID);
-    let within = |t: u64| sched::ticks() + t;
-    let live = |img: &[u8]| sched::live_named(img).1;
-    // Phase 1: signed in (the monitor types the lab's name and password), two launches.
-    let unlocked = state_wait(&session, "unlocked", 1, Some("display"), within(40_000));
+    // What the manager and the kernel hold before the sign-in: the autostart launches at once.
     let jobs0 = i64::from(object::stats().jobs);
     let mgr0 = mgr_handles(&h);
-    let deaf = cfg_request(&desk, b"LAUNCH deaf", None);
-    let nest = cfg_request(&desk, b"LAUNCH nest", None);
-    sched::poll_until(within(5000), || {
+    kprintln!("OSX|{}|ktest|logout_kills|services=6|ready=1", BUILD_ID);
+    let within = |t: u64| sched::ticks() + t;
+    let live = |img: &[u8]| sched::live_named(img).1;
+    // Phase 1: signed in (the monitor types the lab's name and password); the session launches
+    // what the store names, one id at a time.
+    let unlocked = state_wait(&session, "unlocked", 1, Some("display"), within(40_000));
+    sched::poll_until(within(20_000), || {
         live(b"DEAF.ELF") == 1 && live(b"NEST.ELF") == 1 && live(b"IDLE.ELF") == 1
     });
     let running = (live(b"DEAF.ELF"), live(b"NEST.ELF"), live(b"IDLE.ELF"));
     kprintln!(
-        "OSX|{}|ktest|logout_kills|unlocked={}|launched={},{}|deaf={}|nest={}|idle={}|phase=1",
+        "OSX|{}|ktest|logout_kills|unlocked={}|deaf={}|nest={}|idle={}|phase=1",
         BUILD_ID,
         unlocked,
-        deaf,
-        nest,
         running.0,
         running.1,
         running.2
@@ -14521,7 +14522,8 @@ fn logout_kills() -> ! {
         after.3,
         after.4
     );
-    // Phase 3: a second sign-in, and a launch in a new session job.
+    // Phase 3: a second sign-in, as the user whose store the volume does not hold (nothing
+    // starts by itself), and a launch in a new session job.
     let again = state_wait(&session, "unlocked", 4, Some("display"), within(40_000));
     let relaunch = cfg_request(&desk, b"LAUNCH deaf", None);
     sched::poll_until(within(5000), || live(b"DEAF.ELF") == 1);
@@ -14544,11 +14546,7 @@ fn logout_kills() -> ! {
         } else {
             "gate,"
         },
-        if signed_in(&unlocked, 1)
-            && deaf == "OK app:deaf#1"
-            && nest == "OK app:nest#2"
-            && running == (1, 1, 1)
-        {
+        if signed_in(&unlocked, 1) && running == (1, 1, 1) {
             ""
         } else {
             "launch,"
@@ -14563,7 +14561,11 @@ fn logout_kills() -> ! {
         } else {
             "left,"
         },
-        if signed_in(&again, 4) { "" } else { "again," },
+        if signed_in(&again, 4) && again.contains(" user=user ") {
+            ""
+        } else {
+            "again,"
+        },
         if relaunch == "OK app:deaf#3" && n == 1 && in_session == 1 {
             ""
         } else {
@@ -14575,9 +14577,7 @@ fn logout_kills() -> ! {
         BUILD_ID,
         if failed.is_empty() { "none" } else { &failed }
     );
-    drop((
-        before, shut, unlocked, deaf, nest, out, again, relaunch, desk, session,
-    ));
+    drop((before, shut, unlocked, out, again, relaunch, desk, session));
     if failed.contains("left,") {
         fail("an application of the signed-out session is still alive")
     }

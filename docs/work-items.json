@@ -10634,23 +10634,38 @@
    ],
    "files": [
     "user/apps/sessiond/src/main.rs",
-    "user/apps/configd/src/main.rs",
     "docs/contracts/session.md",
-    "docs/contracts/config.md",
     "kernel/src/ktest.rs",
     "platform/pc-qemu/target.json",
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
     "tools/project.py",
-    "docs/tests.json"
+    "docs/tests.json",
+    "platform/pc-qemu/manifests/svc-lk.txt",
+    "platform/pc-qemu/lab/cfgu1000.a",
+    "platform/pc-qemu/expect/logout-kills.txt",
+    "platform/pc-qemu/expect/login-screen.txt",
+    "platform/pc-qemu/expect/lock-survives.txt",
+    "platform/pc-qemu/expect/lock-hang.txt",
+    "platform/pc-qemu/expect/auth-input-isolated.txt",
+    "docs/contracts/apps.md",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/requirements.json",
+    "docs/project-state.json"
    ],
    "contract_refs": [
     "docs/contracts/session.md",
     "docs/contracts/config.md"
    ],
-   "acceptance": "after sign-in the session reads session.autostart from the user's store (loaded on read for the user's token since WP-112, config.md v1.6) and launches up to eight ids in order, a missing key, a refused or missing entry each traced and passed over; shown on CI in TST-M6-LOGOUT-KILLS (the autostart replacing the relay's launches); the session contract states it in its next version; its mutants (M391 among them, L-103) killed by the M6 gate",
+   "acceptance": "after sign-in the session reads session.autostart from the user's store (loaded on read for the user's token since WP-112, config.md v1.6) and launches up to eight ids in order, each checked before it is asked, a missing store or key, a refused or missing entry each traced and passed over, the ids past the eighth counted; shown on CI in TST-M6-LOGOUT-KILLS (the autostart replacing the relay's launches), and the sessions without config of the M5 cases tracing it unavailable; session.md v1.10 states it; its mutants (M391 for L-103, M438, M439, M441, M442; M396 and M410 with their evidence taken again) killed by the M6 gate",
    "test_ids": [
     "TST-M6-LOGOUT-KILLS",
+    "TST-M5-LOGIN-SCREEN",
+    "TST-M5-LOCK-SURVIVES",
+    "TST-M5-LOCK-HANG",
+    "TST-M5-AUTH-INPUT-ISOLATED",
     "TST-M6-MUTANTS",
     "TST-M0-005"
    ],
@@ -10658,9 +10673,10 @@
     "python3 tools/project.py test --target pc-qemu --suite M6",
     "python3 tools/project.py test --target host --suite M6-GATE"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -10669,7 +10685,12 @@
     "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (the config contract's next version: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order",
     "2026-11-20 (the manager): after WP-169, whose BEGIN_SESSION the autostart follows",
     "2026-11-20 (WP-167's audit): the boot channel's answer to LAUNCH is `OK app:<id>#<n>`, not `OK`: the session's queue (session.md v1.8) must learn it with the autostart, or its matching shifts (L-103)",
-    "2026-11-21 (the manager): its first part (a user store loaded on read for its owner's or an admin's token; config.md's next version; the mutant then named M390) went to WP-112, which it now depends on"
+    "2026-11-21 (the manager): its first part (a user store loaded on read for its owner's or an admin's token; config.md's next version; the mutant then named M390) went to WP-112, which it now depends on",
+    "2026-11-21 (the manager): built test first by the services engineer on a scratch clone (scratch, never evidence): TST-M6-LOGOUT-KILLS, reshaped so the autostart replaces the relay's launches (the manifest runs config and the session declares it; the administrator's store CFGU1000.A names 'deaf ghost notes Ghost ghost ghost ghost nest deaf'), failed against the sessiond of 47432af520 (run 20261121T113243Z-47432af5-001: no launch at the sign-in, exit 37) and passes after it; TST-M5-LOGIN-SCREEN failed with its old expect file and passes with the unavailable line; the other session cases of M5 and M6 pass unchanged",
+    "2026-11-21 (the manager): design, with its options (rule 5). Start: (a) after the keyboard's handover to the desktop (session|focus=display), (b) at auth's LOGIN answer; (a) chosen: the exact expect files keep one order of lines, at the cost of a start delayed while input is away. The config channel: (a) asked after each sign-in and closed when the value is read or the autostart ends, (b) one kept from boot; (a) chosen: no idle client slot in config, none at boot, and nothing left to a signed-out user. A lock: (a) no new request while locked, a GET answered after the lock dropped and asked again with the unlock's token (the locked token reads nothing), (b) the answer kept; (a) chosen. Answers: (a) OK app: classified as a LAUNCH's answer (L-103), (b) every answer matched to the queue head's kind (L-111's half); (a) chosen, (b) needs a substitute manager to be shown (L-102). M440 (the GET without the user's token) not registered: its kill leaves M396's lines, so the case cannot tell them apart",
+    "2026-11-21 (the manager): the review round on the scratch clone's 6b0a7caff (the auditor and the red team, read only): nothing exploitable. Fixed: the six mutants' and M396's and M410's expectations from their kills, the pins, the oracle, M439 tagged SECURITY (an unchecked id reaches the manager and the trace, where a | forges a field), apps.md naming WP-168, the contract's limits written. Split to WP-175 (a case for paths the acceptance does not name; section 7, rule 4): a lock during the autostart (a mutant running it while locked passes every case), the stale GET answer, a Sign out during it (cancelled before logged_out) and config's handles counted back, and the pause tied to the display holding the keyboard (today the elevation prompt does not pause it), test first. Written as lines: the elevation prompt, GET not RESOLVE, an END_SESSION left unsent (a hypothesis)",
+    "2026-11-21 budget (the manager): over the line of 120 calls with the engineer's work on the clone; the review round's case work went to WP-175 rather than grow this item",
+    "2026-11-21 activated (the manager): its dependencies WP-169 and WP-112 are done"
    ]
   },
   {
@@ -11055,6 +11076,52 @@
    "actions": [
     "الإعدادات: الاستيراد لا يجيب بالنجاح بعد فشل جزئي (من قسمة WP-112 في 2026-11-21)",
     "from WP-112's record: test first, an import of 65 distinct keys (today OK 64); design (2-3 options): an atomic import (capacity first, one save, rollback) against a reply that names the failing line",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+   ]
+  },
+  {
+   "id": "WP-175",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "depends_on": [
+    "WP-168"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "inputs": [
+    "created 2026-11-21 from WP-168's review round (the auditor and the red team)"
+   ],
+   "files": [
+    "user/apps/sessiond/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/contracts/session.md",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/session.md"
+   ],
+   "acceptance": "the autostart's paths the review round found without a case shown on CI: with config held (frozen) after a sign-in, a lock pauses the autostart (nothing asked while locked), a GET answered after the lock is dropped and asked again, the unlock resumes it; a Sign out during it traces cancelled before logged_out; config's handle count is back after each sign-in; and the pause tied to the display holding the keyboard, so the elevation prompt pauses it too (test first); session.md's next version states it; the mutants killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-LOGOUT-KILLS",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "actions": [
+    "التشغيل التلقائي: القفل والخروج أثناءه بحالة تثبتهما (من جولة مراجعة WP-168 في 2026-11-21)",
+    "from the red team: mutants S1 (run while locked: `self.state != State::NoSession && !self.want_display`), T1 (the stale GET answer kept), S2 (no cancel at Sign out: the config channel left open) and G1 (the channel not closed at the end), each passing the case of WP-168; the step: freeze CONFIGD.ELF before the sign-in (sched::freeze_named), SAK, thaw, unlock; and a Sign out instead of the unlock",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
    ]
   }

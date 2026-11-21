@@ -1865,6 +1865,31 @@ MUTANTS = [
      "                if user_uid(store).is_some() {\n                    out.put(REPLY_ACCESS);\n                    return None;\n                }\n",
      "",
      ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: SUBSCRIBE, which shows no token, is accepted on a loaded user store, which tells that it is loaded and its keys"),
+    # M391, M438 to M442 (WP-168, session.md v1.10): the session's autostart from the user's store, killed by
+    # TST-M6-LOGOUT-KILLS (its lab store CFGU1000.A lists nine ids: one launched, an unknown one, a missing
+    # image, an invalid name, the cap of eight).
+    ("M391", "user/apps/sessiond/src/main.rs",
+     "                    || msg.starts_with(b\"ENDED \")\n                    || msg.starts_with(b\"OK app:\")\n",
+     "                    || msg.starts_with(b\"ENDED \")\n",
+     ["TST-M6-LOGOUT-KILLS"], "the manager's answer to a LAUNCH (OK app:<id>#<n>) is not taken for an answer, so the boot channel's queue slips (L-103)"),
+    ("M438", "user/apps/sessiond/src/main.rs",
+     "            if start == v.len() || a.taken == AUTOSTART_MAX {\n",
+     "            if start == v.len() || a.taken > AUTOSTART_MAX {\n",
+     ["TST-M6-LOGOUT-KILLS"], "the autostart takes a ninth id: more than eight applications start at a sign-in"),
+    ("M439", "user/apps/sessiond/src/main.rs",
+     "            if !app_id_ok(id) {\n",
+     "            if !app_id_ok(id) && id.is_empty() {\n",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: an id the session does not check is asked: bytes of the user's store outside [a-z][a-z0-9]{0,7} reach the manager and the trace, where a | forges a field"),
+    # M440 (the autostart's GET without the user's token) is not registered: killed on the scratch run of
+    # 2026-11-21 with the very lines M396 leaves (no launch at the sign-in), so the case cannot tell them apart.
+    ("M441", "user/apps/sessiond/src/main.rs",
+     "        if answer == b\"ERR NOT_FOUND\" {\n",
+     "        if answer == b\"NOT_FOUND\" {\n",
+     ["TST-M6-LOGOUT-KILLS"], "a store or key that is not found is taken for an unavailable service"),
+    ("M442", "user/apps/sessiond/src/main.rs",
+     "                let over = ids_from(v, start);\n",
+     "                let over = ids_from(v, v.len());\n",
+     ["TST-M6-LOGOUT-KILLS"], "the ids past the eighth are not counted, so the trace hides that some were passed over"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2213,6 +2238,8 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M415",
             # WP-173 (REQ-M6-004): however the session service exits (services.md v1.20).
             "M417", "M419", "M420", "M421",
+            # WP-168 (REQ-M6-004): the autostart checks each id before it asks (session.md v1.10).
+            "M439",
             # WP-112 (REQ-M4-004): a user store is read for its owner or an administrator alone (config.md v1.6).
             "M422", "M424", "M425", "M427", "M429",
             # WP-112's review round: unusable admin, a full table told, CONFIG_WRITE, a group, SUBSCRIBE.
@@ -2615,7 +2642,7 @@ EXPECT = {
     # traced.
     "M388": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=1|nest=1|idle=1|jobs=3|mgr_handles=7|", _LKALIVE]},
     "M389": {"TST-M6-LOGOUT-KILLS": ["forbidden present ['|text=session|jobs=ended|apps=0']"]},
-    "M396": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|jobs=ended|apps=2']; forbidden present []"]},
+    "M396": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=0|nest=0|idle=0|phase=1", "|launch=OK app:deaf#1|deaf=1|in_session=1|phase=3", _LKSTEPS]},
     # WP-164: TST-M6-JOB-BOUND (kept as the local run of 2026-11-21 printed it). M397: the count's
     # own check gives 40 places of 40. M398: every process counted in the root, hog's job counts
     # none while 65 live. M399: a place given back stays taken. M400: 33 places.
@@ -2667,9 +2694,15 @@ EXPECT = {
     "M436": {"TST-M4-CONFIG-READ-LOAD": ["host checks", "/SYSTEM/CFGU1001.B NAWAH-CFG 1 2  -> 2",
                       "/SYSTEM/CFGU1001.A lab.read 1 mine\\n -> 1"]},
     "M437": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|sub_loaded=OK|", _RLAUTH]},
-    "M410": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launched=ERR NO_SESSION,ERR NO_SESSION|", _LKSTEPS]},
+    "M410": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launch=ERR NO_SESSION|deaf=0|in_session=0|phase=3", _LKSTEPS]},
     "M413": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=OK app:deaf#1|", _LKALIVE]},
     "M414": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", _LKSTEPS]},
+    # WP-168 (session.md v1.10): the autostart from the administrator's store CFGU1000.A.
+    "M391": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=1|nest=0|idle=0|phase=1", "|launch=OK app:deaf#2|", _LKSTEPS]},
+    "M438": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launch=OK app:deaf#4|", _LKSTEPS]},
+    "M439": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart|invalid=4']; forbidden present []"]},
+    "M441": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart=none']; forbidden present ['|text=session|autostart=unavailable']"]},
+    "M442": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart=done|launched=2|passed=6|over=1']; forbidden present []"]},
 }
 
 

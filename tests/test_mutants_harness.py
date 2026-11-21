@@ -14,6 +14,7 @@ Both would have been counted as kills of M93/M94/M97/M103/M106 — three of them
 mutants that in truth survive every real test. This test pins the three properties that keep a
 sweep honest and bounded, without booting QEMU: the build id is hex, the per-case timeout
 clears the slowest real case, and run_killers stops at the first genuine kill."""
+import hashlib
 import json
 import os
 import pathlib
@@ -1510,7 +1511,11 @@ class KillEvidence(unittest.TestCase):
         exit 37, a message of the case and the desktop's launch before the first sign-in or after
         the sign-out answered OK. The case's manifest runs the real session with the lab image as `desktop` in
         the role `relay`, and its volume carries deaf (winapp, declaring display) and nest; a
-        refused or unsent BEGIN_SESSION is a forbidden marker."""
+        refused or unsent BEGIN_SESSION is a forbidden marker. Since WP-168 (session.md v1.10) the
+        session's autostart launches them: the manifest runs config and the session declares it,
+        the volume carries the administrator's store CFGU1000.A naming nine ids, the phase-1 line
+        holds no launch of the test kernel's, and an unavailable or cancelled autostart and the
+        second lab password are forbidden markers."""
         E = mutants.EXPECT
         src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
         t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
@@ -1520,20 +1525,37 @@ class KillEvidence(unittest.TestCase):
                                "jobs=0|mgr_handles=0|phase=2")
         self.assertIn("|text=session|jobs=ended|apps=2", case["required_markers"])
         for bad in ("|text=session|jobs=ended|apps=0", "|text=session|jobs=unsent", "|text=session|jobs=refused", "lab-admin-1",
-                    "|text=session|begin=refused", "|text=session|begin=unsent"):
+                    "|text=session|begin=refused", "|text=session|begin=unsent", "lab-user-1",
+                    "|text=session|autostart=unavailable", "|text=session|autostart=cancelled"):
             self.assertIn(bad, case["forbidden_markers"])
         want = {  # id: (SECURITY, the expected substrings)
             "M388": (True, ["exit 37", "|deaf=1|nest=1|idle=1|jobs=3|mgr_handles=7|", mutants._LKALIVE]),
             "M389": (False, ["forbidden present ['|text=session|jobs=ended|apps=0']"]),
-            "M396": (False, ["missing markers ['|text=session|jobs=ended|apps=2']; forbidden present []"]),
-            "M410": (False, ["exit 37", "|launched=ERR NO_SESSION,ERR NO_SESSION|", mutants._LKSTEPS]),
+            # since WP-168 the autostart launches: an answer queued wrongly stops it at the sign-in
+            "M396": (False, ["exit 37", "|deaf=0|nest=0|idle=0|phase=1", "|launch=OK app:deaf#1|deaf=1|in_session=1|phase=3",
+                             mutants._LKSTEPS]),
+            "M410": (False, ["exit 37", "|launch=ERR NO_SESSION|deaf=0|in_session=0|phase=3", mutants._LKSTEPS]),
             "M413": (True, ["exit 37", "|gate|before=OK app:deaf#1|", mutants._LKALIVE]),
             "M414": (True, ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", mutants._LKSTEPS]),
+            # WP-168 (session.md v1.10): the autostart. M440 (the GET without the token) is not registered:
+            # its kill leaves M396's lines.
+            "M391": (False, ["exit 37", "|deaf=1|nest=0|idle=0|phase=1", "|launch=OK app:deaf#2|", mutants._LKSTEPS]),
+            "M438": (False, ["exit 37", "|launch=OK app:deaf#4|", mutants._LKSTEPS]),
+            "M439": (True, ["missing markers ['|text=session|autostart|invalid=4']; forbidden present []"]),
+            "M441": (False, ["missing markers ['|text=session|autostart=none']; forbidden present ['|text=session|autostart=unavailable']"]),
+            "M442": (False, ["missing markers ['|text=session|autostart=done|launched=2|passed=6|over=1']; forbidden present []"]),
         }
+        self.assertNotIn("M440", {m[0] for m in mutants.MUTANTS} | set(E) | mutants.SECURITY)
+        evidence = [tuple(subs) for _, subs in want.values()]
+        self.assertEqual(len(set(evidence)), len(evidence), "no two mutants share their evidence")
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.LOGOUT_KILLS in m[4]), sorted(want))
         for msg in (mutants._LKALIVE, mutants._LKSTEPS):
             self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
-        self.assertIn("|launched=OK app:deaf#1,OK app:nest#2|", " ".join(case["required_markers"]))
+        self.assertIn("|ktest|logout_kills|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|"
+                      "deaf=1|nest=1|idle=1|phase=1", case["required_markers"])
+        for m in ("|text=session|autostart|deaf=OK app:deaf#1", "|text=session|autostart|nest=OK app:nest#2",
+                  "|text=session|autostart=done|launched=2|passed=6|over=1", "|text=session|autostart=none"):
+            self.assertIn(m, case["required_markers"])
         self.assertIn("|ktest|logout_kills|gate|before=ERR NO_SESSION|after=ERR NO_SESSION|", case["required_markers"])
         for mid, (security, subs) in want.items():
             with self.subTest(mutant=mid):
@@ -1550,11 +1572,17 @@ class KillEvidence(unittest.TestCase):
             self.assertIn("|" + x.split("=")[0] + "=", line, x)
         self.assertNotIn(want["M388"][1][1], line)
         manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-lk.txt").read_text(encoding="utf-8")
-        self.assertIn("\nsession /SYSTEM/SESSIOND.ELF auth,input,display 5000 never 0 0\n", manifest)
+        self.assertIn("\nconfig /SYSTEM/CONFIGD.ELF - 5000 never 0 0\n", manifest)
+        self.assertIn("\nsession /SYSTEM/SESSIOND.ELF auth,input,display,config 5000 never 0 0\n", manifest)
         self.assertIn("\ndesktop /SYSTEM/SVC.ELF session 3000 never 0 0 relay\n", manifest)
         self.assertEqual(case.get("disk_files"), {
             "SYSTEM/APPS/DEAF.APP": "platform/pc-qemu/lab/deaf.app", "SYSTEM/APPS/DEAF.ELF": "${OUT}/apps/winapp.elf",
-            "SYSTEM/APPS/NEST.APP": "platform/pc-qemu/lab/nest.app", "SYSTEM/APPS/NEST.ELF": "${OUT}/apps/svc.elf"})
+            "SYSTEM/APPS/NEST.APP": "platform/pc-qemu/lab/nest.app", "SYSTEM/APPS/NEST.ELF": "${OUT}/apps/svc.elf",
+            "SYSTEM/CFGU1000.A": "platform/pc-qemu/lab/cfgu1000.a"})
+        store = (ROOT / "platform" / "pc-qemu" / "lab" / "cfgu1000.a").read_bytes()
+        head, body = store.split(b"\n", 1)
+        self.assertEqual(body, b"session.autostart 1 deaf ghost notes Ghost ghost ghost ghost nest deaf\n")
+        self.assertEqual(head, b"NAWAH-CFG 1 1 " + hashlib.sha256(body).hexdigest().encode())
         self.assertIn("\ndeps=display\n", (ROOT / "platform" / "pc-qemu" / "lab" / "deaf.app").read_text(encoding="utf-8"))
 
     JOB_BOUND = "TST-M6-JOB-BOUND"
