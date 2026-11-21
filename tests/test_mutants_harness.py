@@ -1632,6 +1632,81 @@ class KillEvidence(unittest.TestCase):
         for n in ("hog", "peer"):
             self.assertIn(f"\nid={n}\nelf=/SYSTEM/APPS/{n.upper()}.ELF\n", (ROOT / "platform" / "pc-qemu" / "lab" / f"{n}.app").read_text(encoding="utf-8"))
 
+    JOB_MEMORY = "TST-M6-JOB-MEMORY"
+
+    def test_the_job_memory_expectations_are_pinned(self):
+        """WP-170 (RSK-051; syscall.md v1.16): a job other than the root holds 8192 pages at most,
+        and the system keeps 16384 of its free frames for the kernel. M443 to M456, each anchor
+        once in its kernel file, are declared on TST-M6-JOB-MEMORY alone, each known by exit 37,
+        fields of the case's lines (the charge's own check `unit|`, the images' `image|`, the two
+        applications' `load=` line or the manager's `mgr_exit=` line) with other values than the
+        pinned ones, and one failure message of the case occurring in ktest.rs, no two sharing
+        their evidence; M443, M444, M448, M449, M450, M453 and M454 are SECURITY. The quota and the
+        reserve, the case's four lines, timeout, manifest and lab entry are pinned."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        job = (ROOT / "kernel" / "src" / "object" / "job.rs").read_text(encoding="utf-8")
+        self.assertIn("\npub const JOB_PAGES_MAX: u64 = 8192;\n", job)
+        self.assertIn("\npub const KERNEL_RESERVE_FRAMES: u64 = 16384;\n", job)
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.JOB_MEMORY)
+        lines = [
+            "|ktest|job_memory|unit|quota=8192|taken=1|refused=1|again=1|back=0|root=1|reserve=16384|over=1|within=1|"
+            "root_over=1|vmo_refused=1|vmo_pages=32|vmo_back=0|",
+            "|ktest|job_memory|image|counted=1|over_pages=8193|over=K_E_AS_QUOTA|over_held=0|exact_pages=8192|"
+            "exact_held=8192|exact_exit=0x20000|exact_back=0|frames_delta=0|",
+            "|ktest|job_memory|load=OK 1|session=0x40|mems=2|first=8192|second=8192|children=2|clocks=1|freed=8192|"
+            "first_back=0|second_after=8192|second_live=2|",
+            "|ktest|job_memory|mgr_exit=0x0|processes_after=0|clean=1|charged_delta=0",
+        ]
+        for line in lines:
+            self.assertIn(line, case["required_markers"])
+        self.assertIn("|ktest|fail|", case["forbidden_markers"])
+        self.assertEqual(case["timeout_s"], 30)
+        Q, B, N, I = mutants._JMQUOTA, mutants._JMBACK, mutants._JMNOT, mutants._JMIMAGE
+        want = {  # id: (file, SECURITY, the substrings of changed fields, the message)
+            "M443": ("kernel/src/object/job.rs", True, ["|quota=8192|taken=1|refused=0|again=1|"], Q),
+            "M444": ("kernel/src/object/job.rs", True, ["|reserve=16384|over=0|within=1|"], Q),
+            "M445": ("kernel/src/object/job.rs", False,
+                     ["|refused=1|again=1|back=0|root=1|reserve=16384|over=1|within=1|root_over=1|vmo_refused=0|"], Q),
+            "M446": ("kernel/src/object/job.rs", False, ["|again=0|back=8192|", "|exact_back=8192|"], Q),
+            "M447": ("kernel/src/object/job.rs", False, ["|children=2|clocks=1|freed=0|"], B),
+            "M448": ("kernel/src/syscall/mod.rs", True, ["|children=4|clocks=1|"], N),
+            "M449": ("kernel/src/user.rs", True, ["|over=LOADED|over_held=0|", "|exact_held=0|"], I),
+            "M450": ("kernel/src/user.rs", True,
+                     ["|over=K_E_AS_QUOTA|over_held=0|exact_pages=8192|exact_held=0|exact_exit=0x20000|"], I),
+            "M451": ("kernel/src/mm/addrspace.rs", False, ["|exact_back=8192|", "|clean=0|charged_delta="], I),
+            "M452": ("kernel/src/object/mod.rs", False, ["|vmo_pages=32|vmo_back=32|", "|clean=0|charged_delta="], Q),
+            "M453": ("kernel/src/kmain.rs", True, ["|reserve=unset|"], Q),
+            "M454": ("kernel/src/object/job.rs", True, ["|root=1|reserve=0|"], Q),
+            "M455": ("kernel/src/loader/elf.rs", False, ["|image|counted=0|"], I),
+            "M456": ("kernel/src/object/job.rs", False, ["|quota=8192|taken=0|refused=0|"], Q),
+        }
+        evidence = [tuple(subs) + (msg,) for _, _, subs, msg in want.values()]
+        self.assertEqual(len(set(evidence)), len(evidence), "no two mutants share their evidence")
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.JOB_MEMORY in m[4]), sorted(want))
+        for msg in (Q, B, N, I):
+            self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
+        for mid, (path, security, subs, msg) in want.items():
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], path)
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(m[4], [self.JOB_MEMORY])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(E[mid], {self.JOB_MEMORY: ["exit 37", *subs, msg]})
+                for sub in subs:
+                    self.assertFalse(any(sub in line for line in lines), sub)
+                    for f in sub.strip("|").split("|"):
+                        if "=" in f and not f.endswith("="):
+                            self.assertTrue(any("|" + f.split("=")[0] + "=" in line for line in lines), f)
+        manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-jm.txt").read_text(encoding="utf-8")
+        self.assertIn("\nsession /SYSTEM/LABSES.ELF - 3000 never 0 0 memer\n", manifest)
+        self.assertIn("\nid=mem\nelf=/SYSTEM/APPS/MEM.ELF\n", (ROOT / "platform" / "pc-qemu" / "lab" / "mem.app").read_text(encoding="utf-8"))
+
     LAUNCH_RATE = "TST-M6-LAUNCH-RATE"
 
     def test_the_launch_rate_expectations_are_pinned(self):

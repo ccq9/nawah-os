@@ -1890,6 +1890,64 @@ MUTANTS = [
      "                let over = ids_from(v, start);\n",
      "                let over = ids_from(v, v.len());\n",
      ["TST-M6-LOGOUT-KILLS"], "the ids past the eighth are not counted, so the trace hides that some were passed over"),
+    # M443 to M456 (WP-170, RSK-051, syscall.md v1.16): a job other than the root holds 8192 pages at most,
+    # the system keeps 64 MiB of the free frames for the kernel; killed by TST-M6-JOB-MEMORY.
+    ("M443", "kernel/src/object/job.rs",
+     "            take(&self.pages, n, JOB_PAGES_MAX)?;\n",
+     "            take(&self.pages, n, u64::MAX)?;\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a job's pages are counted but never refused, so one application takes the memory of all"),
+    ("M444", "kernel/src/object/job.rs",
+     "            if take(&CHARGED, n, USER_LIMIT.load(Ordering::SeqCst)).is_none() {\n",
+     "            if take(&CHARGED, n, u64::MAX).is_none() {\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: the system limit is never applied, so jobs within their quotas together take the kernel's reserve"),
+    ("M445", "kernel/src/object/job.rs",
+     "                self.pages.fetch_sub(n, Ordering::SeqCst);\n                return None;\n",
+     "                return None;\n",
+     ["TST-M6-JOB-MEMORY"], "a charge the system refuses keeps the job's pages counted, so the job loses them for nothing"),
+    ("M446", "kernel/src/object/job.rs",
+     "        self.job.pages.fetch_sub(self.pages, Ordering::SeqCst);\n",
+     "",
+     ["TST-M6-JOB-MEMORY"], "a charge given back leaves the job's pages counted, so a job that frees its memory cannot take it again"),
+    ("M447", "kernel/src/object/job.rs",
+     "        CHARGED.fetch_sub(self.pages, Ordering::SeqCst);\n",
+     "",
+     ["TST-M6-JOB-MEMORY"], "a charge given back leaves the system's count, so the system limit closes in on every job"),
+    ("M448", "kernel/src/syscall/mod.rs",
+     "Vmo::new_in(size, &sched::current_job())",
+     "Vmo::new(size)",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: vmo_create charges nothing, so an application takes the system's frames through memory objects"),
+    ("M449", "kernel/src/user.rs",
+     "        .charge(elf::pages_needed(image)?)\n",
+     "        .charge(0)\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: an image's pages are not charged, so an image larger than the quota loads"),
+    ("M450", "kernel/src/user.rs",
+     "    us.hold(charge);\n",
+     "    drop(charge);\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: an image's charge is given back at once, so the image's pages count for nothing while it runs"),
+    ("M451", "kernel/src/mm/addrspace.rs",
+     "        drop(self.charge.take());\n        debug_assert!(freed >= pages);\n",
+     "        core::mem::forget(self.charge.take());\n        debug_assert!(freed >= pages);\n",
+     ["TST-M6-JOB-MEMORY"], "an image's pages never come back to its job when its process ends"),
+    ("M452", "kernel/src/object/mod.rs",
+     "        drop(self.charge.take());\n        LIVE_VMOS.fetch_sub(1, Ordering::Relaxed);\n",
+     "        core::mem::forget(self.charge.take());\n        LIVE_VMOS.fetch_sub(1, Ordering::Relaxed);\n",
+     ["TST-M6-JOB-MEMORY"], "a memory object's pages never come back to its job when it goes"),
+    ("M453", "kernel/src/kmain.rs",
+     "    crate::object::job::fix_user_limit(mm::pmm::stats().free_frames);\n",
+     "",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: the system limit is never set, so no reserve is kept for the kernel"),
+    ("M454", "kernel/src/object/job.rs",
+     "pub const KERNEL_RESERVE_FRAMES: u64 = 16384;\n",
+     "pub const KERNEL_RESERVE_FRAMES: u64 = 0;\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: the system limit keeps no reserve, so applications take the frames the kernel needs"),
+    ("M455", "kernel/src/loader/elf.rs",
+     "    let mut pages = STACK_PAGES;\n",
+     "    let mut pages = 0;\n",
+     ["TST-M6-JOB-MEMORY"], "an image's stack pages are not counted in its charge"),
+    ("M456", "kernel/src/object/job.rs",
+     "filter(|&t| t <= max)",
+     "filter(|&t| t < max)",
+     ["TST-M6-JOB-MEMORY"], "a job cannot take its last page: the quota is one page short"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2240,6 +2298,8 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M417", "M419", "M420", "M421",
             # WP-168 (REQ-M6-004): the autostart checks each id before it asks (session.md v1.10).
             "M439",
+            # WP-170 (RSK-051): a job's memory is bounded (syscall.md v1.16).
+            "M443", "M444", "M448", "M449", "M450", "M453", "M454",
             # WP-112 (REQ-M4-004): a user store is read for its owner or an administrator alone (config.md v1.6).
             "M422", "M424", "M425", "M427", "M429",
             # WP-112's review round: unusable admin, a full table told, CONFIG_WRITE, a group, SUBSCRIBE.
@@ -2470,6 +2530,10 @@ _LKALIVE = "|ktest|fail|an application of the signed-out session is still alive"
 _LKSTEPS = "|ktest|fail|the sign-in, a launch or the sign-out was not as the case states"
 _JBUNIT = "|ktest|fail|a job's count does not hold its bound"
 _JBNOT = "|ktest|fail|a job's processes are not bounded"
+_JMQUOTA = "|ktest|fail|a job's charge does not hold its quota"
+_JMBACK = "|ktest|fail|a job's pages did not come back when its processes went"
+_JMNOT = "|ktest|fail|a job's memory is not bounded"
+_JMIMAGE = "|ktest|fail|an image beyond its job's quota was not refused, or one within it did not run"
 _LRANS = "|ktest|fail|a LAUNCH was not answered as the rate limit states"
 _SGSES = "|ktest|fail|a LAUNCH or BEGIN_SESSION of the session was not answered as the gate states"
 _SGDESK = "|ktest|fail|the desktop opened the gate, or the session's exit did not close it"
@@ -2703,6 +2767,22 @@ EXPECT = {
     "M439": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart|invalid=4']; forbidden present []"]},
     "M441": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart=none']; forbidden present ['|text=session|autostart=unavailable']"]},
     "M442": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart=done|launched=2|passed=6|over=1']; forbidden present []"]},
+    # WP-170 (syscall.md v1.16): a job's memory is bounded; each by exit 37, fields of one of the case's lines with
+    # other values than the pinned ones, and the failure message of the check it breaks.
+    "M443": {"TST-M6-JOB-MEMORY": ["exit 37", "|quota=8192|taken=1|refused=0|again=1|", _JMQUOTA]},
+    "M444": {"TST-M6-JOB-MEMORY": ["exit 37", "|reserve=16384|over=0|within=1|", _JMQUOTA]},
+    "M445": {"TST-M6-JOB-MEMORY": ["exit 37", "|refused=1|again=1|back=0|root=1|reserve=16384|over=1|within=1|root_over=1|vmo_refused=0|", _JMQUOTA]},
+    "M446": {"TST-M6-JOB-MEMORY": ["exit 37", "|again=0|back=8192|", "|exact_back=8192|", _JMQUOTA]},
+    "M447": {"TST-M6-JOB-MEMORY": ["exit 37", "|children=2|clocks=1|freed=0|", _JMBACK]},
+    "M448": {"TST-M6-JOB-MEMORY": ["exit 37", "|children=4|clocks=1|", _JMNOT]},
+    "M449": {"TST-M6-JOB-MEMORY": ["exit 37", "|over=LOADED|over_held=0|", "|exact_held=0|", _JMIMAGE]},
+    "M450": {"TST-M6-JOB-MEMORY": ["exit 37", "|over=K_E_AS_QUOTA|over_held=0|exact_pages=8192|exact_held=0|exact_exit=0x20000|", _JMIMAGE]},
+    "M451": {"TST-M6-JOB-MEMORY": ["exit 37", "|exact_back=8192|", "|clean=0|charged_delta=", _JMIMAGE]},
+    "M452": {"TST-M6-JOB-MEMORY": ["exit 37", "|vmo_pages=32|vmo_back=32|", "|clean=0|charged_delta=", _JMQUOTA]},
+    "M453": {"TST-M6-JOB-MEMORY": ["exit 37", "|reserve=unset|", _JMQUOTA]},
+    "M454": {"TST-M6-JOB-MEMORY": ["exit 37", "|root=1|reserve=0|", _JMQUOTA]},
+    "M455": {"TST-M6-JOB-MEMORY": ["exit 37", "|image|counted=0|", _JMIMAGE]},
+    "M456": {"TST-M6-JOB-MEMORY": ["exit 37", "|quota=8192|taken=0|refused=0|", _JMQUOTA]},
 }
 
 

@@ -1195,6 +1195,20 @@ pub fn job_count(job: u64) -> Option<u32> {
     })
 }
 
+/// Test-only (WP-170): the job `job` (an id) of a live process, held so the test kernel reads
+/// its charge after its processes are gone; None when no live process is in it.
+#[cfg(feature = "ktest")]
+pub fn job_by_id(job: u64) -> Option<Arc<Job>> {
+    with(|s| {
+        s.processes
+            .iter()
+            .filter(|p| p.exit_code.is_none())
+            .filter_map(|p| p.object.as_ref())
+            .map(|o| o.job().clone())
+            .find(|j| j.id == job)
+    })
+}
+
 /// Test-only (WP-164): how many processes of the job `job` (an id) are live, of any image.
 #[cfg(feature = "ktest")]
 pub fn live_in_job(job: u64) -> usize {

@@ -8704,6 +8704,44 @@
         }
       },
       {
+        "id": "TST-M6-JOB-MEMORY",
+        "test_id": "TST-M6-JOB-MEMORY",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=job_memory"
+        ],
+        "oracle": "A job other than the root holds 8192 pages (32 MiB) at most, its VMOs and its processes' images together (syscall.md v1.16, WP-170, RSK-051). First, in the test kernel before the case starts a process: a new job is given 8192 pages and refused one more, given 8192 again once they came back, and counts 0 when they are gone; the root is given 8193; the system's limit was fixed before the case, 16384 frames short of the free frames it was fixed at, and with room for 100 pages left a job's 101 are refused, its 100 given and the root's 101 given; a VMO of 32 pages is refused while the job has 31 left and made once the room is back, the job counting its 32 pages and 0 after it goes (unit|quota=8192|taken=1|refused=1|again=1|back=0|root=1|reserve=16384|over=1|within=1|root_over=1|vmo_refused=1|vmo_pages=32|vmo_back=0). Then an image's pages: hello's pages_needed is what the loader maps (counted=1); IDLE with its top segment's zero fill stretched to 8193 pages is refused K_E_AS_QUOTA in a job of its own with nothing charged (over_held=0), and stretched to exactly 8192 starts, its job holding 8192 pages while it lives (exact_held=8192), and once killed (exit 0x20000) its pages are back when its exit is seen (exact_back=0), no frame left (frames_delta=0). Then the lab manifest SVC-JM.TXT loads one service of the lab image named `session` (OK 1), whose role `memer` launches mem (OK app:mem#1), mem again (OK app:mem#2) and clock (OK app:clock#3, which asks its six requests and is refused each); each mem creates 1 MiB VMOs keeping every handle until one is refused: 31 are made and the 32nd is ERR_NO_RESOURCES (10), its image, of at most 256 pages, and 31 MiB leaving less than 1 MiB; 4 KiB VMOs until refused (10); an IDLE child refused (10); one 1 MiB VMO closed and the child started; 4 KiB VMOs again until refused (10); traced app:mem#<n>|vmo=31|err=10|small_err=10|spawn_err=10|again=1|refill_err=10. Then the test kernel reads two mem, two IDLE children and one clock live (mems=2, children=2, clocks=1) and 8192 pages held by each mem job (first=8192, second=8192); it ends the first mem's job (as job_kill would) and, once its processes are reaped, the system's charge has fallen by 8192 and that job counts 0 (freed=8192, first_back=0), while the second holds its 8192 and its two processes (second_after=8192, second_live=2); it ends the second's job. Then the control channel closes: the manager exits 0, no process, object or frame is left and the system's charge is what it was before the manager started (charged_delta=0); exit 33. The session's role holds after its steps (its image /SYSTEM/LABSES.ELF), its code read as 0x40.",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=job_memory",
+          "|ktest|job_memory|unit|quota=8192|taken=1|refused=1|again=1|back=0|root=1|reserve=16384|over=1|within=1|root_over=1|vmo_refused=1|vmo_pages=32|vmo_back=0|",
+          "|ktest|job_memory|image|counted=1|over_pages=8193|over=K_E_AS_QUOTA|over_held=0|exact_pages=8192|exact_held=8192|exact_exit=0x20000|exact_back=0|frames_delta=0|",
+          "|path=/SYSTEM/APPS/MEM.ELF|handles=1",
+          "|text=app:mem#1|vmo=31|err=10|small_err=10|spawn_err=10|again=1|refill_err=10",
+          "|text=app:mem#2|vmo=31|err=10|small_err=10|spawn_err=10|again=1|refill_err=10",
+          "|text=app:clock#3|asked=6|refused=6",
+          "|ktest|job_memory|load=OK 1|session=0x40|mems=2|first=8192|second=8192|children=2|clocks=1|freed=8192|first_back=0|second_after=8192|second_live=2|",
+          "|ktest|job_memory|mgr_exit=0x0|processes_after=0|clean=1|charged_delta=0",
+          "|ktest|job_memory|frames_delta=0",
+          "|ktest|pass|a job's memory is bounded: vmo_create and an image beyond its quota are refused, its pages come back when their holder goes, and other jobs and LAUNCH are unaffected"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|text=launcher|step="
+        ],
+        "timeout_s": 30,
+        "disk_files": {
+          "SYSTEM/APPS/MEM.APP": "platform/pc-qemu/lab/mem.app",
+          "SYSTEM/APPS/MEM.ELF": "${OUT}/apps/svc.elf",
+          "SYSTEM/APPS/CLOCK.ELF": "${OUT}/apps/svc.elf",
+          "SYSTEM/LABSES.ELF": "${OUT}/apps/svc.elf"
+        }
+      },
+      {
         "id": "TST-M6-LAUNCH-RATE",
         "test_id": "TST-M6-LAUNCH-RATE",
         "artifact": "${OUT}/NAWAH-KTEST.EFI",

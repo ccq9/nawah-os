@@ -360,7 +360,9 @@ fn vmo_create(size: u64) -> Result<i64, i64> {
         return Err(ERR_INVALID);
     }
     let table = table()?;
-    let vmo = Vmo::new(size).ok_or(ERR_NO_RESOURCES)?;
+    // v1.16 (WP-170): charged to the caller's job before any frame is taken; a job at its quota
+    // or a system at its limit is ERR_NO_RESOURCES, as frames running out is.
+    let vmo = Vmo::new_in(size, &sched::current_job()).ok_or(ERR_NO_RESOURCES)?;
     let h = table
         .lock()
         .insert(Entry {

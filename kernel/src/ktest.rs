@@ -214,6 +214,7 @@ pub fn run() -> ! {
         "app_connect" => app_connect(),
         "session_job" => session_job(),
         "job_bound" => job_bound(),
+        "job_memory" => job_memory(),
         "launch_rate" => launch_rate(),
         "session_gate" => session_gate(),
         "session_restart" => session_restart(),
@@ -5184,6 +5185,9 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         "job_bound" => pass(
             "a job's processes are bounded: the start beyond the bound is refused, its place comes back at an exit, and other jobs and LAUNCH are unaffected",
         ),
+        "job_memory" => pass(
+            "a job's memory is bounded: vmo_create and an image beyond its quota are refused, its pages come back when their holder goes, and other jobs and LAUNCH are unaffected",
+        ),
         "session_job" => pass(
             "the session's applications run in one job, which END_SESSION from the session alone ends, and the next launch makes a new one",
         ),
@@ -5697,6 +5701,257 @@ fn job_bound() -> ! {
         fail("a LAUNCH after a full job was not answered as the contract states")
     }
     if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-JOB-MEMORY (REQ-M6-003, REQ-M6-004, syscall.md v1.16; WP-170, RSK-051): a job other
+/// than the root holds 8192 pages (32 MiB) at most, its VMOs and its processes' images together.
+/// First the charge itself in the test kernel, before any process runs; then the IDLE image
+/// stretched to one page beyond the quota and to exactly the quota, spawned into a job of its own;
+/// then the lab manifest SVC-JM.TXT runs the lab image as the vouched `session`, whose role
+/// `memer` launches `mem` twice and `clock`: the test kernel reads what each `mem` job holds, ends
+/// the first one's job and reads that its pages came back while the second's stay.
+fn job_memory() -> ! {
+    use crate::object::job::{self as jobs, root, Job, JOB_PAGES_MAX};
+    let name = "job_memory";
+    let unit = {
+        let job = Job::new_child(&root()).unwrap_or_else(|_| fail("no job for the charge"));
+        let full = job.charge(JOB_PAGES_MAX);
+        let taken = full.is_some();
+        let refused = job.charge(1).is_none();
+        drop(full);
+        let again = job.charge(JOB_PAGES_MAX).is_some();
+        let back = job.pages();
+        let root_all = root().charge(JOB_PAGES_MAX + 1).is_some();
+        // The system's limit: fixed at the boot point, the kernel's reserve short of what was free
+        // there; with room for 100 pages left, a job's 101 are refused, its 100 given, and the
+        // root's 101 given (counted, never refused).
+        let reserve = match jobs::user_limit() {
+            u64::MAX => String::from("unset"),
+            limit => alloc::format!("{}", jobs::fixed_at().saturating_sub(limit)),
+        };
+        let old = jobs::swap_user_limit(jobs::charged() + 100);
+        let over = job.charge(101).is_none();
+        let within = job.charge(100).is_some();
+        let root_over = root().charge(101).is_some();
+        jobs::swap_user_limit(old);
+        // A VMO of 32 pages when the job has 31 left is refused, and made once the room is back;
+        // its pages come back with it.
+        let hold = job.charge(JOB_PAGES_MAX - 31);
+        let vmo_refused = Vmo::new_in(32 * 4096, &job).is_none();
+        drop(hold);
+        let vmo = Vmo::new_in(32 * 4096, &job);
+        let vmo_pages = job.pages();
+        drop(vmo);
+        let vmo_back = job.pages();
+        alloc::format!(
+            "quota={}|taken={}|refused={}|again={}|back={}|root={}|reserve={}|over={}|within={}|root_over={}|vmo_refused={}|vmo_pages={}|vmo_back={}",
+            JOB_PAGES_MAX,
+            u8::from(taken),
+            u8::from(refused),
+            u8::from(again),
+            back,
+            u8::from(root_all),
+            reserve,
+            u8::from(over),
+            u8::from(within),
+            u8::from(root_over),
+            u8::from(vmo_refused),
+            vmo_pages,
+            vmo_back
+        )
+    };
+    kprintln!("OSX|{}|ktest|job_memory|unit|{}|", BUILD_ID, unit);
+    // An image's pages: hello's pages_needed is what `load` maps; then IDLE (it waits on its boot
+    // channel until killed) with its top segment's zero fill stretched to one page beyond the
+    // quota (refused before anything is built) and to exactly the quota (started: its job holds
+    // the quota while it lives and nothing once its exit is seen).
+    let image_line = {
+        let hello = hello_image();
+        let counted = match crate::user::run_elf(hello) {
+            Ok((_, l)) => elf::pages_needed(hello) == Ok(u64::from(l.pages)),
+            Err(_) => false,
+        };
+        let image = crate::apps::IDLE;
+        let need = elf::pages_needed(image).unwrap_or(0);
+        let vaddr =
+            |ph: usize| u64::from_le_bytes(image[ph + 16..ph + 24].try_into().unwrap_or([0; 8]));
+        let top = pt_load_offsets(image)
+            .into_iter()
+            .max_by_key(|&ph| vaddr(ph));
+        let stretched = |total: u64| {
+            let mut v = image.to_vec();
+            if let Some(ph) = top {
+                let memsz =
+                    u64::from_le_bytes(image[ph + 40..ph + 48].try_into().unwrap_or([0; 8]));
+                put_u64(&mut v, ph + 40, memsz + total.saturating_sub(need) * 4096);
+            }
+            v
+        };
+        let (big, exact) = (stretched(JOB_PAGES_MAX + 1), stretched(JOB_PAGES_MAX));
+        let sizes = (
+            elf::pages_needed(&big).unwrap_or(0),
+            elf::pages_needed(&exact).unwrap_or(0),
+        );
+        let job = Job::new_child(&root()).unwrap_or_else(|_| fail("no job for the image"));
+        let spawn_in = |img: &[u8], initial: Vec<Entry>| {
+            let object = Arc::new(crate::object::process::ProcessObject::new_in(job.clone()));
+            crate::user::spawn_elf_with(img, 1, initial, object)
+        };
+        let frames0 = pmm::stats().free_frames;
+        let over = match spawn_in(&big, Vec::new()) {
+            Ok(pid) => {
+                // Not to start: ended at once (IDLE without a boot channel exits 0xE0 anyway).
+                sched::kill_process(pid, 0x2_0000);
+                let _ = sched::wait_process(pid);
+                "LOADED"
+            }
+            Err(ElfError::Space(e)) => e.code(),
+            Err(e) => e.code(),
+        };
+        let over_held = job.pages();
+        let (end, peer) = channel::create();
+        let boot = Entry {
+            object: Object::Channel(end),
+            rights: Rights::CHANNEL_DEFAULT,
+        };
+        let (held, exit) = match spawn_in(&exact, alloc::vec![boot]) {
+            Ok(pid) => {
+                let held = job.pages();
+                sched::kill_process(pid, 0x2_0000);
+                (held, sched::wait_process(pid).unwrap_or(u64::MAX))
+            }
+            Err(_) => (0, u64::MAX),
+        };
+        let exact_back = job.pages();
+        drop(peer);
+        let delta = frames0 as i64 - pmm::stats().free_frames as i64;
+        drop(job);
+        alloc::format!(
+            "counted={}|over_pages={}|over={}|over_held={}|exact_pages={}|exact_held={}|exact_exit={:#x}|exact_back={}|frames_delta={}",
+            u8::from(counted),
+            sizes.0,
+            over,
+            over_held,
+            sizes.1,
+            held,
+            exit,
+            exact_back,
+            delta
+        )
+    };
+    kprintln!("OSX|{}|ktest|job_memory|image|{}|", BUILD_ID, image_line);
+    let charged0 = jobs::charged();
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-JM.TXT");
+    let (lines, session) = session_held(&h, sched::ticks() + 20_000, |_| true);
+    // Both mem applications and clock wait on their boot channel once their work is done, and
+    // each mem keeps one IDLE child.
+    let settled = |img: &[u8], k: usize| {
+        let (a, n) = sched::live_named(img);
+        n == k && a[..n].iter().all(|p| p.waiting)
+    };
+    sched::poll_until(sched::ticks() + 5000, || {
+        settled(b"MEM.ELF", 2) && settled(b"CLOCK.ELF", 1) && settled(b"IDLE.ELF", 2)
+    });
+    // The two mem jobs, the first launched first (job ids grow).
+    let mut ids: Vec<u64> = {
+        let (a, n) = sched::live_named(b"MEM.ELF");
+        a[..n].iter().map(|p| p.job).collect()
+    };
+    ids.sort_unstable();
+    // Held by the index of `ids`, so a job not found leaves its own place empty, never another's.
+    let held: Vec<Option<Arc<Job>>> = ids.iter().map(|&j| sched::job_by_id(j)).collect();
+    let pages = |i: usize| {
+        held.get(i)
+            .and_then(Option::as_ref)
+            .map_or(u64::MAX, |j| j.pages())
+    };
+    let (first, second) = (pages(0), pages(1));
+    let children = sched::live_named(b"IDLE.ELF").1;
+    let clocks = sched::live_named(b"CLOCK.ELF").1;
+    // The first mem's job ends, as job_kill would: its pages come back, the second's stay.
+    let before = jobs::charged();
+    if let Some(&j) = ids.first() {
+        sched::kill_job_id(j, 0x2_0000);
+        // Not only exited (exit_code is set when the last thread leaves) but finished: the
+        // job's count of processes falls when each is reaped, after its space and handles are
+        // released, so its charges are back by then.
+        sched::poll_until(sched::ticks() + 5000, || {
+            sched::live_in_job(j) == 0
+                && held
+                    .first()
+                    .and_then(Option::as_ref)
+                    .is_none_or(|job| job.processes() == 0)
+        });
+    }
+    let freed = before.saturating_sub(jobs::charged());
+    let (first_back, second_after) = (pages(0), pages(1));
+    let second_live = ids.get(1).map_or(0, |&j| sched::live_in_job(j));
+    // The second's children never exit, and the manager does not end its applications' jobs when
+    // it stops (services.md v1.17's limits): its job is killed here before the manager is.
+    if let Some(&j) = ids.get(1) {
+        sched::kill_job_id(j, 0x2_0000);
+    }
+    sched::poll_until(sched::ticks() + 5000, || {
+        sched::live_named(b"MEM.ELF").1 == 0 && sched::live_named(b"IDLE.ELF").1 == 0
+    });
+    let mems = ids.len();
+    // Everything the test kernel took after the manager started goes before the balance.
+    drop((held, ids));
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|job_memory|load={}|session={:#x}|mems={}|first={}|second={}|children={}|clocks={}|freed={}|first_back={}|second_after={}|second_live={}|",
+        BUILD_ID,
+        load,
+        session,
+        mems,
+        first,
+        second,
+        children,
+        clocks,
+        freed,
+        first_back,
+        second_after,
+        second_live
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    let charged_delta = jobs::charged() as i64 - charged0 as i64;
+    kprintln!(
+        "OSX|{}|ktest|job_memory|mgr_exit={:#x}|processes_after={}|clean={}|charged_delta={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean),
+        charged_delta
+    );
+    if unit
+        != "quota=8192|taken=1|refused=1|again=1|back=0|root=1|reserve=16384|over=1|within=1|root_over=1|vmo_refused=1|vmo_pages=32|vmo_back=0"
+    {
+        fail("a job's charge does not hold its quota")
+    }
+    if !image_line.starts_with("counted=1|over_pages=8193|over=K_E_AS_QUOTA|over_held=0|exact_pages=8192|exact_held=8192|exact_exit=0x20000|exact_back=0|")
+    {
+        fail("an image beyond its job's quota was not refused, or one within it did not run")
+    }
+    if load != "OK 1" {
+        fail("the lab manifest did not load")
+    }
+    if session != 0x40 || clocks != 1 {
+        fail("a LAUNCH after a full job was not answered as the contract states")
+    }
+    if mems != 2 || first != JOB_PAGES_MAX || second != JOB_PAGES_MAX || children != 2 {
+        fail("a job's memory is not bounded")
+    }
+    if freed != JOB_PAGES_MAX || first_back != 0 {
+        fail("a job's pages did not come back when its processes went")
+    }
+    if second_after != JOB_PAGES_MAX || second_live != 2 {
+        fail("another job lost what it held when one job ended")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean || charged_delta != 0 {
         fail("manager or applications left something behind")
     }
     drop((lines, load));

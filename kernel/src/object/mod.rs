@@ -151,11 +151,29 @@ pub struct Vmo {
     /// Over the display's frame (`display_map`): the last one gone clears the frame
     /// (display.md v1.5).
     frame: bool,
+    /// The pages charged to the job that made it (`vmo_create`, syscall.md v1.16), given back
+    /// after the frames are freed; none for the kernel's own.
+    charge: Option<job::Charge>,
 }
 
 impl Vmo {
-    /// Allocates `size` bytes (a page multiple, at most `VMO_MAX_BYTES`) of zeroed frames.
+    /// Allocates `size` bytes (a page multiple, at most `VMO_MAX_BYTES`) of zeroed frames, the
+    /// kernel's own: charged to no job.
     pub fn new(size: u64) -> Option<Arc<Vmo>> {
+        Self::alloc(size, None)
+    }
+
+    /// `new` for `vmo_create` (syscall.md v1.16): the pages are charged to `job` before any frame
+    /// is taken, so a job at its quota, or a system at its limit, gets None and nothing else.
+    pub fn new_in(size: u64, job: &Arc<job::Job>) -> Option<Arc<Vmo>> {
+        if size == 0 || !size.is_multiple_of(4096) || size > VMO_MAX_BYTES {
+            return None;
+        }
+        let charge = job.charge(size / 4096)?;
+        Self::alloc(size, Some(charge))
+    }
+
+    fn alloc(size: u64, charge: Option<job::Charge>) -> Option<Arc<Vmo>> {
         if size == 0 || !size.is_multiple_of(4096) || size > VMO_MAX_BYTES {
             return None;
         }
@@ -180,6 +198,7 @@ impl Vmo {
             frames,
             owned: true,
             frame: false,
+            charge,
         }))
     }
 
@@ -197,6 +216,7 @@ impl Vmo {
             frames,
             owned: false,
             frame: true,
+            charge: None,
         }))
     }
 
@@ -224,6 +244,8 @@ impl Drop for Vmo {
         if self.frame {
             crate::display::frame_released();
         }
+        // The pages come back to the job once the frames are free (v1.16).
+        drop(self.charge.take());
         LIVE_VMOS.fetch_sub(1, Ordering::Relaxed);
     }
 }

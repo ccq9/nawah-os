@@ -1,0 +1,2 @@
+# TST-M6-JOB-MEMORY (WP-170): the vouched session launches mem twice (each fills its own job's memory) and clock; the lab role `memer` is its side
+session /SYSTEM/LABSES.ELF - 3000 never 0 0 memer

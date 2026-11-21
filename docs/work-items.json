@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133536Z-bb14cc41-001-a"
+    "evidence/20261121T143759Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133534Z-bb14cc41-001-a"
+    "evidence/20261121T143757Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133536Z-bb14cc41-001-a"
+    "evidence/20261121T143759Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -3085,8 +3085,8 @@
     "evidence/20261121T131526Z-bb14cc41-001-a",
     "evidence/20261121T131533Z-bb14cc41-001-a",
     "evidence/20261121T133606Z-bb14cc41-001-a",
-    "evidence/20261121T133537Z-bb14cc41-001-a",
-    "evidence/20261121T133550Z-bb14cc41-001-a",
+    "evidence/20261121T143800Z-581f14a7-001",
+    "evidence/20261121T143816Z-581f14a7-001",
     "evidence/20261121T133659Z-bb14cc41-001-a"
    ],
    "blocker": null
@@ -4070,7 +4070,9 @@
     "WP-72",
     "WP-79",
     "WP-87",
-    "WP-90"
+    "WP-90",
+    "WP-175",
+    "WP-178"
    ],
    "inputs": [
     "docs/prompt/OS-EXEC-AR-v3.2.md:596-601 (M6)",
@@ -4089,7 +4091,8 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-10 (steward round D, planners' reports): depends on WP-71, WP-72 and WP-79 too: the exit conditions name TST-M6-SESSION-WATCHDOG (stages.json:301) and TST-M6-SESSION-AR (stages.json:303), and REQ-M6-006 lists TST-M6-UI-POINTER; the gate must not become ready while they are planned",
     "2026-11-10 (steward round E, audit): depends on WP-87 too: REQ-M6-006 lists TST-M6-LISTVIEW-A11Y and TST-M6-LISTVIEW-RTL, and stages.json:303 (scenario 11) names LISTVIEW-RTL; both cases are WP-87's since the WP-50 split",
-    "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): depends on WP-90 too: stages.json:306 (M6 mutants >= 95% with no live security mutant) cannot be shown until the M6 gate exists (finding H2)"
+    "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): depends on WP-90 too: stages.json:306 (M6 mutants >= 95% with no live security mutant) cannot be shown until the M6 gate exists (finding H2)",
+    "2026-11-21 (the manager): depends on WP-175 (the autostart's lock and sign-out paths) and WP-178 (the manager's failure ends no session into the next) on the external audit of 2026-11-21: the session path and the autostart are not accepted in M6 without them"
    ],
    "acceptance": "M6 gate passed: every stages.json M6 exit condition met with CI evidence or a visible, recorded exception",
    "test_ids": [
@@ -4192,7 +4195,7 @@
     "evidence/20261121T133308Z-bb14cc41-001-a",
     "evidence/20261121T133020Z-bb14cc41-001-a",
     "evidence/20261121T133216Z-bb14cc41-001-a",
-    "evidence/20261121T133537Z-bb14cc41-001-a",
+    "evidence/20261121T143800Z-581f14a7-001",
     "evidence/20261121T131700Z-bb14cc41-001-b",
     "evidence/20261121T131752Z-bb14cc41-001-b",
     "evidence/20261121T131958Z-bb14cc41-001-b",
@@ -4258,10 +4261,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133534Z-bb14cc41-001-a",
-    "evidence/20261121T133537Z-bb14cc41-001-a",
-    "evidence/20261121T133550Z-bb14cc41-001-a",
-    "evidence/20261121T133601Z-bb14cc41-001-a"
+    "evidence/20261121T143757Z-581f14a7-001",
+    "evidence/20261121T143800Z-581f14a7-001",
+    "evidence/20261121T143816Z-581f14a7-001",
+    "evidence/20261121T143830Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -4344,8 +4347,8 @@
     "evidence/20261121T131632Z-bb14cc41-001-b",
     "evidence/20261121T132510Z-bb14cc41-001-b",
     "evidence/20261121T133020Z-bb14cc41-001-a",
-    "evidence/20261121T133537Z-bb14cc41-001-a",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143800Z-581f14a7-001",
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -4779,8 +4782,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133537Z-bb14cc41-001-a",
-    "evidence/20261121T133534Z-bb14cc41-001-a"
+    "evidence/20261121T143800Z-581f14a7-001",
+    "evidence/20261121T143757Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -5206,9 +5209,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133534Z-bb14cc41-001-a",
-    "evidence/20261121T133601Z-bb14cc41-001-a",
-    "evidence/20261121T133537Z-bb14cc41-001-a"
+    "evidence/20261121T143757Z-581f14a7-001",
+    "evidence/20261121T143830Z-581f14a7-001",
+    "evidence/20261121T143800Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -5289,7 +5292,7 @@
    "evidence_refs": [
     "evidence/20261121T133020Z-bb14cc41-001-a",
     "evidence/20261121T131526Z-bb14cc41-001-a",
-    "evidence/20261121T133537Z-bb14cc41-001-a",
+    "evidence/20261121T143800Z-581f14a7-001",
     "evidence/20261121T133659Z-bb14cc41-001-a"
    ],
    "blocker": null
@@ -5365,9 +5368,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133534Z-bb14cc41-001-a",
-    "evidence/20261121T133537Z-bb14cc41-001-a",
-    "evidence/20261121T133601Z-bb14cc41-001-a"
+    "evidence/20261121T143757Z-581f14a7-001",
+    "evidence/20261121T143800Z-581f14a7-001",
+    "evidence/20261121T143830Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -5658,9 +5661,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133537Z-bb14cc41-001-a",
-    "evidence/20261121T133534Z-bb14cc41-001-a",
-    "evidence/20261121T133601Z-bb14cc41-001-a"
+    "evidence/20261121T143800Z-581f14a7-001",
+    "evidence/20261121T143757Z-581f14a7-001",
+    "evidence/20261121T143830Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -5824,7 +5827,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133537Z-bb14cc41-001-a"
+    "evidence/20261121T143800Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -5883,7 +5886,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133534Z-bb14cc41-001-a"
+    "evidence/20261121T143757Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -6057,12 +6060,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133537Z-bb14cc41-001-a",
+    "evidence/20261121T143800Z-581f14a7-001",
     "evidence/20261120T072013Z-74035182-001",
     "evidence/20261120T074842Z-74035182-001",
     "evidence/20261120T080927Z-74035182-001",
     "evidence/20261120T083650Z-74035182-001",
-    "evidence/20261121T133550Z-bb14cc41-001-a",
+    "evidence/20261121T143816Z-581f14a7-001",
     "evidence/20261121T133221Z-bb14cc41-001-g"
    ],
    "blocker": null
@@ -6125,8 +6128,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133537Z-bb14cc41-001-a",
-    "evidence/20261121T133534Z-bb14cc41-001-a",
+    "evidence/20261121T143800Z-581f14a7-001",
+    "evidence/20261121T143757Z-581f14a7-001",
     "evidence/20261121T133221Z-bb14cc41-001-g"
    ],
    "blocker": null
@@ -6264,8 +6267,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133550Z-bb14cc41-001-a",
-    "evidence/20261121T133601Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001",
+    "evidence/20261121T143830Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -6508,7 +6511,7 @@
    "evidence_refs": [
     "evidence/20261121T133333Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -6599,7 +6602,7 @@
     "evidence/20261121T133340Z-bb14cc41-001-a",
     "evidence/20261121T133356Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -6957,7 +6960,7 @@
    "evidence_refs": [
     "evidence/20261121T132727Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -7037,7 +7040,7 @@
     "evidence/20261121T132945Z-bb14cc41-001-a",
     "evidence/20261121T132935Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -7270,7 +7273,7 @@
     "evidence/20261121T132736Z-bb14cc41-001-a",
     "evidence/20261121T132809Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -9038,7 +9041,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133550Z-bb14cc41-001-a",
+    "evidence/20261121T143816Z-581f14a7-001",
     "evidence/20261121T133221Z-bb14cc41-001-g"
    ],
    "blocker": null
@@ -9587,7 +9590,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133601Z-bb14cc41-001-a"
+    "evidence/20261121T143830Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -9650,10 +9653,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133537Z-bb14cc41-001-a",
+    "evidence/20261121T143800Z-581f14a7-001",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a",
-    "evidence/20261121T133601Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001",
+    "evidence/20261121T143830Z-581f14a7-001"
    ],
    "blocker": null
   },
@@ -9710,8 +9713,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133537Z-bb14cc41-001-a",
-    "evidence/20261121T133550Z-bb14cc41-001-a",
+    "evidence/20261121T143800Z-581f14a7-001",
+    "evidence/20261121T143816Z-581f14a7-001",
     "evidence/20261121T133221Z-bb14cc41-001-g"
    ],
    "blocker": null
@@ -9821,7 +9824,7 @@
     "evidence/20261121T132628Z-bb14cc41-001-a",
     "evidence/20261121T132636Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null,
    "id": "WP-156",
@@ -9891,7 +9894,7 @@
     "evidence/20261121T132736Z-bb14cc41-001-a",
     "evidence/20261121T132711Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null,
    "id": "WP-157",
@@ -9990,7 +9993,7 @@
     "evidence/20261121T132736Z-bb14cc41-001-a",
     "evidence/20261121T132727Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null,
    "actions": [
@@ -10137,7 +10140,7 @@
     "evidence/20261121T133340Z-bb14cc41-001-a",
     "evidence/20261121T133333Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null,
    "test_ids": [
@@ -10224,7 +10227,7 @@
     "evidence/20261121T133340Z-bb14cc41-001-a",
     "evidence/20261121T133333Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null,
    "test_ids": [
@@ -10336,7 +10339,7 @@
     "evidence/20261121T133340Z-bb14cc41-001-a",
     "evidence/20261121T133459Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null,
    "actions": [
@@ -10419,7 +10422,7 @@
     "evidence/20261121T133317Z-bb14cc41-001-a",
     "evidence/20261121T133340Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null,
    "actions": [
@@ -10475,8 +10478,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261121T133534Z-bb14cc41-001-a",
-    "evidence/20261121T133550Z-bb14cc41-001-a",
+    "evidence/20261121T143757Z-581f14a7-001",
+    "evidence/20261121T143816Z-581f14a7-001",
     "evidence/20261121T133221Z-bb14cc41-001-g"
    ],
    "blocker": null,
@@ -10601,7 +10604,7 @@
    "evidence_refs": [
     "evidence/20261121T133417Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a",
+    "evidence/20261121T143816Z-581f14a7-001",
     "evidence/20261121T131700Z-bb14cc41-001-b"
    ],
    "blocker": null,
@@ -10686,7 +10689,7 @@
     "evidence/20261121T131958Z-bb14cc41-001-b",
     "evidence/20261121T131726Z-bb14cc41-001-b",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null,
    "actions": [
@@ -10777,7 +10780,7 @@
     "evidence/20261121T133356Z-bb14cc41-001-a",
     "evidence/20261121T133333Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a",
+    "evidence/20261121T143816Z-581f14a7-001",
     "evidence/20261121T133449Z-bb14cc41-001-a",
     "evidence/20261121T133459Z-bb14cc41-001-a"
    ],
@@ -10801,9 +10804,10 @@
     "REQ-M6-003",
     "REQ-M6-004"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -10820,9 +10824,7 @@
    "files": [
     "kernel/src/object/job.rs",
     "kernel/src/syscall/mod.rs",
-    "kernel/src/loader/mod.rs",
     "kernel/src/loader/elf.rs",
-    "kernel/src/mm/heap.rs",
     "docs/contracts/syscall.md",
     "kernel/src/ktest.rs",
     "user/apps/svc/src/main.rs",
@@ -10830,19 +10832,41 @@
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
     "docs/tests.json",
-    "docs/risks.json"
+    "docs/risks.json",
+    "kernel/src/kmain.rs",
+    "kernel/src/object/mod.rs",
+    "kernel/src/mm/addrspace.rs",
+    "kernel/src/sched/mod.rs",
+    "kernel/src/user.rs",
+    "platform/pc-qemu/lab/mem.app",
+    "platform/pc-qemu/manifests/svc-jm.txt",
+    "tools/project.py",
+    "docs/requirements.json",
+    "docs/work-items.json",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/project-state.json"
    ],
    "contract_refs": [
     "docs/contracts/syscall.md"
    ],
-   "acceptance": "a job other than the root cannot hold more memory than a stated quota: vmo_create and an image's segments beyond it are refused ERR_NO_RESOURCES, the memory comes back when its holder goes, every other job and the services unaffected and the kernel's heap never ends in a panic from it; shown by a case on CI; the syscall contract states it in its next version; its SECURITY mutants killed by the M6 gate",
+   "acceptance": "a job other than the root holds 8192 pages (32 MiB) at most of its own: each VMO of vmo_create from its creation to its last reference, each process's image and stack from the spawn to the reap, charged before a frame is taken, so vmo_create and a spawn over it are refused ERR_NO_RESOURCES without a trace but the closing of the handles a spawn carried; the pages come back when their frames are freed (before EXITED); every job together, the root counted, is held 16384 frames (64 MiB) short of the frames free at a named boot point, a job other than the root refused past it, the root counted and never refused; every other job and the services unaffected; shown on CI in TST-M6-JOB-MEMORY with TST-M6-JOB-BOUND unchanged; syscall.md v1.16 states it; its mutants (SECURITY among them) killed by the M6 gate",
    "test_ids": [
-    "TST-M6-JOB-BOUND"
+    "TST-M6-JOB-MEMORY",
+    "TST-M6-JOB-BOUND",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "actions": [
     "حصة ذاكرة لكل مهمة (RSK-051؛ من قسمة WP-163 في 2026-11-21)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "test first: a lab application that calls vmo_create until refused, then asks a service: today it takes the system's frames"
+    "test first: a lab application that calls vmo_create until refused, then asks a service: today it takes the system's frames",
+    "2026-11-21 (the manager): built test first by the kernel engineer on a scratch clone (scratch, never evidence): TST-M6-JOB-MEMORY failed against the kernel of a6dbaf89f9 (run 20261121T132152Z-a6dbaf89-001: no charge held the quota, an image of 8193 pages loaded, the two lab applications took 64 VMOs each; exit 37, 'a job's charge does not hold its quota') and passes after it (runs 20261121T141750Z-5fede117-001 and 20261121T141740Z-5fede117-001 on the final tree), TST-M6-JOB-BOUND unchanged",
+    "2026-11-21 (the manager): design, with its options (rule 5): (A) a page quota per job other than the root, 8192 pages, charged at the creation of a VMO to its creator's job and at an image's load to its job, held by what owns the frames and given back after they are freed; (B) a cap per process, rejected: a VMO outlives its creator and its handle moves through channels; (C) a system limit, the frames free at a named boot point less 64 MiB kept for the kernel, in the same charge; (D) a quota given at job_create, rejected: a new argument and a decision record. A and C chosen. 32 MiB: eight applications of 32 MiB stay under the system limit on the lab's 512 MiB; the largest image of this repository holds about 115 pages",
+    "2026-11-21 (the manager): the review round on the scratch clone's ad06b3c12 (the auditor and the red team, read only). Fixed: the case waits until the killed job counts no process before it reads the frames back (a race with the teardown outside the lock on smp 4), the over-quota image killed before its wait, syscall.md v1.16 saying what the code does (the root may pass the system limit; the boot point after the two self-check processes; the handles a refused spawn carried are closed), the oracle saying only what a marker checks. Split to WP-176 (section 7, rule 1: a vulnerability reachable by an ordinary program): the channel queues, 64 messages of 4 KiB each per channel and 1024 handles per process, can take more of the kernel's heap than the reserve and end in its panic",
+    "2026-11-21 (the manager): the second round on the clone's b762bcf23 (the auditor and the red team, read only, the corrections checked line by line). Confirmed: the race fix orders the read after the frames and the charge are back; the contract's sentences on the charge, the refusal, the return and the root. Corrected: the oracle's image 'of at most 256 pages' (no marker tells 256 from fewer) and the limit 'fixed before the case' (no marker shows where); the two mem jobs held by their index; the contract's limits: a VMO waiting in a queue stays charged to its creator, the number of full jobs is (F - 16384 - R) / 8192 rounded down, not 'nine', two concurrent requests of one job at the system's limit may see one refused. The clause 'the kernel's heap never ends in a panic from it' left this item's acceptance: no case here loads the heap; it is WP-176's and WP-177's. Split to WP-177 (section 7, rule 1): the mapping region's page tables are neither charged nor freed and its addresses never reused, so an application of 32 processes mapping and unmapping one VMO pins about 16416 uncharged frames, more than the reserve, and one sending bad CREATE_SURFACE requests wears displayd's mapping region out (both by reading, not run). Added to WP-176: read_image's infallible buffer of up to 4 MiB (a panic when no run of frames is left, a hypothesis) and a cycle of two channels keeping a dead job's charge (a hypothesis). Written as lines: the order of a charge's return after the frames observed by no marker, a UserSpace dropped without destroy giving its charge back with its frames held (no path today), the unaligned segment a mutant of the page count passes",
+    "2026-11-21 budget (the manager): over the line of 120 calls with the engineer's work and the review round on the clone; the channel queues went to WP-176 rather than grow this item",
+    "2026-11-21 activated (the manager): its dependency WP-164 is done"
    ]
   },
   {
@@ -10863,7 +10887,9 @@
    "id": "WP-171",
    "depends_on": [
     "WP-163",
-    "WP-170"
+    "WP-170",
+    "WP-176",
+    "WP-177"
    ],
    "inputs": [
     "created 2026-11-21 at WP-163's split: its second part"
@@ -10891,7 +10917,8 @@
    "actions": [
     "صورة تطبيق حقيقية على قرص الإصدار (من قسمة WP-163 في 2026-11-21، بعد حصة الذاكرة WP-170)",
     "from WP-163's record: the sample entries CLOCK.APP and NOTES.APP name images no crate builds and the build does not place: a real image for one at least, or the entry leaves the release disk",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-21 (the manager): depends on WP-176 and WP-177 from WP-170's review rounds (the kernel's heap and the mapping region's page tables bounded before an application's image is on the release disk, RSK-051)"
    ]
   },
   {
@@ -10957,7 +10984,7 @@
     "evidence/20261121T133356Z-bb14cc41-001-a",
     "evidence/20261121T133340Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null,
    "actions": [
@@ -11025,7 +11052,7 @@
     "evidence/20261121T133516Z-bb14cc41-001-a",
     "evidence/20261121T133508Z-bb14cc41-001-a",
     "evidence/20261121T133221Z-bb14cc41-001-g",
-    "evidence/20261121T133550Z-bb14cc41-001-a"
+    "evidence/20261121T143816Z-581f14a7-001"
    ],
    "blocker": null,
    "actions": [
@@ -11133,6 +11160,169 @@
    "actions": [
     "التشغيل التلقائي: القفل والخروج أثناءه بحالة تثبتهما (من جولة مراجعة WP-168 في 2026-11-21)",
     "from the red team: mutants S1 (run while locked: `self.state != State::NoSession && !self.want_display`), T1 (the stale GET answer kept), S2 (no cancel at Sign out: the config channel left open) and G1 (the channel not closed at the end), each passing the case of WP-168; the step: freeze CONFIGD.ELF before the sign-in (sched::freeze_named), SAK, thaw, unlock; and a Sign out instead of the unlock",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+   ]
+  },
+  {
+   "id": "WP-176",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-003",
+    "REQ-M6-004"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "depends_on": [
+    "WP-170"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "inputs": [
+    "created 2026-11-21 from WP-170's review round (the red team, read only)",
+    "kernel/src/object/channel.rs (QUEUE_MAX 64, MSG_MAX_BYTES 4096, MSG_MAX_HANDLES 4)",
+    "kernel/src/mm/heap.rs (its pages from the frame allocator; exhaustion ends in handle_alloc_error)"
+   ],
+   "files": [
+    "kernel/src/object/channel.rs",
+    "kernel/src/object/job.rs",
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/mm/heap.rs",
+    "kernel/src/ktest.rs",
+    "user/apps/svc/src/main.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/contracts/syscall.md",
+    "docs/tests.json",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md"
+   ],
+   "acceptance": "no ordinary program ends the kernel's heap in a panic: the messages queued in channels are charged to the writer's job with the quota and the system limit of syscall.md v1.16 (or bounded per job by a rule chosen at activation), a write over it refused without a trace and the queue's allocation fallible; read_image's buffer (up to 4 MiB) allocated fallibly or charged, a launch it cannot hold refused ERR_NO_RESOURCES; a cycle of channels holding each other's ends does not keep a dead job's charge; shown by cases on CI (a lab role filling channel queues until refused and a service answering after it, a launch of a large image with the frames fragmented, a cycle left at a job's death and the charge back); the syscall contract's next version states it; its SECURITY mutants killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-JOB-MEMORY",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "actions": [
+    "حساب رسائل القنوات على مهمة كاتبها (من جولة مراجعة WP-170 في 2026-11-21؛ قبل WP-171)",
+    "test first: a lab role that creates channel pairs and writes 64 messages of 4 KiB into each until a write or a creation is refused, then asks a service: today it can take more of the heap than the 64 MiB reserve",
+    "from WP-170's second round (the red team, by reading, not run): read_image (kernel/src/loader/mod.rs) takes its buffer with an infallible vec!, a panic when the heap finds no run of frames (a test kernel case pinning one frame in each 1024, then read_image on a 4 MiB file); a cycle of two channels each queuing the other's end with VMOs keeps them and their charge after the job dies (channel.rs's own comment on cycles)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+   ]
+  },
+  {
+   "id": "WP-177",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-003",
+    "REQ-M6-004"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "depends_on": [
+    "WP-170"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "inputs": [
+    "created 2026-11-21 from WP-170's second review round (the red team, read only, by reading, not run)",
+    "kernel/src/mm/addrspace.rs (next_map only grows; MAX_MAPPINGS 64)",
+    "kernel/src/arch/x86_64/paging.rs (next_table takes a frame per new table; unmap_4k frees none)",
+    "user/apps/displayd/src/main.rs (CREATE_SURFACE maps the VMO before it checks the size)"
+   ],
+   "files": [
+    "kernel/src/mm/addrspace.rs",
+    "kernel/src/arch/x86_64/paging.rs",
+    "kernel/src/object/job.rs",
+    "user/apps/displayd/src/main.rs",
+    "kernel/src/ktest.rs",
+    "user/apps/svc/src/main.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/contracts/syscall.md",
+    "docs/contracts/display.md",
+    "docs/tests.json",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md",
+    "docs/contracts/display.md"
+   ],
+   "acceptance": "a process's mapping region holds no more than its live mappings need: the addresses of unmapped VMOs are used again and the page tables they emptied are freed, or the tables are charged to the job with the quota of syscall.md v1.16 (the option chosen at activation); so mapping and unmapping one VMO without end in 32 processes takes no more than a stated number of frames, and a client's refused CREATE_SURFACE requests do not wear out displayd's region (another client's valid request answered OK after 1100 of them); shown by cases on CI; the syscall contract's next version states it; its SECURITY mutants killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-JOB-MEMORY",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "actions": [
+    "جداول صفحات منطقة الخرائط وعناوينها (من جولة المراجعة الثانية لـWP-170 في 2026-11-21؛ قبل WP-171)",
+    "test first: a test kernel case mapping and unmapping a 1 MiB VMO 1024 times in a new job's space, which today takes 513 frames (one PD and 512 PT) charged to no one; then a lab client sending 1100 CREATE_SURFACE of 4096x4096 with a duplicated 1 MiB VMO, then another client's valid request: today ERR ACCESS (a hypothesis until run)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+   ]
+  },
+  {
+   "id": "WP-178",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-004"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "depends_on": [
+    "WP-168"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "inputs": [
+    "created 2026-11-21 from L-113 (WP-172's review) on the owner's question and the external audit of 2026-11-21 (Nawah-OS-Release-Gap-Audit, section 5: a package and an owner before the session path is accepted)",
+    "kernel/src/services.rs:165 (the interactive boot keeps the manager and its control channel for the whole boot: the manager's stop is the test kernel's; in the interactive boot its failure is a crash)",
+    "docs/LATER.md L-111, L-113, L-120"
+   ],
+   "files": [
+    "user/apps/sessiond/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/contracts/session.md",
+    "docs/contracts/services.md",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/session.md",
+    "docs/contracts/services.md"
+   ],
+   "acceptance": "no session inherits the applications, the rights or the input of the one before it when the manager fails: when the end of a session's job is not confirmed (END_SESSION unsent or refused, or the manager gone) the session refuses the next sign-in and traces it, until a manager confirms the end; and the manager's own stop (its control channel closed) ends the session's job and every application's job before it exits; shown by cases on CI (a manager killed or frozen during a session with an application that ignores its boot channel, then a sign-in refused; the manager stopped by the test kernel, then no application of the session alive); session.md's and services.md's next versions state it; its SECURITY mutants killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-LOGOUT-KILLS",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "actions": [
+    "فشل المدير لا يورث الجلسة التالية تطبيقات سابقتها (من L-113، بسؤال المالك وتدقيق 2026-11-21 الخارجي؛ مهندس الخدمات)",
+    "test first: a test kernel case killing the manager while a session holds an application that ignores its boot channel, then a sign-in: today the session traces jobs=unsent and the next sign-in goes on (a hypothesis until run); and the manager stopped by its control channel with the same application: today the application outlives it (L-113)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
    ]
   }

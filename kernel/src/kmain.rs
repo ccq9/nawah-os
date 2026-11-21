@@ -568,6 +568,9 @@ extern "sysv64" fn kernel_main_guarded(bi: &BootInfo) -> ! {
         elf_code,
         u8::from(elf_ok)
     );
+    // WP-170 (syscall.md v1.16): the boot point the system's user charge limit is fixed at —
+    // every self-check done, before the first process of the system or of the test kernel.
+    crate::object::job::fix_user_limit(mm::pmm::stats().free_frames);
     #[cfg(feature = "ktest")]
     crate::ktest::run();
     #[cfg(not(feature = "ktest"))]

@@ -310,6 +310,111 @@ fn hog(ch: u32, who: &[u8]) -> u64 {
     }
 }
 
+/// The application `mem` of TST-M6-JOB-MEMORY (WP-170, syscall.md v1.16): creates 1 MiB VMOs, 64
+/// at most, keeping every handle, until one is refused; then 4 KiB ones, 300 at most, until
+/// refused (its job's last pages); asks for an IDLE child (refused); closes one 1 MiB VMO and asks
+/// again (its pages came back: started); fills its last pages again with 4 KiB VMOs until refused.
+/// Traced `app:mem#<n>|vmo=<k>|err=<-e>|small_err=<-e>|spawn_err=<-e>|again=<0|1>|refill_err=<-e>`
+/// (an err 0 when nothing was refused); then waits on its boot channel, holding all of it.
+fn mem(ch: u32, who: &[u8]) -> u64 {
+    let mut big = [0u32; 64];
+    let mut vmo = 0usize;
+    let mut err = 0i64;
+    for slot in big.iter_mut() {
+        match libnawah::vmo_create(1024 * 1024) {
+            Ok(h) => {
+                *slot = h;
+                vmo += 1;
+            }
+            Err(e) => {
+                err = e;
+                break;
+            }
+        }
+    }
+    // 4 KiB VMOs until one is refused; their handles are kept (never closed).
+    let fill = || {
+        for _ in 0..300 {
+            if let Err(e) = libnawah::vmo_create(4096) {
+                return e;
+            }
+        }
+        0
+    };
+    let small_err = fill();
+    let spawn = || {
+        libnawah::channel_create()
+            .and_then(|(a, b)| libnawah::process_spawn(b"/SYSTEM/IDLE.ELF", &[b, a]))
+    };
+    let spawn_err = spawn().err().unwrap_or(0);
+    let mut again = 0u64;
+    let mut refill_err = 0i64;
+    if vmo > 0 {
+        libnawah::handle_close(big[vmo - 1]);
+        if spawn().is_ok() {
+            again = 1;
+        }
+        refill_err = fill();
+    }
+    let mut t = [0u8; 128];
+    let mut at = 0;
+    let mut put = |t: &mut [u8; 128], s: &[u8]| {
+        let k = s.len().min(t.len() - at);
+        t[at..at + k].copy_from_slice(&s[..k]);
+        at += k;
+        at
+    };
+    put(&mut t, b"app:");
+    put(&mut t, &who[..who.len().min(16)]);
+    let mut num = [0u8; 20];
+    for (field, v) in [
+        (&b"|vmo="[..], vmo as u64),
+        (b"|err=", err.unsigned_abs()),
+        (b"|small_err=", small_err.unsigned_abs()),
+        (b"|spawn_err=", spawn_err.unsigned_abs()),
+        (b"|again=", again),
+        (b"|refill_err=", refill_err.unsigned_abs()),
+    ] {
+        put(&mut t, field);
+        let n = put_num(&mut num, 0, v);
+        put(&mut t, &num[..n]);
+    }
+    libnawah::trace(&t[..at]);
+    let mut reply = [0u8; 128];
+    let mut hs = [0u32; 1];
+    loop {
+        if libnawah::channel_read(ch, &mut reply, &mut hs, true).is_err() {
+            return 0;
+        }
+    }
+}
+
+/// The vouched session's side of TST-M6-JOB-MEMORY (WP-170): READY, BEGIN_SESSION; LAUNCH mem
+/// (#1), 600 ticks for it to fill its job; LAUNCH mem (#2), 600 ticks; LAUNCH clock (#3), which
+/// a manager short of memory would not start. 0x40 when each was answered as stated, `missed`'s
+/// code at the first step that saw another.
+fn memer(ch: u32) -> u64 {
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
+    if !begin(ch) {
+        return 0xE3;
+    }
+    let mut r = [0u8; 128];
+    for (step, id, want, pause) in [
+        (1u8, &b"mem"[..], 1u64, 600u64),
+        (2, b"mem", 2, 600),
+        (3, b"clock", 3, 0),
+    ] {
+        let (num, n) = launch(ch, id, 0, &mut r);
+        if num != want {
+            return missed(step, num, &r[..n]);
+        }
+        let _ = libnawah::sleep(pause);
+    }
+    0x40
+}
+
 /// The vouched session's side of TST-M6-JOB-BOUND (WP-164): READY; LAUNCH peer (#1), 100 ticks;
 /// LAUNCH hog (#2), 1500 ticks for it to fill its job; LAUNCH clock (#3), which a full system
 /// would refuse. 0x40 when each was answered as stated, `missed`'s code at the first step that saw
@@ -900,6 +1005,9 @@ fn application(ch: u32, who: &[u8]) -> u64 {
     if who.starts_with(b"hog#") {
         return hog(ch, who);
     }
+    if who.starts_with(b"mem#") {
+        return mem(ch, who);
+    }
     if who.starts_with(b"peer#") {
         // WP-164: a child now, and another once `hog` has filled its own job.
         let spawn = || {
@@ -1364,6 +1472,7 @@ fn main() -> u64 {
         b"connector" => hold(ch, connector(ch)),
         b"ender" => hold(ch, ender(ch)),
         b"bounder" => hold(ch, bounder(ch)),
+        b"memer" => hold(ch, memer(ch)),
         b"rater" => hold(ch, rater(ch)),
         b"gater" => gater(ch),
         b"stayer" => hold(ch, stayer(ch)),

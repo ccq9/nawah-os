@@ -203,6 +203,20 @@ pub fn parse(image: &[u8]) -> Result<([Option<Segment>; PH_MAX], usize, u64), El
     Ok((segs, n, entry))
 }
 
+/// The pages `load` maps for `image` (syscall.md v1.16, WP-170): each PT_LOAD segment's page
+/// span (no two share a page: `parse`) and the stack's `STACK_PAGES`; what a spawn charges to
+/// its job before anything is built.
+pub fn pages_needed(image: &[u8]) -> Result<u64, ElfError> {
+    let (segs, n, _) = parse(image)?;
+    let mut pages = STACK_PAGES;
+    for s in segs.iter().take(n).flatten() {
+        let first = s.vaddr & !(PAGE_4K - 1);
+        let end = (s.vaddr + s.memsz).next_multiple_of(PAGE_4K);
+        pages += (end - first) / PAGE_4K;
+    }
+    Ok(pages)
+}
+
 /// Loads `image` into `space`: segments with W^X permissions, file bytes copied, the rest
 /// zero, and the stack. On any error the caller destroys the space (nothing else to undo).
 pub fn load(space: &mut UserSpace, image: &[u8]) -> Result<Loaded, ElfError> {

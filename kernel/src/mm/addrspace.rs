@@ -44,6 +44,8 @@ pub enum AsError {
     Active,
     /// No thread could be created for the space (kernel stack or scheduler refusal).
     Spawn,
+    /// The image's pages are beyond its job's quota or the system's limit (syscall.md v1.16).
+    Quota,
 }
 
 impl From<MapError> for AsError {
@@ -62,6 +64,7 @@ impl AsError {
             AsError::KernelSpaceNotActive => "K_E_AS_NO_KERNEL_SPACE",
             AsError::Active => "K_E_AS_ACTIVE",
             AsError::Spawn => "K_E_SPAWN_FAILED",
+            AsError::Quota => "K_E_AS_QUOTA",
         }
     }
 }
@@ -73,6 +76,9 @@ pub struct UserSpace {
     /// VMO mappings (their frames belong to the objects, not to this space).
     mappings: Vec<Mapping>,
     next_map: u64,
+    /// The image's pages charged to the process's job (syscall.md v1.16), given back in
+    /// `destroy` after the pages are freed.
+    charge: Option<crate::object::job::Charge>,
 }
 
 impl UserSpace {
@@ -90,7 +96,13 @@ impl UserSpace {
             pages: Vec::new(),
             mappings: Vec::new(),
             next_map: MAP_BASE,
+            charge: None,
         })
+    }
+
+    /// Keeps the image's charge (v1.16) until `destroy` has freed the pages it stands for.
+    pub fn hold(&mut self, charge: crate::object::job::Charge) {
+        self.charge = Some(charge);
     }
 
     /// Maps every frame of `vmo` at the next free place of the mapping region, read-only or
@@ -204,6 +216,8 @@ impl UserSpace {
                 freed += 1;
             }
         }
+        // The image's pages come back to the job once its frames are free (v1.16).
+        drop(self.charge.take());
         debug_assert!(freed >= pages);
         Ok(freed)
     }

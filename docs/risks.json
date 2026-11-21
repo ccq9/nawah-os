@@ -546,11 +546,11 @@
    "risk": "عملية واحدة تستنفد إطارات النواة أو كومتها بلا حصة: vmo_create (1 MiB لكل استدعاء، بلا سلطة، حتى 1024 مقبضًا، أي قرابة 1 GiB والذاكرة 512 MiB) أو صورة ELF بقسم bss كبير يُحجز كاملًا قبل admit؛ والتخصيص المعصوم في الكومة ينتهي بهلع. وكل إطلاق يُرفض عند حد المهمة يقرأ صورته كاملة (حتى 4 MiB) قبل أن يُرفض",
    "likelihood": "medium",
    "impact": "high",
-   "evidence": "قراءة الفريق الأحمر في جولة مراجعة WP-164 بتاريخ 2026-11-21 (kernel/src/syscall/mod.rs: vmo_create وspawn_into، kernel/src/object/mod.rs، kernel/src/loader/elf.rs وmod.rs، kernel/src/mm/heap.rs)؛ لم يُشغَّل شيء؛ فرضية تؤكدها حالة مختبر تكرر vmo_create حتى ERR_NO_RESOURCES ثم تطلب channel_write",
+   "evidence": "قراءة الفريق الأحمر في جولة مراجعة WP-164 بتاريخ 2026-11-21 (kernel/src/syscall/mod.rs: vmo_create وspawn_into، kernel/src/object/mod.rs، kernel/src/loader/elf.rs وmod.rs، kernel/src/mm/heap.rs)؛ لم يُشغَّل شيء؛ فرضية تؤكدها حالة مختبر تكرر vmo_create حتى ERR_NO_RESOURCES ثم تطلب channel_write؛ وجولتا مراجعة WP-170 بتاريخ 2026-11-21 (kernel/src/object/channel.rs: QUEUE_MAX 64 رسالة من 4 KiB لكل قناة؛ kernel/src/mm/addrspace.rs: next_map لا يعود، وkernel/src/arch/x86_64/paging.rs: الجداول لا تُحرَّر)",
    "owner": "agent",
    "warning_signal": "kernel|panic عند نفاد الكومة، أو ERR_NO_RESOURCES في خدمات لا صلة لها بالتطبيق المستهلك",
-   "mitigation": "لا صورة تطبيق على قرص الإصدار قبل WP-171، وهي بعد WP-170؛ حد العمليات (syscall.md v1.15) لا يحد الذاكرة",
-   "response_plan": "حصة ذاكرة لكل مهمة في WP-170، قبل WP-171 (صورة التطبيق على قرص الإصدار) وWP-47؛ ترتيب يستطيع المالك نقضه",
+   "mitigation": "حصة 8192 صفحة لكل مهمة غير الجذر وحد للنظام يبقي 64 MiB للنواة (WP-170، syscall.md v1.16): VMO وصور الإطلاق تُحسب قبل أخذ إطاراتها؛ ولا صورة تطبيق على قرص الإصدار قبل WP-171",
+   "response_plan": "الباقي: رسائل القنوات ومخزن الصورة في read_image وحلقات القنوات تأخذ من الكومة فوق الاحتياط (WP-176)، وجداول صفحات منطقة الخرائط لا تُحسب ولا تُحرَّر (WP-177)، كلاهما قبل WP-171 وWP-47؛ ومكدسات النواة وجداول الصورة غير محسوبة (L-121). ترتيب يستطيع المالك نقضه",
    "status": "open"
   }
  ]
