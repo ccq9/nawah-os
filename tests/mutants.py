@@ -2961,9 +2961,10 @@ EXPECT = {
     "M414": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", _LKSTEPS]},
     # WP-168 (session.md v1.10): the autostart from the administrator's store CFGU1000.A.
     "M391": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=1|nest=0|idle=0|phase=1", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|", _LKSTEPS]},
-    # Since WP-175 app:deaf#4 is phase 4's pinned launch: M438 is known by the ninth id at the sign-in (deaf=2)
-    # and the launch after the second sign-in numbered 4, not 3.
-    "M438": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=2|nest=1|idle=1|phase=1", "|launch=OK app:deaf#4|deaf=1|in_session=1|phase=3", _LKSTEPS]},
+    # Since WP-175 app:deaf#4 alone is phase 4's pinned launch: M438 is known by the launch after the second sign-in
+    # numbered 4, not 3 (the ninth id took #3). Phase 1's count of deaf is not pinned: it is read before or after the
+    # ninth launch (deaf=2 on a scratch run, deaf=1 on CI run 44949893901).
+    "M438": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launch=OK app:deaf#4|deaf=1|in_session=1|phase=3", _LKSTEPS]},
     "M439": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart|invalid=4']; forbidden present []"]},
     "M441": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart=none']; forbidden present ['|text=session|autostart=unavailable']"]},
     "M442": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|autostart=done|launched=2|passed=6|over=1']; forbidden present []"]},

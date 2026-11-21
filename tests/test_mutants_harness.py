@@ -1553,8 +1553,7 @@ class KillEvidence(unittest.TestCase):
             # its kill leaves M396's lines.
             "M391": (False, ["exit 37", "|deaf=1|nest=0|idle=0|phase=1", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|",
                              mutants._LKSTEPS]),
-            "M438": (False, ["exit 37", "|deaf=2|nest=1|idle=1|phase=1", "|launch=OK app:deaf#4|deaf=1|in_session=1|phase=3",
-                             mutants._LKSTEPS]),
+            "M438": (False, ["exit 37", "|launch=OK app:deaf#4|deaf=1|in_session=1|phase=3", mutants._LKSTEPS]),
             "M439": (True, ["missing markers ['|text=session|autostart|invalid=4']; forbidden present []"]),
             "M441": (False, ["missing markers ['|text=session|autostart=none']; forbidden present ['|text=session|autostart=unavailable']"]),
             "M442": (False, ["missing markers ['|text=session|autostart=done|launched=2|passed=6|over=1']; forbidden present []"]),
