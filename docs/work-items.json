@@ -10921,21 +10921,27 @@
     "created 2026-11-21 from WP-172's review round: the red team's surviving mutants and the leak the restart case found"
    ],
    "files": [
-    "user/apps/svcmgr/src/main.rs",
-    "user/apps/svc/src/main.rs",
+    "docs/contracts/services.md",
+    "docs/tests.json",
     "kernel/src/ktest.rs",
     "platform/pc-qemu/target.json",
-    "platform/pc-qemu/manifests/svc-sx.txt",
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
-    "docs/tests.json",
-    "docs/contracts/services.md"
+    "user/apps/svc/src/main.rs",
+    "user/apps/svcmgr/src/main.rs",
+    "platform/pc-qemu/manifests/svc-sx.txt",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/requirements.json",
+    "tools/project.py",
+    "docs/project-state.json"
    ],
    "contract_refs": [
     "docs/contracts/services.md"
    ],
-   "acceptance": "a restarted session that had launched leaves no kernel heap block or frame behind (the leak of eight blocks found on 2026-11-21 found and fixed, test first), and TST-M6-SESSION-RESTART (new) shows on CI the session's job ended at a RESTART (exit 0x40, state stopping) and the new session launching into a job of its own; the mutants of a kill limited to code 0, one skipped while stopping and a job closed but kept killed",
+   "acceptance": "TST-M6-SESSION-RESTART (new) shows on CI the session's job ended at a RESTART of the session (exit 0x40, the manager's state stopping) with its application, and the restarted session launching into a job of its own, the frames balanced; services.md v1.20's limit about a leak corrected; mutants M417 (SECURITY: the job ended only at a clean exit) and M418 (ended but kept) killed by the M6 gate",
    "test_ids": [
+    "TST-M6-SESSION-RESTART",
     "TST-M6-SESSION-GATE",
     "TST-M6-MUTANTS",
     "TST-M0-005"
@@ -10943,16 +10949,20 @@
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
    "actions": [
     "إعادة تشغيل الجلسة: حالة RESTART وتسرّب ثماني كتل كومة نواة كشفته (من جولة مراجعة WP-172، 2026-11-21)",
     "2026-11-21 (the manager): the case's work is kept outside the tree (the scratch patch of that date): role stayer, manifest SVC-SX.TXT, ktest session_restart; it passed every clause but frames_delta=1, heap slab_pages=1 and live_blocks=8 after the manager's exit, the same without the kill; the RESTART of a lab service alone (the config case) balances",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-21 (the manager): narrowed before activation. The 'eight kernel heap blocks' were the restart case's own measure, found by the kernel engineer's reading and confirmed on a clone: the case's String `restart` was alive when svc_balance, which never returns, counted the frames; with it dropped first the case passes with frames_delta=0 (scratch run 20261121T080215Z-2a267c58-001). No kernel fix: this item keeps the case, the mutants and the correction of services.md v1.20's limit",
+    "2026-11-21 (the manager): test first, the gap shown on a clone (scratch, gap173.log): each of the red team's three mutations of the kill at the session's exit (only at exit code 0; skipped while stopping; killed and closed but kept) built once: TST-M6-SESSION-GATE passes under each (the gap: only a clean exit is exercised), TST-M6-SESSION-RESTART fails under each (stays=2|new_job=0|live_jobs=3|mgr_handles=7 for the first two, restarts=3|held=0 with launcher|step=1|got=ERR FAILED for the third) and passes clean. The first two leave one evidence: M417 is registered, the second is written here as killed by the same reading",
+    "2026-11-21 activated (the manager): its dependency WP-172 is done; test first (the gap above)"
    ]
   }
  ]

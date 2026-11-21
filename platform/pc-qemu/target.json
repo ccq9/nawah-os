@@ -8679,6 +8679,38 @@
           "SYSTEM/APPS/STAY.APP": "platform/pc-qemu/lab/stay.app",
           "SYSTEM/APPS/STAY.ELF": "${OUT}/apps/svc.elf"
         }
+      },
+      {
+        "id": "TST-M6-SESSION-RESTART",
+        "test_id": "TST-M6-SESSION-RESTART",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=session_restart"
+        ],
+        "expected_exit_code": 33,
+        "oracle": "The session service's exit ends the session's job whatever its exit code and however it comes (services.md v1.20, WP-172). The lab manifest SVC-SX.TXT loads one service of the lab image named `session` (OK 1), on-failure, image /SYSTEM/LABSES.ELF, whose role `stayer` answers READY, is answered BEGUN to BEGIN_SESSION, launches stay (OK app:stay#<n>) and holds, waiting on its boot channel without a deadline. When it holds with one live STAY.ELF waiting, the test kernel asks the manager RESTART session, answered OK: the session's channel closes, it exits 0x40 (not 0) with the manager's state stopping, the manager ends its job, and starts it again, and the new session begins a session and launches stay again. The test kernel waits, at most 5000 ticks, and reads while the manager runs: restarts=1, the new session holding, one live STAY.ELF, waiting, whose job's parent is a new session job under the root job (not the first application's), two live jobs more than before the manager started (the new session's and its application's) and the manager's handle count 4 above what it was before LOAD less the held session's process and channel (that application's process, channel and job and the new session's job: nothing of the first). The case drops every value of its own on the kernel's heap before the frame balance, which never returns. Then the control channel closes: the manager exits 0, no process, object or frame is left; exit 33",
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=session_restart",
+          "|path=/SYSTEM/APPS/STAY.ELF|handles=1",
+          "|ktest|session_restart|load=OK 1|session=0x40|first=1|restart=OK|restarts=1|held=1|stays=1|new_job=1|live_jobs=2|mgr_handles=4|",
+          "|ktest|session_restart|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|session_restart|frames_delta=0",
+          "|ktest|pass|the manager's restart of the session ended its job with its application, and the new session launched into a job of its own"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|",
+          "|text=launcher|step="
+        ],
+        "timeout_s": 30,
+        "disk_files": {
+          "SYSTEM/APPS/STAY.APP": "platform/pc-qemu/lab/stay.app",
+          "SYSTEM/APPS/STAY.ELF": "${OUT}/apps/svc.elf",
+          "SYSTEM/LABSES.ELF": "${OUT}/apps/svc.elf"
+        }
       }
     ]
   },

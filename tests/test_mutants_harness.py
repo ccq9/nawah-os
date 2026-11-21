@@ -1713,6 +1713,56 @@ class KillEvidence(unittest.TestCase):
         self.assertEqual(case.get("disk_files"), {"SYSTEM/APPS/STAY.APP": "platform/pc-qemu/lab/stay.app",
                                                   "SYSTEM/APPS/STAY.ELF": "${OUT}/apps/svc.elf"})
 
+    SESSION_RESTART = "TST-M6-SESSION-RESTART"
+
+    def test_the_session_restart_expectations_are_pinned(self):
+        """WP-173 (services.md v1.20): the session's exit ends its job however it comes. M417 (the
+        job ended only at a clean exit, SECURITY) and M418 (the job ended and its handle closed but
+        kept), each anchoring once in the manager, are declared on TST-M6-SESSION-RESTART alone, each
+        known by exit 37, the case's one failure message and the counts of its line that differ from
+        the pinned ones, no two sharing their evidence. The case's line, timeout, manifest and volume,
+        and the role's failure trace forbidden, are pinned."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        mgr = (ROOT / "user" / "apps" / "svcmgr" / "src" / "main.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.SESSION_RESTART)
+        line = ("|ktest|session_restart|load=OK 1|session=0x40|first=1|restart=OK|restarts=1|held=1|stays=1|"
+                "new_job=1|live_jobs=2|mgr_handles=4|")
+        self.assertIn(line, case["required_markers"])
+        self.assertIn("|ktest|session_restart|frames_delta=0", case["required_markers"])
+        self.assertIn("|text=launcher|step=", case["forbidden_markers"])
+        self.assertEqual(case["timeout_s"], 30)
+        msg = "|ktest|fail|an application of the restarted session outlived it, or the new session could not launch"
+        self.assertEqual(mutants._SRKEPT, msg)
+        self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
+        want = {  # id: (the counts that differ from the pinned line's, SECURITY)
+            # the old job lives on: the first stay and the new one in it, its job and handles kept
+            "M417": ("|restarts=1|held=1|stays=2|new_job=0|live_jobs=3|mgr_handles=7|", True),
+            # every LAUNCH of the restarted session goes to the closed handle: it fails until given up
+            "M418": ("|restarts=3|held=0|stays=0|new_job=0|live_jobs=0|mgr_handles=0|", False),
+        }
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.SESSION_RESTART in m[4]), sorted(want))
+        for mid, (counts, security) in want.items():
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], "user/apps/svcmgr/src/main.rs")
+                self.assertEqual(mgr.count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(m[4], [self.SESSION_RESTART])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(E[mid], {self.SESSION_RESTART: ["exit 37", counts, msg]})
+                self.assertNotIn(counts, line)
+        self.assertNotEqual(want["M417"][0], want["M418"][0])
+        manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-sx.txt").read_text(encoding="utf-8")
+        self.assertEqual([l for l in manifest.splitlines() if l and not l.startswith("#")],
+                         ["session /SYSTEM/LABSES.ELF - 3000 on-failure 3 10 stayer"])
+        self.assertEqual(case.get("disk_files"), {"SYSTEM/APPS/STAY.APP": "platform/pc-qemu/lab/stay.app",
+                                                  "SYSTEM/APPS/STAY.ELF": "${OUT}/apps/svc.elf",
+                                                  "SYSTEM/LABSES.ELF": "${OUT}/apps/svc.elf"})
+
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""
     import fcntl

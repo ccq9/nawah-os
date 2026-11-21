@@ -472,6 +472,25 @@ fn hold(ch: u32, code: u64) -> u64 {
     }
 }
 
+/// The vouched session's side of TST-M6-SESSION-RESTART (WP-173, services.md v1.20): READY,
+/// BEGIN_SESSION and LAUNCH stay (any number), then holds; a refused BEGIN_SESSION exits 0xE3, a
+/// LAUNCH answered otherwise (0x51 << 8) + its number. Each incarnation does the same, so the
+/// session the manager restarts launches again into a job of its own.
+fn stayer(ch: u32) -> u64 {
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
+    if !begin(ch) {
+        return 0xE3;
+    }
+    let mut r = [0u8; 128];
+    let (num, n) = launch(ch, b"stay", RETRY_FULL, &mut r);
+    if num == 0 {
+        return missed(1, num, &r[..n]);
+    }
+    0x40
+}
+
 /// `BEGIN_SESSION` (WP-169, services.md v1.19): whether the manager answered `BEGUN`, opening
 /// the gate LAUNCH needs. A launcher that is not answered so exits 0xE3.
 fn begin(ch: u32) -> bool {
@@ -1342,6 +1361,7 @@ fn main() -> u64 {
         b"bounder" => hold(ch, bounder(ch)),
         b"rater" => hold(ch, rater(ch)),
         b"gater" => gater(ch),
+        b"stayer" => hold(ch, stayer(ch)),
         b"ungated" => ungated(ch),
         b"crash_once" => serve(ch, Mode::CrashOnce),
         _ => 2,

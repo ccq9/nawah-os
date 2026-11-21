@@ -1772,6 +1772,17 @@ MUTANTS = [
      "                libnawah::job_kill(job);\n                libnawah::handle_close(job);\n",
      "                libnawah::job_kill(job);\n                self.session_job = Some(job);\n",
      ["TST-M6-SESSION-GATE"], "the session's job is killed at the session's exit but kept, so the next session's launches go to a dead job"),
+    # M417, M418 (WP-173, REQ-M6-004; services.md v1.20): the session's exit ends its job however it comes,
+    # killed by TST-M6-SESSION-RESTART (a RESTART: exit 0x40, the manager's state stopping). A third, a kill
+    # skipped while stopping, is killed by the same reading as M417 and not registered (their evidence is one).
+    ("M417", "user/apps/svcmgr/src/main.rs",
+     "            if let Some(job) = self.session_job.take() {\n                libnawah::job_kill(job);\n                libnawah::handle_close(job);\n            }\n        }\n",
+     "            if code == 0 {\n                if let Some(job) = self.session_job.take() {\n                    libnawah::job_kill(job);\n                    libnawah::handle_close(job);\n                }\n            }\n        }\n",
+     ["TST-M6-SESSION-RESTART"], "SECURITY: the session's job is ended only at a clean exit, so a crashed, stopped or restarted session leaves its applications to the next one"),
+    ("M418", "user/apps/svcmgr/src/main.rs",
+     "            if let Some(job) = self.session_job.take() {\n                libnawah::job_kill(job);\n                libnawah::handle_close(job);\n            }\n        }\n        let s = &mut",
+     "            if let Some(job) = self.session_job {\n                libnawah::job_kill(job);\n                libnawah::handle_close(job);\n            }\n        }\n        let s = &mut",
+     ["TST-M6-SESSION-RESTART"], "the session's job is ended and its handle closed at the session's exit but kept, so the restarted session's launches fail"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2117,7 +2128,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-169 (REQ-M6-004): LAUNCH needs an open session (services.md v1.19).
             "M406", "M407", "M408", "M409", "M411", "M413", "M414",
             # WP-172 (REQ-M6-004): the session service's exit ends its job (services.md v1.20).
-            "M415"}
+            "M415",
+            # WP-173 (REQ-M6-004): however the session service exits (services.md v1.20).
+            "M417"}
 
 
 def security_of(mid: str) -> bool:
@@ -2348,6 +2361,7 @@ _LRANS = "|ktest|fail|a LAUNCH was not answered as the rate limit states"
 _SGSES = "|ktest|fail|a LAUNCH or BEGIN_SESSION of the session was not answered as the gate states"
 _SGDESK = "|ktest|fail|the desktop opened the gate, or the session's exit did not close it"
 _SGEXIT = "|ktest|fail|an application or a job of the session outlived the session service"
+_SRKEPT = "|ktest|fail|an application of the restarted session outlived it, or the new session could not launch"
 _ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
 _APP_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
@@ -2532,6 +2546,9 @@ EXPECT = {
     "M412": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5300|", _SGSES]},
     "M415": {"TST-M6-SESSION-GATE": ["exit 37", "|stays=1|waiting=1|live_jobs=2|mgr_handles=4|", _SGEXIT]},
     "M416": {"TST-M6-SESSION-GATE": ["exit 37", "|stays=0|waiting=0|live_jobs=1|mgr_handles=1|", _SGEXIT]},
+    # WP-173 (services.md v1.20): a RESTART's exit (0x40, the manager stopping) ends the job too.
+    "M417": {"TST-M6-SESSION-RESTART": ["exit 37", "|restarts=1|held=1|stays=2|new_job=0|live_jobs=3|mgr_handles=7|", _SRKEPT]},
+    "M418": {"TST-M6-SESSION-RESTART": ["exit 37", "|restarts=3|held=0|stays=0|new_job=0|live_jobs=0|mgr_handles=0|", _SRKEPT]},
     "M410": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launched=ERR NO_SESSION,ERR NO_SESSION|", _LKSTEPS]},
     "M413": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=OK app:deaf#1|", _LKALIVE]},
     "M414": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", _LKSTEPS]},

@@ -1,0 +1,2 @@
+# TST-M6-SESSION-RESTART (WP-173; services.md v1.20 of WP-172): the vouched session launches stay and holds; the test kernel restarts it, which ends its job, and the new one launches into a job of its own
+session /SYSTEM/LABSES.ELF - 3000 on-failure 3 10 stayer
