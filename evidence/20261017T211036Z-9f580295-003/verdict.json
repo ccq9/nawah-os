@@ -1,0 +1,17 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261017T211036Z-9f580295-003",
+ "test_id": "TST-M1-NOBS",
+ "verdict": "PASS",
+ "oracle": "static: kernel/*.c include no efi.h, name no Boot Services/System Table symbol; kernel_main takes boot_info only; bootinfo.h has no function tables",
+ "expected": "exit 0 + OK",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "cf305e76c3b8bbfc9498b813207c99cbad1cc8bccb0e60608be6cca366f4815e",
+ "inputs": {
+  "tests/test_m1_nobs.py": "a733af9e6ab92bec945d3d4f6fbfbcb30f8848f55f8e298e8adae86612ddba8c",
+  "kernel/main.c": "23793e8060ae5f225e4d3d169a6e3491ff83a0d447726ceac79de11a5ef999cd",
+  "boot/common/bootinfo.h": "5c9573c7478baec49ccdc9581be6e4705fade1cd604e4cd69f5959190b2f76de",
+  "boot/stub/main.c": "42c61c19dbd623c2f3f10724462d1afc69dd96ef3d5ad252edd6d9fade327004"
+ },
+ "claim_tag": "source_backed_fact"
+}
