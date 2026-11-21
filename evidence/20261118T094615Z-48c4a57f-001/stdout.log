@@ -1,0 +1,198 @@
+$ python3 -I tests/mutants.py --target pc-qemu --stage M4 --report build/mutants-m4-report.json
+M50: killed by TST-M4-WAIT-TIMEOUT [320.6s] (object_wait_many's timeout never expires)
+  TST-M4-WAIT-TIMEOUT: timeout (hang) run=20261118T094633Z-48c4a57f-001
+    OSX|000000000032|ktest|start|name=wait_timeout
+M51: killed by TST-M4-TOKEN-OBJECTS,TST-M4-SESSION-LOCK [20.8s] (token_revoke is a no-op)
+  TST-M4-TOKEN-OBJECTS: exit 37 != expected 33 run=20261118T095147Z-48c4a57f-001
+    OSX|000000000033|ktest|start|name=token_objects
+    OSX|000000000033|ktest|token_objects|distinct_ids=1|fresh=1|client_cannot_revoke=1|is_authority=1|channel_is_not_authority=1|revoked_everywhere=0|expires_later=1|live_tokens=1|tokens_after=0|authorities_after=0
+    OSX|000000000033|ktest|fail|revocation, expiry or accounting wrong
+  TST-M4-SESSION-LOCK: exit 37 != expected 33 run=20261118T095151Z-48c4a57f-001
+    OSX|000000000033|ktest|start|name=session_lock
+    OSX|000000000033|ktest|session_lock|load=OK 1|login=OK 1000 1000 15|lock=OK|locked_token_revoked=0|whoami_locked=ERR ACCESS|unlock_wrong=ERR ACCESS|unlock=OK 1000 1000 15|new_token=1|whoami_new=OK 1000 1000 15|old_after_unlock=ERR ACCESS|logout=OK|logged_out_revoked=0|whoami_out=ERR ACCESS|unlock_out=ERR ACCESS|no_handle=ERR BAD_REQUEST|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000033|ktest|fail|lock did not revoke the token
+M52: killed by TST-M4-TOKEN-OBJECTS [15.6s] (a token expires 1000 s late)
+  TST-M4-TOKEN-OBJECTS: exit 37 != expected 33 run=20261118T095207Z-48c4a57f-001
+    OSX|000000000034|ktest|start|name=token_objects
+    OSX|000000000034|ktest|token_objects|distinct_ids=1|fresh=1|client_cannot_revoke=1|is_authority=1|channel_is_not_authority=1|revoked_everywhere=1|expires_later=0|live_tokens=1|tokens_after=0|authorities_after=0
+    OSX|000000000034|ktest|fail|revocation, expiry or accounting wrong
+M53: killed by TST-M4-WAIT-TIMEOUT [15.7s] (SECURITY: any handle mints tokens (the authority check removed; the waiter app probes it))
+  TST-M4-WAIT-TIMEOUT: exit 37 != expected 33 run=20261118T095223Z-48c4a57f-001
+    OSX|000000000035|ktest|start|name=wait_timeout
+    OSX|000000000035|ktest|wait_timeout|exit=0xf7|expected=0x71|measured_ticks=0|elapsed_ticks=27|frames_delta=0|channels_after=0|handles_after=0
+    OSX|000000000035|ktest|fail|application did not reach its end (exit code = failing step)
+M54: killed by TST-M4-DHCP,TST-M4-NET-LINK [20.1s] (handle_type reports the interface as a keyboard (the manager misroutes it))
+  TST-M4-DHCP: exit 37 != expected 33 run=20261118T095239Z-48c4a57f-001
+    OSX|000000000036|ktest|start|name=net_dhcp
+    OSX|000000000036|ktest|net_dhcp|service=net|state=failed
+    OSX|000000000036|ktest|fail|a service did not become ready
+  TST-M4-NET-LINK: exit 37 != expected 33 run=20261118T095243Z-48c4a57f-001
+    OSX|000000000036|ktest|start|name=net_link
+    OSX|000000000036|ktest|net_link|mac=52:54:00:12:34:56|link=1|gateway=52:55:0a:00:02:02|arp_ticks=1|kernel_code=ok|user_exit=0xe0|user_tx=0|user_rx=0|rx_bad=0|frames_delta=0|dma_frames=18
+    OSX|000000000036|ktest|fail|netprobe did not reach its end (exit code = failing step)
+M55: killed by TST-M4-NET-LIMITS [15.7s] (a full transmit ring drops the frame silently instead of Busy)
+  TST-M4-NET-LIMITS: exit 37 != expected 33 run=20261118T095259Z-48c4a57f-001
+    OSX|000000000037|ktest|start|name=net_limits
+    OSX|000000000037|ktest|net_limits|queue_size=16|sent=64|busy=0|other=0|in_flight_peak=5|in_flight_after=0|forced_busy=0|busy_counted=1|after_release=1|sent2=16|busy2=0|short_refused=1|long_refused=1|received=31|tx_busy_counted=1|rx_bad=0|dma_frames=18|frames_delta=0
+    OSX|000000000037|ktest|fail|transmit slots were not reclaimed or the refusal path is wrong
+M56: killed by TST-M4-KBD-SCANCODES [35.5s] (the keyboard is never polled)
+  TST-M4-KBD-SCANCODES: exit 37 != expected 33 run=20261118T095314Z-48c4a57f-001
+    OSX|000000000038|ktest|start|name=kbd_scancodes
+    OSX|000000000038|ktest|kbd_scancodes|ready=1|pending=0|overflow=0
+    OSX|000000000038|ktest|kbd_scancodes|exit=0xe3|overflow=0|pending_after=0|frames_delta=0
+    OSX|000000000038|ktest|fail|the injected keys did not arrive as set-1 scancodes
+M57: killed by TST-M4-SHELL-SVC,TST-M4-SHELL-LOGIN [383.2s] (the console is never polled)
+  TST-M4-SHELL-SVC: exit 37 != expected 33 run=20261118T095350Z-48c4a57f-001
+    OSX|000000000039|ktest|start|name=shell_svc
+    OSX|000000000039|ktest|shell_svc|cpus=4|frames_total=128817|console_present=1|ready=1
+    OSX|000000000039|ktest|shell_svc|sh_state=ready|sh_exit=-1|listing=auth:ready:0:12:12:331:-1;net:ready:0:12:12:50:-1;config:ready:0:12:12:60:-1;sh:ready:0:331:331:333:-1;
+    OSX|000000000039|ktest|fail|the shell did not end its session with exit 0
+  TST-M4-SHELL-LOGIN: exit 37 != expected 33 run=20261118T095656Z-48c4a57f-001
+    OSX|000000000039|ktest|start|name=shell_login
+    OSX|000000000039|ktest|shell_login|cpus=4|frames_total=128817|console_present=1|ready=1
+    OSX|000000000039|ktest|shell_login|sh_state=ready|sh_exit=-1|listing=auth:ready:0:14:14:343:-1;net:ready:0:14:14:53:-1;config:ready:0:14:14:63:-1;sh:ready:0:343:343:345:-1;
+    OSX|000000000039|ktest|fail|the shell did not end its session with exit 0
+M58: killed by TST-M4-SHELL-SVC [17.6s] (system_info reports the free frames as the total)
+  TST-M4-SHELL-SVC: missing markers ["console step 'mem': expected 'frames_total=128817' (from the serial log) in output b'frames_total=128371 frames_free=128371 heap_live_bytes=27008 heap_pages=11 handles=26 channels=5\\n'"]; forbidden present [] run=20261118T100013Z-48c4a57f-001
+    OSX|00000000003a|ktest|start|name=shell_svc
+    OSX|00000000003a|ktest|shell_svc|cpus=4|frames_total=128817|console_present=1|ready=1
+    OSX|00000000003a|ktest|shell_svc|sh_state=stopped|sh_exit=0|listing=auth:ready:0:13:13:333:-1;net:ready:0:13:13:54:-1;config:ready:0:13:13:64:-1;sh:stopped:0:333:333:335:0;
+    OSX|00000000003a|ktest|shell_svc|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000003a|ktest|shell_svc|frames_delta=0
+    OSX|00000000003a|ktest|pass|the shell served the lab's session from the owners of each state and ended cleanly
+M59: killed by TST-M4-SHELL-SVC [17.7s] (dir_list lists directories as files)
+  TST-M4-SHELL-SVC: missing markers ["console step 'ls /': expected 'D DIR\\n' in output b'F 0 DIR\\nF 0 SYSTEM\\nF 24 HELLO.TXT\\nF 20480 PATTERN.BIN\\n'", "console step 'ls /': expected 'D SYSTEM\\n' in output b'F 0 DIR\\nF 0 SYSTEM\\nF 24 HELLO.TXT\\nF 20480 PATTERN.BIN\\n'"]; forbidden present [] run=20261118T100031Z-48c4a57f-001
+    OSX|00000000003b|ktest|start|name=shell_svc
+    OSX|00000000003b|ktest|shell_svc|cpus=4|frames_total=128817|console_present=1|ready=1
+    OSX|00000000003b|ktest|shell_svc|sh_state=stopped|sh_exit=0|listing=auth:ready:0:12:12:329:-1;net:ready:0:12:12:52:-1;config:ready:0:12:12:62:-1;sh:stopped:0:329:329:332:0;
+    OSX|00000000003b|ktest|shell_svc|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000003b|ktest|shell_svc|frames_delta=0
+    OSX|00000000003b|ktest|pass|the shell served the lab's session from the owners of each state and ended cleanly
+M60: killed by TST-M4-WAIT-TIMEOUT [15.8s] (object_wait_many accepts a VMO)
+  TST-M4-WAIT-TIMEOUT: exit 37 != expected 33 run=20261118T100049Z-48c4a57f-001
+    OSX|00000000003c|ktest|start|name=wait_timeout
+    OSX|00000000003c|ktest|wait_timeout|exit=0xea|expected=0x71|measured_ticks=0|elapsed_ticks=26|frames_delta=0|channels_after=0|handles_after=0
+    OSX|00000000003c|ktest|fail|application did not reach its end (exit code = failing step)
+M61: killed by TST-M4-SHELL-SVC,TST-M1-BOOT [24.5s] (the console is handed to the manager only when absent)
+  TST-M4-SHELL-SVC: exit 37 != expected 33 run=20261118T100108Z-48c4a57f-001
+    OSX|00000000003d|ktest|start|name=shell_svc
+    OSX|00000000003d|ktest|shell_svc|service=sh|state=failed
+    OSX|00000000003d|ktest|fail|a service did not become ready
+  TST-M1-BOOT: missing markers ['|path=/SYSTEM/SVCMGR.ELF|handles=9|by=kernel']; forbidden present [] run=20261118T100113Z-48c4a57f-001
+M62: killed by TST-M4-LOGIN [19.6s] (SECURITY: the authority is never handed to auth)
+  TST-M4-LOGIN: exit 37 != expected 33 run=20261118T100129Z-48c4a57f-001
+    OSX|00000000003e|ktest|start|name=login
+    OSX|00000000003e|ktest|login|load=OK 1|login=ERR BUSY|token_ok=0|user=ERR BUSY|user_ok=0|wrong=ERR ACCESS|unknown=ERR ACCESS|no_token=1|refused=4|delayed=true|other=ERR BUSY|after_delay=ERR BUSY|whoami=|bad=ERR BAD_REQUEST|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000003e|ktest|fail|login with the right password did not give the user's token
+M63: killed by TST-M4-SVC-ORDER [16.5s] (dependents start before their dependencies are ready)
+  TST-M4-SVC-ORDER: exit 37 != expected 33 run=20261118T100149Z-48c4a57f-001
+    OSX|00000000003f|ktest|start|name=svc_order
+    OSX|00000000003f|ktest|svc_order|load=OK 3|list=A:ready:0:13:13:23:-1;B:ready:0:13:13:24:-1;C:ready:0:13:13:24:-1;|all_ready=1|b_after_a=0|c_after_ab=0|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000003f|ktest|fail|a dependent started before its dependency was ready
+M64: killed by TST-M4-SVC-TIMEOUT [17.5s] (a readiness timeout is ignored)
+  TST-M4-SVC-TIMEOUT: exit 37 != expected 33 run=20261118T100206Z-48c4a57f-001
+    OSX|000000000040|ktest|start|name=svc_timeout
+    OSX|000000000040|ktest|svc_timeout|load=OK 2|list=M:starting:0:11:11:-1:-1;D:pending:0:-1:-1:-1:-1;|failed_after_timeout=0|dependent_blocked=0|list_after=1|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000040|ktest|fail|timeout handling wrong
+M65: killed by TST-M4-SVC-RESTART [17.2s] (the restart limit is ignored (never given up))
+  TST-M4-SVC-RESTART: exit 37 != expected 33 run=20261118T100223Z-48c4a57f-001
+    OSX|000000000041|ktest|start|name=svc_restart
+    OSX|000000000041|ktest|svc_restart|load=OK 1|list=X:failed:6:12:657:-1:1;|state=failed|restarts=6|exit=1|span=645|backoff_ok=1|elapsed=1007|list_after=1|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000041|ktest|fail|restart policy wrong
+M66: killed by TST-M4-SVC-RESTART [16.4s] (the backoff does not double)
+  TST-M4-SVC-RESTART: exit 37 != expected 33 run=20261118T100240Z-48c4a57f-001
+    OSX|000000000042|ktest|start|name=svc_restart
+    OSX|000000000042|ktest|svc_restart|load=OK 1|list=X:given_up:3:13:54:-1:1;|state=given_up|restarts=3|exit=1|span=41|backoff_ok=0|elapsed=42|list_after=1|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000042|ktest|fail|backoff too short or the manager stopped answering
+M67: killed by TST-M4-SHELL-SVC [17.8s] (SECURITY: a service connects to any service, declared or not)
+  TST-M4-SHELL-SVC: missing markers ["console step 'cfg get device x': expected 'ERR ACCESS' in output b'ERR NOT_FOUND\\n'"]; forbidden present [] run=20261118T100256Z-48c4a57f-001
+    OSX|000000000043|ktest|start|name=shell_svc
+    OSX|000000000043|ktest|shell_svc|cpus=4|frames_total=128817|console_present=1|ready=1
+    OSX|000000000043|ktest|shell_svc|sh_state=stopped|sh_exit=0|listing=auth:ready:0:13:13:333:-1;net:ready:0:13:13:53:-1;config:ready:0:13:13:63:-1;sh:stopped:0:333:333:335:0;
+    OSX|000000000043|ktest|shell_svc|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000043|ktest|shell_svc|frames_delta=0
+    OSX|000000000043|ktest|pass|the shell served the lab's session from the owners of each state and ended cleanly
+M68: killed by TST-M4-LOGIN,TST-M4-SHELL-LOGIN [25.9s] (SECURITY: any password is accepted)
+  TST-M4-LOGIN: exit 37 != expected 33 run=20261118T100315Z-48c4a57f-001
+    OSX|000000000044|ktest|start|name=login
+    OSX|000000000044|ktest|login|load=OK 1|login=OK 1000 1000 15|token_ok=1|user=OK 1001 1001 8|user_ok=1|wrong=OK 1000 1000 15|unknown=ERR ACCESS|no_token=0|refused=0|delayed=false|other=OK 1001 1001 8|after_delay=OK 1000 1000 15|whoami=OK 1000 1000 15|bad=ERR BAD_REQUEST|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000044|ktest|fail|wrong credentials were not refused the documented way
+  TST-M4-SHELL-LOGIN: missing markers ["console step 'login admin wrong-password': expected 'login failed: ERR ACCESS' in output b'logged in as admin\\n'", "console step 'login admin wrong-password': prompt b'admin@nawah> ' != 'nawah> '", "console step 'login user lab-user-1': expected 'logged in as user' in output b'ERR SESSION_OPEN\\n'", "console step 'login user lab-user-1': prompt b'admin@nawah> ' != 'user@nawah> '", "console step 'whoami': expected 'user OK 1001 1001 8' in output b'admin OK 1000 1000 15\\n'", "console step 'net policy internet=1': expected 'ERR ACCESS' in output b'OK\\n'", "console step 'login admin lab-admin-1': prompt b'admin@nawah> ' != 'user@nawah> '"]; forbidden present [] run=20261118T100322Z-48c4a57f-001
+    OSX|000000000044|ktest|start|name=shell_login
+    OSX|000000000044|ktest|shell_login|cpus=4|frames_total=128817|console_present=1|ready=1
+    OSX|000000000044|ktest|shell_login|sh_state=stopped|sh_exit=0|listing=auth:ready:0:12:12:330:-1;net:ready:0:12:12:51:-1;config:ready:0:12:12:61:-1;sh:stopped:0:330:330:332:0;
+    OSX|000000000044|ktest|shell_login|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000044|ktest|shell_login|frames_delta=0
+    OSX|000000000044|ktest|pass|the shell served the lab's session from the owners of each state and ended cleanly
+M69: killed by TST-M4-LOGIN [19.4s] (SECURITY: the attempt limit never delays)
+  TST-M4-LOGIN: exit 37 != expected 33 run=20261118T100340Z-48c4a57f-001
+    OSX|000000000045|ktest|start|name=login
+    OSX|000000000045|ktest|login|load=OK 1|login=OK 1000 1000 15|token_ok=1|user=OK 1001 1001 8|user_ok=1|wrong=ERR ACCESS|unknown=ERR ACCESS|no_token=1|refused=4|delayed=false|other=OK 1001 1001 8|after_delay=OK 1000 1000 15|whoami=OK 1000 1000 15|bad=ERR BAD_REQUEST|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000045|ktest|fail|the attempt limit did not delay the right name only
+M70: killed by TST-M4-SESSION-LOCK [16.2s] (SECURITY: LOGOUT does not revoke the token)
+  TST-M4-SESSION-LOCK: exit 37 != expected 33 run=20261118T100359Z-48c4a57f-001
+    OSX|000000000046|ktest|start|name=session_lock
+    OSX|000000000046|ktest|session_lock|load=OK 1|login=OK 1000 1000 15|lock=OK|locked_token_revoked=1|whoami_locked=ERR ACCESS|unlock_wrong=ERR ACCESS|unlock=OK 1000 1000 15|new_token=1|whoami_new=OK 1000 1000 15|old_after_unlock=ERR ACCESS|logout=OK|logged_out_revoked=0|whoami_out=ERR ACCESS|unlock_out=ERR ACCESS|no_handle=ERR BAD_REQUEST|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000046|ktest|fail|logout did not end the session
+M71: killed by TST-M4-CONFIG-CAS [16.8s] (the compare-and-set ignores the expected version)
+  TST-M4-CONFIG-CAS: exit 37 != expected 33 run=20261118T100416Z-48c4a57f-001
+    OSX|000000000047|ktest|start|name=config_cas
+    OSX|000000000047|ktest|config_cas|first=OK 1|read1=OK 1 one|w1=OK 2|w2=OK 3|read2=OK 3 three|create_existing=OK 4|del_wrong=OK 4|del=ERR NOT_FOUND|gone=ERR NOT_FOUND|recreate=OK 1|bad_key=ERR INVALID
+    OSX|000000000047|ktest|fail|compare-and-set did not refuse the stale writer
+M72: killed by TST-M4-CONFIG-RETRY [16.4s] (a repeated request_id is applied again)
+  TST-M4-CONFIG-RETRY: exit 37 != expected 33 run=20261118T100432Z-48c4a57f-001
+    OSX|000000000048|ktest|start|name=config_retry
+    OSX|000000000048|ktest|config_retry|r1=OK 1|r1b=ERR VERSION 1|read=OK 1 v1|bad=ERR VERSION 1|bad_again=OK 2|read2=OK 2 v2|z1=ERR VERSION 2|z2=ERR VERSION 2|read3=OK 2 v2
+    OSX|000000000048|ktest|fail|a repeated request id was applied twice or answered differently
+M73: killed by TST-M4-AUTHZ-DENIED [16.6s] (SECURITY: any token may write the device store)
+  TST-M4-AUTHZ-DENIED: exit 37 != expected 33 run=20261118T100449Z-48c4a57f-001
+    OSX|000000000049|ktest|start|name=authz_denied
+    OSX|000000000049|ktest|authz_denied|session_set=OK 1|session_live=OK 1 secret|session_revoked=ERR NOT_FOUND|export_revoked=OK|
+    OSX|000000000049|ktest|authz_denied|denied=OK 1|unchanged=OK 1 user-tried|no_handle=ERR BAD_REQUEST|allowed=ERR VERSION 1|now=OK 1 user-tried|own=OK 1|other=ERR ACCESS|policy_user=ERR ACCESS|revoked=ERR ACCESS|still=OK 1 user-tried
+    OSX|000000000049|ktest|fail|a write without the permission was not refused at the authority layer
+M74: killed by TST-M4-POLICY-PRECEDENCE [16.4s] (the user value takes precedence over the policy)
+  TST-M4-POLICY-PRECEDENCE: exit 37 != expected 33 run=20261118T100505Z-48c4a57f-001
+    OSX|00000000004a|ktest|start|name=policy_precedence
+    OSX|00000000004a|ktest|policy_precedence|none=ERR NOT_FOUND|dev=OK 1|r_dev=OK device 1 light|usr=OK 1|r_usr=OK user 1 dark|r_admin=OK device 1 light|pol=OK 1|r_pol=OK user 1 dark|del_pol=OK 1|r_back=OK user 1 dark|export=OK;ui.theme 1 dark|import=OK 2|imported=OK 1 14|import_bad=ERR INVALID 2|not_applied=ERR NOT_FOUND
+    OSX|00000000004a|ktest|fail|policy precedence or its removal wrong
+M75: killed by TST-M4-CONFIG-NOTIFY [16.7s] (subscribers get a truncated CHANGED notification)
+  TST-M4-CONFIG-NOTIFY: exit 37 != expected 33 run=20261118T100522Z-48c4a57f-001
+    OSX|00000000004b|ktest|start|name=config_notify
+    OSX|00000000004b|ktest|config_notify|sub=OK|set=OK 1|n1=CHANGED|refused=ERR VERSION 1|n2=-|set2=OK 2|n3=CHANGED|other_store=OK 1|n4=-|del=OK 2|n5=CHANGED
+    OSX|00000000004b|ktest|fail|no notification for a successful write
+M76: killed by TST-M4-DHCP [21.5s] (IPv4 packets go out without a header checksum)
+  TST-M4-DHCP: exit 37 != expected 33 run=20261118T100539Z-48c4a57f-001
+    OSX|00000000004c|ktest|start|name=net_dhcp
+    OSX|00000000004c|ktest|net_dhcp|dhcp=ERR TIMEOUT|status=OK link=1 configured=0 ip=0.0.0.0 mask=0.0.0.0 gw=0.0.0.0 dns=0.0.0.0 internet=unknown allow_internet=0 rx=0 rx_bad=0 tx=3
+    OSX|00000000004c|ktest|fail|DHCP did not configure the lab addresses
+M77: killed by TST-M4-NET-NO-INTERNET [17.6s] (SECURITY: the no-internet policy is not applied)
+  TST-M4-NET-NO-INTERNET: exit 37 != expected 33 run=20261118T100600Z-48c4a57f-001
+    OSX|00000000004d|ktest|start|name=net_no_internet
+    OSX|00000000004d|ktest|net_no_internet|dhcp_ok=1|ping_off=ERR TIMEOUT|open=OK 0|send_off=OK 5|internet1=true|probe=ERR TIMEOUT|internet2=true|pol_user=ERR ACCESS|pol_none=ERR BAD_REQUEST|pol_admin=OK|send_allowed=OK 5|ping_allowed=ERR TIMEOUT|internet3=true|pol_back=OK|ping_again=ERR TIMEOUT
+    OSX|00000000004d|ktest|fail|the no-internet policy did not refuse off-link traffic
+M78: killed by TST-M4-TCP-RETRANSMIT [228.2s] (the retransmission timer never fires)
+  TST-M4-TCP-RETRANSMIT: exit 37 != expected 33 run=20261118T100618Z-48c4a57f-001
+    OSX|00000000004e|ktest|start|name=net_tcp_retransmit
+    OSX|00000000004e|ktest|net_tcp_retransmit|dhcp_ok=1|conn=OK 1|inject=OK|sent=error:K_E_SVC_TIMEOUT|waited=30000|status=error:K_E_SVC_TIMEOUT|got=error:K_E_SVC_TIMEOUT|sent2=error:K_E_SVC_TIMEOUT|status2=error:K_E_SVC_TIMEOUT|got2=error:K_E_SVC_TIMEOUT|closed=error:K_E_SVC_TIMEOUT
+    OSX|00000000004e|ktest|fail|the dropped segment was not delivered by the retransmission timer
+M79: killed by TST-M4-TCP-RETRANSMIT [17.8s] (an RTT sample is taken from a retransmitted segment (Karn's rule dropped))
+  TST-M4-TCP-RETRANSMIT: exit 37 != expected 33 run=20261118T101006Z-48c4a57f-001
+    OSX|00000000004f|ktest|start|name=net_tcp_retransmit
+    OSX|00000000004f|ktest|net_tcp_retransmit|dhcp_ok=1|conn=OK 1|inject=OK|sent=OK 13|waited=1050|status=OK state=ESTABLISHED retransmits=1 rto=1000 srtt=1 mss=1024 unacked=0 rx_pending=13|got=OK retransmit me|sent2=OK 5|status2=OK state=ESTABLISHED retransmits=1 rto=1000 srtt=1 mss=1024 unacked=0 rx_pending=5|got2=OK again|closed=OK
+    OSX|00000000004f|ktest|fail|the retransmission did not double the RTO without an RTT sample
+M80: killed by TST-M4-SHELL-LOGIN [18.0s] (the shell sends a protected request without the session token)
+  TST-M4-SHELL-LOGIN: missing markers ["console step 'net policy internet=1': expected 'ERR ACCESS' in output b'ERR BAD_REQUEST\\n'", "console step 'net policy internet=1': expected 'OK' in output b'ERR BAD_REQUEST\\n'", "console step 'net policy internet=1': forbidden 'ERR' in output", "console step 'net': expected 'allow_internet=1' in output b'OK link=1 configured=0 ip=0.0.0.0 mask=0.0.0.0 gw=0.0.0.0 dns=0.0.0.0 internet=unknown allow_internet=0 rx=0 rx_bad=0 tx=0\\n'", "console step 'net policy internet=0': expected 'OK' in output b'ERR BAD_REQUEST\\n'", "console step 'net policy internet=0': forbidden 'ERR' in output"]; forbidden present [] run=20261118T101024Z-48c4a57f-001
+    OSX|000000000050|ktest|start|name=shell_login
+    OSX|000000000050|ktest|shell_login|cpus=4|frames_total=128817|console_present=1|ready=1
+    OSX|000000000050|ktest|shell_login|sh_state=stopped|sh_exit=0|listing=auth:ready:0:14:14:338:-1;net:ready:0:14:14:54:-1;config:ready:0:14:14:64:-1;sh:stopped:0:338:338:340:0;
+    OSX|000000000050|ktest|shell_login|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000050|ktest|shell_login|frames_delta=0
+    OSX|000000000050|ktest|pass|the shell served the lab's session from the owners of each state and ended cleanly
+M81: killed by TST-M4-SHELL-LOGIN [197.5s] (the prompt does not show the session's user)
+  TST-M4-SHELL-LOGIN: exit 37 != expected 33 run=20261118T101042Z-48c4a57f-001
+    OSX|000000000051|ktest|start|name=shell_login
+    OSX|000000000051|ktest|shell_login|cpus=4|frames_total=128817|console_present=1|ready=1
+    OSX|000000000051|ktest|shell_login|sh_state=ready|sh_exit=-1|listing=auth:ready:0:10:10:330:-1;net:ready:0:10:10:49:-1;config:ready:0:10:10:59:-1;sh:ready:0:330:330:333:-1;
+    OSX|000000000051|ktest|fail|the shell did not end its session with exit 0
+
+OK: 32/32 valid mutants killed (100.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=[]; invalid_security=[]; declared_killers_missed=[]; expected_missed=[]; report=build/mutants-m4-report.json

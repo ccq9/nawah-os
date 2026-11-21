@@ -1,0 +1,14 @@
+{
+ "ci_run_id": "44714044584",
+ "conclusion": "success",
+ "head_sha": "8bf3f8dce1519443e9f772396823c9c6c8b46f07",
+ "event": "pull_request",
+ "run_attempt": 1,
+ "workflow": "verify",
+ "evidence_branch_commit": "cab93bd4b5c745e476251fabb86501453c012755",
+ "imported_at": "2026-11-20T15:49:46+00:00",
+ "importer": {
+  "worker": "interactive-agent",
+  "identity": "Claude Fable 5.1 (claude.ai session)"
+ }
+}

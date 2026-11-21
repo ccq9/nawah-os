@@ -1,0 +1,15 @@
+$ cargo test --offline --release -p nawah-apps --target x86_64-unknown-linux-gnu --test registry
+
+running 9 tests
+test every_service_of_the_system_manifest_is_a_reserved_id ... ok
+test error_names_are_the_contracts ... ok
+test repository_samples_parse_and_register ... ok
+test the_contracts_lists_equal_the_crates_and_the_models ... ok
+test the_registry_refuses_duplicates_overflow_and_wrong_file_names ... ok
+test well_formed_examples_are_accepted_exactly ... ok
+test malformed_entries_are_refused_by_name ... ok
+test seeded_generated_malformed_entries_are_refused_by_name ... ok
+test seeded_mutations_get_the_reference_models_verdict ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

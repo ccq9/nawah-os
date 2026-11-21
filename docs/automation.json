@@ -33,7 +33,7 @@
   "ttl_s": 900,
   "heartbeat_s": 300,
   "fencing_token": "checkpoint_generation",
-  "note": "planning assumptions (prompt 3.2 §2.4)"
+  "note": "planning assumptions (prompt 3.2 §2.4); not implemented: state/lease.json is never written and no tool acquires or renews a lease; a single records writer (the session manager) until prompt §79 is implemented (PLAN-ANSWER §5.3 item 1, 2026-11-09)"
  },
  "workspace_root": "/home/claude/nawah-os",
  "allowed_targets": [

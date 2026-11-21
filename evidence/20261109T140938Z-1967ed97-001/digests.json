@@ -1,0 +1,4 @@
+{
+ "tests/test_fat32_tool.py": "d73937763a113c10f3c4ad70ec7ddb85609f1bc799dbf67068fb2fc5627c046b",
+ "tools/fat32.py": "ab0325f565d5b3e48b4fc7f613db9085325f62167a457f9cd65afbcf6021bd07"
+}

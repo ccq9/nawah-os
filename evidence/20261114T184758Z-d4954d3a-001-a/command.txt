@@ -1,0 +1,1 @@
+python3 -I tests/test_transcript_tool.py

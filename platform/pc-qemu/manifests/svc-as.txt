@@ -1,0 +1,2 @@
+# TST-M6-APP-SPAWN (WP-161): the vouched session launches applications; the lab role `launcher` is its side of the case
+session /SYSTEM/LABSES.ELF - 3000 never 0 0 launcher

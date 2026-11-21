@@ -1,0 +1,15 @@
+[package]
+name = "stopio"
+version = "0.1.0"
+edition = "2021"
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "stopio"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+libnawah = { path = "../../libnawah" }

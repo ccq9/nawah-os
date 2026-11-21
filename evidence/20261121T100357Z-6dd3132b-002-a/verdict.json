@@ -1,0 +1,20 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261121T100357Z-6dd3132b-002-a",
+ "test_id": "TST-M6-APP-REGISTRY-FUZZ",
+ "verdict": "PASS",
+ "oracle": "apps.md v1 (WP-100, ADR-0023 proposed) on the host, user/nawah-apps/tests/registry.rs (9 tests): the registry entry parser refuses 143 hand-written malformed entries each by its contract name (TOO_LARGE, TRUNCATED, BAD_UTF8, CONTROL_BYTE incl. CR and CRLF, SYNTAX, UNKNOWN_KEY, DUP_KEY, MISSING_KEY incl. a missing ELF path, BAD_ID, RESERVED_ID, BAD_ELF, BAD_DEPS, DEP_NOT_ALLOWED for auth, session, input, narrator and sh, and BAD_NAME for a name over 32 bytes (33 Latin bytes, 17 Arabic letters, 16 Arabic letters and a space), for 20 code points apps.md §2 forbids anywhere (the C1 range U+0080-U+009F by its two ends alone, and each of U+061C, U+200B-U+200F, U+2028, U+2029, U+202A-U+202E, U+2066-U+2069, U+FEFF) and for each of the 17 white spaces it forbids at either end), and a seeded deterministic corpus of 2000 rounds of generated malformed entries in 14 classes (a round whose random base id is reserved is skipped) each by its named error; 30000 seeded mutations of well-formed entries never panic and get exactly the verdict and fields of a reference model of apps.md written in the test with its own literal lists (more than 100 accepted and 10000 refused); the reserved ids and the allowed dependencies listed in apps.md §3 equal the crate's RESERVED and ALLOWED_DEPS and the model's lists in both directions, and the names of apps.md §5's table equal the Error enum's, checked by a match without a wildcard; the well-formed examples (no dependency, every allowed dependency, the 8-byte id, a 32-byte Latin name, a 16-letter Arabic name of 32 bytes, inner white space, comments, blank lines, keys in any order, a file of exactly 1024 bytes) and the samples platform/pc-qemu/apps/*.APP are accepted with their fields exactly; the registry refuses a repeated id (DUP_ID), a 17th entry (TOO_MANY) and a file not named <ID>.APP (FILE_NAME) and a refused entry changes nothing; every service of platform/pc-qemu/manifests/services.txt is a reserved id",
+ "expected": "exit 0 + 'test result: ok. 9 passed; 0 failed'",
+ "observed": "exit=0; tail=     Running tests/registry.rs (target/x86_64-unknown-linux-gnu/release/deps/registry-f0dcdb34a923f6cc)",
+ "inputs_digest": "b2a24c9b65322831e7cf83200b6fd8d6a70b8cc10d7f636449e4df7a343c4225",
+ "inputs": {
+  "user/nawah-apps/Cargo.toml": "ddeeb95177646a2251395ae93046ca22b49a0bea80927cb6d10c5c6d8f20b6e9",
+  "user/nawah-apps/tests/registry.rs": "6c906b2eed090afd9216ec2302e1efce05ba7dfac41199ce997b6c4d30850c83",
+  "platform/pc-qemu/manifests/services.txt": "e37e0492bdef5f0059d4cbe86ec09c7992f5b7d5ebb74106869219062ebdf765",
+  "docs/contracts/apps.md": "d36a6f4f5b77f455f9e4e822555035d4f1927d766d9c2c3f41d389ac99ba153e",
+  "user/nawah-apps/src/lib.rs": "1226f6dc3421487ce0ee08fd507f96b6428f5cd036c1fb13a6812b4aaf90a444",
+  "platform/pc-qemu/apps/CLOCK.APP": "c49d7302d0d166362835da74ab9797f6d235909aa9e57ad5ba3f502284719cd0",
+  "platform/pc-qemu/apps/NOTES.APP": "3d7a253eb87eeb6466002fa48ac69889e5dc7764bc3b304862054b17fdd087af"
+ },
+ "claim_tag": "source_backed_fact"
+}

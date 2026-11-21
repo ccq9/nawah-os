@@ -479,6 +479,32 @@ pub fn alloc_kernel_stack(size: u64) -> Result<StackInfo, VmmError> {
     }
 }
 
+/// Stack slots whose page tables exist from the start (16 slots to a table: 8 tables).
+const STACK_SLOTS_RESERVED: u64 = 128;
+
+/// Makes the page tables of the first `STACK_SLOTS_RESERVED` stack slots exist (WP-161): a freed
+/// stack leaves its table, so the first time more stacks were live than one table holds the
+/// kernel kept a frame for good, and a test's frame balance counted it (TST-M6-APP-SPAWN, the
+/// first case with ten processes at once: frames_delta=1). One page is mapped and unmapped at
+/// the first guard page of each table's range but the first, whose table the boot stack made.
+pub fn reserve_stack_tables() -> Result<(), VmmError> {
+    const TABLE_SPAN: u64 = 512 * PAGE_4K;
+    let space = kernel_as()?;
+    let mut va = STACK_AREA_BASE + TABLE_SPAN;
+    while va < STACK_AREA_BASE + STACK_SLOTS_RESERVED * STACK_SLOT {
+        let f = pmm::alloc_frame().ok_or(MapError::OutOfFrames)?;
+        let mapped = space.map_4k(va, f.0, WRITE | NX);
+        if mapped.is_ok() {
+            let _ = space.unmap_4k(va);
+            paging::invlpg(va);
+        }
+        let _ = pmm::free_frame(f);
+        mapped?;
+        va += TABLE_SPAN;
+    }
+    Ok(())
+}
+
 /// Unmaps a kernel stack made by `alloc_kernel_stack`, frees its frames and returns its slot
 /// for reuse. The stack must not be in use (not the caller's, not a live thread's).
 pub fn free_kernel_stack(stack: StackInfo) {

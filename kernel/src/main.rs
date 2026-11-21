@@ -39,6 +39,8 @@ mod kmain;
 mod apps;
 #[cfg(target_arch = "x86_64")]
 mod block;
+#[cfg(all(target_arch = "x86_64", not(feature = "ktest")))]
+mod bootmode;
 #[cfg(target_arch = "x86_64")]
 mod diag;
 #[cfg(target_arch = "x86_64")]

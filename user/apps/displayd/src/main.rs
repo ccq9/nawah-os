@@ -309,6 +309,8 @@ struct Window {
     minimized: bool,
     title: [u8; TITLE_MAX],
     title_len: usize,
+    /// Units of the title as the client sent it that were not kept (beyond TITLE_MAX).
+    title_cut: usize,
 }
 
 const NO_WINDOW: Window = Window {
@@ -323,6 +325,7 @@ const NO_WINDOW: Window = Window {
     minimized: false,
     title: [0; TITLE_MAX],
     title_len: 0,
+    title_cut: 0,
 };
 
 impl Window {
@@ -425,6 +428,124 @@ fn parse_i32(s: &[u8]) -> Option<i32> {
         v = v * 10 + i32::from(c - b'0');
     }
     Some(if neg { -v } else { v })
+}
+
+/// The bytes a title may take between the quotes of the compositor's own narrator lines
+/// (display.md v1.14), its names included; what does not fit is cut and counted.
+const TITLE_SAY: usize = 96;
+/// One `SAY window "<title>" …` line: `SAY window "`, the title's room, the longest event
+/// (`" resized <w>x<h>`, two i32) and the cut mark (` cut=` and at most four digits).
+const SAY_LINE: usize = 160;
+const _: () = assert!(12 + TITLE_SAY + 10 + 23 + 9 <= SAY_LINE);
+// The narrator's line: `narrator|`, the text after `SAY `, and three more bytes for each byte
+// of a title outside ASCII (a two-byte character written as eight).
+const _: () = assert!(9 + (8 + TITLE_SAY + 10 + 23 + 9) + 3 * TITLE_MAX <= 256);
+/// The largest count a cut mark carries (four digits).
+const CUT_MAX: usize = 9999;
+
+/// A control character (C0, DEL, C1) or the line and paragraph separators U+2028/U+2029
+/// (ui.md §3.9, the same set libui names in a described value).
+fn is_control(c: u32) -> bool {
+    c < 0x20 || (0x7F..=0x9F).contains(&c) || c == 0x2028 || c == 0x2029
+}
+
+/// A bidi formatting character (ui.md §3.9): ALM, LRM, RLM, the embeddings and overrides, the
+/// isolates.
+fn is_bidi_control(c: u32) -> bool {
+    matches!(c, 0x061C | 0x200E | 0x200F | 0x202A..=0x202E | 0x2066..=0x2069)
+}
+
+/// The first unit of a title (`s` not empty) in a narrator line: its length in bytes, its code
+/// point and whether the line names it `[U+XXXX]`. A byte that does not begin a whole, valid
+/// UTF-8 character is one unit of its own, named U+FFFD: a reader decoding UTF-8 would join it
+/// to the closing quote.
+fn title_unit(s: &[u8]) -> (usize, u32, bool) {
+    let n = match s.first() {
+        Some(0xC2..=0xDF) => 2,
+        Some(0xE0..=0xEF) => 3,
+        Some(0xF0..=0xF4) => 4,
+        _ => 1,
+    };
+    let c = s
+        .get(..n)
+        .and_then(|b| core::str::from_utf8(b).ok())
+        .and_then(|t| t.chars().next());
+    match c {
+        Some(c) => {
+            let cp = u32::from(c);
+            let named = cp == 0x22 || is_control(cp) || is_bidi_control(cp);
+            (n, cp, named)
+        }
+        None => (1, 0xFFFD, true),
+    }
+}
+
+/// The hex digits of a name: four at least.
+fn name_digits(cp: u32) -> usize {
+    let mut d = 4;
+    while d < 8 && cp >> (4 * d) != 0 {
+        d += 1;
+    }
+    d
+}
+
+/// Writes a window title between the quotes of a narrator line (display.md v1.14): `"`, the
+/// control characters, the separators, the bidi formatting characters and every byte that
+/// does not begin a valid character are written `[U+XXXX]`, everything else as it is. Units are
+/// written in order while they fit in TITLE_SAY bytes; the number of units left out is returned
+/// (0: the whole title is in the line) and the caller writes ` cut=<k>`.
+fn put_title(o: &mut Out, title: &[u8]) -> usize {
+    let mut i = 0;
+    let mut used = 0;
+    while let Some(rest) = title.get(i..).filter(|r| !r.is_empty()) {
+        let (n, cp, named) = title_unit(rest);
+        let w = if named { 4 + name_digits(cp) } else { n };
+        if used + w > TITLE_SAY {
+            return title_units(title.get(i..).unwrap_or(&[]));
+        }
+        if named {
+            o.put(b"[U+");
+            for k in (0..name_digits(cp)).rev() {
+                let v = ((cp >> (4 * k)) & 0xF) as u8;
+                o.put(&[if v < 10 { b'0' + v } else { b'A' + v - 10 }]);
+            }
+            o.put(b"]");
+        } else {
+            o.put(rest.get(..n).unwrap_or(&[]));
+        }
+        used += w;
+        i += n;
+    }
+    0
+}
+
+/// The number of units (title_unit) in `s`: one per character or per byte named U+FFFD; at
+/// most CUT_MAX, the most a cut mark says.
+fn title_units(s: &[u8]) -> usize {
+    let mut i = 0;
+    let mut k: usize = 0;
+    while let Some(rest) = s.get(i..).filter(|r| !r.is_empty()) {
+        i += title_unit(rest).0;
+        k = k.saturating_add(1);
+    }
+    k.min(CUT_MAX)
+}
+
+/// The bytes of a client's title the window keeps (display.md v1.14): the whole units
+/// (title_unit: a valid character, or one byte that begins none) that fit in TITLE_MAX bytes.
+/// A character the limit falls inside is left out whole; a character that ends at the limit
+/// and a byte that is no character stay (the byte is named U+FFFD in the line).
+fn title_len(title: &[u8]) -> usize {
+    let max = title.len().min(TITLE_MAX);
+    let mut i = 0;
+    while i < max {
+        let n = title_unit(title.get(i..).unwrap_or(&[])).0;
+        if i + n > max {
+            return i;
+        }
+        i += n;
+    }
+    i
 }
 
 /// The text after the first `n` space-separated fields, trimmed.
@@ -897,15 +1018,21 @@ impl Compositor {
             self.damage(r);
             // The narrator hears which window has the focus (display.md v1.1).
             let w = self.windows[new];
-            let mut buf = [0u8; 64];
+            // The title is the client's: named, not obeyed (v1.14).
+            let mut buf = [0u8; SAY_LINE];
             let len = {
                 let mut o = Out {
                     buf: &mut buf,
                     len: 0,
                 };
                 o.put(b"SAY window \"");
-                o.put(&w.title[..w.title_len]);
+                let title = w.title.get(..w.title_len).unwrap_or(&[]);
+                let cut = put_title(&mut o, title).saturating_add(w.title_cut);
                 o.put(b"\" focused");
+                if cut > 0 {
+                    o.put(b" cut=");
+                    o.num(i64::try_from(cut.min(CUT_MAX)).unwrap_or(0));
+                }
                 o.len
             };
             self.say(&buf[..len], now);
@@ -920,18 +1047,23 @@ impl Compositor {
         if (w.w, w.h) == before {
             return;
         }
-        let mut buf = [0u8; 96];
+        let mut buf = [0u8; SAY_LINE];
         let len = {
             let mut o = Out {
                 buf: &mut buf,
                 len: 0,
             };
             o.put(b"SAY window \"");
-            o.put(&w.title[..w.title_len]);
+            let shown = w.title.get(..w.title_len).unwrap_or(&[]);
+            let cut = put_title(&mut o, shown).saturating_add(w.title_cut);
             o.put(b"\" resized ");
             o.num(i64::from(w.w));
             o.put(b"x");
             o.num(i64::from(w.h));
+            if cut > 0 {
+                o.put(b" cut=");
+                o.num(i64::try_from(cut.min(CUT_MAX)).unwrap_or(0));
+            }
             o.len
         };
         self.say(&buf[..len], now);
@@ -986,9 +1118,10 @@ impl Compositor {
         w.y = ORIGIN + k * CASCADE + BORDER + TITLE_H;
         w.w = s.w;
         w.h = s.h;
-        let n = title.len().min(TITLE_MAX);
+        let n = title_len(title);
         w.title[..n].copy_from_slice(&title[..n]);
         w.title_len = n;
+        w.title_cut = title_units(title.get(n..).unwrap_or(&[]));
         self.windows[wi] = w;
         // On top of the stack, focused.
         for j in (1..=self.n_order).rev() {
@@ -1564,10 +1697,11 @@ impl Compositor {
                     return false;
                 }
                 let title = after_fields(req, 2);
-                let n = title.len().min(TITLE_MAX);
+                let n = title_len(title);
                 self.windows[wi].title[..n].copy_from_slice(&title[..n]);
                 self.windows[wi].title[n..].fill(0);
                 self.windows[wi].title_len = n;
+                self.windows[wi].title_cut = title_units(title.get(n..).unwrap_or(&[]));
                 let r = self.windows[wi].title_bar();
                 self.damage(r);
                 out.put(b"OK");
@@ -1952,7 +2086,17 @@ impl Compositor {
     }
 }
 
-/// A request to the manager on the boot channel; the reply and one handle, if any.
+/// `manager`'s outcome when the manager said `STOP` before answering (display.md v1.13): not a
+/// kernel error (those are negative), so no kernel answer is ever mistaken for it.
+const STOPPED: i64 = 1;
+
+/// The exit code of a boot channel the compositor can no longer read (display.md v1.13): any
+/// error other than "nothing yet", a closed channel or a message too long for the buffer.
+const EXIT_BOOT_READ: u64 = 0xE8;
+
+/// A request to the manager on the boot channel; the reply and one handle, if any. While the
+/// reply is awaited, `PING` is not an answer and is ignored (the manager pings only a service
+/// that is Ready), and `STOP` ends the wait as `Err(STOPPED)` (display.md v1.13).
 fn manager(boot: Handle, req: &[u8], reply: &mut [u8]) -> Result<(usize, Option<Handle>), i64> {
     if libnawah::channel_write(boot, req, &[]) != 0 {
         return Err(ERR_PEER_CLOSED);
@@ -1960,6 +2104,8 @@ fn manager(boot: Handle, req: &[u8], reply: &mut [u8]) -> Result<(usize, Option<
     loop {
         let mut hs = [0u32; 1];
         match libnawah::channel_read(boot, reply, &mut hs, false) {
+            Ok((n, 0)) if &reply[..n] == b"PING" => continue,
+            Ok((n, 0)) if &reply[..n] == b"STOP" => return Err(STOPPED),
             Ok((n, nh)) => return Ok((n, if nh == 1 { Some(hs[0]) } else { None })),
             Err(ERR_SHOULD_WAIT) => {}
             Err(e) => return Err(e),
@@ -1974,16 +2120,47 @@ fn manager(boot: Handle, req: &[u8], reply: &mut [u8]) -> Result<(usize, Option<
     }
 }
 
-/// Whether the manager's listing names a `session` service: then the screen starts held
-/// (display.md v1.2) until the session unlocks it.
-fn session_in_manifest(boot: Handle) -> bool {
+/// Whether the screen starts held: when the manager's listing names a `session` service
+/// (display.md v1.2), until the session unlocks it; and when the listing cannot be had — an
+/// answer that is not a listing naming this service, a closed channel, an answer longer than
+/// the buffer, any other error — for a hold fails closed, never open (v1.12). The decision is
+/// traced `display|hold|source=…|reason=…|locked=…`. `None`: the manager said `STOP` before
+/// it answered (v1.13), traced `display|boot|stop=before_ready`; the compositor then ends.
+fn session_in_manifest(boot: Handle) -> Option<bool> {
     let mut reply = [0u8; 1024];
-    match manager(boot, b"LIST", &mut reply) {
-        Ok((n, _)) => reply[..n]
-            .split(|&c| c == b'\n')
-            .any(|l| l.starts_with(b"session ")),
-        Err(_) => false,
-    }
+    let line: &[u8] = match manager(boot, b"LIST", &mut reply) {
+        Ok((n, h)) => {
+            if let Some(h) = h {
+                libnawah::handle_close(h);
+            }
+            let names = |name: &[u8]| {
+                reply[..n]
+                    .split(|&c| c == b'\n')
+                    .any(|l| l.strip_prefix(name).is_some_and(|r| r.starts_with(b" ")))
+            };
+            if !names(b"display") {
+                b"display|hold|source=list_failure|reason=reply|locked=1"
+            } else if names(b"session") {
+                b"display|hold|source=manifest|reason=-|locked=1"
+            } else {
+                b"display|hold|source=manifest|reason=-|locked=0"
+            }
+        }
+        Err(ERR_BUFFER_TOO_SMALL) => {
+            // The kernel leaves a message that does not fit at the head of the queue: remove
+            // it, or the boot channel would serve nothing after it.
+            libnawah::channel_discard(boot);
+            b"display|hold|source=list_failure|reason=too_long|locked=1"
+        }
+        Err(ERR_PEER_CLOSED) => b"display|hold|source=list_failure|reason=closed|locked=1",
+        Err(STOPPED) => {
+            libnawah::trace(b"display|boot|stop=before_ready");
+            return None;
+        }
+        Err(_) => b"display|hold|source=list_failure|reason=error|locked=1",
+    };
+    libnawah::trace(line);
+    Some(line.ends_with(b"locked=1"))
 }
 
 fn main() -> u64 {
@@ -2017,6 +2194,10 @@ fn main() -> u64 {
     let mut reply = [0u8; 64];
     let input = match manager(boot, b"CONNECT input", &mut reply) {
         Ok((n, Some(h))) if &reply[..n] == b"OK" => h,
+        Err(STOPPED) => {
+            libnawah::trace(b"display|boot|stop=before_ready");
+            return 0;
+        }
         _ => return 0xE5,
     };
     if libnawah::channel_write(input, b"REGISTER display", &[]) != 0 {
@@ -2040,6 +2221,10 @@ fn main() -> u64 {
         b"display|fonts=0"
     });
     let screen = Rect::new(0, 0, info.width as i32, info.height as i32);
+    // A STOP before the LIST answer ends the compositor here, before READY (display.md v1.13).
+    let Some(locked) = session_in_manifest(boot) else {
+        return 0;
+    };
     let mut c = Compositor {
         boot,
         input,
@@ -2070,7 +2255,7 @@ fn main() -> u64 {
         narrator: None,
         fonts,
         text,
-        locked: session_in_manifest(boot),
+        locked,
         releases: 0,
         keys: 0,
         input_asked: false,
@@ -2172,7 +2357,16 @@ fn main() -> u64 {
                     }
                 }
                 Err(ERR_PEER_CLOSED) => return 0,
-                Err(_) => {}
+                // A message longer than the buffer stays at the head of the queue: remove it,
+                // or the loop would wake for it for ever and read nothing behind it (v1.13).
+                Err(ERR_BUFFER_TOO_SMALL) => {
+                    if !libnawah::channel_discard(c.boot) {
+                        return EXIT_BOOT_READ;
+                    }
+                    libnawah::trace(b"display|boot|discard=too_long");
+                }
+                Err(ERR_SHOULD_WAIT) => {}
+                Err(_) => return EXIT_BOOT_READ,
             },
             Ok((idx, _)) if Some(idx) == input_slot => c.serve_input(now),
             Ok((idx, _)) => {

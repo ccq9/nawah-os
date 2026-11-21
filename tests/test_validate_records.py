@@ -2,7 +2,7 @@
 """Acceptance tests for `project.py validate-records` (OS-EXEC-AR 3.2, section 7.1):
 rejects a missing required field, a duplicate id, a missing reference, a dependency cycle,
 an illegal state transition and a stale/mismatched evidence verdict; accepts a valid set."""
-import contextlib, copy, hashlib, importlib.util, io, json, os, shutil, subprocess, sys, tempfile, unittest
+import contextlib, copy, unittest.mock, hashlib, importlib.util, io, json, os, shutil, signal, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -23,6 +23,9 @@ else:
 # inherited from the suite runner, would switch off its evidence registry and fail the cases
 # that check it (2026-10-25: two cases failed under preflight, passed under CI).
 project.SCRATCH = None
+# The copy's oracle source (WP-92): one host case whose text equals base_records' TST-M0-001,
+# so the oracle-equality rule holds on the base set; the repository's own suites stay theirs.
+project.HOST_SUITES = {"M0": [{"id": "TST-M0-001", "command": ["true"], "oracle": "exit 0", "inputs": [], "input_globs": []}]}
 
 SV = "1.0.0"
 
@@ -48,7 +51,7 @@ def write_all(recs):
         (docs / f"{name}.json").write_text(json.dumps({"schema_version": SV, "records": lst}, ensure_ascii=False, indent=1))
     (TMP / "docs" / "ENVIRONMENT.md").write_text("x")
 
-def make_evidence(recs, test_id, verdict="PASS", input_rel="docs/ENVIRONMENT.md", corrupt_digest=False):
+def make_evidence(recs, test_id, verdict="PASS", input_rel="docs/ENVIRONMENT.md", corrupt_digest=False, oracle="exit 0"):
     d = TMP / "evidence" / "20260101T000000Z-deadbeef-001"
     if d.exists(): shutil.rmtree(d)
     d.mkdir(parents=True)
@@ -58,7 +61,7 @@ def make_evidence(recs, test_id, verdict="PASS", input_rel="docs/ENVIRONMENT.md"
     combined = sha("\n".join(f"{k}={v}" for k, v in sorted(inputs.items())).encode())
     run = {"schema_version": SV, "run_id": d.name, "started_at": "2026-01-01T00:00:00+00:00", "finished_at": "2026-01-01T00:00:01+00:00",
            "source_revision": "deadbeef", "dirty_state": False, "host": {}, "target": "host", "worker": "test", "purpose": "unit", "commands": ["x"], "exit_code": 0}
-    v = {"schema_version": SV, "run_id": d.name, "test_id": test_id, "verdict": verdict, "oracle": "o", "expected": "e", "observed": "o",
+    v = {"schema_version": SV, "run_id": d.name, "test_id": test_id, "verdict": verdict, "oracle": oracle, "expected": "e", "observed": "o",
          "inputs_digest": combined, "inputs": inputs, "claim_tag": "source_backed_fact"}
     (d / "run.json").write_text(json.dumps(run)); (d / "verdict.json").write_text(json.dumps(v)); (d / "digests.json").write_text(json.dumps(inputs))
     for f in ("command.txt", "stdout.log", "stderr.log"): (d / f).write_text("")
@@ -195,7 +198,38 @@ class ValidateRecords(unittest.TestCase):
         r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]; r["tests"][0]["stale_policy"] = "warn"
         write_all(r)
         (TMP / "docs" / "ENVIRONMENT.md").write_text("changed")
-        self.assertEqual(project.validate_records(verbose=False, strict=True), 0)
+        with unittest.mock.patch.object(project, "STALE_WARN_TESTS", ("TST-M0-001",)):
+            self.assertEqual(project.validate_records(verbose=False, strict=True), 0)
+
+    def test_stale_policy_warn_is_refused_outside_the_named_gates(self):
+        # DEC-029, WP-96 (PLAN-ANSWER.md:771): on 2026-11-14 the warn policy was put on
+        # TST-M6-MUTANTS by a records edit alone, and a stale M6 verdict became a warning under
+        # --strict. The policy is accepted only on the tests named in STALE_WARN_TESTS (the
+        # gates verify does not run); on any other test it is an error, also without --strict,
+        # and it never softens that test's stale verdict.
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]; r["tests"][0]["stale_policy"] = "warn"
+        write_all(r)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = project.validate_records(verbose=True)
+        self.assertEqual(rc, 50, out.getvalue())
+        self.assertIn("tests/TST-M0-001", out.getvalue()); self.assertIn("stale_policy", out.getvalue())
+        (TMP / "docs" / "ENVIRONMENT.md").write_text("changed")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            project.validate_records(verbose=True, strict=True)
+        self.assertIn("inputs changed since verdict", "\n".join(l for l in out.getvalue().splitlines() if l.startswith("ERROR")),
+                      "a refused warn policy must not soften the stale verdict")
+
+    def test_the_records_keep_warn_to_the_four_older_gates(self):
+        # The allowance itself: the four mutation gates verify does not run, and never the M6
+        # gate, whose evidence verify produces in every run (DEC-029 option A). Changing this
+        # set is a decision of the owner, not a records edit.
+        self.assertEqual(tuple(project.STALE_WARN_TESTS), ("TST-M2-MUTANTS", "TST-M3-MUTANTS", "TST-M4-MUTANTS", "TST-M5-MUTANTS"))
+        real = json.loads((REPO / "docs" / "tests.json").read_text(encoding="utf-8"))["records"]
+        self.assertEqual(sorted(t["id"] for t in real if "stale_policy" in t), sorted(project.STALE_WARN_TESTS))
 
     def test_stale_input_requires_reevaluation(self):
         r = base_records(); write_all(r)
@@ -286,20 +320,450 @@ class ValidateRecords(unittest.TestCase):
         self.assertEqual(refs, [newest, other, "docs/ENVIRONMENT.md"])
         self.assertEqual(json.loads((TMP / "docs" / "tests.json").read_text())["records"][0]["evidence_refs"], [newest])
 
+    def test_two_runners_in_the_same_second_get_distinct_run_ids(self):
+        # WP-81: three verify jobs build the same revision; two of them starting a run in the same
+        # second wrote the same <stamp>-<rev>-001 and their evidence collided when merged. The
+        # job slot (NAWAH_RUN_SLOT) is appended to the id; the schemas still accept it.
+        from unittest import mock
+        fixed = project.datetime.datetime(2026, 1, 1, tzinfo=project.datetime.timezone.utc)
+        saved_scratch, saved_slot = project.SCRATCH, os.environ.get("NAWAH_RUN_SLOT")
+        ids = []
+        try:
+            with mock.patch.object(project, "datetime") as dt:
+                dt.datetime.now.return_value = fixed
+                for slot in ("a", "b"):
+                    project.SCRATCH = TMP / f"runner-{slot}"
+                    if project.SCRATCH.exists(): shutil.rmtree(project.SCRATCH)
+                    os.environ["NAWAH_RUN_SLOT"] = slot
+                    rid, d = project.new_run_dir("unit")
+                    self.assertTrue(d.is_dir()); self.assertEqual(d.name, rid)
+                    ids.append(rid)
+                for bad in ("A", "a/b", "..", "a b", "ab"):
+                    os.environ["NAWAH_RUN_SLOT"] = bad
+                    with self.assertRaises(ValueError, msg=bad):
+                        project.new_run_dir("unit")
+                os.environ.pop("NAWAH_RUN_SLOT")
+                rid, _ = project.new_run_dir("unit")
+                self.assertTrue(rid.endswith("-001"), rid)  # no slot: the id as before
+        finally:
+            project.SCRATCH = saved_scratch
+            if saved_slot is None: os.environ.pop("NAWAH_RUN_SLOT", None)
+            else: os.environ["NAWAH_RUN_SLOT"] = saved_slot
+        self.assertNotEqual(ids[0], ids[1])
+        self.assertEqual([i[-2:] for i in ids], ["-a", "-b"])
+        # the slotted id is a valid evidence run (evidence-run and evidence-verdict run_id)
+        r = base_records(); write_all(r)
+        d = TMP / "evidence" / ids[0]
+        if d.exists(): shutil.rmtree(d)
+        (TMP / make_evidence(r, "TST-M0-001")).rename(d)
+        for f in ("run.json", "verdict.json"):
+            j = json.loads((d / f).read_text()); j["run_id"] = ids[0]; (d / f).write_text(json.dumps(j))
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [f"evidence/{ids[0]}"]
+        write_all(r)
+        self.assertEqual(project.validate_records(verbose=False), 0)
+
     def test_checkpoint_position_follows_the_records(self):
         # Review 2026-10-19 (T-8): project-state said M2/WP-07 during M5.
         r = base_records()
         w0 = r["work-items"][0]
         w1 = copy.deepcopy(w0); w1["id"] = "WP-01"; w1["depends_on"] = ["WP-00"]; w1["actions"] = ["next one"]
-        pos = project.derive_position([w0, w1], r["requirements"])
-        self.assertEqual((pos["current_task"], pos["current_stage"]), ("WP-00", "M0"))  # first ready planned
+        order = ["WP-00", "WP-01"]
+        pos = project.derive_position([w0, w1], r["requirements"], order)
+        self.assertEqual((pos["current_task"], pos["current_stage"]), ("WP-00", "M0"))  # the order's first
         w0["status"] = "done"
-        self.assertEqual(project.derive_position([w0, w1], r["requirements"])["current_task"], "WP-01")
+        self.assertEqual(project.derive_position([w0, w1], r["requirements"], order)["current_task"], "WP-01")
         w1["status"] = "active"
         pos = project.derive_position([w0, w1], r["requirements"])
         self.assertEqual(pos["current_task"], "WP-01"); self.assertEqual(pos["next_action"], "WP-01: next one")
         r["requirements"][0]["implementation_status"] = "verified_in_scope"
         self.assertEqual(project.derive_position([w0, w1], r["requirements"])["completed_requirement_ids"], ["REQ-M0-001"])
+
+def state_file(**over):
+    """A valid docs/project-state.json under TMP (written after write_all), with `over` on top."""
+    st = {"schema_version": SV, "project_id": "p", "prompt_version": "0", "prompt_digest": "unknown", "project_root": ".",
+          "source_revision": "unknown", "dirty_state": False, "current_stage": "M0", "current_task": None,
+          "completed_requirement_ids": [], "last_run_id": None, "blockers": [], "next_action": "x", "required_inputs": [],
+          "runner_status": "idle", "checkpoint_generation": 0, "event_sequence": 0, "pending_operations": [], "budget_counters": {},
+          "next_retry_at": None, "cancellation_state": "none", "lease": None, "host_fingerprint": "h", "errata_version": "0",
+          "pending_decision_ids": [], "unknown_fields": {}}
+    st.update(over)
+    docs = TMP / "docs"
+    (docs / "prompt").mkdir(exist_ok=True)
+    (docs / "prompt" / "OS-EXEC-AR-v0.md").write_text("p")
+    (docs / "project-state.json").write_text(json.dumps(st))
+
+def decision(i, status, blocked=()):
+    return {"id": i, "question": "q", "options": ["A", "B"], "recommendation": "A", "impact": "i", "blocked_task_ids": list(blocked),
+            "requested_at": "2026-01-01T00:00:00Z", "status": status}
+
+def policy(item):
+    """The methodology file under TMP: `item` is section 7's fifth item; a fifth item of two other
+    sections names other work items, which are not the order."""
+    d = TMP / "docs" / "policies"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "team-methodology.md").write_text(
+        "# m\n\n## 6. x\n\n5. **الترتيب:** WP-96\n\n## 7. التبسيط\n\n4. y WP-97\n" + item + "\n6. z WP-98\n\n## 8. w\n\n5. WP-99\n", encoding="utf-8")
+
+class Position(unittest.TestCase):
+    """WP-165 (the owner's note of 2026-11-19): docs/project-state.json named WP-69 as the next
+    step at two closes, the first ready item of the file, while the owner's order named another;
+    and it listed four answered decisions as pending and left an open one out."""
+
+    def items(self):
+        r = base_records()
+        w = r["work-items"][0]
+        hist = {"planned": ["planned"], "active": ["planned", "active"], "done": ["planned", "active", "done"]}
+        def item(i, deps=(), status="planned"):
+            x = copy.deepcopy(w)
+            x.update(id=i, depends_on=list(deps), status=status, status_history=hist[status], actions=[f"title of {i}"])
+            return x
+        return r, item
+
+    def validate(self, r, **kw):
+        write_all(r)
+        return project.validate_records(verbose=False, **kw)
+
+    def test_the_next_step_is_the_owners_order_not_the_files(self):
+        r, item = self.items()
+        # In the file a ready item of no order comes first, as WP-69 did.
+        ws = [item("WP-69"), item("WP-01", status="done"), item("WP-61", ["WP-01"]), item("WP-62", ["WP-61", "WP-64"]),
+              item("WP-64", ["WP-65"]), item("WP-65")]
+        order = ["WP-01", "WP-61", "WP-62"]
+        pos = project.derive_position(ws, r["requirements"], order)
+        self.assertEqual((pos["current_task"], pos["next_action"]), ("WP-61", "WP-61: title of WP-61"))
+        # Without an order there is no next step: the file's order is not a plan.
+        for none in (None, []):
+            pos = project.derive_position(ws, r["requirements"], none)
+            self.assertIsNone(pos["current_task"])
+            self.assertTrue(pos["next_action"].startswith("no next step"), pos["next_action"])
+        # An ordered item that waits gives way to its first dependency that is not done, and that
+        # one to its own.
+        ws[2]["status"] = "done"
+        self.assertEqual(project.derive_position(ws, r["requirements"], order)["current_task"], "WP-65")
+        ws[5]["status"] = "done"
+        self.assertEqual(project.derive_position(ws, r["requirements"], order)["current_task"], "WP-64")
+        ws[4]["status"] = "done"
+        self.assertEqual(project.derive_position(ws, r["requirements"], order)["current_task"], "WP-62")
+        # An active item is the current task whatever the order says.
+        ws[0]["status"] = "active"
+        self.assertEqual(project.derive_position(ws, r["requirements"], order)["current_task"], "WP-69")
+        # The whole order done: no next step, and the task is None, not the file's first.
+        ws[0]["status"] = "planned"; ws[3]["status"] = "done"
+        pos = project.derive_position(ws, r["requirements"], order)
+        self.assertIsNone(pos["current_task"]); self.assertIsNone(pos["current_stage"])
+        self.assertTrue(pos["next_action"].startswith("no next step"), pos["next_action"])
+
+    def step(self, ws, order):
+        """derive_position's task, with a hang turned into a failure (the review round: a cycle)."""
+        def late(*_):
+            raise AssertionError("derive_position did not end")
+        old = signal.signal(signal.SIGALRM, late); signal.alarm(5)
+        try:
+            return project.derive_position(ws, [], order)
+        finally:
+            signal.alarm(0); signal.signal(signal.SIGALRM, old)
+
+    def test_the_next_step_on_records_that_are_not_tidy(self):
+        """The review round (red team): an order or records in a form the first cases did not have."""
+        r, item = self.items()
+        # An id the records do not hold is passed over (validate-records names it), not a crash.
+        self.assertEqual(self.step([item("WP-02")], ["WP-77", "WP-02"])["current_task"], "WP-02")
+        # A dependency the records do not hold does not stop the step (validate-records names it),
+        # and an item without an action still has a text.
+        bare = item("WP-12", ["WP-78"]); bare["actions"] = []
+        pos = self.step([bare], ["WP-12"])
+        self.assertEqual((pos["current_task"], pos["next_action"]), ("WP-12", "WP-12: (no action is written)"))
+        # Two dependencies not done at once: the first one written.
+        ws = [item("WP-03", ["WP-05", "WP-04"]), item("WP-04"), item("WP-05")]
+        self.assertEqual(self.step(ws, ["WP-03"])["current_task"], "WP-05")
+        # A superseded item stands for the one that took its place, in the order and as a dependency.
+        old = item("WP-06"); old.update(status="superseded", status_history=["planned", "superseded"], superseded_by="WP-07")
+        ws = [old, item("WP-07"), item("WP-08", ["WP-06"])]
+        self.assertEqual(self.step(ws, ["WP-06"])["current_task"], "WP-07")
+        self.assertEqual(self.step(ws, ["WP-08"])["current_task"], "WP-07")
+        ws[1]["status"] = "done"
+        self.assertEqual(self.step(ws, ["WP-08"])["current_task"], "WP-08")
+        self.assertIsNone(self.step(ws, ["WP-06"])["current_task"])
+        # A cycle (an error validate-records reports) ends where it closes; nothing hangs.
+        ws = [item("WP-09", ["WP-10"]), item("WP-10", ["WP-09"])]
+        self.assertEqual(self.step(ws, ["WP-09"])["current_task"], "WP-10")
+        # A blocked item is the next step, and the text says it is blocked and by what.
+        b = item("WP-11"); b.update(status="blocked", status_history=["planned", "active", "blocked"], blocker="DEC-002")
+        pos = self.step([b], ["WP-11"])
+        self.assertEqual((pos["current_task"], pos["next_action"]), ("WP-11", "WP-11: blocked (DEC-002): title of WP-11"))
+
+    def test_the_order_is_item_five_of_section_seven(self):
+        text = ("# t\n\n## 6. other\n\n5. **الترتيب:** WP-96\n\n## 7. التبسيط\n\n4. x WP-97\n"
+                "5. **الترتيب:** WP-149 (K-3) ثم WP-130، ثم الطريق: WP-107 ← WP-101 ← WP-51.\n6. y WP-98\n\n## 8. z\n\n5. WP-99\n")
+        self.assertEqual(project.plan_order(text), ["WP-149", "WP-130", "WP-107", "WP-101", "WP-51"])
+        self.assertIsNone(project.plan_order("## 7. x\n\n4. no fifth item WP-01\n"))
+        self.assertIsNone(project.plan_order("## 6. x\n\n5. **الترتيب:** WP-01\n"))
+        self.assertIsNone(project.plan_order("## 7. x\n\n5. **الترتيب:** no work item is named\n"))
+        # The review round: a section 70, another item of section 7 under the same label, and
+        # labels that are not the order's are not the order.
+        self.assertEqual(project.plan_order("## 70. far\n\n5. **الترتيب:** WP-95\n\n## 7. x\n\n4. **الترتيب:** WP-97\n5. **الترتيب:** WP-01 ثم WP-02.\n"),
+                         ["WP-01", "WP-02"])
+        for label in ("5. **الترتيبات القديمة:** WP-01", "5. **الترتيب** WP-01", "5. الترتيب: WP-01"):
+            self.assertIsNone(project.plan_order("## 7. x\n\n" + label + "\n"), label)
+
+    def test_checkpoint_writes_the_ordered_step_and_the_open_decisions(self):
+        r, item = self.items()
+        r["work-items"] = [item("WP-69"), item("WP-00")]
+        r["decisions-pending"] = [decision("DEC-001", "answered"), decision("DEC-002", "open"), decision("DEC-003", "withdrawn"),
+                                  decision("DEC-004", "open")]
+        write_all(r); policy("5. **الترتيب:** WP-00.")
+        state_file(current_task="WP-69", next_action="WP-69: stale", pending_decision_ids=["DEC-001", "DEC-002"])
+        # The checkpoint's event goes under evidence/automation: the other cases expect run directories alone there.
+        self.addCleanup(shutil.rmtree, TMP / "evidence" / "automation", ignore_errors=True)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(project.cmd_checkpoint(), 0, out.getvalue())
+            self.assertEqual(project.cmd_status(True), 0)
+        st = json.loads((TMP / "docs" / "project-state.json").read_text())
+        self.assertEqual((st["current_task"], st["next_action"]), ("WP-00", "WP-00: title of WP-00"))
+        self.assertEqual(st["pending_decision_ids"], ["DEC-002", "DEC-004"])
+        shown = json.loads(out.getvalue()[out.getvalue().index("{"):])
+        self.assertEqual((shown["next_task"], shown["decisions_pending"]), ("WP-00", ["DEC-002", "DEC-004"]))
+        self.assertEqual(project.validate_records(verbose=False, strict=True), 0)
+        # The order done (the item closed with its evidence): the task is cleared, not left.
+        ref = make_evidence(r, "TST-M0-001")
+        r["tests"][0].update(verdict="PASS", evidence_refs=[ref])
+        r["work-items"][1].update(status="done", status_history=["planned", "active", "done"], evidence_refs=[ref])
+        write_all(r); policy("5. **الترتيب:** WP-00."); state_file(**st)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(project.cmd_checkpoint(), 0)
+        st = json.loads((TMP / "docs" / "project-state.json").read_text())
+        self.assertIsNone(st["current_task"])
+        self.assertTrue(st["next_action"].startswith("no next step"), st["next_action"])
+
+    def test_a_state_file_that_contradicts_the_records_fails_the_strict_check(self):
+        r, item = self.items()
+        r["work-items"] = [item("WP-69"), item("WP-00")]
+        r["decisions-pending"] = [decision("DEC-001", "answered"), decision("DEC-002", "open")]
+        write_all(r); policy("5. **الترتيب:** WP-00.")
+        good = dict(current_task="WP-00", next_action="WP-00: title of WP-00", pending_decision_ids=["DEC-002"])
+        state_file(**good)
+        self.assertEqual(project.validate_records(verbose=False, strict=True), 0)
+        for bad, word in ((dict(current_task="WP-69", next_action="WP-69: title of WP-69"), "current_task WP-69"),
+                          (dict(next_action="WP-00: an older title"), "an older title"),
+                          (dict(pending_decision_ids=["DEC-001", "DEC-002"]), "DEC-001"),
+                          (dict(pending_decision_ids=[]), "DEC-002")):
+            state_file(**{**good, **bad})
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertNotEqual(project.validate_records(verbose=True, strict=True), 0, bad)
+            lines = [l for l in out.getvalue().splitlines() if l.startswith("ERROR project-state")]
+            self.assertEqual(len(lines), 1, out.getvalue())
+            self.assertIn(word, lines[0]); self.assertIn("checkpoint pending", lines[0])
+            # Between checkpoints it is a warning: a checkpoint repairs it, and is refused on errors.
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(project.validate_records(verbose=True), 0, bad)
+            self.assertIn("WARN project-state", out.getvalue()); self.assertIn(word, out.getvalue())
+
+    def test_the_owners_order_must_be_readable_and_name_work_items(self):
+        r, item = self.items()
+        r["work-items"] = [item("WP-00")]
+        write_all(r)
+        state_file(current_task="WP-00", next_action="WP-00: title of WP-00")
+        self.assertNotEqual(project.validate_records(verbose=False), 0, "no methodology file")
+        policy("4. b")
+        self.assertNotEqual(project.validate_records(verbose=False), 0, "no fifth item")
+        policy("5. **الترتيب:** WP-00 ← WP-77.")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertNotEqual(project.validate_records(verbose=True), 0, "an unknown work item")
+        self.assertIn("WP-77", out.getvalue())
+        policy("5. **الترتيب:** WP-00.")
+        self.assertEqual(project.validate_records(verbose=False), 0)
+        # A tree without a state file is not judged by an order (the fixtures of the other cases).
+        (TMP / "docs" / "project-state.json").unlink(); (TMP / "docs" / "policies" / "team-methodology.md").unlink()
+        self.assertEqual(project.validate_records(verbose=False), 0)
+
+    def test_a_blocker_that_names_a_decision_names_an_open_one(self):
+        r, item = self.items()
+        w = item("WP-00"); w["blocker"] = "DEC-001"
+        r["work-items"] = [w]
+        r["decisions-pending"] = [decision("DEC-001", "answered", ["WP-00"])]
+        self.assertNotEqual(self.validate(r), 0, "the decision is answered")
+        r["decisions-pending"][0]["status"] = "open"
+        self.assertEqual(self.validate(r), 0)
+        w["blocker"] = "DEC-009"
+        self.assertNotEqual(self.validate(r), 0, "no such decision")
+        w["blocker"] = "waits for the lab"
+        self.assertEqual(self.validate(r), 0, "a text that names no decision is not judged")
+        # The review round: a decision named inside a text is judged as one named alone.
+        w["blocker"] = "waits for the lab; see DEC-001"
+        self.assertEqual(self.validate(r), 0, "the decision it names is open")
+        r["decisions-pending"][0]["status"] = "answered"
+        self.assertNotEqual(self.validate(r), 0, "the decision it names is answered")
+
+
+class OracleSingleSource(unittest.TestCase):
+    """WP-92: a host suite's oracle (HOST_SUITES) or a guest case's (target.json) is the one
+    source of the record's `oracle`; validate-records names a difference as an error and
+    `sync-oracles` rewrites the record from its source (2026-11-14: 31 records had drifted)."""
+
+    def records(self, oracle="exit 0", extra=()):
+        r = base_records(); r["tests"][0]["oracle"] = oracle
+        r["requirements"][0]["test_ids"] += [t["id"] for t in extra]
+        r["tests"] += [dict(t) for t in extra]
+        write_all(r)
+        tests = TMP / "docs" / "tests.json"
+        project.write_json(tests, project.load_json(tests))  # the repository's own format (indent=1)
+        return tests
+
+    def guest_target(self, oracle):
+        p = TMP / "platform" / "unit-qemu" / "target.json"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps({"suites": {"M1": [{"test_id": "TST-M1-BOOT", "oracle": oracle}]},
+                                 "boot_oracle": {"test_id": "TST-M1-BOOT", "oracle": "fallback, not the source"},
+                                 "build": {"test_id": "TST-M1-BUILD"}}))
+        self.addCleanup(shutil.rmtree, TMP / "platform", True)
+
+    def validate(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = project.validate_records(verbose=True)
+        return rc, out.getvalue()
+
+    def sync(self, *args):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = project.main(["sync-oracles", *args])
+        return rc, out.getvalue()
+
+    def oracles(self, tests):
+        return {t["id"]: t for t in project.load_json(tests)["records"]}
+
+    def test_an_oracle_that_differs_from_its_source_is_an_error_naming_the_test(self):
+        self.records(oracle="exit 0 and twelve cases it never runs")
+        rc, out = self.validate()
+        self.assertEqual(rc, 50, out)
+        self.assertIn("tests/TST-M0-001", out); self.assertIn("sync-oracles", out)
+        # a guest case: the suite case of target.json is the source, boot_oracle only a fallback
+        # and a target's build: the one text cmd_build writes into every build verdict
+        guest = {"id": "TST-M1-BOOT", "requirement_ids": ["REQ-M0-001"], "layer": "guest", "oracle": "the suite case's text",
+                 "command": "x", "verdict": "NOT_RUN", "evidence_refs": []}
+        build = dict(guest, id="TST-M1-BUILD", oracle="all build steps exit 0 and artifact exists")
+        self.records(extra=[guest, build]); self.guest_target("the suite case's text")
+        self.assertEqual(self.validate()[0], 0)
+        self.guest_target("the suite case's text, rewritten")
+        rc, out = self.validate()
+        self.assertEqual(rc, 50, out); self.assertIn("tests/TST-M1-BOOT", out); self.assertNotIn("tests/TST-M1-BUILD", out)
+        self.records(extra=[guest, dict(build, oracle="a PE32+ artifact the build never checks")])
+        rc, out = self.validate()
+        self.assertIn("tests/TST-M1-BUILD", out)
+
+    def test_sync_rewrites_from_the_source_and_leaves_a_record_without_one(self):
+        own = {"id": "TST-M0-099", "requirement_ids": ["REQ-M0-001"], "layer": "host_unit", "oracle": "a hand-written oracle",
+               "command": "x", "verdict": "NOT_RUN", "evidence_refs": []}
+        tests = self.records(oracle="exit 0, and a stale sentence", extra=[own])
+        rc, out = self.sync()
+        self.assertEqual(rc, 0, out); self.assertIn("TST-M0-001", out)
+        recs = self.oracles(tests)
+        self.assertEqual(recs["TST-M0-001"]["oracle"], "exit 0")
+        self.assertEqual(recs["TST-M0-099"]["oracle"], "a hand-written oracle")
+        self.assertEqual(self.validate()[0], 0)
+
+    def test_a_dated_note_survives_a_sync_and_an_undated_one_is_refused(self):
+        tests = self.records(oracle="exit 0 2026-11-10 (WP-64): a note appended by hand")
+        r = project.load_json(tests)
+        r["records"][0]["oracle_notes"] = ["2026-11-10 (WP-64): a contract-driven change, not a weakened gate"]
+        project.write_json(tests, r)
+        self.assertEqual(self.sync()[0], 0)
+        t = self.oracles(tests)["TST-M0-001"]
+        self.assertEqual(t["oracle"], "exit 0")
+        self.assertEqual(t["oracle_notes"], ["2026-11-10 (WP-64): a contract-driven change, not a weakened gate"])
+        self.assertEqual(self.validate()[0], 0)
+        r = project.load_json(tests); r["records"][0]["oracle_notes"] = ["a note without its date"]; project.write_json(tests, r)
+        self.assertEqual(self.validate()[0], 50)
+
+    def test_sync_check_writes_nothing_and_fails_on_a_difference(self):
+        tests = self.records(oracle="exit 0 and more")
+        before = tests.read_bytes()
+        rc, out = self.sync("--check")
+        self.assertNotEqual(rc, 0, out); self.assertIn("TST-M0-001", out)
+        self.assertEqual(tests.read_bytes(), before)
+        self.assertEqual(self.sync()[0], 0)
+        self.assertEqual(self.sync("--check")[0], 0)
+
+    def test_sync_writes_the_oracle_field_alone(self):
+        # source to record, never the verdict, its evidence, the stale policy or the notes
+        tests = self.records(oracle="exit 0 and more")
+        ev = make_evidence(None, "TST-M0-001")
+        r = project.load_json(tests); t = r["records"][0]
+        t.update(verdict="PASS", evidence_refs=[ev], stale_policy="warn", verdict_reason="r", oracle_notes=["2026-11-14 (WP-92): kept"])
+        project.write_json(tests, r)
+        before = project.load_json(tests)
+        with unittest.mock.patch.object(project, "STALE_WARN_TESTS", ("TST-M0-001",)):
+            self.assertEqual(self.sync()[0], 0)
+        after = project.load_json(tests)
+        before["records"][0]["oracle"] = "exit 0"
+        self.assertEqual(after, before)
+
+    def test_strict_a_pass_oracle_must_equal_the_one_its_evidence_ran_with(self):
+        # A source edited to say less, then synced, must not validate until CI re-runs the test:
+        # the runner wrote the oracle it ran with into verdict.json (write_verdict). No exemption
+        # for stale_policy warn (the mutation gates).
+        for policy in (None, "warn"):
+            tests = self.records()
+            ev = make_evidence(None, "TST-M0-001", oracle="exit 0")
+            r = project.load_json(tests); r["records"][0].update(verdict="PASS", evidence_refs=[ev])
+            if policy: r["records"][0]["stale_policy"] = policy
+            project.write_json(tests, r)
+            allow = unittest.mock.patch.object(project, "STALE_WARN_TESTS", ("TST-M0-001",))
+            allow.start(); self.addCleanup(allow.stop)
+            self.assertEqual(project.validate_records(verbose=False, strict=True), 0)
+            weaker = {"M0": [dict(project.HOST_SUITES["M0"][0], oracle="exit 0 (says less)")]}
+            with unittest.mock.patch.object(project, "HOST_SUITES", weaker):
+                self.assertEqual(self.sync()[0], 0)
+                self.assertEqual(project.validate_records(verbose=False), 0)  # committed state: not strict
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    rc = project.validate_records(verbose=True, strict=True)
+                self.assertEqual(rc, 50, policy); self.assertIn("tests/TST-M0-001", out.getvalue())
+
+    def test_two_sources_with_different_texts_for_one_id_are_an_error(self):
+        # A host case and a guest case (or two guest cases) that both run under one id must
+        # state one text; the first source winning silently hid such a split. A boot_oracle
+        # shadowed by a suite case is never run (cmd_boot) and is no source.
+        tests = self.records()
+        p = TMP / "platform" / "unit-qemu" / "target.json"; p.parent.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, TMP / "platform", True)
+        p.write_text(json.dumps({"suites": {"M1": [{"test_id": "TST-M0-001", "oracle": "exit 0"}]}}))
+        self.assertEqual(self.validate()[0], 0)
+        p.write_text(json.dumps({"suites": {"M1": [{"test_id": "TST-M0-001", "oracle": "exit 0 and a second text"}]}}))
+        rc, out = self.validate()
+        self.assertEqual(rc, 50, out); self.assertIn("tests/TST-M0-001", out); self.assertIn("two sources", out)
+        before = tests.read_bytes()
+        rc, out = self.sync()
+        self.assertEqual(rc, 50, out); self.assertIn("TST-M0-001", out)
+        self.assertEqual(tests.read_bytes(), before)
+
+    def test_a_boot_oracle_is_shadowed_only_by_its_own_targets_suite_case(self):
+        # Target A runs TST-M9-X as a suite case; target B has no suite case for it, so B's
+        # boot_oracle is run and is a second source: different texts are an error.
+        tests = self.records()
+        self.addCleanup(shutil.rmtree, TMP / "platform", True)
+        for name, body in (("unit-a", {"suites": {"M1": [{"test_id": "TST-M9-X", "oracle": "a"}]}}),
+                           ("unit-b", {"suites": {}, "boot_oracle": {"test_id": "TST-M9-X", "oracle": "b"}})):
+            p = TMP / "platform" / name / "target.json"; p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps(body))
+        rc, out = self.validate()
+        self.assertEqual(rc, 50, out); self.assertIn("tests/TST-M9-X", out); self.assertIn("two sources", out)
+        before = tests.read_bytes()
+        rc, out = self.sync()
+        self.assertEqual(rc, 50, out); self.assertEqual(tests.read_bytes(), before)
+
+    def test_sync_keeps_the_file_format_one_line_changes(self):
+        tests = self.records(oracle="exit 0 and more")
+        before = tests.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(self.sync()[0], 0)
+        after = tests.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(before), len(after))
+        self.assertEqual([(a, b) for a, b in zip(before, after) if a != b], [('   "oracle": "exit 0 and more",', '   "oracle": "exit 0",')])
+        self.assertTrue(tests.read_text(encoding="utf-8").endswith("}\n"))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

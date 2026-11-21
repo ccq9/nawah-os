@@ -1,12 +1,21 @@
 # Mutation testing of the kernel and the system services: TST-M2-MUTANTS (REQ-M2-014, M01-M29
 # against the M1/M2 suites), TST-M3-MUTANTS (REQ-M3-010, M30-M49 against the M3 suite) and
 # TST-M4-MUTANTS (REQ-M4-010, M50-M81 against the M4 suite) and TST-M5-MUTANTS (REQ-M5-007, M82
-# onwards against the M5 suite, WP-38). Manual/scheduled (each mutant
+# onwards against the M5 suite, WP-38) and TST-M6-MUTANTS (REQ-M6-021, M130 onwards against the M6
+# suite and the host suites, WP-90). Manual/scheduled (each mutant
 # rebuilds the kernel and the applications), evidence published like the verify workflow so it
 # can be imported with `project.py import-ci-evidence --run mutants-<run id>`.
+# The gates a run executes are chosen by the `stages` input (the schedule takes its default):
+# import-ci-evidence takes only a successful run, so a gate expected red (M6's first run) runs in
+# a run of its own and never makes the other gates' evidence unimportable (WP-90).
 name: mutants
 on:
   workflow_dispatch:
+    inputs:
+      stages:
+        description: "gates to run, space-separated (M2 M3 M4 M5 M6)"
+        type: string
+        default: "M2 M3 M4 M5"
   schedule:
     - cron: "17 3 * * 1"
 permissions:
@@ -14,46 +23,108 @@ permissions:
 jobs:
   mutants:
     runs-on: ubuntu-24.04
-    timeout-minutes: 300
+    # 345 (WP-95): the capped steps at their caps (Toolchain 15, M6 135, host suites 10, the upload
+    # 10), the four uncapped older gates at their measured 127.8 min x 1.2 and 20 for the rest come
+    # to 344; a hosted job ends at 360 (tests/test_ci_workflows.py MutationHarness).
+    timeout-minutes: 345
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         # The token stays out of .git/config, where every later step (the code under test
         # included) could read it; only the publish step below is given it.
         with:
           persist-credentials: false
+      # WP-95 (the assurance review of 2026-11-15): a dispatch whose `stages` names no gate (a typo,
+      # a comma, lower case) ran nothing and ended green with nothing to import. Every word must be
+      # a gate and at least one given; the input comes in through the environment, never spliced
+      # into the script, with the gates' own default (tests/test_ci_workflows.py MutationHarness).
+      - name: The stages input selects gates
+        id: stages
+        env:
+          STAGES: ${{ inputs.stages || 'M2 M3 M4 M5' }}
+        run: |
+          set -f
+          # Only M, 2 to 6 and a plain space: a tab or a newline splits the words for this loop but
+          # not for each gate's contains(' M3 '), which would leave a green run with no gate (the
+          # WP-95 review, RT95-01).
+          case "$STAGES" in
+            *[!M2-6\ ]*) echo "::error title=Stages::'$STAGES' holds a character other than M, 2 to 6 and a space"; exit 1 ;;
+          esac
+          n=0
+          for s in $STAGES; do
+            case "$s" in
+              M2|M3|M4|M5|M6) n=$((n + 1)) ;;
+              *) echo "::error title=Stages::'$s' is not a gate (M2 M3 M4 M5 M6)"; exit 1 ;;
+            esac
+          done
+          if [ "$n" -eq 0 ]; then echo "::error title=Stages::'$STAGES' selects no gate (M2 M3 M4 M5 M6)"; exit 1; fi
+          echo "gates: $STAGES"
       - name: Toolchain
-        # Same guard as verify.yml (2026-10-23: hung downloads ate whole runs).
+        # Verify job a's step, run text and cap (its comment there says why): the host suites this
+        # workflow runs since WP-95 need its lab, fonttools and harfbuzz among it (MutationHarness).
         timeout-minutes: 15
         run: |
-          retry() { for i in 1 2; do s=$SECONDS; timeout 300 "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema; then
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
+          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
             echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
-            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/#http://archive.ubuntu.com/#' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
+            sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
           fi
-          retry sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq qemu-system-x86 ovmf mtools dosfstools python3-jsonschema
-          retry rustup toolchain install 1.97.0 --profile minimal
-          retry rustup target add --toolchain 1.97.0 x86_64-unknown-uefi x86_64-unknown-none
-          rustup run 1.97.0 rustc --version; qemu-system-x86_64 --version | head -1
-      - name: validate-records --strict (committed state; a stale verdict fails, warn-policy tests aside)
-        run: python3 tools/project.py validate-records --strict
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+          retry 300 rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
+          retry 300 rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          rustup run 1.97.0 rustc --version; cargo --version
+          hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
+          clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version
+      # Not strict before the gates (as verify's): a gate whose oracle text changed has a PASS citing
+      # evidence of the old oracle, and only a successful run of this workflow brings new evidence;
+      # a strict check here would block that run for good (audit of WP-92, WP-90).
+      - name: validate-records (committed state)
+        run: python3 tools/project.py validate-records
+      # Every gate runs only when the baseline succeeded (always() let M3..M6 run on an image that
+      # never built or booted; WP-95), and a red gate does not skip the next (!cancelled()).
       - name: Baseline build (the unmutated kernel must build and boot before mutants mean anything)
+        id: baseline
         run: |
           python3 tools/project.py build --target pc-qemu
           python3 tools/project.py boot --target pc-qemu
       - name: "Mutation run, M2 gate (TST-M2-MUTANTS, M01-M29)"
+        if: ${{ !cancelled() && steps.baseline.outcome == 'success' && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M2 ') }}
         run: python3 tools/project.py test --target host --suite M2
       - name: "Mutation run, M3 gate (TST-M3-MUTANTS, M30-M49, WP-22)"
-        if: always()
+        if: ${{ !cancelled() && steps.baseline.outcome == 'success' && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M3 ') }}
         run: python3 tools/project.py test --target host --suite M3-GATE
       - name: "Mutation run, M4 gate (TST-M4-MUTANTS, M50-M81, WP-31)"
-        if: always()
+        if: ${{ !cancelled() && steps.baseline.outcome == 'success' && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M4 ') }}
         run: python3 tools/project.py test --target host --suite M4-GATE
       - name: "Mutation run, M5 gate (TST-M5-MUTANTS, M82 onwards, WP-38)"
-        if: always()
+        if: ${{ !cancelled() && steps.baseline.outcome == 'success' && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M5 ') }}
         run: python3 tools/project.py test --target host --suite M5-GATE
+      - name: "Mutation run, M6 gate (TST-M6-MUTANTS, M130 onwards, WP-90)"
+        if: ${{ !cancelled() && steps.baseline.outcome == 'success' && contains(format(' {0} ', inputs.stages || 'M2 M3 M4 M5'), ' M6 ') }}
+        # Time-boxed: TST-M6-MUTANTS's timeout_s (130 min) ends it with a verdict and the partial
+        # report first; this cap is the hang guard and, with the older gates (127.8 min measured on
+        # 2026-11-08/09) and the other steps, fits the job's 345 (WP-95).
+        timeout-minutes: 135
+        run: python3 tools/project.py test --target host --suite M6-GATE
+      # WP-95 (option B): a head that changes tools/project.py or the harness leaves the host tests
+      # that read them stale, and the strict check below is the import's condition; so every host
+      # suite verify runs, with verify's own script (WP-91: each once, red at the end when any was),
+      # after a red gate too, never after a failed baseline nor in a cancelled run; 128 s on verify
+      # run 44229918866.
+      - name: Host suites
+        if: ${{ !cancelled() && steps.baseline.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          rc=0
+          for s in M0 M1 M3 M4 M5 M6; do
+            python3 tools/project.py test --target host --suite "$s" || rc=1
+          done
+          exit $rc
+      - name: validate-records --strict (after the gates, over this run's native evidence)
+        if: always()
+        run: python3 tools/project.py validate-records --strict
       - name: Report
         if: always()
         run: |
@@ -61,18 +132,28 @@ jobs:
           cat build/mutants-m3-report.json || true
           cat build/mutants-m4-report.json || true
           cat build/mutants-m5-report.json || true
-      # A convenience copy, as in verify.yml: the ci-evidence branch below is the record.
+          cat build/mutants-m6-report.json || true
+      - name: This run's evidence directories (named by the checked-out commit's first 8 hex)
+        # Not the whole tracked evidence tree (14.4 GB; the WP-95 review, F7): this run's own
+        # directories, <stamp>-<sha8>-<nnn> (no slot here), as verify's slots since WP-153.
+        id: rev
+        if: always()
+        run: echo "sha8=$(git rev-parse HEAD | cut -c1-8)" >> "$GITHUB_OUTPUT"
+      # A convenience copy, as in verify.yml: the ci-evidence branch below is the record. The
+      # reports beside the run's directories keep the artifact rooted at the workspace.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         if: always()
         continue-on-error: true
+        timeout-minutes: 10
         with:
           name: mutants-${{ github.sha }}
           path: |
-            evidence/
+            evidence/*-${{ steps.rev.outputs.sha8 }}-*/
             build/mutants-report.json
             build/mutants-m3-report.json
             build/mutants-m4-report.json
             build/mutants-m5-report.json
+            build/mutants-m6-report.json
             build/mutants-scratch/
           retention-days: 7
       - name: Publish evidence on a ci-evidence branch
@@ -88,7 +169,7 @@ jobs:
           git add -f evidence/
           # Each report that exists, one by one: a gate step that was skipped must not drop
           # the others (run 42481065666 lost the M5 report because M2 had none).
-          for r in build/mutants-report.json build/mutants-m3-report.json build/mutants-m4-report.json build/mutants-m5-report.json; do
+          for r in build/mutants-report.json build/mutants-m3-report.json build/mutants-m4-report.json build/mutants-m5-report.json build/mutants-m6-report.json; do
             if [ -f "$r" ]; then git add -f "$r"; fi
           done
           git add -f build/mutants-scratch 2>/dev/null || true

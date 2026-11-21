@@ -77,6 +77,11 @@ pub const SYS_VMO_SIZE: u64 = 41;
 /// v1.11 (WP-40, §8.7): end a process the holder created. The handle needs WRITE (the
 /// creator's; a duplicate may drop it), so no one kills a process it only watches.
 pub const SYS_PROCESS_KILL: u64 = 42;
+/// v1.13 (WP-46, §5): jobs — make a child job, kill a job with everything in it, spawn into a
+/// named job. Each needs WRITE on the job handle.
+pub const SYS_JOB_CREATE: u64 = 43;
+pub const SYS_JOB_KILL: u64 = 44;
+pub const SYS_PROCESS_SPAWN_IN: u64 = 45;
 
 /// Results are i64: >= 0 success, < 0 one of these.
 pub const ERR_NOSYS: i64 = -1;
@@ -403,10 +408,24 @@ fn fs_err(e: FsError) -> i64 {
     }
 }
 
-/// The system-files authority (files.md v1.3, WP-44): under /SYSTEM, reading needs a held
-/// SystemFiles handle with READ (the fonts in /SYSTEM/FONTS excepted) and any change one with
-/// WRITE; elsewhere nothing is needed. Checked after the path is read and before the file
-/// system is touched, so a refused O_CREATE or O_TRUNCATE changes nothing.
+/// The eight calls of the files contract (files.md v1.9): once the disk has stopped each
+/// answers ERR_IO before anything else about it is looked at, its path, its flags and its
+/// handle included, so a process learns nothing from memory and is told one thing only.
+fn file_call(f: impl FnOnce() -> i64) -> i64 {
+    if crate::fs::stopped() {
+        ERR_IO
+    } else {
+        f()
+    }
+}
+
+/// The system-files authority (files.md v1.4, WP-44, WP-78): under /SYSTEM, reading needs a
+/// held SystemFiles handle with READ (the fonts in /SYSTEM/FONTS excepted) and a change one with
+/// WRITE, and only config's stores can change (`vfs::is_config_store`): any other change there,
+/// the fonts included, is refused whatever the holder holds, so the WRITE right config is
+/// handed cannot rewrite SERVICES.TXT, USERS.DB or an image (RSK-019); elsewhere nothing is
+/// needed. Checked after the path is read and before the file system is touched, so a refused
+/// O_CREATE or O_TRUNCATE changes nothing.
 fn fs_authority(path: &[u8], read: bool, write: bool) -> Result<(), i64> {
     let mut need = 0;
     match vfs::classify(path) {
@@ -414,6 +433,9 @@ fn fs_authority(path: &[u8], read: bool, write: bool) -> Result<(), i64> {
         vfs::PathClass::Fonts => {}
         vfs::PathClass::System if read => need |= Rights::READ.0,
         vfs::PathClass::System => {}
+    }
+    if write && !vfs::is_config_store(path) {
+        return Err(ERR_ACCESS);
     }
     if write {
         need |= Rights::WRITE.0;
@@ -606,13 +628,17 @@ fn dispatch_inner(nr: u64, args: [u64; 6]) -> i64 {
         SYS_HANDLE_DUPLICATE => flat(as_handle(args[0]).and_then(|h| handle_duplicate(h, args[1]))),
         SYS_VMO_CREATE => flat(vmo_create(args[0])),
         SYS_HANDLE_RIGHTS => flat(as_handle(args[0]).and_then(handle_rights)),
-        SYS_OPEN => flat(sys_open(args[0], args[1], args[2])),
-        SYS_READ => flat(as_handle(args[0]).and_then(|h| sys_read(h, args[1], args[2]))),
-        SYS_WRITE => flat(as_handle(args[0]).and_then(|h| sys_write(h, args[1], args[2]))),
-        SYS_STAT => flat(sys_stat(args[0], args[1], args[2])),
-        SYS_UNLINK => flat(sys_unlink(args[0], args[1])),
-        SYS_SEEK => flat(as_handle(args[0]).and_then(|h| sys_seek(h, args[1]))),
-        SYS_SYNC => flat(vfs::sync().map(|_| 0).map_err(fs_err)),
+        SYS_OPEN => file_call(|| flat(sys_open(args[0], args[1], args[2]))),
+        SYS_READ => {
+            file_call(|| flat(as_handle(args[0]).and_then(|h| sys_read(h, args[1], args[2]))))
+        }
+        SYS_WRITE => {
+            file_call(|| flat(as_handle(args[0]).and_then(|h| sys_write(h, args[1], args[2]))))
+        }
+        SYS_STAT => file_call(|| flat(sys_stat(args[0], args[1], args[2]))),
+        SYS_UNLINK => file_call(|| flat(sys_unlink(args[0], args[1]))),
+        SYS_SEEK => file_call(|| flat(as_handle(args[0]).and_then(|h| sys_seek(h, args[1])))),
+        SYS_SYNC => file_call(|| flat(vfs::sync().map(|_| 0).map_err(fs_err))),
         SYS_PROCESS_SPAWN => flat(sys_process_spawn(args[0], args[1], args[2], args[3])),
         SYS_OBJECT_WAIT_MANY => flat(sys_object_wait_many(args[0], args[1], args[2])),
         SYS_CLOCK_TICKS => sched::ticks() as i64,
@@ -635,7 +661,7 @@ fn dispatch_inner(nr: u64, args: [u64; 6]) -> i64 {
             flat(as_handle(args[0]).and_then(|h| sys_serial_write(h, args[1], args[2])))
         }
         SYS_SYSTEM_INFO => flat(sys_system_info(args[0], args[1])),
-        SYS_DIR_LIST => flat(sys_dir_list(args[0], args[1], args[2], args[3])),
+        SYS_DIR_LIST => file_call(|| flat(sys_dir_list(args[0], args[1], args[2], args[3]))),
         SYS_DISPLAY_INFO => flat(as_handle(args[0]).and_then(|h| sys_display_info(h, args[1]))),
         SYS_DISPLAY_MAP => flat(as_handle(args[0]).and_then(sys_display_map)),
         SYS_VMO_MAP => flat(as_handle(args[0]).and_then(|h| sys_vmo_map(h, args[1]))),
@@ -645,6 +671,12 @@ fn dispatch_inner(nr: u64, args: [u64; 6]) -> i64 {
         }
         SYS_VMO_SIZE => flat(as_handle(args[0]).and_then(sys_vmo_size)),
         SYS_PROCESS_KILL => flat(as_handle(args[0]).and_then(sys_process_kill)),
+        SYS_JOB_CREATE => flat(as_handle(args[0]).and_then(sys_job_create)),
+        SYS_JOB_KILL => flat(as_handle(args[0]).and_then(sys_job_kill)),
+        SYS_PROCESS_SPAWN_IN => flat(
+            as_handle(args[0])
+                .and_then(|h| sys_process_spawn_in(h, args[1], args[2], args[3], args[4])),
+        ),
         _ => ERR_NOSYS,
     }
 }
@@ -660,9 +692,35 @@ fn elf_err(e: crate::loader::elf::ElfError) -> i64 {
 
 /// `process_spawn(path, len, handles_ptr, nhandles)`: loads the ELF at `path` from the volume,
 /// moves the named handles (TRANSFER right) into the new process's table in order — the first
-/// one's value is the program's `rdi` — and returns a process handle (WAIT|DUPLICATE|TRANSFER).
+/// one's value is the program's `rdi` — and returns a process handle with `PROCESS_OWNER`
+/// (WAIT|WRITE|DUPLICATE|TRANSFER, v1.11).
 /// Nothing is moved when the file is missing, unreadable, too large or not a valid image.
+/// The child joins the caller's job (v1.13).
 fn sys_process_spawn(ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64> {
+    spawn_into(None, ptr, len, hptr, nh)
+}
+
+/// `process_spawn_in(job_h, path, len, handles_ptr, nhandles)` (v1.13, §5): the job handle
+/// first — handle, type, WRITE, then a dead job is `ERR_PEER_CLOSED` — before the path is read
+/// or a handle touched; then exactly `process_spawn`'s rules, the child joining that job.
+fn sys_process_spawn_in(jh: Handle, ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64> {
+    let job = job_of(jh)?;
+    if job.dead() {
+        return Err(ERR_PEER_CLOSED);
+    }
+    spawn_into(Some(job), ptr, len, hptr, nh)
+}
+
+/// The spawn both calls share; `job` None is the caller's own job. A kill of the job landing
+/// after the checks is seen when the process enters the scheduler's table: the spawn then
+/// fails with `ERR_NO_RESOURCES` and the moved handles are closed with the stillborn process.
+fn spawn_into(
+    job: Option<Arc<crate::object::job::Job>>,
+    ptr: u64,
+    len: u64,
+    hptr: u64,
+    nh: u64,
+) -> Result<i64, i64> {
     let mut buf = [0u8; vfs::PATH_MAX];
     let n = user_path(ptr, len, &mut buf)?;
     let nh = nh as usize;
@@ -703,7 +761,8 @@ fn sys_process_spawn(ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64>
             moved.push(t.remove(h).map_err(handle_err)?);
         }
     }
-    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let job = job.unwrap_or_else(sched::current_job);
+    let object = Arc::new(crate::object::process::ProcessObject::new_in(job));
     // Record the image name only in the test kernel; `freeze_named` (WP-40) is its sole reader.
     #[cfg(feature = "ktest")]
     object.set_name(&buf[..n]);
@@ -874,6 +933,58 @@ fn sys_process_kill(h: Handle) -> Result<i64, i64> {
     Ok(0)
 }
 
+// ---- v1.13: jobs (WP-46) -------------------------------------------------------------------
+
+/// The job a handle names, after the handle, type, rights order of ipc.md §1: a bad handle is
+/// `ERR_BAD_HANDLE`, another object `ERR_WRONG_TYPE` whatever its rights, a job without WRITE
+/// `ERR_ACCESS`.
+fn job_of(h: Handle) -> Result<Arc<crate::object::job::Job>, i64> {
+    let table = table()?;
+    let t = table.lock();
+    let e = t.get(h, Rights::NONE).map_err(handle_err)?;
+    let job = match &e.object {
+        Object::Job(j) => j.clone(),
+        _ => return Err(ERR_WRONG_TYPE),
+    };
+    if !Rights::contains(e.rights, Rights::WRITE) {
+        return Err(ERR_ACCESS);
+    }
+    Ok(job)
+}
+
+/// `job_create(parent_h)` (v1.13): a child job of the one the handle names, returned with
+/// `JOB_DEFAULT`. A dead parent is `ERR_PEER_CLOSED`; a child deeper than 8 below the root, or
+/// a full handle table, `ERR_NO_RESOURCES`.
+fn sys_job_create(ph: Handle) -> Result<i64, i64> {
+    use crate::object::job::{CreateError, Job};
+    let parent = job_of(ph)?;
+    let job = Job::new_child(&parent).map_err(|e| match e {
+        CreateError::Dead => ERR_PEER_CLOSED,
+        CreateError::TooDeep => ERR_NO_RESOURCES,
+    })?;
+    let h = table()?
+        .lock()
+        .insert(Entry {
+            object: Object::Job(job),
+            rights: Rights::JOB_DEFAULT,
+        })
+        .map_err(handle_err)?;
+    Ok(i64::from(h))
+}
+
+/// `job_kill(h)` (v1.13): kills every live process in the job and below it, as `process_kill`
+/// does (`EXIT_KILLED`, at each thread's next safe point). A job that contains the caller — its
+/// own job or an ancestor, the root always — is `ERR_INVALID` with no effect; a job killed
+/// before is a no-op (`0`).
+fn sys_job_kill(h: Handle) -> Result<i64, i64> {
+    let job = job_of(h)?;
+    if sched::current_job().within(&job) {
+        return Err(ERR_INVALID);
+    }
+    sched::kill_job(&job, EXIT_KILLED);
+    Ok(0)
+}
+
 // ---- v1.5: tokens and authority (WP-25) -------------------------------------------------------
 
 /// `token_create(authority_h, uid, gid, perms, expires)`: mints a token; the handle must be
@@ -951,7 +1062,7 @@ fn sys_token_revoke(h: Handle) -> Result<i64, i64> {
 // ---- v1.6: object types, the network interface, the keyboard (WP-27) --------------------
 
 /// `handle_type(h)`: the object's type code (ipc.md §1: 1 channel, 2 VMO, 3 file, 4 process,
-/// 5 token, 6 authority, 7 network interface, 8 keyboard).
+/// 5 token, 6 authority, 7 network interface, 8 keyboard, …, 13 job).
 fn sys_handle_type(h: Handle) -> Result<i64, i64> {
     let table = table()?;
     let t = table.lock();
@@ -1217,8 +1328,9 @@ fn sys_display_map(h: Handle) -> Result<i64, i64> {
 
 /// `vmo_map(h, prot)` (v1.8, ipc.md §3): maps the VMO into the calling process at an address
 /// the kernel chooses; `prot` bit 0 read, bit 1 write, each needing the same right on the
-/// handle (plus MAP); never executable; a physical VMO is mapped uncacheable. Returns the
-/// address; `ERR_NO_RESOURCES` when the process's mapping budget or region is spent.
+/// handle (plus MAP), and write needs READ too (v1.14, WP-149): a writable page on x86 is
+/// readable. Never executable; a physical VMO is mapped uncacheable. Returns the address;
+/// `ERR_NO_RESOURCES` when the process's mapping budget or region is spent.
 fn sys_vmo_map(h: Handle, prot: u64) -> Result<i64, i64> {
     if prot == 0 || prot & !3 != 0 {
         return Err(ERR_INVALID);
@@ -1237,7 +1349,7 @@ fn sys_vmo_map(h: Handle, prot: u64) -> Result<i64, i64> {
             need = Rights(need.0 | Rights::READ.0);
         }
         if prot & 2 != 0 {
-            need = Rights(need.0 | Rights::WRITE.0);
+            need = Rights(need.0 | Rights::WRITE.0 | Rights::READ.0);
         }
         if !e.rights.contains(need) {
             return Err(ERR_ACCESS);

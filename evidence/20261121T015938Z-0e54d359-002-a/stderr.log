@@ -1,0 +1,2 @@
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.00s
+     Running tests/pointer_menu.rs (target/x86_64-unknown-linux-gnu/release/deps/pointer_menu-35ddb5fd5d5ad93b)

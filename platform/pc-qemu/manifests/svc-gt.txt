@@ -1,0 +1,3 @@
+# TST-M6-SESSION-GATE (WP-169): LAUNCH needs an open session; the vouched session opens and ends it, the vouched desktop cannot open it
+session /SYSTEM/SVC.ELF - 3000 never 0 0 gater
+desktop /SYSTEM/SVC.ELF session 3000 never 0 0 ungated

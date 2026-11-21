@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261118T215409Z-143282ac-001-a",
+ "started_at": "2026-11-18T21:54:08+00:00",
+ "finished_at": "2026-11-18T21:54:15+00:00",
+ "source_revision": "143282ac6d7af852fa799eb263b137529dbbae26",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M4-HASH-VECTORS",
+ "commands": [
+  "cargo test --offline --release -p nawah-crypto --target x86_64-unknown-linux-gnu"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "44402579186",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "143282ac6d7af852fa799eb263b137529dbbae26",
+  "head_sha": "e98f278d2baf2b0ea97ad3305fecf7c1cfa28d1a",
+  "ref": "refs/pull/23/merge"
+ }
+}

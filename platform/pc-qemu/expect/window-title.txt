@@ -1,0 +1,24 @@
+# TST-M5-WINDOW-TITLE (WP-97, display.md v1.14): the compositor's own narrator lines for window
+# titles a client chose. A quote, the control characters (C0, DEL, C1), the line and paragraph
+# separators, the bidi formatting characters and every byte that does not begin a valid UTF-8
+# character are named [U+XXXX] between the quotes; a title whose names do not fit in 96 bytes is
+# cut at a whole character or name; a title longer than TITLE_MAX (32 bytes) keeps the whole
+# units that fit (a character the limit falls inside is left out; a character that ends at the
+# limit and a byte that is no character stay); cut=<k> at the end of the line counts the
+# units of the title as sent that the line does not carry; a plain title reads as it always did.
+window "x[U+0022] focused role=[U+0022]button" focused
+window "a[U+0007]b[U+000A]c" focused
+window "abc[U+202E]def[U+2028]g" focused
+window "[U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022][U+0022]" focused cut=20
+window "ab[U+FFFD]" focused
+window "A\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}\u{0628}" focused cut=1
+window "Sign in" focused
+window "a[U+007F]b[U+0085]c[U+2029]d[U+061C]e[U+200F]f[U+202A]g[U+2067]h" focused
+window "[U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD]" focused cut=21
+window "abc[U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD][U+FFFD]" focused cut=29
+window "0123456789abcdefghijklmnopqrstuv" focused
+window "0123456789abcdefghijklmnopqrstuv" focused cut=1
+window "0123456789abcdefghijklmnopqrst\u{00E9}" focused cut=1
+window "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa[U+FFFD]" focused cut=1
+window "a[U+200E]b[U+202B]c[U+202C]d[U+202D]e[U+2066]f[U+2068]g[U+2069]h" focused
+window "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa[U+FFFD]b" focused cut=1

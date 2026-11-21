@@ -106,6 +106,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "jobs"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "kbdprobe"
 version = "0.1.0"
 dependencies = [
@@ -143,6 +150,10 @@ version = "0.1.0"
 dependencies = [
  "libnawah",
 ]
+
+[[package]]
+name = "nawah-apps"
+version = "0.1.0"
 
 [[package]]
 name = "nawah-crypto"
@@ -208,6 +219,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "stopio"
+version = "0.1.0"
+dependencies = [
+ "libnawah",
+]
+
+[[package]]
 name = "svc"
 version = "0.1.0"
 dependencies = [
@@ -219,6 +237,7 @@ name = "svcmgr"
 version = "0.1.0"
 dependencies = [
  "libnawah",
+ "nawah-apps",
 ]
 
 [[package]]

@@ -55,7 +55,7 @@
  },
  "boot_oracle": {
   "test_id": "TST-M3-A64-BOOT",
-  "oracle": "AArch64 lab: boot|start arch=aarch64, GetMemoryMap + ExitBootServices succeed (boot|ebs|ok=1), the kernel's post_ebs and pmm self-check lines are printed from kernel code, then semihosting exit 0x10 (QEMU exit status 16); no boot|error, no panic",
+  "oracle": "AArch64 lab (QEMU virt, AAVMF): boot|start exactly once (arch=aarch64, boot=uefi, stage=pre_ebs), GetMemoryMap + ExitBootServices succeed (boot|ebs|ok=1), then from kernel code kernel|cpu_tables with the firmware's vector base and MMU kept (vbar=firmware|mmu=firmware) on the kernel stack, kernel|post_ebs with the map key, the pmm self-check (managed_frames, selfcheck=1) and the kernel|a64 line with the exception level and paging=firmware|exit=0x10; then semihosting exit 0x10 (QEMU exit status 16); no boot|error, no panic",
   "expected_exit_code": 16,
   "required_markers": [
    "OSX|${BUILD_ID}|boot|start|arch=aarch64|boot=uefi|stage=pre_ebs",

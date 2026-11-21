@@ -31,6 +31,44 @@ const CHAIN_MAX: u32 = 1 << 20;
 /// Largest file this implementation writes (a kernel-side bound, not the format's).
 pub const FILE_MAX: u32 = 64 * 1024 * 1024;
 
+/// Test kernel only (WP-121, TST-M3-FAT32-DISK-FULL): the allocator looks no further than a
+/// chosen cluster, as a volume that ends there would (filling the lab volume for real is too
+/// slow: every allocation scans the FAT from its start). Nothing answers in the allocator's
+/// place: its own scan runs to that end, finds no free cluster and answers `DiskFull`, and a
+/// cluster freed below that end is found again.
+#[cfg(feature = "ktest")]
+mod full {
+    use core::sync::atomic::{AtomicU32, Ordering};
+
+    static END: AtomicU32 = AtomicU32::new(u32::MAX);
+
+    pub fn set(end: u32) {
+        END.store(end, Ordering::SeqCst);
+    }
+
+    pub fn end() -> u32 {
+        END.load(Ordering::SeqCst)
+    }
+}
+
+/// Test kernel only: the allocator sees the whole volume again.
+#[cfg(feature = "ktest")]
+pub fn disarm_disk_full() {
+    full::set(u32::MAX);
+}
+
+/// The cluster the test kernel's hook ends the allocator's range at; no end outside it.
+fn full_end() -> u32 {
+    #[cfg(feature = "ktest")]
+    {
+        full::end()
+    }
+    #[cfg(not(feature = "ktest"))]
+    {
+        u32::MAX
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FsError {
     NotMounted,
@@ -165,21 +203,27 @@ impl Fat32 {
         }
         let mut b = [0u8; SECTOR];
         block::read(0, &mut b)?;
-        if le16(&b, 510) != 0xAA55 || b[66] != 0x29 {
+        Self::from_boot_sector(&b, block::capacity_sectors())
+    }
+
+    /// Validates a boot sector against a device of `capacity` sectors and returns the volume's
+    /// geometry; touches no disk, so the test kernel can give it crafted sectors.
+    pub fn from_boot_sector(b: &[u8; SECTOR], capacity: u64) -> Result<Fat32, FsError> {
+        if le16(b, 510) != 0xAA55 || b[66] != 0x29 {
             return Err(FsError::BadBpb);
         }
-        let bps = le16(&b, 11);
+        let bps = le16(b, 11);
         let spc = u32::from(b[13]);
-        let reserved = u32::from(le16(&b, 14));
+        let reserved = u32::from(le16(b, 14));
         let fats = u32::from(b[16]);
-        let root_entries = le16(&b, 17);
-        let tot16 = le16(&b, 19);
-        let fatsz16 = le16(&b, 22);
-        let total = le32(&b, 32);
-        let fat_sectors = le32(&b, 36);
-        let root_cluster = le32(&b, 44);
-        let fsinfo = u32::from(le16(&b, 48));
-        let bk_boot = u32::from(le16(&b, 50));
+        let root_entries = le16(b, 17);
+        let tot16 = le16(b, 19);
+        let fatsz16 = le16(b, 22);
+        let total = le32(b, 32);
+        let fat_sectors = le32(b, 36);
+        let root_cluster = le32(b, 44);
+        let fsinfo = u32::from(le16(b, 48));
+        let bk_boot = u32::from(le16(b, 50));
         let fat32_shape = bps as usize == SECTOR
             && spc.is_power_of_two()
             && (1..=128).contains(&spc)
@@ -189,22 +233,30 @@ impl Fat32 {
             && tot16 == 0
             && fatsz16 == 0
             && fat_sectors > 0
-            && total > reserved + fats * fat_sectors
             && root_cluster >= 2;
         if !fat32_shape {
             return Err(FsError::BadBpb);
         }
-        let data_start = reserved + fats * fat_sectors;
-        let clusters = (total - data_start) / spc;
-        if clusters < 65525
-            || root_cluster >= clusters + 2
-            || (clusters + 2) as u64 * 4 > fat_sectors as u64 * SECTOR as u64
+        // Every bound in 64 bits, where no field value can wrap (at most 65535 + 2 * (2^32 - 1)),
+        // and narrowed to 32 bits only after them: the data region starts inside the volume, the
+        // volume lies inside the device, and the cluster count stays below the numbers the FAT
+        // reserves for its marks.
+        let data_start = u64::from(reserved) + u64::from(fats) * u64::from(fat_sectors);
+        let total = u64::from(total);
+        if data_start >= total || total > capacity {
+            return Err(FsError::BadBpb);
+        }
+        let clusters = (total - data_start) / u64::from(spc);
+        // At most 0x0FFFFFF5 clusters: their numbers run from 2 to 0x0FFFFFF6, below the bad mark
+        // 0x0FFFFFF7 and the end-of-chain marks from 0x0FFFFFF8.
+        if !(65525..=0x0FFF_FFF5).contains(&clusters)
+            || u64::from(root_cluster) >= clusters + 2
+            || (clusters + 2) * 4 > u64::from(fat_sectors) * SECTOR as u64
         {
             return Err(FsError::BadBpb);
         }
-        if total as u64 > block::capacity_sectors() {
-            return Err(FsError::BadBpb);
-        }
+        // data_start < total <= u32::MAX and clusters <= 0x0FFFFFF5: both fit in 32 bits.
+        let (data_start, clusters) = (data_start as u32, clusters as u32);
         let mut label = [0u8; 11];
         label.copy_from_slice(&b[71..82]);
         Ok(Fat32 {
@@ -284,14 +336,19 @@ impl Fat32 {
         Ok(le32(&s, off % SECTOR) & 0x0FFF_FFFF)
     }
 
-    /// Writes entry `c` in every FAT copy, keeping the high 4 bits.
+    /// Writes entry `c` in every FAT copy, keeping the high 4 bits. The copies are written from
+    /// the last to the first, so the copy the kernel reads, the first, is written last (files.md
+    /// v1.8): a call that fails between the copies leaves what the kernel sees unchanged, and
+    /// the next `fat_set` of that entry writes every copy again. A copy after the first may
+    /// then be ahead of it (a link, a mark or a free the first copy does not have), never
+    /// behind.
     fn fat_set(&self, c: u32, v: u32) -> Result<(), FsError> {
         if c < 2 || c >= self.clusters + 2 {
             return Err(FsError::Corrupt);
         }
         let off = c as usize * 4;
         let mut s = [0u8; SECTOR];
-        for k in 0..self.fats {
+        for k in (0..self.fats).rev() {
             let sector = u64::from(self.reserved + k * self.fat_sectors) + (off / SECTOR) as u64;
             block::read(sector, &mut s)?;
             let old = le32(&s, off % SECTOR);
@@ -313,11 +370,67 @@ impl Fat32 {
         }
     }
 
+    /// One past the last cluster the allocator may take.
+    fn alloc_end(&self) -> u32 {
+        (self.clusters + 2).min(full_end())
+    }
+
+    /// The `n`th free cluster (from 1), lowest first, below `end`, by scanning the first FAT;
+    /// `None` when fewer are free there.
+    fn nth_free(&self, n: u32, end: u32) -> Result<Option<u32>, FsError> {
+        let mut s = [0u8; SECTOR];
+        let mut seen = 0u32;
+        let mut c = 2u32;
+        while c < end {
+            let sector_index = (c as usize * 4) / SECTOR;
+            block::read(u64::from(self.reserved) + sector_index as u64, &mut s)?;
+            let stop = (((sector_index + 1) * SECTOR / 4) as u32).min(end);
+            while c < stop {
+                if le32(&s, (c as usize * 4) % SECTOR) & 0x0FFF_FFFF == 0 {
+                    seen += 1;
+                    if seen == n {
+                        return Ok(Some(c));
+                    }
+                }
+                c += 1;
+            }
+        }
+        Ok(None)
+    }
+
+    /// True when the allocator can take `want` more clusters (the scan stops at the last one
+    /// it needs).
+    fn has_free(&self, want: u32) -> Result<bool, FsError> {
+        Ok(want == 0 || self.nth_free(want, self.alloc_end())?.is_some())
+    }
+
+    /// How many clusters the chain from `first` holds, counted no further than `cap`.
+    fn chain_len(&self, first: u32, cap: u32) -> Result<u32, FsError> {
+        let (mut c, mut n) = (first, 0u32);
+        while c >= 2 && n < cap {
+            n += 1;
+            match self.next_cluster(c)? {
+                Some(x) => c = x,
+                None => break,
+            }
+        }
+        Ok(n)
+    }
+
+    /// Test kernel only (TST-M3-FAT32-DISK-FULL): from now the allocator sees `left` free
+    /// clusters and no more (it stops before the next free one).
+    #[cfg(feature = "ktest")]
+    pub fn arm_disk_full(&self, left: u32) -> Result<(), FsError> {
+        let end = self.nth_free(left + 1, self.clusters + 2)?;
+        full::set(end.unwrap_or(u32::MAX));
+        Ok(())
+    }
+
     /// Finds a free cluster (lowest first), marks it EOC and zeroes it.
     fn alloc_cluster(&self) -> Result<u32, FsError> {
         let mut s = [0u8; SECTOR];
         let fat0 = u64::from(self.reserved);
-        let last = self.clusters + 2;
+        let last = self.alloc_end();
         let mut c = 2u32;
         while c < last {
             let sector_index = (c as usize * 4) / SECTOR;
@@ -361,6 +474,13 @@ impl Fat32 {
             self.fsinfo_adjust(i64::from(n), lowest)?;
         }
         Ok(n)
+    }
+
+    /// Test kernel only (TST-M3-FAT32-DISK-FULL): how many clusters the chain from `first`
+    /// holds, so a case can compare it with what the file's size needs.
+    #[cfg(feature = "ktest")]
+    pub fn chain_clusters(&self, first: u32) -> Result<u32, FsError> {
+        self.chain_len(first, CHAIN_MAX)
     }
 
     /// Free clusters, by scanning the first FAT.
@@ -648,6 +768,13 @@ impl Fat32 {
         if file.is_dir() {
             return Err(FsError::IsADirectory);
         }
+        // A stored first cluster that is no cluster of the volume (1, or at or past its end) is
+        // a damaged entry: every write call on it, the empty one included, is refused before
+        // the volume is asked anything, so no cluster is taken and no other file's chain is
+        // followed from FAT entry 1.
+        if file.first == 1 || file.first >= self.clusters + 2 {
+            return Err(FsError::Corrupt);
+        }
         if offset > file.size || data.len() as u64 + u64::from(offset) > u64::from(FILE_MAX) {
             return Err(FsError::Range);
         }
@@ -655,12 +782,29 @@ impl Fat32 {
             return Ok(0);
         }
         let cluster_bytes = self.sectors_per_cluster as usize * SECTOR;
-        if file.first == 0 {
-            file.first = self.alloc_cluster()?;
+        // The volume must hold the whole call before any of it is written (files.md v1.7): the
+        // clusters the bytes need beyond the chain the file has are counted, and when the
+        // allocator cannot take that many the call answers DiskFull with nothing written and
+        // nothing taken. The volume's lock is held to the end of the call, so the clusters
+        // counted here are the ones the allocations below find.
+        let need = (offset + data.len() as u32).div_ceil(cluster_bytes as u32);
+        let have = self.chain_len(file.first, need)?;
+        if need > have && !self.has_free(need - have)? {
+            return Err(FsError::DiskFull);
+        }
+        // The call works on a copy of the entry, and the node every open shares takes it only
+        // after the entry is stored (files.md v1.6): a failure at any write below leaves the
+        // node equal to the stored entry. What the failed call allocated then stays allocated
+        // with no owner, except a cluster already linked to an existing file's chain in the
+        // first FAT copy, which stays on the chain past the size; bytes the call wrote inside
+        // the old size stay written.
+        let mut staged = *file;
+        if staged.first == 0 {
+            staged.first = self.alloc_cluster()?;
         }
         // Walk to the cluster holding `offset`, extending the chain when the offset is exactly
         // at the end of the last cluster.
-        let mut c = file.first;
+        let mut c = staged.first;
         let mut skip = offset as usize / cluster_bytes;
         while skip > 0 {
             c = match self.next_cluster(c)? {
@@ -701,43 +845,59 @@ impl Fat32 {
             }
         }
         let end = offset + done as u32;
-        if end > file.size {
-            file.size = end;
+        if end > staged.size {
+            staged.size = end;
         }
-        self.store_entry(file)?;
+        self.store_entry(&staged)?;
+        *file = staged;
         Ok(done)
     }
 
-    /// Empties a file: frees its chain, size 0, no first cluster; the entry stays.
+    /// Empties a file (size 0, no first cluster; the entry stays). The order is the entry, the
+    /// node, the frees (files.md v1.5): the emptied entry is stored first, then the node every
+    /// open shares follows it, then the old chain is freed. A failure before the entry is
+    /// stored changes nothing; a failure after it leaves the file empty on the disk and in the
+    /// node alike, with clusters of the old chain lost, the FSInfo count stale, or both, and
+    /// is answered as an error. At no failure point of these writes does a name point at a freed
+    /// cluster, given that the writes reach the disk in the order they are made (no flush
+    /// separates the steps: a device cache that reorders them is not covered).
     pub fn truncate(&self, file: &mut Entry) -> Result<u32, FsError> {
         if file.is_dir() {
             return Err(FsError::IsADirectory);
         }
-        let freed = if file.first >= 2 {
-            self.free_chain(file.first)?
+        let old_first = file.first;
+        let mut emptied = *file;
+        emptied.first = 0;
+        emptied.size = 0;
+        self.store_entry(&emptied)?;
+        *file = emptied;
+        if old_first >= 2 {
+            self.free_chain(old_first)
         } else {
-            0
-        };
-        file.first = 0;
-        file.size = 0;
-        self.store_entry(file)?;
-        Ok(freed)
+            Ok(0)
+        }
     }
 
-    /// Removes a file (not a directory): frees its chain and marks the entry free.
+    /// Removes a file (not a directory). The entry is marked free first and its chain is freed
+    /// after it (files.md v1.5): a failure before the entry is written changes nothing; a
+    /// failure after it leaves no name, with clusters of the chain lost, the FSInfo count
+    /// stale, or both, and is answered as an error (a second delete then answers that the name does not
+    /// exist). At no failure point of these writes does a name point at a freed cluster, given
+    /// that the writes reach the disk in the order they are made (no flush separates the
+    /// steps: a device cache that reorders them is not covered).
     pub fn unlink(&self, path: &[u8]) -> Result<u32, FsError> {
         let e = self.lookup(path)?;
         if e.is_dir() {
             return Err(FsError::IsADirectory);
         }
+        let mut dead = e;
+        dead.name[0] = 0xE5;
+        self.store_entry(&dead)?;
         let freed = if e.first >= 2 {
             self.free_chain(e.first)?
         } else {
             0
         };
-        let mut dead = e;
-        dead.name[0] = 0xE5;
-        self.store_entry(&dead)?;
         Ok(freed)
     }
 

@@ -1,0 +1,15 @@
+$ cargo test --offline --release -p libui --target x86_64-unknown-linux-gnu --test pointer_menu
+
+running 9 tests
+test context_menu_opens_by_three_ways ... ok
+test describe_menu_item_out_of_range_is_none ... ok
+test esc_and_outside_click_close_and_return_focus ... ok
+test focus_order_unchanged_after_pointer ... ok
+test list_click_selects_the_row_and_double_click_activates ... ok
+test menu_mirrors_in_rtl ... ok
+test menu_wraps_skips_separators_and_disabled_never_chooses ... ok
+test release_outside_cancels ... ok
+test pointer_focuses_and_activates_the_element_under_it ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -20,6 +20,12 @@ pub const CORNER: u32 = 32;
 /// Cell width and height of the build-id bar (one cell per hex digit, at x = 2·CORNER).
 pub const CELL: u32 = 16;
 
+/// The interactive halt band (boot.md v1.2, WP-84): its height and colour (0x00RRGGBB).
+#[cfg(all(target_arch = "x86_64", not(feature = "ktest")))]
+pub const HALT_BAND: u32 = 96;
+#[cfg(all(target_arch = "x86_64", not(feature = "ktest")))]
+pub const HALT_COLOUR: u32 = 0xC00000;
+
 /// Pixel format codes as GOP names them.
 pub const FORMAT_RGBX: u32 = 0;
 pub const FORMAT_BGRX: u32 = 1;
@@ -223,6 +229,44 @@ fn draw_pattern(info: &DisplayInfo, build_id: &str) -> u64 {
             CELL,
             CELL,
             DIGIT_COLOURS[usize::from(digit)],
+        );
+    }
+    n
+}
+
+/// The interactive halt band (boot.md v1.2, WP-84): a band across the whole width, HALT_BAND
+/// high and centred vertically, in HALT_COLOUR, holding one 2·CELL square per decimal digit of
+/// `code` (most significant first, from x = 2·CORNER, CELL apart) in the build-id bar's digit
+/// colours. Returns the pixels written; nothing without a frame. Drawn after the halt line.
+#[cfg(all(target_arch = "x86_64", not(feature = "ktest")))]
+pub fn halt_banner(code: u8) -> u64 {
+    let Some(info) = info() else {
+        return 0;
+    };
+    let band = HALT_BAND.min(info.height);
+    let y0 = (info.height - band) / 2;
+    let mut n = fill(&info, 0, y0, info.width, band, HALT_COLOUR);
+    let side = 2 * CELL;
+    let cy = y0 + band.saturating_sub(side) / 2;
+    let mut digits = [0u8; 3];
+    let mut len = 0;
+    let mut v = code;
+    loop {
+        digits[len] = v % 10;
+        len += 1;
+        v /= 10;
+        if v == 0 {
+            break;
+        }
+    }
+    for (i, d) in digits[..len].iter().rev().enumerate() {
+        n += fill(
+            &info,
+            2 * CORNER + i as u32 * (side + CELL),
+            cy,
+            side,
+            side,
+            DIGIT_COLOURS[usize::from(*d)],
         );
     }
     n

@@ -37,6 +37,7 @@ use crate::arch::smp::MAX_CPUS;
 use crate::mm::addrspace::UserSpace;
 use crate::mm::vmm::{self, StackInfo};
 use crate::object::handle::Entry;
+use crate::object::job::Job;
 use crate::object::process::ProcessObject;
 use crate::object::HandleTable;
 use crate::sync::IrqSpinLock;
@@ -86,9 +87,13 @@ pub struct Thread {
     owns_stack: bool,
     /// The CPU this thread runs on (WP-20: never migrates).
     pub cpu: u8,
-    /// Inside `join`/`wait_process`: competes at the lowest priority until it returns, so a
+    /// Inside `join`/`wait_process`/`poll_until`: competes at the lowest priority, so a
     /// waiter never starves what it may be waiting for (WP-22, ADR-0010 amendment).
     waiting: bool,
+    /// The tick at which a `poll_until` wait ends (`u64::MAX` for a wait without a deadline and
+    /// outside a wait). From that tick on the waiter competes at the best priority instead of
+    /// the lowest, so it is run and returns whatever spins beside it (WP-99, RSK-024).
+    wait_deadline: u64,
     /// True from the moment the thread is picked until a later scheduling decision on its CPU
     /// shows its stack is no longer in use; an Exited thread is reaped only when false.
     on_cpu: bool,
@@ -113,6 +118,8 @@ pub struct Process {
     /// space; the test kernel uses it to hang a service during the lock (TST-M5-LOCK-HANG).
     #[cfg(feature = "ktest")]
     pub frozen: bool,
+    /// Its place in its job (syscall.md v1.15), given back at the reap.
+    member: Option<crate::object::job::Member>,
 }
 
 impl Process {
@@ -122,6 +129,8 @@ impl Process {
     fn finish(self, code: u64) {
         drop(self.handles);
         let _ = self.space.destroy();
+        // The place comes back before the exit is told (v1.15).
+        drop(self.member);
         if let Some(o) = self.object {
             o.finish(code);
         }
@@ -156,9 +165,15 @@ struct Sched {
 static SCHED: IrqSpinLock<Option<Sched>> = IrqSpinLock::new("sched", None);
 
 /// Table capacities reserved at init (the lab's population stays well inside them; beyond,
-/// the tables still grow — the reserve is about a stable frame count, not a limit).
+/// the tables still grow — the reserve is about a stable frame count, not a limit). WP-164: a
+/// full job (32 processes, syscall.md v1.15) beside the services and a few applications is the
+/// lab's peak (TST-M6-JOB-BOUND: about 40 processes and as many threads, 33 processes reaped
+/// together; with 16 processes and 8 processes to reap the grown lists kept two frames,
+/// docs/LATER.md L-088). The kernel threads' lists keep their sizes: they hold kernel threads
+/// alone.
 const THREAD_RESERVE: usize = 64;
-const PROCESS_RESERVE: usize = 16;
+const PROCESS_RESERVE: usize = 64;
+const REAPING_RESERVE: usize = 64;
 
 /// A switch decided by `prepare_switch`, to be performed right away with interrupts disabled.
 struct Switch {
@@ -191,19 +206,24 @@ fn me() -> usize {
     arch::cpu_id() as usize
 }
 
-/// The priority a thread competes with: its own, or the lowest while it waits.
-fn effective_prio(t: &Thread) -> u8 {
-    if t.waiting {
-        PRIORITIES - 1
-    } else {
+/// The priority a thread competes with at tick `now`: its own; the lowest while it waits; the
+/// best once its wait's deadline has come (WP-99: the waiter then only returns from its wait,
+/// which ends the boost). At the best priority it still takes its turn among the Ready
+/// priority-0 threads of its CPU, the one picked least recently first.
+fn effective_prio(t: &Thread, now: u64) -> u8 {
+    if !t.waiting {
         t.priority
+    } else if now >= t.wait_deadline {
+        0
+    } else {
+        PRIORITIES - 1
     }
 }
 
 /// Effective priority of the thread running on `cpu` (PRIORITIES when unknown).
 fn running_prio(s: &Sched, cpu: usize) -> u8 {
     index_of(s, s.current[cpu])
-        .map(|i| effective_prio(&s.threads[i]))
+        .map(|i| effective_prio(&s.threads[i], s.ticks))
         .unwrap_or(PRIORITIES)
 }
 
@@ -231,11 +251,14 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         owns_stack: false,
         cpu: 0,
         waiting: false,
+        wait_deadline: u64::MAX,
         on_cpu: true,
     };
     // Capacities up front, so spawns within the reserve never grow the tables: a growth keeps
     // the larger buffer for the kernel's lifetime, and a test's frame balance counts it (CI
     // run 39142666458: the fifth process of the shell cases grew `processes` past 4).
+    // The stacks' page tables too (WP-161): a failure here leaves them to be made on demand.
+    let _ = vmm::reserve_stack_tables();
     let mut threads = Vec::with_capacity(THREAD_RESERVE);
     threads.push(t0);
     let mut g = SCHED.lock();
@@ -254,9 +277,12 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         switches: 0,
         preemptions: 0,
         finished_threads: Vec::with_capacity(16),
-        finished_processes: Vec::with_capacity(16),
+        // The whole list up front (WP-161): nobody waits for a process another process
+        // started, so its record stays until 64 newer ones push it out, and a list that grew
+        // on the seventeenth exit kept its larger buffer (TST-M6-APP-SPAWN: frames_delta=2).
+        finished_processes: Vec::with_capacity(FINISHED_KEEP),
         reaping_threads: Vec::with_capacity(8),
-        reaping_processes: Vec::with_capacity(8),
+        reaping_processes: Vec::with_capacity(REAPING_RESERVE),
         kernel_cr3,
     });
 }
@@ -280,6 +306,7 @@ pub fn adopt_ap(cpu: usize, stack: StackInfo) {
             owns_stack: false,
             cpu: cpu as u8,
             waiting: false,
+            wait_deadline: u64::MAX,
             on_cpu: true,
         });
         s.current[cpu] = id;
@@ -321,6 +348,7 @@ fn new_thread(
         owns_stack: true,
         cpu: cpu as u8,
         waiting: false,
+        wait_deadline: u64::MAX,
         on_cpu: false,
     });
     // A new thread of better or equal priority runs at its CPU's next preemption point or yield.
@@ -411,23 +439,41 @@ pub fn spawn_user_with(
             }
         }
     }
+    let process = Process {
+        id: 0,
+        space,
+        threads: 1,
+        exit_code: None,
+        handles: Arc::new(IrqSpinLock::new("handles", table)),
+        object,
+        kill: None,
+        #[cfg(feature = "ktest")]
+        frozen: false,
+        member: None,
+    };
     let (result, failed) = with(|s| {
+        // A process never enters a dead job (WP-46): `kill_job` marks the job and its members
+        // under this same lock, so a spawn is either seen by that pass or refused here.
+        if process.object.as_ref().is_some_and(|o| o.job().dead()) {
+            return (Err(SpawnError), Some(process));
+        }
+        // v1.15 (WP-164): a full job, not the root, takes no more.
+        let member = match process.object.as_ref() {
+            Some(o) => match o.job().admit() {
+                Some(m) => Some(m),
+                None => return (Err(SpawnError), Some(process)),
+            },
+            None => None,
+        };
+        let mut process = process;
+        process.member = member;
         let pid = s.next_pid;
         s.next_pid += 1;
-        if let Some(o) = &object {
+        process.id = pid;
+        if let Some(o) = &process.object {
             o.bind(pid);
         }
-        s.processes.push(Process {
-            id: pid,
-            space,
-            threads: 1,
-            exit_code: None,
-            handles: Arc::new(IrqSpinLock::new("handles", table)),
-            object,
-            kill: None,
-            #[cfg(feature = "ktest")]
-            frozen: false,
-        });
+        s.processes.push(process);
         let cpu = me();
         match new_thread(
             s,
@@ -456,7 +502,8 @@ fn index_of(s: &Sched, tid: u32) -> Option<usize> {
 }
 
 /// The thread to run next on `cpu`: one of its threads, Ready (or the Running current), with
-/// the smallest effective priority value (a waiting thread counts as the lowest), ties broken
+/// the smallest effective priority value (a waiting thread counts as the lowest until its
+/// wait's deadline, as the best from then on), ties broken
 /// by the smallest `last_pick`, then by position.
 fn pick_next(s: &Sched, cpu: usize) -> usize {
     let mut best: Option<(usize, u8)> = None;
@@ -470,7 +517,7 @@ fn pick_next(s: &Sched, cpu: usize) -> usize {
         if !runnable {
             continue;
         }
-        let prio = effective_prio(t);
+        let prio = effective_prio(t, s.ticks);
         best = match best {
             None => Some((i, prio)),
             Some((b, bp)) => {
@@ -755,11 +802,15 @@ pub fn yield_now() -> bool {
 /// priority, so it never starves what it waits for (CI run 39118752606: a priority-1 waiter
 /// starved a priority-3 spinner; CI run 39119679600: two waiters at priority 1 kept handing
 /// the CPU to each other — the demotion must be visible to every decision, not only the
-/// waiter's own).
-fn set_waiting(waiting: bool) {
+/// waiter's own). `deadline` is the tick the wait ends at (`u64::MAX` for none): from that tick
+/// the waiter competes at the best priority instead (WP-99) and is run when the running
+/// thread's slice ends at the latest (one slice more for every other Ready priority-0 thread
+/// of its CPU), so a thread that spins beside it cannot keep it from returning.
+fn set_waiting(waiting: bool, deadline: u64) {
     with(|s| {
         if let Some(i) = index_of(s, s.current[me()]) {
             s.threads[i].waiting = waiting;
+            s.threads[i].wait_deadline = if waiting { deadline } else { u64::MAX };
         }
     });
 }
@@ -828,9 +879,9 @@ pub fn exit_current(code: u64) -> ! {
 /// Waits until kernel thread `tid` has exited and returns its code (None for an unknown thread
 /// or a process thread, which is waited for through its process).
 pub fn join(tid: u32) -> Option<u64> {
-    set_waiting(true);
+    set_waiting(true, u64::MAX);
     let r = join_loop(tid);
-    set_waiting(false);
+    set_waiting(false, u64::MAX);
     r
 }
 
@@ -857,8 +908,13 @@ fn join_loop(tid: u32) -> Option<u64> {
 /// Polls `ready` with the cooperative wait of `join`/`wait_process` (yield to a ready thread,
 /// else idle until an interrupt) until it answers true or the clock reaches `deadline`
 /// (ticks); usable from the boot thread, which cannot block. Returns whether `ready` held.
+/// Until the deadline the caller competes at the lowest priority; from the deadline on at the
+/// best, so it returns within a time slice of it even beside a thread that never yields (a
+/// slice more for every other Ready priority-0 thread of its CPU; WP-99: a service manager
+/// that spins must not keep the boot from its `LOAD` deadline). `ready` is read before the
+/// clock, so what became ready in that last slice still counts as held.
 pub fn poll_until(deadline: u64, mut ready: impl FnMut() -> bool) -> bool {
-    set_waiting(true);
+    set_waiting(true, deadline);
     let held = loop {
         if ready() {
             break true;
@@ -870,15 +926,15 @@ pub fn poll_until(deadline: u64, mut ready: impl FnMut() -> bool) -> bool {
             context::idle_wait();
         }
     };
-    set_waiting(false);
+    set_waiting(false, u64::MAX);
     held
 }
 
 /// Waits until process `pid` has exited (its last thread) and returns its exit code.
 pub fn wait_process(pid: u32) -> Option<u64> {
-    set_waiting(true);
+    set_waiting(true, u64::MAX);
     let r = wait_process_loop(pid);
-    set_waiting(false);
+    set_waiting(false, u64::MAX);
     r
 }
 
@@ -902,10 +958,6 @@ fn wait_process_loop(pid: u32) -> Option<u64> {
     }
 }
 
-/// Marks process `pid` to be killed with `code` (WP-40, ADR-0016 §2 / §8.7): every thread of
-/// it is made runnable and asked to reschedule, and each exits at its next safe point
-/// (`check_kill`: a syscall return, a blocking wait returning, or a timer preemption). An
-/// unknown or already-exited process is ignored. Returns whether a live process was marked.
 /// Processes marked killed whose last thread has not exited yet (K4 fast path).
 static KILLS_PENDING: AtomicUsize = AtomicUsize::new(0);
 
@@ -916,29 +968,35 @@ fn kill_pending(s: &Sched, i: usize) -> bool {
         .is_some_and(|pid| s.processes.iter().any(|p| p.id == pid && p.kill.is_some()))
 }
 
+/// Marks process `pid` to be killed with `code` (WP-40, ADR-0016 §2 / §8.7): every thread of
+/// it is made runnable and asked to reschedule, and each exits at its next safe point
+/// (`check_kill`: a syscall return, a blocking wait returning, or a timer preemption). An
+/// unknown or already-exited process is ignored. Returns whether a live process was marked.
 pub fn kill_process(pid: u32, code: u64) -> bool {
-    with(|s| {
-        let Some(p) = s.processes.iter_mut().find(|p| p.id == pid) else {
-            return false;
-        };
-        if p.exit_code.is_some() {
-            return false; // its last thread already exited; nothing to kill
-        }
-        if p.kill.is_none() {
-            p.kill = Some(code);
-            // Counted before any thread can look (we hold the lock); `exit_current` uncounts
-            // it when the last thread goes. Lets every safe point skip the lock when no kill is
-            // pending anywhere (review 2026-10-19, K4).
-            KILLS_PENDING.fetch_add(1, Ordering::SeqCst);
-        }
-        // Wake every thread of the process so it reaches a safe point, and nudge the CPUs
-        // running them. A thread blocked/sleeping becomes Ready (its wait returns, then
-        // `check_kill` exits it); a running one gets a reschedule to its preemption point.
-        let mut cpus = [false; MAX_CPUS];
-        for t in s.threads.iter_mut() {
-            if t.process != Some(pid) {
-                continue;
-            }
+    with(|s| mark_killed(s, pid, code))
+}
+
+/// `kill_process` under the scheduler lock: the one kill machinery, shared by `kill_job`.
+fn mark_killed(s: &mut Sched, pid: u32, code: u64) -> bool {
+    let Some(p) = s.processes.iter_mut().find(|p| p.id == pid) else {
+        return false;
+    };
+    if p.exit_code.is_some() {
+        return false; // its last thread already exited; nothing to kill
+    }
+    if p.kill.is_none() {
+        p.kill = Some(code);
+        // Counted before any thread can look (we hold the lock); `exit_current` uncounts
+        // it when the last thread goes. Lets every safe point skip the lock when no kill is
+        // pending anywhere (review 2026-10-19, K4).
+        KILLS_PENDING.fetch_add(1, Ordering::SeqCst);
+    }
+    // Wake every thread of the process so it reaches a safe point, and nudge the CPUs
+    // running them. A thread blocked/sleeping becomes Ready (its wait returns, then
+    // `check_kill` exits it); a running one gets a reschedule to its preemption point.
+    let mut cpus = [false; MAX_CPUS];
+    for t in s.threads.iter_mut() {
+        if t.process == Some(pid) {
             match t.state {
                 State::Blocked | State::BlockedUntil { .. } | State::Sleeping { .. } => {
                     t.state = State::Ready;
@@ -947,13 +1005,53 @@ pub fn kill_process(pid: u32, code: u64) -> bool {
             }
             cpus[usize::from(t.cpu)] = true;
         }
-        for (c, &want) in cpus.iter().enumerate() {
-            if want {
-                request_resched(s, c);
+    }
+    for (c, &want) in cpus.iter().enumerate() {
+        if want {
+            request_resched(s, c);
+        }
+    }
+    true
+}
+
+/// Kills `job` and everything in it (WP-46, syscall.md v1.13 §5): in one pass under the
+/// scheduler lock the job is marked killed and every live process whose job lies within it is
+/// marked as `kill_process` marks one. A process without a process object belongs to the root,
+/// which no caller can kill (it contains the caller). Spawns check `Job::dead` under the same
+/// lock before a process enters the table, so none slips in after this pass. Returns whether
+/// the job was not killed before (an already killed job is left as it is).
+pub fn kill_job(job: &Job, code: u64) -> bool {
+    with(|s| {
+        if !job.mark_killed() {
+            return false;
+        }
+        for i in 0..s.processes.len() {
+            let p = &s.processes[i];
+            let member = match &p.object {
+                Some(o) => o.job().within(job),
+                None => job.is_root(),
+            };
+            if member && p.exit_code.is_none() {
+                let pid = p.id;
+                mark_killed(s, pid, code);
             }
         }
         true
     })
+}
+
+/// The job of the current thread's process (WP-46): `process_spawn` places the child there.
+/// A process without a process object, and a kernel thread, belong to the root.
+pub fn current_job() -> Arc<Job> {
+    let job = with(|s| {
+        let i = index_of(s, s.current[me()])?;
+        let pid = s.threads[i].process?;
+        s.processes
+            .iter()
+            .find(|p| p.id == pid)
+            .and_then(|p| p.object.as_ref().map(|o| o.job().clone()))
+    });
+    job.unwrap_or_else(crate::object::job::root)
 }
 
 /// Test-only (WP-40): freezes live process `pid` — its threads are never woken again, neither
@@ -984,6 +1082,190 @@ pub fn freeze_named(name: &[u8]) -> bool {
         }
         false
     })
+}
+
+/// Test-only (WP-107): the live handle count of the live process whose spawn image base name
+/// equals `name` (e.g. `CONFIGD.ELF`), read while it runs — how the test kernel shows that a
+/// service keeps no handle a request carried (TST-M4-CONFIG-RETRY). None when none matches.
+#[cfg(feature = "ktest")]
+pub fn handles_named(name: &[u8]) -> Option<usize> {
+    let table = with(|s| {
+        s.processes
+            .iter()
+            .find(|p| p.exit_code.is_none() && p.object.as_ref().is_some_and(|o| o.name_is(name)))
+            .map(|p| p.handles.clone())
+    })?;
+    // Counted outside the scheduler lock, as the syscall layer takes the table.
+    let n = table.lock().len();
+    Some(n)
+}
+
+/// Test-only (WP-108): whether every thread of the live process whose spawn image base name
+/// equals `name` is blocked or asleep. Read after `freeze_named` it shows the process parked:
+/// a frozen process's threads take no wake-up and their timed waits do not expire, so it
+/// stays where it is until `thaw_named`, and what the test queues or closes meanwhile is all
+/// there when it runs again (TST-M4-NET-CLIENT-DROP). False when none matches or it has no
+/// thread.
+#[cfg(feature = "ktest")]
+pub fn parked_named(name: &[u8]) -> bool {
+    with(|s| {
+        let Some(pid) = s
+            .processes
+            .iter()
+            .find(|p| p.exit_code.is_none() && p.object.as_ref().is_some_and(|o| o.name_is(name)))
+            .map(|p| p.id)
+        else {
+            return false;
+        };
+        let mut any = false;
+        for t in s.threads.iter().filter(|t| t.process == Some(pid)) {
+            match t.state {
+                State::Blocked | State::BlockedUntil { .. } | State::Sleeping { .. } => any = true,
+                State::Ready | State::Running => return false,
+                State::Exited { .. } => {}
+            }
+        }
+        any
+    })
+}
+
+/// Test-only (WP-161): what the test kernel reads of one live process of an image.
+#[cfg(feature = "ktest")]
+#[derive(Clone, Copy, Default)]
+pub struct LiveNamed {
+    /// Its live handle count.
+    pub handles: usize,
+    /// Its job's id (0 for a process without a process object).
+    pub job: u64,
+    /// Whether that job is a child of the root job itself.
+    pub under_root: bool,
+    /// WP-102: its job's parent's id, and whether that parent is a child of the root job.
+    pub parent: u64,
+    pub parent_under_root: bool,
+    /// Whether every thread of it waits without a deadline.
+    pub waiting: bool,
+}
+
+/// Test-only (WP-164): kills the job `job` (an id) of a live process with its whole tree, as
+/// job_kill does; false when no live process is in it. The test kernel ends applications whose
+/// children never exit before it stops the manager, which does not end its applications' jobs.
+#[cfg(feature = "ktest")]
+pub fn kill_job_id(job: u64, code: u64) -> bool {
+    let found = with(|s| {
+        s.processes
+            .iter()
+            .filter(|p| p.exit_code.is_none())
+            .filter_map(|p| p.object.as_ref())
+            .map(|o| o.job().clone())
+            .find(|j| j.id == job)
+    });
+    found.is_some_and(|j| kill_job(&j, code))
+}
+
+/// Test-only (WP-173): kills the one live process named `name` with `code`, as `process_kill`
+/// does (a crash: no code of its own); false unless exactly one live process has that name.
+/// TST-M6-SESSION-RESTART crashes the vouched session this way while it is ready.
+#[cfg(feature = "ktest")]
+pub fn kill_named(name: &[u8], code: u64) -> bool {
+    let found = with(|s| {
+        let mut named = s
+            .processes
+            .iter()
+            .filter(|p| p.exit_code.is_none())
+            .filter(|p| p.object.as_ref().is_some_and(|o| o.name_is(name)));
+        match (named.next(), named.next()) {
+            (Some(p), None) => Some(p.id),
+            _ => None,
+        }
+    });
+    found.is_some_and(|pid| kill_process(pid, code))
+}
+
+/// Test-only (WP-164): what the job `job` (an id) of a live process counts as its own processes
+/// (syscall.md v1.15), or None when no live process is in it.
+#[cfg(feature = "ktest")]
+pub fn job_count(job: u64) -> Option<u32> {
+    with(|s| {
+        s.processes
+            .iter()
+            .filter(|p| p.exit_code.is_none())
+            .filter_map(|p| p.object.as_ref())
+            .find(|o| o.job().id == job)
+            .map(|o| o.job().processes())
+    })
+}
+
+/// Test-only (WP-164): how many processes of the job `job` (an id) are live, of any image.
+#[cfg(feature = "ktest")]
+pub fn live_in_job(job: u64) -> usize {
+    with(|s| {
+        s.processes
+            .iter()
+            .filter(|p| p.exit_code.is_none())
+            .filter_map(|p| p.object.as_ref())
+            .filter(|o| o.job().id == job)
+            .count()
+    })
+}
+
+/// Test-only (WP-161): the live processes whose spawn image base name equals `name`, and how
+/// many were read: 16 at most. The handle counts are read outside the scheduler lock, as the
+/// syscall layer takes the tables (TST-M6-APP-SPAWN: the applications the manager launched).
+#[cfg(feature = "ktest")]
+pub fn live_named(name: &[u8]) -> ([LiveNamed; 16], usize) {
+    let mut tables: [Option<Arc<IrqSpinLock<HandleTable>>>; 16] = Default::default();
+    let mut out = [LiveNamed::default(); 16];
+    let n = with(|s| {
+        let mut n = 0;
+        for p in s.processes.iter() {
+            let Some(o) = p.object.as_ref() else {
+                continue;
+            };
+            if p.exit_code.is_some() || !o.name_is(name) || n == out.len() {
+                continue;
+            }
+            let (mut any, mut all) = (false, true);
+            for t in s.threads.iter().filter(|t| t.process == Some(p.id)) {
+                match t.state {
+                    State::Blocked => any = true,
+                    State::Exited { .. } => {}
+                    _ => all = false,
+                }
+            }
+            let (parent, parent_under_root) = o.job().parent_of();
+            out[n] = LiveNamed {
+                handles: 0,
+                job: o.job().id,
+                under_root: o.job().child_of_root(),
+                parent,
+                parent_under_root,
+                waiting: any && all,
+            };
+            tables[n] = Some(p.handles.clone());
+            n += 1;
+        }
+        n
+    });
+    for (one, table) in out.iter_mut().zip(tables.iter()) {
+        if let Some(t) = table {
+            one.handles = t.lock().len();
+        }
+    }
+    (out, n)
+}
+
+/// Test-only (WP-156): as `handles_named`, for the live process `pid` — the service manager is
+/// spawned by the kernel and has no image name (TST-M4-SVC-CONNECT-NOREAD). None when not live.
+#[cfg(feature = "ktest")]
+pub fn handles_pid(pid: u32) -> Option<usize> {
+    let table = with(|s| {
+        s.processes
+            .iter()
+            .find(|p| p.id == pid && p.exit_code.is_none())
+            .map(|p| p.handles.clone())
+    })?;
+    let n = table.lock().len();
+    Some(n)
 }
 
 /// Test-only (WP-40): releases the live process `freeze_named` froze, as if its hang ended: its

@@ -1510,6 +1510,27 @@ impl Net {
         self.conns[ci] = NO_CONN;
     }
 
+    /// A client is gone: its channel end is closed and its slot freed, its sockets are freed
+    /// and its connections reset (no graceful close for a vanished client; net.md ب and ج).
+    /// The one place a slot is freed, so no path leaves a client's sockets or connections to
+    /// whoever takes the slot next (WP-108).
+    fn drop_client(&mut self, ci: usize) {
+        libnawah::handle_close(self.clients[ci]);
+        self.clients[ci] = 0;
+        for s in self
+            .sockets
+            .iter_mut()
+            .filter(|s| s.port != 0 && s.owner == ci)
+        {
+            *s = NO_SOCKET;
+        }
+        for cn in 0..MAX_CONNS {
+            if self.conns[cn].owner == ci {
+                self.tcp_abort(cn);
+            }
+        }
+    }
+
     /// The slot of the connection `id` held by `owner`.
     fn find_conn(&self, id: u64, owner: usize) -> Option<usize> {
         (0..MAX_CONNS).find(|&i| self.conns[i].owner == owner && u64::from(self.conns[i].id) == id)
@@ -1888,27 +1909,10 @@ fn main() -> u64 {
                 }
                 let len = out.len;
                 if libnawah::channel_write(c, &out_buf[..len], &[]) == ERR_PEER_CLOSED {
-                    libnawah::handle_close(c);
-                    st.clients[ci] = 0;
+                    st.drop_client(ci);
                 }
             }
-            Err(ERR_PEER_CLOSED) => {
-                libnawah::handle_close(c);
-                st.clients[ci] = 0;
-                for s in st
-                    .sockets
-                    .iter_mut()
-                    .filter(|s| s.port != 0 && s.owner == ci)
-                {
-                    *s = NO_SOCKET;
-                }
-                // The client's connections are reset (no graceful close for a vanished client).
-                for cn in 0..MAX_CONNS {
-                    if st.conns[cn].owner == ci {
-                        st.tcp_abort(cn);
-                    }
-                }
-            }
+            Err(ERR_PEER_CLOSED) => st.drop_client(ci),
             // Larger than any request, or carrying handles no request takes: discarded and
             // refused, so this client's next request is read and the clients after it are not
             // starved behind a message that never fits (review 2026-10-19, as svcmgr does).

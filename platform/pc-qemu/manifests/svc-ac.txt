@@ -1,0 +1,4 @@
+# TST-M6-APP-CONNECT-DENIED (WP-162): applications ask the manager for connections; `config` and `display` are the lab image tracing the names they are given
+config /SYSTEM/SVC.ELF - 3000 never 0 0 names
+display /SYSTEM/SVC.ELF - 3000 never 0 0 names
+session /SYSTEM/LABSES.ELF config,display 3000 never 0 0 connector

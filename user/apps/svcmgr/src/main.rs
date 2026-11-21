@@ -4,13 +4,16 @@
 //! which it must answer `READY` within its timeout; failures restart with exponential backoff
 //! up to a limit; `LIST` reports every service; `STOP <name>` closes a service's channel.
 //! No allocation: fixed tables, at most 16 services. Exits 0 when the control channel closes.
+//! (WP-161, services.md v1.15) `LAUNCH` from the vouched session or desktop starts a registered
+//! application in a job of its own under the root job, with a boot channel and nothing else;
+//! at most eight run, in a table apart from the services.
 
 #![no_std]
 #![no_main]
 
 use libnawah::{
-    rights, Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_PEER_CLOSED, ERR_TIMED_OUT, SIGNAL_EXITED,
-    SIGNAL_PEER_CLOSED, SIGNAL_READABLE, TIMEOUT_FOREVER,
+    rights, Handle, WaitEntry, ERR_BUFFER_TOO_SMALL, ERR_NOT_FOUND, ERR_PEER_CLOSED, ERR_TIMED_OUT,
+    SIGNAL_EXITED, SIGNAL_PEER_CLOSED, SIGNAL_READABLE, TIMEOUT_FOREVER,
 };
 
 libnawah::entry!(main);
@@ -21,7 +24,22 @@ const PATH_MAX: usize = 64;
 const ARG_MAX: usize = 64;
 /// The raw dependency list of one manifest line (`A,B,C`).
 const DEPS_MAX: usize = 64;
+/// The manifest buffer (services.md v1.13, WP-68): a file that fills it is refused whole with
+/// `ERR MANIFEST_TOO_LARGE`, so 4095 bytes is the largest manifest accepted.
 const MANIFEST_MAX: usize = 4096;
+/// The applications' registry on the volume (ADR-0023 item 2): written by the build alone.
+const APPS_DIR: &[u8] = b"/SYSTEM/APPS";
+/// Applications running at once (services.md v1.15).
+const MAX_RUNNING: usize = 8;
+/// The last number of an identity `app:<id>#<n>` (ADR-0023 item 5: two digits).
+const APP_NUM_MAX: u8 = 99;
+/// Connections the running applications together are granted to one service (v1.16): half
+/// of a service's eight client places, so the session and the services keep the rest.
+const APP_CONNECT_MAX: usize = 4;
+/// LAUNCH's rate (WP-163, services.md v1.18): at most this many launch attempts in any
+/// [`LAUNCH_WINDOW`] ticks for the whole manager; the next is answered ERR BUSY.
+const LAUNCH_RATE_MAX: usize = 16;
+const LAUNCH_WINDOW: u64 = 1000;
 const MSG_MAX: usize = 4096;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -198,6 +216,18 @@ fn name_ok(s: &[u8]) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || *c == b'_' || *c == b'-')
 }
 
+/// `LOAD` reads only under `/SYSTEM/` (services.md v1.13, WP-68): the prefix byte for byte, then
+/// no empty, `.` or `..` component, so `/SYSTEM/../X` cannot climb out of it. Checked before the
+/// file is opened.
+fn system_path(p: &[u8]) -> bool {
+    match p.strip_prefix(b"/SYSTEM/") {
+        Some(rest) => rest
+            .split(|c| *c == b'/')
+            .all(|c| !c.is_empty() && c != b"." && c != b".."),
+        None => false,
+    }
+}
+
 /// Splits on spaces; `at_most` fields, the last one taking the rest of the line (the `arg`).
 struct Fields<'a> {
     line: &'a [u8],
@@ -230,10 +260,60 @@ impl<'a> Fields<'a> {
     }
 }
 
+/// One running application (services.md v1.15): its process (None: the place is free), its
+/// boot channel while both ends are open, the job made for it, and its identity's number;
+/// (v1.16) its registry entry, and the services it was granted a connection to, a set over
+/// the allow-list given back with its place.
+#[derive(Clone, Copy)]
+struct Running {
+    process: Option<Handle>,
+    chan: Option<Handle>,
+    job: Handle,
+    num: u8,
+    entry: u8,
+    grants: u8,
+}
+
+const NOT_RUNNING: Running = Running {
+    process: None,
+    chan: None,
+    job: 0,
+    num: 0,
+    entry: 0,
+    grants: 0,
+};
+
 struct Manager {
     services: [Service; MAX_SERVICES],
     n: usize,
     loaded: bool,
+    /// The registry's accepted entries (apps.md §4), by id, in the directory's order.
+    apps: [[u8; nawah_apps::ID_MAX]; nawah_apps::MAX_APPS],
+    app_lens: [u8; nawah_apps::MAX_APPS],
+    /// Each entry's image path (apps.md §2), beside its id.
+    app_elf: [[u8; PATH_MAX]; nawah_apps::MAX_APPS],
+    app_elf_lens: [u8; nawah_apps::MAX_APPS],
+    /// Each entry's declared dependencies (apps.md §2), a set over the allow-list.
+    app_deps: [u8; nawah_apps::MAX_APPS],
+    apps_n: usize,
+    /// The applications running now (v1.15), apart from the services.
+    running: [Running; MAX_RUNNING],
+    /// The number the last launched application was given: the circle goes on from it.
+    last_num: u8,
+    /// The root job (v1.12): the session's job is made under it.
+    root_job: Handle,
+    /// The session's job (v1.17): made under the root job by the first LAUNCH that finds none,
+    /// each application's job a child of it; END_SESSION kills it and lets it go, so the next
+    /// LAUNCH makes another. The manager alone holds it.
+    session_job: Option<Handle>,
+    /// The session's gate (v1.19): LAUNCH is answered ERR NO_SESSION while it is closed. Closed
+    /// when the manager starts, by END_SESSION and by the session service's exit; opened by
+    /// BEGIN_SESSION from the vouched session alone.
+    session_open: bool,
+    /// LAUNCH's rate (WP-163): the ticks of the last [`LAUNCH_RATE_MAX`] attempts, a ring whose
+    /// next slot, `launch_next`, holds the oldest of them.
+    launches: [Option<u64>; LAUNCH_RATE_MAX],
+    launch_next: usize,
     ctl: Handle,
     /// Kernel resources handed over as initial handles after the control channel, routed by
     /// type: the token authority to the service named `auth` (auth.md §1), the network
@@ -258,6 +338,10 @@ enum LoadError {
     UnknownDep([u8; NAME_MAX], usize),
     Cycle,
     TooMany,
+    /// v1.13: the file fills the manifest buffer (4096 bytes or more).
+    TooLarge,
+    /// v1.13: a read failed before the end of the file.
+    Io,
 }
 
 impl Manager {
@@ -265,19 +349,333 @@ impl Manager {
         (0..self.n).find(|&i| self.services[i].name() == name)
     }
 
+    /// Reads the registry the build wrote under /SYSTEM/APPS (ADR-0023 item 2; services.md
+    /// v1.14): every `<ID>.APP` the parser accepts, up to the registry's capacity. A refused
+    /// entry is left out and changes nothing (apps.md §4); no directory, no application.
+    fn load_apps(&mut self) {
+        self.apps_n = 0;
+        let mut listing = [0u8; MSG_MAX];
+        let Ok(len) = libnawah::dir_list(APPS_DIR, &mut listing) else {
+            return;
+        };
+        for line in listing[..len].split(|c| *c == b'\n') {
+            // `F <size> <NAME>` (files.md §2): the entry files alone.
+            let mut f = line.split(|c| *c == b' ');
+            let (Some(b"F"), Some(_), Some(file)) = (f.next(), f.next(), f.next()) else {
+                continue;
+            };
+            let plen = APPS_DIR.len() + 1 + file.len();
+            if !file.ends_with(b".APP") || plen > PATH_MAX || self.apps_n == nawah_apps::MAX_APPS {
+                continue;
+            }
+            let mut path = [0u8; PATH_MAX];
+            path[..APPS_DIR.len()].copy_from_slice(APPS_DIR);
+            path[APPS_DIR.len()] = b'/';
+            path[APPS_DIR.len() + 1..plen].copy_from_slice(file);
+            // One byte more than an entry may have: a longer file is refused by the parser.
+            let mut bytes = [0u8; nawah_apps::FILE_MAX + 1];
+            let Ok(h) = libnawah::open(&path[..plen], libnawah::O_READ) else {
+                continue;
+            };
+            let mut n = 0;
+            let whole = loop {
+                match libnawah::read(h, &mut bytes[n..]) {
+                    Ok(0) => break true,
+                    Ok(k) => n += k,
+                    Err(_) => break false,
+                }
+                if n == bytes.len() {
+                    break true;
+                }
+            };
+            libnawah::handle_close(h);
+            if !whole {
+                continue;
+            }
+            let mut one = nawah_apps::Registry::new();
+            if let Ok(app) = one.add(file, &bytes[..n]) {
+                let id = app.id.as_bytes();
+                self.apps[self.apps_n] = [0; nawah_apps::ID_MAX];
+                self.apps[self.apps_n][..id.len()].copy_from_slice(id);
+                self.app_lens[self.apps_n] = id.len() as u8;
+                let elf = app.elf.as_bytes();
+                let elf_len = elf.len().min(PATH_MAX);
+                self.app_elf[self.apps_n][..elf_len].copy_from_slice(&elf[..elf_len]);
+                self.app_elf_lens[self.apps_n] = elf_len as u8;
+                self.app_deps[self.apps_n] = app.deps.bits();
+                self.apps_n += 1;
+            }
+        }
+    }
+
+    /// APPS and LAUNCH on a service's boot channel (services.md v1.14, ADR-0023 item 1): for the
+    /// vouched session and desktop alone, and the requester is the service whose channel this
+    /// is, named by the manifest.
+    fn apps_request(&mut self, i: usize, req: &[u8]) {
+        let Some(c) = self.services[i].chan else {
+            return;
+        };
+        let mut out = Out::new();
+        let who = self.services[i].name();
+        if who != b"session" && who != b"desktop" {
+            out.put(b"ERR ACCESS");
+        } else if req == b"APPS" {
+            out.put(b"OK");
+            for k in 0..self.apps_n {
+                out.put(b" ");
+                out.put(&self.apps[k][..usize::from(self.app_lens[k])]);
+            }
+        } else {
+            let id = req.strip_prefix(b"LAUNCH ").unwrap_or(b"");
+            match (0..self.apps_n).find(|&k| &self.apps[k][..usize::from(self.app_lens[k])] == id) {
+                Some(_) if !self.session_open => out.put(b"ERR NO_SESSION"),
+                Some(k) => self.launch(k, &mut out),
+                None => out.put(b"ERR UNKNOWN"),
+            }
+        }
+        libnawah::channel_write(c, out.bytes(), &[]);
+    }
+
+    /// `LAUNCH` of registry entry `k` (services.md v1.15, v1.17, ADR-0023 item 1): a job under the
+    /// session's job, the entry's image started in it with a boot channel and no other handle, and
+    /// `START app:<id>#<n>` on that channel. The reply goes into `out`, which is empty; a
+    /// launch that fails keeps nothing: neither the job, nor an end of the channel, nor a
+    /// number.
+    fn launch(&mut self, k: usize, out: &mut Out) {
+        let Some(place) = self.running.iter().position(|a| a.process.is_none()) else {
+            out.put(b"ERR FULL");
+            return;
+        };
+        // An attempt (WP-163): a registered id that found a place, whatever comes of it. It is
+        // refused while the oldest of the last sixteen is less than a window old; a refusal is
+        // not an attempt.
+        let now = libnawah::clock_ticks();
+        let oldest = &mut self.launches[self.launch_next];
+        if oldest.is_some_and(|t| now.saturating_sub(t) < LAUNCH_WINDOW) {
+            out.put(b"ERR BUSY");
+            return;
+        }
+        *oldest = Some(now);
+        self.launch_next = (self.launch_next + 1) % LAUNCH_RATE_MAX;
+        let session = match self.session_job {
+            Some(j) => j,
+            None => match libnawah::job_create(self.root_job) {
+                Ok(j) => *self.session_job.insert(j),
+                Err(_) => {
+                    out.put(b"ERR FAILED");
+                    return;
+                }
+            },
+        };
+        let Ok(job) = libnawah::job_create(session) else {
+            out.put(b"ERR FAILED");
+            return;
+        };
+        let Ok((ours, theirs)) = libnawah::channel_create() else {
+            libnawah::handle_close(job);
+            out.put(b"ERR FAILED");
+            return;
+        };
+        let elf = &self.app_elf[k][..usize::from(self.app_elf_lens[k])];
+        match libnawah::process_spawn_in(job, elf, &[theirs]) {
+            Ok(p) => {
+                // The next number of the circle that no running application carries: at
+                // most eight run, so the search ends.
+                loop {
+                    self.last_num = self.last_num % APP_NUM_MAX + 1;
+                    let taken = |a: &Running| a.process.is_some() && a.num == self.last_num;
+                    if !self.running.iter().any(taken) {
+                        break;
+                    }
+                }
+                out.put(b"OK app:");
+                out.put(&self.apps[k][..usize::from(self.app_lens[k])]);
+                out.put(b"#");
+                out.num(u64::from(self.last_num));
+                // The application is told who it is: the reply without its `OK `.
+                let mut msg = Out::new();
+                msg.put(b"START ");
+                msg.put(&out.bytes()[3..]);
+                libnawah::channel_write(ours, msg.bytes(), &[]);
+                self.running[place] = Running {
+                    process: Some(p),
+                    chan: Some(ours),
+                    job,
+                    num: self.last_num,
+                    entry: k as u8,
+                    grants: 0,
+                };
+            }
+            Err(e) => {
+                // Nothing was moved when the image is missing or is not one (syscall.md §5):
+                // both ends are still here. When resources ran out after the move, `theirs`
+                // went with the stillborn process and its number here names nothing.
+                libnawah::handle_close(theirs);
+                libnawah::handle_close(ours);
+                libnawah::handle_close(job);
+                out.put(if e == ERR_NOT_FOUND {
+                    &b"ERR NOT_FOUND"[..]
+                } else {
+                    &b"ERR FAILED"[..]
+                });
+            }
+        }
+    }
+
+    /// A message on application `a`'s boot channel (services.md v1.15, v1.16): `CONNECT <name>`
+    /// goes to [`Manager::app_connect`]; whatever else it asks is refused ERR ACCESS, so none of
+    /// LIST, APPS and LAUNCH is reached from an application. A handle it sent is closed; a
+    /// message larger than a request is dropped and refused the same; when the application
+    /// closed its end, ours goes too.
+    fn on_app_channel(&mut self, a: usize) {
+        let Some(c) = self.running[a].chan else {
+            return;
+        };
+        let mut buf = [0u8; 64];
+        let mut hs = [0u32; 1];
+        match libnawah::channel_read(c, &mut buf, &mut hs, false) {
+            Ok((n, nh)) => {
+                if nh == 1 {
+                    libnawah::handle_close(hs[0]);
+                }
+                if let Some(name) = buf[..n].strip_prefix(b"CONNECT ") {
+                    self.app_connect(a, c, name);
+                    return;
+                }
+            }
+            Err(ERR_BUFFER_TOO_SMALL) if libnawah::channel_discard(c) => {}
+            Err(_) => {
+                libnawah::handle_close(c);
+                self.running[a].chan = None;
+                return;
+            }
+        }
+        libnawah::channel_write(c, b"ERR ACCESS", &[]);
+    }
+
+    /// `CONNECT <name>` from application `a` (services.md v1.16): granted for a service its
+    /// entry declares, each of which the parser keeps within the allow-list, and nothing else
+    /// (ERR ACCESS, before any service is looked at); one connection to a service for an
+    /// application, and APP_CONNECT_MAX for the running applications together (ERR LIMIT). The
+    /// service is told the application's identity, `CONNECT app:<id>#<n>`, a name no service
+    /// carries; the client end goes back on the application's boot channel with `OK`.
+    fn app_connect(&mut self, a: usize, c: Handle, name: &[u8]) {
+        let app = self.running[a];
+        let k = usize::from(app.entry);
+        let declared = nawah_apps::ALLOWED_DEPS
+            .iter()
+            .position(|d| d.as_bytes() == name)
+            .filter(|&b| self.app_deps[k] & (1 << b) != 0);
+        let Some(b) = declared else {
+            libnawah::channel_write(c, b"ERR ACCESS", &[]);
+            return;
+        };
+        let held = self
+            .running
+            .iter()
+            .filter(|r| r.process.is_some() && r.grants & (1 << b) != 0)
+            .count();
+        if app.grants & (1 << b) != 0 || held >= APP_CONNECT_MAX {
+            libnawah::channel_write(c, b"ERR LIMIT", &[]);
+            return;
+        }
+        let target = match self.find(name) {
+            Some(j) if self.services[j].state == State::Ready => self.services[j].chan,
+            Some(_) => None,
+            None => {
+                libnawah::channel_write(c, b"ERR UNKNOWN", &[]);
+                return;
+            }
+        };
+        if let (Some(target), Ok((client, server))) = (target, libnawah::channel_create()) {
+            let mut msg = Out::new();
+            msg.put(b"CONNECT app:");
+            msg.put(&self.apps[k][..usize::from(self.app_lens[k])]);
+            msg.put(b"#");
+            msg.num(u64::from(app.num));
+            if libnawah::channel_write(target, msg.bytes(), &[server]) == 0 {
+                self.running[a].grants |= 1 << b;
+                // An application that cannot take its reply does not leave the client end here.
+                if libnawah::channel_write(c, b"OK", &[client]) != 0 {
+                    libnawah::handle_close(client);
+                }
+                return;
+            }
+            libnawah::handle_close(client);
+            libnawah::handle_close(server);
+        }
+        libnawah::channel_write(c, b"ERR NOT_READY", &[]);
+    }
+
+    /// `BEGIN_SESSION` on a service's boot channel (services.md v1.19): from the vouched session
+    /// alone, ERR ACCESS for any other; the gate opens (it may be open already) and the answer is
+    /// `BEGUN`.
+    fn begin_session(&mut self, i: usize) {
+        let Some(c) = self.services[i].chan else {
+            return;
+        };
+        if self.services[i].name() != b"session" {
+            libnawah::channel_write(c, b"ERR ACCESS", &[]);
+            return;
+        }
+        self.session_open = true;
+        libnawah::channel_write(c, b"BEGUN", &[]);
+    }
+
+    /// `END_SESSION` on a service's boot channel (services.md v1.17): from the vouched session
+    /// alone, ERR ACCESS for any other. The session's job is killed with every application and
+    /// whatever they started in it, and let go; the answer is `ENDED <n>`, `n` the applications
+    /// running when it was killed. Their places and grants come back as each exit is seen.
+    fn end_session(&mut self, i: usize) {
+        let Some(c) = self.services[i].chan else {
+            return;
+        };
+        if self.services[i].name() != b"session" {
+            libnawah::channel_write(c, b"ERR ACCESS", &[]);
+            return;
+        }
+        let n = self.running.iter().filter(|a| a.process.is_some()).count();
+        self.session_open = false;
+        if let Some(j) = self.session_job.take() {
+            libnawah::job_kill(j);
+            libnawah::handle_close(j);
+        }
+        let mut out = Out::new();
+        out.put(b"ENDED ");
+        out.num(n as u64);
+        libnawah::channel_write(c, out.bytes(), &[]);
+    }
+
+    /// Application `a`'s process exited (services.md v1.15): its job is ended with whatever
+    /// it left there, and its place is free.
+    fn on_app_exit(&mut self, a: usize) {
+        let app = core::mem::replace(&mut self.running[a], NOT_RUNNING);
+        for h in [app.process, app.chan].into_iter().flatten() {
+            libnawah::handle_close(h);
+        }
+        libnawah::job_kill(app.job);
+        libnawah::handle_close(app.job);
+    }
+
     /// Reads and parses the manifest; the table is replaced only when the whole file parses.
     fn load(&mut self, path: &[u8]) -> Result<usize, LoadError> {
         let f = libnawah::open(path, libnawah::O_READ).map_err(|_| LoadError::Missing)?;
         let mut text = [0u8; MANIFEST_MAX];
         let mut len = 0;
+        // v1.13: nothing is parsed unless the whole file was read; before, the first 4096 bytes
+        // or whatever came before a read error were parsed and answered `OK <n>`.
         loop {
+            if len == MANIFEST_MAX {
+                libnawah::handle_close(f);
+                return Err(LoadError::TooLarge);
+            }
             match libnawah::read(f, &mut text[len..]) {
                 Ok(0) => break,
                 Ok(n) => len += n,
-                Err(_) => break,
-            }
-            if len == MANIFEST_MAX {
-                break;
+                Err(_) => {
+                    libnawah::handle_close(f);
+                    return Err(LoadError::Io);
+                }
             }
         }
         libnawah::handle_close(f);
@@ -310,6 +708,11 @@ impl Manager {
             };
             if path.is_empty() || path.len() > PATH_MAX || path[0] != b'/' || deps.len() > DEPS_MAX
             {
+                return Err(syntax);
+            }
+            // v1.13: every dependency is a name by the grammar of names, so an unknown one is
+            // echoed in `ERR MANIFEST_UNKNOWN_DEP` only with the bytes a name may hold.
+            if deps != b"-" && !deps.split(|c| *c == b',').all(name_ok) {
                 return Err(syntax);
             }
             let restart_on_failure = match restart {
@@ -580,6 +983,16 @@ impl Manager {
                     libnawah::channel_write(c, out.bytes(), &[]);
                 } else if let Some(name) = req.strip_prefix(b"CONNECT ") {
                     self.connect_for(i, name);
+                } else if req == b"APPS" || req.starts_with(b"LAUNCH ") {
+                    self.apps_request(i, req);
+                } else if req == b"END_SESSION" {
+                    self.end_session(i);
+                } else if req == b"BEGIN_SESSION" {
+                    self.begin_session(i);
+                } else if req != b"READY" {
+                    // v1.14: an unknown request is answered, as on the control channel (a
+                    // repeated READY stays unanswered).
+                    libnawah::channel_write(c, b"ERR BAD_REQUEST", &[]);
                 }
                 true
             }
@@ -620,7 +1033,12 @@ impl Manager {
                         msg.put(b"CONNECT ");
                         msg.put(self.services[i].name());
                         if libnawah::channel_write(target, msg.bytes(), &[server]) == 0 {
-                            libnawah::channel_write(c, b"OK", &[client]);
+                            // A requester that cannot take its reply (its queue is full or its
+                            // end is closed) must not leave the client end here: closed, the
+                            // target sees the peer gone and frees the slot (WP-156, RSK-028).
+                            if libnawah::channel_write(c, b"OK", &[client]) != 0 {
+                                libnawah::handle_close(client);
+                            }
                             return;
                         }
                         libnawah::handle_close(client);
@@ -652,6 +1070,16 @@ impl Manager {
         self.services[i].killing = false;
         self.services[i].kill_at = None;
         self.close_chan(i);
+        // The session service went (v1.19): no LAUNCH until a session begins again; and its job
+        // goes with it, every application and what they started killed and the job let go
+        // (v1.20), so a restarted session or the next sign-in inherits nothing.
+        if self.services[i].name() == b"session" {
+            self.session_open = false;
+            if let Some(job) = self.session_job.take() {
+                libnawah::job_kill(job);
+                libnawah::handle_close(job);
+            }
+        }
         let s = &mut self.services[i];
         s.exit = Some(code);
         match s.state {
@@ -803,11 +1231,15 @@ impl Manager {
         if let Some(path) = req.strip_prefix(b"LOAD ") {
             if self.loaded {
                 out.put(b"ERR LOADED");
+            } else if !system_path(path) {
+                // v1.13: refused before anything is read; the LOAD does not count.
+                out.put(b"ERR ACCESS");
             } else {
                 match self.load(path) {
                     Ok(count) => {
                         out.put(b"OK ");
                         out.num(count as u64);
+                        self.load_apps();
                         self.advance(now);
                     }
                     Err(LoadError::Missing) => out.put(b"ERR MANIFEST_MISSING"),
@@ -821,6 +1253,8 @@ impl Manager {
                     }
                     Err(LoadError::Cycle) => out.put(b"ERR MANIFEST_CYCLE"),
                     Err(LoadError::TooMany) => out.put(b"ERR TOO_MANY"),
+                    Err(LoadError::TooLarge) => out.put(b"ERR MANIFEST_TOO_LARGE"),
+                    Err(LoadError::Io) => out.put(b"ERR MANIFEST_IO"),
                 }
             }
         } else if req == b"LIST" {
@@ -902,6 +1336,7 @@ fn main() -> u64 {
     let (mut authority, mut nic, mut keyboard, mut serial, mut display, mut mouse) =
         (None, None, None, None, None, None);
     let mut system_files = None;
+    let mut root_job = 0;
     for h in ctl + 1..ctl + 10 {
         match libnawah::handle_type(h) {
             libnawah::object_type::AUTHORITY => authority = Some(h),
@@ -911,6 +1346,7 @@ fn main() -> u64 {
             libnawah::object_type::SERIAL => serial = Some(h),
             libnawah::object_type::DISPLAY => display = Some(h),
             libnawah::object_type::MOUSE => mouse = Some(h),
+            libnawah::object_type::JOB => root_job = h,
             t if t < 0 => break,
             _ => {}
         }
@@ -919,6 +1355,19 @@ fn main() -> u64 {
         services: [EMPTY; MAX_SERVICES],
         n: 0,
         loaded: false,
+        apps: [[0; nawah_apps::ID_MAX]; nawah_apps::MAX_APPS],
+        app_lens: [0; nawah_apps::MAX_APPS],
+        app_elf: [[0; PATH_MAX]; nawah_apps::MAX_APPS],
+        app_elf_lens: [0; nawah_apps::MAX_APPS],
+        app_deps: [0; nawah_apps::MAX_APPS],
+        apps_n: 0,
+        running: [NOT_RUNNING; MAX_RUNNING],
+        last_num: 0,
+        root_job,
+        session_job: None,
+        session_open: false,
+        launches: [None; LAUNCH_RATE_MAX],
+        launch_next: 0,
         ctl,
         authority,
         nic,
@@ -928,12 +1377,14 @@ fn main() -> u64 {
         mouse,
         system_files,
     };
-    // Wait-set slots: 0 = control; then per service (boot channel, process).
+    // Wait-set slots: 0 = control; then per service (boot channel, process); then the
+    // applications' processes, then their boot channels: the lowest ready slot is served
+    // first, so no application's messages come before a service or before an exit.
     let mut entries = [WaitEntry {
         handle: 0,
         signals: 0,
-    }; 1 + 2 * MAX_SERVICES];
-    let mut owner = [(0usize, 0u8); 1 + 2 * MAX_SERVICES];
+    }; 1 + 2 * MAX_SERVICES + 2 * MAX_RUNNING];
+    let mut owner = [(0usize, 0u8); 1 + 2 * MAX_SERVICES + 2 * MAX_RUNNING];
     loop {
         let now = libnawah::clock_ticks();
         m.on_time(now);
@@ -962,6 +1413,26 @@ fn main() -> u64 {
                 k += 1;
             }
         }
+        for (a, app) in m.running.iter().enumerate() {
+            if let Some(p) = app.process {
+                entries[k] = WaitEntry {
+                    handle: p,
+                    signals: SIGNAL_EXITED,
+                };
+                owner[k] = (a, 3);
+                k += 1;
+            }
+        }
+        for (a, app) in m.running.iter().enumerate() {
+            if let Some(c) = app.chan {
+                entries[k] = WaitEntry {
+                    handle: c,
+                    signals: SIGNAL_READABLE | SIGNAL_PEER_CLOSED,
+                };
+                owner[k] = (a, 4);
+                k += 1;
+            }
+        }
         let timeout = match m.next_deadline() {
             Some(d) => d.saturating_sub(now),
             None => TIMEOUT_FOREVER,
@@ -978,7 +1449,9 @@ fn main() -> u64 {
                     (i, 1) => {
                         m.on_boot_channel(i, now);
                     }
-                    (i, _) => m.on_exit(i, now),
+                    (i, 2) => m.on_exit(i, now),
+                    (a, 3) => m.on_app_exit(a),
+                    (a, _) => m.on_app_channel(a),
                 }
             }
             Err(ERR_TIMED_OUT) => {}

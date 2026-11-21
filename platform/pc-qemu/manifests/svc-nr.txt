@@ -1,0 +1,3 @@
+# TST-M4-SVC-CONNECT-NOREAD: N asks three times for a connection to config and never reads its boot channel
+config /SYSTEM/CONFIGD.ELF - 5000 never 0 0
+N /SYSTEM/SVC.ELF config 2000 never 0 0 noread

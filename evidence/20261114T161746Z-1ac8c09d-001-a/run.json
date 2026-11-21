@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261114T161746Z-1ac8c09d-001-a",
+ "started_at": "2026-11-14T16:17:46+00:00",
+ "finished_at": "2026-11-14T16:17:49+00:00",
+ "source_revision": "1ac8c09d7bd1c3131da3ea904c837fd017783842",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M0-007",
+ "commands": [
+  "python3 -I tests/test_evidence_provenance.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "43612267962",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "1ac8c09d7bd1c3131da3ea904c837fd017783842",
+  "head_sha": "856f5c446f2da7cfc73962e68ccd5051f8ff5727",
+  "ref": "refs/pull/23/merge"
+ }
+}

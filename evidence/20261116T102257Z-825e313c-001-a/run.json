@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261116T102257Z-825e313c-001-a",
+ "started_at": "2026-11-16T10:22:57+00:00",
+ "finished_at": "2026-11-16T10:22:57+00:00",
+ "source_revision": "825e313cd45aa96ebf1ff86d3597e262949ddfba",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M5-SCREEN-TOOL",
+ "commands": [
+  "python3 -I tests/test_screen_tool.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "43844470445",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "825e313cd45aa96ebf1ff86d3597e262949ddfba",
+  "head_sha": "c25bb06568a69312067ba765f34b1e8180b56f89",
+  "ref": "refs/pull/23/merge"
+ }
+}

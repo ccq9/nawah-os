@@ -129,10 +129,12 @@ pub fn run() -> ! {
         "as_switch" => as_switch(),
         "threads_alternate" => threads_alternate(),
         "preempt" => preempt(),
+        "wait_deadline" => wait_deadline(),
         "exit_cleanup" => exit_cleanup(),
         "user_sleep" => user_sleep(),
         "ipc_roundtrip" => user_program_case("ipc_roundtrip", user_programs::ipc_roundtrip(), 0x1C),
         "rights_denied" => user_program_case("rights_denied", user_programs::rights_denied(), 0x2D),
+        "vmo_map_rights" => vmo_map_rights(),
         "closed_handle" => user_program_case("closed_handle", user_programs::closed_handle(), 0x3E),
         "oversize_rejected" => {
             user_program_case("oversize_rejected", user_programs::oversize(), 0x4F)
@@ -151,6 +153,7 @@ pub fn run() -> ! {
         "tlb_shootdown" => tlb_shootdown(),
         "blk_read_pattern" => blk_read_pattern(),
         "blk_user_cr3" => blk_user_cr3(),
+        "blk_timeout" => blk_timeout(),
         "blk_persist_write" => blk_persist(true),
         "blk_persist_read" => blk_persist(false),
         "fat32_read" => fat32_read(),
@@ -158,6 +161,32 @@ pub fn run() -> ! {
         "file_shared" => file_shared(),
         "fat32_persist_write" => fat32_persist(true),
         "fat32_persist_read" => fat32_persist(false),
+        "fat32_fault_unlink" => fat32_fault_unlink(false),
+        "fat32_fault_unlink_check" => fat32_fault_check(b'U', "fat32_fault_unlink_check"),
+        "fat32_fault_unlink_one" => fat32_fault_unlink(true),
+        "fat32_fault_unlink_one_check" => fat32_fault_check(b'U', "fat32_fault_unlink_one_check"),
+        "fat32_fault_truncate" => fat32_fault_truncate(false),
+        "fat32_fault_truncate_check" => fat32_fault_check(b'T', "fat32_fault_truncate_check"),
+        "fat32_fault_truncate_one" => fat32_fault_truncate(true),
+        "fat32_fault_truncate_one_check" => {
+            fat32_fault_check(b'T', "fat32_fault_truncate_one_check")
+        }
+        "fat32_fault_write" => fat32_fault_write(false),
+        "fat32_fault_write_check" => fat32_fault_write_check("fat32_fault_write_check"),
+        "fat32_fault_write_one" => fat32_fault_write(true),
+        "fat32_fault_write_one_check" => fat32_fault_write_check("fat32_fault_write_one_check"),
+        "fat32_fault_create" => fat32_fault_create(false, false),
+        "fat32_fault_create_check" => fat32_fault_create_check("fat32_fault_create_check", false),
+        "fat32_fault_create_one" => fat32_fault_create(true, false),
+        "fat32_fault_create_copies" => fat32_fault_create(true, true),
+        "fat32_fault_create_one_check" => {
+            fat32_fault_create_check("fat32_fault_create_one_check", true)
+        }
+        "fat32_disk_full" => fat32_disk_full(),
+        "fat32_stop" => fat32_stop(),
+        "fat32_stop_check" => fat32_stop_check(),
+        "fat32_bpb" => fat32_bpb(),
+        "fat32_bad_first" => fat32_bad_first(),
         "file_roundtrip" => file_app("file_roundtrip", crate::apps::FILE_ROUNDTRIP, 0x60),
         "path_invalid" => file_app("path_invalid", crate::apps::PATH_INVALID, 0x61),
         "fd_leak" => fd_leak(),
@@ -167,14 +196,27 @@ pub fn run() -> ! {
         "svc_order" => svc_order(),
         "svc_timeout" => svc_timeout(),
         "svc_restart" => svc_restart(),
+        "svc_connect_noread" => svc_connect_noread(),
         "token_objects" => token_objects(),
         "login" => login(),
         "session_lock" => session_lock(),
         "authz_denied" => authz_denied(),
         "file_authority" => file_authority(),
+        "config_write_scope" => config_write_scope(),
         "config_cas" => config_cas(),
         "config_retry" => config_retry(),
         "config_notify" => config_notify(),
+        "config_store_authz" => config_store_authz(),
+        "config_read_load" => config_read_load(),
+        "config_subs" => config_subs(),
+        "launch_denied" => launch_denied(),
+        "app_spawn" => app_spawn(),
+        "app_connect" => app_connect(),
+        "session_job" => session_job(),
+        "job_bound" => job_bound(),
+        "launch_rate" => launch_rate(),
+        "session_gate" => session_gate(),
+        "session_restart" => session_restart(),
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
@@ -185,6 +227,7 @@ pub fn run() -> ! {
         "net_no_internet" => net_no_internet(),
         "net_tcp_echo" => net_tcp_echo(),
         "net_tcp_retransmit" => net_tcp_retransmit(),
+        "net_client_drop" => net_client_drop(),
         "shell_svc" => shell_session("shell_svc"),
         "peer_loss" => peer_loss(),
         "display_boot" => display_boot(),
@@ -202,6 +245,7 @@ pub fn run() -> ! {
         "a11y_tree" => a11y_tree(),
         "arabic_ui" => arabic_ui(),
         "process_kill" => process_kill(),
+        "job_kill_all" => job_kill_all(),
         "kill_edges" => kill_edges(),
         "svc_watchdog" => svc_watchdog(),
         "session_deadline" => session_deadline(),
@@ -209,6 +253,8 @@ pub fn run() -> ! {
         "auth_input_isolated" => auth_input_isolated(),
         "lock_survives" => lock_survives(),
         "narrator_authority" => narrator_authority(),
+        "window_title" => window_title(),
+        "window_title_resize" => window_title_resize(),
         "client_limits" => client_limits(),
         "input_name_reserved" => input_name_reserved(),
         "focus_after_restart" => focus_after_restart(),
@@ -219,6 +265,13 @@ pub fn run() -> ! {
         "unlock_auth_hang" => unlock_auth_hang(),
         "session_hang" => session_hang(),
         "lock_display_down" => lock_display_down(),
+        "hold_fail_closed" => hold_fail_closed(),
+        "displayd_boot_loop" => displayd_boot_loop(),
+        "manifest_too_large" => manifest_too_large(),
+        "load_outside_system" => load_outside_system(),
+        "token_revoke" => token_revoke(),
+        "logout_kills" => logout_kills(),
+        "purge_fail_closed" => purge_fail_closed(),
         "elevate" => elevate(),
         "shell_login" => shell_session("shell_login"),
         "net_limits" => net_limits(),
@@ -330,6 +383,64 @@ fn user_program_case(name: &str, program: &[u8], expected_exit: u64) -> ! {
             fail("could not run the ring-3 program")
         }
     }
+}
+
+/// vmo_map's rights (WP-149, K-3, TST-M3-VMO-MAP-RIGHTS): a writable page on x86 is
+/// readable, so a mapping for writing needs READ as well as WRITE and MAP. The ring-3 program
+/// packs each answer into its exit code (user_programs.rs); one line names them.
+fn vmo_map_rights() -> ! {
+    let o = match crate::user::run(user_programs::vmo_map_rights()) {
+        Ok(o) => o,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|vmo_map_rights|error={}", BUILD_ID, e.code());
+            fail("could not run the ring-3 program")
+        }
+    };
+    if o.exit_code >> 32 != 0xA5 {
+        kprintln!(
+            "OSX|{}|ktest|vmo_map_rights|setup_step={:#x}|frames_delta={}",
+            BUILD_ID,
+            o.exit_code,
+            o.frames_delta
+        );
+        fail("the vmo_map rights program stopped before its mappings")
+    }
+    let answer = |shift: u32| match i64::from((o.exit_code >> shift) as u8 as i8) {
+        0 => "mapped",
+        crate::syscall::ERR_ACCESS => "ERR_ACCESS",
+        crate::syscall::ERR_INVALID => "ERR_INVALID",
+        crate::syscall::ERR_BAD_HANDLE => "ERR_BAD_HANDLE",
+        crate::syscall::ERR_WRONG_TYPE => "ERR_WRONG_TYPE",
+        crate::syscall::ERR_NO_RESOURCES => "ERR_NO_RESOURCES",
+        _ => "other",
+    };
+    let (write_read, write_noread, read_noread) = (answer(0), answer(8), answer(16));
+    let leak = (o.exit_code >> 24) & 0xFF;
+    kprintln!(
+        "OSX|{}|ktest|vmo_map_rights|write_noread={}|read_noread={}|write_read={}|leak={}|frames_delta={}",
+        BUILD_ID,
+        write_noread,
+        read_noread,
+        write_read,
+        leak,
+        o.frames_delta
+    );
+    if write_noread != "ERR_ACCESS" {
+        fail("a handle without READ was not refused a mapping for writing with ERR_ACCESS")
+    }
+    if read_noread != "ERR_ACCESS" {
+        fail("a handle without READ was not refused a mapping for reading with ERR_ACCESS")
+    }
+    if leak != 0 {
+        fail("the object's bytes were read through a mapping of a handle without READ")
+    }
+    if write_read != "mapped" {
+        fail("a handle with MAP, READ and WRITE was not given a mapping for writing")
+    }
+    if o.frames_delta != 0 {
+        fail("frames leaked by the ring-3 run")
+    }
+    pass("vmo_map asks READ for a mapping for writing as for one for reading")
 }
 
 /// Two ring-3 programs: ping (result handed back through SYS_EXIT) and a trace message copied
@@ -1845,6 +1956,99 @@ fn blk_read_pattern() -> ! {
     pass("virtio-blk reads the harness pattern exactly and refuses bad requests")
 }
 
+/// TST-M3-BLK-TIMEOUT (REQ-M3-007; WP-104, RSK-026; ADR-0013 decision 9): after a request
+/// times out the driver publishes nothing more. Every request shares one header, one status
+/// byte, one data buffer and the same descriptors, and a completion is taken by its position: a
+/// request that was given up may still complete later, so the next request's result could be
+/// the old one's, and a write's bytes could reach the old request's sector.
+///
+/// The case reads one pattern sector (served, so the shared buffer holds that sector), fills
+/// its own buffer with a guard byte, and makes the next read time out through the test
+/// kernel's hook: the read answers K_E_BLK_TIMEOUT and hands back nothing (the caller's buffer
+/// keeps the guard). Then a read, a write, a flush and a read past the end are each refused
+/// with K_E_BLK_NEEDS_RESET; the caller's buffer still keeps the guard, the shared buffer still
+/// holds the first sector (the refused write did not copy its bytes in), and the driver's
+/// available index did not move (nothing was published). The write carries the bytes its
+/// sector already holds, so a kernel that serves it leaves the image as it was.
+fn blk_timeout() -> ! {
+    const GUARD: u8 = 0xA5;
+    let capacity = crate::block::capacity_sectors();
+    let mut buf = alloc::vec![0u8; 512];
+    let mut held = alloc::vec![0u8; 512];
+    let target = capacity.saturating_sub(PATTERN_TAIL);
+    let first = target + 1;
+    let frames0 = pmm::stats().free_frames;
+    let before = crate::block::read(first, &mut buf);
+    let pattern_ok = buf
+        .iter()
+        .enumerate()
+        .all(|(k, b)| *b == pattern_byte(first, k));
+    buf.fill(GUARD);
+    crate::block::arm_timeout();
+    let timed = crate::block::read(target, &mut buf);
+    let published0 = crate::block::submitted();
+    let after_read = crate::block::read(target, &mut buf);
+    let caller_kept = buf.iter().all(|b| *b == GUARD);
+    let mut same = [0u8; 512];
+    for (k, b) in same.iter_mut().enumerate() {
+        *b = pattern_byte(target, k);
+    }
+    let after_write = crate::block::write(target, &same);
+    crate::block::peek_data(&mut held);
+    let buffer_kept = held
+        .iter()
+        .enumerate()
+        .all(|(k, b)| *b == pattern_byte(first, k));
+    let after_flush = crate::block::flush();
+    let past_end = crate::block::read(capacity, &mut buf);
+    let published = crate::block::submitted().wrapping_sub(published0);
+    let frames1 = pmm::stats().free_frames;
+    let code = |r: &Result<(), crate::drivers::virtio_blk::BlkError>| match r {
+        Ok(()) => "ok",
+        Err(e) => e.code(),
+    };
+    kprintln!(
+        "OSX|{}|ktest|blk_timeout|before={}|pattern={}|timed={}|caller_kept={}|after_read={}|after_write={}|buffer_kept={}|after_flush={}|past_end={}|published={}|frames_delta={}",
+        BUILD_ID,
+        code(&before),
+        u8::from(pattern_ok),
+        code(&timed),
+        u8::from(caller_kept),
+        code(&after_read),
+        code(&after_write),
+        u8::from(buffer_kept),
+        code(&after_flush),
+        code(&past_end),
+        published,
+        frames0 as i64 - frames1 as i64
+    );
+    if before.is_err() || !pattern_ok {
+        fail("the pattern sector was not read before the timeout")
+    }
+    if code(&timed) != "K_E_BLK_TIMEOUT" {
+        fail("the withheld request did not time out")
+    }
+    if [&after_read, &after_write, &after_flush, &past_end]
+        .iter()
+        .any(|r| code(r) != "K_E_BLK_NEEDS_RESET")
+    {
+        fail("a request was served after a timed-out one")
+    }
+    if !caller_kept {
+        fail("a failed read changed the caller's buffer")
+    }
+    if !buffer_kept {
+        fail("a refused write changed the shared buffer")
+    }
+    if published != 0 {
+        fail("a refused request was published to the device")
+    }
+    if frames0 != frames1 {
+        fail("frames leaked")
+    }
+    pass("after a timed-out request the disk serves nothing more")
+}
+
 // ---- Priority order (WP-22, mutant M31) ------------------------------------------------
 
 static PRIO_SPINS: AtomicU64 = AtomicU64::new(0);
@@ -1920,6 +2124,132 @@ fn priority_order() -> ! {
         fail("frames leaked")
     }
     pass("priorities decide who runs, not the quantum")
+}
+
+// ---- A wait's deadline against a spinning thread (WP-99, RSK-024) ----------------------
+
+static WD_STOP: AtomicBool = AtomicBool::new(false);
+static WD_SPINS: AtomicU64 = AtomicU64::new(0);
+static WD_UNTIL: AtomicU64 = AtomicU64::new(0);
+/// Ticks after which the waiter's `poll_until` must end.
+const WD_DEADLINE_TICKS: u64 = 50;
+/// The spinner gives up by itself this long after the start: a kernel that never runs the
+/// waiter still ends the case, as a failure with its lateness measured.
+const WD_SPIN_TICKS: u64 = 400;
+/// How late the waiter may come back: two time slices.
+const WD_LATE_LIMIT: u64 = 2 * sched::QUANTUM_TICKS as u64;
+
+/// Never yields and never blocks once it spins: `head_sleep` ticks asleep first (so the case's
+/// thread is inside its wait before a spinner of better priority takes the CPU), then a busy
+/// loop until the case stops it or its own limit.
+extern "sysv64" fn wd_spinner(head_sleep: u64) -> u64 {
+    if head_sleep > 0 {
+        sched::sleep_ticks(head_sleep);
+    }
+    let mut n = 0u64;
+    while !WD_STOP.load(Ordering::Acquire)
+        && sched::stats().ticks < WD_UNTIL.load(Ordering::Relaxed)
+    {
+        n += 1;
+        WD_SPINS.store(n, Ordering::Relaxed);
+    }
+    n
+}
+
+/// One wait of `WD_DEADLINE_TICKS` beside a spinner of priority `prio`: returns whether the
+/// waiter came back within `WD_LATE_LIMIT` of its deadline and, when `starved_before` is set,
+/// was not run before it (at most three polls: on entry, once more, at the deadline). With
+/// `yields_after` (a spinner of better priority than the case's own) the case's thread then
+/// keeps busy without yielding, with interrupts on for that stretch (the boot thread runs with
+/// them off outside its waits, so the timer could not preempt it otherwise): back at its own
+/// priority it loses the CPU to the spinner and runs again only when the spinner gives up,
+/// `WD_SPIN_TICKS` after the start (`resumed`); a kernel that leaves the waiter boosted after
+/// its wait lets it run on beside the spinner. The wait leaves the interrupt flag as it found
+/// it (`irq_before`, `irq_after`).
+fn wd_round(prio: u8, head_sleep: u64, starved_before: bool, yields_after: bool) -> bool {
+    WD_STOP.store(false, Ordering::Release);
+    WD_SPINS.store(0, Ordering::Relaxed);
+    let t0 = sched::ticks();
+    WD_UNTIL.store(t0 + WD_SPIN_TICKS, Ordering::Relaxed);
+    let deadline = t0 + WD_DEADLINE_TICKS;
+    let tid = spawn_or_fail(wd_spinner, head_sleep, prio);
+    let mut polls = 0u64;
+    let irq_before = arch::interrupts::enabled();
+    let held = sched::poll_until(deadline, || {
+        polls += 1;
+        false
+    });
+    let late = sched::ticks().saturating_sub(deadline);
+    let irq_after = arch::interrupts::enabled();
+    let spins_at_return = WD_SPINS.load(Ordering::Relaxed);
+    let mut resumed = 0;
+    if yields_after {
+        arch::interrupts::enable();
+        while sched::ticks() < deadline + 2 * WD_LATE_LIMIT {
+            core::hint::spin_loop();
+        }
+        resumed = sched::ticks() - t0;
+        if !irq_after {
+            arch::interrupts::disable();
+        }
+    }
+    WD_STOP.store(true, Ordering::Release);
+    let joined = sched::join(tid).is_some();
+    let ok = !held
+        && joined
+        && late <= WD_LATE_LIMIT
+        && spins_at_return > 0
+        && (!starved_before || polls <= 3)
+        && (!yields_after || resumed >= WD_SPIN_TICKS)
+        && irq_after == irq_before;
+    kprintln!(
+        "OSX|{}|ktest|wait_deadline|spinner_prio={}|ok={}|deadline_ticks={}|late={}|limit={}|polls={}|held={}|spins={}|joined={}|resumed={}|spin_ticks={}|irq_before={}|irq_after={}",
+        BUILD_ID,
+        prio,
+        u8::from(ok),
+        WD_DEADLINE_TICKS,
+        late,
+        WD_LATE_LIMIT,
+        polls,
+        u8::from(held),
+        spins_at_return,
+        u8::from(joined),
+        resumed,
+        WD_SPIN_TICKS,
+        u8::from(irq_before),
+        u8::from(irq_after)
+    );
+    ok
+}
+
+/// A wait with a deadline ends at its deadline whatever spins beside it (WP-99): the case's
+/// thread (priority 1) waits 50 ticks in `poll_until` while a kernel thread on the same CPU
+/// spins without yielding, first at priority 0 (better than the waiter's own), then at
+/// priority 1 (the service manager's). The waiter comes back within two slices of the deadline
+/// both times; beside the priority-1 spinner it is not run before the deadline (a waiter
+/// competes at the lowest priority until then), and the spinner did run. Beside the priority-0
+/// spinner the boost ends with the wait: the case's thread, busy at its own priority 1, runs
+/// again only when the spinner has given up.
+fn wait_deadline() -> ! {
+    let frames0 = pmm::stats().free_frames;
+    let better = wd_round(0, 5, false, true);
+    let equal = wd_round(1, 0, true, false);
+    let frames1 = pmm::stats().free_frames;
+    kprintln!(
+        "OSX|{}|ktest|wait_deadline|frames_delta={}",
+        BUILD_ID,
+        frames0 as i64 - frames1 as i64
+    );
+    if !better {
+        fail("beside a spinner of better priority the wait did not end at its deadline, or its boost outlived it")
+    }
+    if !equal {
+        fail("the wait did not end at its deadline beside a spinner of the manager's priority, or ran before it")
+    }
+    if frames0 != frames1 {
+        fail("frames leaked")
+    }
+    pass("a wait's deadline holds against a spinning thread")
 }
 
 // ---- Isolation (WP-22) -----------------------------------------------------------------
@@ -2666,6 +2996,1883 @@ fn fat32_persist(write: bool) -> ! {
     })
 }
 
+// ---- WP-105: delete and truncate under a failing disk --------------------------------------
+
+/// Bytes of a fault-case file: three clusters, every byte a function of the file and the offset.
+const FAULT_LEN: usize = 1536;
+
+fn fault_bytes(n: u32) -> alloc::vec::Vec<u8> {
+    (0..FAULT_LEN)
+        .map(|i| (n as usize * 37 + i * 7 + i / 512) as u8)
+        .collect()
+}
+
+fn fault_path(kind: u8, n: u32) -> alloc::vec::Vec<u8> {
+    alloc::format!("/{}{:02}.TXT", kind as char, n).into_bytes()
+}
+
+/// What the volume holds under `path`, read through a fresh lookup (the stored entry and the
+/// FAT, not an open file's node): 0 no such name, 1 the whole file with the bytes `want`,
+/// 2 an empty file (size 0, no first cluster), 3 anything else (a name whose chain or bytes are
+/// not its own).
+fn fault_state(path: &[u8], want: &[u8]) -> u8 {
+    crate::fs::with(|fs| {
+        let e = match fs.lookup(path) {
+            Ok(e) => e,
+            Err(FsError::NotFound) => return Ok(0),
+            Err(_) => return Ok(3),
+        };
+        if e.size == 0 && e.first == 0 {
+            return Ok(2);
+        }
+        let mut buf = alloc::vec![0u8; want.len() + 1];
+        Ok(match fs.read(&e, 0, &mut buf) {
+            Ok(n) if n == want.len() && e.size as usize == n && buf[..n] == *want => 1,
+            _ => 3,
+        })
+    })
+    .unwrap_or(3)
+}
+
+/// WP-124: the hook's once mode, shown before a sweep leans on it. With the next disk write
+/// refused and no other, a write to a new, empty file answers an I/O error (its first disk
+/// write is the one refused); the same call made again, the hook still armed, is taken whole.
+/// Returns (refused, next_taken). Were the mode to refuse every later write too, the sweeps
+/// that follow would leave the images of the older cases and show nothing of their own.
+fn fault_once_shown() -> (bool, bool) {
+    use crate::fs::vfs;
+    let bytes = [0x4Fu8; 64];
+    let Ok(a) = vfs::open(b"/ONCE.TXT", vfs::O_READ | vfs::O_WRITE | vfs::O_CREATE) else {
+        fail("could not create the file that shows the once mode")
+    };
+    if vfs::sync().is_err() {
+        fail("could not sync before the once mode is shown")
+    }
+    crate::block::arm_write_fault_once(1);
+    let first = vfs::write(&a, &bytes);
+    let second = vfs::write(&a, &bytes);
+    crate::block::disarm_write_fault();
+    drop(a);
+    let whole = fault_state(b"/ONCE.TXT", &bytes) == 1;
+    (
+        matches!(first, Err(FsError::Io(_))),
+        matches!(second, Ok(64)) && whole,
+    )
+}
+
+/// The fields a once-mode sweep adds to its line: whether the mode was shown, and how many of
+/// the sweep's calls asked for exactly N disk writes (the refused one was their last).
+fn fault_once_tail(shown: (bool, bool), stopped: u32) -> String {
+    alloc::format!(
+        "|once_refused={}|once_next_ok={}|stopped={}",
+        u8::from(shown.0),
+        u8::from(shown.1),
+        stopped
+    )
+}
+
+/// A once-mode sweep's own conditions, judged after its line is printed so the line is there
+/// to read when one of them fails.
+fn fault_once_judge(shown: (bool, bool), stopped: u32, writes: u32) {
+    if !shown.0 {
+        fail("with its first disk write refused alone, a write did not answer an I/O error")
+    }
+    if !shown.1 {
+        fail("the write after the refused one was not taken")
+    }
+    if stopped != writes {
+        fail("a call did not ask for exactly N disk writes: it wrote after the refused one or ended before it")
+    }
+}
+
+/// TST-M3-FAT32-FAULT-UNLINK, first boot (WP-105, RSK-027; files.md v1.5): a delete that fails
+/// at any of its disk writes leaves either the whole file or no name, never a name whose chain
+/// runs into free clusters. A control delete counts the writes of one delete (W); then for
+/// every N from 1 to W a fresh three-cluster file is deleted with the test kernel's hook
+/// refusing write N and all after it, and the volume is read back. With `once`
+/// (TST-M3-FAT32-FAULT-ONE-UNLINK, WP-124) the hook refuses write N alone.
+fn fat32_fault_unlink(once: bool) -> ! {
+    use crate::fs::vfs;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let name = if once {
+        "fat32_fault_unlink_one"
+    } else {
+        "fat32_fault_unlink"
+    };
+    let shown = if once {
+        fault_once_shown()
+    } else {
+        (true, true)
+    };
+    let mut stopped = 0u32;
+    let make = |n: u32| {
+        let path = fault_path(b'U', n);
+        crate::fs::with(|fs| {
+            let mut e = fs.create(&path)?;
+            fs.write(&mut e, 0, &fault_bytes(n))?;
+            fs.sync()
+        })
+        .is_ok()
+    };
+    if !make(0) {
+        fail("could not create the control file")
+    }
+    let w0 = crate::block::writes();
+    let control = vfs::unlink(&fault_path(b'U', 0));
+    let writes = crate::block::writes() - w0;
+    let (mut failed, mut io, mut gone, mut retry_gone, mut kept, mut bad) =
+        (0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
+    for n in 1..=writes {
+        if !make(n) {
+            fail("could not create a file of the sweep")
+        }
+        let path = fault_path(b'U', n);
+        let w1 = crate::block::writes();
+        if once {
+            crate::block::arm_write_fault_once(n);
+        } else {
+            crate::block::arm_write_fault(n);
+        }
+        let r = vfs::unlink(&path);
+        stopped += u32::from(crate::block::writes() - w1 == n);
+        crate::block::disarm_write_fault();
+        failed += u32::from(r.is_err());
+        io += u32::from(matches!(r, Err(FsError::Io(_))));
+        match fault_state(&path, &fault_bytes(n)) {
+            0 => {
+                gone += 1;
+                // The name is gone: a second delete says so (files.md v1.5).
+                retry_gone += u32::from(vfs::unlink(&path) == Err(FsError::NotFound));
+            }
+            1 => kept += 1,
+            _ => bad += 1,
+        }
+    }
+    let synced = vfs::sync().is_ok();
+    let tail = if once {
+        fault_once_tail(shown, stopped)
+    } else {
+        String::new()
+    };
+    kprintln!(
+        "OSX|{}|ktest|{}|control={}|writes={}|failed={}|io={}|gone={}|retry_gone={}|kept={}|bad={}|synced={}|live_files={}{}",
+        BUILD_ID,
+        name,
+        control.map_or_else(|e| e.code(), |_| "ok"),
+        writes,
+        failed,
+        io,
+        gone,
+        retry_gone,
+        kept,
+        bad,
+        u8::from(synced),
+        vfs::live_files(),
+        tail
+    );
+    if once {
+        fault_once_judge(shown, stopped, writes);
+    }
+    if control.is_err() || writes < 3 || failed != writes || io != writes || !synced {
+        fail("the sweep did not run as planned")
+    }
+    if bad != 0 || gone + kept != writes {
+        fail("a failed delete left a name that is neither whole nor gone")
+    }
+    if retry_gone != gone {
+        fail("a second delete of a name that is gone did not answer not found")
+    }
+    pass("a failed delete leaves the whole file or no name")
+}
+
+/// TST-M3-FAT32-FAULT-TRUNCATE, first boot (WP-105, RSK-027; files.md v1.5): a truncation that
+/// fails at any of its disk writes leaves the file whole or empty, on the disk and in the node
+/// every open shares alike. For every N a file is written through one open, and a second open
+/// with O_TRUNCATE runs with write N and all after it refused. With `once`
+/// (TST-M3-FAT32-FAULT-ONE-TRUNCATE, WP-124) the hook refuses write N alone.
+fn fat32_fault_truncate(once: bool) -> ! {
+    use crate::fs::vfs;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let name = if once {
+        "fat32_fault_truncate_one"
+    } else {
+        "fat32_fault_truncate"
+    };
+    let shown = if once {
+        fault_once_shown()
+    } else {
+        (true, true)
+    };
+    let mut stopped = 0u32;
+    let rw = vfs::O_READ | vfs::O_WRITE;
+    let (mut writes, mut failed, mut io, mut kept, mut emptied, mut bad, mut node_differs) =
+        (0u32, 0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
+    // What the first open sees afterwards and what a second attempt does.
+    let (mut a_whole, mut a_refused, mut a_empty, mut retry_ok) = (0u32, 0u32, 0u32, 0u32);
+    let mut control_ok = false;
+    let mut n = 0u32;
+    // n = 0 is the control: no fault, it counts the writes of one truncation.
+    while n == 0 || n <= writes {
+        let path = fault_path(b'T', n);
+        let Ok(a) = vfs::open(&path, rw | vfs::O_CREATE) else {
+            fail("could not create a file of the sweep")
+        };
+        if !matches!(vfs::write(&a, &fault_bytes(n)), Ok(FAULT_LEN)) || vfs::sync().is_err() {
+            fail("could not write a file of the sweep")
+        }
+        let w0 = crate::block::writes();
+        if n > 0 && once {
+            crate::block::arm_write_fault_once(n);
+        } else if n > 0 {
+            crate::block::arm_write_fault(n);
+        }
+        let b = vfs::open(&path, rw | vfs::O_TRUNCATE);
+        stopped += u32::from(n > 0 && crate::block::writes() - w0 == n);
+        crate::block::disarm_write_fault();
+        let node = {
+            let f = a.lock();
+            let e = f.node.lock();
+            (e.first, e.size)
+        };
+        let stored = crate::fs::with(|fs| fs.lookup(&path)).map(|e| (e.first, e.size));
+        let state = fault_state(&path, &fault_bytes(n));
+        if n == 0 {
+            writes = crate::block::writes() - w0;
+            control_ok = b.is_ok() && state == 2 && stored == Ok(node);
+        } else {
+            failed += u32::from(b.is_err());
+            io += u32::from(matches!(b, Err(FsError::Io(_))));
+            node_differs += u32::from(stored != Ok(node));
+            match state {
+                1 => {
+                    kept += 1;
+                    // Nothing changed: the first open reads its bytes back.
+                    let mut back = alloc::vec![0u8; FAULT_LEN + 1];
+                    let _ = vfs::seek(&a, 0);
+                    a_whole += u32::from(
+                        matches!(vfs::read(&a, &mut back), Ok(FAULT_LEN))
+                            && back[..FAULT_LEN] == fault_bytes(n)[..],
+                    );
+                }
+                2 => {
+                    emptied += 1;
+                    // The first open's position (the old end) is past the new end: a write
+                    // there is refused, not sent into the freed clusters; from 0 it reads
+                    // nothing; and a second truncating open succeeds (files.md v1.5).
+                    a_refused += u32::from(vfs::write(&a, b"stale").err() == Some(FsError::Range));
+                    let mut one = [0u8; 16];
+                    let _ = vfs::seek(&a, 0);
+                    a_empty += u32::from(matches!(vfs::read(&a, &mut one), Ok(0)));
+                    retry_ok += u32::from(vfs::open(&path, rw | vfs::O_TRUNCATE).is_ok());
+                }
+                _ => bad += 1,
+            }
+        }
+        drop(b);
+        drop(a);
+        n += 1;
+    }
+    let synced = vfs::sync().is_ok();
+    let tail = if once {
+        fault_once_tail(shown, stopped)
+    } else {
+        String::new()
+    };
+    kprintln!(
+        "OSX|{}|ktest|{}|control={}|writes={}|failed={}|io={}|kept={}|a_whole={}|emptied={}|a_refused={}|a_empty={}|retry_ok={}|bad={}|node_differs={}|synced={}|live_files={}{}",
+        BUILD_ID,
+        name,
+        u8::from(control_ok),
+        writes,
+        failed,
+        io,
+        kept,
+        a_whole,
+        emptied,
+        a_refused,
+        a_empty,
+        retry_ok,
+        bad,
+        node_differs,
+        u8::from(synced),
+        vfs::live_files(),
+        tail
+    );
+    if once {
+        fault_once_judge(shown, stopped, writes);
+    }
+    if !control_ok || writes < 3 || failed != writes || io != writes || !synced {
+        fail("the sweep did not run as planned")
+    }
+    if bad != 0 || node_differs != 0 || kept + emptied != writes {
+        fail("a failed truncation left a file that is neither whole nor empty")
+    }
+    if a_whole != kept || a_refused != emptied || a_empty != emptied || retry_ok != emptied {
+        fail("the first open or a second attempt did not see the file as the disk holds it")
+    }
+    pass("a failed truncation leaves the file whole or empty, on disk and in its node")
+}
+
+/// How many names `/<kind>NN.TXT` (NN below 32) hold the whole file of `len` bytes, how many
+/// are empty, and how many are neither.
+fn fault_count(kind: u8, len: usize) -> (u32, u32, u32) {
+    let (mut kept, mut empty, mut bad) = (0u32, 0u32, 0u32);
+    for n in 0..32 {
+        match fault_state(&fault_path(kind, n), &fault_bytes(n)[..len]) {
+            1 => kept += 1,
+            2 => empty += 1,
+            3 => bad += 1,
+            _ => {}
+        }
+    }
+    (kept, empty, bad)
+}
+
+/// The second boot of the two fault cases: a kernel with no memory of the first boot reads the
+/// image. Every name of the sweep is whole, empty or gone; then a new file is written (it takes
+/// the lowest free clusters) and the names are read again: none of them reads the new bytes.
+fn fat32_fault_check(kind: u8, name: &'static str) -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let count = || fault_count(kind, FAULT_LEN);
+    let (kept, empty, bad) = count();
+    let fresh = alloc::vec![0x5Au8; FAULT_LEN];
+    let after_ok = crate::fs::with(|fs| {
+        let mut e = fs.create(b"/AFTER.TXT")?;
+        fs.write(&mut e, 0, &fresh)?;
+        fs.sync()
+    })
+    .is_ok()
+        && fault_state(b"/AFTER.TXT", &fresh) == 1;
+    let (kept_after, empty_after, bad_after) = count();
+    kprintln!(
+        "OSX|{}|ktest|{}|kept={}|empty={}|bad={}|after_ok={}|kept_after={}|empty_after={}|bad_after={}",
+        BUILD_ID,
+        name,
+        kept,
+        empty,
+        bad,
+        u8::from(after_ok),
+        kept_after,
+        empty_after,
+        bad_after
+    );
+    if bad != 0 || bad_after != 0 || !after_ok {
+        fail("a name of the sweep is not its own file after the restart")
+    }
+    if (kept, empty) != (kept_after, empty_after) {
+        fail("a new file changed a name of the sweep")
+    }
+    pass("after the restart every name of the sweep is whole, empty or gone")
+}
+
+// ---- WP-118: a write under a failing disk ----------------------------------------------------
+
+/// One sweep of TST-M3-FAT32-FAULT-WRITE: for N = 0 (the control: no fault, it counts the
+/// writes of the call) and every N up to that count, a file `/<kind>NN.TXT` holding `before`
+/// bytes is written `add` more bytes through one open with disk write N and all after it
+/// refused. Returns (writes, control_ok, failed, io, node_differs, unchanged, bad, ghost,
+/// retry_ok, pos_moved, stale_sync): after a failed call the node every open shares must equal
+/// the stored entry (`node_differs`), the open's position must not have moved (`pos_moved`),
+/// the name must still hold its `before` bytes (`unchanged`), a sync must answer success and
+/// leave `stat` and the node agreeing on the size (`stale_sync` counts the others), and a read
+/// through the same
+/// open from 0 must return those bytes and no more (`ghost` counts the reads that returned
+/// anything else). With `retry`, the same call is made again and must leave the whole file.
+/// With `once` (WP-131) the hook refuses write N alone; the last number returned, `stopped`,
+/// counts the calls that asked for exactly N disk writes (the refused one was their last).
+fn fault_write_sweep(kind: u8, before: usize, add: usize, retry: bool, once: bool) -> [u32; 12] {
+    use crate::fs::vfs;
+    let rw = vfs::O_READ | vfs::O_WRITE;
+    let (mut writes, mut control_ok) = (0u32, 0u32);
+    let (mut failed, mut io, mut node_differs, mut unchanged, mut bad, mut ghost, mut retry_ok) =
+        (0u32, 0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
+    let (mut pos_moved, mut stale_sync, mut stopped) = (0u32, 0u32, 0u32);
+    let mut n = 0u32;
+    while n == 0 || n <= writes {
+        let path = fault_path(kind, n);
+        let all = fault_bytes(n);
+        let Ok(a) = vfs::open(&path, rw | vfs::O_CREATE) else {
+            fail("could not create a file of the sweep")
+        };
+        if before > 0 && !matches!(vfs::write(&a, &all[..before]), Ok(k) if k == before) {
+            fail("could not write the first part of a file of the sweep")
+        }
+        if vfs::sync().is_err() {
+            fail("could not sync before the sweep's write")
+        }
+        let w0 = crate::block::writes();
+        if n > 0 && once {
+            crate::block::arm_write_fault_once(n);
+        } else if n > 0 {
+            crate::block::arm_write_fault(n);
+        }
+        let r = vfs::write(&a, &all[before..before + add]);
+        stopped += u32::from(n > 0 && crate::block::writes() - w0 == n);
+        crate::block::disarm_write_fault();
+        let node = {
+            let f = a.lock();
+            let e = f.node.lock();
+            (e.first, e.size)
+        };
+        let stored = crate::fs::with(|fs| fs.lookup(&path)).map(|e| (e.first, e.size));
+        if n == 0 {
+            writes = crate::block::writes() - w0;
+            control_ok = u32::from(
+                matches!(r, Ok(k) if k == add)
+                    && stored == Ok(node)
+                    && fault_state(&path, &all[..before + add]) == 1,
+            );
+        } else {
+            failed += u32::from(r.is_err());
+            io += u32::from(matches!(r, Err(FsError::Io(_))));
+            node_differs += u32::from(stored != Ok(node));
+            pos_moved += u32::from(a.lock().pos != before as u64);
+            // The sync must answer success (the disk works again) and leave `stat` and the
+            // node agreeing on the size.
+            let synced = vfs::sync().is_ok();
+            let stat_size = vfs::stat(&path).map(|st| st.size);
+            stale_sync += u32::from(!synced || stat_size != Ok(u64::from(node.1)));
+            let state = fault_state(&path, &all[..before]);
+            if (before == 0 && state == 2) || (before > 0 && state == 1) {
+                unchanged += 1;
+            } else {
+                bad += 1;
+            }
+            // Through the same open, from 0: the bytes the name holds and no more.
+            let mut back = alloc::vec![0u8; before + add + 1];
+            let pos = a.lock().pos;
+            let _ = vfs::seek(&a, 0);
+            let got = vfs::read(&a, &mut back);
+            ghost += u32::from(!matches!(got, Ok(k) if k == before && back[..k] == all[..k]));
+            if retry {
+                let _ = vfs::seek(&a, pos.min(before as u64));
+                retry_ok += u32::from(
+                    matches!(vfs::write(&a, &all[before..before + add]), Ok(k) if k == add)
+                        && fault_state(&path, &all[..before + add]) == 1,
+                );
+            }
+        }
+        drop(a);
+        n += 1;
+    }
+    [
+        writes,
+        control_ok,
+        failed,
+        io,
+        node_differs,
+        unchanged,
+        bad,
+        ghost,
+        retry_ok,
+        pos_moved,
+        stale_sync,
+        stopped,
+    ]
+}
+
+/// Bytes of the second sweep's files before the append, and the append: one cluster each.
+const FAULT_HALF: usize = 512;
+
+/// TST-M3-FAT32-FAULT-WRITE, first boot (WP-118, RSK-027): a write that fails at any of its
+/// disk writes leaves the file as it was, in its stored entry and in the node every open
+/// shares alike. Three sweeps: three clusters written to a new file (and the same write made
+/// again, which must succeed), one cluster appended to a file of one cluster, and (WP-120)
+/// that append made again after each failure, which must succeed too. With `once`
+/// (TST-M3-FAT32-FAULT-ONE-WRITE, WP-131) the hook refuses write N alone: the mode is shown
+/// first, and every failed call must have asked for exactly N disk writes.
+fn fat32_fault_write(once: bool) -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let case = if once {
+        "fat32_fault_write_one"
+    } else {
+        "fat32_fault_write"
+    };
+    let shown = if once {
+        fault_once_shown()
+    } else {
+        (true, true)
+    };
+    let w = fault_write_sweep(b'W', 0, FAULT_LEN, true, once);
+    let x = fault_write_sweep(b'X', FAULT_HALF, FAULT_HALF, false, once);
+    // WP-120: the same append, made again after each failure through the same open.
+    let y = fault_write_sweep(b'Y', FAULT_HALF, FAULT_HALF, true, once);
+    let synced = crate::fs::vfs::sync().is_ok();
+    for (name, v) in [("new", &w), ("append", &x), ("again", &y)] {
+        let stopped = if once {
+            alloc::format!("|stopped={}", v[11])
+        } else {
+            String::new()
+        };
+        kprintln!(
+            "OSX|{}|ktest|{}|sweep={}|control={}|writes={}|failed={}|io={}|node_differs={}|pos_moved={}|stale_sync={}|unchanged={}|bad={}|ghost={}|retry_ok={}{}",
+            BUILD_ID,
+            case,
+            name,
+            v[1],
+            v[0],
+            v[2],
+            v[3],
+            v[4],
+            v[9],
+            v[10],
+            v[5],
+            v[6],
+            v[7],
+            v[8],
+            stopped
+        );
+    }
+    let mode = if once {
+        alloc::format!(
+            "|once_refused={}|once_next_ok={}",
+            u8::from(shown.0),
+            u8::from(shown.1)
+        )
+    } else {
+        String::new()
+    };
+    kprintln!(
+        "OSX|{}|ktest|{}|synced={}|live_files={}{}",
+        BUILD_ID,
+        case,
+        u8::from(synced),
+        crate::fs::vfs::live_files(),
+        mode
+    );
+    if once {
+        for v in [&w, &x, &y] {
+            fault_once_judge(shown, v[11], v[0]);
+        }
+    }
+    for v in [&w, &x, &y] {
+        if v[1] != 1 || v[0] < 3 || v[2] != v[0] || v[3] != v[0] {
+            fail("the sweep did not run as planned")
+        }
+        if v[4] != 0 || v[6] != 0 || v[7] != 0 || v[5] != v[0] || v[9] != 0 || v[10] != 0 {
+            fail("a failed write left the file, its node or the open's position changed")
+        }
+    }
+    if w[8] != w[0] || y[8] != y[0] || !synced {
+        fail("the same write made again did not leave the whole file")
+    }
+    pass("a failed write leaves the file as it was, on disk and in its node")
+}
+
+/// The second boot of TST-M3-FAT32-FAULT-WRITE: a kernel with no memory of the first boot
+/// reads the image: every file of the first sweep is whole (its write was made again), every
+/// file of the second sweep holds its first cluster (the control both), every file of the
+/// third holds both clusters (its append was made again), none is anything else; a new file
+/// changes none of them.
+fn fat32_fault_write_check(case: &'static str) -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let count = || {
+        let w = fault_count(b'W', FAULT_LEN);
+        let x1 = fault_count(b'X', FAULT_HALF);
+        let x2 = fault_count(b'X', 2 * FAULT_HALF);
+        // A file of the second sweep is its first cluster, or (the control) both clusters;
+        // every file of the third, whose append was made again, is both.
+        let y = fault_count(b'Y', 2 * FAULT_HALF);
+        (w.0, x1.0, x2.0, y.0, w.2, x1.2 - x2.0 + y.1 + y.2)
+    };
+    let (w_whole, x_first, x_both, y_both, w_bad, x_bad) = count();
+    let fresh = alloc::vec![0x5Au8; FAULT_LEN];
+    let after_ok = crate::fs::with(|fs| {
+        let mut e = fs.create(b"/AFTER.TXT")?;
+        fs.write(&mut e, 0, &fresh)?;
+        fs.sync()
+    })
+    .is_ok()
+        && fault_state(b"/AFTER.TXT", &fresh) == 1;
+    let after = count();
+    kprintln!(
+        "OSX|{}|ktest|{}|new_whole={}|append_first={}|append_both={}|again_both={}|bad={}|after_ok={}|same_after={}",
+        BUILD_ID,
+        case,
+        w_whole,
+        x_first,
+        x_both,
+        y_both,
+        w_bad + x_bad,
+        u8::from(after_ok),
+        u8::from(after == (w_whole, x_first, x_both, y_both, w_bad, x_bad))
+    );
+    if w_bad + x_bad != 0 || !after_ok || after != (w_whole, x_first, x_both, y_both, w_bad, x_bad)
+    {
+        fail("a name of the sweeps is not its own file after the restart")
+    }
+    if w_whole == 0 || x_first == 0 || x_both != 1 || y_both == 0 {
+        fail("a whole sweep, or the control of the second, is missing after the restart")
+    }
+    pass("after the restart every file of the write sweeps is its own")
+}
+
+// ---- WP-133: a create that must grow its directory, under a failing disk -------------------
+
+/// Entries one cluster of the lab's volume holds (a cluster is one sector).
+const DIR_SLOTS: u32 = 16;
+
+/// The names `/DIR` holds and the clusters of its chain along the first FAT copy.
+fn fault_dir_state() -> Option<(u32, u32)> {
+    crate::fs::with(|fs| {
+        let names = fs.list(b"/DIR", |_| {})?;
+        let first = fs.lookup(b"/DIR")?.first;
+        Ok((names, fs.chain_clusters(first)?))
+    })
+    .ok()
+}
+
+/// Fills `/DIR` to the end of its last cluster with empty files `/DIR/Gnnn.TXT`, so that the
+/// next create must grow the directory (the two dot entries take two slots of the first
+/// cluster; nothing in this directory is ever deleted). False when a create fails or the
+/// directory is not exactly full afterwards.
+fn fault_dir_fill(next: &mut u32) -> bool {
+    let Some((names, clusters)) = fault_dir_state() else {
+        return false;
+    };
+    let free = (clusters * DIR_SLOTS).saturating_sub(names + 2);
+    for _ in 0..free {
+        let path = alloc::format!("/DIR/G{:03}.TXT", *next).into_bytes();
+        *next += 1;
+        if crate::fs::with(|fs| fs.create(&path).map(|_| ())).is_err() {
+            return false;
+        }
+    }
+    fault_dir_state() == Some((names + free, clusters))
+}
+
+/// Clusters dirtied before the create sweep: more than the growths of both boots take.
+const DIRTY_CLUSTERS: u32 = 24;
+
+/// Dirties the lowest free clusters, which the growths of the sweep then take: a file whose
+/// every 32 bytes read as the live entry of an empty file (`STRAYnnn.TXT`) is written and
+/// deleted. On the lab's image the free clusters are zeros, and a new directory cluster that
+/// was not zeroed would read as an empty one all the same; after this it lists names no create
+/// made. True when the file took exactly `DIRTY_CLUSTERS` clusters and deleting it gave every
+/// one of them back.
+fn fault_dirty() -> bool {
+    let mut bytes = alloc::vec![0u8; DIRTY_CLUSTERS as usize * 512];
+    for (i, slot) in bytes.chunks_mut(32).enumerate() {
+        slot[..11].copy_from_slice(alloc::format!("STRAY{:03}TXT", i).as_bytes());
+        slot[11] = 0x20;
+    }
+    crate::fs::with(|fs| {
+        let free = fs.free_clusters()?;
+        let mut e = fs.create(b"/DIRTY.BIN")?;
+        fs.write(&mut e, 0, &bytes)?;
+        let took = free - fs.free_clusters()?;
+        fs.unlink(b"/DIRTY.BIN")?;
+        Ok(took == DIRTY_CLUSTERS && fs.free_clusters()? == free)
+    })
+    .unwrap_or(false)
+}
+
+/// The names `/DIR` lists that no create made: the entries `fault_dirty` left in the free
+/// clusters read as `STRAYnnn.TXT`.
+fn fault_dir_strays() -> u32 {
+    let mut n = 0u32;
+    let _ =
+        crate::fs::with(|fs| fs.list(b"/DIR", |e| n += u32::from(e.name.starts_with(b"STRAY"))));
+    n
+}
+
+/// `/DIR` as one FAT copy gives it (copy 0 is the copy the kernel reads): the clusters of its
+/// chain, the names a reader of that copy would list, whether the chain is sound there, and a
+/// print of those names (FNV-1a over the 11 bytes of each, in the order read). The chain and
+/// the names are read by the test itself from the disk and not through the file system's
+/// reader; the directory's first cluster is the one the file system's lookup gives, and the
+/// volume's numbers are the ones its mount parsed. The chain is not sound when it stands on a
+/// cluster that is free, reserved or bad in that copy, leaves the volume or does not end.
+/// Names are counted as `list` counts them, up to the first end mark; the chain is followed in
+/// the FAT alone, past any end mark (WP-138).
+fn fault_dir_in_copy(copy: u32) -> Option<(u32, u32, bool, u64)> {
+    crate::fs::with(|fs| {
+        if copy >= fs.fats {
+            return Err(FsError::Corrupt);
+        }
+        let entry = |c: u32| -> Result<u32, FsError> {
+            let mut s = [0u8; 512];
+            let off = c as usize * 4;
+            let sector = u64::from(fs.reserved + copy * fs.fat_sectors) + (off / 512) as u64;
+            crate::block::read(sector, &mut s)?;
+            let o = off % 512;
+            Ok(u32::from_le_bytes([s[o], s[o + 1], s[o + 2], s[o + 3]]) & 0x0FFF_FFFF)
+        };
+        let mut c = fs.lookup(b"/DIR")?.first;
+        let (mut clusters, mut names, mut ended) = (0u32, 0u32, false);
+        let mut print = 0xcbf2_9ce4_8422_2325u64;
+        while clusters < 4096 && c >= 2 && c < fs.clusters + 2 {
+            let next = entry(c)?;
+            if next == 0 || next == 1 || next == 0x0FFF_FFF7 {
+                break;
+            }
+            clusters += 1;
+            let base =
+                u64::from(fs.data_start) + u64::from(c - 2) * u64::from(fs.sectors_per_cluster);
+            for i in 0..fs.sectors_per_cluster {
+                if ended {
+                    break;
+                }
+                let mut s = [0u8; 512];
+                crate::block::read(base + u64::from(i), &mut s)?;
+                for e in s.chunks(32) {
+                    if e[0] == 0 {
+                        ended = true;
+                        break;
+                    }
+                    if e[0] != 0xE5 && e[11] & 0x0F != 0x0F && e[11] & 0x08 == 0 && e[0] != b'.' {
+                        names += 1;
+                        for b in &e[..11] {
+                            print = (print ^ u64::from(*b)).wrapping_mul(0x0000_0100_0000_01b3);
+                        }
+                    }
+                }
+            }
+            if next >= 0x0FFF_FFF8 {
+                return Ok((clusters, names, true, print));
+            }
+            c = next;
+        }
+        Ok((clusters, names, false, print))
+    })
+    .ok()
+}
+
+/// The two FAT copies compared whole by the test itself, entry by entry (the two reserved
+/// entries left out): the clusters marked in the second copy and free in the first, the
+/// clusters marked in the first and free in the second, and the clusters marked in both with
+/// different values (a link one copy holds and the other does not). An entry that differs
+/// between the copies in its 28 low bits is one of the three (the 4 high bits are left out). The second copy is written first, so a refusal
+/// between the two writes of a mark leaves one cluster of the first kind and a refusal between
+/// the two writes of a link one of the third; a create frees nothing, so after one a cluster
+/// of the second kind says the second copy is behind the first (WP-138).
+fn fault_fat_diff() -> Option<(u32, u32, u32)> {
+    const CHUNK: u32 = 32;
+    crate::fs::with(|fs| {
+        if fs.fats < 2 {
+            return Err(FsError::Corrupt);
+        }
+        let mut a = alloc::vec![0u8; CHUNK as usize * 512];
+        let mut b = alloc::vec![0u8; CHUNK as usize * 512];
+        let (mut ahead, mut behind, mut links) = (0u32, 0u32, 0u32);
+        let mut s = 0u32;
+        while s < fs.fat_sectors {
+            let n = CHUNK.min(fs.fat_sectors - s) as usize * 512;
+            crate::block::read(u64::from(fs.reserved + s), &mut a[..n])?;
+            crate::block::read(u64::from(fs.reserved + fs.fat_sectors + s), &mut b[..n])?;
+            for (i, (x, y)) in a[..n].chunks(4).zip(b[..n].chunks(4)).enumerate() {
+                let c = s * 128 + i as u32;
+                if c < 2 || c >= fs.clusters + 2 {
+                    continue;
+                }
+                let first = u32::from_le_bytes([x[0], x[1], x[2], x[3]]) & 0x0FFF_FFFF;
+                let second = u32::from_le_bytes([y[0], y[1], y[2], y[3]]) & 0x0FFF_FFFF;
+                ahead += u32::from(first == 0 && second != 0);
+                behind += u32::from(first != 0 && second == 0);
+                links += u32::from(first != 0 && second != 0 && first != second);
+            }
+            s += CHUNK;
+        }
+        Ok((ahead, behind, links))
+    })
+    .ok()
+}
+
+/// The judgements on what is read along the second FAT copy after every create under the hook,
+/// the same for the three create cases (WP-138).
+fn fault_second_judge(free: u32, names: u32, shorter: u32, first_marks: u32) {
+    if free != 0 {
+        fail("after a create under the hook the directory's chain along the second FAT copy stands on a cluster that is free there, or does not end")
+    }
+    if names != 0 {
+        fail("after a create under the hook the two FAT copies do not list the same names in the directory")
+    }
+    if shorter != 0 || first_marks != 0 {
+        fail("after a create under the hook the second FAT copy is behind the first: the directory's chain is shorter along it, or a cluster is marked in the first copy and free in the second")
+    }
+}
+
+fn fault_create_path(n: u32) -> alloc::vec::Vec<u8> {
+    alloc::format!("/DIR/C{:02}.TXT", n).into_bytes()
+}
+
+/// TST-M3-FAT32-FAULT-CREATE, first boot (WP-133, RSK-027; files.md v1.12): a create that must
+/// grow its directory and fails at any of its disk writes leaves no name and no entry that is
+/// not a name's own, and the same create made again succeeds. The free clusters the growths
+/// will take are dirtied with bytes that read as entries; `/DIR` is filled to its cluster's
+/// end; a control create counts the writes of a growth (W); then for every N from 1
+/// to W the directory is filled again and a create runs with the test kernel's hook refusing
+/// write N and all after it, then once more with the disk working.
+///
+/// TST-M3-FAT32-FAULT-ONE-CREATE (WP-134; files.md v1.13) is the same sweep with write N alone
+/// refused (`once`). There a create that swallows a refusal goes on and answers success, and
+/// the case judges by what is read: the names the directory lists that no create made (strays)
+/// and the creates that answered success for a name no lookup finds (ghost). The mode is shown
+/// first, before the clusters are dirtied, so that its file takes none of them.
+///
+/// TST-M3-FAT32-FAULT-CREATE-COPIES (WP-138, after its close audit) is the sweep under one
+/// refused write once more (`copies`): once the sweep has started it prints the count of the
+/// sweep's calls and what is read along the second FAT copy after every create under the hook,
+/// and judges nothing but the latter (the checks before the sweep stop it as in the other
+/// create cases).
+fn fat32_fault_create(once: bool, copies: bool) -> ! {
+    use crate::fs::vfs;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let case = if once {
+        "fat32_fault_create_one"
+    } else {
+        "fat32_fault_create"
+    };
+    let shown = if once {
+        fault_once_shown()
+    } else {
+        (true, true)
+    };
+    let open_new =
+        |path: &[u8]| vfs::open(path, vfs::O_READ | vfs::O_WRITE | vfs::O_CREATE).map(|_| ());
+    let absent =
+        |path: &[u8]| crate::fs::with(|fs| fs.lookup(path)).err() == Some(FsError::NotFound);
+    let dirty = fault_dirty();
+    let mut filler = 0u32;
+    if !fault_dir_fill(&mut filler) {
+        fail("could not fill the directory before the control")
+    }
+    let Some((names0, clusters0)) = fault_dir_state() else {
+        fail("could not read the directory")
+    };
+    let w0 = crate::block::writes();
+    let control = open_new(&fault_create_path(0));
+    let writes = crate::block::writes() - w0;
+    let control_ok = control.is_ok() && fault_dir_state() == Some((names0 + 1, clusters0 + 1));
+    let (mut failed, mut io, mut stopped, mut gone, mut grown) = (0u32, 0u32, 0u32, 0u32, 0u32);
+    let (mut retry_ok, mut retry_grew, mut filled) = (0u32, 0u32, 0u32);
+    let (mut strays, mut ghost) = (0u32, 0u32);
+    let (mut first_same, mut second_free, mut second_longer, mut second_names) =
+        (0u32, 0u32, 0u32, 0u32);
+    let (mut second_marks, mut second_shorter, mut first_marks) = (0u32, 0u32, 0u32);
+    let mut second_links = 0u32;
+    let mut calls = 0u32;
+    for n in 1..=writes {
+        filled += u32::from(fault_dir_fill(&mut filler));
+        let path = fault_create_path(n);
+        let before = fault_dir_state();
+        let w1 = crate::block::writes();
+        if once {
+            crate::block::arm_write_fault_once(n);
+        } else {
+            crate::block::arm_write_fault(n);
+        }
+        let r = open_new(&path);
+        stopped += u32::from(crate::block::writes() - w1 == n);
+        if !once {
+            crate::block::disarm_write_fault();
+        }
+        failed += u32::from(r.is_err());
+        io += u32::from(matches!(r, Err(FsError::Io(_))));
+        let after = fault_dir_state();
+        strays += fault_dir_strays();
+        ghost += u32::from(r.is_ok() && absent(&path));
+        // WP-138: the directory as each FAT copy gives it, before the create is made again
+        // (the create made again writes over what a failed one left along the second copy).
+        let (one, two) = (fault_dir_in_copy(0), fault_dir_in_copy(1));
+        first_same += u32::from(one.is_some_and(|d| d.2) && one.map(|d| (d.1, d.0)) == after);
+        second_free += u32::from(!two.is_some_and(|d| d.2));
+        second_longer += u32::from(matches!((one, two), (Some(a), Some(b)) if b.0 > a.0));
+        second_shorter += u32::from(matches!((one, two), (Some(a), Some(b)) if b.0 < a.0));
+        // The names of the two copies are compared by their prints: the 11 bytes of every
+        // name, in the order read.
+        second_names += u32::from(one.map(|d| d.3) != two.map(|d| d.3));
+        // Every FAT entry that differs between the copies is of one of three kinds.
+        let diff = fault_fat_diff();
+        second_marks += u32::from(diff.is_some_and(|d| d.0 > 0));
+        first_marks += u32::from(!diff.is_some_and(|d| d.1 == 0));
+        second_links += u32::from(diff.is_some_and(|d| d.2 > 0));
+        // No name of the failed create, and no other name either: the listing counts what it
+        // counted before (an entry read from a new cluster that was not zeroed would add to
+        // it: the free clusters were dirtied with entries).
+        gone += u32::from(
+            absent(&path) && before.is_some() && after.map(|s| s.0) == before.map(|s| s.0),
+        );
+        grown += u32::from(matches!((before, after), (Some(b), Some(a)) if a.1 > b.1));
+        // Under the once mode the create is made again with the hook still armed, past its
+        // one refused write: a hook that refused every later write too would refuse this
+        // create (the mode is shown beforehand for its first write only, on another file, and
+        // the sweep's own numbers are the same under both modes).
+        let again = open_new(&path);
+        if once {
+            crate::block::disarm_write_fault();
+        }
+        let last = fault_dir_state();
+        retry_ok += u32::from(
+            again.is_ok()
+                && fault_state(&path, &[]) == 2
+                && last.map(|s| s.0) == before.map(|s| s.0 + 1),
+        );
+        retry_grew += u32::from(matches!((after, last), (Some(a), Some(l)) if l.1 > a.1));
+        calls += 1;
+    }
+    let synced = vfs::sync().is_ok();
+    let (names, clusters) = fault_dir_state().unwrap_or((0, 0));
+    if copies {
+        kprintln!(
+            "OSX|{}|ktest|fat32_fault_create_copies|calls={}|second_free={}|second_longer={}|second_shorter={}|second_names={}|second_marks={}|second_links={}|first_marks={}",
+            BUILD_ID,
+            calls,
+            second_free,
+            second_longer,
+            second_shorter,
+            second_names,
+            second_marks,
+            second_links,
+            first_marks
+        );
+        fault_second_judge(second_free, second_names, second_shorter, first_marks);
+        pass("between a failed create and the create made again the second FAT copy is as pinned")
+    }
+    // Both cases' lines carry the second copy's fields (WP-138); the once case adds its own.
+    let mode = if once {
+        alloc::format!(
+            "|strays={}|ghost={}|once_refused={}|once_next_ok={}",
+            strays,
+            ghost,
+            u8::from(shown.0),
+            u8::from(shown.1)
+        )
+    } else {
+        String::new()
+    };
+    kprintln!(
+        "OSX|{}|ktest|{}|dirty={}|control={}|writes={}|filled={}|failed={}|io={}|stopped={}|absent={}|grown={}|retry_ok={}|retry_grew={}|names={}|dir_clusters={}|synced={}|live_files={}|first_same={}|second_free={}|second_longer={}|second_names={}|second_marks={}|second_shorter={}|first_marks={}|second_links={}{}",
+        BUILD_ID,
+        case,
+        u8::from(dirty),
+        u8::from(control_ok),
+        writes,
+        filled,
+        failed,
+        io,
+        stopped,
+        gone,
+        grown,
+        retry_ok,
+        retry_grew,
+        names,
+        clusters,
+        u8::from(synced),
+        vfs::live_files(),
+        first_same,
+        second_free,
+        second_longer,
+        second_names,
+        second_marks,
+        second_shorter,
+        first_marks,
+        second_links,
+        mode
+    );
+    if !dirty {
+        fail("the free clusters were not dirtied before the sweep")
+    }
+    if first_same != writes {
+        fail("the test's own reader of the first FAT copy does not read the directory as the file system does")
+    }
+    fault_second_judge(second_free, second_names, second_shorter, first_marks);
+    if once {
+        // strays and ghost are judged before the count of disk writes: under one refused write
+        // a swallowed refusal shows in the directory too, not only in that count.
+        if strays != 0 {
+            fail("after a failed create the directory lists a name that no create made")
+        }
+        if ghost != 0 {
+            fail("a create answered success for a name no lookup finds")
+        }
+        fault_once_judge(shown, stopped, writes);
+    }
+    if !control_ok || writes < 3 || filled != writes || !synced {
+        fail("the sweep did not run as planned: the control did not add one name and one cluster, or the directory was not filled")
+    }
+    if failed != writes || io != writes {
+        fail("a create whose disk write was refused did not answer an I/O error")
+    }
+    if stopped != writes {
+        fail("a failed create did not ask for exactly N disk writes")
+    }
+    if gone != writes {
+        fail("a failed create left its name, or a name that is not its own")
+    }
+    if retry_ok != writes {
+        fail("the same create made again did not leave the new empty file")
+    }
+    pass("a failed create leaves no name, and the same create made again succeeds")
+}
+
+/// The second boot of TST-M3-FAT32-FAULT-CREATE: a kernel with no memory of the first boot
+/// lists the directory: every name of the sweep (the control and one per N) is an empty file,
+/// the directory holds the names and the clusters the first boot left, and a new file changes
+/// none of them.
+fn fat32_fault_create_check(case: &'static str, once: bool) -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let count = || {
+        let (mut empty, mut bad) = (0u32, 0u32);
+        for n in 0..32 {
+            match fault_state(&fault_create_path(n), &[]) {
+                2 => empty += 1,
+                0 => {}
+                _ => bad += 1,
+            }
+        }
+        (empty, bad)
+    };
+    let (created, bad) = count();
+    let (names, clusters) = fault_dir_state().unwrap_or((0, 0));
+    let fresh = alloc::vec![0x5Au8; FAULT_LEN];
+    let after_ok = crate::fs::with(|fs| {
+        let mut e = fs.create(b"/DIR/AFTER.TXT")?;
+        fs.write(&mut e, 0, &fresh)?;
+        fs.sync()
+    })
+    .is_ok()
+        && fault_state(b"/DIR/AFTER.TXT", &fresh) == 1;
+    let (created_after, bad_after) = count();
+    let names_after = fault_dir_state().map_or(0, |s| s.0);
+    let strays = fault_dir_strays();
+    let mode = if once {
+        alloc::format!("|strays={}", strays)
+    } else {
+        String::new()
+    };
+    kprintln!(
+        "OSX|{}|ktest|{}|created={}|bad={}|names={}|dir_clusters={}|after_ok={}|created_after={}|bad_after={}|names_after={}{}",
+        BUILD_ID,
+        case,
+        created,
+        bad,
+        names,
+        clusters,
+        u8::from(after_ok),
+        created_after,
+        bad_after,
+        names_after,
+        mode
+    );
+    if once && strays != 0 {
+        fail("after the restart the directory lists a name that no create made")
+    }
+    if bad != 0 || bad_after != 0 || !after_ok {
+        fail("a name of the sweep is not its own empty file after the restart")
+    }
+    if created == 0 || created_after != created || names_after != names + 1 {
+        fail("the directory does not hold the names the first boot left, and one more")
+    }
+    pass("after the restart every created name is an empty file of its own")
+}
+
+// ---- WP-121: a write on a volume that runs out ------------------------------------------------
+
+/// TST-M3-FAT32-DISK-FULL (WP-121, RSK-033; files.md v1.7): a write the volume cannot hold
+/// whole answers no space and changes nothing: no sector is written, no cluster taken, and
+/// the file, its node and the open's position are what they were; a write that fits is made
+/// whole, down to the volume's last cluster. The test kernel's hook ends the volume, for the
+/// allocator, just before a chosen free cluster: the allocator's own scan finds nothing past
+/// it. Four files: A, empty, is refused three clusters with two left, takes the two, is
+/// refused one byte more and a write that overwrites one cluster and needs a third, and is
+/// overwritten in place with nothing left; B, half a cluster, is refused a write that needs
+/// a second cluster and filled to the end of its own; C, empty, is refused one byte; D, whose
+/// chain is one cluster longer than its size (an append whose entry write was refused before
+/// the volume was ended), is written into that cluster with nothing left. A's removal gives
+/// two clusters back: C takes one, B is extended by the other, and C is refused one more.
+/// Then the files are removed and the free count is what it was: the host's ordinary checks
+/// judge the image.
+fn fat32_disk_full() -> ! {
+    use crate::fs::vfs;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let rw = vfs::O_READ | vfs::O_WRITE;
+    let (all, other) = (fault_bytes(1), fault_bytes(2));
+    let (half, one, two) = (FAULT_HALF / 2, FAULT_HALF, 2 * FAULT_HALF);
+    let size_of = |path: &[u8]| vfs::stat(path).map_or(u64::MAX, |st| st.size);
+    // How many clusters the stored entry's chain holds (u32::MAX when it cannot be walked).
+    let chain_of = |path: &[u8]| {
+        vfs::stat(path)
+            .and_then(|st| crate::fs::with(|fs| fs.chain_clusters(st.first_cluster)))
+            .unwrap_or(u32::MAX)
+    };
+    let node_size = |f: &vfs::FileRef| f.lock().node.lock().size;
+    // One write through an open: its answer, the sectors it wrote to the device, and how far
+    // the open's position moved.
+    let attempt = |f: &vfs::FileRef, data: &[u8]| {
+        let (w0, p0) = (crate::block::writes(), f.lock().pos);
+        let r = vfs::write(f, data);
+        (r, crate::block::writes() - w0, f.lock().pos - p0)
+    };
+    let show = |r: &Result<usize, FsError>| match r {
+        Ok(n) => alloc::format!("{}", n),
+        Err(e) => alloc::string::String::from(e.code()),
+    };
+    // A refused seek would leave the next write somewhere else than the case says.
+    let seek_to = |f: &vfs::FileRef, pos: usize| {
+        if vfs::seek(f, pos as u64) != Ok(pos as u64) {
+            fail("could not move an open's position inside its file")
+        }
+    };
+
+    let (Ok(a), Ok(b), Ok(c), Ok(d)) = (
+        vfs::open(b"/FULL1.TXT", rw | vfs::O_CREATE),
+        vfs::open(b"/FULL2.TXT", rw | vfs::O_CREATE),
+        vfs::open(b"/FULL3.TXT", rw | vfs::O_CREATE),
+        vfs::open(b"/FULL4.TXT", rw | vfs::O_CREATE),
+    ) else {
+        fail("could not create the case's files")
+    };
+    // Counted once the names exist: a directory that grew for them is not the case's matter.
+    let free0 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    if !matches!(vfs::write(&b, &all[..half]), Ok(n) if n == half) {
+        fail("could not write the second file's half cluster")
+    }
+    // D: one cluster, then an append whose last write, the entry, is refused by the block
+    // layer's hook (the ninth write of such a call: TST-M3-FAT32-FAULT-WRITE counts them). The
+    // new cluster stays linked past the size (files.md v1.6).
+    if !matches!(vfs::write(&d, &all[..one]), Ok(n) if n == one) {
+        fail("could not write the fourth file's first cluster")
+    }
+    crate::block::arm_write_fault(9);
+    let d_fault = vfs::write(&d, &all[one..two]);
+    crate::block::disarm_write_fault();
+    let d_long = size_of(b"/FULL4.TXT") == one as u64
+        && node_size(&d) == one as u32
+        && chain_of(b"/FULL4.TXT") == 2;
+    if crate::fs::with(|fs| fs.arm_disk_full(2)).is_err() {
+        fail("could not end the volume two free clusters ahead")
+    }
+
+    // A: three clusters with two left; the two; one byte more; one cluster over and one new.
+    let a_big = attempt(&a, &all);
+    let (a_big_size, a_big_node, a_big_chain) = (
+        size_of(b"/FULL1.TXT"),
+        node_size(&a),
+        chain_of(b"/FULL1.TXT"),
+    );
+    let a_fit = attempt(&a, &all[..two]);
+    let a_more = attempt(&a, b"x");
+    seek_to(&a, one);
+    let a_span = attempt(&a, &other[..two]);
+    let (a_size, a_node, a_chain) = (
+        size_of(b"/FULL1.TXT"),
+        node_size(&a),
+        chain_of(b"/FULL1.TXT"),
+    );
+    let a_whole = fault_state(b"/FULL1.TXT", &all[..two]) == 1;
+    // What the same open reads from 0: the bytes the name holds, and no more.
+    let a_read = {
+        let mut back = alloc::vec![0u8; all.len() + 1];
+        seek_to(&a, 0);
+        match vfs::read(&a, &mut back) {
+            Ok(k) if back[..k] == all[..k] => k as i64,
+            _ => -1,
+        }
+    };
+    seek_to(&a, 0);
+    let a_over = attempt(&a, &other[..two]);
+    let a_over_whole =
+        fault_state(b"/FULL1.TXT", &other[..two]) == 1 && chain_of(b"/FULL1.TXT") == 2;
+
+    // B: from the middle of its cluster into a second one; then to the end of its own.
+    let b_span = attempt(&b, &all[half..half + one]);
+    let b_size = size_of(b"/FULL2.TXT");
+    let b_whole = fault_state(b"/FULL2.TXT", &all[..half]) == 1 && node_size(&b) == half as u32;
+    let b_fill = attempt(&b, &all[half..one]);
+    let b_chain = chain_of(b"/FULL2.TXT");
+    let b_filled = fault_state(b"/FULL2.TXT", &all[..one]) == 1;
+
+    // C: one byte with nothing left; then the clusters a removed file gives back.
+    let c_none = attempt(&c, b"x");
+    let (c_node, c_chain) = (node_size(&c), chain_of(b"/FULL3.TXT"));
+    let c_empty = fault_state(b"/FULL3.TXT", &[]) == 2;
+    // D: its second cluster's bytes again, with nothing left: the chain already holds the
+    // cluster, so the call needs none.
+    let d_into = attempt(&d, &all[one..two]);
+    let d_chain = chain_of(b"/FULL4.TXT");
+    let d_whole = fault_state(b"/FULL4.TXT", &all[..two]) == 1;
+
+    // A's removal gives two clusters back: one to C, the other to B's chain.
+    drop(a);
+    let a_removed = vfs::unlink(b"/FULL1.TXT").is_ok();
+    let c_after = attempt(&c, &all[..one]);
+    let b_grow = attempt(&b, &all[one..two]);
+    let c_more = attempt(&c, b"x");
+    let c_whole = fault_state(b"/FULL3.TXT", &all[..one]) == 1 && chain_of(b"/FULL3.TXT") == 1;
+    let b_grown = fault_state(b"/FULL2.TXT", &all[..two]) == 1 && chain_of(b"/FULL2.TXT") == 2;
+
+    crate::fs::fat32::disarm_disk_full();
+    let refused = [&a_big, &a_more, &a_span, &b_span, &c_none, &c_more];
+    let refused_writes: u32 = refused.iter().map(|x| x.1).sum();
+    let pos_moved = refused.iter().filter(|x| x.2 != 0).count();
+    drop((b, c, d));
+    let removed = a_removed
+        && vfs::unlink(b"/FULL2.TXT").is_ok()
+        && vfs::unlink(b"/FULL3.TXT").is_ok()
+        && vfs::unlink(b"/FULL4.TXT").is_ok();
+    let synced = vfs::sync().is_ok();
+    let free1 = crate::fs::with(|fs| fs.free_clusters()).unwrap_or(0);
+    kprintln!(
+        "OSX|{}|ktest|fat32_disk_full|d_fault={}|d_long={}|a_big={}|a_big_size={}|a_big_node={}|a_big_chain={}|a_fit={}|a_more={}|a_span={}|a_size={}|a_node={}|a_chain={}|a_whole={}|a_read={}|a_over={}|a_over_whole={}|b_span={}|b_size={}|b_whole={}|b_fill={}|b_chain={}|b_filled={}|c_none={}|c_node={}|c_chain={}|c_empty={}|d_into={}|d_chain={}|d_whole={}|c_after={}|b_grow={}|c_more={}|c_whole={}|b_grown={}|refused_writes={}|pos_moved={}|removed={}|free_delta={}|synced={}|live_files={}",
+        BUILD_ID,
+        show(&d_fault),
+        u8::from(d_long),
+        show(&a_big.0),
+        a_big_size,
+        a_big_node,
+        a_big_chain,
+        show(&a_fit.0),
+        show(&a_more.0),
+        show(&a_span.0),
+        a_size,
+        a_node,
+        a_chain,
+        u8::from(a_whole),
+        a_read,
+        show(&a_over.0),
+        u8::from(a_over_whole),
+        show(&b_span.0),
+        b_size,
+        u8::from(b_whole),
+        show(&b_fill.0),
+        b_chain,
+        u8::from(b_filled),
+        show(&c_none.0),
+        c_node,
+        c_chain,
+        u8::from(c_empty),
+        show(&d_into.0),
+        d_chain,
+        u8::from(d_whole),
+        show(&c_after.0),
+        show(&b_grow.0),
+        show(&c_more.0),
+        u8::from(c_whole),
+        u8::from(b_grown),
+        refused_writes,
+        pos_moved,
+        u8::from(removed),
+        i64::from(free0) - i64::from(free1),
+        u8::from(synced),
+        vfs::live_files()
+    );
+    if !matches!(d_fault, Err(FsError::Io(_))) || !d_long {
+        fail("the fourth file's chain is not one cluster longer than its size")
+    }
+    if refused.iter().any(|x| x.0 != Err(FsError::DiskFull)) {
+        fail("a write the volume could not hold whole was not answered with no space")
+    }
+    if refused_writes != 0 || pos_moved != 0 {
+        fail("a refused write wrote to the device or moved the open's position")
+    }
+    if (a_big_size, a_big_node, a_big_chain) != (0, 0, 0) || c_node != 0 || c_chain != 0 || !c_empty
+    {
+        fail("a refused write to an empty file left it something")
+    }
+    if a_fit.0 != Ok(two) || a_over.0 != Ok(two) || b_fill.0 != Ok(one - half) {
+        fail("a write the volume could hold whole was not made whole")
+    }
+    if d_into.0 != Ok(one) || d_chain != 2 || !d_whole {
+        fail("a write into a cluster the chain already holds was refused or took another")
+    }
+    if c_after.0 != Ok(one) || b_grow.0 != Ok(one) || !c_whole || !b_grown {
+        fail("the clusters a removed file gave back were not taken, one each")
+    }
+    if (a_size, a_node, a_chain) != (two as u64, two as u32, 2) || !a_whole || a_read != two as i64
+    {
+        fail("a refused write changed the file, its node or what its open reads")
+    }
+    if !a_over_whole || b_size != half as u64 || !b_whole || b_chain != 1 || !b_filled {
+        fail("a file does not hold the bytes and the clusters its writes gave it")
+    }
+    if !removed || !synced || free1 != free0 {
+        fail("clusters were lost on a volume that ran out of space")
+    }
+    pass("a write the volume cannot hold whole changes nothing, and one that fits is whole")
+}
+
+// ---- WP-117: the file system stops with the disk -----------------------------------------------
+
+/// TST-M3-FAT32-STOP, first boot (WP-117, RSK-027; ADR-0013 decision 9): once the disk has
+/// stopped, every file call answers an I/O error and none answers from memory. File A, three
+/// clusters, is closed; file B, two clusters, is open twice, one position at its end and one
+/// at 0; file T was written two clusters through one open and then emptied through another,
+/// so the first open's position is past the size. The test kernel's hook is armed to withhold
+/// from the device the second disk write from then on, and the `stopio` application is run:
+/// it reads B to its end and deletes A, whose first FAT write is that second write, so the
+/// driver's own timeout branch answers it and stops the disk inside the process's call; the
+/// application then makes thirteen more calls of the files contract, five of them with
+/// arguments a working disk would refuse, and exits 0x5709 only if the delete and every one
+/// of them answered ERR_IO through the system-call layer. Then the kernel asks ten things of its
+/// own opens: a read at the end of B, a seek and a write of no bytes (the three that ask
+/// nothing of the disk), a read inside B, a stat of B and of the root, a create, a sync, the
+/// count of free clusters, and a write through T's open whose position is past its size.
+fn fat32_stop() -> ! {
+    use crate::fs::vfs;
+    let image = crate::apps::STOPIO;
+    if image.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let rw = vfs::O_READ | vfs::O_WRITE;
+    let all = fault_bytes(1);
+    let two = 2 * FAULT_HALF;
+    let made = (|| {
+        let a = vfs::open(b"/STOP1.TXT", rw | vfs::O_CREATE).ok()?;
+        if vfs::write(&a, &all) != Ok(all.len()) {
+            return None;
+        }
+        drop(a);
+        let b = vfs::open(b"/STOP2.TXT", rw | vfs::O_CREATE).ok()?;
+        if vfs::write(&b, &all[..two]) != Ok(two) {
+            return None;
+        }
+        let b0 = vfs::open(b"/STOP2.TXT", vfs::O_READ).ok()?;
+        let t = vfs::open(b"/STOP4.TXT", rw | vfs::O_CREATE).ok()?;
+        if vfs::write(&t, &all[..two]) != Ok(two) {
+            return None;
+        }
+        drop(vfs::open(b"/STOP4.TXT", rw | vfs::O_TRUNCATE).ok()?);
+        vfs::sync().ok()?;
+        Some((b, b0, t))
+    })();
+    let Some((b, b0, t)) = made else {
+        fail("could not prepare the case's files")
+    };
+    let pos_of = |f: &vfs::FileRef| f.lock().pos;
+    if pos_of(&b) != two as u64 || pos_of(&t) != two as u64 || t.lock().node.lock().size != 0 {
+        fail("the case's opens are not where it needs them")
+    }
+    crate::block::arm_timeout_at_write(2);
+    let app_exit = match crate::user::run_elf(image) {
+        Ok((o, _l)) => o.exit_code,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|fat32_stop|error={}", BUILD_ID, e.code());
+            fail("application did not load")
+        }
+    };
+    let mut buf = alloc::vec![0u8; 16];
+    let end_read = vfs::read(&b, &mut buf).map(|_| ());
+    let seek = vfs::seek(&b, 0).map(|_| ());
+    let pos_moved = u8::from(pos_of(&b) != two as u64);
+    let empty_write = vfs::write(&b, &[]).map(|_| ());
+    let inner_read = vfs::read(&b0, &mut buf).map(|_| ());
+    let stat = vfs::stat(b"/STOP2.TXT").map(|_| ());
+    let root_stat = vfs::stat(b"/").map(|_| ());
+    let create = vfs::open(b"/STOP3.TXT", rw | vfs::O_CREATE).map(|_| ());
+    let sync = vfs::sync();
+    let free = crate::fs::with(|fs| fs.free_clusters()).map(|_| ());
+    let stale_write = vfs::write(&t, b"x").map(|_| ());
+    drop((b, b0, t));
+    let code = |r: &Result<(), FsError>| match r {
+        Ok(()) => "ok",
+        Err(e) => e.code(),
+    };
+    kprintln!(
+        "OSX|{}|ktest|fat32_stop|app_exit={:#x}|end_read={}|seek={}|pos_moved={}|empty_write={}|inner_read={}|stat={}|root_stat={}|create={}|sync={}|free={}|stale_write={}|live_files={}",
+        BUILD_ID,
+        app_exit,
+        code(&end_read),
+        code(&seek),
+        pos_moved,
+        code(&empty_write),
+        code(&inner_read),
+        code(&stat),
+        code(&root_stat),
+        code(&create),
+        code(&sync),
+        code(&free),
+        code(&stale_write),
+        vfs::live_files()
+    );
+    if app_exit != 0x5709 {
+        fail("a call of the process did not answer ERR_IO once the disk had stopped (exit code = its step)")
+    }
+    let later = [
+        &end_read,
+        &seek,
+        &empty_write,
+        &inner_read,
+        &stat,
+        &root_stat,
+        &create,
+        &sync,
+        &free,
+        &stale_write,
+    ];
+    if later.iter().any(|r| !matches!(r, Err(FsError::Io(_)))) {
+        fail("a file call answered something else than an I/O error after the disk stopped")
+    }
+    if pos_moved != 0 {
+        fail("a refused seek moved the open's position")
+    }
+    pass("after the disk stops every file call answers an I/O error")
+}
+
+/// The second boot of TST-M3-FAT32-STOP: a kernel with no memory of the first reads the image.
+/// A's name is gone (its entry was written before the write that timed out), B holds its two
+/// clusters' bytes, and a new three-cluster file reads back its own bytes and changes neither.
+fn fat32_stop_check() -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let all = fault_bytes(1);
+    let two = 2 * FAULT_HALF;
+    let state = || {
+        (
+            fault_state(b"/STOP1.TXT", &all),
+            fault_state(b"/STOP2.TXT", &all[..two]),
+        )
+    };
+    let (a, b) = state();
+    let fresh = alloc::vec![0x5Au8; FAULT_LEN];
+    let after_ok = crate::fs::with(|fs| {
+        let mut e = fs.create(b"/AFTER.TXT")?;
+        fs.write(&mut e, 0, &fresh)?;
+        fs.sync()
+    })
+    .is_ok()
+        && fault_state(b"/AFTER.TXT", &fresh) == 1;
+    let same_after = state() == (a, b);
+    kprintln!(
+        "OSX|{}|ktest|fat32_stop_check|a_gone={}|b_whole={}|after_ok={}|same_after={}",
+        BUILD_ID,
+        u8::from(a == 0),
+        u8::from(b == 1),
+        u8::from(after_ok),
+        u8::from(same_after)
+    );
+    if a != 0 || b != 1 || !after_ok || !same_after {
+        fail("after the restart a name of the case is not what the stop left")
+    }
+    pass("after the restart the stopped delete left no name and the other file whole")
+}
+
+/// One crafted boot sector of TST-M3-FAT32-BPB: its name, the fields written over the lab's
+/// sector 0 as (byte offset, width in bytes, value), the capacity it is validated against
+/// (`None`: the lab disk's own) and the geometry expected (clusters, data start), `None` for a
+/// refusal.
+type BpbCase = (
+    &'static str,
+    &'static [(usize, usize, u64)],
+    Option<u64>,
+    Option<(u32, u32)>,
+);
+
+/// The lab volume's boot sector (tools/fat32.py: 131072 sectors, 32 reserved, 2 FATs of 1024
+/// sectors, one sector per cluster, root cluster 2) with fields changed, each refused or accepted
+/// for one reason. BPB offsets: BytsPerSec 11, SecPerClus 13, RsvdSecCnt 14, NumFATs 16,
+/// RootEntCnt 17, TotSec16 19, FATSz16 22, TotSec32 32, FATSz32 36, RootClus 44, the signature
+/// at 510. The edges a mutant of the bounds moves come last (the mutation gate keeps the last 12
+/// test-kernel lines of a boot): the eight-sector clusters, a FAT whose size in bytes does not fit
+/// 32 bits, the FAT's size, the cluster count's upper bound and the three sectors whose data
+/// start wraps a 32-bit sum.
+const BPB_CASES: &[BpbCase] = &[
+    ("lab", &[], None, Some((128992, 2080))),
+    ("min_ok", &[(32, 4, 67605)], None, Some((65525, 2080))),
+    ("root_last", &[(44, 4, 128993)], None, Some((128992, 2080))),
+    ("sig", &[(510, 2, 0)], None, None),
+    ("bps0", &[(11, 2, 0)], None, None),
+    ("bps4096", &[(11, 2, 4096)], None, None),
+    ("spc0", &[(13, 1, 0)], None, None),
+    ("spc3", &[(13, 1, 3)], None, None),
+    ("rsvd0", &[(14, 2, 0)], None, None),
+    ("fats0", &[(16, 1, 0)], None, None),
+    ("fats3", &[(16, 1, 3)], None, None),
+    ("fatsz0", &[(36, 4, 0)], None, None),
+    ("root_entries", &[(17, 2, 512)], None, None),
+    ("tot16", &[(19, 2, 1)], None, None),
+    ("fatsz16", &[(22, 2, 1)], None, None),
+    ("total0", &[(32, 4, 0)], None, None),
+    ("root1", &[(44, 4, 1)], None, None),
+    ("root_end", &[(44, 4, 128994)], None, None),
+    ("past_cap", &[], Some(131071), None),
+    ("few", &[(32, 4, 67604)], None, None),
+    ("total_max", &[(32, 4, 0xFFFF_FFFF)], None, None),
+    (
+        "all_max",
+        &[
+            (14, 2, 0xFFFF),
+            (16, 1, 2),
+            (36, 4, 0xFFFF_FFFF),
+            (32, 4, 0xFFFF_FFFF),
+        ],
+        Some(u64::MAX),
+        None,
+    ),
+    (
+        "spc8_few",
+        &[(13, 1, 8), (32, 4, 526279)],
+        Some(526279),
+        None,
+    ),
+    (
+        "spc8",
+        &[(13, 1, 8), (32, 4, 526280)],
+        Some(526280),
+        Some((65525, 2080)),
+    ),
+    (
+        "big_fat",
+        &[(16, 1, 1), (36, 4, 16777216), (32, 4, 16842773)],
+        Some(16842773),
+        Some((65525, 16777248)),
+    ),
+    (
+        "fat_exact",
+        &[(36, 4, 1008), (32, 4, 131070)],
+        None,
+        Some((129022, 2048)),
+    ),
+    ("fat_small", &[(36, 4, 1008), (32, 4, 131071)], None, None),
+    (
+        "max_ok",
+        &[(16, 1, 1), (36, 4, 2097152), (32, 4, 270532629)],
+        Some(270532629),
+        Some((268435445, 2097184)),
+    ),
+    (
+        "over_max",
+        &[(16, 1, 1), (36, 4, 2097152), (32, 4, 270532630)],
+        Some(270532630),
+        None,
+    ),
+    (
+        "too_many",
+        &[(32, 4, 0xFFFF_FFFF), (16, 1, 1), (36, 4, 0x8000_0000)],
+        Some(0xFFFF_FFFF),
+        None,
+    ),
+    ("mul_wrap", &[(16, 1, 2), (36, 4, 0x8000_0010)], None, None),
+    ("add_wrap", &[(16, 1, 2), (36, 4, 0x7FFF_FFF8)], None, None),
+    (
+        "zero_start",
+        &[(14, 2, 1), (16, 1, 1), (36, 4, 0xFFFF_FFFF)],
+        None,
+        None,
+    ),
+];
+
+/// The whole geometry of two answers of the mount, or the same error.
+fn bpb_same(
+    a: Result<crate::fs::fat32::Fat32, FsError>,
+    b: Result<crate::fs::fat32::Fat32, FsError>,
+) -> bool {
+    let key = |v: &crate::fs::fat32::Fat32| {
+        (
+            v.sectors_per_cluster,
+            v.reserved,
+            v.fats,
+            v.fat_sectors,
+            v.root_cluster,
+            v.data_start,
+            v.clusters,
+            v.fsinfo,
+            v.bk_boot,
+        )
+    };
+    match (a, b) {
+        (Ok(x), Ok(y)) => key(&x) == key(&y),
+        (Err(x), Err(y)) => x == y,
+        _ => false,
+    }
+}
+
+/// TST-M3-FAT32-BPB (WP-106, RSK-027): the mount's validation, given crafted boot sectors made
+/// from the lab's own sector 0, refuses every malformed one with K_E_FS_BAD_BPB and accepts the
+/// well-formed ones with their geometry; no sector panics the test kernel (32-bit sums that wrap
+/// did). Each sector is then written to sector 0 and the mount itself (`Fat32::mount`, not the
+/// volume the kernel keeps) must answer what the validation answers with the device's own
+/// capacity (`mount=1`). Each sector's line is printed before the next is tried, so a panic
+/// names the sector after the last line. The lab's sector 0 is written back before the case
+/// judges.
+fn fat32_bpb() -> ! {
+    use crate::fs::fat32::Fat32;
+    let mut lab = [0u8; 512];
+    if crate::block::read(0, &mut lab).is_err() {
+        fail("the lab disk's sector 0 could not be read")
+    }
+    let capacity = crate::block::capacity_sectors();
+    let (mut refused, mut accepted, mut wrong, mut mount_same) = (0u32, 0u32, 0u32, 0u32);
+    for (name, fields, cap, want) in BPB_CASES {
+        let mut b = lab;
+        for &(off, width, value) in fields.iter() {
+            b[off..off + width].copy_from_slice(&value.to_le_bytes()[..width]);
+        }
+        let got = Fat32::from_boot_sector(&b, cap.unwrap_or(capacity));
+        let agrees = crate::block::write(0, &b).is_ok()
+            && bpb_same(Fat32::mount(), Fat32::from_boot_sector(&b, capacity));
+        mount_same += u32::from(agrees);
+        match got {
+            Ok(v) => {
+                accepted += 1;
+                kprintln!(
+                    "OSX|{}|ktest|fat32_bpb|sector={}|clusters={}|data_start={}|mount={}",
+                    BUILD_ID,
+                    name,
+                    v.clusters,
+                    v.data_start,
+                    u8::from(agrees)
+                );
+            }
+            Err(e) => {
+                refused += 1;
+                kprintln!(
+                    "OSX|{}|ktest|fat32_bpb|sector={}|refused={}|mount={}",
+                    BUILD_ID,
+                    name,
+                    e.code(),
+                    u8::from(agrees)
+                );
+            }
+        }
+        let right = match (got, want) {
+            (Ok(v), Some((c, d))) => v.clusters == *c && v.data_start == *d,
+            (Err(e), None) => e == FsError::BadBpb,
+            _ => false,
+        };
+        wrong += u32::from(!right);
+    }
+    // The lab's sector 0 back, and the mount sees the lab volume again.
+    let restored = crate::block::write(0, &lab).is_ok()
+        && bpb_same(Fat32::mount(), Fat32::from_boot_sector(&lab, capacity))
+        && Fat32::mount().is_ok_and(|v| v.clusters == 128992 && v.data_start == 2080);
+    kprintln!(
+        "OSX|{}|ktest|fat32_bpb|sectors={}|refused={}|accepted={}|wrong={}|restored={}|mount_same={}",
+        BUILD_ID,
+        BPB_CASES.len(),
+        refused,
+        accepted,
+        wrong,
+        u8::from(restored),
+        mount_same
+    );
+    if !restored {
+        fail("the lab's sector 0 was not written back")
+    }
+    if wrong != 0 {
+        fail("a boot sector was not judged as expected")
+    }
+    if mount_same as usize != BPB_CASES.len() {
+        fail("the mount did not answer a boot sector as its validation does")
+    }
+    pass("every malformed boot sector is refused and the well-formed ones keep their geometry")
+}
+
+/// The bytes of /BADF.TXT in TST-M3-FAT32-BAD-FIRST.
+fn bad_first_bytes() -> Vec<u8> {
+    (0..1024usize).map(|i| lab_pattern(i * 5 + 3)).collect()
+}
+
+/// Writes `first` as the stored first cluster of the entry at `loc` (FstClusHI at 20, FstClusLO
+/// at 26), straight on the disk; false when the disk refused.
+fn bad_first_patch(
+    v: &crate::fs::fat32::Fat32,
+    loc: crate::fs::fat32::EntryLoc,
+    first: u32,
+) -> bool {
+    let sector = u64::from(v.data_start)
+        + u64::from(loc.cluster - 2) * u64::from(v.sectors_per_cluster)
+        + u64::from(loc.index / 16);
+    let o = (loc.index % 16) as usize * 32;
+    let mut s = [0u8; 512];
+    if crate::block::read(sector, &mut s).is_err() {
+        return false;
+    }
+    s[o + 20..o + 22].copy_from_slice(&((first >> 16) as u16).to_le_bytes());
+    s[o + 26..o + 28].copy_from_slice(&((first & 0xFFFF) as u16).to_le_bytes());
+    crate::block::write(sector, &s).is_ok()
+}
+
+/// Writes FAT entry 1 of the FAT copy that starts at `sec`: its four bytes alone, in the sector
+/// as the disk holds it at that moment, so no other entry of the sector is touched.
+fn bad_first_fat1(sec: u64, entry: [u8; 4]) -> bool {
+    let mut s = [0u8; 512];
+    if crate::block::read(sec, &mut s).is_err() {
+        return false;
+    }
+    s[4..8].copy_from_slice(&entry);
+    crate::block::write(sec, &s).is_ok()
+}
+
+/// One write call on /BADF.TXT as stored now, through a new open, at offset 512: 512 bytes, or
+/// none when `empty`. Returns the answer (the count, or the error's code) and the disk writes
+/// the call asked for.
+fn bad_first_write(empty: bool) -> (String, u32) {
+    use crate::fs::vfs;
+    let Ok(f) = vfs::open(b"/BADF.TXT", vfs::O_READ | vfs::O_WRITE) else {
+        fail("the made-up entry could not be opened")
+    };
+    if vfs::seek(&f, 512) != Ok(512) {
+        fail("the made-up entry's open could not move to 512")
+    }
+    let data = [b'Z'; 512];
+    let w0 = crate::block::writes();
+    let r = vfs::write(&f, if empty { &data[..0] } else { &data[..] });
+    let n = crate::block::writes() - w0;
+    drop(f);
+    (
+        r.map_or_else(|e| e.code().into(), |k| alloc::format!("{}", k)),
+        n,
+    )
+}
+
+/// TST-M3-FAT32-BAD-FIRST (WP-147, RSK-033): a stored entry whose first cluster is no cluster of
+/// the volume (1, the first number past the last cluster, a number far past it) is refused by a
+/// write call with K_E_FS_CORRUPT before any disk write, the empty write included: with the
+/// first FAT entry 1 as the format left it (an end mark), with it pointing at /HELLO.TXT's
+/// cluster (which then stays whole) and with the allocator seeing no free cluster. A call whose
+/// offset is past the stored size is answered by the same error, not the range error. The volume's
+/// last cluster number is not refused: an empty write on it answers 0. The entry is made up on
+/// the disk by the case (a block write over /BADF.TXT's entry) and put back after.
+fn fat32_bad_first() -> ! {
+    use crate::fs::vfs;
+    let v = match crate::fs::mount() {
+        Ok(v) => v,
+        Err(_) => fail("volume did not mount"),
+    };
+    let all = bad_first_bytes();
+    {
+        let Ok(f) = vfs::open(b"/BADF.TXT", vfs::O_READ | vfs::O_WRITE | vfs::O_CREATE) else {
+            fail("could not create /BADF.TXT")
+        };
+        if !matches!(vfs::write(&f, &all), Ok(1024)) || vfs::sync().is_err() {
+            fail("could not write /BADF.TXT")
+        }
+    }
+    let Ok(e) = crate::fs::with(|fs| fs.lookup(b"/BADF.TXT")) else {
+        fail("/BADF.TXT not found after its write")
+    };
+    let Ok(hello) = crate::fs::with(|fs| fs.lookup(b"/HELLO.TXT")) else {
+        fail("/HELLO.TXT not found")
+    };
+    // FAT entry 1 in each copy: (sector, byte offset 4).
+    let fat_sectors: alloc::vec::Vec<u64> = (0..v.fats)
+        .map(|k| u64::from(v.reserved) + u64::from(k) * u64::from(v.fat_sectors))
+        .collect();
+    let mut saved: alloc::vec::Vec<[u8; 4]> = alloc::vec::Vec::new();
+    for &sec in &fat_sectors {
+        let mut s = [0u8; 512];
+        if crate::block::read(sec, &mut s).is_err() {
+            fail("a FAT sector could not be read")
+        }
+        saved.push([s[4], s[5], s[6], s[7]]);
+    }
+    let mut out = String::new();
+    let mut refused_all = true;
+    let mut writes_total = 0u32;
+    let mut empty_writes = 0u32;
+    let mut take = |name: &str, first: u32, out: &mut String| {
+        if !bad_first_patch(&v, e.loc, first) {
+            fail("the made-up entry could not be written")
+        }
+        let (r, n) = bad_first_write(false);
+        let (r0, n0) = bad_first_write(true);
+        refused_all &= r == "K_E_FS_CORRUPT" && r0 == "K_E_FS_CORRUPT";
+        writes_total += n + n0;
+        empty_writes += n0;
+        out.push_str(&alloc::format!(
+            "|{name}={r}|{name}_writes={n}|{name}_empty={r0}"
+        ));
+    };
+    take("one", 1, &mut out);
+    // A call the range check alone would refuse (its offset is past the stored size) is
+    // answered by the guard first: the corrupt-volume error, not the range error. The call is
+    // made on the volume itself, with the entry as the disk stores it now (first cluster 1).
+    let (one_past, one_past_writes) = {
+        let Ok(mut stored) = crate::fs::with(|fs| fs.lookup(b"/BADF.TXT")) else {
+            fail("the made-up entry could not be looked up")
+        };
+        let past = stored.size + 1;
+        let w0 = crate::block::writes();
+        let r = crate::fs::with(|fs| fs.write(&mut stored, past, b"Z"));
+        let n = crate::block::writes() - w0;
+        let r: String = r.map_or_else(|e| e.code().into(), |k| alloc::format!("{}", k));
+        (r, n)
+    };
+    out.push_str(&alloc::format!(
+        "|one_past={one_past}|one_past_writes={one_past_writes}"
+    ));
+    // FAT entry 1 pointing at /HELLO.TXT's first cluster, in every copy.
+    for (i, &sec) in fat_sectors.iter().enumerate() {
+        let old = u32::from_le_bytes(saved[i]);
+        let new = (old & 0xF000_0000) | (hello.first & 0x0FFF_FFFF);
+        if !bad_first_fat1(sec, new.to_le_bytes()) {
+            fail("FAT entry 1 could not be written")
+        }
+    }
+    take("one_link", 1, &mut out);
+    for (i, &sec) in fat_sectors.iter().enumerate() {
+        if !bad_first_fat1(sec, saved[i]) {
+            fail("FAT entry 1 could not be put back")
+        }
+    }
+    let hello_ok = fault_state(b"/HELLO.TXT", LAB_HELLO) == 1;
+    out.push_str(&alloc::format!("|hello_ok={}", u8::from(hello_ok)));
+    if crate::fs::with(|fs| fs.arm_disk_full(0)).is_err() {
+        fail("the allocator's end could not be set")
+    }
+    take("one_full", 1, &mut out);
+    crate::fs::fat32::disarm_disk_full();
+    take("past_end", v.clusters + 2, &mut out);
+    take("far", 0x0FFF_FFF0, &mut out);
+    // The volume's last cluster number is one of its clusters, so the guard lets a write call
+    // on it through. Only the empty write is made: it asks the volume nothing and answers 0,
+    // which shows the end's test is not one number too low.
+    if !bad_first_patch(&v, e.loc, v.clusters + 1) {
+        fail("the made-up entry could not be written")
+    }
+    let (last_empty, last_writes) = bad_first_write(true);
+    out.push_str(&alloc::format!(
+        "|last_empty={last_empty}|last_empty_writes={last_writes}"
+    ));
+    let put_back = bad_first_patch(&v, e.loc, e.first);
+    let restored_ok = put_back && fault_state(b"/BADF.TXT", &all) == 1;
+    let synced = vfs::sync().is_ok();
+    kprintln!(
+        "OSX|{}|ktest|fat32_bad_first|clusters={}{}|empty_writes={}|restored_ok={}|synced={}|live_files={}",
+        BUILD_ID,
+        v.clusters,
+        out,
+        empty_writes,
+        u8::from(restored_ok),
+        u8::from(synced),
+        vfs::live_files()
+    );
+    if !refused_all || writes_total != 0 {
+        fail("a write on an entry whose first cluster is no cluster of the volume was not refused before any disk write")
+    }
+    if one_past != "K_E_FS_CORRUPT" || one_past_writes != 0 {
+        fail("a write past the stored size on an entry whose first cluster is 1 was not answered by the corrupt-volume error with no disk write")
+    }
+    if last_empty != "0" || last_writes != 0 {
+        fail("an empty write on an entry whose first cluster is the volume's last was not answered 0 with no disk write")
+    }
+    if !hello_ok || !restored_ok || !synced || vfs::live_files() != 0 {
+        fail("the other file, the made-up entry or the opens were not left as they were")
+    }
+    pass("a stored first cluster of 1 or past the volume's end is refused before any disk write")
+}
+
 // ---- WP-19: files through system calls ---------------------------------------------------
 
 /// Runs an embedded file-test application and checks its exit code, that no object or handle
@@ -2836,6 +5043,8 @@ struct SvcHarness {
     m: crate::services::Manager,
     obj0: object::Stats,
     frames0: u64,
+    /// The manager's handle count before `LOAD`: what the kernel handed it (WP-161).
+    handles0: i64,
     load_reply: String,
 }
 
@@ -2853,6 +5062,7 @@ impl SvcHarness {
                 fail("service manager did not start")
             }
         };
+        let handles0 = sched::handles_pid(m.pid).map_or(-1, |n| n as i64);
         let deadline = sched::ticks() + 500;
         let load_reply = match crate::services::request(
             &m.ctl,
@@ -2867,6 +5077,7 @@ impl SvcHarness {
             m,
             obj0,
             frames0,
+            handles0,
             load_reply,
         }
     }
@@ -2952,6 +5163,33 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         "session_deadline" => pass(
             "the session gave each silent component its request deadline, closed it, and exited instead of hanging",
         ),
+        "launch_denied" => pass(
+            "APPS and LAUNCH are for the vouched session and desktop, and the registry comes from the volume",
+        ),
+        "app_connect" => pass(
+            "an application connects to its declared services alone, vouched by its identity and within the bounds",
+        ),
+        "logout_kills" => pass(
+            "Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
+        ),
+        "session_restart" => pass(
+            "the session's restart, crash and stop each ended its job with its application, and each session started again launched into a job of its own",
+        ),
+        "session_gate" => pass(
+            "LAUNCH needs an open session: closed at boot, by END_SESSION and by the session's exit, which ends the session's job, opened by BEGIN_SESSION from the vouched session alone",
+        ),
+        "launch_rate" => pass(
+            "LAUNCH is bounded in rate: the attempt beyond sixteen in any 1000 ticks is refused ERR BUSY, failed launches count, a full table and an unknown id do not, and launching resumes as the attempts age",
+        ),
+        "job_bound" => pass(
+            "a job's processes are bounded: the start beyond the bound is refused, its place comes back at an exit, and other jobs and LAUNCH are unaffected",
+        ),
+        "session_job" => pass(
+            "the session's applications run in one job, which END_SESSION from the session alone ends, and the next launch makes a new one",
+        ),
+        "app_spawn" => pass(
+            "a launched application runs in a job of its own with its boot channel alone, is refused every request, and leaves nothing behind",
+        ),
         "svc_watchdog" => pass(
             "the watchdog ends a hung service and gives it up, leaves a healthy one, kills one that closed its channel, forces one hung before READY after the grace, and STOP force-kills a stubborn one",
         ),
@@ -3001,6 +5239,790 @@ fn svc_order() -> ! {
     }
     drop((lines, a, b, c, text, load));
     svc_balance("svc_order", frames0)
+}
+
+/// TST-M6-LAUNCH-DENIED (REQ-M6-004, services.md v1.14, ADR-0023, WP-101): APPS and LAUNCH on a
+/// service's boot channel are for the vouched session and desktop. Five lab services each
+/// answer READY, ask what their manifest line says and exit with what came back (0x40: every
+/// reply as expected; 0x50 + k: the k-th reply was another; 0x60 + k: no reply to the k-th).
+/// `session` asks APPS and is given the registry the build put under /SYSTEM/APPS; `desktop`
+/// asks LAUNCH for an id that is not registered and for one that is (nothing is launched in
+/// this version); three plain services ask LAUNCH, APPS and a request the manager does not
+/// know.
+fn launch_denied() -> ! {
+    let name = "launch_denied";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-LD.TXT");
+    let names = ["session", "desktop", "plain1", "plain2", "plain3"];
+    let lines = h.poll_list(sched::ticks() + 20_000, |l| {
+        names
+            .iter()
+            .all(|n| l.iter().any(|x| x.name == *n && x.exit.is_some()))
+    });
+    let code = |n: &str| svc_find(&lines, n).exit.unwrap_or(u64::MAX);
+    let (s, d, p1, p2, p3) = (
+        code("session"),
+        code("desktop"),
+        code("plain1"),
+        code("plain2"),
+        code("plain3"),
+    );
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|launch_denied|load={}|session_apps={:#x}|desktop_launch={:#x}|plain_launch={:#x}|plain_apps={:#x}|unknown={:#x}|",
+        BUILD_ID,
+        load,
+        s,
+        d,
+        p1,
+        p2,
+        p3
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|launch_denied|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 5" {
+        fail("the lab manifest did not load")
+    }
+    if p1 != 0x40 || p2 != 0x40 {
+        fail("a plain service's LAUNCH or APPS was not refused ERR ACCESS by the manager")
+    }
+    if s != 0x40 {
+        fail("the vouched session was not given the registry of /SYSTEM/APPS")
+    }
+    if d != 0x40 {
+        fail("LAUNCH from the vouched desktop was not answered as the contract says")
+    }
+    if p3 != 0x40 {
+        fail("an unknown request on a service's boot channel was not answered ERR BAD_REQUEST")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-APP-SPAWN (REQ-M6-004, services.md v1.15, ADR-0023 item 1; WP-161): `LAUNCH` from the
+/// vouched session starts a registered application in a job of its own (under the session's
+/// job since WP-102), with its boot channel and nothing else. The lab manifest SVC-AS.TXT has one service, named
+/// `session`, whose role is the launcher: eight steps, the exit code saying which reply was not
+/// the stated one (0x40: none). When it has exited eight applications of the lab image stay,
+/// each waiting on its boot channel because all it asked there was refused, and holding that
+/// channel alone; an application that exited left nothing of its job behind, and the manager
+/// kept no handle of what failed or ended.
+/// WP-172 (services.md v1.20): the session's exit ends its job, so a lab session's role holds
+/// after its steps (the lab image `hold`), waiting on its boot channel without a deadline, while
+/// the test kernel reads. Its image is /SYSTEM/LABSES.ELF, so its process is known by name.
+/// Waits, until `by`, for the session to have exited (a step saw another reply: its exit code) or
+/// to hold (0x40), and for `also` of the listing; the listing and that code. Holding is the
+/// session listed ready (it answers READY only after reading START, which it waits for without a
+/// deadline too) and its process waiting without a deadline, which no step does.
+fn session_held(h: &SvcHarness, by: u64, also: impl Fn(&[SvcLine]) -> bool) -> (Vec<SvcLine>, u64) {
+    let held = |l: &[SvcLine]| {
+        let (p, n) = sched::live_named(b"LABSES.ELF");
+        svc_find(l, "session").state == "ready" && n == 1 && p[0].waiting
+    };
+    let lines = h.poll_list(by, |l| {
+        (l.iter().any(|x| x.name == "session" && x.exit.is_some()) || held(l)) && also(l)
+    });
+    let code = match svc_find(&lines, "session").exit {
+        Some(c) => c,
+        None if held(&lines) => 0x40,
+        None => u64::MAX,
+    };
+    (lines, code)
+}
+
+fn app_spawn() -> ! {
+    let name = "app_spawn";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-AS.TXT");
+    let (lines, session) = session_held(&h, sched::ticks() + 25_000, |_| true);
+    // The held session's process and channel, which the manager keeps while it runs.
+    let held_extra = if session == 0x40 { 2 } else { 0 };
+    // The eight that stay have asked their requests once each waits without a deadline; the
+    // child the exited application left is ended with its job.
+    sched::poll_until(sched::ticks() + 5000, || {
+        let (apps, n) = sched::live_named(b"CLOCK.ELF");
+        n == 8 && apps[..n].iter().all(|a| a.waiting) && sched::live_named(b"IDLE.ELF").1 == 0
+    });
+    let (apps, n) = sched::live_named(b"CLOCK.ELF");
+    let apps = &apps[..n];
+    let count = |f: fn(&sched::LiveNamed) -> bool| apps.iter().filter(|a| f(a)).count();
+    let waiting = count(|a| a.waiting);
+    let handles: usize = apps.iter().map(|a| a.handles).sum();
+    let under_root = count(|a| a.under_root);
+    let in_session = count(|a| a.parent_under_root);
+    let jobs = (0..n)
+        .filter(|&i| apps[..i].iter().all(|b| b.job != apps[i].job))
+        .count();
+    let parents = (0..n)
+        .filter(|&i| apps[..i].iter().all(|b| b.parent != apps[i].parent))
+        .count();
+    let live_jobs = i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
+    let orphans = sched::live_named(b"IDLE.ELF").1;
+    let kept = mgr_handles(&h) - h.handles0 - held_extra;
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|app_spawn|load={}|session={:#x}|apps={}|waiting={}|handles={}|under_root={}|in_session={}|parents={}|jobs={}|live_jobs={}|orphans={}|mgr_handles={}|",
+        BUILD_ID,
+        load,
+        session,
+        n,
+        waiting,
+        handles,
+        under_root,
+        in_session,
+        parents,
+        jobs,
+        live_jobs,
+        orphans,
+        kept
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|app_spawn|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 1" {
+        fail("the lab manifest did not load")
+    }
+    if session != 0x40 {
+        fail("a LAUNCH of the vouched session was not answered as the contract states")
+    }
+    if n != 8 || waiting != 8 {
+        fail("an application was not refused every request on its boot channel")
+    }
+    if handles != 8 {
+        fail("an application holds more than its boot channel")
+    }
+    // v1.17: each in a job of its own, all of them children of the one session job, which is a
+    // child of the root job.
+    if under_root != 0 || in_session != 8 || parents != 1 || jobs != 8 {
+        fail("an application is not in a job of its own under the session's job")
+    }
+    if orphans != 0 {
+        fail("an application that exited left a process of its job behind")
+    }
+    // The eight applications' jobs and the session's.
+    if live_jobs != 9 {
+        fail("a job was left of a launch that failed or of an application that exited")
+    }
+    // Eight applications' process, channel and job, and the session's job, and nothing else since
+    // before LOAD: the launcher's own two, which the manager keeps while it holds, are subtracted.
+    if kept != 25 {
+        fail("the manager kept a handle of a launch that failed or of an application that exited")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-APP-CONNECT-DENIED (REQ-M6-004, services.md v1.16, ADR-0023 item 1; WP-162): an
+/// application's CONNECT. The lab manifest SVC-AC.TXT runs the lab image as `config`, tracing the
+/// name each client is vouched by (and as `display`, the same), and as the vouched `session`,
+/// whose launcher starts `connx` (declares config, connects, exits), the review round's `both`,
+/// `netonly` and `stuck` (each exits), and five of `conn` (declares config, connects, stays).
+/// Each application traces what the manager answered; the test kernel waits for the five to
+/// stay and checks the manager kept nothing of what was refused.
+fn app_connect() -> ! {
+    let name = "app_connect";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-AC.TXT");
+    let (lines, session) = session_held(&h, sched::ticks() + 20_000, |_| true);
+    // The held session's process and channel, which the manager keeps while it runs.
+    let held_extra = if session == 0x40 { 2 } else { 0 };
+    sched::poll_until(sched::ticks() + 5000, || {
+        let (apps, n) = sched::live_named(b"CONN.ELF");
+        n == 5 && apps[..n].iter().all(|a| a.waiting)
+    });
+    let (apps, n) = sched::live_named(b"CONN.ELF");
+    let waiting = apps[..n].iter().filter(|a| a.waiting).count();
+    let handles: usize = apps[..n].iter().map(|a| a.handles).sum();
+    let kept = mgr_handles(&h) - h.handles0 - held_extra;
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|app_connect|load={}|session={:#x}|apps={}|waiting={}|handles={}|mgr_handles={}|",
+        BUILD_ID,
+        load,
+        session,
+        n,
+        waiting,
+        handles,
+        kept
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|app_connect|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 3" {
+        fail("the lab manifest did not load")
+    }
+    if session != 0x40 {
+        fail("a LAUNCH of the connection case was not answered as the contract states")
+    }
+    if n != 5 || waiting != 5 {
+        fail("an application of the connection case did not stay")
+    }
+    // Each of the four granted holds its boot channel and its connection; the fifth, refused,
+    // its boot channel alone.
+    if handles != 9 {
+        fail("an application holds another number of handles than its grants give")
+    }
+    // Since before LOAD: the five applications' process, channel and job, the config and
+    // display services' channel and process, and the session's job (v1.17); nothing of the
+    // launcher, of the four that exited, of a refused CONNECT nor of the client end `stuck`
+    // could not take.
+    if kept != 15 + 4 + 1 {
+        fail("the manager kept a handle of a CONNECT it refused or of an application that exited")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-SESSION-JOB (REQ-M6-004, services.md v1.17, ADR-0023 item 1; WP-102): the session's
+/// job. The lab manifest SVC-SJ.TXT runs the lab image as the vouched `session`, whose role
+/// `ender` launches `stay` (asks END_SESSION and its six requests and waits) and `nest` (starts a
+/// child of its own and waits) before READY, then asks END_SESSION twice, 300 ticks apart (ENDED 2,
+/// ENDED 0),
+/// launches `stay`, ends that session (ENDED 1) and launches `stay` again; and as the vouched
+/// `desktop` and as `sessions`, both started once the session is READY, whose END_SESSION is
+/// refused ERR ACCESS. When both have exited the test kernel waits
+/// for the ended session's processes to be gone and reads, while the manager runs, what is left.
+fn session_job() -> ! {
+    let name = "session_job";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-SJ.TXT");
+    let (lines, session) = session_held(&h, sched::ticks() + 20_000, |l| {
+        ["desktop", "sessions"]
+            .iter()
+            .all(|s| l.iter().any(|x| x.name == *s && x.exit.is_some()))
+    });
+    // The held session's process and channel, which the manager keeps while it runs.
+    let held_extra = if session == 0x40 { 2 } else { 0 };
+    let desktop = svc_find(&lines, "desktop").exit.unwrap_or(u64::MAX);
+    let sessions = svc_find(&lines, "sessions").exit.unwrap_or(u64::MAX);
+    let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
+    sched::poll_until(sched::ticks() + 5000, || {
+        let (stay, n) = sched::live_named(b"STAY.ELF");
+        n == 1
+            && stay[0].waiting
+            && sched::live_named(b"NEST.ELF").1 == 0
+            && sched::live_named(b"IDLE.ELF").1 == 0
+            && jobs_now() == 2
+    });
+    let (stay, n) = sched::live_named(b"STAY.ELF");
+    let waiting = stay[..n].iter().filter(|a| a.waiting).count();
+    let nest = sched::live_named(b"NEST.ELF").1;
+    let idle = sched::live_named(b"IDLE.ELF").1;
+    let under_root = stay[..n].iter().filter(|a| a.under_root).count();
+    let in_session = stay[..n].iter().filter(|a| a.parent_under_root).count();
+    let live_jobs = jobs_now();
+    let kept = mgr_handles(&h) - h.handles0 - held_extra;
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|session_job|load={}|session={:#x}|desktop={:#x}|sessions={:#x}|stay={}|waiting={}|nest={}|idle={}|under_root={}|in_session={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        load,
+        session,
+        desktop,
+        sessions,
+        n,
+        waiting,
+        nest,
+        idle,
+        under_root,
+        in_session,
+        live_jobs,
+        kept
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|session_job|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 3" {
+        fail("the lab manifest did not load")
+    }
+    if session != 0x40 {
+        fail("END_SESSION or the LAUNCH after it was not answered as the contract states")
+    }
+    if desktop != 0x40 || sessions != 0x40 {
+        fail("another service's END_SESSION was not refused")
+    }
+    if n != 1 || nest != 0 || idle != 0 {
+        fail("an application of the ended session is still alive")
+    }
+    if waiting != 1 {
+        fail("the application launched after END_SESSION does not wait on its boot channel")
+    }
+    if under_root != 0 || in_session != 1 {
+        fail("the application launched after END_SESSION is not in a new session job")
+    }
+    // The new session's job and its one application's.
+    if live_jobs != 2 {
+        fail("a job of the ended session was left")
+    }
+    // The one application's process, channel and job, and the new session's job: nothing of the
+    // ended session, nor of the two services, which exited.
+    if kept != 4 {
+        fail("the manager kept a handle of the ended session")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-JOB-BOUND (REQ-M6-003, REQ-M6-004, syscall.md v1.15; WP-164, RSK-050): a job holds 32
+/// live processes at most. The lab manifest SVC-JB.TXT runs the lab image as the vouched `session`,
+/// whose role `bounder` launches `peer` (a child now and one later), `hog` (starts IDLE children
+/// in its own job until refused, 64 at most) and `clock`; the test kernel reads, while the manager
+/// runs, how many processes live in hog's and in peer's job.
+fn job_bound() -> ! {
+    let name = "job_bound";
+    // The count itself, deterministically, before any process runs: of 40 places asked of a new
+    // job, 32 are given; a place given back admits one more; the root refuses none of 40.
+    let unit = {
+        use crate::object::job::{root, Job};
+        let job = Job::new_child(&root()).unwrap_or_else(|_| fail("no job for the count"));
+        let mut held: Vec<_> = (0..40).map_while(|_| job.admit()).collect();
+        let taken = held.len();
+        let refused = job.admit().is_none();
+        drop(held.pop());
+        held.extend(job.admit());
+        let again = held.len() == taken;
+        let counted = job.processes();
+        drop(held);
+        let back = job.processes();
+        let root = root();
+        let root_held: Vec<_> = (0..40).map_while(|_| root.admit()).collect();
+        let root_all = root_held.len();
+        drop((root_held, job));
+        alloc::format!(
+            "taken={}|refused={}|again={}|counted={}|back={}|root={}",
+            taken,
+            u8::from(refused),
+            u8::from(again),
+            counted,
+            back,
+            root_all
+        )
+    };
+    kprintln!("OSX|{}|ktest|job_bound|unit|{}|", BUILD_ID, unit);
+    if unit != "taken=32|refused=1|again=1|counted=32|back=0|root=40" {
+        fail("a job's count does not hold its bound")
+    }
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-JB.TXT");
+    let (lines, session) = session_held(&h, sched::ticks() + 20_000, |_| true);
+    let job_of = |img: &[u8]| {
+        let (a, n) = sched::live_named(img);
+        (n == 1).then(|| a[0].job)
+    };
+    let live = |img: &[u8]| job_of(img).map_or(0, sched::live_in_job);
+    // hog, peer and clock each wait on their boot channel once their work is done.
+    let settled = |img: &[u8]| {
+        let (a, n) = sched::live_named(img);
+        n == 1 && a[0].waiting
+    };
+    sched::poll_until(sched::ticks() + 5000, || {
+        settled(b"CLOCK.ELF") && settled(b"HOG.ELF") && settled(b"PEER.ELF")
+    });
+    let (hog_live, peer_live) = (live(b"HOG.ELF"), live(b"PEER.ELF"));
+    let count = |img: &[u8]| job_of(img).and_then(sched::job_count).unwrap_or(u32::MAX);
+    let (hog_count, peer_count) = (count(b"HOG.ELF"), count(b"PEER.ELF"));
+    let clocks = sched::live_named(b"CLOCK.ELF").1;
+    // The children of hog and peer never exit, and the manager does not end its applications'
+    // jobs when it stops (services.md v1.17's limits): their two jobs are killed here, as job_kill
+    // would, and their processes waited for, before the manager is.
+    for job in [job_of(b"HOG.ELF"), job_of(b"PEER.ELF")]
+        .into_iter()
+        .flatten()
+    {
+        sched::kill_job_id(job, 0x2_0000);
+    }
+    sched::poll_until(sched::ticks() + 5000, || {
+        live(b"HOG.ELF") == 0 && live(b"PEER.ELF") == 0 && sched::live_named(b"IDLE.ELF").1 == 0
+    });
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|job_bound|load={}|session={:#x}|hog_live={}|hog_count={}|peer_live={}|peer_count={}|clocks={}|",
+        BUILD_ID,
+        load,
+        session,
+        hog_live,
+        hog_count,
+        peer_live,
+        peer_count,
+        clocks
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|job_bound|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 1" {
+        fail("the lab manifest did not load")
+    }
+    // hog and the 31 children it may keep, each counted in hog's job.
+    if hog_live != 32 || hog_count != 32 {
+        fail("a job's processes are not bounded")
+    }
+    // peer and its two children: the second came after hog's job was full.
+    if peer_live != 3 || peer_count != 3 {
+        fail("another job was refused a start a full job holds")
+    }
+    if session != 0x40 || clocks != 1 {
+        fail("a LAUNCH after a full job was not answered as the contract states")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-LAUNCH-RATE (REQ-M6-004, services.md v1.18; WP-163): LAUNCH is bounded in rate. The
+/// lab manifest SVC-LR.TXT runs the lab image as the vouched `session`, whose role `rater` makes
+/// sixteen attempts, two of them failed, with full-table refusals among them, is refused ERR BUSY
+/// seventeen times and ERR UNKNOWN once, and launches again once its first attempt is a window old.
+fn launch_rate() -> ! {
+    let name = "launch_rate";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-LR.TXT");
+    let (lines, session) = session_held(&h, sched::ticks() + 25_000, |_| true);
+    // The held session's process and channel, which the manager keeps while it runs.
+    let held_extra = if session == 0x40 { 2 } else { 0 };
+    // The ended session's applications are killed and the last one exits at once; the manager
+    // has seen every exit when only the last session's job is left of what it made.
+    let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
+    sched::poll_until(sched::ticks() + 5000, || {
+        sched::live_named(b"STAY.ELF").1 == 0
+            && sched::live_named(b"EXIT.ELF").1 == 0
+            && jobs_now() == 1
+            && mgr_handles(&h) - h.handles0 - held_extra == 1
+    });
+    let stays = sched::live_named(b"STAY.ELF").1;
+    let exits = sched::live_named(b"EXIT.ELF").1;
+    let live_jobs = jobs_now();
+    let kept = mgr_handles(&h) - h.handles0 - held_extra;
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|launch_rate|load={}|session={:#x}|stays={}|exits={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        load,
+        session,
+        stays,
+        exits,
+        live_jobs,
+        kept
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|launch_rate|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 1" {
+        fail("the lab manifest did not load")
+    }
+    if session != 0x40 {
+        fail("a LAUNCH was not answered as the rate limit states")
+    }
+    if stays != 0 || exits != 0 {
+        fail("an application of the case is still alive")
+    }
+    // The last session's job alone: its one application exited.
+    if live_jobs != 1 || kept != 1 {
+        fail("the manager kept something of a launch that was refused or that exited")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-SESSION-GATE (REQ-M6-004, services.md v1.19; WP-169): LAUNCH needs an open session.
+/// The lab manifest SVC-GT.TXT runs the lab image as the vouched `session` (role `gater`: refused
+/// before BEGIN_SESSION, opens, launches, ends, is refused, opens, launches, exits) and the vouched
+/// `desktop` (role `ungated`: refused BEGIN_SESSION, then refused LAUNCH after the session's exit).
+fn session_gate() -> ! {
+    let name = "session_gate";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-GT.TXT");
+    let lines = h.poll_list(sched::ticks() + 25_000, |l| {
+        ["session", "desktop"]
+            .iter()
+            .all(|n| l.iter().any(|x| x.name == *n && x.exit.is_some()))
+    });
+    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    let desktop = svc_find(&lines, "desktop").exit.unwrap_or(u64::MAX);
+    // stay#1 went with the ended session's job, stay#2 with the session's at its exit (WP-172).
+    let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
+    sched::poll_until(sched::ticks() + 5000, || {
+        sched::live_named(b"STAY.ELF").1 == 0
+            && jobs_now() == 0
+            && mgr_handles(&h) - h.handles0 == 0
+    });
+    let (stay, n) = sched::live_named(b"STAY.ELF");
+    let waiting = stay[..n].iter().filter(|a| a.waiting).count();
+    let live_jobs = jobs_now();
+    let kept = mgr_handles(&h) - h.handles0;
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|session_gate|load={}|session={:#x}|desktop={:#x}|stays={}|waiting={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        load,
+        session,
+        desktop,
+        n,
+        waiting,
+        live_jobs,
+        kept
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|session_gate|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 2" {
+        fail("the lab manifest did not load")
+    }
+    // The session exits 0 (a clean exit closes the gate as any other does).
+    if session != 0 {
+        fail("a LAUNCH or BEGIN_SESSION of the session was not answered as the gate states")
+    }
+    if desktop != 0x40 {
+        fail("the desktop opened the gate, or the session's exit did not close it")
+    }
+    // The session's exit ended its job with stay#2 (services.md v1.20): nothing is left of it.
+    if n != 0 || waiting != 0 || live_jobs != 0 || kept != 0 {
+        fail("an application or a job of the session outlived the session service")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-SESSION-RESTART (REQ-M6-004, services.md v1.20; WP-173): the session's exit ends its
+/// job whatever its code and however it comes: a RESTART, a crash and a STOP (TST-M6-SESSION-GATE
+/// shows the clean exit). The lab manifest SVC-SX.TXT runs a lab service (`lab`, role `ready`),
+/// so the session is not the manifest's first, then the lab image as the vouched `session` (role
+/// `stayer`: LAUNCH refused ERR NO_SESSION, BEGIN_SESSION, LAUNCH stay, hold), on-failure. The
+/// test kernel asks the manager to RESTART it (it exits 0x40, the manager's state stopping), then
+/// kills it while it is ready (a crash: EXIT_KILLED, started again on failure), then asks STOP.
+/// After each it reads that the application went with the job and, but after the stop, that the
+/// session started again launched into a job of its own; after the stop, that nothing is left.
+fn session_restart() -> ! {
+    struct Phase {
+        restarts: u64,
+        exit: u64,
+        stopped: bool,
+        held: bool,
+        stays: usize,
+        waiting: bool,
+        new_job: usize,
+        live_jobs: i64,
+        kept: i64,
+        job: u64,
+    }
+    let name = "session_restart";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-SX.TXT");
+    let load = h.load_reply.clone();
+    if load != "OK 2" {
+        fail("the lab manifest did not load")
+    }
+    let (_, session) = session_held(&h, sched::ticks() + 20_000, |_| true);
+    // The lab service's process and channel, which the manager keeps while it runs.
+    const LAB: i64 = 2;
+    let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
+    let held = || {
+        let (p, n) = sched::live_named(b"LABSES.ELF");
+        n == 1 && p[0].waiting
+    };
+    // What the manager keeps beside the lab service and a held session's process and channel.
+    let kept = || mgr_handles(&h) - h.handles0 - LAB - if held() { 2 } else { 0 };
+    // The one live STAY.ELF, waiting, in a session job under the root that is none of `old`.
+    let one_new_stay = |old: &[u64]| {
+        let (stay, n) = sched::live_named(b"STAY.ELF");
+        n == 1 && stay[0].waiting && stay[0].parent_under_root && !old.contains(&stay[0].parent)
+    };
+    let read = |lines: &[SvcLine], old: &[u64]| {
+        let s = svc_find(lines, "session");
+        let (stay, n) = sched::live_named(b"STAY.ELF");
+        Phase {
+            restarts: s.restarts,
+            exit: s.exit.unwrap_or(u64::MAX),
+            stopped: s.state == "stopped",
+            held: held(),
+            stays: n,
+            waiting: n == 1 && stay[0].waiting,
+            new_job: stay[..n]
+                .iter()
+                .filter(|a| a.parent_under_root && !old.contains(&a.parent))
+                .count(),
+            live_jobs: jobs_now(),
+            kept: kept(),
+            job: if n == 1 { stay[0].parent } else { 0 },
+        }
+    };
+    let ask = |req: &[u8]| {
+        crate::services::request(&h.m.ctl, req, sched::ticks() + 500).is_ok_and(|r| r == b"OK")
+    };
+    let said = |ok: bool| if ok { "OK" } else { "refused" };
+    sched::poll_until(sched::ticks() + 5000, || one_new_stay(&[]));
+    let (stay, first) = sched::live_named(b"STAY.ELF");
+    let j1 = if first == 1 && stay[0].waiting {
+        stay[0].parent
+    } else {
+        0
+    };
+    kprintln!(
+        "OSX|{}|ktest|session_restart|load={}|session={:#x}|first={}|",
+        BUILD_ID,
+        load,
+        session,
+        first
+    );
+    if session != 0x40 || j1 == 0 {
+        fail("the session did not launch and hold as the case states")
+    }
+    // A RESTART: the session exits 0x40 with the manager's state stopping, and starts again.
+    let restart = ask(b"RESTART session");
+    let lines = h.poll_list(sched::ticks() + 5000, |l| {
+        svc_find(l, "session").restarts == 1
+            && held()
+            && one_new_stay(&[j1])
+            && jobs_now() == 2
+            && kept() == 4
+    });
+    let r = read(&lines, &[j1]);
+    drop(lines);
+    kprintln!(
+        "OSX|{}|ktest|session_restart|restart|restart={}|exit={:#x}|restarts={}|held={}|stays={}|new_job={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        said(restart),
+        r.exit,
+        r.restarts,
+        u8::from(r.held),
+        r.stays,
+        r.new_job,
+        r.live_jobs,
+        r.kept
+    );
+    if !restart
+        || r.exit != 0x40
+        || r.restarts != 1
+        || !r.held
+        || r.stays != 1
+        || !r.waiting
+        || r.new_job != 1
+        || r.live_jobs != 2
+        || r.kept != 4
+    {
+        fail("an application of the restarted session outlived it, or the new session could not launch")
+    }
+    let j2 = r.job;
+    // A crash: the session is killed while ready, and the manager starts it again on failure.
+    let killed = sched::kill_named(b"LABSES.ELF", crate::syscall::EXIT_KILLED);
+    let lines = h.poll_list(sched::ticks() + 5000, |l| {
+        svc_find(l, "session").restarts == 2
+            && held()
+            && one_new_stay(&[j1, j2])
+            && jobs_now() == 2
+            && kept() == 4
+    });
+    let r = read(&lines, &[j1, j2]);
+    drop(lines);
+    kprintln!(
+        "OSX|{}|ktest|session_restart|crash|killed={}|exit={:#x}|restarts={}|held={}|stays={}|new_job={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        u8::from(killed),
+        r.exit,
+        r.restarts,
+        u8::from(r.held),
+        r.stays,
+        r.new_job,
+        r.live_jobs,
+        r.kept
+    );
+    if !killed
+        || r.exit != crate::syscall::EXIT_KILLED
+        || r.restarts != 2
+        || !r.held
+        || r.stays != 1
+        || !r.waiting
+        || r.new_job != 1
+        || r.live_jobs != 2
+        || r.kept != 4
+    {
+        fail("an application of the crashed session outlived it, or the session started again could not launch")
+    }
+    // A STOP: the session exits 0x40 and stays stopped; nothing of it is left.
+    let stop = ask(b"STOP session");
+    let lines = h.poll_list(sched::ticks() + 5000, |l| {
+        svc_find(l, "session").state == "stopped"
+            && sched::live_named(b"STAY.ELF").1 == 0
+            && jobs_now() == 0
+            && kept() == 0
+    });
+    let r = read(&lines, &[]);
+    drop(lines);
+    kprintln!(
+        "OSX|{}|ktest|session_restart|stop|stop={}|state={}|exit={:#x}|stays={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        said(stop),
+        if r.stopped { "stopped" } else { "other" },
+        r.exit,
+        r.stays,
+        r.live_jobs,
+        r.kept
+    );
+    if !stop || !r.stopped || r.exit != 0x40 || r.stays != 0 || r.live_jobs != 0 || r.kept != 0 {
+        fail("an application of the stopped session outlived it")
+    }
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|session_restart|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    // Every value of this case on the kernel's heap goes before the balance, which never returns:
+    // a String left alive keeps a heap page and reads as a frame leaked (WP-173's narrowing).
+    drop(load);
+    svc_balance(name, frames0)
 }
 
 fn svc_timeout() -> ! {
@@ -3094,6 +6116,111 @@ fn svc_restart() -> ! {
     }
     drop((lines, x, text, load));
     svc_balance("svc_restart", frames0)
+}
+
+/// The manager's live handle count, read while it runs (WP-156); -1 when it is not live.
+fn mgr_handles(h: &SvcHarness) -> i64 {
+    sched::handles_pid(h.m.pid).map_or(-1, |n| n as i64)
+}
+
+/// TST-M4-SVC-CONNECT-NOREAD (REQ-M4-002, services.md v1.13 note of WP-156; RSK-028): a
+/// requester that never reads cannot leave the manager holding the client ends of the
+/// connections it asked for, nor config holding their slots. N (svc role `noread`) fills its
+/// own queue with unread LIST replies and asks three times for a connection to config before
+/// READY, so the manager cannot write those replies. The counts are taken across a RESTART of
+/// N, which repeats the three requests: the manager's and config's live handle counts are the
+/// same before and after. The manager's is exact once N is ready again (READY is the last
+/// message of one channel, read in order). config's is read once it is back at its baseline or
+/// at a deadline: config takes one channel per wake, lowest slot first, and the test's own
+/// connection may sit below N's new ones, so an answered GET does not mean the closed peers
+/// were seen; a kept slot never comes back.
+fn svc_connect_noread() -> ! {
+    let name = "svc_connect_noread";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-NR.TXT");
+    svc_wait_ready(&h, &["config", "N"], sched::ticks() + 60_000);
+    let frames0 = {
+        let cfg = svc_connect(&h, "config");
+        let base_get = cfg_request(&cfg, b"GET device nr.key", None);
+        let (m1, c1) = (mgr_handles(&h), cfg_handles());
+        let restart = match crate::services::request(&h.m.ctl, b"RESTART N", sched::ticks() + 500) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => alloc::format!("error:{}", e),
+        };
+        let lines = h.poll_list(sched::ticks() + 10_000, |l| {
+            l.iter()
+                .any(|x| x.name == "N" && x.restarts == 1 && x.state == "ready")
+        });
+        let n = svc_find(&lines, "N");
+        let sync_get = cfg_request(&cfg, b"GET device nr.key", None);
+        let m2 = mgr_handles(&h);
+        let settled = sched::poll_until(sched::ticks() + 3_000, || cfg_handles() == c1);
+        let c2 = cfg_handles();
+        let load = h.load_reply.clone();
+        drop(cfg);
+        // N reads nothing, so it would outlive the manager: it is stopped (forced at the grace).
+        let stop = match crate::services::request(&h.m.ctl, b"STOP N", sched::ticks() + 500) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => alloc::format!("error:{}", e),
+        };
+        let ended = h.poll_list(sched::ticks() + 5_000, |l| {
+            l.iter().any(|x| x.name == "N" && x.state == "stopped")
+        });
+        let end = svc_find(&ended, "N").state;
+        let (mgr_exit, procs, frames0, clean) = h.finish();
+        kprintln!(
+            "OSX|{}|ktest|svc_connect_noread|load={}|base_get={}|restart={}|state={}|restarts={}|sync_get={}|mgr_grew={}|cfg_grew={}|settled={}|mgr_base={}|cfg_base={}",
+            BUILD_ID,
+            load,
+            base_get,
+            restart,
+            n.state,
+            n.restarts,
+            sync_get,
+            m2 - m1,
+            c2 - c1,
+            u8::from(settled),
+            m1,
+            c1
+        );
+        kprintln!(
+            "OSX|{}|ktest|svc_connect_noread|stop={}|end={}|mgr_exit={:#x}|processes_after={}|clean={}",
+            BUILD_ID,
+            stop,
+            end,
+            mgr_exit,
+            procs,
+            u8::from(clean)
+        );
+        if load != "OK 2"
+            || base_get != "ERR NOT_FOUND"
+            || sync_get != "ERR NOT_FOUND"
+            || restart != "OK"
+            || n.state != "ready"
+            || n.restarts != 1
+            || m1 < 0
+            || c1 < 0
+        {
+            fail("the requester that never reads was not started, restarted and answered as expected")
+        }
+        if m2 != m1 {
+            fail("the manager kept the client ends whose CONNECT replies it could not write")
+        }
+        if c2 != c1 {
+            fail("config kept the slots of connections whose requester never got them")
+        }
+        if stop != "OK" || end != "stopped" {
+            fail("the requester that never reads could not be stopped")
+        }
+        if mgr_exit != 0 || procs != 0 || !clean {
+            fail("manager or services left something behind")
+        }
+        frames0
+    };
+    cfg_balance(
+        name,
+        frames0,
+        "a requester that never reads leaves the manager and config holding nothing of its connections",
+    )
 }
 
 /// The named line of a `LIST` reply (empty when absent).
@@ -3849,6 +6976,140 @@ fn file_authority() -> ! {
     )
 }
 
+/// TST-M6-CONFIG-WRITE-SCOPE (REQ-M6-002, RSK-019; files.md v1.4, config.md v1.2, WP-78):
+/// config's authority, READ|WRITE|TRANSFER, changes only config's stores. `fileauth` given
+/// that mask finds every other change under /SYSTEM refused (SERVICES.TXT in three spellings,
+/// USERS.DB, INPUTD.ELF, a new file, a non-CFG `.A`, a CFG name with another extension, an
+/// unlink, the fonts) and then creates, writes and removes /SYSTEM/CFGPRB.A (exit 0x46; else the
+/// failing step). The kernel reads back SERVICES.TXT, USERS.DB and INPUTD.ELF unchanged and none
+/// of the probe's names left behind; config still stores a device setting; the matcher's table.
+fn config_write_scope() -> ! {
+    use crate::fs::vfs;
+    let name = "config_write_scope";
+    if crate::apps::FILEAUTH.is_empty() {
+        fail("embedded application missing (kernel built without NAWAH_APPS_DIR)")
+    }
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let size = |p: &[u8]| vfs::stat(p).map_or(-1, |s| s.size as i64);
+    let (svc0, users0, inputd0) = (
+        size(b"/SYSTEM/SERVICES.TXT"),
+        size(b"/SYSTEM/USERS.DB"),
+        size(b"/SYSTEM/INPUTD.ELF"),
+    );
+    let obj0 = object::stats();
+    // The authority outlives the run (as in file_authority: its block is not the probe's).
+    let authority = Arc::new(crate::object::token::SystemFiles::new());
+    let probe = run_with_object(
+        name,
+        crate::apps::FILEAUTH,
+        Entry {
+            object: Object::SystemFiles(authority.clone()),
+            rights: Rights(Rights::READ.0 | Rights::WRITE.0 | Rights::TRANSFER.0),
+        },
+    );
+    drop(authority);
+    let obj1 = object::stats();
+    let services_same = svc0 > 0 && size(b"/SYSTEM/SERVICES.TXT") == svc0;
+    let users_same = users0 > 0 && size(b"/SYSTEM/USERS.DB") == users0;
+    let inputd_same = inputd0 > 0 && size(b"/SYSTEM/INPUTD.ELF") == inputd0;
+    let created = [
+        &b"/SYSTEM/NEW.TXT"[..],
+        b"/SYSTEM/AUTHD.A",
+        b"/SYSTEM/CFGPRB.C",
+        b"/SYSTEM/CFGPRB.A",
+        b"/SYSTEM/FONTS/CFGPRB.A",
+    ]
+    .iter()
+    .any(|p| vfs::stat(p).is_ok());
+    kprintln!(
+        "OSX|{}|ktest|{}|probe={:#x}|services_same={}|usersdb_same={}|inputd_same={}|created={}|frames={}|objects_same={}",
+        BUILD_ID,
+        name,
+        probe.exit_code,
+        u8::from(services_same),
+        u8::from(users_same),
+        u8::from(inputd_same),
+        u8::from(created),
+        probe.frames_delta,
+        u8::from(obj1 == obj0)
+    );
+    if probe.exit_code != 0x46 {
+        fail("config's authority changed /SYSTEM outside its stores (exit code = failing step)")
+    }
+    if !services_same
+        || !users_same
+        || !inputd_same
+        || created
+        || probe.frames_delta != 0
+        || obj1 != obj0
+    {
+        fail("/SYSTEM changed, or the probe left something behind")
+    }
+    // The matcher over the spellings a path can take (compared as the volume's short names).
+    let table: [(&[u8], bool); 8] = [
+        (b"/SYSTEM/CFGDEV.A", true),
+        (b"/system/cfgdev.a", true),
+        (b"/SYSTEM./CFGU1000.B", true),
+        (b"/SYSTEM/CFGPOL.C", false),
+        (b"/SYSTEM/AUTHD.A", false),
+        (b"/SYSTEM/FONTS/CFGDEV.A", false),
+        (b"/SYSTEM/../SYSTEM/CFGDEV.A", false),
+        (b"/SYSTEM/SERVICES.TXT", false),
+    ];
+    let mut right = 0;
+    for (path, want) in table {
+        let got = vfs::is_config_store(path);
+        if got == want {
+            right += 1;
+        } else {
+            kprintln!(
+                "OSX|{}|ktest|{}|path={}|got={}",
+                BUILD_ID,
+                name,
+                String::from_utf8_lossy(path),
+                u8::from(got)
+            );
+        }
+    }
+    kprintln!(
+        "OSX|{}|ktest|{}|table={}/{}",
+        BUILD_ID,
+        name,
+        right,
+        table.len()
+    );
+    if right != table.len() {
+        fail("the store matcher answered a spelling wrongly")
+    }
+    // Config itself still writes its stores through the same authority.
+    let env = cfg_env(name);
+    let set = cfg_request(
+        &env.cfg,
+        b"SET device lab.cwscope 0 201 kept",
+        Some(token_entry(&env.admin)),
+    );
+    let get = cfg_request(&env.cfg, b"GET device lab.cwscope", None);
+    kprintln!(
+        "OSX|{}|ktest|{}|services=auth,config|set={}|get={}",
+        BUILD_ID,
+        name,
+        set,
+        get
+    );
+    if set != "OK 1" || get != "OK 1 kept" {
+        fail("config could not write its own store")
+    }
+    drop((set, get));
+    let frames0 = cfg_close(env, name);
+    cfg_balance(
+        name,
+        frames0,
+        "config's authority changes only its own stores",
+    )
+}
+
 /// One config request with an optional token or channel handle; the reply text.
 fn cfg_request(ep: &Endpoint, req: &[u8], handle: Option<Entry>) -> String {
     let handles = handle.map_or_else(Vec::new, |e| alloc::vec![e]);
@@ -4052,11 +7313,24 @@ fn config_cas() -> ! {
     )
 }
 
+/// configd's live handle count, read while it runs (WP-107); -1 when no live configd matches.
+fn cfg_handles() -> i64 {
+    sched::handles_named(b"CONFIGD.ELF").map_or(-1, |n| n as i64)
+}
+
+/// TST-M4-CONFIG-RETRY (REQ-M4-005, config.md v1.3, WP-107): a repeated request id applies once
+/// and replays its stored reply; and configd's own handle count, read while it lives, does not
+/// grow: not by the replays of the body, nor by 20 more replays carrying a token, nor by a
+/// replay whose reply cannot be written (its sender closed its end before reading).
 fn config_retry() -> ! {
     let env = cfg_env("config_retry");
     let frames0 = {
         let ep = &env.cfg;
         let a = token_entry(&env.admin);
+        // An answered request shows configd has read this client's CONNECT: the client end is
+        // in its table before the count is taken (the boot channel is served first).
+        let _ = cfg_request(ep, b"GET device sync.key", None);
+        let h0 = cfg_handles();
         let r1 = cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone()));
         let r1b = cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone()));
         let read = cfg_request(ep, b"GET device retry.key", None);
@@ -4066,7 +7340,7 @@ fn config_retry() -> ! {
         let read2 = cfg_request(ep, b"GET device retry.key", None);
         // Id 0 is never cached: the second call is a real (now stale) attempt.
         let z1 = cfg_request(ep, b"SET device retry.key 1 0 v3", Some(a.clone()));
-        let z2 = cfg_request(ep, b"SET device retry.key 1 0 v3", Some(a));
+        let z2 = cfg_request(ep, b"SET device retry.key 1 0 v3", Some(a.clone()));
         let read3 = cfg_request(ep, b"GET device retry.key", None);
         kprintln!(
             "OSX|{}|ktest|config_retry|r1={}|r1b={}|read={}|bad={}|bad_again={}|read2={}|z1={}|z2={}|read3={}",
@@ -4080,6 +7354,69 @@ fn config_retry() -> ! {
         }
         if z1 != "OK 2" || z2 != "ERR VERSION 2" || read3 != "OK 2 v3" {
             fail("request id 0 was cached")
+        }
+        // WP-107: the balance is taken while configd lives. The body's two replays (r1b,
+        // bad_again) carried a token; so do 20 more replays of request 301.
+        let h1 = cfg_handles();
+        const REPLAYS: usize = 20;
+        let mut same = 0;
+        for _ in 0..REPLAYS {
+            if cfg_request(ep, b"SET device retry.key 0 301 v1", Some(a.clone())) == "OK 1" {
+                same += 1;
+            }
+        }
+        let h2 = cfg_handles();
+        // A reply configd cannot write: a second client stores request 311, then, while configd
+        // is held (frozen, so it cannot read or write in between), queues its replay with a
+        // token and closes its end. Released, configd reads the queued replay, its write meets
+        // the closed peer and it closes the client; the endpoint count coming back to its value
+        // before the connection shows that it did.
+        let e0 = channel::live_endpoints();
+        let ep2 = svc_connect(&env.h, "config");
+        let first = cfg_request(&ep2, b"SET device retry.key2 0 311 w1", Some(a.clone()));
+        let frozen = sched::freeze_named(b"CONFIGD.ELF");
+        // Parked, it reads nothing until the thaw: the replay is read after the close.
+        let parked = sched::poll_until(sched::ticks() + 5_000, || {
+            sched::parked_named(b"CONFIGD.ELF")
+        });
+        let queued = ep2
+            .write(Message {
+                bytes: b"SET device retry.key2 0 311 w1".to_vec(),
+                handles: alloc::vec![a],
+            })
+            .is_ok();
+        drop(ep2);
+        let thawed = sched::thaw_named(b"CONFIGD.ELF");
+        let released =
+            sched::poll_until(sched::ticks() + 5_000, || channel::live_endpoints() == e0);
+        let h3 = cfg_handles();
+        kprintln!(
+            "OSX|{}|ktest|config_retry|live|body_grew={}|replays={}|same={}|replays_grew={}|unwritable_first={}|frozen={}|parked={}|queued={}|thawed={}|released={}|unwritable_grew={}|base={}",
+            BUILD_ID,
+            h1 - h0,
+            REPLAYS,
+            same,
+            h2 - h1,
+            first,
+            u8::from(frozen),
+            u8::from(parked),
+            u8::from(queued),
+            u8::from(thawed),
+            u8::from(released),
+            h3 - h2,
+            h0
+        );
+        if h0 < 0 || same != REPLAYS || first != "OK 1" || !queued {
+            fail("the live balance's requests were not answered as stored")
+        }
+        if !frozen || !parked || !thawed {
+            fail("configd was not held while the reply it cannot write was set up")
+        }
+        if h1 != h0 || h2 != h1 {
+            fail("configd kept the handles its replayed requests carried")
+        }
+        if !released || h3 != h2 {
+            fail("configd kept the handle of a request whose reply it could not write")
         }
         cfg_close(env, "config_retry")
     };
@@ -4141,6 +7478,495 @@ fn config_notify() -> ! {
     )
 }
 
+/// TST-M4-CONFIG-STORE-AUTHZ (REQ-M4-004, config.md v1.4, WP-157; RSK-028): a request that is
+/// refused, or that shows no token, takes no user-store slot. The user's SET and IMPORT on the
+/// stores of other uids are refused and leave no store behind (EXPORT finds none); eight
+/// SUBSCRIBE to eight more user stores, each carrying a channel end and no token, find no
+/// store, and two with a uid no store may carry (0 and 10000) are invalid; then the user's own
+/// SET is accepted (with the eight slots free) and his own store, now loaded, can be subscribed
+/// to; an administrator's SET creates the store the user was refused, and the user's SET on
+/// that store, now loaded, is refused and changes nothing. Last the administrator fills the
+/// eight slots: a ninth store is ERR INVALID and the user's loaded store still takes his SET.
+/// configd's live handle count grew by the one subscription.
+fn config_store_authz() -> ! {
+    let env = cfg_env("config_store_authz");
+    let frames0 = {
+        let ep = &env.cfg;
+        let u = token_entry(&env.user);
+        let a = token_entry(&env.admin);
+        let end = |s: Arc<Endpoint>| Entry {
+            object: Object::Channel(s),
+            rights: Rights::CHANNEL_DEFAULT,
+        };
+        // An answered request first: configd has read this client's CONNECT (see config_retry).
+        let _ = cfg_request(ep, b"GET device sync.key", None);
+        let h0 = cfg_handles();
+        let set_other = cfg_request(ep, b"SET user/3001 k 0 801 v", Some(u.clone()));
+        // The administrator reads (a user store is read for its owner or ADMIN alone, config.md
+        // v1.6): no slot was taken and no store is on the volume, so it is not found.
+        let other_export = cfg_request(ep, b"EXPORT user/3001", Some(a.clone()));
+        let import_other = cfg_request(ep, b"IMPORT user/3002 802\nk v", Some(u.clone()));
+        let import_export = cfg_request(ep, b"EXPORT user/3002", Some(a.clone()));
+        // No user store is subscribed to (config.md v1.6): SUBSCRIBE shows no token.
+        let (mut subs_ok, mut subs_refused) = (0, 0);
+        let mut kept = Vec::new();
+        for k in 1..=8 {
+            let (mine, theirs) = channel::create();
+            let req = alloc::format!("SUBSCRIBE user/200{}", k);
+            match cfg_request(ep, req.as_bytes(), Some(end(theirs))).as_str() {
+                "OK" => subs_ok += 1,
+                "ERR ACCESS" => subs_refused += 1,
+                _ => {}
+            }
+            kept.push(mine);
+        }
+        // A uid no store may carry is no store name (config.md §1: 1 to 9999).
+        let (zero_k, zero_s) = channel::create();
+        let sub_zero = cfg_request(ep, b"SUBSCRIBE user/0", Some(end(zero_s)));
+        let (big_k, big_s) = channel::create();
+        let sub_big = cfg_request(ep, b"SUBSCRIBE user/10000", Some(end(big_s)));
+        let own_set = cfg_request(ep, b"SET user/1001 wp.k 0 803 v", Some(u.clone()));
+        let (own_k, own_s) = channel::create();
+        let own_sub = cfg_request(ep, b"SUBSCRIBE user/1001", Some(end(own_s)));
+        // ADMIN may modify any user's store (config.md §1): the store the user was refused.
+        let admin_set = cfg_request(ep, b"SET user/3001 k 0 804 v", Some(a.clone()));
+        // That store is loaded now: the user is refused by the store's own check.
+        let loaded_other = cfg_request(ep, b"SET user/3001 k 1 805 x", Some(u.clone()));
+        let loaded_kept = cfg_request(ep, b"EXPORT user/3001", Some(a.clone())) == "OK\nk 1 v";
+        // The administrator fills the eight slots (1001, 3001 and six more).
+        let mut filled = 0;
+        for k in 2..=7 {
+            let req = alloc::format!("SET user/300{} k 0 {} v", k, 804 + k);
+            if cfg_request(ep, req.as_bytes(), Some(a.clone())) == "OK 1" {
+                filled += 1;
+            }
+        }
+        let full_set = cfg_request(ep, b"SET user/3008 k 0 812 v", Some(a));
+        let own_again = cfg_request(ep, b"SET user/1001 wp.k 1 813 w", Some(u));
+        let h1 = cfg_handles();
+        kprintln!(
+            "OSX|{}|ktest|config_store_authz|set_other={}|other_export={}|import_other={}|import_export={}|subs_ok={}|subs_refused={}|own_set={}|own_sub={}|admin_set={}|cfg_grew={}|base={}",
+            BUILD_ID,
+            set_other,
+            other_export,
+            import_other,
+            import_export,
+            subs_ok,
+            subs_refused,
+            own_set,
+            own_sub,
+            admin_set,
+            h1 - h0,
+            h0
+        );
+        kprintln!(
+            "OSX|{}|ktest|config_store_authz|more|sub_zero={}|sub_big={}|loaded_other={}|loaded_kept={}|filled={}|full_set={}|own_again={}|",
+            BUILD_ID,
+            sub_zero,
+            sub_big,
+            loaded_other,
+            loaded_kept as u8,
+            filled,
+            full_set,
+            own_again
+        );
+        if h0 < 0 {
+            fail("configd's live handle count could not be read")
+        }
+        if set_other != "ERR ACCESS" || import_other != "ERR ACCESS" {
+            fail("a write on another user's store was not refused")
+        }
+        if other_export != "ERR NOT_FOUND" || import_export != "ERR NOT_FOUND" {
+            fail("a refused write left a user store behind")
+        }
+        if subs_ok != 0 || subs_refused != 8 || own_sub != "ERR ACCESS" {
+            fail("a subscriber without a token took a user store")
+        }
+        if sub_zero != "ERR INVALID" || sub_big != "ERR INVALID" {
+            fail("a name that is no user store was not answered ERR INVALID")
+        }
+        if own_set != "OK 1" {
+            fail("the user's own store was refused")
+        }
+        if admin_set != "OK 1" {
+            fail("an administrator was refused a user's store")
+        }
+        if loaded_other != "ERR ACCESS" || !loaded_kept {
+            fail("a write on another user's loaded store was not refused")
+        }
+        if filled != 6 || full_set != "ERR INVALID" || own_again != "OK 2" {
+            fail("a full table of user stores was not answered as the contract says")
+        }
+        if h1 - h0 != 0 {
+            fail("configd kept a handle of a request it refused")
+        }
+        drop((kept, zero_k, big_k, own_k));
+        cfg_close(env, "config_store_authz")
+    };
+    cfg_balance(
+        "config_store_authz",
+        frames0,
+        "a refused or token-less request takes no user store, and the user's own store is his",
+    )
+}
+
+/// TST-M4-CONFIG-READ-LOAD (REQ-M4-004, REQ-M4-005, config.md v1.6, WP-112; with WP-168): a user
+/// store is read for its owner's or an administrator's usable token alone, and loaded on such a
+/// read. The lab volume carries three user stores no request has loaded, as after a restart:
+/// CFGU1001.A (the lab user's own, `lab.read 1 mine`), CFGU1002.A (`theirs`) and CFGU1003.A
+/// (`hidden`). Without a token, GET of the user's store is not found, loaded or not; RESOLVE with
+/// the user's token loads it; GET and EXPORT with that token read it; the administrator's GET
+/// loads 1002; SUBSCRIBE of a loaded user store is refused. The user's GET and EXPORT of 1002
+/// (loaded) and of 1003 (not loaded) are not found and load nothing; six reads of stores no
+/// volume holds take no slot, so the administrator fills the six slots left. With the table
+/// full: a refused reader still learns nothing, a loaded store is still read, a key policy holds
+/// is answered without the reader's store and another key is ERR INVALID; CONFIG_WRITE, a group
+/// of that uid and an expired administrator's token read nothing; a write on a store a read
+/// loaded goes to its other slot (the host check reads CFGU1001.B). Revoked tokens read nothing.
+fn config_read_load() -> ! {
+    let name = "config_read_load";
+    let env = cfg_env(name);
+    let frames0 = {
+        let ep = &env.cfg;
+        let u = token_entry(&env.user);
+        let a = token_entry(&env.admin);
+        let nf = "ERR NOT_FOUND";
+        let bare = cfg_request(ep, b"GET user/1001 lab.read", None);
+        let resolve = cfg_request(ep, b"RESOLVE lab.read", Some(u.clone()));
+        let bare_loaded = cfg_request(ep, b"GET user/1001 lab.read", None);
+        let own = cfg_request(ep, b"GET user/1001 lab.read", Some(u.clone()));
+        let own_export = cfg_request(ep, b"EXPORT user/1001", Some(u.clone())).replace('\n', ";");
+        let admin = cfg_request(ep, b"GET user/1002 lab.read", Some(a.clone()));
+        // SUBSCRIBE carries no token: a user store, loaded or not, is not subscribed to (v1.6), so
+        // a subscriber learns neither that the store is loaded nor its keys.
+        let (sub_kept, sub_end) = channel::create();
+        let sub_end = Entry {
+            object: Object::Channel(sub_end),
+            rights: Rights::CHANNEL_DEFAULT,
+        };
+        let sub_loaded = cfg_request(ep, b"SUBSCRIBE user/1002", Some(sub_end));
+        let other_loaded = cfg_request(ep, b"GET user/1002 lab.read", Some(u.clone()));
+        let other_loaded_export =
+            cfg_request(ep, b"EXPORT user/1002", Some(u.clone())).replace('\n', ";");
+        let other = cfg_request(ep, b"GET user/1003 lab.read", Some(u.clone()));
+        let other_export = cfg_request(ep, b"EXPORT user/1003", Some(u.clone())).replace('\n', ";");
+        // Stores no volume holds: none of them may take a slot.
+        let mut absent = 0;
+        for k in 1..=6 {
+            let req = alloc::format!("GET user/200{} lab.read", k);
+            if cfg_request(ep, req.as_bytes(), Some(a.clone())) == nf {
+                absent += 1;
+            }
+        }
+        let pol = cfg_request(ep, b"SET policy lab.pol 0 899 locked", Some(a.clone()));
+        // 1001 and 1002 hold two of the eight slots: the administrator fills the six left.
+        let mut filled = 0;
+        for k in 1..=6 {
+            let req = alloc::format!("SET user/300{} k 0 {} v", k, 900 + k);
+            if cfg_request(ep, req.as_bytes(), Some(a.clone())) == "OK 1" {
+                filled += 1;
+            }
+        }
+        let full_set = cfg_request(ep, b"SET user/3007 k 0 907 v", Some(a.clone()));
+        let full_read = cfg_request(ep, b"GET user/1003 lab.read", Some(a.clone()));
+        // The full table (WP-112's review round): a refused reader still learns nothing of it, a
+        // loaded store is still read, a key policy holds is answered without the reader's store
+        // (policy beats every user value), and another key needs that store: no slot, ERR INVALID.
+        let refused_full = cfg_request(ep, b"GET user/1003 lab.read", Some(u.clone()));
+        let bare_full = cfg_request(ep, b"GET user/1003 lab.read", None);
+        let loaded_full = cfg_request(ep, b"GET user/1002 lab.read", Some(a.clone()));
+        let resolve_full = cfg_request(ep, b"RESOLVE lab.read", Some(u.clone()));
+        let mint = |uid: u32, gid: u32, perms: u32, expires: u64| {
+            token_entry(&Arc::new(crate::object::token::Token::new(
+                uid, gid, perms, expires,
+            )))
+        };
+        use crate::object::token::{PERM_ADMIN, PERM_CONFIG_WRITE, PERM_SHELL};
+        let stranger = mint(1004, 1004, PERM_SHELL, 0);
+        let policy_full = cfg_request(ep, b"RESOLVE lab.pol", Some(stranger.clone()));
+        let stranger_full = cfg_request(ep, b"RESOLVE lab.read", Some(stranger));
+        // CONFIG_WRITE writes the device store, it reads no user's; nor does a group of that uid.
+        let cw = cfg_request(
+            ep,
+            b"GET user/1002 lab.read",
+            Some(mint(1004, 1004, PERM_CONFIG_WRITE, 0)),
+        );
+        let grp = cfg_request(
+            ep,
+            b"GET user/1002 lab.read",
+            Some(mint(1005, 1002, PERM_SHELL, 0)),
+        );
+        // An expired administrator's token reads as no token.
+        let admin_expired = cfg_request(
+            ep,
+            b"GET user/1002 lab.read",
+            Some(mint(1000, 1000, PERM_ADMIN, 1)),
+        );
+        // A write on a store a read loaded goes to its other slot (generation 2 into CFGU1001.B,
+        // read on the volume by the case's host check): the read kept the slots' generations.
+        let write = cfg_request(ep, b"SET user/1001 lab.read 1 908 new", Some(u.clone()));
+        // A revoked token reads as no token, on the user's own loaded store too.
+        env.user.revoke();
+        let revoked = cfg_request(ep, b"GET user/1001 lab.read", Some(u.clone()));
+        let revoked_export = cfg_request(ep, b"EXPORT user/1001", Some(u)).replace('\n', ";");
+        env.admin.revoke();
+        let admin_revoked = cfg_request(ep, b"GET user/1002 lab.read", Some(a));
+        kprintln!(
+            "OSX|{}|ktest|config_read_load|bare={}|resolve={}|bare_loaded={}|own={}|own_export={}|admin={}|",
+            BUILD_ID,
+            bare,
+            resolve,
+            bare_loaded,
+            own,
+            own_export,
+            admin
+        );
+        kprintln!(
+            "OSX|{}|ktest|config_read_load|more|other_loaded={}|other_loaded_export={}|other={}|other_export={}|absent={}|filled={}|full_set={}|full_read={}|revoked={}|revoked_export={}|",
+            BUILD_ID,
+            other_loaded,
+            other_loaded_export,
+            other,
+            other_export,
+            absent,
+            filled,
+            full_set,
+            full_read,
+            revoked,
+            revoked_export
+        );
+        kprintln!(
+            "OSX|{}|ktest|config_read_load|full|sub_loaded={}|pol={}|refused_full={}|bare_full={}|loaded_full={}|resolve_full={}|policy_full={}|stranger_full={}|cw={}|grp={}|admin_expired={}|write={}|admin_revoked={}|",
+            BUILD_ID,
+            sub_loaded,
+            pol,
+            refused_full,
+            bare_full,
+            loaded_full,
+            resolve_full,
+            policy_full,
+            stranger_full,
+            cw,
+            grp,
+            admin_expired,
+            write,
+            admin_revoked
+        );
+        if resolve != "OK user 1 mine"
+            || own != "OK 1 mine"
+            || own_export != "OK;lab.read 1 mine"
+            || admin != "OK 1 theirs"
+        {
+            fail("a user store was not loaded on a read of its owner or an administrator")
+        }
+        if [
+            &bare,
+            &bare_loaded,
+            &other_loaded,
+            &other_loaded_export,
+            &other,
+            &other_export,
+            &revoked,
+            &revoked_export,
+        ]
+        .iter()
+        .any(|r| r.as_str() != nf)
+        {
+            fail("a user store was read without its owner's or an administrator's usable token")
+        }
+        if absent != 6 || filled != 6 || full_set != "ERR INVALID" || full_read != "ERR INVALID" {
+            fail("a refused read or a store no volume holds took a slot of the table")
+        }
+        if [
+            &refused_full,
+            &bare_full,
+            &cw,
+            &grp,
+            &admin_expired,
+            &admin_revoked,
+        ]
+        .iter()
+        .any(|r| r.as_str() != nf)
+            || sub_loaded != "ERR ACCESS"
+        {
+            fail("a user store was read without its owner's or an administrator's usable token")
+        }
+        if pol != "OK 1"
+            || loaded_full != "OK 1 theirs"
+            || resolve_full != "OK user 1 mine"
+            || policy_full != "OK policy 1 locked"
+            || stranger_full != "ERR INVALID"
+        {
+            fail("a full table stood before a policy value or a loaded store")
+        }
+        if write != "OK 2" {
+            fail("a store a read loaded was not written as the contract says")
+        }
+        drop(sub_kept);
+        cfg_close(env, name)
+    };
+    cfg_balance(
+        name,
+        frames0,
+        "a user store is read for its owner or an administrator alone, loaded on that read, and a refused read takes no slot",
+    )
+}
+
+/// TST-M4-CONFIG-SUBS (REQ-M4-004, REQ-M4-005, config.md v1.5, WP-158; RSK-028): a subscription
+/// belongs to the client that asked for it. Client X sends eight SUBSCRIBE device, each with a
+/// new channel end: it holds one subscription, the last, and the service has closed the
+/// seven earlier ends; it subscribes to policy too. Client Y's SUBSCRIBE device is then
+/// accepted, and a change of the store is heard by Y and by X's last end alone. X closes its
+/// channel: its two subscriptions go with it (the service's live handle count drops by
+/// three) and Y still hears the next change.
+/// Client Z subscribes, then, with the service held and parked, queues a request and closes:
+/// its reply cannot be written, and its subscription goes with it too. SUBSCRIBE session is
+/// refused (it shows no token, and session values are kept apart per user) and a change of a
+/// session key is heard by nobody.
+fn config_subs() -> ! {
+    let env = cfg_env("config_subs");
+    let frames0 = {
+        let y = &env.cfg;
+        let a = token_entry(&env.admin);
+        let end = |s: Arc<Endpoint>| Entry {
+            object: Object::Channel(s),
+            rights: Rights::CHANNEL_DEFAULT,
+        };
+        let closed = |e: &Endpoint| matches!(e.read(4096, 4, None), Err(ChannelError::PeerClosed));
+        let x = svc_connect(&env.h, "config");
+        // An answered request on X: configd has read both clients' CONNECT, so their ends are
+        // in its table before the count is taken (the boot channel is served first).
+        let _ = cfg_request(&x, b"GET device sync.key", None);
+        let h0 = cfg_handles();
+        let mut x_ok = 0;
+        let mut x_ends = Vec::new();
+        for _ in 0..8 {
+            let (mine, theirs) = channel::create();
+            if cfg_request(&x, b"SUBSCRIBE device", Some(end(theirs))) == "OK" {
+                x_ok += 1;
+            }
+            x_ends.push(mine);
+        }
+        // A second store: X's subscriptions go with it wherever they are.
+        let (x_pol_k, x_pol_s) = channel::create();
+        let x_pol = cfg_request(&x, b"SUBSCRIBE policy", Some(end(x_pol_s)));
+        let x_grew = cfg_handles() - h0;
+        let (y_k, y_s) = channel::create();
+        let y_sub = cfg_request(y, b"SUBSCRIBE device", Some(end(y_s)));
+        let set = cfg_request(y, b"SET device subs.key 0 901 v", Some(a.clone()));
+        let y_heard = recv_text(&y_k, 500);
+        let x_last = recv_text(&x_ends[7], 500);
+        let x_first = (0..7).filter(|&i| recv_text(&x_ends[i], 20) != "-").count();
+        let x_closed = (0..7).filter(|&i| closed(&x_ends[i])).count();
+        // X goes: its client end and its two subscriptions.
+        let h2 = cfg_handles();
+        drop(x);
+        let x_gone = sched::poll_until(sched::ticks() + 3_000, || cfg_handles() == h2 - 3);
+        let x_end_closed = closed(&x_ends[7]);
+        let x_pol_closed = closed(&x_pol_k);
+        let set2 = cfg_request(y, b"SET device subs.key 1 902 w", Some(a.clone()));
+        let y_heard2 = recv_text(&y_k, 500);
+        // Z's reply cannot be written: held and parked, the service reads the request only
+        // after Z's end is closed.
+        let z = svc_connect(&env.h, "config");
+        let (z_k, z_s) = channel::create();
+        let z_sub = cfg_request(&z, b"SUBSCRIBE device", Some(end(z_s)));
+        let h3 = cfg_handles();
+        let frozen = sched::freeze_named(b"CONFIGD.ELF");
+        let parked = sched::poll_until(sched::ticks() + 5_000, || {
+            sched::parked_named(b"CONFIGD.ELF")
+        });
+        let queued = z
+            .write(Message {
+                bytes: b"GET device subs.key".to_vec(),
+                handles: Vec::new(),
+            })
+            .is_ok();
+        drop(z);
+        let thawed = sched::thaw_named(b"CONFIGD.ELF");
+        let z_gone = sched::poll_until(sched::ticks() + 3_000, || cfg_handles() == h3 - 2);
+        let z_end_closed = closed(&z_k);
+        // A session subscriber shows no token: refused, and nobody hears a session key.
+        let (s_k, s_s) = channel::create();
+        let sess_sub = cfg_request(y, b"SUBSCRIBE session", Some(end(s_s)));
+        let sess_set = cfg_request(y, b"SET session subs.s 0 903 secret", Some(a));
+        let sess_heard = recv_text(&s_k, 50);
+        let end_grew = cfg_handles() - h0;
+        kprintln!(
+            "OSX|{}|ktest|config_subs|x_ok={}|x_pol={}|x_grew={}|y_sub={}|set={}|y_heard={}|x_last={}|x_first={}|x_closed={}|x_gone={}|x_end_closed={}|x_pol_closed={}|set2={}|y_heard2={}|base={}",
+            BUILD_ID,
+            x_ok,
+            x_pol,
+            x_grew,
+            y_sub,
+            set,
+            y_heard,
+            x_last,
+            x_first,
+            x_closed,
+            u8::from(x_gone),
+            u8::from(x_end_closed),
+            u8::from(x_pol_closed),
+            set2,
+            y_heard2,
+            h0
+        );
+        kprintln!(
+            "OSX|{}|ktest|config_subs|more|z_sub={}|frozen={}|parked={}|queued={}|thawed={}|z_gone={}|z_end_closed={}|sess_sub={}|sess_set={}|sess_heard={}|end_grew={}|",
+            BUILD_ID,
+            z_sub,
+            u8::from(frozen),
+            u8::from(parked),
+            u8::from(queued),
+            u8::from(thawed),
+            u8::from(z_gone),
+            u8::from(z_end_closed),
+            sess_sub,
+            sess_set,
+            sess_heard,
+            end_grew
+        );
+        if h0 < 0 {
+            fail("configd's live handle count could not be read")
+        }
+        if x_ok != 8 || x_pol != "OK" || x_grew != 2 || x_first != 0 || x_closed != 7 {
+            fail("one client held more than one subscription of a store")
+        }
+        if y_sub != "OK"
+            || set != "OK 1"
+            || y_heard != "CHANGED device subs.key 1"
+            || x_last != "CHANGED device subs.key 1"
+        {
+            fail("a second client's subscription was refused or a subscriber missed the change")
+        }
+        if !x_gone || !x_end_closed || !x_pol_closed {
+            fail("a closed client's subscription stayed")
+        }
+        if set2 != "OK 2" || y_heard2 != "CHANGED device subs.key 2" {
+            fail("the remaining subscriber missed a change")
+        }
+        if z_sub != "OK" || !frozen || !parked || !queued || !thawed {
+            fail("the reply that cannot be written was not set up")
+        }
+        if !z_gone || !z_end_closed {
+            fail("the subscription of a client whose reply could not be written stayed")
+        }
+        if sess_sub != "ERR ACCESS" || sess_set != "OK 1" || sess_heard != "-" {
+            fail("a subscriber without a token heard a session key")
+        }
+        if end_grew != 0 {
+            fail("configd kept a handle of a client that had gone")
+        }
+        drop((x_ends, x_pol_k, y_k, z_k, s_k));
+        cfg_close(env, "config_subs")
+    };
+    cfg_balance(
+        "config_subs",
+        frames0,
+        "a subscription belongs to its client and goes with it, and a session key is heard by nobody without a token",
+    )
+}
+
 /// Reads one message from `ep` within `ticks`, or "-".
 fn recv_text(ep: &Endpoint, ticks: u64) -> String {
     let mut got: Option<Vec<u8>> = None;
@@ -4171,7 +7997,8 @@ fn policy_precedence() -> ! {
         let r_pol = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
         let del_pol = cfg_request(ep, b"DEL policy ui.theme 1 504", Some(a.clone()));
         let r_back = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
-        let export = cfg_request(ep, b"EXPORT user/1001", None);
+        // The user's store is read with the user's token (config.md v1.6, WP-112).
+        let export = cfg_request(ep, b"EXPORT user/1001", Some(u.clone()));
         let import = cfg_request(
             ep,
             b"IMPORT user/1001 505
@@ -4179,15 +8006,15 @@ fn policy_precedence() -> ! {
     ui.size 14",
             Some(u.clone()),
         );
-        let imported = cfg_request(ep, b"GET user/1001 ui.size", None);
+        let imported = cfg_request(ep, b"GET user/1001 ui.size", Some(u.clone()));
         let import_bad = cfg_request(
             ep,
             b"IMPORT user/1001 506
     ui.ok yes
     BAD KEY x",
-            Some(u),
+            Some(u.clone()),
         );
-        let not_applied = cfg_request(ep, b"GET user/1001 ui.ok", None);
+        let not_applied = cfg_request(ep, b"GET user/1001 ui.ok", Some(u));
         kprintln!(
             "OSX|{}|ktest|policy_precedence|none={}|dev={}|r_dev={}|usr={}|r_usr={}|r_admin={}|pol={}|r_pol={}|del_pol={}|r_back={}|export={}|import={}|imported={}|import_bad={}|not_applied={}",
             BUILD_ID, none, dev, r_dev, usr, r_usr, r_admin, pol, r_pol, del_pol, r_back,
@@ -4419,6 +8246,116 @@ fn net_udp_echo() -> ! {
         "net_udp_echo",
         frames0,
         "UDP datagrams reach the host's echo server and come back",
+    )
+}
+
+/// The net service's live handle count, or -1 when it does not run (test kernel only).
+fn net_handles() -> i64 {
+    sched::handles_named(b"NETD.ELF").map_or(-1, |n| n as i64)
+}
+
+/// TST-M4-NET-CLIENT-DROP (REQ-M4-007, REQ-M4-008, net.md ب and ج, WP-108; RSK-028): a client's
+/// sockets and connections go with it on every path that frees its slot. Client A opens a UDP
+/// socket, sends a datagram whose echo it never reads and opens a TCP connection; then, while
+/// the service is held, it queues one more request and closes its end. Released, the service
+/// answers into the closed channel and frees A's slot (its live handle count drops by one).
+/// Client B then takes that slot: A's socket is not B's, A's connection is closed, and A's
+/// port is free again. Client C opens a port and closes while idle (the service reads the
+/// closed peer): that port is free again too, and the connection B opened meanwhile is
+/// still B's.
+fn net_client_drop() -> ! {
+    let (env, dhcp) = net_env("net_client_drop");
+    let frames0 = {
+        let a = svc_connect(&env.h, "net");
+        let open = cfg_request(&a, b"UDP_OPEN 40001", None);
+        let sent = cfg_request(&a, b"UDP_SEND 0 10.0.2.2 17007 from-a", None);
+        let conn = cfg_request(&a, b"TCP_CONNECT 10.0.2.2 17008 5000", None);
+        let n0 = net_handles();
+        // Held and parked (a frozen process's blocked threads stay blocked until the thaw),
+        // the service cannot read the request before A's end is closed: its reply is the one
+        // that cannot be written.
+        let frozen = sched::freeze_named(b"NETD.ELF");
+        let parked = sched::poll_until(sched::ticks() + 5_000, || sched::parked_named(b"NETD.ELF"));
+        let queued = a
+            .write(Message {
+                bytes: b"STATUS".to_vec(),
+                handles: Vec::new(),
+            })
+            .is_ok();
+        drop(a);
+        let thawed = sched::thaw_named(b"NETD.ELF");
+        let dropped = sched::poll_until(sched::ticks() + 5_000, || net_handles() == n0 - 1);
+        // B connects once A's slot is free, so it takes that slot.
+        let b = svc_connect(&env.h, "net");
+        let inherit_recv = cfg_request(&b, b"UDP_RECV 0 2000", None);
+        let tcp_a = cfg_request(&b, b"TCP_STATUS 1", None)
+            .split(' ')
+            .take(2)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let reopen = cfg_request(&b, b"UDP_OPEN 40001", None);
+        // B's own connection must outlive another client's close.
+        let conn_b = cfg_request(&b, b"TCP_CONNECT 10.0.2.2 17008 5000", None);
+        // C closes while idle: the service reads the closed peer.
+        let c = svc_connect(&env.h, "net");
+        let open_c = cfg_request(&c, b"UDP_OPEN 40002", None);
+        let n1 = net_handles();
+        drop(c);
+        let idle_dropped = sched::poll_until(sched::ticks() + 5_000, || net_handles() == n1 - 1);
+        let idle_reopen = cfg_request(&b, b"UDP_OPEN 40002", None);
+        let tcp_b = cfg_request(&b, b"TCP_STATUS 2", None)
+            .split(' ')
+            .take(2)
+            .collect::<Vec<_>>()
+            .join(" ");
+        kprintln!(
+            "OSX|{}|ktest|net_client_drop|dhcp_ok={}|open={}|sent={}|conn={}|frozen={}|parked={}|queued={}|thawed={}|dropped={}|inherit_recv={}|tcp_a={}|reopen={}|conn_b={}|open_c={}|idle_dropped={}|idle_reopen={}|tcp_b={}|net_base={}",
+            BUILD_ID,
+            u8::from(dhcp == LAB_DHCP),
+            open,
+            sent,
+            conn,
+            u8::from(frozen),
+            u8::from(parked),
+            u8::from(queued),
+            u8::from(thawed),
+            u8::from(dropped),
+            inherit_recv,
+            tcp_a,
+            reopen,
+            conn_b,
+            open_c,
+            u8::from(idle_dropped),
+            idle_reopen,
+            tcp_b,
+            n0
+        );
+        if dhcp != LAB_DHCP || open != "OK 0" || sent != "OK 6" || conn != "OK 1" || n0 < 0 {
+            fail("the first client's socket, datagram or connection was not set up")
+        }
+        if !frozen || !parked || !queued || !thawed || !dropped {
+            fail("the reply that cannot be written did not free the client's slot")
+        }
+        if inherit_recv != "ERR BAD_REQUEST" || tcp_a != "ERR CLOSED" {
+            fail("a later client used the socket or the connection of a client that had closed")
+        }
+        if reopen != "OK 0" {
+            fail("a closed client's socket was left behind")
+        }
+        if conn_b != "OK 2" || open_c != "OK 1" || !idle_dropped || idle_reopen != "OK 1" {
+            fail("an idle client's close left its socket behind")
+        }
+        if tcp_b != "OK state=ESTABLISHED" {
+            fail("a client's close reset another client's connection")
+        }
+        // The DHCP reply string lives outside the block: release it before the balance.
+        drop((b, dhcp));
+        net_close(env, "net_client_drop")
+    };
+    cfg_balance(
+        "net_client_drop",
+        frames0,
+        "a closed client's sockets and connections are freed on every path and no later client uses them",
     )
 }
 
@@ -5152,6 +9089,17 @@ fn client_origin(k: i64) -> (i64, i64) {
 /// A request to the display service: events that arrive before the reply (the service sends
 /// FOCUS before answering CREATE_WINDOW, say) go to `events`.
 fn drequest(ep: &Endpoint, req: &[u8], handles: Vec<Entry>, events: &mut Vec<String>) -> String {
+    drequest_within(ep, req, handles, events, 30_000)
+}
+
+/// `drequest` with its own deadline (`ticks` from now): `error:K_E_SVC_TIMEOUT` past it.
+fn drequest_within(
+    ep: &Endpoint,
+    req: &[u8],
+    handles: Vec<Entry>,
+    events: &mut Vec<String>,
+    ticks: u64,
+) -> String {
     if ep
         .write(Message {
             bytes: req.to_vec(),
@@ -5161,7 +9109,7 @@ fn drequest(ep: &Endpoint, req: &[u8], handles: Vec<Entry>, events: &mut Vec<Str
     {
         return String::from("error:K_E_SVC_WRITE");
     }
-    let deadline = sched::ticks() + 30_000;
+    let deadline = sched::ticks() + ticks;
     let mut reply: Option<String> = None;
     sched::poll_until(deadline, || loop {
         match ep.read(4096, 4, None) {
@@ -7669,12 +11617,24 @@ fn list_hash_held() -> ! {
     )
 }
 
-/// TST-M5-SESSION-LOSS (REQ-M5-006; WP-43 finding M9): the session service itself is lost —
-/// once after the sign-in (unlocked), once while locked (the manager's RESTART: its process
-/// ends and its channels close, as in a crash). Each time the compositor holds the screen (the
-/// spy's window loses the focus), no key reaches the compositor or the spy, and the new session
-/// starts at `no_session` with its own count of changes, never in the state the lost one had.
+/// TST-M5-SESSION-LOSS (REQ-M5-006; WP-43 finding M9; rewritten for session.md v1.7, WP-64):
+/// the session service itself is lost — once after the sign-in (unlocked), once while locked
+/// (the manager's RESTART: its process ends and its channels close, as in a crash). Each time
+/// the compositor holds the screen, no key reaches the compositor, and the new session starts
+/// at `no_session` with its own count of changes, never in the state the lost one had. Since
+/// v1.7 the restarted session also ends what the lost one left on the screen before its
+/// sign-in screen (`LOGOUT` to the compositor): the spy's window is gone (`LOGGED_OUT`; the
+/// spy, a well-behaved application, exits) and the compositor counts the sign-in window alone.
+/// The phases after that use a client that connects anew — the test's own window `w` — which
+/// is purged the same way by the second restart. A contract-driven change (session.md v1.7,
+/// PLAN-ANSWER §2.3 D5-B), not a weakening: every assertion of the earlier case is kept except
+/// the spy's own focus after the loss, which the spy's exit makes moot (its window is gone).
 fn session_loss() -> ! {
+    /// The test's window after the first loss: colour and place on the screen (the open
+    /// desktop's screendump finds it at (650,170), and the spy's place (150,150) shows the
+    /// desktop, so no window of the lost session came back).
+    const W_COLOUR: u32 = 0xD04040;
+    const W_AT: (i64, i64) = (600, 100);
     let name = "session_loss";
     let (h, session) = session_env(
         name,
@@ -7716,42 +11676,120 @@ fn session_loss() -> ! {
     let fresh1 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
         state_is(r, "no_session", 0)
     });
-    let spy1 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
-        r == "OK keys=0 focus=0 connections=1"
+    // v1.7: the purge came before the sign-in screen, so the compositor counts one window
+    // (the sign-in dialog), and the spy, told LOGGED_OUT, ended (exit 0, stopped: `never`).
+    let mut ev_d = Vec::new();
+    let windows1 = String::from(status_field(
+        &drequest(&display, b"STATUS", Vec::new(), &mut ev_d),
+        "windows=",
+    ));
+    let spy_lines = h.poll_list(sched::ticks() + 10_000, |l| {
+        svc_find(l, "spy").state == "stopped"
     });
+    let spy_gone = svc_find(&spy_lines, "spy");
+    let spy1 = alloc::format!(
+        "{}:{:#x}",
+        spy_gone.state,
+        spy_gone.exit.unwrap_or(u64::MAX)
+    );
+    drop(spy);
     let keys1 = display_keys(&display);
     kprintln!(
-        "OSX|{}|ktest|session_loss|unlocked={}|spy={}|restart={}|fresh={}|spy_after={}|phase=2|ready=1",
+        "OSX|{}|ktest|session_loss|unlocked={}|spy={}|restart={}|fresh={}|spy_after={}|windows={}|phase=2|ready=1",
         BUILD_ID,
         unlocked,
         spy0,
         r1,
         fresh1,
-        spy1
+        spy1,
+        windows1
     );
     if !state_is(&unlocked, "unlocked", 1) || spy0 != "OK keys=0 focus=1 connections=1" {
         fail("the lab's sign-in did not unlock the session with the spy focused")
     }
-    if r1 != "OK"
-        || fresh1 != "OK no_session user=- changes=0 display=1 input=1 focus=session"
-        || spy1 != "OK keys=0 focus=0 connections=1"
-    {
+    if r1 != "OK" || fresh1 != "OK no_session user=- changes=0 display=1 input=1 focus=session" {
         fail("the session lost while unlocked did not leave a held screen and a fresh session")
     }
-    // Phase 2: the lab signs in to the new session; every key of it reaches that session alone
-    // (the compositor counts none).
+    if spy1 != "stopped:0x0" || windows1 != "1" {
+        fail("the restarted session did not end the lost session's windows before its sign-in screen (session.md v1.7)")
+    }
+    // Phase 2: a client connects anew and makes its window while the screen is held; the lab
+    // signs in to the new session; every key of it reaches that session alone (the compositor
+    // counts none), and the new window is shown and focused.
+    let w = svc_connect(&h, "display");
+    let mut ev_w = Vec::new();
+    let format: u32 = status_field(&drequest(&w, b"STATUS", Vec::new(), &mut ev_w), "format=")
+        .parse()
+        .unwrap_or(99);
+    let (vmo_w, entry_w) = kernel_surface(200, 120, format, W_COLOUR);
+    let sw = drequest(
+        &w,
+        b"CREATE_SURFACE 200 120",
+        alloc::vec![entry_w],
+        &mut ev_w,
+    );
+    let sw_id: String = sw.strip_prefix("OK ").unwrap_or("0").into();
+    let ww = drequest(
+        &w,
+        alloc::format!("CREATE_WINDOW {} w", sw_id).as_bytes(),
+        Vec::new(),
+        &mut ev_w,
+    );
+    let ww_id: String = ww.strip_prefix("OK ").unwrap_or("0").into();
+    let mw = drequest(
+        &w,
+        alloc::format!("MOVE {} {} {}", ww_id, W_AT.0, W_AT.1).as_bytes(),
+        Vec::new(),
+        &mut ev_w,
+    );
+    let cw = drequest(
+        &w,
+        alloc::format!("COMMIT {} 0 0 200 120", sw_id).as_bytes(),
+        Vec::new(),
+        &mut ev_w,
+    );
+    if format > 1 || !sw.starts_with("OK ") || !ww.starts_with("OK ") || mw != "OK" || cw != "OK" {
+        kprintln!(
+            "OSX|{}|ktest|session_loss|format={}|surface={}|window={}|move={}|commit={}",
+            BUILD_ID,
+            format,
+            sw,
+            ww,
+            mw,
+            cw
+        );
+        fail("the reconnecting client's window was not set up")
+    }
     let unlocked2 = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
         state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
     });
     let keys2 = display_keys(&display);
+    let w_focused = {
+        let deadline = sched::ticks() + 10_000;
+        loop {
+            let f = parse_windows(&drequest(&w, b"LIST", Vec::new(), &mut ev_w))
+                .first()
+                .is_some_and(|x| x.focused);
+            if f || sched::ticks() >= deadline {
+                break f;
+            }
+            sched::poll_until(sched::ticks() + 20, || false);
+        }
+    };
+    // Past the blit period, the composed picture is on the frame for the lab's screendump.
+    sched::poll_until(sched::ticks() + 40, || false);
     kprintln!(
-        "OSX|{}|ktest|session_loss|unlocked2={}|keys_during_signin={}|phase=3|ready=1",
+        "OSX|{}|ktest|session_loss|unlocked2={}|keys_during_signin={}|w_focused={}|phase=3|ready=1",
         BUILD_ID,
         unlocked2,
-        keys2 - keys1
+        keys2 - keys1,
+        u8::from(w_focused)
     );
     if !state_is(&unlocked2, "unlocked", 1) || keys2 != keys1 {
         fail("the sign-in to the new session did not reach it alone")
+    }
+    if !w_focused {
+        fail("the reconnecting client's window was not focused after the sign-in")
     }
     // Phase 3: the lab presses Ctrl+Alt+Del; the session is lost while locked.
     let locked = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
@@ -7764,17 +11802,20 @@ fn session_loss() -> ! {
     let fresh2 = poll_reply(&session, b"STATE", sched::ticks() + 60_000, |r| {
         state_is(r, "no_session", 0)
     });
-    let spy2 = poll_reply(&spy, b"COUNT", sched::ticks() + 10_000, |r| {
-        r.contains(" focus=0 ")
-    });
+    // v1.7: the second restart purged again: `w` was told LOGGED_OUT (queued before the reply
+    // to its LIST) and has no window left.
+    let w_list = drequest(&w, b"LIST", Vec::new(), &mut ev_w);
+    let w_windows = parse_windows(&w_list).len();
+    let w_logged_out = ev_w.iter().any(|e| e == "LOGGED_OUT");
     let keys4 = display_keys(&display);
     kprintln!(
-        "OSX|{}|ktest|session_loss|locked={}|restart={}|fresh={}|spy_focus0={}|keys_after_loss={}|phase=4",
+        "OSX|{}|ktest|session_loss|locked={}|restart={}|fresh={}|w_logged_out={}|w_windows={}|keys_after_loss={}|phase=4",
         BUILD_ID,
         locked,
         r2,
         fresh2,
-        u8::from(spy2.contains(" focus=0 ")),
+        u8::from(w_logged_out),
+        w_windows,
         keys4 - keys3
     );
     if !locked.starts_with("OK locked user=admin changes=2 ") {
@@ -7782,10 +11823,12 @@ fn session_loss() -> ! {
     }
     if r2 != "OK"
         || fresh2 != "OK no_session user=- changes=0 display=1 input=1 focus=session"
-        || !spy2.contains(" focus=0 ")
         || keys4 != keys3
     {
         fail("the session lost while locked did not leave a held screen and a fresh session")
+    }
+    if !w_logged_out || w_windows != 0 || !w_list.starts_with("OK") {
+        fail("the session restarted while locked did not end the open windows before its sign-in screen (session.md v1.7)")
     }
     // Phase 5 (input.md v2.2; WP-38 mutant M106): the lab signs in once more, so the keyboard
     // is the compositor's — the input service's focus is `display`, not the session's. The
@@ -7793,7 +11836,8 @@ fn session_loss() -> ! {
     // input service itself reports (`STATUS` → `focus=-`). Clearing the focus only when the
     // lost client held it is not enough here: at this moment the compositor holds it, and a
     // window it routes to would receive what is typed before a fresh session takes over.
-    // Phases 1–4 observe the compositor's focus (the spy's), never the input service's.
+    // Phases 1–4 observe the compositor's side (the spy's focus, then `w`), never the input
+    // service's.
     kprintln!("OSX|{}|ktest|session_loss|phase=5|ready=1", BUILD_ID);
     let unlocked3 = poll_reply(&session, b"STATE", sched::ticks() + 600_000, |r| {
         state_is(r, "unlocked", 1) && r.ends_with(" focus=display")
@@ -7830,11 +11874,30 @@ fn session_loss() -> ! {
     {
         fail("the session lost while the compositor held the keyboard left the keyboard with it")
     }
+    // Phase 7 (display.md v1.2 rescue): stopped for good, no session restarts and none purges,
+    // so what holds the screen now is the compositor's own reaction to the session's loss.
+    let holds = poll_reply(&display, b"HOLDS", sched::ticks() + 5_000, |r| {
+        r.starts_with("OK locked=1 ")
+    });
+    let held_after_stop = holds.starts_with("OK locked=1 ");
+    kprintln!(
+        "OSX|{}|ktest|session_loss|holds={}|held_after_stop={}|phase=7",
+        BUILD_ID,
+        holds,
+        u8::from(held_after_stop)
+    );
+    if !held_after_stop {
+        fail("the compositor did not hold the screen once the session was gone")
+    }
+    drop(holds);
     drop((
-        unlocked, spy0, r1, fresh1, spy1, unlocked2, locked, r2, fresh2, spy2,
+        unlocked, spy0, r1, fresh1, spy1, windows1, unlocked2, locked, r2, fresh2,
+    ));
+    drop((
+        spy_lines, spy_gone, ev_d, ev_w, sw, sw_id, ww, ww_id, mw, cw, w_list,
     ));
     drop((unlocked3, r3, lines, input_after));
-    drop((input, display, spy));
+    drop((vmo_w, w, input, display));
     display_finish(
         name,
         h,
@@ -8089,6 +12152,215 @@ fn narrator_authority() -> ! {
         name,
         h,
         "only the service the manifest names narrator may hear the announcements",
+    )
+}
+
+/// TST-M5-WINDOW-TITLE (REQ-M5-005; WP-97, display.md v1.14): a window title is the client's
+/// data, and the compositor's own narrator line `window "<title>" focused` names in it what
+/// would end the title, the line or its direction. SVC-NT.TXT starts auth, input, the
+/// compositor and the narrator and no client of the compositor, so every narrator line is the
+/// compositor's; the host checks the transcript (platform/pc-qemu/expect/window-title.txt)
+/// line for line. One client opens four windows (each focused when created, each announced
+/// once), then renames and raises them in turn, each raise announced once; the last focused
+/// window is closed last, after the others, so no close moves the focus to a window that
+/// would be announced again.
+fn window_title() -> ! {
+    let name = "window_title";
+    let (h, admin, clients, format) = display_env(
+        name,
+        b"/SYSTEM/SVC-NT.TXT",
+        &["auth", "input", "display", "narrator"],
+        1,
+    );
+    kprintln!("OSX|{}|ktest|window_title|services=4|ready=1", BUILD_ID);
+    let d = &clients[0];
+    let mut ev = Vec::new();
+    let mut vmos = Vec::new();
+    // A quote that tries to close the title and add an attribute; a control byte and a
+    // newline; a bidi override and a line separator; 32 quotes, whose names do not fit.
+    let created: [&[u8]; 4] = [
+        b"x\" focused role=\"button",
+        b"a\x07b\nc",
+        "abc\u{202E}def\u{2028}g".as_bytes(),
+        &[b'"'; 32],
+    ];
+    let mut wids = Vec::new();
+    let mut replies = Vec::new();
+    for t in created {
+        let (vmo, entry) = kernel_surface(32, 32, format, 0x808080);
+        vmos.push(vmo);
+        let r = drequest(d, b"CREATE_SURFACE 32 32", alloc::vec![entry], &mut ev);
+        let sid = String::from(r.strip_prefix("OK ").unwrap_or("0"));
+        let mut req = alloc::format!("CREATE_WINDOW {} ", sid).into_bytes();
+        req.extend_from_slice(t);
+        let r = drequest(d, &req, Vec::new(), &mut ev);
+        replies.push(if r.starts_with("OK ") { "OK" } else { "ERR" });
+        wids.push(String::from(r.strip_prefix("OK ").unwrap_or("0")));
+    }
+    // Renamed in turn (window k % 4): a lead byte with nothing after it, which a reader
+    // decoding UTF-8 would join to the closing quote; an ASCII letter and 16 Arabic letters
+    // (33 bytes, cut at TITLE_MAX before the last letter); a plain title, spoken as it always
+    // was; DEL, a C1 control (C2 85), U+2029, ALM, RLM, LRE and RLI between letters; 33
+    // continuation bytes; `abc` and 40 continuation bytes; exactly 32 ASCII bytes (no cut);
+    // 33 ASCII bytes (one cut). Then the storage cut where a whole character ends exactly at
+    // TITLE_MAX and a stray byte follows: 30 ASCII bytes, `é` and a continuation byte (the `é`
+    // stays); 31 letters and two continuation bytes (the letters and the first stray byte stay);
+    // the rest of the bidi set (LRM, RLE, PDF, LRO, LRI, FSI, PDI) between letters; 30 letters,
+    // a lead byte, a letter and a continuation byte (the letter stays).
+    let mut arabic = alloc::vec![b'A'];
+    for _ in 0..16 {
+        arabic.extend_from_slice("\u{0628}".as_bytes());
+    }
+    let mut abc = b"abc".to_vec();
+    abc.extend_from_slice(&[0x80; 40]);
+    let mut e_acute = b"0123456789abcdefghijklmnopqrst".to_vec();
+    e_acute.extend_from_slice(&[0xC3, 0xA9, 0x80]);
+    let mut stray = alloc::vec![b'a'; 31];
+    stray.extend_from_slice(&[0x80, 0x80]);
+    let mut lead = alloc::vec![b'a'; 30];
+    lead.extend_from_slice(&[0xE2, b'b', 0x80]);
+    let renamed: [&[u8]; 12] = [
+        b"ab\xC2",
+        &arabic,
+        b"Sign in",
+        "a\u{7F}b\u{85}c\u{2029}d\u{061C}e\u{200F}f\u{202A}g\u{2067}h".as_bytes(),
+        &[0x80; 33],
+        &abc,
+        b"0123456789abcdefghijklmnopqrstuv",
+        b"0123456789abcdefghijklmnopqrstuvw",
+        &e_acute,
+        &stray,
+        "a\u{200E}b\u{202B}c\u{202C}d\u{202D}e\u{2066}f\u{2068}g\u{2069}h".as_bytes(),
+        &lead,
+    ];
+    let mut again = Vec::new();
+    for (k, t) in renamed.iter().enumerate() {
+        let wid = &wids[k % 4];
+        let mut req = alloc::format!("TITLE {} ", wid).into_bytes();
+        req.extend_from_slice(t);
+        let r1 = drequest(d, &req, Vec::new(), &mut ev);
+        let r2 = drequest(
+            d,
+            alloc::format!("RAISE {}", wid).as_bytes(),
+            Vec::new(),
+            &mut ev,
+        );
+        again.push(if r1 == "OK" && r2 == "OK" {
+            "OK"
+        } else {
+            "ERR"
+        });
+    }
+    // The focused window (the fourth) goes last: closing the others moves no focus.
+    let mut closed = Vec::new();
+    for k in [0, 1, 2, 3] {
+        let r = drequest(
+            d,
+            alloc::format!("CLOSE {}", wids[k]).as_bytes(),
+            Vec::new(),
+            &mut ev,
+        );
+        closed.push(if r == "OK" { "OK" } else { "ERR" });
+    }
+    kprintln!(
+        "OSX|{}|ktest|window_title|created={}|renamed={}|closed={}",
+        BUILD_ID,
+        replies.join(","),
+        again.join(","),
+        closed.join(",")
+    );
+    if replies
+        .iter()
+        .chain(&again)
+        .chain(&closed)
+        .any(|r| *r != "OK")
+    {
+        fail("the compositor refused a window, a title, a raise or a close")
+    }
+    // The narrator writes its lines on its own time: let the last ones reach the serial log
+    // before the manager stops it.
+    sched::poll_until(sched::ticks() + 1_000, || false);
+    drop((
+        replies, again, closed, wids, ev, arabic, abc, e_acute, stray, lead,
+    ));
+    drop((vmos, clients, admin));
+    display_finish(
+        name,
+        h,
+        "a window title is spoken between its quotes and never ends its line",
+    )
+}
+
+/// TST-M5-WINDOW-TITLE-RESIZE (REQ-M5-005, REQ-M5-008; WP-97, display.md v1.14): the other
+/// line that carries the title, `window "<title>" resized <w>x<h>` (v1.7), names it too. On
+/// SVC-NT.TXT one client opens a 32x32 window titled `x" resized 9x9 role="button` (announced
+/// focused); after the ready marker the lab sends Alt+Shift+Right, which widens the focused
+/// window by 16 px; the test waits until LIST shows 48x32, closes the window and lets the
+/// narrator write. The host checks the transcript (expect/window-title-resize.txt).
+fn window_title_resize() -> ! {
+    let name = "window_title_resize";
+    let (h, admin, clients, format) = display_env(
+        name,
+        b"/SYSTEM/SVC-NT.TXT",
+        &["auth", "input", "display", "narrator"],
+        1,
+    );
+    let d = &clients[0];
+    let mut ev = Vec::new();
+    let (vmo, entry) = kernel_surface(32, 32, format, 0x808080);
+    let surface = drequest(d, b"CREATE_SURFACE 32 32", alloc::vec![entry], &mut ev);
+    let sid = String::from(surface.strip_prefix("OK ").unwrap_or("0"));
+    let r = drequest(
+        d,
+        alloc::format!("CREATE_WINDOW {} x\" resized 9x9 role=\"button", sid).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    let wid = String::from(r.strip_prefix("OK ").unwrap_or("0"));
+    kprintln!(
+        "OSX|{}|ktest|window_title_resize|window={}|services=4|ready=1",
+        BUILD_ID,
+        if r.starts_with("OK ") { "OK" } else { "ERR" }
+    );
+    if !r.starts_with("OK ") {
+        fail("the compositor refused the window")
+    }
+    // The lab's Alt+Shift+Right: the window's client area becomes 48x32.
+    let deadline = sched::ticks() + 30_000;
+    let mut list = String::new();
+    while sched::ticks() < deadline {
+        list = drequest(d, b"LIST", Vec::new(), &mut ev);
+        if list.contains(" 48 32 normal ") {
+            break;
+        }
+        let t = sched::ticks() + 20;
+        sched::poll_until(t, || false);
+    }
+    let resized = list.contains(" 48 32 normal ");
+    let closed = drequest(
+        d,
+        alloc::format!("CLOSE {}", wid).as_bytes(),
+        Vec::new(),
+        &mut ev,
+    );
+    kprintln!(
+        "OSX|{}|ktest|window_title_resize|resized={}|closed={}",
+        BUILD_ID,
+        u8::from(resized),
+        closed
+    );
+    if !resized || closed != "OK" {
+        fail("the window was not widened by the keyboard or not closed")
+    }
+    sched::poll_until(sched::ticks() + 1_000, || false);
+    // Every reply is dropped before the balance: display_finish never returns, so a value
+    // still in scope here would be counted as a frame the test left behind.
+    drop((list, closed, wid, sid, surface, r, ev));
+    drop((vmo, clients, admin));
+    display_finish(
+        name,
+        h,
+        "a window title is spoken between its quotes when the window is resized",
     )
 }
 
@@ -9043,6 +13315,1579 @@ fn lock_display_down() -> ! {
     )
 }
 
+// ---- WP-67: the compositor's hold fails closed ----------------------------------------------
+
+/// What one sub-case of `hold_fail_closed` saw: the `HOLDS` reply (`-` when the compositor
+/// never said READY), the `CREATE_WINDOW` reply, the keys the compositor counted (`KEYS`) and
+/// those that reached the application (-1: not asked), and the exit code — 0 after `STOP`,
+/// EXIT_KILLED when the compositor no longer read its boot channel and had to be killed.
+struct HoldCase {
+    holds: String,
+    window: String,
+    keys_in: i64,
+    keys_at_client: i64,
+    exit: u64,
+    /// Whether the compositor said READY after the `LIST` answer (WP-77).
+    ready: bool,
+    /// Whether a `PING` sent after READY was answered `PONG` (-1: not asked; WP-77).
+    pong: i64,
+}
+
+/// What a sub-case of `hold_run` adds to the plain start-up (WP-77, display.md v1.13), and the
+/// test whose lines it prints: `before_answer` goes on the boot channel after `LIST` and before
+/// its answer; with `answer_ends` the answer is the manager's last message (a `STOP` in place
+/// of the listing), and the sub-case only waits for the compositor to end, seeing whether it
+/// said READY first; `after_ready` goes on the boot channel once READY has come, and with
+/// `ping` a `PING` follows, whose `PONG` must come back before the application connects.
+struct HoldInject<'a> {
+    test: &'a str,
+    before_answer: Option<&'a [u8]>,
+    answer_ends: bool,
+    after_ready: Option<&'a [u8]>,
+    ping: bool,
+    /// `STOP` in place of the answer to `CONNECT input`; the sub-case then only waits for the
+    /// compositor to end, seeing whether it said READY first.
+    stop_at_connect: bool,
+}
+
+/// `hold_fail_closed`'s sub-cases: the start-up as the manager runs it, nothing added.
+const HOLD_PLAIN: HoldInject<'static> = HoldInject {
+    test: "hold_fail_closed",
+    before_answer: None,
+    answer_ends: false,
+    after_ready: None,
+    ping: false,
+    stop_at_connect: false,
+};
+
+impl HoldCase {
+    /// Started held: `HOLDS` says so, the window exists, both keys reached the compositor and
+    /// none reached the application, and `STOP` ended it.
+    fn held(&self) -> bool {
+        self.holds == "OK locked=1 releases=0"
+            && self.window.starts_with("OK ")
+            && self.keys_in == 2
+            && self.keys_at_client == 0
+            && self.exit == 0
+    }
+}
+
+/// Ticks one sub-case may take up to its `STOP`; then at most `HOLD_STOP` for `STOP` and as
+/// much again for a kill. Five sub-cases: at most 5 × 9 s = 45 s, inside the lab's 60 s
+/// (WP-64, 2026-11-10: 23 s -> 9 s per sub-case with the lab's 180 s -> 60 s; the whole case
+/// took 8 s on CI run 42696067096; a hang guard of a done test, no oracle change).
+const HOLD_BUDGET: u64 = 5000;
+const HOLD_STOP: u64 = 2000;
+/// The longest any single request waits for its reply (capped by the sub-case's budget).
+const HOLD_REQUEST: u64 = 5000;
+
+/// Waits until `pred` holds or `deadline`, competing at the boot thread's own priority 1, the
+/// compositor's: `sched::poll_until` demotes the waiter to the lowest priority until its
+/// deadline, and a compositor spinning on a jammed boot channel (the fault before display.md
+/// v1.12) then starves it on their shared CPU until that deadline (before WP-99: for ever; CI
+/// run 42685537720 hung in `too_long`), so `pred` would be read once, at the end. At equal
+/// priority the timer's slices alternate the two (TST-M2-PREEMPT): `pred` is polled all along.
+fn hold_wait(deadline: u64, mut pred: impl FnMut() -> bool) -> bool {
+    loop {
+        if pred() {
+            return true;
+        }
+        if sched::ticks() >= deadline {
+            return false;
+        }
+        if !sched::yield_now() {
+            context::idle_wait();
+        }
+    }
+}
+
+/// Reads the next message on `ep` until `deadline`; `None` on a timeout or a closed peer.
+fn hold_recv(ep: &Endpoint, deadline: u64) -> Option<Message> {
+    let mut got = None;
+    hold_wait(deadline, || {
+        match ep.read(channel::MSG_MAX_BYTES, channel::MSG_MAX_HANDLES, None) {
+            Ok(m) => {
+                got = Some(m);
+                true
+            }
+            Err(ChannelError::PeerClosed) => true,
+            Err(_) => false,
+        }
+    });
+    got
+}
+
+/// A request to the compositor as an application, answered by `deadline` (events that come
+/// first go to `events`); `error:K_E_SVC_TIMEOUT` past it.
+fn hold_request(
+    ep: &Endpoint,
+    req: &[u8],
+    handles: Vec<Entry>,
+    events: &mut Vec<String>,
+    deadline: u64,
+) -> String {
+    let msg = Message {
+        bytes: req.to_vec(),
+        handles,
+    };
+    if ep.write(msg).is_err() {
+        return String::from("error:K_E_SVC_WRITE");
+    }
+    loop {
+        match hold_recv(ep, deadline) {
+            Some(m) => {
+                let text = String::from_utf8_lossy(&m.bytes).into_owned();
+                if text.starts_with("OK") || text.starts_with("ERR") {
+                    return text;
+                }
+                events.push(text);
+            }
+            None if sched::ticks() >= deadline => return String::from("error:K_E_SVC_TIMEOUT"),
+            None => return String::from("error:K_E_SVC_PEER_CLOSED"),
+        }
+    }
+}
+
+/// The substitute manager's side of one compositor start-up: a fresh /SYSTEM/DISPLAYD.ELF with
+/// the boot channel and the display as its first two handles (as the manager hands them,
+/// services.md), `START`, then `CONNECT input` answered with a channel the test keeps (the
+/// fake input service, which must see `REGISTER display`); then `answer` goes back for `LIST`
+/// — or, with `None`, the boot channel is closed instead. When the compositor says READY, the
+/// test connects as an application (`CONNECT app` with the server end, as the manager hands
+/// clients), asks `HOLDS`, creates a window and sends two key events on the fake input
+/// channel; the keys the compositor counted and those that reached the application are
+/// recorded. Last, `STOP`. Every wait is bounded (`HOLD_BUDGET`, `HOLD_REQUEST`, `HOLD_STOP`):
+/// a step that times out is recorded as `error:K_E_STUCK_<step>` or `error:K_E_SVC_TIMEOUT`,
+/// and a compositor that has not ended after `STOP` is killed (EXIT_KILLED), so a jammed
+/// compositor costs the sub-case its verdict, never the run. `inj` adds WP-77's injections
+/// (`HoldInject`; `HOLD_PLAIN` for none) and names the test whose lines are printed.
+fn hold_run(case: &str, image: &[u8], answer: Option<&[u8]>, inj: &HoldInject) -> HoldCase {
+    let display = crate::display::display_object().unwrap_or_else(|| fail("no display object"));
+    let chan_entry = |ep: Arc<Endpoint>| Entry {
+        object: Object::Channel(ep),
+        rights: Rights::CHANNEL_DEFAULT,
+    };
+    let note = |bytes: &[u8]| Message {
+        bytes: bytes.to_vec(),
+        handles: Vec::new(),
+    };
+    let (ours, theirs) = channel::create();
+    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let initial = alloc::vec![
+        chan_entry(theirs),
+        Entry {
+            object: Object::Display(display),
+            rights: Rights::DISPLAY_DEFAULT,
+        },
+    ];
+    let pid = match crate::user::spawn_elf_with(image, 1, initial, object.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!(
+                "OSX|{}|ktest|{}|case={}|error={}",
+                BUILD_ID,
+                inj.test,
+                case,
+                e.code()
+            );
+            fail("the compositor did not load")
+        }
+    };
+    let budget = sched::ticks() + HOLD_BUDGET;
+    let within = |cap: u64| (sched::ticks() + cap).min(budget);
+    let mut out = HoldCase {
+        holds: String::from("-"),
+        window: String::from("-"),
+        keys_in: -1,
+        keys_at_client: -1,
+        exit: u64::MAX,
+        ready: false,
+        pong: -1,
+    };
+    let (input, input_far) = channel::create();
+    let (client, client_far) = channel::create();
+    let mut ev = Vec::new();
+    let mut surface = None;
+    // The start-up, up to LIST; the first step that does not happen in time names the sub-case.
+    let stuck = if ours.write(note(b"START")).is_err() {
+        Some("start")
+    } else if !hold_recv(&ours, budget).is_some_and(|m| m.bytes == b"CONNECT input") {
+        Some("connect_input")
+    } else if inj.stop_at_connect {
+        None
+    } else if ours
+        .write(Message {
+            bytes: b"OK".to_vec(),
+            handles: alloc::vec![chan_entry(input_far)],
+        })
+        .is_err()
+    {
+        Some("input_answer")
+    } else if !hold_recv(&input, budget).is_some_and(|m| m.bytes == b"REGISTER display") {
+        Some("register")
+    } else if !hold_recv(&ours, budget).is_some_and(|m| m.bytes == b"LIST") {
+        // The fonts load between the registration and LIST (display.md, text.md §1).
+        Some("list")
+    } else {
+        None
+    };
+    let mut ours = Some(ours);
+    if let Some(step) = stuck {
+        kprintln!(
+            "OSX|{}|ktest|{}|case={}|stuck_at={}",
+            BUILD_ID,
+            inj.test,
+            case,
+            step
+        );
+        out.holds = alloc::format!("error:K_E_STUCK_{}", step);
+    } else if inj.stop_at_connect {
+        // STOP in place of the CONNECT input answer: no READY may follow, only the end.
+        let boot = ours.as_ref().expect("boot channel kept");
+        out.ready = boot.write(note(b"STOP")).is_ok()
+            && hold_recv(boot, budget).is_some_and(|m| m.bytes == b"READY");
+    } else if let Some(answer) = answer {
+        let boot = ours.as_ref().expect("boot channel kept");
+        let sent = inj
+            .before_answer
+            .is_none_or(|m| boot.write(note(m)).is_ok())
+            && boot.write(note(answer)).is_ok();
+        let ready = sent && hold_recv(boot, within(10_000)).is_some_and(|m| m.bytes == b"READY");
+        out.ready = ready;
+        if ready && !inj.answer_ends {
+            // After READY: the injected message, then the watchdog's PING (services.md v1.7).
+            let injected = inj.after_ready.is_none_or(|m| boot.write(note(m)).is_ok());
+            if inj.ping {
+                out.pong = i64::from(
+                    injected
+                        && boot.write(note(b"PING")).is_ok()
+                        && hold_recv(boot, within(HOLD_REQUEST))
+                            .is_some_and(|m| m.bytes == b"PONG"),
+                );
+            }
+        }
+        let connect = Message {
+            bytes: b"CONNECT app".to_vec(),
+            handles: alloc::vec![chan_entry(client_far)],
+        };
+        out.holds = if inj.answer_ends {
+            // The answer was the last word: no CONNECT, no STOP; the compositor ends by itself.
+            String::from("-")
+        } else if !ready {
+            String::from("error:K_E_STUCK_ready")
+        } else if boot.write(connect).is_err() {
+            String::from("error:K_E_SVC_WRITE")
+        } else {
+            hold_request(&client, b"HOLDS", Vec::new(), &mut ev, within(HOLD_REQUEST))
+        };
+    } else {
+        // Branch (2): the channel closes with LIST unanswered; READY cannot be said (0xE6).
+        drop(ours.take());
+        hold_wait(budget, || object.exit_code().is_some());
+    }
+    if out.holds.starts_with("OK ") {
+        let status = hold_request(
+            &client,
+            b"STATUS",
+            Vec::new(),
+            &mut ev,
+            within(HOLD_REQUEST),
+        );
+        let format: u32 = status_field(&status, "format=").parse().unwrap_or(1);
+        let (vmo, entry) = kernel_surface(64, 48, format, 0x3366CC);
+        surface = Some(vmo);
+        let r = hold_request(
+            &client,
+            b"CREATE_SURFACE 64 48",
+            alloc::vec![entry],
+            &mut ev,
+            within(HOLD_REQUEST),
+        );
+        let sid = String::from(r.strip_prefix("OK ").unwrap_or("0"));
+        out.window = hold_request(
+            &client,
+            alloc::format!("CREATE_WINDOW {} hold", sid).as_bytes(),
+            Vec::new(),
+            &mut ev,
+            within(HOLD_REQUEST),
+        );
+        // Two key events from the fake input service (input.md's `KEY` form). The compositor
+        // forwards a key to the focused window's owner as it counts it, so once `KEYS` says 2
+        // any forwarded key is already queued ahead of that reply on the client's channel.
+        for k in [&b"KEY 0x1e down 0 a"[..], &b"KEY 0x1e up 0 a"[..]] {
+            let _ = input.write(note(k));
+        }
+        let keys_by = within(HOLD_REQUEST);
+        loop {
+            let r = hold_request(&client, b"KEYS", Vec::new(), &mut ev, keys_by);
+            out.keys_in = r
+                .strip_prefix("OK ")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(-1);
+            if out.keys_in >= 2 || !r.starts_with("OK") || sched::ticks() >= keys_by {
+                break;
+            }
+            hold_wait((sched::ticks() + 20).min(keys_by), || false);
+        }
+        while let Ok(m) = client.read(channel::MSG_MAX_BYTES, channel::MSG_MAX_HANDLES, None) {
+            ev.push(String::from_utf8_lossy(&m.bytes).into_owned());
+        }
+        out.keys_at_client = ev.iter().filter(|e| e.starts_with("KEY ")).count() as i64;
+    }
+    if let Some(boot) = ours
+        .as_ref()
+        .filter(|_| !inj.answer_ends && !inj.stop_at_connect)
+    {
+        let _ = boot.write(note(b"STOP"));
+    }
+    if !hold_wait(sched::ticks() + HOLD_STOP, || object.exit_code().is_some()) {
+        // A compositor that left an oversized message at the head of its boot channel (the
+        // fault before v1.12) never reads STOP; one stuck in its start-up never got that far.
+        sched::kill_process(pid, crate::syscall::EXIT_KILLED);
+        hold_wait(sched::ticks() + HOLD_STOP, || object.exit_code().is_some());
+    }
+    out.exit = object.exit_code().unwrap_or(u64::MAX);
+    drop((client, input, ours, ev, surface, object));
+    out
+}
+
+/// TST-M6-HOLD-FAIL-CLOSED (REQ-M6-002, display.md v1.12): the compositor's hold fails
+/// closed. The test kernel plays the service manager for a fresh /SYSTEM/DISPLAYD.ELF per
+/// sub-case and answers its `LIST`: (a) `reply` — with `ERR TEST`; (b) `too_long` — with 2000
+/// bytes (a `display` line, no `session` line) that cannot fit the compositor's 1024-byte
+/// buffer; (c) `closed` — by closing the boot channel; (d) `manifest` — with a listing naming
+/// `display` and no `session` (starts unheld, v1.2, and a key reaches the application, which
+/// shows the key check can see one), then one naming `session` too (starts held). In (a) and
+/// (b) the screen must start held (`HOLDS` → `OK locked=1 releases=0`) and no key may reach
+/// the application; in (c) the compositor exits 0xE6. The compositor's own trace line
+/// (`display|hold|…`) is on the serial log before each sub-case's line; the host checks it.
+/// Every compositor is gone at the end, with the object and frame balance restored.
+fn hold_fail_closed() -> ! {
+    let name = "hold_fail_closed";
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    // The display object is created once and kept by the kernel; take it before the balance.
+    if crate::display::display_object().is_none() {
+        fail("no display object (firmware left no linear frame buffer)")
+    }
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let image = match crate::loader::read_image(b"/SYSTEM/DISPLAYD.ELF") {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
+            fail("the compositor's image is not on the volume")
+        }
+    };
+    // (b): longer than the compositor's 1024-byte buffer, shorter than a message's 4096.
+    let mut long = Vec::from(&b"display ready 0 1 1 - -\n"[..]);
+    let mut k = 0;
+    while long.len() < 2000 {
+        long.extend_from_slice(alloc::format!("fill{:02} ready 0 1 1 - -\n", k).as_bytes());
+        k += 1;
+    }
+    let reply = hold_run("reply", &image, Some(b"ERR TEST"), &HOLD_PLAIN);
+    let reply_ok = reply.held();
+    kprintln!(
+        "OSX|{}|ktest|{}|case=reply|holds={}|keys={}|keys_in={}|window={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        reply.holds,
+        reply.keys_at_client,
+        reply.keys_in,
+        reply.window,
+        reply.exit,
+        u8::from(reply_ok)
+    );
+    drop(reply);
+    let too_long = hold_run("too_long", &image, Some(&long), &HOLD_PLAIN);
+    let too_long_ok = too_long.held();
+    kprintln!(
+        "OSX|{}|ktest|{}|case=too_long|holds={}|keys={}|keys_in={}|window={}|bytes={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        too_long.holds,
+        too_long.keys_at_client,
+        too_long.keys_in,
+        too_long.window,
+        long.len(),
+        too_long.exit,
+        u8::from(too_long_ok)
+    );
+    drop((too_long, long));
+    let closed = hold_run("closed", &image, None, &HOLD_PLAIN);
+    let closed_ok = closed.exit == 0xE6;
+    kprintln!(
+        "OSX|{}|ktest|{}|case=closed|holds=none_no_ready|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        closed.exit,
+        u8::from(closed_ok)
+    );
+    drop(closed);
+    let open = hold_run(
+        "manifest",
+        &image,
+        Some(b"auth ready 0 1 1 - -\ninput ready 0 1 1 - -\ndisplay ready 0 1 1 - -\n"),
+        &HOLD_PLAIN,
+    );
+    let held = hold_run(
+        "manifest_session",
+        &image,
+        Some(b"auth ready 0 1 1 - -\ninput ready 0 1 1 - -\ndisplay ready 0 1 1 - -\nsession starting 0 1 - - -\n"),
+        &HOLD_PLAIN,
+    );
+    let open_ok = open.holds == "OK locked=0 releases=0"
+        && open.window.starts_with("OK ")
+        && open.keys_in == 2
+        && open.keys_at_client == 2
+        && open.exit == 0;
+    let manifest_ok = open_ok && held.held();
+    kprintln!(
+        "OSX|{}|ktest|{}|case=manifest|locked={}|locked_with_session={}|keys={}|keys_with_session={}|exit={:#x}:{:#x}|ok={}",
+        BUILD_ID,
+        name,
+        status_field(&open.holds, "locked="),
+        status_field(&held.holds, "locked="),
+        open.keys_at_client,
+        held.keys_at_client,
+        open.exit,
+        held.exit,
+        u8::from(manifest_ok)
+    );
+    drop((open, held, image));
+    // Every compositor has ended; its handles and the process objects go a few ticks later.
+    let gone = sched::poll_until(sched::ticks() + 1000, || sched::stats().processes == 0);
+    let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|{}|failed={}{}{}{}|processes_after={}|clean={}|frames_delta={}",
+        BUILD_ID,
+        name,
+        if reply_ok { "" } else { "reply," },
+        if too_long_ok { "" } else { "too_long," },
+        if closed_ok { "" } else { "closed," },
+        if manifest_ok { "" } else { "manifest," },
+        procs,
+        u8::from(gone && settled),
+        frames
+    );
+    if !reply_ok || !too_long_ok {
+        fail("the screen did not start held after a failed LIST (display.md v1.12)")
+    }
+    if !closed_ok {
+        fail("the compositor did not exit 0xE6 when its boot channel closed before LIST was answered")
+    }
+    if !manifest_ok {
+        fail("a listing decided the hold wrongly (display.md v1.2: no session, unheld; session, held)")
+    }
+    if !gone || procs != 0 || !settled || frames != 0 {
+        fail("the compositors left a process, an object or a frame behind")
+    }
+    pass("a LIST the compositor cannot have starts the screen held; a listing still decides it as before")
+}
+
+// ---- WP-77: the compositor's boot channel keeps serving ---------------------------------------
+
+/// TST-M6-DISPLAYD-BOOT-LOOP (REQ-M6-002, display.md v1.13): the compositor's boot channel
+/// keeps serving the manager. As in `hold_fail_closed`, the test kernel plays the manager for a
+/// fresh /SYSTEM/DISPLAYD.ELF per sub-case and answers `LIST` with a listing naming `display`
+/// and no `session` (unheld): (a) `control` — nothing injected; after READY a `PING` is answered
+/// `PONG`, an application connects (`HOLDS` → `OK locked=0 releases=0`) and `STOP` ends it 0;
+/// (b) `too_long_msg` — after READY a 200-byte message, longer than the compositor's 64-byte
+/// boot buffer: it must be discarded (`display|boot|discard=too_long`) and the `PING`, the
+/// `CONNECT` and the `STOP` behind it still served; before v1.13 the message stayed at the head
+/// of the queue and the loop spun on it, so nothing behind it was read and the compositor had
+/// to be killed (EXIT_KILLED); (c) `stop_first` — `STOP` in place of the listing: the compositor
+/// exits 0 without READY (`display|boot|stop=before_ready`); before v1.13 it took the STOP for a
+/// failed LIST, said READY and never ended; (d) `ping_first` — a `PING` before the listing: it
+/// is ignored while LIST waits (no PONG before READY) and the listing still decides the hold
+/// (locked=0); before v1.13 the PING was taken for the LIST answer and the screen held; (e)
+/// `stop_at_connect` — `STOP` in place of the `CONNECT input` answer: the compositor exits 0
+/// without READY (the same stop trace); before v1.13 it exited 0xE5. Every
+/// compositor is gone at the end, with the object and frame balance restored.
+fn displayd_boot_loop() -> ! {
+    let name = "displayd_boot_loop";
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    if crate::display::display_object().is_none() {
+        fail("no display object (firmware left no linear frame buffer)")
+    }
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let image = match crate::loader::read_image(b"/SYSTEM/DISPLAYD.ELF") {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
+            fail("the compositor's image is not on the volume")
+        }
+    };
+    let listing = &b"auth ready 0 1 1 - -\ninput ready 0 1 1 - -\ndisplay ready 0 1 1 - -\n"[..];
+    let plain = HoldInject {
+        test: name,
+        before_answer: None,
+        answer_ends: false,
+        after_ready: None,
+        ping: true,
+        stop_at_connect: false,
+    };
+    let unheld = |c: &HoldCase| c.holds == "OK locked=0 releases=0" && c.exit == 0;
+    let control = hold_run("control", &image, Some(listing), &plain);
+    let control_ok = control.ready && control.pong == 1 && unheld(&control);
+    kprintln!(
+        "OSX|{}|ktest|{}|case=control|ready={}|pong={}|holds={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        u8::from(control.ready),
+        control.pong,
+        control.holds,
+        control.exit,
+        u8::from(control_ok)
+    );
+    drop(control);
+    // (b): longer than the boot buffer (64 bytes), far shorter than a message's 4096.
+    let mut long = Vec::from(&b"NOTICE "[..]);
+    long.resize(200, b'x');
+    let too_long = hold_run(
+        "too_long_msg",
+        &image,
+        Some(listing),
+        &HoldInject {
+            after_ready: Some(&long),
+            ..plain
+        },
+    );
+    let too_long_ok = too_long.ready && too_long.pong == 1 && unheld(&too_long);
+    kprintln!(
+        "OSX|{}|ktest|{}|case=too_long_msg|bytes={}|ready={}|pong={}|holds={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        long.len(),
+        u8::from(too_long.ready),
+        too_long.pong,
+        too_long.holds,
+        too_long.exit,
+        u8::from(too_long_ok)
+    );
+    drop((too_long, long));
+    let stop_first = hold_run(
+        "stop_first",
+        &image,
+        Some(b"STOP"),
+        &HoldInject {
+            answer_ends: true,
+            ping: false,
+            ..plain
+        },
+    );
+    let stop_first_ok = !stop_first.ready && stop_first.exit == 0;
+    kprintln!(
+        "OSX|{}|ktest|{}|case=stop_first|ready={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        u8::from(stop_first.ready),
+        stop_first.exit,
+        u8::from(stop_first_ok)
+    );
+    drop(stop_first);
+    let ping_first = hold_run(
+        "ping_first",
+        &image,
+        Some(listing),
+        &HoldInject {
+            before_answer: Some(b"PING"),
+            ping: false,
+            ..plain
+        },
+    );
+    let ping_first_ok = ping_first.ready && unheld(&ping_first);
+    kprintln!(
+        "OSX|{}|ktest|{}|case=ping_first|ready={}|holds={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        u8::from(ping_first.ready),
+        ping_first.holds,
+        ping_first.exit,
+        u8::from(ping_first_ok)
+    );
+    drop(ping_first);
+    let stop_at_connect = hold_run(
+        "stop_at_connect",
+        &image,
+        None,
+        &HoldInject {
+            ping: false,
+            stop_at_connect: true,
+            ..plain
+        },
+    );
+    let stop_at_connect_ok = !stop_at_connect.ready && stop_at_connect.exit == 0;
+    kprintln!(
+        "OSX|{}|ktest|{}|case=stop_at_connect|ready={}|exit={:#x}|ok={}",
+        BUILD_ID,
+        name,
+        u8::from(stop_at_connect.ready),
+        stop_at_connect.exit,
+        u8::from(stop_at_connect_ok)
+    );
+    drop((stop_at_connect, image));
+    let gone = sched::poll_until(sched::ticks() + 1000, || sched::stats().processes == 0);
+    let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|{}|failed={}{}{}{}{}|processes_after={}|frames_delta={}|clean={}",
+        BUILD_ID,
+        name,
+        if control_ok { "" } else { "control," },
+        if too_long_ok { "" } else { "too_long_msg," },
+        if stop_first_ok { "" } else { "stop_first," },
+        if ping_first_ok { "" } else { "ping_first," },
+        if stop_at_connect_ok {
+            ""
+        } else {
+            "stop_at_connect,"
+        },
+        procs,
+        frames,
+        u8::from(gone && settled)
+    );
+    if !control_ok {
+        fail("the compositor did not serve PING, CONNECT and STOP on its boot channel")
+    }
+    if !too_long_ok {
+        fail("a boot message longer than the buffer stopped the compositor's boot channel (display.md v1.13)")
+    }
+    if !stop_first_ok {
+        fail("a STOP before the LIST answer did not end the compositor without READY (display.md v1.13)")
+    }
+    if !ping_first_ok {
+        fail("a PING before the LIST answer was taken for the answer (display.md v1.13)")
+    }
+    if !stop_at_connect_ok {
+        fail("a STOP before the CONNECT input answer did not end the compositor without READY (display.md v1.13)")
+    }
+    if !gone || procs != 0 || !settled || frames != 0 {
+        fail("the compositors left a process, an object or a frame behind")
+    }
+    pass("the compositor's boot channel discards what does not fit, and STOP or PING before LIST are not taken for its answer")
+}
+
+/// Writes `data` as the whole of `path` on the volume (the test kernel writes through the VFS
+/// directly; the system-files authority is checked at the syscall layer, not here).
+fn manifest_write(path: &[u8], data: &[u8]) -> bool {
+    use crate::fs::vfs;
+    vfs::open(path, vfs::O_WRITE | vfs::O_CREATE | vfs::O_TRUNCATE)
+        .and_then(|f| vfs::write(&f, data))
+        .is_ok_and(|n| n == data.len())
+}
+
+/// A manifest of exactly `size` bytes: one service line (`A`, the test service) and comment
+/// lines up to the size, so a prefix of it still parses as one service.
+fn manifest_of(size: usize) -> Vec<u8> {
+    let mut v = Vec::from(&b"A /SYSTEM/SVC.ELF - 200 never 0 0 ready\n"[..]);
+    while v.len() < size {
+        v.extend_from_slice(b"# padding to the manifest limit (services.md v1.13, WP-68) ......\n");
+    }
+    v.truncate(size);
+    if let Some(last) = v.last_mut() {
+        *last = b'\n';
+    }
+    v
+}
+
+/// TST-M6-MANIFEST-TOO-LARGE (negative; services.md v1.13, WP-68): a manifest the manager cannot
+/// read whole is refused whole. The test kernel writes /SYSTEM/BIGMAN.TXT at run time and a real
+/// manager (SvcHarness) loads it: 4097 and 4096 bytes answer `ERR MANIFEST_TOO_LARGE`, 4095 bytes
+/// (the largest accepted) `OK 1`; a read that fails midway (the ktest read hook in fs/vfs.rs, armed
+/// for one file size) answers `ERR MANIFEST_IO`. A refused file starts nothing (LIST empty) and
+/// the refused LOAD does not count (a second LOAD is answered on its own, not `ERR LOADED`).
+fn manifest_too_large() -> ! {
+    use crate::fs::vfs;
+    let name = "manifest_too_large";
+    const PATH: &[u8] = b"/SYSTEM/BIGMAN.TXT";
+    const IO_SIZE: usize = 3001;
+    const IO_AT: u64 = 1024;
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    // The largest file first, so the balance below is taken after the volume code warmed up.
+    if !manifest_write(PATH, &manifest_of(4097)) {
+        fail("could not write /SYSTEM/BIGMAN.TXT")
+    }
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    // A verdict per sub-case, no string: the frame balance below must not see the test's own heap.
+    let mut verdict = [false; 4];
+    for (k, (case, size)) in [
+        ("4097", 4097usize),
+        ("4096", 4096),
+        ("4095", 4095),
+        ("io", IO_SIZE),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if size != 4097 && !manifest_write(PATH, &manifest_of(size)) {
+            fail("could not rewrite /SYSTEM/BIGMAN.TXT")
+        }
+        if case == "io" {
+            vfs::arm_read_fault(IO_SIZE as u32, IO_AT);
+        }
+        let h = SvcHarness::start(name, PATH);
+        let fired = case == "io" && !vfs::read_fault_armed();
+        vfs::disarm_read_fault();
+        let reply = h.load_reply.clone();
+        let (line, ok) = if case == "4095" {
+            let lines = h.poll_list(sched::ticks() + 1000, |l| {
+                l.len() == 1 && l[0].state == "ready"
+            });
+            let ready = lines.len() == 1 && lines[0].name == "A" && lines[0].state == "ready";
+            let ok = reply == "OK 1" && ready;
+            (
+                alloc::format!(
+                    "case={}|reply={}|ready={}",
+                    case,
+                    crate::services::reply_field(&reply),
+                    u8::from(ready)
+                ),
+                ok,
+            )
+        } else {
+            let lines = h.poll_list(sched::ticks(), |_| true);
+            let list = SvcHarness::list_text(&lines);
+            let again = match crate::services::request(
+                &h.m.ctl,
+                b"LOAD /SYSTEM/NONE.TXT",
+                sched::ticks() + 500,
+            ) {
+                Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+                Err(e) => e.into(),
+            };
+            let want = if case == "io" {
+                "ERR MANIFEST_IO"
+            } else {
+                "ERR MANIFEST_TOO_LARGE"
+            };
+            let ok = reply == want
+                && lines.is_empty()
+                && again == "ERR MANIFEST_MISSING"
+                && (case != "io" || fired);
+            (
+                alloc::format!(
+                    "case={}|reply={}|list={}|again={}|fired={}",
+                    case,
+                    crate::services::reply_field(&reply),
+                    list,
+                    crate::services::reply_field(&again),
+                    u8::from(fired)
+                ),
+                ok,
+            )
+        };
+        let (mgr_exit, procs, _, clean) = h.finish();
+        let ok = ok && mgr_exit == 0 && procs == 0 && clean;
+        kprintln!(
+            "OSX|{}|ktest|{}|{}|bytes={}|mgr_exit={:#x}|ok={}",
+            BUILD_ID,
+            name,
+            line,
+            size,
+            mgr_exit,
+            u8::from(ok)
+        );
+        verdict[k] = ok;
+    }
+    let removed = vfs::unlink(PATH).is_ok();
+    let gone = sched::poll_until(sched::ticks() + 1000, || sched::stats().processes == 0);
+    let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|{}|failed={}{}{}{}|processes_after={}|frames_delta={}|clean={}|removed={}",
+        BUILD_ID,
+        name,
+        if verdict[0] { "" } else { "4097," },
+        if verdict[1] { "" } else { "4096," },
+        if verdict[2] { "" } else { "4095," },
+        if verdict[3] { "" } else { "io," },
+        procs,
+        frames,
+        u8::from(gone && settled),
+        u8::from(removed)
+    );
+    if verdict.contains(&false) {
+        fail(
+            "a manifest the manager could not read whole was not refused whole (services.md v1.13)",
+        )
+    }
+    if !gone || procs != 0 || !settled || frames != 0 || !removed {
+        fail("the managers left a process, an object or a frame behind, or the file stayed")
+    }
+    pass("a manifest of 4096 bytes or more, or one whose read fails, is refused whole; 4095 bytes load")
+}
+
+/// TST-M6-LOAD-OUTSIDE-SYSTEM (negative; services.md v1.13, WP-68): `LOAD` reads only under
+/// `/SYSTEM/`. One real manager: `LOAD /OUTSIDE.TXT` (a valid manifest written at run time) and
+/// `LOAD /SYSTEM/../OUTSIDE.TXT` answer `ERR ACCESS` and start nothing; a dependency name the
+/// grammar refuses (`a|b`) is a syntax error, not an echoed name; none of the three counts, so
+/// `LOAD /SYSTEM/SVC-ORD.TXT` then answers `OK 3`. The kernel's boot verdict wants `OK <n>` with
+/// n >= 1 for the interactive manifest and escapes `|`, `\` and control bytes in its trace field.
+fn load_outside_system() -> ! {
+    use crate::fs::vfs;
+    let name = "load_outside_system";
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    if !manifest_write(
+        b"/OUTSIDE.TXT",
+        b"A /SYSTEM/SVC.ELF - 200 never 0 0 ready\n",
+    ) || !manifest_write(
+        b"/SYSTEM/BADDEP.TXT",
+        b"A /SYSTEM/SVC.ELF a|b 200 never 0 0 ready\n",
+    ) {
+        fail("could not write the test manifests")
+    }
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let h = SvcHarness::start(name, b"/OUTSIDE.TXT");
+    let lines = h.poll_list(sched::ticks() + 100, |l| !l.is_empty());
+    let outside = h.load_reply.clone();
+    let outside_ok = outside == "ERR ACCESS" && lines.is_empty();
+    kprintln!(
+        "OSX|{}|ktest|{}|case=outside|reply={}|started={}|ok={}",
+        BUILD_ID,
+        name,
+        crate::services::reply_field(&outside),
+        lines.len(),
+        u8::from(outside_ok)
+    );
+    drop(lines);
+    let load = |path: &[u8]| -> String {
+        match crate::services::request(
+            &h.m.ctl,
+            &crate::services::load_request(path),
+            sched::ticks() + 500,
+        ) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => e.into(),
+        }
+    };
+    let dotdot = load(b"/SYSTEM/../OUTSIDE.TXT");
+    let lines = h.poll_list(sched::ticks(), |_| true);
+    let dotdot_ok = dotdot == "ERR ACCESS" && lines.is_empty();
+    kprintln!(
+        "OSX|{}|ktest|{}|case=dotdot|reply={}|started={}|ok={}",
+        BUILD_ID,
+        name,
+        crate::services::reply_field(&dotdot),
+        lines.len(),
+        u8::from(dotdot_ok)
+    );
+    drop(lines);
+    let dep = load(b"/SYSTEM/BADDEP.TXT");
+    let dep_ok = dep == "ERR MANIFEST_SYNTAX 1";
+    kprintln!(
+        "OSX|{}|ktest|{}|case=dep_name|reply={}|ok={}",
+        BUILD_ID,
+        name,
+        crate::services::reply_field(&dep),
+        u8::from(dep_ok)
+    );
+    let ord = load(b"/SYSTEM/SVC-ORD.TXT");
+    let lines = h.poll_list(sched::ticks() + 1000, |l| {
+        l.len() == 3 && l.iter().all(|x| x.state == "ready")
+    });
+    let ord_ok = ord == "OK 3" && lines.len() == 3 && lines.iter().all(|x| x.state == "ready");
+    kprintln!(
+        "OSX|{}|ktest|{}|case=system|reply={}|ready={}|ok={}",
+        BUILD_ID,
+        name,
+        crate::services::reply_field(&ord),
+        lines.iter().filter(|x| x.state == "ready").count(),
+        u8::from(ord_ok)
+    );
+    drop(lines);
+    let (mgr_exit, procs, _, clean) = h.finish();
+    // The kernel's boot verdict and trace field (services.rs), on fixed replies.
+    use crate::services::{boot_reply_ok, reply_field};
+    let interactive_ok0 = boot_reply_ok(true, "OK 0");
+    let selftest_ok0 = boot_reply_ok(false, "OK 0");
+    let interactive_ok8 = boot_reply_ok(true, "OK 8");
+    let bad_ok = boot_reply_ok(false, "OK x") || boot_reply_ok(true, "OK ");
+    let escaped = reply_field("ERR MANIFEST_UNKNOWN_DEP a|b\\\u{1b}\n")
+        == "ERR MANIFEST_UNKNOWN_DEP a\\x7cb\\x5c\\x1b;";
+    let boot_ok = !interactive_ok0 && selftest_ok0 && interactive_ok8 && !bad_ok && escaped;
+    kprintln!(
+        "OSX|{}|ktest|{}|case=boot_reply|interactive_ok0={}|selftest_ok0={}|interactive_ok8={}|bad_ok={}|escaped={}|ok={}",
+        BUILD_ID,
+        name,
+        u8::from(interactive_ok0),
+        u8::from(selftest_ok0),
+        u8::from(interactive_ok8),
+        u8::from(bad_ok),
+        u8::from(escaped),
+        u8::from(boot_ok)
+    );
+    let all_ok = outside_ok && dotdot_ok && dep_ok && ord_ok && boot_ok;
+    let manager_ok = mgr_exit == 0 && procs == 0 && clean;
+    drop((outside, dotdot, dep, ord));
+    let removed =
+        vfs::unlink(b"/OUTSIDE.TXT").is_ok() && vfs::unlink(b"/SYSTEM/BADDEP.TXT").is_ok();
+    let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|{}|failed={}{}{}{}{}|processes_after={}|frames_delta={}|clean={}|mgr_exit={:#x}|removed={}",
+        BUILD_ID,
+        name,
+        if outside_ok { "" } else { "outside," },
+        if dotdot_ok { "" } else { "dotdot," },
+        if dep_ok { "" } else { "dep_name," },
+        if ord_ok { "" } else { "system," },
+        if boot_ok { "" } else { "boot_reply," },
+        procs,
+        frames,
+        u8::from(manager_ok && settled),
+        mgr_exit,
+        u8::from(removed)
+    );
+    if !all_ok {
+        fail("LOAD read or started something outside /SYSTEM/, or a refused LOAD counted (services.md v1.13)")
+    }
+    if !manager_ok || !settled || procs != 0 || frames != 0 || !removed {
+        fail("the manager left a process, an object or a frame behind, or a file stayed")
+    }
+    pass("LOAD outside /SYSTEM/ is refused with ERR ACCESS and starts nothing; LOAD under /SYSTEM/ still loads")
+}
+
+/// TST-M6-TOKEN-REVOKE (negative; auth.md v1.2, session.md v1.7 §5, WP-73): the session's
+/// auth token dies with the session service. SVC-SS.TXT; the test first logs `user` in on its
+/// own connection to `auth` and closes that connection at once, as `sh` does
+/// (user/apps/sh/src/main.rs:362-374), keeping the token; the lab then signs in to the session
+/// (`admin`). The live session process is frozen and the manager's STOP finds it unresponsive
+/// and kills it (`process_kill` → `sched::kill_process`, EXIT_KILLED): a crash, no code of the
+/// session runs after the freeze. Then `auth` must have revoked and closed the token it minted
+/// for the client named `session` — the kernel's count of live tokens returns to its value
+/// before the lab's sign-in (the session's handles died with its process; only `auth`'s could
+/// keep it alive) — while the sh-like token, whose connection closed long before, still
+/// answers `WHOAMI` with its identity. Each part prints its verdict and the case goes on after
+/// a failed one, so a red run shows every part; waits are bounded and compete at the test
+/// thread's own priority (`hold_wait`).
+fn token_revoke() -> ! {
+    const EXIT_KILLED: u64 = 0x2_0000;
+    let name = "token_revoke";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-SS.TXT",
+        &["auth", "input", "display", "session", "spy"],
+    );
+    let tokens = || i64::from(object::stats().tokens);
+    let base = tokens();
+    kprintln!("OSX|{}|ktest|token_revoke|services=5|ready=1", BUILD_ID);
+    let within = |t: u64| sched::ticks() + t;
+    // Bounded so that a red run still prints every verdict inside the lab's 85 s: the sh-like
+    // login and the lab's sign-in share 35 s, then at most 5 s each for the kill, the count
+    // and WHOAMI (WP-73 audit #11).
+    let unlock_by = within(35_000);
+    let mut ev = Vec::new();
+    // Part 1: an sh-like client logs in, keeps the token, and closes its connection.
+    let sh_auth = svc_connect(&h, "auth");
+    let (sh_login, sh_token) = auth_request(&sh_auth, b"LOGIN user lab-user-1", None);
+    drop(sh_auth);
+    let sh_ok = sh_login == "OK 1001 1001 8" && sh_token.is_some();
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|sh_login={}|sh_token={}|phase=1",
+        BUILD_ID,
+        sh_login,
+        u8::from(sh_token.is_some())
+    );
+    // Part 2: the lab signs in to the session; its token is minted by `auth` for `session`.
+    let unlocked = loop {
+        let r = hold_request(
+            &session,
+            b"STATE",
+            Vec::new(),
+            &mut ev,
+            within(5000).min(unlock_by),
+        );
+        if (state_is(&r, "unlocked", 1) && r.ends_with(" focus=display"))
+            || sched::ticks() >= unlock_by
+        {
+            break r;
+        }
+        hold_wait(within(20).min(unlock_by), || false);
+    };
+    let signed_in = tokens() - base;
+    let unlocked_ok = state_is(&unlocked, "unlocked", 1) && unlocked.ends_with(" focus=display");
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|unlocked={}|tokens={}|phase=2",
+        BUILD_ID,
+        unlocked,
+        signed_in
+    );
+    // Part 3: the session process is frozen, then killed by the manager's STOP. The session must
+    // be idle (blocked) when it is frozen: freezing only stops wake-ups (sched::freeze_named), so
+    // nothing may wake it first; the test's own channel to it is closed only after the freeze.
+    // Closing it before woke the session, which then read STOP and exited 0 (CI run 42747260620,
+    // WP-73, 2026-11-10).
+    hold_wait(within(500), || false);
+    let frozen = sched::freeze_named(b"SESSIOND.ELF");
+    drop(session);
+    let stop = match crate::services::request(&h.m.ctl, b"STOP session", within(500)) {
+        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+        Err(e) => String::from(e),
+    };
+    let mut lines = Vec::new();
+    let stopped = hold_wait(within(5000), || {
+        lines = match crate::services::request(&h.m.ctl, b"LIST", within(200)) {
+            Ok(b) => parse_list(&b),
+            Err(_) => Vec::new(),
+        };
+        svc_find(&lines, "session").state == "stopped"
+    });
+    let gone = svc_find(&lines, "session");
+    let killed = stopped && gone.exit == Some(EXIT_KILLED);
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|frozen={}|stop={}|session={}:{:#x}|killed={}|phase=3",
+        BUILD_ID,
+        u8::from(frozen),
+        stop,
+        gone.state,
+        gone.exit.unwrap_or(u64::MAX),
+        u8::from(killed)
+    );
+    // Verdict (a): the session's token is gone — revoked and closed by `auth` — so the live
+    // count is back to the sh-like token alone. Before auth.md v1.2 `auth` kept the session
+    // (and its handle) until SESSION_TICKS, and the count stays one higher.
+    let back = hold_wait(within(5000), || tokens() - base == 1);
+    let after = tokens() - base;
+    let revoked_ok = killed && signed_in == 2 && back && after == 1;
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|case=session_token|tokens_before={}|tokens_after={}|revoked={}",
+        BUILD_ID,
+        signed_in,
+        after,
+        u8::from(back && after == 1)
+    );
+    // Verdict (b): the sh-like token survives the session's death (auth.md v1.2, V2).
+    let whoami = match &sh_token {
+        Some(t) => {
+            let a = svc_connect(&h, "auth");
+            let r = hold_request(
+                &a,
+                b"WHOAMI",
+                alloc::vec![token_entry(t)],
+                &mut ev,
+                within(5000),
+            );
+            drop(a);
+            r
+        }
+        None => String::from("-"),
+    };
+    let kept = whoami == "OK 1001 1001 8";
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|case=sh_token|whoami={}|kept={}",
+        BUILD_ID,
+        whoami,
+        u8::from(kept)
+    );
+    let failed = alloc::format!(
+        "{}{}{}{}{}",
+        if sh_ok { "" } else { "sh_login," },
+        if unlocked_ok { "" } else { "unlocked," },
+        if killed { "" } else { "kill," },
+        if revoked_ok { "" } else { "session_token," },
+        if kept { "" } else { "sh_token," }
+    );
+    kprintln!(
+        "OSX|{}|ktest|token_revoke|failed={}",
+        BUILD_ID,
+        if failed.is_empty() { "none" } else { &failed }
+    );
+    drop((sh_login, sh_token, unlocked, stop, lines, gone, whoami, ev));
+    if !failed.is_empty() {
+        fail("the session's token outlived the session, or another client's token did not (auth.md v1.2)")
+    }
+    drop(failed);
+    display_finish(
+        name,
+        h,
+        "the token of a killed session was revoked; a token another client held survived",
+    )
+}
+
+/// `STATE` of the session until it says `state` after `changes` transitions (and, when
+/// `focus` is given, ends with that focus), or `by`; the last reply.
+fn state_wait(
+    session: &Endpoint,
+    state: &str,
+    changes: u32,
+    focus: Option<&str>,
+    by: u64,
+) -> String {
+    let mut ev = Vec::new();
+    loop {
+        let r = hold_request(
+            session,
+            b"STATE",
+            Vec::new(),
+            &mut ev,
+            (sched::ticks() + 5000).min(by),
+        );
+        let focused = focus.is_none_or(|f| r.ends_with(&alloc::format!(" focus={}", f)));
+        if (state_is(&r, state, changes) && focused) || sched::ticks() >= by {
+            return r;
+        }
+        hold_wait((sched::ticks() + 20).min(by), || false);
+    }
+}
+
+/// TST-M6-LOGOUT-KILLS (REQ-M6-004, session.md v1.8, services.md v1.17; WP-167): Sign out ends
+/// the session's job. The real auth, input, display and session (SVC-LK.TXT) with the lab image as
+/// the vouched `desktop`, whose role `relay` passes the test kernel's LAUNCH to the manager. After
+/// the lab's sign-in the desktop launches `deaf` (winapp: a window, and it ignores LOGGED_OUT) and
+/// `nest` (a child of its own, waiting); the secure attention sequence locks the session and Sign
+/// out ends it; the test kernel reads that none of the three processes lives, no job is left and
+/// the manager holds what it held before the launches; after a second sign-in a launch makes a
+/// new session job.
+fn logout_kills() -> ! {
+    let name = "logout_kills";
+    let (h, session) = session_env(
+        name,
+        b"/SYSTEM/SVC-LK.TXT",
+        &["auth", "input", "display", "session", "desktop"],
+    );
+    // v1.19 (WP-169): before the first sign-in no session is open, so the desktop's launch is
+    // refused (the monitor's typing of the name and password takes about nine seconds).
+    let desk = svc_connect(&h, "desktop");
+    let before = cfg_request(&desk, b"LAUNCH deaf", None);
+    kprintln!("OSX|{}|ktest|logout_kills|services=5|ready=1", BUILD_ID);
+    let within = |t: u64| sched::ticks() + t;
+    let live = |img: &[u8]| sched::live_named(img).1;
+    // Phase 1: signed in (the monitor types the lab's name and password), two launches.
+    let unlocked = state_wait(&session, "unlocked", 1, Some("display"), within(40_000));
+    let jobs0 = i64::from(object::stats().jobs);
+    let mgr0 = mgr_handles(&h);
+    let deaf = cfg_request(&desk, b"LAUNCH deaf", None);
+    let nest = cfg_request(&desk, b"LAUNCH nest", None);
+    sched::poll_until(within(5000), || {
+        live(b"DEAF.ELF") == 1 && live(b"NEST.ELF") == 1 && live(b"IDLE.ELF") == 1
+    });
+    let running = (live(b"DEAF.ELF"), live(b"NEST.ELF"), live(b"IDLE.ELF"));
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|unlocked={}|launched={},{}|deaf={}|nest={}|idle={}|phase=1",
+        BUILD_ID,
+        unlocked,
+        deaf,
+        nest,
+        running.0,
+        running.1,
+        running.2
+    );
+    // Phase 2: the monitor locks the session and signs out on the lock screen.
+    let out = state_wait(&session, "no_session", 3, None, within(40_000));
+    let left = || {
+        (
+            live(b"DEAF.ELF"),
+            live(b"NEST.ELF"),
+            live(b"IDLE.ELF"),
+            i64::from(object::stats().jobs) - jobs0,
+            mgr_handles(&h) - mgr0,
+        )
+    };
+    sched::poll_until(within(5000), || left() == (0, 0, 0, 0, 0));
+    let after = left();
+    // Sign out closed the gate (END_SESSION, v1.19): the desktop's launch is refused, before the
+    // line below lets the monitor sign in again.
+    let shut = cfg_request(&desk, b"LAUNCH deaf", None);
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|gate|before={}|after={}|",
+        BUILD_ID,
+        before,
+        shut
+    );
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|back={}|deaf={}|nest={}|idle={}|jobs={}|mgr_handles={}|phase=2",
+        BUILD_ID,
+        out,
+        after.0,
+        after.1,
+        after.2,
+        after.3,
+        after.4
+    );
+    // Phase 3: a second sign-in, and a launch in a new session job.
+    let again = state_wait(&session, "unlocked", 4, Some("display"), within(40_000));
+    let relaunch = cfg_request(&desk, b"LAUNCH deaf", None);
+    sched::poll_until(within(5000), || live(b"DEAF.ELF") == 1);
+    let (d, n) = sched::live_named(b"DEAF.ELF");
+    let in_session = d[..n].iter().filter(|a| a.parent_under_root).count();
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|again={}|launch={}|deaf={}|in_session={}|phase=3",
+        BUILD_ID,
+        again,
+        relaunch,
+        n,
+        in_session
+    );
+    let signed_in =
+        |r: &str, changes: u32| state_is(r, "unlocked", changes) && r.ends_with(" focus=display");
+    let failed = alloc::format!(
+        "{}{}{}{}{}{}",
+        if before == "ERR NO_SESSION" && shut == "ERR NO_SESSION" {
+            ""
+        } else {
+            "gate,"
+        },
+        if signed_in(&unlocked, 1)
+            && deaf == "OK app:deaf#1"
+            && nest == "OK app:nest#2"
+            && running == (1, 1, 1)
+        {
+            ""
+        } else {
+            "launch,"
+        },
+        if state_is(&out, "no_session", 3) {
+            ""
+        } else {
+            "sign_out,"
+        },
+        if after == (0, 0, 0, 0, 0) {
+            ""
+        } else {
+            "left,"
+        },
+        if signed_in(&again, 4) { "" } else { "again," },
+        if relaunch == "OK app:deaf#3" && n == 1 && in_session == 1 {
+            ""
+        } else {
+            "relaunch,"
+        }
+    );
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|failed={}",
+        BUILD_ID,
+        if failed.is_empty() { "none" } else { &failed }
+    );
+    drop((
+        before, shut, unlocked, deaf, nest, out, again, relaunch, desk, session,
+    ));
+    if failed.contains("left,") {
+        fail("an application of the signed-out session is still alive")
+    }
+    if !failed.is_empty() {
+        fail("the sign-in, a launch or the sign-out was not as the case states")
+    }
+    drop(failed);
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or services left something behind")
+    }
+    svc_balance(name, frames0)
+}
+
+/// What one sub-case of `purge_fail_closed` saw: the answer the substitute compositor gave to
+/// the session's `LOGOUT` (`-`: never asked), where it came against the sign-in screen
+/// (`logout_first`: before the first `CREATE_SURFACE`; `logout_only`: no screen after it;
+/// `screen_only`: a screen with no `LOGOUT` before it; `none`), whether the session said
+/// READY, and its exit code (0 after `STOP`; EXIT_KILLED when it had to be killed).
+struct PurgeCase {
+    logout: String,
+    order: &'static str,
+    ready: bool,
+    exit: u64,
+}
+
+impl PurgeCase {
+    /// Purged, then the sign-in screen, READY, and `STOP` ended it.
+    fn purged(&self) -> bool {
+        self.logout == "OK" && self.order == "logout_first" && self.ready && self.exit == 0
+    }
+
+    /// No sign-in screen after a refused or failed `LOGOUT`: exit 0xE4 before READY.
+    fn closed(&self, answer: &str) -> bool {
+        self.logout == answer && self.order == "logout_only" && !self.ready && self.exit == 0xE4
+    }
+}
+
+/// One `purge_fail_closed` sub-case: its name, the answer to `LIST` (`None`: the boot channel
+/// closes), the compositor's answer to `LOGOUT` (empty: its channel closes), what must happen.
+type PurgeSpec<'a> = (&'a str, Option<&'a [u8]>, &'a [u8], &'a str);
+
+/// Ticks one `purge_fail_closed` sub-case may take up to its `STOP`; then at most
+/// `PURGE_STOP` for `STOP` and as much again for a kill. Eight sub-cases: at most
+/// 8 × 10 s = 80 s, inside the lab's 100 s.
+const PURGE_BUDGET: u64 = 8000;
+const PURGE_STOP: u64 = 1000;
+
+/// The substitute manager's side of one session start-up (session.md v1.7): a fresh
+/// /SYSTEM/SESSIOND.ELF with the boot channel as its only handle, `START`, then every
+/// `CONNECT` answered with a channel the test keeps — `auth` silent, `input` and `display`
+/// played by the test: the input service answers `REGISTER` with `OK 1` and the rest with
+/// `OK`; the compositor answers `STATUS` with a 1280×800 screen, `LOGOUT` with `logout` (empty:
+/// its channel closes instead), `CREATE_SURFACE`/`CREATE_WINDOW` with `OK 1` and the rest with
+/// `OK`, and logs each verb in order. The session's `LIST` is answered with `list` — or, with
+/// `None`, the boot channel closes instead. On READY, `STOP`. Every wait is bounded
+/// (`PURGE_BUDGET`, `PURGE_STOP`); a session still alive after `STOP` is killed.
+fn purge_run(case: &str, image: &[u8], list: Option<&[u8]>, logout: &[u8]) -> PurgeCase {
+    let chan_entry = |ep: Arc<Endpoint>| Entry {
+        object: Object::Channel(ep),
+        rights: Rights::CHANNEL_DEFAULT,
+    };
+    let note = |bytes: &[u8]| Message {
+        bytes: bytes.to_vec(),
+        handles: Vec::new(),
+    };
+    let (ours, theirs) = channel::create();
+    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let pid = match crate::user::spawn_elf_with(
+        image,
+        1,
+        alloc::vec![chan_entry(theirs)],
+        object.clone(),
+    ) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!(
+                "OSX|{}|ktest|purge_fail_closed|case={}|error={}",
+                BUILD_ID,
+                case,
+                e.code()
+            );
+            fail("the session's image did not load")
+        }
+    };
+    let mut boot = Some(ours);
+    let mut auth: Option<Arc<Endpoint>> = None;
+    let mut input: Option<Arc<Endpoint>> = None;
+    let mut display: Option<Arc<Endpoint>> = None;
+    let mut verbs: Vec<String> = Vec::new();
+    let mut answered = String::from("-");
+    let mut ready = false;
+    if let Some(b) = boot.as_ref() {
+        let _ = b.write(note(b"START"));
+    }
+    let read = |ep: &Arc<Endpoint>| ep.read(channel::MSG_MAX_BYTES, channel::MSG_MAX_HANDLES, None);
+    hold_wait(sched::ticks() + PURGE_BUDGET, || {
+        let mut close_boot = false;
+        if let Some(b) = boot.as_ref() {
+            while let Ok(m) = read(b) {
+                let req = m.bytes.as_slice();
+                if let Some(name) = req.strip_prefix(b"CONNECT ") {
+                    let (mine, far) = channel::create();
+                    match name {
+                        b"input" => input = Some(mine),
+                        b"display" => display = Some(mine),
+                        _ => auth = Some(mine),
+                    }
+                    let _ = b.write(Message {
+                        bytes: b"OK".to_vec(),
+                        handles: alloc::vec![chan_entry(far)],
+                    });
+                } else if req == b"LIST" {
+                    match list {
+                        Some(a) => {
+                            let _ = b.write(note(a));
+                        }
+                        None => {
+                            close_boot = true;
+                            break;
+                        }
+                    }
+                } else if req == b"READY" {
+                    ready = true;
+                }
+            }
+        }
+        if close_boot {
+            boot = None;
+        }
+        if let Some(i) = input.as_ref() {
+            while let Ok(m) = read(i) {
+                let r: &[u8] = if m.bytes.starts_with(b"REGISTER") {
+                    b"OK 1"
+                } else {
+                    b"OK"
+                };
+                let _ = i.write(note(r));
+            }
+        }
+        let mut close_display = false;
+        if let Some(d) = display.as_ref() {
+            while let Ok(m) = read(d) {
+                let text = String::from_utf8_lossy(&m.bytes).into_owned();
+                let verb: String = text.split(' ').next().unwrap_or("").into();
+                let r: &[u8] = match verb.as_str() {
+                    "STATUS" => b"OK format=1 screen=1280x800 windows=0 focus=- pointer=0,0 composed=0 dropped=0 unresponsive=0",
+                    "LOGOUT" if logout.is_empty() => {
+                        answered = String::from("closed");
+                        close_display = true;
+                        b""
+                    }
+                    "LOGOUT" => {
+                        answered = String::from_utf8_lossy(logout).into_owned();
+                        logout
+                    }
+                    "CREATE_SURFACE" | "CREATE_WINDOW" => b"OK 1",
+                    _ => b"OK",
+                };
+                verbs.push(verb);
+                if close_display {
+                    break;
+                }
+                let _ = d.write(note(r));
+            }
+        }
+        if close_display {
+            display = None;
+        }
+        ready || object.exit_code().is_some()
+    });
+    if let Some(b) = boot.as_ref() {
+        let _ = b.write(note(b"STOP"));
+    }
+    if !hold_wait(sched::ticks() + PURGE_STOP, || object.exit_code().is_some()) {
+        sched::kill_process(pid, crate::syscall::EXIT_KILLED);
+        hold_wait(sched::ticks() + PURGE_STOP, || object.exit_code().is_some());
+    }
+    let logout_at = verbs.iter().position(|v| v == "LOGOUT");
+    let screen_at = verbs.iter().position(|v| v == "CREATE_SURFACE");
+    let order = match (logout_at, screen_at) {
+        (Some(l), Some(s)) if l < s => "logout_first",
+        (Some(_), None) => "logout_only",
+        (_, Some(_)) => "screen_only",
+        (None, None) => "none",
+    };
+    let out = PurgeCase {
+        logout: answered,
+        order,
+        ready,
+        exit: object.exit_code().unwrap_or(u64::MAX),
+    };
+    drop((boot, auth, input, display, verbs, object));
+    out
+}
+
+/// TST-M6-PURGE-FAIL-CLOSED (session.md v1.7, WP-64): a session that cannot tell whether it
+/// was restarted purges anyway, and one whose purge is refused shows no sign-in screen. The
+/// test kernel plays the service manager, the input service and the compositor for a fresh
+/// /SYSTEM/SESSIOND.ELF per sub-case (`purge_run`) and answers its `LIST`: (a) `reply` — `ERR
+/// TEST`; (b) `no_session_line` — a listing without `session`; (c) `bad_count` — a `session`
+/// line whose restart count is not a number; (d) `too_long` — 2000 bytes, more than the
+/// session's 1024-byte buffer; (e) `closed` — the boot channel closes instead: each of (a)–(d)
+/// must send `LOGOUT` before the sign-in screen and then say READY; (e) purges and then cannot
+/// say READY (0xE5). (f) `refused` — restarted (`restarts=1`) and the compositor answers
+/// `LOGOUT` with `ERR ACCESS`; (g) `logout_closed` — the compositor's channel closes on
+/// `LOGOUT`: no sign-in screen, exit 0xE4 before READY. (h) `first_start` — `restarts=0`, the
+/// control: no `LOGOUT`, the screen, READY. The serial log must carry the list_failure trace
+/// five times and the restarted one never (target.json). Each sub-case prints its verdict and
+/// the case goes on after a failed one.
+fn purge_fail_closed() -> ! {
+    let name = "purge_fail_closed";
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let image = match crate::loader::read_image(b"/SYSTEM/SESSIOND.ELF") {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
+            fail("the session's image is not on the volume")
+        }
+    };
+    let deps: &[u8] = b"auth ready 0 1 1 1 -\ninput ready 0 1 1 1 -\ndisplay ready 0 1 1 1 -\n";
+    let with = |session: &[u8]| {
+        let mut v = Vec::from(deps);
+        v.extend_from_slice(session);
+        v
+    };
+    let mut long = with(b"session starting 1 1 1 - -\n");
+    let mut k = 0;
+    while long.len() < 2000 {
+        long.extend_from_slice(alloc::format!("fill{:02} ready 0 1 1 1 -\n", k).as_bytes());
+        k += 1;
+    }
+    let bad = with(b"session starting x 1 1 - -\n");
+    let restarted = with(b"session starting 1 1 1 - -\n");
+    let first = with(b"session starting 0 1 - - -\n");
+    let cases: [PurgeSpec; 8] = [
+        ("reply", Some(b"ERR TEST"), b"OK", "purged"),
+        ("no_session_line", Some(deps), b"OK", "purged"),
+        ("bad_count", Some(&bad), b"OK", "purged"),
+        ("too_long", Some(&long), b"OK", "purged"),
+        ("closed", None, b"OK", "no_ready"),
+        ("refused", Some(&restarted), b"ERR ACCESS", "closed"),
+        ("logout_closed", Some(&restarted), b"", "closed"),
+        ("first_start", Some(&first), b"OK", "control"),
+    ];
+    let mut failed = String::new();
+    for (case, list, logout, expect) in cases {
+        let r = purge_run(case, &image, list, logout);
+        let ok = match expect {
+            "purged" => r.purged(),
+            "no_ready" => {
+                r.logout == "OK" && r.order == "logout_first" && !r.ready && r.exit == 0xE5
+            }
+            "closed" => r.closed(if logout.is_empty() {
+                "closed"
+            } else {
+                "ERR ACCESS"
+            }),
+            _ => r.logout == "-" && r.order == "screen_only" && r.ready && r.exit == 0,
+        };
+        kprintln!(
+            "OSX|{}|ktest|{}|case={}|logout={}|order={}|ready={}|exit={:#x}|ok={}",
+            BUILD_ID,
+            name,
+            case,
+            r.logout,
+            r.order,
+            u8::from(r.ready),
+            r.exit,
+            u8::from(ok)
+        );
+        if !ok {
+            failed.push_str(case);
+            failed.push(',');
+        }
+    }
+    drop((image, long, bad, restarted, first));
+    let gone = sched::poll_until(sched::ticks() + 1000, || sched::stats().processes == 0);
+    let settled = sched::poll_until(sched::ticks() + 1000, || object::stats() == obj0);
+    let procs = sched::stats().processes;
+    let frames = frames0 as i64 - pmm::stats().free_frames as i64;
+    kprintln!(
+        "OSX|{}|ktest|{}|failed={}|processes_after={}|clean={}|frames_delta={}",
+        BUILD_ID,
+        name,
+        if failed.is_empty() { "none" } else { &failed },
+        procs,
+        u8::from(gone && settled),
+        frames
+    );
+    if !failed.is_empty() {
+        fail("a session that could not tell it was restarted showed its sign-in screen without LOGOUT, or showed it after a refused LOGOUT (session.md v1.7)")
+    }
+    if !gone || procs != 0 || !settled || frames != 0 {
+        fail("the sessions left a process, an object or a frame behind")
+    }
+    pass("a session purges whenever it cannot tell it was not restarted, and shows no sign-in screen when the purge fails")
+}
+
 // ---- WP-40: forced termination ---------------------------------------------------------------
 
 /// TST-M5-PROCESS-KILL (REQ-M5-010, §8.7): the `killer` app proves the whole process_kill
@@ -9559,4 +15404,156 @@ fn fd_leak() -> ! {
         fail("frames or process records leaked")
     }
     pass("a process exiting with 44 open file handles leaks nothing")
+}
+
+// ---- WP-46: jobs ---------------------------------------------------------------------------
+
+/// The exit code of the `jobs` app (user/apps/jobs) mapped to the number of its phases that
+/// passed (it prints `jobs|phase=<n>|<name>=ok` for each; 0x4A = all seven).
+fn jobs_phases_ok(code: u64) -> u32 {
+    match code {
+        0x4A => 7,
+        0xE0..=0xE7 | 0xDE => 0,
+        0xE8 => 1,
+        0xE9..=0xEA => 2,
+        0xEB..=0xF2 | 0xDD | 0xDF => 3,
+        0xF3..=0xF7 => 4,
+        0xF8..=0xFC => 5,
+        0xFD..=0xFF => 6,
+        _ => 0,
+    }
+}
+
+/// Part 1 of TST-M6-JOB-KILL (mutant M153): the locked dead-job check in `spawn_user_with`
+/// (sched/mod.rs:429), which `process_spawn_in`'s early check hides from user space. A process
+/// object in a killed job must not start: the spawn is refused (`AsError::Spawn`), the object is
+/// never bound and learns the stillborn exit (u64::MAX), the initial handle is closed (its peer
+/// sees PEER_CLOSED), and nothing leaks.
+fn job_spawn_dead() -> bool {
+    use crate::object::job::{self, Job};
+    use crate::object::process::ProcessObject;
+    let image = match crate::loader::read_image(b"/SYSTEM/IDLE.ELF") {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!(
+                "OSX|{}|ktest|job_spawn_dead|image_error={}",
+                BUILD_ID,
+                e.code()
+            );
+            fail("IDLE.ELF is not on the volume")
+        }
+    };
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let dead = match Job::new_child(&job::root()) {
+        Ok(j) => j,
+        Err(_) => fail("job_spawn_dead: no child job of the root"),
+    };
+    // No member yet: the pass only marks the job.
+    let marked = sched::kill_job(&dead, crate::syscall::EXIT_KILLED);
+    let (keep, give) = channel::create();
+    let object = Arc::new(ProcessObject::new_in(dead.clone()));
+    let r = crate::user::spawn_elf_with(
+        &image,
+        1,
+        alloc::vec![Entry {
+            object: Object::Channel(give),
+            rights: Rights::CHANNEL_DEFAULT,
+        }],
+        object.clone(),
+    );
+    let refused = matches!(r, Err(ElfError::Space(addrspace::AsError::Spawn)));
+    let closed = matches!(keep.read(16, 4, None), Err(ChannelError::PeerClosed));
+    let unbound = object.pid().is_none() && object.exit_code() == Some(u64::MAX);
+    drop((keep, object, dead));
+    let frames_delta = frames0 as i64 - pmm::stats().free_frames as i64;
+    let clean = object::stats() == obj0;
+    let ok = marked && refused && closed && unbound && clean && frames_delta == 0;
+    kprintln!(
+        "OSX|{}|ktest|job_spawn_dead|marked={}|refused={}|peer_closed={}|unbound={}|clean={}|frames_delta={}|ok={}",
+        BUILD_ID,
+        u8::from(marked),
+        u8::from(refused),
+        u8::from(closed),
+        u8::from(unbound),
+        u8::from(clean),
+        frames_delta,
+        u8::from(ok)
+    );
+    ok
+}
+
+/// TST-M6-JOB-KILL (REQ-M6-003, WP-46, syscall.md v1.13 §5; mutants M151-M153). Part 1:
+/// `job_spawn_dead` (the locked check). Part 2: `/SYSTEM/JOBS.ELF` from the volume, started with a
+/// channel as its bootstrap handle and the root job (JOB_DEFAULT) right after it,
+/// proves the contract from user space in seven phases and exits 0x4A. The test checks its
+/// exit, that every process it started is gone, and that no frame and no object is left.
+fn job_kill_all() -> ! {
+    if crate::fs::mount().is_err() {
+        fail("volume did not mount")
+    }
+    let dead_ok = job_spawn_dead();
+    let image = match crate::loader::read_image(b"/SYSTEM/JOBS.ELF") {
+        Ok(i) => i,
+        Err(e) => {
+            kprintln!(
+                "OSX|{}|ktest|job_kill_all|image_error={}",
+                BUILD_ID,
+                e.code()
+            );
+            fail("JOBS.ELF is not on the volume")
+        }
+    };
+    let obj0 = object::stats();
+    let frames0 = pmm::stats().free_frames;
+    let procs0 = sched::stats().processes;
+    // Our end stays open and silent: the app reads no role mark on it, so it runs as the parent.
+    let (keep, give) = channel::create();
+    let mut initial = alloc::vec![Entry {
+        object: Object::Channel(give),
+        rights: Rights::CHANNEL_DEFAULT,
+    }];
+    // Slot 1: the root job (initial handles are consecutive, syscall.md §5).
+    initial.push(Entry {
+        object: Object::Job(crate::object::job::root()),
+        rights: Rights::JOB_DEFAULT,
+    });
+    let object = Arc::new(crate::object::process::ProcessObject::new());
+    let pid = match crate::user::spawn_elf_with(&image, 1, initial, object.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            kprintln!("OSX|{}|ktest|job_kill_all|error={}", BUILD_ID, e.code());
+            fail("jobs did not load")
+        }
+    };
+    let code = sched::wait_process(pid).unwrap_or(u64::MAX);
+    drop((object, keep));
+    // Its children were all awaited by the app; give the reaper time to finish them anyway.
+    let _ = sched::poll_until(sched::ticks() + 1000, || {
+        sched::stats().processes == procs0 && object::stats() == obj0
+    });
+    let processes_after = sched::stats().processes.saturating_sub(procs0);
+    let frames_delta = frames0 as i64 - pmm::stats().free_frames as i64;
+    let clean = object::stats() == obj0;
+    let ok = dead_ok && code == 0x4A && processes_after == 0 && frames_delta == 0 && clean;
+    kprintln!(
+        "OSX|{}|ktest|job_kill_all|exit={:#x}|phases={}|processes_after={}|frames_delta={}|clean={}|ok={}",
+        BUILD_ID,
+        code,
+        jobs_phases_ok(code),
+        processes_after,
+        frames_delta,
+        u8::from(clean),
+        u8::from(ok)
+    );
+    if !dead_ok {
+        fail("a process entered a killed job (the locked check in spawn_user_with)")
+    }
+    if code != 0x4A {
+        fail("the job contract did not hold (see exit and the jobs|phase lines)")
+    }
+    if processes_after != 0 || frames_delta != 0 || !clean {
+        fail("job_kill left a process, a frame or an object behind")
+    }
+    pass("job_kill ends every process in a job and below it, a killed job admits nothing, and a job containing the caller cannot be killed")
 }

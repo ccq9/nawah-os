@@ -28,11 +28,10 @@ pub unsafe fn inb(port: u16) -> u8 {
     value
 }
 
-/// Writes a 16-bit word to an I/O port (fw_cfg selector, test kernel).
+/// Writes a 16-bit word to an I/O port (fw_cfg selector).
 ///
 /// # Safety
 /// As for [`outb`].
-#[cfg(feature = "ktest")]
 #[inline]
 pub unsafe fn outw(port: u16, value: u16) {
     // SAFETY: `out` touches neither memory nor the stack; port validity is the caller's duty.

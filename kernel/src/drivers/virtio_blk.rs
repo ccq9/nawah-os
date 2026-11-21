@@ -20,6 +20,7 @@
 //! virtio_blk_req {le32 type, le32 reserved, le64 sector, data[], u8 status};
 //! VIRTIO_BLK_T_IN 0, OUT 1, FLUSH 4; status OK 0, IOERR 1, UNSUPP 2).
 
+use core::sync::atomic::AtomicBool;
 use core::sync::atomic::{fence, Ordering};
 
 use crate::arch::mmio::{
@@ -64,6 +65,31 @@ const QUEUE_SIZE: u16 = 16;
 pub const MAX_SECTORS: usize = 128;
 /// Polling bound per request (iterations of a PIT-free spin; the lab completes in microseconds).
 const POLL_LIMIT: u64 = 50_000_000;
+
+/// True once a request has timed out (see the device's `stopped`; ADR-0013 decision 9): set on
+/// the line that stops the device and read without a lock, so that the file system can ask
+/// before every call (files.md v1.9) and take no lock to do it.
+static DISK_STOPPED: AtomicBool = AtomicBool::new(false);
+
+/// Whether the disk has stopped. No lock is taken.
+pub fn disk_stopped() -> bool {
+    DISK_STOPPED.load(Ordering::SeqCst)
+}
+
+/// Test kernel only (TST-M3-BLK-TIMEOUT): the next request is withheld from the device (its
+/// entry is not published in the available ring and no notify is sent) and waits a short
+/// poll, so the driver's own timeout branch runs without depending on the emulator's timing.
+#[cfg(feature = "ktest")]
+static FORCE_TIMEOUT: AtomicBool = AtomicBool::new(false);
+/// The poll bound of a withheld request.
+#[cfg(feature = "ktest")]
+const FORCED_POLL_LIMIT: u64 = 10_000;
+
+/// Arms the hook for the next request.
+#[cfg(feature = "ktest")]
+pub fn arm_timeout() {
+    FORCE_TIMEOUT.store(true, Ordering::SeqCst);
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BlkError {
@@ -139,6 +165,10 @@ pub struct VirtioBlk {
     queue_size: u16,
     avail_idx: u16,
     last_used: u16,
+    /// Set when a request timed out and never cleared (ADR-0013 decision 9): that request may
+    /// still complete at the device, and every request shares the header, the status byte, the
+    /// data buffer and the descriptors, so nothing more is submitted until a reboot.
+    stopped: bool,
     info: BlkInfo,
 }
 
@@ -292,6 +322,7 @@ impl VirtioBlk {
             queue_size,
             avail_idx: 0,
             last_used: 0,
+            stopped: false,
             info,
         })
     }
@@ -336,14 +367,28 @@ impl VirtioBlk {
         dma::write32(d(2) + 8, 1);
         dma::write16(d(2) + 12, DESC_F_WRITE);
         dma::write16(d(2) + 14, 0);
-        // Available ring: ring[idx % size] = head 0; then idx += 1; then notify (§2.7.13).
-        let slot = u64::from(self.avail_idx % self.queue_size);
-        dma::write16(self.avail + 4 + slot * 2, 0);
-        fence(Ordering::SeqCst);
-        self.avail_idx = self.avail_idx.wrapping_add(1);
-        dma::write16(self.avail + 2, self.avail_idx);
-        fence(Ordering::SeqCst);
-        wr16(self.notify_addr, 0);
+        #[cfg(feature = "ktest")]
+        let withheld = FORCE_TIMEOUT.swap(false, Ordering::SeqCst);
+        #[cfg(not(feature = "ktest"))]
+        let withheld = false;
+        #[cfg(feature = "ktest")]
+        let limit = if withheld {
+            FORCED_POLL_LIMIT
+        } else {
+            POLL_LIMIT
+        };
+        #[cfg(not(feature = "ktest"))]
+        let limit = POLL_LIMIT;
+        if !withheld {
+            // Available ring: ring[idx % size] = head 0; then idx += 1; then notify (§2.7.13).
+            let slot = u64::from(self.avail_idx % self.queue_size);
+            dma::write16(self.avail + 4 + slot * 2, 0);
+            fence(Ordering::SeqCst);
+            self.avail_idx = self.avail_idx.wrapping_add(1);
+            dma::write16(self.avail + 2, self.avail_idx);
+            fence(Ordering::SeqCst);
+            wr16(self.notify_addr, 0);
+        }
         // Completion: used.idx advances past our last seen value.
         let mut spins = 0u64;
         loop {
@@ -352,7 +397,9 @@ impl VirtioBlk {
                 break;
             }
             spins += 1;
-            if spins > POLL_LIMIT {
+            if spins > limit {
+                DISK_STOPPED.store(true, Ordering::SeqCst);
+                self.stopped = true;
                 return Err(BlkError::Timeout);
             }
             core::hint::spin_loop();
@@ -366,6 +413,15 @@ impl VirtioBlk {
         let status = dma::bytes_mut(self.hdr + 16, 1)[0];
         if status != S_OK {
             return Err(BlkError::Io(status));
+        }
+        Ok(())
+    }
+
+    /// The answer of a stopped device (see `stopped`): asked first by every entry point, before
+    /// the shared data buffer is read or written.
+    fn refuse_stopped(&self) -> Result<(), BlkError> {
+        if self.stopped {
+            return Err(BlkError::DeviceNeedsReset);
         }
         Ok(())
     }
@@ -386,6 +442,7 @@ impl VirtioBlk {
 
     /// Reads `buf.len()` bytes (a multiple of 512, at most 64 KiB) from `sector`.
     pub fn read(&mut self, sector: u64, buf: &mut [u8]) -> Result<(), BlkError> {
+        self.refuse_stopped()?;
         self.check_range(sector, buf.len())?;
         self.request(T_IN, sector, buf.len(), true)?;
         buf.copy_from_slice(dma::bytes_mut(self.data, buf.len()));
@@ -395,6 +452,7 @@ impl VirtioBlk {
     /// Writes `buf` (a multiple of 512, at most 64 KiB) at `sector`.
     #[cfg_attr(not(feature = "ktest"), allow(dead_code))]
     pub fn write(&mut self, sector: u64, buf: &[u8]) -> Result<(), BlkError> {
+        self.refuse_stopped()?;
         self.check_range(sector, buf.len())?;
         dma::bytes_mut(self.data, buf.len()).copy_from_slice(buf);
         self.request(T_OUT, sector, buf.len(), false)
@@ -403,10 +461,27 @@ impl VirtioBlk {
     /// Makes completed writes stable (VIRTIO_BLK_T_FLUSH); a no-op when the device did not
     /// offer FLUSH (its writes are then already stable per §5.2.6.2).
     pub fn flush(&mut self) -> Result<(), BlkError> {
+        self.refuse_stopped()?;
         if !self.info.flush {
             return Ok(());
         }
         self.request(T_FLUSH, 0, 0, false)
+    }
+
+    /// Test kernel only (TST-M3-BLK-TIMEOUT): a copy of the first bytes of the shared data
+    /// buffer, so the case can show that a refused write left it alone.
+    #[cfg(feature = "ktest")]
+    pub fn peek_data(&self, out: &mut [u8]) {
+        let n = out.len().min(MAX_SECTORS * SECTOR);
+        out[..n].copy_from_slice(dma::bytes_mut(self.data, n));
+    }
+
+    /// Test kernel only (TST-M3-BLK-TIMEOUT): the driver's available index, which advances by
+    /// one for every request published to the device, so the case can show that a refused
+    /// request published nothing.
+    #[cfg(feature = "ktest")]
+    pub fn submitted(&self) -> u16 {
+        self.avail_idx
     }
 
     pub fn frames(&self) -> usize {

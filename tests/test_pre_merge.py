@@ -29,6 +29,9 @@ SCRIPT = ROOT / "tools" / "pre-merge.sh"
 SV = "1.0.0"
 sys.path.insert(0, str(ROOT / "tools"))
 import project  # noqa: E402
+# The copied tools carry the repository's HOST_SUITES: the set's one test record and its
+# verdict.json state TST-M0-001's own oracle, as a synced record does (WP-92).
+ORACLE = next(c["oracle"] for c in project.HOST_SUITES["M0"] if c["id"] == "TST-M0-001")
 
 
 def sha(data: bytes) -> str:
@@ -51,7 +54,7 @@ def make_repo(dst: pathlib.Path, verdict_matches_input=True):
     wi = {"id": "WP-00", "stage": "M0", "requirement_ids": ["REQ-M0-001"], "depends_on": [], "inputs": ["i"], "files": ["docs/ENVIRONMENT.md"],
           "contract_refs": [], "actions": ["a"], "acceptance": "a", "test_ids": ["TST-M0-001"], "commands": ["python3 tools/project.py validate-records"],
           "status": "done", "status_history": ["planned", "active", "done"], "evidence_refs": [f"evidence/{run_name}"], "blocker": None}
-    tst = {"id": "TST-M0-001", "requirement_ids": ["REQ-M0-001"], "layer": "host_unit", "oracle": "exit 0", "command": "x",
+    tst = {"id": "TST-M0-001", "requirement_ids": ["REQ-M0-001"], "layer": "host_unit", "oracle": ORACLE, "command": "x",
            "verdict": "PASS", "evidence_refs": [f"evidence/{run_name}"]}
     for name, lst in {"requirements": [req], "stages": [stage], "work-items": [wi], "tests": [tst]}.items():
         (docs / f"{name}.json").write_text(json.dumps({"schema_version": SV, "records": lst}, ensure_ascii=False, indent=1))
@@ -61,7 +64,7 @@ def make_repo(dst: pathlib.Path, verdict_matches_input=True):
     combined = sha("\n".join(f"{k}={v}" for k, v in sorted(inputs.items())).encode())
     run = {"schema_version": SV, "run_id": run_name, "started_at": "2026-01-01T00:00:00+00:00", "finished_at": "2026-01-01T00:00:01+00:00",
            "source_revision": "deadbeef", "dirty_state": False, "host": {}, "target": "host", "worker": "test", "purpose": "unit", "commands": ["x"], "exit_code": 0}
-    v = {"schema_version": SV, "run_id": run_name, "test_id": "TST-M0-001", "verdict": "PASS", "oracle": "o", "expected": "e", "observed": "o",
+    v = {"schema_version": SV, "run_id": run_name, "test_id": "TST-M0-001", "verdict": "PASS", "oracle": ORACLE, "expected": "e", "observed": "o",
          "inputs_digest": combined, "inputs": inputs, "claim_tag": "source_backed_fact"}
     (d / "run.json").write_text(json.dumps(run)); (d / "verdict.json").write_text(json.dumps(v)); (d / "digests.json").write_text(json.dumps(inputs))
     for f in ("command.txt", "stdout.log", "stderr.log"):

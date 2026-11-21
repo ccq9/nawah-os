@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261115T204309Z-b09d6406-001-a",
+ "started_at": "2026-11-15T20:43:08+00:00",
+ "finished_at": "2026-11-15T20:43:34+00:00",
+ "source_revision": "b09d64061706ab19906d9ccb175972eefa68b71a",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M3-FAT32-TOOL",
+ "commands": [
+  "python3 -I tests/test_fat32_tool.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "43756819916",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "b09d64061706ab19906d9ccb175972eefa68b71a",
+  "head_sha": "a847ee438f9dae6c2927af203ed3817dfab43e38",
+  "ref": "refs/pull/23/merge"
+ }
+}

@@ -7,6 +7,7 @@ session|focus=display|n=1
 session|state=locked|user=admin|window=510,336,260,128
 session|state=logged_out|user=admin
 session|state=no_session|window=510,336,260,128
+session|jobs=ended|apps=0
 spy|window=created|at=100,100,200,120
 spy|focus=1
 spy|key=0x2d,down,x

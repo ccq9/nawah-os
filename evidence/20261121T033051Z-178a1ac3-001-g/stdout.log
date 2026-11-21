@@ -1,0 +1,1246 @@
+$ python3 -I tests/mutants.py --target pc-qemu --stage M6 --report build/mutants-m6-report.json
+merge of 12 shard reports (NAWAH_GATE_SHARDS=12, rule int(id[1:]) mod N == k-1) from build/mutants-m6-report.shards/
+shard 1/12: build/mutants-m6-report.shards/shard-1-of-12.json, 20 mutants, started 2026-11-21T03:14:36Z, finished 2026-11-21T03:21:53Z
+shard 2/12: build/mutants-m6-report.shards/shard-2-of-12.json, 21 mutants, started 2026-11-21T03:14:46Z, finished 2026-11-21T03:21:38Z
+shard 3/12: build/mutants-m6-report.shards/shard-3-of-12.json, 19 mutants, started 2026-11-21T03:14:52Z, finished 2026-11-21T03:26:10Z
+shard 4/12: build/mutants-m6-report.shards/shard-4-of-12.json, 22 mutants, started 2026-11-21T03:14:36Z, finished 2026-11-21T03:22:47Z
+shard 5/12: build/mutants-m6-report.shards/shard-5-of-12.json, 20 mutants, started 2026-11-21T03:14:15Z, finished 2026-11-21T03:29:11Z
+shard 6/12: build/mutants-m6-report.shards/shard-6-of-12.json, 21 mutants, started 2026-11-21T03:14:43Z, finished 2026-11-21T03:22:18Z
+shard 7/12: build/mutants-m6-report.shards/shard-7-of-12.json, 21 mutants, started 2026-11-21T03:14:07Z, finished 2026-11-21T03:24:07Z
+shard 8/12: build/mutants-m6-report.shards/shard-8-of-12.json, 21 mutants, started 2026-11-21T03:14:43Z, finished 2026-11-21T03:20:54Z
+shard 9/12: build/mutants-m6-report.shards/shard-9-of-12.json, 23 mutants, started 2026-11-21T03:14:34Z, finished 2026-11-21T03:27:12Z
+shard 10/12: build/mutants-m6-report.shards/shard-10-of-12.json, 23 mutants, started 2026-11-21T03:14:50Z, finished 2026-11-21T03:26:55Z
+shard 11/12: build/mutants-m6-report.shards/shard-11-of-12.json, 22 mutants, started 2026-11-21T03:14:03Z, finished 2026-11-21T03:24:44Z
+shard 12/12: build/mutants-m6-report.shards/shard-12-of-12.json, 20 mutants, started 2026-11-21T03:14:47Z, finished 2026-11-21T03:21:53Z
+M130: killed by TST-M6-INTERACTIVE-BOOT [83.4s] (SECURITY: hypervisor_present forced true: without the hypervisor bit fw_cfg is still read, so phase 5 (-cpu qemu64,-hypervisor with the key) prints hv=1|key=ok, m1_done and exits 33 (its line requires hv=0, exit 0))
+  TST-M6-INTERACTIVE-BOOT: exit 33 != expected 0 run=20261121T031433Z-178a1ac3-001
+M131: killed by TST-M6-INTERACTIVE-BOOT [57.3s] (SECURITY: any key value selects the self-test: phases 2 (selftest=0) and 6 (selftest=10) print key=ok and m1_done (forbidden) and exit 33, not 0)
+  TST-M6-INTERACTIVE-BOOT: exit 33 != expected 0 run=20261121T031510Z-178a1ac3-001
+M132: killed by TST-M6-INTERACTIVE-BOOT [34.6s] (SECURITY: the interactive boot takes the self-test exit: phase 1 prints m1_done (forbidden) and exits 33, not 0 by the lab's quit)
+  TST-M6-INTERACTIVE-BOOT: exit 33 != expected 0 run=20261121T031500Z-178a1ac3-001
+M135: killed by TST-M5-SESSION-LOSS [45.6s] (SECURITY: the restarted session shows its sign-in screen without LOGOUT to the compositor: no session|purge line, the spy keeps its window and is not told LOGGED_OUT, so phase 2 reads spy_after=ready:… and windows=2, not stopped:0x0 and windows=1)
+  TST-M5-SESSION-LOSS: exit 37 != expected 33 run=20261121T031456Z-178a1ac3-001
+    OSX|000000000087|ktest|start|name=session_loss
+    OSX|000000000087|ktest|session_loss|services=5|ready=1
+    OSX|000000000087|ktest|session_loss|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|spy=OK keys=0 focus=1 connections=1|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|spy_after=ready:0xffffffffffffffff|windows=2|phase=2|ready=1
+    OSX|000000000087|ktest|fail|the restarted session did not end the lost session's windows before its sign-in screen (session.md v1.7)
+M137: killed by TST-M6-TOKEN-REVOKE [38.5s] (SECURITY: auth forgets nothing when the session client is lost (the trace still says revoked=1): the dead session's token stays alive under auth's handle, so tokens_after=2|revoked=0 and failed=session_token, not tokens_after=1|revoked=1|failed=none)
+  TST-M6-TOKEN-REVOKE: exit 37 != expected 33 run=20261121T031502Z-178a1ac3-001
+    OSX|000000000089|ktest|start|name=token_revoke
+    OSX|000000000089|ktest|token_revoke|services=5|ready=1
+    OSX|000000000089|ktest|token_revoke|sh_login=OK 1001 1001 8|sh_token=1|phase=1
+    OSX|000000000089|ktest|token_revoke|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|tokens=2|phase=2
+    OSX|000000000089|ktest|token_revoke|frozen=1|stop=OK|session=stopped:0x20000|killed=1|phase=3
+    OSX|000000000089|ktest|token_revoke|case=session_token|tokens_before=2|tokens_after=2|revoked=0
+    OSX|000000000089|ktest|token_revoke|case=sh_token|whoami=OK 1001 1001 8|kept=1
+    OSX|000000000089|ktest|token_revoke|failed=session_token,
+    OSX|000000000089|ktest|fail|the session's token outlived the session, or another client's token did not (auth.md v1.2)
+M147: killed by TST-M6-HOLD-FAIL-CLOSED [19.6s] (SECURITY: a LIST failure starts the screen unheld while the trace says locked=1: case=reply and case=too_long read holds=OK locked=0 (forbidden) and keys=2 (press and release both reach the window), not locked=1 and keys=0)
+  TST-M6-HOLD-FAIL-CLOSED: exit 37 != expected 33 run=20261121T031535Z-178a1ac3-001
+    OSX|000000000093|ktest|start|name=hold_fail_closed
+    OSX|000000000093|ktest|hold_fail_closed|case=reply|holds=OK locked=0 releases=0|keys=2|keys_in=2|window=OK 2|exit=0x0|ok=0
+    OSX|000000000093|ktest|hold_fail_closed|case=too_long|holds=OK locked=0 releases=0|keys=2|keys_in=2|window=OK 2|bytes=2002|exit=0x0|ok=0
+    OSX|000000000093|ktest|hold_fail_closed|case=closed|holds=none_no_ready|exit=0xe6|ok=1
+    OSX|000000000093|ktest|hold_fail_closed|case=manifest|locked=0|locked_with_session=1|keys=2|keys_with_session=0|exit=0x0:0x0|ok=1
+    OSX|000000000093|ktest|hold_fail_closed|failed=reply,too_long,|processes_after=0|clean=1|frames_delta=0
+    OSX|000000000093|ktest|fail|the screen did not start held after a failed LIST (display.md v1.12)
+M150: killed by TST-M6-PURGE-FAIL-CLOSED [34.2s] (SECURITY: a LIST the session cannot read skips the purge: sub-cases reply, no_session_line, bad_count, too_long and closed read logout=-|order=screen_only|ok=0 (closed: exit 0xe5, no LOGOUT), the list_failure trace appears 0 times, not 5, and failed= names those five)
+  TST-M6-PURGE-FAIL-CLOSED: exit 37 != expected 33 run=20261121T031432Z-178a1ac3-001
+    OSX|000000000096|ktest|start|name=purge_fail_closed
+    OSX|000000000096|ktest|purge_fail_closed|case=reply|logout=-|order=screen_only|ready=1|exit=0x0|ok=0
+    OSX|000000000096|ktest|purge_fail_closed|case=no_session_line|logout=-|order=screen_only|ready=1|exit=0x0|ok=0
+    OSX|000000000096|ktest|purge_fail_closed|case=bad_count|logout=-|order=screen_only|ready=1|exit=0x0|ok=0
+    OSX|000000000096|ktest|purge_fail_closed|case=too_long|logout=-|order=screen_only|ready=1|exit=0x0|ok=0
+    OSX|000000000096|ktest|purge_fail_closed|case=closed|logout=-|order=screen_only|ready=0|exit=0xe5|ok=0
+    OSX|000000000096|ktest|purge_fail_closed|case=refused|logout=ERR ACCESS|order=logout_only|ready=0|exit=0xe4|ok=1
+    OSX|000000000096|ktest|purge_fail_closed|case=logout_closed|logout=closed|order=logout_only|ready=0|exit=0xe4|ok=1
+    OSX|000000000096|ktest|purge_fail_closed|case=first_start|logout=-|order=screen_only|ready=1|exit=0x0|ok=1
+    OSX|000000000096|ktest|purge_fail_closed|failed=reply,no_session_line,bad_count,too_long,closed,|processes_after=0|clean=1|frames_delta=1
+    OSX|000000000096|ktest|fail|a session that could not tell it was restarted showed its sign-in screen without LOGOUT, or showed it after a refused LOGOUT (session.md v1.7)
+M151: killed by TST-M6-JOB-KILL [24.3s] (SECURITY: a job handle without WRITE creates, kills and spawns into its job: the app's read-only duplicate is not refused, so phase 1 fails (jobs|phase=1|types=fail, exit 0xe4), not exit=0x4a)
+  TST-M6-JOB-KILL: exit 37 != expected 33 run=20261121T031503Z-178a1ac3-001
+    OSX|000000000097|ktest|start|name=job_kill_all
+    OSX|000000000097|ktest|job_spawn_dead|marked=1|refused=1|peer_closed=1|unbound=1|clean=1|frames_delta=0|ok=1
+    OSX|000000000097|ktest|job_kill_all|exit=0xe4|phases=0|processes_after=0|frames_delta=0|clean=1|ok=0
+    OSX|000000000097|ktest|fail|the job contract did not hold (see exit and the jobs|phase lines)
+M152: killed by TST-M6-JOB-KILL [322.7s] (SECURITY: process_spawn puts the child in the root, not the caller's job: the grandchild started inside job A escapes job_kill(A), so phase 5 fails (jobs|phase=5|kill=fail, exit 0xf4), not exit=0x4a)
+  TST-M6-JOB-KILL: timeout (hang) run=20261121T031454Z-178a1ac3-001
+    OSX|000000000098|ktest|start|name=job_kill_all
+    OSX|000000000098|ktest|job_spawn_dead|marked=1|refused=1|peer_closed=1|unbound=1|clean=1|frames_delta=0|ok=1
+M153: killed by TST-M6-JOB-KILL [323.7s] (SECURITY: a process enters a killed job when a kill lands after spawn's early check: job_spawn_dead's spawn starts (refused=0|…|ok=0, |ktest|fail|), not refused=1|ok=1)
+  TST-M6-JOB-KILL: timeout (hang) run=20261121T031512Z-178a1ac3-001
+    OSX|000000000099|ktest|start|name=job_kill_all
+    OSX|000000000099|ktest|job_spawn_dead|marked=1|refused=0|peer_closed=0|unbound=0|clean=0|frames_delta=33|ok=0
+M157: killed by TST-M6-MANIFEST-TOO-LARGE [24.0s] (SECURITY: a manifest of 4096 bytes or more is truncated and accepted: case=4097 and case=4096 read reply=OK 1 (forbidden), list=A:… and again=ERR LOADED (forbidden), ok=0, failed=4097,4096,)
+  TST-M6-MANIFEST-TOO-LARGE: exit 37 != expected 33 run=20261121T031505Z-178a1ac3-001
+    OSX|00000000009d|ktest|start|name=manifest_too_large
+    OSX|00000000009d|ktest|manifest_too_large|case=4097|reply=OK 1|list=A:ready:0:12:12:23:-1;|again=ERR LOADED|fired=0|bytes=4097|mgr_exit=0x0|ok=0
+    OSX|00000000009d|ktest|manifest_too_large|case=4096|reply=OK 1|list=A:ready:0:26:26:31:-1;|again=ERR LOADED|fired=0|bytes=4096|mgr_exit=0x0|ok=0
+    OSX|00000000009d|ktest|manifest_too_large|case=4095|reply=OK 1|ready=1|bytes=4095|mgr_exit=0x0|ok=1
+    OSX|00000000009d|ktest|manifest_too_large|case=io|reply=ERR MANIFEST_IO|list=|again=ERR MANIFEST_MISSING|fired=1|bytes=3001|mgr_exit=0x0|ok=1
+    OSX|00000000009d|ktest|manifest_too_large|failed=4097,4096,|processes_after=0|frames_delta=0|clean=1|removed=1
+    OSX|00000000009d|ktest|fail|a manifest the manager could not read whole was not refused whole (services.md v1.13)
+M158: killed by TST-M6-MANIFEST-TOO-LARGE [25.0s] (a manifest whose read fails at byte 1024 is accepted from what was read: case=io reads reply=OK 1 (forbidden), fired=1, again=ERR LOADED (forbidden), ok=0, failed=io,)
+  TST-M6-MANIFEST-TOO-LARGE: exit 37 != expected 33 run=20261121T031513Z-178a1ac3-001
+    OSX|00000000009e|ktest|start|name=manifest_too_large
+    OSX|00000000009e|ktest|manifest_too_large|case=4097|reply=ERR MANIFEST_TOO_LARGE|list=|again=ERR MANIFEST_MISSING|fired=0|bytes=4097|mgr_exit=0x0|ok=1
+    OSX|00000000009e|ktest|manifest_too_large|case=4096|reply=ERR MANIFEST_TOO_LARGE|list=|again=ERR MANIFEST_MISSING|fired=0|bytes=4096|mgr_exit=0x0|ok=1
+    OSX|00000000009e|ktest|manifest_too_large|case=4095|reply=OK 1|ready=1|bytes=4095|mgr_exit=0x0|ok=1
+    OSX|00000000009e|ktest|manifest_too_large|case=io|reply=OK 1|list=A:ready:0:33:33:39:-1;|again=ERR LOADED|fired=1|bytes=3001|mgr_exit=0x0|ok=0
+    OSX|00000000009e|ktest|manifest_too_large|failed=io,|processes_after=0|frames_delta=0|clean=1|removed=1
+    OSX|00000000009e|ktest|fail|a manifest the manager could not read whole was not refused whole (services.md v1.13)
+M159: killed by TST-M6-LOAD-OUTSIDE-SYSTEM [19.5s] (SECURITY: LOAD reads outside /SYSTEM/: case=outside reads reply=OK 1|started=1|ok=0 (forbidden reply=OK), the later LOADs answer ERR LOADED (forbidden), failed=outside,dotdot,dep_name,system,)
+  TST-M6-LOAD-OUTSIDE-SYSTEM: exit 37 != expected 33 run=20261121T031554Z-178a1ac3-001
+    OSX|00000000009f|ktest|start|name=load_outside_system
+    OSX|00000000009f|ktest|load_outside_system|case=outside|reply=OK 1|started=1|ok=0
+    OSX|00000000009f|ktest|load_outside_system|case=dotdot|reply=ERR LOADED|started=1|ok=0
+    OSX|00000000009f|ktest|load_outside_system|case=dep_name|reply=ERR LOADED|ok=0
+    OSX|00000000009f|ktest|load_outside_system|case=system|reply=ERR LOADED|ready=1|ok=0
+    OSX|00000000009f|ktest|load_outside_system|case=boot_reply|interactive_ok0=0|selftest_ok0=1|interactive_ok8=1|bad_ok=0|escaped=1|ok=1
+    OSX|00000000009f|ktest|load_outside_system|failed=outside,dotdot,dep_name,system,|processes_after=0|frames_delta=0|clean=1|mgr_exit=0x0|removed=1
+    OSX|00000000009f|ktest|fail|LOAD read or started something outside /SYSTEM/, or a refused LOAD counted (services.md v1.13)
+M160: killed by TST-M6-DISPLAYD-BOOT-LOOP [41.3s] (a boot message longer than 64 bytes stays at the head of the queue and the loop spins on it: case=too_long_msg reads pong=0|holds=error:K_E_SVC_TIMEOUT|exit=0x20000|ok=0, the trace display|boot|discard=too_long is missing, failed=too_long_msg,)
+  TST-M6-DISPLAYD-BOOT-LOOP: exit 37 != expected 33 run=20261121T031441Z-178a1ac3-001
+    OSX|0000000000a0|ktest|start|name=displayd_boot_loop
+    OSX|0000000000a0|ktest|displayd_boot_loop|case=control|ready=1|pong=1|holds=OK locked=0 releases=0|exit=0x0|ok=1
+    OSX|0000000000a0|ktest|displayd_boot_loop|case=too_long_msg|bytes=200|ready=1|pong=0|holds=error:K_E_SVC_TIMEOUT|exit=0x20000|ok=0
+    OSX|0000000000a0|ktest|displayd_boot_loop|case=stop_first|ready=0|exit=0x0|ok=1
+    OSX|0000000000a0|ktest|displayd_boot_loop|case=ping_first|ready=1|holds=OK locked=0 releases=0|exit=0x0|ok=1
+    OSX|0000000000a0|ktest|displayd_boot_loop|case=stop_at_connect|ready=0|exit=0x0|ok=1
+    OSX|0000000000a0|ktest|displayd_boot_loop|failed=too_long_msg,|processes_after=0|frames_delta=0|clean=1
+    OSX|0000000000a0|ktest|fail|a boot message longer than the buffer stopped the compositor's boot channel (display.md v1.13)
+M161: killed by TST-M6-DISPLAYD-BOOT-LOOP [19.6s] (a STOP before the LIST answer is read as a failed LIST: case=stop_first reads ready=1|exit=0x20000|ok=0, display|hold|source=list_failure|reason=error|locked=1 appears (forbidden), display|boot|stop=before_ready is missing, failed=stop_first,)
+  TST-M6-DISPLAYD-BOOT-LOOP: exit 37 != expected 33 run=20261121T031534Z-178a1ac3-001
+    OSX|0000000000a1|ktest|start|name=displayd_boot_loop
+    OSX|0000000000a1|ktest|displayd_boot_loop|case=control|ready=1|pong=1|holds=OK locked=0 releases=0|exit=0x0|ok=1
+    OSX|0000000000a1|ktest|displayd_boot_loop|case=too_long_msg|bytes=200|ready=1|pong=1|holds=OK locked=0 releases=0|exit=0x0|ok=1
+    OSX|0000000000a1|ktest|displayd_boot_loop|case=stop_first|ready=1|exit=0x20000|ok=0
+    OSX|0000000000a1|ktest|displayd_boot_loop|case=ping_first|ready=1|holds=OK locked=0 releases=0|exit=0x0|ok=1
+    OSX|0000000000a1|ktest|displayd_boot_loop|case=stop_at_connect|ready=0|exit=0x0|ok=1
+    OSX|0000000000a1|ktest|displayd_boot_loop|failed=stop_first,|processes_after=0|frames_delta=0|clean=1
+    OSX|0000000000a1|ktest|fail|a STOP before the LIST answer did not end the compositor without READY (display.md v1.13)
+M162: killed by TST-M6-CONFIG-WRITE-SCOPE [22.9s] (SECURITY: WRITE alone decides again: step 40 opens /SYSTEM/SERVICES.TXT for writing, probe=0x28, then |ktest|fail| (forbidden))
+  TST-M6-CONFIG-WRITE-SCOPE: exit 37 != expected 33 run=20261121T031457Z-178a1ac3-001
+    OSX|0000000000a2|ktest|start|name=config_write_scope
+    OSX|0000000000a2|ktest|config_write_scope|probe=0x28|services_same=1|usersdb_same=1|inputd_same=1|created=0|frames=0|objects_same=1
+    OSX|0000000000a2|ktest|fail|config's authority changed /SYSTEM outside its stores (exit code = failing step)
+M163: killed by TST-M6-CONFIG-WRITE-SCOPE [16.6s] (SECURITY: any .A or .B in /SYSTEM is writable: step 46 creates /SYSTEM/AUTHD.A, probe=0x2e, created=1, then |ktest|fail| (forbidden))
+  TST-M6-CONFIG-WRITE-SCOPE: exit 37 != expected 33 run=20261121T031519Z-178a1ac3-001
+    OSX|0000000000a3|ktest|start|name=config_write_scope
+    OSX|0000000000a3|ktest|config_write_scope|probe=0x2e|services_same=1|usersdb_same=1|inputd_same=1|created=1|frames=0|objects_same=1
+    OSX|0000000000a3|ktest|fail|config's authority changed /SYSTEM outside its stores (exit code = failing step)
+M164: killed by TST-M6-CONFIG-WRITE-SCOPE [17.1s] (SECURITY: any CFG* name in /SYSTEM is writable: step 47 creates /SYSTEM/CFGPRB.C, probe=0x2f, created=1, then |ktest|fail| (forbidden))
+  TST-M6-CONFIG-WRITE-SCOPE: exit 37 != expected 33 run=20261121T032009Z-178a1ac3-001
+    OSX|0000000000a4|ktest|start|name=config_write_scope
+    OSX|0000000000a4|ktest|config_write_scope|probe=0x2f|services_same=1|usersdb_same=1|inputd_same=1|created=1|frames=0|objects_same=1
+    OSX|0000000000a4|ktest|fail|config's authority changed /SYSTEM outside its stores (exit code = failing step)
+M165: killed by TST-M6-UI-UNIT [12.6s] (the hit-test takes the column after an element's right edge as inside it: pointer_focuses_and_activates_the_element_under_it fails (a press at r.x + r.w focuses and activates the button), test result FAILED. 7 passed; 1 failed)
+  TST-M6-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032015Z-178a1ac3-001
+M166: killed by TST-M6-UI-UNIT [16.1s] (a left press focuses a label: pointer_focuses_and_activates_the_element_under_it fails (Focus to the label instead of None), test result FAILED. 7 passed; 1 failed)
+  TST-M6-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031528Z-178a1ac3-001
+M167: killed by TST-M6-UI-UNIT [12.7s] (Esc (and an outside press or a choice) closes the menu without returning the focus to its opener: focused() stays None; esc_and_outside_click_close_and_return_focus, context_menu_opens_by_three_ways and menu_wraps_skips_separators_and_disabled_never_chooses fail, test result FAILED. 5 passed; 3 failed)
+  TST-M6-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031545Z-178a1ac3-001
+M168: killed by TST-M6-UI-UNIT [13.6s] (SECURITY: Enter on a disabled menu item emits Choose: menu_wraps_skips_separators_and_disabled_never_chooses fails (Some(Choose(3, 3)) instead of None), test result FAILED. 7 passed; 1 failed)
+  TST-M6-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031511Z-178a1ac3-001
+M169: killed by TST-M6-UI-UNIT [12.8s] (in RTL the menu is anchored by its left edge and opens rightwards: menu_mirrors_in_rtl fails (the right edge is not the element's start edge), test result FAILED. 7 passed; 1 failed)
+  TST-M6-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031510Z-178a1ac3-001
+M171: killed by TST-M6-UI-CONFIRM [13.7s] (SECURITY: Esc answers Yes, so a cancel becomes consent: confirm_default_esc_enter (answer() Some(Yes) instead of Some(Cancel)) and confirm_narrator_lines ("answer yes" instead of "answer cancel") fail, test result: FAILED. 3 passed; 2 failed)
+  TST-M6-UI-CONFIRM: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031601Z-178a1ac3-001
+M176: killed by TST-M6-LISTVIEW-UNIT [14.5s] (SECURITY: a Shift range selects display positions taken as row ids, so in any order but the identity an action on the selection reaches rows the user did not select: single_and_multi_selection ([1, 2] instead of [17, 18] in the reversed order) and sort_stable_and_selection_follows_identity fail, test result: FAILED. 9 passed; 2 failed)
+  TST-M6-LISTVIEW-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032015Z-178a1ac3-001
+M177: killed by TST-M6-LISTVIEW-UNIT [13.5s] (SECURITY: a type-ahead match activates the row, so typing opens a file: typeahead_latin_and_arabic (Activate(1) instead of Focus(1)) and focus_stays_visible fail, test result: FAILED. 9 passed; 2 failed)
+  TST-M6-LISTVIEW-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032027Z-178a1ac3-001
+M178: killed by TST-M6-LISTVIEW-UNIT [17.1s] (End goes one past the last row and the view asks the application for position n: visible_rows_bounded_0_1_10000, home_end_pgup_pgdn_exact, single_and_multi_selection, row_narrator_lines_en_ar and focus_stays_visible fail (the RowSource panics on position n), test result: FAILED. 6 passed; 5 failed)
+  TST-M6-LISTVIEW-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031544Z-178a1ac3-001
+M179: killed by TST-M6-LISTVIEW-UNIT [13.5s] (SECURITY (false report): a denied list is described state=empty, so a folder the user may not read is announced as having nothing in it: empty_and_denied_states_text fails, test result: FAILED. 10 passed; 1 failed)
+  TST-M6-LISTVIEW-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031558Z-178a1ac3-001
+M180: killed by TST-M6-LISTVIEW-UNIT [14.6s] (SECURITY: a bidi override in a cell is drawn and obeyed, so photo<U+202E>gpj.exe shows as an image name: bidi_controls_in_cells_shown_not_obeyed fails (out[5] is 0x202E, not U+FFFD), test result: FAILED. 10 passed; 1 failed)
+  TST-M6-LISTVIEW-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031525Z-178a1ac3-001
+M181: killed by TST-M6-LISTVIEW-UNIT [13.7s] (row k/n counts the visible rows, not all of them: row_narrator_lines_en_ar fails (row 500/10 instead of row 500/500), test result: FAILED. 10 passed; 1 failed)
+  TST-M6-LISTVIEW-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031523Z-178a1ac3-001
+M193: killed by TST-M5-UI-UNIT [19.3s] (SECURITY: a value is written between the quotes as it is: a quote forges an attribute and a newline a second narrator line; a_quote_in_a_typed_value_cannot_forge_an_attribute, a_set_value_with_a_newline_stays_one_line, separators_and_bidi_controls_in_a_value_are_named_not_obeyed and a_long_escaped_value_is_cut_at_a_whole_character_and_still_closed fail, test result: FAILED. 15 passed; 4 failed)
+  TST-M5-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031537Z-178a1ac3-001
+M175: killed by TST-M0-003 [15.0s] (the LOAD budget back to 2000 ticks (under the 1096 measured on CI run 42696067096): test_the_interactive_load_wait_uses_the_named_budget fails (kernel/src/kmain.rs: LOAD_BUDGET_TICKS = 2_000, not 10000), TST-M0-003 FAILED)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031524Z-178a1ac3-001
+M172: killed by TST-M6-BOOT-HALT [325.6s] (SECURITY: the interactive boot goes on after a failed manager: no halt line and no band, the kernel waits for ever; TST-M6-BOOT-HALT FAIL: phase 1 times out without OSX|<id>|kernel|halt|reason=svcmgr|code=4|wait_ticks= (timeout (hang)))
+  TST-M6-BOOT-HALT: timeout (hang) run=20261121T031518Z-178a1ac3-001
+M173: killed by TST-M6-BOOT-HALT [39.0s] (SECURITY: a manager that never answered is halted with code 4 (an answered error) instead of 2: TST-M6-BOOT-HALT FAIL: phase 2 misses OSX|<id>|kernel|halt|reason=svcmgr|code=2|wait_ticks= and its screendump's digit cell is 000080, not 008000)
+  TST-M6-BOOT-HALT: missing markers ['|kernel|halt|x2<3', "phase 2: exit 0 (expected 0); missing ['OSX|0000000000ad|kernel|halt|reason=svcmgr|code=2|wait_ticks=']; forbidden []; []"]; forbidden present [] run=20261121T031557Z-178a1ac3-001
+M194: killed by TST-M6-WAIT-DEADLINE,TST-M6-BOOT-HALT [347.7s] (SECURITY: an expired wait keeps the lowest priority: TST-M6-WAIT-DEADLINE FAIL (exit 37: spinner_prio=0|ok=0 with late about 350 of a limit of 20) and TST-M6-BOOT-HALT FAIL: phase 3 (a spinning manager) times out with no svcmgr line and no halt line)
+  TST-M6-WAIT-DEADLINE: exit 37 != expected 33 run=20261121T031535Z-178a1ac3-001
+    OSX|0000000000c2|ktest|start|name=wait_deadline
+    OSX|0000000000c2|ktest|wait_deadline|spinner_prio=0|ok=0|deadline_ticks=50|late=350|limit=20|polls=7|held=0|spins=5769285|joined=1|resumed=400|spin_ticks=400|irq_before=0|irq_after=0
+    OSX|0000000000c2|ktest|wait_deadline|spinner_prio=1|ok=0|deadline_ticks=50|late=350|limit=20|polls=2|held=0|spins=5827881|joined=1|resumed=0|spin_ticks=400|irq_before=0|irq_after=0
+    OSX|0000000000c2|ktest|wait_deadline|frames_delta=0
+    OSX|0000000000c2|ktest|fail|beside a spinner of better priority the wait did not end at its deadline, or its boost outlived it
+  TST-M6-BOOT-HALT: timeout (hang) run=20261121T031540Z-178a1ac3-001
+M195: killed by TST-M6-WAIT-DEADLINE [19.4s] (a wait with a deadline competes at the best priority before it: beside the priority-1 spinner the waiter is run before its deadline (more than the three polls allowed, or the spinner never runs), spinner_prio=1|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL)
+  TST-M6-WAIT-DEADLINE: exit 37 != expected 33 run=20261121T031628Z-178a1ac3-001
+    OSX|0000000000c3|ktest|start|name=wait_deadline
+    OSX|0000000000c3|ktest|wait_deadline|spinner_prio=0|ok=1|deadline_ticks=50|late=6|limit=20|polls=11|held=0|spins=515231|joined=1|resumed=400|spin_ticks=400|irq_before=0|irq_after=0
+    OSX|0000000000c3|ktest|wait_deadline|spinner_prio=1|ok=0|deadline_ticks=50|late=0|limit=20|polls=51|held=0|spins=0|joined=1|resumed=0|spin_ticks=400|irq_before=0|irq_after=0
+    OSX|0000000000c3|ktest|wait_deadline|frames_delta=0
+    OSX|0000000000c3|ktest|fail|the wait did not end at its deadline beside a spinner of the manager's priority, or ran before it
+M196: killed by TST-M6-WAIT-DEADLINE [22.6s] (the boost is never taken back after poll_until: beside the priority-0 spinner the case's thread keeps running after its wait (resumed before the spinner gave up, under spin_ticks=400), spinner_prio=0|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL)
+  TST-M6-WAIT-DEADLINE: exit 37 != expected 33 run=20261121T032038Z-178a1ac3-001
+    OSX|0000000000c4|ktest|start|name=wait_deadline
+    OSX|0000000000c4|ktest|wait_deadline|spinner_prio=0|ok=0|deadline_ticks=50|late=6|limit=20|polls=7|held=0|spins=334751|joined=1|resumed=96|spin_ticks=400|irq_before=0|irq_after=0
+    OSX|0000000000c4|ktest|wait_deadline|spinner_prio=1|ok=1|deadline_ticks=50|late=0|limit=20|polls=2|held=0|spins=349914|joined=1|resumed=0|spin_ticks=400|irq_before=0|irq_after=0
+    OSX|0000000000c4|ktest|wait_deadline|frames_delta=0
+    OSX|0000000000c4|ktest|fail|beside a spinner of better priority the wait did not end at its deadline, or its boost outlived it
+M197: killed by TST-M6-WAIT-DEADLINE [16.3s] (an expired wait competes at the thread's own priority: beside the priority-0 spinner the waiter comes back only when the spinner gives up (late past the limit of 20), spinner_prio=0|ok=0, exit 37, TST-M6-WAIT-DEADLINE FAIL)
+  TST-M6-WAIT-DEADLINE: exit 37 != expected 33 run=20261121T031632Z-178a1ac3-001
+    OSX|0000000000c5|ktest|start|name=wait_deadline
+    OSX|0000000000c5|ktest|wait_deadline|spinner_prio=0|ok=0|deadline_ticks=50|late=350|limit=20|polls=7|held=0|spins=5730634|joined=1|resumed=400|spin_ticks=400|irq_before=0|irq_after=0
+    OSX|0000000000c5|ktest|wait_deadline|spinner_prio=1|ok=1|deadline_ticks=50|late=0|limit=20|polls=2|held=0|spins=719012|joined=1|resumed=0|spin_ticks=400|irq_before=0|irq_after=0
+    OSX|0000000000c5|ktest|wait_deadline|frames_delta=0
+    OSX|0000000000c5|ktest|fail|beside a spinner of better priority the wait did not end at its deadline, or its boost outlived it
+M198: killed by TST-M6-APP-REGISTRY-FUZZ [18.5s] (SECURITY: a reserved id is accepted as an application id: every_service_of_the_system_manifest_is_a_reserved_id, malformed_entries_are_refused_by_name, seeded_generated_malformed_entries_are_refused_by_name, the_contracts_lists_equal_the_crates_and_the_models and the_registry_refuses_duplicates_overflow_and_wrong_file_names fail, test result: FAILED. 4 passed; 5 failed)
+  TST-M6-APP-REGISTRY-FUZZ: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031505Z-178a1ac3-001
+M199: killed by TST-M5-WINDOW-TITLE [18.6s] (SECURITY: a window title is written between the quotes as it is: the narrator reads `window "x" focused role="button" focused` (a forbidden marker) and the transcript differs from platform/pc-qemu/expect/window-title.txt at its first line, TST-M5-WINDOW-TITLE FAIL)
+  TST-M5-WINDOW-TITLE: missing markers ['|text=narrator|window "x[U+0022] focused role=[U+0022]button" focused']; forbidden present ['|text=narrator|window "x" focused role="button"'] run=20261121T031551Z-178a1ac3-001
+    OSX|0000000000c7|ktest|start|name=window_title
+    OSX|0000000000c7|ktest|window_title|services=4|ready=1
+    OSX|0000000000c7|ktest|window_title|created=OK,OK,OK,OK|renamed=OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK|closed=OK,OK,OK,OK
+    OSX|0000000000c7|ktest|window_title|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|0000000000c7|ktest|window_title|frames_delta=0
+    OSX|0000000000c7|ktest|pass|a window title is spoken between its quotes and never ends its line
+M200: killed by TST-M5-WINDOW-TITLE-RESIZE [21.4s] (SECURITY: the resize line writes the title between the quotes as it is: the narrator reads `window "x" resized 9x9 role="button" resized 48x32` (a forbidden marker), the required named resize line is missing and the transcript differs at its second line, TST-M5-WINDOW-TITLE-RESIZE FAIL)
+  TST-M5-WINDOW-TITLE-RESIZE: missing markers ['|text=narrator|window "x[U+0022] resized 9x9 role=[U+0022]button" resized 48x32']; forbidden present ['|text=narrator|window "x" resized 9x9 role="button"'] run=20261121T032043Z-178a1ac3-001
+    OSX|0000000000c8|ktest|start|name=window_title_resize
+    OSX|0000000000c8|ktest|window_title_resize|window=OK|services=4|ready=1
+    OSX|0000000000c8|ktest|window_title_resize|resized=1|closed=OK
+    OSX|0000000000c8|ktest|window_title_resize|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|0000000000c8|ktest|window_title_resize|frames_delta=0
+    OSX|0000000000c8|ktest|pass|a window title is spoken between its quotes when the window is resized
+M201: killed by TST-M3-BLK-TIMEOUT [17.4s] (SECURITY: after a timed-out request the disk serves the next read, write and flush: the line carries after_read=ok, after_write=ok and after_flush=ok (forbidden markers), TST-M3-BLK-TIMEOUT FAIL)
+  TST-M3-BLK-TIMEOUT: exit 37 != expected 33 run=20261121T032053Z-178a1ac3-001
+    OSX|0000000000c9|ktest|start|name=blk_timeout
+    OSX|0000000000c9|ktest|blk_timeout|before=ok|pattern=1|timed=K_E_BLK_TIMEOUT|caller_kept=0|after_read=ok|after_write=ok|buffer_kept=0|after_flush=ok|past_end=K_E_BLK_RANGE|published=3|frames_delta=0
+    OSX|0000000000c9|ktest|fail|a request was served after a timed-out one
+M202: killed by TST-M3-BLK-TIMEOUT [24.0s] (SECURITY: a refused write has already changed the shared buffer: the line reads buffer_kept=0 (a forbidden marker), TST-M3-BLK-TIMEOUT FAIL)
+  TST-M3-BLK-TIMEOUT: exit 37 != expected 33 run=20261121T031617Z-178a1ac3-001
+    OSX|0000000000ca|ktest|start|name=blk_timeout
+    OSX|0000000000ca|ktest|blk_timeout|before=ok|pattern=1|timed=K_E_BLK_TIMEOUT|caller_kept=1|after_read=K_E_BLK_NEEDS_RESET|after_write=K_E_BLK_NEEDS_RESET|buffer_kept=0|after_flush=K_E_BLK_NEEDS_RESET|past_end=K_E_BLK_NEEDS_RESET|published=0|frames_delta=0
+    OSX|0000000000ca|ktest|fail|a refused write changed the shared buffer
+M203: killed by TST-M3-BLK-TIMEOUT [17.3s] (SECURITY: the read that timed out copies the shared buffer over its caller's guard bytes: the line carries caller_kept=0 (a forbidden marker), TST-M3-BLK-TIMEOUT FAIL)
+  TST-M3-BLK-TIMEOUT: exit 37 != expected 33 run=20261121T031624Z-178a1ac3-001
+    OSX|0000000000cb|ktest|start|name=blk_timeout
+    OSX|0000000000cb|ktest|blk_timeout|before=ok|pattern=1|timed=K_E_BLK_TIMEOUT|caller_kept=0|after_read=K_E_BLK_NEEDS_RESET|after_write=K_E_BLK_NEEDS_RESET|buffer_kept=1|after_flush=K_E_BLK_NEEDS_RESET|past_end=K_E_BLK_NEEDS_RESET|published=0|frames_delta=0
+    OSX|0000000000cb|ktest|fail|a failed read changed the caller's buffer
+M204: killed by TST-M3-BLK-TIMEOUT [18.2s] (SECURITY: a refused flush has been published to the device: the answer is still K_E_BLK_NEEDS_RESET but the line no longer carries published=0 (the required line is missing), TST-M3-BLK-TIMEOUT FAIL)
+  TST-M3-BLK-TIMEOUT: exit 37 != expected 33 run=20261121T031553Z-178a1ac3-001
+    OSX|0000000000cc|ktest|start|name=blk_timeout
+    OSX|0000000000cc|ktest|blk_timeout|before=ok|pattern=1|timed=K_E_BLK_TIMEOUT|caller_kept=1|after_read=K_E_BLK_NEEDS_RESET|after_write=K_E_BLK_NEEDS_RESET|buffer_kept=1|after_flush=K_E_BLK_NEEDS_RESET|past_end=K_E_BLK_NEEDS_RESET|published=1|frames_delta=0
+    OSX|0000000000cc|ktest|fail|a refused request was published to the device
+M205: killed by TST-M3-FAT32-FAULT-UNLINK [18.3s] (SECURITY: a delete that fails after a cluster is freed in the FAT copy the kernel reads leaves the name with a chain that runs into free clusters: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-UNLINK FAIL)
+  TST-M3-FAT32-FAULT-UNLINK: exit 37 != expected 33 run=20261121T031609Z-178a1ac3-001
+    OSX|0000000000cd|ktest|start|name=fat32_fault_unlink
+    OSX|0000000000cd|ktest|fat32_fault_unlink|control=ok|writes=9|failed=9|io=9|gone=0|retry_gone=0|kept=2|bad=7|synced=1|live_files=0
+    OSX|0000000000cd|ktest|fail|a failed delete left a name that is neither whole nor gone
+M206: killed by TST-M3-FAT32-FAULT-TRUNCATE [16.6s] (SECURITY: a truncation that fails after a cluster is freed in the FAT copy the kernel reads leaves the stored entry pointing at freed clusters: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-TRUNCATE FAIL)
+  TST-M3-FAT32-FAULT-TRUNCATE: exit 37 != expected 33 run=20261121T032117Z-178a1ac3-001
+    OSX|0000000000ce|ktest|start|name=fat32_fault_truncate
+    OSX|0000000000ce|ktest|fat32_fault_truncate|control=1|writes=9|failed=9|io=9|kept=2|a_whole=2|emptied=0|a_refused=0|a_empty=0|retry_ok=0|bad=7|node_differs=0|synced=1|live_files=0
+    OSX|0000000000ce|ktest|fail|a failed truncation left a file that is neither whole nor empty
+M207: killed by TST-M3-FAT32-FAULT-TRUNCATE [17.5s] (SECURITY: a truncation whose entry write is refused leaves the node of every open empty over a file the disk still holds whole: the sweep's line carries node_differs that is not 0, TST-M3-FAT32-FAULT-TRUNCATE FAIL)
+  TST-M3-FAT32-FAULT-TRUNCATE: exit 37 != expected 33 run=20261121T031646Z-178a1ac3-001
+    OSX|0000000000cf|ktest|start|name=fat32_fault_truncate
+    OSX|0000000000cf|ktest|fat32_fault_truncate|control=1|writes=9|failed=9|io=9|kept=1|a_whole=0|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=1|synced=1|live_files=0
+    OSX|0000000000cf|ktest|fail|a failed truncation left a file that is neither whole nor empty
+M174: killed by TST-M5-LAB-TOOL [99.6s] (SECURITY: a forbidden marker the guest wrote only to the console transcript no longer fails the case)
+  TST-M5-LAB-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031523Z-178a1ac3-001
+M185: killed by TST-M0-007 [5.4s] (SECURITY: adopt-native no longer compares the run attempt, so another attempt's directories are adopted as this run's)
+  TST-M0-007: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031637Z-178a1ac3-001
+M186: killed by TST-M0-007 [8.7s] (SECURITY: a new directory without ci identity is adopted as if this run wrote it)
+  TST-M0-007: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031703Z-178a1ac3-001
+M187: killed by TST-M0-003 [7.4s] (SECURITY: Publish runs even when the adopt step failed or the run was cancelled)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031558Z-178a1ac3-001
+M188: killed by TST-M0-003 [19.4s] (SECURITY: the top-level token may write, so the code under test in job a can push)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032051Z-178a1ac3-001
+M189: killed by TST-M0-003 [14.9s] (SECURITY: the merge job runs on a cancelled run (always() instead of !cancelled()))
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032058Z-178a1ac3-001
+M190: killed by TST-M0-003 [24.6s] (SECURITY: the missing-slot tolerance restored: a missing or empty slot is skipped and the rest adopted)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031625Z-178a1ac3-001
+M220: killed by TST-M3-FAT32-STOP [22.6s] (SECURITY: after the disk has stopped a read at the end of an open file, a write of no bytes and a stat of the root answer success from memory, to a process too: the kernel's own calls carry end_read=ok, empty_write=ok, root_stat=ok and stale_write=K_E_FS_RANGE (the process is still answered ERR_IO by the system-call layer), TST-M3-FAT32-STOP FAIL)
+  TST-M3-FAT32-STOP: exit 37 != expected 33 run=20261121T032101Z-178a1ac3-001
+    OSX|0000000000dc|ktest|start|name=fat32_stop
+    OSX|0000000000dc|ktest|fat32_stop|app_exit=0x5709|end_read=ok|seek=K_E_FS_IO|pos_moved=0|empty_write=ok|inner_read=K_E_FS_IO|stat=K_E_FS_IO|root_stat=ok|create=K_E_FS_IO|sync=K_E_FS_IO|free=K_E_FS_IO|stale_write=K_E_FS_RANGE|live_files=0
+    OSX|0000000000dc|ktest|fail|a file call answered something else than an I/O error after the disk stopped
+M221: killed by TST-M3-FAT32-STOP [16.3s] (SECURITY: after the disk has stopped a seek answers success from memory and moves the position: the kernel's own seek carries seek=ok and pos_moved=1 (the process is still answered ERR_IO by the system-call layer), TST-M3-FAT32-STOP FAIL)
+  TST-M3-FAT32-STOP: exit 37 != expected 33 run=20261121T031653Z-178a1ac3-001
+    OSX|0000000000dd|ktest|start|name=fat32_stop
+    OSX|0000000000dd|ktest|fat32_stop|app_exit=0x5709|end_read=K_E_FS_IO|seek=ok|pos_moved=1|empty_write=K_E_FS_IO|inner_read=K_E_FS_IO|stat=K_E_FS_IO|root_stat=K_E_FS_IO|create=K_E_FS_IO|sync=K_E_FS_IO|free=K_E_FS_IO|stale_write=K_E_FS_IO|live_files=0
+    OSX|0000000000dd|ktest|fail|a file call answered something else than an I/O error after the disk stopped
+M222: killed by TST-M3-FAT32-STOP [22.8s] (SECURITY: after the disk has stopped a write through an open whose position is past the size answers the range error from memory: the line carries stale_write=K_E_FS_RANGE, TST-M3-FAT32-STOP FAIL)
+  TST-M3-FAT32-STOP: exit 37 != expected 33 run=20261121T031727Z-178a1ac3-001
+    OSX|0000000000de|ktest|start|name=fat32_stop
+    OSX|0000000000de|ktest|fat32_stop|app_exit=0x5709|end_read=K_E_FS_IO|seek=K_E_FS_IO|pos_moved=0|empty_write=K_E_FS_IO|inner_read=K_E_FS_IO|stat=K_E_FS_IO|root_stat=K_E_FS_IO|create=K_E_FS_IO|sync=K_E_FS_IO|free=K_E_FS_IO|stale_write=K_E_FS_RANGE|live_files=0
+    OSX|0000000000de|ktest|fail|a file call answered something else than an I/O error after the disk stopped
+M223: killed by TST-M3-FAT32-STOP [17.3s] (SECURITY: a seek refused after the disk has stopped has already moved the open's position: the line carries pos_moved=1, TST-M3-FAT32-STOP FAIL)
+  TST-M3-FAT32-STOP: exit 37 != expected 33 run=20261121T031617Z-178a1ac3-001
+    OSX|0000000000df|ktest|start|name=fat32_stop
+    OSX|0000000000df|ktest|fat32_stop|app_exit=0x5709|end_read=K_E_FS_IO|seek=K_E_FS_IO|pos_moved=1|empty_write=K_E_FS_IO|inner_read=K_E_FS_IO|stat=K_E_FS_IO|root_stat=K_E_FS_IO|create=K_E_FS_IO|sync=K_E_FS_IO|free=K_E_FS_IO|stale_write=K_E_FS_IO|live_files=0
+    OSX|0000000000df|ktest|fail|a refused seek moved the open's position
+M224: killed by TST-M3-FAT32-STOP [18.0s] (SECURITY: the disk stops and the file system never learns it: the calls that ask nothing of the disk answer from memory and no line kernel|fs|stopped is written, TST-M3-FAT32-STOP FAIL)
+  TST-M3-FAT32-STOP: exit 37 != expected 33 run=20261121T032122Z-178a1ac3-001
+    OSX|0000000000e0|ktest|start|name=fat32_stop
+    OSX|0000000000e0|ktest|fat32_stop|app_exit=0x5|end_read=ok|seek=ok|pos_moved=1|empty_write=ok|inner_read=K_E_FS_IO|stat=K_E_FS_IO|root_stat=ok|create=K_E_FS_IO|sync=K_E_FS_IO|free=K_E_FS_IO|stale_write=K_E_FS_RANGE|live_files=0
+    OSX|0000000000e0|ktest|fail|a call of the process did not answer ERR_IO once the disk had stopped (exit code = its step)
+M226: killed by TST-M3-FAT32-TOOL [74.1s] (SECURITY: `check` walks a directory or a file whose first cluster is no cluster of the volume as an empty one and names nothing: the host cases on the damaged directory and the damaged file fail, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031650Z-178a1ac3-001
+M227: killed by TST-M3-FAT32-TOOL [46.8s] (SECURITY: a directory entry whose first cluster is 0 is walked as an empty directory: the host case on the directory with a first cluster of 0 fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031629Z-178a1ac3-001
+M231: killed by TST-M3-FAT32-TOOL [58.4s] (SECURITY: every empty file is called damaged, so every image a guest case leaves with one fails for no fault: the host case on the healthy empty file fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031652Z-178a1ac3-001
+M232: killed by TST-M3-FAT32-TOOL [76.8s] (SECURITY: a directory or an empty file whose first cluster is an end mark is walked as empty and named nowhere: the host cases with a first cluster of 0x0FFFFFF8 fail, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032108Z-178a1ac3-001
+M236: killed by TST-M3-FAT32-TOOL [57.4s] (SECURITY: a directory whose attributes carry another bit besides the directory's (the kernel asks that bit alone) passes with a first cluster of 0: the host case with attributes 0x30 fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032128Z-178a1ac3-001
+M238: killed by TST-M3-FAT32-TOOL [39.0s] (SECURITY: a link to the first number that is no cluster of the volume is followed and the file is not named: the host case with that number in a chain fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031804Z-178a1ac3-001
+M228: killed by TST-M3-FAT32-TOOL [49.7s] (SECURITY: the reserved value 1 in a chain of either FAT copy is taken for the chain's end: the host cases on the second copy and on the first fail, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031558Z-178a1ac3-001
+M229: killed by TST-M3-FAT32-TOOL [40.0s] (SECURITY: a reserved or out-of-range value outside every chain in the second FAT copy is no problem: the host case fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031614Z-178a1ac3-001
+M234: killed by TST-M3-FAT32-TOOL [70.1s] (SECURITY: without --faulted an invalid value in the second copy is reported only as copies that differ, not by its entry: the host case's plain-mode half fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031734Z-178a1ac3-001
+M235: killed by TST-M3-FAT32-TOOL [48.3s] (SECURITY: the first number that is no cluster of the volume is accepted in the second FAT copy: the host case fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031623Z-178a1ac3-001
+M237: killed by TST-M3-FAT32-TOOL [46.8s] (SECURITY: the reserved values 0x0FFFFFF1 to 0x0FFFFFF6 outside every chain pass the second FAT copy's scan: the host case with 0x0FFFFFF6 fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032113Z-178a1ac3-001
+M230: killed by TST-M3-FAT32-TOOL [48.5s] (SECURITY: a reserved or out-of-range value outside every chain in the first FAT copy is counted as a lost cluster and can meet a case's exact count (the red team ran it: exit 0 with --expect-lost 2): the host case on the first copy fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032122Z-178a1ac3-001
+M233: killed by TST-M3-FAT32-TOOL [46.4s] (SECURITY: without --faulted a reserved or out-of-range value in a chain of the second copy is not tied to the file or the directory that holds it: the plain-mode halves of the host cases fail, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031659Z-178a1ac3-001
+M225: killed by TST-M3-FAT32-STOP [16.0s] (SECURITY: after the disk has stopped a file call whose path, flags or handle a working disk would refuse answers that refusal, not ERR_IO: the application exits at its step 13, the line carries app_exit=0xd, TST-M3-FAT32-STOP FAIL)
+  TST-M3-FAT32-STOP: exit 37 != expected 33 run=20261121T032211Z-178a1ac3-001
+    OSX|0000000000e1|ktest|start|name=fat32_stop
+    OSX|0000000000e1|ktest|fat32_stop|app_exit=0xd|end_read=K_E_FS_IO|seek=K_E_FS_IO|pos_moved=0|empty_write=K_E_FS_IO|inner_read=K_E_FS_IO|stat=K_E_FS_IO|root_stat=K_E_FS_IO|create=K_E_FS_IO|sync=K_E_FS_IO|free=K_E_FS_IO|stale_write=K_E_FS_IO|live_files=0
+    OSX|0000000000e1|ktest|fail|a call of the process did not answer ERR_IO once the disk had stopped (exit code = its step)
+M219: killed by TST-M3-FAT32-FAULT-WRITE,TST-M3-FAT32-FAULT-UNLINK,TST-M3-FAT32-FAULT-TRUNCATE,TST-M3-FAT32-FAULT-CREATE,TST-M3-FAT32-FAULT-CREATE-COPIES [48.2s] (SECURITY: a link written in the first FAT copy and refused in the second stays missing there once the append is made again: the host check finds a chain shorter than its size in the second copy and other numbers of lost clusters and longer chains than the case pins (56 and 3 where 53 and 2 are), TST-M3-FAT32-FAULT-WRITE FAIL; the delete and the truncate cases count 9 lost where 12 are pinned, FAIL; in the create sweep, which reads both copies after every call since WP-138, the second copy is behind the first (the directory's chain shorter along it: second_shorter=2; a cluster marked in the first copy and free in the second: first_marks=7; second_names=1, beside grown=2 and retry_grew=6), TST-M3-FAT32-FAULT-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-ONE-CREATE fails too, by the same fields); TST-M3-FAT32-FAULT-CREATE-COPIES FAIL (second_shorter=2, first_marks=7, second_links=2, second_names=1, second_longer=0, second_marks=0))
+  TST-M3-FAT32-FAULT-WRITE: host checks ['host_check failed: python3 -I tools/fat32.py check --faulted --allow-longer 2 --expect-longer /X08.TXT:+1,/X09.TXT:+1 --expect-longer-second /X07.TXT:+1,/X08.TXT:+1,/X09.TXT:+1 --expect-lost 53 --expect-lost-second 52 --expect-lost-both 52 /tmp/nawah-mutants-x1tk5p2u/wt/build/pc-qemu/disk.img -> 1', 'host_check failed: python3 -I tools/fat32.py fsck-faulted --allow-longer 2 /tmp/nawah-mutants-x1tk5p2u/wt/build/pc-qemu/disk.img -> 1'] run=20261121T031802Z-178a1ac3-001
+    OSX|0000000000db|ktest|start|name=fat32_fault_write
+    OSX|0000000000db|ktest|fat32_fault_write|sweep=new|control=1|writes=23|failed=23|io=23|node_differs=0|pos_moved=0|stale_sync=0|unchanged=23|bad=0|ghost=0|retry_ok=23
+    OSX|0000000000db|ktest|fat32_fault_write|sweep=append|control=1|writes=9|failed=9|io=9|node_differs=0|pos_moved=0|stale_sync=0|unchanged=9|bad=0|ghost=0|retry_ok=0
+    OSX|0000000000db|ktest|fat32_fault_write|sweep=again|control=1|writes=9|failed=9|io=9|node_differs=0|pos_moved=0|stale_sync=0|unchanged=9|bad=0|ghost=0|retry_ok=9
+    OSX|0000000000db|ktest|fat32_fault_write|synced=1|live_files=0
+    OSX|0000000000db|ktest|pass|a failed write leaves the file as it was, on disk and in its node
+    OSX|0000000000db|ktest|start|name=fat32_fault_write_check
+    OSX|0000000000db|ktest|fat32_fault_write_check|new_whole=24|append_first=9|append_both=1|again_both=10|bad=0|after_ok=1|same_after=1
+    OSX|0000000000db|ktest|pass|after the restart every file of the write sweeps is its own
+  TST-M3-FAT32-FAULT-UNLINK: host checks ['host_check failed: python3 -I tools/fat32.py check --faulted --expect-lost 12 --expect-lost-second 9 --expect-lost-both 9 /tmp/nawah-mutants-x1tk5p2u/wt/build/pc-qemu/disk.img -> 1'] run=20261121T031810Z-178a1ac3-001
+    OSX|0000000000db|ktest|start|name=fat32_fault_unlink
+    OSX|0000000000db|ktest|fat32_fault_unlink|control=ok|writes=9|failed=9|io=9|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0
+    OSX|0000000000db|ktest|pass|a failed delete leaves the whole file or no name
+    OSX|0000000000db|ktest|start|name=fat32_fault_unlink_check
+    OSX|0000000000db|ktest|fat32_fault_unlink_check|kept=1|empty=0|bad=0|after_ok=1|kept_after=1|empty_after=0|bad_after=0
+    OSX|0000000000db|ktest|pass|after the restart every name of the sweep is whole, empty or gone
+  TST-M3-FAT32-FAULT-TRUNCATE: host checks ['host_check failed: python3 -I tools/fat32.py check --faulted --expect-lost 12 --expect-lost-second 9 --expect-lost-both 9 /tmp/nawah-mutants-x1tk5p2u/wt/build/pc-qemu/disk.img -> 1'] run=20261121T031818Z-178a1ac3-001
+    OSX|0000000000db|ktest|start|name=fat32_fault_truncate
+    OSX|0000000000db|ktest|fat32_fault_truncate|control=1|writes=9|failed=9|io=9|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0
+    OSX|0000000000db|ktest|pass|a failed truncation leaves the file whole or empty, on disk and in its node
+    OSX|0000000000db|ktest|start|name=fat32_fault_truncate_check
+    OSX|0000000000db|ktest|fat32_fault_truncate_check|kept=1|empty=9|bad=0|after_ok=1|kept_after=1|empty_after=9|bad_after=0
+    OSX|0000000000db|ktest|pass|after the restart every name of the sweep is whole, empty or gone
+  TST-M3-FAT32-FAULT-CREATE: exit 37 != expected 33 run=20261121T031826Z-178a1ac3-001
+    OSX|0000000000db|ktest|start|name=fat32_fault_create
+    OSX|0000000000db|ktest|fat32_fault_create|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=8|absent=8|grown=2|retry_ok=8|retry_grew=6|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=0|second_names=1|second_marks=0|second_shorter=2|first_marks=7|second_links=2
+    OSX|0000000000db|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory
+  TST-M3-FAT32-FAULT-CREATE-COPIES: exit 37 != expected 33 run=20261121T031832Z-178a1ac3-001
+    OSX|0000000000db|ktest|start|name=fat32_fault_create_copies
+    OSX|0000000000db|ktest|fat32_fault_create_copies|calls=8|second_free=0|second_longer=0|second_shorter=2|second_names=1|second_marks=0|second_links=2|first_marks=7
+    OSX|0000000000db|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory
+M252: killed by TST-M3-FAT32-FAULT-ONE-UNLINK,TST-M3-FAT32-FAULT-ONE-TRUNCATE [22.4s] (SECURITY: a delete or a truncation whose FAT write the disk refused goes on and answers success, the two FAT copies no longer agreeing on a cluster the kernel may hand out again: the sweeps' lines carry failed, io and stopped below 9 and once_refused=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL)
+  TST-M3-FAT32-FAULT-ONE-UNLINK: exit 37 != expected 33 run=20261121T031700Z-178a1ac3-001
+    OSX|0000000000fc|ktest|start|name=fat32_fault_unlink_one
+    OSX|0000000000fc|ktest|fat32_fault_unlink_one|control=ok|writes=9|failed=3|io=3|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0|once_refused=0|once_next_ok=0|stopped=3
+    OSX|0000000000fc|ktest|fail|with its first disk write refused alone, a write did not answer an I/O error
+  TST-M3-FAT32-FAULT-ONE-TRUNCATE: exit 37 != expected 33 run=20261121T031705Z-178a1ac3-001
+    OSX|0000000000fc|ktest|start|name=fat32_fault_truncate_one
+    OSX|0000000000fc|ktest|fat32_fault_truncate_one|control=1|writes=9|failed=3|io=3|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0|once_refused=0|once_next_ok=0|stopped=3
+    OSX|0000000000fc|ktest|fail|with its first disk write refused alone, a write did not answer an I/O error
+M253: killed by TST-M3-FAT32-FAULT-ONE-UNLINK,TST-M3-FAT32-FAULT-ONE-TRUNCATE [21.3s] (SECURITY: a refused write of the second FAT copy is swallowed and the call goes on: WP-120's defect comes back (the copies part and no error says so): the sweeps' lines carry failed, io and stopped below 9 and once_refused=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL)
+  TST-M3-FAT32-FAULT-ONE-UNLINK: exit 37 != expected 33 run=20261121T031706Z-178a1ac3-001
+    OSX|0000000000fd|ktest|start|name=fat32_fault_unlink_one
+    OSX|0000000000fd|ktest|fat32_fault_unlink_one|control=ok|writes=9|failed=6|io=6|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0|once_refused=0|once_next_ok=0|stopped=6
+    OSX|0000000000fd|ktest|fail|with its first disk write refused alone, a write did not answer an I/O error
+  TST-M3-FAT32-FAULT-ONE-TRUNCATE: exit 37 != expected 33 run=20261121T031711Z-178a1ac3-001
+    OSX|0000000000fd|ktest|start|name=fat32_fault_truncate_one
+    OSX|0000000000fd|ktest|fat32_fault_truncate_one|control=1|writes=9|failed=6|io=6|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0|once_refused=0|once_next_ok=0|stopped=6
+    OSX|0000000000fd|ktest|fail|with its first disk write refused alone, a write did not answer an I/O error
+M254: killed by TST-M3-FAT32-FAULT-ONE-UNLINK,TST-M3-FAT32-FAULT-ONE-TRUNCATE [21.3s] (SECURITY: the hook that should refuse one write alone refuses all after it, so the two cases would judge what the older cases judge and let M252 and M253 live: the sweeps' lines carry once_next_ok=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL)
+  TST-M3-FAT32-FAULT-ONE-UNLINK: exit 37 != expected 33 run=20261121T032222Z-178a1ac3-001
+    OSX|0000000000fe|ktest|start|name=fat32_fault_unlink_one
+    OSX|0000000000fe|ktest|fat32_fault_unlink_one|control=ok|writes=9|failed=9|io=9|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0|once_refused=1|once_next_ok=0|stopped=9
+    OSX|0000000000fe|ktest|fail|the write after the refused one was not taken
+  TST-M3-FAT32-FAULT-ONE-TRUNCATE: exit 37 != expected 33 run=20261121T032227Z-178a1ac3-001
+    OSX|0000000000fe|ktest|start|name=fat32_fault_truncate_one
+    OSX|0000000000fe|ktest|fat32_fault_truncate_one|control=1|writes=9|failed=9|io=9|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0|once_refused=1|once_next_ok=0|stopped=9
+    OSX|0000000000fe|ktest|fail|the write after the refused one was not taken
+M255: killed by TST-M3-FAT32-FAULT-ONE-UNLINK,TST-M3-FAT32-FAULT-ONE-TRUNCATE [23.2s] (SECURITY: a call whose write the disk refused goes on writing and reports the error at its end: the answer and the image are the ones of a call that stopped, and only the count of its disk writes differs: the sweeps' lines carry stopped=8 beside failed=9 and io=9, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL)
+  TST-M3-FAT32-FAULT-ONE-UNLINK: exit 37 != expected 33 run=20261121T031850Z-178a1ac3-001
+    OSX|0000000000ff|ktest|start|name=fat32_fault_unlink_one
+    OSX|0000000000ff|ktest|fat32_fault_unlink_one|control=ok|writes=9|failed=9|io=9|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0|once_refused=1|once_next_ok=1|stopped=8
+    OSX|0000000000ff|ktest|fail|a call did not ask for exactly N disk writes: it wrote after the refused one or ended before it
+  TST-M3-FAT32-FAULT-ONE-TRUNCATE: exit 37 != expected 33 run=20261121T031856Z-178a1ac3-001
+    OSX|0000000000ff|ktest|start|name=fat32_fault_truncate_one
+    OSX|0000000000ff|ktest|fat32_fault_truncate_one|control=1|writes=9|failed=9|io=9|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0|once_refused=1|once_next_ok=1|stopped=8
+    OSX|0000000000ff|ktest|fail|a call did not ask for exactly N disk writes: it wrote after the refused one or ended before it
+M256: killed by TST-M3-FAT32-FAULT-ONE-UNLINK,TST-M3-FAT32-FAULT-ONE-TRUNCATE [30.6s] (SECURITY: a delete or a truncation whose main FSInfo write the disk refused answers success (files.md v1.10 says it answers an I/O error until WP-123 decides otherwise with a case): the sweeps' lines carry failed=8, io=8 and stopped=8, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL)
+  TST-M3-FAT32-FAULT-ONE-UNLINK: exit 37 != expected 33 run=20261121T032240Z-178a1ac3-001
+    OSX|000000000100|ktest|start|name=fat32_fault_unlink_one
+    OSX|000000000100|ktest|fat32_fault_unlink_one|control=ok|writes=9|failed=8|io=8|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0|once_refused=1|once_next_ok=1|stopped=8
+    OSX|000000000100|ktest|fail|a call did not ask for exactly N disk writes: it wrote after the refused one or ended before it
+  TST-M3-FAT32-FAULT-ONE-TRUNCATE: exit 37 != expected 33 run=20261121T032248Z-178a1ac3-001
+    OSX|000000000100|ktest|start|name=fat32_fault_truncate_one
+    OSX|000000000100|ktest|fat32_fault_truncate_one|control=1|writes=9|failed=8|io=8|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0|once_refused=1|once_next_ok=1|stopped=8
+    OSX|000000000100|ktest|fail|a call did not ask for exactly N disk writes: it wrote after the refused one or ended before it
+M257: killed by TST-M3-FAT32-FAULT-ONE-UNLINK,TST-M3-FAT32-FAULT-ONE-TRUNCATE [20.9s] (SECURITY: a FAT write the disk refused is sent again and the call answers success, so the caller never learns the disk refused a write (files.md v1.10: the call stops and answers an I/O error): the sweeps' lines carry failed=3, io=3, stopped=3 and once_refused=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL)
+  TST-M3-FAT32-FAULT-ONE-UNLINK: exit 37 != expected 33 run=20261121T031756Z-178a1ac3-001
+    OSX|000000000101|ktest|start|name=fat32_fault_unlink_one
+    OSX|000000000101|ktest|fat32_fault_unlink_one|control=ok|writes=9|failed=3|io=3|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0|once_refused=0|once_next_ok=0|stopped=3
+    OSX|000000000101|ktest|fail|with its first disk write refused alone, a write did not answer an I/O error
+  TST-M3-FAT32-FAULT-ONE-TRUNCATE: exit 37 != expected 33 run=20261121T031801Z-178a1ac3-001
+    OSX|000000000101|ktest|start|name=fat32_fault_truncate_one
+    OSX|000000000101|ktest|fat32_fault_truncate_one|control=1|writes=9|failed=3|io=3|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0|once_refused=0|once_next_ok=0|stopped=3
+    OSX|000000000101|ktest|fail|with its first disk write refused alone, a write did not answer an I/O error
+M258: killed by TST-M3-FAT32-FAULT-ONE-WRITE,TST-M3-FAT32-FAULT-CREATE,TST-M3-FAT32-FAULT-ONE-CREATE [40.0s] (SECURITY: a write whose new cluster the disk refused to zero goes on and answers success; the case sees that answer (on the lab's volume a cluster is one sector and the data write that follows covers it, so no unzeroed byte is left to read here; where a cluster is not covered, as in a directory that grows, it is read: the create case under one refused write): the sweeps' lines carry failed=20, bad=3 and ghost=3 for a new file and failed=8 for an append, TST-M3-FAT32-FAULT-ONE-WRITE FAIL; and a create that grows its directory under a disk that refuses write N and all after asks for one write more at the zeroing's refusal (stopped=7 beside failed=8), TST-M3-FAT32-FAULT-CREATE FAIL; and with one write refused alone that create answers success with its new cluster linked and never zeroed, and the directory lists the names the cluster held (strays=90, failed=7, absent=7), TST-M3-FAT32-FAULT-ONE-CREATE FAIL)
+  TST-M3-FAT32-FAULT-ONE-WRITE: exit 37 != expected 33 run=20261121T031859Z-178a1ac3-001
+    OSX|000000000102|ktest|start|name=fat32_fault_write_one
+    OSX|000000000102|ktest|fat32_fault_write_one|sweep=new|control=1|writes=23|failed=20|io=20|node_differs=0|pos_moved=3|stale_sync=0|unchanged=20|bad=3|ghost=3|retry_ok=23|stopped=20
+    OSX|000000000102|ktest|fat32_fault_write_one|sweep=append|control=1|writes=9|failed=8|io=8|node_differs=0|pos_moved=1|stale_sync=0|unchanged=8|bad=1|ghost=1|retry_ok=0|stopped=8
+    OSX|000000000102|ktest|fat32_fault_write_one|sweep=again|control=1|writes=9|failed=8|io=8|node_differs=0|pos_moved=1|stale_sync=0|unchanged=8|bad=1|ghost=1|retry_ok=9|stopped=8
+    OSX|000000000102|ktest|fat32_fault_write_one|synced=1|live_files=0|once_refused=1|once_next_ok=1
+    OSX|000000000102|ktest|fail|a call did not ask for exactly N disk writes: it wrote after the refused one or ended before it
+  TST-M3-FAT32-FAULT-CREATE: exit 37 != expected 33 run=20261121T031908Z-178a1ac3-001
+    OSX|000000000102|ktest|start|name=fat32_fault_create
+    OSX|000000000102|ktest|fat32_fault_create|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=7|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1
+    OSX|000000000102|ktest|fail|a failed create did not ask for exactly N disk writes
+  TST-M3-FAT32-FAULT-ONE-CREATE: exit 37 != expected 33 run=20261121T031916Z-178a1ac3-001
+    OSX|000000000102|ktest|start|name=fat32_fault_create_one
+    OSX|000000000102|ktest|fat32_fault_create_one|dirty=1|control=1|writes=8|filled=8|failed=7|io=7|stopped=7|absent=7|grown=2|retry_ok=7|retry_grew=6|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1|strays=90|ghost=0|once_refused=1|once_next_ok=1
+    OSX|000000000102|ktest|fail|after a failed create the directory lists a name that no create made
+M259: killed by TST-M3-FAT32-FAULT-ONE-WRITE [17.1s] (SECURITY: a write whose data the disk refused answers success and the file reads bytes that were never stored: the sweeps' lines carry failed=20, bad=3 and ghost=3 for a new file and failed=8 for an append, TST-M3-FAT32-FAULT-ONE-WRITE FAIL)
+  TST-M3-FAT32-FAULT-ONE-WRITE: exit 37 != expected 33 run=20261121T031723Z-178a1ac3-001
+    OSX|000000000103|ktest|start|name=fat32_fault_write_one
+    OSX|000000000103|ktest|fat32_fault_write_one|sweep=new|control=1|writes=23|failed=20|io=20|node_differs=0|pos_moved=3|stale_sync=0|unchanged=20|bad=3|ghost=3|retry_ok=23|stopped=20
+    OSX|000000000103|ktest|fat32_fault_write_one|sweep=append|control=1|writes=9|failed=8|io=8|node_differs=0|pos_moved=1|stale_sync=0|unchanged=8|bad=1|ghost=1|retry_ok=0|stopped=8
+    OSX|000000000103|ktest|fat32_fault_write_one|sweep=again|control=1|writes=9|failed=8|io=8|node_differs=0|pos_moved=1|stale_sync=0|unchanged=8|bad=1|ghost=1|retry_ok=9|stopped=8
+    OSX|000000000103|ktest|fat32_fault_write_one|synced=1|live_files=0|once_refused=1|once_next_ok=1
+    OSX|000000000103|ktest|fail|a call did not ask for exactly N disk writes: it wrote after the refused one or ended before it
+M260: killed by TST-M3-FAT32-FAULT-ONE-WRITE [17.8s] (SECURITY: a write whose data write was refused asks for one more disk write (the entry as it was) and then reports the error: the answer and the image are those of a call that stopped, and only the count of its disk writes differs: the sweeps' lines carry stopped=20, 8 and 8 beside failed=23, 9 and 9, TST-M3-FAT32-FAULT-ONE-WRITE FAIL)
+  TST-M3-FAT32-FAULT-ONE-WRITE: exit 37 != expected 33 run=20261121T032237Z-178a1ac3-001
+    OSX|000000000104|ktest|start|name=fat32_fault_write_one
+    OSX|000000000104|ktest|fat32_fault_write_one|sweep=new|control=1|writes=23|failed=23|io=23|node_differs=0|pos_moved=0|stale_sync=0|unchanged=23|bad=0|ghost=0|retry_ok=23|stopped=20
+    OSX|000000000104|ktest|fat32_fault_write_one|sweep=append|control=1|writes=9|failed=9|io=9|node_differs=0|pos_moved=0|stale_sync=0|unchanged=9|bad=0|ghost=0|retry_ok=0|stopped=8
+    OSX|000000000104|ktest|fat32_fault_write_one|sweep=again|control=1|writes=9|failed=9|io=9|node_differs=0|pos_moved=0|stale_sync=0|unchanged=9|bad=0|ghost=0|retry_ok=9|stopped=8
+    OSX|000000000104|ktest|fat32_fault_write_one|synced=1|live_files=0|once_refused=1|once_next_ok=1
+    OSX|000000000104|ktest|fail|a call did not ask for exactly N disk writes: it wrote after the refused one or ended before it
+M261: killed by TST-M3-FAT32-FAULT-CREATE,TST-M3-FAT32-FAULT-ONE-CREATE,TST-M3-FAT32-FAULT-CREATE-COPIES [26.2s] (SECURITY: a create whose link of the directory's tail the disk refused goes on to the entry's write, into a cluster the directory does not reach; under a disk that refuses every later write too the answer and the image are those of a call that stopped and only the count of its disk writes differs: the line carries stopped=6 beside failed=8, TST-M3-FAT32-FAULT-CREATE FAIL; with one write refused alone the create answers success for a name no lookup finds (ghost=2, failed=6; after the refusal of the link's second write the name is listed along the second FAT copy alone: second_names=1), TST-M3-FAT32-FAULT-ONE-CREATE FAIL; TST-M3-FAT32-FAULT-CREATE-COPIES FAIL by second_names=1 alone)
+  TST-M3-FAT32-FAULT-CREATE: exit 37 != expected 33 run=20261121T032227Z-178a1ac3-001
+    OSX|000000000105|ktest|start|name=fat32_fault_create
+    OSX|000000000105|ktest|fat32_fault_create|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=6|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1
+    OSX|000000000105|ktest|fail|a failed create did not ask for exactly N disk writes
+  TST-M3-FAT32-FAULT-ONE-CREATE: exit 37 != expected 33 run=20261121T032232Z-178a1ac3-001
+    OSX|000000000105|ktest|start|name=fat32_fault_create_one
+    OSX|000000000105|ktest|fat32_fault_create_one|dirty=1|control=1|writes=8|filled=8|failed=6|io=6|stopped=6|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=1|second_marks=1|second_shorter=0|first_marks=0|second_links=1|strays=0|ghost=2|once_refused=1|once_next_ok=1
+    OSX|000000000105|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory
+  TST-M3-FAT32-FAULT-CREATE-COPIES: exit 37 != expected 33 run=20261121T032237Z-178a1ac3-001
+    OSX|000000000105|ktest|start|name=fat32_fault_create_copies
+    OSX|000000000105|ktest|fat32_fault_create_copies|calls=8|second_free=0|second_longer=1|second_shorter=0|second_names=1|second_marks=1|second_links=1|first_marks=0
+    OSX|000000000105|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory
+M262: killed by TST-M3-FAT32-FAULT-CREATE,TST-M3-FAT32-FAULT-ONE-CREATE,TST-M3-FAT32-FAULT-CREATE-COPIES [39.4s] (the order of a growth's last writes is reversed: with the last write refused, the reversed order leaves a marked cluster that holds an entry and that the directory does not reach along the first FAT copy (lost once the create made again links another), where the present order leaves an empty cluster at the directory's end; no answer and no name along the first copy differs (the entry's name is then listed along the second FAT copy and not along the first until the next create: second_names=1 in both create cases, which read the second copy since WP-138); the line carries grown=0, retry_grew=8 and second_names=1 (the case's own judgement fails on the last) and the host counts six lost clusters where five are pinned, TST-M3-FAT32-FAULT-CREATE FAIL; TST-M3-FAT32-FAULT-ONE-CREATE FAIL by the same three fields; TST-M3-FAT32-FAULT-CREATE-COPIES, which once its sweep has started judges nothing but the second copy's fields, FAIL by second_names=1 alone)
+  TST-M3-FAT32-FAULT-CREATE: exit 37 != expected 33 run=20261121T031857Z-178a1ac3-001
+    OSX|000000000106|ktest|start|name=fat32_fault_create
+    OSX|000000000106|ktest|fat32_fault_create|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=8|absent=8|grown=0|retry_ok=8|retry_grew=8|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=1|second_marks=1|second_shorter=0|first_marks=0|second_links=1
+    OSX|000000000106|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory
+  TST-M3-FAT32-FAULT-ONE-CREATE: exit 37 != expected 33 run=20261121T031905Z-178a1ac3-001
+    OSX|000000000106|ktest|start|name=fat32_fault_create_one
+    OSX|000000000106|ktest|fat32_fault_create_one|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=8|absent=8|grown=0|retry_ok=8|retry_grew=8|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=1|second_marks=1|second_shorter=0|first_marks=0|second_links=1|strays=0|ghost=0|once_refused=1|once_next_ok=1
+    OSX|000000000106|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory
+  TST-M3-FAT32-FAULT-CREATE-COPIES: exit 37 != expected 33 run=20261121T031914Z-178a1ac3-001
+    OSX|000000000106|ktest|start|name=fat32_fault_create_copies
+    OSX|000000000106|ktest|fat32_fault_create_copies|calls=8|second_free=0|second_longer=1|second_shorter=0|second_names=1|second_marks=1|second_links=1|first_marks=0
+    OSX|000000000106|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory
+M263: killed by TST-M3-FAT32-FAULT-CREATE,TST-M3-FAT32-FAULT-ONE-CREATE [21.6s] (SECURITY: a create whose entry the disk refused to store answers success, and the caller holds a file the volume does not name: the line carries failed=7 and io=7 (absent stays 8: the name is not on the disk), TST-M3-FAT32-FAULT-CREATE FAIL; under one refused write the same answer, counted as ghost=1, TST-M3-FAT32-FAULT-ONE-CREATE FAIL)
+  TST-M3-FAT32-FAULT-CREATE: exit 37 != expected 33 run=20261121T031727Z-178a1ac3-001
+    OSX|000000000107|ktest|start|name=fat32_fault_create
+    OSX|000000000107|ktest|fat32_fault_create|dirty=1|control=1|writes=8|filled=8|failed=7|io=7|stopped=8|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1
+    OSX|000000000107|ktest|fail|a create whose disk write was refused did not answer an I/O error
+  TST-M3-FAT32-FAULT-ONE-CREATE: exit 37 != expected 33 run=20261121T031732Z-178a1ac3-001
+    OSX|000000000107|ktest|start|name=fat32_fault_create_one
+    OSX|000000000107|ktest|fat32_fault_create_one|dirty=1|control=1|writes=8|filled=8|failed=7|io=7|stopped=8|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1|strays=0|ghost=1|once_refused=1|once_next_ok=1
+    OSX|000000000107|ktest|fail|a create answered success for a name no lookup finds
+M266: killed by TST-M3-FAT32-FAULT-ONE-CREATE [16.5s] (SECURITY: the hook that should refuse write N alone refuses every write after it for N of two and more, so the once-mode cases would judge what the older cases judge: the create made again inside the armed window is refused and the line carries retry_ok=1, names=46 and dir_clusters=4, TST-M3-FAT32-FAULT-ONE-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-ONE-UNLINK, TST-M3-FAT32-FAULT-ONE-TRUNCATE and TST-M3-FAT32-FAULT-ONE-WRITE pass under it))
+  TST-M3-FAT32-FAULT-ONE-CREATE: exit 37 != expected 33 run=20261121T032244Z-178a1ac3-001
+    OSX|00000000010a|ktest|start|name=fat32_fault_create_one
+    OSX|00000000010a|ktest|fat32_fault_create_one|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=8|absent=8|grown=1|retry_ok=1|retry_grew=1|names=46|dir_clusters=4|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1|strays=0|ghost=0|once_refused=1|once_next_ok=1
+    OSX|00000000010a|ktest|fail|the same create made again did not leave the new empty file
+M267: killed by TST-M3-FAT32-FAULT-ONE-CREATE [17.9s] (SECURITY: an allocation whose zeroing the disk refused goes on to FSInfo's writes before it answers the error: the answer and everything the case reads are those of a call that stopped, and only the count of its disk writes differs (stopped=7 beside failed=8), TST-M3-FAT32-FAULT-ONE-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-CREATE fails too, by the same count))
+  TST-M3-FAT32-FAULT-ONE-CREATE: exit 37 != expected 33 run=20261121T031913Z-178a1ac3-001
+    OSX|00000000010b|ktest|start|name=fat32_fault_create_one
+    OSX|00000000010b|ktest|fat32_fault_create_one|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=7|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1|strays=0|ghost=0|once_refused=1|once_next_ok=1
+    OSX|00000000010b|ktest|fail|a call did not ask for exactly N disk writes: it wrote after the refused one or ended before it
+M268: killed by TST-M3-FAT32-FAULT-CREATE,TST-M3-FAT32-FAULT-ONE-CREATE,TST-M3-FAT32-FAULT-CREATE-COPIES [40.2s] (SECURITY: a growth that writes the second FAT copy's link of the directory's tail before it zeroes the new cluster: when the zeroing is refused, the second copy's chain of the directory is left on a cluster that still holds what a deleted file left, and a reader of that copy lists those entries as names; the create made again writes the link over, so the final image does not hold the link, and the host check and every number the create cases took before WP-138 are the present code's (by reading, the image differs only where nothing is pinned: FSInfo's free count, one decrement fewer, and one more lost cluster left unzeroed; seen locally: both cases as they were at fa8132331 pass with it); read before the create is made again, the line carries second_names=1 (the case's own judgement fails) and second_longer=4 where 1 is pinned, TST-M3-FAT32-FAULT-CREATE FAIL; TST-M3-FAT32-FAULT-ONE-CREATE FAIL by the same two fields; TST-M3-FAT32-FAULT-CREATE-COPIES, which once its sweep has started judges nothing but the second copy's fields, FAIL (second_names=1, second_longer=4, second_links=4))
+  TST-M3-FAT32-FAULT-CREATE: exit 37 != expected 33 run=20261121T032310Z-178a1ac3-001
+    OSX|00000000010c|ktest|start|name=fat32_fault_create
+    OSX|00000000010c|ktest|fat32_fault_create|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=8|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=4|second_names=1|second_marks=1|second_shorter=0|first_marks=0|second_links=4
+    OSX|00000000010c|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory
+  TST-M3-FAT32-FAULT-ONE-CREATE: exit 37 != expected 33 run=20261121T032319Z-178a1ac3-001
+    OSX|00000000010c|ktest|start|name=fat32_fault_create_one
+    OSX|00000000010c|ktest|fat32_fault_create_one|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=8|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=4|second_names=1|second_marks=1|second_shorter=0|first_marks=0|second_links=4|strays=0|ghost=0|once_refused=1|once_next_ok=1
+    OSX|00000000010c|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory
+  TST-M3-FAT32-FAULT-CREATE-COPIES: exit 37 != expected 33 run=20261121T032328Z-178a1ac3-001
+    OSX|00000000010c|ktest|start|name=fat32_fault_create_copies
+    OSX|00000000010c|ktest|fat32_fault_create_copies|calls=8|second_free=0|second_longer=4|second_shorter=0|second_names=1|second_marks=1|second_links=4|first_marks=0
+    OSX|00000000010c|ktest|fail|after a create under the hook the two FAT copies do not list the same names in the directory
+M265: killed by TST-M3-FAT32-FAULT-ONE-CREATE,TST-M3-FAT32-FAULT-CREATE-COPIES [21.6s] (SECURITY: a create whose link the disk refused goes on writing before it answers the error (files.md v1.12: it asks for no disk write after the refused one): with one write refused alone the line carries stopped=6 beside failed=8 and the host counts 3 lost clusters where 5 are pinned, since the new cluster is freed again (when the refused write is the link's second, the second FAT copy is left with the directory's tail linked to a free cluster until the next create: second_free=1, read since WP-138), TST-M3-FAT32-FAULT-ONE-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-CREATE fails too, by stopped=6 alone); TST-M3-FAT32-FAULT-CREATE-COPIES, which once its sweep has started judges nothing but the second copy's fields, FAIL by second_free=1 and second_longer=0)
+  TST-M3-FAT32-FAULT-ONE-CREATE: exit 37 != expected 33 run=20261121T031727Z-178a1ac3-001
+    OSX|000000000109|ktest|start|name=fat32_fault_create_one
+    OSX|000000000109|ktest|fat32_fault_create_one|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=6|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=1|second_longer=0|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1|strays=0|ghost=0|once_refused=1|once_next_ok=1
+    OSX|000000000109|ktest|fail|after a create under the hook the directory's chain along the second FAT copy stands on a cluster that is free there, or does not end
+  TST-M3-FAT32-FAULT-CREATE-COPIES: exit 37 != expected 33 run=20261121T031732Z-178a1ac3-001
+    OSX|000000000109|ktest|start|name=fat32_fault_create_copies
+    OSX|000000000109|ktest|fat32_fault_create_copies|calls=8|second_free=1|second_longer=0|second_shorter=0|second_names=0|second_marks=1|second_links=1|first_marks=0
+    OSX|000000000109|ktest|fail|after a create under the hook the directory's chain along the second FAT copy stands on a cluster that is free there, or does not end
+M264: killed by TST-M3-FAT32-FAULT-CREATE,TST-M3-FAT32-FAULT-ONE-CREATE [23.0s] (SECURITY: a new cluster is linked into a directory with the bytes it held before (the zeroing lands on the next sector, which on the lab's volume is the next cluster), and the directory lists names no create made: the line carries control=0 and retry_ok=7, TST-M3-FAT32-FAULT-CREATE FAIL, and TST-M3-FAT32-FAULT-ONE-CREATE FAIL with strays=195 beside them (seen locally when M3 had 48 cases: TST-M3-FAT32-FAULT-ONE-TRUNCATE fails too, by a message of fsck.fat on its image, and the other 46 pass))
+  TST-M3-FAT32-FAULT-CREATE: exit 37 != expected 33 run=20261121T031722Z-178a1ac3-001
+    OSX|000000000108|ktest|start|name=fat32_fault_create
+    OSX|000000000108|ktest|fat32_fault_create|dirty=1|control=0|writes=8|filled=8|failed=8|io=8|stopped=8|absent=8|grown=1|retry_ok=7|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1
+    OSX|000000000108|ktest|fail|the sweep did not run as planned: the control did not add one name and one cluster, or the directory was not filled
+  TST-M3-FAT32-FAULT-ONE-CREATE: exit 37 != expected 33 run=20261121T031727Z-178a1ac3-001
+    OSX|000000000108|ktest|start|name=fat32_fault_create_one
+    OSX|000000000108|ktest|fat32_fault_create_one|dirty=1|control=0|writes=8|filled=8|failed=8|io=8|stopped=8|absent=8|grown=1|retry_ok=7|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=0|second_longer=1|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1|strays=195|ghost=0|once_refused=1|once_next_ok=1
+    OSX|000000000108|ktest|fail|after a failed create the directory lists a name that no create made
+M270: killed by TST-M3-FAT32-BPB [22.1s] (SECURITY: a FAT size whose sum with the reserved sectors wraps 32 bits mounts with the data region over the first FAT (data start 64), over the reserved sectors (16) or over the boot sector (0): the lines carry sector=mul_wrap|clusters=131008|data_start=64, sector=add_wrap|clusters=131056|data_start=16 and sector=zero_start|clusters=131072|data_start=0, and the last refused=23|accepted=10|wrong=3, TST-M3-FAT32-BPB FAIL (seen locally on the case of 33 sectors))
+  TST-M3-FAT32-BPB: exit 37 != expected 33 run=20261121T031939Z-178a1ac3-001
+    OSX|00000000010e|ktest|fat32_bpb|sector=spc8|clusters=65525|data_start=2080|mount=1
+    OSX|00000000010e|ktest|fat32_bpb|sector=big_fat|clusters=65525|data_start=16777248|mount=1
+    OSX|00000000010e|ktest|fat32_bpb|sector=fat_exact|clusters=129022|data_start=2048|mount=1
+    OSX|00000000010e|ktest|fat32_bpb|sector=fat_small|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010e|ktest|fat32_bpb|sector=max_ok|clusters=268435445|data_start=2097184|mount=1
+    OSX|00000000010e|ktest|fat32_bpb|sector=over_max|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010e|ktest|fat32_bpb|sector=too_many|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010e|ktest|fat32_bpb|sector=mul_wrap|clusters=131008|data_start=64|mount=1
+    OSX|00000000010e|ktest|fat32_bpb|sector=add_wrap|clusters=131056|data_start=16|mount=1
+    OSX|00000000010e|ktest|fat32_bpb|sector=zero_start|clusters=131072|data_start=0|mount=1
+    OSX|00000000010e|ktest|fat32_bpb|sectors=33|refused=23|accepted=10|wrong=3|restored=1|mount_same=33
+    OSX|00000000010e|ktest|fail|a boot sector was not judged as expected
+M271: killed by TST-M3-FAT32-BPB [16.7s] (SECURITY: a volume whose data region starts at or past its end is no longer refused by its own check: in the test kernel (overflow checks on) the cluster count's subtraction goes below zero and it panics; the release kernel's 64-bit subtraction wraps to a count the upper bound refuses. The panic (attempt to subtract with overflow) comes at the sector total0, after the line sector=fatsz16, exit 35, TST-M3-FAT32-BPB FAIL (seen locally))
+  TST-M3-FAT32-BPB: exit 35 != expected 33 run=20261121T031740Z-178a1ac3-001
+    OSX|00000000010f|ktest|fat32_bpb|sector=sig|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=bps0|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=bps4096|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=spc0|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=spc3|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=rsvd0|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=fats0|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=fats3|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=fatsz0|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=root_entries|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=tot16|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|00000000010f|ktest|fat32_bpb|sector=fatsz16|refused=K_E_FS_BAD_BPB|mount=1
+M272: killed by TST-M3-FAT32-BPB [17.2s] (SECURITY: a volume of more than 0x0FFFFFF5 clusters mounts, so cluster numbers reach the bad mark and the end-of-chain marks: the lines carry sector=over_max|clusters=268435446|data_start=2097184 and sector=too_many|clusters=2147483615|data_start=2147483680, and the last refused=24|accepted=9|wrong=2, TST-M3-FAT32-BPB FAIL (seen locally on the case of 33 sectors))
+  TST-M3-FAT32-BPB: exit 37 != expected 33 run=20261121T032255Z-178a1ac3-001
+    OSX|000000000110|ktest|fat32_bpb|sector=spc8|clusters=65525|data_start=2080|mount=1
+    OSX|000000000110|ktest|fat32_bpb|sector=big_fat|clusters=65525|data_start=16777248|mount=1
+    OSX|000000000110|ktest|fat32_bpb|sector=fat_exact|clusters=129022|data_start=2048|mount=1
+    OSX|000000000110|ktest|fat32_bpb|sector=fat_small|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000110|ktest|fat32_bpb|sector=max_ok|clusters=268435445|data_start=2097184|mount=1
+    OSX|000000000110|ktest|fat32_bpb|sector=over_max|clusters=268435446|data_start=2097184|mount=1
+    OSX|000000000110|ktest|fat32_bpb|sector=too_many|clusters=2147483615|data_start=2147483680|mount=1
+    OSX|000000000110|ktest|fat32_bpb|sector=mul_wrap|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000110|ktest|fat32_bpb|sector=add_wrap|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000110|ktest|fat32_bpb|sector=zero_start|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000110|ktest|fat32_bpb|sectors=33|refused=24|accepted=9|wrong=2|restored=1|mount_same=33
+    OSX|000000000110|ktest|fail|a boot sector was not judged as expected
+M273: killed by TST-M3-FAT32-BPB [16.2s] (SECURITY: a FAT of 1008 sectors on a volume of 131071 sectors (129023 clusters, entries for 129025 numbers needed, 516100 bytes against 516096) mounts, and the last cluster's entry lies past the first FAT, in the second: the line carries sector=fat_small|clusters=129023|data_start=2048 and the last refused=25|accepted=8|wrong=1, TST-M3-FAT32-BPB FAIL (seen locally on the case of 33 sectors; the case as it was at 6673854b3, whose fat_small was two sectors short, passed under it))
+  TST-M3-FAT32-BPB: exit 37 != expected 33 run=20261121T032254Z-178a1ac3-001
+    OSX|000000000111|ktest|fat32_bpb|sector=spc8|clusters=65525|data_start=2080|mount=1
+    OSX|000000000111|ktest|fat32_bpb|sector=big_fat|clusters=65525|data_start=16777248|mount=1
+    OSX|000000000111|ktest|fat32_bpb|sector=fat_exact|clusters=129022|data_start=2048|mount=1
+    OSX|000000000111|ktest|fat32_bpb|sector=fat_small|clusters=129023|data_start=2048|mount=1
+    OSX|000000000111|ktest|fat32_bpb|sector=max_ok|clusters=268435445|data_start=2097184|mount=1
+    OSX|000000000111|ktest|fat32_bpb|sector=over_max|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000111|ktest|fat32_bpb|sector=too_many|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000111|ktest|fat32_bpb|sector=mul_wrap|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000111|ktest|fat32_bpb|sector=add_wrap|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000111|ktest|fat32_bpb|sector=zero_start|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000111|ktest|fat32_bpb|sectors=33|refused=25|accepted=8|wrong=1|restored=1|mount_same=33
+    OSX|000000000111|ktest|fail|a boot sector was not judged as expected
+M274: killed by TST-M3-FAT32-BPB [22.1s] (SECURITY: a volume larger than its device mounts, so the kernel would address sectors past the disk: written to sector 0, the sectors spc8 (526280 sectors), big_fat (16842773) and max_ok (270532629) are mounted while the validation with the lab disk's 131072 sectors refuses them: their lines carry mount=0 and the last mount_same=30, TST-M3-FAT32-BPB FAIL (seen locally on the case of 33 sectors; the case as it was at 6673854b3, which compared the mount on the lab sector alone, passed under it))
+  TST-M3-FAT32-BPB: exit 37 != expected 33 run=20261121T031937Z-178a1ac3-001
+    OSX|000000000112|ktest|fat32_bpb|sector=spc8|clusters=65525|data_start=2080|mount=0
+    OSX|000000000112|ktest|fat32_bpb|sector=big_fat|clusters=65525|data_start=16777248|mount=0
+    OSX|000000000112|ktest|fat32_bpb|sector=fat_exact|clusters=129022|data_start=2048|mount=1
+    OSX|000000000112|ktest|fat32_bpb|sector=fat_small|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000112|ktest|fat32_bpb|sector=max_ok|clusters=268435445|data_start=2097184|mount=0
+    OSX|000000000112|ktest|fat32_bpb|sector=over_max|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000112|ktest|fat32_bpb|sector=too_many|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000112|ktest|fat32_bpb|sector=mul_wrap|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000112|ktest|fat32_bpb|sector=add_wrap|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000112|ktest|fat32_bpb|sector=zero_start|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000112|ktest|fat32_bpb|sectors=33|refused=26|accepted=7|wrong=0|restored=1|mount_same=30
+    OSX|000000000112|ktest|fail|the mount did not answer a boot sector as its validation does
+M275: killed by TST-M3-FAT32-BPB [15.7s] (SECURITY (the bound's own arithmetic, kept in 64 bits like the others; the wrapped size is never above the real one, so the mutant refuses volumes it should take and lets none through): the FAT's size in bytes wraps 32 bits, so a well-formed volume whose FAT is 2^24 sectors (2^33 bytes, wrapping to 0) is refused: the line carries sector=big_fat|refused=K_E_FS_BAD_BPB and the last refused=27|accepted=6|wrong=1, TST-M3-FAT32-BPB FAIL (seen locally; the case as it was at 695c5b5f0, with no FAT larger than 2097152 sectors, passed under it))
+  TST-M3-FAT32-BPB: exit 37 != expected 33 run=20261121T031748Z-178a1ac3-001
+    OSX|000000000113|ktest|fat32_bpb|sector=spc8|clusters=65525|data_start=2080|mount=1
+    OSX|000000000113|ktest|fat32_bpb|sector=big_fat|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000113|ktest|fat32_bpb|sector=fat_exact|clusters=129022|data_start=2048|mount=1
+    OSX|000000000113|ktest|fat32_bpb|sector=fat_small|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000113|ktest|fat32_bpb|sector=max_ok|clusters=268435445|data_start=2097184|mount=1
+    OSX|000000000113|ktest|fat32_bpb|sector=over_max|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000113|ktest|fat32_bpb|sector=too_many|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000113|ktest|fat32_bpb|sector=mul_wrap|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000113|ktest|fat32_bpb|sector=add_wrap|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000113|ktest|fat32_bpb|sector=zero_start|refused=K_E_FS_BAD_BPB|mount=1
+    OSX|000000000113|ktest|fat32_bpb|sectors=33|refused=27|accepted=6|wrong=1|restored=1|mount_same=33
+    OSX|000000000113|ktest|fail|a boot sector was not judged as expected
+M276: killed by TST-M3-FAT32-BAD-FIRST [17.1s] (SECURITY: a write on an entry whose first cluster is 1 follows FAT entry 1: with the end mark the format left there it takes a cluster (five disk writes: both FAT copies, the zeroing, both FSInfo sectors) before it answers K_E_FS_CORRUPT, leaving the cluster lost; with entry 1 pointing at /HELLO.TXT's cluster it writes the bytes into that file and answers success; under a full volume it answers disk-full: the line carries one_writes=5, one_empty=0, one_link=512, one_link_writes=2, hello_ok=0 and one_full=K_E_FS_DISK_FULL, TST-M3-FAT32-BAD-FIRST FAIL (seen locally; the host checks then name a lost cluster and /HELLO.TXT's bytes))
+  TST-M3-FAT32-BAD-FIRST: exit 37 != expected 33 run=20261121T031745Z-178a1ac3-001
+    OSX|000000000114|ktest|start|name=fat32_bad_first
+    OSX|000000000114|ktest|fat32_bad_first|clusters=128992|one=K_E_FS_CORRUPT|one_writes=5|one_empty=0|one_past=K_E_FS_RANGE|one_past_writes=0|one_link=512|one_link_writes=2|one_link_empty=0|hello_ok=0|one_full=K_E_FS_DISK_FULL|one_full_writes=0|one_full_empty=0|past_end=K_E_FS_CORRUPT|past_end_writes=0|past_end_empty=K_E_FS_CORRUPT|far=K_E_FS_CORRUPT|far_writes=0|far_empty=K_E_FS_CORRUPT|last_empty=0|last_empty_writes=0|empty_writes=0|restored_ok=1|synced=1|live_files=0
+    OSX|000000000114|ktest|fail|a write on an entry whose first cluster is no cluster of the volume was not refused before any disk write
+M277: killed by TST-M3-FAT32-BAD-FIRST [16.2s] (an empty write on an entry whose first cluster lies past the volume's end answers 0 instead of K_E_FS_CORRUPT; nothing is written and nothing else changes: the line carries past_end_empty=0 and far_empty=0, TST-M3-FAT32-BAD-FIRST FAIL (seen locally))
+  TST-M3-FAT32-BAD-FIRST: exit 37 != expected 33 run=20261121T031749Z-178a1ac3-001
+    OSX|000000000115|ktest|start|name=fat32_bad_first
+    OSX|000000000115|ktest|fat32_bad_first|clusters=128992|one=K_E_FS_CORRUPT|one_writes=0|one_empty=K_E_FS_CORRUPT|one_past=K_E_FS_CORRUPT|one_past_writes=0|one_link=K_E_FS_CORRUPT|one_link_writes=0|one_link_empty=K_E_FS_CORRUPT|hello_ok=1|one_full=K_E_FS_CORRUPT|one_full_writes=0|one_full_empty=K_E_FS_CORRUPT|past_end=K_E_FS_CORRUPT|past_end_writes=0|past_end_empty=0|far=K_E_FS_CORRUPT|far_writes=0|far_empty=0|last_empty=0|last_empty_writes=0|empty_writes=0|restored_ok=1|synced=1|live_files=0
+    OSX|000000000115|ktest|fail|a write on an entry whose first cluster is no cluster of the volume was not refused before any disk write
+M278: killed by TST-M3-FAT32-BAD-FIRST [16.4s] (an empty write on an entry whose first cluster is the first number past the volume's last cluster answers 0 instead of K_E_FS_CORRUPT; its write of bytes is still refused before any disk write by the FAT read's own bound and nothing else changes: the line carries past_end_empty=0 with far_empty=K_E_FS_CORRUPT, TST-M3-FAT32-BAD-FIRST FAIL (seen locally))
+  TST-M3-FAT32-BAD-FIRST: exit 37 != expected 33 run=20261121T032300Z-178a1ac3-001
+    OSX|000000000116|ktest|start|name=fat32_bad_first
+    OSX|000000000116|ktest|fat32_bad_first|clusters=128992|one=K_E_FS_CORRUPT|one_writes=0|one_empty=K_E_FS_CORRUPT|one_past=K_E_FS_CORRUPT|one_past_writes=0|one_link=K_E_FS_CORRUPT|one_link_writes=0|one_link_empty=K_E_FS_CORRUPT|hello_ok=1|one_full=K_E_FS_CORRUPT|one_full_writes=0|one_full_empty=K_E_FS_CORRUPT|past_end=K_E_FS_CORRUPT|past_end_writes=0|past_end_empty=0|far=K_E_FS_CORRUPT|far_writes=0|far_empty=K_E_FS_CORRUPT|last_empty=0|last_empty_writes=0|empty_writes=0|restored_ok=1|synced=1|live_files=0
+    OSX|000000000116|ktest|fail|a write on an entry whose first cluster is no cluster of the volume was not refused before any disk write
+M279: killed by TST-M3-FAT32-BAD-FIRST [17.3s] (a write call on an entry whose first cluster is the volume's last cluster is refused: the case's empty write on that number answers K_E_FS_CORRUPT instead of 0, and the line carries last_empty=K_E_FS_CORRUPT, TST-M3-FAT32-BAD-FIRST FAIL (seen locally))
+  TST-M3-FAT32-BAD-FIRST: exit 37 != expected 33 run=20261121T031931Z-178a1ac3-001
+    OSX|000000000117|ktest|start|name=fat32_bad_first
+    OSX|000000000117|ktest|fat32_bad_first|clusters=128992|one=K_E_FS_CORRUPT|one_writes=0|one_empty=K_E_FS_CORRUPT|one_past=K_E_FS_CORRUPT|one_past_writes=0|one_link=K_E_FS_CORRUPT|one_link_writes=0|one_link_empty=K_E_FS_CORRUPT|hello_ok=1|one_full=K_E_FS_CORRUPT|one_full_writes=0|one_full_empty=K_E_FS_CORRUPT|past_end=K_E_FS_CORRUPT|past_end_writes=0|past_end_empty=K_E_FS_CORRUPT|far=K_E_FS_CORRUPT|far_writes=0|far_empty=K_E_FS_CORRUPT|last_empty=K_E_FS_CORRUPT|last_empty_writes=0|empty_writes=0|restored_ok=1|synced=1|live_files=0
+    OSX|000000000117|ktest|fail|an empty write on an entry whose first cluster is the volume's last was not answered 0 with no disk write
+M280: killed by TST-M3-FAT32-BAD-FIRST [22.6s] (a write call whose offset is past the stored size, on an entry whose first cluster is 1, is answered by the range error instead of the corrupt-volume error; no disk write either way: the line carries one_past=K_E_FS_RANGE, TST-M3-FAT32-BAD-FIRST FAIL (seen locally))
+  TST-M3-FAT32-BAD-FIRST: exit 37 != expected 33 run=20261121T032351Z-178a1ac3-001
+    OSX|000000000118|ktest|start|name=fat32_bad_first
+    OSX|000000000118|ktest|fat32_bad_first|clusters=128992|one=K_E_FS_CORRUPT|one_writes=0|one_empty=K_E_FS_CORRUPT|one_past=K_E_FS_RANGE|one_past_writes=0|one_link=K_E_FS_CORRUPT|one_link_writes=0|one_link_empty=K_E_FS_CORRUPT|hello_ok=1|one_full=K_E_FS_CORRUPT|one_full_writes=0|one_full_empty=K_E_FS_CORRUPT|past_end=K_E_FS_CORRUPT|past_end_writes=0|past_end_empty=K_E_FS_CORRUPT|far=K_E_FS_CORRUPT|far_writes=0|far_empty=K_E_FS_CORRUPT|last_empty=0|last_empty_writes=0|empty_writes=0|restored_ok=1|synced=1|live_files=0
+    OSX|000000000118|ktest|fail|a write past the stored size on an entry whose first cluster is 1 was not answered by the corrupt-volume error with no disk write
+M281: killed by TST-M3-VMO-MAP-RIGHTS [15.9s] (SECURITY: a handle with MAP and WRITE and no READ maps the object for writing and reads its bytes through that mapping (K-3): the line carries write_noread=mapped and leak=1, TST-M3-VMO-MAP-RIGHTS FAIL (seen locally))
+  TST-M3-VMO-MAP-RIGHTS: exit 37 != expected 33 run=20261121T031817Z-178a1ac3-001
+    OSX|000000000119|ktest|start|name=vmo_map_rights
+    OSX|000000000119|ktest|vmo_map_rights|write_noread=mapped|read_noread=ERR_ACCESS|write_read=mapped|leak=1|frames_delta=0
+    OSX|000000000119|ktest|fail|a handle without READ was not refused a mapping for writing with ERR_ACCESS
+M282: killed by TST-M0-005 [23.5s] (the run's worktree checks evidence/ out with every other tree (11 GB on disk on 2026-11-15))
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031947Z-178a1ac3-001
+M283: killed by TST-M0-005 [15.5s] (a killed run's worktree and temporary directory are never removed at the next start)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031745Z-178a1ac3-001
+M284: killed by TST-M0-005 [18.7s] (the removal at start ignores the lock and removes the worktree of a run that is still alive)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032300Z-178a1ac3-001
+M285: killed by TST-M0-005 [15.9s] (the removal at start takes every linked worktree of the repository, outside the harness's root and prefix too)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032258Z-178a1ac3-001
+M286: killed by TST-M0-005 [23.4s] (a run lets its lock go at once, so another run's start removes its worktree while it runs)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031944Z-178a1ac3-001
+M287: killed by TST-M0-007 [5.2s] (the import checks the evidence branch's whole tree out again (13.7 GB on 2026-11-17), the directories already under evidence/ with the new ones)
+  TST-M0-007: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031753Z-178a1ac3-001
+M288: killed by TST-M0-005 [15.8s] (the merge skips a missing shard report instead of refusing it by name)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031750Z-178a1ac3-001
+M289: killed by TST-M0-005 [14.8s] (SECURITY (L-021): the merge accepts an id decided twice in a shard and keeps its later entry (a survivor's entry followed by a killed one hides it))
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031753Z-178a1ac3-001
+M290: killed by TST-M0-005 [15.0s] (SECURITY: the union's survivors are the last shard's alone, so a SECURITY survivor of another shard passes the gate)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032305Z-178a1ac3-001
+M291: killed by TST-M0-005 [18.9s] (SECURITY: the gate passes when any shard passes on its own mutants, whatever the union's verdict)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031937Z-178a1ac3-001
+M292: killed by TST-M0-005 [24.1s] (SECURITY: the merge takes shard reports of another run, attempt or sha (an older run's PASS))
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032359Z-178a1ac3-001
+M293: killed by TST-M0-005 [14.7s] (SECURITY (L-021): the merge judges a union that is not the stage's mutants (a mutant in no shard, a SECURITY one too, is never run nor counted))
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031822Z-178a1ac3-001
+M294: killed by TST-M0-005 [10.8s] (the shard rule is off by one: the mutants whose number is a multiple of N are in no shard)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032010Z-178a1ac3-001
+M295: killed by TST-M0-005 [7.8s] (NAWAH_GATE_SHARDS set without its shard directory falls back to a full run instead of refusing)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031800Z-178a1ac3-001
+M296: killed by TST-M0-007 [6.9s] (SECURITY: adopt-native adopts two new runs of one test id and the last one's verdict stands (a PASS covers a FAIL))
+  TST-M0-007: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032319Z-178a1ac3-001
+M297: killed by TST-M0-007 [5.7s] (SECURITY: import-ci-evidence imports two new runs of one test id and the last one's verdict stands (a PASS covers a FAIL))
+  TST-M0-007: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032314Z-178a1ac3-001
+M298: killed by TST-M0-005 [11.5s] (the union's ratio is the mean of the shards' ratios, not killed over valid counted over the union)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032008Z-178a1ac3-001
+M299: killed by TST-M0-005 [14.5s] (SECURITY (from the WP-98 review): the merge takes a shard whose run never finished (every mutant decided, then the final reset raised or the shard was stopped), so a gate FAIL can read as PASS)
+  TST-M0-005: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031758Z-178a1ac3-001
+M300: killed by TST-M0-003 [15.2s] (job g no longer waits for shard 12: it can merge before that shard's report exists)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031806Z-178a1ac3-001
+M301: killed by TST-M0-003 [14.7s] (job g merges eleven shard reports where twelve shard jobs ran)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031808Z-178a1ac3-001
+M302: killed by TST-M0-003 [14.8s] (SECURITY: job g runs and writes the gate's verdict in a cancelled run (always() instead of !cancelled()))
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032320Z-178a1ac3-001
+M303: killed by TST-M0-003 [18.8s] (shard 1 runs the gate suite as a case: the whole gate and a second TST-M6-MUTANTS verdict beside g's)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031956Z-178a1ac3-001
+M304: killed by TST-M0-007 [9.0s] (a run written under NAWAH_GATE_SHARDS no longer says so in run.json: job g's TST-M6-MUTANTS evidence reads as a whole run of the gate)
+  TST-M0-007: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032423Z-178a1ac3-001
+M309: killed by TST-M0-003 [7.5s] (job b's build writes TST-M1-BUILD into slot b beside job a's: two new runs of one test, the merge refuses the run)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032320Z-178a1ac3-001
+M310: killed by TST-M0-003 [11.5s] (job a uploads every committed -a directory of older runs again, so its upload and the merge's download grow with every run)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032019Z-178a1ac3-001
+M311: killed by TST-M0-003 [14.2s] (job g's step rev keeps 7 characters of the sha, so its pattern matches no run directory and slot g arrives empty)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031813Z-178a1ac3-001
+M312: killed by TST-M0-003 [7.1s] (the merge adopts slots a and g alone: job b's M5 verdicts never reach the records)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031821Z-178a1ac3-001
+M313: killed by TST-M0-003 [7.4s] (job b waits for job a: M5 runs after a again and the critical path is back)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031823Z-178a1ac3-001
+M314: killed by TST-M0-003 [7.4s] (the M5 guest suite runs in job a too: two slots carrying its verdicts)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032335Z-178a1ac3-001
+M315: killed by TST-M0-003 [8.6s] (job b's upload has its one evidence line again: the artifact is rooted at evidence/, the merge finds no incoming/evidence-b/evidence/ and fails every run (the WP-153 review))
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032014Z-178a1ac3-001
+M316: killed by TST-M0-003 [25.3s] (the M3 gate runs under always() again, after a failed baseline, on an image that never built or booted)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032432Z-178a1ac3-001
+M317: killed by TST-M0-003 [14.6s] (a dispatch whose stages input names no gate runs no gate and ends green, with nothing to import)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031836Z-178a1ac3-001
+M318: killed by TST-M0-003 [24.4s] (mutants.yml's host suites drop M5: its tests stay stale on a head that changed them, the strict check fails and the run is never imported)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032021Z-178a1ac3-001
+M319: killed by TST-M0-003 [7.5s] (the mutants job's limit falls back to 300, under what a run of all five gates and the host suites needs: the job can end before its strict check and publish)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031808Z-178a1ac3-001
+M320: killed by TST-M0-003 [9.4s] (the stages step lets a tab or a newline through: the shell's loop splits on it, every gate's contains(' M3 ') does not, and the run ends green with no gate)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032326Z-178a1ac3-001
+M321: killed by TST-M0-003 [7.2s] (the mutants artifact takes the whole tracked evidence tree again (14.4 GB), inside the job's unmeasured minutes)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032328Z-178a1ac3-001
+M322: killed by TST-M0-003 [12.0s] (the host suites run after a failed baseline, on a lab that never built or booted)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032031Z-178a1ac3-001
+M323: killed by TST-M4-CONFIG-RETRY [16.7s] (SECURITY: configd keeps the handle every request carried, a replayed one's and one whose reply cannot be written included, so a manifest service fills its handle table and config stops reading)
+  TST-M4-CONFIG-RETRY: exit 37 != expected 33 run=20261121T031838Z-178a1ac3-001
+    OSX|000000000143|ktest|start|name=config_retry
+    OSX|000000000143|ktest|config_retry|r1=OK 1|r1b=OK 1|read=OK 1 v1|bad=ERR VERSION 1|bad_again=ERR VERSION 1|read2=OK 1 v1|z1=OK 2|z2=ERR VERSION 2|read3=OK 2 v3
+    OSX|000000000143|ktest|config_retry|live|body_grew=6|replays=20|same=20|replays_grew=20|unwritable_first=OK 1|frozen=1|parked=1|queued=1|thawed=1|released=1|unwritable_grew=2|base=3
+    OSX|000000000143|ktest|fail|configd kept the handles its replayed requests carried
+M324: killed by TST-M4-SVC-CONNECT-NOREAD [21.0s] (SECURITY: the manager ignores that it could not write a service's CONNECT reply and keeps the client end, so a requester that never reads fills the manager's table and takes the target's client slots)
+  TST-M4-SVC-CONNECT-NOREAD: exit 37 != expected 33 run=20261121T031840Z-178a1ac3-001
+    OSX|000000000144|ktest|start|name=svc_connect_noread
+    OSX|000000000144|ktest|svc_connect_noread|load=OK 2|base_get=ERR NOT_FOUND|restart=OK|state=ready|restarts=1|sync_get=ERR NOT_FOUND|mgr_grew=3|cfg_grew=3|settled=0|mgr_base=16|cfg_base=6
+    OSX|000000000144|ktest|svc_connect_noread|stop=OK|end=stopped|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000144|ktest|fail|the manager kept the client ends whose CONNECT replies it could not write
+M325: killed by TST-M4-CONFIG-STORE-AUTHZ [17.1s] (SECURITY: configd creates the user store a modifying request names before it judges the token, so a refused SET or IMPORT leaves a store loaded and eight of them take every user-store slot)
+  TST-M4-CONFIG-STORE-AUTHZ: exit 37 != expected 33 run=20261121T031842Z-178a1ac3-001
+    OSX|000000000145|ktest|start|name=config_store_authz
+    OSX|000000000145|ktest|config_store_authz|set_other=ERR ACCESS|other_export=OK|import_other=ERR ACCESS|import_export=OK|subs_ok=0|subs_not_found=8|own_set=OK 1|own_sub=OK|admin_set=OK 1|cfg_grew=1|base=3
+    OSX|000000000145|ktest|config_store_authz|more|sub_zero=ERR INVALID|sub_big=ERR INVALID|loaded_other=ERR ACCESS|loaded_kept=1|filled=6|full_set=ERR INVALID|own_again=OK 2|
+    OSX|000000000145|ktest|fail|a refused write left a user store behind
+M326: killed by TST-M4-CONFIG-STORE-AUTHZ [17.2s] (SECURITY: SUBSCRIBE, which shows no token, creates the user store it names, so eight subscribers take every user-store slot and a real user's SET is refused)
+  TST-M4-CONFIG-STORE-AUTHZ: exit 37 != expected 33 run=20261121T032354Z-178a1ac3-001
+    OSX|000000000146|ktest|start|name=config_store_authz
+    OSX|000000000146|ktest|config_store_authz|set_other=ERR ACCESS|other_export=ERR NOT_FOUND|import_other=ERR ACCESS|import_export=ERR NOT_FOUND|subs_ok=8|subs_not_found=0|own_set=ERR INVALID|own_sub=ERR NOT_FOUND|admin_set=ERR INVALID|cfg_grew=8|base=3
+    OSX|000000000146|ktest|config_store_authz|more|sub_zero=ERR INVALID|sub_big=ERR INVALID|loaded_other=ERR ACCESS|loaded_kept=0|filled=0|full_set=ERR INVALID|own_again=ERR INVALID|
+    OSX|000000000146|ktest|fail|a subscriber without a token took a user store
+M327: killed by TST-M4-CONFIG-STORE-AUTHZ [18.3s] (an administrator's SET on a user store that is not loaded is refused: the store is created for the user's own token alone)
+  TST-M4-CONFIG-STORE-AUTHZ: exit 37 != expected 33 run=20261121T032035Z-178a1ac3-001
+    OSX|000000000147|ktest|start|name=config_store_authz
+    OSX|000000000147|ktest|config_store_authz|set_other=ERR ACCESS|other_export=ERR NOT_FOUND|import_other=ERR ACCESS|import_export=ERR NOT_FOUND|subs_ok=0|subs_not_found=8|own_set=OK 1|own_sub=OK|admin_set=ERR ACCESS|cfg_grew=1|base=3
+    OSX|000000000147|ktest|config_store_authz|more|sub_zero=ERR INVALID|sub_big=ERR INVALID|loaded_other=ERR ACCESS|loaded_kept=0|filled=0|full_set=ERR ACCESS|own_again=OK 2|
+    OSX|000000000147|ktest|fail|an administrator was refused a user's store
+M328: killed by TST-M4-CONFIG-STORE-AUTHZ [23.8s] (SECURITY: configd lets any valid token modify a loaded user store, so one user overwrites another user's settings)
+  TST-M4-CONFIG-STORE-AUTHZ: exit 37 != expected 33 run=20261121T032512Z-178a1ac3-001
+    OSX|000000000148|ktest|start|name=config_store_authz
+    OSX|000000000148|ktest|config_store_authz|set_other=ERR ACCESS|other_export=ERR NOT_FOUND|import_other=ERR ACCESS|import_export=ERR NOT_FOUND|subs_ok=0|subs_not_found=8|own_set=OK 1|own_sub=OK|admin_set=OK 1|cfg_grew=1|base=3
+    OSX|000000000148|ktest|config_store_authz|more|sub_zero=ERR INVALID|sub_big=ERR INVALID|loaded_other=OK 2|loaded_kept=0|filled=6|full_set=ERR INVALID|own_again=OK 2|
+    OSX|000000000148|ktest|fail|a write on another user's loaded store was not refused
+M329: killed by TST-M4-CONFIG-STORE-AUTHZ [16.8s] (user/0 names a store: a subscriber without a token is given an empty slot, whose subscription the next creation drops without closing its handle)
+  TST-M4-CONFIG-STORE-AUTHZ: exit 37 != expected 33 run=20261121T031902Z-178a1ac3-001
+    OSX|000000000149|ktest|start|name=config_store_authz
+    OSX|000000000149|ktest|config_store_authz|set_other=ERR ACCESS|other_export=ERR NOT_FOUND|import_other=ERR ACCESS|import_export=ERR NOT_FOUND|subs_ok=0|subs_not_found=8|own_set=OK 1|own_sub=OK|admin_set=OK 1|cfg_grew=2|base=3
+    OSX|000000000149|ktest|config_store_authz|more|sub_zero=OK|sub_big=ERR INVALID|loaded_other=ERR ACCESS|loaded_kept=1|filled=6|full_set=ERR INVALID|own_again=OK 2|
+    OSX|000000000149|ktest|fail|a name that is no user store was not answered ERR INVALID
+M330: killed by TST-M4-CONFIG-STORE-AUTHZ [23.9s] (a uid above 9999 names a user store, whose file name the volume's rule does not allow)
+  TST-M4-CONFIG-STORE-AUTHZ: exit 37 != expected 33 run=20261121T032101Z-178a1ac3-001
+    OSX|00000000014a|ktest|start|name=config_store_authz
+    OSX|00000000014a|ktest|config_store_authz|set_other=ERR ACCESS|other_export=ERR NOT_FOUND|import_other=ERR ACCESS|import_export=ERR NOT_FOUND|subs_ok=0|subs_not_found=8|own_set=OK 1|own_sub=OK|admin_set=OK 1|cfg_grew=1|base=3
+    OSX|00000000014a|ktest|config_store_authz|more|sub_zero=ERR INVALID|sub_big=ERR NOT_FOUND|loaded_other=ERR ACCESS|loaded_kept=1|filled=6|full_set=ERR INVALID|own_again=OK 2|
+    OSX|00000000014a|ktest|fail|a name that is no user store was not answered ERR INVALID
+M331: killed by TST-M4-CONFIG-STORE-AUTHZ [17.7s] (a token that may create a user store is answered ERR ACCESS when no slot is free, as if it were refused)
+  TST-M4-CONFIG-STORE-AUTHZ: exit 37 != expected 33 run=20261121T031828Z-178a1ac3-001
+    OSX|00000000014b|ktest|start|name=config_store_authz
+    OSX|00000000014b|ktest|config_store_authz|set_other=ERR ACCESS|other_export=ERR NOT_FOUND|import_other=ERR ACCESS|import_export=ERR NOT_FOUND|subs_ok=0|subs_not_found=8|own_set=OK 1|own_sub=OK|admin_set=OK 1|cfg_grew=1|base=3
+    OSX|00000000014b|ktest|config_store_authz|more|sub_zero=ERR INVALID|sub_big=ERR INVALID|loaded_other=ERR ACCESS|loaded_kept=1|filled=6|full_set=ERR ACCESS|own_again=OK 2|
+    OSX|00000000014b|ktest|fail|a full table of user stores was not answered as the contract says
+M332: killed by TST-M4-NET-CLIENT-DROP [18.5s] (SECURITY: netd frees the slot of a client whose reply cannot be written and keeps its sockets and connections, so the next client in that slot reads its datagrams and holds its connection)
+  TST-M4-NET-CLIENT-DROP: exit 37 != expected 33 run=20261121T032347Z-178a1ac3-001
+    OSX|00000000014c|ktest|start|name=net_client_drop
+    OSX|00000000014c|ktest|net_client_drop|dhcp_ok=1|open=OK 0|sent=OK 6|conn=OK 1|frozen=1|parked=1|queued=1|thawed=1|dropped=1|inherit_recv=OK 10.0.2.2 17007 from-a|tcp_a=OK state=ESTABLISHED|reopen=ERR EXISTS|conn_b=OK 2|open_c=OK 1|idle_dropped=1|idle_reopen=OK 1|tcp_b=OK state=ESTABLISHED|net_base=4
+    OSX|00000000014c|ktest|fail|a later client used the socket or the connection of a client that had closed
+M333: killed by TST-M4-NET-CLIENT-DROP [18.1s] (SECURITY: netd frees the slot of a client that closed while idle and keeps its sockets and connections, so its ports stay taken and the next client in that slot inherits them)
+  TST-M4-NET-CLIENT-DROP: exit 37 != expected 33 run=20261121T032347Z-178a1ac3-001
+    OSX|00000000014d|ktest|start|name=net_client_drop
+    OSX|00000000014d|ktest|net_client_drop|dhcp_ok=1|open=OK 0|sent=OK 6|conn=OK 1|frozen=1|parked=1|queued=1|thawed=1|dropped=1|inherit_recv=ERR BAD_REQUEST|tcp_a=ERR CLOSED|reopen=OK 0|conn_b=OK 2|open_c=OK 1|idle_dropped=1|idle_reopen=ERR EXISTS|tcp_b=OK state=ESTABLISHED|net_base=4
+    OSX|00000000014d|ktest|fail|an idle client's close left its socket behind
+M334: killed by TST-M4-NET-CLIENT-DROP [23.6s] (SECURITY: a closed client's TCP connections are not reset, so the next client in its slot holds them)
+  TST-M4-NET-CLIENT-DROP: exit 37 != expected 33 run=20261121T032058Z-178a1ac3-001
+    OSX|00000000014e|ktest|start|name=net_client_drop
+    OSX|00000000014e|ktest|net_client_drop|dhcp_ok=1|open=OK 0|sent=OK 6|conn=OK 1|frozen=1|parked=1|queued=1|thawed=1|dropped=1|inherit_recv=ERR BAD_REQUEST|tcp_a=OK state=ESTABLISHED|reopen=OK 0|conn_b=OK 2|open_c=OK 1|idle_dropped=1|idle_reopen=OK 1|tcp_b=OK state=ESTABLISHED|net_base=4
+    OSX|00000000014e|ktest|fail|a later client used the socket or the connection of a client that had closed
+M335: killed by TST-M4-NET-CLIENT-DROP [17.8s] (SECURITY: one client's close resets every client's TCP connections)
+  TST-M4-NET-CLIENT-DROP: exit 37 != expected 33 run=20261121T031856Z-178a1ac3-001
+    OSX|00000000014f|ktest|start|name=net_client_drop
+    OSX|00000000014f|ktest|net_client_drop|dhcp_ok=1|open=OK 0|sent=OK 6|conn=OK 1|frozen=1|parked=1|queued=1|thawed=1|dropped=1|inherit_recv=ERR BAD_REQUEST|tcp_a=ERR CLOSED|reopen=OK 0|conn_b=OK 2|open_c=OK 1|idle_dropped=1|idle_reopen=OK 1|tcp_b=ERR CLOSED|net_base=4
+    OSX|00000000014f|ktest|fail|a client's close reset another client's connection
+M336: killed by TST-M4-CONFIG-SUBS [21.4s] (SECURITY: every SUBSCRIBE of one client takes another slot, so one client holds a store's eight subscriptions and the others are refused)
+  TST-M4-CONFIG-SUBS: exit 37 != expected 33 run=20261121T031902Z-178a1ac3-001
+    OSX|000000000150|ktest|start|name=config_subs
+    OSX|000000000150|ktest|config_subs|x_ok=8|x_pol=OK|x_grew=9|y_sub=ERR FULL|set=OK 1|y_heard=-|x_last=CHANGED device subs.key 1|x_first=7|x_closed=0|x_gone=0|x_end_closed=1|x_pol_closed=1|set2=OK 2|y_heard2=-|base=4
+    OSX|000000000150|ktest|config_subs|more|z_sub=OK|frozen=1|parked=1|queued=1|thawed=1|z_gone=1|z_end_closed=1|sess_sub=ERR ACCESS|sess_set=OK 1|sess_heard=-|end_grew=-1|
+    OSX|000000000150|ktest|fail|one client held more than one subscription of a store
+M337: killed by TST-M4-CONFIG-SUBS [22.9s] (SECURITY: a client that has gone keeps its subscriptions in configd, a handle and a slot each)
+  TST-M4-CONFIG-SUBS: exit 37 != expected 33 run=20261121T031859Z-178a1ac3-001
+    OSX|000000000151|ktest|start|name=config_subs
+    OSX|000000000151|ktest|config_subs|x_ok=8|x_pol=OK|x_grew=2|y_sub=OK|set=OK 1|y_heard=CHANGED device subs.key 1|x_last=CHANGED device subs.key 1|x_first=0|x_closed=7|x_gone=0|x_end_closed=0|x_pol_closed=0|set2=OK 2|y_heard2=CHANGED device subs.key 2|base=4
+    OSX|000000000151|ktest|config_subs|more|z_sub=OK|frozen=1|parked=1|queued=1|thawed=1|z_gone=0|z_end_closed=0|sess_sub=ERR ACCESS|sess_set=OK 1|sess_heard=-|end_grew=2|
+    OSX|000000000151|ktest|fail|a closed client's subscription stayed
+M338: killed by TST-M4-CONFIG-SUBS [17.2s] (SECURITY: SUBSCRIBE session is accepted without a token, so the subscriber hears the names and changes of every user's session keys)
+  TST-M4-CONFIG-SUBS: exit 37 != expected 33 run=20261121T032411Z-178a1ac3-001
+    OSX|000000000152|ktest|start|name=config_subs
+    OSX|000000000152|ktest|config_subs|x_ok=8|x_pol=OK|x_grew=2|y_sub=OK|set=OK 1|y_heard=CHANGED device subs.key 1|x_last=CHANGED device subs.key 1|x_first=0|x_closed=7|x_gone=1|x_end_closed=1|x_pol_closed=1|set2=OK 2|y_heard2=CHANGED device subs.key 2|base=4
+    OSX|000000000152|ktest|config_subs|more|z_sub=OK|frozen=1|parked=1|queued=1|thawed=1|z_gone=1|z_end_closed=1|sess_sub=OK|sess_set=OK 1|sess_heard=CHANGED session subs.s 1|end_grew=1|
+    OSX|000000000152|ktest|fail|a subscriber without a token heard a session key
+M339: killed by TST-M4-CONFIG-SUBS [21.1s] (SECURITY: configd frees the slot of a client whose reply cannot be written and keeps its subscriptions)
+  TST-M4-CONFIG-SUBS: exit 37 != expected 33 run=20261121T032053Z-178a1ac3-001
+    OSX|000000000153|ktest|start|name=config_subs
+    OSX|000000000153|ktest|config_subs|x_ok=8|x_pol=OK|x_grew=2|y_sub=OK|set=OK 1|y_heard=CHANGED device subs.key 1|x_last=CHANGED device subs.key 1|x_first=0|x_closed=7|x_gone=1|x_end_closed=1|x_pol_closed=1|set2=OK 2|y_heard2=CHANGED device subs.key 2|base=4
+    OSX|000000000153|ktest|config_subs|more|z_sub=OK|frozen=1|parked=1|queued=1|thawed=1|z_gone=0|z_end_closed=0|sess_sub=ERR ACCESS|sess_set=OK 1|sess_heard=-|end_grew=1|
+    OSX|000000000153|ktest|fail|the subscription of a client whose reply could not be written stayed
+M340: killed by TST-M4-CONFIG-SUBS [29.9s] (SECURITY: configd frees the slot of a client that closed while idle and keeps its subscriptions)
+  TST-M4-CONFIG-SUBS: exit 37 != expected 33 run=20261121T032536Z-178a1ac3-001
+    OSX|000000000154|ktest|start|name=config_subs
+    OSX|000000000154|ktest|config_subs|x_ok=8|x_pol=OK|x_grew=2|y_sub=OK|set=OK 1|y_heard=CHANGED device subs.key 1|x_last=CHANGED device subs.key 1|x_first=0|x_closed=7|x_gone=0|x_end_closed=0|x_pol_closed=0|set2=OK 2|y_heard2=CHANGED device subs.key 2|base=4
+    OSX|000000000154|ktest|config_subs|more|z_sub=OK|frozen=1|parked=1|queued=1|thawed=1|z_gone=0|z_end_closed=1|sess_sub=ERR ACCESS|sess_set=OK 1|sess_heard=-|end_grew=0|
+    OSX|000000000154|ktest|fail|a closed client's subscription stayed
+M342: killed by TST-M6-LAUNCH-DENIED [23.5s] (SECURITY: the manager answers APPS and LAUNCH to any service, so a plain service reads the registry and asks for a launch)
+  TST-M6-LAUNCH-DENIED: exit 37 != expected 33 run=20261121T032125Z-178a1ac3-001
+    OSX|000000000156|ktest|start|name=launch_denied
+    OSX|000000000156|ktest|launch_denied|load=OK 5|session_apps=0x40|desktop_launch=0x40|plain_launch=0x51|plain_apps=0x51|unknown=0x40|
+    OSX|000000000156|ktest|launch_denied|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000156|ktest|fail|a plain service's LAUNCH or APPS was not refused ERR ACCESS by the manager
+M343: killed by TST-M6-LAUNCH-DENIED [18.9s] (an unknown request on a service's boot channel gets no reply)
+  TST-M6-LAUNCH-DENIED: exit 37 != expected 33 run=20261121T031846Z-178a1ac3-001
+    OSX|000000000157|ktest|start|name=launch_denied
+    OSX|000000000157|ktest|launch_denied|load=OK 5|session_apps=0x40|desktop_launch=0x40|plain_launch=0x40|plain_apps=0x40|unknown=0x61|
+    OSX|000000000157|ktest|launch_denied|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000157|ktest|fail|an unknown request on a service's boot channel was not answered ERR BAD_REQUEST
+M344: killed by TST-M6-LAUNCH-DENIED [18.1s] (the desktop is refused APPS and LAUNCH: the session alone is vouched)
+  TST-M6-LAUNCH-DENIED: exit 37 != expected 33 run=20261121T032406Z-178a1ac3-001
+    OSX|000000000158|ktest|start|name=launch_denied
+    OSX|000000000158|ktest|launch_denied|load=OK 5|session_apps=0x40|desktop_launch=0x51|plain_launch=0x40|plain_apps=0x40|unknown=0x40|
+    OSX|000000000158|ktest|launch_denied|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000158|ktest|fail|LAUNCH from the vouched desktop was not answered as the contract says
+M345: killed by TST-M6-LAUNCH-DENIED [17.2s] (an entry is registered whatever its file is named, so a file that is not the id's own brings an application into the registry)
+  TST-M6-LAUNCH-DENIED: exit 37 != expected 33 run=20261121T032405Z-178a1ac3-001
+    OSX|000000000159|ktest|start|name=launch_denied
+    OSX|000000000159|ktest|launch_denied|load=OK 5|session_apps=0x51|desktop_launch=0x40|plain_launch=0x40|plain_apps=0x40|unknown=0x40|
+    OSX|000000000159|ktest|launch_denied|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000159|ktest|fail|the vouched session was not given the registry of /SYSTEM/APPS
+M346: killed by TST-M6-APP-SPAWN [38.1s] (SECURITY: an application is started in the manager's own job, the root, so ending the job made for it ends nothing and what it left behind stays)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T032122Z-178a1ac3-001
+    OSX|00000000015a|ktest|start|name=app_spawn
+    OSX|00000000015a|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=0|parents=1|jobs=1|live_jobs=9|orphans=1|mgr_handles=25|
+    OSX|00000000015a|ktest|app_spawn|mgr_exit=0x0|processes_after=1|clean=0
+    OSX|00000000015a|ktest|fail|an application is not in a job of its own under the session's job
+M347: killed by TST-M6-APP-SPAWN [24.3s] (SECURITY: an application is handed a copy of the root job beside its boot channel)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T031914Z-178a1ac3-001
+    OSX|00000000015b|ktest|start|name=app_spawn
+    OSX|00000000015b|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=16|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=9|orphans=0|mgr_handles=27|
+    OSX|00000000015b|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000015b|ktest|fail|an application holds more than its boot channel
+M348: killed by TST-M6-APP-SPAWN [32.1s] (SECURITY: an application's job is not ended at its exit, so a process it started outlives it)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T031923Z-178a1ac3-001
+    OSX|00000000015c|ktest|start|name=app_spawn
+    OSX|00000000015c|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=10|orphans=1|mgr_handles=25|
+    OSX|00000000015c|ktest|app_spawn|mgr_exit=0x0|processes_after=1|clean=0
+    OSX|00000000015c|ktest|fail|an application that exited left a process of its job behind
+M349: killed by TST-M6-APP-SPAWN [29.1s] (SECURITY: a ninth application is started: the table's bound is not the contract's)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T031923Z-178a1ac3-001
+    OSX|00000000015d|ktest|start|name=app_spawn
+    OSX|00000000015d|ktest|app_spawn|load=OK 1|session=0x590c|apps=9|waiting=9|handles=9|under_root=0|in_session=9|parents=1|jobs=9|live_jobs=10|orphans=0|mgr_handles=28|
+    OSX|00000000015d|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000015d|ktest|fail|a LAUNCH of the vouched session was not answered as the contract states
+M350: killed by TST-M6-APP-SPAWN [29.0s] (SECURITY: a number a running application carries is given again, so two applications run under one number)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T032429Z-178a1ac3-001
+    OSX|00000000015e|ktest|start|name=app_spawn
+    OSX|00000000015e|ktest|app_spawn|load=OK 1|session=0x5301|apps=1|waiting=1|handles=1|under_root=0|in_session=1|parents=1|jobs=1|live_jobs=2|orphans=0|mgr_handles=4|
+    OSX|00000000015e|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000015e|ktest|fail|a LAUNCH of the vouched session was not answered as the contract states
+M351: killed by TST-M6-APP-SPAWN [30.5s] (the circle of numbers ends at 100: an identity of three digits)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T032115Z-178a1ac3-001
+    OSX|00000000015f|ktest|start|name=app_spawn
+    OSX|00000000015f|ktest|app_spawn|load=OK 1|session=0x5364|apps=1|waiting=1|handles=1|under_root=0|in_session=1|parents=1|jobs=1|live_jobs=2|orphans=0|mgr_handles=4|
+    OSX|00000000015f|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000015f|ktest|fail|a LAUNCH of the vouched session was not answered as the contract states
+M352: killed by TST-M6-APP-SPAWN [31.3s] (a launch that failed leaves the application's end of the channel in the manager's table)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T032607Z-178a1ac3-001
+    OSX|000000000160|ktest|start|name=app_spawn
+    OSX|000000000160|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=9|orphans=0|mgr_handles=27|
+    OSX|000000000160|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000160|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited
+M353: killed by TST-M6-APP-SPAWN [23.9s] (a launch that failed leaves the job made for it)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T031920Z-178a1ac3-001
+    OSX|000000000161|ktest|start|name=app_spawn
+    OSX|000000000161|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=11|orphans=0|mgr_handles=27|
+    OSX|000000000161|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000161|ktest|fail|a job was left of a launch that failed or of an application that exited
+M354: killed by TST-M6-APP-SPAWN [29.9s] (SECURITY: a handle an application sends on its boot channel stays in the manager's table)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T032147Z-178a1ac3-001
+    OSX|000000000162|ktest|start|name=app_spawn
+    OSX|000000000162|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=9|orphans=0|mgr_handles=33|
+    OSX|000000000162|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000162|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited
+M355: killed by TST-M6-APP-SPAWN [31.4s] (a message larger than a request closes the application's boot channel instead of being refused)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T031904Z-178a1ac3-001
+    OSX|000000000163|ktest|start|name=app_spawn
+    OSX|000000000163|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=0|handles=40|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=9|orphans=0|mgr_handles=17|
+    OSX|000000000163|ktest|app_spawn|mgr_exit=0x0|processes_after=8|clean=0
+    OSX|000000000163|ktest|fail|an application was not refused every request on its boot channel
+M356: killed by TST-M6-APP-SPAWN [24.9s] (the handle of an application's job stays in the manager's table after its exit)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T032424Z-178a1ac3-001
+    OSX|000000000164|ktest|start|name=app_spawn
+    OSX|000000000164|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=110|orphans=0|mgr_handles=126|
+    OSX|000000000164|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000164|ktest|fail|a job was left of a launch that failed or of an application that exited
+M357: killed by TST-M6-APP-SPAWN [30.8s] (SECURITY: whatever an application asks on its boot channel is answered with the services' listing instead of being refused)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T032422Z-178a1ac3-001
+    OSX|000000000165|ktest|start|name=app_spawn
+    OSX|000000000165|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=0|handles=56|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=9|orphans=0|mgr_handles=25|
+    OSX|000000000165|ktest|app_spawn|mgr_exit=0x0|processes_after=8|clean=0
+    OSX|000000000165|ktest|fail|an application was not refused every request on its boot channel
+M358: killed by TST-M6-APP-SPAWN [29.6s] (SECURITY: an application that closes its boot channel ends the manager, which then waits on a closed handle)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T032159Z-178a1ac3-001
+    OSX|000000000166|ktest|start|name=app_spawn
+    OSX|000000000166|ktest|app_spawn|list_error=K_E_SVC_WRITE
+    OSX|000000000166|ktest|fail|LIST request failed
+M359: killed by TST-M6-APP-SPAWN [23.8s] (the manager's end of a boot channel its application closed stays in the manager's table)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T031938Z-178a1ac3-001
+    OSX|000000000167|ktest|start|name=app_spawn
+    OSX|000000000167|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=9|orphans=0|mgr_handles=26|
+    OSX|000000000167|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000167|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited
+M360: killed by TST-M6-APP-SPAWN [24.5s] (SECURITY: the place of an application that closed its boot channel is given to another, so the first is watched no more and its job is never ended)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T031955Z-178a1ac3-001
+    OSX|000000000168|ktest|start|name=app_spawn
+    OSX|000000000168|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=10|orphans=0|mgr_handles=27|
+    OSX|000000000168|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000168|ktest|fail|a job was left of a launch that failed or of an application that exited
+M361: killed by TST-M6-APP-SPAWN [24.0s] (SECURITY: a request of an application that carries two handles is read, and both stay in the manager's table)
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T031952Z-178a1ac3-001
+    OSX|000000000169|ktest|start|name=app_spawn
+    OSX|000000000169|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=9|orphans=0|mgr_handles=41|
+    OSX|000000000169|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000169|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited
+M362: killed by TST-M0-001 [2.1s] (the next step is the file's first ready item again, whatever the owner's order names)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032446Z-178a1ac3-001
+M363: killed by TST-M0-001 [2.7s] (an ordered item that waits for a dependency is written as the next step)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032133Z-178a1ac3-001
+M364: killed by TST-M0-001 [3.4s] (a checkpoint leaves the list of waiting decisions as it was written by hand)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032622Z-178a1ac3-001
+M365: killed by TST-M0-001 [2.1s] (a state file that contradicts the records passes the strict check)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031932Z-178a1ac3-001
+M366: killed by TST-M0-001 [3.2s] (a work item keeps as its blocker a decision that was answered)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032203Z-178a1ac3-001
+M367: killed by TST-M0-001 [2.2s] (an answered decision is listed as waiting for the owner)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031923Z-178a1ac3-001
+M368: killed by TST-M0-001 [2.7s] (with the whole order done a checkpoint leaves the last task as the current one)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032437Z-178a1ac3-001
+M369: killed by TST-M0-001 [2.0s] (the order is read from the fifth item of any section of the methodology)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032441Z-178a1ac3-001
+M370: killed by TST-M0-001 [3.3s] (a superseded item of the order hides the item that took its place)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032214Z-178a1ac3-001
+M371: killed by TST-M0-001 [2.1s] (an id the records do not hold stops the tool instead of being passed over)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031950Z-178a1ac3-001
+M372: killed by TST-M0-001 [2.2s] (of two dependencies that are not done the last one written is the next step)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032007Z-178a1ac3-001
+M373: killed by TST-M0-001 [2.2s] (the order is read from a section whose number only begins with 7)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032004Z-178a1ac3-001
+M374: killed by TST-M0-001 [1.0s] (the order is read from any item of section 7 that carries the label)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032448Z-178a1ac3-001
+M375: killed by TST-M0-001 [1.3s] (a decision named inside a blocker's text is not judged, only one named alone)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032136Z-178a1ac3-001
+M376: killed by TST-M0-001 [6.6s] (a cycle of dependencies makes the tool run without end instead of ending where the cycle closes)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032625Z-178a1ac3-001
+M377: killed by TST-M0-001 [1.0s] (a blocked item is written as the next step with no word that it is blocked)
+  TST-M0-001: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T031934Z-178a1ac3-001
+M140: killed by TST-M6-APP-CONNECT-DENIED [21.6s] (SECURITY: the service is told the application's id and number without the app: prefix, a name that can read as a service's)
+  TST-M6-APP-CONNECT-DENIED: missing markers ['|text=svc|connect|app:connx#1', '|text=svc|connect|app:both#2', '|text=svc|connect|app:stuck#4', '|text=svc|connect|app:conn#8']; forbidden present [] run=20261121T032452Z-178a1ac3-001
+    OSX|00000000008c|ktest|start|name=app_connect
+    OSX|00000000008c|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=9|mgr_handles=20|
+    OSX|00000000008c|ktest|app_connect|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000008c|ktest|app_connect|frames_delta=0
+    OSX|00000000008c|ktest|pass|an application connects to its declared services alone, vouched by its identity and within the bounds
+M142: killed by TST-M6-APP-CONNECT-DENIED [29.2s] (SECURITY: a name outside the allow-list is taken for config's place, so an application connects to the session)
+  TST-M6-APP-CONNECT-DENIED: exit 37 != expected 33 run=20261121T032232Z-178a1ac3-001
+    OSX|00000000008e|ktest|start|name=app_connect
+    OSX|00000000008e|ktest|app_connect|load=OK 3|session=0x5300|apps=0|waiting=0|handles=0|mgr_handles=5|
+    OSX|00000000008e|ktest|app_connect|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000008e|ktest|fail|a LAUNCH of the connection case was not answered as the contract states
+M378: killed by TST-M6-APP-CONNECT-DENIED [26.6s] (SECURITY: an application connects to an allowed service its entry does not declare)
+  TST-M6-APP-CONNECT-DENIED: missing markers ['|text=app:connx#1|net=ERR ACCESS|session=ERR ACCESS|config=OK|ping=OK served|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS', '|text=app:conn#5|net=ERR ACCESS|session=ERR ACCESS|config=OK|ping=OK served|again=ERR LIMIT', '|text=app:conn#8|net=ERR ACCESS|session=ERR ACCESS|config=OK|ping=OK served|again=ERR LIMIT', '|text=app:conn#9|net=ERR ACCESS|session=ERR ACCESS|config=ERR LIMIT']; forbidden present ['|text=svc|connect|app:netonly'] run=20261121T032221Z-178a1ac3-001
+    OSX|00000000017a|ktest|start|name=app_connect
+    OSX|00000000017a|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=9|mgr_handles=20|
+    OSX|00000000017a|ktest|app_connect|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000017a|ktest|app_connect|frames_delta=0
+    OSX|00000000017a|ktest|pass|an application connects to its declared services alone, vouched by its identity and within the bounds
+M379: killed by TST-M6-APP-CONNECT-DENIED [20.9s] (an application is granted a second connection to the same service)
+  TST-M6-APP-CONNECT-DENIED: exit 37 != expected 33 run=20261121T031938Z-178a1ac3-001
+    OSX|00000000017b|ktest|start|name=app_connect
+    OSX|00000000017b|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=12|mgr_handles=20|
+    OSX|00000000017b|ktest|app_connect|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000017b|ktest|fail|an application holds another number of handles than its grants give
+M380: killed by TST-M6-APP-CONNECT-DENIED [21.7s] (the running applications together are granted five connections to a service)
+  TST-M6-APP-CONNECT-DENIED: exit 37 != expected 33 run=20261121T032513Z-178a1ac3-001
+    OSX|00000000017c|ktest|start|name=app_connect
+    OSX|00000000017c|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=10|mgr_handles=20|
+    OSX|00000000017c|ktest|app_connect|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000017c|ktest|fail|an application holds another number of handles than its grants give
+M381: killed by TST-M6-APP-CONNECT-DENIED [20.4s] (SECURITY: a grant is not counted, so neither bound holds and applications take every place of a service)
+  TST-M6-APP-CONNECT-DENIED: exit 37 != expected 33 run=20261121T032455Z-178a1ac3-001
+    OSX|00000000017d|ktest|start|name=app_connect
+    OSX|00000000017d|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=15|mgr_handles=20|
+    OSX|00000000017d|ktest|app_connect|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000017d|ktest|fail|an application holds another number of handles than its grants give
+M382: killed by TST-M6-APP-CONNECT-DENIED [27.4s] (SECURITY: a grant replaces the one before, so an application declaring two services alternates between them without bound)
+  TST-M6-APP-CONNECT-DENIED: missing markers ['|text=app:both#2|config=OK|display=OK|again=ERR LIMIT']; forbidden present [] run=20261121T032302Z-178a1ac3-001
+    OSX|00000000017e|ktest|start|name=app_connect
+    OSX|00000000017e|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=9|mgr_handles=20|
+    OSX|00000000017e|ktest|app_connect|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000017e|ktest|app_connect|frames_delta=0
+    OSX|00000000017e|ktest|pass|an application connects to its declared services alone, vouched by its identity and within the bounds
+M383: killed by TST-M6-APP-CONNECT-DENIED [20.5s] (SECURITY: every entry is taken to declare config alone, whatever it declares)
+  TST-M6-APP-CONNECT-DENIED: missing markers ['|text=app:both#2|config=OK|display=OK|again=ERR LIMIT', '|text=app:netonly#3|config=ERR ACCESS']; forbidden present ['|text=svc|connect|app:netonly'] run=20261121T032003Z-178a1ac3-001
+    OSX|00000000017f|ktest|start|name=app_connect
+    OSX|00000000017f|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=9|mgr_handles=20|
+    OSX|00000000017f|ktest|app_connect|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000017f|ktest|app_connect|frames_delta=0
+    OSX|00000000017f|ktest|pass|an application connects to its declared services alone, vouched by its identity and within the bounds
+M384: killed by TST-M6-APP-CONNECT-DENIED [21.1s] (SECURITY: the client end an application could not take stays in the manager, one handle per full queue)
+  TST-M6-APP-CONNECT-DENIED: exit 37 != expected 33 run=20261121T032022Z-178a1ac3-001
+    OSX|000000000180|ktest|start|name=app_connect
+    OSX|000000000180|ktest|app_connect|load=OK 3|session=0x40|apps=5|waiting=5|handles=9|mgr_handles=21|
+    OSX|000000000180|ktest|app_connect|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000180|ktest|fail|the manager kept a handle of a CONNECT it refused or of an application that exited
+M141: killed by TST-M6-SESSION-JOB [24.4s] (SECURITY: END_SESSION lets the session's job go without killing it, so the ended session's applications run on)
+  TST-M6-SESSION-JOB: exit 37 != expected 33 run=20261121T032515Z-178a1ac3-001
+    OSX|00000000008d|ktest|start|name=session_job
+    OSX|00000000008d|ktest|session_job|load=OK 3|session=0x5400|desktop=0x40|sessions=0x40|stay=1|waiting=1|nest=1|idle=1|under_root=0|in_session=1|live_jobs=3|mgr_handles=6|
+    OSX|00000000008d|ktest|session_job|mgr_exit=0x0|processes_after=1|clean=0
+    OSX|00000000008d|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states
+M385: killed by TST-M6-SESSION-JOB,TST-M6-APP-SPAWN [36.7s] (SECURITY: an application's job is made under the root job, out of the session's reach)
+  TST-M6-SESSION-JOB: exit 37 != expected 33 run=20261121T032018Z-178a1ac3-001
+    OSX|000000000181|ktest|start|name=session_job
+    OSX|000000000181|ktest|session_job|load=OK 3|session=0x5400|desktop=0x40|sessions=0x40|stay=1|waiting=1|nest=1|idle=1|under_root=1|in_session=0|live_jobs=2|mgr_handles=6|
+    OSX|000000000181|ktest|session_job|mgr_exit=0x0|processes_after=1|clean=0
+    OSX|000000000181|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T032030Z-178a1ac3-001
+    OSX|000000000181|ktest|start|name=app_spawn
+    OSX|000000000181|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=8|in_session=0|parents=1|jobs=8|live_jobs=9|orphans=0|mgr_handles=25|
+    OSX|000000000181|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000181|ktest|fail|an application is not in a job of its own under the session's job
+M386: killed by TST-M6-SESSION-JOB [22.4s] (SECURITY: any vouched service, the desktop among them, ends the session)
+  TST-M6-SESSION-JOB: exit 37 != expected 33 run=20261121T032501Z-178a1ac3-001
+    OSX|000000000182|ktest|start|name=session_job
+    OSX|000000000182|ktest|session_job|load=OK 3|session=0x5300|desktop=0x51|sessions=0x51|stay=0|waiting=0|nest=0|idle=0|under_root=0|in_session=0|live_jobs=0|mgr_handles=0|
+    OSX|000000000182|ktest|session_job|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000182|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states
+M387: killed by TST-M6-SESSION-JOB [23.7s] (the ended session's dead job is kept, so every later LAUNCH fails)
+  TST-M6-SESSION-JOB: exit 37 != expected 33 run=20261121T032149Z-178a1ac3-001
+    OSX|000000000183|ktest|start|name=session_job
+    OSX|000000000183|ktest|session_job|load=OK 3|session=0x5500|desktop=0x40|sessions=0x40|stay=0|waiting=0|nest=0|idle=0|under_root=0|in_session=0|live_jobs=0|mgr_handles=0|
+    OSX|000000000183|ktest|session_job|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000183|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states
+M392: killed by TST-M6-SESSION-JOB [23.3s] (SECURITY: every vouched service but the desktop ends the session)
+  TST-M6-SESSION-JOB: exit 37 != expected 33 run=20261121T032535Z-178a1ac3-001
+    OSX|000000000188|ktest|start|name=session_job
+    OSX|000000000188|ktest|session_job|load=OK 3|session=0x5300|desktop=0x40|sessions=0x51|stay=0|waiting=0|nest=0|idle=0|under_root=0|in_session=0|live_jobs=0|mgr_handles=0|
+    OSX|000000000188|ktest|session_job|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000188|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states
+M393: killed by TST-M6-SESSION-JOB [22.3s] (SECURITY: another service's END_SESSION is refused and the session ended all the same)
+  TST-M6-SESSION-JOB: exit 37 != expected 33 run=20261121T032540Z-178a1ac3-001
+    OSX|000000000189|ktest|start|name=session_job
+    OSX|000000000189|ktest|session_job|load=OK 3|session=0x5300|desktop=0x40|sessions=0x40|stay=0|waiting=0|nest=0|idle=0|under_root=0|in_session=0|live_jobs=0|mgr_handles=0|
+    OSX|000000000189|ktest|session_job|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000189|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states
+M394: killed by TST-M6-SESSION-JOB [28.8s] (ENDED tells two applications whatever ran)
+  TST-M6-SESSION-JOB: exit 37 != expected 33 run=20261121T032329Z-178a1ac3-001
+    OSX|00000000018a|ktest|start|name=session_job
+    OSX|00000000018a|ktest|session_job|load=OK 3|session=0x5400|desktop=0x40|sessions=0x40|stay=0|waiting=0|nest=0|idle=0|under_root=0|in_session=0|live_jobs=0|mgr_handles=0|
+    OSX|00000000018a|ktest|session_job|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000018a|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states
+M395: killed by TST-M6-SESSION-JOB,TST-M6-APP-SPAWN [36.4s] (SECURITY: each LAUNCH makes a session job of its own that END_SESSION never sees, so the applications outlive the session)
+  TST-M6-SESSION-JOB: exit 37 != expected 33 run=20261121T032024Z-178a1ac3-001
+    OSX|00000000018b|ktest|start|name=session_job
+    OSX|00000000018b|ktest|session_job|load=OK 3|session=0x5400|desktop=0x40|sessions=0x40|stay=1|waiting=1|nest=1|idle=1|under_root=0|in_session=1|live_jobs=4|mgr_handles=8|
+    OSX|00000000018b|ktest|session_job|mgr_exit=0x0|processes_after=1|clean=0
+    OSX|00000000018b|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states
+  TST-M6-APP-SPAWN: exit 37 != expected 33 run=20261121T032037Z-178a1ac3-001
+    OSX|00000000018b|ktest|start|name=app_spawn
+    OSX|00000000018b|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=8|parents=8|jobs=8|live_jobs=119|orphans=0|mgr_handles=135|
+    OSX|00000000018b|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000018b|ktest|fail|an application is not in a job of its own under the session's job
+M388: killed by TST-M6-LOGOUT-KILLS [57.5s] (SECURITY: Sign out asks the manager for nothing, so the signed-out session's applications run on into the next)
+  TST-M6-LOGOUT-KILLS: exit 37 != expected 33 run=20261121T032648Z-178a1ac3-001
+    OSX|000000000184|ktest|start|name=logout_kills
+    OSX|000000000184|ktest|logout_kills|services=5|ready=1
+    OSX|000000000184|ktest|logout_kills|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|launched=OK app:deaf#1,OK app:nest#2|deaf=1|nest=1|idle=1|phase=1
+    OSX|000000000184|ktest|logout_kills|back=OK no_session user=- changes=3 display=1 input=1 focus=session|deaf=1|nest=1|idle=1|jobs=3|mgr_handles=7|phase=2
+    OSX|000000000184|ktest|logout_kills|again=OK unlocked user=admin changes=4 display=1 input=1 focus=display|launch=OK app:deaf#3|deaf=2|in_session=2|phase=3
+    OSX|000000000184|ktest|logout_kills|failed=left,relaunch,
+    OSX|000000000184|ktest|fail|an application of the signed-out session is still alive
+M389: killed by TST-M6-LOGOUT-KILLS [41.4s] (the session traces that no application was ended whatever the manager answered)
+  TST-M6-LOGOUT-KILLS: missing markers ['|text=session|jobs=ended|apps=2']; forbidden present ['|text=session|jobs=ended|apps=0'] run=20261121T031947Z-178a1ac3-001
+    OSX|000000000185|ktest|start|name=logout_kills
+    OSX|000000000185|ktest|logout_kills|services=5|ready=1
+    OSX|000000000185|ktest|logout_kills|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|launched=OK app:deaf#1,OK app:nest#2|deaf=1|nest=1|idle=1|phase=1
+    OSX|000000000185|ktest|logout_kills|back=OK no_session user=- changes=3 display=1 input=1 focus=session|deaf=0|nest=0|idle=0|jobs=0|mgr_handles=0|phase=2
+    OSX|000000000185|ktest|logout_kills|again=OK unlocked user=admin changes=4 display=1 input=1 focus=display|launch=OK app:deaf#3|deaf=1|in_session=1|phase=3
+    OSX|000000000185|ktest|logout_kills|failed=none
+    OSX|000000000185|ktest|logout_kills|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000185|ktest|logout_kills|frames_delta=0
+    OSX|000000000185|ktest|pass|Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one
+M396: killed by TST-M6-LOGOUT-KILLS [42.1s] (the manager's answer to END_SESSION is taken for a CONNECT's, so its outcome is never traced (the job is ended all the same))
+  TST-M6-LOGOUT-KILLS: missing markers ['|text=session|jobs=ended|apps=2']; forbidden present [] run=20261121T032043Z-178a1ac3-001
+    OSX|00000000018c|ktest|start|name=logout_kills
+    OSX|00000000018c|ktest|logout_kills|services=5|ready=1
+    OSX|00000000018c|ktest|logout_kills|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|launched=OK app:deaf#1,OK app:nest#2|deaf=1|nest=1|idle=1|phase=1
+    OSX|00000000018c|ktest|logout_kills|back=OK no_session user=- changes=3 display=1 input=1 focus=session|deaf=0|nest=0|idle=0|jobs=0|mgr_handles=0|phase=2
+    OSX|00000000018c|ktest|logout_kills|again=OK unlocked user=admin changes=4 display=1 input=1 focus=display|launch=OK app:deaf#3|deaf=1|in_session=1|phase=3
+    OSX|00000000018c|ktest|logout_kills|failed=none
+    OSX|00000000018c|ktest|logout_kills|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000018c|ktest|logout_kills|frames_delta=0
+    OSX|00000000018c|ktest|pass|Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one
+M397: killed by TST-M6-JOB-BOUND [16.8s] (SECURITY: no job is bounded, so one application takes every kernel stack)
+  TST-M6-JOB-BOUND: exit 37 != expected 33 run=20261121T032054Z-178a1ac3-001
+    OSX|00000000018d|ktest|start|name=job_bound
+    OSX|00000000018d|ktest|job_bound|unit|taken=40|refused=0|again=1|counted=40|back=0|root=40|
+    OSX|00000000018d|ktest|fail|a job's count does not hold its bound
+M398: killed by TST-M6-JOB-BOUND [18.8s] (SECURITY: every process is counted in the root, which has no bound)
+  TST-M6-JOB-BOUND: exit 37 != expected 33 run=20261121T032523Z-178a1ac3-001
+    OSX|00000000018e|ktest|start|name=job_bound
+    OSX|00000000018e|ktest|job_bound|unit|taken=32|refused=1|again=1|counted=32|back=0|root=40|
+    OSX|00000000018e|ktest|job_bound|load=OK 1|session=0x40|hog_live=65|hog_count=0|peer_live=3|peer_count=0|clocks=1|
+    OSX|00000000018e|ktest|job_bound|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|00000000018e|ktest|fail|a job's processes are not bounded
+M399: killed by TST-M6-JOB-BOUND [18.1s] (a reaped process keeps its place, so a job that reached the bound never starts again)
+  TST-M6-JOB-BOUND: exit 37 != expected 33 run=20261121T032213Z-178a1ac3-001
+    OSX|00000000018f|ktest|start|name=job_bound
+    OSX|00000000018f|ktest|job_bound|unit|taken=32|refused=1|again=0|counted=32|back=32|root=40|
+    OSX|00000000018f|ktest|fail|a job's count does not hold its bound
+M400: killed by TST-M6-JOB-BOUND [23.7s] (a job holds 33 processes, one more than the bound)
+  TST-M6-JOB-BOUND: exit 37 != expected 33 run=20261121T032745Z-178a1ac3-001
+    OSX|000000000190|ktest|start|name=job_bound
+    OSX|000000000190|ktest|job_bound|unit|taken=33|refused=1|again=1|counted=33|back=0|root=40|
+    OSX|000000000190|ktest|fail|a job's count does not hold its bound
+M401: killed by TST-M6-LAUNCH-RATE [17.2s] (SECURITY: no attempt is kept, so LAUNCH is never refused for its rate and a requester starts images as fast as it asks)
+  TST-M6-LAUNCH-RATE: exit 37 != expected 33 run=20261121T032028Z-178a1ac3-001
+    OSX|000000000191|ktest|start|name=launch_rate
+    OSX|000000000191|ktest|launch_rate|load=OK 1|session=0x5711|stays=0|exits=0|live_jobs=1|mgr_handles=1|
+    OSX|000000000191|ktest|launch_rate|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000191|ktest|fail|a LAUNCH was not answered as the rate limit states
+M402: killed by TST-M6-LAUNCH-RATE [22.9s] (a full table's refusal counts as an attempt, so retrying after Sign out fills the window)
+  TST-M6-LAUNCH-RATE: exit 37 != expected 33 run=20261121T032247Z-178a1ac3-001
+    OSX|000000000192|ktest|start|name=launch_rate
+    OSX|000000000192|ktest|launch_rate|load=OK 1|session=0x5400|stays=0|exits=0|live_jobs=1|mgr_handles=1|
+    OSX|000000000192|ktest|launch_rate|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000192|ktest|fail|a LAUNCH was not answered as the rate limit states
+M403: killed by TST-M6-LAUNCH-RATE [18.5s] (a refusal counts as an attempt, so a requester that retries is never let through)
+  TST-M6-LAUNCH-RATE: exit 37 != expected 33 run=20261121T031959Z-178a1ac3-001
+    OSX|000000000193|ktest|start|name=launch_rate
+    OSX|000000000193|ktest|launch_rate|load=OK 1|session=0x5a00|stays=0|exits=0|live_jobs=1|mgr_handles=1|
+    OSX|000000000193|ktest|launch_rate|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000193|ktest|fail|a LAUNCH was not answered as the rate limit states
+M404: killed by TST-M6-LAUNCH-RATE [18.7s] (an unknown id is answered ERR BUSY while the window is full, which the contract answers ERR UNKNOWN)
+  TST-M6-LAUNCH-RATE: exit 37 != expected 33 run=20261121T032558Z-178a1ac3-001
+    OSX|000000000194|ktest|start|name=launch_rate
+    OSX|000000000194|ktest|launch_rate|load=OK 1|session=0x5900|stays=0|exits=0|live_jobs=1|mgr_handles=1|
+    OSX|000000000194|ktest|launch_rate|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000194|ktest|fail|a LAUNCH was not answered as the rate limit states
+M405: killed by TST-M6-LAUNCH-RATE [16.7s] (SECURITY: a failed launch is not counted, so a requester repeats a missing or broken image, each a job, a channel and a read of up to 4 MiB, without limit)
+  TST-M6-LAUNCH-RATE: exit 37 != expected 33 run=20261121T032602Z-178a1ac3-001
+    OSX|000000000195|ktest|start|name=launch_rate
+    OSX|000000000195|ktest|launch_rate|load=OK 1|session=0x5710|stays=0|exits=0|live_jobs=1|mgr_handles=1|
+    OSX|000000000195|ktest|launch_rate|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000195|ktest|fail|a LAUNCH was not answered as the rate limit states
+M341: killed by TST-M4-CONFIG-SUBS [20.3s] (SECURITY: a client that has gone keeps its subscriptions in every store but the first)
+  TST-M4-CONFIG-SUBS: exit 37 != expected 33 run=20261121T032045Z-178a1ac3-001
+    OSX|000000000155|ktest|start|name=config_subs
+    OSX|000000000155|ktest|config_subs|x_ok=8|x_pol=OK|x_grew=2|y_sub=OK|set=OK 1|y_heard=CHANGED device subs.key 1|x_last=CHANGED device subs.key 1|x_first=0|x_closed=7|x_gone=0|x_end_closed=1|x_pol_closed=0|set2=OK 2|y_heard2=CHANGED device subs.key 2|base=4
+    OSX|000000000155|ktest|config_subs|more|z_sub=OK|frozen=1|parked=1|queued=1|thawed=1|z_gone=1|z_end_closed=1|sess_sub=ERR ACCESS|sess_set=OK 1|sess_heard=-|end_grew=1|
+    OSX|000000000155|ktest|fail|a closed client's subscription stayed
+M305: killed by TST-M0-003 [7.3s] (the fallback rewrites the Azure mirror alone: on the EC2 runners it changes nothing and retries the same slow mirror)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032054Z-178a1ac3-001
+M306: killed by TST-M0-003 [11.9s] (the fallback's rewrite edits apt-mirrors.txt alone, so a mirror named in ubuntu.sources stays)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032255Z-178a1ac3-001
+M307: killed by TST-M0-003 [7.5s] (the runner's mirror gets 300 s tries again: the fallback starts after the step's cap is half gone)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032005Z-178a1ac3-001
+M308: killed by TST-M0-003 [9.4s] (the fallback's fetch gets 100 s tries: a slow download from archive.ubuntu.com dies before it ends)
+  TST-M0-003: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032605Z-178a1ac3-001
+M214: killed by TST-M3-FAT32-DISK-FULL [23.2s] (SECURITY: a write to an empty file that the volume cannot hold takes what is free, writes, answers no space and loses the clusters, and any process can repeat it: the line carries refused_writes and a free_delta that are not 0 and the host checks find lost clusters, TST-M3-FAT32-DISK-FULL FAIL)
+  TST-M3-FAT32-DISK-FULL: exit 37 != expected 33 run=20261121T032358Z-178a1ac3-001
+    OSX|0000000000d6|ktest|start|name=fat32_disk_full
+    OSX|0000000000d6|ktest|fail|could not move an open's position inside its file
+M215: killed by TST-M3-FAT32-DISK-FULL [16.6s] (SECURITY: a write that ends inside a cluster the file does not have passes the question, writes the sectors it has and then finds no cluster: the refused call wrote to the device, the line carries refused_writes that is not 0, TST-M3-FAT32-DISK-FULL FAIL)
+  TST-M3-FAT32-DISK-FULL: exit 37 != expected 33 run=20261121T032100Z-178a1ac3-001
+    OSX|0000000000d7|ktest|start|name=fat32_disk_full
+    OSX|0000000000d7|ktest|fat32_disk_full|d_fault=K_E_FS_IO|d_long=1|a_big=K_E_FS_DISK_FULL|a_big_size=0|a_big_node=0|a_big_chain=0|a_fit=1024|a_more=K_E_FS_DISK_FULL|a_span=K_E_FS_DISK_FULL|a_size=1024|a_node=1024|a_chain=2|a_whole=1|a_read=1024|a_over=1024|a_over_whole=1|b_span=K_E_FS_DISK_FULL|b_size=256|b_whole=1|b_fill=256|b_chain=1|b_filled=1|c_none=K_E_FS_DISK_FULL|c_node=0|c_chain=0|c_empty=1|d_into=512|d_chain=2|d_whole=1|c_after=512|b_grow=512|c_more=K_E_FS_DISK_FULL|c_whole=1|b_grown=1|refused_writes=1|pos_moved=0|removed=1|free_delta=0|synced=1|live_files=0
+    OSX|0000000000d7|ktest|fail|a refused write wrote to the device or moved the open's position
+M216: killed by TST-M3-FAT32-DISK-FULL [17.2s] (SECURITY: a write that needs one cluster more than the volume has is let through, takes what is free and loses it: the line carries refused_writes and a free_delta that are not 0 and the host checks find lost clusters, TST-M3-FAT32-DISK-FULL FAIL)
+  TST-M3-FAT32-DISK-FULL: exit 37 != expected 33 run=20261121T032125Z-178a1ac3-001
+    OSX|0000000000d8|ktest|start|name=fat32_disk_full
+    OSX|0000000000d8|ktest|fail|could not move an open's position inside its file
+M217: killed by TST-M3-FAT32-DISK-FULL [16.0s] (SECURITY: a file that has clusters cannot be extended while fewer clusters are free than it would hold in all, though the volume holds the call: the line carries b_grow=K_E_FS_DISK_FULL, TST-M3-FAT32-DISK-FULL FAIL)
+  TST-M3-FAT32-DISK-FULL: exit 37 != expected 33 run=20261121T032110Z-178a1ac3-001
+    OSX|0000000000d9|ktest|start|name=fat32_disk_full
+    OSX|0000000000d9|ktest|fat32_disk_full|d_fault=K_E_FS_IO|d_long=1|a_big=K_E_FS_DISK_FULL|a_big_size=0|a_big_node=0|a_big_chain=0|a_fit=1024|a_more=K_E_FS_DISK_FULL|a_span=K_E_FS_DISK_FULL|a_size=1024|a_node=1024|a_chain=2|a_whole=1|a_read=1024|a_over=1024|a_over_whole=1|b_span=K_E_FS_DISK_FULL|b_size=256|b_whole=1|b_fill=256|b_chain=1|b_filled=1|c_none=K_E_FS_DISK_FULL|c_node=0|c_chain=0|c_empty=1|d_into=512|d_chain=2|d_whole=1|c_after=512|b_grow=K_E_FS_DISK_FULL|c_more=K_E_FS_DISK_FULL|c_whole=1|b_grown=0|refused_writes=0|pos_moved=0|removed=1|free_delta=0|synced=1|live_files=0
+    OSX|0000000000d9|ktest|fail|the clusters a removed file gave back were not taken, one each
+M218: killed by TST-M3-FAT32-DISK-FULL [16.4s] (SECURITY: a write into a cluster the chain already holds past the size is refused on a full volume, and on a chain shorter than its size the question would ask for too few: the line carries d_into=K_E_FS_DISK_FULL, TST-M3-FAT32-DISK-FULL FAIL)
+  TST-M3-FAT32-DISK-FULL: exit 37 != expected 33 run=20261121T032541Z-178a1ac3-001
+    OSX|0000000000da|ktest|start|name=fat32_disk_full
+    OSX|0000000000da|ktest|fat32_disk_full|d_fault=K_E_FS_IO|d_long=1|a_big=K_E_FS_DISK_FULL|a_big_size=0|a_big_node=0|a_big_chain=0|a_fit=1024|a_more=K_E_FS_DISK_FULL|a_span=K_E_FS_DISK_FULL|a_size=1024|a_node=1024|a_chain=2|a_whole=1|a_read=1024|a_over=1024|a_over_whole=1|b_span=K_E_FS_DISK_FULL|b_size=256|b_whole=1|b_fill=256|b_chain=1|b_filled=1|c_none=K_E_FS_DISK_FULL|c_node=0|c_chain=0|c_empty=1|d_into=K_E_FS_DISK_FULL|d_chain=2|d_whole=0|c_after=512|b_grow=512|c_more=K_E_FS_DISK_FULL|c_whole=1|b_grown=1|refused_writes=0|pos_moved=0|removed=1|free_delta=0|synced=1|live_files=0
+    OSX|0000000000da|ktest|fail|a write into a cluster the chain already holds was refused or took another
+M239: killed by TST-M3-FAT32-TOOL [24.1s] (SECURITY: `check --faulted --expect-longer NAMES` accepts another file, or another number of extra clusters, along the first FAT copy as long as the count is the same: the host case on the two images with equal counts fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032105Z-178a1ac3-001
+M240: killed by TST-M3-FAT32-TOOL [24.1s] (SECURITY: `--expect-longer-second` accepts any file longer than its size along the second FAT copy: the host case on the chain longer in the second copy alone fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032130Z-178a1ac3-001
+M241: killed by TST-M3-FAT32-TOOL [23.6s] (SECURITY: with --faulted a file longer than its size along the second FAT copy alone, its extra cluster free in the first, passes: the host case fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032115Z-178a1ac3-001
+M242: killed by TST-M3-FAT32-TOOL [24.3s] (SECURITY: `--expect-lost-second K` accepts any number of clusters marked in the second FAT copy alone: the host case with a hundred of them fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032546Z-178a1ac3-001
+M246: killed by TST-M3-FAT32-TOOL [36.7s] (SECURITY: the second FAT copy's lost clusters are counted as none whatever it holds: the host case with a hundred clusters marked there fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032307Z-178a1ac3-001
+M243: killed by TST-M3-FAT32-TOOL [28.8s] (SECURITY: a case may pin one FAT copy's lost clusters or longer files and leave the other copy unjudged: the host case on the unpaired options fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032219Z-178a1ac3-001
+M244: killed by TST-M3-FAT32-TOOL [39.0s] (SECURITY: a file two clusters longer than its size is taken for one that is one cluster longer, so two different states meet the same pin: the host case on the two images fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032753Z-178a1ac3-001
+M245: killed by TST-M3-FAT32-TOOL [53.8s] (the walk of a chain costs the square of its length again: the host case on a file of the volume's size runs past its bound, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032101Z-178a1ac3-001
+M247: killed by TST-M3-FAT32-TOOL [24.4s] (SECURITY: `--expect-longer` is met by the files that are longer along the second FAT copy, whatever the first holds: the host case with one file longer in each copy alone fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032012Z-178a1ac3-001
+M248: killed by TST-M3-FAT32-TOOL [29.3s] (SECURITY: `--allow-longer N` is met by N files longer along the second FAT copy alone: the host case with two such files and none in the first copy fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032614Z-178a1ac3-001
+M249: killed by TST-M3-FAT32-TOOL [24.2s] (SECURITY: one cluster marked in the first FAT copy alone and another in the second alone pass for one cluster lost in both: the host case on the two images fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032607Z-178a1ac3-001
+M250: killed by TST-M3-FAT32-TOOL [38.8s] (SECURITY: a directory whose chain is longer in the second FAT copy alone shows a name there that the first copy does not reach, and nothing names it: the host case fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032406Z-178a1ac3-001
+M251: killed by TST-M3-FAT32-TOOL [24.0s] (SECURITY: a directory whose chain is longer in the first FAT copy alone shows a name there that the second copy does not reach, and nothing names it: the host case fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032129Z-178a1ac3-001
+M212: killed by TST-M3-FAT32-TOOL [29.1s] (SECURITY: `check --faulted --allow-longer N` accepts an image with another number of chains longer than their size: the host case on the longer chain fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032644Z-178a1ac3-001
+M213: killed by TST-M3-FAT32-TOOL [24.2s] (SECURITY: `check --faulted --expect-lost K` accepts an image with another number of lost clusters: the host case on the lost cluster fails, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032631Z-178a1ac3-001
+M210: killed by TST-M3-FAT32-FAULT-WRITE [23.3s] (SECURITY: a write whose entry write is refused leaves the node of every open ahead of the stored entry, and the same open reads bytes the name does not hold: the sweeps' lines carry node_differs and ghost that are not 0, TST-M3-FAT32-FAULT-WRITE FAIL)
+  TST-M3-FAT32-FAULT-WRITE: exit 37 != expected 33 run=20261121T032359Z-178a1ac3-001
+    OSX|0000000000d2|ktest|start|name=fat32_fault_write
+    OSX|0000000000d2|ktest|fat32_fault_write|sweep=new|control=1|writes=23|failed=23|io=23|node_differs=1|pos_moved=0|stale_sync=1|unchanged=23|bad=0|ghost=1|retry_ok=23
+    OSX|0000000000d2|ktest|fat32_fault_write|sweep=append|control=1|writes=9|failed=9|io=9|node_differs=1|pos_moved=0|stale_sync=1|unchanged=9|bad=0|ghost=1|retry_ok=0
+    OSX|0000000000d2|ktest|fat32_fault_write|sweep=again|control=1|writes=9|failed=9|io=9|node_differs=1|pos_moved=0|stale_sync=1|unchanged=9|bad=0|ghost=1|retry_ok=9
+    OSX|0000000000d2|ktest|fat32_fault_write|synced=1|live_files=0
+    OSX|0000000000d2|ktest|fail|a failed write left the file, its node or the open's position changed
+M211: killed by TST-M3-FAT32-FAULT-WRITE [17.5s] (SECURITY: a write to a new file that fails after its first allocation leaves the node with a first cluster the stored entry does not have: the first sweep's line carries node_differs that is not 0, TST-M3-FAT32-FAULT-WRITE FAIL)
+  TST-M3-FAT32-FAULT-WRITE: exit 37 != expected 33 run=20261121T032049Z-178a1ac3-001
+    OSX|0000000000d3|ktest|start|name=fat32_fault_write
+    OSX|0000000000d3|ktest|fat32_fault_write|sweep=new|control=1|writes=23|failed=23|io=23|node_differs=18|pos_moved=0|stale_sync=0|unchanged=23|bad=0|ghost=0|retry_ok=23
+    OSX|0000000000d3|ktest|fat32_fault_write|sweep=append|control=1|writes=9|failed=9|io=9|node_differs=0|pos_moved=0|stale_sync=0|unchanged=9|bad=0|ghost=0|retry_ok=0
+    OSX|0000000000d3|ktest|fat32_fault_write|sweep=again|control=1|writes=9|failed=9|io=9|node_differs=0|pos_moved=0|stale_sync=0|unchanged=9|bad=0|ghost=0|retry_ok=9
+    OSX|0000000000d3|ktest|fat32_fault_write|synced=1|live_files=0
+    OSX|0000000000d3|ktest|fail|a failed write left the file, its node or the open's position changed
+M208: killed by TST-M3-FAT32-TOOL [39.2s] (SECURITY: `check` no longer names two names on one cluster: two directories on one cluster pass `check --faulted` (exit 0; without --faulted the lost cluster still fails it), and for files the cut chain is still refused as shorter than its size but the named finding is gone: the host cases on shared clusters fail, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032832Z-178a1ac3-001
+M209: killed by TST-M3-FAT32-TOOL [23.8s] (SECURITY: `check` no longer names a chain that runs into a free cluster: a directory on a freed cluster passes `check --faulted` (exit 0; without --faulted the lost cluster still fails it), and for files the cut chain is still refused as shorter than its size but the named finding is gone: the host cases on a free cluster in a chain fail, TST-M3-FAT32-TOOL FAIL)
+  TST-M3-FAT32-TOOL: host: the runner reported failing tests and the case passes on the clean checkout run=20261121T032155Z-178a1ac3-001
+
+OK: 253/253 valid mutants killed (100.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=[]; invalid_security=[]; declared_killers_missed=[]; expected_missed=[]; report=build/mutants-m6-report.json

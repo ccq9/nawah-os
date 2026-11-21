@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261120T232307Z-55d9b76f-001-a",
+ "started_at": "2026-11-20T23:23:07+00:00",
+ "finished_at": "2026-11-20T23:23:11+00:00",
+ "source_revision": "55d9b76f6cc08d48917c141ad9d281dfc1301275",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M4-SHELL-TOOL",
+ "commands": [
+  "python3 -I tests/test_console_session.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "44833935389",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "55d9b76f6cc08d48917c141ad9d281dfc1301275",
+  "head_sha": "64789403486f6a3ef15a480ee6b12b9c397c7ae1",
+  "ref": "refs/pull/23/merge"
+ }
+}

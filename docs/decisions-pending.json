@@ -19,7 +19,7 @@
   },
   {
    "id": "DEC-002",
-   "question": "توفير نسخة Windows 10 Pro 22H2 مرجعية مرخصة للجرد (بروتوكول الالتقاط في البند 4) — 2026-10-24: وفّر المالك وسيط Windows 10 22H2 ar-SA x64 (docs/reference/windows10.json → media)؛ المتبقي تثبيت مرخص للصورة [4] Pro في VM لعدة الالتقاط",
+   "question": "توفير نسخة Windows 10 Pro 22H2 مرجعية مرخصة للجرد (بروتوكول الالتقاط في البند 4) — 2026-10-24: وفّر المالك وسيط Windows 10 22H2 ar-SA x64 (docs/reference/windows10.json → media)؛ المتبقي تثبيت مرخص للصورة [4] Pro في VM لعدة الالتقاط — 2026-11-18: قال المالك إن لديه نسخة Windows 10 على حاسوبه؛ سُئل أهي مثبتة ومفعّلة من إصدار Pro أم ملف التثبيت وحده، ولم يُجب بعد؛ والجلسة السحابية لا تصل إلى حاسوبه (لا مجلد معروض لها)، فعدة الالتقاط يشغّلها هو",
    "options": [
     "جهاز/VM مرخص لدى المستخدم يشغّل عدة الالتقاط",
     "تأجيل الجرد والاكتفاء بمواصفات أولية مع فجوات معلنة"
@@ -74,7 +74,7 @@
     "desktopd يشغّل التطبيقات مباشرة ويمسك مقابضها"
    ],
    "recommendation": "الخيار الأول: الثاني يضعف الهوية ويصعّب تنظيف الخروج",
-   "impact": "يحدد ADR-0023 وservices.md v1.12 وsession.md v1.8 (WP-47) وكل أداة تُشغَّل من ابدأ",
+   "impact": "يحدد ADR-0023 وservices.md v1.13 وsession.md v1.8 (WP-47) وكل أداة تُشغَّل من ابدأ",
    "blocked_task_ids": [
     "WP-47",
     "WP-48",
@@ -82,7 +82,7 @@
    ],
    "requested_at": "2026-11-09T12:00:00Z",
    "status": "answered",
-   "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. App launch is brokered by the service manager (LAUNCH, app identity vouched on CONNECT); the desktop never holds the apps' process handles."
+   "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. App launch is brokered by the service manager (LAUNCH, app identity vouched on CONNECT); the desktop never holds the apps' process handles. 2026-11-15: put to the owner again in the session, because the delegation of 2026-11-08 has no text in the records: asked to confirm option 1 or to dictate the delegation, the owner answered in his own words «قم باختيار الافضل» (choose the best). The manager chose option 1, the recommendation put to him: a system service launches applications and vouches their identity (the comparison given to him with macOS and with Windows 11's packaged applications was from general knowledge, not checked against a source in the session). Scope of this instruction: DEC-005 alone; the 2026-11-08 delegation itself stays without a recorded text."
   },
   {
    "id": "DEC-006",
@@ -126,7 +126,7 @@
     "تأجيله إلى M8"
    ],
    "recommendation": "الخيار الأول",
-   "impact": "يضيف WP-63 وREQ-M6-018 وواجهة نص متعدد الأسطر في libui (ui.md v1.8)؛ بوابة M6 (WP-62) تعتمد عليه",
+   "impact": "يضيف WP-63 وREQ-M6-018 وواجهة نص متعدد الأسطر في libui (ui.md v1.9)؛ بوابة M6 (WP-62) تعتمد عليه",
    "blocked_task_ids": [
     "WP-63",
     "WP-62"
@@ -151,6 +151,290 @@
    "requested_at": "2026-11-09T12:00:00Z",
    "status": "answered",
    "answer": "answered by the supervisor on 2026-11-09 under the owner's delegation of 2026-11-08 (M6 stage opening; the architect's M6 plan, open questions 1-5): option 1. DEC-002 (reference Windows 10 capture) stays open and owner-dependent; M6 proceeds clean-room from a behavioural description, never copying Windows assets, icons, fonts or trade dress."
+  },
+  {
+   "id": "DEC-023",
+   "question": "(كان DEC-010 حتى 2026-11-09؛ أُعيد ترقيمه إلى DEC-023 لأن PR #22 يستعمل DEC-010 لقرار «التحدي العشوائي») أرشيف Sol OS (S32، sol-os-phase2.zip، commit d54f0a5) غير قابل للوصول من جلسات السحابة: ليس في المستودع ولا في أي مستودع GitHub يصل إليه الحساب ولا في حاوية الجلسة، ومجلد العمل على جهاز المالك مُدرج في Remote Control لكنه غير معروض لها. كل ما سمّاه ADR-0002 §4 نُقل وأُعيد اختباره هنا (docs/operations/sol-os-reuse-ledger.md). هل يُتاح الأرشيف لمراجعة ما لم يُسمَّ (Sol ADR-001..005 و009، أداة بوابته، طريقة الطفرات الأصلية، أدلة phase-0)، أم يُقفل ملف إعادة الاستعمال على ADR-0002 §4؟",
+   "options": [
+    "إتاحة الأرشيف لجلسة سحابية (مستودع GitHub خاص يُضاف إلى الجلسة، أو رفع الملف المضغوط إليها، أو عرض مجلد العمل لجلسات السحابة عبر Remote Control) ثم حزمة مراجعة صغيرة محددة النطاق تُنتج قرارًا مسجَّلًا لكل مادة: يُنقل بعد المراجعة والتكييف وبسطر أصل، أو يُرفض بسبب",
+    "قفل إعادة الاستعمال على ADR-0002 §4 وتعليم S32 مستنفدًا؛ لا مراجعة أخرى"
+   ],
+   "recommendation": "الخيار الأول إن كان الأرشيف في متناول المالك خلال دورة عمل واحدة، وإلا الثاني. في الحالين لا تُعلَّق حزم M6 عليه.",
+   "impact": "لا أثر على بوابة M6 ولا على أي حزمة نشطة. Sol توقّف عند مرحلته الثانية (إقلاع، جداول المعالج، استثناءات، نواة اختبار) وnawah تجاوزت بوابة M5، فالقيمة المتبقية المتوقعة في الطريقة والتوثيق لا في شيفرة النواة؛ الخيار الثاني يترك هذا الاحتمال بلا قياس.",
+   "blocked_task_ids": [],
+   "requested_at": "2026-11-09T10:17:21Z",
+   "status": "open"
+  },
+  {
+   "id": "DEC-011",
+   "question": "تركيبة فريق المنهج الثابت (docs/policies/team-methodology.md §1): هل تبقى اثني عشر دورًا (1 مدير، 3 تخطيط، 2 أكواد، 2 أمن، 2 واجهة، 2 تدقيق) كما ثُبّتت صباح 2026-11-09، أم تُعاد صياغتها؟",
+   "options": [
+    "إبقاء التركيبة الاثني عشرية",
+    "أربعة عشر دورًا: 3 هندسة برمجيات، 3 هندسة أنظمة، 3 أمن سيبراني، 2 تخطيط، 1 تدقيق، 1 مساعد مدير، 1 مدير؛ مهام تصميم الواجهة تُسنَد إلى مهندس برمجيات التطبيقات ويحرسها المدقق"
+   ],
+   "recommendation": "الخيار الثاني بنص المالك",
+   "impact": "تغيير التركيبة يغيّر تعريفات الوكلاء وسير العمل nawah-team والاختبار الحارس TST-M0-002 في إيداع واحد (§6 من المنهج)؛ لا أثر على أي حزمة عمل أو بوابة",
+   "blocked_task_ids": [],
+   "requested_at": "2026-11-09T13:30:00Z",
+   "status": "answered",
+   "answer": "answered by the owner on 2026-11-09 in the session: option 2 — fourteen roles: three software engineers, three systems engineers, three cybersecurity engineers, two planners, one auditor, one assistant manager, one manager; with the brainstorming, engineering, coding and auditing skills activated in every role."
+  },
+  {
+   "id": "DEC-027",
+   "question": "ظهور العمليات بين المستخدمين قبل تجميد ABI النداء process_list (syscall 46، WP-69): من يرى أي عملية؟",
+   "options": [
+    "A: الظهور يتبع المقبض. النواة لا تعرف المستخدمين؛ مقبض مهمة بحق READ يسرد شجرتها وحدها: المدير يرى الكل (مقبض المهمة الجذر)، والجلسة ترى مهمتها؛ عمليات المستخدمين الآخرين عبر المدير وحده برمز مدير في WP-58؛ المجاميع للجميع من system_info",
+    "B: كل عملية ترى pid واسم الصورة والحالة لكل العمليات. الأبسط لمدير المهام، لكنه يسرّب أسماء تطبيقات المستخدمين الآخرين، والعودة إلى A لاحقًا تكسر الـABI",
+    "C: النواة تخزن uid لكل مهمة وتصفّي برمز يُمرَّر في النداء. تدخل هوية المستخدم النواة، ووسيط ABI إضافي، وتكرار لدور المدير"
+   ],
+   "recommendation": "A: لا تدخل هوية المستخدم النواة، والصلاحية مقبض كسائر الكائنات، وهو قابل للتوسيع إلى B بإعطاء مقبض أوسع دون كسر الـABI، بخلاف العكس",
+   "impact": "يحدد شكل ABI النداء process_list ورفضه في WP-69 (TST-M6-PROC-LIST-REFUSALS) قبل تجميده، ومسار مدير المهام في WP-58 لعرض عمليات الآخرين وإنهائها؛ WP-46 لا تتأثر (لا process_list فيها)",
+   "blocked_task_ids": [
+    "WP-69",
+    "WP-70"
+   ],
+   "requested_at": "2026-11-09T21:47:00Z",
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: A: visibility follows the handle; the kernel holds no user identity; a task handle with READ lists its own tree (the manager sees all, a session its own task)"
+  },
+  {
+   "id": "DEC-012",
+   "question": "مصدر الأيقونات والهوية البصرية وترخيصها قبل WP-48: من يصممها وبأي ترخيص؟",
+   "options": [
+    "A: الفريق يرسمها بنفسه (أصلية، ترخيص المشروع)",
+    "B: مصمم مسمّى باسمه وبترخيص مكتوب",
+    "C: مجموعة أيقونات قائمة بترخيص محدد (ليست من Microsoft، ADR-0022)"
+   ],
+   "recommendation": "توصية المدير: A، يرسم الفريق مجموعة أيقونات خاصة بالمشروع تحت ترخيص المشروع، والمصمم المسمّى هو الفريق، ويُسجَّل ذلك في docs/sources.json قبل تفعيل WP-48؛ وللمالك أن يسمّي بدلها مجموعة مرخّصة بترخيص محدد (ليست من Microsoft، ADR-0022)",
+   "impact": "يحجب WP-48 على المسار الحرج وTST-M6-ASSET-PROVENANCE؛ إجراء المالك: تسمية المصدر والترخيص قبل تفعيل WP-48",
+   "blocked_task_ids": [
+    "WP-48"
+   ],
+   "requested_at": "2026-11-10T11:10:00Z",
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: A: the team draws the project's own icons under the project's licence; the entry in docs/sources.json is written when WP-48 is activated"
+  },
+  {
+   "id": "DEC-019",
+   "question": "حماية الفروع: حماية main وقصر ci-evidence/** على github-actions؟",
+   "options": [
+    "A: حماية main، وci-evidence/** لـgithub-actions وحده بلا حذف ولا دفع قسري",
+    "B: حماية main وحدها",
+    "C: بلا حماية (الوضع الحالي)"
+   ],
+   "recommendation": "A: سلامة الأدلة حتى RC تعتمد على ألا يُعاد كتابة فرع أدلة أو يُحذف (PLAN-ANSWER.md:913)",
+   "impact": "سلامة الأدلة حتى RC؛ إجراء المالك الآن في إعدادات المستودع: حماية main، ومجموعة قواعد على ci-evidence/** تمنع التحديث والدفع القسري والحذف (2026-11-10: مطلوبة لـWP-89، الملاحظة H1)",
+   "blocked_task_ids": [
+    "WP-89"
+   ],
+   "requested_at": "2026-11-10T11:10:00Z",
+   "status": "open"
+  },
+  {
+   "id": "DEC-028",
+   "question": "دلالات تسليم POINTER في displayd قبل WP-79: التسليم للنافذة المركّزة وحدها، أم التركيز بأي ضغطة؟",
+   "options": [
+    "A: التسليم للنافذة المركّزة وحدها؛ ضغطة على نافذة غير مركّزة تنقل التركيز ولا تُسلَّم",
+    "B: أي ضغطة (يسرى أو يمنى) تنقل التركيز إلى النافذة تحتها ثم تُسلَّم إليها"
+   ],
+   "recommendation": "متروكة لتصميم مهندس الخدمات؛ قرار فريق يُسجَّل في display.md قبل WP-79، وللمالك أن ينقضه",
+   "impact": "يحسم RSK-020 (نقرة يمنى تصل نافذة في الخلفية) ويحدد ما تقتله الطفرة M170 في TST-M6-UI-POINTER (WP-79)",
+   "blocked_task_ids": [
+    "WP-79"
+   ],
+   "requested_at": "2026-11-10T11:10:00Z",
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: the team decides the pointer's delivery at WP-79's design and writes it in display.md; the owner may overrule it"
+  },
+  {
+   "id": "DEC-029",
+   "question": "دليل بوابة طفرات M6 يتقادم مع أي تغيير في الشيفرة أو الأدوات، وverify لا يشغّل البوابة: كيف يبقى الفحص الصارم أمينًا وقابلًا للاخضرار؟",
+   "options": [
+    "A: البوابة داخل verify وظيفةً موازية (20 دقيقة مقيسة على التشغيل 43615540519): دليل طفرات M6 حديث في كل دفع، ولا سياسة warn؛ الثمن دقائق CI إضافية في كل دفع",
+    "B: stale_policy=warn لـTST-M6-MUTANTS كما للبوابات الأربع، بعد بناء ضابط الخطة أولًا (PLAN-ANSWER.md:771: لا تنتقل حزمة إلى done ولا تمر بوابة مرحلة على دليل متقادم، وحارس يقصر warn على اختبارات مسمّاة)",
+    "C: يبقى الشرط صارمًا دون تغيير في سير العمل: كل دفع يغيّر مدخلات البوابة يبقى أحمر، ولا يمكن استيراد دليله"
+   ],
+   "recommendation": "A: لا يخفّف شرطًا، ويجعل دليل الطفرات حديثًا دائمًا؛ يُنفَّذ مع توزيع verify على وظائف (WP-88). الخيار C غير قابل للعمل: يوقف كل تغيير في الشيفرة",
+   "impact": "الشرط الصارم أُعيد في 2026-11-14 بعد مراجعة المالك. إلى أن يُحسم القرار، أي دفع يغيّر kernel/ أو user/ أو tools/ أو tests/ أو ملفات سير العمل يُحمّر الفحص الصارم في verify ولا يُستورد دليله؛ يحجب كل حزمة شيفرة تالية. البوابات الأربع الأقدم ما زالت بسياسة warn وأدلتها متقادمة منذ 2026-11-08 (WP-95)",
+   "blocked_task_ids": [
+    "WP-88",
+    "WP-94",
+    "WP-95"
+   ],
+   "requested_at": "2026-11-14T17:10:00Z",
+   "status": "answered",
+   "answer": "2026-11-14: the owner chose option A in the session (asked in plain words: run the mutation check with every push): the M6 mutation gate runs inside verify as a parallel job; no stale_policy warn on TST-M6-MUTANTS. Carried out by WP-96"
+  },
+  {
+   "id": "DEC-030",
+   "question": "WP-119 تغيّر شرط اختبار TST-M4-NET-LIMITS (الاندفاع الثاني يبدأ بلا خانة جارية، فلا يعتمد على سرعة تصريف جهاز المحاكي): هل يوافق المالك على تغيير شرط الاختبار؟",
+   "options": [
+    "A: موافقة: يُعدَّل الاختبار كما في قبول WP-119، وطفرات مسار الإرسال تبقى مقتولة؛ يزول سبب فشل محلي شوهد مرة واحدة",
+    "B: رفض: يبقى الاختبار كما هو، ويُقبل أن يفشل نادرًا بحسب سرعة المحاكي؛ تُغلق WP-119 بلا تغيير",
+    "C: صيغة أخرى يحددها المالك"
+   ],
+   "recommendation": "A: التغيير يزيل اعتماد الاختبار على توقيت المحاكي ولا يحذف ما يفحصه (ست عشرة إرسالة تنجح كلها والطفرات مقتولة)؛ لكنه تغيير في شرط اختبار، فالقرار للمالك",
+   "impact": "الاختبار فشل مرة واحدة محليًا في 2026-11-15 (scratch) ولم يفشل على CI؛ ما دام القرار مفتوحًا قد يتكرر فشل عابر محلي أو على CI بلا عيب في الشيفرة",
+   "blocked_task_ids": [
+    "WP-119"
+   ],
+   "requested_at": "2026-11-15T17:20:00Z",
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: A: WP-119 changes TST-M4-NET-LIMITS's condition as its acceptance says (the second burst starts with no slot in flight); the send path's mutants stay killed"
+  },
+  {
+   "id": "DEC-031",
+   "question": "شرط قبول WP-131 وWP-133 (المغلقتين) وWP-134 (المفعّلة) مكتوب أوسع مما أثبته CI: «كتابة ملف جديد وإلحاق» والمسوح تجري قطاعات كاملة على عنقود من قطاع واحد؛ و«في أيٍّ من نسختي FAT» لكل كتابة قرص، والمُثبت الصورة النهائية والنسخة الأولى داخل الإقلاع. المدير أغلق WP-131 وWP-133 مسجِّلًا ما لم يُثبت ومحيلًا إياه، دون موافقة المالك على هذا التضييق. ما حكم الحزم الثلاث؟",
+   "options": [
+    "A: تبقى WP-131 وWP-133 مغلقتين وتُغلق WP-134 عند دليلها، بقراءة «ما تجريه المسوح»، والباقي تملكه WP-138 (النسخة الثانية بعد كل نداء، للإنشاء) وWP-136 (أشكال الكتابة) وبند لاحق لمسوح الكتابة والحذف والتفريغ؛ وتُقدَّم WP-138 في الترتيب",
+    "B: تُعاد WP-131 وWP-133 إلى مخططة (done ثم planned) ولا تُغلق WP-134 حتى تُثبت WP-138 وWP-136 ما بقي من الشرط",
+    "C: صيغة أخرى يحددها المالك"
+   ],
+   "recommendation": "A مع تقديم WP-138 مباشرة بعد WP-134: السجلات والعقد تقول صراحة ما لم يُثبت، وإعادة الفتح تغيّر الحالة لا الدليل؛ لكنه تضييق لشرط قبول، فالقرار للمالك. وإلى أن يجيب: لا تُغلق WP-134 مدّعيةً ذلك الشطر، وتُنفَّذ WP-138 أولًا",
+   "impact": "ما دام القرار مفتوحًا تبقى WP-134 مفعّلة بعد دليلها حتى تُغلق WP-138، وWP-137 تنتظرها؛ والحزمتان المغلقتان تحملان في سجلهما ما لم يُثبت",
+   "blocked_task_ids": [
+    "WP-134"
+   ],
+   "requested_at": "2026-11-16T09:30:00Z",
+   "status": "answered",
+   "answer": "2026-11-16: the owner chose option A in the session (in plain words: do recommendation A, and do nothing catastrophic; use every skill and feature the project needs): WP-131 and WP-133 stay done and WP-134 is closed on its CI evidence, each read as what its sweeps run; what the acceptances' wider wording is not shown for is owned by WP-138 (the second FAT copy after every failed create), WP-136 (the write shapes no sweep runs) and a later item for the second copy after each call of the write, unlink and truncation sweeps; WP-138 is the next item. The records of the three items keep the lines that say what CI did not show"
+  },
+  {
+   "id": "DEC-032",
+   "question": "قرار المالك DEC-004(1) في 2026-10-19 «K-3 يُصلَح الآن بإعادة فتح WP-32» لم يُنفَّذ، والعيب قائم (RSK-040): بأي آلية يُصلَح؟",
+   "options": [
+    "A: تُعاد WP-32 إلى مخططة كما نصّ القرار، فتحمل بوابة M5 المغلقة حزمة غير منجزة حتى تُغلق؛ وبقراءة مهندس النواة والمدير: WP-33 وWP-34 وWP-35 منتهية وتعتمد على WP-32، فيبلّغ المدقّق ثلاثة أخطاء «منتهية وتبعيتها غير منتهية» طوال إعادة الفتح ويحمرّ CI",
+    "B: حزمة جديدة للإصلاح باختبار TST-M3-VMO-MAP-RIGHTS يفشل أولًا وطفرة أمنية، وتبقى WP-32 منتهية بسطر مؤرخ، ويُعاد REQ-M3-005 إلى partial حتى يمرّ الاختبار",
+    "C: صيغة أخرى يحددها المالك"
+   ],
+   "recommendation": "B: الإصلاح نفسه واحد في الحالتين، وB لا تعيد كتابة سجل بوابة مغلقة؛ لكنها تخالف نص قرار سابق للمالك، فالقرار له",
+   "impact": "ما دام مفتوحًا يبقى تجاوز حق القراءة في vmo_map قائمًا في الشيفرة، ويبقى REQ-M3-005 مسجّلًا متحققًا واختبار له لم يُشغَّل قراءة مهندس النواة في 2026-11-16 (بلا تشغيل): الإصلاح سطر واحد في sys_vmo_map (حق READ مطلوب لكل تخطيط)، ولا مستدعٍ قائم ينكسر؛ نص العقد الحالي (syscall.md، الصف 38، وdisplay.md) يسمح حرفيًا بتخطيط كتابة بحق الكتابة وحده، فالإصلاح تضييق يستلزم إصدارًا جديدًا لـsyscall.md؛ والتقدير نحو 130 دقيقة مع التشغيل المحلي الكامل اللازم لتغيير في شيفرة النواة، فوق خط الميزانية (90): يحتاج قبول المالك لذلك في هذه الحزمة",
+   "blocked_task_ids": [
+    "WP-32"
+   ],
+   "requested_at": "2026-11-16T11:40:00Z",
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: B: a new fix item, WP-149, with TST-M3-VMO-MAP-RIGHTS failing first and a SECURITY mutant; WP-32 stays done with a dated line; REQ-M3-005 is partial until the case passes"
+  },
+  {
+   "id": "DEC-033",
+   "question": "ترتيب العمل: المدير خرج عن ترتيب الخطة المكتوب (PLAN-REVERSE.md: بعد WP-117 تأتي WP-106 ثم WP-107 وWP-108 ثم WP-101) ونفّذ سلسلة اختبارات أعطال FAT (126، 127، 124، 131، 133، 134) دون موافقة المالك؛ والمسار الحرج إلى بوابة M6 (107 ← 101 ← 102 ← 47 ← 48 ← 51 ← 52 ← 53 ← 55 ← 57 ← 59 ← 62) لم يبدأ. ما الترتيب من هنا؟",
+   "options": [
+    "A: إصلاح K-3 أولًا (بعد DEC-032)، ثم WP-138 التي سمّاها جواب DEC-031، ثم العودة إلى ترتيب الخطة (WP-106 ثم WP-107 وWP-108 ثم WP-101 فالمسار الحرج)، ولا تُفتح حزمة أخرى من سلسلة FAT ولا من حزم التدقيق إلا بموافقة المالك",
+    "B: العودة إلى ترتيب الخطة فورًا (WP-106 أولًا)، وتأجيل WP-138 وK-3 إلى موضع يحدده المالك",
+    "C: ترتيب آخر يحدده المالك"
+   ],
+   "recommendation": "A: K-3 عيب أمني له قرار سابق من المالك، وWP-138 سمّاها قراره اليوم؛ وما سواهما يعود إلى الخطة",
+   "impact": "ما دام مفتوحًا لا يبدأ المدير كودًا لحزمة جديدة إلا WP-138 التي سمّاها جواب DEC-031؛ و30 حزمة مخططة ليست على طريق البوابة تنتظر موضعها",
+   "blocked_task_ids": [
+    "WP-106"
+   ],
+   "requested_at": "2026-11-16T11:40:00Z",
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: the order from here, in the method's section 7: WP-149 (K-3, the owner's decision of 2026-10-19) first, then WP-130 and WP-98 (the two tool fixes), then WP-95 (DEC-035), then the desktop path WP-107, WP-108, WP-101, WP-102, WP-47, WP-48, WP-51; a FAT32 or audit item opens only under the method's gate rule"
+  },
+  {
+   "id": "DEC-034",
+   "question": "خمس حزم منتهية أخرى نصّ قبولها أوسع مما تُريه اختباراتها (من صنف DEC-031): WP-118 (كل نقطة فشل لكتابة: المسح يجري شكلين)، WP-124 (في أيٍّ من نسختي FAT لكل كتابة: الصورة النهائية والنسخة الأولى)، WP-105 (ملف واحد من ثلاثة عناقيد)، WP-121 (العقد يعد النداء بـERR_NO_SPACE والحالة تراه داخل النواة؛ ونفاد المساحة «في منتصف النداء» لا يقع بالتصميم)، وWP-24 مع شرط خروج M4 («المدير أول عملية»، ودليل TST-M1-BOOT يُريه العملية الثالثة بعد فحصين ذاتيين). ما حكمها؟",
+   "options": [
+    "A: تبقى منتهية بقراءة «ما تُريه الحالات» مع سطر مؤرخ في كلٍّ منها، والناقص تملكه حزم مسمّاة (WP-136، WP-140، وحالة عبر طبقة النداءات لـWP-121)، ويُصحَّح نص شرط M4 إلى «أول عملية تبقى وتحمل السلطة» باختبار يثبته",
+    "B: تُعاد إلى مخططة حتى يُثبت الناقص",
+    "C: صيغة أخرى يحددها المالك"
+   ],
+   "recommendation": "A، على قياس جواب المالك في DEC-031؛ لكنه تضييق لشروط قبول ولشرط بوابة، فالقرار للمالك",
+   "impact": "ما دام مفتوحًا تحمل الحزم الخمس وبوابة M4 نصًا لا يثبته دليلها",
+   "blocked_task_ids": [
+    "WP-118",
+    "WP-124",
+    "WP-105",
+    "WP-121",
+    "WP-24"
+   ],
+   "requested_at": "2026-11-16T11:40:00Z",
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: A: WP-105, WP-118, WP-121, WP-124 and WP-24 stay done, read as what their cases show, each with a dated line; what is missing is owned by WP-150 (the storage bundle) and, for M4's exit wording, by entry L-001 of docs/LATER.md"
+  },
+  {
+   "id": "DEC-035",
+   "question": "بوابات الطفرات M2 إلى M5 تحمل stale_policy warn على أدلة متقادمة منذ 2026-11-09 لا يُتحقق من مصدرها، وCI لا يشغّل طفراتها في أي دفعة (RSK-041)؛ جواب DEC-029 يخص M6، ولا سطر صريح من المالك يقرّ warn على الأربع. ما الحكم؟",
+   "options": [
+    "A: تُقدَّم WP-95 الآن (إعادة تشغيل البوابات الأربع واستيراد دليلها، ونقل طفرات الصلاحيات إلى المجموعة الأمنية)؛ كلفتها نحو 160 دقيقة CI",
+    "B: يقرّ المالك warn على الأربع إلى أن تأتي WP-95 في موضعها من الترتيب",
+    "C: صيغة أخرى يحددها المالك"
+   ],
+   "recommendation": "A: أربع بوابات مراحل مغلقة لا دليل حديث لها، وشيفرة FAT التي تغطيها تغيّرت؛ والكلفة دقائق CI لا عمل كثير",
+   "impact": "ما دام مفتوحًا تبقى بوابات M2 إلى M5 «passed» على دليل لا يُعاد إنتاجه",
+   "blocked_task_ids": [
+    "WP-95"
+   ],
+   "requested_at": "2026-11-16T11:40:00Z",
+   "status": "answered",
+   "answer": "2026-11-17: answered by the owner's ruling of 2026-11-17 in the session (a four-question form, each answered with the manager's recommended option): simplify the working method; close WP-106 and WP-147 with their limits written; bundle the ten FAT32 rare-case items into one item done before release and move to the desktop; act on the manager's recommendations in the open decisions and send him only what needs his own hand. Applied: A, placed after WP-98 so that its gates run on the shortened pipeline: WP-95 re-runs the M2 to M5 mutation gates and imports their evidence"
+  },
+  {
+   "id": "DEC-036",
+   "question": "استثناءات بوابة M5 (السيناريو 7 «الشاشات» N/A، أسماء الملفات المختلطة مؤجلة إلى REQ-M6-001، حالتا S6 وS8، حدّ REQ-M5-010) وأجوبة DEC-006 إلى DEC-009 سُجّلت «بتفويض المالك في 2026-11-08»، ونص ذلك التفويض غير مدوَّن في السجلات. هل يعتمدها المالك؟",
+   "options": [
+    "A: يعتمد المالك الاستثناءات وأجوبة DEC-006 إلى DEC-009 بسطر يُدوَّن نصه، مع مدة صلاحية لكل استثناء",
+    "B: يرفضها أو بعضها، فتُفتح لما رُفض حزمة أو يُعاد القرار",
+    "C: صيغة أخرى يحددها المالك"
+   ],
+   "recommendation": "A إن كان التفويض قد صدر كما تقول السجلات؛ المدير لا يملك نصه ولا يدّعيه",
+   "impact": "البند 22.1 من البرومبت يشترط اعتماد المالك لكل استثناء بسببه وأثره وتعويضه ومدته؛ بدونه تقوم بوابة M5 على استثناءات غير معتمدة",
+   "blocked_task_ids": [],
+   "requested_at": "2026-11-16T11:40:00Z",
+   "status": "open"
+  },
+  {
+   "id": "DEC-037",
+   "question": "إغلاق WP-138: CI (التشغيل 43877987805) أظهر حالتَي الإنشاء بحقول النسخة الثانية السبعة وبوابة الطفرات 116 من 116، لكن تدقيق الإغلاق حكم أن شرط القبول أوسع من دليل CI في موضعين: «M262 وM265 تُقتلان بتلك الحقول» (البوابة تسجّل أن الحالتين قتلتاهما لا أيّ حقل سقط، والحالتان كانتا تقتلانهما قبل الحزمة؛ السقوط بالحقول شوهد محليًا فقط)، و«النداءات التي تُري فيها الثانية ما لا تُريه الأولى معدودة ومثبّتة» (تحقق جزئيًا: ثلاثة أنواع تُعدّ، ومسح العلامات محدود بقطاعات، وسلسلة بالطول نفسه برابط مختلف لا تُعدّ). فهل تُغلق الحزمة بما ظهر أم تبقى مفعّلة حتى يُظهر CI البندين؟",
+   "options": [
+    "A: تُغلق بما أظهره CI، ويقول سطر الإغلاق ذلك نصًا (القتل بالحالتين اللتين تحملان الحقول على CI، والسقوط بالحقول محليًا؛ العدّ لثلاثة أنواع)، والباقي لحزمة مسمّاة",
+    "B: تبقى مفعّلة ويُشدَّد الاختبار حتى يُظهر CI البندين: كل مدخل FAT يختلف بين النسختين بعد كل إنشاء فاشل مصنَّف ومثبَّت، وحالة لا تثبّت إلا حقول النسخة الثانية تُعلَن قاتلًا لـM262 وM265 وM268؛ تشديد لا إرخاء، وتجاوز خط الميزانية يُسجَّل",
+    "C: صيغة أخرى يحددها المالك"
+   ],
+   "recommendation": "B. المدير يمضي فيها دون انتظار لأنها تشديد لا يحتاج موافقة؛ إن حكم المالك بـA أُغلقت فورًا بالأدلة الموجودة وسطر إغلاق لا يدّعي أكثر مما ظهر",
+   "impact": "دون قرار ودون التشديد تبقى WP-138 مفعّلة وWP-140 التي تعتمد عليها مخططة؛ الإغلاق بقراءة أضيق من نص الشرط دون موافقة المالك هو ما صحّحه المالك في DEC-031",
+   "blocked_task_ids": [
+    "WP-138"
+   ],
+   "requested_at": "2026-11-16T15:20:00Z",
+   "status": "answered",
+   "answer": "2026-11-16: the owner's direction in the session, relayed from his strict audit (in his words, translated: he does not recommend closing WP-138 now; keep WP-138 open; keep the evidence of the cases M262, M265 and M268 with what proves the sweep was reached, the number of its rounds, the field values and the exit reason; add the two create cases to WP-140's test list; no change of the acceptance conditions and no conclusion of real corruption without evidence). The manager reads it as option B's substance: the item stays active until CI carries that evidence; it is not an approval to close, and the close still needs the close audit's confirmation clause by clause"
+  },
+  {
+   "id": "DEC-038",
+   "question": "إغلاق WP-106: شرطها يقول «حساب الإصدار لا يلتف، على CI». ما أظهره CI (التشغيل 44029427244): دالة التحقق نفسها، مبنية في نواة الاختبار بملف الإصدار مع فحص التجاوز، تمرّ على 32 قطاعًا مصنوعًا دون توقف، ومنها أكبر مجموع تسمح به الحقول؛ ونواة الإصدار نفسها لم تُشغَّل عليها؛ وعموم القطاعات بالقراءة (كل حد في 64 بت، وأكبر مجموع 8590000125، بعيد عن 2^64). «لا يلتف» لكل قطاع لا يُظهره اختبار منتهٍ. بقية الشرط (الرفض بخطأ التحميل، حالات التخزين، قتل الطفرات) أظهرها CI. فهل تُغلق بهذه الحدود مذكورة نصًا؟",
+   "options": [
+    "A: تُغلق ويقول سطر الإغلاق الحدود نصًا (الدالة نفسها بفحص التجاوز على القطاعات المصنوعة؛ نواة الإصدار لم تُشغَّل عليها؛ العموم بالقراءة)",
+    "B: تبقى مفعّلة حتى يُظهر CI القطاع ذا الـFAT الكبير وطفرة الضرب في 32 بت (المدير ينفّذهما الآن دون انتظار لأنهما تشديد)، ثم تُغلق بالحدود نفسها لأن العموم يبقى بالقراءة",
+    "C: صيغة أخرى يحددها المالك، مثل تشغيل نواة الإصدار على قرص مصنوع (يحتاج ميزة في المعمل غير موجودة)"
+   ],
+   "recommendation": "B ثم الإغلاق بالحدود مذكورة: التشديد يجعل كل تعبير في الدالة يلقى قيمة كبيرة على CI تحت فحص التجاوز؛ والعموم لا يُثبته إلا القراءة",
+   "impact": "WP-106 تبقى مفعّلة حتى القرار؛ WP-147 (الشطر الثاني) لا تعتمد على هذا القرار في شيفرتها، والمدير يمضي فيها بترتيب الخطة كي لا يتوقف العمل",
+   "blocked_task_ids": [
+    "WP-106"
+   ],
+   "requested_at": "2026-11-17T07:40:00Z",
+   "status": "answered",
+   "answer": "2026-11-17: the owner's answer in the session, a four-question form, each answered with the manager's recommended option: (1) simplify the working method; (2) close WP-106 and WP-147, the limit of what CI shows written plainly in the closing line; (3) bundle the ten remaining FAT32 rare-case packages into one package done before release and move to the desktop; (4) act on the manager's recommendations in the open decisions and send him only what needs his own hand"
+  },
+  {
+   "id": "DEC-039",
+   "question": "اعتماد WP-147: عند فصلها من WP-106 كُتب اعتمادها على WP-106 (للترتيب). WP-106 خضراء على CI لكن إغلاقها ينتظر DEC-038، فلتنفيذ أمرك بالمتابعة دون توقف فعّلتُ WP-147 وغيّرتُ اعتمادها إلى WP-105 (اعتماد WP-106 نفسها قبل الفصل)، لأن حارس الكتابة لا يقوم على فحص التحميل، فصارت حزمتان مفعّلتين معًا. المدقق عدّ هذا تغييرًا في الخطة يحتاج كلمتك الصريحة. فهل تقرّه؟",
+   "options": [
+    "A: أقرّه: WP-147 تُغلق بدليلها على CI متى أظهر كل شطر من شرطها، دون انتظار إغلاق WP-106",
+    "B: لا أقرّه: يعود اعتمادها إلى WP-106 وتبقى مفعّلة ولا تُغلق حتى تُغلق WP-106 (DEC-038)",
+    "C: صيغة أخرى يحددها المالك"
+   ],
+   "recommendation": "A: التغييران مستقلان في الشيفرة (دالة التحميل، ورأس نداء الكتابة)، ودليل كلٍّ منهما حالته وطفراته على CI",
+   "impact": "WP-147 لا تُغلق قبل هذا القرار؛ العمل عليها ودفعها وحكم CI عليها لا ينتظرانه",
+   "blocked_task_ids": [
+    "WP-147"
+   ],
+   "requested_at": "2026-11-17T09:40:00Z",
+   "status": "answered",
+   "answer": "2026-11-17: the owner's answer in the session, a four-question form, each answered with the manager's recommended option: (1) simplify the working method; (2) close WP-106 and WP-147, the limit of what CI shows written plainly in the closing line; (3) bundle the ten remaining FAT32 rare-case packages into one package done before release and move to the desktop; (4) act on the manager's recommendations in the open decisions and send him only what needs his own hand"
   }
  ]
 }

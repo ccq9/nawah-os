@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261115T204309Z-b09d6406-001-a",
+ "test_id": "TST-M3-FAT32-TOOL",
+ "verdict": "PASS",
+ "oracle": "the host FAT32 tool formats the lab volume (128992 clusters, 44 used), lists DIR/HELLO.TXT/PATTERN.BIN, reads files back exactly (cat/verify/expect), keeps the raw pattern tail, makes nested directories in their parent (SYSTEM/FONTS, a missing parent refused), and fsck.fat -n accepts the images; and (WP-105) its `check` is the judge of the images guest cases leave: on images corrupted by the test, a name whose chain runs into a free cluster and two names on one cluster are problems with and without --faulted, a cluster free in the second FAT copy alone is a problem with --faulted, a lost cluster and FAT copies that differ are problems without --faulted and counted with it, a chain longer than its size is a problem unless --faulted --allow-longer N names the exact number of them, and --expect-lost K the exact number of lost clusters (one more or one fewer is a problem), a directory whose chain runs into a free cluster and two directories on one cluster are problems, broken FSInfo signatures are a problem, a tree ten levels deep is healthy and one past the walk's limit (128) is named so and not called lost; fsck.fat's messages are named one by one (lost clusters, the free count and differing copies allowed; shared clusters, a free cluster in a chain, a chain shorter or longer than its size failing; a line with no name, or a path line that says more than a path, unnamed), and `fsck-faulted` accepts an image with a lost cluster and refuses one with a free cluster in a chain, and takes chains longer than their size only in the exact number given; and (WP-126), each with and without --faulted: an entry whose first cluster is no cluster of the volume is a named problem (for a directory 0, 1, an end mark and the first number past the volume, and 0 under attributes that are a directory's and more; for a file 1, an end mark and the first number past the volume, whatever its size), while an empty file, whose first cluster is 0, is healthy; the reserved value 1, a reserved number, the first number past the volume and the bad-cluster mark in a chain name the file or the directory along whichever FAT copy holds them; and a reserved or out-of-range value outside every chain is a problem in the second copy and in the first (1, two reserved values, the first number past the volume, at a free cluster and at the volume's last entry); 26 cases",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "4a679c617fd852ac522a159776d87f70113d7d2e46c010c3afba18792193dca9",
+ "inputs": {
+  "tests/test_fat32_tool.py": "b3dbea4366843adce055dc55b5b8c689853faa3d77c8df5f5b67583e4e478681",
+  "tools/fat32.py": "458f1820e834fc6b4c02b50af6fa133b9dc7b50da22927e2a4d36136de2f3e22"
+ },
+ "claim_tag": "source_backed_fact"
+}

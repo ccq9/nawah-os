@@ -59,6 +59,10 @@ pub const SYS_MOUSE_READ: u64 = 40;
 pub const SYS_VMO_SIZE: u64 = 41;
 /// v1.11 (WP-40): end a process the holder created (the handle needs WRITE).
 pub const SYS_PROCESS_KILL: u64 = 42;
+/// v1.13 (WP-46): jobs (syscall.md §5); each needs WRITE on the job handle.
+pub const SYS_JOB_CREATE: u64 = 43;
+pub const SYS_JOB_KILL: u64 = 44;
+pub const SYS_PROCESS_SPAWN_IN: u64 = 45;
 
 pub const ERR_NOSYS: i64 = -1;
 pub const ERR_INVALID: i64 = -2;
@@ -287,6 +291,44 @@ pub fn process_kill(h: Handle) -> i64 {
     syscall6(SYS_PROCESS_KILL, u64::from(h), 0, 0, 0, 0, 0)
 }
 
+/// Makes a child job of the job `parent` names (v1.13; the handle needs WRITE). Errors:
+/// `ERR_BAD_HANDLE`, `ERR_WRONG_TYPE`, `ERR_ACCESS`, `ERR_PEER_CLOSED` when the parent or an
+/// ancestor was killed, `ERR_NO_RESOURCES` deeper than 8 below the root or on a full handle
+/// table.
+pub fn job_create(parent: Handle) -> Result<Handle, i64> {
+    let r = syscall6(SYS_JOB_CREATE, u64::from(parent), 0, 0, 0, 0, 0);
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as Handle)
+    }
+}
+
+/// Kills every process in the job and below it (v1.13; the handle needs WRITE). Returns 0, or
+/// `ERR_INVALID` for a job that contains the caller; a job killed before answers 0.
+pub fn job_kill(h: Handle) -> i64 {
+    syscall6(SYS_JOB_KILL, u64::from(h), 0, 0, 0, 0, 0)
+}
+
+/// `process_spawn` into the job `job` names (v1.13; the handle needs WRITE): `ERR_PEER_CLOSED`
+/// for a killed job, before anything is moved; otherwise `process_spawn`'s rules.
+pub fn process_spawn_in(job: Handle, path: &[u8], handles: &[Handle]) -> Result<Handle, i64> {
+    let r = syscall6(
+        SYS_PROCESS_SPAWN_IN,
+        u64::from(job),
+        path.as_ptr() as u64,
+        path.len() as u64,
+        handles.as_ptr() as u64,
+        handles.len() as u64,
+        0,
+    );
+    if r < 0 {
+        Err(r)
+    } else {
+        Ok(r as Handle)
+    }
+}
+
 /// The handle the process received at start (0 when it was started with none).
 pub fn bootstrap_handle() -> Handle {
     BOOTSTRAP.load(core::sync::atomic::Ordering::Relaxed)
@@ -388,6 +430,8 @@ pub mod object_type {
     pub const MOUSE: i64 = 11;
     /// The system-files authority (WP-44, files.md v1.3).
     pub const SYSTEM_FILES: i64 = 12;
+    /// A job (WP-46, syscall.md v1.13).
+    pub const JOB: i64 = 13;
 }
 
 /// The type code of the object behind `h`, or an error.

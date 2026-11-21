@@ -13,3 +13,4 @@ bench = false
 
 [dependencies]
 libnawah = { path = "../../libnawah" }
+nawah-apps = { path = "../../nawah-apps" }

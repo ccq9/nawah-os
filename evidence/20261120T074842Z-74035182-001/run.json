@@ -1,0 +1,34 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261120T074842Z-74035182-001",
+ "started_at": "2026-11-20T07:48:42+00:00",
+ "finished_at": "2026-11-20T08:09:27+00:00",
+ "source_revision": "740351820731486ceb8ec4b00fa63856a2fa3e58",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1014-aws",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M3-MUTANTS",
+ "commands": [
+  "python3 -I tests/mutants.py --target pc-qemu --stage M3 --report build/mutants-m3-report.json"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "44693572012",
+  "run_attempt": 1,
+  "workflow": "mutants",
+  "event": "workflow_dispatch",
+  "sha": "740351820731486ceb8ec4b00fa63856a2fa3e58",
+  "head_sha": "740351820731486ceb8ec4b00fa63856a2fa3e58",
+  "ref": "refs/heads/claude/great-wozniak-gh2ba1"
+ }
+}
