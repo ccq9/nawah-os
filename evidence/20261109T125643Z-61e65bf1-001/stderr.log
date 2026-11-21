@@ -1,0 +1,11 @@
+test_boot_efi_module_is_private (__main__.NoBootServicesAfterEBS.test_boot_efi_module_is_private) ... ok
+test_bootinfo_has_no_function_pointers (__main__.NoBootServicesAfterEBS.test_bootinfo_has_no_function_pointers) ... ok
+test_kernel_entry_takes_bootinfo_only (__main__.NoBootServicesAfterEBS.test_kernel_entry_takes_bootinfo_only) ... ok
+test_kmain_names_no_firmware_and_no_unsafe (__main__.NoBootServicesAfterEBS.test_kmain_names_no_firmware_and_no_unsafe) ... ok
+test_main_does_not_allow_unsafe_in_kmain (__main__.NoBootServicesAfterEBS.test_main_does_not_allow_unsafe_in_kmain) ... ok
+test_stub_keeps_tables_inside_one_block (__main__.NoBootServicesAfterEBS.test_stub_keeps_tables_inside_one_block) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+OK
