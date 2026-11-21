@@ -110,10 +110,15 @@ fn ask(ch: u32, req: &[u8], sent: &[u32], reply: &mut [u8; 128]) -> Option<usize
         .map(|(n, _)| n)
 }
 
+/// Replies [`launch`] repeats its request on: `ERR FULL` (applications that exited are still
+/// leaving the manager's table) and `ERR BUSY` (the window of LAUNCH's rate is full, WP-163).
+const RETRY_FULL: u8 = 1;
+const RETRY_BUSY: u8 = 2;
+
 /// `LAUNCH <id>` (WP-161): the number of `OK app:<id>#<n>` (0 for any other reply, or none) and
-/// the reply's length. With `wait` the request is repeated every 2 ticks while the answer is
-/// `ERR FULL`: applications that exited are still leaving the manager's table.
-fn launch(ch: u32, id: &[u8], wait: bool, reply: &mut [u8; 128]) -> (u64, usize) {
+/// the reply's length. The request is repeated every 2 ticks while the answer is one that
+/// `retry` names.
+fn launch(ch: u32, id: &[u8], retry: u8, reply: &mut [u8; 128]) -> (u64, usize) {
     let mut req = [0u8; 32];
     let head = b"LAUNCH ";
     let len = head.len() + id.len();
@@ -123,7 +128,9 @@ fn launch(ch: u32, id: &[u8], wait: bool, reply: &mut [u8; 128]) -> (u64, usize)
         let Some(n) = ask(ch, &req[..len], &[], reply) else {
             return (0, 0);
         };
-        if wait && reply[..n] == *b"ERR FULL" {
+        let full = retry & RETRY_FULL != 0 && reply[..n] == *b"ERR FULL";
+        let busy = retry & RETRY_BUSY != 0 && reply[..n] == *b"ERR BUSY";
+        if full || busy {
             let _ = libnawah::sleep(2);
             continue;
         }
@@ -152,7 +159,8 @@ fn missed(step: u8, num: u64, reply: &[u8]) -> u64 {
     (0x50 + u64::from(step)) << 8 | (num & 0xff)
 }
 
-/// The vouched session's side of TST-M6-APP-SPAWN (WP-161): READY, then nine steps; 0x40 when
+/// The vouched session's side of TST-M6-APP-SPAWN (WP-161): READY, then nine steps (a launch
+/// answered ERR FULL or, from WP-163, ERR BUSY is asked again in all but the first and last); 0x40 when
 /// every reply was the one services.md v1.15 states, `missed`'s code at the first step k that saw
 /// another.
 fn launcher(ch: u32) -> u64 {
@@ -161,47 +169,47 @@ fn launcher(ch: u32) -> u64 {
     }
     let mut r = [0u8; 128];
     // 1: the first application carries number 1, and stays.
-    let (num, n) = launch(ch, b"clock", false, &mut r);
+    let (num, n) = launch(ch, b"clock", 0, &mut r);
     if num != 1 {
         return missed(1, num, &r[..n]);
     }
     // 2: ninety-eight that exit at once, through the table's eight places: 2 to 99, in order.
     for want in 2..=99 {
-        let (num, n) = launch(ch, b"exit", true, &mut r);
+        let (num, n) = launch(ch, b"exit", RETRY_FULL | RETRY_BUSY, &mut r);
         if num != want {
             return missed(2, num, &r[..n]);
         }
     }
     // 3: the circle is back at 1, which the first application still carries: 2.
-    let (num, n) = launch(ch, b"exit", true, &mut r);
+    let (num, n) = launch(ch, b"exit", RETRY_FULL | RETRY_BUSY, &mut r);
     if num != 2 {
         return missed(3, num, &r[..n]);
     }
     // 4: a registered entry whose image is not on the volume.
-    let (num, n) = launch(ch, b"notes", true, &mut r);
+    let (num, n) = launch(ch, b"notes", RETRY_FULL | RETRY_BUSY, &mut r);
     if r[..n] != *b"ERR NOT_FOUND" {
         return missed(4, num, &r[..n]);
     }
     // 5: one whose image is not an image.
-    let (num, n) = launch(ch, b"bad", true, &mut r);
+    let (num, n) = launch(ch, b"bad", RETRY_FULL | RETRY_BUSY, &mut r);
     if r[..n] != *b"ERR FAILED" {
         return missed(5, num, &r[..n]);
     }
     // 6: one that leaves a child behind and exits; the failed launches took no number.
-    let (num, n) = launch(ch, b"orphan", true, &mut r);
+    let (num, n) = launch(ch, b"orphan", RETRY_FULL | RETRY_BUSY, &mut r);
     if num != 3 {
         return missed(6, num, &r[..n]);
     }
     // 7: one that closes its boot channel and stays 200 ticks. The manager has taken the close
     // well before the next request, which comes while that application still runs.
-    let (num, n) = launch(ch, b"closer", true, &mut r);
+    let (num, n) = launch(ch, b"closer", RETRY_FULL | RETRY_BUSY, &mut r);
     if num != 4 {
         return missed(7, num, &r[..n]);
     }
     let _ = libnawah::sleep(100);
     // 8: seven more that stay; the last of them waits for the closer's place. Eight run.
     for want in 5..=11 {
-        let (num, n) = launch(ch, b"clock", true, &mut r);
+        let (num, n) = launch(ch, b"clock", RETRY_FULL | RETRY_BUSY, &mut r);
         if num != want {
             return missed(8, num, &r[..n]);
         }
@@ -210,7 +218,7 @@ fn launcher(ch: u32) -> u64 {
     // last clock to start; were the table larger than eight it would still be running, and
     // these 300 ticks outlast it), so eight that stay are all that run.
     let _ = libnawah::sleep(300);
-    let (num, n) = launch(ch, b"clock", false, &mut r);
+    let (num, n) = launch(ch, b"clock", 0, &mut r);
     if r[..n] != *b"ERR FULL" {
         return missed(9, num, &r[..n]);
     }
@@ -313,12 +321,88 @@ fn bounder(ch: u32) -> u64 {
         (2, b"hog", 2, 1500),
         (3, b"clock", 3, 0),
     ] {
-        let (num, n) = launch(ch, id, false, &mut r);
+        let (num, n) = launch(ch, id, 0, &mut r);
         if num != want {
             return missed(step, num, &r[..n]);
         }
         let _ = libnawah::sleep(pause);
     }
+    0x40
+}
+
+/// The vouched session's side of TST-M6-LAUNCH-RATE (WP-163): READY; at tick t0 eight LAUNCH stay
+/// (#1 to #8, eight attempts), four more answered ERR FULL (not attempts), END_SESSION answered
+/// `ENDED 8`, eight LAUNCH exit (#9 to #16, ERR FULL repeated while the ended session's places
+/// come back), then LAUNCH exit answered ERR BUSY (the 17th in the window), at t0 + 900 again
+/// ERR BUSY, and an unknown id ERR UNKNOWN; at t0 + 1100, after the window that began with the
+/// first attempt (a refusal does not lengthen it), LAUNCH exit is #17. Traced
+/// `rater|step=<k>|busy_at=<ticks after t0>|got=<reply>`; 0x40 when each reply was the stated one,
+/// `missed`'s code at the first step that saw another.
+/// A step of `rater`: its number, the request, the stated reply (the first number, for a LAUNCH
+/// answered OK), the replies its LAUNCH repeats on, and how many times it is asked.
+type RateStep = (u8, &'static [u8], &'static [u8], u8, u64);
+
+fn rater(ch: u32) -> u64 {
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
+    let mut r = [0u8; 128];
+    let t0 = libnawah::clock_ticks();
+    let mut busy_at = 0;
+    let steps: [RateStep; 8] = [
+        (1, b"LAUNCH stay", b"1", 0, 8),
+        (2, b"LAUNCH stay", b"ERR FULL", 0, 4),
+        (3, b"END_SESSION", b"ENDED 8", 0, 1),
+        (4, b"LAUNCH exit", b"9", RETRY_FULL, 8),
+        (5, b"LAUNCH exit", b"ERR BUSY", 0, 1),
+        (6, b"LAUNCH exit", b"ERR BUSY", 0, 1),
+        (7, b"LAUNCH none", b"ERR UNKNOWN", 0, 1),
+        (8, b"LAUNCH exit", b"17", RETRY_FULL, 1),
+    ];
+    for (step, req, want, retry, times) in steps {
+        if step == 5 {
+            busy_at = libnawah::clock_ticks().saturating_sub(t0);
+        }
+        let at = match step {
+            6 => 900,
+            8 => 1100,
+            _ => 0,
+        };
+        if at > 0 {
+            let _ = libnawah::sleep((t0 + at).saturating_sub(libnawah::clock_ticks()));
+        }
+        for k in 0..times {
+            let (ok, n, num) = match (req.strip_prefix(b"LAUNCH "), parse_num(want)) {
+                (Some(id), Some(first)) => {
+                    let (num, n) = launch(ch, id, retry, &mut r);
+                    (num == first + k, n, num)
+                }
+                _ => {
+                    let n = ask(ch, req, &[], &mut r).unwrap_or(0);
+                    (r[..n] == *want, n, 0)
+                }
+            };
+            if !ok {
+                let mut t = [0u8; 120];
+                let head = b"rater|step=0|busy_at=";
+                t[..head.len()].copy_from_slice(head);
+                t[11] = b'0' + step;
+                let mut at = put_num(&mut t, head.len(), busy_at);
+                let got = b"|got=";
+                t[at..at + got.len()].copy_from_slice(got);
+                at += got.len();
+                let m = n.min(t.len() - at);
+                t[at..at + m].copy_from_slice(&r[..m]);
+                libnawah::trace(&t[..at + m]);
+                return missed(step, num, &r[..n]);
+            }
+        }
+    }
+    let mut t = [0u8; 48];
+    let head = b"rater|busy_at=";
+    t[..head.len()].copy_from_slice(head);
+    let at = put_num(&mut t, head.len(), busy_at);
+    libnawah::trace(&t[..at]);
     0x40
 }
 
@@ -332,11 +416,11 @@ fn bounder(ch: u32) -> u64 {
 /// the stated one, `missed`'s code at the first step that saw another.
 fn ender(ch: u32) -> u64 {
     let mut r = [0u8; 128];
-    let (num, n) = launch(ch, b"stay", false, &mut r);
+    let (num, n) = launch(ch, b"stay", 0, &mut r);
     if num != 1 {
         return missed(1, num, &r[..n]);
     }
-    let (num, n) = launch(ch, b"nest", false, &mut r);
+    let (num, n) = launch(ch, b"nest", 0, &mut r);
     if num != 2 {
         return missed(2, num, &r[..n]);
     }
@@ -369,7 +453,7 @@ fn ender(ch: u32) -> u64 {
             let n = ask(ch, req, &[], &mut r).unwrap_or(0).min(40);
             (r[..n] == *want, n, 0)
         } else {
-            let (num, n) = launch(ch, req, false, &mut r);
+            let (num, n) = launch(ch, req, 0, &mut r);
             (Some(num) == parse_num(want), n.min(40), num)
         };
         put(&mut t, field);
@@ -551,20 +635,20 @@ fn connector(ch: u32) -> u64 {
         return 0xE2;
     }
     let mut r = [0u8; 128];
-    let (num, n) = launch(ch, b"connx", false, &mut r);
+    let (num, n) = launch(ch, b"connx", 0, &mut r);
     if num != 1 {
         return missed(1, num, &r[..n]);
     }
     let _ = libnawah::sleep(300);
     for (want, id) in [(2, &b"both"[..]), (3, b"netonly"), (4, b"stuck")] {
-        let (num, n) = launch(ch, id, false, &mut r);
+        let (num, n) = launch(ch, id, 0, &mut r);
         if num != want {
             return missed(3, num, &r[..n]);
         }
         let _ = libnawah::sleep(700);
     }
     for want in 5..=9 {
-        let (num, n) = launch(ch, b"conn", false, &mut r);
+        let (num, n) = launch(ch, b"conn", 0, &mut r);
         if num != want {
             return missed(2, num, &r[..n]);
         }
@@ -1073,6 +1157,7 @@ fn main() -> u64 {
         b"connector" => connector(ch),
         b"ender" => ender(ch),
         b"bounder" => bounder(ch),
+        b"rater" => rater(ch),
         b"crash_once" => serve(ch, Mode::CrashOnce),
         _ => 2,
     }

@@ -213,6 +213,7 @@ pub fn run() -> ! {
         "app_connect" => app_connect(),
         "session_job" => session_job(),
         "job_bound" => job_bound(),
+        "launch_rate" => launch_rate(),
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
@@ -5168,6 +5169,9 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         "logout_kills" => pass(
             "Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
         ),
+        "launch_rate" => pass(
+            "LAUNCH is bounded in rate: the attempt beyond the window's count is refused ERR BUSY, a full table and an unknown id are not counted, and the next window launches again",
+        ),
         "job_bound" => pass(
             "a job's processes are bounded: the start beyond the bound is refused, its place comes back at an exit, and other jobs and LAUNCH are unaffected",
         ),
@@ -5663,6 +5667,64 @@ fn job_bound() -> ! {
     }
     if session != 0x40 || clocks != 1 {
         fail("a LAUNCH after a full job was not answered as the contract states")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-LAUNCH-RATE (REQ-M6-004, services.md's next version; WP-163): LAUNCH is bounded in
+/// rate. The lab manifest SVC-LR.TXT runs the lab image as the vouched `session`, whose role
+/// `rater` makes sixteen attempts in a window with full-table refusals between them, is refused
+/// ERR BUSY twice and ERR UNKNOWN once, and launches again after the window.
+fn launch_rate() -> ! {
+    let name = "launch_rate";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-LR.TXT");
+    let lines = h.poll_list(sched::ticks() + 25_000, |l| {
+        l.iter().any(|x| x.name == "session" && x.exit.is_some())
+    });
+    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    // The ended session's applications are killed and the last one exits at once.
+    sched::poll_until(sched::ticks() + 5000, || {
+        sched::live_named(b"STAY.ELF").1 == 0 && sched::live_named(b"EXIT.ELF").1 == 0
+    });
+    let stays = sched::live_named(b"STAY.ELF").1;
+    let exits = sched::live_named(b"EXIT.ELF").1;
+    let live_jobs = i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
+    let kept = mgr_handles(&h) - h.handles0;
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|launch_rate|load={}|session={:#x}|stays={}|exits={}|live_jobs={}|mgr_handles={}|",
+        BUILD_ID,
+        load,
+        session,
+        stays,
+        exits,
+        live_jobs,
+        kept
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|launch_rate|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 1" {
+        fail("the lab manifest did not load")
+    }
+    if session != 0x40 {
+        fail("a LAUNCH was not answered as the rate limit states")
+    }
+    if stays != 0 || exits != 0 {
+        fail("an application of the case is still alive")
+    }
+    // The last session's job alone: its one application exited.
+    if live_jobs != 1 || kept != 1 {
+        fail("the manager kept something of a launch that was refused or that exited")
     }
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or applications left something behind")

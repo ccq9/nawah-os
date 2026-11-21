@@ -1591,6 +1591,52 @@ class KillEvidence(unittest.TestCase):
         for n in ("hog", "peer"):
             self.assertIn(f"\nid={n}\nelf=/SYSTEM/APPS/{n.upper()}.ELF\n", (ROOT / "platform" / "pc-qemu" / "lab" / f"{n}.app").read_text(encoding="utf-8"))
 
+    LAUNCH_RATE = "TST-M6-LAUNCH-RATE"
+
+    def test_the_launch_rate_expectations_are_pinned(self):
+        """WP-163 (services.md v1.18): LAUNCH is bounded in rate, 16 attempts in 1000 ticks. M401
+        to M404, each anchoring once in the manager, are declared on TST-M6-LAUNCH-RATE alone, each
+        known by exit 37, the case's one failure message and the session's exit code at the step
+        it breaks (the rater's (0x50 + k) * 256 + number), no two sharing their evidence; M401 (no
+        refusal) is SECURITY. The limit's two constants, the case's manifest, line and timeout,
+        and its two lab entries are pinned."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        mgr = (ROOT / "user" / "apps" / "svcmgr" / "src" / "main.rs").read_text(encoding="utf-8")
+        self.assertIn("\nconst LAUNCH_RATE_MAX: u32 = 16;\nconst LAUNCH_WINDOW: u64 = 1000;\n", mgr)
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.LAUNCH_RATE)
+        line = "|ktest|launch_rate|load=OK 1|session=0x40|stays=0|exits=0|live_jobs=1|mgr_handles=1|"
+        self.assertIn(line, case["required_markers"])
+        self.assertIn("|text=rater|step=", case["forbidden_markers"])
+        self.assertEqual(case["timeout_s"], 30)
+        msg = "|ktest|fail|a LAUNCH was not answered as the rate limit states"
+        self.assertEqual(mutants._LRANS, msg)
+        self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
+        want = {  # id: (SECURITY, the session's exit code)
+            "M401": (True, "0x5511"),   # step 5: the 17th attempt answered OK app:exit#17
+            "M402": (False, "0x5400"),  # step 4: refused ERR BUSY after the full table's refusals
+            "M403": (False, "0x5800"),  # step 8: still ERR BUSY after the window
+            "M404": (False, "0x5700"),  # step 7: the unknown id answered ERR BUSY
+        }
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.LAUNCH_RATE in m[4]), sorted(want))
+        for mid, (security, code) in want.items():
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], "user/apps/svcmgr/src/main.rs")
+                self.assertEqual(mgr.count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(m[4], [self.LAUNCH_RATE])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertEqual(E[mid], {self.LAUNCH_RATE: ["exit 37", f"|session={code}|", msg]})
+        manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-lr.txt").read_text(encoding="utf-8")
+        self.assertIn("\nsession /SYSTEM/SVC.ELF - 3000 never 0 0 rater\n", manifest)
+        self.assertEqual(case.get("disk_files"), {
+            "SYSTEM/APPS/STAY.APP": "platform/pc-qemu/lab/stay.app", "SYSTEM/APPS/EXIT.APP": "platform/pc-qemu/lab/exit.app",
+            "SYSTEM/APPS/STAY.ELF": "${OUT}/apps/svc.elf", "SYSTEM/APPS/EXIT.ELF": "${OUT}/apps/exiter.elf"})
+
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""
     import fcntl

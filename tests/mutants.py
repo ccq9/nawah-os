@@ -1702,6 +1702,24 @@ MUTANTS = [
      "self.procs.load(Ordering::SeqCst) >= JOB_PROCESSES_MAX {",
      "self.procs.load(Ordering::SeqCst) > JOB_PROCESSES_MAX {",
      ["TST-M6-JOB-BOUND"], "a job holds 33 processes, one more than the bound"),
+    # M401..M404 (WP-163, REQ-M6-004; services.md v1.18): LAUNCH is bounded in rate, killed by
+    # TST-M6-LAUNCH-RATE.
+    ("M401", "user/apps/svcmgr/src/main.rs",
+     "        if made >= LAUNCH_RATE_MAX {\n",
+     "        if made >= u32::MAX {\n",
+     ["TST-M6-LAUNCH-RATE"], "SECURITY: LAUNCH is never refused for its rate, so a requester starts images as fast as it asks"),
+    ("M402", "user/apps/svcmgr/src/main.rs",
+     "            out.put(b\"ERR FULL\");\n            return;\n",
+     "            out.put(b\"ERR FULL\");\n            self.launch_window.1 += 1;\n            return;\n",
+     ["TST-M6-LAUNCH-RATE"], "a full table's refusal counts as an attempt, so retrying after Sign out fills the window"),
+    ("M403", "user/apps/svcmgr/src/main.rs",
+     "        if made >= LAUNCH_RATE_MAX {\n            out.put(b\"ERR BUSY\");\n",
+     "        if made >= LAUNCH_RATE_MAX {\n            self.launch_window = (now, made);\n            out.put(b\"ERR BUSY\");\n",
+     ["TST-M6-LAUNCH-RATE"], "a refusal starts the window again, so a requester that retries is never let through"),
+    ("M404", "user/apps/svcmgr/src/main.rs",
+     "                Some(k) => self.launch(k, &mut out),\n                None => out.put(b\"ERR UNKNOWN\"),\n",
+     "                Some(k) => self.launch(k, &mut out),\n                None if self.launch_window.1 >= LAUNCH_RATE_MAX => out.put(b\"ERR BUSY\"),\n                None => out.put(b\"ERR UNKNOWN\"),\n",
+     ["TST-M6-LAUNCH-RATE"], "an unknown id is answered ERR BUSY in a full window, which the contract answers ERR UNKNOWN"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2041,7 +2059,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-167 (REQ-M6-004): Sign out ends the session's job (session.md v1.8).
             "M388",
             # WP-164 (RSK-050): a job holds 32 live processes at most (syscall.md v1.15).
-            "M397", "M398"}
+            "M397", "M398",
+            # WP-163 (REQ-M6-004): LAUNCH is bounded in rate (services.md v1.18).
+            "M401"}
 
 
 def security_of(mid: str) -> bool:
@@ -2267,6 +2287,7 @@ _SJANS = "|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the
 _LKALIVE = "|ktest|fail|an application of the signed-out session is still alive"
 _JBUNIT = "|ktest|fail|a job's count does not hold its bound"
 _JBNOT = "|ktest|fail|a job's processes are not bounded"
+_LRANS = "|ktest|fail|a LAUNCH was not answered as the rate limit states"
 _ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
 _APP_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
@@ -2438,6 +2459,10 @@ EXPECT = {
     "M398": {"TST-M6-JOB-BOUND": ["exit 37", "|hog_live=65|hog_count=0|", _JBNOT]},
     "M399": {"TST-M6-JOB-BOUND": ["exit 37", "|again=0|counted=32|back=32|", _JBUNIT]},
     "M400": {"TST-M6-JOB-BOUND": ["exit 37", "|unit|taken=33|", _JBUNIT]},
+    "M401": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5511|", _LRANS]},
+    "M402": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5400|", _LRANS]},
+    "M403": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5800|", _LRANS]},
+    "M404": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5700|", _LRANS]},
 }
 
 

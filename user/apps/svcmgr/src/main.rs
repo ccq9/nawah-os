@@ -36,6 +36,10 @@ const APP_NUM_MAX: u8 = 99;
 /// Connections the running applications together are granted to one service (v1.16): half
 /// of a service's eight client places, so the session and the services keep the rest.
 const APP_CONNECT_MAX: usize = 4;
+/// LAUNCH's rate (WP-163): at most this many launch attempts in one window of
+/// [`LAUNCH_WINDOW`] ticks for the whole manager; the next is answered ERR BUSY.
+const LAUNCH_RATE_MAX: u32 = 16;
+const LAUNCH_WINDOW: u64 = 1000;
 const MSG_MAX: usize = 4096;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -302,6 +306,8 @@ struct Manager {
     /// each application's job a child of it; END_SESSION kills it and lets it go, so the next
     /// LAUNCH makes another. The manager alone holds it.
     session_job: Option<Handle>,
+    /// LAUNCH's window (WP-163): the tick of its first attempt and the attempts made in it.
+    launch_window: (u64, u32),
     ctl: Handle,
     /// Kernel resources handed over as initial handles after the control channel, routed by
     /// type: the token authority to the service named `auth` (auth.md §1), the network
@@ -433,6 +439,20 @@ impl Manager {
             out.put(b"ERR FULL");
             return;
         };
+        // An attempt (WP-163): a registered id that found a place, whatever comes of it. The
+        // window starts at the first attempt after the last one ended; a refusal does not count.
+        let now = libnawah::clock_ticks();
+        let (start, made) = self.launch_window;
+        let (start, made) = if made == 0 || now.saturating_sub(start) >= LAUNCH_WINDOW {
+            (now, 0)
+        } else {
+            (start, made)
+        };
+        if made >= LAUNCH_RATE_MAX {
+            out.put(b"ERR BUSY");
+            return;
+        }
+        self.launch_window = (start, made + 1);
         let session = match self.session_job {
             Some(j) => j,
             None => match libnawah::job_create(self.root_job) {
@@ -1313,6 +1333,7 @@ fn main() -> u64 {
         last_num: 0,
         root_job,
         session_job: None,
+        launch_window: (0, 0),
         ctl,
         authority,
         nic,

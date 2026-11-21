@@ -549,8 +549,8 @@
    "evidence": "قراءة الفريق الأحمر في جولة مراجعة WP-164 بتاريخ 2026-11-21 (kernel/src/syscall/mod.rs: vmo_create وspawn_into، kernel/src/object/mod.rs، kernel/src/loader/elf.rs وmod.rs، kernel/src/mm/heap.rs)؛ لم يُشغَّل شيء؛ فرضية تؤكدها حالة مختبر تكرر vmo_create حتى ERR_NO_RESOURCES ثم تطلب channel_write",
    "owner": "agent",
    "warning_signal": "kernel|panic عند نفاد الكومة، أو ERR_NO_RESOURCES في خدمات لا صلة لها بالتطبيق المستهلك",
-   "mitigation": "لا صورة تطبيق على قرص الإصدار قبل WP-163؛ حد العمليات (syscall.md v1.15) لا يحد الذاكرة",
-   "response_plan": "حصة ذاكرة لكل مهمة في حزمة تُسجَّل قبل WP-163 (قرار ترتيب للمالك)",
+   "mitigation": "لا صورة تطبيق على قرص الإصدار قبل WP-171، وهي بعد WP-170؛ حد العمليات (syscall.md v1.15) لا يحد الذاكرة",
+   "response_plan": "حصة ذاكرة لكل مهمة في WP-170، قبل WP-171 (صورة التطبيق على قرص الإصدار) وWP-47؛ ترتيب يستطيع المالك نقضه",
    "status": "open"
   }
  ]

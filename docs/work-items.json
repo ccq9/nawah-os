@@ -3214,7 +3214,9 @@
     "WP-163",
     "WP-167",
     "WP-168",
-    "WP-169"
+    "WP-169",
+    "WP-170",
+    "WP-171"
    ],
    "inputs": [
     "DEC-005",
@@ -3245,7 +3247,8 @@
     "2026-11-15 split before activation, as its budget line requires (planner's reading of the code and the records; the manager): three packages come first and this item stays as the closing scenario, so the five items that wait for it (WP-48, WP-58, WP-59, WP-60, WP-61) keep their dependency unchanged: WP-100 the registry's format, parser and host fuzz with ADR-0023 proposed; WP-101 the manager's broker (services.md v1.14, TST-M6-LAUNCH-DENIED); WP-102 the session's job, autostart and sign-out (session.md v1.8, TST-M6-LOGOUT-KILLS); here TST-M6-APP-LAUNCH and the ADR's acceptance. Found on the way and carried by the slices: the registry's place (/APPS is writable by every process today; PLAN-ANSWER denies writes to /SYSTEM/APPS) is decided in WP-100; TST-M6-LOGOUT-KILLS's planned oracle needs process_list (WP-69, DEC-027), settled at WP-102's activation; TST-M6-APP-LAUNCH's planned oracle reads two identities in the compositor's LIST, which lists the asker's own windows only today (displayd), so display.md may change here under ADR-0019; the identity app:<id>#<n> must fit NAME_MAX = 15. Not ours to settle: DEC-005, on which the whole model rests, was answered under the owner's delegation of 2026-11-08, whose text is in no record (PLAN-ANSWER.md §6): the owner records it or confirms DEC-005 before WP-101 builds on it; WP-100 holds under either answer",
     "2026-11-19 (the manager): WP-161 and WP-162 added to the dependencies at WP-101's split (the launch and the confinement of an application's CONNECT)",
     "2026-11-19 (the manager, on the auditor's correction): the line above that names services.md v1.14 for LAUNCH, the application's CONNECT and the applications table was written before WP-101's split: v1.14 is WP-101's (the registry on the volume, APPS and LAUNCH's requester); the launch and the confinement come in the versions WP-161 and WP-162 take",
-    "2026-11-19 (the manager): WP-163 added to the dependencies: this item's acceptance is a scene on the release image in which a registered application opens a window, and no application image is on the release disk today (a LAUNCH there is answered ERR NOT_FOUND: services.md v1.15); WP-163 is the item that decides the sample entries' images, and its acceptance now asks that one registered entry at least has its image on that disk; WP-163 itself waits for WP-164 (RSK-050)"
+    "2026-11-19 (the manager): WP-163 added to the dependencies: this item's acceptance is a scene on the release image in which a registered application opens a window, and no application image is on the release disk today (a LAUNCH there is answered ERR NOT_FOUND: services.md v1.15); WP-163 is the item that decides the sample entries' images, and its acceptance now asks that one registered entry at least has its image on that disk; WP-163 itself waits for WP-164 (RSK-050)",
+    "2026-11-21 (the manager): depends on WP-170 and WP-171 from WP-163's split"
    ],
    "acceptance": "TST-M6-APP-LAUNCH PASS on CI (the closing scenario on the release image: sign in, the autostart application opens a window, two launches of one application give two identities, sign out ends the session's job); ADR-0023 accepted; the registry, the broker, the session job, its end at Sign out and the autostart are WP-100, WP-101, WP-102, WP-167 and WP-168 (TST-M6-APP-REGISTRY-FUZZ, TST-M6-LAUNCH-DENIED, TST-M6-SESSION-JOB, TST-M6-LOGOUT-KILLS)",
    "test_ids": [
@@ -10268,22 +10271,33 @@
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
     "docs/tests.json",
-    "docs/work-items.json"
+    "docs/work-items.json",
+    "docs/PLAN-REVERSE.md",
+    "docs/LATER.md",
+    "docs/project-state.json",
+    "docs/risks.json",
+    "platform/pc-qemu/manifests/svc-lr.txt",
+    "docs/requirements.json"
    ],
    "contract_refs": [
     "docs/contracts/services.md",
     "docs/contracts/apps.md"
    ],
-   "acceptance": "LAUNCH is bounded in rate with a stated reply, and one registered entry of the release disk at least has its image there (WP-47's scene starts it), an entry without one answered as missing, shown by a case on CI; services.md states the limit in a new version; the mutants killed by the M6 gate",
+   "acceptance": "LAUNCH is bounded in rate with a stated reply (ERR BUSY beyond 16 attempts in 1000 ticks), shown by a case on CI; services.md states the limit in a new version; TST-M6-APP-SPAWN still passes under it; the mutants killed by the M6 gate",
    "test_ids": [
-    "TST-M6-APP-SPAWN"
+    "TST-M6-APP-SPAWN",
+    "TST-M6-LAUNCH-RATE",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "commands": [
-    "python3 tools/project.py test --target pc-qemu --suite M6"
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6-GATE"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -10294,7 +10308,10 @@
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
     "2026-11-19 registered at WP-161's split",
     "2026-11-19 (the manager, from WP-161's review round): corrections and inputs. The wrap of the number at 99 is shown by WP-161's case (step 3), not left to this item; 'room for one more 30 s case after WP-161's (1067 of 1080 s)' means: WP-161's case makes the worst case 1037 s, and this item's would make it 1067. This item depends on WP-164 now: no application image goes on the release disk before a job's processes are bounded (RSK-050). Inputs: the case's deadlines inside its 30 s timeout (docs/LATER.md L-089); LAUNCH from the session is exercised by WP-161's case, APPS from the desktop and the repeated READY are not (L-083)",
-    "2026-11-19 (the manager, on the auditor's reading in WP-165's round): the acceptance let every sample entry stay without an image ('exist or are answered as missing'), while WP-47's scene on the release image needs an application that starts; it now asks for one entry's image at least on the release disk. WP-47 depends on this item"
+    "2026-11-19 (the manager, on the auditor's reading in WP-165's round): the acceptance let every sample entry stay without an image ('exist or are answered as missing'), while WP-47's scene on the release image needs an application that starts; it now asks for one entry's image at least on the release disk. WP-47 depends on this item",
+    "2026-11-21 (the manager): split before activation. (1) Budget: the rate limit with its case and mutants is estimated at 70 to 90 tool calls, an application image built and placed on the release disk with its case at 90 to 110 more (unmeasured): together over the line of 120. (2) RSK-051 (the red team's reading in WP-164's round): an application on the release disk can exhaust the kernel's frames through vmo_create (1 MiB a call, no authority, up to 1024 handles, about 1 GiB against 512 MiB) or a large bss reserved before admit; its response plan puts a memory quota per job before any application image on the release disk. So this item keeps LAUNCH's rate limit; WP-170 is the quota, WP-171 the image on the release disk after WP-170; WP-47 depends on both. An ordering the owner may reverse",
+    "2026-11-21 (the manager): design. At most 16 launch attempts in a window of 1000 ticks for the whole manager (both requesters): the window starts at the first attempt after the last one ended; an attempt is a LAUNCH of a registered id that found a free place (the costly path: a job, a channel and an image read of up to 4 MiB), whatever its outcome (OK, ERR NOT_FOUND, ERR FAILED); the 17th and later in the window are answered ERR BUSY before any of it. ERR UNKNOWN and ERR FULL are cheap and not counted, nor is ERR BUSY itself, so a requester that retries never lengthens its own wait. Why 16 a second: TST-M6-APP-SPAWN's evidence of run 44849310736 took 7 s with its boot for 110 launches, about 20 ms each on CI, so 16 fit well inside a window and the case's refusal is not a matter of speed; a person does not start more than 8 applications a second and the table holds 8. Cost: TST-M6-APP-SPAWN's launcher retries ERR BUSY as it retries ERR FULL, about 7 s more of its 30. Case TST-M6-LAUNCH-RATE (new, M6, 30 s): the vouched session's lab role starts 16 that exit at once (ERR FULL retried, not counted), the 17th and 18th ERR BUSY, an unknown id ERR UNKNOWN in the full window, and after the window one more OK; services.md's next version states it. Inputs kept as limits: APPS from the desktop and a repeated READY (L-083), fairness between applications' channels (L-086), the lab role's reply buffer (L-081)",
+    "2026-11-21 activated (the manager): its dependencies WP-161 and WP-164 are done; test first"
    ]
   },
   {
@@ -10669,6 +10686,105 @@
     "بوابة الجلسة في المدير وقتل مهمتها عند خروج الجلسة (من حدود WP-102 التي أُلزمت بها WP-167، 2026-11-20)",
     "budget: the design's estimate 110 to 130 tool calls (unmeasured), at or over the line: split at activation if so, (a) the gate and BEGIN_SESSION, (b) the kill at the session's exit",
     "2026-11-20 (the manager): the services engineer's design (read only): the session's side alone fits this item (about 85 to 95 tool calls against 120, unmeasured): END_SESSION from sign_out before display's LOGOUT through an ordered queue of the boot channel's requests (CONNECT and END), traced jobs=ended|apps=<n>, jobs=refused|answer=<reply> or jobs=unsent; TST-M6-LOGOUT-KILLS on the real auth, input, display and session with a lab `desktop` relaying LAUNCH, `deaf` (winapp, ignores LOGGED_OUT) and `nest`; TST-M5-LOGIN-SCREEN's expected trace gains the jobs line. The two limits services.md v1.17 bound to this item, a LAUNCH between ENDED and the next sign-in and the session's exit leaving its job, close in the manager alone: they are WP-169's (L-097 moved)"
+   ]
+  },
+  {
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-003",
+    "REQ-M6-004"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "id": "WP-170",
+   "depends_on": [
+    "WP-164"
+   ],
+   "inputs": [
+    "created 2026-11-21 from RSK-051's response plan at WP-163's split"
+   ],
+   "files": [
+    "kernel/src/object/job.rs",
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/loader/mod.rs",
+    "kernel/src/loader/elf.rs",
+    "kernel/src/mm/heap.rs",
+    "docs/contracts/syscall.md",
+    "kernel/src/ktest.rs",
+    "user/apps/svc/src/main.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "docs/tests.json",
+    "docs/risks.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md"
+   ],
+   "acceptance": "a job other than the root cannot hold more memory than a stated quota: vmo_create and an image's segments beyond it are refused ERR_NO_RESOURCES, the memory comes back when its holder goes, every other job and the services unaffected and the kernel's heap never ends in a panic from it; shown by a case on CI; the syscall contract states it in its next version; its SECURITY mutants killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-JOB-BOUND"
+   ],
+   "actions": [
+    "حصة ذاكرة لكل مهمة (RSK-051؛ من قسمة WP-163 في 2026-11-21)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "test first: a lab application that calls vmo_create until refused, then asks a service: today it takes the system's frames"
+   ]
+  },
+  {
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-003",
+    "REQ-M6-004"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "id": "WP-171",
+   "depends_on": [
+    "WP-163",
+    "WP-170"
+   ],
+   "inputs": [
+    "created 2026-11-21 at WP-163's split: its second part"
+   ],
+   "files": [
+    "user/apps",
+    "tools/project.py",
+    "platform/pc-qemu/apps/CLOCK.APP",
+    "platform/pc-qemu/apps/NOTES.APP",
+    "docs/contracts/apps.md",
+    "docs/contracts/services.md",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/apps.md",
+    "docs/contracts/services.md"
+   ],
+   "acceptance": "one registered entry of the release disk at least has its image there (WP-47's scene starts it), built from a crate of this repository and placed by the build, and an entry without one is answered as missing, shown by a case on CI on the release image; the mutants killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-APP-SPAWN"
+   ],
+   "actions": [
+    "صورة تطبيق حقيقية على قرص الإصدار (من قسمة WP-163 في 2026-11-21، بعد حصة الذاكرة WP-170)",
+    "from WP-163's record: the sample entries CLOCK.APP and NOTES.APP name images no crate builds and the build does not place: a real image for one at least, or the entry leaves the release disk",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
    ]
   }
  ]
