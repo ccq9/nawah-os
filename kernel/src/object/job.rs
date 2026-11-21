@@ -110,6 +110,12 @@ impl Job {
         Some(Member(self.clone()))
     }
 
+    /// Test-only (WP-164): the processes this job counts now.
+    #[cfg(feature = "ktest")]
+    pub fn processes(&self) -> u32 {
+        self.procs.load(Ordering::SeqCst)
+    }
+
     /// Test-only (WP-161): whether this job's parent is the root job itself.
     #[cfg(feature = "ktest")]
     pub fn child_of_root(&self) -> bool {

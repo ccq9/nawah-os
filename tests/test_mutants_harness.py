@@ -1544,6 +1544,53 @@ class KillEvidence(unittest.TestCase):
             "SYSTEM/APPS/NEST.APP": "platform/pc-qemu/lab/nest.app", "SYSTEM/APPS/NEST.ELF": "${OUT}/apps/svc.elf"})
         self.assertIn("\ndeps=display\n", (ROOT / "platform" / "pc-qemu" / "lab" / "deaf.app").read_text(encoding="utf-8"))
 
+    JOB_BOUND = "TST-M6-JOB-BOUND"
+
+    def test_the_job_bound_expectations_are_pinned(self):
+        """WP-164 (RSK-050; syscall.md v1.15): a job holds 32 live processes at most. M397 to
+        M400, each anchor once in its kernel file, are declared on TST-M6-JOB-BOUND alone, each
+        known by exit 37, one message occurring as a failure in ktest.rs and fields of one of the
+        case's two lines (the count's own check, `unit|`, or the jobs' line) with other values
+        than the pinned ones, no two sharing their evidence; M397 (no bound) and M398 (counted
+        in the root) are SECURITY. The case's manifest and its two lab entries are pinned."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.JOB_BOUND)
+        unit = "|ktest|job_bound|unit|taken=32|refused=1|again=1|counted=32|back=0|root=40|"
+        line = "|ktest|job_bound|load=OK 1|session=0x40|hog_live=32|hog_count=32|peer_live=3|peer_count=3|clocks=1|"
+        self.assertIn(unit, case["required_markers"])
+        self.assertIn(line, case["required_markers"])
+        want = {  # id: (file, SECURITY, message constant, the substring of changed fields)
+            "M397": ("kernel/src/object/job.rs", True, "_JBUNIT", "|unit|taken=40|refused=0|"),
+            "M398": ("kernel/src/sched/mod.rs", True, "_JBNOT", "|hog_live=65|hog_count=0|"),
+            "M399": ("kernel/src/object/job.rs", False, "_JBUNIT", "|again=0|counted=32|back=32|"),
+            "M400": ("kernel/src/object/job.rs", False, "_JBUNIT", "|unit|taken=33|"),
+        }
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.JOB_BOUND in m[4]), sorted(want))
+        for mid, (path, security, const, fields) in want.items():
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], path)
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(m[4], [self.JOB_BOUND])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                msg = getattr(mutants, const)
+                self.assertEqual(E[mid], {self.JOB_BOUND: ["exit 37", fields, msg]})
+                self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
+                pinned = unit if const == "_JBUNIT" else line
+                self.assertNotIn(fields, pinned)
+                for f in fields.strip("|").split("|"):
+                    if "=" in f:
+                        self.assertIn("|" + f.split("=")[0] + "=", pinned, f)
+        manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-jb.txt").read_text(encoding="utf-8")
+        self.assertIn("\nsession /SYSTEM/SVC.ELF - 3000 never 0 0 bounder\n", manifest)
+        for n in ("hog", "peer"):
+            self.assertIn(f"\nid={n}\nelf=/SYSTEM/APPS/{n.upper()}.ELF\n", (ROOT / "platform" / "pc-qemu" / "lab" / f"{n}.app").read_text(encoding="utf-8"))
+
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""
     import fcntl

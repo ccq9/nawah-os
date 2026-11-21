@@ -3489,7 +3489,7 @@
     "قائمة ابدأ وساعة الشريط والقفل والخروج وإعادة التشغيل",
     "desktop.md v1.1 (Start): Super tap or Ctrl+Esc or the Start button opens it; apps by ui.lang name, type-to-filter (Arabic and Latin), Enter or click LAUNCHes through the manager, a refused launch shown as text and announced; pinned apps in the config user store",
     "input.md v2.7: LWin/RWin reserved and delivered as START to the shell, never to apps, never while locked; session.md v1.9: LOCK and LOGOUT requested by the vouched desktop",
-    "syscall.md v1.15 (v1.14 went to WP-149 on 2026-11-17): rtc_read (CMOS RTC, FADT CENTURY) and system_reset (administrator token; orderly manager stop, sync, then FADT RESET_REG); Restart only (DEC-007); Shut down via ACPI S5 is deferred and not shown as working",
+    "the syscall contract's next version (v1.14 went to WP-149 on 2026-11-17, v1.15 to WP-164 on 2026-11-21): rtc_read (CMOS RTC, FADT CENTURY) and system_reset (administrator token; orderly manager stop, sync, then FADT RESET_REG); Restart only (DEC-007); Shut down via ACPI S5 is deferred and not shown as working",
     "open question decided here: the taskbar clock before the M7 time settings (recommendation: the RTC shown as UTC and labelled so)",
     "scenario at the end: Super, type a name, the app opens; pin it; Restart; after sign-in the pin is still there",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
@@ -3542,7 +3542,7 @@
    "actions": [
     "نظام الملفات v1.4: أسماء يونيكود طويلة ومجلدات وإعادة تسمية ومساحة حرة وأزمنة تعديل",
     "files.md v1.5: UTF-8 paths <-> VFAT LFN UTF-16 (checksum, unique short-name generation), mkdir and rmdir, rename and move within the volume crash-ordered (new entry, sync, old entry freed), ERR_EXISTS enforced, fs_info (total and free bytes), mtime from the RTC; the frozen 8.3 names keep resolving",
-    "syscall.md v1.15: mkdir, rmdir, rename, fs_info; shell.md v1.4: mkdir, mv, df",
+    "the syscall contract's next version (v1.15 went to WP-164 on 2026-11-21): mkdir, rmdir, rename, fs_info; shell.md v1.4: mkdir, mv, df",
     "host fuzz of LFN and short names against tools/fat32.py; an independent fsck.vfat reads the same names",
     "scenario at the end: in the shell, a folder with an Arabic name, a file moved into it, reboot, names and contents intact",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",

@@ -5564,6 +5564,38 @@ fn session_job() -> ! {
 /// runs, how many processes live in hog's and in peer's job.
 fn job_bound() -> ! {
     let name = "job_bound";
+    // The count itself, deterministically, before any process runs: of 40 places asked of a new
+    // job, 32 are given; a place given back admits one more; the root refuses none of 40.
+    let unit = {
+        use crate::object::job::{root, Job};
+        let job = Job::new_child(&root()).unwrap_or_else(|_| fail("no job for the count"));
+        let mut held: Vec<_> = (0..40).map_while(|_| job.admit()).collect();
+        let taken = held.len();
+        let refused = job.admit().is_none();
+        drop(held.pop());
+        held.extend(job.admit());
+        let again = held.len() == taken;
+        let counted = job.processes();
+        drop(held);
+        let back = job.processes();
+        let root = root();
+        let root_held: Vec<_> = (0..40).map_while(|_| root.admit()).collect();
+        let root_all = root_held.len();
+        drop((root_held, job));
+        alloc::format!(
+            "taken={}|refused={}|again={}|counted={}|back={}|root={}",
+            taken,
+            u8::from(refused),
+            u8::from(again),
+            counted,
+            back,
+            root_all
+        )
+    };
+    kprintln!("OSX|{}|ktest|job_bound|unit|{}|", BUILD_ID, unit);
+    if unit != "taken=32|refused=1|again=1|counted=32|back=0|root=40" {
+        fail("a job's count does not hold its bound")
+    }
     let h = SvcHarness::start(name, b"/SYSTEM/SVC-JB.TXT");
     let lines = h.poll_list(sched::ticks() + 20_000, |l| {
         l.iter().any(|x| x.name == "session" && x.exit.is_some())
@@ -5574,14 +5606,21 @@ fn job_bound() -> ! {
         (n == 1).then(|| a[0].job)
     };
     let live = |img: &[u8]| job_of(img).map_or(0, sched::live_in_job);
+    // hog, peer and clock each wait on their boot channel once their work is done.
+    let settled = |img: &[u8]| {
+        let (a, n) = sched::live_named(img);
+        n == 1 && a[0].waiting
+    };
     sched::poll_until(sched::ticks() + 5000, || {
-        sched::live_named(b"CLOCK.ELF").1 == 1 && sched::live_named(b"CLOCK.ELF").0[0].waiting
+        settled(b"CLOCK.ELF") && settled(b"HOG.ELF") && settled(b"PEER.ELF")
     });
     let (hog_live, peer_live) = (live(b"HOG.ELF"), live(b"PEER.ELF"));
+    let count = |img: &[u8]| job_of(img).and_then(sched::job_count).unwrap_or(u32::MAX);
+    let (hog_count, peer_count) = (count(b"HOG.ELF"), count(b"PEER.ELF"));
     let clocks = sched::live_named(b"CLOCK.ELF").1;
     // The children of hog and peer never exit, and the manager does not end its applications'
-    // jobs when it stops (services.md v1.15): their two jobs are killed here, as job_kill would,
-    // and their processes waited for, before the manager is.
+    // jobs when it stops (services.md v1.17's limits): their two jobs are killed here, as job_kill
+    // would, and their processes waited for, before the manager is.
     for job in [job_of(b"HOG.ELF"), job_of(b"PEER.ELF")]
         .into_iter()
         .flatten()
@@ -5593,12 +5632,14 @@ fn job_bound() -> ! {
     });
     let load = h.load_reply.clone();
     kprintln!(
-        "OSX|{}|ktest|job_bound|load={}|session={:#x}|hog_live={}|peer_live={}|clocks={}|",
+        "OSX|{}|ktest|job_bound|load={}|session={:#x}|hog_live={}|hog_count={}|peer_live={}|peer_count={}|clocks={}|",
         BUILD_ID,
         load,
         session,
         hog_live,
+        hog_count,
         peer_live,
+        peer_count,
         clocks
     );
     let (mgr_exit, procs, frames0, clean) = h.finish();
@@ -5612,12 +5653,12 @@ fn job_bound() -> ! {
     if load != "OK 1" {
         fail("the lab manifest did not load")
     }
-    // hog and the 31 children it may keep.
-    if hog_live != 32 {
+    // hog and the 31 children it may keep, each counted in hog's job.
+    if hog_live != 32 || hog_count != 32 {
         fail("a job's processes are not bounded")
     }
     // peer and its two children: the second came after hog's job was full.
-    if peer_live != 3 {
+    if peer_live != 3 || peer_count != 3 {
         fail("another job was refused a start a full job holds")
     }
     if session != 0x40 || clocks != 1 {

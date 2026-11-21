@@ -167,9 +167,11 @@ static SCHED: IrqSpinLock<Option<Sched>> = IrqSpinLock::new("sched", None);
 /// Table capacities reserved at init (the lab's population stays well inside them; beyond,
 /// the tables still grow — the reserve is about a stable frame count, not a limit). WP-164: a
 /// full job (32 processes, syscall.md v1.15) beside the services and a few applications is the
-/// lab's peak (TST-M6-JOB-BOUND, about 40 processes and 70 threads, 33 of them reaped together:
-/// with 16, 64 and 8 the grown lists kept two frames, docs/LATER.md L-088).
-const THREAD_RESERVE: usize = 128;
+/// lab's peak (TST-M6-JOB-BOUND: about 40 processes and as many threads, 33 processes reaped
+/// together; with 16 processes and 8 processes to reap the grown lists kept two frames,
+/// docs/LATER.md L-088). The kernel threads' lists keep their sizes: they hold kernel threads
+/// alone.
+const THREAD_RESERVE: usize = 64;
 const PROCESS_RESERVE: usize = 64;
 const REAPING_RESERVE: usize = 64;
 
@@ -274,12 +276,12 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         ticks: 0,
         switches: 0,
         preemptions: 0,
-        finished_threads: Vec::with_capacity(FINISHED_KEEP),
+        finished_threads: Vec::with_capacity(16),
         // The whole list up front (WP-161): nobody waits for a process another process
         // started, so its record stays until 64 newer ones push it out, and a list that grew
         // on the seventeenth exit kept its larger buffer (TST-M6-APP-SPAWN: frames_delta=2).
         finished_processes: Vec::with_capacity(FINISHED_KEEP),
-        reaping_threads: Vec::with_capacity(REAPING_RESERVE),
+        reaping_threads: Vec::with_capacity(8),
         reaping_processes: Vec::with_capacity(REAPING_RESERVE),
         kernel_cr3,
     });
@@ -1158,6 +1160,20 @@ pub fn kill_job_id(job: u64, code: u64) -> bool {
             .find(|j| j.id == job)
     });
     found.is_some_and(|j| kill_job(&j, code))
+}
+
+/// Test-only (WP-164): what the job `job` (an id) of a live process counts as its own processes
+/// (syscall.md v1.15), or None when no live process is in it.
+#[cfg(feature = "ktest")]
+pub fn job_count(job: u64) -> Option<u32> {
+    with(|s| {
+        s.processes
+            .iter()
+            .filter(|p| p.exit_code.is_none())
+            .filter_map(|p| p.object.as_ref())
+            .find(|o| o.job().id == job)
+            .map(|o| o.job().processes())
+    })
 }
 
 /// Test-only (WP-164): how many processes of the job `job` (an id) are live, of any image.

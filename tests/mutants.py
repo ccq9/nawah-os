@@ -2265,6 +2265,8 @@ _MORE = "|ktest|fail|an application holds more than its boot channel"
 _NOJOB = "|ktest|fail|an application is not in a job of its own under the session's job"
 _SJANS = "|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states"
 _LKALIVE = "|ktest|fail|an application of the signed-out session is still alive"
+_JBUNIT = "|ktest|fail|a job's count does not hold its bound"
+_JBNOT = "|ktest|fail|a job's processes are not bounded"
 _ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
 _APP_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
@@ -2429,6 +2431,13 @@ EXPECT = {
     "M388": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=1|nest=1|idle=1|jobs=3|mgr_handles=7|", _LKALIVE]},
     "M389": {"TST-M6-LOGOUT-KILLS": ["forbidden present ['|text=session|jobs=ended|apps=0']"]},
     "M396": {"TST-M6-LOGOUT-KILLS": ["missing markers ['|text=session|jobs=ended|apps=2']; forbidden present []"]},
+    # WP-164: TST-M6-JOB-BOUND (kept as the local run of 2026-11-21 printed it). M397: the count's
+    # own check gives 40 places of 40. M398: every process counted in the root, hog's job counts
+    # none while 65 live. M399: a place given back stays taken. M400: 33 places.
+    "M397": {"TST-M6-JOB-BOUND": ["exit 37", "|unit|taken=40|refused=0|", _JBUNIT]},
+    "M398": {"TST-M6-JOB-BOUND": ["exit 37", "|hog_live=65|hog_count=0|", _JBNOT]},
+    "M399": {"TST-M6-JOB-BOUND": ["exit 37", "|again=0|counted=32|back=32|", _JBUNIT]},
+    "M400": {"TST-M6-JOB-BOUND": ["exit 37", "|unit|taken=33|", _JBUNIT]},
 }
 
 

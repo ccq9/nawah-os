@@ -537,8 +537,20 @@
    "evidence": "قراءة الفريق الأحمر في جولة مراجعة WP-161 بتاريخ 2026-11-19 (kernel/src/syscall/mod.rs: spawn_into، kernel/src/object/job.rs، kernel/src/mm/vmm.rs)؛ لم يُشغَّل شيء ولا دليل CI؛ أقدم من WP-161، ولا يُبلَغ على صورة الإصدار اليوم: لا صورة تطبيق على قرصها",
    "owner": "agent",
    "warning_signal": "LAUNCH يُجاب ERR FAILED وخدمة لا تُعاد وتطبيق واحد حيّ؛ عدد العمليات يقارب 1024",
-   "mitigation": "لا صورة تطبيق على قرص الإصدار قبل WP-164 (WP-163 وWP-47 تعتمدان عليها)",
-   "response_plan": "WP-164 (مخططة): حدّ لعمليات المهمة في النواة",
+   "mitigation": "syscall.md v1.15 (WP-164): 32 live processes in each job but the root, counted to the reap; an application holds no job handle (services.md v1.15, M347), so 8 applications take at most 256 of the 1024 stacks; no application image on the release disk before WP-163",
+   "response_plan": "WP-164 (active, closing on CI): the processes are bounded. The kernel heap running out before the stacks, the second half of this risk, is not what the bound addresses: memory is RSK-051's",
+   "status": "open"
+  },
+  {
+   "id": "RSK-051",
+   "risk": "عملية واحدة تستنفد إطارات النواة أو كومتها بلا حصة: vmo_create (1 MiB لكل استدعاء، بلا سلطة، حتى 1024 مقبضًا، أي قرابة 1 GiB والذاكرة 512 MiB) أو صورة ELF بقسم bss كبير يُحجز كاملًا قبل admit؛ والتخصيص المعصوم في الكومة ينتهي بهلع. وكل إطلاق يُرفض عند حد المهمة يقرأ صورته كاملة (حتى 4 MiB) قبل أن يُرفض",
+   "likelihood": "medium",
+   "impact": "high",
+   "evidence": "قراءة الفريق الأحمر في جولة مراجعة WP-164 بتاريخ 2026-11-21 (kernel/src/syscall/mod.rs: vmo_create وspawn_into، kernel/src/object/mod.rs، kernel/src/loader/elf.rs وmod.rs، kernel/src/mm/heap.rs)؛ لم يُشغَّل شيء؛ فرضية تؤكدها حالة مختبر تكرر vmo_create حتى ERR_NO_RESOURCES ثم تطلب channel_write",
+   "owner": "agent",
+   "warning_signal": "kernel|panic عند نفاد الكومة، أو ERR_NO_RESOURCES في خدمات لا صلة لها بالتطبيق المستهلك",
+   "mitigation": "لا صورة تطبيق على قرص الإصدار قبل WP-163؛ حد العمليات (syscall.md v1.15) لا يحد الذاكرة",
+   "response_plan": "حصة ذاكرة لكل مهمة في حزمة تُسجَّل قبل WP-163 (قرار ترتيب للمالك)",
    "status": "open"
   }
  ]
