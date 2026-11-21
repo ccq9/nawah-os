@@ -212,6 +212,7 @@ pub fn run() -> ! {
         "app_spawn" => app_spawn(),
         "app_connect" => app_connect(),
         "session_job" => session_job(),
+        "job_bound" => job_bound(),
         "policy_precedence" => policy_precedence(),
         "config_persist_write" => config_persist(true),
         "config_persist_read" => config_persist(false),
@@ -5167,6 +5168,9 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
         "logout_kills" => pass(
             "Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
         ),
+        "job_bound" => pass(
+            "a job's processes are bounded: the start beyond the bound is refused, its place comes back at an exit, and other jobs and LAUNCH are unaffected",
+        ),
         "session_job" => pass(
             "the session's applications run in one job, which END_SESSION from the session alone ends, and the next launch makes a new one",
         ),
@@ -5545,6 +5549,79 @@ fn session_job() -> ! {
     // ended session, nor of the two services, which exited.
     if kept != 4 {
         fail("the manager kept a handle of the ended session")
+    }
+    if mgr_exit != 0 || procs != 0 || !clean {
+        fail("manager or applications left something behind")
+    }
+    drop((lines, load));
+    svc_balance(name, frames0)
+}
+
+/// TST-M6-JOB-BOUND (REQ-M6-003, REQ-M6-004, syscall.md v1.15; WP-164, RSK-050): a job holds 32
+/// live processes at most. The lab manifest SVC-JB.TXT runs the lab image as the vouched `session`,
+/// whose role `bounder` launches `peer` (a child now and one later), `hog` (starts IDLE children
+/// in its own job until refused, 64 at most) and `clock`; the test kernel reads, while the manager
+/// runs, how many processes live in hog's and in peer's job.
+fn job_bound() -> ! {
+    let name = "job_bound";
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-JB.TXT");
+    let lines = h.poll_list(sched::ticks() + 20_000, |l| {
+        l.iter().any(|x| x.name == "session" && x.exit.is_some())
+    });
+    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    let job_of = |img: &[u8]| {
+        let (a, n) = sched::live_named(img);
+        (n == 1).then(|| a[0].job)
+    };
+    let live = |img: &[u8]| job_of(img).map_or(0, sched::live_in_job);
+    sched::poll_until(sched::ticks() + 5000, || {
+        sched::live_named(b"CLOCK.ELF").1 == 1 && sched::live_named(b"CLOCK.ELF").0[0].waiting
+    });
+    let (hog_live, peer_live) = (live(b"HOG.ELF"), live(b"PEER.ELF"));
+    let clocks = sched::live_named(b"CLOCK.ELF").1;
+    // The children of hog and peer never exit, and the manager does not end its applications'
+    // jobs when it stops (services.md v1.15): their two jobs are killed here, as job_kill would,
+    // and their processes waited for, before the manager is.
+    for job in [job_of(b"HOG.ELF"), job_of(b"PEER.ELF")]
+        .into_iter()
+        .flatten()
+    {
+        sched::kill_job_id(job, 0x2_0000);
+    }
+    sched::poll_until(sched::ticks() + 5000, || {
+        live(b"HOG.ELF") == 0 && live(b"PEER.ELF") == 0 && sched::live_named(b"IDLE.ELF").1 == 0
+    });
+    let load = h.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|job_bound|load={}|session={:#x}|hog_live={}|peer_live={}|clocks={}|",
+        BUILD_ID,
+        load,
+        session,
+        hog_live,
+        peer_live,
+        clocks
+    );
+    let (mgr_exit, procs, frames0, clean) = h.finish();
+    kprintln!(
+        "OSX|{}|ktest|job_bound|mgr_exit={:#x}|processes_after={}|clean={}",
+        BUILD_ID,
+        mgr_exit,
+        procs,
+        u8::from(clean)
+    );
+    if load != "OK 1" {
+        fail("the lab manifest did not load")
+    }
+    // hog and the 31 children it may keep.
+    if hog_live != 32 {
+        fail("a job's processes are not bounded")
+    }
+    // peer and its two children: the second came after hog's job was full.
+    if peer_live != 3 {
+        fail("another job was refused a start a full job holds")
+    }
+    if session != 0x40 || clocks != 1 {
+        fail("a LAUNCH after a full job was not answered as the contract states")
     }
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or applications left something behind")

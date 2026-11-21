@@ -221,6 +221,107 @@ fn launcher(ch: u32) -> u64 {
 /// reply (the number, for a LAUNCH) and the step's number for `missed`.
 type Step = (&'static [u8], &'static [u8], &'static [u8], u8);
 
+/// The application `hog` of TST-M6-JOB-BOUND (WP-164): starts IDLE children in its own job, 64
+/// at most, keeping the process handle of the last alone, until a start is refused; then kills
+/// that last child, waits for its exit, starts one again (its place came back) and one more
+/// (refused again). Traced `app:hog#<n>|spawned=<k>|err=<-e>|again=<0|1>|again_err=<-e>`
+/// (err=0 when none of the 64 was refused); then waits on its boot channel.
+fn hog(ch: u32, who: &[u8]) -> u64 {
+    let spawn = || {
+        libnawah::channel_create()
+            .and_then(|(a, b)| libnawah::process_spawn(b"/SYSTEM/IDLE.ELF", &[b, a]))
+    };
+    let mut spawned = 0u64;
+    let mut err = 0i64;
+    let mut last: Option<u32> = None;
+    for _ in 0..64 {
+        match spawn() {
+            Ok(p) => {
+                spawned += 1;
+                if let Some(h) = last.replace(p) {
+                    libnawah::handle_close(h);
+                }
+            }
+            Err(e) => {
+                err = e;
+                break;
+            }
+        }
+    }
+    let (mut again, mut again_err) = (0u64, 0i64);
+    if err != 0 {
+        if let Some(h) = last.take() {
+            libnawah::process_kill(h);
+            for _ in 0..500 {
+                if libnawah::process_status(h) != Err(libnawah::ERR_SHOULD_WAIT) {
+                    break;
+                }
+                let _ = libnawah::sleep(2);
+            }
+            libnawah::handle_close(h);
+        }
+        // The handle of this one is kept: the child stays.
+        if spawn().is_ok() {
+            again = 1;
+        }
+        if let Err(e) = spawn() {
+            again_err = e;
+        }
+    }
+    let mut t = [0u8; 128];
+    let mut at = 0;
+    let mut put = |t: &mut [u8; 128], s: &[u8]| {
+        let k = s.len().min(t.len() - at);
+        t[at..at + k].copy_from_slice(&s[..k]);
+        at += k;
+        at
+    };
+    put(&mut t, b"app:");
+    put(&mut t, &who[..who.len().min(16)]);
+    let mut num = [0u8; 20];
+    for (field, v) in [
+        (&b"|spawned="[..], spawned),
+        (b"|err=", err.unsigned_abs()),
+        (b"|again=", again),
+        (b"|again_err=", again_err.unsigned_abs()),
+    ] {
+        put(&mut t, field);
+        let n = put_num(&mut num, 0, v);
+        put(&mut t, &num[..n]);
+    }
+    libnawah::trace(&t[..at]);
+    let mut reply = [0u8; 128];
+    let mut hs = [0u32; 1];
+    loop {
+        if libnawah::channel_read(ch, &mut reply, &mut hs, true).is_err() {
+            return 0;
+        }
+    }
+}
+
+/// The vouched session's side of TST-M6-JOB-BOUND (WP-164): READY; LAUNCH peer (#1), 100 ticks;
+/// LAUNCH hog (#2), 1500 ticks for it to fill its job; LAUNCH clock (#3), which a full system
+/// would refuse. 0x40 when each was answered as stated, `missed`'s code at the first step that saw
+/// another.
+fn bounder(ch: u32) -> u64 {
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
+    let mut r = [0u8; 128];
+    for (step, id, want, pause) in [
+        (1u8, &b"peer"[..], 1u64, 100u64),
+        (2, b"hog", 2, 1500),
+        (3, b"clock", 3, 0),
+    ] {
+        let (num, n) = launch(ch, id, false, &mut r);
+        if num != want {
+            return missed(step, num, &r[..n]);
+        }
+        let _ = libnawah::sleep(pause);
+    }
+    0x40
+}
+
 /// The vouched session's side of TST-M6-SESSION-JOB (WP-102): LAUNCH stay (#1) and nest (#2)
 /// before READY, so the services that depend on the session start once both run; 300 ticks
 /// for nest's child to start and for those services' END_SESSION to be refused; END_SESSION,
@@ -504,6 +605,29 @@ fn application(ch: u32, who: &[u8]) -> u64 {
         let end = put(&mut t, b"|closed=1");
         libnawah::trace(&t[..end]);
         return 0x43;
+    }
+    if who.starts_with(b"hog#") {
+        return hog(ch, who);
+    }
+    if who.starts_with(b"peer#") {
+        // WP-164: a child now, and another once `hog` has filled its own job.
+        let spawn = || {
+            libnawah::channel_create()
+                .and_then(|(a, b)| libnawah::process_spawn(b"/SYSTEM/IDLE.ELF", &[b, a]))
+        };
+        let first = spawn().is_ok();
+        let _ = libnawah::sleep(1000);
+        let late = spawn().is_ok();
+        put(&mut t, if first { b"|child=1" } else { b"|child=0" });
+        let end = put(&mut t, if late { b"|late=1" } else { b"|late=0" });
+        libnawah::trace(&t[..end]);
+        let mut reply = [0u8; 128];
+        let mut hs = [0u32; 1];
+        loop {
+            if libnawah::channel_read(ch, &mut reply, &mut hs, true).is_err() {
+                return 0;
+            }
+        }
     }
     if who.starts_with(b"nest#") {
         // WP-102: a child of its own in its job, then it waits on its boot channel.
@@ -948,6 +1072,7 @@ fn main() -> u64 {
         b"relay" => serve(ch, Mode::Relay),
         b"connector" => connector(ch),
         b"ender" => ender(ch),
+        b"bounder" => bounder(ch),
         b"crash_once" => serve(ch, Mode::CrashOnce),
         _ => 2,
     }

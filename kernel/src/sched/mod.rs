@@ -118,6 +118,8 @@ pub struct Process {
     /// space; the test kernel uses it to hang a service during the lock (TST-M5-LOCK-HANG).
     #[cfg(feature = "ktest")]
     pub frozen: bool,
+    /// Its place in its job (syscall.md v1.15), given back at the reap.
+    member: Option<crate::object::job::Member>,
 }
 
 impl Process {
@@ -127,6 +129,8 @@ impl Process {
     fn finish(self, code: u64) {
         drop(self.handles);
         let _ = self.space.destroy();
+        // The place comes back before the exit is told (v1.15).
+        drop(self.member);
         if let Some(o) = self.object {
             o.finish(code);
         }
@@ -161,9 +165,13 @@ struct Sched {
 static SCHED: IrqSpinLock<Option<Sched>> = IrqSpinLock::new("sched", None);
 
 /// Table capacities reserved at init (the lab's population stays well inside them; beyond,
-/// the tables still grow — the reserve is about a stable frame count, not a limit).
-const THREAD_RESERVE: usize = 64;
-const PROCESS_RESERVE: usize = 16;
+/// the tables still grow — the reserve is about a stable frame count, not a limit). WP-164: a
+/// full job (32 processes, syscall.md v1.15) beside the services and a few applications is the
+/// lab's peak (TST-M6-JOB-BOUND, about 40 processes and 70 threads, 33 of them reaped together:
+/// with 16, 64 and 8 the grown lists kept two frames, docs/LATER.md L-088).
+const THREAD_RESERVE: usize = 128;
+const PROCESS_RESERVE: usize = 64;
+const REAPING_RESERVE: usize = 64;
 
 /// A switch decided by `prepare_switch`, to be performed right away with interrupts disabled.
 struct Switch {
@@ -266,13 +274,13 @@ pub fn init(boot_stack: StackInfo, kernel_cr3: u64) {
         ticks: 0,
         switches: 0,
         preemptions: 0,
-        finished_threads: Vec::with_capacity(16),
+        finished_threads: Vec::with_capacity(FINISHED_KEEP),
         // The whole list up front (WP-161): nobody waits for a process another process
         // started, so its record stays until 64 newer ones push it out, and a list that grew
         // on the seventeenth exit kept its larger buffer (TST-M6-APP-SPAWN: frames_delta=2).
         finished_processes: Vec::with_capacity(FINISHED_KEEP),
-        reaping_threads: Vec::with_capacity(8),
-        reaping_processes: Vec::with_capacity(8),
+        reaping_threads: Vec::with_capacity(REAPING_RESERVE),
+        reaping_processes: Vec::with_capacity(REAPING_RESERVE),
         kernel_cr3,
     });
 }
@@ -439,6 +447,7 @@ pub fn spawn_user_with(
         kill: None,
         #[cfg(feature = "ktest")]
         frozen: false,
+        member: None,
     };
     let (result, failed) = with(|s| {
         // A process never enters a dead job (WP-46): `kill_job` marks the job and its members
@@ -446,7 +455,16 @@ pub fn spawn_user_with(
         if process.object.as_ref().is_some_and(|o| o.job().dead()) {
             return (Err(SpawnError), Some(process));
         }
+        // v1.15 (WP-164): a full job, not the root, takes no more.
+        let member = match process.object.as_ref() {
+            Some(o) => match o.job().admit() {
+                Some(m) => Some(m),
+                None => return (Err(SpawnError), Some(process)),
+            },
+            None => None,
+        };
         let mut process = process;
+        process.member = member;
         let pid = s.next_pid;
         s.next_pid += 1;
         process.id = pid;
@@ -1124,6 +1142,35 @@ pub struct LiveNamed {
     pub parent_under_root: bool,
     /// Whether every thread of it waits without a deadline.
     pub waiting: bool,
+}
+
+/// Test-only (WP-164): kills the job `job` (an id) of a live process with its whole tree, as
+/// job_kill does; false when no live process is in it. The test kernel ends applications whose
+/// children never exit before it stops the manager, which does not end its applications' jobs.
+#[cfg(feature = "ktest")]
+pub fn kill_job_id(job: u64, code: u64) -> bool {
+    let found = with(|s| {
+        s.processes
+            .iter()
+            .filter(|p| p.exit_code.is_none())
+            .filter_map(|p| p.object.as_ref())
+            .map(|o| o.job().clone())
+            .find(|j| j.id == job)
+    });
+    found.is_some_and(|j| kill_job(&j, code))
+}
+
+/// Test-only (WP-164): how many processes of the job `job` (an id) are live, of any image.
+#[cfg(feature = "ktest")]
+pub fn live_in_job(job: u64) -> usize {
+    with(|s| {
+        s.processes
+            .iter()
+            .filter(|p| p.exit_code.is_none())
+            .filter_map(|p| p.object.as_ref())
+            .filter(|o| o.job().id == job)
+            .count()
+    })
 }
 
 /// Test-only (WP-161): the live processes whose spawn image base name equals `name`, and how

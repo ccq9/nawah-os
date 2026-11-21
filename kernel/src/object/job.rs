@@ -14,6 +14,10 @@ use crate::sync::IrqSpinLock;
 /// Deepest job below the root (the root is depth 0).
 pub const JOB_DEPTH_MAX: u32 = 8;
 
+/// Live processes a job other than the root holds of its own (syscall.md v1.15, WP-164): a
+/// process started in a full job is refused, so no job takes every kernel stack (RSK-050).
+pub const JOB_PROCESSES_MAX: u32 = 32;
+
 /// Live jobs other than the root (object stats): the root lives for the whole boot, so leak
 /// checks that compare stats before and after see only the jobs a test created.
 static LIVE: AtomicU32 = AtomicU32::new(0);
@@ -31,6 +35,20 @@ pub struct Job {
     parent: Option<Arc<Job>>,
     killed: AtomicBool,
     depth: u32,
+    /// Its live processes (v1.15), each counted by a `Member` from the scheduler's table to
+    /// the reap.
+    procs: AtomicU32,
+}
+
+/// A process's place in its job (syscall.md v1.15): taken when it enters the scheduler's table,
+/// given back when it is reaped, before its exit is told, so whoever sees EXITED finds the
+/// place free.
+pub struct Member(Arc<Job>);
+
+impl Drop for Member {
+    fn drop(&mut self) {
+        self.0.procs.fetch_sub(1, Ordering::SeqCst);
+    }
 }
 
 /// Why a child job could not be made.
@@ -51,6 +69,7 @@ pub fn root() -> Arc<Job> {
                 parent: None,
                 killed: AtomicBool::new(false),
                 depth: 0,
+                procs: AtomicU32::new(0),
             })
         })
         .clone()
@@ -72,11 +91,23 @@ impl Job {
             parent: Some(parent.clone()),
             killed: AtomicBool::new(false),
             depth,
+            procs: AtomicU32::new(0),
         }))
     }
 
     pub fn is_root(&self) -> bool {
         self.parent.is_none()
+    }
+
+    /// A place for one more process (v1.15), or None when this job, not the root, holds
+    /// JOB_PROCESSES_MAX already. Called under the scheduler lock only, so the check and the
+    /// count are one step.
+    pub fn admit(self: &Arc<Self>) -> Option<Member> {
+        if !self.is_root() && self.procs.load(Ordering::SeqCst) >= JOB_PROCESSES_MAX {
+            return None;
+        }
+        self.procs.fetch_add(1, Ordering::SeqCst);
+        Some(Member(self.clone()))
     }
 
     /// Test-only (WP-161): whether this job's parent is the root job itself.

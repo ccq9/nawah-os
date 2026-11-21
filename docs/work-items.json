@@ -10324,7 +10324,14 @@
     "tools/project.py",
     "docs/tests.json",
     "docs/work-items.json",
-    "docs/risks.json"
+    "docs/risks.json",
+    "platform/pc-qemu/manifests/svc-jb.txt",
+    "platform/pc-qemu/lab/hog.app",
+    "platform/pc-qemu/lab/peer.app",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/project-state.json",
+    "docs/requirements.json"
    ],
    "contract_refs": [
     "docs/contracts/syscall.md",
@@ -10332,14 +10339,21 @@
    ],
    "acceptance": "an application cannot start more processes in its job than a stated bound, the start beyond it refused with a stated error and every other job unaffected, shown by a new case on CI; syscall.md states the bound in a new version; the SECURITY mutant killed by the M6 gate",
    "test_ids": [
-    "TST-M6-JOB-KILL"
+    "TST-M6-JOB-BOUND",
+    "TST-M6-JOB-KILL",
+    "TST-M6-APP-SPAWN",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "commands": [
-    "python3 tools/project.py test --target pc-qemu --suite M6"
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6-GATE",
+    "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -10349,7 +10363,8 @@
     "design to decide in the package (2-3 options with trade-offs): a bound of live processes for each job below the root, counted along the path to the root, against a bound the creator states at job_create (a new argument: syscall.md), against a bound on the whole system with a reserve for the root's own; what the refused start answers; whether threads count; the place freed while killed children still end (docs/LATER.md L-087)",
     "test first, red seen locally before the change: a lab application that starts idle children in a loop is refused nothing today, and a LAUNCH after it is answered ERR FAILED",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-19 registered from WP-161's review round (the owner's ruling of 2026-11-17, rule 1: a hole an ordinary program can reach is not a LATER line). It is older than WP-161 and not reached on the release image today: no application image is on that disk (a LAUNCH there is ERR NOT_FOUND). WP-163, which puts images there, and WP-47 depend on it; the owner may order it earlier"
+    "2026-11-19 registered from WP-161's review round (the owner's ruling of 2026-11-17, rule 1: a hole an ordinary program can reach is not a LATER line). It is older than WP-161 and not reached on the release image today: no application image is on that disk (a LAUNCH there is ERR NOT_FOUND). WP-163, which puts images there, and WP-47 depend on it; the owner may order it earlier",
+    "2026-11-20 activated (the manager): its dependency WP-161 is done; the next step of the owner's order. The kernel engineer's design (read only): of a bound counted along the path to the root (one application would fill the session's job and refuse every other launch, against the acceptance), a bound the creator states at job_create (a new argument, a decision record under syscall.md's freeze, the manager and libnawah changed, a split) and a bound on the whole system (one application fills it), option A in its own job: 32 live processes in each job but the root, counted from the scheduler's table to the reap, the start beyond refused ERR_NO_RESOURCES; no number, argument or code changes. The test is TST-M6-JOB-BOUND: TST-M6-JOB-KILL is WP-46's case of the jobs' semantics, done"
    ]
   },
   {

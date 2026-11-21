@@ -1878,7 +1878,8 @@
     "TST-M6-JOB-KILL",
     "TST-M6-PROC-ACCOUNTING",
     "TST-M6-PROC-LIST-REFUSALS",
-    "TST-M6-SHELL-PS"
+    "TST-M6-SHELL-PS",
+    "TST-M6-JOB-BOUND"
    ],
    "implementation_status": "partial",
    "evidence_refs": [
@@ -1917,7 +1918,8 @@
     "TST-M6-APP-REGISTRY-FUZZ",
     "TST-M6-APP-SPAWN",
     "TST-M6-APP-CONNECT-DENIED",
-    "TST-M6-SESSION-JOB"
+    "TST-M6-SESSION-JOB",
+    "TST-M6-JOB-BOUND"
    ],
    "implementation_status": "planned",
    "evidence_refs": []
