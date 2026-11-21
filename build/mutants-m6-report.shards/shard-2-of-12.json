@@ -1,0 +1,703 @@
+{
+ "threshold": 0.95,
+ "target": "pc-qemu",
+ "mutants": [
+  {
+   "id": "M157",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "SECURITY: a manifest of 4096 bytes or more is truncated and accepted: case=4097 and case=4096 read reply=OK 1 (forbidden), list=A:\u2026 and again=ERR LOADED (forbidden), ok=0, failed=4097,4096,",
+   "killers": [
+    "TST-M6-MANIFEST-TOO-LARGE"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-MANIFEST-TOO-LARGE"
+   ],
+   "results": {
+    "TST-M6-MANIFEST-TOO-LARGE": "FAIL"
+   },
+   "seconds": 26.2,
+   "kills": {
+    "TST-M6-MANIFEST-TOO-LARGE": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T090642Z-034bcabb-001",
+     "lines": [
+      "OSX|00000000009d|ktest|start|name=manifest_too_large",
+      "OSX|00000000009d|ktest|manifest_too_large|case=4097|reply=OK 1|list=A:ready:0:12:12:23:-1;|again=ERR LOADED|fired=0|bytes=4097|mgr_exit=0x0|ok=0",
+      "OSX|00000000009d|ktest|manifest_too_large|case=4096|reply=OK 1|list=A:ready:0:28:28:34:-1;|again=ERR LOADED|fired=0|bytes=4096|mgr_exit=0x0|ok=0",
+      "OSX|00000000009d|ktest|manifest_too_large|case=4095|reply=OK 1|ready=1|bytes=4095|mgr_exit=0x0|ok=1",
+      "OSX|00000000009d|ktest|manifest_too_large|case=io|reply=ERR MANIFEST_IO|list=|again=ERR MANIFEST_MISSING|fired=1|bytes=3001|mgr_exit=0x0|ok=1",
+      "OSX|00000000009d|ktest|manifest_too_large|failed=4097,4096,|processes_after=0|frames_delta=0|clean=1|removed=1",
+      "OSX|00000000009d|ktest|fail|a manifest the manager could not read whole was not refused whole (services.md v1.13)"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M169",
+   "file": "user/libui/src/lib.rs",
+   "note": "in RTL the menu is anchored by its left edge and opens rightwards: menu_mirrors_in_rtl fails (the right edge is not the element's start edge), test result FAILED. 7 passed; 1 failed",
+   "killers": [
+    "TST-M6-UI-UNIT"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-UI-UNIT"
+   ],
+   "results": {
+    "TST-M6-UI-UNIT": "FAIL"
+   },
+   "seconds": 13.3,
+   "kills": {
+    "TST-M6-UI-UNIT": {
+     "reason": "host: the runner reported failing tests and the case passes on the clean checkout",
+     "run": "20261121T090648Z-034bcabb-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M181",
+   "file": "user/libui/src/list.rs",
+   "note": "row k/n counts the visible rows, not all of them: row_narrator_lines_en_ar fails (row 500/10 instead of row 500/500), test result: FAILED. 10 passed; 1 failed",
+   "killers": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-LISTVIEW-UNIT"
+   ],
+   "results": {
+    "TST-M6-LISTVIEW-UNIT": "FAIL"
+   },
+   "seconds": 13.9,
+   "kills": {
+    "TST-M6-LISTVIEW-UNIT": {
+     "reason": "host: the runner reported failing tests and the case passes on the clean checkout",
+     "run": "20261121T090702Z-034bcabb-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M193",
+   "file": "user/libui/src/lib.rs",
+   "note": "SECURITY: a value is written between the quotes as it is: a quote forges an attribute and a newline a second narrator line; a_quote_in_a_typed_value_cannot_forge_an_attribute, a_set_value_with_a_newline_stays_one_line, separators_and_bidi_controls_in_a_value_are_named_not_obeyed and a_long_escaped_value_is_cut_at_a_whole_character_and_still_closed fail, test result: FAILED. 15 passed; 4 failed",
+   "killers": [
+    "TST-M5-UI-UNIT"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M5-UI-UNIT"
+   ],
+   "results": {
+    "TST-M5-UI-UNIT": "FAIL"
+   },
+   "seconds": 19.8,
+   "kills": {
+    "TST-M5-UI-UNIT": {
+     "reason": "host: the runner reported failing tests and the case passes on the clean checkout",
+     "run": "20261121T090715Z-034bcabb-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M205",
+   "file": "kernel/src/fs/fat32.rs",
+   "note": "SECURITY: a delete that fails after a cluster is freed in the FAT copy the kernel reads leaves the name with a chain that runs into free clusters: the sweep's line carries a bad count that is not 0, TST-M3-FAT32-FAULT-UNLINK FAIL",
+   "killers": [
+    "TST-M3-FAT32-FAULT-UNLINK"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FAT32-FAULT-UNLINK"
+   ],
+   "results": {
+    "TST-M3-FAT32-FAULT-UNLINK": "FAIL"
+   },
+   "seconds": 20.0,
+   "kills": {
+    "TST-M3-FAT32-FAULT-UNLINK": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T090749Z-034bcabb-001",
+     "lines": [
+      "OSX|0000000000cd|ktest|start|name=fat32_fault_unlink",
+      "OSX|0000000000cd|ktest|fat32_fault_unlink|control=ok|writes=9|failed=9|io=9|gone=0|retry_gone=0|kept=2|bad=7|synced=1|live_files=0",
+      "OSX|0000000000cd|ktest|fail|a failed delete left a name that is neither whole nor gone"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M229",
+   "file": "tools/fat32.py",
+   "note": "SECURITY: a reserved or out-of-range value outside every chain in the second FAT copy is no problem: the host case fails, TST-M3-FAT32-TOOL FAIL",
+   "killers": [
+    "TST-M3-FAT32-TOOL"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FAT32-TOOL"
+   ],
+   "results": {
+    "TST-M3-FAT32-TOOL": "FAIL"
+   },
+   "seconds": 48.0,
+   "kills": {
+    "TST-M3-FAT32-TOOL": {
+     "reason": "host: the runner reported failing tests and the case passes on the clean checkout",
+     "run": "20261121T090755Z-034bcabb-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M253",
+   "file": "kernel/src/fs/fat32.rs",
+   "note": "SECURITY: a refused write of the second FAT copy is swallowed and the call goes on: WP-120's defect comes back (the copies part and no error says so): the sweeps' lines carry failed, io and stopped below 9 and once_refused=0, TST-M3-FAT32-FAULT-ONE-UNLINK and TST-M3-FAT32-FAULT-ONE-TRUNCATE FAIL",
+   "killers": [
+    "TST-M3-FAT32-FAULT-ONE-UNLINK",
+    "TST-M3-FAT32-FAULT-ONE-TRUNCATE"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FAT32-FAULT-ONE-UNLINK",
+    "TST-M3-FAT32-FAULT-ONE-TRUNCATE"
+   ],
+   "results": {
+    "TST-M3-FAT32-FAULT-ONE-UNLINK": "FAIL",
+    "TST-M3-FAT32-FAULT-ONE-TRUNCATE": "FAIL"
+   },
+   "seconds": 23.6,
+   "kills": {
+    "TST-M3-FAT32-FAULT-ONE-UNLINK": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T090855Z-034bcabb-001",
+     "lines": [
+      "OSX|0000000000fd|ktest|start|name=fat32_fault_unlink_one",
+      "OSX|0000000000fd|ktest|fat32_fault_unlink_one|control=ok|writes=9|failed=6|io=6|gone=8|retry_gone=8|kept=1|bad=0|synced=1|live_files=0|once_refused=0|once_next_ok=0|stopped=6",
+      "OSX|0000000000fd|ktest|fail|with its first disk write refused alone, a write did not answer an I/O error"
+     ]
+    },
+    "TST-M3-FAT32-FAULT-ONE-TRUNCATE": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T090901Z-034bcabb-001",
+     "lines": [
+      "OSX|0000000000fd|ktest|start|name=fat32_fault_truncate_one",
+      "OSX|0000000000fd|ktest|fat32_fault_truncate_one|control=1|writes=9|failed=6|io=6|kept=1|a_whole=1|emptied=8|a_refused=8|a_empty=8|retry_ok=8|bad=0|node_differs=0|synced=1|live_files=0|once_refused=0|once_next_ok=0|stopped=6",
+      "OSX|0000000000fd|ktest|fail|with its first disk write refused alone, a write did not answer an I/O error"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M265",
+   "file": "kernel/src/fs/fat32.rs",
+   "note": "SECURITY: a create whose link the disk refused goes on writing before it answers the error (files.md v1.12: it asks for no disk write after the refused one): with one write refused alone the line carries stopped=6 beside failed=8 and the host counts 3 lost clusters where 5 are pinned, since the new cluster is freed again (when the refused write is the link's second, the second FAT copy is left with the directory's tail linked to a free cluster until the next create: second_free=1, read since WP-138), TST-M3-FAT32-FAULT-ONE-CREATE FAIL (seen locally: TST-M3-FAT32-FAULT-CREATE fails too, by stopped=6 alone); TST-M3-FAT32-FAULT-CREATE-COPIES, which once its sweep has started judges nothing but the second copy's fields, FAIL by second_free=1 and second_longer=0",
+   "killers": [
+    "TST-M3-FAT32-FAULT-ONE-CREATE",
+    "TST-M3-FAT32-FAULT-CREATE-COPIES"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FAT32-FAULT-ONE-CREATE",
+    "TST-M3-FAT32-FAULT-CREATE-COPIES"
+   ],
+   "results": {
+    "TST-M3-FAT32-FAULT-ONE-CREATE": "FAIL",
+    "TST-M3-FAT32-FAULT-CREATE-COPIES": "FAIL"
+   },
+   "seconds": 24.3,
+   "kills": {
+    "TST-M3-FAT32-FAULT-ONE-CREATE": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T090919Z-034bcabb-001",
+     "lines": [
+      "OSX|000000000109|ktest|start|name=fat32_fault_create_one",
+      "OSX|000000000109|ktest|fat32_fault_create_one|dirty=1|control=1|writes=8|filled=8|failed=8|io=8|stopped=6|absent=8|grown=1|retry_ok=8|retry_grew=7|names=143|dir_clusters=10|synced=1|live_files=0|first_same=8|second_free=1|second_longer=0|second_names=0|second_marks=1|second_shorter=0|first_marks=0|second_links=1|strays=0|ghost=0|once_refused=1|once_next_ok=1",
+      "OSX|000000000109|ktest|fail|after a create under the hook the directory's chain along the second FAT copy stands on a cluster that is free there, or does not end"
+     ]
+    },
+    "TST-M3-FAT32-FAULT-CREATE-COPIES": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T090925Z-034bcabb-001",
+     "lines": [
+      "OSX|000000000109|ktest|start|name=fat32_fault_create_copies",
+      "OSX|000000000109|ktest|fat32_fault_create_copies|calls=8|second_free=1|second_longer=0|second_shorter=0|second_names=0|second_marks=1|second_links=1|first_marks=0",
+      "OSX|000000000109|ktest|fail|after a create under the hook the directory's chain along the second FAT copy stands on a cluster that is free there, or does not end"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M277",
+   "file": "kernel/src/fs/fat32.rs",
+   "note": "an empty write on an entry whose first cluster lies past the volume's end answers 0 instead of K_E_FS_CORRUPT; nothing is written and nothing else changes: the line carries past_end_empty=0 and far_empty=0, TST-M3-FAT32-BAD-FIRST FAIL (seen locally)",
+   "killers": [
+    "TST-M3-FAT32-BAD-FIRST"
+   ],
+   "security": false,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FAT32-BAD-FIRST"
+   ],
+   "results": {
+    "TST-M3-FAT32-BAD-FIRST": "FAIL"
+   },
+   "seconds": 17.8,
+   "kills": {
+    "TST-M3-FAT32-BAD-FIRST": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T090943Z-034bcabb-001",
+     "lines": [
+      "OSX|000000000115|ktest|start|name=fat32_bad_first",
+      "OSX|000000000115|ktest|fat32_bad_first|clusters=128992|one=K_E_FS_CORRUPT|one_writes=0|one_empty=K_E_FS_CORRUPT|one_past=K_E_FS_CORRUPT|one_past_writes=0|one_link=K_E_FS_CORRUPT|one_link_writes=0|one_link_empty=K_E_FS_CORRUPT|hello_ok=1|one_full=K_E_FS_CORRUPT|one_full_writes=0|one_full_empty=K_E_FS_CORRUPT|past_end=K_E_FS_CORRUPT|past_end_writes=0|past_end_empty=0|far=K_E_FS_CORRUPT|far_writes=0|far_empty=0|last_empty=0|last_empty_writes=0|empty_writes=0|restored_ok=1|synced=1|live_files=0",
+      "OSX|000000000115|ktest|fail|a write on an entry whose first cluster is no cluster of the volume was not refused before any disk write"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M289",
+   "file": "tests/mutants.py",
+   "note": "SECURITY (L-021): the merge accepts an id decided twice in a shard and keeps its later entry (a survivor's entry followed by a killed one hides it)",
+   "killers": [
+    "TST-M0-005"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-005"
+   ],
+   "results": {
+    "TST-M0-005": "FAIL"
+   },
+   "seconds": 21.6,
+   "kills": {
+    "TST-M0-005": {
+     "reason": "host: the runner reported failing tests and the case passes on the clean checkout",
+     "run": "20261121T090949Z-034bcabb-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M301",
+   "file": ".github/workflows/verify.yml",
+   "note": "job g merges eleven shard reports where twelve shard jobs ran",
+   "killers": [
+    "TST-M0-003"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-003"
+   ],
+   "results": {
+    "TST-M0-003": "FAIL"
+   },
+   "seconds": 19.6,
+   "kills": {
+    "TST-M0-003": {
+     "reason": "host: the runner reported failing tests and the case passes on the clean checkout",
+     "run": "20261121T091011Z-034bcabb-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M313",
+   "file": ".github/workflows/verify.yml",
+   "note": "job b waits for job a: M5 runs after a again and the critical path is back",
+   "killers": [
+    "TST-M0-003"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-003"
+   ],
+   "results": {
+    "TST-M0-003": "FAIL"
+   },
+   "seconds": 9.5,
+   "kills": {
+    "TST-M0-003": {
+     "reason": "host: the runner reported failing tests and the case passes on the clean checkout",
+     "run": "20261121T091030Z-034bcabb-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M325",
+   "file": "user/apps/configd/src/main.rs",
+   "note": "SECURITY: configd creates the user store a modifying request names before it judges the token, so a refused SET or IMPORT leaves a store loaded and eight of them take every user-store slot",
+   "killers": [
+    "TST-M4-CONFIG-STORE-AUTHZ"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-CONFIG-STORE-AUTHZ"
+   ],
+   "results": {
+    "TST-M4-CONFIG-STORE-AUTHZ": "FAIL"
+   },
+   "seconds": 18.8,
+   "kills": {
+    "TST-M4-CONFIG-STORE-AUTHZ": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T091052Z-034bcabb-001",
+     "lines": [
+      "OSX|000000000145|ktest|start|name=config_store_authz",
+      "OSX|000000000145|ktest|config_store_authz|set_other=ERR ACCESS|other_export=OK|import_other=ERR ACCESS|import_export=OK|subs_ok=0|subs_not_found=8|own_set=OK 1|own_sub=OK|admin_set=OK 1|cfg_grew=1|base=3",
+      "OSX|000000000145|ktest|config_store_authz|more|sub_zero=ERR INVALID|sub_big=ERR INVALID|loaded_other=ERR ACCESS|loaded_kept=1|filled=6|full_set=ERR INVALID|own_again=OK 2|",
+      "OSX|000000000145|ktest|fail|a refused write left a user store behind"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M337",
+   "file": "user/apps/configd/src/main.rs",
+   "note": "SECURITY: a client that has gone keeps its subscriptions in configd, a handle and a slot each",
+   "killers": [
+    "TST-M4-CONFIG-SUBS"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M4-CONFIG-SUBS"
+   ],
+   "results": {
+    "TST-M4-CONFIG-SUBS": "FAIL"
+   },
+   "seconds": 24.6,
+   "kills": {
+    "TST-M4-CONFIG-SUBS": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T091111Z-034bcabb-001",
+     "lines": [
+      "OSX|000000000151|ktest|start|name=config_subs",
+      "OSX|000000000151|ktest|config_subs|x_ok=8|x_pol=OK|x_grew=2|y_sub=OK|set=OK 1|y_heard=CHANGED device subs.key 1|x_last=CHANGED device subs.key 1|x_first=0|x_closed=7|x_gone=0|x_end_closed=0|x_pol_closed=0|set2=OK 2|y_heard2=CHANGED device subs.key 2|base=4",
+      "OSX|000000000151|ktest|config_subs|more|z_sub=OK|frozen=1|parked=1|queued=1|thawed=1|z_gone=0|z_end_closed=0|sess_sub=ERR ACCESS|sess_set=OK 1|sess_heard=-|end_grew=2|",
+      "OSX|000000000151|ktest|fail|a closed client's subscription stayed"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M349",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "SECURITY: a ninth application is started: the table's bound is not the contract's",
+   "killers": [
+    "TST-M6-APP-SPAWN"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-APP-SPAWN"
+   ],
+   "results": {
+    "TST-M6-APP-SPAWN": "FAIL"
+   },
+   "seconds": 31.0,
+   "kills": {
+    "TST-M6-APP-SPAWN": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T091136Z-034bcabb-001",
+     "lines": [
+      "OSX|00000000015d|ktest|start|name=app_spawn",
+      "OSX|00000000015d|ktest|app_spawn|load=OK 1|session=0x590c|apps=0|waiting=0|handles=0|under_root=0|in_session=0|parents=0|jobs=0|live_jobs=0|orphans=0|mgr_handles=0|",
+      "OSX|00000000015d|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1",
+      "OSX|00000000015d|ktest|fail|a LAUNCH of the vouched session was not answered as the contract states"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M361",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "SECURITY: a request of an application that carries two handles is read, and both stay in the manager's table",
+   "killers": [
+    "TST-M6-APP-SPAWN"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-APP-SPAWN"
+   ],
+   "results": {
+    "TST-M6-APP-SPAWN": "FAIL"
+   },
+   "seconds": 25.8,
+   "kills": {
+    "TST-M6-APP-SPAWN": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T091207Z-034bcabb-001",
+     "lines": [
+      "OSX|000000000169|ktest|start|name=app_spawn",
+      "OSX|000000000169|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=0|in_session=8|parents=1|jobs=8|live_jobs=9|orphans=0|mgr_handles=41|",
+      "OSX|000000000169|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1",
+      "OSX|000000000169|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M373",
+   "file": "tools/project.py",
+   "note": "the order is read from a section whose number only begins with 7",
+   "killers": [
+    "TST-M0-001"
+   ],
+   "security": false,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M0-001"
+   ],
+   "results": {
+    "TST-M0-001": "FAIL"
+   },
+   "seconds": 3.2,
+   "kills": {
+    "TST-M0-001": {
+     "reason": "host: the runner reported failing tests and the case passes on the clean checkout",
+     "run": "20261121T091220Z-034bcabb-001",
+     "lines": []
+    }
+   }
+  },
+  {
+   "id": "M385",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "SECURITY: an application's job is made under the root job, out of the session's reach",
+   "killers": [
+    "TST-M6-SESSION-JOB",
+    "TST-M6-APP-SPAWN"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-SESSION-JOB",
+    "TST-M6-APP-SPAWN"
+   ],
+   "results": {
+    "TST-M6-SESSION-JOB": "FAIL",
+    "TST-M6-APP-SPAWN": "FAIL"
+   },
+   "seconds": 39.5,
+   "kills": {
+    "TST-M6-SESSION-JOB": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T091236Z-034bcabb-001",
+     "lines": [
+      "OSX|000000000181|ktest|start|name=session_job",
+      "OSX|000000000181|ktest|session_job|load=OK 3|session=0x5400|desktop=0x40|sessions=0x40|stay=1|waiting=1|nest=1|idle=1|under_root=1|in_session=0|live_jobs=2|mgr_handles=6|",
+      "OSX|000000000181|ktest|session_job|mgr_exit=0x0|processes_after=1|clean=0",
+      "OSX|000000000181|ktest|fail|END_SESSION or the LAUNCH after it was not answered as the contract states"
+     ]
+    },
+    "TST-M6-APP-SPAWN": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T091249Z-034bcabb-001",
+     "lines": [
+      "OSX|000000000181|ktest|start|name=app_spawn",
+      "OSX|000000000181|ktest|app_spawn|load=OK 1|session=0x40|apps=8|waiting=8|handles=8|under_root=8|in_session=0|parents=1|jobs=8|live_jobs=9|orphans=0|mgr_handles=25|",
+      "OSX|000000000181|ktest|app_spawn|mgr_exit=0x0|processes_after=0|clean=1",
+      "OSX|000000000181|ktest|fail|an application is not in a job of its own under the session's job"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M397",
+   "file": "kernel/src/object/job.rs",
+   "note": "SECURITY: no job is bounded, so one application takes every kernel stack",
+   "killers": [
+    "TST-M6-JOB-BOUND"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-JOB-BOUND"
+   ],
+   "results": {
+    "TST-M6-JOB-BOUND": "FAIL"
+   },
+   "seconds": 18.8,
+   "kills": {
+    "TST-M6-JOB-BOUND": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T091315Z-034bcabb-001",
+     "lines": [
+      "OSX|00000000018d|ktest|start|name=job_bound",
+      "OSX|00000000018d|ktest|job_bound|unit|taken=40|refused=0|again=1|counted=40|back=0|root=40|",
+      "OSX|00000000018d|ktest|fail|a job's count does not hold its bound"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M409",
+   "file": "user/apps/svcmgr/src/main.rs",
+   "note": "SECURITY: the session service's clean exit (a STOP, its channel closed) leaves the gate open, so the desktop launches while no session runs",
+   "killers": [
+    "TST-M6-SESSION-GATE"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M6-SESSION-GATE"
+   ],
+   "results": {
+    "TST-M6-SESSION-GATE": "FAIL"
+   },
+   "seconds": 24.3,
+   "kills": {
+    "TST-M6-SESSION-GATE": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T091334Z-034bcabb-001",
+     "lines": [
+      "OSX|000000000199|ktest|start|name=session_gate",
+      "OSX|000000000199|ktest|session_gate|load=OK 2|session=0x0|desktop=0x5200|stays=2|waiting=2|live_jobs=3|mgr_handles=7|",
+      "OSX|000000000199|ktest|session_gate|mgr_exit=0x0|processes_after=0|clean=1",
+      "OSX|000000000199|ktest|fail|the desktop opened the gate, or the session's exit did not close it"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M217",
+   "file": "kernel/src/fs/fat32.rs",
+   "note": "SECURITY: a file that has clusters cannot be extended while fewer clusters are free than it would hold in all, though the volume holds the call: the line carries b_grow=K_E_FS_DISK_FULL, TST-M3-FAT32-DISK-FULL FAIL",
+   "killers": [
+    "TST-M3-FAT32-DISK-FULL"
+   ],
+   "security": true,
+   "image_built": true,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FAT32-DISK-FULL"
+   ],
+   "results": {
+    "TST-M3-FAT32-DISK-FULL": "FAIL"
+   },
+   "seconds": 18.7,
+   "kills": {
+    "TST-M3-FAT32-DISK-FULL": {
+     "reason": "exit 37 != expected 33",
+     "run": "20261121T091358Z-034bcabb-001",
+     "lines": [
+      "OSX|0000000000d9|ktest|start|name=fat32_disk_full",
+      "OSX|0000000000d9|ktest|fat32_disk_full|d_fault=K_E_FS_IO|d_long=1|a_big=K_E_FS_DISK_FULL|a_big_size=0|a_big_node=0|a_big_chain=0|a_fit=1024|a_more=K_E_FS_DISK_FULL|a_span=K_E_FS_DISK_FULL|a_size=1024|a_node=1024|a_chain=2|a_whole=1|a_read=1024|a_over=1024|a_over_whole=1|b_span=K_E_FS_DISK_FULL|b_size=256|b_whole=1|b_fill=256|b_chain=1|b_filled=1|c_none=K_E_FS_DISK_FULL|c_node=0|c_chain=0|c_empty=1|d_into=512|d_chain=2|d_whole=1|c_after=512|b_grow=K_E_FS_DISK_FULL|c_more=K_E_FS_DISK_FULL|c_whole=1|b_grown=0|refused_writes=0|pos_moved=0|removed=1|free_delta=0|synced=1|live_files=0",
+      "OSX|0000000000d9|ktest|fail|the clusters a removed file gave back were not taken, one each"
+     ]
+    }
+   }
+  },
+  {
+   "id": "M241",
+   "file": "tools/fat32.py",
+   "note": "SECURITY: with --faulted a file longer than its size along the second FAT copy alone, its extra cluster free in the first, passes: the host case fails, TST-M3-FAT32-TOOL FAIL",
+   "killers": [
+    "TST-M3-FAT32-TOOL"
+   ],
+   "security": true,
+   "image_built": false,
+   "status": "killed",
+   "killed_by": [
+    "TST-M3-FAT32-TOOL"
+   ],
+   "results": {
+    "TST-M3-FAT32-TOOL": "FAIL"
+   },
+   "seconds": 28.5,
+   "kills": {
+    "TST-M3-FAT32-TOOL": {
+     "reason": "host: the runner reported failing tests and the case passes on the clean checkout",
+     "run": "20261121T091404Z-034bcabb-001",
+     "lines": []
+    }
+   }
+  }
+ ],
+ "started": "2026-11-21T09:06:21Z",
+ "shard": {
+  "k": 2,
+  "n": 12,
+  "rule": "int(id[1:]) mod N == k-1",
+  "stage": "M6",
+  "only": null,
+  "selected": [
+   "M157",
+   "M169",
+   "M181",
+   "M193",
+   "M205",
+   "M229",
+   "M253",
+   "M265",
+   "M277",
+   "M289",
+   "M301",
+   "M313",
+   "M325",
+   "M337",
+   "M349",
+   "M361",
+   "M373",
+   "M385",
+   "M397",
+   "M409",
+   "M217",
+   "M241"
+  ],
+  "complete": true
+ },
+ "run": {
+  "github_run_id": "44887681066",
+  "github_run_attempt": "1",
+  "github_sha": "034bcabb529f0d6d1727d4e3f421dd0d9e737e4a"
+ },
+ "valid": 22,
+ "killed": 22,
+ "survived": [],
+ "declared_killers_missed": [],
+ "expected_missed": [],
+ "invalid": [],
+ "ratio": 1.0,
+ "finished": "2026-11-21T09:14:32Z",
+ "surviving_security": [],
+ "invalid_security": []
+}
