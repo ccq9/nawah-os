@@ -1,4 +1,4 @@
-# TST-M6-LOGOUT-KILLS (session.md v1.8 and v1.10): the session's traces, exact and in order (tools/transcript.py
+# TST-M6-LOGOUT-KILLS (session.md v1.8, v1.10, v1.11 and v1.12): the session's traces, exact and in order (tools/transcript.py
 # streams). The administrator's autostart: eight of nine ids, one at a time; Sign out; the user with no store.
 session|state=no_session|window=510,336,260,128
 session|state=unlocked|user=admin|uid=1000|token=usable
@@ -15,6 +15,7 @@ session|autostart=done|launched=2|passed=6|over=1
 session|state=locked|user=admin|window=510,336,260,128
 session|state=logged_out|user=admin
 session|state=no_session|window=510,336,260,128
+# WP-178 (session.md v1.12): the next sign-in held while END_SESSION waits unanswered
 session|login=held|end=sent
 session|jobs=ended|apps=2
 session|state=unlocked|user=user|uid=1001|token=usable

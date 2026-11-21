@@ -1938,7 +1938,7 @@ MUTANTS = [
     ("M500", "user/apps/sessiond/src/main.rs",
      "        self.state == State::Unlocked && self.owner == Owner::Display && !self.want_display\n",
      "        self.state != State::NoSession && !self.want_display\n",
-     ["TST-M6-LOGOUT-KILLS"], "SECURITY: the autostart asks while the session is locked (the red team's S1): the GET is sent with the locked token behind the lock screen, the store reads as none and nothing starts at the unlock"),
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: the autostart runs while the session is locked (the red team's S1): its requests go on behind the lock screen, and nothing starts at the unlock"),
     ("M501", "user/apps/sessiond/src/main.rs",
      "        self.state == State::Unlocked && self.owner == Owner::Display && !self.want_display\n",
      "        self.state == State::Unlocked && !self.want_display\n",
@@ -2899,12 +2899,12 @@ EXPECT = {
     # M389: the session traces apps=0. M396: the answer is taken for a CONNECT's and nothing is
     # traced.
     # Since WP-178 a sign-in held after M388's silent Sign out asks END_SESSION itself, so the job ends before the
-    # case's back= line; M388 is known by the next sign-in refused once and never typed again (phase 4's
-    # pending line), the case then running to its timeout.
-    "M388": {"TST-M6-LOGOUT-KILLS": ["timeout (hang)", "|pending|n=1|signed=error:K_E_SVC_TIMEOUT|launch=ERR NO_SESSION|"]},
+    # case's back= line; M388 is known by phase 4's sign-in held and never typed again (the pending line reads the
+    # session still signed out), whether the case then ends by the mutants' 300 s cap or by exit 37 (both kept).
+    "M388": {"TST-M6-LOGOUT-KILLS": ["|pending|n=1|signed=OK no_session user=- changes=6 display=1 input=1 focus=session|launch=ERR NO_SESSION|"]},
     "M389": {"TST-M6-LOGOUT-KILLS": ["forbidden present ['|text=session|jobs=ended|apps=0']"]},
-    # Since WP-178 the misqueued answer leaves END_SESSION unconfirmed: after the thaw ENDING times out.
-    "M396": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=0|nest=0|idle=0|phase=1", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|", _LKSTEPS]},
+    # Since WP-178 the misqueued answer leaves END_SESSION unconfirmed: after the thaw ENDING still reads it sent.
+    "M396": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=0|nest=0|idle=0|phase=1", "|thawed=1|ending=OK end=sent held=1|", _LKSTEPS]},
     # WP-164: TST-M6-JOB-BOUND (kept as the local run of 2026-11-21 printed it). M397: the count's
     # own check gives 40 places of 40. M398: every process counted in the root, hog's job counts
     # none while 65 live. M399: a place given back stays taken. M400: 33 places.
@@ -2956,11 +2956,13 @@ EXPECT = {
     "M436": {"TST-M4-CONFIG-READ-LOAD": ["host checks", "/SYSTEM/CFGU1001.B NAWAH-CFG 1 2  -> 2",
                       "/SYSTEM/CFGU1001.A lab.read 1 mine\\n -> 1"]},
     "M437": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|sub_loaded=OK|", _RLAUTH]},
-    "M410": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launch=ERR NO_SESSION|deaf=0|in_session=0|phase=3", _LKSTEPS]},
+    # Signed in (focus=display) and still refused: since WP-178 M391's, M396's and M482's kills refuse the launch too,
+    # but with the second sign-in held (focus=session).
+    "M410": {"TST-M6-LOGOUT-KILLS": ["exit 37", " focus=display|launch=ERR NO_SESSION|deaf=0|in_session=0|phase=3", _LKSTEPS]},
     "M413": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=OK app:deaf#1|", _LKALIVE]},
     "M414": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", _LKSTEPS]},
     # WP-168 (session.md v1.10): the autostart from the administrator's store CFGU1000.A.
-    "M391": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=1|nest=0|idle=0|phase=1", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|", _LKSTEPS]},
+    "M391": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|deaf=1|nest=0|idle=0|phase=1", "|thawed=1|ending=OK end=sent held=1|", _LKSTEPS]},
     # Since WP-175 app:deaf#4 alone is phase 4's pinned launch: M438 is known by the launch after the second sign-in
     # numbered 4, not 3 (the ninth id took #3). Phase 1's count of deaf is not pinned: it is read before or after the
     # ninth launch (deaf=2 on a scratch run, deaf=1 on CI run 44949893901).
@@ -2971,19 +2973,19 @@ EXPECT = {
     # WP-178 (session.md v1.12, services.md v1.21): the held sign-in, ENDED, the manager's stop and crash.
     "M480": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|ending=OK end=sent held=0|auth=OK waiting=1 lock_unsent=0|", _LKHELD]},
     "M481": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|ending=OK end=none held=0|auth=OK waiting=1 lock_unsent=0|", _LKHELD]},
-    "M482": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|thawed=1|ending=error:K_E_SVC_TIMEOUT|", "|failed=confirmed,again,relaunch,", _LKSTEPS]},
+    "M482": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|thawed=1|ending=OK end=refused held=1|", _LKSTEPS]},
     "M483": {"TST-M6-LOGOUT-KILLS": ["host checks ['host_check failed: python3 -I tools/transcript.py streams ",
                                      "platform/pc-qemu/expect/logout-kills.txt -> 1']"]},
-    "M484": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|held=error:K_E_SVC_TIMEOUT|ending=error:K_E_SVC_TIMEOUT|", _LKHELD]},
+    "M484": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|ending=OK end=sent held=0|auth=OK waiting=0 lock_unsent=0|", _LKHELD]},
     "M488": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|ending=OK end=sent held=1|auth=OK waiting=1 lock_unsent=0|", _LKHELD]},
     "M485": {"TST-M6-MANAGER-STOP": ["exit 37", "|stopped|deaf=0|nest=0|idle=1|", "|processes_after=1|clean=0", _MSALIVE]},
     "M487": {"TST-M6-MANAGER-KILLED": ["missing markers ['|text=session|manager=gone|end=sent'"]},
-    # WP-175 (session.md v1.11): the autostart's pauses, its stale answer and its channel to config. M500 and M502
-    # both end the autostart on the locked token's NOT_FOUND; M502 applies the answer at once, which phase 5's counts
-    # of the session's traces show over the lock (stale=0|none=1), while M500 drops it (stale=1|none=0, the pinned
-    # value) and asks again only when the session next wakes, still locked: it is known by the resumed line.
+    # WP-175 (session.md v1.11): the autostart's pauses, its stale answer and its channel to config. M502 applies
+    # config's answer after the lock, which phase 5's counts of the traces show (stale=0|none=1). M500 is known by the
+    # resumed line (nothing started at the unlock), which M502's kill prints too: M502 is told from M500 by the
+    # counts, not the reverse; what M500 does while locked is not in the kept lines (the session's traces are not kept).
     "M500": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|resumed|elevate=ERR CANCELLED|deaf=0|nest=0|idle=0|config_handles=0|phase=5", "|failed=resume,", _LKSTEPS]},
-    "M501": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|elevation=OK prompt done=0|thawed=1|deaf=1|nest=1|", "|failed=resume,", _LKSTEPS]},
+    "M501": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|elevation=OK prompt done=0|thawed=1|deaf=1|", "|failed=resume,", _LKSTEPS]},
     "M502": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|held=1|stale=0|none=1|", "|failed=resume,", _LKSTEPS]},
     "M503": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|config_handles=1|deaf=0|phase=4", "|failed=cancel,resume,", _LKSTEPS]},
     "M504": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|config_handles=1|held=1|", "|config_handles=2|deaf=0|phase=4", "|failed=cancel,resume,", _LKSTEPS]},

@@ -1086,9 +1086,10 @@ fn pmm_double_free() -> ! {
 /// Order in which the alternating threads logged (ids), filled under a lock.
 static LOG: IrqSpinLock<([u8; 64], usize)> = IrqSpinLock::new("ktest_log", ([0; 64], 0));
 static STOP: AtomicBool = AtomicBool::new(false);
-/// Test-only (WP-175): how often the session traced that config's answer came after a lock
-/// (`session|autostart=stale`) and that the user's store was not found (`session|autostart=none`),
-/// counted as SYS_TRACE prints them. TST-M6-LOGOUT-KILLS's phase 5 reads both over the lock: the
+/// Test-only (WP-175): how often `session|autostart=stale` (config's answer came after a lock) and
+/// `session|autostart=none` (the user's store was not found) were traced, counted by their text as
+/// SYS_TRACE prints them, from any process (only the session prints these today); the case's
+/// required marker judges the counts, not the test kernel's own failed= line. TST-M6-LOGOUT-KILLS's phase 5 reads both over the lock: the
 /// answer that came after the lock dropped reads one stale and no none; applied, no stale and one
 /// none.
 static TRACED_STALE: AtomicU32 = AtomicU32::new(0);
@@ -15256,12 +15257,14 @@ fn state_wait(
 ) -> String {
     let mut ev = Vec::new();
     loop {
+        // Each request has its own 5000 ticks, never cut at `by`: what is returned at the deadline
+        // is the session's answer, not a timeout that depends on where `by` falls in the poll.
         let r = hold_request(
             session,
             b"STATE",
             Vec::new(),
             &mut ev,
-            (sched::ticks() + 5000).min(by),
+            sched::ticks() + 5000,
         );
         let focused = focus.is_none_or(|f| r.ends_with(&alloc::format!(" focus={}", f)));
         if (state_is(&r, state, changes) && focused) || sched::ticks() >= by {
@@ -15362,8 +15365,8 @@ fn logout_kills() -> ! {
     // (STATE unlocked, changes=4) or its LOGIN waits at the frozen auth (AUTH waiting=1).
     let held_by = within(40_000);
     let mut ev = Vec::new();
-    let (held_state, held_ending, held_auth) = loop {
-        let by = (sched::ticks() + 5000).min(held_by);
+    loop {
+        let by = sched::ticks() + 5000;
         let e = hold_request(&session, b"ENDING", Vec::new(), &mut ev, by);
         let r = hold_request(&session, b"STATE", Vec::new(), &mut ev, by);
         let a = hold_request(&session, b"AUTH", Vec::new(), &mut ev, by);
@@ -15372,10 +15375,16 @@ fn logout_kills() -> ! {
             || !a.starts_with("OK waiting=0 ")
             || sched::ticks() >= held_by
         {
-            break (r, e, a);
+            break;
         }
         hold_wait((sched::ticks() + 20).min(held_by), || false);
-    };
+    }
+    // Read once more after the loop: the session handles the sign-in's Enter at once, so these
+    // three are taken after it whichever request of the loop it fell between.
+    let by = sched::ticks() + 5000;
+    let held_ending = hold_request(&session, b"ENDING", Vec::new(), &mut ev, by);
+    let held_state = hold_request(&session, b"STATE", Vec::new(), &mut ev, by);
+    let held_auth = hold_request(&session, b"AUTH", Vec::new(), &mut ev, by);
     let still = (live(b"DEAF.ELF"), live(b"NEST.ELF"), live(b"IDLE.ELF"));
     kprintln!(
         "OSX|{}|ktest|logout_kills|held={}|ending={}|auth={}|deaf={}|nest={}|idle={}|",
@@ -15405,7 +15414,13 @@ fn logout_kills() -> ! {
     let thawed = sched::thaw_named(b"AUTHD.ELF") && sched::thaw_pid(mgr);
     let confirm_by = within(5000);
     let confirmed = loop {
-        let e = hold_request(&session, b"ENDING", Vec::new(), &mut ev, confirm_by);
+        let e = hold_request(
+            &session,
+            b"ENDING",
+            Vec::new(),
+            &mut ev,
+            sched::ticks() + 5000,
+        );
         if e.starts_with("OK end=none ") || sched::ticks() >= confirm_by {
             break e;
         }
@@ -15619,7 +15634,9 @@ fn logout_kills() -> ! {
         r.starts_with("OK prompt ")
     });
     let thawed5b = sched::thaw_named(b"CONFIGD.ELF");
-    hold_wait(within(500), || false);
+    // Long enough for config's answer and the first launch the prompt must hold back: a launch
+    // through it shows at once (deaf=1), and with none 5000 ticks pass.
+    hold_wait(within(5000), || live(b"DEAF.ELF") > 0);
     let while_prompt = (live(b"DEAF.ELF"), live(b"NEST.ELF"));
     kprintln!(
         "OSX|{}|ktest|logout_kills|prompt|unlocked={}|asked={}|elevation={}|thawed={}|deaf={}|nest={}|",
