@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261017T210737Z-7963b9fa-001",
+ "test_id": "TST-M0-002",
+ "verdict": "PASS",
+ "oracle": "required M0 documents and contract sections exist",
+ "expected": "exit 0 + OK",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "36121c0094f14fe79b27cc38705b660bb21724c63f88092e902498a312b6b77a",
+ "inputs": {
+  "tests/test_m0_records.py": "0f9586c3e80dfe8137af6b77e0106949f986752cb65c8c18b8b4831416cf09a0",
+  "docs/contracts/boot.md": "68a3469d66663d8b43e976d954084445321a21ed6e623354fe92f1452caf84f9",
+  "docs/adr/0001-bootstrap.md": "5b861023f83e42c4afb3e66fc798261217f0840c78bab3fd5b7c1f93c0d77f99",
+  "docs/PROJECT.md": "ef755b97a9fca9f4665a787d8111401f17c015f5abec334b639c1ca41479f88f",
+  "docs/ENVIRONMENT.md": "41e692fa4cdbd351beb975553926899044e952972903a3bcaf4efa1b46430fbf",
+  "docs/security/threat-model.md": "0ee5f91caea47d0caff91f6dc0e7fec88f751c33dbc82994d6c5f0255cd13a74"
+ },
+ "claim_tag": "source_backed_fact"
+}
