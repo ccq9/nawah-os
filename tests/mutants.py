@@ -1948,6 +1948,115 @@ MUTANTS = [
      "filter(|&t| t <= max)",
      "filter(|&t| t < max)",
      ["TST-M6-JOB-MEMORY"], "a job cannot take its last page: the quota is one page short"),
+    # M457 to M470 (WP-176, RSK-051, syscall.md v1.17): what channels hold is charged to the
+    # job that made or wrote it, a queue grows fallibly, and a cycle of channels is refused at transfer;
+    # killed by TST-M6-JOB-MEMORY (its lines chan, heap, chan_job and chan_end, and the lab role chan).
+    ("M457", "kernel/src/syscall/mod.rs",
+     "channel::charge_message(&job, len, nh)",
+     "channel::charge_message(&job, 0, 0)",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: channel_write charges nothing, so an application fills the kernel's heap through message queues"),
+    ("M458", "kernel/src/syscall/mod.rs",
+     "    let (a, b) = channel::create_in(&sched::current_job()).ok_or(ERR_NO_RESOURCES)?;\n",
+     "    let (a, b) = channel::create();\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: channel_create charges nothing, so channels without number hold their queues outside every quota"),
+    ("M459", "kernel/src/object/channel.rs",
+     "pub const CHANNEL_PAGES: u64 = 5;\n",
+     "pub const CHANNEL_PAGES: u64 = 2;\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a channel's small heap blocks are not counted, so its state and endpoints pin pages outside the quota"),
+    ("M460", "kernel/src/object/channel.rs",
+     "    u64::from(len > 0) + u64::from(nh > 0)\n",
+     "    u64::from(len > 0)\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a message's handles are free, so empty messages carrying handles pin pages without count"),
+    ("M461", "kernel/src/object/channel.rs",
+     "        peer.queue.push_back(Queued { msg, charge });\n",
+     "        drop(charge);\n        peer.queue.push_back(Queued { msg, charge: None });\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a message's charge comes back when it is queued, so a waiting message counts for nothing"),
+    ("M462", "kernel/src/object/channel.rs",
+     "        peer.queue\n            .try_reserve(1)\n            .map_err(|_| ChannelError::NoMemory)?;\n",
+     "",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a queue grows infallibly again, so a heap with no frame left stops the kernel on a write"),
+    ("M463", "kernel/src/syscall/mod.rs",
+     "if other.same_channel(&ep) || !other.may_travel() {",
+     "if other.same_channel(&ep) {",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a cycle of two channels forms, and its memory and charge outlive the job that made it"),
+    ("M464", "kernel/src/object/channel.rs",
+     "            .any(|q| carries_channel(&q.msg))\n",
+     "            .take(1)\n            .any(|q| carries_channel(&q.msg))\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: the cycle check sees the first queued message alone, so an end behind a message of bytes closes a cycle"),
+    ("M465", "kernel/src/object/channel.rs",
+     "        drop(self.charge.take());\n        LIVE_CHANNELS.fetch_sub(1, Ordering::Relaxed);\n",
+     "        core::mem::forget(self.charge.take());\n        LIVE_CHANNELS.fetch_sub(1, Ordering::Relaxed);\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a channel's pages never come back once both its ends are gone, so one application fills the system limit for every job"),
+    ("M466", "kernel/src/object/channel.rs",
+     "            drop(charge);\n        }\n        drop(work);\n",
+     "            core::mem::forget(charge);\n        }\n        drop(work);\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a dropped message's pages never come back, so one application fills the system limit for every job"),
+    ("M467", "kernel/src/syscall/mod.rs",
+     "    drop(msg.bytes);\n    drop(charge);\n",
+     "    drop(msg.bytes);\n    core::mem::forget(charge);\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a message read never gives its pages back, so one application fills the system limit for every job"),
+    ("M468", "kernel/src/object/channel.rs",
+     "    bytes\n        .try_reserve_exact(len)\n        .map_err(|_| ChannelError::NoMemory)?;\n",
+     "",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a message's bytes are taken infallibly again, so a heap with no frame left stops the kernel on a write"),
+    ("M469", "kernel/src/loader/mod.rs",
+     ".charge((size as u64).div_ceil(4096))",
+     ".charge(0)",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: an image's read buffer is not charged, so launches take up to 4 MiB of the kernel's heap each outside every quota"),
+    ("M470", "kernel/src/loader/mod.rs",
+     "    image\n        .try_reserve_exact(size)\n        .map_err(|_| ImageError::NoMemory)?;\n",
+     "",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: an image's read buffer is taken infallibly again, so a heap with no room for it stops the kernel on a launch"),
+    # M471 to M477 (WP-177, RSK-051): the mapping region's 2 MiB slots are used again, the page tables
+    # a mapping emptied are freed, and the region's tables are charged to the space's job; killed by
+    # TST-M6-JOB-MEMORY (its `map|` line, checked after every other check of the case).
+    ("M471", "kernel/src/mm/addrspace.rs",
+     "        self.mark(s, k, false);\n",
+     "",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: an unmapped VMO's slots are never free again, so mapping and unmapping wears out the region (512 maps) and a client leaves the compositor unable to map"),
+    ("M472", "kernel/src/mm/addrspace.rs",
+     "        self.free_tables(m.virt, k);\n",
+     "",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: an unmapped VMO's page tables stay while their charge goes, so a process keeps page tables outside its job's quota"),
+    ("M473", "kernel/src/mm/addrspace.rs",
+     "        let tables = job.charge(k as u64).ok_or(AsError::Quota)?;\n",
+     "        let tables = job.charge(0).ok_or(AsError::Quota)?;\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a mapping's page tables are charged to no one, so a job at its quota still maps and its tables sit outside the quota"),
+    ("M474", "kernel/src/mm/addrspace.rs",
+     "            .map_or_else(job::root, |c| c.job().clone())\n",
+     "            .map_or_else(job::root, |_| job::root())\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: every space's tables are charged to the root, counted and never refused, so an application's tables escape its job"),
+    ("M475", "kernel/src/mm/addrspace.rs",
+     "(s..s + k).all(|i| !self.used(i))",
+     "(s..s + k).all(|_| true)",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: the first slot is always taken, so two live mappings of one process overlap (map_4k writes over a present leaf, the bitmap is the only guard)"),
+    ("M476", "kernel/src/mm/addrspace.rs",
+     "        let upper = self.space.missing_upper(virt);\n",
+     "        let upper = 0u64;\n",
+     ["TST-M6-JOB-MEMORY"], "the mapping region's page directory is not charged, one frame per process outside its job's quota"),
+    ("M477", "kernel/src/mm/addrspace.rs",
+     "        self.upper.clear();\n",
+     "        core::mem::forget(core::mem::take(&mut self.upper));\n",
+     ["TST-M6-JOB-MEMORY"], "the charge of the region's page directory never comes back to the job when the space goes"),
+    # M478 and M479 (WP-177's review round): a mapping wider than one slot (k >= 2), read by the map
+    # line's wide step (513 pages beside a 1 MiB VMO).
+    ("M478", "kernel/src/mm/addrspace.rs",
+     "        let tables = job.charge(k as u64).ok_or(AsError::Quota)?;\n",
+     "        let tables = job.charge(1).ok_or(AsError::Quota)?;\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: a mapping wider than one slot charges one page table, so its others sit outside the job's quota"),
+    ("M479", "kernel/src/mm/addrspace.rs",
+     "        self.free_tables(m.virt, k);\n",
+     "        self.free_tables(m.virt, 1);\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: an unmapped wide mapping frees its first page table only, the others stay while their charge goes"),
+    # M490 and M491 (WP-177's review round): killed in the engineer's scratch runs, registered with ids after WP-178's.
+    ("M490", "kernel/src/mm/addrspace.rs",
+     "    pages.div_ceil(SLOT / PAGE_4K) as usize\n",
+     "    (pages - pages + 1) as usize\n",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: every mapping takes one slot, so a mapping wider than 2 MiB overlaps the next one and two live mappings share pages"),
+    ("M491", "kernel/src/mm/addrspace.rs",
+     "(s..s + k).all(|i| !self.used(i))",
+     "(s..s + 1).all(|i| !self.used(i))",
+     ["TST-M6-JOB-MEMORY"], "SECURITY: the free run is checked on its first slot alone, so a wide mapping is placed over a live one"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2300,6 +2409,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M439",
             # WP-170 (RSK-051): a job's memory is bounded (syscall.md v1.16).
             "M443", "M444", "M448", "M449", "M450", "M453", "M454",
+            # WP-176 (RSK-051): what channels hold is charged, a queue grows fallibly, no cycle (syscall.md after v1.16).
+            "M457", "M458", "M459", "M460", "M461", "M462", "M463", "M464", "M465", "M466", "M467", "M468",
+            "M469", "M470",
+            # WP-177 (RSK-051): the mapping region's places used again, its tables freed and charged.
+            "M471", "M472", "M473", "M474", "M475", "M478", "M479", "M490", "M491",
             # WP-112 (REQ-M4-004): a user store is read for its owner or an administrator alone (config.md v1.6).
             "M422", "M424", "M425", "M427", "M429",
             # WP-112's review round: unusable admin, a full table told, CONFIG_WRITE, a group, SUBSCRIBE.
@@ -2534,6 +2648,11 @@ _JMQUOTA = "|ktest|fail|a job's charge does not hold its quota"
 _JMBACK = "|ktest|fail|a job's pages did not come back when its processes went"
 _JMNOT = "|ktest|fail|a job's memory is not bounded"
 _JMIMAGE = "|ktest|fail|an image beyond its job's quota was not refused, or one within it did not run"
+_JMCHAN = "|ktest|fail|a channel or a message is not charged to its writer's job"
+_JMCYCLE = "|ktest|fail|a cycle of channels was let form, or a channel's charge did not come back"
+_JMLEFT = "|ktest|fail|manager or applications left something behind"
+_JMIMGBUF = "|ktest|fail|an image's read buffer is not charged to its job, or a launch after its refusal failed"
+_JMMAP = "|ktest|fail|a mapping's place or page tables are not given back, or its tables are not charged to its job"
 _LRANS = "|ktest|fail|a LAUNCH was not answered as the rate limit states"
 _SGSES = "|ktest|fail|a LAUNCH or BEGIN_SESSION of the session was not answered as the gate states"
 _SGDESK = "|ktest|fail|the desktop opened the gate, or the session's exit did not close it"
@@ -2783,6 +2902,34 @@ EXPECT = {
     "M454": {"TST-M6-JOB-MEMORY": ["exit 37", "|root=1|reserve=0|", _JMQUOTA]},
     "M455": {"TST-M6-JOB-MEMORY": ["exit 37", "|image|counted=0|", _JMIMAGE]},
     "M456": {"TST-M6-JOB-MEMORY": ["exit 37", "|quota=8192|taken=0|refused=0|", _JMQUOTA]},
+    # WP-176 (syscall.md v1.17): channels, messages and the image's read buffer charged; a panic kill (exit 35) is
+    # known by the last line it reached (the harness keeps |ktest| lines only).
+    "M457": {"TST-M6-JOB-MEMORY": ["exit 35", "|both=2|empty=0|travel_clean=1|held=8|", "|heap|filled=1|"]},
+    "M458": {"TST-M6-JOB-MEMORY": ["missing markers ['|text=app:chan#1|err=10|top_err=10|handle_err=10|kept=1|create_err=10|empty=0', "]},
+    "M459": {"TST-M6-JOB-MEMORY": ["exit 37", "|chan|channel=2|", _JMCHAN]},
+    "M460": {"TST-M6-JOB-MEMORY": ["exit 37", "|handles=0|both=1|", _JMCHAN]},
+    "M461": {"TST-M6-JOB-MEMORY": ["exit 35", "|both=2|empty=0|travel_clean=1|held=5|"]},
+    "M462": {"TST-M6-JOB-MEMORY": ["exit 35", "|image_buf|as_size=1|buffer_back=0|"]},
+    "M463": {"TST-M6-JOB-MEMORY": ["exit 37", "|pages=8192|back=12|", "|clean=0|charged_delta=12|", _JMCYCLE]},
+    "M464": {"TST-M6-JOB-MEMORY": ["exit 37", "|travel_loaded=1|", _JMCHAN]},
+    "M465": {"TST-M6-JOB-MEMORY": ["exit 37", "|freed=8182|first_back=10|", _JMBACK]},
+    "M466": {"TST-M6-JOB-MEMORY": ["exit 37", "|closed_back=3|create_refused=1|write_refused=0|", _JMCHAN]},
+    "M467": {"TST-M6-JOB-MEMORY": ["exit 37", "|clean=0|charged_delta=", _JMLEFT]},
+    "M468": {"TST-M6-JOB-MEMORY": ["exit 35", "|heap_step|grow=NoMemory|"]},
+    "M469": {"TST-M6-JOB-MEMORY": ["exit 37", "|image_buf|as_size=0|buffer_back=0|near=Ok|", _JMIMGBUF]},
+    "M470": {"TST-M6-JOB-MEMORY": ["exit 35", "|heap_step|buffers=NoMemory|"]},
+    # WP-177 (syscall.md v1.18): the mapping region's slots and tables; each by fields of the map| line.
+    "M471": {"TST-M6-JOB-MEMORY": ["exit 37", "|map|maps=512|same=0|", _JMMAP]},
+    "M472": {"TST-M6-JOB-MEMORY": ["exit 37", "|tables=2|charged=1|", "|quota_tables=6|", _JMMAP]},
+    "M473": {"TST-M6-JOB-MEMORY": ["exit 37", "|held=1|peak=2|tables=1|charged=1|more=1|two=1|two_held=1|", "|quota=OK|", _JMMAP]},
+    "M474": {"TST-M6-JOB-MEMORY": ["exit 37", "|held=0|peak=2|tables=1|charged=0|", "|quota=OK|", _JMMAP]},
+    "M475": {"TST-M6-JOB-MEMORY": ["exit 37", "|two=0|two_held=3|", "|rewide=0|", _JMMAP]},
+    "M476": {"TST-M6-JOB-MEMORY": ["exit 37", "|held=1|peak=2|tables=1|charged=0|", "|two_held=2|", _JMMAP]},
+    "M477": {"TST-M6-JOB-MEMORY": ["exit 37", "|quota_tables=1|back=1|frames_delta=0|", _JMMAP]},
+    "M478": {"TST-M6-JOB-MEMORY": ["exit 37", "|wide_held=3|wide_gone_tables=2|", _JMMAP]},
+    "M479": {"TST-M6-JOB-MEMORY": ["exit 37", "|wide_gone_tables=3|", "|quota_tables=3|", _JMMAP]},
+    "M490": {"TST-M6-JOB-MEMORY": ["exit 37", "|beside=1|wide_tables=3|", "|rewide=2|", _JMMAP]},
+    "M491": {"TST-M6-JOB-MEMORY": ["exit 37", "|rewide=1|", _JMMAP]},
 }
 
 

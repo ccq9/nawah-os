@@ -175,6 +175,7 @@ fn channel_err(e: ChannelError) -> i64 {
         ChannelError::PeerClosed => ERR_PEER_CLOSED,
         ChannelError::ShouldWait => ERR_SHOULD_WAIT,
         ChannelError::BufferTooSmall { .. } => ERR_BUFFER_TOO_SMALL,
+        ChannelError::NoMemory => ERR_NO_RESOURCES,
     }
 }
 
@@ -193,7 +194,8 @@ fn endpoint_of(entry: &Entry) -> Result<Arc<channel::Endpoint>, i64> {
 fn channel_create(out: u64) -> Result<i64, i64> {
     user_range_ok(out, 8, true)?;
     let table = table()?;
-    let (a, b) = channel::create();
+    // WP-176: charged to the caller's job before anything is made.
+    let (a, b) = channel::create_in(&sched::current_job()).ok_or(ERR_NO_RESOURCES)?;
     let (ha, hb) = {
         let mut t = table.lock();
         let ha = t
@@ -221,36 +223,45 @@ fn channel_create(out: u64) -> Result<i64, i64> {
     Ok(0)
 }
 
-fn read_handles(hptr: u64, n: usize) -> Result<Vec<Handle>, i64> {
-    let mut raw = alloc::vec![0u8; n * 4];
-    copy_from_user(&mut raw, hptr)?;
-    Ok(raw
-        .chunks_exact(4)
-        .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
-        .collect())
-}
-
 fn channel_write(h: Handle, ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i64, i64> {
     if len > MSG_MAX_BYTES as u64 || nh > MSG_MAX_HANDLES as u64 {
         return Err(ERR_INVALID);
     }
     let (len, nh) = (len as usize, nh as usize);
-    let mut bytes = alloc::vec![0u8; len];
+    // WP-176: the message is charged to the writer's job before its buffers are taken, and the
+    // buffers are taken fallibly; a refusal leaves nothing behind.
+    let job = sched::current_job();
+    let charge = channel::charge_message(&job, len, nh).ok_or(ERR_NO_RESOURCES)?;
+    let (mut bytes, mut moved) = channel::message_buffers(len, nh).map_err(channel_err)?;
     copy_from_user(&mut bytes, ptr)?;
-    let handles = read_handles(hptr, nh)?;
+    let mut raw = [0u8; MSG_MAX_HANDLES * 4];
+    copy_from_user(&mut raw[..nh * 4], hptr)?;
+    let mut handles = [0 as Handle; MSG_MAX_HANDLES];
+    for (v, c) in handles.iter_mut().zip(raw.chunks_exact(4)) {
+        *v = u32::from_le_bytes([c[0], c[1], c[2], c[3]]);
+    }
+    let handles = &handles[..nh];
     let table = table()?;
     let waiters = {
         let mut t = table.lock();
         let ep = endpoint_of(t.get(h, Rights::WRITE).map_err(handle_err)?)?;
+        // A write that moves a channel end holds TRANSIT from the check of may_travel to the
+        // commit (table lock, then TRANSIT, then the channels' locks); other writes do not.
+        let moves_end = handles.iter().any(|&hv| {
+            t.get(hv, Rights::TRANSFER)
+                .is_ok_and(|e| matches!(e.object, Object::Channel(_)))
+        });
+        let _transit = moves_end.then(channel::transit);
         // Every transferred handle must exist with TRANSFER, be distinct, and not be an end of
-        // this very channel (which would keep an endpoint alive through its own queue).
+        // this very channel (which would keep an endpoint alive through its own queue), nor an
+        // end whose own queue carries a channel end (which could close a cycle, WP-176).
         for (i, &hv) in handles.iter().enumerate() {
             if handles[..i].contains(&hv) {
                 return Err(ERR_BAD_HANDLE);
             }
             let e = t.get(hv, Rights::TRANSFER).map_err(handle_err)?;
             if let Object::Channel(other) = &e.object {
-                if other.same_channel(&ep) {
+                if other.same_channel(&ep) || !other.may_travel() {
                     return Err(ERR_INVALID);
                 }
             }
@@ -258,14 +269,18 @@ fn channel_write(h: Handle, ptr: u64, len: u64, hptr: u64, nh: u64) -> Result<i6
         // Peer open and room reserved before anything moves; the channel stays locked until
         // commit, so the table is left untouched on every failure path.
         let slot = ep.reserve().map_err(channel_err)?;
-        let moved: Vec<Entry> = handles
-            .iter()
-            .map(|&hv| t.remove(hv).expect("checked above"))
-            .collect();
-        slot.commit(Message {
-            bytes,
-            handles: moved,
-        })
+        moved.extend(
+            handles
+                .iter()
+                .map(|&hv| t.remove(hv).expect("checked above")),
+        );
+        slot.commit(
+            Message {
+                bytes,
+                handles: moved,
+            },
+            charge,
+        )
     };
     for tid in waiters {
         sched::wake(tid);
@@ -304,8 +319,9 @@ fn channel_read(
         endpoint_of(e)?
     };
     let tid = sched::current_tid();
-    let msg = loop {
-        match ep.read(cap_b, cap_h, if block { Some(tid) } else { None }) {
+    // The charge is declared first so it drops last, after the message's buffers (WP-176).
+    let (charge, msg) = loop {
+        match ep.read_charged(cap_b, cap_h, if block { Some(tid) } else { None }) {
             Ok(m) => break m,
             Err(ChannelError::ShouldWait) if block => {
                 sched::block_current();
@@ -332,6 +348,8 @@ fn channel_read(
         }
     }
     copy_to_user(hptr, &values)?;
+    drop(msg.bytes);
+    drop(charge);
     Ok((nbytes as i64) | ((nhandles as i64) << 16))
 }
 
@@ -743,7 +761,12 @@ fn spawn_into(
     if !is_elf {
         fs_authority(path, true, false)?;
     }
-    let image = crate::loader::read_image(&buf[..n]).map_err(fs_err)?;
+    // WP-176: the buffer is charged to the caller's job for its life, and taken fallibly.
+    let image =
+        crate::loader::read_image(&buf[..n], &sched::current_job()).map_err(|e| match e {
+            crate::loader::ImageError::Fs(e) => fs_err(e),
+            _ => ERR_NO_RESOURCES,
+        })?;
     // Validate the image before touching the caller's handles: a rejected file moves nothing.
     crate::loader::elf::parse(&image).map_err(elf_err)?;
     let table = table()?;
@@ -1332,7 +1355,8 @@ fn sys_display_map(h: Handle) -> Result<i64, i64> {
 /// the kernel chooses; `prot` bit 0 read, bit 1 write, each needing the same right on the
 /// handle (plus MAP), and write needs READ too (v1.14, WP-149): a writable page on x86 is
 /// readable. Never executable; a physical VMO is mapped uncacheable. Returns the address;
-/// `ERR_NO_RESOURCES` when the process's mapping budget or region is spent.
+/// `ERR_NO_RESOURCES` when the process's mapping budget or region is spent, or when its job's
+/// quota or the system's limit has no room for the mapping's page tables (WP-177).
 fn sys_vmo_map(h: Handle, prot: u64) -> Result<i64, i64> {
     if prot == 0 || prot & !3 != 0 {
         return Err(ERR_INVALID);

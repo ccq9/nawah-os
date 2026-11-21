@@ -3653,7 +3653,8 @@
     "scenario at the end: copy Arabic text from one app's field and paste it into another's; a background app's read is refused; nothing is readable while locked",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
     "2026-11-09: display.md v1.12 went to WP-67 and v1.13 to WP-48; the paste grant renumbered v1.13 -> v1.14; the number is assigned at merge (docs/PLAN.md:132)",
-    "2026-11-10: display.md v1.14 renumbered to display.md v1.15: WP-77 (the displayd boot-loop fixes, on the critical path's parallel track) takes display.md v1.14 at merge per PLAN.md:132"
+    "2026-11-10: display.md v1.14 renumbered to display.md v1.15: WP-77 (the displayd boot-loop fixes, on the critical path's parallel track) takes display.md v1.14 at merge per PLAN.md:132",
+    "2026-11-21 (the manager): display.md v1.15 was taken by WP-177 at its merge (docs/PLAN.md:132); this item takes the next free number at its own merge"
    ],
    "acceptance": "TST-M6-CLIPBOARD-ROUNDTRIP, CLIPBOARD-ISOLATION and DND-FILELIST PASS on CI",
    "test_ids": [
@@ -3932,7 +3933,8 @@
     "apps/devices.md: a tree by class with Properties and Refresh; no disable action unless a driver supports it; names only from PCI class codes and virtio ids (no third-party ID database)",
     "scenario at the end: the tool lists the QEMU devices with properties",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 (steward round E, WP-50 split option B accepted by the manager): the dependency on WP-50 is on 50a, the list-view core (WP-50 after the split)"
+    "2026-11-10 (steward round E, WP-50 split option B accepted by the manager): the dependency on WP-50 is on 50a, the list-view core (WP-50 after the split)",
+    "2026-11-21 (the manager): syscall.md v1.17 was taken by WP-176 at its merge (docs/PLAN.md:132); this item takes the next free number at its own merge"
    ],
    "acceptance": "TST-M6-DEVICE-LIST and DEVICES-APP PASS on CI",
    "test_ids": [
@@ -3978,7 +3980,8 @@
     "logging must not slow the hot paths or deadlock with the serial lock",
     "scenario at the end: a failure in boot 1 is visible in the viewer after reboot",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split as stated here before activating",
-    "2026-11-10 (steward round E, WP-50 split option B accepted by the manager): the dependency on WP-50 is on 50a, the list-view core (WP-50 after the split)"
+    "2026-11-10 (steward round E, WP-50 split option B accepted by the manager): the dependency on WP-50 is on 50a, the list-view core (WP-50 after the split)",
+    "2026-11-21 (the manager): syscall.md v1.18 was taken by WP-177 at its merge (docs/PLAN.md:132); this item takes the next free number at its own merge"
    ],
    "acceptance": "TST-M6-LOG-PERSIST, LOG-AUTHORITY, LOG-OVERFLOW and LOG-NO-SECRETS PASS on CI",
    "test_ids": [
@@ -11178,9 +11181,10 @@
     "REQ-M6-003",
     "REQ-M6-004"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -11197,23 +11201,31 @@
    ],
    "files": [
     "kernel/src/object/channel.rs",
-    "kernel/src/object/job.rs",
     "kernel/src/syscall/mod.rs",
-    "kernel/src/mm/heap.rs",
+    "kernel/src/loader/mod.rs",
+    "kernel/src/services.rs",
     "kernel/src/ktest.rs",
     "user/apps/svc/src/main.rs",
+    "platform/pc-qemu/lab/chan.app",
+    "platform/pc-qemu/manifests/svc-jc.txt",
     "platform/pc-qemu/target.json",
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
     "tools/project.py",
     "docs/contracts/syscall.md",
+    "docs/contracts/ipc.md",
+    "docs/adr/0011-handles-rights-and-channels.md",
     "docs/tests.json",
-    "docs/risks.json"
+    "docs/risks.json",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/project-state.json"
    ],
    "contract_refs": [
     "docs/contracts/syscall.md"
    ],
-   "acceptance": "no ordinary program ends the kernel's heap in a panic: the messages queued in channels are charged to the writer's job with the quota and the system limit of syscall.md v1.16 (or bounded per job by a rule chosen at activation), a write over it refused without a trace and the queue's allocation fallible; read_image's buffer (up to 4 MiB) allocated fallibly or charged, a launch it cannot hold refused ERR_NO_RESOURCES; a cycle of channels holding each other's ends does not keep a dead job's charge; shown by cases on CI (a lab role filling channel queues until refused and a service answering after it, a launch of a large image with the frames fragmented, a cycle left at a job's death and the charge back); the syscall contract's next version states it; its SECURITY mutants killed by the M6 gate",
+   "acceptance": "no ordinary program ends the kernel's heap in a panic: every channel (5 pages) and every queued message (a page for its bytes, one for its handles) charged to the creating or writing job with syscall.md v1.16's quota and system limit, a create or a write over it refused ERR_NO_RESOURCES with no handle and no charge left, the queue's and the message buffers' allocations fallible; the image's read buffer charged to the caller's job for its life and allocated fallibly, a launch it cannot hold refused ERR_NO_RESOURCES; a channel end whose queue holds a channel end refused ERR_INVALID, so no cycle keeps a dead job's charge; after each refusal the next legitimate request of the same kind succeeds; shown on CI in TST-M6-JOB-MEMORY (its chan, image_buf, heap_step, heap, chan_job and chan_end lines); syscall.md v1.17 and ipc.md v1.1 (ADR-0011 item 11) state it; its mutants (SECURITY all) killed by the M6 gate",
    "test_ids": [
     "TST-M6-JOB-MEMORY",
     "TST-M6-MUTANTS",
@@ -11223,7 +11235,13 @@
     "حساب رسائل القنوات على مهمة كاتبها (من جولة مراجعة WP-170 في 2026-11-21؛ قبل WP-171)",
     "test first: a lab role that creates channel pairs and writes 64 messages of 4 KiB into each until a write or a creation is refused, then asks a service: today it can take more of the heap than the 64 MiB reserve",
     "from WP-170's second round (the red team, by reading, not run): read_image (kernel/src/loader/mod.rs) takes its buffer with an infallible vec!, a panic when the heap finds no run of frames (a test kernel case pinning one frame in each 1024, then read_image on a 4 MiB file); a cycle of two channels each queuing the other's end with VMOs keeps them and their charge after the job dies (channel.rs's own comment on cycles)",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-21 (the manager): built test first by the kernel engineer on a scratch clone (scratch, never evidence): TST-M6-JOB-MEMORY's new lines failed against 119b66f7d (run 20261121T153747Z-119b66f7-001: a kernel panic, 'memory allocation of 3072 bytes failed', the 33rd write growing the queue infallibly; run 20261121T153958Z: cycle=0 then a panic), the message buffers infallible (20261121T161833Z, exit 35) and read_image's buffer uncharged and infallible (20261121T162519Z: buffer_pages=0, then a panic of 13408 bytes); all pass after",
+    "2026-11-21 (the manager): design, with its options (rule 5): (A) charge channels and messages with v1.16's Job::charge, fallible allocations, refuse a loaded end's transfer (chosen: one budget with the VMOs and the images, no new number, deterministic counts); (B) a separate message budget per job and collecting queues at a job's death (rejected: a second accounting, locks across channels, a message written before an exit disappears); (C) a count of channels per job and preallocated queues (rejected: outside the system limit, leaves cycles to the reserve). read_image stays in this item (the owner's directive of 2026-11-21), not split",
+    "2026-11-21 (the manager): the review round on c8f917310 (the auditor and the red team, read only). Fixed: the pinned set of the case restored (a filter had narrowed it), an explicit failure when the manager's handles do not fall, M465..M467 SECURITY, TRANSIT taken only when a moved handle is a channel end, the fallible message buffers shown with a mutant, the M3 channel cases run, the read_image buffer charged and fallible, each refusal shown to leave no handle and the next request succeeding, the heap block printing each fallible step so M462, M468 and M470 differ. Written as lines: the TRANSIT race (L-130), svcmgr's order of passing the ends (L-131), the kernel's reads' order (L-132), a dead job's object counted alive (L-133), the root's writes counted not refused (L-134)",
+    "2026-11-21 (the manager): integrated with WP-177 on the scratch clone (merge 2f91c2b18) and tested together, as the owner's directive asks: no pinned value changed (re-derived from a run); M6 21/21, the M5 display cases and the M3 channel and VMO cases pass locally; M443..M479 37/37 killed with every declared expectation (scratch). The frozen ipc.md takes v1.1 with ADR-0011 item 11 as its record, after the audit of a DEC-040 draft: no owner decision (section 7 item 6, the precedent of WP-78)",
+    "2026-11-21 budget (the manager): over the line of 120 calls with the engineer's work, two review rounds and the integration",
+    "2026-11-21 activated (the manager): its dependency WP-170 is done"
    ]
   },
   {
@@ -11233,9 +11251,10 @@
     "REQ-M6-003",
     "REQ-M6-004"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
@@ -11255,32 +11274,44 @@
     "kernel/src/mm/addrspace.rs",
     "kernel/src/arch/x86_64/paging.rs",
     "kernel/src/object/job.rs",
-    "user/apps/displayd/src/main.rs",
+    "kernel/src/object/mod.rs",
+    "kernel/src/syscall/mod.rs",
     "kernel/src/ktest.rs",
-    "user/apps/svc/src/main.rs",
     "platform/pc-qemu/target.json",
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
     "tools/project.py",
     "docs/contracts/syscall.md",
     "docs/contracts/display.md",
+    "docs/adr/0019-graphics-platform.md",
     "docs/tests.json",
-    "docs/risks.json"
+    "docs/risks.json",
+    "docs/LATER.md",
+    "docs/PLAN-REVERSE.md",
+    "docs/work-items.json",
+    "docs/project-state.json"
    ],
    "contract_refs": [
     "docs/contracts/syscall.md",
     "docs/contracts/display.md"
    ],
-   "acceptance": "a process's mapping region holds no more than its live mappings need: the addresses of unmapped VMOs are used again and the page tables they emptied are freed, or the tables are charged to the job with the quota of syscall.md v1.16 (the option chosen at activation); so mapping and unmapping one VMO without end in 32 processes takes no more than a stated number of frames, and a client's refused CREATE_SURFACE requests do not wear out displayd's region (another client's valid request answered OK after 1100 of them); shown by cases on CI; the syscall contract's next version states it; its SECURITY mutants killed by the M6 gate",
+   "acceptance": "a process's mapping region holds no more than its live mappings need: the addresses of unmapped VMOs used again (the lowest free 2 MiB slots), the page tables a mapping emptied freed, the region's tables charged to the image's job with v1.16's quota before any frame, vmo_map refused ERR_NO_RESOURCES at the quota; frames and address space measured before use and after cleanup (1024 maps of one VMO at the same address holding 2 tables at most, the region's 512 free slots whole again after a mapping wider than one slot), and the display service serving another client after 1100 surfaces and 1100 refused requests of one client; shown on CI in TST-M6-JOB-MEMORY (its map line) and TST-M5-CLIENT-LIMITS (its wear line); syscall.md v1.18 and display.md v1.15 (ADR-0019 item 14) state it; its mutants killed by the M6 gate",
    "test_ids": [
     "TST-M6-JOB-MEMORY",
+    "TST-M5-CLIENT-LIMITS",
     "TST-M6-MUTANTS",
     "TST-M0-005"
    ],
    "actions": [
     "جداول صفحات منطقة الخرائط وعناوينها (من جولة المراجعة الثانية لـWP-170 في 2026-11-21؛ قبل WP-171)",
     "test first: a test kernel case mapping and unmapping a 1 MiB VMO 1024 times in a new job's space, which today takes 513 frames (one PD and 512 PT) charged to no one; then a lab client sending 1100 CREATE_SURFACE of 4096x4096 with a duplicated 1 MiB VMO, then another client's valid request: today ERR ACCESS (a hypothesis until run)",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-21 (the manager): built test first by the kernel engineer on a scratch clone (scratch, never evidence): the map line failed against 119b66f7d (run 20261121T153447Z-119b66f7-001: maps=1024|same=0|held=0|peak=513|tables=513|charged=0) and TST-M5-CLIENT-LIMITS's wear failed on the old kernel (20261121T163053Z: churn_ok=1019, the region worn out after 1019 surfaces, other=ERR ACCESS); both pass after",
+    "2026-11-21 (the manager): design, with its options (rule 5): (A) reuse the freed slots and free emptied tables (closes the wear, leaves tables uncharged); (B) charge the tables only (bounds them, leaves the region to wear out); (C) both (chosen: the two halves of the red team's finding); displayd's size check before mapping not needed once (C) holds (no red run showed it; display.md part B frozen), left as defence in depth",
+    "2026-11-21 (the manager): the review round on e8e1c4e6d (the auditor and the red team, read only). Fixed: the mapping wider than one slot shown (k >= 2) with M478 and M479, the address space measured (slots before, at the most taken, after), the display service serving another client (TST-M5-CLIENT-LIMITS), M475 SECURITY, the contract written in full; M490 and M491 (one slot per mapping, the free run checked on one slot) registered after their scratch kills. Written as lines: the mid-map failure path and the CR3 reload (L-135), a stale address landing on a new mapping (L-136)",
+    "2026-11-21 (the manager): integrated and tested with WP-176 (see WP-176's line of this date); display.md takes v1.15 with ADR-0019 item 14 as its record (part A frozen), no owner decision",
+    "2026-11-21 budget (the manager): within the line of 120 calls for the engineer's work; over it with the review round and the integration",
+    "2026-11-21 activated (the manager): its dependency WP-170 is done"
    ]
   },
   {

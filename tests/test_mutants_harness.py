@@ -1684,7 +1684,8 @@ class KillEvidence(unittest.TestCase):
         }
         evidence = [tuple(subs) + (msg,) for _, _, subs, msg in want.values()]
         self.assertEqual(len(set(evidence)), len(evidence), "no two mutants share their evidence")
-        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.JOB_MEMORY in m[4]), sorted(want))
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.JOB_MEMORY in m[4]),
+                         sorted(set(want) | set(self.CHAN_MAP)))
         for msg in (Q, B, N, I):
             self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
         for mid, (path, security, subs, msg) in want.items():
@@ -1706,6 +1707,71 @@ class KillEvidence(unittest.TestCase):
         manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-jm.txt").read_text(encoding="utf-8")
         self.assertIn("\nsession /SYSTEM/LABSES.ELF - 3000 never 0 0 memer\n", manifest)
         self.assertIn("\nid=mem\nelf=/SYSTEM/APPS/MEM.ELF\n", (ROOT / "platform" / "pc-qemu" / "lab" / "mem.app").read_text(encoding="utf-8"))
+
+    # WP-176 (channels, messages, the image's read buffer) and WP-177 (the mapping region): the mutants
+    # M457 to M479 on TST-M6-JOB-MEMORY, with the file, SECURITY, and their evidence (exit 35 kills are
+    # known by the last line they reached, since the harness keeps the case's own lines only).
+    CHAN_MAP = {
+        "M457": ("kernel/src/syscall/mod.rs", True), "M458": ("kernel/src/syscall/mod.rs", True),
+        "M459": ("kernel/src/object/channel.rs", True), "M460": ("kernel/src/object/channel.rs", True),
+        "M461": ("kernel/src/object/channel.rs", True), "M462": ("kernel/src/object/channel.rs", True),
+        "M463": ("kernel/src/syscall/mod.rs", True), "M464": ("kernel/src/object/channel.rs", True),
+        "M465": ("kernel/src/object/channel.rs", True), "M466": ("kernel/src/object/channel.rs", True),
+        "M467": ("kernel/src/syscall/mod.rs", True), "M468": ("kernel/src/object/channel.rs", True),
+        "M469": ("kernel/src/loader/mod.rs", True), "M470": ("kernel/src/loader/mod.rs", True),
+        "M471": ("kernel/src/mm/addrspace.rs", True), "M472": ("kernel/src/mm/addrspace.rs", True),
+        "M473": ("kernel/src/mm/addrspace.rs", True), "M474": ("kernel/src/mm/addrspace.rs", True),
+        "M475": ("kernel/src/mm/addrspace.rs", True), "M476": ("kernel/src/mm/addrspace.rs", False),
+        "M477": ("kernel/src/mm/addrspace.rs", False), "M478": ("kernel/src/mm/addrspace.rs", True),
+        "M479": ("kernel/src/mm/addrspace.rs", True), "M490": ("kernel/src/mm/addrspace.rs", True),
+        "M491": ("kernel/src/mm/addrspace.rs", True),
+    }
+
+    def test_the_channel_and_map_expectations_are_pinned(self):
+        """WP-176 (syscall.md v1.17) and WP-177 (v1.18): M457 to M479, each anchor once in its kernel
+        file, declared on TST-M6-JOB-MEMORY alone, SECURITY as listed, stage M6; each known by exit 37
+        with fields of the case's lines and a failure message of the case occurring in ktest.rs, by a
+        panic (exit 35) and the last line it reached, or (M458) by the lab role's missing traces; no two
+        sharing their evidence. The case's chan, image_buf, heap_step, heap, chan_job, chan_end and map
+        lines are pinned."""
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.JOB_MEMORY)
+        for line in ("|ktest|job_memory|chan|channel=5|bytes=1|handles=1|both=2|empty=0|travel_clean=1|held=8|"
+                     "travel_loaded=0|read_back=5|closed_back=0|create_refused=1|write_refused=1|empty_given=1|back=0|",
+                     "|ktest|job_memory|heap_step|grow=NoMemory|", "|ktest|job_memory|heap_step|buffers=NoMemory|",
+                     "|ktest|job_memory|heap_step|image=K_E_IMAGE_NO_MEMORY|",
+                     "|ktest|job_memory|chan_job|load=OK 1|session=0x40|chans=1|clocks=1|pages=8192|back=0|",
+                     "|ktest|job_memory|chan_end|mgr_exit=0x0|processes_after=0|clean=1|charged_delta=0|"):
+            self.assertIn(line, case["required_markers"])
+        self.assertTrue(any(m.startswith("|ktest|job_memory|map|maps=1024|same=1|held=2|") for m in case["required_markers"]))
+        msgs = {mutants._JMCHAN, mutants._JMCYCLE, mutants._JMLEFT, mutants._JMIMGBUF, mutants._JMMAP, mutants._JMBACK}
+        for msg in msgs:
+            self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
+        evidence = [tuple(E[mid][self.JOB_MEMORY]) for mid in self.CHAN_MAP]
+        self.assertEqual(len(set(evidence)), len(evidence), "no two mutants share their evidence")
+        for mid, (path, security) in self.CHAN_MAP.items():
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], path)
+                self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(m[4], [self.JOB_MEMORY])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                subs = E[mid][self.JOB_MEMORY]
+                self.assertEqual(list(E[mid]), [self.JOB_MEMORY])
+                if subs[0] == "exit 37":
+                    self.assertIn(subs[-1], msgs)
+                    for sub in subs[1:-1]:
+                        self.assertFalse(any(sub in line for line in case["required_markers"]), sub)
+                elif subs[0] == "exit 35":
+                    self.assertEqual(len(subs), 2 if mid != "M457" else 3)
+                    self.assertTrue(any(subs[1] in line for line in case["required_markers"]) or "held=5" in subs[1], subs)
+                else:
+                    self.assertTrue(subs[0].startswith("missing markers ["), subs)
 
     LAUNCH_RATE = "TST-M6-LAUNCH-RATE"
 

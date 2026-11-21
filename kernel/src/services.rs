@@ -45,7 +45,9 @@ static BOOT_MANAGER: IrqSpinLock<Option<Manager>> = IrqSpinLock::new("svcmgr", N
 /// kernel resources and last the root job (syscall.md v1.13); the near end of the channel comes
 /// back in the `Manager`.
 pub fn spawn_manager() -> Result<Manager, &'static str> {
-    let image = crate::loader::read_image(MANAGER_IMAGE).map_err(|e| e.code())?;
+    // The kernel's own read: charged to the root, counted and never refused (WP-176).
+    let image = crate::loader::read_image(MANAGER_IMAGE, &crate::object::job::root())
+        .map_err(|e| e.code())?;
     let (ours, theirs) = channel::create();
     let object = Arc::new(ProcessObject::new());
     // Kernel resources for the services (ADR-0017): the manager routes them by type
@@ -145,6 +147,8 @@ pub fn request_with(
             Err(ChannelError::ShouldWait) => {}
             Err(ChannelError::PeerClosed) => reply = Some(Err("K_E_SVC_PEER_CLOSED")),
             Err(ChannelError::BufferTooSmall { .. }) => reply = Some(Err("K_E_SVC_REPLY_SIZE")),
+            // A read never grows a queue.
+            Err(ChannelError::NoMemory) => reply = Some(Err("K_E_SVC_WRITE")),
         }
         reply.is_some()
     });

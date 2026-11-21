@@ -317,6 +317,9 @@ fn hog(ch: u32, who: &[u8]) -> u64 {
 /// Traced `app:mem#<n>|vmo=<k>|err=<-e>|small_err=<-e>|spawn_err=<-e>|again=<0|1>|refill_err=<-e>`
 /// (an err 0 when nothing was refused); then waits on its boot channel, holding all of it.
 fn mem(ch: u32, who: &[u8]) -> u64 {
+    // WP-176: the boot channel of the child that is to be refused is made before the job fills,
+    // so the refusal is process_spawn's (its image's pages), not channel_create's.
+    let early = libnawah::channel_create();
     let mut big = [0u32; 64];
     let mut vmo = 0usize;
     let mut err = 0i64;
@@ -346,7 +349,12 @@ fn mem(ch: u32, who: &[u8]) -> u64 {
         libnawah::channel_create()
             .and_then(|(a, b)| libnawah::process_spawn(b"/SYSTEM/IDLE.ELF", &[b, a]))
     };
-    let spawn_err = spawn().err().unwrap_or(0);
+    let spawn_err = match early {
+        Ok((a, b)) => libnawah::process_spawn(b"/SYSTEM/IDLE.ELF", &[b, a])
+            .err()
+            .unwrap_or(0),
+        Err(e) => e,
+    };
     let mut again = 0u64;
     let mut refill_err = 0i64;
     if vmo > 0 {
@@ -389,6 +397,235 @@ fn mem(ch: u32, who: &[u8]) -> u64 {
     }
 }
 
+/// `app:<who>` and `|<field>=<v>` for each of `fields` (the absolute value), traced.
+fn trace_fields(who: &[u8], fields: &[(&[u8], i64)]) {
+    let mut t = [0u8; 128];
+    let mut at = 0;
+    let mut put = |t: &mut [u8; 128], s: &[u8]| {
+        let k = s.len().min(t.len() - at);
+        t[at..at + k].copy_from_slice(&s[..k]);
+        at += k;
+        at
+    };
+    put(&mut t, b"app:");
+    put(&mut t, &who[..who.len().min(16)]);
+    let mut num = [0u8; 20];
+    for &(field, v) in fields {
+        put(&mut t, field);
+        let n = put_num(&mut num, 0, v.unsigned_abs());
+        put(&mut t, &num[..n]);
+    }
+    libnawah::trace(&t[..at]);
+}
+
+/// The application `chan` of TST-M6-JOB-MEMORY (WP-176, syscall.md v1.17): what channels
+/// hold is charged to the job that wrote it. (1) A cycle of two channels: a1 is written through
+/// b0, then b1, whose queue now holds a1, through a0, which would close the cycle; a0 and b0 are
+/// closed, b1 kept; traced `app:chan#<n>|cycle=<-reply of the second write>` at once. (2) Spare
+/// channels T and K and a holder H; then channels, each filled through both ends with 4 KiB
+/// messages until ERR_SHOULD_WAIT and its two ends written in one message through H (through
+/// its other end once a side is full, then through a new holder), until a reply is neither 0 nor
+/// ERR_SHOULD_WAIT; (3) 4 KiB through T until refused; (4) through T a message of no bytes that
+/// carries k1, and whether k1 is still held; (5) channel_create; (6) an empty message through K.
+/// Traced `app:chan#<n>|err=<-e>|top_err=<-e>|handle_err=<-e>|kept=<0|1>|create_err=<-e>|empty=<-e>`;
+/// then waits on its boot channel, holding all of it.
+fn chan(ch: u32, who: &[u8]) -> u64 {
+    let cycle = match (libnawah::channel_create(), libnawah::channel_create()) {
+        (Ok((a0, a1)), Ok((b0, b1))) => {
+            let first = libnawah::channel_write(b0, &[], &[a1]);
+            let second = libnawah::channel_write(a0, &[], &[b1]);
+            libnawah::handle_close(a0);
+            libnawah::handle_close(b0);
+            if first == 0 {
+                second
+            } else {
+                99
+            }
+        }
+        _ => 98,
+    };
+    trace_fields(who, &[(b"|cycle=", cycle)]);
+    let buf = [0x5Au8; 4096];
+    let (t0, k0, k1, mut holder) = match (
+        libnawah::channel_create(),
+        libnawah::channel_create(),
+        libnawah::channel_create(),
+    ) {
+        (Ok((t0, _)), Ok((k0, k1)), Ok(h)) => (t0, k0, k1, h),
+        _ => return 0xE4,
+    };
+    let mut via_second = false;
+    let mut err = 0i64;
+    'fill: for _ in 0..4096 {
+        let (c0, c1) = match libnawah::channel_create() {
+            Ok(p) => p,
+            Err(e) => {
+                err = e;
+                break;
+            }
+        };
+        for c in [c0, c1] {
+            loop {
+                match libnawah::channel_write(c, &buf, &[]) {
+                    0 => {}
+                    libnawah::ERR_SHOULD_WAIT => break,
+                    e => {
+                        err = e;
+                        break 'fill;
+                    }
+                }
+            }
+        }
+        loop {
+            let via = if via_second { holder.1 } else { holder.0 };
+            match libnawah::channel_write(via, &[], &[c0, c1]) {
+                0 => break,
+                libnawah::ERR_SHOULD_WAIT if !via_second => via_second = true,
+                libnawah::ERR_SHOULD_WAIT => match libnawah::channel_create() {
+                    Ok(h) => {
+                        holder = h;
+                        via_second = false;
+                    }
+                    Err(e) => {
+                        err = e;
+                        break 'fill;
+                    }
+                },
+                e => {
+                    err = e;
+                    break 'fill;
+                }
+            }
+        }
+    }
+    let mut top_err = 0i64;
+    for _ in 0..64 {
+        let r = libnawah::channel_write(t0, &buf, &[]);
+        if r != 0 {
+            top_err = r;
+            break;
+        }
+    }
+    // Each refusal at the quota leaves the handle table as it was (counted by how many
+    // duplicates of k0 still fit in it).
+    let free0 = table_free(k0);
+    let create_err = libnawah::channel_create().err().unwrap_or(0);
+    let free1 = table_free(k0);
+    let handle_err = libnawah::channel_write(t0, &[], &[k1]);
+    let kept = i64::from(libnawah::handle_rights(k1) >= 0);
+    let free2 = table_free(k0);
+    let spawn_err = libnawah::process_spawn(b"/SYSTEM/IDLE.ELF", &[])
+        .err()
+        .unwrap_or(0);
+    let free3 = table_free(k0);
+    let empty = libnawah::channel_write(k0, &[], &[]);
+    trace_fields(
+        who,
+        &[
+            (b"|err=", err),
+            (b"|top_err=", top_err),
+            (b"|handle_err=", handle_err),
+            (b"|kept=", kept),
+            (b"|create_err=", create_err),
+            (b"|empty=", empty),
+        ],
+    );
+    // The holder's channels go, and their pages with them: then the next request of each kind
+    // succeeds (a channel, a write that carries k1, an IDLE child, waited for until it exits),
+    // and the job fills to its quota again.
+    libnawah::handle_close(holder.0);
+    libnawah::handle_close(holder.1);
+    let (next_create, next_write, next_spawn) = match libnawah::channel_create() {
+        Ok((n0, _)) => {
+            let w = libnawah::channel_write(n0, b"n", &[k1]);
+            let s = match libnawah::process_spawn(b"/SYSTEM/IDLE.ELF", &[]) {
+                Ok(p) => {
+                    for _ in 0..500 {
+                        if libnawah::process_status(p) != Err(libnawah::ERR_SHOULD_WAIT) {
+                            break;
+                        }
+                        let _ = libnawah::sleep(2);
+                    }
+                    0
+                }
+                Err(e) => e,
+            };
+            (0, w, s)
+        }
+        Err(e) => (e, 99, 99),
+    };
+    let mut refill_err = 0i64;
+    'refill: for _ in 0..4096 {
+        let (c0, c1) = match libnawah::channel_create() {
+            Ok(p) => p,
+            Err(e) => {
+                refill_err = e;
+                break;
+            }
+        };
+        for c in [c0, c1] {
+            loop {
+                match libnawah::channel_write(c, &buf, &[]) {
+                    0 => {}
+                    libnawah::ERR_SHOULD_WAIT => break,
+                    e => {
+                        refill_err = e;
+                        break 'refill;
+                    }
+                }
+            }
+        }
+    }
+    for _ in 0..64 {
+        if libnawah::channel_write(t0, &buf, &[]) != 0 {
+            break;
+        }
+    }
+    trace_fields(
+        who,
+        &[
+            (b"|spawn_err=", spawn_err),
+            (b"|create_left=", free0 - free1),
+            (b"|write_left=", free1 - free2),
+            (b"|spawn_left=", free2 - free3),
+            (b"|next_create=", next_create),
+            (b"|next_write=", next_write),
+            (b"|next_spawn=", next_spawn),
+            (b"|refill_err=", refill_err),
+        ],
+    );
+    let mut reply = [0u8; 128];
+    let mut hs = [0u32; 1];
+    loop {
+        if libnawah::channel_read(ch, &mut reply, &mut hs, true).is_err() {
+            return 0;
+        }
+    }
+}
+
+/// How many more handles the caller's table takes: duplicates of `h` until one is refused, all
+/// closed again (WP-176: a refused call must leave the table as it was).
+fn table_free(h: u32) -> i64 {
+    let rights = libnawah::handle_rights(h);
+    let mut dups = [0u32; 1024];
+    let mut n = 0;
+    if rights >= 0 {
+        while n < dups.len() {
+            match libnawah::handle_duplicate(h, rights as u32) {
+                Ok(d) => {
+                    dups[n] = d;
+                    n += 1;
+                }
+                Err(_) => break,
+            }
+        }
+    }
+    for &d in &dups[..n] {
+        libnawah::handle_close(d);
+    }
+    n as i64
+}
+
 /// The vouched session's side of TST-M6-JOB-MEMORY (WP-170): READY, BEGIN_SESSION; LAUNCH mem
 /// (#1), 600 ticks for it to fill its job; LAUNCH mem (#2), 600 ticks; LAUNCH clock (#3), which
 /// a manager short of memory would not start. 0x40 when each was answered as stated, `missed`'s
@@ -406,6 +643,28 @@ fn memer(ch: u32) -> u64 {
         (2, b"mem", 2, 600),
         (3, b"clock", 3, 0),
     ] {
+        let (num, n) = launch(ch, id, 0, &mut r);
+        if num != want {
+            return missed(step, num, &r[..n]);
+        }
+        let _ = libnawah::sleep(pause);
+    }
+    0x40
+}
+
+/// The vouched session's side of TST-M6-JOB-MEMORY's channels (WP-176): READY, BEGIN_SESSION;
+/// LAUNCH chan (#1), 600 ticks for it to fill its job through its channels; LAUNCH clock (#2),
+/// answered as when no job is full. 0x40 when each was answered as stated, `missed`'s code at
+/// the first step that saw another.
+fn chaner(ch: u32) -> u64 {
+    if libnawah::channel_write(ch, b"READY", &[]) != 0 {
+        return 0xE2;
+    }
+    if !begin(ch) {
+        return 0xE3;
+    }
+    let mut r = [0u8; 128];
+    for (step, id, want, pause) in [(1u8, &b"chan"[..], 1u64, 600u64), (2, b"clock", 2, 0)] {
         let (num, n) = launch(ch, id, 0, &mut r);
         if num != want {
             return missed(step, num, &r[..n]);
@@ -1008,6 +1267,9 @@ fn application(ch: u32, who: &[u8]) -> u64 {
     if who.starts_with(b"mem#") {
         return mem(ch, who);
     }
+    if who.starts_with(b"chan#") {
+        return chan(ch, who);
+    }
     if who.starts_with(b"peer#") {
         // WP-164: a child now, and another once `hog` has filled its own job.
         let spawn = || {
@@ -1473,6 +1735,7 @@ fn main() -> u64 {
         b"ender" => hold(ch, ender(ch)),
         b"bounder" => hold(ch, bounder(ch)),
         b"memer" => hold(ch, memer(ch)),
+        b"chaner" => hold(ch, chaner(ch)),
         b"rater" => hold(ch, rater(ch)),
         b"gater" => gater(ch),
         b"stayer" => hold(ch, stayer(ch)),

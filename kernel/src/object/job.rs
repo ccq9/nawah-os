@@ -102,6 +102,14 @@ pub struct Charge {
     pages: u64,
 }
 
+impl Charge {
+    /// The job these pages are charged to: an address space charges its mapping region's page
+    /// tables to the job its image was charged to (WP-177).
+    pub fn job(&self) -> &Arc<Job> {
+        &self.job
+    }
+}
+
 impl Drop for Charge {
     fn drop(&mut self) {
         self.job.pages.fetch_sub(self.pages, Ordering::SeqCst);

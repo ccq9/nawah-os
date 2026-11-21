@@ -173,6 +173,31 @@ impl Vmo {
         Self::alloc(size, Some(charge))
     }
 
+    /// Test-only (WP-177): a kernel VMO of `pages` zeroed frames past `VMO_MAX_BYTES`, charged
+    /// to no job, so the test kernel maps one wider than a 2 MiB slot of the mapping region (in
+    /// the system only the display's frame is).
+    #[cfg(feature = "ktest")]
+    pub fn new_wide(pages: u64) -> Option<Arc<Vmo>> {
+        let mut frames = Vec::new();
+        for _ in 0..pages {
+            let Some(f) = pmm::alloc_frame() else {
+                for f in frames {
+                    let _ = pmm::free_frame(f);
+                }
+                return None;
+            };
+            crate::mm::addrspace::zero_frame(f.0);
+            frames.push(f);
+        }
+        LIVE_VMOS.fetch_add(1, Ordering::Relaxed);
+        Some(Arc::new(Vmo {
+            frames,
+            owned: true,
+            frame: false,
+            charge: None,
+        }))
+    }
+
     fn alloc(size: u64, charge: Option<job::Charge>) -> Option<Arc<Vmo>> {
         if size == 0 || !size.is_multiple_of(4096) || size > VMO_MAX_BYTES {
             return None;

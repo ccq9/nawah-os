@@ -550,7 +550,7 @@
    "owner": "agent",
    "warning_signal": "kernel|panic عند نفاد الكومة، أو ERR_NO_RESOURCES في خدمات لا صلة لها بالتطبيق المستهلك",
    "mitigation": "حصة 8192 صفحة لكل مهمة غير الجذر وحد للنظام يبقي 64 MiB للنواة (WP-170، syscall.md v1.16): VMO وصور الإطلاق تُحسب قبل أخذ إطاراتها؛ ولا صورة تطبيق على قرص الإصدار قبل WP-171",
-   "response_plan": "الباقي: رسائل القنوات ومخزن الصورة في read_image وحلقات القنوات تأخذ من الكومة فوق الاحتياط (WP-176)، وجداول صفحات منطقة الخرائط لا تُحسب ولا تُحرَّر (WP-177)، كلاهما قبل WP-171 وWP-47؛ ومكدسات النواة وجداول الصورة غير محسوبة (L-121). ترتيب يستطيع المالك نقضه",
+   "response_plan": "WP-176 (channels, messages, the image's read buffer, no cycle) and WP-177 (the mapping region's tables and addresses) active together on 2026-11-21, before WP-171 and WP-47; kernel stacks and the image's own tables remain uncounted (L-121). An order the owner may overrule",
    "status": "open"
   }
  ]

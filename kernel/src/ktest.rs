@@ -1501,6 +1501,7 @@ extern "sysv64" fn blocking_reader(arg: u64) -> u64 {
             }
             Err(ChannelError::PeerClosed) => return 0xC105ED,
             Err(ChannelError::BufferTooSmall { .. }) => return 0xBAD1,
+            Err(ChannelError::NoMemory) => return 0xBAD2,
         }
     }
 }
@@ -5844,6 +5845,152 @@ fn job_memory() -> ! {
         )
     };
     kprintln!("OSX|{}|ktest|job_memory|image|{}|", BUILD_ID, image_line);
+    // The mapping region (WP-177): a 1 MiB VMO mapped and unmapped 1024 times in the space of a
+    // new job, whose page at USER_BASE stands for an image (one page charged and held, so the
+    // space is that job's). Each mapping takes its place again, the page table a mapping emptied
+    // is freed, and the region's tables are charged to the job while they stand: two (the page
+    // directory and one page table) while a mapping lives, one once it is gone. Read here,
+    // checked after every check above, so their failures are told first.
+    let map_line = {
+        let job = Job::new_child(&root()).unwrap_or_else(|_| fail("no job for the mappings"));
+        let frames0 = pmm::stats().free_frames;
+        let Ok(mut us) = UserSpace::new() else {
+            fail("UserSpace::new failed")
+        };
+        if us
+            .map_new_page(USER_BASE, paging::WRITE | paging::NX)
+            .is_err()
+        {
+            fail("no page for the mappings' space")
+        }
+        let Some(image) = job.charge(1) else {
+            fail("no charge for the mappings' space")
+        };
+        us.hold(image);
+        let (Some(vmo), Some(vmo2)) = (Vmo::new_in(1 << 20, &job), Vmo::new_in(1 << 20, &job))
+        else {
+            fail("no VMO for the mappings")
+        };
+        let base = job.pages();
+        let over = || job.pages() as i64 - base as i64;
+        // The region's free 2 MiB slots before any mapping, at the most taken, and once every
+        // mapping is gone; a slot is told by its number from MAP_BASE (-1: refused). Numbers
+        // only until the frame count below, so no string holds a heap page then.
+        let slots_before = us.free_slots();
+        let mut slots_min = slots_before;
+        let slot = |r: &Result<u64, addrspace::AsError>| match r {
+            Ok(a) => (a.saturating_sub(addrspace::MAP_BASE) / paging::PAGE_2M) as i64,
+            Err(_) => -1,
+        };
+        let (mut maps, mut first, mut same, mut held, mut peak) = (0u32, None, true, -1i64, 0u64);
+        for _ in 0..1024 {
+            let Ok(a) = us.map_vmo(vmo.clone(), true, true) else {
+                continue;
+            };
+            maps += 1;
+            same &= *first.get_or_insert(a) == a;
+            if maps == 1 {
+                held = over();
+            }
+            peak = peak.max(us.region_tables());
+            slots_min = slots_min.min(us.free_slots());
+            let _ = us.unmap_vmo(a);
+        }
+        let tables = us.region_tables();
+        let charged = over();
+        let more = match us.map_vmo(vmo.clone(), true, true) {
+            Ok(a) => us.unmap_vmo(a).is_ok(),
+            Err(_) => false,
+        };
+        // Two live mappings: two places, each mapped, a page table each.
+        let pair = (
+            us.map_vmo(vmo.clone(), true, true),
+            us.map_vmo(vmo2.clone(), false, true),
+        );
+        let two_held = over();
+        slots_min = slots_min.min(us.free_slots());
+        let two = match pair {
+            (Ok(a), Ok(b)) => a != b && us.flags_of(a).is_some() && us.flags_of(b).is_some(),
+            _ => false,
+        };
+        for a in [pair.0, pair.1].into_iter().flatten() {
+            let _ = us.unmap_vmo(a);
+        }
+        // A VMO wider than one slot (513 pages, two slots, as only the display's frame is in the
+        // system) and a 1 MiB one beside it: slots 0-1 and 2, a page table per slot charged
+        // (the directory's page besides: 4). Once the wide one goes its two tables and their
+        // charge go (2 left), a 1 MiB mapping takes slot 0 again, and the wide one, mapped
+        // again, the lowest two free slots in a row: 3-4 (slot 1 alone is too narrow).
+        let wide_vmo = Vmo::new_wide(513).unwrap_or_else(|| fail("no wide VMO for the mappings"));
+        let wide = us.map_vmo(wide_vmo.clone(), true, true);
+        let beside = us.map_vmo(vmo.clone(), true, true);
+        let (wide_tables, wide_held) = (us.region_tables(), over());
+        if let Ok(a) = wide {
+            let _ = us.unmap_vmo(a);
+        }
+        let (gone_tables, gone_held) = (us.region_tables(), over());
+        let refill = us.map_vmo(vmo2.clone(), true, true);
+        let rewide = us.map_vmo(wide_vmo.clone(), true, true);
+        slots_min = slots_min.min(us.free_slots());
+        let at = [slot(&wide), slot(&beside), slot(&refill), slot(&rewide)];
+        for a in [beside, refill, rewide].into_iter().flatten() {
+            let _ = us.unmap_vmo(a);
+        }
+        // Every mapping gone: the region whole again, and a new mapping at its lowest slot.
+        let slots_after = us.free_slots();
+        let reuse = us.map_vmo(vmo.clone(), true, true);
+        let reuse_at = slot(&reuse);
+        if let Ok(a) = reuse {
+            let _ = us.unmap_vmo(a);
+        }
+        // The job at its quota: the mapping, which needs one more page table, is refused and
+        // takes no table.
+        let fill = job.charge(JOB_PAGES_MAX.saturating_sub(job.pages()));
+        let quota = match us.map_vmo(vmo.clone(), true, true) {
+            Ok(a) => {
+                let _ = us.unmap_vmo(a);
+                "OK"
+            }
+            Err(e) => e.code(),
+        };
+        let quota = if fill.is_some() { quota } else { "NOFILL" };
+        let quota_tables = us.region_tables();
+        drop(fill);
+        let _ = us.destroy();
+        drop((vmo, vmo2, wide_vmo));
+        let back = job.pages();
+        let delta = frames0 as i64 - pmm::stats().free_frames as i64;
+        drop(job);
+        alloc::format!(
+            "maps={}|same={}|held={}|peak={}|tables={}|charged={}|more={}|two={}|two_held={}|wide={}|beside={}|wide_tables={}|wide_held={}|wide_gone_tables={}|wide_gone_held={}|refill={}|rewide={}|slots_before={}|slots_min={}|slots_after={}|reuse={}|quota={}|quota_tables={}|back={}|frames_delta={}",
+            maps,
+            u8::from(same && maps > 0),
+            held,
+            peak,
+            tables,
+            charged,
+            u8::from(more),
+            u8::from(two),
+            two_held,
+            at[0],
+            at[1],
+            wide_tables,
+            wide_held,
+            gone_tables,
+            gone_held,
+            at[2],
+            at[3],
+            slots_before,
+            slots_min,
+            slots_after,
+            reuse_at,
+            quota,
+            quota_tables,
+            back,
+            delta
+        )
+    };
+    kprintln!("OSX|{}|ktest|job_memory|map|{}|", BUILD_ID, map_line);
     let charged0 = jobs::charged();
     let h = SvcHarness::start(name, b"/SYSTEM/SVC-JM.TXT");
     let (lines, session) = session_held(&h, sched::ticks() + 20_000, |_| true);
@@ -5873,6 +6020,12 @@ fn job_memory() -> ! {
     let children = sched::live_named(b"IDLE.ELF").1;
     let clocks = sched::live_named(b"CLOCK.ELF").1;
     // The first mem's job ends, as job_kill would: its pages come back, the second's stay.
+    // Since WP-176 the manager's boot channel of each application is charged to the root, and
+    // the manager closes it once it sees the exit, at a time of its own: the root's pages are
+    // read too and left out of what came back, once the manager has closed its three handles of
+    // that application (process, boot channel, job), so the count is the same on every run.
+    let (mgr0, root0) = (mgr_handles(&h), root().pages());
+    let mut mgr_closed = false;
     let before = jobs::charged();
     if let Some(&j) = ids.first() {
         sched::kill_job_id(j, 0x2_0000);
@@ -5886,8 +6039,13 @@ fn job_memory() -> ! {
                     .and_then(Option::as_ref)
                     .is_none_or(|job| job.processes() == 0)
         });
+        mgr_closed = sched::poll_until(sched::ticks() + 5000, || mgr_handles(&h) <= mgr0 - 3);
     }
-    let freed = before.saturating_sub(jobs::charged());
+    // Signed: the root's pages may only have come back here, never grown.
+    let root_back = root0 as i64 - root().pages() as i64;
+    let freed = before
+        .saturating_sub(jobs::charged())
+        .saturating_sub(root_back.max(0) as u64);
     let (first_back, second_after) = (pages(0), pages(1));
     let second_live = ids.get(1).map_or(0, |&j| sched::live_in_job(j));
     // The second's children never exit, and the manager does not end its applications' jobs when
@@ -5916,6 +6074,12 @@ fn job_memory() -> ! {
         first_back,
         second_after,
         second_live
+    );
+    kprintln!(
+        "OSX|{}|ktest|job_memory|first_exit|mgr_closed={}|root_back={}|",
+        BUILD_ID,
+        u8::from(mgr_closed),
+        root_back
     );
     let (mgr_exit, procs, frames0, clean) = h.finish();
     let charged_delta = jobs::charged() as i64 - charged0 as i64;
@@ -5954,7 +6118,294 @@ fn job_memory() -> ! {
     if mgr_exit != 0 || procs != 0 || !clean || charged_delta != 0 {
         fail("manager or applications left something behind")
     }
+    if map_line
+        != "maps=1024|same=1|held=2|peak=2|tables=1|charged=1|more=1|two=1|two_held=3|wide=0|beside=2|wide_tables=4|wide_held=4|wide_gone_tables=2|wide_gone_held=2|refill=0|rewide=3|slots_before=512|slots_min=508|slots_after=512|reuse=0|quota=K_E_AS_QUOTA|quota_tables=1|back=0|frames_delta=0"
+    {
+        fail("a mapping's place or page tables are not given back, or its tables are not charged to its job")
+    }
+    if !mgr_closed || root_back < 0 {
+        fail("the manager did not close an ended application's handles in time, or the root's pages grew")
+    }
     drop((lines, load));
+    // WP-176: what channels hold, after every check above (so the mutants of WP-170 keep their
+    // evidence). A queue's growth with no frame left: 32 messages fill its first 32 places, every
+    // frame is taken, the 33rd write is refused, not a panic, and is taken once the frames are back.
+    // The charges themselves, as channel_create and channel_write take them: a channel, then
+    // messages written into it, one carrying an end of the kernel's channel behind a message of
+    // bytes, read back, then one carrying an end of a second channel whose own queue holds a
+    // message; every page back once the ends are gone; refusals at the quota.
+    let chan_line = {
+        let job = Job::new_child(&root()).unwrap_or_else(|_| fail("no job for the channels"));
+        let made = channel::create_in(&job);
+        let channel_pages = job.pages();
+        let cost = channel::message_pages;
+        let costs = (cost(1, 0), cost(0, 1), cost(4096, 1), cost(0, 0));
+        let msg = |len: usize, handles: Vec<Entry>| Message {
+            bytes: alloc::vec![0x5A; len],
+            handles,
+        };
+        let end = |ep: Arc<Endpoint>| Entry {
+            object: Object::Channel(ep),
+            rights: Rights::CHANNEL_DEFAULT,
+        };
+        // As channel_write: charged first, then queued with its charge.
+        let put = |via: &Endpoint, m: Message| {
+            let charge = channel::charge_message(&job, m.bytes.len(), m.handles.len());
+            match (charge, via.reserve()) {
+                (Some(c), Ok(slot)) => slot.commit(m, c).is_empty(),
+                _ => false,
+            }
+        };
+        let mut fields = (0u8, 0u64, 0u8, 0u64, 0u64, 0u64);
+        if let Some((x, y)) = made {
+            let (k0, k1) = channel::create();
+            let first = put(&x, msg(1, Vec::new()));
+            let travel_clean = y.may_travel();
+            let second = put(&x, msg(4096, alloc::vec![end(k0)]));
+            let held = job.pages();
+            let travel_loaded = y.may_travel();
+            let read = (0..2).all(|_| y.read(4096, 4, None).is_ok());
+            let read_back = job.pages();
+            let (n0, n1) = channel::create_in(&job).unwrap_or_else(|| fail("no second channel"));
+            let inner = put(&n1, msg(16, Vec::new()));
+            let outer = put(&x, msg(8, alloc::vec![end(n0)]));
+            drop(y);
+            drop((n1, x, k1));
+            fields = (
+                u8::from(first && second && read && inner && outer && travel_clean),
+                held,
+                u8::from(travel_loaded),
+                read_back,
+                job.pages(),
+                0,
+            );
+        }
+        let hold = job.charge(JOB_PAGES_MAX - 4);
+        let create_refused = channel::create_in(&job).is_none();
+        let top = job.charge(4);
+        let write_refused = channel::charge_message(&job, 1, 0).is_none();
+        let empty_given = matches!(channel::charge_message(&job, 0, 0), Some(None));
+        drop((hold, top));
+        fields.5 = job.pages();
+        alloc::format!(
+            "channel={}|bytes={}|handles={}|both={}|empty={}|travel_clean={}|held={}|travel_loaded={}|read_back={}|closed_back={}|create_refused={}|write_refused={}|empty_given={}|back={}",
+            channel_pages,
+            costs.0,
+            costs.1,
+            costs.2,
+            costs.3,
+            fields.0,
+            fields.1,
+            fields.2,
+            fields.3,
+            fields.4,
+            u8::from(create_refused),
+            u8::from(write_refused),
+            u8::from(empty_given),
+            fields.5
+        )
+    };
+    kprintln!("OSX|{}|ktest|job_memory|chan|{}|", BUILD_ID, chan_line);
+    // The image's read buffer (WP-176): charged to the reading job for its life (IDLE's pages),
+    // refused K_E_IMAGE_QUOTA with the job's pages unchanged when one page short, and once the
+    // room is back the next launch of that image into the job starts and exits; all back after.
+    let image_buf_line = {
+        let path = b"/SYSTEM/IDLE.ELF";
+        let size = crate::fs::vfs::open(path, crate::fs::vfs::O_READ)
+            .map_or(0, |f| f.lock().node.lock().size as u64);
+        let job = Job::new_child(&root()).unwrap_or_else(|_| fail("no job for the image"));
+        let buffer_pages = match crate::loader::read_image(path, &job) {
+            Ok(img) => {
+                let p = job.pages();
+                drop(img);
+                p
+            }
+            Err(_) => u64::MAX,
+        };
+        let buffer_back = job.pages();
+        let hold = job.charge((JOB_PAGES_MAX + 1).saturating_sub(buffer_pages));
+        let held_before = job.pages();
+        let near = match crate::loader::read_image(path, &job) {
+            Ok(_) => "Ok",
+            Err(e) => e.code(),
+        };
+        let unchanged = job.pages() == held_before;
+        drop(hold);
+        let launched = match crate::loader::read_image(path, &job) {
+            Ok(img) => {
+                let object = Arc::new(crate::object::process::ProcessObject::new_in(job.clone()));
+                match crate::user::spawn_elf_with(&img, 1, Vec::new(), object) {
+                    Ok(pid) => {
+                        drop(img);
+                        sched::kill_process(pid, 0x2_0000);
+                        sched::wait_process(pid).is_some()
+                    }
+                    Err(_) => false,
+                }
+            }
+            Err(_) => false,
+        };
+        alloc::format!(
+            "as_size={}|buffer_back={}|near={}|unchanged={}|launched={}|back={}|buffer_pages={}",
+            u8::from(size > 0 && buffer_pages == size.div_ceil(4096)),
+            buffer_back,
+            near,
+            u8::from(unchanged),
+            u8::from(launched),
+            job.pages(),
+            buffer_pages
+        )
+    };
+    kprintln!(
+        "OSX|{}|ktest|job_memory|image_buf|{}|",
+        BUILD_ID,
+        image_buf_line
+    );
+    let heap_line = {
+        let idle = crate::fs::vfs::open(b"/SYSTEM/IDLE.ELF", crate::fs::vfs::O_READ).ok();
+        let (a, b) = channel::create();
+        let empty = || Message {
+            bytes: Vec::new(),
+            handles: Vec::new(),
+        };
+        let filled = (0..32).all(|_| a.write(empty()).is_ok());
+        let frames0 = pmm::stats().free_frames;
+        let mut head: u64 = 0;
+        while let Some(f) = pmm::alloc_frame() {
+            pmm::link_frame(f, head);
+            head = f.0;
+        }
+        // Kept as they came: naming them would allocate while no frame is left. The buffers of
+        // a message as channel_write takes them are refused too.
+        // Each step's result is named by a &'static str and printed at once (kprintln writes
+        // its arguments to the serial port, no heap), so a step that stops the kernel is known
+        // by the last step line before it.
+        let grow = match a.write(empty()) {
+            Ok(()) => "Ok",
+            Err(ChannelError::NoMemory) => "NoMemory",
+            Err(_) => "other",
+        };
+        kprintln!("OSX|{}|ktest|job_memory|heap_step|grow={}|", BUILD_ID, grow);
+        let buffers =
+            match channel::message_buffers(channel::MSG_MAX_BYTES, channel::MSG_MAX_HANDLES) {
+                Ok(_) => "Ok",
+                Err(ChannelError::NoMemory) => "NoMemory",
+                Err(_) => "other",
+            };
+        kprintln!(
+            "OSX|{}|ktest|job_memory|heap_step|buffers={}|",
+            BUILD_ID,
+            buffers
+        );
+        // And an image's buffer, its file opened before (the root's charge is never refused).
+        let image = match idle
+            .as_ref()
+            .map(|f| crate::loader::read_open_image(f, &root()))
+        {
+            Some(Ok(_)) => "Ok",
+            Some(Err(e)) => e.code(),
+            None => "unopened",
+        };
+        kprintln!(
+            "OSX|{}|ktest|job_memory|heap_step|image={}|",
+            BUILD_ID,
+            image
+        );
+        while head != 0 {
+            let f = pmm::Frame(head);
+            head = pmm::read_link(f);
+            let _ = pmm::free_frame(f);
+        }
+        // Every frame taken is back: the refused growth kept none.
+        let delta = frames0 as i64 - pmm::stats().free_frames as i64;
+        drop(idle);
+        let grown = a.write(empty()).is_ok();
+        drop((a, b));
+        alloc::format!(
+            "filled={}|grow={}|buffers={}|image={}|grown={}|frames_delta={}",
+            u8::from(filled),
+            grow,
+            buffers,
+            image,
+            u8::from(grown),
+            delta
+        )
+    };
+    kprintln!("OSX|{}|ktest|job_memory|heap|{}|", BUILD_ID, heap_line);
+    // Then the lab manifest SVC-JC.TXT: the vouched session launches `chan`, which fills its own
+    // job through channel queues until refused, and `clock`, answered after it. The chan job's
+    // own pages are read (not the system's count, which the manager's boot channels move on the
+    // root's side at times the test does not see), then once its process is reaped.
+    let charged1 = jobs::charged();
+    let h2 = SvcHarness::start(name, b"/SYSTEM/SVC-JC.TXT");
+    let (lines2, session2) = session_held(&h2, sched::ticks() + 20_000, |_| true);
+    let settled2 = |img: &[u8], k: usize| {
+        let (a, n) = sched::live_named(img);
+        n == k && a[..n].iter().all(|p| p.waiting)
+    };
+    sched::poll_until(sched::ticks() + 5000, || {
+        settled2(b"CHAN.ELF", 1) && settled2(b"CLOCK.ELF", 1)
+    });
+    let chan_jobs: Vec<u64> = {
+        let (a, n) = sched::live_named(b"CHAN.ELF");
+        a[..n].iter().map(|p| p.job).collect()
+    };
+    let chan_job = chan_jobs.first().and_then(|&j| sched::job_by_id(j));
+    let chan_pages = chan_job.as_ref().map_or(u64::MAX, |j| j.pages());
+    let clocks2 = sched::live_named(b"CLOCK.ELF").1;
+    if let Some(&j) = chan_jobs.first() {
+        sched::kill_job_id(j, 0x2_0000);
+        sched::poll_until(sched::ticks() + 5000, || {
+            sched::live_in_job(j) == 0 && chan_job.as_ref().is_none_or(|job| job.processes() == 0)
+        });
+    }
+    let chan_back = chan_job.as_ref().map_or(u64::MAX, |j| j.pages());
+    let load2 = h2.load_reply.clone();
+    kprintln!(
+        "OSX|{}|ktest|job_memory|chan_job|load={}|session={:#x}|chans={}|clocks={}|pages={}|back={}|",
+        BUILD_ID,
+        load2,
+        session2,
+        chan_jobs.len(),
+        clocks2,
+        chan_pages,
+        chan_back
+    );
+    drop((chan_job, chan_jobs));
+    let (mgr_exit2, procs2, _, clean2) = h2.finish();
+    let charged_delta2 = jobs::charged() as i64 - charged1 as i64;
+    kprintln!(
+        "OSX|{}|ktest|job_memory|chan_end|mgr_exit={:#x}|processes_after={}|clean={}|charged_delta={}|",
+        BUILD_ID,
+        mgr_exit2,
+        procs2,
+        u8::from(clean2),
+        charged_delta2
+    );
+    if chan_line
+        != "channel=5|bytes=1|handles=1|both=2|empty=0|travel_clean=1|held=8|travel_loaded=0|read_back=5|closed_back=0|create_refused=1|write_refused=1|empty_given=1|back=0"
+    {
+        fail("a channel or a message is not charged to its writer's job")
+    }
+    if !image_buf_line
+        .starts_with("as_size=1|buffer_back=0|near=K_E_IMAGE_QUOTA|unchanged=1|launched=1|back=0|")
+    {
+        fail("an image's read buffer is not charged to its job, or a launch after its refusal failed")
+    }
+    if heap_line != "filled=1|grow=NoMemory|buffers=NoMemory|image=K_E_IMAGE_NO_MEMORY|grown=1|frames_delta=0" {
+        fail("a queue's growth is not fallible")
+    }
+    if load2 != "OK 1" || session2 != 0x40 || clocks2 != 1 || chan_pages != JOB_PAGES_MAX {
+        fail("a job's channels are not charged to it")
+    }
+    if chan_back != 0 {
+        fail("a cycle of channels was let form, or a channel's charge did not come back")
+    }
+    if mgr_exit2 != 0 || procs2 != 0 || !clean2 || charged_delta2 != 0 {
+        fail("the channels' manager or applications left something behind")
+    }
+    // The lines of this part were made after the manager's first start: gone before the balance.
+    drop((lines2, load2, chan_line, heap_line, image_buf_line));
     svc_balance(name, frames0)
 }
 
@@ -12300,6 +12751,78 @@ fn client_limits() -> ! {
         String::from(if r.starts_with("OK ") { "OK" } else { &r })
     };
     let (a, b, c, d) = (&clients[0], &clients[1], &clients[2], &clients[3]);
+    // 0. The compositor's mapping region (WP-177): client a creates a 512x512 surface on one
+    // 1 MiB VMO and destroys it, 1100 times, then sends CREATE_SURFACE 4096 4096 on that VMO
+    // 1100 times, each refused ERR INVALID once the compositor has mapped it and read its size.
+    // Either way each request maps 1 MiB in the compositor, 1100 MiB in all, past the 1 GiB of
+    // its region, which before WP-177 was handed out upwards and never given back; then client
+    // b's valid CREATE_SURFACE of 512x512 on its own 1 MiB VMO is answered OK (and its surface
+    // destroyed, so the steps below start as before). Read here, checked after every check below.
+    let wear = {
+        let big = Vmo::new(1 << 20).unwrap_or_else(|| fail("no VMO for the wear"));
+        let dup = || {
+            alloc::vec![Entry {
+                object: Object::Vmo(big.clone()),
+                rights: Rights(Rights::READ.0 | Rights::MAP.0 | Rights::TRANSFER.0),
+            }]
+        };
+        let mut first_other: Option<String> = None;
+        let mut churn_ok = 0u32;
+        for _ in 0..1100 {
+            let r = drequest(a, b"CREATE_SURFACE 512 512", dup(), &mut ev);
+            let gone = match r.strip_prefix("OK ") {
+                Some(sid) => drequest(
+                    a,
+                    alloc::format!("DESTROY_SURFACE {}", sid).as_bytes(),
+                    Vec::new(),
+                    &mut ev,
+                ),
+                None => r,
+            };
+            if gone == "OK" {
+                churn_ok += 1;
+            } else if first_other.is_none() {
+                first_other = Some(gone);
+            }
+        }
+        let mut invalid = 0u32;
+        for _ in 0..1100 {
+            let r = drequest(a, b"CREATE_SURFACE 4096 4096", dup(), &mut ev);
+            if r == "ERR INVALID" {
+                invalid += 1;
+            } else if first_other.is_none() {
+                first_other = Some(r);
+            }
+        }
+        // Client b's surface is 1 MiB too, so a region with less than that left refuses it.
+        let (b_vmo, b_entry) = kernel_surface(512, 512, format, 0x808080);
+        let r = drequest(b, b"CREATE_SURFACE 512 512", alloc::vec![b_entry], &mut ev);
+        let sid = String::from(r.strip_prefix("OK ").unwrap_or(&r));
+        let other = if sid.parse::<u32>().is_ok() {
+            let r = drequest(
+                b,
+                alloc::format!("DESTROY_SURFACE {}", sid).as_bytes(),
+                Vec::new(),
+                &mut ev,
+            );
+            if r == "OK" {
+                String::from("OK")
+            } else {
+                alloc::format!("destroy:{}", r)
+            }
+        } else {
+            sid
+        };
+        drop((big, b_vmo));
+        alloc::format!(
+            "churn=1100|churn_ok={}|refused=1100|invalid={}|first_other={}|other={}",
+            churn_ok,
+            invalid,
+            first_other.as_deref().unwrap_or("-"),
+            other
+        )
+    };
+    kprintln!("OSX|{}|ktest|client_limits|wear|{}|", BUILD_ID, wear);
     // 1. One client: 8 surfaces, then the 9th is refused.
     let sa: Vec<String> = (0..8).map(|_| surface(a, &mut ev)).collect();
     let ninth = surface(a, &mut ev);
@@ -12352,7 +12875,11 @@ fn client_limits() -> ! {
     {
         fail("clients other than the session took the session's reserve")
     }
+    if wear != "churn=1100|churn_ok=1100|refused=1100|invalid=1100|first_other=-|other=OK" {
+        fail("a client's surfaces or refused requests wore out the compositor's mapping region, or another client was not served")
+    }
     drop((
+        wear,
         sa,
         ninth,
         wa,
@@ -13928,13 +14455,14 @@ fn hold_fail_closed() -> ! {
     }
     let obj0 = object::stats();
     let frames0 = pmm::stats().free_frames;
-    let image = match crate::loader::read_image(b"/SYSTEM/DISPLAYD.ELF") {
-        Ok(i) => i,
-        Err(e) => {
-            kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
-            fail("the compositor's image is not on the volume")
-        }
-    };
+    let image =
+        match crate::loader::read_image(b"/SYSTEM/DISPLAYD.ELF", &crate::object::job::root()) {
+            Ok(i) => i,
+            Err(e) => {
+                kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
+                fail("the compositor's image is not on the volume")
+            }
+        };
     // (b): longer than the compositor's 1024-byte buffer, shorter than a message's 4096.
     let mut long = Vec::from(&b"display ready 0 1 1 - -\n"[..]);
     let mut k = 0;
@@ -14073,13 +14601,14 @@ fn displayd_boot_loop() -> ! {
     }
     let obj0 = object::stats();
     let frames0 = pmm::stats().free_frames;
-    let image = match crate::loader::read_image(b"/SYSTEM/DISPLAYD.ELF") {
-        Ok(i) => i,
-        Err(e) => {
-            kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
-            fail("the compositor's image is not on the volume")
-        }
-    };
+    let image =
+        match crate::loader::read_image(b"/SYSTEM/DISPLAYD.ELF", &crate::object::job::root()) {
+            Ok(i) => i,
+            Err(e) => {
+                kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
+                fail("the compositor's image is not on the volume")
+            }
+        };
     let listing = &b"auth ready 0 1 1 - -\ninput ready 0 1 1 - -\ndisplay ready 0 1 1 - -\n"[..];
     let plain = HoldInject {
         test: name,
@@ -15057,13 +15586,14 @@ fn purge_fail_closed() -> ! {
     }
     let obj0 = object::stats();
     let frames0 = pmm::stats().free_frames;
-    let image = match crate::loader::read_image(b"/SYSTEM/SESSIOND.ELF") {
-        Ok(i) => i,
-        Err(e) => {
-            kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
-            fail("the session's image is not on the volume")
-        }
-    };
+    let image =
+        match crate::loader::read_image(b"/SYSTEM/SESSIOND.ELF", &crate::object::job::root()) {
+            Ok(i) => i,
+            Err(e) => {
+                kprintln!("OSX|{}|ktest|{}|image_error={}", BUILD_ID, name, e.code());
+                fail("the session's image is not on the volume")
+            }
+        };
     let deps: &[u8] = b"auth ready 0 1 1 1 -\ninput ready 0 1 1 1 -\ndisplay ready 0 1 1 1 -\n";
     let with = |session: &[u8]| {
         let mut v = Vec::from(deps);
@@ -15687,7 +16217,7 @@ fn jobs_phases_ok(code: u64) -> u32 {
 fn job_spawn_dead() -> bool {
     use crate::object::job::{self, Job};
     use crate::object::process::ProcessObject;
-    let image = match crate::loader::read_image(b"/SYSTEM/IDLE.ELF") {
+    let image = match crate::loader::read_image(b"/SYSTEM/IDLE.ELF", &crate::object::job::root()) {
         Ok(i) => i,
         Err(e) => {
             kprintln!(
@@ -15748,7 +16278,7 @@ fn job_kill_all() -> ! {
         fail("volume did not mount")
     }
     let dead_ok = job_spawn_dead();
-    let image = match crate::loader::read_image(b"/SYSTEM/JOBS.ELF") {
+    let image = match crate::loader::read_image(b"/SYSTEM/JOBS.ELF", &crate::object::job::root()) {
         Ok(i) => i,
         Err(e) => {
             kprintln!(
