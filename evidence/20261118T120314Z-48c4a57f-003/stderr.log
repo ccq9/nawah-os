@@ -1,0 +1,2 @@
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.00s
+     Running tests/registry.rs (target/x86_64-unknown-linux-gnu/release/deps/registry-f0dcdb34a923f6cc)

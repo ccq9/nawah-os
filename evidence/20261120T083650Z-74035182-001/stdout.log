@@ -1,0 +1,293 @@
+$ python3 -I tests/mutants.py --target pc-qemu --stage M5 --report build/mutants-m5-report.json
+M82: killed by TST-M5-NARRATOR-AUTHORITY [23.1s] (SECURITY: any client may become the narrator (WP-43 M2 undone))
+  TST-M5-NARRATOR-AUTHORITY: exit 37 != expected 33 run=20261120T083709Z-74035182-001
+    OSX|000000000052|ktest|start|name=narrator_authority
+    OSX|000000000052|ktest|narrator_authority|services=5|ready=1
+    OSX|000000000052|ktest|narrator_authority|asked=OK|again=OK
+    OSX|000000000052|ktest|fail|a client the manifest does not name took the narrator role
+M83: killed by TST-M5-CLIENT-LIMITS [16.5s] (SECURITY: a client gets one surface more than its share (WP-43 S-7, boundary))
+  TST-M5-CLIENT-LIMITS: exit 37 != expected 33 run=20261120T083725Z-74035182-001
+    OSX|000000000053|ktest|start|name=client_limits
+    OSX|000000000053|ktest|client_limits|surfaces_a=8|ninth=9|windows_a=4|fifth=ERR LIMIT|windows_rest=10|reserve_window=ERR FULL|surfaces_rest=10|reserve_surface=ERR FULL
+    OSX|000000000053|ktest|fail|one client went past its own limit of surfaces or windows
+M84: killed by TST-M5-CLIENT-LIMITS [16.4s] (SECURITY: no per-client window limit (WP-43 S-7 undone))
+  TST-M5-CLIENT-LIMITS: exit 37 != expected 33 run=20261120T083742Z-74035182-001
+    OSX|000000000054|ktest|start|name=client_limits
+    OSX|000000000054|ktest|client_limits|surfaces_a=8|ninth=ERR LIMIT|windows_a=4|fifth=OK|windows_rest=9|reserve_window=ERR FULL|surfaces_rest=11|reserve_surface=ERR FULL
+    OSX|000000000054|ktest|fail|one client went past its own limit of surfaces or windows
+M85: killed by TST-M5-CLIENT-LIMITS [16.5s] (SECURITY: no surfaces or windows kept for the session (WP-43 S-7))
+  TST-M5-CLIENT-LIMITS: exit 37 != expected 33 run=20261120T083758Z-74035182-001
+    OSX|000000000055|ktest|start|name=client_limits
+    OSX|000000000055|ktest|client_limits|surfaces_a=8|ninth=ERR LIMIT|windows_a=4|fifth=ERR LIMIT|windows_rest=10|reserve_window=OK|surfaces_rest=11|reserve_surface=46
+    OSX|000000000055|ktest|fail|clients other than the session took the session's reserve
+M86: killed by TST-M5-LIST-HASH-HELD [16.8s] (SECURITY: LIST hashes a held or minimised window's place (WP-43 M3 undone))
+  TST-M5-LIST-HASH-HELD: exit 37 != expected 33 run=20261120T083815Z-74035182-001
+    OSX|000000000056|ktest|start|name=list_hash_held
+    OSX|000000000056|ktest|list_hash_held|services=5|ready=1
+    OSX|000000000056|ktest|list_hash_held|state=OK no_session user=- changes=0 display=1 input=1 focus=session|surface=OK 5|window=OK 6|held_hash=bd8b43f88295c8a5|phase=1|ready=1
+    OSX|000000000056|ktest|fail|LIST gave the hash of a window the lock holds back
+M87: killed by TST-M5-LIST-HASH-HELD [31.8s] (SECURITY: STATUS counts the held screen's redraws, one per key typed (WP-43 M3 undone))
+  TST-M5-LIST-HASH-HELD: exit 37 != expected 33 run=20261120T083831Z-74035182-001
+    OSX|000000000057|ktest|start|name=list_hash_held
+    OSX|000000000057|ktest|list_hash_held|services=5|ready=1
+    OSX|000000000057|ktest|list_hash_held|state=OK no_session user=- changes=0 display=1 input=1 focus=session|surface=OK 5|window=OK 6|held_hash=-|phase=1|ready=1
+    OSX|000000000057|ktest|list_hash_held|held_composed_same=0|phase=1b|ready=1
+    OSX|000000000057|ktest|list_hash_held|composed=7>12
+    OSX|000000000057|ktest|fail|STATUS counted the redraws of the held screen
+M88: killed by TST-M5-AUTH-INPUT-ISOLATED [37.8s] (SECURITY: the password field announces every keystroke (WP-43 M2 undone))
+  TST-M5-AUTH-INPUT-ISOLATED: host checks ['host_check failed: python3 -I tools/transcript.py streams /tmp/nawah-mutants-4air5gx6/scratch-evidence/20261120T083904Z-74035182-001 platform/pc-qemu/expect/auth-input-isolated.txt -> 1'] run=20261120T083904Z-74035182-001
+    OSX|000000000058|ktest|start|name=auth_input_isolated
+    OSX|000000000058|ktest|auth_input_isolated|services=6|ready=1
+    OSX|000000000058|ktest|auth_input_isolated|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|keys=6|spy=OK keys=6 focus=0 connections=1|phase=2|ready=1
+    OSX|000000000058|ktest|auth_input_isolated|unlocked=OK unlocked user=admin changes=3 display=1 input=1 focus=display|keys_while_locked=0|spy=OK keys=6 focus=1 connections=1|phase=3|ready=1
+    OSX|000000000058|ktest|auth_input_isolated|spy=OK keys=8 focus=1 connections=1|keys=8
+    OSX|000000000058|ktest|auth_input_isolated|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000058|ktest|auth_input_isolated|frames_delta=0
+    OSX|000000000058|ktest|pass|the password typed on the lock screen reached the session alone: no client, no compositor, no announcement
+M89: killed by TST-M5-ELEVATE [76.5s] (SECURITY: the elevation prompt is shown before the keyboard is taken (WP-41 S1 undone, order swapped))
+  TST-M5-ELEVATE: exit 37 != expected 33 run=20261120T083941Z-74035182-001
+    OSX|000000000059|ktest|elevate|not_ready=ERR NOT_READY|services=6|ready=1
+    OSX|000000000059|ktest|elevate|undeclared=ERR ACCESS|too_long=ERR BAD_REQUEST|uppercase=ERR ACCESS|bad_char=ERR BAD_REQUEST|
+    OSX|000000000059|ktest|elevate|wide=ERR BAD_REQUEST|wide_state=OK none done=2|wide_set=ERR NOT_FOUND|
+    OSX|000000000059|ktest|elevate|opened=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy0=OK keys=0 focus=1 connections=1|prompt=OK prompt done=2|busy=ERR BUSY|phase=1|ready=1
+    OSX|000000000059|ktest|elevate|approved=ELEVATED OK 1|set=OK 1 on|tokens=1->1|back=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy1=OK keys=0 focus=1 connections=1|phase=2|ready=1
+    OSX|000000000059|ktest|elevate|cancelled=ERR CANCELLED|set2=ERR NOT_FOUND|spy2=OK keys=0 focus=1 connections=1|phase=3|ready=1
+    OSX|000000000059|ktest|elevate|prompt3=OK prompt done=4|frozen=1|phase=4|ready=1
+    OSX|000000000059|ktest|elevate|back5=OK unlocked user=user changes=1 display=2 input=1 focus=display|prompt5=OK prompt done=5|auth_frozen=true|phase=3b|ready=1
+    OSX|000000000059|ktest|elevate|waiting5=OK waiting=1 lock_unsent=0|ended5=OK none done=6|busy5=ERR BUSY|thawed5=true|settled5=OK waiting=0 lock_unsent=0|tokens5=1|set5=ERR NOT_FOUND|set6=ERR NOT_FOUND|phase=3c|ready=1
+    OSX|000000000059|ktest|elevate|approved6=ELEVATED OK 1|set6b=OK 1 on|tokens6=1|spy6=OK keys=0 focus=1 connections=1|phase=3d
+    OSX|000000000059|ktest|elevate|frozen_in=true|no_keys=ERR UNAVAILABLE|thawed_in=true|holds=OK locked=0 releases=6->OK locked=0 releases=7|set8=ERR NOT_FOUND|back8=OK unlocked user=user changes=1 display=2 input=2 focus=display|phase=3e
+    OSX|000000000059|ktest|fail|an elevation without the keyboard showed a prompt or released the screen
+M90: killed by TST-M5-INPUT-NAME-RESERVED [16.5s] (SECURITY: any client may register the name `display` (WP-43 S-5 undone))
+  TST-M5-INPUT-NAME-RESERVED: exit 37 != expected 33 run=20261120T084058Z-74035182-001
+    OSX|00000000005a|ktest|start|name=input_name_reserved
+    OSX|00000000005a|ktest|input_name_reserved|display=OK 3|other_ok=1
+    OSX|00000000005a|ktest|fail|a client the manager does not name display took the name display
+M91: killed by TST-M5-UI-UNIT [23.1s] (SECURITY: a password field draws its characters instead of bullets)
+  TST-M5-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T084103Z-74035182-001
+M92: killed by TST-M5-WINDOW-STATES [18.7s] (visible() inverted: minimised windows shown, shown ones hidden (condition flip))
+  TST-M5-WINDOW-STATES: exit 37 != expected 33 run=20261120T084139Z-74035182-001
+    OSX|00000000005c|ktest|start|name=window_states
+    OSX|00000000005c|ktest|window_states|surfaces=OK 1/OK 2|windows=OK 3/OK 4|raise=OK|ev_a=|ev_b=|a=21,45,300,200,0,0,0|b=61,85,300,200,1,0,0|phase=1|ready=1
+    OSX|00000000005c|ktest|fail|creation, raise or the focus events did not follow display.md
+M94: killed by TST-M5-LIST-HASH-HELD [38.7s] (owns_client_area skips the topmost window, so a covered client area reads as its own (boundary shift))
+  TST-M5-LIST-HASH-HELD: exit 37 != expected 33 run=20261120T084156Z-74035182-001
+    OSX|00000000005e|ktest|start|name=list_hash_held
+    OSX|00000000005e|ktest|list_hash_held|services=5|ready=1
+    OSX|00000000005e|ktest|list_hash_held|state=OK no_session user=- changes=0 display=1 input=1 focus=session|surface=OK 5|window=OK 6|held_hash=-|phase=1|ready=1
+    OSX|00000000005e|ktest|list_hash_held|held_composed_same=1|phase=1b|ready=1
+    OSX|00000000005e|ktest|list_hash_held|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|open_hex=1|phase=2
+    OSX|00000000005e|ktest|list_hash_held|move=OK|covered_hash=c9c614abae83b525|cover_own_hex=1|close=OK|uncovered_same=1|phase=3
+    OSX|00000000005e|ktest|fail|LIST gave a the hash of pixels under another client's window
+M95: killed by TST-M5-WINDOW-STATES [19.5s] (SECURITY: a gone client's surfaces are kept mapped (assignment drop: the destroy loop))
+  TST-M5-WINDOW-STATES: exit 37 != expected 33 run=20261120T084234Z-74035182-001
+    OSX|00000000005f|ktest|start|name=window_states
+    OSX|00000000005f|ktest|window_states|surfaces=OK 1/OK 2|windows=OK 3/OK 4|raise=OK|ev_a=FOCUS 3;UNFOCUS 3;FOCUS 3|ev_b=FOCUS 4;UNFOCUS 4|a=21,45,300,200,0,1,0|b=61,85,300,200,1,0,0|phase=1|ready=1
+    OSX|00000000005f|ktest|window_states|alt_tab_b=FOCUS 4;KEY 0x38 up 0 -|alt_tab_a=KEY 0x38 down 4 -;UNFOCUS 3|status=OK format=1 screen=1280x800 windows=2 focus=4 pointer=640,400 composed=4 dropped=0 unresponsive=0|phase=2|ready=1
+    OSX|00000000005f|ktest|window_states|click_a=FOCUS 3|click_b=UNFOCUS 4|status=OK format=1 screen=1280x800 windows=2 focus=3 pointer=170,32 composed=5 dropped=0 unresponsive=0
+    OSX|00000000005f|ktest|window_states|resize=OK|resized=RESIZED 3 200 100|surface2=OK 5|attach=OK|destroy=OK|a2=21,45,200,100,Some(5),0|minimize=OK|min_a=UNFOCUS 3|min_b=FOCUS 4|a3=1,0,0|status_b=OK format=1 screen=1280x800 windows=2 focus=4 pointer=170,32 composed=7 dropped=0 unresponsive=0|restore=OK|res_a=FOCUS 3|res_b=UNFOCUS 4|a4=0,1,0
+    OSX|00000000005f|ktest|window_states|gone=raise:OK|raise_a=UNFOCUS 3|covered_differs=1|status=OK format=1 screen=1280x800 windows=1 focus=3 pointer=170,32 composed=10 dropped=0 unresponsive=0|gone_a=FOCUS 3|uncovered=1|surface_held=3>3|
+    OSX|00000000005f|ktest|fail|a client's surface was still shown or held after the client was gone
+M96: killed by TST-M5-CLIENT-LIMITS [16.7s] (SECURITY: one window over the share (constant))
+  TST-M5-CLIENT-LIMITS: exit 37 != expected 33 run=20261120T084254Z-74035182-001
+    OSX|000000000060|ktest|start|name=client_limits
+    OSX|000000000060|ktest|client_limits|surfaces_a=8|ninth=ERR LIMIT|windows_a=4|fifth=OK|windows_rest=9|reserve_window=ERR FULL|surfaces_rest=11|reserve_surface=ERR FULL
+    OSX|000000000060|ktest|fail|one client went past its own limit of surfaces or windows
+M98: killed by TST-M5-ELEVATE [112.5s] (SECURITY: lock(): the state is set after the prompt ends, so ending the prompt releases the desktop in between (order swap))
+  TST-M5-ELEVATE: exit 37 != expected 33 run=20261120T084339Z-74035182-001
+    OSX|000000000062|ktest|elevate|wide=ERR BAD_REQUEST|wide_state=OK none done=2|wide_set=ERR NOT_FOUND|
+    OSX|000000000062|ktest|elevate|opened=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy0=OK keys=0 focus=1 connections=1|prompt=OK prompt done=2|busy=ERR BUSY|phase=1|ready=1
+    OSX|000000000062|ktest|elevate|approved=ELEVATED OK 1|set=OK 1 on|tokens=1->1|back=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy1=OK keys=0 focus=1 connections=1|phase=2|ready=1
+    OSX|000000000062|ktest|elevate|cancelled=ERR CANCELLED|set2=ERR NOT_FOUND|spy2=OK keys=0 focus=1 connections=1|phase=3|ready=1
+    OSX|000000000062|ktest|elevate|prompt3=OK prompt done=4|frozen=1|phase=4|ready=1
+    OSX|000000000062|ktest|elevate|back5=OK unlocked user=user changes=1 display=2 input=1 focus=display|prompt5=OK prompt done=5|auth_frozen=true|phase=3b|ready=1
+    OSX|000000000062|ktest|elevate|waiting5=OK waiting=1 lock_unsent=0|ended5=OK none done=6|busy5=ERR BUSY|thawed5=true|settled5=OK waiting=0 lock_unsent=0|tokens5=1|set5=ERR NOT_FOUND|set6=ERR NOT_FOUND|phase=3c|ready=1
+    OSX|000000000062|ktest|elevate|approved6=ELEVATED OK 1|set6b=OK 1 on|tokens6=1|spy6=OK keys=0 focus=1 connections=1|phase=3d
+    OSX|000000000062|ktest|elevate|frozen_in=true|no_keys=ERR UNAVAILABLE|thawed_in=true|holds=OK locked=0 releases=6->OK locked=0 releases=6|set8=ERR NOT_FOUND|back8=OK unlocked user=user changes=1 display=2 input=2 focus=display|phase=3e
+    OSX|000000000062|ktest|elevate|prompt7=OK prompt done=8|holds_c=OK locked=1 releases=6|sak=armed|phase=3f|ready=1
+    OSX|000000000062|ktest|elevate|sak7=ERR CANCELLED|locked7=OK locked user=user changes=2 display=2 input=2 focus=session|holds_d=OK locked=1 releases=7|set7=ERR NOT_FOUND|back7=OK unlocked user=user changes=3 display=2 input=2 focus=display|phase=3g
+    OSX|000000000062|ktest|fail|the secure attention sequence did not end the prompt into the lock, screen held
+M99: killed by TST-M5-AUTH-INPUT-ISOLATED,TST-M5-LOGIN-SCREEN [616.6s] (SECURITY: the sign-in request is wiped before it is sent: LOGIN goes out empty (order swap of wipe and send))
+  TST-M5-AUTH-INPUT-ISOLATED: timeout (hang) run=20261120T084503Z-74035182-001
+    OSX|000000000063|ktest|start|name=auth_input_isolated
+    OSX|000000000063|ktest|auth_input_isolated|services=6|ready=1
+  TST-M5-LOGIN-SCREEN: timeout (hang) run=20261120T085005Z-74035182-001
+    OSX|000000000063|ktest|start|name=login_screen
+    OSX|000000000063|ktest|login_screen|state0=OK no_session user=- changes=0 display=1 input=1 focus=session|windows0=2|services=5|ready=1
+M100: killed by TST-M5-ELEVATE [67.1s] (SECURITY: a new elevation is accepted while an administrator's answer for an ended one is awaited (check removal; WP-41 C1 undone))
+  TST-M5-ELEVATE: exit 37 != expected 33 run=20261120T085519Z-74035182-001
+    OSX|000000000064|ktest|start|name=elevate
+    OSX|000000000064|ktest|elevate|not_ready=ERR NOT_READY|services=6|ready=1
+    OSX|000000000064|ktest|elevate|undeclared=ERR ACCESS|too_long=ERR BAD_REQUEST|uppercase=ERR ACCESS|bad_char=ERR BAD_REQUEST|
+    OSX|000000000064|ktest|elevate|wide=ERR BAD_REQUEST|wide_state=OK none done=2|wide_set=ERR NOT_FOUND|
+    OSX|000000000064|ktest|elevate|opened=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy0=OK keys=0 focus=1 connections=1|prompt=OK prompt done=2|busy=ERR BUSY|phase=1|ready=1
+    OSX|000000000064|ktest|elevate|approved=ELEVATED OK 1|set=OK 1 on|tokens=1->1|back=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy1=OK keys=0 focus=1 connections=1|phase=2|ready=1
+    OSX|000000000064|ktest|elevate|cancelled=ERR CANCELLED|set2=ERR NOT_FOUND|spy2=OK keys=0 focus=1 connections=1|phase=3|ready=1
+    OSX|000000000064|ktest|elevate|prompt3=OK prompt done=4|frozen=1|phase=4|ready=1
+    OSX|000000000064|ktest|elevate|back5=OK unlocked user=user changes=1 display=2 input=1 focus=display|prompt5=OK prompt done=5|auth_frozen=true|phase=3b|ready=1
+    OSX|000000000064|ktest|elevate|waiting5=OK waiting=1 lock_unsent=0|ended5=OK none done=6|busy5=error:timeout|thawed5=true|settled5=OK waiting=0 lock_unsent=0|tokens5=1|set5=ERR NOT_FOUND|set6=ERR NOT_FOUND|phase=3c|ready=1
+    OSX|000000000064|ktest|fail|an elevation was accepted while an administrator's answer was still awaited
+M101: killed by TST-M5-ELEVATE [313.7s] (SECURITY: the secure attention sequence no longer ends an elevation prompt (condition flip))
+  TST-M5-ELEVATE: timeout (hang) run=20261120T085627Z-74035182-001
+    OSX|000000000065|ktest|elevate|not_ready=ERR NOT_READY|services=6|ready=1
+    OSX|000000000065|ktest|elevate|undeclared=ERR ACCESS|too_long=ERR BAD_REQUEST|uppercase=ERR ACCESS|bad_char=ERR BAD_REQUEST|
+    OSX|000000000065|ktest|elevate|wide=ERR BAD_REQUEST|wide_state=OK none done=2|wide_set=ERR NOT_FOUND|
+    OSX|000000000065|ktest|elevate|opened=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy0=OK keys=0 focus=1 connections=1|prompt=OK prompt done=2|busy=ERR BUSY|phase=1|ready=1
+    OSX|000000000065|ktest|elevate|approved=ELEVATED OK 1|set=OK 1 on|tokens=1->1|back=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy1=OK keys=0 focus=1 connections=1|phase=2|ready=1
+    OSX|000000000065|ktest|elevate|cancelled=ERR CANCELLED|set2=ERR NOT_FOUND|spy2=OK keys=0 focus=1 connections=1|phase=3|ready=1
+    OSX|000000000065|ktest|elevate|prompt3=OK prompt done=4|frozen=1|phase=4|ready=1
+    OSX|000000000065|ktest|elevate|back5=OK unlocked user=user changes=1 display=2 input=1 focus=display|prompt5=OK prompt done=5|auth_frozen=true|phase=3b|ready=1
+    OSX|000000000065|ktest|elevate|waiting5=OK waiting=1 lock_unsent=0|ended5=OK none done=6|busy5=ERR BUSY|thawed5=true|settled5=OK waiting=0 lock_unsent=0|tokens5=1|set5=ERR NOT_FOUND|set6=ERR NOT_FOUND|phase=3c|ready=1
+    OSX|000000000065|ktest|elevate|approved6=ELEVATED OK 1|set6b=OK 1 on|tokens6=1|spy6=OK keys=0 focus=1 connections=1|phase=3d
+    OSX|000000000065|ktest|elevate|frozen_in=true|no_keys=ERR UNAVAILABLE|thawed_in=true|holds=OK locked=0 releases=6->OK locked=0 releases=6|set8=ERR NOT_FOUND|back8=OK unlocked user=user changes=1 display=2 input=2 focus=display|phase=3e
+    OSX|000000000065|ktest|elevate|prompt7=OK prompt done=8|holds_c=OK locked=1 releases=6|sak=armed|phase=3f|ready=1
+M103: killed by TST-M5-ELEVATE [119.6s] (no wait before the keyboard is handed over (constant))
+  TST-M5-ELEVATE: exit 37 != expected 33 run=20261120T090215Z-74035182-001
+    OSX|000000000067|ktest|elevate|approved=ELEVATED OK 1|set=OK 1 on|tokens=1->1|back=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy1=OK keys=0 focus=1 connections=1|phase=2|ready=1
+    OSX|000000000067|ktest|elevate|cancelled=ERR CANCELLED|set2=ERR NOT_FOUND|spy2=OK keys=0 focus=1 connections=1|phase=3|ready=1
+    OSX|000000000067|ktest|elevate|prompt3=OK prompt done=4|frozen=1|phase=4|ready=1
+    OSX|000000000067|ktest|elevate|back5=OK unlocked user=user changes=1 display=2 input=1 focus=display|prompt5=OK prompt done=5|auth_frozen=true|phase=3b|ready=1
+    OSX|000000000067|ktest|elevate|waiting5=OK waiting=1 lock_unsent=0|ended5=OK none done=6|busy5=ERR BUSY|thawed5=true|settled5=OK waiting=0 lock_unsent=0|tokens5=1|set5=ERR NOT_FOUND|set6=ERR NOT_FOUND|phase=3c|ready=1
+    OSX|000000000067|ktest|elevate|approved6=ELEVATED OK 1|set6b=OK 1 on|tokens6=1|spy6=OK keys=0 focus=1 connections=1|phase=3d
+    OSX|000000000067|ktest|elevate|frozen_in=true|no_keys=ERR UNAVAILABLE|thawed_in=true|holds=OK locked=0 releases=6->OK locked=0 releases=6|set8=ERR NOT_FOUND|back8=OK unlocked user=user changes=1 display=2 input=2 focus=display|phase=3e
+    OSX|000000000067|ktest|elevate|prompt7=OK prompt done=8|holds_c=OK locked=1 releases=6|sak=armed|phase=3f|ready=1
+    OSX|000000000067|ktest|elevate|sak7=ERR CANCELLED|locked7=OK locked user=user changes=2 display=2 input=2 focus=session|holds_d=OK locked=1 releases=6|set7=ERR NOT_FOUND|back7=OK unlocked user=user changes=3 display=2 input=2 focus=display|phase=3g
+    OSX|000000000067|ktest|elevate|fence=armed|phase=3h|ready=1
+    OSX|000000000067|ktest|elevate|fenced=OK keys=3 focus=1 connections=1|spy7=OK keys=3 focus=1 connections=1|phase=3h
+    OSX|000000000067|ktest|fail|the release of the key that unlocked reached an application
+M104: killed by TST-M5-SESSION-DEADLINE,TST-M5-SESSION-HANG [166.4s] (a service request times out after twice its deadline (boundary shift). The declared LOCK/UNLOCK-AUTH-HANG cases do not measure the deadline since auth went async (session.md v1.2); the request deadline is observed by SESSION-DEADLINE (window [4900,6000] ticks) and SESSION-HANG. Confirmed in the sweep of run 41232332567.)
+  TST-M5-SESSION-DEADLINE: exit 37 != expected 33 run=20261120T090340Z-74035182-001
+    OSX|000000000068|ktest|start|name=session_deadline
+    OSX|000000000068|ktest|session_deadline|load=OK 4|list=auth:ready:0:14:14:337:-1;input:ready:0:14:14:53:-1;display:ready:0:14:14:63:-1;session:failed:0:337:337:-1:-1;|session=failed:-1|input=ready:-1|display=ready:-1|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000068|ktest|fail|the session did not give up on components that never answer (session.md v1.1)
+  TST-M5-SESSION-HANG: exit 37 != expected 33 run=20261120T090546Z-74035182-001
+    OSX|000000000068|ktest|start|name=session_hang
+    OSX|000000000068|ktest|session_hang|services=5|ready=1
+    OSX|000000000068|ktest|session_hang|display_frozen=1|phase=1|ready=1
+    OSX|000000000068|ktest|session_hang|killed=display:ready:1:0x20000|state_rtt_ok=0|always_locked=1|spy_px_frozen=0|state=OK locked user=admin changes=2 display=1 input=1 focus=session|windows=2|display_keys=0|spy=OK keys=2 focus=0 connections=2|phase=2|ready=1
+    OSX|000000000068|ktest|session_hang|max_rtt=12662
+    OSX|000000000068|ktest|fail|the session did not keep serving and keep the lock while the compositor hung
+M105: killed by TST-M5-ELEVATE [65.8s] (SECURITY: ending a prompt releases the screen while locked and keeps it held when unlocked (condition flip))
+  TST-M5-ELEVATE: exit 37 != expected 33 run=20261120T090626Z-74035182-001
+    OSX|000000000069|ktest|start|name=elevate
+    OSX|000000000069|ktest|elevate|not_ready=ERR NOT_READY|services=6|ready=1
+    OSX|000000000069|ktest|elevate|undeclared=ERR ACCESS|too_long=ERR BAD_REQUEST|uppercase=ERR ACCESS|bad_char=ERR BAD_REQUEST|
+    OSX|000000000069|ktest|elevate|wide=ERR BAD_REQUEST|wide_state=OK none done=2|wide_set=ERR NOT_FOUND|
+    OSX|000000000069|ktest|elevate|opened=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy0=OK keys=0 focus=1 connections=1|prompt=OK prompt done=2|busy=ERR BUSY|phase=1|ready=1
+    OSX|000000000069|ktest|elevate|approved=ELEVATED OK 1|set=OK 1 on|tokens=1->1|back=OK unlocked user=user changes=1 display=1 input=1 focus=display|spy1=OK keys=0 focus=0 connections=1|phase=2|ready=1
+    OSX|000000000069|ktest|fail|a key typed on the prompt reached an application, or the keyboard did not come back
+M106: killed by TST-M5-SESSION-LOSS [52.3s] (SECURITY: a lost session leaves the focus with whoever had it (check removal; input.md v2.2 undone))
+  TST-M5-SESSION-LOSS: exit 37 != expected 33 run=20261120T090732Z-74035182-001
+    OSX|00000000006a|ktest|start|name=session_loss
+    OSX|00000000006a|ktest|session_loss|services=5|ready=1
+    OSX|00000000006a|ktest|session_loss|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|spy=OK keys=0 focus=1 connections=1|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|spy_after=stopped:0x0|windows=1|phase=2|ready=1
+    OSX|00000000006a|ktest|session_loss|unlocked2=OK unlocked user=admin changes=1 display=1 input=1 focus=display|keys_during_signin=0|w_focused=1|phase=3|ready=1
+    OSX|00000000006a|ktest|session_loss|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|restart=OK|fresh=OK no_session user=- changes=0 display=1 input=1 focus=session|w_logged_out=1|w_windows=0|keys_after_loss=0|phase=4
+    OSX|00000000006a|ktest|session_loss|phase=5|ready=1
+    OSX|00000000006a|ktest|session_loss|unlocked3=OK unlocked user=admin changes=1 display=1 input=1 focus=display|stop=OK|stopped=1|input_focus_cleared=0|phase=6
+    OSX|00000000006a|ktest|fail|the session lost while the compositor held the keyboard left the keyboard with it
+M107: killed by TST-M5-INPUT-ROUTE,TST-M5-AUTH-INPUT-ISOLATED [325.0s] (SECURITY: the secure attention sequence tells the session but leaves the keyboard with the focused client (condition flip: the owner no longer changes))
+  TST-M5-INPUT-ROUTE: exit 37 != expected 33 run=20261120T090824Z-74035182-001
+    OSX|00000000006b|ktest|start|name=input_route
+    OSX|00000000006b|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0 sak_pending=0|phase=1|ready=1
+    OSX|00000000006b|ktest|input_route|a=KEY 0x1e down 0 a;KEY 0x1e up 0 a;KEY 0x2a down 1 -;KEY 0x30 down 1 B;KEY 0x30 up 1 B;KEY 0x2a up 0 -;KEY 0x1d down 2 -;KEY 0x38 down 6 -|s=SAK|b=
+    OSX|00000000006b|ktest|fail|key events were decoded wrongly or reached the wrong client
+  TST-M5-AUTH-INPUT-ISOLATED: timeout (hang) run=20261120T090836Z-74035182-001
+    OSX|00000000006b|ktest|start|name=auth_input_isolated
+    OSX|00000000006b|ktest|auth_input_isolated|services=6|ready=1
+    OSX|00000000006b|ktest|auth_input_isolated|locked=OK locked user=admin changes=2 display=1 input=1 focus=session|keys=6|spy=OK keys=6 focus=0 connections=1|phase=2|ready=1
+M108: killed by TST-M5-INPUT-ROUTE [37.3s] (the layout toggles on the press of the second modifier instead of on the release (order swap))
+  TST-M5-INPUT-ROUTE: exit 37 != expected 33 run=20261120T091406Z-74035182-001
+    OSX|00000000006c|ktest|start|name=input_route
+    OSX|00000000006c|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0 sak_pending=0|phase=1|ready=1
+    OSX|00000000006c|ktest|input_route|a=KEY 0x1e down 0 a;KEY 0x1e up 0 a;KEY 0x2a down 1 -;KEY 0x30 down 1 B;KEY 0x30 up 1 B;KEY 0x2a up 0 -;KEY 0x1d down 2 -;KEY 0x38 down 6 -|s=SAK;KEY 0x38 up 2 -;KEY 0x1d up 0 -|b=
+    OSX|00000000006c|ktest|input_route|focus_b=OK|layout_ar=OK|phase=2|ready=1
+    OSX|00000000006c|ktest|input_route|b2=KEY 0x1e down 0 ش;KEY 0x1e up 0 ش|a2=|status=OK focus=2 layout=ar keys=12 packets=0 saks=1 dropped=0 buttons=0 sak_pending=0
+    OSX|00000000006c|ktest|input_route|chord=armed|phase=3|ready=1
+    OSX|00000000006c|ktest|input_route|b3=KEY 0x2a down 1 -;KEY 0x38 down 5 -;KEY 0x2d down 5 X;KEY 0x2d up 5 X;KEY 0x38 up 1 -;KEY 0x2a up 0 -;KEY 0x1e down 0 a;KEY 0x1e up 0 a|status3=OK focus=2 layout=us keys=20 packets=0 saks=1 dropped=0 buttons=0 sak_pending=0
+    OSX|00000000006c|ktest|fail|a Shift+Alt shortcut with a third key toggled the layout
+M109: killed by TST-M5-INPUT-ROUTE [37.0s] (a key pressed between Shift+Alt no longer disarms the toggle (assignment drop))
+  TST-M5-INPUT-ROUTE: exit 37 != expected 33 run=20261120T091443Z-74035182-001
+    OSX|00000000006d|ktest|start|name=input_route
+    OSX|00000000006d|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0 sak_pending=0|phase=1|ready=1
+    OSX|00000000006d|ktest|input_route|a=KEY 0x1e down 0 a;KEY 0x1e up 0 a;KEY 0x2a down 1 -;KEY 0x30 down 1 B;KEY 0x30 up 1 B;KEY 0x2a up 0 -;KEY 0x1d down 2 -;KEY 0x38 down 6 -|s=SAK;KEY 0x38 up 2 -;KEY 0x1d up 0 -|b=
+    OSX|00000000006d|ktest|input_route|focus_b=OK|layout_ar=OK|phase=2|ready=1
+    OSX|00000000006d|ktest|input_route|b2=KEY 0x1e down 0 ش;KEY 0x1e up 0 ش|a2=|status=OK focus=2 layout=ar keys=12 packets=0 saks=1 dropped=0 buttons=0 sak_pending=0
+    OSX|00000000006d|ktest|input_route|chord=armed|phase=3|ready=1
+    OSX|00000000006d|ktest|input_route|b3=KEY 0x2a down 1 -;KEY 0x38 down 5 -;KEY 0x2d down 5 -;KEY 0x2d up 5 -;KEY 0x38 up 1 -;KEY 0x2a up 0 -;KEY 0x1e down 0 a;KEY 0x1e up 0 a|status3=OK focus=2 layout=us keys=20 packets=0 saks=1 dropped=0 buttons=0 sak_pending=0
+    OSX|00000000006d|ktest|fail|a Shift+Alt shortcut with a third key toggled the layout
+M110: killed by TST-M5-INPUT-ROUTE [22.7s] (presses and releases swapped at the 0x80 bit (boundary shift))
+  TST-M5-INPUT-ROUTE: exit 37 != expected 33 run=20261120T091503Z-74035182-001
+    OSX|00000000006e|ktest|start|name=input_route
+    OSX|00000000006e|ktest|input_route|reg=OK 1/OK 2/OK 3|focus_none=ERR ACCESS|focus_user=ERR ACCESS|focus_unknown=ERR UNKNOWN|layout_user=ERR ACCESS|focus_a=OK|status=OK focus=1 layout=us keys=0 packets=0 saks=0 dropped=0 buttons=0 sak_pending=0|phase=1|ready=1
+    OSX|00000000006e|ktest|input_route|a=KEY 0x1e up 0 a;KEY 0x1e down 0 a;KEY 0x2a up 0 -;KEY 0x30 up 0 b;KEY 0x30 down 0 b;KEY 0x2a down 1 -;KEY 0x1d up 1 -;KEY 0x38 up 1 -|s=|b=
+    OSX|00000000006e|ktest|fail|key events were decoded wrongly or reached the wrong client
+M111: killed by TST-M5-UI-UNIT [11.3s] (Tab goes back and Shift+Tab forward (condition flip))
+  TST-M5-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091515Z-74035182-001
+M112: killed by TST-M5-UI-UNIT [11.5s] (SECURITY: the narrator's description of a password field carries its value (check removal of the role exclusion))
+  TST-M5-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091527Z-74035182-001
+M113: killed by TST-M5-UI-UNIT [11.3s] (Tab skips one element (boundary shift of the focus step))
+  TST-M5-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091538Z-74035182-001
+M114: killed by TST-M5-UI-UNIT [11.8s] (Left and Right swapped between LTR and RTL (order swap of the cursor's direction))
+  TST-M5-UI-UNIT: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091549Z-74035182-001
+M115: killed by TST-M5-BIDI [8.7s] (the first strong character sets the opposite paragraph level (condition flip))
+  TST-M5-BIDI: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091601Z-74035182-001
+M116: killed by TST-M5-BIDI [4.4s] (rule W4 drops its ES branch: a European separator between digits stays a separator (check removal))
+  TST-M5-BIDI: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091610Z-74035182-001
+M117: killed by TST-M5-SHAPING [18.3s] (non-joining and right-joining types swapped (constant))
+  TST-M5-SHAPING: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091614Z-74035182-001
+M118: killed by TST-M5-SHAPING [10.8s] (the pen does not advance: every glyph at the same x (assignment drop))
+  TST-M5-SHAPING: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091632Z-74035182-001
+M119: killed by TST-M5-GLYPHS [9.1s] (cmap format 4: a code point equal to a segment's end code falls into the next segment (boundary shift))
+  TST-M5-GLYPHS: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091643Z-74035182-001
+M120: killed by TST-M5-GLYPHS [6.2s] (flattening tolerance of 64 px: every curve becomes one chord (constant))
+  TST-M5-GLYPHS: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091652Z-74035182-001
+M121: killed by TST-M5-BIDI [4.3s] (`(` is no longer an opening bracket: the parenthesis pair never matches in N0 (check removal of the pair; the table keeps its size, [_; 128]))
+  TST-M5-BIDI: host: the runner reported failing tests and the case passes on the clean checkout run=20261120T091659Z-74035182-001
+M122: killed by TST-M5-PROCESS-KILL [18.7s] (SECURITY: process_kill needs no WRITE: a watcher's read-only duplicate kills (killer exits 0xE4))
+  TST-M5-PROCESS-KILL: exit 37 != expected 33 run=20261120T091717Z-74035182-001
+    OSX|00000000007a|ktest|start|name=process_kill
+    OSX|00000000007a|ktest|process_kill|killer_exit=0xe4|frames_delta=0
+    OSX|00000000007a|ktest|fail|the process_kill contract did not hold (see killer_exit)
+M123: killed by TST-M5-PROCESS-KILL [20.8s] (a kill does not wake a thread blocked without a deadline (ECHO in channel_read never dies: 0xE8))
+  TST-M5-PROCESS-KILL: exit 37 != expected 33 run=20261120T091733Z-74035182-001
+    OSX|00000000007b|ktest|start|name=process_kill
+    OSX|00000000007b|ktest|process_kill|killer_exit=0xe8|frames_delta=35
+    OSX|00000000007b|ktest|fail|the process_kill contract did not hold (see killer_exit)
+M124: killed by TST-M5-KILL-EDGES [21.1s] (a process killed just before it blocks blocks for ever (K1 undone for blocks: kill_at_block))
+  TST-M5-KILL-EDGES: exit 37 != expected 33 run=20261120T091754Z-74035182-001
+    OSX|00000000007c|ktest|start|name=kill_edges
+    OSX|00000000007c|ktest|kill_edges|ticks_before=19|ticks_while_frozen=0
+    OSX|00000000007c|ktest|kill_edges|idle_before_run=0x20000:1|exiter_before_run=0x20000:1|kill_at_block=0xffffffffffffffff:0|kill_at_sleep=0x20000:1|kill_at_exit=0x20000:1|ticker_ticked=1|frozen=1|ticker_stopped=1|ticker_killed=0x20000:1|processes_after=0|frames_delta=0
+    OSX|00000000007c|ktest|fail|a kill that landed just before a block or a sleep was lost (K1)
+M125: killed by TST-M5-KILL-EDGES [15.9s] (a process killed inside exit reports its own code, read as a clean stop (K2 undone: kill_at_exit=0x55))
+  TST-M5-KILL-EDGES: exit 37 != expected 33 run=20261120T091815Z-74035182-001
+    OSX|00000000007d|ktest|start|name=kill_edges
+    OSX|00000000007d|ktest|kill_edges|ticks_before=19|ticks_while_frozen=0
+    OSX|00000000007d|ktest|kill_edges|idle_before_run=0x20000:1|exiter_before_run=0x20000:1|kill_at_block=0x20000:1|kill_at_sleep=0x20000:1|kill_at_exit=0x55:1|ticker_ticked=1|frozen=1|ticker_stopped=1|ticker_killed=0x20000:1|processes_after=0|frames_delta=0
+    OSX|00000000007d|ktest|fail|a process killed inside its exit did not report EXIT_KILLED (K2)
+M126: killed by TST-M5-LOCK-DISPLAY-DOWN [25.8s] (SECURITY: the frame is not cleared when the last VMO over it goes: a dead compositor's last picture stays through the lock (display.md v1.5 undone; clears=1 but lit, spy_px != 0))
+  TST-M5-LOCK-DISPLAY-DOWN: exit 37 != expected 33 run=20261120T091831Z-74035182-001
+    OSX|00000000007e|ktest|start|name=lock_display_down
+    OSX|00000000007e|ktest|lock_display_down|services=5|ready=1
+    OSX|00000000007e|ktest|lock_display_down|unlocked=OK unlocked user=admin changes=1 display=1 input=1 focus=display|spy=OK keys=0 focus=1 connections=1|lit_before=1|spy_px_before=23856|phase=1
+    OSX|00000000007e|ktest|lock_display_down|stopped=OK|display=stopped:0|clears=1|lit=1023972|spy_px=23856|phase=2|ready=1
+    OSX|00000000007e|ktest|fail|the stopped compositor's last picture stayed on the screen
+M127: killed by TST-M5-MOUSE [16.9s] (the mouse's bytes go to the keyboard ring (no PTR event, packets=0))
+  TST-M5-MOUSE: exit 37 != expected 33 run=20261120T091856Z-74035182-001
+    OSX|00000000007f|ktest|start|name=mouse
+    OSX|00000000007f|ktest|mouse|present=1|reg=OK 1|focus=OK|ready=1
+    OSX|00000000007f|ktest|mouse|events=KEY 0x28 down 0 ';KEY 0xa down 0 9;KEY 0x7b up 0 -|status=OK focus=1 layout=us keys=3 packets=0 saks=0 dropped=0 buttons=0 sak_pending=0
+    OSX|00000000007f|ktest|fail|pointer events did not carry the lab's motion and button state
+M128: killed by TST-M5-SVC-WATCHDOG [16.6s] (a PONG is ignored: a healthy watchdogged service is killed as hung (pong is not ready:0))
+  TST-M5-SVC-WATCHDOG: exit 37 != expected 33 run=20261120T091914Z-74035182-001
+    OSX|000000000080|ktest|start|name=svc_watchdog
+    OSX|000000000080|ktest|svc_watchdog|load=OK 6|list=pong:failed:0:14:14:30:131072;hung:given_up:1:14:140:141:131072;stubborn:stopped:0:14:14:30:131072;closer:failed:0:14:14:30:131072;early:failed:0:14:14:-1:131072;loud:ready:0:14:14:30:-1;|hung=given_up:1:131072|pong=failed:0|closer=failed:131072|early=failed:131072|early_alive_at_200=1|loud=ready:0|stop=OK|stubborn_at_150=stopping|stubborn=stopped:131072|list_after=1|mgr_exit=0x0|processes_after=0|clean=1
+    OSX|000000000080|ktest|fail|a service that answered the watchdog was not left alone
+M129: killed by TST-M5-SVC-WATCHDOG [24.8s] (SECURITY: the watchdog finds a service hung but never kills it, so it is never restarted (hung is not given_up:1:131072))
+  TST-M5-SVC-WATCHDOG: exit 37 != expected 33 run=20261120T091931Z-74035182-001
+    OSX|000000000081|ktest|start|name=svc_watchdog
+    OSX|000000000081|ktest|svc_watchdog|load=OK 6|list=pong:ready:0:13:13:30:-1;hung:ready:0:13:13:31:-1;stubborn:stopped:0:13:13:31:131072;closer:ready:0:13:13:31:-1;early:failed:0:13:13:-1:131072;loud:ready:0:13:13:31:-1;|hung=ready:0:-1|pong=ready:0|closer=ready:-1|early=failed:131072|early_alive_at_200=1|loud=ready:0|stop=OK|stubborn_at_150=stopping|stubborn=stopped:131072|list_after=1|mgr_exit=0x0|processes_after=2|clean=0
+    OSX|000000000081|ktest|fail|the watchdog did not kill and give up the hung service as services.md v1.7 says
+
+OK: 45/45 valid mutants killed (100.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=[]; invalid_security=[]; declared_killers_missed=[]; expected_missed=[]; report=build/mutants-m5-report.json
