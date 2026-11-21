@@ -1,2 +1,2 @@
 # TST-M6-LAUNCH-RATE (WP-163): the vouched session's role `rater` fills LAUNCH's window of 1000 ticks, is refused ERR BUSY, and launches again after it
-session /SYSTEM/SVC.ELF - 3000 never 0 0 rater
+session /SYSTEM/LABSES.ELF - 3000 never 0 0 rater

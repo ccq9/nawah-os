@@ -10850,7 +10850,17 @@
     "platform/pc-qemu/target.json",
     "tests/mutants.py",
     "tests/test_mutants_harness.py",
-    "docs/tests.json"
+    "docs/tests.json",
+    "docs/PLAN-REVERSE.md",
+    "docs/LATER.md",
+    "docs/work-items.json",
+    "platform/pc-qemu/manifests/svc-gt.txt",
+    "platform/pc-qemu/manifests/svc-as.txt",
+    "platform/pc-qemu/manifests/svc-ac.txt",
+    "platform/pc-qemu/manifests/svc-sj.txt",
+    "platform/pc-qemu/manifests/svc-jb.txt",
+    "platform/pc-qemu/manifests/svc-lr.txt",
+    "tools/project.py"
    ],
    "contract_refs": [
     "docs/contracts/services.md"
@@ -10858,22 +10868,31 @@
    "acceptance": "the manager kills the session's job when the session service exits or crashes, so a restarted session inherits no application; shown on CI by TST-M6-SESSION-GATE extended; the services contract states it in a new version; its mutants killed by the M6 gate",
    "test_ids": [
     "TST-M6-SESSION-GATE",
+    "TST-M6-LAUNCH-RATE",
+    "TST-M6-JOB-BOUND",
+    "TST-M6-SESSION-JOB",
+    "TST-M6-APP-CONNECT-DENIED",
+    "TST-M6-APP-SPAWN",
     "TST-M6-MUTANTS",
     "TST-M0-005"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M6"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null,
    "actions": [
     "قتل مهمة الجلسة عند خروج خدمة session أو انهيارها (من قسمة WP-169 في 2026-11-21، L-097)",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
-    "2026-11-21 (the red team in WP-169's round): the session's job is not let go at the session service's exit, so the first LAUNCH after a new sign-in reuses it and the new user's applications share a job with what the previous session left, connections included; this item ends that"
+    "2026-11-21 (the red team in WP-169's round): the session's job is not let go at the session service's exit, so the first LAUNCH after a new sign-in reuses it and the new user's applications share a job with what the previous session left, connections included; this item ends that",
+    "2026-11-21 (the manager): design, estimated at 35 to 50 tool calls (under the line). At the exit of the service named `session`, whatever its code, the manager kills the session's job with every application and what they started, and lets it go (as END_SESSION does, without a reply: the channel is gone), besides closing the gate (v1.19); so a restarted session, or the next sign-in, starts with no application and a new job. Case: TST-M6-SESSION-GATE's reading after the session's exit becomes nothing left (no process of STAY.ELF, no job, no handle kept). Options weighed: (a) the kill at the exit (chosen: one place, fails closed); (b) the kill at the next BEGIN_SESSION (rejected: the applications outlive the session until someone signs in, and a desktop left running could talk to them); (c) the session's own END_SESSION before it exits (rejected: a crash sends nothing). Mutants: no kill at the exit (SECURITY), the job killed but kept",
+    "2026-11-21 activated (the manager): its dependency WP-169 is done; test first",
+    "2026-11-21 (the manager): the work, test first. The red: TST-M6-SESSION-GATE expecting nothing left after the session's exit failed with stay#2 alive (stays=1, live_jobs=2). The fix kills and lets go the session's job at the session service's exit. Five cases read their applications after their lab session's exit and would see them killed: their role now holds after its steps (the lab image's hold: waiting on its boot channel without a deadline until the manager stops it), its image /SYSTEM/LABSES.ELF so the test kernel knows it by name (session_held), which reads while it holds, its code as 0x40 and the manager's count less the held session's process and channel, so the five cases' lines and their mutants' evidence are unchanged. Mutants M415 (SECURITY, no kill) and M416 (killed but kept), both killed locally"
    ]
   }
  ]

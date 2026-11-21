@@ -1070,9 +1070,15 @@ impl Manager {
         self.services[i].killing = false;
         self.services[i].kill_at = None;
         self.close_chan(i);
-        // The session service went (v1.19): no LAUNCH until a session begins again.
+        // The session service went (v1.19): no LAUNCH until a session begins again; and its job
+        // goes with it, every application and what they started killed and the job let go
+        // (v1.20), so a restarted session or the next sign-in inherits nothing.
         if self.services[i].name() == b"session" {
             self.session_open = false;
+            if let Some(job) = self.session_job.take() {
+                libnawah::job_kill(job);
+                libnawah::handle_close(job);
+            }
         }
         let s = &mut self.services[i];
         s.exit = Some(code);

@@ -447,6 +447,31 @@ fn rater(ch: u32) -> u64 {
 /// answered OK) and how many times it is asked.
 type RateStep = (u8, &'static [u8], &'static [u8], u64);
 
+/// The end of a vouched session's role (WP-172, services.md v1.20): a code other than 0x40 is
+/// the exit code at once; 0x40 holds the session, waiting on its boot channel without a deadline,
+/// until the manager stops it or closes the channel, and is the exit code then. The session's
+/// exit ends its job, so the test kernel reads the applications while the role holds.
+fn hold(ch: u32, code: u64) -> u64 {
+    if code != 0x40 {
+        return code;
+    }
+    let mut buf = [0u8; 128];
+    let mut hs = [0u32; 4];
+    loop {
+        match libnawah::channel_read(ch, &mut buf, &mut hs, true) {
+            Ok((n, k)) => {
+                for &h in &hs[..k] {
+                    libnawah::handle_close(h);
+                }
+                if &buf[..n] == b"STOP" {
+                    return code;
+                }
+            }
+            Err(_) => return code,
+        }
+    }
+}
+
 /// `BEGIN_SESSION` (WP-169, services.md v1.19): whether the manager answered `BEGUN`, opening
 /// the gate LAUNCH needs. A launcher that is not answered so exits 0xE3.
 fn begin(ch: u32) -> bool {
@@ -1149,7 +1174,7 @@ fn main() -> u64 {
         return application(ch, who);
     }
     match role {
-        b"launcher" => launcher(ch),
+        b"launcher" => hold(ch, launcher(ch)),
         // `loud` (review 2026-10-19, M1): first a message larger than any request the manager
         // reads, then behaves as `ready` — the manager must discard it and still see READY.
         b"ready" | b"loud" => {
@@ -1312,10 +1337,10 @@ fn main() -> u64 {
         b"serve" => serve(ch, Mode::Serve),
         b"names" => serve(ch, Mode::Names),
         b"relay" => serve(ch, Mode::Relay),
-        b"connector" => connector(ch),
-        b"ender" => ender(ch),
-        b"bounder" => bounder(ch),
-        b"rater" => rater(ch),
+        b"connector" => hold(ch, connector(ch)),
+        b"ender" => hold(ch, ender(ch)),
+        b"bounder" => hold(ch, bounder(ch)),
+        b"rater" => hold(ch, rater(ch)),
         b"gater" => gater(ch),
         b"ungated" => ungated(ch),
         b"crash_once" => serve(ch, Mode::CrashOnce),

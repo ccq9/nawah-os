@@ -5171,7 +5171,7 @@ fn svc_balance(name: &str, frames0: u64) -> ! {
             "Sign out ended the session's job: no application of it lived, and the next sign-in launched into a new one",
         ),
         "session_gate" => pass(
-            "LAUNCH needs an open session: closed at boot, by END_SESSION and by the session's exit, opened by BEGIN_SESSION from the vouched session alone",
+            "LAUNCH needs an open session: closed at boot, by END_SESSION and by the session's exit, which ends the session's job, opened by BEGIN_SESSION from the vouched session alone",
         ),
         "launch_rate" => pass(
             "LAUNCH is bounded in rate: the attempt beyond sixteen in any 1000 ticks is refused ERR BUSY, failed launches count, a full table and an unknown id do not, and launching resumes as the attempts age",
@@ -5310,13 +5310,33 @@ fn launch_denied() -> ! {
 /// each waiting on its boot channel because all it asked there was refused, and holding that
 /// channel alone; an application that exited left nothing of its job behind, and the manager
 /// kept no handle of what failed or ended.
+/// WP-172 (services.md v1.20): the session's exit ends its job, so a lab session's role holds
+/// after its steps (the lab image `hold`), waiting on its boot channel without a deadline, while
+/// the test kernel reads. Its image is /SYSTEM/LABSES.ELF, so its process is known by name.
+/// Waits, until `by`, for the session to have exited (a step saw another reply: its exit code) or
+/// to hold (0x40), and for `also` of the listing; the listing and that code.
+fn session_held(h: &SvcHarness, by: u64, also: impl Fn(&[SvcLine]) -> bool) -> (Vec<SvcLine>, u64) {
+    let held = || {
+        let (p, n) = sched::live_named(b"LABSES.ELF");
+        n == 1 && p[0].waiting
+    };
+    let lines = h.poll_list(by, |l| {
+        (l.iter().any(|x| x.name == "session" && x.exit.is_some()) || held()) && also(l)
+    });
+    let code = match svc_find(&lines, "session").exit {
+        Some(c) => c,
+        None if held() => 0x40,
+        None => u64::MAX,
+    };
+    (lines, code)
+}
+
 fn app_spawn() -> ! {
     let name = "app_spawn";
     let h = SvcHarness::start(name, b"/SYSTEM/SVC-AS.TXT");
-    let lines = h.poll_list(sched::ticks() + 25_000, |l| {
-        l.iter().any(|x| x.name == "session" && x.exit.is_some())
-    });
-    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    let (lines, session) = session_held(&h, sched::ticks() + 25_000, |_| true);
+    // The held session's process and channel, which the manager keeps while it runs.
+    let held_extra = if session == 0x40 { 2 } else { 0 };
     // The eight that stay have asked their requests once each waits without a deadline; the
     // child the exited application left is ended with its job.
     sched::poll_until(sched::ticks() + 5000, || {
@@ -5338,7 +5358,7 @@ fn app_spawn() -> ! {
         .count();
     let live_jobs = i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
     let orphans = sched::live_named(b"IDLE.ELF").1;
-    let kept = mgr_handles(&h) - h.handles0;
+    let kept = mgr_handles(&h) - h.handles0 - held_extra;
     let load = h.load_reply.clone();
     kprintln!(
         "OSX|{}|ktest|app_spawn|load={}|session={:#x}|apps={}|waiting={}|handles={}|under_root={}|in_session={}|parents={}|jobs={}|live_jobs={}|orphans={}|mgr_handles={}|",
@@ -5410,10 +5430,9 @@ fn app_spawn() -> ! {
 fn app_connect() -> ! {
     let name = "app_connect";
     let h = SvcHarness::start(name, b"/SYSTEM/SVC-AC.TXT");
-    let lines = h.poll_list(sched::ticks() + 20_000, |l| {
-        l.iter().any(|x| x.name == "session" && x.exit.is_some())
-    });
-    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    let (lines, session) = session_held(&h, sched::ticks() + 20_000, |_| true);
+    // The held session's process and channel, which the manager keeps while it runs.
+    let held_extra = if session == 0x40 { 2 } else { 0 };
     sched::poll_until(sched::ticks() + 5000, || {
         let (apps, n) = sched::live_named(b"CONN.ELF");
         n == 5 && apps[..n].iter().all(|a| a.waiting)
@@ -5421,7 +5440,7 @@ fn app_connect() -> ! {
     let (apps, n) = sched::live_named(b"CONN.ELF");
     let waiting = apps[..n].iter().filter(|a| a.waiting).count();
     let handles: usize = apps[..n].iter().map(|a| a.handles).sum();
-    let kept = mgr_handles(&h) - h.handles0;
+    let kept = mgr_handles(&h) - h.handles0 - held_extra;
     let load = h.load_reply.clone();
     kprintln!(
         "OSX|{}|ktest|app_connect|load={}|session={:#x}|apps={}|waiting={}|handles={}|mgr_handles={}|",
@@ -5481,12 +5500,13 @@ fn app_connect() -> ! {
 fn session_job() -> ! {
     let name = "session_job";
     let h = SvcHarness::start(name, b"/SYSTEM/SVC-SJ.TXT");
-    let lines = h.poll_list(sched::ticks() + 20_000, |l| {
-        ["session", "desktop", "sessions"]
+    let (lines, session) = session_held(&h, sched::ticks() + 20_000, |l| {
+        ["desktop", "sessions"]
             .iter()
             .all(|s| l.iter().any(|x| x.name == *s && x.exit.is_some()))
     });
-    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    // The held session's process and channel, which the manager keeps while it runs.
+    let held_extra = if session == 0x40 { 2 } else { 0 };
     let desktop = svc_find(&lines, "desktop").exit.unwrap_or(u64::MAX);
     let sessions = svc_find(&lines, "sessions").exit.unwrap_or(u64::MAX);
     let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
@@ -5505,7 +5525,7 @@ fn session_job() -> ! {
     let under_root = stay[..n].iter().filter(|a| a.under_root).count();
     let in_session = stay[..n].iter().filter(|a| a.parent_under_root).count();
     let live_jobs = jobs_now();
-    let kept = mgr_handles(&h) - h.handles0;
+    let kept = mgr_handles(&h) - h.handles0 - held_extra;
     let load = h.load_reply.clone();
     kprintln!(
         "OSX|{}|ktest|session_job|load={}|session={:#x}|desktop={:#x}|sessions={:#x}|stay={}|waiting={}|nest={}|idle={}|under_root={}|in_session={}|live_jobs={}|mgr_handles={}|",
@@ -5605,10 +5625,7 @@ fn job_bound() -> ! {
         fail("a job's count does not hold its bound")
     }
     let h = SvcHarness::start(name, b"/SYSTEM/SVC-JB.TXT");
-    let lines = h.poll_list(sched::ticks() + 20_000, |l| {
-        l.iter().any(|x| x.name == "session" && x.exit.is_some())
-    });
-    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    let (lines, session) = session_held(&h, sched::ticks() + 20_000, |_| true);
     let job_of = |img: &[u8]| {
         let (a, n) = sched::live_named(img);
         (n == 1).then(|| a[0].job)
@@ -5686,10 +5703,9 @@ fn job_bound() -> ! {
 fn launch_rate() -> ! {
     let name = "launch_rate";
     let h = SvcHarness::start(name, b"/SYSTEM/SVC-LR.TXT");
-    let lines = h.poll_list(sched::ticks() + 25_000, |l| {
-        l.iter().any(|x| x.name == "session" && x.exit.is_some())
-    });
-    let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
+    let (lines, session) = session_held(&h, sched::ticks() + 25_000, |_| true);
+    // The held session's process and channel, which the manager keeps while it runs.
+    let held_extra = if session == 0x40 { 2 } else { 0 };
     // The ended session's applications are killed and the last one exits at once; the manager
     // has seen every exit when only the last session's job is left of what it made.
     let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
@@ -5697,12 +5713,12 @@ fn launch_rate() -> ! {
         sched::live_named(b"STAY.ELF").1 == 0
             && sched::live_named(b"EXIT.ELF").1 == 0
             && jobs_now() == 1
-            && mgr_handles(&h) - h.handles0 == 1
+            && mgr_handles(&h) - h.handles0 - held_extra == 1
     });
     let stays = sched::live_named(b"STAY.ELF").1;
     let exits = sched::live_named(b"EXIT.ELF").1;
     let live_jobs = jobs_now();
-    let kept = mgr_handles(&h) - h.handles0;
+    let kept = mgr_handles(&h) - h.handles0 - held_extra;
     let load = h.load_reply.clone();
     kprintln!(
         "OSX|{}|ktest|launch_rate|load={}|session={:#x}|stays={}|exits={}|live_jobs={}|mgr_handles={}|",
@@ -5756,11 +5772,12 @@ fn session_gate() -> ! {
     });
     let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
     let desktop = svc_find(&lines, "desktop").exit.unwrap_or(u64::MAX);
-    // stay#2 waits on its boot channel; stay#1 went with the ended session's job.
+    // stay#1 went with the ended session's job, stay#2 with the session's at its exit (WP-172).
     let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
     sched::poll_until(sched::ticks() + 5000, || {
-        let (stay, n) = sched::live_named(b"STAY.ELF");
-        n == 1 && stay[0].waiting && jobs_now() == 2 && mgr_handles(&h) - h.handles0 == 4
+        sched::live_named(b"STAY.ELF").1 == 0
+            && jobs_now() == 0
+            && mgr_handles(&h) - h.handles0 == 0
     });
     let (stay, n) = sched::live_named(b"STAY.ELF");
     let waiting = stay[..n].iter().filter(|a| a.waiting).count();
@@ -5796,9 +5813,9 @@ fn session_gate() -> ! {
     if desktop != 0x40 {
         fail("the desktop opened the gate, or the session's exit did not close it")
     }
-    // stay#2 still runs: the session's exit does not end its job (WP-172).
-    if n != 1 || waiting != 1 || live_jobs != 2 || kept != 4 {
-        fail("the manager kept something of a launch the gate refused or of the ended session")
+    // The session's exit ended its job with stay#2 (services.md v1.20): nothing is left of it.
+    if n != 0 || waiting != 0 || live_jobs != 0 || kept != 0 {
+        fail("an application or a job of the session outlived the session service")
     }
     if mgr_exit != 0 || procs != 0 || !clean {
         fail("manager or applications left something behind")

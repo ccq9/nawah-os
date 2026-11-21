@@ -1352,13 +1352,13 @@ class KillEvidence(unittest.TestCase):
             "SYSTEM/APPS/CLOSER.APP": "platform/pc-qemu/lab/closer.app", "SYSTEM/APPS/BAD.APP": "platform/pc-qemu/lab/bad.app",
             "SYSTEM/APPS/CLOCK.ELF": "${OUT}/apps/svc.elf", "SYSTEM/APPS/EXIT.ELF": "${OUT}/apps/exiter.elf",
             "SYSTEM/APPS/ORPHAN.ELF": "${OUT}/apps/svc.elf", "SYSTEM/APPS/CLOSER.ELF": "${OUT}/apps/svc.elf",
-            "SYSTEM/APPS/BAD.ELF": "platform/pc-qemu/lab/bad.app"})
+            "SYSTEM/APPS/BAD.ELF": "platform/pc-qemu/lab/bad.app", "SYSTEM/LABSES.ELF": "${OUT}/apps/svc.elf"})
         for name in ("exit", "orphan", "closer", "bad"):
             entry = (ROOT / "platform" / "pc-qemu" / "lab" / f"{name}.app").read_text(encoding="utf-8")
             self.assertIn(f"\nid={name}\nelf=/SYSTEM/APPS/{name.upper()}.ELF\n", entry)
         manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-as.txt").read_text(encoding="utf-8")
         self.assertEqual([l for l in manifest.splitlines() if l and not l.startswith("#")],
-                         ["session /SYSTEM/SVC.ELF - 3000 never 0 0 launcher"])
+                         ["session /SYSTEM/LABSES.ELF - 3000 never 0 0 launcher"])
         # The other launch case begins no session: a registered id is refused by the gate before
         # any image is looked for (WP-169; ERR NOT_FOUND, its reply until then, is APP-SPAWN's).
         denied = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-ld.txt").read_text(encoding="utf-8")
@@ -1424,7 +1424,7 @@ class KillEvidence(unittest.TestCase):
         declares = {"conn": "config", "connx": "config", "both": "display,config", "netonly": "net", "stuck": "config"}
         self.assertEqual(case.get("disk_files"), {
             f"SYSTEM/APPS/{n.upper()}.{x}": (f"platform/pc-qemu/lab/{n}.app" if x == "APP" else "${OUT}/apps/svc.elf")
-            for n in declares for x in ("APP", "ELF")})
+            for n in declares for x in ("APP", "ELF")} | {"SYSTEM/LABSES.ELF": "${OUT}/apps/svc.elf"})
         for name, deps in declares.items():
             entry = (ROOT / "platform" / "pc-qemu" / "lab" / f"{name}.app").read_text(encoding="utf-8")
             self.assertIn(f"\nid={name}\nelf=/SYSTEM/APPS/{name.upper()}.ELF\n", entry)
@@ -1488,12 +1488,12 @@ class KillEvidence(unittest.TestCase):
         self.assertEqual(E["M385"][self.SPAWN], ["exit 37", "|under_root=8|in_session=0|parents=1|", mutants._NOJOB])
         self.assertEqual(E["M395"][self.SPAWN], ["exit 37", "|in_session=8|parents=8|", mutants._NOJOB])
         manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-sj.txt").read_text(encoding="utf-8")
-        self.assertIn("\nsession /SYSTEM/SVC.ELF - 3000 never 0 0 ender\n", manifest)
+        self.assertIn("\nsession /SYSTEM/LABSES.ELF - 3000 never 0 0 ender\n", manifest)
         for name in ("desktop", "sessions"):
             self.assertIn(f"\n{name} /SYSTEM/SVC.ELF session 3000 never 0 0 ask END_SESSION=ERR ACCESS\n", manifest)
         self.assertEqual(case.get("disk_files"), {
             f"SYSTEM/APPS/{n.upper()}.{x}": (f"platform/pc-qemu/lab/{n}.app" if x == "APP" else "${OUT}/apps/svc.elf")
-            for n in ("stay", "nest") for x in ("APP", "ELF")})
+            for n in ("stay", "nest") for x in ("APP", "ELF")} | {"SYSTEM/LABSES.ELF": "${OUT}/apps/svc.elf"})
 
     LOGOUT_KILLS = "TST-M6-LOGOUT-KILLS"
 
@@ -1600,7 +1600,7 @@ class KillEvidence(unittest.TestCase):
                     if "=" in f:
                         self.assertIn("|" + f.split("=")[0] + "=", pinned, f)
         manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-jb.txt").read_text(encoding="utf-8")
-        self.assertIn("\nsession /SYSTEM/SVC.ELF - 3000 never 0 0 bounder\n", manifest)
+        self.assertIn("\nsession /SYSTEM/LABSES.ELF - 3000 never 0 0 bounder\n", manifest)
         for n in ("hog", "peer"):
             self.assertIn(f"\nid={n}\nelf=/SYSTEM/APPS/{n.upper()}.ELF\n", (ROOT / "platform" / "pc-qemu" / "lab" / f"{n}.app").read_text(encoding="utf-8"))
 
@@ -1646,11 +1646,12 @@ class KillEvidence(unittest.TestCase):
                 self.assertEqual(mutants.stage_of(mid), "M6")
                 self.assertEqual(E[mid], {self.LAUNCH_RATE: ["exit 37", f"|session={code}|", msg]})
         manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-lr.txt").read_text(encoding="utf-8")
-        self.assertIn("\nsession /SYSTEM/SVC.ELF - 3000 never 0 0 rater\n", manifest)
+        self.assertIn("\nsession /SYSTEM/LABSES.ELF - 3000 never 0 0 rater\n", manifest)
         self.assertEqual(case.get("disk_files"), {
             "SYSTEM/APPS/STAY.APP": "platform/pc-qemu/lab/stay.app", "SYSTEM/APPS/EXIT.APP": "platform/pc-qemu/lab/exit.app",
             "SYSTEM/APPS/BAD.APP": "platform/pc-qemu/lab/bad.app", "SYSTEM/APPS/STAY.ELF": "${OUT}/apps/svc.elf",
-            "SYSTEM/APPS/EXIT.ELF": "${OUT}/apps/exiter.elf", "SYSTEM/APPS/BAD.ELF": "platform/pc-qemu/lab/bad.app"})
+            "SYSTEM/APPS/EXIT.ELF": "${OUT}/apps/exiter.elf", "SYSTEM/APPS/BAD.ELF": "platform/pc-qemu/lab/bad.app",
+            "SYSTEM/LABSES.ELF": "${OUT}/apps/svc.elf"})
         # notes is registered by the volume's sample NOTES.APP, whose image no build places.
         self.assertIn("\nid=notes\n", (ROOT / "platform" / "pc-qemu" / "apps" / "NOTES.APP").read_text(encoding="utf-8"))
         self.assertNotIn("SYSTEM/APPS/NOTES.ELF", case["disk_files"])
@@ -1670,14 +1671,15 @@ class KillEvidence(unittest.TestCase):
         mgr = (ROOT / "user" / "apps" / "svcmgr" / "src" / "main.rs").read_text(encoding="utf-8")
         t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
         case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.SESSION_GATE)
-        line = "|ktest|session_gate|load=OK 2|session=0x0|desktop=0x40|stays=1|waiting=1|live_jobs=2|mgr_handles=4|"
+        line = "|ktest|session_gate|load=OK 2|session=0x0|desktop=0x40|stays=0|waiting=0|live_jobs=0|mgr_handles=0|"
         self.assertIn(line, case["required_markers"])
         for bad in ("|text=gater|step=", "|text=ungated|step="):
             self.assertIn(bad, case["forbidden_markers"])
         self.assertEqual(case["timeout_s"], 30)
         self.assertIn('out.put(b"ERR NO_SESSION")', mgr)
         msgs = {"_SGSES": "|ktest|fail|a LAUNCH or BEGIN_SESSION of the session was not answered as the gate states",
-                "_SGDESK": "|ktest|fail|the desktop opened the gate, or the session's exit did not close it"}
+                "_SGDESK": "|ktest|fail|the desktop opened the gate, or the session's exit did not close it",
+                "_SGEXIT": "|ktest|fail|an application or a job of the session outlived the session service"}
         for const, msg in msgs.items():
             self.assertEqual(getattr(mutants, const), msg)
             self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
@@ -1688,6 +1690,9 @@ class KillEvidence(unittest.TestCase):
             "M409": ("_SGDESK", "|session=0x0|desktop=0x5200|", True),    # the desktop's LAUNCH after the session's clean exit
             "M411": ("_SGSES", "|session=0x5900|", True),                 # step 9, after an END_SESSION with no application
             "M412": ("_SGSES", "|session=0x5300|", False),                # step 3 refused ERR BUSY after seventeen refusals
+            # WP-172 (services.md v1.20): the session's exit ends its job.
+            "M415": ("_SGEXIT", "|stays=1|waiting=1|live_jobs=2|mgr_handles=4|", True),   # stay#2 outlives the session
+            "M416": ("_SGEXIT", "|stays=0|waiting=0|live_jobs=1|mgr_handles=1|", False),  # its killed job kept
         }
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.SESSION_GATE in m[4]), sorted(want))
         for mid, (const, codes, security) in want.items():
