@@ -1684,6 +1684,24 @@ MUTANTS = [
      "        self.boot_ops[k] = Some(op);\n",
      "        self.boot_ops[k] = Some(BootOp::Connect);\n",
      ["TST-M6-LOGOUT-KILLS"], "the manager's answer to END_SESSION is taken for a CONNECT's, so its outcome is never traced (the job is ended all the same)"),
+    # M397..M400 (WP-164, RSK-050; syscall.md v1.15): a job holds 32 live processes at most,
+    # killed by TST-M6-JOB-BOUND.
+    ("M397", "kernel/src/object/job.rs",
+     "        if !self.is_root() && self.procs.load(Ordering::SeqCst) >= JOB_PROCESSES_MAX {\n",
+     "        if false {\n",
+     ["TST-M6-JOB-BOUND"], "SECURITY: no job is bounded, so one application takes every kernel stack"),
+    ("M398", "kernel/src/sched/mod.rs",
+     "            Some(o) => match o.job().admit() {\n",
+     "            Some(_) => match crate::object::job::root().admit() {\n",
+     ["TST-M6-JOB-BOUND"], "SECURITY: every process is counted in the root, which has no bound"),
+    ("M399", "kernel/src/object/job.rs",
+     "        self.0.procs.fetch_sub(1, Ordering::SeqCst);\n",
+     "",
+     ["TST-M6-JOB-BOUND"], "a reaped process keeps its place, so a job that reached the bound never starts again"),
+    ("M400", "kernel/src/object/job.rs",
+     "self.procs.load(Ordering::SeqCst) >= JOB_PROCESSES_MAX {",
+     "self.procs.load(Ordering::SeqCst) > JOB_PROCESSES_MAX {",
+     ["TST-M6-JOB-BOUND"], "a job holds 33 processes, one more than the bound"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2021,7 +2039,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # from the session alone ends (services.md v1.17).
             "M141", "M385", "M386", "M392", "M393", "M395",
             # WP-167 (REQ-M6-004): Sign out ends the session's job (session.md v1.8).
-            "M388"}
+            "M388",
+            # WP-164 (RSK-050): a job holds 32 live processes at most (syscall.md v1.15).
+            "M397", "M398"}
 
 
 def security_of(mid: str) -> bool:
