@@ -5686,13 +5686,18 @@ fn launch_rate() -> ! {
         l.iter().any(|x| x.name == "session" && x.exit.is_some())
     });
     let session = svc_find(&lines, "session").exit.unwrap_or(u64::MAX);
-    // The ended session's applications are killed and the last one exits at once.
+    // The ended session's applications are killed and the last one exits at once; the manager
+    // has seen every exit when only the last session's job is left of what it made.
+    let jobs_now = || i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
     sched::poll_until(sched::ticks() + 5000, || {
-        sched::live_named(b"STAY.ELF").1 == 0 && sched::live_named(b"EXIT.ELF").1 == 0
+        sched::live_named(b"STAY.ELF").1 == 0
+            && sched::live_named(b"EXIT.ELF").1 == 0
+            && jobs_now() == 1
+            && mgr_handles(&h) - h.handles0 == 1
     });
     let stays = sched::live_named(b"STAY.ELF").1;
     let exits = sched::live_named(b"EXIT.ELF").1;
-    let live_jobs = i64::from(object::stats().jobs) - i64::from(h.obj0.jobs);
+    let live_jobs = jobs_now();
     let kept = mgr_handles(&h) - h.handles0;
     let load = h.load_reply.clone();
     kprintln!(

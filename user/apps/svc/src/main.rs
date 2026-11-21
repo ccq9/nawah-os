@@ -335,7 +335,7 @@ fn bounder(ch: u32) -> u64 {
 /// (3) END_SESSION answered `ENDED 8`, (4) six LAUNCH exit (#9 to #14), (5) LAUNCH notes, whose
 /// image is not on the volume, ERR NOT_FOUND, (6) LAUNCH bad, whose image is not one, ERR FAILED:
 /// sixteen attempts; (7) LAUNCH exit answered ERR BUSY, asked up to three times while answered OK
-/// so the step's code tells how many got through; (8) at t0 + 900 sixteen LAUNCH exit, each
+/// so the step's code tells how many got through; (8) at t0 + 600 sixteen LAUNCH exit, each
 /// ERR BUSY; (9) an unknown id, ERR UNKNOWN; (10) at t0 + 1100, when the first attempt is more
 /// than a window old, LAUNCH exit is #15. Every LAUNCH but step 2's is asked again while answered
 /// ERR FULL (the ended session's places come back). Traced
@@ -366,7 +366,7 @@ fn rater(ch: u32) -> u64 {
                 busy_at = libnawah::clock_ticks().saturating_sub(t0);
                 0
             }
-            8 => 900,
+            8 => 600,
             10 => 1100,
             _ => 0,
         };
