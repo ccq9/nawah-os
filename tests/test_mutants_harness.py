@@ -1001,9 +1001,9 @@ class KillEvidence(unittest.TestCase):
     def test_the_user_store_creation_expectations_are_pinned(self):
         """WP-157 (RSK-028; config.md v1.4): configd creates a user store only for a token that
         may modify it. M325 puts the creation back before the token is judged (a refused SET
-        or IMPORT leaves the store behind); M326 lets SUBSCRIBE, which shows no token, create
-        one (eight take every slot and the user's own SET is refused): both are SECURITY
-        mutants, each replacement the same call creating whatever the token. M327 takes ADMIN
+        or IMPORT leaves the store behind): a SECURITY mutant. M326, which let SUBSCRIBE create
+        one, is retired with WP-112 (config.md v1.6: SUBSCRIBE refuses every user store before
+        it looks one up; M437 guards that refusal) and must stay unregistered. M327 takes ADMIN
         out of the tokens a store is created for (an administrator's SET on a store that is
         not loaded is refused): no hole, so not a SECURITY mutant. From the review round:
         M328 (SECURITY) lets any token modify a loaded user store, the check the refusals
@@ -1022,18 +1022,18 @@ class KillEvidence(unittest.TestCase):
         self.assertTrue(any("|subs_ok=" in m for m in lines) and any("|full_set=" in m for m in lines))
         line = "".join(lines)
         bound = "uid != 0 && uid <= u64::from(UID_MAX_PERSISTENT)"
+        self.assertNotIn("M326", {m[0] for m in mutants.MUTANTS} | set(mutants.EXPECT) | mutants.SECURITY)
         want = {
             "M325": ("store_index(name, create)", "store_index(name, true)", "_LEFT",
                      {"|other_export=OK|", "|import_export=OK|"}, True),
-            "M326": ("store_index(store, false)", "store_index(store, true)", "_TOOK",
-                     {"|subs_ok=8|", "|subs_not_found=0|", "|own_set=ERR INVALID|"}, True),
             "M327": ("token.perms & perm::ADMIN != 0 || uid == token.uid", "uid == token.uid", "_ADMIN",
                      {"|admin_set=ERR ACCESS|"}, False),
             "M328": ("admin || self.stores[i].uid == token.uid", "true", "_LOADED",
                      {"|loaded_other=OK 2|", "|loaded_kept=0|"}, True),
-            "M329": (bound, "uid <= u64::from(UID_MAX_PERSISTENT)", "_NONAME", {"|sub_zero=OK|"}, False),
+            # since v1.6 a name these let through is a user store, which SUBSCRIBE refuses
+            "M329": (bound, "uid <= u64::from(UID_MAX_PERSISTENT)", "_NONAME", {"|sub_zero=ERR ACCESS|"}, False),
             "M330": (bound, "uid != 0 && uid <= u64::from(UID_MAX_PERSISTENT) * 10", "_NONAME",
-                     {"|sub_big=ERR NOT_FOUND|"}, False),
+                     {"|sub_big=ERR ACCESS|"}, False),
             "M331": ("create || user_uid(name).is_none()", "user_uid(name).is_none()", "_FULLTAB",
                      {"|full_set=ERR ACCESS|"}, False),
         }
@@ -1062,7 +1062,7 @@ class KillEvidence(unittest.TestCase):
                 for x in got:
                     self.assertIn("|" + x[1:].split("=")[0] + "=", line, x)
                     self.assertNotIn(x, line, f"{x} is the pinned value")
-        self.assertEqual(len(set(seen)), 7, "each mutant is known by its own message and fields")
+        self.assertEqual(len(set(seen)), 6, "each mutant is known by its own message and fields")
 
     DROP = "TST-M4-NET-CLIENT-DROP"
 
@@ -1783,6 +1783,95 @@ class KillEvidence(unittest.TestCase):
         self.assertEqual(case.get("disk_files"), {"SYSTEM/APPS/STAY.APP": "platform/pc-qemu/lab/stay.app",
                                                   "SYSTEM/APPS/STAY.ELF": "${OUT}/apps/svc.elf",
                                                   "SYSTEM/LABSES.ELF": "${OUT}/apps/svc.elf"})
+
+    READ_LOAD = "TST-M4-CONFIG-READ-LOAD"
+
+    def test_the_read_load_expectations_are_pinned(self):
+        """WP-112 (config.md v1.6): a user store is read for its owner's or an administrator's usable
+        token alone and loaded on that read. M422 to M437, each anchoring once in configd, are
+        declared on TST-M4-CONFIG-READ-LOAD alone; the SECURITY ones are M422 (any request reads
+        and loads), M424 (a revoked token reads), M425 (a read of a store no volume holds keeps its
+        slot), M427 and M429 (a refused GET or EXPORT reads a loaded store), M430 (an unusable
+        administrator's token reads), M431 (a refused reader is told the table is full), M432
+        (CONFIG_WRITE reads), M433 (a group of that uid reads) and M437 (SUBSCRIBE of a loaded user
+        store accepted). Each is known by exit 37, one of the case's four failure messages and
+        fields of its three lines that differ from the pinned ones (each field's name in those
+        lines, not every value the pinned one), except M436, under which the guest passes and the
+        host check on the volume fails (no slot B of generation 2, slot A no longer holding the
+        read line); no two share their evidence. The case's lines, host checks and volume are
+        pinned, and each lab store a NAWAH-CFG 1 slot whose digest covers its one line."""
+        import hashlib
+        E = mutants.EXPECT
+        src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
+        cfg = (ROOT / "user" / "apps" / "configd" / "src" / "main.rs").read_text(encoding="utf-8")
+        t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
+        case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.READ_LOAD)
+        pinned = [
+            ("|ktest|config_read_load|bare=ERR NOT_FOUND|resolve=OK user 1 mine|bare_loaded=ERR NOT_FOUND|own=OK 1 mine|"
+             "own_export=OK;lab.read 1 mine|admin=OK 1 theirs|"),
+            ("|ktest|config_read_load|more|other_loaded=ERR NOT_FOUND|other_loaded_export=ERR NOT_FOUND|other=ERR NOT_FOUND|"
+             "other_export=ERR NOT_FOUND|absent=6|filled=6|full_set=ERR INVALID|full_read=ERR INVALID|revoked=ERR NOT_FOUND|"
+             "revoked_export=ERR NOT_FOUND|"),
+            ("|ktest|config_read_load|full|sub_loaded=ERR ACCESS|pol=OK 1|refused_full=ERR NOT_FOUND|bare_full=ERR NOT_FOUND|"
+             "loaded_full=OK 1 theirs|resolve_full=OK user 1 mine|policy_full=OK policy 1 locked|stranger_full=ERR INVALID|"
+             "cw=ERR NOT_FOUND|grp=ERR NOT_FOUND|admin_expired=ERR NOT_FOUND|write=OK 2|admin_revoked=ERR NOT_FOUND|"),
+        ]
+        for line in (*pinned, "|ktest|config_read_load|frames_delta=0"):
+            self.assertIn(line, case["required_markers"])
+        lines = "".join(pinned)
+        checks = [c for c in case["host_checks"] if c[:4] == ["python3", "-I", "tools/fat32.py", "grep"]]
+        self.assertEqual([c[5:] for c in checks], [["/SYSTEM/CFGU1001.B", "NAWAH-CFG 1 2 "],
+                                                  ["/SYSTEM/CFGU1001.B", "lab.read 2 new\n"],
+                                                  ["/SYSTEM/CFGU1001.A", "lab.read 1 mine\n"]])
+        msgs = {"_RLLOAD": "|ktest|fail|a user store was not loaded on a read of its owner or an administrator",
+                "_RLAUTH": "|ktest|fail|a user store was read without its owner's or an administrator's usable token",
+                "_RLSLOT": "|ktest|fail|a refused read or a store no volume holds took a slot of the table",
+                "_RLFULL": "|ktest|fail|a full table stood before a policy value or a loaded store"}
+        for const, msg in msgs.items():
+            self.assertEqual(getattr(mutants, const), msg)
+            self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
+        security = {"M422", "M424", "M425", "M427", "M429", "M430", "M431", "M432", "M433", "M437"}
+        want = {"M422": "_RLAUTH", "M423": "_RLLOAD", "M424": "_RLAUTH", "M425": "_RLSLOT", "M426": "_RLLOAD",
+                "M427": "_RLAUTH", "M428": "_RLSLOT", "M429": "_RLAUTH", "M430": "_RLAUTH", "M431": "_RLAUTH",
+                "M432": "_RLAUTH", "M433": "_RLAUTH", "M434": "_RLFULL", "M435": "_RLFULL", "M436": None,
+                "M437": "_RLAUTH"}
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.READ_LOAD in m[4]), sorted(want))
+        found = set()
+        for mid, const in want.items():
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], "user/apps/configd/src/main.rs")
+                self.assertEqual(cfg.count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(m[4], [self.READ_LOAD])
+                self.assertEqual(mid in mutants.SECURITY, mid in security)
+                self.assertEqual(m[5].startswith("SECURITY: "), mid in security, m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                exp = E[mid][self.READ_LOAD]
+                if const is None:  # M436: the host check fails, the guest passing
+                    self.assertEqual(exp, ["host checks", "/SYSTEM/CFGU1001.B NAWAH-CFG 1 2  -> 2",
+                                           "/SYSTEM/CFGU1001.A lab.read 1 mine\\n -> 1"])
+                    fields = tuple(exp)
+                else:
+                    self.assertEqual((exp[0], exp[-1]), ("exit 37", getattr(mutants, const)))
+                    fields = tuple(exp[1:-1])
+                    self.assertTrue(fields)
+                    for f in fields:  # fields of the pinned lines, not all with their pinned values
+                        self.assertNotIn(f, lines)
+                        items = [x for x in f.strip("|").split("|") if "=" in x]  # a line's head is no field
+                        self.assertTrue(items, (mid, f))
+                        for item in items:
+                            self.assertIn("|" + item.split("=")[0] + "=", lines, (mid, item))
+                        self.assertTrue(any("|" + item + "|" not in lines for item in items), (mid, f))
+                self.assertNotIn((fields, const), found)
+                found.add((fields, const))
+        stores = {"SYSTEM/CFGU1001.A": "mine", "SYSTEM/CFGU1002.A": "theirs", "SYSTEM/CFGU1003.A": "hidden"}
+        self.assertEqual(case.get("disk_files"), {k: f"platform/pc-qemu/lab/{k[7:].lower()}" for k in stores})
+        for name, value in stores.items():
+            data = (ROOT / case["disk_files"][name]).read_bytes()
+            head, body = data.split(b"\n", 1)
+            self.assertEqual(body, f"lab.read 1 {value}\n".encode())
+            self.assertEqual(head, b"NAWAH-CFG 1 1 " + hashlib.sha256(body).hexdigest().encode())
 
 def lock_held(path) -> bool:
     """Whether another open file holds `path`'s flock (False when the file is missing)."""

@@ -7194,10 +7194,12 @@
    "id": "WP-112",
    "stage": "M6",
    "requirement_ids": [
+    "REQ-M4-004",
     "REQ-M4-005"
    ],
    "depends_on": [
-    "WP-107"
+    "WP-107",
+    "WP-158"
    ],
    "inputs": [
     "user/apps/configd/src/main.rs: only DEVICE, POLICY and SESSION are loaded at start; GET, EXPORT and RESOLVE do not load a user store (RESOLVE then skips the user level: config.md line 20); IMPORT drops ERR FULL and ERR IO and answers OK <count>, each line saved on its own",
@@ -7211,13 +7213,22 @@
     "docs/contracts/config.md",
     "tests/mutants.py",
     "tools/project.py",
-    "docs/tests.json"
+    "docs/tests.json",
+    "platform/pc-qemu/lab/cfgu1001.a",
+    "platform/pc-qemu/lab/cfgu1002.a",
+    "platform/pc-qemu/lab/cfgu1003.a",
+    "tests/test_mutants_harness.py",
+    "docs/requirements.json",
+    "docs/work-items.json",
+    "docs/PLAN-REVERSE.md",
+    "docs/LATER.md",
+    "docs/project-state.json"
    ],
    "contract_refs": [
     "docs/contracts/config.md"
    ],
    "actions": [
-    "الإعدادات: قيمة المستخدم تُقرأ بعد إعادة التشغيل، والاستيراد لا يجيب بالنجاح بعد فشل جزئي (المرحلة د)",
+    "الإعدادات: قيمة المستخدم تُقرأ بعد إعادة التشغيل لصاحبها أو للمدير وحدهما (المرحلة د؛ والاستيراد الذري قُسم إلى WP-174)",
     "found by the owner's external reviewer by reading commit fe456078 / 077628e1 and confirmed on 2026-11-15 by the team's independent verification (auditor by reading, security red team for who can trigger it; nothing run, no CI evidence): after a restart a user's saved value reads as not found and RESOLVE returns the device value until a write loads the store (a user's accessibility settings fall back silently); an import of 65 keys answers OK 64, and a retry with the same request id repeats that answer",
     "design to decide in the package (2-3 options with trade-offs): stores loaded on demand for reads too, with eviction of the least recently used store without subscribers, against loading every user store at start; an atomic import (capacity checked first, one save, a full rollback on I/O error) against a reply that names the failing line: config.md v1.6 either way (v1.3 went to WP-107, v1.4 to WP-157 and v1.5 to WP-158)",
     "test first, red seen locally before the fix: a two-phase case on one disk (SET a user key, restart, then GET and RESOLVE: today not found); an import of 65 distinct keys (today OK 64)",
@@ -7227,19 +7238,29 @@
     "2026-11-18 (the manager): config.md v1.4 went to WP-157 (a user store is created only for a token that may modify it); this item's contract change is v1.5, in the design line and in the acceptance",
     "2026-11-18 design input from WP-157's review round: (1) SUBSCRIBE, GET and EXPORT of a user store that is not loaded answer ERR NOT_FOUND, the user's own store before the first write of a boot included, so a subscriber misses changes until a write loads the store (docs/LATER.md L-066): loading on demand for reads must not give a request without a token a slot again (WP-157); (2) eviction of a store 'without subscribers' is defeated by a subscriber without a token that pins the loaded stores (WP-158): count the owner's subscriptions alone, or decide after WP-158; (3) an ADMIN token can load eight stores of other uids, after which a ninth user's SET answers ERR INVALID until a restart (TST-M4-CONFIG-STORE-AUTHZ pins that reply): the eviction's case",
     "2026-11-19 (the manager): config.md v1.5 went to WP-158 (a subscription is its client's; no session subscription without a token); this item's contract change is v1.6, in the design line and in the acceptance. Design input: a store's subscriptions are now owned by clients, so eviction 'without subscribers' can count them as they are",
-    "2026-11-19 design input from WP-158's review round: if this item evicts a user store, it closes that store's subscriptions before the slot is reset (a subscription is now owned by a client, and a reset slot would drop the handles unclosed)"
+    "2026-11-19 design input from WP-158's review round: if this item evicts a user store, it closes that store's subscriptions before the slot is reset (a subscription is now owned by a client, and a reset slot would drop the handles unclosed)",
+    "2026-11-21 (the manager): split before activation, and joined with WP-168's first part. (1) WP-168's design (the services engineer, read only) put a user store loaded on read for its owner's or an admin's token, and GET and EXPORT of user/<uid> answered to them alone, before the session's autostart: that is this item's first half (a user's saved value read after a restart) with the read authority WP-157's review round asked of it (L-066: loading on demand for reads must not give a request without a token a slot). (2) Budget: the two halves with the read authority, two cases and their mutants are over the line of 120 calls. So this item keeps the load on read with its authority (config.md v1.6); WP-174 takes the atomic import (config.md v1.7); WP-168 depends on this item. An ordering the owner may reverse",
+    "2026-11-21 (the manager): design, with its options (rule 5). Loading: (a) on read, for a reader that may read the store, no eviction (a full table answers ERR INVALID, as a write does since v1.4); (b) on read with the least recently used store without subscribers evicted; (c) every user store loaded at start. (a) chosen: the smallest change that serves the session's autostart and a restart; (b) needs the subscriptions closed before a reset (WP-158's input) and a policy for a store being written; (c) takes slots for users not signed in and has no bound past eight. Who reads: (a) a usable token of that uid or with ADMIN; (b) the owner alone; (c) also CONFIG_WRITE; (a) chosen: ADMIN already writes every user store (config.md §1), CONFIG_WRITE writes the device store only, and the owner alone would leave the administrator's tools without a read. What others are told: ERR NOT_FOUND, loaded or not and full or not, against ERR ACCESS; NOT_FOUND chosen so a read tells no one else whether a store exists. RESOLVE with a full table (the review round): (a) a key policy holds is answered without the reader's store, another key ERR INVALID; (b) the user layer skipped; (c) ERR INVALID for every key; (a) chosen: policy beats every user value, so no store is needed for it, and (b) would answer the device value silently. SUBSCRIBE of a user store (the review round: it told a token-less client that a store is loaded, and its keys, now that reads load stores; an ordinary application can declare config, apps.md): (a) refused ERR ACCESS, loaded or not, as v1.5 refused session; (b) a SUBSCRIBE form that carries a token; (c) a written limit; (a) chosen: the item's condition is that no one else reads a user store, rule 1 of section 7 makes a hole an ordinary program reaches a fix, not a line, and no client subscribes to a user store today; (b) is a later form (LATER). The restart: (a) lab stores on the volume that no request has loaded, what configd finds at start after any restart; (b) a two-phase case that writes, reboots and reads; (a) chosen: the same state at configd's start, in one boot with known contents. Kept as limits: the shell's cfg get sends no token; no eviction",
+    "2026-11-21 (the manager): the review round on the scratch clone's 3f216590b (the auditor and the red team, read only). Confirmed and fixed, test first: with the table full RESOLVE answered ERR INVALID before policy (policy first now); SUBSCRIBE told a token-less client that a user store is loaded (refused now); the case passed an expired administrator's token that still read, a refused reader told the table is full, CONFIG_WRITE or a group of that uid reading, a loaded store refused when the table is full, and the slots' generations forgotten after a read-load (steps after the fill, minted tokens and a host check on CFGU1001.B now; mutants M430 to M437); the oracle named WP-174; the test record's oracle was empty; the acceptance said 'after a restart' of a case that does not restart. M326 (SUBSCRIBE creating a user store) is retired: SUBSCRIBE refuses every user store before it looks one up, so it is an equivalent mutant; M437 guards the refusal. Refuted: none. Kept as lines: the shell's cfg get, no eviction, a token-carrying SUBSCRIBE form",
+    "2026-11-21 (the manager): test first, on a scratch clone: TST-M4-CONFIG-READ-LOAD (new, M4) with three lab stores on the volume failed before the fix (resolve, own, own_export and admin answered ERR NOT_FOUND, full_set=OK 1: exit 37) and passed after it; TST-M4-CONFIG-STORE-AUTHZ and TST-M4-POLICY-PRECEDENCE, which read user stores with no token, then failed (loaded_kept=0; export=ERR NOT_FOUND) and pass with the reader's token (the administrator's, the user's): their checks keep their meaning. After the review round the extended case failed before its two fixes (sub_loaded=OK, policy_full=ERR INVALID: exit 37) and passed after them, with its host checks on CFGU1001.B; STORE-AUTHZ then failed (subs_not_found=0, own_sub=ERR ACCESS) and now counts the refusals (subs_refused=8, own_sub=ERR ACCESS, cfg_grew=0). Scratch runs, never evidence; CI judges",
+    "2026-11-21 estimate after the split (the manager): about 100 tool calls with the review round's corrections, inside the line of 120",
+    "2026-11-21 activated (the manager): its dependencies WP-107 and WP-158 are done; test first (above)"
    ],
-   "acceptance": "a user's saved value is read and takes its precedence after a restart, and an import either applies every line or reports the failure and applies none, shown by the new cases on CI; config.md v1.6 states both",
+   "acceptance": "a user store on the volume that no request has loaded, as after a restart, is read for its owner's or an administrator's usable token alone: GET, EXPORT and RESOLVE load it for such a reader (RESOLVE answers a key policy holds without it); any other reader, CONFIG_WRITE, a group and an expired or revoked token included, is answered ERR NOT_FOUND, loaded or not and full or not, and loads nothing; SUBSCRIBE of a user store is refused; a store no volume holds takes no slot; with no free slot a read of a store not loaded is answered ERR INVALID; a write after such a load goes to the other slot; shown by TST-M4-CONFIG-READ-LOAD on CI, with TST-M4-CONFIG-STORE-AUTHZ and TST-M4-POLICY-PRECEDENCE reading with the reader's token; config.md v1.6 states it; the mutants M422 to M437 killed by the M6 gate, M326 retired",
    "test_ids": [
-    "TST-M4-CONFIG-PERSIST",
-    "TST-M4-POLICY-PRECEDENCE"
+    "TST-M4-CONFIG-READ-LOAD",
+    "TST-M4-CONFIG-STORE-AUTHZ",
+    "TST-M4-POLICY-PRECEDENCE",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
    ],
    "commands": [
     "python3 tools/project.py test --target pc-qemu --suite M4"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
@@ -10594,12 +10615,13 @@
     "REQ-M6-004"
    ],
    "depends_on": [
-    "WP-169"
+    "WP-169",
+    "WP-112"
    ],
    "inputs": [
     "split from WP-102 on 2026-11-20 by its budget line, its third part",
     "docs/contracts/config.md (the user store)",
-    "user/apps/configd/src/main.rs (GET reads loaded stores alone: a user store is loaded on its first change only)"
+    "user/apps/configd/src/main.rs (since WP-112, config.md v1.6: a user store is loaded on read for its owner's or an administrator's usable token)"
    ],
    "files": [
     "user/apps/sessiond/src/main.rs",
@@ -10617,7 +10639,7 @@
     "docs/contracts/session.md",
     "docs/contracts/config.md"
    ],
-   "acceptance": "after sign-in the session reads session.autostart from the user's store and launches up to eight ids in order, a missing key, a refused or missing entry each traced and passed over; a user store is loaded on read for its owner's or an admin's token alone; shown on CI in TST-M6-LOGOUT-KILLS (the autostart replacing the relay's launches) and a config case; the config and session contracts state it in their next versions; M390 and M391 killed by the M6 gate",
+   "acceptance": "after sign-in the session reads session.autostart from the user's store (loaded on read for the user's token since WP-112, config.md v1.6) and launches up to eight ids in order, a missing key, a refused or missing entry each traced and passed over; shown on CI in TST-M6-LOGOUT-KILLS (the autostart replacing the relay's launches); the session contract states it in its next version; its mutants (M391 among them, L-103) killed by the M6 gate",
    "test_ids": [
     "TST-M6-LOGOUT-KILLS",
     "TST-M6-MUTANTS",
@@ -10637,7 +10659,8 @@
     "التشغيل التلقائي من مخزن المستخدم (مفصولة من WP-102 في 2026-11-20)",
     "2026-11-20 (the manager): split before activation by this item's budget line (the services engineer's design, read only: over 200 tool calls against 120, unmeasured): WP-102 keeps the manager's part, the session's job and END_SESSION; WP-167 the session's part, Sign out ending it (TST-M6-LOGOUT-KILLS, its oracle observing the job's end through the test kernel's live processes, not process_list, so WP-69 is not waited for); WP-168 the autostart (the config contract's next version: a user store loaded on read for its owner's token); WP-47 depends on all three, so the owner's order passes through them in this order",
     "2026-11-20 (the manager): after WP-169, whose BEGIN_SESSION the autostart follows",
-    "2026-11-20 (WP-167's audit): the boot channel's answer to LAUNCH is `OK app:<id>#<n>`, not `OK`: the session's queue (session.md v1.8) must learn it with the autostart, or its matching shifts (L-103)"
+    "2026-11-20 (WP-167's audit): the boot channel's answer to LAUNCH is `OK app:<id>#<n>`, not `OK`: the session's queue (session.md v1.8) must learn it with the autostart, or its matching shifts (L-103)",
+    "2026-11-21 (the manager): its first part (a user store loaded on read for its owner's or an admin's token; config.md's next version; the mutant then named M390) went to WP-112, which it now depends on"
    ]
   },
   {
@@ -10977,6 +11000,53 @@
     "2026-11-21 CI record: verify run 44891030423 on e216c893, run attempt 1, green; 193 runs imported, none failing; validate-records --strict 0 errors. TST-M6-SESSION-RESTART PASS (evidence/20261121T100130Z-6dd3132b-001-a, 5 s of its 45 s) in its three phases: RESTART (exit 0x40, restarts=1), a crash (killed=1, exit 0x20000, restarts=2) and STOP (state stopped, exit 0x40), each with the application gone with the old job, each session started again launching into a new job (new_job=1) and nothing left after the stop (stays=0, live_jobs=0, mgr_handles=0), frames_delta=0, so the 'leak' of WP-172's review round is refuted on CI too (and on run 44887681066, the first version). TST-M6-SESSION-GATE PASS. TST-M6-MUTANTS PASS (evidence/20261121T100315Z-6dd3132b-001-g: 269 of 269 valid mutants killed, no surviving SECURITY mutant, no expectation missed); M417 to M421 killed by TST-M6-SESSION-RESTART with their declared evidence. TST-M0-005 PASS with 103 cases (evidence/20261121T100153Z-6dd3132b-001-a)",
     "2026-11-21 the gap of the review round's mutants, on a scratch clone (scratch, never evidence): against the case as pushed on 191bba8dfb, its declared killer missed M419, M420 and M421 (the run's report: declared_killers_missed=['M419', 'M420', 'M421']); in the fairness sweep that followed, each was 'killed' by TST-M4-NET-NO-INTERNET failing under concurrent QEMU loads (the explicit probe did not settle internet=none), a case that has nothing of the session: such a failure hides a survivor (L-116)",
     "2026-11-21 close under the method's close rule (section 7, rule 3): every clause of this item shown on CI on the case's written steps: the manager ends the session's job with its application at a RESTART, a crash while ready and a STOP, closes the gate after each exit, knows the session by its name, and each session started again launches into a job of its own; the clean exit is TST-M6-SESSION-GATE's; the five mutants killed, four SECURITY. Written as limits, not shown: the manager's own stop leaves applications' jobs (L-113), an END_SESSION unsent (L-111). No kernel fix: the 'eight heap blocks' were the case's own measure"
+   ]
+  },
+  {
+   "stage": "M6",
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null,
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M4"
+   ],
+   "id": "WP-174",
+   "depends_on": [
+    "WP-112"
+   ],
+   "requirement_ids": [
+    "REQ-M4-005"
+   ],
+   "inputs": [
+    "created 2026-11-21 at WP-112's split: its second half",
+    "user/apps/configd/src/main.rs: IMPORT drops ERR FULL and ERR IO and answers OK <count>, each line saved on its own"
+   ],
+   "files": [
+    "user/apps/configd/src/main.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "docs/contracts/config.md",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/tests.json"
+   ],
+   "contract_refs": [
+    "docs/contracts/config.md"
+   ],
+   "acceptance": "an import either applies every line or reports the failure and applies none (capacity checked first, one save, a full rollback on an I/O error), shown by a case on CI; config.md v1.7 states it; its mutants killed by the M6 gate",
+   "test_ids": [
+    "TST-M4-POLICY-PRECEDENCE",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "actions": [
+    "الإعدادات: الاستيراد لا يجيب بالنجاح بعد فشل جزئي (من قسمة WP-112 في 2026-11-21)",
+    "from WP-112's record: test first, an import of 65 distinct keys (today OK 64); design (2-3 options): an atomic import (capacity first, one save, rollback) against a reply that names the failing line",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
    ]
   }
  ]

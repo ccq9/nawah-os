@@ -262,6 +262,7 @@ enum Access {
 
 const REPLY_INVALID: &[u8] = b"ERR INVALID";
 const REPLY_ACCESS: &[u8] = b"ERR ACCESS";
+const REPLY_NOT_FOUND: &[u8] = b"ERR NOT_FOUND";
 
 /// The uid a `user/<uid>` store name carries, when it is one a store may have (config.md §1).
 fn user_uid(name: &[u8]) -> Option<u32> {
@@ -312,11 +313,56 @@ impl State {
         }
     }
 
-    /// Reads both slots of a persistent store and adopts the newest intact one (config.md §2).
-    fn load(&mut self, i: usize) {
+    /// The store a GET or EXPORT names (config.md v1.6, WP-112): a user store through
+    /// `user_store_for_read`, the others as before (ERR NOT_FOUND for a name that is no store).
+    fn store_for_read(
+        &mut self,
+        name: &[u8],
+        token: Option<TokenInfo>,
+    ) -> Result<usize, &'static [u8]> {
+        match user_uid(name) {
+            Some(uid) => self.user_store_for_read(uid, token),
+            None => self.store_index(name, false).ok_or(REPLY_NOT_FOUND),
+        }
+    }
+
+    /// User store `uid` for a read (config.md v1.6, WP-112). It is read with a usable token of
+    /// that uid or with ADMIN alone: to any other reader it is not found, loaded or not, and
+    /// nothing is loaded for it, so a read tells no one else whether the store exists and takes
+    /// no slot. For an allowed reader a store that is not loaded is loaded, as for a write; one with
+    /// no intact slot on the volume is not found and leaves its slot free, and when no slot is
+    /// free the read is answered ERR INVALID, as a write is (v1.4).
+    fn user_store_for_read(
+        &mut self,
+        uid: u32,
+        token: Option<TokenInfo>,
+    ) -> Result<usize, &'static [u8]> {
+        let reader = token.filter(|t| t.usable());
+        if !reader.is_some_and(|t| t.perms & perm::ADMIN != 0 || t.uid == uid) {
+            return Err(REPLY_NOT_FOUND);
+        }
+        if let Some(i) = (3..STORES).find(|&i| self.stores[i].uid == uid) {
+            return Ok(i);
+        }
+        let i = (3..STORES)
+            .find(|&i| self.stores[i].uid == 0)
+            .ok_or(REPLY_INVALID)?;
+        self.stores[i] = NO_STORE;
+        self.stores[i].uid = uid;
+        if self.load(i) {
+            Ok(i)
+        } else {
+            self.stores[i] = NO_STORE;
+            Err(REPLY_NOT_FOUND)
+        }
+    }
+
+    /// Reads both slots of a persistent store and adopts the newest intact one (config.md §2);
+    /// whether one was adopted (the in-memory session store always is).
+    fn load(&mut self, i: usize) -> bool {
         if i == SESSION {
             self.stores[i].loaded = true;
-            return;
+            return true;
         }
         let uid = self.stores[i].uid;
         let mut best: Option<(usize, u64)> = None;
@@ -350,47 +396,49 @@ impl State {
         st.slot_gen = gens;
         st.slot_bad = bad;
         st.loaded = true;
-        if let Some((slot, _)) = best {
-            // Re-read the chosen slot into the table.
-            let mut name = [0u8; 24];
-            let path = slot_path(i, uid, slot, &mut name);
-            let Ok(f) = libnawah::open(path, libnawah::O_READ) else {
-                return;
-            };
-            let mut len = 0;
-            while len < FILE_MAX {
-                match libnawah::read(f, &mut self.file[len..]) {
-                    Ok(0) | Err(_) => break,
-                    Ok(n) => len += n,
-                }
-            }
-            libnawah::handle_close(f);
-            let mut n = 0;
-            for line in self.file[..len].split(|c| *c == b'\n').skip(1) {
-                if line.is_empty() || n == KEYS_PER_STORE {
-                    continue;
-                }
-                let mut f = Fields { s: line };
-                let (Some(key), Some(ver)) = (f.next(), f.next()) else {
-                    continue;
-                };
-                let value = f.rest();
-                let Some(ver) = parse_u64(ver) else {
-                    continue;
-                };
-                if !key_ok(key) || !value_ok(value) {
-                    continue;
-                }
-                let e = &mut self.stores[i].entries[n];
-                e.used = true;
-                e.key[..key.len()].copy_from_slice(key);
-                e.key_len = key.len() as u8;
-                e.value[..value.len()].copy_from_slice(value);
-                e.value_len = value.len() as u16;
-                e.version = ver;
-                n += 1;
+        let Some((slot, _)) = best else {
+            return false;
+        };
+        // Re-read the chosen slot into the table.
+        let mut name = [0u8; 24];
+        let path = slot_path(i, uid, slot, &mut name);
+        let Ok(f) = libnawah::open(path, libnawah::O_READ) else {
+            return false;
+        };
+        let mut len = 0;
+        while len < FILE_MAX {
+            match libnawah::read(f, &mut self.file[len..]) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => len += n,
             }
         }
+        libnawah::handle_close(f);
+        let mut n = 0;
+        for line in self.file[..len].split(|c| *c == b'\n').skip(1) {
+            if line.is_empty() || n == KEYS_PER_STORE {
+                continue;
+            }
+            let mut f = Fields { s: line };
+            let (Some(key), Some(ver)) = (f.next(), f.next()) else {
+                continue;
+            };
+            let value = f.rest();
+            let Some(ver) = parse_u64(ver) else {
+                continue;
+            };
+            if !key_ok(key) || !value_ok(value) {
+                continue;
+            }
+            let e = &mut self.stores[i].entries[n];
+            e.used = true;
+            e.key[..key.len()].copy_from_slice(key);
+            e.key_len = key.len() as u8;
+            e.value[..value.len()].copy_from_slice(value);
+            e.value_len = value.len() as u16;
+            e.version = ver;
+            n += 1;
+        }
+        true
     }
 
     /// Writes the store to the slot with the lower generation, then syncs (config.md §2).
@@ -635,11 +683,13 @@ impl State {
                     return None;
                 };
                 // Only a usable token names whose session values are read: a revoked or
-                // expired one reads as no token (config.md v1.1).
+                // expired one reads as no token (config.md v1.1); a user store is read for its
+                // owner or ADMIN alone, and loaded on that read (v1.6).
                 let uid = token.filter(|t| t.usable()).map_or(0, |t| t.uid);
-                match self.store_index(store, false) {
-                    Some(i) if self.get(i, key, uid, out) => {}
-                    _ => out.put(b"ERR NOT_FOUND"),
+                match self.store_for_read(store, token) {
+                    Ok(i) if self.get(i, key, uid, out) => {}
+                    Ok(_) => out.put(REPLY_NOT_FOUND),
+                    Err(reply) => out.put(reply),
                 }
                 None
             }
@@ -694,7 +744,24 @@ impl State {
                     });
                     return None;
                 };
-                let user_store = (3..STORES).find(|&i| self.stores[i].uid == token.uid);
+                // The token's own user store, loaded on this read (config.md v1.6, WP-112); none
+                // for a uid no store may carry or none on the volume; no free slot: ERR INVALID.
+                let persistent = token.uid != 0 && token.uid <= UID_MAX_PERSISTENT;
+                // Policy beats every user value: a key it holds is answered without loading the
+                // token's store, so a full table does not stand in its way (WP-112's review round).
+                let load = persistent && self.find(POLICY, key, token.uid).is_none();
+                let user_store = if load {
+                    match self.user_store_for_read(token.uid, Some(token)) {
+                        Ok(i) => Some(i),
+                        Err(reply) if reply == REPLY_INVALID => {
+                            out.put(reply);
+                            return None;
+                        }
+                        Err(_) => None,
+                    }
+                } else {
+                    (3..STORES).find(|&i| persistent && self.stores[i].uid == token.uid)
+                };
                 for (i, source) in [
                     (Some(POLICY), &b"policy"[..]),
                     (user_store, b"user"),
@@ -725,6 +792,12 @@ impl State {
                 // session subscription until a form carries the token (config.md v1.5, WP-158).
                 if store == b"session" {
                     out.put(b"ERR ACCESS");
+                    return None;
+                }
+                // Nor a user store's (v1.6, WP-112): it is read for its owner or ADMIN alone, and
+                // a subscriber that shows no token would learn that it is loaded and its keys.
+                if user_uid(store).is_some() {
+                    out.put(REPLY_ACCESS);
                     return None;
                 }
                 match self.store_index(store, false) {
@@ -759,8 +832,8 @@ impl State {
                     return None;
                 };
                 let uid = token.filter(|t| t.usable()).map_or(0, |t| t.uid);
-                match self.store_index(store, false) {
-                    Some(i) => {
+                match self.store_for_read(store, token) {
+                    Ok(i) => {
                         out.put(b"OK");
                         for e in self.stores[i]
                             .entries
@@ -775,7 +848,7 @@ impl State {
                             out.put(&e.value[..usize::from(e.value_len)]);
                         }
                     }
-                    None => out.put(b"ERR NOT_FOUND"),
+                    Err(reply) => out.put(reply),
                 }
                 None
             }

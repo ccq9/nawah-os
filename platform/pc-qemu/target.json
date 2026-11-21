@@ -4037,11 +4037,11 @@
           "-fw_cfg",
           "name=opt/nawah/test,string=config_store_authz"
         ],
-        "oracle": "a request that is refused, or that shows no token, takes no user-store slot (config.md v1.4, WP-157): with the lab user's token (uid 1001), SET user/3001 and IMPORT user/3002 answer ERR ACCESS and EXPORT of each store answers ERR NOT_FOUND (no store was created); eight SUBSCRIBE user/2001 to user/2008, each with a channel end and no token, answer ERR NOT_FOUND (none answers OK), and SUBSCRIBE user/0 and user/10000, uids no store may carry, answer ERR INVALID; then SET user/1001 with the user's token answers OK 1 and SUBSCRIBE user/1001 answers OK; SET user/3001 with the administrator's token answers OK 1 (ADMIN may create the store the user was refused), and the user's SET on that store, now loaded, answers ERR ACCESS and EXPORT still lists `k 1 v`; the administrator's SET on user/3002 to user/3007 fills the eight slots (six OK 1), SET user/3008 then answers ERR INVALID (no free slot for a token that may create) and the user's SET on his loaded store answers OK 2; configd's live handle count, read while it lives, grew by one, the kept subscription; clean exit; exit 33",
+        "oracle": "a request that is refused, or that shows no token, takes no user-store slot (config.md v1.4, WP-157): with the lab user's token (uid 1001), SET user/3001 and IMPORT user/3002 answer ERR ACCESS and the administrator's EXPORT of each store answers ERR NOT_FOUND (no store was created, none is on the volume; a user store is read for its owner or an administrator alone since config.md v1.6); eight SUBSCRIBE user/2001 to user/2008, each with a channel end and no token, answer ERR ACCESS (no user store is subscribed to since config.md v1.6; none answers OK), and SUBSCRIBE user/0 and user/10000, uids no store may carry, answer ERR INVALID; then SET user/1001 with the user's token answers OK 1 and SUBSCRIBE user/1001, loaded now, still answers ERR ACCESS; SET user/3001 with the administrator's token answers OK 1 (ADMIN may create the store the user was refused), and the user's SET on that store, now loaded, answers ERR ACCESS and the administrator's EXPORT still lists `k 1 v`; the administrator's SET on user/3002 to user/3007 fills the eight slots (six OK 1), SET user/3008 then answers ERR INVALID (no free slot for a token that may create) and the user's SET on his loaded store answers OK 2; configd's live handle count, read while it lives, did not grow (no subscription is kept); clean exit; exit 33",
         "expected_exit_code": 33,
         "required_markers": [
           "OSX|${BUILD_ID}|ktest|start|name=config_store_authz",
-          "|ktest|config_store_authz|set_other=ERR ACCESS|other_export=ERR NOT_FOUND|import_other=ERR ACCESS|import_export=ERR NOT_FOUND|subs_ok=0|subs_not_found=8|own_set=OK 1|own_sub=OK|admin_set=OK 1|cfg_grew=1|",
+          "|ktest|config_store_authz|set_other=ERR ACCESS|other_export=ERR NOT_FOUND|import_other=ERR ACCESS|import_export=ERR NOT_FOUND|subs_ok=0|subs_refused=8|own_set=OK 1|own_sub=ERR ACCESS|admin_set=OK 1|cfg_grew=0|",
           "|ktest|config_store_authz|more|sub_zero=ERR INVALID|sub_big=ERR INVALID|loaded_other=ERR ACCESS|loaded_kept=1|filled=6|full_set=ERR INVALID|own_again=OK 2|",
           "|ktest|config_store_authz|mgr_exit=0x0|processes_after=0|clean=1",
           "|ktest|config_store_authz|frames_delta=0",
@@ -4055,6 +4055,79 @@
         ],
         "timeout_s": 600,
         "host_checks": [
+          [
+            "fsck.fat",
+            "-n",
+            "${DISK}"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "check",
+            "${DISK}"
+          ]
+        ]
+      },
+      {
+        "id": "TST-M4-CONFIG-READ-LOAD",
+        "test_id": "TST-M4-CONFIG-READ-LOAD",
+        "artifact": "${OUT}/NAWAH-KTEST.EFI",
+        "qemu_extra": [
+          "-fw_cfg",
+          "name=opt/nawah/test,string=config_read_load"
+        ],
+        "oracle": "a user store is read for its owner's or an administrator's usable token alone, and loaded on such a read (config.md v1.6, WP-112): the lab volume carries CFGU1001.A (the lab user's store, uid 1001: lab.read 1 mine), CFGU1002.A (theirs) and CFGU1003.A (hidden), slot A generation 1 each, none loaded at the start, as after a restart. GET user/1001 lab.read with no token answers ERR NOT_FOUND; RESOLVE lab.read with the user's token answers OK user 1 mine (the read loads the store); GET with no token still answers ERR NOT_FOUND, with the user's token OK 1 mine, and EXPORT with it lists lab.read 1 mine; the administrator's GET user/1002 answers OK 1 theirs; SUBSCRIBE user/1002, loaded, with a channel end and no token answers ERR ACCESS; the user's GET and EXPORT of user/1002 (loaded) and of user/1003 (not loaded) answer ERR NOT_FOUND; the administrator's GET of user/2001 to user/2006, which no volume holds, answer ERR NOT_FOUND and take no slot; his SET policy lab.pol answers OK 1, and his SET on user/3001 to user/3006 fills the six slots left (six OK 1); SET user/3007 then answers ERR INVALID and his GET user/1003 ERR INVALID (no free slot: the user's refused reads did not load it). With the table full: the user's and a token-less GET user/1003 answer ERR NOT_FOUND (a refused reader learns nothing of the table), the administrator's GET user/1002 OK 1 theirs and the user's RESOLVE lab.read OK user 1 mine (a loaded store is read), RESOLVE lab.pol with a token of uid 1004 the test kernel mints answers OK policy 1 locked (policy is answered without that user's store) and RESOLVE lab.read with it ERR INVALID; a minted CONFIG_WRITE token of uid 1004, a minted token of uid 1005 in group 1002 and a minted administrator's token already expired get ERR NOT_FOUND for user/1002; the user's SET user/1001 lab.read with version 1 answers OK 2, and the host check reads it in CFGU1001.B with generation 2 while CFGU1001.A still holds lab.read 1 mine (the read kept the slots' generations); after the user's token is revoked its GET and EXPORT of user/1001 answer ERR NOT_FOUND, and after the administrator's, its GET of user/1002; clean exit; exit 33",
+        "expected_exit_code": 33,
+        "required_markers": [
+          "OSX|${BUILD_ID}|ktest|start|name=config_read_load",
+          "|ktest|config_read_load|bare=ERR NOT_FOUND|resolve=OK user 1 mine|bare_loaded=ERR NOT_FOUND|own=OK 1 mine|own_export=OK;lab.read 1 mine|admin=OK 1 theirs|",
+          "|ktest|config_read_load|more|other_loaded=ERR NOT_FOUND|other_loaded_export=ERR NOT_FOUND|other=ERR NOT_FOUND|other_export=ERR NOT_FOUND|absent=6|filled=6|full_set=ERR INVALID|full_read=ERR INVALID|revoked=ERR NOT_FOUND|revoked_export=ERR NOT_FOUND|",
+          "|ktest|config_read_load|full|sub_loaded=ERR ACCESS|pol=OK 1|refused_full=ERR NOT_FOUND|bare_full=ERR NOT_FOUND|loaded_full=OK 1 theirs|resolve_full=OK user 1 mine|policy_full=OK policy 1 locked|stranger_full=ERR INVALID|cw=ERR NOT_FOUND|grp=ERR NOT_FOUND|admin_expired=ERR NOT_FOUND|write=OK 2|admin_revoked=ERR NOT_FOUND|",
+          "|ktest|config_read_load|mgr_exit=0x0|processes_after=0|clean=1",
+          "|ktest|config_read_load|frames_delta=0",
+          "|ktest|pass|a user store is read for its owner or an administrator alone, loaded on that read, and a refused read takes no slot"
+        ],
+        "forbidden_markers": [
+          "|ktest|fail|",
+          "|kernel|panic|",
+          "|exc|vector",
+          "|user_fault|"
+        ],
+        "timeout_s": 600,
+        "disk_files": {
+          "SYSTEM/CFGU1001.A": "platform/pc-qemu/lab/cfgu1001.a",
+          "SYSTEM/CFGU1002.A": "platform/pc-qemu/lab/cfgu1002.a",
+          "SYSTEM/CFGU1003.A": "platform/pc-qemu/lab/cfgu1003.a"
+        },
+        "host_checks": [
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "grep",
+            "${DISK}",
+            "/SYSTEM/CFGU1001.B",
+            "NAWAH-CFG 1 2 "
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "grep",
+            "${DISK}",
+            "/SYSTEM/CFGU1001.B",
+            "lab.read 2 new\n"
+          ],
+          [
+            "python3",
+            "-I",
+            "tools/fat32.py",
+            "grep",
+            "${DISK}",
+            "/SYSTEM/CFGU1001.A",
+            "lab.read 1 mine\n"
+          ],
           [
             "fsck.fat",
             "-n",

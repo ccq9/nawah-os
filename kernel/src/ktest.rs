@@ -207,6 +207,7 @@ pub fn run() -> ! {
         "config_retry" => config_retry(),
         "config_notify" => config_notify(),
         "config_store_authz" => config_store_authz(),
+        "config_read_load" => config_read_load(),
         "config_subs" => config_subs(),
         "launch_denied" => launch_denied(),
         "app_spawn" => app_spawn(),
@@ -7501,17 +7502,20 @@ fn config_store_authz() -> ! {
         let _ = cfg_request(ep, b"GET device sync.key", None);
         let h0 = cfg_handles();
         let set_other = cfg_request(ep, b"SET user/3001 k 0 801 v", Some(u.clone()));
-        let other_export = cfg_request(ep, b"EXPORT user/3001", None);
+        // The administrator reads (a user store is read for its owner or ADMIN alone, config.md
+        // v1.6): no slot was taken and no store is on the volume, so it is not found.
+        let other_export = cfg_request(ep, b"EXPORT user/3001", Some(a.clone()));
         let import_other = cfg_request(ep, b"IMPORT user/3002 802\nk v", Some(u.clone()));
-        let import_export = cfg_request(ep, b"EXPORT user/3002", None);
-        let (mut subs_ok, mut subs_not_found) = (0, 0);
+        let import_export = cfg_request(ep, b"EXPORT user/3002", Some(a.clone()));
+        // No user store is subscribed to (config.md v1.6): SUBSCRIBE shows no token.
+        let (mut subs_ok, mut subs_refused) = (0, 0);
         let mut kept = Vec::new();
         for k in 1..=8 {
             let (mine, theirs) = channel::create();
             let req = alloc::format!("SUBSCRIBE user/200{}", k);
             match cfg_request(ep, req.as_bytes(), Some(end(theirs))).as_str() {
                 "OK" => subs_ok += 1,
-                "ERR NOT_FOUND" => subs_not_found += 1,
+                "ERR ACCESS" => subs_refused += 1,
                 _ => {}
             }
             kept.push(mine);
@@ -7528,7 +7532,7 @@ fn config_store_authz() -> ! {
         let admin_set = cfg_request(ep, b"SET user/3001 k 0 804 v", Some(a.clone()));
         // That store is loaded now: the user is refused by the store's own check.
         let loaded_other = cfg_request(ep, b"SET user/3001 k 1 805 x", Some(u.clone()));
-        let loaded_kept = cfg_request(ep, b"EXPORT user/3001", None) == "OK\nk 1 v";
+        let loaded_kept = cfg_request(ep, b"EXPORT user/3001", Some(a.clone())) == "OK\nk 1 v";
         // The administrator fills the eight slots (1001, 3001 and six more).
         let mut filled = 0;
         for k in 2..=7 {
@@ -7541,14 +7545,14 @@ fn config_store_authz() -> ! {
         let own_again = cfg_request(ep, b"SET user/1001 wp.k 1 813 w", Some(u));
         let h1 = cfg_handles();
         kprintln!(
-            "OSX|{}|ktest|config_store_authz|set_other={}|other_export={}|import_other={}|import_export={}|subs_ok={}|subs_not_found={}|own_set={}|own_sub={}|admin_set={}|cfg_grew={}|base={}",
+            "OSX|{}|ktest|config_store_authz|set_other={}|other_export={}|import_other={}|import_export={}|subs_ok={}|subs_refused={}|own_set={}|own_sub={}|admin_set={}|cfg_grew={}|base={}",
             BUILD_ID,
             set_other,
             other_export,
             import_other,
             import_export,
             subs_ok,
-            subs_not_found,
+            subs_refused,
             own_set,
             own_sub,
             admin_set,
@@ -7575,13 +7579,13 @@ fn config_store_authz() -> ! {
         if other_export != "ERR NOT_FOUND" || import_export != "ERR NOT_FOUND" {
             fail("a refused write left a user store behind")
         }
-        if subs_ok != 0 || subs_not_found != 8 {
+        if subs_ok != 0 || subs_refused != 8 || own_sub != "ERR ACCESS" {
             fail("a subscriber without a token took a user store")
         }
         if sub_zero != "ERR INVALID" || sub_big != "ERR INVALID" {
             fail("a name that is no user store was not answered ERR INVALID")
         }
-        if own_set != "OK 1" || own_sub != "OK" {
+        if own_set != "OK 1" {
             fail("the user's own store was refused")
         }
         if admin_set != "OK 1" {
@@ -7593,7 +7597,7 @@ fn config_store_authz() -> ! {
         if filled != 6 || full_set != "ERR INVALID" || own_again != "OK 2" {
             fail("a full table of user stores was not answered as the contract says")
         }
-        if h1 - h0 != 1 {
+        if h1 - h0 != 0 {
             fail("configd kept a handle of a request it refused")
         }
         drop((kept, zero_k, big_k, own_k));
@@ -7603,6 +7607,208 @@ fn config_store_authz() -> ! {
         "config_store_authz",
         frames0,
         "a refused or token-less request takes no user store, and the user's own store is his",
+    )
+}
+
+/// TST-M4-CONFIG-READ-LOAD (REQ-M4-004, REQ-M4-005, config.md v1.6, WP-112; with WP-168): a user
+/// store is read for its owner's or an administrator's usable token alone, and loaded on such a
+/// read. The lab volume carries three user stores no request has loaded, as after a restart:
+/// CFGU1001.A (the lab user's own, `lab.read 1 mine`), CFGU1002.A (`theirs`) and CFGU1003.A
+/// (`hidden`). Without a token, GET of the user's store is not found, loaded or not; RESOLVE with
+/// the user's token loads it; GET and EXPORT with that token read it; the administrator's GET
+/// loads 1002; SUBSCRIBE of a loaded user store is refused. The user's GET and EXPORT of 1002
+/// (loaded) and of 1003 (not loaded) are not found and load nothing; six reads of stores no
+/// volume holds take no slot, so the administrator fills the six slots left. With the table
+/// full: a refused reader still learns nothing, a loaded store is still read, a key policy holds
+/// is answered without the reader's store and another key is ERR INVALID; CONFIG_WRITE, a group
+/// of that uid and an expired administrator's token read nothing; a write on a store a read
+/// loaded goes to its other slot (the host check reads CFGU1001.B). Revoked tokens read nothing.
+fn config_read_load() -> ! {
+    let name = "config_read_load";
+    let env = cfg_env(name);
+    let frames0 = {
+        let ep = &env.cfg;
+        let u = token_entry(&env.user);
+        let a = token_entry(&env.admin);
+        let nf = "ERR NOT_FOUND";
+        let bare = cfg_request(ep, b"GET user/1001 lab.read", None);
+        let resolve = cfg_request(ep, b"RESOLVE lab.read", Some(u.clone()));
+        let bare_loaded = cfg_request(ep, b"GET user/1001 lab.read", None);
+        let own = cfg_request(ep, b"GET user/1001 lab.read", Some(u.clone()));
+        let own_export = cfg_request(ep, b"EXPORT user/1001", Some(u.clone())).replace('\n', ";");
+        let admin = cfg_request(ep, b"GET user/1002 lab.read", Some(a.clone()));
+        // SUBSCRIBE carries no token: a user store, loaded or not, is not subscribed to (v1.6), so
+        // a subscriber learns neither that the store is loaded nor its keys.
+        let (sub_kept, sub_end) = channel::create();
+        let sub_end = Entry {
+            object: Object::Channel(sub_end),
+            rights: Rights::CHANNEL_DEFAULT,
+        };
+        let sub_loaded = cfg_request(ep, b"SUBSCRIBE user/1002", Some(sub_end));
+        let other_loaded = cfg_request(ep, b"GET user/1002 lab.read", Some(u.clone()));
+        let other_loaded_export =
+            cfg_request(ep, b"EXPORT user/1002", Some(u.clone())).replace('\n', ";");
+        let other = cfg_request(ep, b"GET user/1003 lab.read", Some(u.clone()));
+        let other_export = cfg_request(ep, b"EXPORT user/1003", Some(u.clone())).replace('\n', ";");
+        // Stores no volume holds: none of them may take a slot.
+        let mut absent = 0;
+        for k in 1..=6 {
+            let req = alloc::format!("GET user/200{} lab.read", k);
+            if cfg_request(ep, req.as_bytes(), Some(a.clone())) == nf {
+                absent += 1;
+            }
+        }
+        let pol = cfg_request(ep, b"SET policy lab.pol 0 899 locked", Some(a.clone()));
+        // 1001 and 1002 hold two of the eight slots: the administrator fills the six left.
+        let mut filled = 0;
+        for k in 1..=6 {
+            let req = alloc::format!("SET user/300{} k 0 {} v", k, 900 + k);
+            if cfg_request(ep, req.as_bytes(), Some(a.clone())) == "OK 1" {
+                filled += 1;
+            }
+        }
+        let full_set = cfg_request(ep, b"SET user/3007 k 0 907 v", Some(a.clone()));
+        let full_read = cfg_request(ep, b"GET user/1003 lab.read", Some(a.clone()));
+        // The full table (WP-112's review round): a refused reader still learns nothing of it, a
+        // loaded store is still read, a key policy holds is answered without the reader's store
+        // (policy beats every user value), and another key needs that store: no slot, ERR INVALID.
+        let refused_full = cfg_request(ep, b"GET user/1003 lab.read", Some(u.clone()));
+        let bare_full = cfg_request(ep, b"GET user/1003 lab.read", None);
+        let loaded_full = cfg_request(ep, b"GET user/1002 lab.read", Some(a.clone()));
+        let resolve_full = cfg_request(ep, b"RESOLVE lab.read", Some(u.clone()));
+        let mint = |uid: u32, gid: u32, perms: u32, expires: u64| {
+            token_entry(&Arc::new(crate::object::token::Token::new(
+                uid, gid, perms, expires,
+            )))
+        };
+        use crate::object::token::{PERM_ADMIN, PERM_CONFIG_WRITE, PERM_SHELL};
+        let stranger = mint(1004, 1004, PERM_SHELL, 0);
+        let policy_full = cfg_request(ep, b"RESOLVE lab.pol", Some(stranger.clone()));
+        let stranger_full = cfg_request(ep, b"RESOLVE lab.read", Some(stranger));
+        // CONFIG_WRITE writes the device store, it reads no user's; nor does a group of that uid.
+        let cw = cfg_request(
+            ep,
+            b"GET user/1002 lab.read",
+            Some(mint(1004, 1004, PERM_CONFIG_WRITE, 0)),
+        );
+        let grp = cfg_request(
+            ep,
+            b"GET user/1002 lab.read",
+            Some(mint(1005, 1002, PERM_SHELL, 0)),
+        );
+        // An expired administrator's token reads as no token.
+        let admin_expired = cfg_request(
+            ep,
+            b"GET user/1002 lab.read",
+            Some(mint(1000, 1000, PERM_ADMIN, 1)),
+        );
+        // A write on a store a read loaded goes to its other slot (generation 2 into CFGU1001.B,
+        // read on the volume by the case's host check): the read kept the slots' generations.
+        let write = cfg_request(ep, b"SET user/1001 lab.read 1 908 new", Some(u.clone()));
+        // A revoked token reads as no token, on the user's own loaded store too.
+        env.user.revoke();
+        let revoked = cfg_request(ep, b"GET user/1001 lab.read", Some(u.clone()));
+        let revoked_export = cfg_request(ep, b"EXPORT user/1001", Some(u)).replace('\n', ";");
+        env.admin.revoke();
+        let admin_revoked = cfg_request(ep, b"GET user/1002 lab.read", Some(a));
+        kprintln!(
+            "OSX|{}|ktest|config_read_load|bare={}|resolve={}|bare_loaded={}|own={}|own_export={}|admin={}|",
+            BUILD_ID,
+            bare,
+            resolve,
+            bare_loaded,
+            own,
+            own_export,
+            admin
+        );
+        kprintln!(
+            "OSX|{}|ktest|config_read_load|more|other_loaded={}|other_loaded_export={}|other={}|other_export={}|absent={}|filled={}|full_set={}|full_read={}|revoked={}|revoked_export={}|",
+            BUILD_ID,
+            other_loaded,
+            other_loaded_export,
+            other,
+            other_export,
+            absent,
+            filled,
+            full_set,
+            full_read,
+            revoked,
+            revoked_export
+        );
+        kprintln!(
+            "OSX|{}|ktest|config_read_load|full|sub_loaded={}|pol={}|refused_full={}|bare_full={}|loaded_full={}|resolve_full={}|policy_full={}|stranger_full={}|cw={}|grp={}|admin_expired={}|write={}|admin_revoked={}|",
+            BUILD_ID,
+            sub_loaded,
+            pol,
+            refused_full,
+            bare_full,
+            loaded_full,
+            resolve_full,
+            policy_full,
+            stranger_full,
+            cw,
+            grp,
+            admin_expired,
+            write,
+            admin_revoked
+        );
+        if resolve != "OK user 1 mine"
+            || own != "OK 1 mine"
+            || own_export != "OK;lab.read 1 mine"
+            || admin != "OK 1 theirs"
+        {
+            fail("a user store was not loaded on a read of its owner or an administrator")
+        }
+        if [
+            &bare,
+            &bare_loaded,
+            &other_loaded,
+            &other_loaded_export,
+            &other,
+            &other_export,
+            &revoked,
+            &revoked_export,
+        ]
+        .iter()
+        .any(|r| r.as_str() != nf)
+        {
+            fail("a user store was read without its owner's or an administrator's usable token")
+        }
+        if absent != 6 || filled != 6 || full_set != "ERR INVALID" || full_read != "ERR INVALID" {
+            fail("a refused read or a store no volume holds took a slot of the table")
+        }
+        if [
+            &refused_full,
+            &bare_full,
+            &cw,
+            &grp,
+            &admin_expired,
+            &admin_revoked,
+        ]
+        .iter()
+        .any(|r| r.as_str() != nf)
+            || sub_loaded != "ERR ACCESS"
+        {
+            fail("a user store was read without its owner's or an administrator's usable token")
+        }
+        if pol != "OK 1"
+            || loaded_full != "OK 1 theirs"
+            || resolve_full != "OK user 1 mine"
+            || policy_full != "OK policy 1 locked"
+            || stranger_full != "ERR INVALID"
+        {
+            fail("a full table stood before a policy value or a loaded store")
+        }
+        if write != "OK 2" {
+            fail("a store a read loaded was not written as the contract says")
+        }
+        drop(sub_kept);
+        cfg_close(env, name)
+    };
+    cfg_balance(
+        name,
+        frames0,
+        "a user store is read for its owner or an administrator alone, loaded on that read, and a refused read takes no slot",
     )
 }
 
@@ -7791,7 +7997,8 @@ fn policy_precedence() -> ! {
         let r_pol = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
         let del_pol = cfg_request(ep, b"DEL policy ui.theme 1 504", Some(a.clone()));
         let r_back = cfg_request(ep, b"RESOLVE ui.theme", Some(u.clone()));
-        let export = cfg_request(ep, b"EXPORT user/1001", None);
+        // The user's store is read with the user's token (config.md v1.6, WP-112).
+        let export = cfg_request(ep, b"EXPORT user/1001", Some(u.clone()));
         let import = cfg_request(
             ep,
             b"IMPORT user/1001 505
@@ -7799,15 +8006,15 @@ fn policy_precedence() -> ! {
     ui.size 14",
             Some(u.clone()),
         );
-        let imported = cfg_request(ep, b"GET user/1001 ui.size", None);
+        let imported = cfg_request(ep, b"GET user/1001 ui.size", Some(u.clone()));
         let import_bad = cfg_request(
             ep,
             b"IMPORT user/1001 506
     ui.ok yes
     BAD KEY x",
-            Some(u),
+            Some(u.clone()),
         );
-        let not_applied = cfg_request(ep, b"GET user/1001 ui.ok", None);
+        let not_applied = cfg_request(ep, b"GET user/1001 ui.ok", Some(u));
         kprintln!(
             "OSX|{}|ktest|policy_precedence|none={}|dev={}|r_dev={}|usr={}|r_usr={}|r_admin={}|pol={}|r_pol={}|del_pol={}|r_back={}|export={}|import={}|imported={}|import_bad={}|not_applied={}",
             BUILD_ID, none, dev, r_dev, usr, r_usr, r_admin, pol, r_pol, del_pol, r_back,

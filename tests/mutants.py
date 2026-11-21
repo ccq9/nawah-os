@@ -1361,10 +1361,9 @@ MUTANTS = [
      "        let Some(i) = self.store_index(name, create) else {\n",
      "        let Some(i) = self.store_index(name, true) else {\n",
      ["TST-M4-CONFIG-STORE-AUTHZ"], "SECURITY: configd creates the user store a modifying request names before it judges the token, so a refused SET or IMPORT leaves a store loaded and eight of them take every user-store slot"),
-    ("M326", "user/apps/configd/src/main.rs",
-     "                match self.store_index(store, false) {\n                    // One subscription per client and store: a second replaces the first,\n",
-     "                match self.store_index(store, true) {\n                    // One subscription per client and store: a second replaces the first,\n",
-     ["TST-M4-CONFIG-STORE-AUTHZ"], "SECURITY: SUBSCRIBE, which shows no token, creates the user store it names, so eight subscribers take every user-store slot and a real user's SET is refused"),
+    # M326 retired with WP-112 (config.md v1.6): SUBSCRIBE refuses every user store before it looks
+    # one up, so creating one there is no longer reachable (an equivalent mutant); M437 guards the
+    # refusal that replaced it.
     # M327 (WP-157): ADMIN is among the tokens a user store is created for (config.md §1). Not a
     # hole: without it an administrator is refused a store that is not loaded.
     ("M327", "user/apps/configd/src/main.rs",
@@ -1797,6 +1796,75 @@ MUTANTS = [
      "        if self.services[i].name() == b\"session\" {\n            self.session_open = false;\n",
      "        if i == 0 {\n            self.session_open = false;\n",
      ["TST-M6-SESSION-RESTART"], "SECURITY: the session's exit is known by its place in the manifest, not its name, so a session listed after another service closes nothing and kills nothing"),
+    # M422 to M429 (WP-112, REQ-M4-004, config.md v1.6): a user store is read for its owner's or an
+    # administrator's usable token alone, loaded on that read, and a refused read takes no slot.
+    ("M422", "user/apps/configd/src/main.rs",
+     "        if !reader.is_some_and(|t| t.perms & perm::ADMIN != 0 || t.uid == uid) {\n",
+     "        if reader.is_some_and(|_| false) {\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: any request reads and loads any user store, with no token or another user's"),
+    ("M423", "user/apps/configd/src/main.rs",
+     "        if !reader.is_some_and(|t| t.perms & perm::ADMIN != 0 || t.uid == uid) {\n",
+     "        if !reader.is_some_and(|t| t.uid == uid) {\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "an administrator is not found another user's store"),
+    ("M424", "user/apps/configd/src/main.rs",
+     "        let reader = token.filter(|t| t.usable());\n        if !reader",
+     "        let reader = token;\n        if !reader",
+     ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: a revoked or expired token still reads its user's store"),
+    ("M425", "user/apps/configd/src/main.rs",
+     "            self.stores[i] = NO_STORE;\n            Err(REPLY_NOT_FOUND)\n",
+     "            Err(REPLY_NOT_FOUND)\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: a read of a store no volume holds keeps its slot, so reads fill the table against the owners' writes"),
+    ("M426", "user/apps/configd/src/main.rs",
+     "                let persistent = token.uid != 0 && token.uid <= UID_MAX_PERSISTENT;\n",
+     "                let persistent = false;\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "RESOLVE does not load the token's own user store, so a value on the volume is passed over"),
+    ("M427", "user/apps/configd/src/main.rs",
+     "            Some(uid) => self.user_store_for_read(uid, token),\n",
+     "            Some(uid) => self\n                .user_store_for_read(uid, token)\n                .or_else(|_| self.store_index(name, false).ok_or(REPLY_NOT_FOUND)),\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: a refused GET or EXPORT still reads a user store that is loaded"),
+    ("M428", "user/apps/configd/src/main.rs",
+     "            .ok_or(REPLY_INVALID)?;\n",
+     "            .ok_or(REPLY_NOT_FOUND)?;\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "a read with no free slot is answered not found instead of ERR INVALID"),
+    ("M429", "user/apps/configd/src/main.rs",
+     "                match self.store_for_read(store, token) {\n                    Ok(i) => {\n",
+     "                match self\n                    .store_for_read(store, token)\n                    .or_else(|_| self.store_index(store, false).ok_or(REPLY_NOT_FOUND))\n                {\n                    Ok(i) => {\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: a refused EXPORT still lists a user store that is loaded"),
+    # M430 to M437 (WP-112's review round): an unusable administrator's token, what a refused reader
+    # learns of a full table, CONFIG_WRITE and a group of that uid, a loaded store when the table is
+    # full, policy before the reader's store, the slots' generations kept by a read, and SUBSCRIBE.
+    ("M430", "user/apps/configd/src/main.rs",
+     "        let reader = token.filter(|t| t.usable());\n",
+     "        let reader = token.filter(|t| t.usable() || t.perms & perm::ADMIN != 0);\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: an administrator's revoked or expired token still reads every user store"),
+    ("M431", "user/apps/configd/src/main.rs",
+     "        let reader = token.filter(|t| t.usable());\n",
+     "        if !(3..STORES).any(|i| self.stores[i].uid == uid || self.stores[i].uid == 0) {\n            return Err(REPLY_INVALID);\n        }\n        let reader = token.filter(|t| t.usable());\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: a refused reader is told the table is full and the store not loaded"),
+    ("M432", "user/apps/configd/src/main.rs",
+     "        if !reader.is_some_and(|t| t.perms & perm::ADMIN != 0 || t.uid == uid) {\n",
+     "        if !reader.is_some_and(|t| t.perms & (perm::ADMIN | perm::CONFIG_WRITE) != 0 || t.uid == uid) {\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: a token with CONFIG_WRITE reads every user's store"),
+    ("M433", "user/apps/configd/src/main.rs",
+     "        if !reader.is_some_and(|t| t.perms & perm::ADMIN != 0 || t.uid == uid) {\n",
+     "        if !reader.is_some_and(|t| t.perms & perm::ADMIN != 0 || t.uid == uid || t.gid == uid) {\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: a token whose group number is a user's uid reads that user's store"),
+    ("M434", "user/apps/configd/src/main.rs",
+     "        if let Some(i) = (3..STORES).find(|&i| self.stores[i].uid == uid) {\n            return Ok(i);\n",
+     "        (3..STORES).find(|&i| self.stores[i].uid == 0).ok_or(REPLY_INVALID)?;\n        if let Some(i) = (3..STORES).find(|&i| self.stores[i].uid == uid) {\n            return Ok(i);\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "a loaded user store is refused to its owner and an administrator when the table is full"),
+    ("M435", "user/apps/configd/src/main.rs",
+     "                let load = persistent && self.find(POLICY, key, token.uid).is_none();\n",
+     "                let load = persistent;\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "RESOLVE loads the token's store before it looks at policy, so a full table stands before a policy value"),
+    ("M436", "user/apps/configd/src/main.rs",
+     "        if self.load(i) {\n            Ok(i)\n",
+     "        if self.load(i) {\n            self.stores[i].slot_gen = [0; 2];\n            Ok(i)\n",
+     ["TST-M4-CONFIG-READ-LOAD"], "a store a read loaded forgets its slots' generations, so its first write overwrites its only intact slot"),
+    ("M437", "user/apps/configd/src/main.rs",
+     "                if user_uid(store).is_some() {\n                    out.put(REPLY_ACCESS);\n                    return None;\n                }\n",
+     "",
+     ["TST-M4-CONFIG-READ-LOAD"], "SECURITY: SUBSCRIBE, which shows no token, is accepted on a loaded user store, which tells that it is loaded and its keys"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2113,7 +2181,7 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-157 (RSK-028): configd creates a user store only for a token that may modify it
             # (M325) and never for a subscriber, which shows none (M326; config.md v1.4); a loaded
             # user store is modified by its own uid's token or ADMIN alone (M328).
-            "M325", "M326", "M328",
+            "M325", "M328",
             # WP-108 (RSK-028): netd frees a client's sockets and resets its connections on
             # every path that frees its slot, and those alone (net.md parts B and C; M332 to M335).
             "M332", "M333", "M334", "M335",
@@ -2144,7 +2212,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-172 (REQ-M6-004): the session service's exit ends its job (services.md v1.20).
             "M415",
             # WP-173 (REQ-M6-004): however the session service exits (services.md v1.20).
-            "M417", "M419", "M420", "M421"}
+            "M417", "M419", "M420", "M421",
+            # WP-112 (REQ-M4-004): a user store is read for its owner or an administrator alone (config.md v1.6).
+            "M422", "M424", "M425", "M427", "M429",
+            # WP-112's review round: unusable admin, a full table told, CONFIG_WRITE, a group, SUBSCRIBE.
+            "M430", "M431", "M432", "M433", "M437"}
 
 
 def security_of(mid: str) -> bool:
@@ -2377,6 +2449,10 @@ _SGDESK = "|ktest|fail|the desktop opened the gate, or the session's exit did no
 _SGEXIT = "|ktest|fail|an application or a job of the session outlived the session service"
 _SRKEPT = "|ktest|fail|an application of the restarted session outlived it, or the new session could not launch"
 _SRCRASH = "|ktest|fail|an application of the crashed session outlived it, or the session started again could not launch"
+_RLLOAD = "|ktest|fail|a user store was not loaded on a read of its owner or an administrator"
+_RLAUTH = "|ktest|fail|a user store was read without its owner's or an administrator's usable token"
+_RLSLOT = "|ktest|fail|a refused read or a store no volume holds took a slot of the table"
+_RLFULL = "|ktest|fail|a full table stood before a policy value or a loaded store"
 _ORPHAN = "|ktest|fail|an application that exited left a process of its job behind"
 _JOBLEFT = "|ktest|fail|a job was left of a launch that failed or of an application that exited"
 _APP_KEPT = "|ktest|fail|the manager kept a handle of a launch that failed or of an application that exited"
@@ -2433,15 +2509,14 @@ EXPECT = {
     # both). M326: the eight subscribers take the eight slots, so the user's own SET is refused.
     # M327: the administrator's SET on the store the user was refused is refused too.
     "M325": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|other_export=OK|", "|import_export=OK|", _LEFT]},
-    "M326": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|subs_ok=8|", "|subs_not_found=0|", "|own_set=ERR INVALID|", _TOOK]},
     "M327": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|admin_set=ERR ACCESS|", _ADMIN]},
     # The review round, the case's second line. M328: the user's SET on the loaded store is
     # applied (version 2) and EXPORT no longer lists the administrator's value. M329: the
     # subscriber to user/0 is accepted. M330: user/10000 is a store that is not loaded. M331: the
     # ninth store is refused as if the administrator had no right.
     "M328": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|loaded_other=OK 2|", "|loaded_kept=0|", _LOADED]},
-    "M329": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|sub_zero=OK|", _NONAME]},
-    "M330": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|sub_big=ERR NOT_FOUND|", _NONAME]},
+    "M329": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|sub_zero=ERR ACCESS|", _NONAME]},
+    "M330": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|sub_big=ERR ACCESS|", _NONAME]},
     "M331": {"TST-M4-CONFIG-STORE-AUTHZ": ["exit 37", "|full_set=ERR ACCESS|", _FULLTAB]},
     # WP-108: the case's one line. M332: client B, in A's slot, sees A's connection as its own
     # and finds A's port taken (it reads A's datagram too, when the echo has come: in the line,
@@ -2568,6 +2643,30 @@ EXPECT = {
     "M419": {"TST-M6-SESSION-RESTART": ["exit 37", "|exit=0x20000|restarts=2|held=1|stays=2|new_job=0|live_jobs=3|mgr_handles=7|", _SRCRASH]},
     "M420": {"TST-M6-SESSION-RESTART": ["exit 37", "|exit=0xe4|restarts=3|held=0|stays=0|new_job=0|live_jobs=0|mgr_handles=0|", _SRKEPT]},
     "M421": {"TST-M6-SESSION-RESTART": ["exit 37", "|exit=0xe4|restarts=3|held=0|stays=4|new_job=0|live_jobs=5|mgr_handles=13|", _SRKEPT]},
+    # WP-112 (config.md v1.6): a user store is read for its owner's or an administrator's usable token
+    # alone, loaded on that read; a refused read and a store no volume holds take no slot.
+    "M422": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|ktest|config_read_load|bare=OK 1 mine|",
+                      "|other=OK 1 hidden|other_export=OK;lab.read 1 hidden|absent=6|filled=5|", _RLAUTH]},
+    "M423": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|admin=ERR NOT_FOUND|", "|full_set=OK 1|full_read=ERR NOT_FOUND|", _RLLOAD]},
+    "M424": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|revoked=OK 2 new|revoked_export=OK;lab.read 2 new|",
+                                         "|admin_expired=OK 1 theirs|", "|admin_revoked=OK 1 theirs|", _RLAUTH]},
+    "M425": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|absent=6|filled=0|", _RLSLOT]},
+    "M426": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|resolve=ERR NOT_FOUND|", _RLLOAD]},
+    "M427": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|bare=ERR NOT_FOUND|resolve=OK user 1 mine|bare_loaded=OK 1 mine|",
+                      "|other_loaded=OK 1 theirs|other_loaded_export=OK;lab.read 1 theirs|other=ERR NOT_FOUND|", _RLAUTH]},
+    "M428": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|absent=6|filled=6|full_set=ERR INVALID|full_read=ERR NOT_FOUND|", _RLSLOT]},
+    "M429": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|other_loaded=ERR NOT_FOUND|other_loaded_export=OK;lab.read 1 theirs|", _RLAUTH]},
+    # WP-112's review round: with the table full, minted tokens, a write after a read-load, SUBSCRIBE.
+    "M430": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|admin_expired=OK 1 theirs|", "|admin_revoked=OK 1 theirs|", _RLAUTH]},
+    "M431": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|refused_full=ERR INVALID|bare_full=ERR INVALID|", _RLAUTH]},
+    "M432": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|cw=OK 1 theirs|", _RLAUTH]},
+    "M433": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|grp=OK 1 theirs|", _RLAUTH]},
+    "M434": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|loaded_full=ERR INVALID|resolve_full=ERR INVALID|", _RLFULL]},
+    "M435": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|policy_full=ERR INVALID|", _RLFULL]},
+    # the guest passes: the host check finds the write in slot A, generation 1, and no slot B
+    "M436": {"TST-M4-CONFIG-READ-LOAD": ["host checks", "/SYSTEM/CFGU1001.B NAWAH-CFG 1 2  -> 2",
+                      "/SYSTEM/CFGU1001.A lab.read 1 mine\\n -> 1"]},
+    "M437": {"TST-M4-CONFIG-READ-LOAD": ["exit 37", "|sub_loaded=OK|", _RLAUTH]},
     "M410": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launched=ERR NO_SESSION,ERR NO_SESSION|", _LKSTEPS]},
     "M413": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=OK app:deaf#1|", _LKALIVE]},
     "M414": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", _LKSTEPS]},

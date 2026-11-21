@@ -1146,11 +1146,12 @@
    "failure_cases": [
     "طلب مُمرَّر لأن الواجهة فحصته"
    ],
-   "acceptance": "authz_denied",
+   "acceptance": "authz_denied + config_read_load",
    "test_ids": [
     "TST-M4-AUTHZ-DENIED",
     "TST-M4-CONFIG-STORE-AUTHZ",
-    "TST-M4-CONFIG-SUBS"
+    "TST-M4-CONFIG-SUBS",
+    "TST-M4-CONFIG-READ-LOAD"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
@@ -1185,7 +1186,8 @@
     "TST-M4-CONFIG-RETRY",
     "TST-M4-CONFIG-NOTIFY",
     "TST-M4-POLICY-PRECEDENCE",
-    "TST-M4-CONFIG-SUBS"
+    "TST-M4-CONFIG-SUBS",
+    "TST-M4-CONFIG-READ-LOAD"
    ],
    "implementation_status": "verified_in_scope",
    "evidence_refs": [
