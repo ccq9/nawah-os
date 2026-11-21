@@ -1506,7 +1506,9 @@ class KillEvidence(unittest.TestCase):
         (the answer taken for a CONNECT's) by the missing `apps=2` trace with no
         forbidden marker present; and, from WP-169 (session.md v1.9), M410 (a sign-in that begins no
         session) by exit 37, the case's message for its steps and both launches refused ERR
-        NO_SESSION. The case's manifest runs the real session with the lab image as `desktop` in
+        NO_SESSION, and M413 and M414 (SECURITY: a session begun at boot, or again by Sign out) by
+        exit 37, a message of the case and the desktop's launch before the first sign-in or after
+        the sign-out answered OK. The case's manifest runs the real session with the lab image as `desktop` in
         the role `relay`, and its volume carries deaf (winapp, declaring display) and nest; a
         refused or unsent BEGIN_SESSION is a forbidden marker."""
         E = mutants.EXPECT
@@ -1525,11 +1527,14 @@ class KillEvidence(unittest.TestCase):
             "M389": (False, ["forbidden present ['|text=session|jobs=ended|apps=0']"]),
             "M396": (False, ["missing markers ['|text=session|jobs=ended|apps=2']; forbidden present []"]),
             "M410": (False, ["exit 37", "|launched=ERR NO_SESSION,ERR NO_SESSION|", mutants._LKSTEPS]),
+            "M413": (True, ["exit 37", "|gate|before=OK app:deaf#1|", mutants._LKALIVE]),
+            "M414": (True, ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", mutants._LKSTEPS]),
         }
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.LOGOUT_KILLS in m[4]), sorted(want))
         for msg in (mutants._LKALIVE, mutants._LKSTEPS):
             self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
         self.assertIn("|launched=OK app:deaf#1,OK app:nest#2|", " ".join(case["required_markers"]))
+        self.assertIn("|ktest|logout_kills|gate|before=ERR NO_SESSION|after=ERR NO_SESSION|", case["required_markers"])
         for mid, (security, subs) in want.items():
             with self.subTest(mutant=mid):
                 m = next(m for m in mutants.MUTANTS if m[0] == mid)
@@ -1653,18 +1658,19 @@ class KillEvidence(unittest.TestCase):
     SESSION_GATE = "TST-M6-SESSION-GATE"
 
     def test_the_session_gate_expectations_are_pinned(self):
-        """WP-169 (services.md v1.19): LAUNCH needs an open session. M406 to M409, each anchoring
-        once in the manager and SECURITY, are declared on TST-M6-SESSION-GATE alone, each known by
+        """WP-169 (services.md v1.19): LAUNCH needs an open session. M406 to M409, M411 and M412,
+        each anchoring once in the manager, are declared on TST-M6-SESSION-GATE alone, each known by
         exit 37, one of the case's two failure messages and the exit codes of the session and the
-        desktop at the step each breaks, no two sharing their evidence (M410, the session's side,
-        is pinned with TST-M6-LOGOUT-KILLS). The case's manifest, line, timeout and volume, and
+        desktop at the step each breaks, no two sharing their evidence; all but M412 (a refusal
+        counted as an attempt) are SECURITY (M410, M413 and M414, the session's side, are pinned with
+        TST-M6-LOGOUT-KILLS). The case's manifest, line, timeout and volume, and
         the gate's reply in LAUNCH-DENIED's manifest are pinned."""
         E = mutants.EXPECT
         src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
         mgr = (ROOT / "user" / "apps" / "svcmgr" / "src" / "main.rs").read_text(encoding="utf-8")
         t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
         case = next(c for cs in t["suites"].values() for c in cs if c["id"] == self.SESSION_GATE)
-        line = "|ktest|session_gate|load=OK 2|session=0x40|desktop=0x40|stays=1|waiting=1|live_jobs=2|mgr_handles=4|"
+        line = "|ktest|session_gate|load=OK 2|session=0x0|desktop=0x40|stays=1|waiting=1|live_jobs=2|mgr_handles=4|"
         self.assertIn(line, case["required_markers"])
         for bad in ("|text=gater|step=", "|text=ungated|step="):
             self.assertIn(bad, case["forbidden_markers"])
@@ -1675,26 +1681,28 @@ class KillEvidence(unittest.TestCase):
         for const, msg in msgs.items():
             self.assertEqual(getattr(mutants, const), msg)
             self.assertIn(f'fail("{msg[len("|ktest|fail|"):]}")', src)
-        want = {  # id: (message constant, the exit codes)
-            "M406": ("_SGSES", "|session=0x5100|desktop=0x5200|"),  # step 1 answered OK; the desktop's step 2 too
-            "M407": ("_SGDESK", "|session=0x40|desktop=0x5100|"),   # the desktop's BEGIN_SESSION answered BEGUN
-            "M408": ("_SGSES", "|session=0x5600|"),                 # step 6, after END_SESSION, answered OK
-            "M409": ("_SGDESK", "|session=0x40|desktop=0x5200|"),   # the desktop's LAUNCH after the session's exit
+        want = {  # id: (message constant, the exit codes, SECURITY)
+            "M406": ("_SGSES", "|session=0x5100|desktop=0x5200|", True),  # step 1 answered OK; the desktop's step 2 too
+            "M407": ("_SGDESK", "|session=0x0|desktop=0x5100|", True),    # the desktop's BEGIN_SESSION answered BEGUN
+            "M408": ("_SGSES", "|session=0x5600|", True),                 # step 6, after END_SESSION, answered OK
+            "M409": ("_SGDESK", "|session=0x0|desktop=0x5200|", True),    # the desktop's LAUNCH after the session's clean exit
+            "M411": ("_SGSES", "|session=0x5900|", True),                 # step 9, after an END_SESSION with no application
+            "M412": ("_SGSES", "|session=0x5300|", False),                # step 3 refused ERR BUSY after seventeen refusals
         }
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if self.SESSION_GATE in m[4]), sorted(want))
-        for mid, (const, codes) in want.items():
+        for mid, (const, codes, security) in want.items():
             with self.subTest(mutant=mid):
                 m = next(m for m in mutants.MUTANTS if m[0] == mid)
                 self.assertEqual(m[1], "user/apps/svcmgr/src/main.rs")
                 self.assertEqual(mgr.count(m[2]), 1)
                 self.assertNotEqual(m[2], m[3])
                 self.assertEqual(m[4], [self.SESSION_GATE])
-                self.assertIn(mid, mutants.SECURITY)
-                self.assertTrue(m[5].startswith("SECURITY: "), m[5])
+                self.assertEqual(mid in mutants.SECURITY, security)
+                self.assertEqual(m[5].startswith("SECURITY: "), security, m[5])
                 self.assertEqual(mutants.stage_of(mid), "M6")
                 self.assertEqual(E[mid], {self.SESSION_GATE: ["exit 37", codes, getattr(mutants, const)]})
                 self.assertNotIn(codes, line)
-        manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-sg.txt").read_text(encoding="utf-8")
+        manifest = (ROOT / "platform" / "pc-qemu" / "manifests" / "svc-gt.txt").read_text(encoding="utf-8")
         self.assertEqual([l for l in manifest.splitlines() if l and not l.startswith("#")],
                          ["session /SYSTEM/SVC.ELF - 3000 never 0 0 gater", "desktop /SYSTEM/SVC.ELF session 3000 never 0 0 ungated"])
         self.assertEqual(case.get("disk_files"), {"SYSTEM/APPS/STAY.APP": "platform/pc-qemu/lab/stay.app",

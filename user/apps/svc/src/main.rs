@@ -454,71 +454,85 @@ fn begin(ch: u32) -> bool {
     matches!(ask(ch, b"BEGIN_SESSION", &[], &mut r), Some(n) if r[..n] == *b"BEGUN")
 }
 
-/// A step of `gater` and `ungated`: its number, the request, the stated reply (the number, for
-/// a LAUNCH answered OK) and the replies its LAUNCH repeats on.
-type GateStep = (u8, &'static [u8], &'static [u8], u8);
+/// A step of `gater` and `ungated`: its number (0: sleep 300 ticks), the request, the stated reply
+/// (the number, for a LAUNCH answered OK), the replies its LAUNCH repeats on, and how many times
+/// it is asked.
+type GateStep = (u8, &'static [u8], &'static [u8], u8, u8);
 
 /// The steps of `gater` or `ungated` in turn, each traced `<who>|step=<k>|got=<reply>` at the
 /// first that saw another reply; 0x40, or (0x50 + k) * 256 + the number of that reply.
 fn gate_steps(ch: u32, who: &[u8], steps: &[GateStep]) -> u64 {
     let mut r = [0u8; 128];
-    for &(step, req, want, retry) in steps {
+    for &(step, req, want, retry, times) in steps {
         if step == 0 {
             let _ = libnawah::sleep(300);
             continue;
         }
-        let (ok, n, num) = match (req.strip_prefix(b"LAUNCH "), parse_num(want)) {
-            (Some(id), Some(first)) => {
-                let (num, n) = launch(ch, id, retry, &mut r);
-                (num == first, n, num)
+        for _ in 0..times {
+            let (ok, n, num) = match (req.strip_prefix(b"LAUNCH "), parse_num(want)) {
+                (Some(id), Some(first)) => {
+                    let (num, n) = launch(ch, id, retry, &mut r);
+                    (num == first, n, num)
+                }
+                _ => {
+                    let n = ask(ch, req, &[], &mut r).unwrap_or(0);
+                    (r[..n] == *want, n, 0)
+                }
+            };
+            if !ok {
+                let mut t = [0u8; 120];
+                t[..who.len()].copy_from_slice(who);
+                let head = b"|step=";
+                t[who.len()..who.len() + head.len()].copy_from_slice(head);
+                let mut at = put_num(&mut t, who.len() + head.len(), u64::from(step));
+                let got = b"|got=";
+                t[at..at + got.len()].copy_from_slice(got);
+                at += got.len();
+                let m = n.min(t.len() - at);
+                t[at..at + m].copy_from_slice(&r[..m]);
+                libnawah::trace(&t[..at + m]);
+                return (0x50 + u64::from(step)) << 8 | (num & 0xff);
             }
-            _ => {
-                let n = ask(ch, req, &[], &mut r).unwrap_or(0);
-                (r[..n] == *want, n, 0)
-            }
-        };
-        if !ok {
-            let mut t = [0u8; 120];
-            t[..who.len()].copy_from_slice(who);
-            let head = b"|step=";
-            t[who.len()..who.len() + head.len()].copy_from_slice(head);
-            let mut at = put_num(&mut t, who.len() + head.len(), u64::from(step));
-            let got = b"|got=";
-            t[at..at + got.len()].copy_from_slice(got);
-            at += got.len();
-            let m = n.min(t.len() - at);
-            t[at..at + m].copy_from_slice(&r[..m]);
-            libnawah::trace(&t[..at + m]);
-            return (0x50 + u64::from(step)) << 8 | (num & 0xff);
         }
     }
     0x40
 }
 
-/// The vouched session's side of TST-M6-SESSION-GATE (WP-169, services.md v1.19): (1) LAUNCH stay
-/// before any BEGIN_SESSION, ERR NO_SESSION; (2) BEGIN_SESSION, BEGUN; (3) LAUNCH stay, #1;
-/// (4) BEGIN_SESSION again, BEGUN; (5) END_SESSION, `ENDED 1`; (6) LAUNCH stay, ERR NO_SESSION;
-/// (7) BEGIN_SESSION, BEGUN; (8) LAUNCH stay, #2 (repeated while ERR FULL); then READY, so the
-/// desktop starts, and exit.
+/// The vouched session's side of TST-M6-SESSION-GATE (WP-169, services.md v1.19): (1) seventeen
+/// LAUNCH stay before any BEGIN_SESSION, each ERR NO_SESSION (refusals that are not attempts);
+/// (2) BEGIN_SESSION, BEGUN; (3) LAUNCH stay, #1; (4) BEGIN_SESSION again, BEGUN; (5) END_SESSION,
+/// `ENDED 1`; (6) LAUNCH stay, ERR NO_SESSION; (7) BEGIN_SESSION, BEGUN; 300 ticks for stay#1's
+/// exit to be seen; (8) END_SESSION with no application, `ENDED 0`; (9) LAUNCH stay, ERR
+/// NO_SESSION; (10) BEGIN_SESSION, BEGUN; (11) LAUNCH stay, #2 (repeated while ERR FULL); then
+/// READY, so the desktop starts, and exit 0 (a clean exit closes the gate too), or the code of
+/// the first step that saw another reply.
 fn gater(ch: u32) -> u64 {
     let code = gate_steps(
         ch,
         b"gater",
         &[
-            (1, b"LAUNCH stay", b"ERR NO_SESSION", 0),
-            (2, b"BEGIN_SESSION", b"BEGUN", 0),
-            (3, b"LAUNCH stay", b"1", 0),
-            (4, b"BEGIN_SESSION", b"BEGUN", 0),
-            (5, b"END_SESSION", b"ENDED 1", 0),
-            (6, b"LAUNCH stay", b"ERR NO_SESSION", 0),
-            (7, b"BEGIN_SESSION", b"BEGUN", 0),
-            (8, b"LAUNCH stay", b"2", RETRY_FULL),
+            (1, b"LAUNCH stay", b"ERR NO_SESSION", 0, 17),
+            (2, b"BEGIN_SESSION", b"BEGUN", 0, 1),
+            (3, b"LAUNCH stay", b"1", 0, 1),
+            (4, b"BEGIN_SESSION", b"BEGUN", 0, 1),
+            (5, b"END_SESSION", b"ENDED 1", 0, 1),
+            (6, b"LAUNCH stay", b"ERR NO_SESSION", 0, 1),
+            (7, b"BEGIN_SESSION", b"BEGUN", 0, 1),
+            (0, b"", b"", 0, 1),
+            (8, b"END_SESSION", b"ENDED 0", 0, 1),
+            (9, b"LAUNCH stay", b"ERR NO_SESSION", 0, 1),
+            (10, b"BEGIN_SESSION", b"BEGUN", 0, 1),
+            (11, b"LAUNCH stay", b"2", RETRY_FULL, 1),
         ],
     );
     if libnawah::channel_write(ch, b"READY", &[]) != 0 {
         return 0xE2;
     }
-    code
+    if code == 0x40 {
+        0
+    } else {
+        code
+    }
 }
 
 /// The vouched desktop's side of TST-M6-SESSION-GATE (WP-169): READY; (1) BEGIN_SESSION, refused
@@ -532,9 +546,9 @@ fn ungated(ch: u32) -> u64 {
         ch,
         b"ungated",
         &[
-            (1, b"BEGIN_SESSION", b"ERR ACCESS", 0),
-            (0, b"", b"", 0),
-            (2, b"LAUNCH stay", b"ERR NO_SESSION", 0),
+            (1, b"BEGIN_SESSION", b"ERR ACCESS", 0, 1),
+            (0, b"", b"", 0, 1),
+            (2, b"LAUNCH stay", b"ERR NO_SESSION", 0, 1),
         ],
     )
 }

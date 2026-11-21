@@ -1739,13 +1739,29 @@ MUTANTS = [
      "        if let Some(j) = self.session_job.take() {\n",
      ["TST-M6-SESSION-GATE"], "SECURITY: END_SESSION leaves the gate open, so a LAUNCH after Sign out makes a session the next user inherits"),
     ("M409", "user/apps/svcmgr/src/main.rs",
-     "        if self.services[i].name() == b\"session\" {\n            self.session_open = false;\n        }\n",
-     "",
-     ["TST-M6-SESSION-GATE"], "SECURITY: the session service's exit leaves the gate open, so the desktop launches while no session runs"),
+     "        if self.services[i].name() == b\"session\" {\n",
+     "        if self.services[i].name() == b\"session\" && code != 0 {\n",
+     ["TST-M6-SESSION-GATE"], "SECURITY: the session service's clean exit (a STOP, its channel closed) leaves the gate open, so the desktop launches while no session runs"),
+    ("M411", "user/apps/svcmgr/src/main.rs",
+     "        self.session_open = false;\n        if let Some(j) = self.session_job.take() {\n",
+     "        if let Some(j) = self.session_job.take() {\n            self.session_open = false;\n",
+     ["TST-M6-SESSION-GATE"], "SECURITY: END_SESSION closes the gate only when an application was launched, so a user who signs in and out without one leaves it open"),
+    ("M412", "user/apps/svcmgr/src/main.rs",
+     "                Some(_) if !self.session_open => out.put(b\"ERR NO_SESSION\"),\n",
+     "                Some(_) if !self.session_open => {\n                    self.launches[self.launch_next] = Some(libnawah::clock_ticks());\n                    self.launch_next = (self.launch_next + 1) % LAUNCH_RATE_MAX;\n                    out.put(b\"ERR NO_SESSION\")\n                }\n",
+     ["TST-M6-SESSION-GATE"], "a refusal for no session counts as a launch attempt, so LAUNCHes before sign-in refuse the signed-in user's first ERR BUSY"),
     ("M410", "user/apps/sessiond/src/main.rs",
      "                    if !self.boot_send(b\"BEGIN_SESSION\", BootOp::Begin) {\n                        libnawah::trace(b\"session|begin=unsent\");\n                    }\n",
      "",
      ["TST-M6-LOGOUT-KILLS"], "a sign-in begins no session, so every launch of the signed-in user is refused"),
+    ("M413", "user/apps/sessiond/src/main.rs",
+     "    if libnawah::channel_write(boot, b\"READY\", &[]) != 0 {\n        return 0xE5;\n    }\n    loop {\n",
+     "    if libnawah::channel_write(boot, b\"READY\", &[]) != 0 {\n        return 0xE5;\n    }\n    let _ = s.boot_send(b\"BEGIN_SESSION\", BootOp::Begin);\n    loop {\n",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: the session begins one at boot, so the desktop launches on the sign-in screen"),
+    ("M414", "user/apps/sessiond/src/main.rs",
+     "        if !self.boot_send(b\"END_SESSION\", BootOp::End) {\n            libnawah::trace(b\"session|jobs=unsent\");\n        }\n",
+     "        if !self.boot_send(b\"END_SESSION\", BootOp::End) {\n            libnawah::trace(b\"session|jobs=unsent\");\n        }\n        let _ = self.boot_send(b\"BEGIN_SESSION\", BootOp::Begin);\n",
+     ["TST-M6-LOGOUT-KILLS"], "SECURITY: Sign out begins a session again, so the desktop launches on the sign-in screen and the next user inherits it"),
     # M341 (WP-158's review round): the cleanup goes through every store.
     ("M341", "user/apps/configd/src/main.rs",
      "        for st in self.stores.iter_mut() {\n            for s in 0..MAX_SUBS {\n",
@@ -2089,7 +2105,7 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # WP-163 (REQ-M6-004): LAUNCH is bounded in rate (services.md v1.18).
             "M401", "M405",
             # WP-169 (REQ-M6-004): LAUNCH needs an open session (services.md v1.19).
-            "M406", "M407", "M408", "M409"}
+            "M406", "M407", "M408", "M409", "M411", "M413", "M414"}
 
 
 def security_of(mid: str) -> bool:
@@ -2496,10 +2512,14 @@ EXPECT = {
     "M404": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5900|", _LRANS]},
     "M405": {"TST-M6-LAUNCH-RATE": ["exit 37", "|session=0x5710|", _LRANS]},
     "M406": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5100|desktop=0x5200|", _SGSES]},
-    "M407": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x40|desktop=0x5100|", _SGDESK]},
+    "M407": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x0|desktop=0x5100|", _SGDESK]},
     "M408": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5600|", _SGSES]},
-    "M409": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x40|desktop=0x5200|", _SGDESK]},
+    "M409": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x0|desktop=0x5200|", _SGDESK]},
+    "M411": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5900|", _SGSES]},
+    "M412": {"TST-M6-SESSION-GATE": ["exit 37", "|session=0x5300|", _SGSES]},
     "M410": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|launched=ERR NO_SESSION,ERR NO_SESSION|", _LKSTEPS]},
+    "M413": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=OK app:deaf#1|", _LKALIVE]},
+    "M414": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|gate|before=ERR NO_SESSION|after=OK app:deaf#3|", _LKSTEPS]},
 }
 
 

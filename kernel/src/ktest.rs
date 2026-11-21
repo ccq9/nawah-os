@@ -5743,12 +5743,12 @@ fn launch_rate() -> ! {
 }
 
 /// TST-M6-SESSION-GATE (REQ-M6-004, services.md v1.19; WP-169): LAUNCH needs an open session.
-/// The lab manifest SVC-SG.TXT runs the lab image as the vouched `session` (role `gater`: refused
+/// The lab manifest SVC-GT.TXT runs the lab image as the vouched `session` (role `gater`: refused
 /// before BEGIN_SESSION, opens, launches, ends, is refused, opens, launches, exits) and the vouched
 /// `desktop` (role `ungated`: refused BEGIN_SESSION, then refused LAUNCH after the session's exit).
 fn session_gate() -> ! {
     let name = "session_gate";
-    let h = SvcHarness::start(name, b"/SYSTEM/SVC-SG.TXT");
+    let h = SvcHarness::start(name, b"/SYSTEM/SVC-GT.TXT");
     let lines = h.poll_list(sched::ticks() + 25_000, |l| {
         ["session", "desktop"]
             .iter()
@@ -5789,7 +5789,8 @@ fn session_gate() -> ! {
     if load != "OK 2" {
         fail("the lab manifest did not load")
     }
-    if session != 0x40 {
+    // The session exits 0 (a clean exit closes the gate as any other does).
+    if session != 0 {
         fail("a LAUNCH or BEGIN_SESSION of the session was not answered as the gate states")
     }
     if desktop != 0x40 {
@@ -14037,12 +14038,15 @@ fn logout_kills() -> ! {
         b"/SYSTEM/SVC-LK.TXT",
         &["auth", "input", "display", "session", "desktop"],
     );
+    // v1.19 (WP-169): before the first sign-in no session is open, so the desktop's launch is
+    // refused (the monitor's typing of the name and password takes about nine seconds).
+    let desk = svc_connect(&h, "desktop");
+    let before = cfg_request(&desk, b"LAUNCH deaf", None);
     kprintln!("OSX|{}|ktest|logout_kills|services=5|ready=1", BUILD_ID);
     let within = |t: u64| sched::ticks() + t;
     let live = |img: &[u8]| sched::live_named(img).1;
     // Phase 1: signed in (the monitor types the lab's name and password), two launches.
     let unlocked = state_wait(&session, "unlocked", 1, Some("display"), within(40_000));
-    let desk = svc_connect(&h, "desktop");
     let jobs0 = i64::from(object::stats().jobs);
     let mgr0 = mgr_handles(&h);
     let deaf = cfg_request(&desk, b"LAUNCH deaf", None);
@@ -14074,6 +14078,15 @@ fn logout_kills() -> ! {
     };
     sched::poll_until(within(5000), || left() == (0, 0, 0, 0, 0));
     let after = left();
+    // Sign out closed the gate (END_SESSION, v1.19): the desktop's launch is refused, before the
+    // line below lets the monitor sign in again.
+    let shut = cfg_request(&desk, b"LAUNCH deaf", None);
+    kprintln!(
+        "OSX|{}|ktest|logout_kills|gate|before={}|after={}|",
+        BUILD_ID,
+        before,
+        shut
+    );
     kprintln!(
         "OSX|{}|ktest|logout_kills|back={}|deaf={}|nest={}|idle={}|jobs={}|mgr_handles={}|phase=2",
         BUILD_ID,
@@ -14101,7 +14114,12 @@ fn logout_kills() -> ! {
     let signed_in =
         |r: &str, changes: u32| state_is(r, "unlocked", changes) && r.ends_with(" focus=display");
     let failed = alloc::format!(
-        "{}{}{}{}{}",
+        "{}{}{}{}{}{}",
+        if before == "ERR NO_SESSION" && shut == "ERR NO_SESSION" {
+            ""
+        } else {
+            "gate,"
+        },
         if signed_in(&unlocked, 1)
             && deaf == "OK app:deaf#1"
             && nest == "OK app:nest#2"
@@ -14133,7 +14151,9 @@ fn logout_kills() -> ! {
         BUILD_ID,
         if failed.is_empty() { "none" } else { &failed }
     );
-    drop((unlocked, deaf, nest, out, again, relaunch, desk, session));
+    drop((
+        before, shut, unlocked, deaf, nest, out, again, relaunch, desk, session,
+    ));
     if failed.contains("left,") {
         fail("an application of the signed-out session is still alive")
     }
