@@ -549,9 +549,9 @@
    "evidence": "قراءة الفريق الأحمر في جولة مراجعة WP-164 بتاريخ 2026-11-21 (kernel/src/syscall/mod.rs: vmo_create وspawn_into، kernel/src/object/mod.rs، kernel/src/loader/elf.rs وmod.rs، kernel/src/mm/heap.rs)؛ لم يُشغَّل شيء؛ فرضية تؤكدها حالة مختبر تكرر vmo_create حتى ERR_NO_RESOURCES ثم تطلب channel_write؛ وجولتا مراجعة WP-170 بتاريخ 2026-11-21 (kernel/src/object/channel.rs: QUEUE_MAX 64 رسالة من 4 KiB لكل قناة؛ kernel/src/mm/addrspace.rs: next_map لا يعود، وkernel/src/arch/x86_64/paging.rs: الجداول لا تُحرَّر)",
    "owner": "agent",
    "warning_signal": "kernel|panic عند نفاد الكومة، أو ERR_NO_RESOURCES في خدمات لا صلة لها بالتطبيق المستهلك",
-   "mitigation": "حصة 8192 صفحة لكل مهمة غير الجذر وحد للنظام يبقي 64 MiB للنواة (WP-170، syscall.md v1.16): VMO وصور الإطلاق تُحسب قبل أخذ إطاراتها؛ ولا صورة تطبيق على قرص الإصدار قبل WP-171",
-   "response_plan": "WP-176 (channels, messages, the image's read buffer, no cycle) and WP-177 (the mapping region's tables and addresses) active together on 2026-11-21, before WP-171 and WP-47; kernel stacks and the image's own tables remain uncounted (L-121). An order the owner may overrule",
-   "status": "open"
+   "mitigation": "حصة 8192 صفحة لكل مهمة غير الجذر وحد للنظام يبقي 64 MiB للنواة (WP-170، syscall.md v1.16)؛ والقنوات والرسائل وذاكرة قراءة الصورة محسوبة على المهمة، ونمو الطابور والمخازن قابل للفشل، ولا حلقة قنوات (WP-176، syscall.md v1.17، ipc.md v1.1)؛ ومنطقة الربط تعيد عناوينها وتحرر جداولها وتحسبها على المهمة (WP-177، syscall.md v1.18). التشغيل 44936853823 على 0f770747: TST-M6-JOB-MEMORY وTST-M5-CLIENT-LIMITS PASS، وطفرات M443 إلى M479 وM490 وM491 مقتولة على CI. الباقي: مكدسات النواة وجداول الصورة نفسها غير محسوبة (L-121)، ولا صورة تطبيق على قرص الإصدار قبل WP-171",
+   "response_plan": "WP-170 وWP-176 وWP-177 مغلقة في 2026-11-21 (التشغيلان 44924763433 و44936853823)؛ وWP-171 بعدها في ترتيب المالك. يُعاد فتح الخطر إن ظهر kernel|panic عند نفاد الكومة أو ERR_NO_RESOURCES في خدمة لا صلة لها بالمستهلك",
+   "status": "mitigated"
   }
  ]
 }
