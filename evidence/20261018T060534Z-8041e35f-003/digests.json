@@ -1,0 +1,8 @@
+{
+ "tests/test_m1_nobs.py": "ceceb80b4ec0ca8285308f797a303c41a0ef31c877acbb5641639ae3637aac0b",
+ "kernel/src/main.rs": "8ab85b61a5c14e62cce5e6976753bd9b027a4b4a67986421b1784989d35a40b2",
+ "kernel/src/kmain.rs": "f522f82d01071b2b6556e53bc7a8b47247a58ff83acdb5af42a604c5423e83a6",
+ "kernel/src/bootinfo.rs": "1754e069cba821b11498a386127adea49d1eb0f5d125ef5fbc01c8bc4110b3a6",
+ "kernel/src/boot/mod.rs": "ecb0e4d50454565d720d5774843d32b3f279a58ae4569270ffc2e96908402b21",
+ "kernel/src/boot/stub.rs": "01968a9c4ceb77965d9b2e61bbc2b2499b3f663b6c0d98444c060a6f7f7f3539"
+}
