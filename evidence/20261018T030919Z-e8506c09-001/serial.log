@@ -1,0 +1,12 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+OSX|e8506c09b975|boot|start|arch=x86_64|boot=uefi|stage=pre_ebs
+OSX|e8506c09b975|boot|memmap|bytes=6240|desc_size=48|key=0xaee
+OSX|e8506c09b975|boot|ebs|ok=1|attempts=1
+OSX|e8506c09b975|kernel|cpu_tables|gdt=1|tss=1|idt=1|stack=kernel
+OSX|e8506c09b975|kernel|post_ebs|map_key=0xaee|descriptors=130|conventional_pages=118264|ebs_attempts=1
+OSX|e8506c09b975|ktest|start|name=exc_bp_state
+OSX|e8506c09b975|exc|vector=3|name=#BP|error=0x0|rip=0x1dd732ea|cs=0x8|rflags=0x447|rsp=0x1dd97ed8|ss=0x10|cr2=0x0|stack=kernel
+OSX|e8506c09b975|exc|regs1|rax=0x1111111111111111|rbx=0x2222222222222222|rcx=0x3333333333333333|rdx=0x4444444444444444|rsi=0x5555555555555555|rdi=0x6666666666666666|rbp=0x7777777777777777
+OSX|e8506c09b975|exc|regs2|r8=0x8888888888888888|r9=0x9999999999999999|r10=0xaaaaaaaaaaaaaaaa|r11=0xbbbbbbbbbbbbbbbb|r12=0xcccccccccccccccc|r13=0xdddddddddddddddd|r14=0xeeeeeeeeeeeeeeee|r15=0xf0f0f0f0f0f0f0f0
+OSX|e8506c09b975|ktest|pass|registers and flags preserved across #BP

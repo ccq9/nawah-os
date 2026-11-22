@@ -1,0 +1,23 @@
+$ python3 -I tools/fat32.py grep /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img /SYSTEM/CFGU1001.B NAWAH-CFG 1 2 
+grep: /SYSTEM/CFGU1001.B contains 'NAWAH-CFG 1 2 '
+
+[exit 0]
+$ python3 -I tools/fat32.py grep /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img /SYSTEM/CFGU1001.B lab.read 2 new
+
+grep: /SYSTEM/CFGU1001.B contains 'lab.read 2 new\n'
+
+[exit 0]
+$ python3 -I tools/fat32.py grep /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img /SYSTEM/CFGU1001.A lab.read 1 mine
+
+grep: /SYSTEM/CFGU1001.A contains 'lab.read 1 mine\n'
+
+[exit 0]
+$ fsck.fat -n /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img
+fsck.fat 4.2 (2021-01-31)
+/home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img: 87 files, 3483/128992 clusters
+
+[exit 0]
+$ python3 -I tools/fat32.py check /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img
+check: clusters=128992 used=3483 free=125509 label='NAWAHLAB' fstype='FAT32   ' problems=[]
+
+[exit 0]

@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261122T062612Z-bf41db8d-002-a",
+ "started_at": "2026-11-22T06:26:12+00:00",
+ "finished_at": "2026-11-22T06:26:19+00:00",
+ "source_revision": "bf41db8d0553a8e5f60280b61cfe809dc61382a9",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1017-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M6-APP-REGISTRY-FUZZ",
+ "commands": [
+  "cargo test --offline --release -p nawah-apps --target x86_64-unknown-linux-gnu --test registry"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "44991871213",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "bf41db8d0553a8e5f60280b61cfe809dc61382a9",
+  "head_sha": "da40396bf60b3857044c02a0e0f03bd2b9e51e04",
+  "ref": "refs/pull/23/merge"
+ }
+}

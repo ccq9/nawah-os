@@ -1,0 +1,21 @@
+$ python3 -I tests/test_mutants_harness.py
+removed the worktree of a stopped run: /tmp/wp130-83sl4ft3/root/nawah-mutants-gone/wt
+removed the worktree of a stopped run: /tmp/wp130-83sl4ft3/root/nawah-mutants-old/wt
+M996: SURVIVED [0.0s] (synthetic)
+
+FAIL: 0/1 valid mutants killed (0.0%, threshold 95%); survived=['M996']; surviving_security=[]; invalid=[]; invalid_security=[]; declared_killers_missed=['M996']; expected_missed=[]; report=build/r.json
+M996: SURVIVED [0.0s] (synthetic)
+
+FAIL: 0/1 valid mutants killed (0.0%, threshold 95%); survived=['M996']; surviving_security=[]; invalid=[]; invalid_security=[]; declared_killers_missed=['M996']; expected_missed=[]; report=build/r.json
+M996: SURVIVED [0.0s] (synthetic)
+
+FAIL: 0/1 valid mutants killed (0.0%, threshold 95%); survived=['M996']; surviving_security=[]; invalid=[]; invalid_security=[]; declared_killers_missed=['M996']; expected_missed=[]; report=build/r.json
+M999: INVALID (M999: pattern occurs 0 times in kernel/a.rs (must be exactly once))
+
+FAIL: 0/0 valid mutants killed (0.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=['M999']; invalid_security=['M999']; declared_killers_missed=[]; expected_missed=[]; report=build/r.json
+M998: INVALID (does not build) (synthetic)
+
+FAIL: 0/0 valid mutants killed (0.0%, threshold 95%); survived=[]; surviving_security=[]; invalid=['M998']; invalid_security=[]; declared_killers_missed=[]; expected_missed=[]; report=build/r.json
+M998: SURVIVED [0.0s] (synthetic)
+
+FAIL: 0/1 valid mutants killed (0.0%, threshold 95%); survived=['M998']; surviving_security=[]; invalid=[]; invalid_security=[]; declared_killers_missed=['M998']; expected_missed=[]; report=build/r.json
