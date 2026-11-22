@@ -435,6 +435,39 @@
    "requested_at": "2026-11-17T09:40:00Z",
    "status": "answered",
    "answer": "2026-11-17: the owner's answer in the session, a four-question form, each answered with the manager's recommended option: (1) simplify the working method; (2) close WP-106 and WP-147, the limit of what CI shows written plainly in the closing line; (3) bundle the ten remaining FAT32 rare-case packages into one package done before release and move to the desktop; (4) act on the manager's recommendations in the open decisions and send him only what needs his own hand"
+  },
+  {
+   "id": "DEC-041",
+   "question": "حزم M6 المفتوحة الـ26 خارج شجرة اعتماد WP-62 (بوابة M6): لكل حزمة تصنيف من ثلاثة: A شرط لقبول M6، أو B نقل إلى مرحلة لاحقة داخل R1، أو C استثناء ظاهر بأجل مسمّى. الجدول المدقق في issue #24 (التعليق 7071791430): A لثلاث (WP-145 وWP-155 وWP-109)، وB لثمانٍ (WP-174 وWP-125 وWP-116 وWP-114 وWP-141 وWP-142 وWP-75 وWP-144)، وC للخمس عشرة الباقية. هل يعتمده المالك؟",
+   "options": [
+    "A: اعتماد الجدول كما هو",
+    "B: اعتماده معدّلًا كما يوصي المراجع (issue #24، التعليق 7073928369): إبراز أثر كل نقل إلى M8–M10 على التزام R1 (تعريف MVP ينتهي في M7)، وألا يتبع شرط اختبار في M8 مرحلة M9، وجمع الآجال الشرطية (ومنها WP-159)، وفصل ما يحلّ عند دخول M7 عما يحلّ عند خروجها",
+    "C: صيغة أخرى يحددها المالك"
+   ],
+   "recommendation": "المدير أوصى أولًا بـA، والمراجع يوصي بـB المعدّل وجهّز للمالك مصفوفة البنود الـ26. بعد قراءة اعتراضه يرى المدير أن B أدق، لأن ملاحظاته على أثر النقل في التزام R1 صحيحة. القرار للمالك بعد مصفوفة المراجع",
+   "impact": "لا استثناء معتمد ولا نقل ولا شرط جديد قبل هذا القرار؛ WP-62 (بوابة M6) لا تُقبل قبله؛ العمل الجاري في ترتيب المالك لا ينتظره",
+   "blocked_task_ids": [
+    "WP-62"
+   ],
+   "requested_at": "2026-11-22T00:48:23Z",
+   "status": "open"
+  },
+  {
+   "id": "DEC-042",
+   "question": "الشطر غير المسند من L-107: النواة تبدأ العملية الابنة ثم تدرج مقبضها في جدول المنشئ، فإن فشل الإدراج رجع النداء بخطأ والابن يعمل (kernel/src/syscall/mod.rs:798-814). يبلغه برنامج عادي جدوله ممتلئ ولا يمرّر مقبضًا، بلا تجاوز سلطة، ويناقض نص العقد. هل يُسند إلى حزمة نواة مستقلة قبل WP-47؟",
+   "options": [
+    "A: حزمة نواة جديدة (WP-179) قبل WP-47: نجاح بمقبض صالح، أو فشل بلا ابن حي ولا موارد باقية",
+    "B: يبقى سطرًا في LATER إلى ما بعد بوابة M6",
+    "C: صيغة أخرى يحددها المالك"
+   ],
+   "recommendation": "A: توصية المدير والمراجع (issue #24، التعليق 7073928369)، لأن حالات WP-47 تعتمد على معنى فشل الإطلاق",
+   "impact": "WP-47 تعتمد على WP-179، فيتقدم بند نواة واحد في ترتيب المالك قبلها",
+   "blocked_task_ids": [
+    "WP-179"
+   ],
+   "requested_at": "2026-11-22T03:52:00Z",
+   "status": "answered",
+   "answer": "2026-11-22: the owner's answer in the session, after the manager's summary of the reviewer's replies in issue #24: 'I agree with your proposal, continue' (in Arabic); option A. DEC-041 (the 26 open M6 packages outside WP-62's tree) is not answered by it: the manager recommended A as is, the reviewer B amended (comment 7073928369), and the owner's ruling waits for the reviewer's matrix"
   }
  ]
 }

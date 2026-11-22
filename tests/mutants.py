@@ -1676,8 +1676,8 @@ MUTANTS = [
      "",
      ["TST-M6-LOGOUT-KILLS"], "SECURITY: Sign out asks the manager for nothing, so the signed-out session's applications run on into the next"),
     ("M389", "user/apps/sessiond/src/main.rs",
-     "            Some(n) => t.put(b\"session|jobs=ended|apps=\").put(n),\n",
-     "            Some(_) => t.put(b\"session|jobs=ended|apps=\").put(b\"0\"),\n",
+     "            (Some(_), Some(n)) => t.put(b\"session|jobs=ended|apps=\").put(n),\n",
+     "            (Some(_), Some(_)) => t.put(b\"session|jobs=ended|apps=\").put(b\"0\"),\n",
      ["TST-M6-LOGOUT-KILLS"], "the session traces that no application was ended whatever the manager answered"),
     ("M396", "user/apps/sessiond/src/main.rs",
      "        self.boot_ops[k] = Some(op);\n",
@@ -1763,7 +1763,7 @@ MUTANTS = [
      ["TST-M6-LOGOUT-KILLS"], "SECURITY: Sign out begins a session again, so the desktop launches on the sign-in screen and the next user inherits it"),
     # M480..M484 (WP-178, REQ-M6-004; session.md v1.12): no sign-in before the manager confirms
     # the end of the session before it, killed by TST-M6-LOGOUT-KILLS (the manager frozen at Sign
-    # out, a sign-in held, then thawed: ENDED 2 confirms and the next sign-in goes on).
+    # out, a sign-in refused, then thawed: ENDED 2 confirms and a sign-in typed again is taken).
     ("M480", "user/apps/sessiond/src/main.rs",
      "        if self.end != EndState::Confirmed {\n            self.login_held();\n",
      "        if false {\n            self.login_held();\n",
@@ -1773,8 +1773,8 @@ MUTANTS = [
      "        if op == BootOp::End {\n            self.end = EndState::Confirmed;\n",
      ["TST-M6-LOGOUT-KILLS"], "SECURITY: END_SESSION written counts as the end confirmed, so a hung manager's session is followed by the next sign-in"),
     ("M482", "user/apps/sessiond/src/main.rs",
-     "        } else if msg.starts_with(b\"ENDED \") {\n            EndState::Confirmed\n",
-     "        } else if msg.starts_with(b\"ENDED \") {\n            EndState::Refused\n",
+     "        } else if count.is_some() {\n            EndState::Confirmed\n",
+     "        } else if count.is_some() {\n            EndState::Refused\n",
      ["TST-M6-LOGOUT-KILLS"], "ENDED never confirms the end, so every sign-in after the first Sign out is refused for good (the recovery the case requires)"),
     ("M483", "user/apps/sessiond/src/main.rs",
      "        if self.end != EndState::Sent && !self.boot_send(b\"END_SESSION\", BootOp::End) {\n",
@@ -1801,6 +1801,24 @@ MUTANTS = [
      "                if self.end != EndState::Confirmed {\n                    let mut t = Out::new();\n                    t.put(b\"session|manager=gone|end=\")",
      "                if false {\n                    let mut t = Out::new();\n                    t.put(b\"session|manager=gone|end=\")",
      ["TST-M6-MANAGER-KILLED"], "the session ends with its manager gone and the end of the session's job unconfirmed, and traces nothing"),
+    # M489 (WP-178, the reviewer's choice in issue #24, L-143): the session takes its manager's
+    # loss for the end confirmed and stays, the trace kept (so the kill is not M487's missing
+    # marker), killed by TST-M6-MANAGER-KILLED. Not SECURITY: auth exits with the manager, so
+    # the case can show the session alive and never a sign-in taken.
+    ("M489", "user/apps/sessiond/src/main.rs",
+     "                    libnawah::trace(t.bytes());\n                }\n                false\n            }\n            Err(_) => true,\n",
+     "                    libnawah::trace(t.bytes());\n                    self.end = EndState::Confirmed;\n                }\n                true\n            }\n            Err(_) => true,\n",
+     ["TST-M6-MANAGER-KILLED"], "the session takes its manager's loss for the end of the session's job confirmed and stays alive after it"),
+    # M492, M493 (WP-178, L-145; session.md v1.12): the manager's answer ENDED <n> read in the
+    # manager's own form alone, killed on the host by TST-M6-ENDED-REPLY.
+    ("M492", "user/nawah-apps/src/lib.rs",
+     "    if digits.is_empty() || digits.len() > 10 {\n",
+     "    if digits.len() > 10 {\n",
+     ["TST-M6-ENDED-REPLY"], "ENDED with no count is taken for the manager's answer: anything_but_the_managers_form_is_refused fails, test result: FAILED. 2 passed; 1 failed"),
+    ("M493", "user/nawah-apps/src/lib.rs",
+     "        if !b.is_ascii_digit() {\n            return None;\n        }\n",
+     "        if !b.is_ascii_digit() {\n            continue;\n        }\n",
+     ["TST-M6-ENDED-REPLY"], "a count with other bytes in it is taken for the manager's answer: anything_but_the_managers_form_is_refused fails, test result: FAILED. 2 passed; 1 failed"),
     # M415, M416 (WP-172, REQ-M6-004; services.md v1.20): the session service's exit ends the
     # session's job, killed by TST-M6-SESSION-GATE.
     ("M415", "user/apps/svcmgr/src/main.rs",
@@ -2717,6 +2735,7 @@ _LKALIVE = "|ktest|fail|an application of the signed-out session is still alive"
 _LKSTEPS = "|ktest|fail|the sign-in, a launch or the sign-out was not as the case states"
 _LKHELD = "|ktest|fail|the next sign-in went on while the end of the session before it was unconfirmed"
 _MSALIVE = "|ktest|fail|an application of the session outlived the manager's stop"
+_MKSTEPS = "|ktest|fail|the manager's crash was not as the case states"
 _JBUNIT = "|ktest|fail|a job's count does not hold its bound"
 _JBNOT = "|ktest|fail|a job's processes are not bounded"
 _JMQUOTA = "|ktest|fail|a job's charge does not hold its quota"
@@ -2980,6 +2999,9 @@ EXPECT = {
     "M488": {"TST-M6-LOGOUT-KILLS": ["exit 37", "|ending=OK end=sent held=1|auth=OK waiting=1 lock_unsent=0|", _LKHELD]},
     "M485": {"TST-M6-MANAGER-STOP": ["exit 37", "|stopped|deaf=0|nest=0|idle=1|", "|processes_after=1|clean=0", _MSALIVE]},
     "M487": {"TST-M6-MANAGER-KILLED": ["missing markers ['|text=session|manager=gone|end=sent'"]},
+    # M489: the session stays after its manager's loss (the trace kept): the out line and the attempt read it alive.
+    "M489": {"TST-M6-MANAGER-KILLED": ["exit 37", "|killed=1|session=1|deaf=0|nest=0|idle=1|",
+                                       "|attempt|session=1|auth=0|input=0|tokens_new=0|", _MKSTEPS]},
     # WP-175 (session.md v1.11): the autostart's pauses, its stale answer and its channel to config. M502 applies
     # config's answer after the lock, which phase 5's counts of the traces show (stale=0|none=1). M500 is known by the
     # resumed line (nothing started at the unlock), which M502's kill prints too: M502 is told from M500 by the

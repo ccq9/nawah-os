@@ -1636,8 +1636,14 @@ class KillEvidence(unittest.TestCase):
         by exit 37, the stopped line with IDLE alive, the manager's final count and the case's
         message; M487 (the session ends with its manager gone and traces nothing), its anchor once
         in user/apps/sessiond/src/main.rs, declared on TST-M6-MANAGER-KILLED alone, known by the
-        missing manager=gone trace. The two cases' lines, the crash's attempt and the rescue boot
-        are pinned with them."""
+        missing manager=gone trace; M489 (the session takes its manager's loss for the end
+        confirmed and stays, the trace kept), its anchor once in the same file, declared on
+        TST-M6-MANAGER-KILLED alone, known by exit 37, the out line and the attempt reading the
+        session alive and the case's message. The two cases' lines, the crash's attempt and the
+        rescue boot are pinned with them. M492 and M493 (the manager's answer ENDED <n> read in
+        another form than the manager's) are declared on the host case TST-M6-ENDED-REPLY alone,
+        each anchor once in user/nawah-apps/src/lib.rs, and the session reads the answer by that
+        function."""
         E = mutants.EXPECT
         src = (ROOT / "kernel" / "src" / "ktest.rs").read_text(encoding="utf-8")
         t = json.loads((ROOT / "platform" / "pc-qemu" / "target.json").read_text(encoding="utf-8"))
@@ -1656,11 +1662,16 @@ class KillEvidence(unittest.TestCase):
                             "|launch=OK app:deaf#1|deaf=1|in_session=1|" in m for m in rescue["required_markers"]))
         self.assertIn("|text=session|manager=gone", rescue["forbidden_markers"])
         self.assertIn(f'fail("{mutants._MSALIVE[len("|ktest|fail|"):]}")', src)
+        self.assertIn(f'fail("{mutants._MKSTEPS[len("|ktest|fail|"):]}")', src)
+        self.assertEqual(mutants._MKSTEPS.count(mutants._MSALIVE[len("|ktest|fail|"):]), 0)
         want = {  # id: (file, case, SECURITY, the expected substrings)
             "M485": ("user/apps/svcmgr/src/main.rs", "TST-M6-MANAGER-STOP", True,
                      ["exit 37", "|stopped|deaf=0|nest=0|idle=1|", "|processes_after=1|clean=0", mutants._MSALIVE]),
             "M487": ("user/apps/sessiond/src/main.rs", "TST-M6-MANAGER-KILLED", False,
                      ["missing markers ['|text=session|manager=gone|end=sent'"]),
+            "M489": ("user/apps/sessiond/src/main.rs", "TST-M6-MANAGER-KILLED", False,
+                     ["exit 37", "|killed=1|session=1|deaf=0|nest=0|idle=1|",
+                      "|attempt|session=1|auth=0|input=0|tokens_new=0|", mutants._MKSTEPS]),
         }
         required = {cid: list(c.get("required_markers", [])) + [m for p in c.get("phases") or [] for m in p["required_markers"]]
                     for cid, c in (("TST-M6-MANAGER-STOP", stop), ("TST-M6-MANAGER-KILLED", killed))}
@@ -1681,6 +1692,28 @@ class KillEvidence(unittest.TestCase):
                 self.assertEqual(mutants.stage_of(mid), "M6")
                 self.assertEqual(E[mid], {cid: subs})
         self.assertNotIn("M486", {m[0] for m in mutants.MUTANTS} | set(E) | mutants.SECURITY)
+        self.assertNotEqual(E["M489"], E["M487"])
+        lib = (ROOT / "user" / "nawah-apps" / "src" / "lib.rs").read_text(encoding="utf-8")
+        sess = (ROOT / "user" / "apps" / "sessiond" / "src" / "main.rs").read_text(encoding="utf-8")
+        self.assertEqual(sess.count("nawah_apps::ended_count(msg)"), 1)
+        self.assertNotIn('msg.starts_with(b"ENDED ") {', sess)
+        sys.path.insert(0, str(ROOT / "tools"))
+        import project  # noqa: E402
+        host = {c["id"]: c for c in project.HOST_SUITES["M6"]}["TST-M6-ENDED-REPLY"]
+        self.assertEqual(host["command"][-2:], ["--test", "ended"])
+        self.assertEqual(host["pass_marker"], "test result: ok. 3 passed; 0 failed")
+        for mid in ("M492", "M493"):
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], "user/nawah-apps/src/lib.rs")
+                self.assertEqual(lib.count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(m[4], ["TST-M6-ENDED-REPLY"])
+                self.assertNotIn(mid, mutants.SECURITY)
+                self.assertFalse(m[5].startswith("SECURITY: "), m[5])
+                self.assertIn("anything_but_the_managers_form_is_refused fails, test result: FAILED. 2 passed; 1 failed", m[5])
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertNotIn(mid, E)
 
     JOB_BOUND = "TST-M6-JOB-BOUND"
 

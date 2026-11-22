@@ -15293,8 +15293,9 @@ fn state_wait(
 /// (WP-178, session.md v1.12) The manager is frozen over the first Sign out, and auth once it has
 /// answered its LOGOUT: the next sign-in is held while END_SESSION waits unanswered, before any
 /// LOGIN reaches auth (the session's AUTH waits for nothing; the previous session's applications
-/// alive, the screen and keyboard the session's), and goes on once both are thawed and the
-/// manager answers ENDED. The manager's own stop is TST-M6-MANAGER-STOP's.
+/// alive, the screen and keyboard the session's): it is refused, its password wiped. Once both
+/// are thawed and the manager answers ENDED the monitor types the password again, and that
+/// sign-in is taken. The manager's own stop is TST-M6-MANAGER-STOP's.
 fn logout_kills() -> ! {
     let name = "logout_kills";
     let (h, session) = session_env(

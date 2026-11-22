@@ -3217,7 +3217,8 @@
     "WP-169",
     "WP-170",
     "WP-171",
-    "WP-172"
+    "WP-172",
+    "WP-179"
    ],
    "inputs": [
     "DEC-005",
@@ -3250,7 +3251,8 @@
     "2026-11-19 (the manager, on the auditor's correction): the line above that names services.md v1.14 for LAUNCH, the application's CONNECT and the applications table was written before WP-101's split: v1.14 is WP-101's (the registry on the volume, APPS and LAUNCH's requester); the launch and the confinement come in the versions WP-161 and WP-162 take",
     "2026-11-19 (the manager): WP-163 added to the dependencies: this item's acceptance is a scene on the release image in which a registered application opens a window, and no application image is on the release disk today (a LAUNCH there is answered ERR NOT_FOUND: services.md v1.15); WP-163 is the item that decides the sample entries' images, and its acceptance now asks that one registered entry at least has its image on that disk; WP-163 itself waits for WP-164 (RSK-050)",
     "2026-11-21 (the manager): depends on WP-170 and WP-171 from WP-163's split",
-    "2026-11-21 (the manager): depends on WP-172 from WP-169's split"
+    "2026-11-21 (the manager): depends on WP-172 from WP-169's split",
+    "2026-11-22 (the manager): depends on WP-179 (process_spawn's failure leaves no child) on the owner's approval in the session of 2026-11-22 and the reviewer's recommendation in issue #24 (comment 7073928369): WP-47's cases rely on what a failed launch means"
    ],
    "acceptance": "TST-M6-APP-LAUNCH PASS on CI (the closing scenario on the release image: sign in, the autostart application opens a window, two launches of one application give two identities, sign out ends the session's job); ADR-0023 accepted; the registry, the broker, the session job, its end at Sign out and the autostart are WP-100, WP-101, WP-102, WP-167 and WP-168 (TST-M6-APP-REGISTRY-FUZZ, TST-M6-LAUNCH-DENIED, TST-M6-SESSION-JOB, TST-M6-LOGOUT-KILLS)",
    "test_ids": [
@@ -11372,7 +11374,8 @@
     "WP-168"
    ],
    "commands": [
-    "python3 tools/project.py test --target pc-qemu --suite M6"
+    "python3 tools/project.py test --target pc-qemu --suite M6",
+    "python3 tools/project.py test --target host --suite M6"
    ],
    "inputs": [
     "created 2026-11-21 from L-113 (WP-172's review) on the owner's question and the external audit of 2026-11-21 (Nawah-OS-Release-Gap-Audit, section 5: a package and an owner before the session path is accepted)",
@@ -11398,17 +11401,23 @@
     "docs/LATER.md",
     "docs/PLAN-REVERSE.md",
     "docs/work-items.json",
-    "docs/project-state.json"
+    "docs/project-state.json",
+    "user/nawah-apps/src/lib.rs",
+    "user/nawah-apps/tests/ended.rs",
+    "user/apps/sessiond/Cargo.toml",
+    "Cargo.lock",
+    "docs/decisions-pending.json"
    ],
    "contract_refs": [
     "docs/contracts/session.md",
     "docs/contracts/services.md"
    ],
-   "acceptance": "no session inherits the applications, the rights or the input of the one before it when the manager fails, in two verdicts. The crash or an unconfirmed end: from Sign out until ENDED answers END_SESSION the session refuses every sign-in before anything reaches auth and traces session|login=held|end=<...>; ENDED alone confirms the end; a manager gone with the end unconfirmed is traced session|manager=gone and the session ends, so no sign-in is taken after the crash, and a sign-in typed after it begins no session, finds no auth to take it and adds no live token; the rescue after a crash is a new boot, shown signing in clean with nothing of the crashed session (its unmet condition, named: until the reboot an application of the session that ignores its boot channel lives on). The orderly stop: the manager's control channel closed, it ends the session's job with every application and what they started before it exits. Shown on CI in TST-M6-LOGOUT-KILLS (the manager and auth frozen over the hold, then ENDED 2 and a clean sign-in), TST-M6-MANAGER-KILLED (the crash, the attempt after it, the rescue boot) and TST-M6-MANAGER-STOP; session.md v1.12 and services.md v1.21 state it with their limits; its mutants M480 to M485, M487, M488 (M480, M481, M485, M488 SECURITY) killed by the M6 gate",
+   "acceptance": "no session inherits the applications, the rights or the input of the one before it when the manager fails, in two verdicts. The crash or an unconfirmed end: from Sign out until ENDED answers END_SESSION the session refuses every sign-in before anything reaches auth and traces session|login=held|end=<...>; ENDED alone confirms the end; a manager gone with the end unconfirmed is traced session|manager=gone and the session ends, so no sign-in is taken after the crash, and a sign-in typed after it begins no session, finds no auth to take it and adds no live token; the rescue after a crash is a new boot, shown signing in clean with nothing of the crashed session (its unmet condition, named: until the reboot an application of the session that ignores its boot channel lives on). The orderly stop: the manager's control channel closed, it ends the session's job with every application and what they started before it exits. Shown on CI in TST-M6-LOGOUT-KILLS (the manager and auth frozen over the hold, then ENDED 2 and a clean sign-in), TST-M6-MANAGER-KILLED (the crash, the attempt after it, the rescue boot) and TST-M6-MANAGER-STOP; the manager's answer is taken in its own form alone, ENDED <n> with a canonical decimal count (TST-M6-ENDED-REPLY on the host; the session's use of it by reading, L-102), and a session that took its manager's loss for the end confirmed and stayed is told by TST-M6-MANAGER-KILLED (M489), both at the reviewer's choice in issue #24 (comments 7073883915 and 7073928369); session.md v1.12 and services.md v1.21 state it with their limits; its mutants M480 to M485, M487 to M489, M492, M493 (M480, M481, M485, M488 SECURITY) killed by the M6 gate",
    "test_ids": [
     "TST-M6-LOGOUT-KILLS",
     "TST-M6-MANAGER-KILLED",
     "TST-M6-MANAGER-STOP",
+    "TST-M6-ENDED-REPLY",
     "TST-M6-MUTANTS",
     "TST-M0-005"
    ],
@@ -11423,8 +11432,65 @@
     "2026-11-21 (the manager): the port onto 4c633d9095 (with WP-176 and WP-177) run locally before its push (scratch, never evidence): M6 23/23 (build 20261121T203018Z, the cases 203059Z to 203748Z) and the M5 session cases 7/7 (build 203821Z, the cases 203859Z to 204204Z). M388, M391, M396, M500 and M502 were killed there (20:28Z); that run judged their old expectations (expected_missed M388, M391, M396); the expectations then pushed were written from its kept lines and those of the run on 1e1e62cf, checked against those lines and not run again through the harness",
     "2026-11-21 (the manager): CI on the pushed tree. 4123ef87f8 left docs/project-state.json naming WP-171 (no checkpoint), a strict error; its run 44948031342 was cancelled by the push of the checkpoint 64f866db07. Run 44949893901 on 64f866db07: every test job green, the M6 gate killed 341 of 341 and failed on expected_missed M438 (its expectation pinned phase 1's count of deaf, read before or after the ninth launch); the merge job's 41 strict errors were all 'TST-M6-MUTANTS FAIL'. 3517258f8f dropped that count: run 44954430111 green. A second independent review of the pushed tree (auditor, red team and QA, each finding checked by a refuter; 33 findings, 32 held) found expectations pinning values read at a poll's deadline (M388, M391, M396, M482, M484), a race between two reads (M488) and a fixed 500-tick window (M501): the test kernel's logout_kills now gives each request its own timeout, reads ENDING, STATE and AUTH again after the held loop, and waits for deaf or 5000 ticks under the prompt; the three cases pass (scratch 20261121T215338Z), the 24 mutants are killed and every expectation is written from their kept lines (scratch run 22:00Z to 22:39Z), none met by a clean run's lines (20261121T215414Z). The M6 gate's shards go by id mod 12: M388 and M484 share shard 5, about 1250 s by the cancelled run's times, against the shard step's 60 minutes",
     "2026-11-21 budget (the manager): over the line of 120 calls with the engineer's three rounds, one review round and the integration",
-    "2026-11-21 activated (the manager): its dependency WP-168 is done"
+    "2026-11-21 activated (the manager): its dependency WP-168 is done",
+    "2026-11-22 (the manager): the close lines of run 44958873995 were audited twice (the auditor and the red team, each finding put to a refuter) and posted in issue #24 (comment 7071645971); the reviewer's reply (comments 7073883915 and 7073928369) approved WP-175's close (da40396bf6) and chose, before this item's close, on one candidate: the check of the manager's ENDED answer (L-145, from his audit of 4123ef87f8) and the mutant of a session that outlives its manager (L-143). The lines drafted on run 44958873995 are not written: this item closes on the run of the new candidate",
+    "2026-11-22 (the manager): the ENDED answer's form, test first (scratch, never evidence): user/nawah-apps/tests/ended.rs failed first to build (no such check existed), then, with the session's own prefix-only rule as the function, its three tests failed (ENDED with no count read as an answer; a count read as 0), and pass with nawah_apps::ended_count: one to ten ASCII digits after the single space, no sign, no padding, no leading zero but 0, nothing after, within u32. The session reads the answer by it (user/apps/sessiond/src/main.rs, ended): a reply that only begins ENDED is a refusal, traced session|jobs=refused, the end left unconfirmed; every other reply behaves as before. A new host case TST-M6-ENDED-REPLY (20261122T062550Z-52befaec-001 PASS, scratch). The session's use of the function stands by reading: no guest case makes the manager write a malformed answer (L-102, not assigned)",
+    "2026-11-22 (the manager): mutants (scratch runs on the candidate, their expectations written from the kept lines): M489, the session takes its manager's loss for the end confirmed and stays, the trace kept, killed by TST-M6-MANAGER-KILLED (20261122T063033Z-52befaec-001: exit 37, session=1 in the out line and in the attempt), not SECURITY as the refuter and the reviewer said (auth exits with the manager); M492 and M493, the answer read in another form, killed on the host by TST-M6-ENDED-REPLY (20261122T061053Z and 20261122T061110Z-114ec143-001). The change moved two anchors: M482's, moved with it, and M389's, which I missed and TST-M0-005's anchor test caught before any push (0 occurrences); both moved and killed again with their declared evidence (20261122T062849Z and 20261122T062701Z-52befaec-001), no expectation missed",
+    "2026-11-22 (the manager): texts corrected (L-144): TST-M6-LOGOUT-KILLS's oracle under the elevation prompt (the test kernel waits up to 5000 ticks for a DEAF.ELF, where it said 500 ticks) in target.json and docs/tests.json, and logout_kills's comment in ktest.rs (the held sign-in is refused and typed again, where it said it goes on). services.md v1.21 states the form of the answer the manager writes; session.md v1.12 states that the session takes no other. An independent audit of the candidate (the auditor, read only) found no defect in the code and seven in the records and texts, all corrected: DEC-041 cited with no record (now an open record), a sentence of WP-179 cut short, services.md section 4 cited where v1.17 defines ENDED, the crate's description, WP-179's case not named, the oracle's wait worded for two images where it waits for one, and L-102 left with a closed owner (now marked not assigned)",
+    "2026-11-22 (the manager): the owner's approval in the session of 2026-11-22 recorded as DEC-042 (option A): WP-179 created, planned, process_spawn's failure leaving no child (L-107's unassigned part), WP-47 depending on it; DEC-041 (the 26 open M6 packages outside WP-62's tree) recorded open, the reviewer recommending B amended",
+    "2026-11-22 local checks before the push (scratch, the manager, on the candidate's tree): validate-records 0 errors, cargo fmt --all --check clean, hygiene PASS (43 commands), preflight --suite M6 PASS (build and the 23 cases, 20261122T0633Z to 0640Z, after the auditor's corrections; the same before them, 0617Z to 0625Z), the host suites M6 (seven cases, TST-M6-ENDED-REPLY among them) and M0 (TST-M0-001 to 005 and 007) PASS; the mutants M389, M482, M487, M489, M492 and M493 killed locally with no expectation missed"
    ]
+  },
+  {
+   "id": "WP-179",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M6-003",
+    "REQ-M6-004"
+   ],
+   "depends_on": [
+    "WP-164"
+   ],
+   "inputs": [
+    "created 2026-11-22 from L-107's unassigned part, on the reviewer's audit of 4123ef87f8 and recommendation in issue #24 (comments 7073861519 and 7073928369) and the owner's approval in the session of 2026-11-22",
+    "kernel/src/syscall/mod.rs (spawn_into, lines 798 to 814 at da40396bf6): spawn_elf_with starts the child, then the creator's handle table takes the child's handle; a failed insert returns the error with the child running",
+    "by reading, not run in the guest: the insert can fail when the creator's table is full and it passes no handle (a passed handle's place is free again before the insert); the child stays in the creator's job, killed with it and charged to it: no authority is crossed, the contract's text for process_spawn (syscall.md section 5) is contradicted: after its checks the call fails with ERR_NO_RESOURCES alone, the moved handles closed as if the process had started and exited (docs/contracts/syscall.md:92)"
+   ],
+   "files": [
+    "kernel/src/syscall/mod.rs",
+    "kernel/src/object/handle.rs",
+    "kernel/src/ktest.rs",
+    "platform/pc-qemu/target.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "tools/project.py",
+    "docs/contracts/syscall.md",
+    "docs/tests.json",
+    "docs/LATER.md"
+   ],
+   "contract_refs": [
+    "docs/contracts/syscall.md"
+   ],
+   "actions": [
+    "حجز خانة مقبض الابن قبل نشر العملية في process_spawn (من الشطر غير المسند في L-107، بتدقيق المراجع وموافقة المالك في 2026-11-22؛ مهندس النواة)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "test first: a guest case in which a process with a full handle table spawns with no handle: today the call fails and the child runs (red); after, the call fails and no child was started"
+   ],
+   "acceptance": "process_spawn either succeeds with a valid handle of the child or fails with no child alive and nothing left of the attempt (no process, no frames, no handles moved), shown on CI by a guest case whose creator's handle table is full (a new case, named and recorded at activation, test first; TST-M6-APP-SPAWN stays as it is); syscall.md states it in a new version; its mutant killed by the M6 gate",
+   "test_ids": [
+    "TST-M6-APP-SPAWN",
+    "TST-M6-MUTANTS",
+    "TST-M0-005"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target pc-qemu --suite M6"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
   }
  ]
 }

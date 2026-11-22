@@ -4,7 +4,7 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "f12a4f66cf04bbccad9f95fec848228b998317d8",
+ "source_revision": "52befaecf0b7a792bf9314c91794dce42b50c4b9",
  "dirty_state": true,
  "current_stage": "M6",
  "current_task": "WP-178",
@@ -67,8 +67,8 @@
  "next_action": "WP-178: فشل المدير لا يورث الجلسة التالية تطبيقات سابقتها (من L-113، بسؤال المالك وتدقيق 2026-11-21 الخارجي؛ مهندس الخدمات)",
  "required_inputs": [],
  "runner_status": "running",
- "checkpoint_generation": 272,
- "event_sequence": 272,
+ "checkpoint_generation": 273,
+ "event_sequence": 273,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 7,
@@ -83,7 +83,8 @@
   "DEC-002",
   "DEC-023",
   "DEC-019",
-  "DEC-036"
+  "DEC-036",
+  "DEC-041"
  ],
  "unknown_fields": {
   "budget_counters.tool_calls_session": "no API exposes the session's tool-call or token budget",

@@ -4,6 +4,9 @@
 //! bounded by the file (at most FILE_MAX bytes), nothing indexes or slices by a computed
 //! position that can fail, and every refusal is an [`Error`] with its contract name. The
 //! checks run in the order apps.md §5 states, so one file always gets one error.
+//!
+//! It also holds [`ended_count`], by which the session reads the manager's answer to
+//! `END_SESSION` (session.md v1.12, WP-178): one place for the form, tested on the host.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -292,4 +295,28 @@ impl<'a> Registry<'a> {
         self.n = self.n.saturating_add(1);
         Ok(app)
     }
+}
+
+/// The manager's answer to the session's `END_SESSION` (services.md v1.17 and v1.21, session.md
+/// v1.12):
+/// `ENDED <n>`. The count when `reply` is that answer in the manager's own form, else `None`.
+/// The form is the one the manager writes: one to ten ASCII digits after the single space, no
+/// sign, no padding, no leading zero but `0` itself, nothing after them, and a value within
+/// `u32`. The bytes come from a channel, so nothing is indexed: every step is a checked one.
+pub fn ended_count(reply: &[u8]) -> Option<u32> {
+    let digits = reply.strip_prefix(b"ENDED ")?;
+    if digits.is_empty() || digits.len() > 10 {
+        return None;
+    }
+    if digits.len() > 1 && digits.first() == Some(&b'0') {
+        return None;
+    }
+    let mut n: u32 = 0;
+    for &b in digits {
+        if !b.is_ascii_digit() {
+            return None;
+        }
+        n = n.checked_mul(10)?.checked_add(u32::from(b - b'0'))?;
+    }
+    Some(n)
 }

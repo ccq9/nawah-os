@@ -1928,7 +1928,8 @@
     "TST-M6-SESSION-RESTART",
     "TST-M6-JOB-MEMORY",
     "TST-M6-MANAGER-KILLED",
-    "TST-M6-MANAGER-STOP"
+    "TST-M6-MANAGER-STOP",
+    "TST-M6-ENDED-REPLY"
    ],
    "implementation_status": "planned",
    "evidence_refs": []

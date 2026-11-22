@@ -880,17 +880,20 @@ impl Session {
     /// The manager's answer to END_SESSION (v1.8), traced: `session|jobs=ended|apps=<n>`, or
     /// `session|jobs=refused|answer=<reply>`.
     fn ended(&mut self, msg: &[u8]) {
+        // v1.12: the answer is `ENDED <n>` in the manager's own form and nothing else
+        // (nawah_apps::ended_count): a reply that only begins like it is a refusal.
+        let count = nawah_apps::ended_count(msg);
         let mut t = Out::new();
-        match msg.strip_prefix(b"ENDED ") {
-            Some(n) => t.put(b"session|jobs=ended|apps=").put(n),
-            None => t.put(b"session|jobs=refused|answer=").put(msg),
+        match (count, msg.strip_prefix(b"ENDED ")) {
+            (Some(_), Some(n)) => t.put(b"session|jobs=ended|apps=").put(n),
+            _ => t.put(b"session|jobs=refused|answer=").put(msg),
         };
         libnawah::trace(t.bytes());
         // v1.12: ENDED alone confirms the end (and only once no other END_SESSION waits); a
         // refusal leaves it unconfirmed, asked again at the next sign-in.
         self.end = if self.boot_ops.contains(&Some(BootOp::End)) {
             EndState::Sent
-        } else if msg.starts_with(b"ENDED ") {
+        } else if count.is_some() {
             EndState::Confirmed
         } else {
             EndState::Refused
