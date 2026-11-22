@@ -956,15 +956,26 @@ class Fat32Derive(unittest.TestCase):
         hard = os.path.join(self.dir, "hard.img")
         os.link(self.src, hard)
         self.refused(self.src, hard, "--remove", self.VOL)
+        # What was there is there as it was: the hard link is still the source's second name,
+        # the symbolic link still a link to it, each with the source's bytes.
+        self.assertTrue(os.path.samefile(hard, self.src))
+        self.assertEqual(os.stat(self.src).st_nlink, 2)
+        self.assertEqual(self.sha(hard), self.src_sha)
         soft = os.path.join(self.dir, "soft.img")
         os.symlink(self.src, soft)
         self.refused(self.src, soft, "--remove", self.VOL)
         self.refused(self.src, soft, "--replace", f"{self.VOL}={kept}")
+        self.assertTrue(os.path.islink(soft))
+        self.assertEqual(os.readlink(soft), self.src)
+        self.assertEqual(self.sha(soft), self.src_sha)
+        with open(kept, "rb") as f:
+            self.assertEqual(f.read(), b"kept")
         # A link to nowhere is a destination that exists: nothing is made where it points.
         dangling = os.path.join(self.dir, "dangling.img")
         os.symlink(os.path.join(self.dir, "nowhere.img"), dangling)
         self.refused(self.src, dangling, "--remove", self.VOL)
         self.assertFalse(os.path.lexists(os.path.join(self.dir, "nowhere.img")))
+        self.assertEqual(os.readlink(dangling), os.path.join(self.dir, "nowhere.img"))
 
     def test_a_wrong_file_is_refused_and_no_copy_is_left(self):
         good = self.host_file("good.bin", b"g" * 10)
