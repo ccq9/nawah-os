@@ -2,8 +2,11 @@
 """TST-M3-FAT32-TOOL: the host-side FAT32 tool (tools/fat32.py) formats a volume that it reads
 back exactly, that passes its own structural check and, where dosfstools is installed, fsck.fat.
 The tool is the independent implementation the kernel's FAT32 is checked against."""
+import argparse
+import contextlib
 import hashlib
 import importlib.util
+import io
 import os
 import shutil
 import struct
@@ -788,6 +791,729 @@ class Fat32Check(unittest.TestCase):
         self.assertIn("Contains a free cluster", r.stdout)
         self.assertIn("'free_in_chain'", r.stdout)
 
+
+class Fat32Derive(unittest.TestCase):
+    """WP-180: `derive` makes an isolated copy of a volume with one file removed or replaced
+    and never writes the source; `diff --expect-only` passes only when that one file is what
+    differs between two volumes at the level of the file system (the tree, the attributes
+    and the contents), whatever the metadata sectors hold."""
+
+    VOL = "/SYSTEM/APPS/CLOCK.ELF"
+    OTHERS = ["/A.TXT", "/SYSTEM/APPS/NEXT.BIN", "/SYSTEM/TAIL.TXT"]
+
+    def setUp(self):
+        self.tool = load_tool()
+        self.dir = tempfile.mkdtemp(prefix="fat32-derive-")
+        self.src = os.path.join(self.dir, "disk.img")
+        self.dst = os.path.join(self.dir, "copy.img")
+        self.data = {"/A.TXT": b"a" * 100, self.VOL: bytes((i * 7 + 3) & 0xFF for i in range(3000)),
+                     "/SYSTEM/APPS/NEXT.BIN": b"N" * 1500, "/SYSTEM/TAIL.TXT": b"tail\n"}
+        adds = []
+        for k, (vol, data) in enumerate(self.data.items()):
+            host = os.path.join(self.dir, f"in{k}.bin")
+            with open(host, "wb") as f:
+                f.write(data)
+            adds += ["--add", f"{vol.lstrip('/')}={host}"]
+        r = run("format", self.src, "--sectors", "16384", "--mkdir", "SYSTEM", "--mkdir", "SYSTEM/APPS", *adds)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(run("check", self.src).returncode, 0)
+        self.src_sha = self.sha(self.src)
+
+    def tearDown(self):
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    @staticmethod
+    def sha(path):
+        with open(path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()
+
+    def host_file(self, name, data):
+        path = os.path.join(self.dir, name)
+        with open(path, "wb") as f:
+            f.write(data)
+        return path
+
+    def place(self, path, vol):
+        """(the chain's clusters, the directory cluster, the index, the raw entry) of VOL."""
+        img = self.tool.Image(path)
+        parent, name = vol.rsplit("/", 1)
+        d = img.entry_cluster(img.resolve(parent)[1]) if parent else img.root_cluster
+        c, i, e = img.lookup(d, name)
+        first = img.entry_cluster(e)
+        chain = img.chain(first) if first else []
+        img.close()
+        return chain, c, i, e
+
+    def changed_sectors(self):
+        with open(self.src, "rb") as a, open(self.dst, "rb") as b:
+            x, y = a.read(), b.read()
+        self.assertEqual(len(x), len(y))
+        return {n for n in range(len(x) // 512) if x[n * 512:(n + 1) * 512] != y[n * 512:(n + 1) * 512]}
+
+    def allowed_sectors(self, img, clusters, dir_cluster):
+        """Where a derivation may differ from its source: the file's directory cluster, the FAT
+        sectors of the clusters it freed or took in every copy, those clusters, both FSInfo."""
+        out = {img.cluster_sector(dir_cluster), img.fsinfo_sector, img.bk_boot + 1}
+        for c in clusters:
+            out |= set(range(img.cluster_sector(c), img.cluster_sector(c) + img.spc))
+            out |= {img.fat_start + fat * img.fatsz + (c * 4) // 512 for fat in range(img.nfats)}
+        return out
+
+    def sound(self, path):
+        r = run("check", path)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        fsck = shutil.which("fsck.fat")
+        if fsck:
+            r = subprocess.run([fsck, "-n", path], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def others_unchanged(self, path):
+        for vol in self.OTHERS:
+            r = run("verify", path, vol, hashlib.sha256(self.data[vol]).hexdigest(), "--size", str(len(self.data[vol])))
+            self.assertEqual(r.returncode, 0, r.stdout)
+
+    def refused(self, *args, code=2, usage=False):
+        """The call is refused with `code` in the tool's own words (or the parser's, for a call
+        that names no one change), writes nothing and leaves the source as it was."""
+        before = sorted(os.listdir(self.dir))
+        r = run("derive", *args)
+        self.assertEqual(r.returncode, code, r.stdout + r.stderr)
+        if usage:
+            self.assertIn("one of the arguments --remove --replace is required" if len(args) == 2 else "not allowed with argument", r.stderr)
+        else:
+            self.assertIn("derive: ", r.stdout)
+            self.assertNotIn("Traceback", r.stderr)
+        self.assertEqual(sorted(os.listdir(self.dir)), before)
+        self.assertEqual(self.sha(self.src), self.src_sha)
+        return r
+
+    def test_remove_frees_and_zeroes_the_file_on_the_copy_alone(self):
+        chain, dir_cluster, _, _ = self.place(self.src, self.VOL)
+        self.assertEqual(len(chain), 6)
+        r = run("derive", self.src, self.dst, "--remove", self.VOL)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.sha(self.src), self.src_sha)
+        self.assertIn(f"source sha256={self.src_sha}", r.stdout)
+        self.assertIn(f"copy sha256={self.sha(self.dst)}", r.stdout)
+        self.assertEqual(run("cat", self.dst, self.VOL).returncode, 2)
+        r = run("verify", self.src, self.VOL, hashlib.sha256(self.data[self.VOL]).hexdigest(), "--size", "3000")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("CLOCK.ELF", run("ls", self.dst, "/SYSTEM/APPS").stdout)
+        self.assertIn("NEXT.BIN", run("ls", self.dst, "/SYSTEM/APPS").stdout)
+        self.others_unchanged(self.dst)
+        img = self.tool.Image(self.dst)
+        for c in chain:
+            for fat in range(img.nfats):
+                self.assertEqual(img.fat_get(c, fat), 0, (c, fat))
+            self.assertEqual(img.read_cluster(c), bytes(512), c)
+        allowed = self.allowed_sectors(img, chain, dir_cluster)
+        img.close()
+        # Byte for byte the source everywhere else; the image's bytes are nowhere on the copy.
+        self.assertLessEqual(self.changed_sectors(), allowed)
+        with open(self.dst, "rb") as f:
+            self.assertNotIn(self.data[self.VOL][:512], f.read())
+        self.sound(self.dst)
+
+    def test_replace_keeps_the_entry_in_its_place(self):
+        old_chain, dir_cluster, index, old = self.place(self.src, self.VOL)
+        for name, data in (("larger.bin", bytes((i * 11 + 5) & 0xFF for i in range(5000))),
+                           ("smaller.bin", b"s" * 700), ("empty.bin", b"")):
+            with self.subTest(name=name):
+                if os.path.exists(self.dst):
+                    os.unlink(self.dst)
+                r = run("derive", self.src, self.dst, "--replace", f"{self.VOL}={self.host_file(name, data)}")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual(self.sha(self.src), self.src_sha)
+                r = run("verify", self.dst, self.VOL, hashlib.sha256(data).hexdigest(), "--size", str(len(data)))
+                self.assertEqual(r.returncode, 0, r.stdout)
+                chain, c, i, e = self.place(self.dst, self.VOL)
+                self.assertEqual((c, i), (dir_cluster, index))
+                # The name, the attributes and the times are the source's; the size is the new one.
+                self.assertEqual(e[:20] + e[22:26], old[:20] + old[22:26])
+                self.assertEqual(struct.unpack_from("<I", e, 28)[0], len(data))
+                self.assertEqual(len(chain), (len(data) + 511) // 512)
+                self.others_unchanged(self.dst)
+                img = self.tool.Image(self.dst)
+                for cl in set(old_chain) - set(chain):
+                    for fat in range(img.nfats):
+                        self.assertEqual(img.fat_get(cl, fat), 0, (cl, fat))
+                    self.assertEqual(img.read_cluster(cl), bytes(512), cl)
+                allowed = self.allowed_sectors(img, set(old_chain) | set(chain), dir_cluster)
+                img.close()
+                self.assertLessEqual(self.changed_sectors(), allowed)
+                with open(self.dst, "rb") as f:
+                    self.assertNotIn(self.data[self.VOL][:512], f.read())
+                self.sound(self.dst)
+
+    def test_an_existing_destination_is_refused_under_any_name(self):
+        kept = self.host_file("kept.img", b"kept")
+        self.refused(self.src, kept, "--remove", self.VOL)
+        with open(kept, "rb") as f:
+            self.assertEqual(f.read(), b"kept")
+        # The source itself: by its own path, by another spelling, by a hard link, by a symbolic link.
+        self.refused(self.src, self.src, "--remove", self.VOL)
+        self.refused(self.src, os.path.join(self.dir, ".", "disk.img"), "--remove", self.VOL)
+        hard = os.path.join(self.dir, "hard.img")
+        os.link(self.src, hard)
+        self.refused(self.src, hard, "--remove", self.VOL)
+        soft = os.path.join(self.dir, "soft.img")
+        os.symlink(self.src, soft)
+        self.refused(self.src, soft, "--remove", self.VOL)
+        self.refused(self.src, soft, "--replace", f"{self.VOL}={kept}")
+        # A link to nowhere is a destination that exists: nothing is made where it points.
+        dangling = os.path.join(self.dir, "dangling.img")
+        os.symlink(os.path.join(self.dir, "nowhere.img"), dangling)
+        self.refused(self.src, dangling, "--remove", self.VOL)
+        self.assertFalse(os.path.lexists(os.path.join(self.dir, "nowhere.img")))
+
+    def test_a_wrong_file_is_refused_and_no_copy_is_left(self):
+        good = self.host_file("good.bin", b"g" * 10)
+        self.refused(self.src, self.dst, "--remove", "/SYSTEM/APPS/NOPE.ELF")
+        self.refused(self.src, self.dst, "--remove", "/SYSTEM/APPS")
+        self.refused(self.src, self.dst, "--remove", "/")
+        self.refused(self.src, self.dst, "--remove", "/NOPE/CLOCK.ELF")
+        self.refused(self.src, self.dst, "--remove", "/A.TXT/CLOCK.ELF")
+        self.refused(self.src, self.dst, "--remove", "/not an 8.3 name.elf")
+        self.refused(self.src, self.dst, "--replace", f"/SYSTEM/APPS/NOPE.ELF={good}")
+        self.refused(self.src, self.dst, "--replace", f"/SYSTEM/APPS={good}")
+        self.refused(self.src, self.dst, "--replace", f"{self.VOL}={os.path.join(self.dir, 'missing.bin')}")
+        self.refused(self.src, self.dst, "--replace", f"{self.VOL}={self.dir}")
+        self.refused(self.src, self.dst, "--replace", self.VOL)
+        self.refused(self.src, self.dst, usage=True)
+        self.refused(self.src, self.dst, "--remove", self.VOL, "--replace", f"{self.VOL}={good}", usage=True)
+        self.refused(os.path.join(self.dir, "missing.img"), self.dst, "--remove", self.VOL)
+        self.assertFalse(os.path.lexists(self.dst))
+
+    def test_a_replacement_the_volume_cannot_hold_leaves_no_copy(self):
+        # 16384 sectors hold fewer than 8 MiB: the copy is begun, cannot be finished, and is removed.
+        huge = self.host_file("huge.bin", b"h" * (9 << 20))
+        r = self.refused(self.src, self.dst, "--replace", f"{self.VOL}={huge}", code=1)
+        self.assertIn("disk full", r.stdout + r.stderr)
+        self.assertFalse(os.path.lexists(self.dst))
+
+    def rename_raw(self, path, vol, new):
+        """Gives VOL's entry the raw 8.3 name of `new`, whatever else the directory holds."""
+        _, c, i, e = self.place(path, vol)
+        img = self.tool.Image(path, writable=True)
+        data = bytearray(img.read_cluster(c))
+        data[i * 32:i * 32 + 11] = self.tool.short_name(new)
+        img.write_cluster(c, bytes(data))
+        img.close()
+
+    def test_two_entries_with_one_name_are_reported_and_not_derived_from(self):
+        self.rename_raw(self.src, "/SYSTEM/APPS/NEXT.BIN", "CLOCK.ELF")
+        self.src_sha = self.sha(self.src)
+        for mode in ([], ["--faulted"]):
+            r = run("check", *mode, self.src)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("/SYSTEM/APPS/CLOCK.ELF: a second entry of this name in its directory", r.stdout)
+            # Its chain is its own: the finding is the name, and no cluster is called lost for it.
+            self.assertNotIn("lost clusters", r.stdout)
+        self.assertIn(" faulted: lost=0 ", r.stdout)
+        r = self.refused(self.src, self.dst, "--remove", self.VOL)
+        self.assertIn("a second entry of this name", r.stdout)
+        self.refused(self.src, self.dst, "--remove", "/A.TXT")
+
+    def test_a_source_that_fails_the_check_is_not_derived_from(self):
+        chain, _, _, _ = self.place(self.src, "/SYSTEM/APPS/NEXT.BIN")
+        img = self.tool.Image(self.src, writable=True)
+        img.fat_set(chain[-1], 0)
+        img.close()
+        self.src_sha = self.sha(self.src)
+        r = self.refused(self.src, self.dst, "--remove", self.VOL)
+        self.assertIn("is free", r.stdout)
+
+    def test_a_file_is_not_walked_as_a_directory(self):
+        # A file whose bytes read as a directory entry named CLOCK.ELF: a path through it names nothing.
+        img = self.tool.Image(self.src, writable=True)
+        fake = img.make_entry("CLOCK.ELF", 0x20, img.entry_cluster(img.resolve("/SYSTEM/APPS/NEXT.BIN")[1]), 100)
+        img.write_file(img.root_cluster, "FAKE.BIN", fake)
+        self.tool.finish(img)
+        img.close()
+        self.assertEqual(run("check", self.src).returncode, 0)
+        self.src_sha = self.sha(self.src)
+        self.refused(self.src, self.dst, "--remove", "/FAKE.BIN/CLOCK.ELF")
+        self.refused(self.src, self.dst, "--replace", f"/FAKE.BIN/CLOCK.ELF={self.host_file('good.bin', b'g')}")
+
+    def test_a_copy_that_fails_the_check_is_not_left(self):
+        # A derivation gone wrong (here the removed file's chain stays marked, six lost clusters)
+        # is caught by the tool's own check of the copy, and the copy is removed.
+        self.tool.Image.free_chain = lambda img, first: None
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = self.tool.cmd_derive(argparse.Namespace(src=self.src, dst=self.dst, remove=self.VOL, replace=None))
+        self.assertEqual(code, 1, out.getvalue())
+        self.assertIn("lost clusters: 6", out.getvalue())
+        self.assertIn("derive: the copy fails the check: no copy is left", out.getvalue())
+        self.assertFalse(os.path.lexists(self.dst))
+        self.assertEqual(self.sha(self.src), self.src_sha)
+
+    def diff(self, a, b, vol, *how):
+        return run("diff", a, b, "--expect-only", vol, *(how or ("--removed",)))
+
+    def diff_line(self, r):
+        lines = [line for line in r.stdout.splitlines() if line.startswith("diff: ")]
+        self.assertEqual(len(lines), 1, r.stdout + r.stderr)
+        return lines[0]
+
+    def replaced_copy(self, name="replaced.img", data=b"r" * 4000):
+        path, host = os.path.join(self.dir, name), self.host_file("r.bin", data)
+        r = run("derive", self.src, path, "--replace", f"{self.VOL}={host}")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return path, host
+
+    def test_diff_passes_for_the_one_file_alone(self):
+        self.assertEqual(run("derive", self.src, self.dst, "--remove", self.VOL).returncode, 0)
+        r = self.diff(self.src, self.dst, self.VOL)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        line = self.diff_line(r)
+        self.assertIn(f"only {self.VOL} differs", line)
+        self.assertIn(f"A file size=3000 sha256={hashlib.sha256(self.data[self.VOL]).hexdigest()}", line)
+        self.assertIn("B absent", line)
+        self.assertIn(f"images A sha256={self.src_sha} B sha256={self.sha(self.dst)}", line)
+        self.assertEqual(self.diff(self.src, self.dst, "/system/apps/clock.elf").returncode, 0)
+        other, host = self.replaced_copy()
+        r = self.diff(self.src, other, self.VOL, "--replaced-by", host)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(f"B file size=4000 sha256={hashlib.sha256(b'r' * 4000).hexdigest()}", self.diff_line(r))
+        self.assertIn(f"images A sha256={self.src_sha} B sha256={self.sha(other)}", self.diff_line(r))
+        # Another file named is no pass, nor a call that does not say what became of the file.
+        r = self.diff(self.src, self.dst, "/A.TXT")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn(self.VOL, self.diff_line(r))
+        self.assertEqual(run("diff", self.src, other, "--expect-only", self.VOL).returncode, 2)
+        self.assertEqual(run("diff", self.src, other, "--removed").returncode, 2)
+        self.assertEqual(self.diff(self.src, other, self.VOL, "--removed", "--replaced-by", host).returncode, 2)
+        self.assertEqual(self.diff(self.src, os.path.join(self.dir, "missing.img"), self.VOL).returncode, 2)
+        self.assertEqual(self.diff(self.src, self.host_file("short.img", b""), self.VOL).returncode, 2)
+        with open(self.src, "rb") as f:
+            nospc = bytearray(f.read())
+        nospc[13] = 0
+        nospc = self.host_file("nospc.img", bytes(nospc))
+        r = self.diff(self.src, nospc, self.VOL)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        r = run("derive", nospc, os.path.join(self.dir, "from-nospc.img"), "--remove", self.VOL)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("derive: refused", r.stdout)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertFalse(os.path.lexists(os.path.join(self.dir, "from-nospc.img")))
+        self.assertEqual(self.diff(self.src, other, self.VOL, "--replaced-by", os.path.join(self.dir, "missing.bin")).returncode, 2)
+        self.assertEqual(self.diff(self.src, other, "/not an 8.3 name.elf").returncode, 2)
+
+    def test_diff_says_which_way_the_file_went(self):
+        # The first volume is the one that holds the file; the second lacks it, or holds the
+        # very bytes named. Each copy is judged by its own change and by no other.
+        self.assertEqual(run("derive", self.src, self.dst, "--remove", self.VOL).returncode, 0)
+        other, host = self.replaced_copy()
+        wrong = self.host_file("wrong.bin", b"w" * 4000)
+        own = self.host_file("own.bin", self.data[self.VOL])
+        for a, b, how, why in ((self.src, other, ("--removed",), "B holds"),
+                               (self.src, self.dst, ("--replaced-by", host), "B holds"),
+                               (self.src, other, ("--replaced-by", wrong), "not the replacement"),
+                               (self.dst, self.src, ("--removed",), "A holds"),
+                               (self.dst, other, ("--replaced-by", host), "A holds"),
+                               (self.src, self.src, ("--removed",), "B holds"),
+                               (self.src, self.src, ("--replaced-by", own), "nothing differs")):
+            with self.subTest(a=os.path.basename(a), b=os.path.basename(b), how=how):
+                r = self.diff(a, b, self.VOL, *how)
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn(why, self.diff_line(r))
+
+    def edit_copy(self):
+        self.assertEqual(run("derive", self.src, self.dst, "--remove", self.VOL).returncode, 0)
+        self.assertEqual(self.diff(self.src, self.dst, self.VOL).returncode, 0)
+        return self.tool.Image(self.dst, writable=True)
+
+    def set_entry(self, img, vol, change):
+        parent, name = vol.rsplit("/", 1)
+        d = img.entry_cluster(img.resolve(parent)[1]) if parent else img.root_cluster
+        c, i, e = img.lookup(d, name)
+        e = bytearray(e)
+        change(e)
+        data = bytearray(img.read_cluster(c))
+        data[i * 32:i * 32 + 32] = e
+        img.write_cluster(c, bytes(data))
+
+    def differs(self, name, *how, path=None):
+        """`diff` fails and its own line names `name` among what differs or what it found."""
+        r = self.diff(self.src, path or self.dst, self.VOL, *how)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn(name, self.diff_line(r))
+
+    def test_diff_fails_when_another_file_differs(self):
+        img = self.edit_copy()
+        first = img.entry_cluster(img.resolve("/SYSTEM/TAIL.TXT")[1])
+        img.write_cluster(first, b"TAIL\n")
+        img.close()
+        self.differs("differ=['/SYSTEM/TAIL.TXT']")
+
+    def test_diff_fails_on_another_size_attribute_or_time(self):
+        for what, change in (("size", lambda e: struct.pack_into("<I", e, 28, 99)),
+                             ("attribute", lambda e: e.__setitem__(11, e[11] | 0x01)),
+                             ("time", lambda e: struct.pack_into("<H", e, 22, 0x6000))):
+            with self.subTest(what=what):
+                if os.path.exists(self.dst):
+                    os.unlink(self.dst)
+                img = self.edit_copy()
+                self.set_entry(img, "/A.TXT", change)
+                img.close()
+                self.differs("'/A.TXT'")
+
+    def test_diff_fails_when_the_file_differs_in_attributes_alone(self):
+        # The replacement's bytes under other attributes or times, or the first volume's bytes
+        # under other attributes: not the one change the call names.
+        other, host = self.replaced_copy()
+        self.assertEqual(self.diff(self.src, other, self.VOL, "--replaced-by", host).returncode, 0)
+        img = self.tool.Image(other, writable=True)
+        self.set_entry(img, self.VOL, lambda e: e.__setitem__(11, e[11] | 0x06))
+        img.close()
+        self.differs("attributes or times", "--replaced-by", host, path=other)
+        shutil.copyfile(self.src, self.dst)
+        img = self.tool.Image(self.dst, writable=True)
+        self.set_entry(img, self.VOL, lambda e: e.__setitem__(11, e[11] | 0x06))
+        img.close()
+        self.differs("B holds", "--removed")
+        self.differs("nothing differs", "--replaced-by", self.host_file("own.bin", self.data[self.VOL]))
+
+    def test_diff_fails_on_a_file_or_a_directory_more(self):
+        img = self.edit_copy()
+        img.write_file(img.root_cluster, "MORE.TXT", b"more")
+        self.tool.finish(img)
+        img.close()
+        self.differs("differ=['/MORE.TXT']")
+        os.unlink(self.dst)
+        img = self.edit_copy()
+        img.make_dir(img.entry_cluster(img.resolve("/SYSTEM")[1]), "MORE")
+        self.tool.finish(img)
+        img.close()
+        self.differs("differ=['/SYSTEM/MORE/']")
+
+    def test_diff_fails_when_the_replacement_sits_on_another_files_clusters(self):
+        # A replacement written by hand into NEXT.BIN's clusters: the named file has its new
+        # bytes, and the file that held those clusters no longer has its own.
+        shutil.copyfile(self.src, self.dst)
+        img = self.tool.Image(self.dst, writable=True)
+        target = img.entry_cluster(img.resolve("/SYSTEM/APPS/NEXT.BIN")[1])
+        img.write_cluster(target, b"X" * 512)
+        self.set_entry(img, self.VOL, lambda e: (struct.pack_into("<H", e, 20, target >> 16),
+                                                 struct.pack_into("<H", e, 26, target & 0xFFFF),
+                                                 struct.pack_into("<I", e, 28, 512)))
+        img.close()
+        self.assertEqual(run("verify", self.dst, self.VOL, hashlib.sha256(b"X" * 512).hexdigest()).returncode, 0)
+        self.differs("'/SYSTEM/APPS/NEXT.BIN'", "--replaced-by", self.host_file("x.bin", b"X" * 512))
+
+    def test_diff_does_not_merge_two_entries_with_one_name(self):
+        # Two entries named NEXT.BIN on both volumes, the bytes of one of them changed on the
+        # copy: a comparison that keeps one entry a name sees the same on both, whichever it
+        # keeps. (Such volumes fail the check as well; what differs is named beside that.)
+        twin = "/SYSTEM/APPS/TWIN.BIN"
+        for changed in ("first", "second"):
+            with self.subTest(changed=changed):
+                for path in (self.src, self.dst):
+                    if os.path.exists(path):
+                        os.unlink(path)
+                self.setUp_volume_with_twin(twin)
+                self.assertEqual(run("derive", self.src, self.dst, "--remove", self.VOL).returncode, 0)
+                first_next = self.place(self.dst, "/SYSTEM/APPS/NEXT.BIN")[0][0]
+                first_twin = self.place(self.dst, twin)[0][0]
+                for path in (self.src, self.dst):
+                    self.rename_raw(path, twin, "NEXT.BIN")
+                r = self.diff(self.src, self.dst, self.VOL)
+                self.assertEqual(r.returncode, 1, r.stdout)
+                self.assertIn("differ=[]", self.diff_line(r))
+                img = self.tool.Image(self.dst, writable=True)
+                img.write_cluster(first_next if changed == "first" else first_twin, b"changed")
+                img.close()
+                self.differs("differ=['/SYSTEM/APPS/NEXT.BIN']")
+
+    def setUp_volume_with_twin(self, twin):
+        hosts = {vol: self.host_file(f"t{k}.bin", data) for k, (vol, data) in enumerate(self.data.items())}
+        hosts[twin] = self.host_file("twin.bin", b"N" * 1500)
+        adds = [x for vol, host in hosts.items() for x in ("--add", f"{vol.lstrip('/')}={host}")]
+        r = run("format", self.src, "--sectors", "16384", "--mkdir", "SYSTEM", "--mkdir", "SYSTEM/APPS", *adds)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_diff_takes_a_named_directory_for_no_file(self):
+        # A directory under the name is not "the one file", on either volume.
+        shutil.copyfile(self.src, self.dst)
+        img = self.tool.Image(self.src, writable=True)
+        img.make_dir(img.root_cluster, "EMPTY")
+        self.tool.finish(img)
+        img.close()
+        r = self.diff(self.src, self.dst, "/EMPTY")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("A holds", self.diff_line(r))
+
+    def test_diff_knows_a_name_by_its_bytes_and_not_by_how_it_reads(self):
+        # The file's entry on the copy renamed to bytes that read as the same name (a control
+        # character where a space pads the name): a reader that asks for the name finds no
+        # such file, so this copy is not "the file replaced".
+        other, host = self.replaced_copy()
+        for raw in (b"CLOCK\x1f  ELF", b"CLOCK\x09  ELF", b"clock   elf"):
+            with self.subTest(raw=raw):
+                img = self.tool.Image(other, writable=True)
+                d = img.entry_cluster(img.resolve("/SYSTEM/APPS")[1])
+                hit = [(c, i) for c, i, e in img.dir_entries(d) if e[11] == 0x20 and struct.unpack_from("<I", e, 28)[0] == 4000]
+                self.assertEqual(len(hit), 1)
+                data = bytearray(img.read_cluster(hit[0][0]))
+                data[hit[0][1] * 32:hit[0][1] * 32 + 11] = raw
+                img.write_cluster(hit[0][0], bytes(data))
+                img.close()
+                self.differs("differ=[", "--replaced-by", host, path=other)
+                r = self.diff(self.src, other, self.VOL, "--replaced-by", host)
+                self.assertIn("B holds 0", self.diff_line(r))
+
+    def test_diff_knows_another_files_name_by_its_bytes(self):
+        # Another file's entry renamed on the copy to bytes that read as its name: no reader
+        # finds /A.TXT there, so more than the one file differs.
+        img = self.edit_copy()
+        c, i, _ = img.lookup(img.root_cluster, "A.TXT")
+        data = bytearray(img.read_cluster(c))
+        data[i * 32:i * 32 + 11] = b"A\x1f      TXT"
+        img.write_cluster(c, bytes(data))
+        img.close()
+        self.assertIn("A.TXT", run("ls", self.dst).stdout)
+        self.differs("differ=['/A.TXT']")
+
+    def mark_bad(self, path, count=3):
+        """Marks `count` free clusters bad in every FAT copy and counts the free ones afresh."""
+        img = self.tool.Image(path, writable=True)
+        for c in [c for c in range(2, img.clusters + 2) if img.fat_get(c) == 0][:count]:
+            img.fat_set(c, 0x0FFFFFF7)
+        self.tool.finish(img)
+        img.close()
+        self.assertEqual(run("check", path).returncode, 0)
+
+    def test_diff_fails_on_free_clusters_taken_from_the_copy(self):
+        # Free clusters marked bad on the copy, in both FAT copies and with FSInfo to match:
+        # a sound volume with the same files, on which a writer finds less room (none, were
+        # they all marked).
+        self.edit_copy().close()
+        self.mark_bad(self.dst)
+        self.differs("findings=['B has 16085 free clusters where the change leaves 16088'] differ=[]")
+        other, host = self.replaced_copy()
+        self.mark_bad(other)
+        self.differs("free clusters where the change leaves", "--replaced-by", host, path=other)
+
+    def swap_entries(self, path, directory, one, two):
+        img = self.tool.Image(path, writable=True)
+        d = img.entry_cluster(img.resolve(directory)[1]) if directory != "/" else img.root_cluster
+        (c1, i1, e1), (c2, i2, e2) = img.lookup(d, one), img.lookup(d, two)
+        for c, i, e in ((c1, i1, e2), (c2, i2, e1)):
+            data = bytearray(img.read_cluster(c))
+            data[i * 32:i * 32 + 32] = e
+            img.write_cluster(c, bytes(data))
+        img.close()
+        self.assertEqual(run("check", path).returncode, 0)
+
+    def test_diff_fails_on_another_order_of_entries(self):
+        # A directory lists its entries in the order they lie in: two of them changing places
+        # is seen by whoever lists it, with every entry and every byte the same.
+        self.edit_copy().close()
+        self.swap_entries(self.dst, "/", "SYSTEM", "A.TXT")
+        self.differs("findings=['the entries lie in another order'] differ=[]")
+        # The replaced file's entry is to stay where the file's was.
+        other, host = self.replaced_copy()
+        self.swap_entries(other, "/SYSTEM/APPS", "CLOCK.ELF", "NEXT.BIN")
+        self.differs("findings=['the entries lie in another order'] differ=[]", "--replaced-by", host, path=other)
+
+    def test_diff_fails_on_an_image_with_another_name(self):
+        # A second name of the copy is a way to change it after it was judged.
+        self.edit_copy().close()
+        os.link(self.dst, os.path.join(self.dir, "second-name.img"))
+        self.differs("B has 2 names")
+        os.unlink(os.path.join(self.dir, "second-name.img"))
+        self.assertEqual(self.diff(self.src, self.dst, self.VOL).returncode, 0)
+
+    def test_a_name_that_is_not_ascii_is_no_name(self):
+        # A letter that upper-cases to an ASCII one (the long s) names no file: the record
+        # would say one name and the tool would act on another.
+        vol = "/\u017fYSTEM/APPS/CLOCK.ELF"
+        self.assertEqual("\u017f".upper(), "S")
+        self.refused(self.src, self.dst, "--remove", vol)
+        self.refused(self.src, self.dst, "--replace", f"{vol}={self.host_file('good.bin', b'g')}")
+        self.edit_copy().close()
+        r = self.diff(self.src, self.dst, vol)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+
+    def poke(self, path, offset, data):
+        with open(path, "r+b") as f:
+            f.seek(offset)
+            f.write(data)
+
+    def test_diff_fails_on_another_boot_sector_or_length(self):
+        other, host = self.replaced_copy()
+        how = ("--replaced-by", host)
+        pristine = os.path.join(self.dir, "pristine.img")
+        shutil.copyfile(other, pristine)
+        # A boot sector no reader takes (the signatures), on the copy alone.
+        for offset, data in ((66, b"\0"), (510, b"\0\0")):
+            with self.subTest(offset=offset):
+                shutil.copyfile(pristine, other)
+                self.poke(other, offset, data)
+                self.differs("B fails the check", *how, path=other)
+        # Another boot sector that is sound in itself (both copies of it say the same).
+        shutil.copyfile(pristine, other)
+        for sector in (0, 6):
+            self.poke(other, sector * 512 + 3, b"OTHEROEM")
+        self.assertEqual(run("check", other).returncode, 0)
+        self.differs("the boot sectors differ", *how, path=other)
+        # Another length with every sector the volume counts the same.
+        shutil.copyfile(pristine, other)
+        with open(other, "ab") as f:
+            f.write(bytes(512))
+        self.assertEqual(run("check", other).returncode, 0)
+        self.differs("the images differ in length", *how, path=other)
+        shutil.copyfile(pristine, other)
+        self.assertEqual(self.diff(self.src, other, self.VOL, *how).returncode, 0)
+
+    def test_diff_fails_on_a_copy_that_fails_the_check(self):
+        # Free clusters up to cluster 601 marked in the first FAT copy alone: the tree and
+        # every file are the same, and a writer finds less room.
+        img = self.edit_copy()
+        for c in range(2, img.clusters + 2):
+            if img.fat_get(c) == 0:
+                off = c * 4
+                sec = img.fat_start + off // 512
+                s = bytearray(img.read_sector(sec))
+                s[off % 512:off % 512 + 4] = (0x0FFFFFFF).to_bytes(4, "little")
+                img.write_sector(sec, bytes(s))
+                if c > 600:
+                    break
+        img.close()
+        r = self.diff(self.src, self.dst, self.VOL)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("findings=['B fails the check', 'B has 15496 free clusters where the change leaves 16088'] differ=[]", self.diff_line(r))
+        # One cluster marked in the second FAT copy alone: nothing a reader of the first copy
+        # meets differs, and the volume is not sound.
+        os.unlink(self.dst)
+        img = self.edit_copy()
+        c = next(c for c in range(2, img.clusters + 2) if img.fat_get(c) == 0)
+        off = c * 4
+        sec = img.fat_start + img.fatsz + off // 512
+        s = bytearray(img.read_sector(sec))
+        s[off % 512:off % 512 + 4] = (0x0FFFFFFF).to_bytes(4, "little")
+        img.write_sector(sec, bytes(s))
+        img.close()
+        self.differs("findings=['B fails the check'] differ=[]")
+
+    def test_diff_fails_on_bytes_after_a_directorys_end_mark(self):
+        # An entry of the removed file's name planted after the end mark of its directory: no
+        # reader meets it today, and the next file made in that directory brings it back.
+        for slot in (0, 1):
+            with self.subTest(slot=slot):
+                if os.path.exists(self.dst):
+                    os.unlink(self.dst)
+                img = self.edit_copy()
+                d = img.entry_cluster(img.resolve("/SYSTEM/APPS")[1])
+                end = next((c, i) for c, i, e in img.dir_entries(d) if e[0] == 0)
+                planted = img.make_entry("CLOCK.ELF", 0x20, img.entry_cluster(img.resolve("/SYSTEM/APPS/NEXT.BIN")[1]), 5)
+                if slot == 0:
+                    planted = b"\0" + planted[1:]
+                data = bytearray(img.read_cluster(end[0]))
+                data[(end[1] + slot) * 32:(end[1] + slot + 1) * 32] = planted
+                img.write_cluster(end[0], bytes(data))
+                img.close()
+                self.assertEqual(run("cat", self.dst, self.VOL).returncode, 2)
+                self.differs("bytes after the end mark of /SYSTEM/APPS on B")
+
+    def test_derive_on_larger_clusters_in_the_root_and_on_an_empty_file(self):
+        src = os.path.join(self.dir, "wide.img")
+        root = bytes((i * 13 + 1) & 0xFF for i in range(9000))
+        r = run("format", src, "--sectors", "32768", "--spc", "8", "--add", f"ROOT.BIN={self.host_file('root.bin', root)}",
+                "--add", f"ZERO.BIN={self.host_file('zero.bin', b'')}", "--add", f"LAST.TXT={self.host_file('last.txt', b'last')}")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        sha = self.sha(src)
+        new = self.host_file("new.bin", b"n" * 20000)
+        for k, (change, vol, how) in enumerate(((("--remove", "/ROOT.BIN"), "/ROOT.BIN", ("--removed",)),
+                                                (("--replace", f"/ROOT.BIN={new}"), "/ROOT.BIN", ("--replaced-by", new)),
+                                                (("--remove", "/ZERO.BIN"), "/ZERO.BIN", ("--removed",)),
+                                                (("--replace", f"/ZERO.BIN={new}"), "/ZERO.BIN", ("--replaced-by", new)))):
+            with self.subTest(change=change):
+                dst = os.path.join(self.dir, f"wide{k}.img")
+                r = run("derive", src, dst, *change)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual(self.sha(src), sha)
+                self.sound(dst)
+                r = run("diff", src, dst, "--expect-only", vol, *how)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual(run("expect", dst, "/LAST.TXT", "last").returncode, 0)
+                if change[0] == "--remove" and vol == "/ROOT.BIN":
+                    with open(dst, "rb") as f:
+                        self.assertNotIn(root[:256], f.read())
+
+    def test_a_replacement_by_the_files_own_bytes_is_refused(self):
+        self.refused(self.src, self.dst, "--replace", f"{self.VOL}={self.host_file('own.bin', self.data[self.VOL])}")
+
+    def test_a_destination_with_no_directory_is_refused(self):
+        self.refused(self.src, os.path.join(self.dir, "nodir", "copy.img"), "--remove", self.VOL)
+        self.refused(self.src, os.path.join(self.dir, "newdir") + os.sep, "--remove", self.VOL)
+
+    def killed_midway(self, at):
+        """Runs `derive --remove` in a process that dies, with no word, when it reaches `at`."""
+        script = self.host_file("die.py", (
+            "import importlib.util, os, sys\n"
+            "spec = importlib.util.spec_from_file_location('fat32_tool', sys.argv[1])\n"
+            "tool = importlib.util.module_from_spec(spec)\n"
+            "spec.loader.exec_module(tool)\n"
+            f"tool.Image.{at} = lambda *a, **k: os._exit(9)\n"
+            "sys.exit(tool.main(['derive', sys.argv[2], sys.argv[3], '--remove', sys.argv[4]]))\n").encode())
+        r = subprocess.run([sys.executable, "-I", script, TOOL, self.src, self.dst, self.VOL], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 9, r.stdout + r.stderr)
+
+    def test_a_derivation_that_dies_midway_leaves_no_destination(self):
+        # Killed after the file's chain is freed and before its entry is cleared: a volume on
+        # which the file is still named, with zeros for bytes. No such thing bears the destination's name.
+        before = set(os.listdir(self.dir))
+        for at in ("set_entry", "free_chain"):
+            with self.subTest(at=at):
+                self.killed_midway(at)
+                self.assertFalse(os.path.lexists(self.dst))
+                left = set(os.listdir(self.dir)) - before - {"die.py"}
+                self.assertTrue(all(name.startswith(".derive-") for name in left), left)
+                self.assertEqual(self.sha(self.src), self.src_sha)
+        r = run("derive", self.src, self.dst, "--remove", self.VOL)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(os.stat(self.dst).st_nlink, 1)
+        self.assertEqual(self.diff(self.src, self.dst, self.VOL).returncode, 0)
+
+    def in_process(self, hook):
+        """`derive --remove` in this process, `hook` run once when the file's chain is freed."""
+        freed = self.tool.Image.free_chain
+
+        def free_chain(img, first):
+            hook()
+            return freed(img, first)
+        self.tool.Image.free_chain = free_chain
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = self.tool.cmd_derive(argparse.Namespace(src=self.src, dst=self.dst, remove=self.VOL, replace=None))
+        return code, out.getvalue()
+
+    def test_a_destination_that_appears_during_the_derivation_is_not_written(self):
+        # A link to the source put at the destination's path while the copy is being changed:
+        # the path is never opened, so the source keeps its bytes, and what appeared is not removed.
+        code, out = self.in_process(lambda: os.symlink(self.src, self.dst))
+        self.assertEqual(code, 2, out)
+        self.assertIn("derive: refused: the destination", out)
+        self.assertEqual(os.readlink(self.dst), self.src)
+        self.assertEqual(self.sha(self.src), self.src_sha)
+        self.assertEqual([n for n in os.listdir(self.dir) if n.startswith(".derive-")], [])
+
+    def test_a_working_file_swapped_for_the_source_is_not_given_as_the_copy(self):
+        # The working file's name given to the source itself (a hard link) while the copy is
+        # being changed: what the destination's name then reaches is not the copy that was
+        # made, and the call says so; the source keeps its bytes.
+        def swap():
+            part = [n for n in os.listdir(self.dir) if n.startswith(".derive-")]
+            self.assertEqual(len(part), 1)
+            os.unlink(os.path.join(self.dir, part[0]))
+            os.link(self.src, os.path.join(self.dir, part[0]))
+        code, out = self.in_process(swap)
+        self.assertEqual(code, 1, out)
+        self.assertIn("derive: the destination is not the copy that was made", out)
+        self.assertEqual(self.sha(self.src), self.src_sha)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

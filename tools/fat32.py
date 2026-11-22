@@ -27,14 +27,26 @@ Commands:
   fsck-faulted IMG [--allow-longer N]
                           fsck.fat -n with every message named; fails on a failing or unnamed one
   expect IMG PATH TEXT    exit 0 when the file's bytes equal TEXT (\\n escapes allowed)
+  derive SRC DST (--remove VOL | --replace VOL=FILE)
+                          an isolated copy of SRC at the new path DST with the one file VOL removed or
+                          holding FILE's bytes (WP-180); SRC is read only, a DST that exists is refused,
+                          and DST names a finished, checked copy or nothing
+  diff A B --expect-only VOL (--removed | --replaced-by FILE)
+                          exit 0 only when B is A with the one file VOL removed, or holding FILE's
+                          bytes, and nothing else: every other entry, the boot sector and the length
+                          the same, both sound to `check`
 """
 import argparse
+import collections
 import hashlib
+import itertools
+import os
 import re
 import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 
 SECTOR = 512
 RSVD = 32
@@ -48,6 +60,8 @@ ATTR_LFN = 0x0F
 
 def short_name(name: str) -> bytes:
     """'HELLO.TXT' -> 11-byte padded 8.3 name (uppercase ASCII)."""
+    if not name.isascii():
+        raise ValueError(f"not an 8.3 name: {name}")
     name = name.upper()
     if "." in name:
         base, ext = name.split(".", 1)
@@ -66,16 +80,21 @@ def display_name(raw: bytes) -> str:
 
 class Image:
     def __init__(self, path, writable=False):
+        """`path` names the image, or is an open file that holds it: the caller's, never closed here."""
         self.path = path
-        self.f = open(path, "r+b" if writable else "rb")
+        self.own = not hasattr(path, "read")
+        self.f = open(path, "r+b" if writable else "rb") if self.own else path
         self.read_bpb()
 
     def close(self):
-        self.f.close()
+        if self.own:
+            self.f.close()
 
     # ---- geometry
     def read_bpb(self):
         b = self.read_sector(0)
+        if len(b) < SECTOR or b[13] == 0:
+            raise ValueError("not a FAT32 BPB")
         (self.bps, self.spc, self.rsvd, self.nfats, self.root_ent, tot16, _media, fatsz16) = struct.unpack_from("<HBHBHHBH", b, 11)
         self.tot32, self.fatsz = struct.unpack_from("<II", b, 32)
         self.root_cluster, self.fsinfo_sector, self.bk_boot = struct.unpack_from("<IHH", b, 44)
@@ -231,6 +250,47 @@ class Image:
                 first = c
             prev = c
         self.add_entry(dir_cluster, self.make_entry(name, ATTR_ARCHIVE, first, len(data)))
+
+    def store(self, data):
+        """Writes `data` into free clusters, lowest first, and returns the first (0 for no
+        byte). The clusters are found in one pass before any is written: a volume that cannot
+        hold the data is left as it was."""
+        per = self.spc * SECTOR
+        need = (len(data) + per - 1) // per
+        free = list(itertools.islice((c for c in range(2, self.clusters + 2) if self.fat_get(c) == 0), need))
+        if len(free) < need:
+            raise RuntimeError("disk full")
+        for k, c in enumerate(free):
+            self.write_cluster(c, data[k * per:(k + 1) * per])
+            self.fat_set(c, free[k + 1] if k + 1 < need else EOC)
+        return free[0] if free else 0
+
+    def free_chain(self, first):
+        """Frees the chain in every FAT copy and zeroes its clusters: nothing of the file stays."""
+        for c in self.chain(first) if first else []:
+            self.write_cluster(c, b"")
+            self.fat_set(c, 0)
+
+    def set_entry(self, cluster, index, raw):
+        data = bytearray(self.read_cluster(cluster))
+        data[index * 32:(index + 1) * 32] = raw
+        self.write_cluster(cluster, bytes(data))
+
+    def locate(self, path):
+        """(directory cluster, index, raw entry) of what PATH names, or None; '/' names no entry."""
+        parts = [p for p in path.strip("/").split("/") if p]
+        if not parts:
+            return None
+        d = self.root_cluster
+        try:
+            if parts[:-1]:
+                r = self.resolve("/".join(parts[:-1]))
+                if r is None or not r[1][11] & ATTR_DIR:
+                    return None
+                d = self.entry_cluster(r[1])
+            return self.lookup(d, parts[-1])
+        except ValueError:
+            return None
 
     def make_dir(self, parent_cluster, name):
         c = self.alloc_cluster()
@@ -439,6 +499,7 @@ def tree_findings(img, fat):
 
     def walk(path, first, depth):
         clusters = claim(path or "/", first)
+        names = set()
         if depth > DEPTH_MAX:
             strict.append(f"{path}: deeper than this check walks")
             cut.append(path)
@@ -453,6 +514,11 @@ def tree_findings(img, fat):
                     continue
                 name = f"{path}/{display_name(e[:11])}"
                 reached.add(name)
+                # Two entries with one name in a directory: a reader opens the first it meets,
+                # and a list of names would show one.
+                if e[:11] in names:
+                    strict.append(f"{name}: a second entry of this name in its directory")
+                names.add(e[:11])
                 entry_first = img.entry_cluster(e)
                 # No name starts at a number that is no cluster of the volume. 0 is the first
                 # cluster of a file that holds none (its size says whether that is right) and
@@ -494,6 +560,14 @@ def cmd_check(a):
     judged as without it: any file longer than its size there is a problem. A name the walk
     reaches along one copy and not along another is a problem in both modes."""
     img = Image(a.image)
+    try:
+        return check_image(img, a)
+    finally:
+        img.close()
+
+
+def check_image(img, a):
+    """`check` of an image that is open: its line printed, 0 when it holds no problem."""
     faulted = getattr(a, "faulted", False)
     allow_longer = getattr(a, "allow_longer", None) if faulted else None
     expect_lost = getattr(a, "expect_lost", None) if faulted else None
@@ -603,6 +677,243 @@ def cmd_check(a):
     return 0 if not problems else 1
 
 
+def cmd_derive(a):
+    """An isolated copy of the volume SRC at the new path DST, with the one file VOL removed
+    (--remove VOL) or holding the bytes of the host file FILE (--replace VOL=FILE). SRC is
+    opened once, for reading. The copy is made in an unnamed working file beside DST (its name,
+    .derive-*, is never opened again), checked as it was copied, changed, checked again, and
+    only then given the name DST by a hard link, which no existing path takes: a file, a link
+    to SRC, a link to nowhere. So DST names a finished and checked copy or nothing, whenever
+    the call ends or is killed. A removed file's entry is cleared to the deleted mark and its
+    clusters are freed in every FAT copy and zeroed; a replaced file's entry stays in its place
+    with its name, attributes and times, and takes the new size and chain. Refused, exit 2: a
+    DST that exists or has no directory, a SRC that is no file or fails `check`, a VOL that is
+    missing or a directory, a FILE that is no file or holds VOL's own bytes. Exit 1, no DST:
+    the volume cannot hold FILE, or the changed copy fails `check`. Exit 1 with DST left as it
+    is: what DST names after the link is not the working file (its name was given to another
+    file meanwhile; DST and the working name are then two names of that other file, and
+    neither is removed here). A call killed by a signal other than an interrupt leaves the
+    working file; one killed between the link and the working name's removal leaves the
+    finished copy under two names, which `diff` refuses."""
+    vol, _, host = (a.remove, "", None) if a.remove is not None else a.replace.partition("=")
+    data = None
+    if host is not None:
+        if not os.path.isfile(host):
+            print(f"derive: refused: {host!r} is no file to replace {vol} with (--replace VOL=FILE)")
+            return 2
+        with open(host, "rb") as f:
+            data = f.read()
+    if not os.path.isfile(a.src):
+        print(f"derive: refused: the source {a.src} is no file")
+        return 2
+    try:
+        fd, part = tempfile.mkstemp(prefix=".derive-", dir=os.path.dirname(a.dst) or ".")
+    except OSError as err:
+        print(f"derive: refused: no working file beside the destination {a.dst}: {err}")
+        return 2
+    with os.fdopen(fd, "r+b") as out:
+        try:
+            return derive_into(out, part, a, vol, data)
+        finally:
+            # The working name goes, if it still names the working file.
+            try:
+                if os.path.samestat(os.lstat(part), os.fstat(out.fileno())):
+                    os.unlink(part)
+            except OSError:
+                pass
+
+
+def derive_into(out, part, a, vol, data):
+    """The body of `derive` on the open working file `out`, whose name is `part`."""
+    digest = hashlib.sha256()
+    with open(a.src, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            digest.update(block)
+            out.write(block)
+    try:
+        img = Image(out)
+        before = check_image(img, argparse.Namespace())
+    except (ValueError, struct.error) as err:
+        print(f"derive: refused: the source {a.src} is no FAT32 volume: {err}")
+        return 2
+    if before != 0:
+        print(f"derive: refused: the source {a.src} fails the check")
+        return 2
+    hit = img.locate(vol)
+    if hit is None or hit[2][11] & ATTR_DIR:
+        print(f"derive: refused: {vol} is no file of {a.src}")
+        return 2
+    c, i, e = hit
+    old = img.read_file(vol)
+    if data is not None and data == old:
+        print(f"derive: refused: the replacement holds the very bytes of {vol}: the copy would be the source")
+        return 2
+    try:
+        img.free_chain(img.entry_cluster(e))
+        if data is None:
+            img.set_entry(c, i, b"\xE5" + bytes(31))
+        else:
+            first = img.store(data)
+            e = bytearray(e)
+            struct.pack_into("<H", e, 20, first >> 16)
+            struct.pack_into("<H", e, 26, first & 0xFFFF)
+            struct.pack_into("<I", e, 28, len(data))
+            img.set_entry(c, i, bytes(e))
+        finish(img)
+    except RuntimeError as err:
+        print(f"derive: {err}: no copy is left")
+        return 1
+    after = check_image(img, argparse.Namespace())
+    if after != 0:
+        print("derive: the copy fails the check: no copy is left")
+        return 1
+    out.flush()
+    os.fsync(out.fileno())
+    os.fchmod(out.fileno(), 0o644)
+    out.seek(0)
+    copy = hashlib.sha256()
+    for block in iter(lambda: out.read(1 << 20), b""):
+        copy.update(block)
+    try:
+        os.link(part, a.dst, follow_symlinks=False)
+    except OSError as err:
+        print(f"derive: refused: the destination {a.dst} exists or cannot be named: {err}")
+        return 2
+    if not os.path.samestat(os.lstat(a.dst), os.fstat(out.fileno())):
+        print(f"derive: the destination is not the copy that was made: {a.dst} is left as it is and is not to be used")
+        return 1
+    was = f"size={len(old)} sha256={hashlib.sha256(old).hexdigest()}"
+    now = "removed" if data is None else f"replaced by size={len(data)} sha256={hashlib.sha256(data).hexdigest()}"
+    print(f"derive: source sha256={digest.hexdigest()} copy sha256={copy.hexdigest()} {vol} was {was}, {now}")
+    return 0
+
+
+def tree_list(img):
+    """(entries, stray). `entries` holds every entry of the tree as one item of a list: (path as
+    it reads, the raw names of the path, kind, the attributes and times, size, sha256 of the
+    bytes). A list, never a mapping by name: two entries with one name stay two items, and a
+    name is known by its eleven raw bytes, as a reader of the volume compares it, not by how it
+    reads. `stray` names the directories that hold a byte in or after their end mark: no
+    reader meets what lies there until the next entry made in that directory uncovers it."""
+    out, stray = [], []
+
+    def walk(path, raw, first, depth):
+        if depth > DEPTH_MAX:
+            raise ValueError(f"{path}: deeper than this walk goes")
+        ended = False
+        for _, _, e in img.dir_entries(first):
+            if ended or e[0] == 0:
+                if any(e) and (path or "/") not in stray:
+                    stray.append(path or "/")
+                ended = True
+                continue
+            if e[0] == 0xE5 or e[11] == ATTR_LFN or e[11] & 0x08 or e[:1] == b".":
+                continue
+            name, key = f"{path}/{display_name(e[:11])}", f"{raw}/{e[:11].hex()}"
+            meta = (e[11:20] + e[22:26]).hex()
+            if e[11] & ATTR_DIR:
+                out.append((name, key, "dir", meta, 0, ""))
+                walk(name, key, img.entry_cluster(e), depth + 1)
+                continue
+            size = struct.unpack_from("<I", e, 28)[0]
+            start = img.entry_cluster(e)
+            data = (b"".join(img.read_cluster(c) for c in img.chain(start)) if start else b"")[:size]
+            out.append((name, key, "file", meta, size, hashlib.sha256(data).hexdigest()))
+
+    walk("", "", img.root_cluster, 0)
+    return out, stray
+
+
+def named_change(vol, in_a, in_b, want, shown):
+    """What stands against "B is A with the file VOL removed (want None) or holding the bytes
+    `want` names", told from the entries of that name on each; None when nothing does."""
+    if len(in_a) != 1 or in_a[0][2] != "file":
+        return f"A holds {len(in_a)} entries of {vol}, not one file: {shown(in_a)}"
+    if want is None:
+        return f"B holds {len(in_b)} entries of {vol} where it was to be removed: {shown(in_b)}" if in_b else None
+    if len(in_b) != 1 or in_b[0][2] != "file":
+        return f"B holds {len(in_b)} entries of {vol}, not one file: {shown(in_b)}"
+    if in_b[0][4:] == in_a[0][4:]:
+        return f"nothing differs: B holds A's bytes of {vol}"
+    if in_b[0][4:] != want:
+        return f"B's {vol} is not the replacement (size={want[0]} sha256={want[1]}): {shown(in_b)}"
+    if in_b[0][3] != in_a[0][3]:
+        return f"B's {vol} has other attributes or times than A's: {shown(in_b)} where A has {shown(in_a)}"
+    return None
+
+
+def cmd_diff(a):
+    """Exit 0 only when the volume B is the volume A with the one file VOL (--expect-only VOL)
+    removed (--removed) or holding the bytes of the host file FILE (--replaced-by FILE), and
+    nothing else: A holds VOL as one file; B holds no entry of that name, or one file of FILE's
+    size and bytes under the attributes and times it has on A, and other bytes than on A;
+    every other entry is the same on both (path by raw name, kind, attributes, times, size and
+    bytes), compared as whole entries, never merged by name, and lying in the same order, the
+    replaced file's entry where the file's was; B has the free clusters A has, more or fewer by
+    what the change frees and takes; both images have one length, one boot sector and one name
+    each, both pass `check`, and no directory of either holds a byte after its end mark. Its
+    line names both images by their sha256 (read before the judging, in a read of its own). Not compared, and not what a reader of files meets
+    but for the first: which clusters a file sits on, the bytes of free clusters and those
+    past a file's size in its last cluster, deleted entries, the volume's label entry, the
+    `.` and `..` entries, FSInfo and the other reserved sectors. Exit 1 with what was found
+    otherwise; 2 when an image or FILE cannot be read or VOL is no path of 8.3 names."""
+    try:
+        names = [short_name(p) for p in a.expect_only.strip("/").split("/")]
+        vol, vol_key = "".join("/" + display_name(n) for n in names), "".join("/" + n.hex() for n in names)
+        want = None
+        if a.replaced_by is not None:
+            with open(a.replaced_by, "rb") as f:
+                data = f.read()
+            want = (len(data), hashlib.sha256(data).hexdigest())
+        lengths, boots, lists, frees, per, digests, findings = [], [], [], [], [], [], []
+        for side, path in (("A", a.a), ("B", a.b)):
+            with open(path, "rb") as f:
+                digest = hashlib.sha256()
+                for block in iter(lambda: f.read(1 << 20), b""):
+                    digest.update(block)
+                digests.append(digest.hexdigest())
+                img = Image(f)
+                lengths.append(os.fstat(f.fileno()).st_size)
+                if os.fstat(f.fileno()).st_nlink != 1:
+                    findings.append(f"{side} has {os.fstat(f.fileno()).st_nlink} names")
+                boots.append(img.read_sector(0))
+                frees.append(img.free_count())
+                per.append(img.spc * SECTOR)
+                if check_image(img, argparse.Namespace()) != 0:
+                    findings.append(f"{side} fails the check")
+                entries, stray = tree_list(img)
+                lists.append(entries)
+                findings += [f"bytes after the end mark of {d} on {side}" for d in stray]
+    except (OSError, ValueError, struct.error) as err:
+        print(f"diff: {err}")
+        return 2
+    if lengths[0] != lengths[1]:
+        findings.append("the images differ in length")
+    if boots[0] != boots[1]:
+        findings.append("the boot sectors differ")
+    count_a, count_b = collections.Counter(lists[0]), collections.Counter(lists[1])
+    differ = sorted({item[0] + ("/" if item[2] == "dir" else "") for item in (count_a - count_b) + (count_b - count_a) if item[1] != vol_key})
+    in_a, in_b = ([item for item in items if item[1] == vol_key] for items in lists)
+
+    def shown(items):
+        return ", ".join(f"{item[2]} size={item[4]} sha256={item[5]} attrs={item[3]}" for item in items) or "absent"
+    wrong = named_change(vol, in_a, in_b, want, shown)
+    if wrong:
+        findings.append(wrong)
+    elif not differ and boots[0] == boots[1]:
+        # With every entry accounted for on volumes of one geometry: their order, and the room the change leaves.
+        if [item[1] for item in lists[0] if want is not None or item[1] != vol_key] != [item[1] for item in lists[1]]:
+            findings.append("the entries lie in another order")
+        left = frees[0] + -(-in_a[0][4] // per[0]) - (-(-want[0] // per[0]) if want else 0)
+        if frees[1] != left:
+            findings.append(f"B has {frees[1]} free clusters where the change leaves {left}")
+    if findings or differ:
+        print(f"diff: not only {vol}: findings={findings} differ={differ}")
+        return 1
+    print(f"diff: only {vol} differs: A {shown(in_a)} | B {shown(in_b)}; images A sha256={digests[0]} B sha256={digests[1]}")
+    return 0
+
+
 # fsck.fat -n (dosfstools 4.2) says one message a line; a message about a file follows a line
 # with its path. After a guest case that made a disk write fail its exit code alone is no
 # verdict (a lost cluster already makes it 1), so every message is named here: lines that carry
@@ -688,9 +999,15 @@ def main(argv=None):
     s = sub.add_parser("expect"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
     s = sub.add_parser("absent-raw"); s.add_argument("image"); s.add_argument("text")
     s = sub.add_parser("grep"); s.add_argument("image"); s.add_argument("path"); s.add_argument("text")
+    s = sub.add_parser("derive"); s.add_argument("src"); s.add_argument("dst")
+    how = s.add_mutually_exclusive_group(required=True)
+    how.add_argument("--remove", metavar="VOL"); how.add_argument("--replace", metavar="VOL=FILE")
+    s = sub.add_parser("diff"); s.add_argument("a"); s.add_argument("b"); s.add_argument("--expect-only", required=True, metavar="VOL")
+    how = s.add_mutually_exclusive_group(required=True)
+    how.add_argument("--removed", action="store_true"); how.add_argument("--replaced-by", metavar="FILE")
     a = ap.parse_args(argv)
     return {"format": cmd_format, "ls": cmd_ls, "cat": cmd_cat, "verify": cmd_verify, "check": cmd_check, "fsck-faulted": cmd_fsck_faulted, "expect": cmd_expect,
-            "absent-raw": cmd_absent_raw, "grep": cmd_grep}[a.cmd](a) or 0
+            "absent-raw": cmd_absent_raw, "grep": cmd_grep, "derive": cmd_derive, "diff": cmd_diff}[a.cmd](a) or 0
 
 
 if __name__ == "__main__":

@@ -1629,6 +1629,42 @@ class KillEvidence(unittest.TestCase):
         self.assertEqual(head, b"NAWAH-CFG 1 1 " + hashlib.sha256(body).hexdigest().encode())
         self.assertIn("\ndeps=display\n", (ROOT / "platform" / "pc-qemu" / "lab" / "deaf.app").read_text(encoding="utf-8"))
 
+    def test_the_isolated_copy_mutants_are_pinned(self):
+        """WP-180: M510..M540 mutate the host tool's `derive` and `diff` (tools/fat32.py), each
+        killed by the host case TST-M3-FAT32-TOOL and naming the test that fails; the ones that
+        would let a verdict stand on the wrong disk are SECURITY; none is expected to survive."""
+        tool = (ROOT / "tools" / "fat32.py").read_text(encoding="utf-8")
+        tests = (ROOT / "tests" / "test_fat32_tool.py").read_text(encoding="utf-8")
+        security = {"M510", "M511", "M513", "M515", "M516", "M517", "M518", "M519", "M520", "M521", "M522", "M525",
+                    "M527", "M528", "M529", "M530", "M531", "M532", "M533", "M534", "M536", "M537", "M538", "M539"}
+        ids = [f"M{n}" for n in range(510, 541)]
+        self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if m[0] in ids), ids)
+        for mid in ids:
+            with self.subTest(mutant=mid):
+                m = next(m for m in mutants.MUTANTS if m[0] == mid)
+                self.assertEqual(m[1], "tools/fat32.py")
+                self.assertEqual(tool.count(m[2]), 1)
+                self.assertNotEqual(m[2], m[3])
+                self.assertEqual(m[4], ["TST-M3-FAT32-TOOL"])
+                self.assertEqual(mid in mutants.SECURITY, mid in security)
+                self.assertEqual(m[5].startswith("SECURITY: "), mid in security, m[5])
+                self.assertTrue(m[5].endswith(", TST-M3-FAT32-TOOL FAIL"), m[5])
+                named = re.findall(r"\btest_\w+", m[5])
+                self.assertTrue(named, m[5])
+                for name in named:
+                    self.assertEqual(tests.count(f"    def {name}(self):"), 1, name)
+                self.assertEqual(mutants.stage_of(mid), "M6")
+                self.assertNotIn(mid, mutants.EXPECT)
+        # The source is opened once, for reading; the destination's path is never opened: it is
+        # given to the finished working file by a link, and compared with it after.
+        self.assertEqual(tool.count("a.src"), tool.count("{a.src}") + 2)
+        self.assertEqual(tool.count('    with open(a.src, "rb") as f:\n'), 1)
+        self.assertEqual(tool.count("    if not os.path.isfile(a.src):\n"), 1)
+        self.assertEqual(tool.count("a.dst"), tool.count("{a.dst}") + 3)
+        self.assertEqual(tool.count('        fd, part = tempfile.mkstemp(prefix=".derive-", dir=os.path.dirname(a.dst) or ".")\n'), 1)
+        self.assertEqual(tool.count("        os.link(part, a.dst, follow_symlinks=False)\n"), 1)
+        self.assertEqual(tool.count("    if not os.path.samestat(os.lstat(a.dst), os.fstat(out.fileno())):\n"), 1)
+
     def test_the_manager_stop_and_crash_expectations_are_pinned(self):
         """WP-178 (services.md v1.21, session.md v1.12): the manager's orderly stop and its crash,
         two cases with two verdicts. M485 (SECURITY: the stop leaves the session's job alive), its

@@ -2254,6 +2254,156 @@ MUTANTS = [
      "        problems += [f\"FAT{fat}: {name} is not reached along this copy\" for name in sorted(reached - reached_o)]\n",
      "        pass\n",
      ["TST-M3-FAT32-TOOL"], "SECURITY: a directory whose chain is longer in the first FAT copy alone shows a name there that the second copy does not reach, and nothing names it: the host case fails, TST-M3-FAT32-TOOL FAIL"),
+    # M510..M540 (WP-180): the host tool's isolated copy (`derive`) and its judge (`diff`), each
+    # killed by a host case of TST-M3-FAT32-TOOL (class Fat32Derive). M510: a destination that
+    # exists is replaced by the copy.
+    ("M510", "tools/fat32.py",
+     '    except OSError as err:\n        print(f"derive: refused: the destination {a.dst} exists or cannot be named: {err}")\n        return 2\n',
+     '    except OSError:\n        os.unlink(a.dst)\n        os.link(part, a.dst, follow_symlinks=False)\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `derive` replaces a destination that exists, the source itself under another name included (its own path, another spelling, a hard link, a symbolic link): test_an_existing_destination_is_refused_under_any_name and test_a_destination_that_appears_during_the_derivation_is_not_written fail, TST-M3-FAT32-TOOL FAIL'),
+    # M511: a source that fails the check is derived from.
+    ("M511", "tools/fat32.py",
+     '    if before != 0:\n',
+     '    if before > 1:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `derive` takes a source that fails `check` (two entries with one name, a chain into a free cluster): test_two_entries_with_one_name_are_reported_and_not_derived_from and test_a_source_that_fails_the_check_is_not_derived_from fail, TST-M3-FAT32-TOOL FAIL'),
+    # M512: a directory is taken for the file to replace.
+    ("M512", "tools/fat32.py",
+     '    if hit is None or hit[2][11] & ATTR_DIR:\n',
+     '    if hit is None:\n',
+     ["TST-M3-FAT32-TOOL"], '`derive` (--remove or --replace) takes a directory for the one file: its chain is freed and what it held is lost, the changed copy fails the check (exit 1 where the refusal is 2): test_a_wrong_file_is_refused_and_no_copy_is_left fails, TST-M3-FAT32-TOOL FAIL'),
+    # M513: the removed file's clusters are freed and not zeroed.
+    ("M513", "tools/fat32.py",
+     '            self.write_cluster(c, b"")\n            self.fat_set(c, 0)\n',
+     '            self.fat_set(c, 0)\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: the bytes of a removed or replaced file stay in free clusters of the copy: test_remove_frees_and_zeroes_the_file_on_the_copy_alone and test_replace_keeps_the_entry_in_its_place fail, TST-M3-FAT32-TOOL FAIL'),
+    # M514: the removed file's clusters are zeroed and stay marked in the FAT.
+    ("M514", "tools/fat32.py",
+     '            self.fat_set(c, 0)\n',
+     '            pass\n',
+     ["TST-M3-FAT32-TOOL"], "the clusters of a removed or replaced file stay marked in every FAT copy: the changed copy holds lost clusters and fails the tool's own check, so no copy is made: test_remove_frees_and_zeroes_the_file_on_the_copy_alone fails, TST-M3-FAT32-TOOL FAIL"),
+    # M515: two entries with one name in a directory are no finding.
+    ("M515", "tools/fat32.py",
+     '                if e[:11] in names:\n',
+     '                if False:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `check` says nothing of two entries with one name in a directory, with and without --faulted: test_two_entries_with_one_name_are_reported_and_not_derived_from fails, TST-M3-FAT32-TOOL FAIL'),
+    # M516, M517: `diff` keeps one entry a name, the last it met (M516) or the first (M517).
+    ("M516", "tools/fat32.py",
+     '    count_a, count_b = collections.Counter(lists[0]), collections.Counter(lists[1])\n',
+     '    count_a, count_b = (collections.Counter({item[1]: item for item in items}.values()) for items in lists)\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` keeps the last of two entries with one name: the first one's bytes changed on the copy are not named among what differs: test_diff_does_not_merge_two_entries_with_one_name fails (changed='first'), TST-M3-FAT32-TOOL FAIL"),
+    ("M517", "tools/fat32.py",
+     '    count_a, count_b = collections.Counter(lists[0]), collections.Counter(lists[1])\n',
+     '    count_a, count_b = (collections.Counter({item[1]: item for item in reversed(items)}.values()) for items in lists)\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` keeps the first of two entries with one name: the second one's bytes changed on the copy are not named among what differs: test_diff_does_not_merge_two_entries_with_one_name fails (changed='second'), TST-M3-FAT32-TOOL FAIL"),
+    # M518: whatever else differs is no finding.
+    ("M518", "tools/fat32.py",
+     '    differ = sorted({item[0] + ("/" if item[2] == "dir" else "") for item in (count_a - count_b) + (count_b - count_a) if item[1] != vol_key})\n',
+     '    differ = sorted({item[0] + ("/" if item[2] == "dir" else "") for item in (count_a - count_b) + (count_b - count_a) if False})\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` passes whatever else differs between the two volumes (another file's bytes, size, attributes or times, a file or a directory more, a file whose clusters the replacement took): test_diff_fails_when_another_file_differs and test_diff_fails_on_a_file_or_a_directory_more fail, with others, TST-M3-FAT32-TOOL FAIL"),
+    # M519: a second volume that holds the first's bytes of the file passes for the replaced one.
+    ("M519", "tools/fat32.py",
+     '    if in_b[0][4:] == in_a[0][4:]:\n',
+     '    if False:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff --replaced-by` passes two volumes on which the file holds the same bytes, so a copy on which nothing was replaced is taken for the derived one: test_diff_says_which_way_the_file_went and test_diff_fails_when_the_file_differs_in_attributes_alone fail, TST-M3-FAT32-TOOL FAIL'),
+    # M520: the first volume need not hold the file. M522: a directory under the name is taken for it.
+    ("M520", "tools/fat32.py",
+     '    if len(in_a) != 1 or in_a[0][2] != "file":\n',
+     '    if False:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff` does not ask that the first volume hold the file: with the volumes the other way round `--removed` says the second holds it where the first lacks it, and `--replaced-by` ends in a traceback; a wrong pass needs an emptied directory under the name removed on the second volume and one free cluster marked bad there: test_diff_says_which_way_the_file_went fails by the words of the line, TST-M3-FAT32-TOOL FAIL'),
+    ("M522", "tools/fat32.py",
+     '    if len(in_a) != 1 or in_a[0][2] != "file":\n',
+     '    if len(in_a) != 1:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff --removed` takes a directory under the given name for the one file; the case still fails by the free clusters, and a wrong pass needs one free cluster marked bad on the second volume: test_diff_takes_a_named_directory_for_no_file fails by the words of the line, TST-M3-FAT32-TOOL FAIL'),
+    # M521: the attributes and the times are not compared.
+    ("M521", "tools/fat32.py",
+     '            meta = (e[11:20] + e[22:26]).hex()\n',
+     '            meta = ""\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` does not compare the attributes and the times of the entries: test_diff_fails_on_another_size_attribute_or_time (what='attribute', what='time') and test_diff_fails_when_the_file_differs_in_attributes_alone fail, TST-M3-FAT32-TOOL FAIL"),
+    # M523: the changed copy is not checked. M524: a replacement by the file's own bytes is taken.
+    ("M523", "tools/fat32.py",
+     '    if after != 0:\n',
+     '    if after > 1:\n',
+     ["TST-M3-FAT32-TOOL"], "`derive` gives the destination's name to a changed copy that fails the check: test_a_copy_that_fails_the_check_is_not_left fails, TST-M3-FAT32-TOOL FAIL"),
+    ("M524", "tools/fat32.py",
+     '    if data is not None and data == old:\n',
+     '    if False:\n',
+     ["TST-M3-FAT32-TOOL"], "`derive --replace` by the file's own bytes makes a copy that is the source: test_a_replacement_by_the_files_own_bytes_is_refused fails, TST-M3-FAT32-TOOL FAIL"),
+    # M525: a path is walked through a file as through a directory.
+    ("M525", "tools/fat32.py",
+     '                if r is None or not r[1][11] & ATTR_DIR:\n',
+     '                if r is None:\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `derive` reads a file's bytes as a directory when a path goes through it, and frees the chain an entry found there names: test_a_file_is_not_walked_as_a_directory fails, TST-M3-FAT32-TOOL FAIL"),
+    # M526: the free clusters are not counted before the first is written.
+    ("M526", "tools/fat32.py",
+     '        if len(free) < need:\n            raise RuntimeError("disk full")\n',
+     '',
+     ["TST-M3-FAT32-TOOL"], "a replacement the volume cannot hold is written as far as the free clusters go and ends in an error with no word of the tool's: test_a_replacement_the_volume_cannot_hold_leaves_no_copy fails, TST-M3-FAT32-TOOL FAIL"),
+    # M527: the file is known by how its name reads, not by its bytes.
+    ("M527", "tools/fat32.py",
+     '    in_a, in_b = ([item for item in items if item[1] == vol_key] for items in lists)\n',
+     '    in_a, in_b = ([item for item in items if item[0] == vol] for items in lists)\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` takes an entry whose raw name only reads as the file's (a control character where a space pads it) for the file, which no reader of the volume finds under that name: test_diff_knows_a_name_by_its_bytes_and_not_by_how_it_reads fails, TST-M3-FAT32-TOOL FAIL"),
+    # M528: the boot sectors are not compared. M529: nor the lengths. M530: nor is either volume checked.
+    ("M528", "tools/fat32.py",
+     '    if boots[0] != boots[1]:\n',
+     '    if False:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff` passes a copy with another boot sector, sound in itself: test_diff_fails_on_another_boot_sector_or_length fails, TST-M3-FAT32-TOOL FAIL'),
+    ("M529", "tools/fat32.py",
+     '    if lengths[0] != lengths[1]:\n',
+     '    if False:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff` passes a copy of another length whose every counted sector is the same: test_diff_fails_on_another_boot_sector_or_length fails, TST-M3-FAT32-TOOL FAIL'),
+    ("M530", "tools/fat32.py",
+     '                if check_image(img, argparse.Namespace()) != 0:\n',
+     '                if False:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff` passes a copy that fails `check` where nothing else it compares differs (a second FAT copy that marks a cluster the first holds free): test_diff_fails_on_a_copy_that_fails_the_check fails, TST-M3-FAT32-TOOL FAIL'),
+    # M531: bytes after a directory's end mark are no finding.
+    ("M531", "tools/fat32.py",
+     '                findings += [f"bytes after the end mark of {d} on {side}" for d in stray]\n',
+     '                pass\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff --removed` passes a copy that holds an entry of the file's name after its directory's end mark, which the next entry made there uncovers: test_diff_fails_on_bytes_after_a_directorys_end_mark fails, TST-M3-FAT32-TOOL FAIL"),
+    # M532: the file's attributes and times on the second volume are not asked. M533: nor its bytes.
+    ("M532", "tools/fat32.py",
+     '    if in_b[0][3] != in_a[0][3]:\n',
+     '    if False:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff --replaced-by` passes the replacement under other attributes or times than the file had: test_diff_fails_when_the_file_differs_in_attributes_alone fails, TST-M3-FAT32-TOOL FAIL'),
+    ("M533", "tools/fat32.py",
+     '    if in_b[0][4:] != want:\n',
+     '    if False:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff --replaced-by FILE` passes other bytes under the name that take as many clusters as FILE: test_diff_says_which_way_the_file_went fails (the replacement wrong.bin), TST-M3-FAT32-TOOL FAIL'),
+    # M534: what the destination names after the link is not compared with the working file.
+    ("M534", "tools/fat32.py",
+     '    if not os.path.samestat(os.lstat(a.dst), os.fstat(out.fileno())):\n',
+     '    if False:\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `derive` reports a copy made when the destination's name reaches another file, the source itself here, because the working name was given to it meanwhile: test_a_working_file_swapped_for_the_source_is_not_given_as_the_copy fails, TST-M3-FAT32-TOOL FAIL"),
+    # M535: `--removed` does not ask that the file be gone.
+    ("M535", "tools/fat32.py",
+     '        return f"B holds {len(in_b)} entries of {vol} where it was to be removed: {shown(in_b)}" if in_b else None\n',
+     '        return None\n',
+     ["TST-M3-FAT32-TOOL"], '`diff --removed` does not say that the second volume still holds the file; the order of the entries (M537) and the free clusters (M536) still fail such a volume, so the verdict is the same and the words of the line alone differ: test_diff_says_which_way_the_file_went fails by the words of the line, TST-M3-FAT32-TOOL FAIL'),
+    # M536: the free clusters are not compared with what the change leaves. M537: nor the order of the entries.
+    ("M536", "tools/fat32.py",
+     '        if frees[1] != left:\n',
+     '        if False:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff` passes a sound copy on which free clusters were marked bad, so a writer finds less room than on the first volume, or none: test_diff_fails_on_free_clusters_taken_from_the_copy fails, TST-M3-FAT32-TOOL FAIL'),
+    ("M537", "tools/fat32.py",
+     '        if [item[1] for item in lists[0] if want is not None or item[1] != vol_key] != [item[1] for item in lists[1]]:\n',
+     '        if False:\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` passes a copy whose entries lie in another order, the replaced file's entry in another place: test_diff_fails_on_another_order_of_entries fails, TST-M3-FAT32-TOOL FAIL"),
+    # M538: a name is upper-cased before it is asked to be ASCII.
+    ("M538", "tools/fat32.py",
+     '    if not name.isascii():\n        raise ValueError(f"not an 8.3 name: {name}")\n',
+     '',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: a letter that upper-cases to an ASCII one is taken for it, so `derive` and `diff` act on another name than the one given: test_a_name_that_is_not_ascii_is_no_name fails, TST-M3-FAT32-TOOL FAIL'),
+    # M539: an image with a second name is judged like any.
+    ("M539", "tools/fat32.py",
+     '                if os.fstat(f.fileno()).st_nlink != 1:\n',
+     '                if False:\n',
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff` passes a copy that has a second name, through which it can be changed after it was judged: test_diff_fails_on_an_image_with_another_name fails, TST-M3-FAT32-TOOL FAIL'),
+    # M540: the second entry of a name is not walked, so its clusters are called lost as well.
+    ("M540", "tools/fat32.py",
+     '                    strict.append(f"{name}: a second entry of this name in its directory")\n',
+     '                    strict.append(f"{name}: a second entry of this name in its directory")\n                    continue\n',
+     ["TST-M3-FAT32-TOOL"], '`check` calls the clusters of a second entry of a name lost, and counts them among the lost clusters a faulted case pins: test_two_entries_with_one_name_are_reported_and_not_derived_from fails, TST-M3-FAT32-TOOL FAIL'),
     # M212, M213 (SECURITY, WP-118): the exact numbers a fault case gives the host checker.
     # M212: any number of chains longer than their size is accepted once the case allows some.
     ("M212", "tools/fat32.py",
@@ -2396,6 +2546,14 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # from WP-127's red team: each copy's longer files are its own (M247, M248), the clusters lost
             # in both copies are pinned (M249), a name along one copy only is named (M250, M251).
             "M247", "M248", "M249", "M250", "M251",
+            # M6 tooling (WP-180): the isolated copy never takes a name that exists (M510) nor gives one to
+            # another file (M534), takes a sound source alone (M511, M525) and leaves no byte of the
+            # removed file (M513); `check` names two entries with one name (M515); `diff` passes only
+            # for the one named change of the one file, known by its bytes, between two sound volumes
+            # of one boot sector, length and name, with the entries in their order and the room the
+            # change leaves (M516 to M522, M527 to M533, M536, M537, M539); a name is ASCII (M538).
+            "M510", "M511", "M513", "M515", "M516", "M517", "M518", "M519", "M520", "M521", "M522", "M525",
+            "M527", "M528", "M529", "M530", "M531", "M532", "M533", "M534", "M536", "M537", "M538", "M539",
             # M6 (WP-124): a FAT write stops at its first refused write (M252, M253), and the hook
             # that shows it refuses one write alone (M254).
             "M252", "M253", "M254",
