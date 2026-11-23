@@ -1106,15 +1106,14 @@ class Fat32Derive(unittest.TestCase):
         aliased = self.tool.short_name("NEXT.BIN")
         for attr in (0x0F, 0x4F):
             with self.subTest(attr=hex(attr)):
-                self.edit_copy().close()
+                self.fresh_copy().close()
                 self.put_entry(self.dst, "/SYSTEM/APPS", self.long_name("clock.elf", aliased, attr), before="NEXT.BIN")
                 r = self.diff(self.src, self.dst, self.VOL)
                 self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
                 self.assertIn("B fails the check", self.diff_line(r))
                 self.assertIn("/SYSTEM/APPS: a long-name entry", r.stdout)
-                os.unlink(self.dst)
         # The first image as well: a judge of 8.3 names does not judge a volume that holds more.
-        self.edit_copy().close()
+        self.fresh_copy().close()
         self.put_entry(self.src, "/SYSTEM/APPS", self.long_name("clock.elf", aliased))
         self.differs("A fails the check")
 
@@ -1242,6 +1241,59 @@ class Fat32Derive(unittest.TestCase):
         r = self.refused(self.src, self.dst, "--remove", self.VOL)
         self.assertIn(f"/SYSTEM/APPS: {self.VOLUME_BIT}", r.stdout)
 
+    def entry_at(self, path, directory, slot):
+        img = self.tool.Image(path)
+        c = img.root_cluster if directory == "/" else img.entry_cluster(img.resolve(directory)[1])
+        e = bytes(img.read_cluster(c)[slot * 32:slot * 32 + 32])
+        img.close()
+        return e
+
+    def test_diff_fails_when_the_label_or_a_directorys_two_change(self):
+        # WP-180 (the third audit of the close lines, 2026-11-23): `check` holds the three
+        # entries its walk passes over to hold nothing, and does not ask that they be there. So
+        # `diff` compares them between the two images, byte for byte and in their order: without
+        # its label entry a copy showed mlabel no label where the first image has one, and
+        # fsck.fat named a directory without its two (local runs).
+        label = self.entry_at(self.src, "/", 0)
+        dot, dots = self.entry_at(self.src, "/SYSTEM/APPS", 0), self.entry_at(self.src, "/SYSTEM/APPS", 1)
+        self.assertEqual((label[11], dot[:11], dots[:11]), (0x08, b".          ", b"..         "))
+
+        def gone(e):
+            return b"\xE5" + e[1:]
+
+        def timed(e):
+            return e[:22] + b"\x21\x08\x21\x5B" + e[26:]
+        cases = [
+            ("the label deleted", [("/", 0, gone(label))]),
+            ("the label under the archive bit", [("/", 0, label[:11] + b"\x28" + label[12:])]),
+            ("the label at another time", [("/", 0, timed(label))]),
+            ("the label behind the other entries", [("/", 0, gone(label)), ("/", None, label)]),
+            ("a directory without its dot", [("/SYSTEM/APPS", 0, gone(dot))]),
+            ("a directory without its two dots", [("/SYSTEM/APPS", 1, gone(dots))]),
+            ("a dot at another time", [("/SYSTEM/APPS", 0, timed(dot))]),
+            ("two dots under the archive bit", [("/SYSTEM/APPS", 1, dots[:11] + b"\x30" + dots[12:])]),
+            ("a dot with a size", [("/SYSTEM/APPS", 0, dot[:28] + struct.pack("<I", 4096))]),
+        ]
+        for what, edits in cases:
+            with self.subTest(what=what):
+                self.fresh_copy().close()
+                for directory, slot, raw in edits:
+                    self.put_entry(self.dst, directory, raw, slot=slot)
+                # `check` asks nothing of these: the difference is `diff`'s to find.
+                self.assertEqual(run("check", self.dst).returncode, 0)
+                r = self.diff(self.src, self.dst, self.VOL)
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertNotIn("fails the check", self.diff_line(r))
+
+    def test_diff_fails_when_a_directorys_size_field_changes(self):
+        # A directory's entry holds no size; `check` does not read the field, and a copy with
+        # 4096 there passed `diff`, which took every directory's size for nothing.
+        img = self.edit_copy()
+        self.set_entry(img, "/SYSTEM", lambda e: struct.pack_into("<I", e, 28, 4096))
+        img.close()
+        self.assertEqual(run("check", self.dst).returncode, 0)
+        self.differs("differ=['/SYSTEM/']")
+
     def test_a_source_that_fails_the_check_is_not_derived_from(self):
         chain, _, _, _ = self.place(self.src, "/SYSTEM/APPS/NEXT.BIN")
         img = self.tool.Image(self.src, writable=True)
@@ -1348,6 +1400,12 @@ class Fat32Derive(unittest.TestCase):
                 self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
                 self.assertIn(why, self.diff_line(r))
 
+    def fresh_copy(self):
+        """A new derived copy at the destination, whatever an earlier form of the case left there."""
+        if os.path.lexists(self.dst):
+            os.unlink(self.dst)
+        return self.edit_copy()
+
     def edit_copy(self):
         self.assertEqual(run("derive", self.src, self.dst, "--remove", self.VOL).returncode, 0)
         self.assertEqual(self.diff(self.src, self.dst, self.VOL).returncode, 0)
@@ -1415,7 +1473,7 @@ class Fat32Derive(unittest.TestCase):
         img.make_dir(img.entry_cluster(img.resolve("/SYSTEM")[1]), "MORE")
         self.tool.finish(img)
         img.close()
-        self.differs("differ=['/SYSTEM/MORE/']")
+        self.differs("differ=['/SYSTEM/MORE/', '/SYSTEM/MORE/(.)', '/SYSTEM/MORE/(..)']")
 
     def test_diff_fails_when_the_replacement_sits_on_another_files_clusters(self):
         # A replacement written by hand into NEXT.BIN's clusters: the named file has its new
@@ -1541,7 +1599,7 @@ class Fat32Derive(unittest.TestCase):
         self.edit_copy().close()
         self.swap_entries(self.dst, "/", "SYSTEM", "A.TXT")
         self.differs("findings=['the entries lie in another order'] differ=[]")
-        # The replaced file's entry is to stay where the file's was.
+        # The replaced file's entry is to stay where the file's was among the entries.
         other, host = self.replaced_copy()
         self.swap_entries(other, "/SYSTEM/APPS", "CLOCK.ELF", "NEXT.BIN")
         self.differs("findings=['the entries lie in another order'] differ=[]", "--replaced-by", host, path=other)
@@ -1725,9 +1783,9 @@ class Fat32Derive(unittest.TestCase):
         before = set(os.listdir(self.dir))
         r = subprocess.run([sys.executable, "-I", script, TOOL, self.src, self.dst, self.VOL], capture_output=True, text=True)
         self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("KeyboardInterrupt", r.stderr)
         self.assertEqual(set(os.listdir(self.dir)) - before, {os.path.basename(self.dst)})
         self.assertEqual(os.stat(self.dst).st_nlink, 1)
+        self.assertIn("KeyboardInterrupt", r.stderr)
         self.assertEqual(run("check", self.dst).returncode, 0)
         self.assertEqual(self.diff(self.src, self.dst, self.VOL).returncode, 0)
         self.assertEqual(self.sha(self.src), self.src_sha)

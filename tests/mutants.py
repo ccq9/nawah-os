@@ -2254,7 +2254,7 @@ MUTANTS = [
      "        problems += [f\"FAT{fat}: {name} is not reached along this copy\" for name in sorted(reached - reached_o)]\n",
      "        pass\n",
      ["TST-M3-FAT32-TOOL"], "SECURITY: a directory whose chain is longer in the first FAT copy alone shows a name there that the second copy does not reach, and nothing names it: the host case fails, TST-M3-FAT32-TOOL FAIL"),
-    # M510..M550 (WP-180): the host tool's isolated copy (`derive`) and its judge (`diff`), each
+    # M510..M552 (WP-180): the host tool's isolated copy (`derive`) and its judge (`diff`), each
     # killed by a host case of TST-M3-FAT32-TOOL (class Fat32Derive). M510: a destination that
     # exists is replaced by the copy.
     ("M510", "tools/fat32.py",
@@ -2457,6 +2457,17 @@ MUTANTS = [
      " and e[:11] == img.label_raw",
      "",
      ["TST-M3-FAT32-TOOL"], "SECURITY: a copy whose root label names the volume otherwise than its boot sector passes `check`, and `diff` passes it though another reader shows another label than the first image has: test_an_entry_passed_over_is_the_label_or_one_of_a_directorys_two fails, TST-M3-FAT32-TOOL FAIL"),
+    # M551, M552 (WP-180, after the third audit of the close lines): what `check` passes over, and
+    # a directory's size field, `diff` compares. M551: the three entries are not listed again.
+    ("M551", "tools/fat32.py",
+     '                out.append((f"{path}/({display_name(e[:11])})", f"{raw}/({e[:11].hex()})", "passed over", bytes(e).hex(), 0, ""))\n',
+     "                pass\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` passes a copy whose label entry, or a directory's `.` or `..`, is gone, moved or changed, where another reader shows no label for one the first image has: test_diff_fails_when_the_label_or_a_directorys_two_change fails, TST-M3-FAT32-TOOL FAIL"),
+    # M552: a directory's size field is taken for nothing, as before.
+    ("M552", "tools/fat32.py",
+     '                out.append((name, key, "dir", meta, struct.unpack_from("<I", e, 28)[0], ""))\n',
+     '                out.append((name, key, "dir", meta, 0, ""))\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` passes a copy in which a directory's entry holds a size: test_diff_fails_when_a_directorys_size_field_changes fails, TST-M3-FAT32-TOOL FAIL"),
     # M212, M213 (SECURITY, WP-118): the exact numbers a fault case gives the host checker.
     # M212: any number of chains longer than their size is accepted once the case allows some.
     ("M212", "tools/fat32.py",
@@ -2608,10 +2619,11 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # volume that holds a long-name entry, under the mask of its attribute, fails `check` and
             # so is neither derived from nor passed by `diff` (M541, M542), and so does one that holds
             # another entry the walk passes over than the root's one label and a directory's `.` and
-            # `..` in their places, each holding nothing of its own (M545 to M550).
+            # `..` in their places, each holding nothing of its own (M545 to M550); `diff` compares those
+            # three as they stand and a directory's size field (M551, M552).
             "M510", "M511", "M513", "M515", "M516", "M517", "M518", "M519", "M520", "M521", "M522", "M525",
             "M527", "M528", "M529", "M530", "M531", "M532", "M533", "M534", "M536", "M537", "M538", "M539",
-            "M541", "M542", "M545", "M546", "M547", "M548", "M549", "M550",
+            "M541", "M542", "M545", "M546", "M547", "M548", "M549", "M550", "M551", "M552",
             # M6 (WP-124): a FAT write stops at its first refused write (M252, M253), and the hook
             # that shows it refuses one write alone (M254).
             "M252", "M253", "M254",

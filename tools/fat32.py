@@ -853,9 +853,10 @@ def derive_into(out, part, a, vol, data):
 
 
 def tree_list(img):
-    """(entries, stray). `entries` holds every entry of the tree as one item of a list: (path as
-    it reads, the raw names of the path, kind, the attributes and times, size, sha256 of the
-    bytes). A list, never a mapping by name: two entries with one name stay two items, and a
+    """(entries, stray). `entries` holds every live entry of the tree as one item of a list: (path
+    as it reads, the raw names of the path, kind, the attributes and times, size, sha256 of the
+    bytes); for the three kinds `check` passes over (the label, a directory's `.` and `..`) the
+    item holds the entry's 32 bytes instead, and a directory's item holds its size field. A list, never a mapping by name: two entries with one name stay two items, and a
     name is known by its eleven raw bytes, as a reader of the volume compares it, not by how it
     reads. `stray` names the directories that hold a byte in or after their end mark: no
     reader meets what lies there until the next entry made in that directory uncovers it."""
@@ -871,12 +872,19 @@ def tree_list(img):
                     stray.append(path or "/")
                 ended = True
                 continue
-            if e[0] == 0xE5 or e[11] == ATTR_LFN or e[11] & 0x08 or e[:1] == b".":
+            if e[0] == 0xE5 or (e[11] & 0x3F) == ATTR_LFN:
+                continue
+            if e[11] & 0x08 or e[:1] == b".":
+                # The label and a directory's two. `check` holds them to hold nothing and does not
+                # ask that they be there, so they are listed as they stand, every byte of the
+                # entry, each in its order among the others.
+                out.append((f"{path}/({display_name(e[:11])})", f"{raw}/({e[:11].hex()})", "passed over", bytes(e).hex(), 0, ""))
                 continue
             name, key = f"{path}/{display_name(e[:11])}", f"{raw}/{e[:11].hex()}"
             meta = (e[11:20] + e[22:26]).hex()
             if e[11] & ATTR_DIR:
-                out.append((name, key, "dir", meta, 0, ""))
+                # A directory's entry holds no size: the field is listed, so one that does differs.
+                out.append((name, key, "dir", meta, struct.unpack_from("<I", e, 28)[0], ""))
                 walk(name, key, img.entry_cluster(e), depth + 1)
                 continue
             size = struct.unpack_from("<I", e, 28)[0]
@@ -913,18 +921,19 @@ def cmd_diff(a):
     size and bytes under the attributes and times it has on A, and other bytes than on A;
     every other entry is the same on both (path by raw name, kind, attributes, times, size and
     bytes), compared as whole entries, never merged by name, and lying in the same order, the
-    replaced file's entry where the file's was; B has the free clusters A has, more or fewer by
+    replaced file's entry among them where the file's was (the order of the live entries is
+    compared, not the slot each stands in); B has the free clusters A has, more or fewer by
     what the change frees and takes; both images have one length, one boot sector and one name
     each, both pass `check` (so neither holds a live entry this judge passes over and another
     reader would show: a long name, an entry under the volume bit other than the root's one
     label, a name that begins with a dot other than a directory's two in their places), and
     no directory of either holds a byte after its end mark. Its
     line names both images by their sha256 (read before the judging, in a read of its own). Not compared, and not what a reader of files meets
-    but for the first: which clusters a file sits on, the bytes of free clusters and those
-    past a file's size in its last cluster, deleted entries, the times of the volume's label
-    entry and of the `.` and `..` entries (what `check` asks of the three is their place, that
-    they hold nothing, and of the label the name the boot sector gives), FSInfo and the other
-    reserved sectors. Exit 1 with what was found
+    but for the first: which clusters a file sits on, which slot of its directory a live entry
+    stands in, the bytes of free clusters and those past a file's size in its last cluster,
+    deleted entries, FSInfo and the other reserved sectors. The label entry and a directory's `.` and `..`, which `check` holds to hold
+    nothing and does not ask to be there, are compared as they stand: the 32 bytes of each
+    and its order among the live entries; a directory's entry is compared with its size field. Exit 1 with what was found
     otherwise; 2 when an image or FILE cannot be read or VOL is no path of 8.3 names."""
     try:
         names = [short_name(p) for p in a.expect_only.strip("/").split("/")]
