@@ -1,0 +1,18 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261123T131127Z-29135de4-001-a",
+ "test_id": "TST-M6-ENDED-REPLY",
+ "verdict": "PASS",
+ "oracle": "session.md v1.12, services.md v1.17 (END_SESSION) and v1.21 (WP-178, L-145) on the host, user/nawah-apps/tests/ended.rs (3 tests): nawah_apps::ended_count, by which the session reads the manager's answer to END_SESSION, takes ENDED <n> in the manager's own form alone: one to ten ASCII digits after the single space, no sign, no padding, no leading zero but 0 itself, nothing after them and a value within u32; the six written examples give their counts (0, 1, 2, 8, 16, 4294967295), every count from 0 to 4096 and five larger ones written as the manager writes them (no sign, no padding, no leading zero) is read back, and 34 other replies are refused: the empty reply, ENDED alone and with one or two spaces and no count, a letter before, after or in place of the digits, a space or a second number after the count, two spaces before it, a line feed or a NUL after it, a tab for the space, no space, a sign, 00 and 02, 0x2, 2.0, 4294967296 and twenty nines, another case of the word, a byte before the word, a colon, ENDING, the manager's other answers (OK, BEGUN, ERR ACCESS, OK app:deaf#1), an Arabic-Indic digit and the byte 0xFF. The session's own use of it (a reply refused traces session|jobs=refused and leaves the end unconfirmed) stands by reading: no guest case makes the manager write a malformed answer (L-102)",
+ "expected": "exit 0 + 'test result: ok. 3 passed; 0 failed'",
+ "observed": "exit=0; tail=     Running tests/ended.rs (target/x86_64-unknown-linux-gnu/release/deps/ended-c486add5ced95f7f)",
+ "inputs_digest": "4826d6a60882a62078633ed9cc013546545122e51f6916578186613e87cfdb21",
+ "inputs": {
+  "user/nawah-apps/Cargo.toml": "ddeeb95177646a2251395ae93046ca22b49a0bea80927cb6d10c5c6d8f20b6e9",
+  "user/nawah-apps/tests/ended.rs": "72b8bd583e6883a29170deb7401c7242950912f5e8c0ee909fe3dbe73afc8157",
+  "docs/contracts/session.md": "9224f0385ed0cb34d339fecdccc804b30d567b8a5b80bc20c06e65d543f3e9fb",
+  "docs/contracts/services.md": "34f0b9bab5f268d0c8fd7741bb022da961261939e78a1d5d89c1def16f816860",
+  "user/nawah-apps/src/lib.rs": "634bb0f63ce46a3de0133939975eed3071169df89bc6367c5c49b90581d72033"
+ },
+ "claim_tag": "source_backed_fact"
+}

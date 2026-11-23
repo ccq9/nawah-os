@@ -1,0 +1,1 @@
+python3 -I tests/mutants.py --target pc-qemu --stage M3 --report build/mutants-m3-report.json

@@ -1,0 +1,19 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261017T210942Z-9f580295-001",
+ "started_at": "2026-10-17T21:09:42+00:00",
+ "finished_at": "2026-10-17T21:09:45+00:00",
+ "source_revision": "9f58029599e8cde4574930b6833cfa210dc3781d",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.18.44-fc-v139",
+  "machine": "x86_64"
+ },
+ "target": "pc-qemu",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M1-BOOT",
+ "commands": [
+  "qemu-system-x86_64 -machine q35 -cpu qemu64 -m 512M -smp 1 -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd -drive if=pflash,format=raw,file=/home/claude/nawah-os/build/pc-qemu/OVMF_VARS.fd -drive format=raw,file=fat:rw:/home/claude/nawah-os/build/pc-qemu/esp -serial file:/home/claude/nawah-os/evidence/20261017T210942Z-9f580295-001/serial.log -display none -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04"
+ ],
+ "exit_code": 33
+}
