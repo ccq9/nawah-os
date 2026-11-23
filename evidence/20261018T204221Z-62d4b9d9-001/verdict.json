@@ -1,0 +1,15 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261018T204221Z-62d4b9d9-001",
+ "test_id": "TST-M5-LAB-TOOL",
+ "verdict": "PASS",
+ "oracle": "the lab's monitor driver (run_qemu_monitored) against a fake QEMU that writes serial markers over time and serves a monitor socket: a single-step case sends its commands once its marker appears with ${SCREEN} resolved; ordered steps are each sent once their own marker appears, in order, and a later step never fires on an earlier marker; a marker that never appears sends nothing and the run is killed at the timeout; host-check arguments take ${SERIAL:key} (last value), ${SERIAL_FIRST:key} (first value) and ${EVIDENCE} (the run's directory) (5 cases, OK)",
+ "expected": "exit 0 + 'OK'",
+ "observed": "exit=0; tail=OK",
+ "inputs_digest": "d92aeb770552c8dd7c015a6424361420b84b0dd3e90a07b705ab50a71c905b33",
+ "inputs": {
+  "tests/test_monitor_steps.py": "c8299cb6947a139023613be57803bf8e9be12f5bfc8d7826657ea90fd157eed4",
+  "tools/project.py": "f3f21f889a784d9baeb8a9bca4cc1903ac289c4f089f96758846b403d84d1646"
+ },
+ "claim_tag": "source_backed_fact"
+}

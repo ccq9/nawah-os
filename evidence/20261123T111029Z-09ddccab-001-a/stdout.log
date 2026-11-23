@@ -1,0 +1,9 @@
+$ cargo test --offline --release -p nawah-apps --target x86_64-unknown-linux-gnu --test ended
+
+running 3 tests
+test anything_but_the_managers_form_is_refused ... ok
+test the_managers_form_is_taken_with_its_count ... ok
+test every_count_the_manager_writes_is_read_back ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
