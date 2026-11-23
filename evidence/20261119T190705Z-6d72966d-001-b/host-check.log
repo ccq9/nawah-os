@@ -1,0 +1,4 @@
+$ python3 -I tools/transcript.py check /home/runner/work/nawah-os/nawah-os/evidence/20261119T190705Z-6d72966d-001-b platform/pc-qemu/expect/window-title.txt
+serial.log: 16 narrator lines as expected
+
+[exit 0]
