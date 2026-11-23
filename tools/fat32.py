@@ -680,11 +680,15 @@ def check_image(img, a):
 def cmd_derive(a):
     """An isolated copy of the volume SRC at the new path DST, with the one file VOL removed
     (--remove VOL) or holding the bytes of the host file FILE (--replace VOL=FILE). SRC is
-    opened once, for reading. The copy is made in an unnamed working file beside DST (its name,
-    .derive-*, is never opened again), checked as it was copied, changed, checked again, and
-    only then given the name DST by a hard link, which no existing path takes: a file, a link
-    to SRC, a link to nowhere. So DST names a finished and checked copy or nothing, whenever
-    the call ends or is killed. A removed file's entry is cleared to the deleted mark and its
+    opened once, for reading. The copy is made in a working file beside DST that has a name
+    of its own, .derive-* (made by mkstemp and never opened again by that name), checked as
+    it was copied, changed, checked again, synced, and only then given the name DST by a hard
+    link, which no existing path takes: a file, a link to SRC, a link to nowhere. So a call
+    that is refused or fails, or whose process ends before the link, leaves nothing under
+    DST, and DST is given to a finished and checked copy alone. This is no promise against a
+    loss of power or a crash of the host: the directory is not synced, so after one the name
+    DST may be missing, or the copy may stand under both names. A removed file's entry is
+    cleared to the deleted mark and its
     clusters are freed in every FAT copy and zeroed; a replaced file's entry stays in its place
     with its name, attributes and times, and takes the new size and chain. Refused, exit 2: a
     DST that exists or has no directory, a SRC that is no file or fails `check`, a VOL that is
