@@ -1630,14 +1630,18 @@ class KillEvidence(unittest.TestCase):
         self.assertIn("\ndeps=display\n", (ROOT / "platform" / "pc-qemu" / "lab" / "deaf.app").read_text(encoding="utf-8"))
 
     def test_the_isolated_copy_mutants_are_pinned(self):
-        """WP-180: M510..M540 mutate the host tool's `derive` and `diff` (tools/fat32.py), each
-        killed by the host case TST-M3-FAT32-TOOL and naming the test that fails; the ones that
-        would let a verdict stand on the wrong disk are SECURITY; none is expected to survive."""
+        """WP-180: M510..M550 mutate the host tool's `derive` and `diff` and what `check` names for
+        them (tools/fat32.py), each killed by the host case TST-M3-FAT32-TOOL and naming the test
+        that fails; the ones that would let a verdict stand on the wrong disk are SECURITY (a
+        volume that holds an entry the walk passes over, other than the root's one label and a
+        directory's two dot entries in their places, is one: M541, M542, M545 to M550); none is
+        expected to survive."""
         tool = (ROOT / "tools" / "fat32.py").read_text(encoding="utf-8")
         tests = (ROOT / "tests" / "test_fat32_tool.py").read_text(encoding="utf-8")
         security = {"M510", "M511", "M513", "M515", "M516", "M517", "M518", "M519", "M520", "M521", "M522", "M525",
-                    "M527", "M528", "M529", "M530", "M531", "M532", "M533", "M534", "M536", "M537", "M538", "M539"}
-        ids = [f"M{n}" for n in range(510, 541)]
+                    "M527", "M528", "M529", "M530", "M531", "M532", "M533", "M534", "M536", "M537", "M538", "M539",
+                    "M541", "M542", "M545", "M546", "M547", "M548", "M549", "M550"}
+        ids = [f"M{n}" for n in range(510, 551)]
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if m[0] in ids), ids)
         for mid in ids:
             with self.subTest(mutant=mid):

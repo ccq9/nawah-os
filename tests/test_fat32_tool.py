@@ -795,8 +795,10 @@ class Fat32Check(unittest.TestCase):
 class Fat32Derive(unittest.TestCase):
     """WP-180: `derive` makes an isolated copy of a volume with one file removed or replaced
     and never writes the source; `diff --expect-only` passes only when that one file is what
-    differs between two volumes at the level of the file system (the tree, the attributes
-    and the contents), whatever the metadata sectors hold."""
+    differs between two volumes as their 8.3 entries show them (the tree, the attributes, the
+    times and the contents), whatever the metadata sectors hold; a volume that holds a live
+    entry the walk passes over, other than the root's one label and a directory's `.` and
+    `..` in their places, fails `check`, so neither command takes it."""
 
     VOL = "/SYSTEM/APPS/CLOCK.ELF"
     OTHERS = ["/A.TXT", "/SYSTEM/APPS/NEXT.BIN", "/SYSTEM/TAIL.TXT"]
@@ -1024,6 +1026,221 @@ class Fat32Derive(unittest.TestCase):
         r = self.refused(self.src, self.dst, "--remove", self.VOL)
         self.assertIn("a second entry of this name", r.stdout)
         self.refused(self.src, self.dst, "--remove", "/A.TXT")
+
+    @staticmethod
+    def long_name(name, short, attr=0x0F, first=0x41):
+        """One long-name entry, the only one of its set, for the raw short name `short`: the name
+        `name` in UTF-16 over three fields, the short name's checksum at 13, the attribute at
+        11. Put in the slot before that short name's entry, it gives it the long name."""
+        s = 0
+        for b in short:
+            s = (((s & 1) << 7) + (s >> 1) + b) & 0xFF
+        u = (name.encode("utf-16-le") + b"\0\0").ljust(26, b"\xff")
+        e = bytearray(32)
+        e[0], e[11], e[13] = first, attr, s
+        e[1:11], e[14:26], e[28:32] = u[0:10], u[10:22], u[22:26]
+        return bytes(e)
+
+    def put_entry(self, path, directory, raw, before=None, slot=None):
+        """Writes the 32 bytes `raw` into `directory` of the image at `path`: into the slot
+        before the entry named `before`, which must hold a deleted entry; over the entry in
+        `slot`; or into the first slot after the directory's last entry."""
+        img = self.tool.Image(path, writable=True)
+        c = img.root_cluster if directory == "/" else img.entry_cluster(img.resolve(directory)[1])
+        data = bytearray(img.read_cluster(c))
+        if before:
+            at, i, _ = img.lookup(c, before)
+            self.assertEqual(at, c)
+            i -= 1
+            self.assertEqual(data[i * 32], 0xE5)
+        elif slot is not None:
+            i = slot
+            self.assertNotIn(data[i * 32], (0, 0xE5))
+        else:
+            i = next(k for k in range(len(data) // 32) if data[k * 32] == 0)
+        data[i * 32:i * 32 + 32] = raw
+        img.write_cluster(c, bytes(data))
+        img.close()
+
+    def test_a_long_name_entry_is_a_problem_check_names(self):
+        # WP-180 (the red team, 2026-11-23): this tool and the kernel read 8.3 names alone, so a
+        # volume that holds a long name shows a reader of long names another tree than theirs.
+        # A long name's attribute is 0x0F under the mask 0x3F: the two bits above it do not
+        # make it anything else.
+        aliased = self.tool.short_name("NEXT.BIN")
+        for directory, attr in (("/SYSTEM/APPS", 0x0F), ("/SYSTEM/APPS", 0x4F), ("/SYSTEM/APPS", 0x8F),
+                                ("/SYSTEM/APPS", 0xCF), ("/", 0x0F)):
+            with self.subTest(directory=directory, attr=hex(attr)):
+                work = os.path.join(self.dir, "long.img")
+                shutil.copyfile(self.src, work)
+                self.put_entry(work, directory, self.long_name("clock.elf", aliased, attr))
+                for mode in ([], ["--faulted"]):
+                    r = run("check", *mode, work)
+                    self.assertEqual(r.returncode, 1, r.stdout)
+                    self.assertIn(f"{directory}: a long-name entry", r.stdout)
+                    # The finding is the entry: nothing is called lost for it.
+                    self.assertNotIn("lost clusters", r.stdout)
+                os.unlink(work)
+
+    def test_a_deleted_long_name_entry_is_no_problem(self):
+        # A deleted entry is read by no one, whatever its attribute says.
+        deleted = self.long_name("clock.elf", self.tool.short_name("NEXT.BIN"), first=0xE5)
+        self.put_entry(self.src, "/SYSTEM/APPS", deleted)
+        self.src_sha = self.sha(self.src)
+        self.assertEqual(run("check", self.src).returncode, 0)
+        self.assertEqual(run("derive", self.src, self.dst, "--remove", self.VOL).returncode, 0)
+        self.assertEqual(self.diff(self.src, self.dst, self.VOL).returncode, 0)
+
+    def test_a_source_that_holds_a_long_name_is_not_derived_from(self):
+        self.put_entry(self.src, "/SYSTEM/APPS", self.long_name("clock.elf", self.tool.short_name("NEXT.BIN")))
+        self.src_sha = self.sha(self.src)
+        r = self.refused(self.src, self.dst, "--remove", self.VOL)
+        self.assertIn("/SYSTEM/APPS: a long-name entry", r.stdout)
+        self.refused(self.src, self.dst, "--replace", f"/A.TXT={self.host_file('good.bin', b'g')}")
+
+    def test_diff_fails_for_an_image_that_holds_a_long_name(self):
+        # The red team's copy: `derive` leaves the removed file's slot deleted, and one long-name
+        # entry written there gives NEXT.BIN the removed file's name for a reader of long names
+        # (locally, `mtype ::/SYSTEM/APPS/clock.elf` printed NEXT.BIN's bytes), while every 8.3
+        # entry and every byte of a file is what `diff` expects of a removal.
+        aliased = self.tool.short_name("NEXT.BIN")
+        for attr in (0x0F, 0x4F):
+            with self.subTest(attr=hex(attr)):
+                self.edit_copy().close()
+                self.put_entry(self.dst, "/SYSTEM/APPS", self.long_name("clock.elf", aliased, attr), before="NEXT.BIN")
+                r = self.diff(self.src, self.dst, self.VOL)
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn("B fails the check", self.diff_line(r))
+                self.assertIn("/SYSTEM/APPS: a long-name entry", r.stdout)
+                os.unlink(self.dst)
+        # The first image as well: a judge of 8.3 names does not judge a volume that holds more.
+        self.edit_copy().close()
+        self.put_entry(self.src, "/SYSTEM/APPS", self.long_name("clock.elf", aliased))
+        self.differs("A fails the check")
+
+    def dot_named(self, path, vol, raw=b".CLK    ELF"):
+        """VOL's own entry under a raw name that begins with a dot: the same chain, size and times."""
+        _, _, _, e = self.place(path, vol)
+        return raw + bytes(e[11:])
+
+    def test_a_name_that_begins_with_a_dot_is_a_problem_check_names(self):
+        # The two entries a directory begins with are the only names with a dot at their head
+        # that every reader passes over. Another one is a file for a reader that lists it and
+        # nothing for `check`, for `diff` and for the kernel, which pass over it: here it sits
+        # on NEXT.BIN's chain, so no cluster is lost for it.
+        for directory in ("/SYSTEM/APPS", "/"):
+            with self.subTest(directory=directory):
+                work = os.path.join(self.dir, "dot.img")
+                shutil.copyfile(self.src, work)
+                self.put_entry(work, directory, self.dot_named(work, "/SYSTEM/APPS/NEXT.BIN"))
+                for mode in ([], ["--faulted"]):
+                    r = run("check", *mode, work)
+                    self.assertEqual(r.returncode, 1, r.stdout)
+                    self.assertIn(f"{directory}: a name that begins with a dot", r.stdout)
+                    self.assertNotIn("lost clusters", r.stdout)
+                os.unlink(work)
+
+    def test_an_image_with_a_dot_name_is_neither_derived_from_nor_passed(self):
+        # In the slot `derive` cleared: every entry the walk reads and every byte of a file is
+        # what `diff` expects of the removal, while a reader that lists the name (locally,
+        # mtools) reads NEXT.BIN's bytes under it.
+        self.edit_copy().close()
+        self.put_entry(self.dst, "/SYSTEM/APPS", self.dot_named(self.dst, "/SYSTEM/APPS/NEXT.BIN"), before="NEXT.BIN")
+        r = self.diff(self.src, self.dst, self.VOL)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("B fails the check", self.diff_line(r))
+        self.assertIn("/SYSTEM/APPS: a name that begins with a dot", r.stdout)
+        os.unlink(self.dst)
+        # The first image as well, and the same volume as a source.
+        self.edit_copy().close()
+        self.put_entry(self.src, "/SYSTEM/APPS", self.dot_named(self.src, "/SYSTEM/APPS/NEXT.BIN"))
+        self.differs("A fails the check")
+        os.unlink(self.dst)
+        self.src_sha = self.sha(self.src)
+        r = self.refused(self.src, self.dst, "--remove", self.VOL)
+        self.assertIn("/SYSTEM/APPS: a name that begins with a dot", r.stdout)
+
+    @staticmethod
+    def raw_entry(name, attr, first, size):
+        e = bytearray(32)
+        e[0:11], e[11] = name, attr
+        struct.pack_into("<H", e, 20, first >> 16)
+        struct.pack_into("<H", e, 26, first & 0xFFFF)
+        struct.pack_into("<I", e, 28, size)
+        return bytes(e)
+
+    VOLUME_BIT = "an entry that carries the volume bit and is not the root's one label"
+    DOT_NAME = "a name that begins with a dot and is not one of a directory's two in their places"
+
+    def test_an_entry_passed_over_is_the_label_or_one_of_a_directorys_two(self):
+        # WP-180 (the red team's second round, 2026-11-23): what the walk passes over it does
+        # not claim the clusters of. So each kind is passed over in the one form that holds
+        # nothing of its own: the root's one label (no directory, no cluster, no size, the name
+        # the boot sector gives the volume, which `diff` compares), a directory's `.` in its
+        # first slot on the directory itself, its `..` in the second on its parent (0 under the
+        # root). Anything else of these kinds is a problem. On NEXT.BIN's chain, fsck.fat called
+        # such an entry a file that shares clusters and mdir listed a `.` of 1500 bytes; under
+        # another name, mlabel showed another label than the first image's (local runs).
+        chain, _, _, _ = self.place(self.src, "/SYSTEM/APPS/NEXT.BIN")
+        first, size, root = chain[0], 1500, 2
+        img = self.tool.Image(self.src)
+        system, apps = (img.entry_cluster(img.resolve(d)[1]) for d in ("/SYSTEM", "/SYSTEM/APPS"))
+        img.close()
+        raw, dot, dots = self.raw_entry, b".          ", b"..         "
+        cases = [(f"a file under the volume bit ({attr:#x})", "/SYSTEM/APPS", None, raw(b"CLOCK   ELF", attr, first, size), self.VOLUME_BIT)
+                 for attr in (0x08, 0x18, 0x28, 0x48, 0x88, 0x1F, 0x2F, 0x3F)]
+        cases += [
+            ("a second label", "/", None, raw(b"SECOND     ", 0x08, 0, 0), self.VOLUME_BIT),
+            ("the label on a file's chain", "/", 0, raw(b"NAWAHLAB   ", 0x08, first, size), self.VOLUME_BIT),
+            ("the label with a size", "/", 0, raw(b"NAWAHLAB   ", 0x08, 0, 5), self.VOLUME_BIT),
+            ("the label under another name than the boot sector's", "/", 0, raw(b"EVIL       ", 0x08, 0, 0), self.VOLUME_BIT),
+            ("the label as a directory", "/", 0, raw(b"NAWAHLAB   ", 0x18, 0, 0), self.VOLUME_BIT),
+            ("a label under a directory", "/SYSTEM", None, raw(b"LABEL      ", 0x08, 0, 0), self.VOLUME_BIT),
+            ("a dot in the root", "/", None, raw(dot, 0x10, root, 0), self.DOT_NAME),
+            ("a dot file in the root", "/", None, raw(dot, 0x20, first, size), self.DOT_NAME),
+            ("two dots in the root", "/", None, raw(dots, 0x10, 0, 0), self.DOT_NAME),
+            ("a third dot entry", "/SYSTEM/APPS", None, raw(dot, 0x10, apps, 0), self.DOT_NAME),
+            ("a third two-dots entry", "/SYSTEM/APPS", None, raw(dots, 0x10, system, 0), self.DOT_NAME),
+            ("a dot that is a file", "/SYSTEM/APPS", 0, raw(dot, 0x20, apps, 0), self.DOT_NAME),
+            ("a dot on another directory", "/SYSTEM/APPS", 0, raw(dot, 0x10, system, 0), self.DOT_NAME),
+            ("a dot on a file's chain", "/SYSTEM/APPS", 0, raw(dot, 0x10, first, 0), self.DOT_NAME),
+            ("two dots that are a file", "/SYSTEM/APPS", 1, raw(dots, 0x20, system, 0), self.DOT_NAME),
+            ("two dots on the root's number", "/SYSTEM/APPS", 1, raw(dots, 0x10, root, 0), self.DOT_NAME),
+            ("two dots on a file's chain", "/SYSTEM/APPS", 1, raw(dots, 0x10, first, 0), self.DOT_NAME),
+            ("two dots under the root on a child", "/SYSTEM", 1, raw(dots, 0x10, apps, 0), self.DOT_NAME),
+        ]
+        for what, directory, slot, entry, finding in cases:
+            with self.subTest(what=what):
+                work = os.path.join(self.dir, "passed.img")
+                shutil.copyfile(self.src, work)
+                self.put_entry(work, directory, entry, slot=slot)
+                for mode in ([], ["--faulted"]):
+                    r = run("check", *mode, work)
+                    self.assertEqual(r.returncode, 1, r.stdout)
+                    self.assertIn(f"{directory}: {finding}", r.stdout)
+                    self.assertNotIn("lost clusters", r.stdout)
+                os.unlink(work)
+
+    def test_an_image_with_a_file_under_the_volume_bit_is_neither_derived_from_nor_passed(self):
+        # In the slot `derive` cleared, under the removed file's own name: no reader of 8.3 names
+        # here lists it, the walk claimed nothing for it, and `diff` passed the copy.
+        chain, _, _, _ = self.place(self.src, "/SYSTEM/APPS/NEXT.BIN")
+        hidden = self.raw_entry(b"CLOCK   ELF", 0x08, chain[0], 1500)
+        self.edit_copy().close()
+        self.put_entry(self.dst, "/SYSTEM/APPS", hidden, before="NEXT.BIN")
+        r = self.diff(self.src, self.dst, self.VOL)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("B fails the check", self.diff_line(r))
+        self.assertIn(f"/SYSTEM/APPS: {self.VOLUME_BIT}", r.stdout)
+        os.unlink(self.dst)
+        # The first image as well, and the same volume as a source.
+        self.edit_copy().close()
+        self.put_entry(self.src, "/SYSTEM/APPS", hidden)
+        self.differs("A fails the check")
+        os.unlink(self.dst)
+        self.src_sha = self.sha(self.src)
+        r = self.refused(self.src, self.dst, "--remove", self.VOL)
+        self.assertIn(f"/SYSTEM/APPS: {self.VOLUME_BIT}", r.stdout)
 
     def test_a_source_that_fails_the_check_is_not_derived_from(self):
         chain, _, _, _ = self.place(self.src, "/SYSTEM/APPS/NEXT.BIN")
@@ -1488,6 +1705,32 @@ class Fat32Derive(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(os.stat(self.dst).st_nlink, 1)
         self.assertEqual(self.diff(self.src, self.dst, self.VOL).returncode, 0)
+
+    def test_an_interrupt_after_the_link_leaves_the_finished_copy_alone(self):
+        # The copy is given its name before the working name goes. An interrupt between the two
+        # ends the call with the interrupt's own failure, and the clean-up still runs: the
+        # finished, checked copy stands under the destination's name alone. (A kill by another
+        # signal there runs no clean-up and leaves two names; no case tries that.)
+        script = self.host_file("interrupt.py", (
+            "import importlib.util, os, sys\n"
+            "spec = importlib.util.spec_from_file_location('fat32_tool', sys.argv[1])\n"
+            "tool = importlib.util.module_from_spec(spec)\n"
+            "spec.loader.exec_module(tool)\n"
+            "link = os.link\n"
+            "def linked(*a, **k):\n"
+            "    link(*a, **k)\n"
+            "    raise KeyboardInterrupt\n"
+            "os.link = linked\n"
+            "sys.exit(tool.main(['derive', sys.argv[2], sys.argv[3], '--remove', sys.argv[4]]))\n").encode())
+        before = set(os.listdir(self.dir))
+        r = subprocess.run([sys.executable, "-I", script, TOOL, self.src, self.dst, self.VOL], capture_output=True, text=True)
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("KeyboardInterrupt", r.stderr)
+        self.assertEqual(set(os.listdir(self.dir)) - before, {os.path.basename(self.dst)})
+        self.assertEqual(os.stat(self.dst).st_nlink, 1)
+        self.assertEqual(run("check", self.dst).returncode, 0)
+        self.assertEqual(self.diff(self.src, self.dst, self.VOL).returncode, 0)
+        self.assertEqual(self.sha(self.src), self.src_sha)
 
     def in_process(self, hook):
         """`derive --remove` in this process, `hook` run once when the file's chain is freed."""

@@ -2254,7 +2254,7 @@ MUTANTS = [
      "        problems += [f\"FAT{fat}: {name} is not reached along this copy\" for name in sorted(reached - reached_o)]\n",
      "        pass\n",
      ["TST-M3-FAT32-TOOL"], "SECURITY: a directory whose chain is longer in the first FAT copy alone shows a name there that the second copy does not reach, and nothing names it: the host case fails, TST-M3-FAT32-TOOL FAIL"),
-    # M510..M540 (WP-180): the host tool's isolated copy (`derive`) and its judge (`diff`), each
+    # M510..M550 (WP-180): the host tool's isolated copy (`derive`) and its judge (`diff`), each
     # killed by a host case of TST-M3-FAT32-TOOL (class Fat32Derive). M510: a destination that
     # exists is replaced by the copy.
     ("M510", "tools/fat32.py",
@@ -2404,6 +2404,59 @@ MUTANTS = [
      '                    strict.append(f"{name}: a second entry of this name in its directory")\n',
      '                    strict.append(f"{name}: a second entry of this name in its directory")\n                    continue\n',
      ["TST-M3-FAT32-TOOL"], '`check` calls the clusters of a second entry of a name lost, and counts them among the lost clusters a faulted case pins: test_two_entries_with_one_name_are_reported_and_not_derived_from fails, TST-M3-FAT32-TOOL FAIL'),
+    # M541..M550 (WP-180, after the red team of the close lines, 2026-11-23): an entry the walk passes
+    # over is a problem `check` names unless it is the root's one label or a directory's `.` or `..`
+    # in its place (a long name: M541 to M543; a dot name: M545, M547, M548; the volume bit: M546, M549, M550), so `derive` refuses such a source and `diff` fails for either image
+    # that holds one. M541: the finding is gone, and a long name passes as it did before.
+    ("M541", "tools/fat32.py",
+     "                        strict.append(f\"{path or '/'}: a long-name entry, which no reader of 8.3 names sees\")\n",
+     "                        pass\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` passes a volume that holds a long-name entry, so `derive` takes it for a source and `diff` passes a copy in which a long name gives another file the name of the removed one: test_a_long_name_entry_is_a_problem_check_names fails, TST-M3-FAT32-TOOL FAIL"),
+    # M542: the attribute is compared whole, so the two bits above the mask hide a long name.
+    ("M542", "tools/fat32.py",
+     "                if (e[11] & 0x3F) == ATTR_LFN:\n",
+     "                if e[11] == ATTR_LFN:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a long-name entry whose attribute carries a bit above the mask (0x4F, 0x8F, 0xCF) is skipped as the label is, and the volume passes `check`: test_a_long_name_entry_is_a_problem_check_names fails at its second attribute, TST-M3-FAT32-TOOL FAIL"),
+    # M543: a deleted long-name entry is called a problem as a live one is.
+    ("M543", "tools/fat32.py",
+     "                if e[0] == 0xE5:\n                    continue\n                if (e[11] & 0x3F) == ATTR_LFN:\n",
+     "                if e[0] == 0xE5 and (e[11] & 0x3F) != ATTR_LFN:\n                    continue\n                if (e[11] & 0x3F) == ATTR_LFN:\n",
+     ["TST-M3-FAT32-TOOL"], "a deleted long-name entry, which no reader reads, is called a problem: test_a_deleted_long_name_entry_is_no_problem fails, TST-M3-FAT32-TOOL FAIL"),
+    # M544: an interrupt after the link ends the process before the working name is removed.
+    ("M544", "tools/fat32.py",
+     "            return derive_into(out, part, a, vol, data)\n        finally:\n",
+     "            return derive_into(out, part, a, vol, data)\n        except KeyboardInterrupt:\n            os._exit(130)\n        finally:\n",
+     ["TST-M3-FAT32-TOOL"], "an interrupt after the link ends `derive` with no clean-up, and the finished copy stands under two names: test_an_interrupt_after_the_link_leaves_the_finished_copy_alone fails, TST-M3-FAT32-TOOL FAIL"),
+    # M545: every name that begins with a dot is passed over, as the two of a directory are.
+    ("M545", "tools/fat32.py",
+     "                    if not (parent is not None and e[11] & ATTR_DIR and own):\n",
+     "                    if False:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` passes a volume on which a name that begins with a dot gives a reader that lists it a file this tool and the kernel pass over, so `derive` takes it for a source and `diff` passes such a copy: test_a_name_that_begins_with_a_dot_is_a_problem_check_names fails, TST-M3-FAT32-TOOL FAIL"),
+    # M546: every entry under the volume bit is passed over, as the root's one label is.
+    ("M546", "tools/fat32.py",
+     "                    if parent is None and not labelled and not e[11] & ATTR_DIR and e[:11] == img.label_raw and img.entry_cluster(e) == 0 and e[28:32] == bytes(4):\n",
+     "                    if True:\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `check` passes a volume on which an entry under the volume bit sits on a live chain, which a checker that reads it as a file calls shared, so `derive` takes it for a source and `diff` passes such a copy: test_an_entry_passed_over_is_the_label_or_one_of_a_directorys_two fails, TST-M3-FAT32-TOOL FAIL"),
+    # M547: what the second entry of a directory holds is not compared with the directory above.
+    ("M547", "tools/fat32.py",
+     '                           or e[:11] == b"..         " and slot == 1 and img.entry_cluster(e) == parent)\n',
+     '                           or e[:11] == b"..         " and slot == 1)\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a `..` that names another cluster than the directory above, a live chain included, is passed over unread and unclaimed: test_an_entry_passed_over_is_the_label_or_one_of_a_directorys_two fails, TST-M3-FAT32-TOOL FAIL"),
+    # M548: what the first entry of a directory holds is not compared with the directory itself.
+    ("M548", "tools/fat32.py",
+     '                    own = (e[:11] == b".          " and slot == 0 and img.entry_cluster(e) == first\n',
+     '                    own = (e[:11] == b".          " and slot == 0\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a `.` that names another cluster than its directory, a live chain included, is passed over unread and unclaimed: test_an_entry_passed_over_is_the_label_or_one_of_a_directorys_two fails, TST-M3-FAT32-TOOL FAIL"),
+    # M549: the root's label may hold a chain and a size.
+    ("M549", "tools/fat32.py",
+     " and img.entry_cluster(e) == 0 and e[28:32] == bytes(4):\n",
+     ":\n",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: the root's label on a live chain, or with a size, is passed over unread and unclaimed: test_an_entry_passed_over_is_the_label_or_one_of_a_directorys_two fails, TST-M3-FAT32-TOOL FAIL"),
+    # M550: the label's name is not held to the boot sector's, which is all `diff` compares of it.
+    ("M550", "tools/fat32.py",
+     " and e[:11] == img.label_raw",
+     "",
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a copy whose root label names the volume otherwise than its boot sector passes `check`, and `diff` passes it though another reader shows another label than the first image has: test_an_entry_passed_over_is_the_label_or_one_of_a_directorys_two fails, TST-M3-FAT32-TOOL FAIL"),
     # M212, M213 (SECURITY, WP-118): the exact numbers a fault case gives the host checker.
     # M212: any number of chains longer than their size is accepted once the case allows some.
     ("M212", "tools/fat32.py",
@@ -2551,9 +2604,14 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # removed file (M513); `check` names two entries with one name (M515); `diff` passes only
             # for the one named change of the one file, known by its bytes, between two sound volumes
             # of one boot sector, length and name, with the entries in their order and the room the
-            # change leaves (M516 to M522, M527 to M533, M536, M537, M539); a name is ASCII (M538).
+            # change leaves (M516 to M522, M527 to M533, M536, M537, M539); a name is ASCII (M538); a
+            # volume that holds a long-name entry, under the mask of its attribute, fails `check` and
+            # so is neither derived from nor passed by `diff` (M541, M542), and so does one that holds
+            # another entry the walk passes over than the root's one label and a directory's `.` and
+            # `..` in their places, each holding nothing of its own (M545 to M550).
             "M510", "M511", "M513", "M515", "M516", "M517", "M518", "M519", "M520", "M521", "M522", "M525",
             "M527", "M528", "M529", "M530", "M531", "M532", "M533", "M534", "M536", "M537", "M538", "M539",
+            "M541", "M542", "M545", "M546", "M547", "M548", "M549", "M550",
             # M6 (WP-124): a FAT write stops at its first refused write (M252, M253), and the hook
             # that shows it refuses one write alone (M254).
             "M252", "M253", "M254",

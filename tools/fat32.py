@@ -6,7 +6,9 @@ and after a guest run this tool reads back what the kernel wrote (`verify`), so 
 implementations check each other. Layout per the Microsoft FAT32 specification (S44):
 BPB (BytsPerSec 512, RsvdSecCnt 32, NumFATs 2, RootEntCnt 0, FATSz32, RootClus 2, FSInfo 1,
 BkBootSec 6), FSInfo sector, two mirrored FATs, data area with the root directory in cluster 2,
-8.3 directory entries (no long names).
+8.3 directory entries (no long names: `check` names as a problem a live entry that carries
+one, and any other live entry it passes over that is not the root's one label or a directory's
+`.` and `..` in their places).
 
 Commands:
   format IMG --sectors N [--spc 1] [--add NAME=PATH ...] [--mkdir NAME|PARENT/NAME ...] [--pattern-tail K]
@@ -100,6 +102,7 @@ class Image:
         self.root_cluster, self.fsinfo_sector, self.bk_boot = struct.unpack_from("<IHH", b, 44)
         self.boot_sig = b[66]
         self.label = b[71:82].decode("ascii", "replace").rstrip()
+        self.label_raw = bytes(b[71:82])
         self.fstype = b[82:90].decode("ascii", "replace")
         self.sig = struct.unpack_from("<H", b, 510)[0]
         if self.bps != SECTOR or self.root_ent != 0 or tot16 != 0 or fatsz16 != 0 or self.fatsz == 0:
@@ -465,7 +468,15 @@ def tree_findings(img, fat):
     volume may show: a chain that runs into a free cluster, leaves the volume or loops, two names
     on one cluster, a file whose chain is shorter than its size, an entry whose first cluster
     is no cluster of the volume (0 belongs to a file that holds none and to no directory), and
-    a chain that reaches the reserved value 1. `longer` names the files
+    a chain that reaches the reserved value 1, and an entry the walk passes over in another
+    form than the one that holds nothing of its own: a long-name entry (attribute 0x0F under
+    the mask 0x3F), which this tool and the kernel do not read; an entry that carries the
+    volume bit and is not the root's one label (no directory, no cluster, no size, the name
+    the boot sector gives the volume); a name
+    that begins with a dot and is not a directory's `.` in its first slot on the directory
+    itself or its `..` in the second on the directory above (the root has neither). What is
+    passed over is not claimed, so on a live file's chain it would be an owner no finding
+    names; a deleted entry is passed over whatever it holds. `longer` names the files
     whose chain holds more clusters than their size needs, each with the number of clusters it
     has too many; `owned` is every cluster a name reaches; `reached` is every name the walk met
     (the last element returned); `complete` is false when the walk stopped at its depth limit, so `owned` is not
@@ -497,9 +508,11 @@ def tree_findings(img, fat):
             strict.append(f"{name}: its chain holds the reserved value 1")
         return got
 
-    def walk(path, first, depth):
+    def walk(path, first, depth, parent=None):
+        # `parent` is what the directory's `..` must hold: nothing for the root, 0 for a
+        # directory of the root, the first cluster of the directory above for any other.
         clusters = claim(path or "/", first)
-        names = set()
+        names, long_named, dotted, volumed, labelled, slot = set(), False, False, False, False, -1
         if depth > DEPTH_MAX:
             strict.append(f"{path}: deeper than this check walks")
             cut.append(path)
@@ -508,9 +521,44 @@ def tree_findings(img, fat):
             data = img.read_cluster(c)
             for i in range(0, len(data), 32):
                 e = data[i:i + 32]
+                slot += 1
                 if e[0] == 0:
                     return
-                if e[0] == 0xE5 or e[11] == ATTR_LFN or e[11] & 0x08 or e[:1] == b".":
+                if e[0] == 0xE5:
+                    continue
+                if (e[11] & 0x3F) == ATTR_LFN:
+                    # A long name. This tool and the kernel read 8.3 names alone, so a reader of
+                    # long names meets another tree on such a volume than they do: a long name
+                    # may give one file the name of another, or of one that was removed. The
+                    # two bits above the mask do not make the entry anything else.
+                    if not long_named:
+                        strict.append(f"{path or '/'}: a long-name entry, which no reader of 8.3 names sees")
+                    long_named = True
+                    continue
+                # What is passed over below is not read and its clusters are not claimed, so each
+                # kind is passed over in the one form that holds nothing of its own; any other
+                # entry of the kind is a problem (on a live file's chain, a checker that reads it
+                # as a file calls the clusters shared, and a reader that lists it shows a file).
+                if e[11] & 0x08:
+                    # The volume's label: one, in the root, no directory, no cluster, no size, and
+                    # under the name the boot sector gives the volume (which `diff` compares).
+                    if parent is None and not labelled and not e[11] & ATTR_DIR and e[:11] == img.label_raw and img.entry_cluster(e) == 0 and e[28:32] == bytes(4):
+                        labelled = True
+                    else:
+                        if not volumed:
+                            strict.append(f"{path or '/'}: an entry that carries the volume bit and is not the root's one label")
+                        volumed = True
+                    continue
+                if e[:1] == b".":
+                    # A directory's two: `.` in its first slot on the directory itself, `..` in the
+                    # second on the directory above. The root has neither, and no other name
+                    # begins with a dot: the kernel passes over one, another reader lists it.
+                    own = (e[:11] == b".          " and slot == 0 and img.entry_cluster(e) == first
+                           or e[:11] == b"..         " and slot == 1 and img.entry_cluster(e) == parent)
+                    if not (parent is not None and e[11] & ATTR_DIR and own):
+                        if not dotted:
+                            strict.append(f"{path or '/'}: a name that begins with a dot and is not one of a directory's two in their places")
+                        dotted = True
                     continue
                 name = f"{path}/{display_name(e[:11])}"
                 reached.add(name)
@@ -527,7 +575,7 @@ def tree_findings(img, fat):
                     strict.append(f"{name}: first cluster {entry_first}, no cluster of the volume")
                     continue
                 if e[11] & ATTR_DIR:
-                    walk(name, entry_first, depth + 1)
+                    walk(name, entry_first, depth + 1, 0 if parent is None else first)
                     continue
                 size = struct.unpack_from("<I", e, 28)[0]
                 n = len(claim(name, entry_first)) if entry_first else 0
@@ -558,7 +606,13 @@ def cmd_check(a):
     --allow-longer with --expect-longer and --expect-longer with --expect-longer-second, or the
     call is refused (exit 2); --expect-longer-second alone is taken and leaves the first copy
     judged as without it: any file longer than its size there is a problem. A name the walk
-    reaches along one copy and not along another is a problem in both modes."""
+    reaches along one copy and not along another is a problem in both modes. So is every entry
+    the walk passes over without reading, but the three that hold nothing of their own: the
+    root's one label, and a directory's `.` and `..` in their places. A long-name entry,
+    another entry under the volume bit, another name that begins with a dot: neither this
+    walk, nor `diff`'s, nor the kernel's code reads one (`ls` here lists a name that begins
+    with a dot and no command opens it), and a volume that holds one shows another reader,
+    or a checker that reads it as a file, another tree than theirs."""
     img = Image(a.image)
     try:
         return check_image(img, a)
@@ -684,8 +738,9 @@ def cmd_derive(a):
     of its own, .derive-* (made by mkstemp and never opened again by that name), checked as
     it was copied, changed, checked again, synced, and only then given the name DST by a hard
     link, which no existing path takes: a file, a link to SRC, a link to nowhere. So a call
-    that is refused or fails, or whose process ends before the link, leaves nothing under
-    DST, and DST is given to a finished and checked copy alone. This is no promise against a
+    that is refused, that fails before the link, or whose process ends before it, puts
+    nothing under DST; and what the link names is the finished and checked copy, but for the
+    one failure after the link that is told below. This is no promise against a
     loss of power or a crash of the host: the directory is not synced, so after one the name
     DST may be missing, or the copy may stand under both names. A removed file's entry is
     cleared to the deleted mark and its
@@ -694,11 +749,16 @@ def cmd_derive(a):
     DST that exists or has no directory, a SRC that is no file or fails `check`, a VOL that is
     missing or a directory, a FILE that is no file or holds VOL's own bytes. Exit 1, no DST:
     the volume cannot hold FILE, or the changed copy fails `check`. Exit 1 with DST left as it
-    is: what DST names after the link is not the working file (its name was given to another
-    file meanwhile; DST and the working name are then two names of that other file, and
-    neither is removed here). A call killed by a signal other than an interrupt leaves the
-    working file; one killed between the link and the working name's removal leaves the
-    finished copy under two names, which `diff` refuses."""
+    is: what DST names after the link is not the working file. Either the working name was
+    given to another file before the link (DST and the working name are then two names of that
+    other file, and neither is removed here), or DST was given to another file after it (the
+    working name is then removed, and the copy with it); a DST removed after the link ends the
+    call in a traceback, the copy removed the same way. A call killed by a signal other than an interrupt leaves the
+    working file; so killed between the link and the working name's removal, it leaves the
+    finished copy under two names, which `diff` refuses. An interrupt after the link and
+    before the clean-up begins ends the call with the interrupt's own failure and leaves the
+    finished copy under DST alone, the working name removed; one that falls inside the
+    clean-up, before the working name is removed, leaves the two names."""
     vol, _, host = (a.remove, "", None) if a.remove is not None else a.replace.partition("=")
     data = None
     if host is not None:
@@ -855,11 +915,16 @@ def cmd_diff(a):
     bytes), compared as whole entries, never merged by name, and lying in the same order, the
     replaced file's entry where the file's was; B has the free clusters A has, more or fewer by
     what the change frees and takes; both images have one length, one boot sector and one name
-    each, both pass `check`, and no directory of either holds a byte after its end mark. Its
+    each, both pass `check` (so neither holds a live entry this judge passes over and another
+    reader would show: a long name, an entry under the volume bit other than the root's one
+    label, a name that begins with a dot other than a directory's two in their places), and
+    no directory of either holds a byte after its end mark. Its
     line names both images by their sha256 (read before the judging, in a read of its own). Not compared, and not what a reader of files meets
     but for the first: which clusters a file sits on, the bytes of free clusters and those
-    past a file's size in its last cluster, deleted entries, the volume's label entry, the
-    `.` and `..` entries, FSInfo and the other reserved sectors. Exit 1 with what was found
+    past a file's size in its last cluster, deleted entries, the times of the volume's label
+    entry and of the `.` and `..` entries (what `check` asks of the three is their place, that
+    they hold nothing, and of the label the name the boot sector gives), FSInfo and the other
+    reserved sectors. Exit 1 with what was found
     otherwise; 2 when an image or FILE cannot be read or VOL is no path of 8.3 names."""
     try:
         names = [short_name(p) for p in a.expect_only.strip("/").split("/")]
