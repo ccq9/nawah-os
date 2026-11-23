@@ -4,7 +4,7 @@
  "prompt_version": "3.2",
  "prompt_digest": "e8318ae46ae45d33cb6a62fb4b54c32afec8bd605ac59454c52bd0866c33a620",
  "project_root": "/home/claude/nawah-os",
- "source_revision": "6086ac313d43548f84d1c6acea0630f43031a798",
+ "source_revision": "5923d748575343e53270d219dd5c49f45f9529f3",
  "dirty_state": true,
  "current_stage": "M6",
  "current_task": "WP-180",
@@ -67,8 +67,8 @@
  "next_action": "WP-180: أداة مضيف تشتق نسخة معزولة من قرص FAT32 بملف واحد محذوف أو مستبدل، وتثبت أن الفرق هو ذلك الملف وحده (الحزمة الأولى من قسمة WP-171؛ مهندس الإصدار)",
  "required_inputs": [],
  "runner_status": "running",
- "checkpoint_generation": 278,
- "event_sequence": 278,
+ "checkpoint_generation": 279,
+ "event_sequence": 279,
  "pending_operations": [],
  "budget_counters": {
   "work_packages_done": 7,
@@ -84,7 +84,9 @@
   "DEC-023",
   "DEC-019",
   "DEC-036",
-  "DEC-041"
+  "DEC-041",
+  "DEC-043",
+  "DEC-044"
  ],
  "unknown_fields": {
   "budget_counters.tool_calls_session": "no API exposes the session's tool-call or token budget",
