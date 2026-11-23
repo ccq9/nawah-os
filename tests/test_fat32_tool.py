@@ -1193,6 +1193,9 @@ class Fat32Derive(unittest.TestCase):
             ("the label on a file's chain", "/", 0, raw(b"NAWAHLAB   ", 0x08, first, size), self.VOLUME_BIT),
             ("the label with a size", "/", 0, raw(b"NAWAHLAB   ", 0x08, 0, 5), self.VOLUME_BIT),
             ("the label under another name than the boot sector's", "/", 0, raw(b"EVIL       ", 0x08, 0, 0), self.VOLUME_BIT),
+            # A long name's attribute with a bit above its mask, on an entry that is the label in all
+            # else: a long name still, and no label (a reader that masks the attribute takes it so).
+            ("the label under a long name's attribute and a bit above the mask", "/", 0, raw(b"NAWAHLAB   ", 0x4F, 0, 0), "a long-name entry"),
             ("the label as a directory", "/", 0, raw(b"NAWAHLAB   ", 0x18, 0, 0), self.VOLUME_BIT),
             ("a label under a directory", "/SYSTEM", None, raw(b"LABEL      ", 0x08, 0, 0), self.VOLUME_BIT),
             ("a dot in the root", "/", None, raw(dot, 0x10, root, 0), self.DOT_NAME),

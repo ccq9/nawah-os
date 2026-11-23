@@ -2309,11 +2309,11 @@ MUTANTS = [
     ("M520", "tools/fat32.py",
      '    if len(in_a) != 1 or in_a[0][2] != "file":\n',
      '    if False:\n',
-     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff` does not ask that the first volume hold the file: with the volumes the other way round `--removed` says the second holds it where the first lacks it, and `--replaced-by` ends in a traceback; a wrong pass needs an emptied directory under the name removed on the second volume and one free cluster marked bad there: test_diff_says_which_way_the_file_went fails by the words of the line, TST-M3-FAT32-TOOL FAIL'),
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff` does not ask that the first volume hold the file: with the volumes the other way round `--removed` says the second holds it where the first lacks it, and `--replaced-by` ends in a traceback; the wrong pass an emptied directory under the name once made with a free cluster marked bad is refused since `diff` lists the two entries of a directory (a local run): test_diff_says_which_way_the_file_went fails by the words of the line, TST-M3-FAT32-TOOL FAIL'),
     ("M522", "tools/fat32.py",
      '    if len(in_a) != 1 or in_a[0][2] != "file":\n',
      '    if len(in_a) != 1:\n',
-     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff --removed` takes a directory under the given name for the one file; the case still fails by the free clusters, and a wrong pass needs one free cluster marked bad on the second volume: test_diff_takes_a_named_directory_for_no_file fails by the words of the line, TST-M3-FAT32-TOOL FAIL'),
+     ["TST-M3-FAT32-TOOL"], 'SECURITY: `diff --removed` takes a directory under the given name for the one file; the pair still fails, by the two entries of that directory, which `diff` lists and the other volume lacks, whatever free cluster is marked bad (a local run): test_diff_takes_a_named_directory_for_no_file fails by the words of the line, TST-M3-FAT32-TOOL FAIL'),
     # M521: the attributes and the times are not compared.
     ("M521", "tools/fat32.py",
      '            meta = (e[11:20] + e[22:26]).hex()\n',
@@ -2416,7 +2416,7 @@ MUTANTS = [
     ("M542", "tools/fat32.py",
      "                if (e[11] & 0x3F) == ATTR_LFN:\n",
      "                if e[11] == ATTR_LFN:\n",
-     ["TST-M3-FAT32-TOOL"], "SECURITY: a long-name entry whose attribute carries a bit above the mask (0x4F, 0x8F, 0xCF) is skipped as the label is, and the volume passes `check`: test_a_long_name_entry_is_a_problem_check_names fails at its second attribute, TST-M3-FAT32-TOOL FAIL"),
+     ["TST-M3-FAT32-TOOL"], "SECURITY: a root entry that is the label in all but its attribute, a long name's with a bit above the mask (0x4F), is taken for the label and the volume passes `check`; anywhere else such an entry is still named, under the volume bit and not as a long name: test_an_entry_passed_over_is_the_label_or_one_of_a_directorys_two fails, TST-M3-FAT32-TOOL FAIL"),
     # M543: a deleted long-name entry is called a problem as a live one is.
     ("M543", "tools/fat32.py",
      "                if e[0] == 0xE5:\n                    continue\n                if (e[11] & 0x3F) == ATTR_LFN:\n",
