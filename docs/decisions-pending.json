@@ -483,7 +483,8 @@
     "WP-62"
    ],
    "requested_at": "2026-11-23T11:40:15Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-27: the owner chose option A in the session's decision dialog (`أ: اعتماد المسارين`): the two tracks as the reviewer proposed. The trust track becomes part of the M6 gate's conditions: the M2 to M5 mutation gates are run again on the gate's commit; a gate mode of the validator makes any stale mandatory verdict an error at a stage gate and at a release candidate, and the step's name in verify.yml is corrected; WP-89 (a publish job that runs no candidate code, with the branch rule of DEC-019) moves from `exception until the M7 gate` in DEC-041's table to a condition of M6's acceptance; WP-166 is the fourth item (DEC-044, answered the same day). The product track keeps its order (WP-180, WP-181, WP-171, then the journey of a file under its Arabic name with save and restore), and after WP-171 the decision on protecting the user's data against a damaged disk (RSK-047) is put to the owner. What follows M6 (a bounded MVP through M7, then one real device with a declared test matrix, then install, update and restore tried before any promise of a release, the portable and the wide compatibility deferred) is to be fixed in the record of stages. The records these consequences touch (the stages' exit conditions, DEC-041's table, WP-89, a small package for the validator's gate mode) change in a commit of their own, audited; until then this answer is the record."
   },
   {
    "id": "DEC-044",
@@ -499,7 +500,8 @@
     "WP-166"
    ],
    "requested_at": "2026-11-23T11:40:15Z",
-   "status": "open"
+   "status": "answered",
+   "answer": "2026-11-27: the owner chose option A in the session's decision dialog (`أ: نعم، قبل WP-181`): WP-166 is activated after WP-180 closes and before WP-181. The order of its parts is the one the reviewer favoured (issue #24, comment 7113217357): first the real text of the provisioning step under test, Ubuntu's second source and the total time limit; then the install with no network, shown on both of the runner's environments; the amended design is read by the reviewer before any code, and job merge installs nothing the candidate's context produced."
   }
  ]
 }
