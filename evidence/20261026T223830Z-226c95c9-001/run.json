@@ -1,0 +1,20 @@
+{
+ "schema_version": "1.0.0",
+ "run_id": "20261026T223830Z-226c95c9-001",
+ "started_at": "2026-10-26T22:38:30+00:00",
+ "finished_at": "2026-10-26T22:38:39+00:00",
+ "source_revision": "226c95c9c60e9aefca300fca1489a0c0957019a9",
+ "dirty_state": true,
+ "host": {
+  "os": "Linux 6.17.0-1022-azure",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "interactive-agent",
+ "purpose": "test:TST-M5-LAB-TOOL",
+ "commands": [
+  "python3 -I tests/test_monitor_steps.py"
+ ],
+ "exit_code": 0,
+ "notes": "imported from CI run 40411703815 (verification runner)"
+}
