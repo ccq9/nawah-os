@@ -1,0 +1,15 @@
+{
+ "tests/test_text.py": "9b83e16d2f37a7c89eae787817a041e36530a5d355588e26fce8e701b4aaf411",
+ "tools/text_vectors.py": "e02b048ed4302547c6bd9e68b1b2ff48fe822143c709fcfd3aa44129a966e3d0",
+ "user/apps/textprobe/src/vectors.rs": "226be7b45c8a77ce3f2a5bb4cb3aa004100d3c624a76bd702832ca3b8d39e195",
+ "platform/assets/fonts/NotoSansArabic-Regular.ttf": "95952171cbc85c19cbb7b22684c595b521e780134d45ea508c34ba872681731d",
+ "user/libnawah-text/src/bidi.rs": "c90c55187eb45e61eb0947fe32ffdf6463c67677d894a39670ec2abb788a1602",
+ "user/libnawah-text/src/font.rs": "445836ef820e087cc0091697769b9bdb01653f1529adb955821b4f64d751da83",
+ "user/libnawah-text/src/layout.rs": "35132c882292665f6a80b232222da57ffaca71602d83ecea712aa6b19f8ba3c1",
+ "user/libnawah-text/src/lib.rs": "d08f77a0142e15b8a2fa2cb5e24242fa8b1a712bdc733416f46c93188c5531cf",
+ "user/libnawah-text/src/raster.rs": "de7bb116c7ff51f0c335dcaa6a08104e35f278e7db6a047da3c1dd850ae6d7dd",
+ "user/libnawah-text/src/shape.rs": "ae5c6eeab4d433449fb7c63dfc28448d4caad95618fdaedb198e608bc2730ef0",
+ "user/libnawah-text/src/tables.rs": "136625d6a0be90d42b1347cacb4747f9535cce71195ecf88d6c8baad3d549e3b",
+ "user/libnawah-text/examples/bidi_check.rs": "148768dc050caee9bc6b4480f872be00c670bc5681be5f4e2197f248e6bcc60f",
+ "user/libnawah-text/examples/textdump.rs": "c3189319875b60d1add77cd6b279dc63ff35aa6f1650d963ffbd7bebdd092755"
+}
