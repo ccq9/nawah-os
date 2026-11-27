@@ -1630,19 +1630,23 @@ class KillEvidence(unittest.TestCase):
         self.assertIn("\ndeps=display\n", (ROOT / "platform" / "pc-qemu" / "lab" / "deaf.app").read_text(encoding="utf-8"))
 
     def test_the_isolated_copy_mutants_are_pinned(self):
-        """WP-180: M510..M552 mutate the host tool's `derive` and `diff` and what `check` names for
+        """WP-180: M510..M562 mutate the host tool's `derive` and `diff` and what `check` names for
         them (tools/fat32.py), each killed by the host case TST-M3-FAT32-TOOL and naming the test
         that fails; the ones that would let a verdict stand on the wrong disk are SECURITY (a
         volume that holds an entry the walk passes over, other than the root's one label and a
         directory's two dot entries in their places, is one, and so is a copy in which one of
-        those three or a directory's size field differs: M541, M542, M545 to M552); none is
-        expected to survive."""
+        those three or a directory's size field differs: M541, M542, M545 to M552), and so are
+        the two that make the refusal of a destination that exists change what was there: a link
+        rewritten as a file of its bytes (M553), a file of its own emptied (M554), and so are the
+        two that let `diff` pass a volume that fails the check: the first image left unchecked
+        (M560), the findings no part of the verdict (M562); none is expected to survive."""
         tool = (ROOT / "tools" / "fat32.py").read_text(encoding="utf-8")
         tests = (ROOT / "tests" / "test_fat32_tool.py").read_text(encoding="utf-8")
         security = {"M510", "M511", "M513", "M515", "M516", "M517", "M518", "M519", "M520", "M521", "M522", "M525",
                     "M527", "M528", "M529", "M530", "M531", "M532", "M533", "M534", "M536", "M537", "M538", "M539",
-                    "M541", "M542", "M545", "M546", "M547", "M548", "M549", "M550", "M551", "M552"}
-        ids = [f"M{n}" for n in range(510, 553)]
+                    "M541", "M542", "M545", "M546", "M547", "M548", "M549", "M550", "M551", "M552", "M553", "M554",
+                    "M560", "M562"}
+        ids = [f"M{n}" for n in range(510, 563)]
         self.assertEqual(sorted(m[0] for m in mutants.MUTANTS if m[0] in ids), ids)
         for mid in ids:
             with self.subTest(mutant=mid):
@@ -2833,6 +2837,347 @@ class WorkflowShardMutants(unittest.TestCase):
         self.assertIn(m[2], m[3])
         self.assertNotIn("M304", mutants.SECURITY)
 
+
+
+def witness_misses(block, kind, lines, says=()):
+    """What one failure block of a run of tests/test_fat32_tool.py lacks to be the failure a row
+    of IsolatedCopyWitness names: its kind; the frames of that file in its traceback, which
+    must be the row's lines, one each and in order, so the last of them is the line that
+    raised (not a frame on the way to an assertion in a deeper helper); the words its
+    assertion prints on failing (assertIn: `not found in`, assertNotIn: `unexpectedly found
+    in`, assertEqual: ` != ` or how two sets or lists differ, assertTrue: `is not true`,
+    assertFalse: `is not false`), on the error's first line; the words the row says the error
+    carries; and no traceback in the error unless the row names one (`Traceback`). [] when it is that failure."""
+    misses = [] if block.startswith(f"{kind}: ") else [f"not a {kind}"]
+    text = block.splitlines()
+    start = next((i for i, line in enumerate(text) if line == "Traceback (most recent call last):"), None)
+    if start is None:
+        return misses + ["no traceback"]
+    frames, error, i = [], "", start + 1
+    while i < len(text):
+        if text[i].startswith("  File "):
+            if text[i].split('", line ')[0].endswith("/tests/test_fat32_tool.py") and i + 1 < len(text):
+                frames.append(text[i + 1].strip())
+            i += 1
+        elif text[i].startswith(" "):
+            i += 1
+        else:
+            error = "\n".join(text[i:])
+            break
+    if frames != list(lines):
+        misses.append(f"the file's frames are {frames!r}, not {list(lines)!r}")
+    # assertEqual of two sets or lists says how they differ, not ` != `.
+    words = {"self.assertIn(": ("not found in",), "self.assertNotIn(": ("unexpectedly found in",),
+             "self.assertEqual(": (" != ", "Items in the ", " differ: "),
+             "self.assertTrue(": ("is not true",), "self.assertFalse(": ("is not false",)}
+    last = lines[-1] if lines else ""
+    for call, said in words.items():
+        if kind == "FAIL" and last.startswith(call) and not (
+                error.startswith("AssertionError: ") and any(w in error.splitlines()[0] for w in said)):
+            misses.append(f"the error does not say {said!r}: {error[:200]!r}")
+    misses += [f"no words {w!r}" for w in says if w not in error]
+    # The red team's expC: a tool that ends in a traceback fails a refusal's line as the mutant
+    # does; a row stands for a traceback only where it names one.
+    if "Traceback" in error and "Traceback" not in says:
+        misses.append("the error holds a traceback the row does not name")
+    return misses
+
+
+class WitnessMatcher(unittest.TestCase):
+    """WP-180 (the red team's expB, 2026-11-27): a row of IsolatedCopyWitness held while its
+    case failed elsewhere, its expected line being only a frame on the way to an assertion
+    inside a helper (diff_line's count of lines). witness_misses accepts a failure block only
+    when the frames of tests/test_fat32_tool.py in its traceback are the row's lines, one
+    each and in order, the last of them the line that raised, and when the error is what that
+    line's assertion says on failing (`not found in` for assertIn, `unexpectedly found in` for
+    assertNotIn, ` != ` for assertEqual); fabricated blocks, no run."""
+
+    HEAD = "FAIL: test_x (__main__.Fat32Derive.test_x)\n" + "-" * 70 + "\nTraceback (most recent call last):\n"
+    CALL = "self.differs(\"differ=['/A.TXT']\")"
+    WORDS = "self.assertIn(name, self.diff_line(r))"
+    COUNT = "self.assertEqual(len(lines), 1, r.stdout + r.stderr)"
+
+    @staticmethod
+    def frame(line, number, where):
+        return (f'  File "/t/tests/test_fat32_tool.py", line {number}, in {where}\n    {line}\n'
+                + "    " + "~" * 12 + "^" * 8 + "\n")
+
+    def test_the_line_that_raised_is_accepted(self):
+        block = (self.HEAD + self.frame(self.CALL, 1448, "test_x") + self.frame(self.WORDS, 1440, "differs")
+                 + "AssertionError: \"differ=['/A.TXT']\" not found in \"diff: not only /X: findings=[] differ=[]\"\n\n")
+        self.assertEqual(witness_misses(block, "FAIL", [self.CALL, self.WORDS]), [])
+        self.assertNotEqual(witness_misses(block, "ERROR", [self.CALL, self.WORDS]), [])
+
+    def test_a_line_on_the_way_to_another_assertion_is_refused(self):
+        block = (self.HEAD + self.frame(self.CALL, 1448, "test_x") + self.frame(self.WORDS, 1440, "differs")
+                 + self.frame(self.COUNT, 1344, "diff_line")
+                 + "AssertionError: 2 != 1 : diff: noise\ndiff: not only /X: findings=[] differ=[]\n\n")
+        self.assertNotEqual(witness_misses(block, "FAIL", [self.CALL, self.WORDS]), [])
+
+    def test_an_assertin_line_without_its_words_is_refused(self):
+        block = (self.HEAD + self.frame(self.CALL, 1448, "test_x") + self.frame(self.WORDS, 1440, "differs")
+                 + "TypeError: 'NoneType' object is not iterable\n\n")
+        self.assertNotEqual(witness_misses(block, "FAIL", [self.CALL, self.WORDS]), [])
+
+    def test_a_crash_where_a_refusal_was_asked_is_refused(self):
+        # The red team's expC: the tool ends in a traceback, and the case fails at the same line
+        # with the same ` != ` as under the real mutant, whose tool says its own words.
+        refuse = "self.refused(self.src, self.dst, \"--remove\", \"/FAKE.BIN/CLOCK.ELF\")"
+        line = "self.assertEqual(r.returncode, code, r.stdout + r.stderr)"
+        block = (self.HEAD + self.frame(refuse, 1318, "test_x") + self.frame(line, 882, "refused")
+                 + "AssertionError: 1 != 2 : check: problems=[]\nTraceback (most recent call last):\n"
+                 + '  File "/t/tools/fat32.py", line 790, in derive_into\n    1 / 0\nZeroDivisionError: division by zero\n\n')
+        self.assertNotEqual(witness_misses(block, "FAIL", [refuse, line]), [])
+        self.assertNotEqual(witness_misses(block, "FAIL", [refuse, line], ["1 != 2"]), [])
+        self.assertEqual(witness_misses(block, "FAIL", [refuse, line], ["Traceback", "ZeroDivisionError"]), [])
+
+    def test_another_count_of_frames_is_refused(self):
+        block = (self.HEAD + self.frame(self.CALL, 1448, "test_x") + self.frame(self.WORDS, 1440, "differs")
+                 + "AssertionError: \"differ=['/A.TXT']\" not found in \"diff: not only /X: findings=[] differ=[]\"\n\n")
+        self.assertNotEqual(witness_misses(block, "FAIL", [self.WORDS]), [])
+        self.assertNotEqual(witness_misses(block, "FAIL", ["self.foo()", self.CALL, self.WORDS]), [])
+
+
+class IsolatedCopyWitness(unittest.TestCase):
+    """WP-180 (the owner's decision of 2026-11-27, evidence first): an assertion of class
+    Fat32Derive (tests/test_fat32_tool.py) written after its code, or that nothing made fail,
+    is shown able to fail here, on CI. Each row names a mutant of tests/mutants.py, one case
+    of that class, and the failures that case reports under it: the kind (FAIL or ERROR), the
+    subTest's parameters (None for the case's own body) and the source texts of the frames of
+    the test file in its traceback, the last of them the line that raised (the call into a
+    helper, then the helper's line, when the assertion sits in one), judged by witness_misses
+    with the words that line's assertion prints on failing. The mutant is applied to a scratch copy of tools/fat32.py,
+    its anchor counted once; the case runs there alone, the interpreter in isolated mode, and
+    reports those failures and no other; the same case passes in a scratch copy without a
+    mutant. A row is a local fact made a CI one: it says which assertion a defect fails, never
+    that the assertion was seen failing before its code."""
+
+    CASE_FILE = "tests/test_fat32_tool.py"
+    KEPT = 'self.assertEqual(f.read(), b"kept")'
+    REFUSED = "self.assertEqual(r.returncode, code, r.stdout + r.stderr)"
+    VERDICT = "self.assertEqual(r.returncode, 1, r.stdout + r.stderr)"
+    WORDS = "self.assertIn(name, self.diff_line(r))"
+    BODY = None
+    # The tool's own words a row's case prints under the real mutant, where the line that raised
+    # asks only for an exit code: a tool that crashes there fails the same line (expC).
+    PASSED = "diff: only /SYSTEM/APPS/CLOCK.ELF differs"
+    UNCHECKED = "derive: the copy fails the check: no copy is left"
+    # (mutant, case, [(kind, subTest parameters, a pattern of them, or BODY, [the source texts of the
+    # frames of the test file, the last the line that raised][, [words of the error]])]).
+    ROWS = [
+        # Row 4 of the classification: what an existing destination was stays as it was.
+        ("M553", "test_an_existing_destination_is_refused_under_any_name", [
+            ("FAIL", {"what": "a hard link to the source"}, ["self.assertTrue(os.path.samefile(hard, self.src))"]),
+            ("FAIL", {"what": "a symbolic link to the source"}, ["self.assertTrue(os.path.islink(soft))"]),
+            ("ERROR", {"what": "a link to nowhere"}, ['self.assertEqual(os.readlink(dangling), os.path.join(self.dir, "nowhere.img"))']),
+        ]),
+        ("M554", "test_an_existing_destination_is_refused_under_any_name", [
+            ("FAIL", {"what": "a file of its own"}, [KEPT]),
+        ]),
+        ("M555", "test_an_existing_destination_is_refused_under_any_name", [
+            ("FAIL", {"what": "a symbolic link to the source"}, [KEPT]),
+        ]),
+        # Rows 24 and 25: the images named on the passing line of each way.
+        ("M556", "test_diff_passes_for_the_one_file_alone", [
+            ("FAIL", {"what": "the removal"}, ['self.assertIn(f"images A sha256={self.src_sha} B sha256={self.sha(self.dst)}", line)']),
+            ("FAIL", {"what": "the replacement"}, ['self.assertIn(f"images A sha256={self.src_sha} B sha256={self.sha(other)}", self.diff_line(r))']),
+        ]),
+        # Row 26: a boot sector of no sectors a cluster.
+        ("M557", "test_diff_passes_for_the_one_file_alone", [
+            ("FAIL", {"what": "no sectors a cluster"}, ["self.assertEqual(r.returncode, 2, r.stdout + r.stderr)"], ["1 != 2", "Traceback", "ZeroDivisionError"]),
+        ]),
+        # Row 49.
+        ("M558", "test_a_destination_with_no_directory_is_refused", [
+            ("FAIL", BODY, ['self.refused(self.src, os.path.join(self.dir, "nodir", "copy.img"), "--remove", self.VOL)', REFUSED],
+             ["1 != 2", "Traceback", "FileNotFoundError"]),
+        ]),
+        # Row 8.
+        ("M540", "test_two_entries_with_one_name_are_reported_and_not_derived_from", [
+            ("FAIL", BODY, ['self.assertNotIn("lost clusters", r.stdout)'], ["'lost clusters' unexpectedly found"]),
+        ]),
+        # Row 16: the label under 0x4F.
+        ("M542", "test_an_entry_passed_over_is_the_label_or_one_of_a_directorys_two", [
+            ("FAIL", {"what": "the label under a long name's attribute and a bit above the mask"}, ["self.assertEqual(r.returncode, 1, r.stdout)"], ["0 != 1", "problems=[]"]),
+        ]),
+        # Row 21.
+        ("M525", "test_a_file_is_not_walked_as_a_directory", [
+            ("FAIL", BODY, ['self.refused(self.src, self.dst, "--remove", "/FAKE.BIN/CLOCK.ELF")', REFUSED], ["1 != 2", UNCHECKED]),
+        ]),
+        # Row 22.
+        ("M523", "test_a_copy_that_fails_the_check_is_not_left", [
+            ("FAIL", BODY, ["self.assertEqual(code, 1, out.getvalue())"], ["0 != 1", "derive: source sha256="]),
+        ]),
+        # Row 30.
+        ("M532", "test_diff_fails_when_the_file_differs_in_attributes_alone", [
+            ("FAIL", BODY, ['self.differs("attributes or times", "--replaced-by", host, path=other)', VERDICT], ["0 != 1", PASSED]),
+        ]),
+        # Row 32: by the words of the line (the verdict stays 1).
+        ("M551", "test_diff_fails_on_a_file_or_a_directory_more", [
+            ("FAIL", BODY, ["self.differs(\"differ=['/SYSTEM/MORE/', '/SYSTEM/MORE/(.)', '/SYSTEM/MORE/(..)']\")", WORDS]),
+        ]),
+        # Row 36: by the words of the line (the verdict stays 1).
+        ("M527", "test_diff_knows_a_name_by_its_bytes_and_not_by_how_it_reads", [
+            ("FAIL", {"raw": b"CLOCK\x1f  ELF"}, ['self.assertIn("B holds 0", self.diff_line(r))']),
+            ("FAIL", {"raw": b"CLOCK\x09  ELF"}, ['self.assertIn("B holds 0", self.diff_line(r))']),
+        ]),
+        # Row 37: by the words of the line (the verdict stays 1, by the order of the entries).
+        ("M518", "test_diff_knows_another_files_name_by_its_bytes", [
+            ("FAIL", BODY, ["self.differs(\"differ=['/A.TXT']\")", WORDS]),
+        ]),
+        # Row 42: the body by the verdict; the two forms by the words (the boot sectors still differ).
+        ("M528", "test_diff_fails_on_another_boot_sector_or_length", [
+            ("FAIL", BODY, ['self.differs("the boot sectors differ", *how, path=other)', VERDICT], ["0 != 1", PASSED]),
+        ]),
+        ("M529", "test_diff_fails_on_another_boot_sector_or_length", [
+            ("FAIL", BODY, ['self.differs("the images differ in length", *how, path=other)', VERDICT], ["0 != 1", PASSED]),
+        ]),
+        ("M530", "test_diff_fails_on_another_boot_sector_or_length", [
+            ("FAIL", {"offset": 66}, ['self.differs("B fails the check", *how, path=other)', WORDS]),
+            ("FAIL", {"offset": 510}, ['self.differs("B fails the check", *how, path=other)', WORDS]),
+        ]),
+        # Rows 43, 44 and 45: the first block by its expected words, the second by the verdict.
+        ("M536", "test_diff_fails_on_a_copy_that_fails_the_check", [
+            ("FAIL", {"what": "the first FAT copy alone"}, ["self.assertIn(\"findings=['B fails the check', 'B has 15496 free clusters where the change leaves 16088'] differ=[]\", self.diff_line(r))"]),
+        ]),
+        ("M530", "test_diff_fails_on_a_copy_that_fails_the_check", [
+            ("FAIL", {"what": "the first FAT copy alone"}, ["self.assertIn(\"findings=['B fails the check', 'B has 15496 free clusters where the change leaves 16088'] differ=[]\", self.diff_line(r))"]),
+            ("FAIL", {"what": "the second FAT copy alone"}, ["self.differs(\"findings=['B fails the check'] differ=[]\")", VERDICT], ["0 != 1", PASSED]),
+        ]),
+        # Row 46.
+        ("M531", "test_diff_fails_on_bytes_after_a_directorys_end_mark", [
+            ("FAIL", {"slot": 0}, ['self.differs("bytes after the end mark of /SYSTEM/APPS on B")', VERDICT], ["0 != 1", PASSED]),
+            ("FAIL", {"slot": 1}, ['self.differs("bytes after the end mark of /SYSTEM/APPS on B")', VERDICT], ["0 != 1", PASSED]),
+        ]),
+        # Row 47: the removal's bytes on the copy; the derivation itself of both changes of ROOT.BIN
+        # (the replacement's form is printed with the host file's path, so its label is a pattern).
+        ("M513", "test_derive_on_larger_clusters_in_the_root_and_on_an_empty_file", [
+            ("FAIL", {"change": ("--remove", "/ROOT.BIN")}, ["self.assertNotIn(root[:256], f.read())"]),
+        ]),
+        ("M514", "test_derive_on_larger_clusters_in_the_root_and_on_an_empty_file", [
+            ("FAIL", {"change": ("--remove", "/ROOT.BIN")}, ["self.assertEqual(r.returncode, 0, r.stdout + r.stderr)"], ["1 != 0", UNCHECKED]),
+            ("FAIL", re.compile(r"\(change=\('--replace', '/ROOT\.BIN=/[^']*/new\.bin'\)\)"),
+             ["self.assertEqual(r.returncode, 0, r.stdout + r.stderr)"], ["1 != 0", UNCHECKED]),
+        ]),
+        # Row 51.
+        ("M544", "test_an_interrupt_after_the_link_leaves_the_finished_copy_alone", [
+            ("FAIL", BODY, ["self.assertEqual(set(os.listdir(self.dir)) - before, {os.path.basename(self.dst)})"]),
+        ]),
+        # Row 6: by the words, `derive: ` missing.
+        ("M526", "test_a_replacement_the_volume_cannot_hold_leaves_no_copy", [
+            ("FAIL", BODY, ['r = self.refused(self.src, self.dst, "--replace", f"{self.VOL}={huge}", code=1)', 'self.assertIn("derive: ", r.stdout)']),
+        ]),
+        # Split row (d1): both forms and the body by the verdict; the 0x4f form also by its words under M542.
+        ("M530", "test_diff_fails_for_an_image_that_holds_a_long_name", [
+            ("FAIL", {"attr": "0xf"}, [VERDICT], ["0 != 1", PASSED]),
+            ("FAIL", {"attr": "0x4f"}, [VERDICT], ["0 != 1", PASSED]),
+            ("FAIL", BODY, ['self.differs("A fails the check")', VERDICT], ["0 != 1", PASSED]),
+        ]),
+        ("M542", "test_diff_fails_for_an_image_that_holds_a_long_name", [
+            ("FAIL", {"attr": "0x4f"}, ['self.assertIn("/SYSTEM/APPS: a long-name entry", r.stdout)']),
+        ]),
+        # Split row (a): the file named on the passing line by its size, by the words.
+        ("M559", "test_diff_passes_for_the_one_file_alone", [
+            ("FAIL", {"what": "the removal"}, ['self.assertIn(f"A file size=3000 sha256={hashlib.sha256(self.data[self.VOL]).hexdigest()}", line)']),
+            ("FAIL", {"what": "the replacement"}, ["self.assertIn(f\"B file size=4000 sha256={hashlib.sha256(b'r' * 4000).hexdigest()}\", self.diff_line(r))"]),
+        ]),
+        # Split row (c): the group `A fails the check`, by the words (the verdict stays 1, by what differs).
+        ("M560", "test_an_image_with_a_dot_name_is_neither_derived_from_nor_passed", [
+            ("FAIL", BODY, ['self.differs("A fails the check")', WORDS]),
+        ]),
+        # Split row (b): the expected words of the free clusters (the verdict stays 1).
+        ("M561", "test_diff_fails_on_free_clusters_taken_from_the_copy", [
+            ("FAIL", BODY, ["self.differs(\"findings=['B has 16085 free clusters where the change leaves 16088'] differ=[]\")", WORDS]),
+        ]),
+        # Row 43: the verdict of the first block (`self.assertEqual(r.returncode, 1, r.stdout + r.stderr)`
+        # before its expected words), and the second block's.
+        ("M562", "test_diff_fails_on_a_copy_that_fails_the_check", [
+            ("FAIL", {"what": "the first FAT copy alone"}, [VERDICT], ["0 != 1", PASSED]),
+            ("FAIL", {"what": "the second FAT copy alone"}, ["self.differs(\"findings=['B fails the check'] differ=[]\")", VERDICT], ["0 != 1", PASSED]),
+        ]),
+    ]
+
+    # Failures a mutant also causes that are no witness of their own, required so that the set of
+    # a run's failures stays exact: under M554 the symbolic link's group reads kept.img, which the
+    # first group's refusal emptied (M555 is that group's witness).
+    ALSO = {("M554", "test_an_existing_destination_is_refused_under_any_name"): [("FAIL", {"what": "a symbolic link to the source"})]}
+
+    @staticmethod
+    def label(params):
+        """The parameters as unittest prints them after a failing subTest's name."""
+        return "(" + ", ".join(f"{k}={v!r}" for k, v in params.items()) + ")"
+
+    @staticmethod
+    def failures(output):
+        """{(kind, parameters as printed or None): the block's text} of one run's failures."""
+        out = {}
+        for block in output.split("=" * 70 + "\n")[1:]:
+            head = block.splitlines()[0]
+            m = re.fullmatch(r"(FAIL|ERROR): (\w+) \([\w.]+\)( \(.*\))?", head)
+            if m is None:
+                out[("UNREAD", head)] = block
+                continue
+            out[(m.group(1), m.group(3)[1:] if m.group(3) else None)] = block
+        return out
+
+    def run_case(self, case, mutant=None):
+        import shutil
+        import subprocess
+        with tempfile.TemporaryDirectory(prefix="nawah-witness-") as tree:
+            os.makedirs(os.path.join(tree, "tools"))
+            os.makedirs(os.path.join(tree, "tests"))
+            tool = (ROOT / "tools" / "fat32.py").read_text(encoding="utf-8")
+            if mutant is not None:
+                m = next(m for m in mutants.MUTANTS if m[0] == mutant)
+                self.assertEqual((m[1], tool.count(m[2])), ("tools/fat32.py", 1), mutant)
+                tool = tool.replace(m[2], m[3])
+            with open(os.path.join(tree, "tools", "fat32.py"), "w", encoding="utf-8") as f:
+                f.write(tool)
+            shutil.copyfile(ROOT / self.CASE_FILE, os.path.join(tree, self.CASE_FILE))
+            env = dict(os.environ, TMPDIR=tree)
+            return subprocess.run([sys.executable, "-I", self.CASE_FILE, f"Fat32Derive.{case}"], cwd=tree, env=env,
+                                  capture_output=True, text=True, timeout=300)
+
+    def test_each_late_assertion_of_the_isolated_copy_fails_under_its_mutant(self):
+        import concurrent.futures
+        source = (ROOT / self.CASE_FILE).read_text(encoding="utf-8")
+        registered = {m[0] for m in mutants.MUTANTS}
+        cases = sorted({case for _, case, _ in self.ROWS})
+        rows = [row for row in self.ROWS if row[0] in registered]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, min(8, os.cpu_count() or 2))) as pool:
+            clean = {case: pool.submit(self.run_case, case) for case in cases}
+            mutated = [pool.submit(self.run_case, case, mid) for mid, case, _ in rows]
+        for case in cases:
+            with self.subTest(clean=case):
+                self.assertEqual(source.count(f"    def {case}(self):"), 1)
+                r = clean[case].result()
+                self.assertEqual(r.returncode, 0, r.stderr[-3000:])
+                self.assertIn("\nOK\n", r.stderr)
+        for (mid, case, want), future in zip(rows, mutated):
+            with self.subTest(mutant=mid, case=case):
+                r = future.result()
+                self.assertEqual(r.returncode, 1, r.stderr[-3000:])
+                self.assertIn("FAILED (", r.stderr)
+                got = self.failures(r.stderr)
+
+                def key_of(kind, params):
+                    """The one failure of the run that a row's entry names."""
+                    keys = [k for k in got if k[0] == kind and (
+                        k[1] is None if params is None else
+                        k[1] is not None and params.fullmatch(k[1]) is not None if isinstance(params, re.Pattern) else
+                        k[1] == self.label(params))]
+                    self.assertEqual(len(keys), 1, f"{mid} {case} {kind} {params}: {sorted(got, key=str)}")
+                    return keys[0]
+                named = [key_of(w[0], w[1]) for w in want] + [key_of(kind, params) for kind, params in self.ALSO.get((mid, case), [])]
+                self.assertEqual(sorted(named, key=str), sorted(got, key=str), r.stderr[-6000:])
+                for kind, params, lines, *says in want:
+                    if re.match(r"self\.assertEqual\((r\.returncode|code), ", lines[-1]):
+                        self.assertTrue([w for w in (says[0] if says else []) if re.match(r"(derive|diff|check): |problems=|Traceback", w)],
+                                        f"{mid} {case} {params}: a line that asks an exit code alone names the tool's words")
+                    for line in lines:
+                        self.assertIn(line, source, f"{mid}: {line!r} is no line of {self.CASE_FILE}")
+                    block = got[key_of(kind, params)]
+                    self.assertEqual(witness_misses(block, kind, lines, says[0] if says else ()), [], f"{mid} {case} {params}")
+        self.assertEqual(sorted(mid for mid, _, _ in self.ROWS if mid not in registered), [], "a row names an unregistered mutant")
 
 
 class SecuritySet(unittest.TestCase):

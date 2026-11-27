@@ -949,35 +949,40 @@ class Fat32Derive(unittest.TestCase):
 
     def test_an_existing_destination_is_refused_under_any_name(self):
         kept = self.host_file("kept.img", b"kept")
-        self.refused(self.src, kept, "--remove", self.VOL)
-        with open(kept, "rb") as f:
-            self.assertEqual(f.read(), b"kept")
+        with self.subTest(what="a file of its own"):
+            self.refused(self.src, kept, "--remove", self.VOL)
+            with open(kept, "rb") as f:
+                self.assertEqual(f.read(), b"kept")
         # The source itself: by its own path, by another spelling, by a hard link, by a symbolic link.
-        self.refused(self.src, self.src, "--remove", self.VOL)
-        self.refused(self.src, os.path.join(self.dir, ".", "disk.img"), "--remove", self.VOL)
-        hard = os.path.join(self.dir, "hard.img")
-        os.link(self.src, hard)
-        self.refused(self.src, hard, "--remove", self.VOL)
-        # What was there is there as it was: the hard link is still the source's second name,
-        # the symbolic link still a link to it, each with the source's bytes.
-        self.assertTrue(os.path.samefile(hard, self.src))
-        self.assertEqual(os.stat(self.src).st_nlink, 2)
-        self.assertEqual(self.sha(hard), self.src_sha)
-        soft = os.path.join(self.dir, "soft.img")
-        os.symlink(self.src, soft)
-        self.refused(self.src, soft, "--remove", self.VOL)
-        self.refused(self.src, soft, "--replace", f"{self.VOL}={kept}")
-        self.assertTrue(os.path.islink(soft))
-        self.assertEqual(os.readlink(soft), self.src)
-        self.assertEqual(self.sha(soft), self.src_sha)
-        with open(kept, "rb") as f:
-            self.assertEqual(f.read(), b"kept")
+        with self.subTest(what="the source itself"):
+            self.refused(self.src, self.src, "--remove", self.VOL)
+            self.refused(self.src, os.path.join(self.dir, ".", "disk.img"), "--remove", self.VOL)
+        with self.subTest(what="a hard link to the source"):
+            hard = os.path.join(self.dir, "hard.img")
+            os.link(self.src, hard)
+            self.refused(self.src, hard, "--remove", self.VOL)
+            # What was there is there as it was: the hard link is still the source's second name,
+            # the symbolic link still a link to it, each with the source's bytes.
+            self.assertTrue(os.path.samefile(hard, self.src))
+            self.assertEqual(os.stat(self.src).st_nlink, 2)
+            self.assertEqual(self.sha(hard), self.src_sha)
+        with self.subTest(what="a symbolic link to the source"):
+            soft = os.path.join(self.dir, "soft.img")
+            os.symlink(self.src, soft)
+            self.refused(self.src, soft, "--remove", self.VOL)
+            self.refused(self.src, soft, "--replace", f"{self.VOL}={kept}")
+            self.assertTrue(os.path.islink(soft))
+            self.assertEqual(os.readlink(soft), self.src)
+            self.assertEqual(self.sha(soft), self.src_sha)
+            with open(kept, "rb") as f:
+                self.assertEqual(f.read(), b"kept")
         # A link to nowhere is a destination that exists: nothing is made where it points.
-        dangling = os.path.join(self.dir, "dangling.img")
-        os.symlink(os.path.join(self.dir, "nowhere.img"), dangling)
-        self.refused(self.src, dangling, "--remove", self.VOL)
-        self.assertFalse(os.path.lexists(os.path.join(self.dir, "nowhere.img")))
-        self.assertEqual(os.readlink(dangling), os.path.join(self.dir, "nowhere.img"))
+        with self.subTest(what="a link to nowhere"):
+            dangling = os.path.join(self.dir, "dangling.img")
+            os.symlink(os.path.join(self.dir, "nowhere.img"), dangling)
+            self.refused(self.src, dangling, "--remove", self.VOL)
+            self.assertFalse(os.path.lexists(os.path.join(self.dir, "nowhere.img")))
+            self.assertEqual(os.readlink(dangling), os.path.join(self.dir, "nowhere.img"))
 
     def test_a_wrong_file_is_refused_and_no_copy_is_left(self):
         good = self.host_file("good.bin", b"g" * 10)
@@ -1347,40 +1352,44 @@ class Fat32Derive(unittest.TestCase):
 
     def test_diff_passes_for_the_one_file_alone(self):
         self.assertEqual(run("derive", self.src, self.dst, "--remove", self.VOL).returncode, 0)
-        r = self.diff(self.src, self.dst, self.VOL)
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        line = self.diff_line(r)
-        self.assertIn(f"only {self.VOL} differs", line)
-        self.assertIn(f"A file size=3000 sha256={hashlib.sha256(self.data[self.VOL]).hexdigest()}", line)
-        self.assertIn("B absent", line)
-        self.assertIn(f"images A sha256={self.src_sha} B sha256={self.sha(self.dst)}", line)
-        self.assertEqual(self.diff(self.src, self.dst, "/system/apps/clock.elf").returncode, 0)
         other, host = self.replaced_copy()
-        r = self.diff(self.src, other, self.VOL, "--replaced-by", host)
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn(f"B file size=4000 sha256={hashlib.sha256(b'r' * 4000).hexdigest()}", self.diff_line(r))
-        self.assertIn(f"images A sha256={self.src_sha} B sha256={self.sha(other)}", self.diff_line(r))
+        with self.subTest(what="the removal"):
+            r = self.diff(self.src, self.dst, self.VOL)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            line = self.diff_line(r)
+            self.assertIn(f"only {self.VOL} differs", line)
+            self.assertIn(f"A file size=3000 sha256={hashlib.sha256(self.data[self.VOL]).hexdigest()}", line)
+            self.assertIn("B absent", line)
+            self.assertIn(f"images A sha256={self.src_sha} B sha256={self.sha(self.dst)}", line)
+            self.assertEqual(self.diff(self.src, self.dst, "/system/apps/clock.elf").returncode, 0)
+        with self.subTest(what="the replacement"):
+            r = self.diff(self.src, other, self.VOL, "--replaced-by", host)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn(f"B file size=4000 sha256={hashlib.sha256(b'r' * 4000).hexdigest()}", self.diff_line(r))
+            self.assertIn(f"images A sha256={self.src_sha} B sha256={self.sha(other)}", self.diff_line(r))
         # Another file named is no pass, nor a call that does not say what became of the file.
-        r = self.diff(self.src, self.dst, "/A.TXT")
-        self.assertEqual(r.returncode, 1, r.stdout)
-        self.assertIn(self.VOL, self.diff_line(r))
-        self.assertEqual(run("diff", self.src, other, "--expect-only", self.VOL).returncode, 2)
-        self.assertEqual(run("diff", self.src, other, "--removed").returncode, 2)
-        self.assertEqual(self.diff(self.src, other, self.VOL, "--removed", "--replaced-by", host).returncode, 2)
-        self.assertEqual(self.diff(self.src, os.path.join(self.dir, "missing.img"), self.VOL).returncode, 2)
-        self.assertEqual(self.diff(self.src, self.host_file("short.img", b""), self.VOL).returncode, 2)
-        with open(self.src, "rb") as f:
-            nospc = bytearray(f.read())
-        nospc[13] = 0
-        nospc = self.host_file("nospc.img", bytes(nospc))
-        r = self.diff(self.src, nospc, self.VOL)
-        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
-        self.assertNotIn("Traceback", r.stderr)
-        r = run("derive", nospc, os.path.join(self.dir, "from-nospc.img"), "--remove", self.VOL)
-        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
-        self.assertIn("derive: refused", r.stdout)
-        self.assertNotIn("Traceback", r.stderr)
-        self.assertFalse(os.path.lexists(os.path.join(self.dir, "from-nospc.img")))
+        with self.subTest(what="another file named, or no way said"):
+            r = self.diff(self.src, self.dst, "/A.TXT")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn(self.VOL, self.diff_line(r))
+            self.assertEqual(run("diff", self.src, other, "--expect-only", self.VOL).returncode, 2)
+            self.assertEqual(run("diff", self.src, other, "--removed").returncode, 2)
+            self.assertEqual(self.diff(self.src, other, self.VOL, "--removed", "--replaced-by", host).returncode, 2)
+            self.assertEqual(self.diff(self.src, os.path.join(self.dir, "missing.img"), self.VOL).returncode, 2)
+            self.assertEqual(self.diff(self.src, self.host_file("short.img", b""), self.VOL).returncode, 2)
+        with self.subTest(what="no sectors a cluster"):
+            with open(self.src, "rb") as f:
+                nospc = bytearray(f.read())
+            nospc[13] = 0
+            nospc = self.host_file("nospc.img", bytes(nospc))
+            r = self.diff(self.src, nospc, self.VOL)
+            self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
+            r = run("derive", nospc, os.path.join(self.dir, "from-nospc.img"), "--remove", self.VOL)
+            self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+            self.assertIn("derive: refused", r.stdout)
+            self.assertNotIn("Traceback", r.stderr)
+            self.assertFalse(os.path.lexists(os.path.join(self.dir, "from-nospc.img")))
         self.assertEqual(self.diff(self.src, other, self.VOL, "--replaced-by", os.path.join(self.dir, "missing.bin")).returncode, 2)
         self.assertEqual(self.diff(self.src, other, "/not an 8.3 name.elf").returncode, 2)
 
@@ -1658,34 +1667,36 @@ class Fat32Derive(unittest.TestCase):
         self.assertEqual(self.diff(self.src, other, self.VOL, *how).returncode, 0)
 
     def test_diff_fails_on_a_copy_that_fails_the_check(self):
-        # Free clusters up to cluster 601 marked in the first FAT copy alone: the tree and
-        # every file are the same, and a writer finds less room.
-        img = self.edit_copy()
-        for c in range(2, img.clusters + 2):
-            if img.fat_get(c) == 0:
-                off = c * 4
-                sec = img.fat_start + off // 512
-                s = bytearray(img.read_sector(sec))
-                s[off % 512:off % 512 + 4] = (0x0FFFFFFF).to_bytes(4, "little")
-                img.write_sector(sec, bytes(s))
-                if c > 600:
-                    break
-        img.close()
-        r = self.diff(self.src, self.dst, self.VOL)
-        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
-        self.assertIn("findings=['B fails the check', 'B has 15496 free clusters where the change leaves 16088'] differ=[]", self.diff_line(r))
-        # One cluster marked in the second FAT copy alone: nothing a reader of the first copy
-        # meets differs, and the volume is not sound.
-        os.unlink(self.dst)
-        img = self.edit_copy()
-        c = next(c for c in range(2, img.clusters + 2) if img.fat_get(c) == 0)
-        off = c * 4
-        sec = img.fat_start + img.fatsz + off // 512
-        s = bytearray(img.read_sector(sec))
-        s[off % 512:off % 512 + 4] = (0x0FFFFFFF).to_bytes(4, "little")
-        img.write_sector(sec, bytes(s))
-        img.close()
-        self.differs("findings=['B fails the check'] differ=[]")
+        with self.subTest(what="the first FAT copy alone"):
+            # Free clusters up to cluster 601 marked in the first FAT copy alone: the tree and
+            # every file are the same, and a writer finds less room.
+            img = self.edit_copy()
+            for c in range(2, img.clusters + 2):
+                if img.fat_get(c) == 0:
+                    off = c * 4
+                    sec = img.fat_start + off // 512
+                    s = bytearray(img.read_sector(sec))
+                    s[off % 512:off % 512 + 4] = (0x0FFFFFFF).to_bytes(4, "little")
+                    img.write_sector(sec, bytes(s))
+                    if c > 600:
+                        break
+            img.close()
+            r = self.diff(self.src, self.dst, self.VOL)
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertIn("findings=['B fails the check', 'B has 15496 free clusters where the change leaves 16088'] differ=[]", self.diff_line(r))
+        with self.subTest(what="the second FAT copy alone"):
+            # One cluster marked in the second FAT copy alone: nothing a reader of the first copy
+            # meets differs, and the volume is not sound.
+            os.unlink(self.dst)
+            img = self.edit_copy()
+            c = next(c for c in range(2, img.clusters + 2) if img.fat_get(c) == 0)
+            off = c * 4
+            sec = img.fat_start + img.fatsz + off // 512
+            s = bytearray(img.read_sector(sec))
+            s[off % 512:off % 512 + 4] = (0x0FFFFFFF).to_bytes(4, "little")
+            img.write_sector(sec, bytes(s))
+            img.close()
+            self.differs("findings=['B fails the check'] differ=[]")
 
     def test_diff_fails_on_bytes_after_a_directorys_end_mark(self):
         # An entry of the removed file's name planted after the end mark of its directory: no

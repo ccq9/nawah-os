@@ -2468,6 +2468,59 @@ MUTANTS = [
      '                out.append((name, key, "dir", meta, struct.unpack_from("<I", e, 28)[0], ""))\n',
      '                out.append((name, key, "dir", meta, 0, ""))\n',
      ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` passes a copy in which a directory's entry holds a size: test_diff_fails_when_a_directorys_size_field_changes fails, TST-M3-FAT32-TOOL FAIL"),
+    # M553..M558 (WP-180, the owner's decision of 2026-11-27, evidence first): the assertion groups
+    # of class Fat32Derive that no mutant reached. M553: the refusal of a destination that exists
+    # first rewrites it under its name as a new file of the bytes it showed (empty when unreadable).
+    ("M553", "tools/fat32.py",
+     '    except OSError as err:\n        print(f"derive: refused: the destination {a.dst} exists or cannot be named: {err}")\n        return 2\n',
+     '    except OSError as err:\n        try:\n            with open(a.dst, "rb") as f:\n                shown = f.read()\n        except OSError:\n            shown = b""\n        os.unlink(a.dst)\n        with open(a.dst, "wb") as f:\n            f.write(shown)\n        print(f"derive: refused: the destination {a.dst} exists or cannot be named: {err}")\n        return 2\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `derive` refuses a destination that exists in its own words, exit 2, the source unchanged, but leaves in its place a new file of the bytes it showed: a hard link is no longer the source's second name, a symbolic link no longer a link, a link to nowhere no longer a link: test_an_existing_destination_is_refused_under_any_name fails (what='a hard link to the source', 'a symbolic link to the source'; what='a link to nowhere' by an error at its readlink, the link being a file now), and so does test_a_destination_that_appears_during_the_derivation_is_not_written, by the same error, TST-M3-FAT32-TOOL FAIL"),
+    # M554: the refusal empties a destination that is a file of its own (no link, one name, not the source).
+    ("M554", "tools/fat32.py",
+     '    except OSError as err:\n        print(f"derive: refused: the destination {a.dst} exists or cannot be named: {err}")\n        return 2\n',
+     '    except OSError as err:\n        if os.path.isfile(a.dst) and not os.path.islink(a.dst) and os.stat(a.dst).st_nlink == 1 and not os.path.samefile(a.dst, a.src):\n            open(a.dst, "wb").close()\n        print(f"derive: refused: the destination {a.dst} exists or cannot be named: {err}")\n        return 2\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `derive` refuses a destination that is a file of its own in its own words, exit 2, the source unchanged, and empties it: test_an_existing_destination_is_refused_under_any_name fails (what='a file of its own'), TST-M3-FAT32-TOOL FAIL"),
+    # M555: the host file of a replacement is emptied once it is read.
+    ("M555", "tools/fat32.py",
+     '        with open(host, "rb") as f:\n            data = f.read()\n',
+     '        with open(host, "r+b") as f:\n            data = f.read()\n            f.truncate(0)\n',
+     ["TST-M3-FAT32-TOOL"], "`derive --replace VOL=FILE` empties FILE once it has read it: test_an_existing_destination_is_refused_under_any_name fails (what='a symbolic link to the source', by the bytes of the file it named), and six other cases fail where a later `diff --replaced-by FILE` reads the emptied file, test_diff_passes_for_the_one_file_alone (what='the replacement') among them, TST-M3-FAT32-TOOL FAIL"),
+    # M556: `diff`'s passing line names no images.
+    ("M556", "tools/fat32.py",
+     '; images A sha256={digests[0]} B sha256={digests[1]}")\n',
+     '")\n',
+     ["TST-M3-FAT32-TOOL"], "`diff`'s passing line names neither image by its sha256, the verdict the same: test_diff_passes_for_the_one_file_alone fails by the words of the line (what='the removal', 'the replacement'), TST-M3-FAT32-TOOL FAIL"),
+    # M557: a boot sector of no sectors a cluster is taken.
+    ("M557", "tools/fat32.py",
+     '        if len(b) < SECTOR or b[13] == 0:\n',
+     '        if len(b) < SECTOR:\n',
+     ["TST-M3-FAT32-TOOL"], "a boot sector of no sectors a cluster is taken for a FAT32 one, and `diff` and `derive` end in a traceback where the refusal was to be: test_diff_passes_for_the_one_file_alone fails (what='no sectors a cluster'), TST-M3-FAT32-TOOL FAIL"),
+    # M558: a destination with no directory ends `derive` in a traceback.
+    ("M558", "tools/fat32.py",
+     '    except OSError as err:\n        print(f"derive: refused: no working file beside the destination {a.dst}: {err}")\n        return 2\n',
+     '    except OSError:\n        raise\n',
+     ["TST-M3-FAT32-TOOL"], "`derive` to a destination with no directory ends in a traceback, exit 1, where the refusal was to be: test_a_destination_with_no_directory_is_refused fails, TST-M3-FAT32-TOOL FAIL"),
+    # M559..M562 (WP-180, evidence first, second step): the late assertions the six above leave
+    # unreached. M559: the line names a file by its kind and bytes, not its size.
+    ("M559", "tools/fat32.py",
+     'return ", ".join(f"{item[2]} size={item[4]} sha256=',
+     'return ", ".join(f"{item[2]} sha256=',
+     ["TST-M3-FAT32-TOOL"], "`diff`'s line names the file on each image without its size, the verdict the same: test_diff_passes_for_the_one_file_alone fails by the words of the line (what='the removal' at `A file size=`, what='the replacement' at `B file size=`), TST-M3-FAT32-TOOL FAIL"),
+    # M560: the first image is not checked, the second still is.
+    ("M560", "tools/fat32.py",
+     '                if check_image(img, argparse.Namespace()) != 0:\n',
+     '                if side == "B" and check_image(img, argparse.Namespace()) != 0:\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` does not check the first image, so a first volume that holds an entry the walk passes over, or fails the check otherwise, is judged as a sound one; where the second lacks that entry the pair still fails by what differs, so the words of the line alone differ: test_an_image_with_a_dot_name_is_neither_derived_from_nor_passed fails by the words (`A fails the check`), with the volume-bit and the long-name cases, TST-M3-FAT32-TOOL FAIL"),
+    # M561: the free-cluster finding names no numbers.
+    ("M561", "tools/fat32.py",
+     'findings.append(f"B has {frees[1]} free clusters where the change leaves {left}")',
+     'findings.append("B has other free clusters than the change leaves")',
+     ["TST-M3-FAT32-TOOL"], "`diff`'s finding on the free clusters names neither count, the verdict the same: test_diff_fails_on_free_clusters_taken_from_the_copy and test_diff_fails_on_a_copy_that_fails_the_check (what='the first FAT copy alone') fail by the words of the line, TST-M3-FAT32-TOOL FAIL"),
+    # M562: the findings are no part of the verdict; what differs alone fails a pair.
+    ("M562", "tools/fat32.py",
+     '    if findings or differ:\n',
+     '    if differ:\n',
+     ["TST-M3-FAT32-TOOL"], "SECURITY: `diff` passes a pair whose findings alone tell them apart (a copy that fails the check, another boot sector or length, a second name, entries in another order, free clusters taken, bytes after an end mark, the wrong change of the file): test_diff_fails_on_a_copy_that_fails_the_check fails by the verdict (what='the first FAT copy alone', what='the second FAT copy alone'), with twenty-two other failures, TST-M3-FAT32-TOOL FAIL"),
     # M212, M213 (SECURITY, WP-118): the exact numbers a fault case gives the host checker.
     # M212: any number of chains longer than their size is accepted once the case allows some.
     ("M212", "tools/fat32.py",
@@ -2624,6 +2677,12 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             "M510", "M511", "M513", "M515", "M516", "M517", "M518", "M519", "M520", "M521", "M522", "M525",
             "M527", "M528", "M529", "M530", "M531", "M532", "M533", "M534", "M536", "M537", "M538", "M539",
             "M541", "M542", "M545", "M546", "M547", "M548", "M549", "M550", "M551", "M552",
+            # M6 tooling (WP-180, evidence first): the refusal of a destination that exists leaves
+            # what was there as it was: a link is not rewritten as a file (M553), a file of its own
+            # is not emptied (M554).
+            "M553", "M554",
+            # `diff` judges both images by the check (M560) and fails a pair on any finding (M562).
+            "M560", "M562",
             # M6 (WP-124): a FAT write stops at its first refused write (M252, M253), and the hook
             # that shows it refuses one write alone (M254).
             "M252", "M253", "M254",
