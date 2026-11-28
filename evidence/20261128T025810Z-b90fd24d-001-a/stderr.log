@@ -1,0 +1,3 @@
+   Compiling nawah-apps v0.1.0 (/home/runner/work/nawah-os/nawah-os/user/nawah-apps)
+    Finished `release` profile [optimized + debuginfo] target(s) in 4.77s
+     Running tests/ended.rs (target/x86_64-unknown-linux-gnu/release/deps/ended-c486add5ced95f7f)
