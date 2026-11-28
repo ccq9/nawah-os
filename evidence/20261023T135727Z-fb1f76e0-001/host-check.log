@@ -1,0 +1,38 @@
+$ python3 -I tools/transcript.py check /home/runner/work/nawah-os/nawah-os/evidence/20261023T135727Z-fb1f76e0-001 platform/pc-qemu/expect/arabic-ui.txt
+serial.log: 18 narrator lines as expected
+
+[exit 0]
+$ python3 -I tools/screen.py desktop /home/runner/work/nawah-os/nawah-os/evidence/20261023T135727Z-fb1f76e0-001/screen.ppm --pixel 23,47,F0F0F0 --ink 27,77,248,26,right
+{
+ "width": 1280,
+ "height": 800,
+ "pixels": [
+  {
+   "x": 23,
+   "y": 47,
+   "expected": "f0f0f0",
+   "seen": "f0f0f0",
+   "ok": true
+  }
+ ],
+ "windows": [],
+ "inks": [
+  {
+   "x": 27,
+   "y": 77,
+   "w": 248,
+   "h": 26,
+   "side": "right",
+   "background": "ffffff",
+   "count": 92,
+   "ink_x0": 227,
+   "ink_x1": 265,
+   "left_gap": 200,
+   "right_gap": 9,
+   "ok": true
+  }
+ ],
+ "ok": true
+}
+
+[exit 0]
