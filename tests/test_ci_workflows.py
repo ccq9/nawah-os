@@ -101,8 +101,11 @@ def gate_case():
 
 # A Toolchain step's retry(): two or more tries of a command, each under `timeout`, a pause after a
 # failed one. Its per-try limit is its own (`timeout 300 "$@"`) or the first argument of each call
-# (`t=$1; shift; … timeout "$t" "$@"`, then `retry 100 cmd …`).
-RETRY_DEF = re.compile(r'retry\(\) \{ (t=\$1; shift; )?for i in ([\d ]+); do (?:s=\$SECONDS; )?timeout (\d+|"\$t") [^}]*sleep (\d+)')
+# (`t=$1; shift; … timeout "$t" "$@"`, then `retry 100 cmd …`). Since WP-166 a try's limit is first
+# cut to what remains of the step's deadline (`[ "$t" -le $((end - s)) ] || t=…; [ "$t" -gt 0 ] ||
+# break;`) and `timeout -k 10` kills a child that ignores TERM; what that deadline bounds is
+# ToolchainScript's (the text is run, not read).
+RETRY_DEF = re.compile(r'retry\(\) \{ (t=\$1; shift; )?for i in ([\d ]+); do (?:s=\$SECONDS; )?(?:\[ [^]]*\] \|\| [^;]*; )*timeout (?:-k \d+ )?(\d+|"\$t") [^}]*sleep (\d+)')
 
 
 def toolchain_steps():
@@ -123,11 +126,14 @@ def retry_plan(run):
     fixed = None if m.group(3) == '"$t"' else int(m.group(3))
     calls = []
     for i, line in enumerate(l.strip() for l in run.splitlines()):
-        c = re.fullmatch(r"(?:if ! )?retry (.+)", line)
-        if not c:
-            continue
-        n = re.fullmatch(r"(\d+) (.+)", c.group(1)) if fixed is None else None
-        calls.append((i, fixed if fixed is not None else (int(n.group(1)) if n else None), n.group(2) if n else c.group(1)))
+        # WP-166: one `if` may try two calls (`if ! retry 100 update … || ! retry 100 fetch …; then`),
+        # each a call of its own on that line.
+        for part in re.split(r" \|\| ! (?=retry )", line):
+            c = re.fullmatch(r"(?:if ! )?retry (.+)", part)
+            if not c:
+                continue
+            n = re.fullmatch(r"(\d+) (.+)", c.group(1)) if fixed is None else None
+            calls.append((i, fixed if fixed is not None else (int(n.group(1)) if n else None), n.group(2) if n else c.group(1)))
     return len(m.group(2).split()), int(m.group(4)), calls
 
 
@@ -416,6 +422,277 @@ class FallbackMirror(unittest.TestCase):
                     # 240 s attempt limit killed one download three times and failed the job: the
                     # fallback, the installation and rustup keep tries that outlast a slow download.
                     self.assertGreaterEqual(limit, 300, f"{where}: an attempt dies before a slow download ends: {cmd}")
+
+
+class ToolchainScript(unittest.TestCase):
+    """WP-166 (first part): every Toolchain step's REAL run text, taken from the workflow file and
+    left unmodified, executed under `bash -e` (the workflows set no `shell:` and no `defaults`, and
+    GitHub runs an unspecified shell on Linux as `bash -e {0}`: no pipefail) after a prelude of
+    stand-ins: sudo, apt-get, rustup, timeout, sleep and the version commands are shell functions,
+    nothing is fetched, nothing sleeps, and SECONDS, unset and so a plain variable, is a simulated
+    clock that only timeout and sleep advance. A scenario names, per call and source, each
+    invocation's (duration, exit code[, "i"]): a duration above the try's limit is cut by the
+    stand-in timeout at that limit (rc 124), "L" lasts exactly the limit and succeeds; "i" marks a
+    command that ignores TERM: `timeout -k K` cuts it at limit + K (rc 137), a timeout without -k
+    lets it run its whole length (as GNU timeout does); an invocation the scenario does not name
+    succeeds at once. Mutants run on 2026-11-19 and
+    2026-11-23 were cut by the 15-min cap or ended exit 1 at 864..890 s; mutants run 45158893604
+    ended exit 1 after two slow index updates with no second source."""
+
+    CAP = 900
+    # The worst end the step's own comment states (verify.yml job a): its 840 s deadline, the kill
+    # delay of `timeout -k 10` and the last 10 s pause.
+    BOUND = 860
+    # What each call's annotation names (its own command text).
+    NAMES = {"update": "update -qq", "fetch": "install --download-only", "install": "install -y",
+             "toolchain": "rustup toolchain install", "target": "rustup target add"}
+    BIG = 10 ** 6
+    PRELUDE = r"""
+unset SECONDS; SECONDS=0
+__src=mirror; __under=; __dur=0; __rc=0; __ign=; __lim=0
+__log() { printf '%s\t%s\n' "$SECONDS" "$*" >> "$__LOG"; }
+trap '__log "exit $?"' EXIT
+__call() {
+  local -n __a="__p_$1"; local __c="__c_$1"; local __n=${!__c:-0}
+  printf -v "$__c" %d $((__n + 1))
+  local __o=${__a[__n]:-0:0}
+  IFS=: read -r __dur __rc __ign <<< "$__o"
+  if [ "$__dur" = L ]; then __dur=$__lim; fi
+  __log "start $1"
+  if [ -z "$__under" ]; then SECONDS=$((SECONDS + __dur)); fi
+  return "$__rc"
+}
+timeout() {
+  local __kd=
+  if [ "$1" = -k ]; then __kd=$2; shift 2; fi
+  local __t=$1; shift
+  case "$__t" in ''|*[!0-9]*) __log "BAD-LIMIT $__t"; return 125 ;; esac
+  if [ "$__t" -le 0 ]; then __log "BAD-LIMIT $__t"; return 125; fi
+  __log "try $__t"
+  __lim=$__t; __under=1; local __r=0; "$@" || __r=$?; __under=
+  if [ "$__dur" -gt "$__t" ] && [ -n "$__ign" ]; then
+    if [ -z "$__kd" ]; then SECONDS=$((SECONDS + __dur)); __log "TERM ignored, ran $__dur"; return 124; fi
+    if [ "$__dur" -gt $((__t + __kd)) ]; then SECONDS=$((SECONDS + __t + __kd)); __log "killed $((__t + __kd))"; return 137; fi
+    SECONDS=$((SECONDS + __dur)); return 124
+  fi
+  if [ "$__dur" -gt "$__t" ]; then SECONDS=$((SECONDS + __t)); __log "cut $__t"; return 124; fi
+  SECONDS=$((SECONDS + __dur)); __log "end $__r"; return "$__r"
+}
+sleep() { SECONDS=$((SECONDS + $1)); __log "sleep $1"; }
+sudo() {
+  if [ "$1" = sed ]; then __log "sed"; __src=archive; return 0; fi
+  while [ $# -gt 0 ] && [[ "$1" == *=* ]]; do shift; done
+  "$@"
+}
+apt-get() {
+  local __k=other
+  case " $* " in
+    *" update "*) __k=update ;;
+    *" --download-only "*) __k=fetch ;;
+    *" install "*) __k=install ;;
+  esac
+  __call "${__k}_$__src"
+}
+rustup() {
+  case "$1 $2" in
+    "toolchain install") __call toolchain ;;
+    "target add") __call target ;;
+    *) __call run; echo "rustc 1.97.0 (stand-in)" ;;
+  esac
+}
+cargo() { echo "cargo 1.97.0 (stand-in)"; }
+hb-shape() { echo "hb-shape (stand-in)"; }
+python3() { echo "python3 (stand-in)"; }
+clang() { echo "clang (stand-in)"; }
+qemu-system-x86_64() { echo "qemu-system-x86_64 (stand-in)"; }
+qemu-system-aarch64() { echo "qemu-system-aarch64 (stand-in)"; }
+dpkg() { echo "Version: 0 (stand-in)"; }
+"""
+
+    def steps(self):
+        steps = list(toolchain_steps())
+        # verify: a, b, the shards, g and merge; mutants.yml's one job.
+        self.assertEqual(len(steps), 2 + SHARDS + 2 + 1, "every Toolchain copy is run")
+        return steps
+
+    @staticmethod
+    def full(run):
+        return "rustup toolchain install" in run
+
+    def execute(self, run, scenario=None):
+        """(exit code, stdout lines, events as (time, text), simulated end) of `run` under the
+        stand-ins and `scenario` ({"update_mirror": [(duration, rc), …], …})."""
+        decl = []
+        for key, outcomes in (scenario or {}).items():
+            assert re.fullmatch(r"[a-z]+(_mirror|_archive)?", key), key
+            decl.append(f"__p_{key}=(" + " ".join(":".join(map(str, o)) for o in outcomes) + ")")
+        with tempfile.TemporaryDirectory() as tmp:
+            script = pathlib.Path(tmp) / "step.sh"
+            log = pathlib.Path(tmp) / "events.log"
+            script.write_text(self.PRELUDE + "\n".join(decl) + "\n" + run, encoding="utf-8")
+            r = subprocess.run(["bash", "-e", str(script)],
+                               capture_output=True, text=True, timeout=20, cwd=tmp,
+                               env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "__LOG": str(log)})
+            events = [(int(t), e) for t, e in (l.split("\t", 1) for l in log.read_text(encoding="utf-8").splitlines())]
+        end = [t for t, e in events if e.startswith("exit ")]
+        self.assertEqual(len(end), 1, f"the stand-in harness logged no exit: {r.stderr[-400:]}")
+        self.assertNotIn("BAD-LIMIT", " ".join(e for _, e in events), "a try started with no time left")
+        return r.returncode, r.stdout.splitlines(), events, end[0]
+
+    @staticmethod
+    def started(events):
+        return [e[len("start "):] for _, e in events if e.startswith("start ")]
+
+    def test_the_normal_case_is_unchanged(self):
+        for name, job, step in self.steps():
+            where = f"{name}: {job}"
+            rc, out, events, end = self.execute(step["run"])
+            self.assertEqual(rc, 0, f"{where}: {out[-3:]}")
+            want = ["update_mirror", "fetch_mirror", "install_mirror"]
+            if self.full(step["run"]):
+                want += ["toolchain", "target", "run"]
+            self.assertEqual(self.started(events), want, where)
+            self.assertNotIn("sed", [e for _, e in events], f"{where}: a rewrite in the normal case")
+            self.assertFalse([l for l in out if l.startswith("::")], f"{where}: an annotation in the normal case")
+            self.assertEqual(end, 0, where)
+
+    def test_a_failed_index_update_has_a_second_source(self):
+        # Mutants run 45158893604: the runner's mirror failed the index update twice and the step
+        # ended exit 1 after about 220 s with archive.ubuntu.com never tried.
+        for name, job, step in self.steps():
+            where = f"{name}: {job}"
+            rc, out, events, end = self.execute(step["run"], {"update_mirror": [(self.BIG, 0), (self.BIG, 0)]})
+            self.assertEqual(rc, 0, f"{where}: {out[-2:]}")
+            got = self.started(events)
+            self.assertEqual([e for _, e in events].count("sed"), 1, f"{where}: not one rewrite")
+            self.assertEqual(got[:5], ["update_mirror", "update_mirror", "update_archive", "fetch_archive", "install_archive"], where)
+
+    def test_both_index_sources_failing_fail_the_step_by_name(self):
+        for first in ({"update_mirror": [(self.BIG, 0), (5, 100)]}, {"fetch_mirror": [(5, 100), (5, 100)]}):
+            for name, job, step in self.steps():
+                where = f"{name}: {job}: {first}"
+                rc, out, events, end = self.execute(step["run"], {**first, "update_archive": [(5, 100), (self.BIG, 0)]})
+                self.assertNotEqual(rc, 0, where)
+                self.assertEqual([e for _, e in events].count("sed"), 1, f"{where}: not one rewrite")
+                self.assertRegex(out[-1], r"^::error title=Toolchain::.*\bindex\b", where)
+                self.assertNotIn("fetch_archive", self.started(events), f"{where}: fetched with no index")
+                self.assertLess(end, self.CAP, where)
+
+    def test_the_download_fallback_still_works(self):
+        for name, job, step in self.steps():
+            where = f"{name}: {job}"
+            rc, out, events, end = self.execute(step["run"], {"fetch_mirror": [(self.BIG, 0), (5, 100)]})
+            self.assertEqual(rc, 0, f"{where}: {out[-2:]}")
+            self.assertEqual([e for _, e in events].count("sed"), 1, f"{where}: not one rewrite")
+            self.assertEqual(self.started(events)[:6],
+                             ["update_mirror", "fetch_mirror", "fetch_mirror", "update_archive", "fetch_archive", "install_archive"], where)
+
+    def test_the_steps_worst_case_fits_its_cap(self):
+        # The worst cases by the step's own limits: every try ends at its limit; every first try is
+        # cut and every second succeeds at its limit; the 2026-11-19 shape (the runner's mirror cut
+        # twice, the fallback's first try cut, its second finishing late), for the index and for the
+        # fetch. Each ends below the 900 s cap by success or by the step's own ::error annotation.
+        keys = ("update_mirror", "fetch_mirror", "install_mirror", "update_archive", "fetch_archive",
+                "install_archive", "toolchain", "target")
+        cut, late = (self.BIG, 0), ("L", 0)
+        scenarios = {
+            "every try at its limit": {k: [cut, cut] for k in keys},
+            "first cut, second at its limit": {k: [cut, late] for k in keys},
+            "2026-11-19, the fetch": {"fetch_mirror": [cut, cut], "fetch_archive": [cut, (290, 0)],
+                                      "install_archive": [(60, 0)], "toolchain": [(30, 0)], "target": [(20, 0)]},
+            "2026-11-19, the index": {"update_mirror": [cut, cut], "update_archive": [cut, (290, 0)],
+                                      "fetch_archive": [(200, 0)], "install_archive": [(60, 0)]},
+        }
+        for label, scenario in scenarios.items():
+            for name, job, step in self.steps():
+                where = f"{name}: {job}: {label}"
+                rc, out, events, end = self.execute(step["run"], scenario)
+                self.assertLess(end, self.CAP, f"{where}: the step would be cut by its cap at {end} s")
+                self.assertLessEqual(end, self.BOUND, f"{where}: ends at {end} s, past the {self.BOUND} s its comment states")
+                if rc != 0:
+                    self.assertRegex(out[-1] if out else "", r"^::error title=Toolchain::", f"{where}: ended rc={rc} by another's words")
+                self.check_the_named_end(where, step["run"], rc, out, events, end)
+
+    def check_the_named_end(self, where, run, rc, out, events, end):
+        """When the deadline is spent the last annotation is the `ran out` ::error naming the call
+        that was running; the index ::error only follows two failed archive updates with time left."""
+        deadline = int(re.search(r"end=\$\(\(SECONDS \+ (\d+)\)\)", run).group(1))
+        last = out[-1] if out else ""
+        # The call whose retry ran out: the last one started, or, when its try had succeeded, the
+        # next one in the step's order (its retry found no time to start a try).
+        starts = [i for i, (_, e) in enumerate(events) if e.startswith("start ")]
+        running = events[starts[-1]][1][len("start "):].split("_")[0] if starts else None
+        if starts and "end 0" in [e for _, e in events[starts[-1]:]]:
+            order = ["update", "fetch", "install", "toolchain", "target"]
+            running = order[order.index(running) + 1] if running in order[:-1] else running
+        if rc != 0 and end >= deadline:
+            self.assertRegex(last, r"^::error title=Toolchain::.*ran out", f"{where}: the deadline ran out at {end} s, the last words: {last[:120]}")
+            self.assertIn(self.NAMES[running], last, f"{where}: the `ran out` ::error does not name the running call ({running})")
+        index = [l for l in out if l.startswith("::error") and "package index" in l]
+        if index:
+            self.assertEqual(index, [last], f"{where}: the index ::error is not the last words")
+            self.assertLess(end, deadline, f"{where}: the index ::error with no time left")
+            self.assertEqual(running, "update", f"{where}: the index ::error after {running}")
+
+    def test_a_call_failing_twice_ends_by_its_own_error(self):
+        # Every call outside the `if`'s condition that fails twice for a reason other than time
+        # ends the step rc != 0, before the cap, its last annotation an ::error naming that call.
+        fail = [(5, 100), (5, 100)]
+        cases = {"fetch": {"fetch_mirror": fail, "fetch_archive": fail}, "install": {"install_mirror": fail},
+                 "toolchain": {"toolchain": fail}, "target": {"target": fail}}
+        for call, scenario in cases.items():
+            for name, job, step in self.steps():
+                if self.NAMES[call] not in step["run"]:
+                    continue
+                where = f"{name}: {job}: {call} failing twice"
+                rc, out, events, end = self.execute(step["run"], scenario)
+                self.assertNotEqual(rc, 0, where)
+                self.assertLess(end, self.CAP, where)
+                notes = [l for l in out if l.startswith("::")]
+                self.assertRegex(notes[-1] if notes else "", r"^::error title=Toolchain::", f"{where}: the last annotation: {notes[-1:]}")
+                self.assertIn(self.NAMES[call], notes[-1], f"{where}: the ::error does not name the call")
+
+    def test_a_child_ignoring_term_still_ends_by_its_own_error(self):
+        # A command that ignores TERM at every call: GNU timeout without -k waits for it; the step
+        # still ends by its own ::error, inside the bound its comment states.
+        keys = ("update_mirror", "fetch_mirror", "install_mirror", "update_archive", "fetch_archive",
+                "install_archive", "toolchain", "target")
+        stuck = (self.BIG, 0, "i")
+        for name, job, step in self.steps():
+            where = f"{name}: {job}"
+            rc, out, events, end = self.execute(step["run"], {k: [stuck, stuck] for k in keys})
+            self.assertNotEqual(rc, 0, where)
+            self.assertLessEqual(end, self.BOUND, f"{where}: ends at {end} s")
+            self.assertRegex(out[-1] if out else "", r"^::error title=Toolchain::", where)
+            self.check_the_named_end(where, step["run"], rc, out, events, end)
+
+    def test_the_harness_runs_the_shell_github_runs(self):
+        # The harness's `bash -e` holds only while no workflow, job or Toolchain step names a shell.
+        for name in ("verify.yml", "mutants.yml"):
+            doc = load(name)
+            self.assertNotIn("defaults", doc, name)
+            for job, body in doc["jobs"].items():
+                self.assertNotIn("defaults", body, f"{name}: {job}")
+        for name, job, step in self.steps():
+            self.assertNotIn("shell", step, f"{name}: {job}")
+
+    def test_the_comment_states_the_bound(self):
+        # The bound BOUND pins is the one verify.yml's comment states.
+        self.assertIn(f"by {self.BOUND} s at worst", (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8"))
+
+    def test_the_harness_fails_and_counts(self):
+        # Not vacuous: a stand-in failure fails the step, and the simulated clock counts.
+        for name, job, step in self.steps():
+            where = f"{name}: {job}"
+            key = "toolchain" if self.full(step["run"]) else "install_mirror"
+            rc, _, _, _ = self.execute(step["run"], {key: [(1, 1), (1, 1)]})
+            self.assertNotEqual(rc, 0, f"{where}: a failing {key} did not fail the step")
+            known = {"update_mirror": [(7, 0)], "fetch_mirror": [(self.BIG, 0), (11, 0)], "install_mirror": [(13, 0)],
+                     "toolchain": [(17, 0)], "target": [(19, 0)]}
+            rc, _, _, end = self.execute(step["run"], known)
+            self.assertEqual(rc, 0, where)
+            # 7 + (100 cut + 10 pause) + 11 + 13 (+ 17 + 19)
+            self.assertEqual(end, 141 + (36 if self.full(step["run"]) else 0), where)
 
 
 class Suites(unittest.TestCase):

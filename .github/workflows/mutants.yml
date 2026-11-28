@@ -61,19 +61,21 @@ jobs:
       - name: Toolchain
         # Verify job a's step, run text and cap (its comment there says why): the host suites this
         # workflow runs since WP-95 need its lab, fonttools and harfbuzz among it (MutationHarness).
+        # Its anchors are once here, so the step's mutants (M305-M308, M563-M566 since WP-166: the
+        # index update's second source, the 840 s deadline and the step's named failures) mutate this copy.
         timeout-minutes: 15
         run: |
-          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; timeout "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; return 1; }
-          retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
+          end=$((SECONDS + 840))
+          retry() { t=$1; shift; for i in 1 2; do s=$SECONDS; [ "$t" -le $((end - s)) ] || t=$((end - s)); [ "$t" -gt 0 ] || break; timeout -k 10 "$t" "$@" && return 0; rc=$?; echo "::warning title=Toolchain::attempt $i of 2 ended rc=$rc after $((SECONDS-s)) s of $t, $(ls /var/cache/apt/archives | grep -c 'deb$') packages fetched: $*"; sleep 10; done; [ $((end - SECONDS)) -gt 0 ] || { echo "::error title=Toolchain::the step's 840 s ran out (cap 900 s): $*"; exit 1; }; return 1; }
+          if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq || ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin; then
             echo "::warning title=Toolchain::the runner's mirror failed twice ($(grep -rhoE 'https?://[^ ]+' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ 2>/dev/null | sort -u | tr '\n' ' ')); fetching from archive.ubuntu.com"
             sudo sed -i 's#://[a-z0-9.-]*\.archive\.ubuntu\.com/#://archive.ubuntu.com/#g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq
-            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq || { echo "::error title=Toolchain::the package index: apt-get update failed twice on archive.ubuntu.com after the runner's mirror failed"; exit 1; }
+            retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin || { echo "::error title=Toolchain::failed twice from archive.ubuntu.com: apt-get install --download-only"; exit 1; }
           fi
-          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin
-          retry 300 rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy
-          retry 300 rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none
+          retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq clang lld qemu-system-x86 qemu-system-arm ovmf qemu-efi-aarch64 mtools dosfstools python3-jsonschema python3-fonttools python3-yaml libharfbuzz-bin || { echo "::error title=Toolchain::failed twice: apt-get install -y"; exit 1; }
+          retry 300 rustup toolchain install 1.97.0 --profile minimal -c rustfmt -c clippy || { echo "::error title=Toolchain::failed twice: rustup toolchain install"; exit 1; }
+          retry 300 rustup target add --toolchain 1.97.0 x86_64-unknown-uefi aarch64-unknown-uefi x86_64-unknown-none || { echo "::error title=Toolchain::failed twice: rustup target add"; exit 1; }
           rustup run 1.97.0 rustc --version; cargo --version
           hb-shape --version | head -1; python3 -c "import fontTools; print('fonttools', fontTools.version)"
           clang --version | head -1; qemu-system-x86_64 --version | head -1; qemu-system-aarch64 --version | head -1; dpkg -s ovmf | grep ^Version; dpkg -s qemu-efi-aarch64 | grep ^Version

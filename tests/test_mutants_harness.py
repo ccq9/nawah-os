@@ -2811,12 +2811,19 @@ class WorkflowShardMutants(unittest.TestCase):
     def test_the_fallback_mirror_mutants_are_registered(self):
         # WP-152's follow-up (verify run 44218469147): the Toolchain step's fallback mirror and the
         # runner mirror's budget, mutated in mutants.yml, where each anchor is once (verify.yml
-        # repeats the step in nine jobs): the Azure-only rewrite back (M305), a rewrite that edits
+        # repeats the step in sixteen jobs): the Azure-only rewrite back (M305), a rewrite that edits
         # apt-mirrors.txt alone (M306), 300 s tries of the runner's mirror again (M307) and a
-        # fallback fetch whose try dies before a slow download ends (M308); TST-M0-003 kills them.
+        # fallback fetch whose try dies before a slow download ends (M308); WP-166 (first part):
+        # the index update without its second source (M563), the step's deadline past its cap
+        # (M564), both sources' failed update ending unnamed (M565) and a try's limit not cut to
+        # what remains of the deadline (M566); after the red team: the deadline past the bound the
+        # step's comment states (M567), no kill delay for a child ignoring TERM (M568), the spent
+        # deadline returning to its caller (M569) and an install failing twice unnamed (M570);
+        # TST-M0-003 kills them.
         by_id = {m[0]: m for m in mutants.MUTANTS}
         text = (ROOT / ".github" / "workflows" / "mutants.yml").read_text(encoding="utf-8")
-        for mid in ("M305", "M306", "M307", "M308"):
+        for mid in ("M305", "M306", "M307", "M308", "M563", "M564", "M565", "M566",
+                    "M567", "M568", "M569", "M570"):
             self.assertIn(mid, by_id, f"{mid} is not registered")
             m = by_id[mid]
             self.assertEqual((m[1], m[4], mutants.stage_of(mid)), (".github/workflows/mutants.yml", ["TST-M0-003"], "M6"), mid)

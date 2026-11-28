@@ -2147,7 +2147,8 @@ MUTANTS = [
      ["TST-M4-CONFIG-SUBS"], "SECURITY: a client that has gone keeps its subscriptions in every store but the first"),
     # M305..M308 (WP-152's follow-up, verify run 44218469147): the Toolchain step's fallback mirror and
     # the runner mirror's budget, in mutants.yml where each anchor is once (verify.yml repeats the
-    # step in nine jobs, a and the shards under one identity check); TST-M0-003 (FallbackMirror).
+    # step in sixteen jobs: a, b and the shards under one identity check, g and merge in a short
+    # form); TST-M0-003 (FallbackMirror).
     ("M305", ".github/workflows/mutants.yml",
      "sudo sed -i 's#://[a-z0-9.-]*\\.archive\\.ubuntu\\.com/#://archive.ubuntu.com/#g' ",
      "sudo sed -i 's#http://azure\\.archive\\.ubuntu\\.com/#http://archive.ubuntu.com/#' ",
@@ -2160,6 +2161,33 @@ MUTANTS = [
      "retry 300 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only",
      "retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --download-only",
      ["TST-M0-003"], "the fallback's fetch gets 100 s tries: a slow download from archive.ubuntu.com dies before it ends"),
+    # M563..M566 (WP-166, first part; mutants run 45158893604 and the cut jobs of 2026-11-19 and
+    # 2026-11-23): the index update's second source, the step's own deadline inside its cap and its
+    # named failure, in mutants.yml where each anchor is once; TST-M0-003 (ToolchainScript, which
+    # runs the step's text on a simulated clock) kills them.
+    ("M563", ".github/workflows/mutants.yml",
+     "if ! retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq || ! retry 100 sudo",
+     "retry 100 sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq\n          if ! retry 100 sudo",
+     ["TST-M0-003"], "the index update has no second source again: when the runner's mirror fails it twice the step ends exit 1 with archive.ubuntu.com never tried"),
+    ("M564", ".github/workflows/mutants.yml", "end=$((SECONDS + 840))", "end=$((SECONDS + 3600))",
+     ["TST-M0-003"], "the step's deadline lies past its 15-min cap: a slow day's tries run on until the cap cuts the step, which then says nothing of its own"),
+    ("M565", ".github/workflows/mutants.yml",
+     " || { echo \"::error title=Toolchain::the package index: apt-get update failed twice on archive.ubuntu.com after the runner's mirror failed\"; exit 1; }",
+     "",
+     ["TST-M0-003"], "when both sources fail the index update the step ends by a retry warning, never naming the index"),
+    ("M566", ".github/workflows/mutants.yml", '[ "$t" -le $((end - s)) ] || t=$((end - s)); ', "",
+     ["TST-M0-003"], "a try keeps its own limit whatever remains of the deadline, so the last tries outlast the cap"),
+    # M567..M570 (WP-166, after the red team and the audit of 2026-11-28): the deadline inside the
+    # bound the step's comment states, the kill of a child that ignores TERM, the `ran out` ::error
+    # as the step's last words, and a non-time failure's own ::error; ToolchainScript kills them.
+    ("M567", ".github/workflows/mutants.yml", "end=$((SECONDS + 840))\n          retry()", "end=$((SECONDS + 889))\n          retry()",
+     ["TST-M0-003"], "the deadline 889 s: the step still ends inside the cap but past the 860 s its comment states, its margin gone"),
+    ("M568", ".github/workflows/mutants.yml", 'timeout -k 10 "$t" "$@"', 'timeout "$t" "$@"',
+     ["TST-M0-003"], "no kill delay: a child that ignores TERM holds its try until the 15-min cap cuts the step"),
+    ("M569", ".github/workflows/mutants.yml", '(cap 900 s): $*"; exit 1; }', '(cap 900 s): $*"; return 1; }',
+     ["TST-M0-003"], "the spent deadline returns to the caller, whose own ::error (the index, a failed call) then names the wrong cause"),
+    ("M570", ".github/workflows/mutants.yml", ' || { echo "::error title=Toolchain::failed twice: apt-get install -y"; exit 1; }', "",
+     ["TST-M0-003"], "an install that fails twice ends the step by a retry warning, never by an ::error naming the install"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
