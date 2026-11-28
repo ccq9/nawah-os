@@ -1,0 +1,35 @@
+{
+ "schema_version": "1.1.0",
+ "run_id": "20261123T143836Z-54085b0d-001-a",
+ "started_at": "2026-11-23T14:38:35+00:00",
+ "finished_at": "2026-11-23T14:39:25+00:00",
+ "source_revision": "54085b0dd76aaecb3ca7f4f653d25e37d62b2ed0",
+ "dirty_state": true,
+ "dirty_paths": [
+  "docs/hardware.json",
+  "docs/requirements.json",
+  "docs/stages.json",
+  "docs/tests.json",
+  "docs/work-items.json"
+ ],
+ "host": {
+  "os": "Linux 7.0.0-1014-aws",
+  "machine": "x86_64"
+ },
+ "target": "host",
+ "worker": "verification-runner",
+ "purpose": "test:TST-M5-LAB-TOOL",
+ "commands": [
+  "python3 -I tests/test_monitor_steps.py"
+ ],
+ "exit_code": 0,
+ "ci": {
+  "run_id": "45192532128",
+  "run_attempt": 1,
+  "workflow": "verify",
+  "event": "pull_request",
+  "sha": "54085b0dd76aaecb3ca7f4f653d25e37d62b2ed0",
+  "head_sha": "ef5f32924e61a6e9e1cee81a6fe0bd71f3e3c1f6",
+  "ref": "refs/pull/23/merge"
+ }
+}
