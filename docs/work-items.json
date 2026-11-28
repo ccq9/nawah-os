@@ -37,7 +37,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051627Z-25fb97d5-001-a"
+    "evidence/20261128T082900Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -78,7 +78,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051626Z-25fb97d5-001-a"
+    "evidence/20261128T082859Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -123,8 +123,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050026Z-25fb97d5-001-a",
-    "evidence/20261128T050028Z-25fb97d5-001-a"
+    "evidence/20261128T081319Z-c624212e-001-a",
+    "evidence/20261128T081323Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -183,7 +183,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051627Z-25fb97d5-001-a"
+    "evidence/20261128T082900Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -356,10 +356,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050031Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a",
-    "evidence/20261128T050110Z-25fb97d5-001-a",
-    "evidence/20261128T051707Z-25fb97d5-001-a"
+    "evidence/20261128T081326Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a",
+    "evidence/20261128T081403Z-c624212e-001-a",
+    "evidence/20261128T082940Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -429,17 +429,17 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050115Z-25fb97d5-001-a",
-    "evidence/20261128T050119Z-25fb97d5-001-a",
-    "evidence/20261128T050124Z-25fb97d5-001-a",
-    "evidence/20261128T050129Z-25fb97d5-001-a",
-    "evidence/20261128T050134Z-25fb97d5-001-a",
-    "evidence/20261128T050138Z-25fb97d5-001-a",
-    "evidence/20261128T050143Z-25fb97d5-001-a",
-    "evidence/20261128T050148Z-25fb97d5-001-a",
-    "evidence/20261128T050153Z-25fb97d5-001-a",
-    "evidence/20261128T050157Z-25fb97d5-001-a",
-    "evidence/20261128T050202Z-25fb97d5-001-a"
+    "evidence/20261128T081407Z-c624212e-001-a",
+    "evidence/20261128T081412Z-c624212e-001-a",
+    "evidence/20261128T081416Z-c624212e-001-a",
+    "evidence/20261128T081421Z-c624212e-001-a",
+    "evidence/20261128T081425Z-c624212e-001-a",
+    "evidence/20261128T081429Z-c624212e-001-a",
+    "evidence/20261128T081434Z-c624212e-001-a",
+    "evidence/20261128T081438Z-c624212e-001-a",
+    "evidence/20261128T081443Z-c624212e-001-a",
+    "evidence/20261128T081447Z-c624212e-001-a",
+    "evidence/20261128T081452Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -490,9 +490,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050207Z-25fb97d5-001-a",
-    "evidence/20261128T050212Z-25fb97d5-001-a",
-    "evidence/20261128T050217Z-25fb97d5-001-a"
+    "evidence/20261128T081456Z-c624212e-001-a",
+    "evidence/20261128T081501Z-c624212e-001-a",
+    "evidence/20261128T081505Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -555,11 +555,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050221Z-25fb97d5-001-a",
-    "evidence/20261128T050226Z-25fb97d5-001-a",
-    "evidence/20261128T050231Z-25fb97d5-001-a",
-    "evidence/20261128T050236Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T081510Z-c624212e-001-a",
+    "evidence/20261128T081514Z-c624212e-001-a",
+    "evidence/20261128T081519Z-c624212e-001-a",
+    "evidence/20261128T081523Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -636,11 +636,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050240Z-25fb97d5-001-a",
-    "evidence/20261128T050245Z-25fb97d5-001-a",
-    "evidence/20261128T050250Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a",
-    "evidence/20261128T050157Z-25fb97d5-001-a"
+    "evidence/20261128T081528Z-c624212e-001-a",
+    "evidence/20261128T081532Z-c624212e-001-a",
+    "evidence/20261128T081537Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a",
+    "evidence/20261128T081447Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -704,9 +704,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050254Z-25fb97d5-001-a",
-    "evidence/20261128T050259Z-25fb97d5-001-a",
-    "evidence/20261128T050304Z-25fb97d5-001-a"
+    "evidence/20261128T081541Z-c624212e-001-a",
+    "evidence/20261128T081546Z-c624212e-001-a",
+    "evidence/20261128T081550Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -818,11 +818,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050309Z-25fb97d5-001-a",
-    "evidence/20261128T050314Z-25fb97d5-001-a",
-    "evidence/20261128T050318Z-25fb97d5-001-a",
-    "evidence/20261128T050323Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T081555Z-c624212e-001-a",
+    "evidence/20261128T081600Z-c624212e-001-a",
+    "evidence/20261128T081604Z-c624212e-001-a",
+    "evidence/20261128T081609Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -883,8 +883,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051618Z-25fb97d5-001-a",
-    "evidence/20261128T051620Z-25fb97d5-001-a"
+    "evidence/20261128T082850Z-c624212e-001-a",
+    "evidence/20261128T082852Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -950,11 +950,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050328Z-25fb97d5-001-a",
-    "evidence/20261128T050332Z-25fb97d5-001-a",
-    "evidence/20261128T050337Z-25fb97d5-001-a",
-    "evidence/20261128T050346Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T081613Z-c624212e-001-a",
+    "evidence/20261128T081618Z-c624212e-001-a",
+    "evidence/20261128T081622Z-c624212e-001-a",
+    "evidence/20261128T081631Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1024,11 +1024,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050351Z-25fb97d5-001-a",
-    "evidence/20261128T050356Z-25fb97d5-001-a",
-    "evidence/20261128T050405Z-25fb97d5-001-a",
-    "evidence/20261128T050410Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T081635Z-c624212e-001-a",
+    "evidence/20261128T081640Z-c624212e-001-a",
+    "evidence/20261128T081649Z-c624212e-001-a",
+    "evidence/20261128T081654Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1097,14 +1097,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050414Z-25fb97d5-001-a",
-    "evidence/20261128T050419Z-25fb97d5-001-a",
-    "evidence/20261128T050428Z-25fb97d5-001-a",
-    "evidence/20261128T050433Z-25fb97d5-001-a",
-    "evidence/20261128T050437Z-25fb97d5-001-a",
-    "evidence/20261128T050442Z-25fb97d5-001-a",
-    "evidence/20261128T050447Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T081658Z-c624212e-001-a",
+    "evidence/20261128T081703Z-c624212e-001-a",
+    "evidence/20261128T081712Z-c624212e-001-a",
+    "evidence/20261128T081716Z-c624212e-001-a",
+    "evidence/20261128T081721Z-c624212e-001-a",
+    "evidence/20261128T081725Z-c624212e-001-a",
+    "evidence/20261128T081730Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1174,10 +1174,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050456Z-25fb97d5-001-a",
-    "evidence/20261128T050500Z-25fb97d5-001-a",
-    "evidence/20261128T050505Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T081739Z-c624212e-001-a",
+    "evidence/20261128T081744Z-c624212e-001-a",
+    "evidence/20261128T081748Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1256,14 +1256,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050510Z-25fb97d5-001-a",
-    "evidence/20261128T050519Z-25fb97d5-001-a",
-    "evidence/20261128T050523Z-25fb97d5-001-a",
-    "evidence/20261128T050530Z-25fb97d5-001-a",
-    "evidence/20261128T050535Z-25fb97d5-001-a",
-    "evidence/20261128T050544Z-25fb97d5-001-a",
-    "evidence/20261128T051708Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T081753Z-c624212e-001-a",
+    "evidence/20261128T081802Z-c624212e-001-a",
+    "evidence/20261128T081807Z-c624212e-001-a",
+    "evidence/20261128T081813Z-c624212e-001-a",
+    "evidence/20261128T081818Z-c624212e-001-a",
+    "evidence/20261128T081827Z-c624212e-001-a",
+    "evidence/20261128T082941Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1331,10 +1331,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050710Z-25fb97d5-001-a",
-    "evidence/20261128T050714Z-25fb97d5-001-a",
-    "evidence/20261128T050719Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T081951Z-c624212e-001-a",
+    "evidence/20261128T081955Z-c624212e-001-a",
+    "evidence/20261128T082000Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1407,12 +1407,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050724Z-25fb97d5-001-a",
-    "evidence/20261128T050729Z-25fb97d5-001-a",
-    "evidence/20261128T050733Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a",
-    "evidence/20261128T050351Z-25fb97d5-001-a",
-    "evidence/20261128T050405Z-25fb97d5-001-a"
+    "evidence/20261128T082005Z-c624212e-001-a",
+    "evidence/20261128T082009Z-c624212e-001-a",
+    "evidence/20261128T082013Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a",
+    "evidence/20261128T081635Z-c624212e-001-a",
+    "evidence/20261128T081649Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1469,10 +1469,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050342Z-25fb97d5-001-a",
+    "evidence/20261128T081627Z-c624212e-001-a",
     "evidence/20261120T074842Z-74035182-001",
-    "evidence/20261128T050400Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T081645Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1542,9 +1542,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050738Z-25fb97d5-001-a",
-    "evidence/20261128T050743Z-25fb97d5-001-a",
-    "evidence/20261128T050748Z-25fb97d5-001-a"
+    "evidence/20261128T082018Z-c624212e-001-a",
+    "evidence/20261128T082023Z-c624212e-001-a",
+    "evidence/20261128T082027Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1609,10 +1609,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050753Z-25fb97d5-001-a",
-    "evidence/20261128T050758Z-25fb97d5-001-a",
-    "evidence/20261128T050802Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T082032Z-c624212e-001-a",
+    "evidence/20261128T082036Z-c624212e-001-a",
+    "evidence/20261128T082041Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1685,10 +1685,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051759Z-25fb97d5-001-a",
-    "evidence/20261128T050812Z-25fb97d5-001-a",
-    "evidence/20261128T050817Z-25fb97d5-001-a",
-    "evidence/20261128T050825Z-25fb97d5-001-a"
+    "evidence/20261128T083029Z-c624212e-001-a",
+    "evidence/20261128T082051Z-c624212e-001-a",
+    "evidence/20261128T082055Z-c624212e-001-a",
+    "evidence/20261128T082103Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1748,12 +1748,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050830Z-25fb97d5-001-a",
-    "evidence/20261128T050912Z-25fb97d5-001-a",
-    "evidence/20261128T050835Z-25fb97d5-001-a",
-    "evidence/20261128T050841Z-25fb97d5-001-a",
-    "evidence/20261128T050856Z-25fb97d5-001-a",
-    "evidence/20261128T050907Z-25fb97d5-001-a"
+    "evidence/20261128T082108Z-c624212e-001-a",
+    "evidence/20261128T082149Z-c624212e-001-a",
+    "evidence/20261128T082113Z-c624212e-001-a",
+    "evidence/20261128T082118Z-c624212e-001-a",
+    "evidence/20261128T082133Z-c624212e-001-a",
+    "evidence/20261128T082143Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1835,10 +1835,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050919Z-25fb97d5-001-a",
-    "evidence/20261128T050924Z-25fb97d5-001-a",
-    "evidence/20261128T050929Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T082156Z-c624212e-001-a",
+    "evidence/20261128T082200Z-c624212e-001-a",
+    "evidence/20261128T082205Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1898,10 +1898,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050935Z-25fb97d5-001-a",
-    "evidence/20261128T050940Z-25fb97d5-001-a",
-    "evidence/20261128T050945Z-25fb97d5-001-a",
-    "evidence/20261128T050950Z-25fb97d5-001-a"
+    "evidence/20261128T082211Z-c624212e-001-a",
+    "evidence/20261128T082216Z-c624212e-001-a",
+    "evidence/20261128T082221Z-c624212e-001-a",
+    "evidence/20261128T082226Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -1952,8 +1952,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050956Z-25fb97d5-001-a",
-    "evidence/20261128T051002Z-25fb97d5-001-a"
+    "evidence/20261128T082231Z-c624212e-001-a",
+    "evidence/20261128T082237Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -2036,10 +2036,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051014Z-25fb97d5-001-a",
-    "evidence/20261128T051020Z-25fb97d5-001-a",
-    "evidence/20261128T051805Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a"
+    "evidence/20261128T082249Z-c624212e-001-a",
+    "evidence/20261128T082255Z-c624212e-001-a",
+    "evidence/20261128T083034Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -2100,11 +2100,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051026Z-25fb97d5-001-a",
+    "evidence/20261128T082301Z-c624212e-001-a",
     "evidence/20261120T080927Z-74035182-001",
-    "evidence/20261128T051014Z-25fb97d5-001-a",
-    "evidence/20261128T050825Z-25fb97d5-001-a",
-    "evidence/20261128T050743Z-25fb97d5-001-a"
+    "evidence/20261128T082249Z-c624212e-001-a",
+    "evidence/20261128T082103Z-c624212e-001-a",
+    "evidence/20261128T082023Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -2179,7 +2179,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050055Z-25fb97d5-001-b"
+    "evidence/20261128T081241Z-c624212e-001-b"
    ],
    "blocker": null
   },
@@ -2253,9 +2253,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050105Z-25fb97d5-001-b",
-    "evidence/20261128T050122Z-25fb97d5-001-b",
-    "evidence/20261128T051810Z-25fb97d5-001-a"
+    "evidence/20261128T081252Z-c624212e-001-b",
+    "evidence/20261128T081313Z-c624212e-001-b",
+    "evidence/20261128T083039Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -2328,10 +2328,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050130Z-25fb97d5-001-b",
-    "evidence/20261128T050140Z-25fb97d5-001-b",
-    "evidence/20261128T050157Z-25fb97d5-001-b",
-    "evidence/20261128T051926Z-25fb97d5-001-a"
+    "evidence/20261128T081323Z-c624212e-001-b",
+    "evidence/20261128T081335Z-c624212e-001-b",
+    "evidence/20261128T081357Z-c624212e-001-b",
+    "evidence/20261128T083154Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -2414,10 +2414,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051900Z-25fb97d5-001-a",
-    "evidence/20261128T051904Z-25fb97d5-001-a",
-    "evidence/20261128T051911Z-25fb97d5-001-a",
-    "evidence/20261128T050224Z-25fb97d5-001-b"
+    "evidence/20261128T083129Z-c624212e-001-a",
+    "evidence/20261128T083133Z-c624212e-001-a",
+    "evidence/20261128T083140Z-c624212e-001-a",
+    "evidence/20261128T081430Z-c624212e-001-b"
    ],
    "blocker": null
   },
@@ -2488,10 +2488,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050237Z-25fb97d5-001-b",
-    "evidence/20261128T050259Z-25fb97d5-001-b",
-    "evidence/20261128T051914Z-25fb97d5-001-a",
-    "evidence/20261128T051925Z-25fb97d5-001-a"
+    "evidence/20261128T081445Z-c624212e-001-b",
+    "evidence/20261128T081510Z-c624212e-001-b",
+    "evidence/20261128T083143Z-c624212e-001-a",
+    "evidence/20261128T083153Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -2582,9 +2582,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050405Z-25fb97d5-001-b",
-    "evidence/20261128T050337Z-25fb97d5-001-b",
-    "evidence/20261128T050309Z-25fb97d5-001-b"
+    "evidence/20261128T081622Z-c624212e-001-b",
+    "evidence/20261128T081553Z-c624212e-001-b",
+    "evidence/20261128T081523Z-c624212e-001-b"
    ],
    "blocker": null
   },
@@ -2651,9 +2651,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051144Z-25fb97d5-001-b",
-    "evidence/20261128T051154Z-25fb97d5-001-b",
-    "evidence/20261128T051914Z-25fb97d5-001-a"
+    "evidence/20261128T082433Z-c624212e-001-b",
+    "evidence/20261128T082445Z-c624212e-001-b",
+    "evidence/20261128T083143Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -2708,14 +2708,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051213Z-25fb97d5-001-b",
-    "evidence/20261128T051219Z-25fb97d5-001-b",
-    "evidence/20261128T051225Z-25fb97d5-001-b",
-    "evidence/20261128T050621Z-25fb97d5-001-b",
-    "evidence/20261128T051128Z-25fb97d5-001-b",
-    "evidence/20261128T050649Z-25fb97d5-001-b",
-    "evidence/20261128T050718Z-25fb97d5-001-b",
-    "evidence/20261128T050749Z-25fb97d5-001-b",
+    "evidence/20261128T082506Z-c624212e-001-b",
+    "evidence/20261128T082513Z-c624212e-001-b",
+    "evidence/20261128T082521Z-c624212e-001-b",
+    "evidence/20261128T081852Z-c624212e-001-b",
+    "evidence/20261128T082414Z-c624212e-001-b",
+    "evidence/20261128T081923Z-c624212e-001-b",
+    "evidence/20261128T081954Z-c624212e-001-b",
+    "evidence/20261128T082027Z-c624212e-001-b",
     "evidence/20261120T080927Z-74035182-001"
    ],
    "blocker": null
@@ -2757,7 +2757,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050854Z-25fb97d5-001-b"
+    "evidence/20261128T082139Z-c624212e-001-b"
    ],
    "blocker": null
   },
@@ -2805,15 +2805,15 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050055Z-25fb97d5-001-b",
-    "evidence/20261128T050130Z-25fb97d5-001-b",
-    "evidence/20261128T050140Z-25fb97d5-001-b",
-    "evidence/20261128T050157Z-25fb97d5-001-b",
-    "evidence/20261128T050211Z-25fb97d5-001-b",
-    "evidence/20261128T051144Z-25fb97d5-001-b",
-    "evidence/20261128T051154Z-25fb97d5-001-b",
-    "evidence/20261128T051914Z-25fb97d5-001-a",
-    "evidence/20261128T051926Z-25fb97d5-001-a"
+    "evidence/20261128T081241Z-c624212e-001-b",
+    "evidence/20261128T081323Z-c624212e-001-b",
+    "evidence/20261128T081335Z-c624212e-001-b",
+    "evidence/20261128T081357Z-c624212e-001-b",
+    "evidence/20261128T081412Z-c624212e-001-b",
+    "evidence/20261128T082433Z-c624212e-001-b",
+    "evidence/20261128T082445Z-c624212e-001-b",
+    "evidence/20261128T083143Z-c624212e-001-a",
+    "evidence/20261128T083154Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -2832,23 +2832,23 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050835Z-25fb97d5-001-b",
-    "evidence/20261128T050157Z-25fb97d5-001-b",
-    "evidence/20261128T050337Z-25fb97d5-001-b",
-    "evidence/20261128T050405Z-25fb97d5-001-b",
-    "evidence/20261128T050621Z-25fb97d5-001-b",
-    "evidence/20261128T051904Z-25fb97d5-001-a",
-    "evidence/20261128T051144Z-25fb97d5-001-b",
-    "evidence/20261128T050105Z-25fb97d5-001-b",
-    "evidence/20261128T050211Z-25fb97d5-001-b",
-    "evidence/20261128T051225Z-25fb97d5-001-b",
-    "evidence/20261128T050150Z-25fb97d5-001-b",
-    "evidence/20261128T050558Z-25fb97d5-001-b",
-    "evidence/20261128T050530Z-25fb97d5-001-b",
-    "evidence/20261128T050452Z-25fb97d5-001-b",
-    "evidence/20261128T050115Z-25fb97d5-001-b",
-    "evidence/20261128T050434Z-25fb97d5-001-b",
-    "evidence/20261128T050217Z-25fb97d5-001-b"
+    "evidence/20261128T082116Z-c624212e-001-b",
+    "evidence/20261128T081357Z-c624212e-001-b",
+    "evidence/20261128T081553Z-c624212e-001-b",
+    "evidence/20261128T081622Z-c624212e-001-b",
+    "evidence/20261128T081852Z-c624212e-001-b",
+    "evidence/20261128T083133Z-c624212e-001-a",
+    "evidence/20261128T082433Z-c624212e-001-b",
+    "evidence/20261128T081252Z-c624212e-001-b",
+    "evidence/20261128T081412Z-c624212e-001-b",
+    "evidence/20261128T082521Z-c624212e-001-b",
+    "evidence/20261128T081347Z-c624212e-001-b",
+    "evidence/20261128T081824Z-c624212e-001-b",
+    "evidence/20261128T081753Z-c624212e-001-b",
+    "evidence/20261128T081713Z-c624212e-001-b",
+    "evidence/20261128T081305Z-c624212e-001-b",
+    "evidence/20261128T081653Z-c624212e-001-b",
+    "evidence/20261128T081421Z-c624212e-001-b"
    ],
    "blocker": null,
    "id": "WP-43",
@@ -2923,9 +2923,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050828Z-25fb97d5-001-b",
-    "evidence/20261128T050337Z-25fb97d5-001-b",
-    "evidence/20261128T051014Z-25fb97d5-001-a"
+    "evidence/20261128T082108Z-c624212e-001-b",
+    "evidence/20261128T081553Z-c624212e-001-b",
+    "evidence/20261128T082249Z-c624212e-001-a"
    ],
    "blocker": null,
    "id": "WP-44",
@@ -3080,14 +3080,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051031Z-25fb97d5-001-a",
-    "evidence/20261128T051927Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a",
-    "evidence/20261128T050110Z-25fb97d5-001-a",
-    "evidence/20261128T051707Z-25fb97d5-001-a",
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T051640Z-25fb97d5-001-a",
-    "evidence/20261128T051810Z-25fb97d5-001-a"
+    "evidence/20261128T082306Z-c624212e-001-a",
+    "evidence/20261128T083156Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a",
+    "evidence/20261128T081403Z-c624212e-001-a",
+    "evidence/20261128T082940Z-c624212e-001-a",
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T082913Z-c624212e-001-a",
+    "evidence/20261128T083039Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -3179,12 +3179,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051247Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a",
-    "evidence/20261128T050753Z-25fb97d5-001-a",
-    "evidence/20261128T050758Z-25fb97d5-001-a",
-    "evidence/20261128T050802Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-b"
+    "evidence/20261128T082522Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a",
+    "evidence/20261128T082032Z-c624212e-001-a",
+    "evidence/20261128T082036Z-c624212e-001-a",
+    "evidence/20261128T082041Z-c624212e-001-a",
+    "evidence/20261128T081252Z-c624212e-001-b"
    ],
    "blocker": null
   },
@@ -3390,10 +3390,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051927Z-25fb97d5-002-a",
-    "evidence/20261128T051914Z-25fb97d5-001-a",
-    "evidence/20261128T050237Z-25fb97d5-001-b",
-    "evidence/20261128T051154Z-25fb97d5-001-b"
+    "evidence/20261128T083156Z-c624212e-002-a",
+    "evidence/20261128T083143Z-c624212e-001-a",
+    "evidence/20261128T081445Z-c624212e-001-b",
+    "evidence/20261128T082445Z-c624212e-001-b"
    ],
    "blocker": null
   },
@@ -3464,7 +3464,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051928Z-25fb97d5-002-a"
+    "evidence/20261128T083158Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -4201,16 +4201,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050452Z-25fb97d5-001-b",
-    "evidence/20261128T051241Z-25fb97d5-001-a",
-    "evidence/20261128T051031Z-25fb97d5-001-a",
-    "evidence/20261128T051206Z-25fb97d5-001-a",
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T050309Z-25fb97d5-001-b",
-    "evidence/20261128T050405Z-25fb97d5-001-b",
-    "evidence/20261128T050621Z-25fb97d5-001-b",
-    "evidence/20261128T050749Z-25fb97d5-001-b",
-    "evidence/20261128T051225Z-25fb97d5-001-b"
+    "evidence/20261128T081713Z-c624212e-001-b",
+    "evidence/20261128T082516Z-c624212e-001-a",
+    "evidence/20261128T082306Z-c624212e-001-a",
+    "evidence/20261128T082440Z-c624212e-001-a",
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T081523Z-c624212e-001-b",
+    "evidence/20261128T081622Z-c624212e-001-b",
+    "evidence/20261128T081852Z-c624212e-001-b",
+    "evidence/20261128T082027Z-c624212e-001-b",
+    "evidence/20261128T082521Z-c624212e-001-b"
    ],
    "blocker": null
   },
@@ -4271,10 +4271,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051626Z-25fb97d5-001-a",
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T051640Z-25fb97d5-001-a",
-    "evidence/20261128T051704Z-25fb97d5-001-a"
+    "evidence/20261128T082859Z-c624212e-001-a",
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T082913Z-c624212e-001-a",
+    "evidence/20261128T082937Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -4351,14 +4351,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051206Z-25fb97d5-001-a",
-    "evidence/20261128T050130Z-25fb97d5-001-b",
-    "evidence/20261128T050140Z-25fb97d5-001-b",
-    "evidence/20261128T050237Z-25fb97d5-001-b",
-    "evidence/20261128T051144Z-25fb97d5-001-b",
-    "evidence/20261128T051031Z-25fb97d5-001-a",
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082440Z-c624212e-001-a",
+    "evidence/20261128T081323Z-c624212e-001-b",
+    "evidence/20261128T081335Z-c624212e-001-b",
+    "evidence/20261128T081445Z-c624212e-001-b",
+    "evidence/20261128T082433Z-c624212e-001-b",
+    "evidence/20261128T082306Z-c624212e-001-a",
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -4433,11 +4433,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051217Z-25fb97d5-001-a",
-    "evidence/20261128T051222Z-25fb97d5-001-a",
-    "evidence/20261128T051927Z-25fb97d5-001-a",
-    "evidence/20261128T051031Z-25fb97d5-001-a",
-    "evidence/20261128T050753Z-25fb97d5-001-a"
+    "evidence/20261128T082452Z-c624212e-001-a",
+    "evidence/20261128T082456Z-c624212e-001-a",
+    "evidence/20261128T083156Z-c624212e-001-a",
+    "evidence/20261128T082306Z-c624212e-001-a",
+    "evidence/20261128T082032Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -4737,10 +4737,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051226Z-25fb97d5-001-a",
-    "evidence/20261128T050825Z-25fb97d5-001-a",
-    "evidence/20261128T050817Z-25fb97d5-001-a",
-    "evidence/20261128T050854Z-25fb97d5-001-b"
+    "evidence/20261128T082501Z-c624212e-001-a",
+    "evidence/20261128T082103Z-c624212e-001-a",
+    "evidence/20261128T082055Z-c624212e-001-a",
+    "evidence/20261128T082139Z-c624212e-001-b"
    ],
    "blocker": null
   },
@@ -4792,8 +4792,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T051626Z-25fb97d5-001-a"
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T082859Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -4960,9 +4960,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051212Z-25fb97d5-001-a",
-    "evidence/20261128T051031Z-25fb97d5-001-a",
-    "evidence/20261128T051206Z-25fb97d5-001-a"
+    "evidence/20261128T082446Z-c624212e-001-a",
+    "evidence/20261128T082306Z-c624212e-001-a",
+    "evidence/20261128T082440Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -5039,9 +5039,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051252Z-25fb97d5-001-a",
-    "evidence/20261128T050912Z-25fb97d5-001-a",
-    "evidence/20261128T050828Z-25fb97d5-001-b"
+    "evidence/20261128T082527Z-c624212e-001-a",
+    "evidence/20261128T082149Z-c624212e-001-a",
+    "evidence/20261128T082108Z-c624212e-001-b"
    ],
    "blocker": null
   },
@@ -5155,8 +5155,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051928Z-25fb97d5-001-a",
-    "evidence/20261128T051927Z-25fb97d5-002-a"
+    "evidence/20261128T083157Z-c624212e-001-a",
+    "evidence/20261128T083156Z-c624212e-002-a"
    ],
    "blocker": null
   },
@@ -5219,9 +5219,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051626Z-25fb97d5-001-a",
-    "evidence/20261128T051704Z-25fb97d5-001-a",
-    "evidence/20261128T051628Z-25fb97d5-001-a"
+    "evidence/20261128T082859Z-c624212e-001-a",
+    "evidence/20261128T082937Z-c624212e-001-a",
+    "evidence/20261128T082901Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -5300,10 +5300,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051031Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a",
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T051810Z-25fb97d5-001-a"
+    "evidence/20261128T082306Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a",
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T083039Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -5378,9 +5378,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051626Z-25fb97d5-001-a",
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T051704Z-25fb97d5-001-a"
+    "evidence/20261128T082859Z-c624212e-001-a",
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T082937Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -5462,10 +5462,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051122Z-25fb97d5-001-a",
-    "evidence/20261128T051031Z-25fb97d5-001-a",
-    "evidence/20261128T050105Z-25fb97d5-001-a",
-    "evidence/20261128T051810Z-25fb97d5-001-a"
+    "evidence/20261128T082356Z-c624212e-001-a",
+    "evidence/20261128T082306Z-c624212e-001-a",
+    "evidence/20261128T081358Z-c624212e-001-a",
+    "evidence/20261128T083039Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -5671,9 +5671,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T051626Z-25fb97d5-001-a",
-    "evidence/20261128T051704Z-25fb97d5-001-a"
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T082859Z-c624212e-001-a",
+    "evidence/20261128T082937Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -5793,7 +5793,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -5840,7 +5840,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051628Z-25fb97d5-001-a"
+    "evidence/20261128T082901Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -5899,7 +5899,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051626Z-25fb97d5-001-a"
+    "evidence/20261128T082859Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -6004,7 +6004,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051914Z-25fb97d5-001-a"
+    "evidence/20261128T083143Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -6073,13 +6073,13 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051628Z-25fb97d5-001-a",
+    "evidence/20261128T082901Z-c624212e-001-a",
     "evidence/20261120T072013Z-74035182-001",
     "evidence/20261120T074842Z-74035182-001",
     "evidence/20261120T080927Z-74035182-001",
     "evidence/20261120T083650Z-74035182-001",
-    "evidence/20261128T051640Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T082913Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -6141,9 +6141,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T051626Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T082859Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -6216,9 +6216,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051144Z-25fb97d5-001-b",
-    "evidence/20261128T050605Z-25fb97d5-001-b",
-    "evidence/20261128T050613Z-25fb97d5-001-b"
+    "evidence/20261128T082433Z-c624212e-001-b",
+    "evidence/20261128T081833Z-c624212e-001-b",
+    "evidence/20261128T081842Z-c624212e-001-b"
    ],
    "blocker": null
   },
@@ -6280,8 +6280,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051640Z-25fb97d5-001-a",
-    "evidence/20261128T051704Z-25fb97d5-001-a"
+    "evidence/20261128T082913Z-c624212e-001-a",
+    "evidence/20261128T082937Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -6357,8 +6357,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051122Z-25fb97d5-001-a",
-    "evidence/20261128T051201Z-25fb97d5-001-a"
+    "evidence/20261128T082356Z-c624212e-001-a",
+    "evidence/20261128T082435Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -6435,7 +6435,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051929Z-25fb97d5-001-a"
+    "evidence/20261128T083158Z-c624212e-002-a"
    ],
    "blocker": null
   },
@@ -6522,9 +6522,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051257Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082532Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -6611,11 +6611,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051322Z-25fb97d5-001-a",
-    "evidence/20261128T051302Z-25fb97d5-001-a",
-    "evidence/20261128T051313Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082557Z-c624212e-001-a",
+    "evidence/20261128T082536Z-c624212e-001-a",
+    "evidence/20261128T082548Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -6726,9 +6726,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050514Z-25fb97d5-001-a",
-    "evidence/20261128T050510Z-25fb97d5-001-a",
-    "evidence/20261128T050523Z-25fb97d5-001-a"
+    "evidence/20261128T081758Z-c624212e-001-a",
+    "evidence/20261128T081753Z-c624212e-001-a",
+    "evidence/20261128T081807Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -6807,12 +6807,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050557Z-25fb97d5-001-a",
-    "evidence/20261128T050551Z-25fb97d5-001-a",
-    "evidence/20261128T050535Z-25fb97d5-001-a",
-    "evidence/20261128T050539Z-25fb97d5-001-a",
-    "evidence/20261128T050544Z-25fb97d5-001-a",
-    "evidence/20261128T051708Z-25fb97d5-001-a"
+    "evidence/20261128T081840Z-c624212e-001-a",
+    "evidence/20261128T081833Z-c624212e-001-a",
+    "evidence/20261128T081818Z-c624212e-001-a",
+    "evidence/20261128T081823Z-c624212e-001-a",
+    "evidence/20261128T081827Z-c624212e-001-a",
+    "evidence/20261128T082941Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -6895,10 +6895,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050701Z-25fb97d5-001-a",
-    "evidence/20261128T050530Z-25fb97d5-001-a",
-    "evidence/20261128T051708Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081942Z-c624212e-001-a",
+    "evidence/20261128T081813Z-c624212e-001-a",
+    "evidence/20261128T082941Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -6971,9 +6971,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050841Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082118Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -7048,12 +7048,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050945Z-25fb97d5-001-a",
-    "evidence/20261128T050956Z-25fb97d5-001-a",
-    "evidence/20261128T051008Z-25fb97d5-001-a",
-    "evidence/20261128T051002Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082221Z-c624212e-001-a",
+    "evidence/20261128T082231Z-c624212e-001-a",
+    "evidence/20261128T082243Z-c624212e-001-a",
+    "evidence/20261128T082237Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -7282,11 +7282,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050851Z-25fb97d5-001-a",
-    "evidence/20261128T050846Z-25fb97d5-001-a",
-    "evidence/20261128T050907Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082128Z-c624212e-001-a",
+    "evidence/20261128T082123Z-c624212e-001-a",
+    "evidence/20261128T082143Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -7576,12 +7576,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050514Z-25fb97d5-001-a",
-    "evidence/20261128T050544Z-25fb97d5-001-a",
-    "evidence/20261128T050551Z-25fb97d5-001-a",
-    "evidence/20261128T050557Z-25fb97d5-001-a",
-    "evidence/20261128T050654Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081758Z-c624212e-001-a",
+    "evidence/20261128T081827Z-c624212e-001-a",
+    "evidence/20261128T081833Z-c624212e-001-a",
+    "evidence/20261128T081840Z-c624212e-001-a",
+    "evidence/20261128T081936Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -7655,14 +7655,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050617Z-25fb97d5-001-a",
-    "evidence/20261128T050535Z-25fb97d5-001-a",
-    "evidence/20261128T050539Z-25fb97d5-001-a",
-    "evidence/20261128T050544Z-25fb97d5-001-a",
-    "evidence/20261128T050551Z-25fb97d5-001-a",
-    "evidence/20261128T050557Z-25fb97d5-001-a",
-    "evidence/20261128T051708Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081859Z-c624212e-001-a",
+    "evidence/20261128T081818Z-c624212e-001-a",
+    "evidence/20261128T081823Z-c624212e-001-a",
+    "evidence/20261128T081827Z-c624212e-001-a",
+    "evidence/20261128T081833Z-c624212e-001-a",
+    "evidence/20261128T081840Z-c624212e-001-a",
+    "evidence/20261128T082941Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -7771,11 +7771,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050617Z-25fb97d5-001-a",
-    "evidence/20261128T050551Z-25fb97d5-001-a",
-    "evidence/20261128T050557Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T050649Z-25fb97d5-001-a"
+    "evidence/20261128T081859Z-c624212e-001-a",
+    "evidence/20261128T081833Z-c624212e-001-a",
+    "evidence/20261128T081840Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T081931Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -7844,10 +7844,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050649Z-25fb97d5-001-a",
-    "evidence/20261128T050617Z-25fb97d5-001-a",
-    "evidence/20261128T050535Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081931Z-c624212e-001-a",
+    "evidence/20261128T081859Z-c624212e-001-a",
+    "evidence/20261128T081818Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -8046,12 +8046,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050610Z-25fb97d5-001-a",
-    "evidence/20261128T050604Z-25fb97d5-001-a",
-    "evidence/20261128T050617Z-25fb97d5-001-a",
-    "evidence/20261128T050551Z-25fb97d5-001-a",
-    "evidence/20261128T050557Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081853Z-c624212e-001-a",
+    "evidence/20261128T081846Z-c624212e-001-a",
+    "evidence/20261128T081859Z-c624212e-001-a",
+    "evidence/20261128T081833Z-c624212e-001-a",
+    "evidence/20261128T081840Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -8114,9 +8114,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050624Z-25fb97d5-001-a",
-    "evidence/20261128T050617Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081906Z-c624212e-001-a",
+    "evidence/20261128T081859Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -8241,9 +8241,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050631Z-25fb97d5-001-a",
-    "evidence/20261128T050617Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081913Z-c624212e-001-a",
+    "evidence/20261128T081859Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -8312,10 +8312,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050637Z-25fb97d5-001-a",
-    "evidence/20261128T050631Z-25fb97d5-001-a",
-    "evidence/20261128T050604Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081919Z-c624212e-001-a",
+    "evidence/20261128T081913Z-c624212e-001-a",
+    "evidence/20261128T081846Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -8555,10 +8555,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050631Z-25fb97d5-001-a",
-    "evidence/20261128T050637Z-25fb97d5-001-a",
-    "evidence/20261128T050644Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081913Z-c624212e-001-a",
+    "evidence/20261128T081919Z-c624212e-001-a",
+    "evidence/20261128T081926Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -8780,12 +8780,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051708Z-25fb97d5-001-a",
-    "evidence/20261128T050617Z-25fb97d5-001-a",
-    "evidence/20261128T050551Z-25fb97d5-001-a",
-    "evidence/20261128T050557Z-25fb97d5-001-a",
-    "evidence/20261128T050654Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T082941Z-c624212e-001-a",
+    "evidence/20261128T081859Z-c624212e-001-a",
+    "evidence/20261128T081833Z-c624212e-001-a",
+    "evidence/20261128T081840Z-c624212e-001-a",
+    "evidence/20261128T081936Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -8859,12 +8859,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051708Z-25fb97d5-001-a",
-    "evidence/20261128T050617Z-25fb97d5-001-a",
-    "evidence/20261128T050551Z-25fb97d5-001-a",
-    "evidence/20261128T050557Z-25fb97d5-001-a",
-    "evidence/20261128T050654Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T082941Z-c624212e-001-a",
+    "evidence/20261128T081859Z-c624212e-001-a",
+    "evidence/20261128T081833Z-c624212e-001-a",
+    "evidence/20261128T081840Z-c624212e-001-a",
+    "evidence/20261128T081936Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -9054,8 +9054,8 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051640Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T082913Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -9307,9 +9307,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050705Z-25fb97d5-001-a",
-    "evidence/20261128T050530Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081946Z-c624212e-001-a",
+    "evidence/20261128T081813Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null,
    "id": "WP-147",
@@ -9436,9 +9436,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050423Z-25fb97d5-001-a",
-    "evidence/20261128T050419Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T081707Z-c624212e-001-a",
+    "evidence/20261128T081703Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null,
    "id": "WP-149",
@@ -9603,7 +9603,7 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051704Z-25fb97d5-001-a"
+    "evidence/20261128T082937Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -9666,10 +9666,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a",
-    "evidence/20261128T051704Z-25fb97d5-001-a"
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a",
+    "evidence/20261128T082937Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -9726,9 +9726,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051628Z-25fb97d5-001-a",
-    "evidence/20261128T051640Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T082901Z-c624212e-001-a",
+    "evidence/20261128T082913Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null
   },
@@ -9834,10 +9834,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050802Z-25fb97d5-001-a",
-    "evidence/20261128T050807Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082041Z-c624212e-001-a",
+    "evidence/20261128T082046Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "id": "WP-156",
@@ -9903,11 +9903,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050841Z-25fb97d5-001-a",
-    "evidence/20261128T050846Z-25fb97d5-001-a",
-    "evidence/20261128T050830Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082118Z-c624212e-001-a",
+    "evidence/20261128T082123Z-c624212e-001-a",
+    "evidence/20261128T082108Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "id": "WP-157",
@@ -10001,12 +10001,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T050856Z-25fb97d5-001-a",
-    "evidence/20261128T050901Z-25fb97d5-001-a",
-    "evidence/20261128T050846Z-25fb97d5-001-a",
-    "evidence/20261128T050841Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082133Z-c624212e-001-a",
+    "evidence/20261128T082138Z-c624212e-001-a",
+    "evidence/20261128T082123Z-c624212e-001-a",
+    "evidence/20261128T082118Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -10150,10 +10150,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051302Z-25fb97d5-001-a",
-    "evidence/20261128T051257Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082536Z-c624212e-001-a",
+    "evidence/20261128T082532Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "test_ids": [
@@ -10236,11 +10236,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051313Z-25fb97d5-001-a",
-    "evidence/20261128T051302Z-25fb97d5-001-a",
-    "evidence/20261128T051257Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082548Z-c624212e-001-a",
+    "evidence/20261128T082536Z-c624212e-001-a",
+    "evidence/20261128T082532Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "test_ids": [
@@ -10349,10 +10349,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051302Z-25fb97d5-001-a",
-    "evidence/20261128T051601Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082536Z-c624212e-001-a",
+    "evidence/20261128T082834Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -10431,11 +10431,11 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051546Z-25fb97d5-001-a",
-    "evidence/20261128T051247Z-25fb97d5-001-a",
-    "evidence/20261128T051302Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082820Z-c624212e-001-a",
+    "evidence/20261128T082522Z-c624212e-001-a",
+    "evidence/20261128T082536Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -10491,9 +10491,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051626Z-25fb97d5-001-a",
-    "evidence/20261128T051640Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g"
+    "evidence/20261128T082859Z-c624212e-001-a",
+    "evidence/20261128T082913Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g"
    ],
    "blocker": null,
    "actions": [
@@ -10567,7 +10567,8 @@
     "2026-11-28 (the manager): CI evidence of the first part imported, no close. Verify run 46102204274, attempt 1, on e37806750c (merge commit 1ad854f75ee8f325e14bc4cad020072e3b7c1a33): 198 verdicts, all PASS; TST-M0-003 ran 81 cases (evidence/20261128T033741Z-1ad854f7-002-a), TST-M0-005 114 (evidence/20261128T033752Z-1ad854f7-002-a), and the M6 gate killed 405 of 405 valid mutants with no survivor (evidence/20261128T035148Z-1ad854f7-001-g), M563 to M570 each by TST-M0-003. The run's own sixteen Toolchain steps passed on the new text, which shows the normal case on the runner and nothing of a slow archive. After the import validate-records --strict reports 0 errors. What the acceptance still lacks is not evidence: the reviewer's reply in issue #24",
     "2026-11-28 (the manager), corrections on the independent audit of the proposed close lines (nothing closed): (1) this record, its commit's message and comment 7233943712 of issue #24 said that every failing end of the step is an ::error naming its call. False for the version checks at the step's end (`rustup run … rustc --version`, `cargo --version`, `hb-shape --version`, `python3 -c …`, `clang`, the two qemu versions, `dpkg -s`): no retry wraps them, they fail by their own message with no ::error, and ToolchainScript replaces them by stand-ins that always succeed. True is: every RETRIED call that fails ends the step by an ::error naming it. The step is not changed for it: such a failure is no matter of time or of the archive, and it names itself; recorded as a limit. The acceptance is corrected. (2) `the worst simulated end is 860 s` said more than the test shows: the cases assert that no simulated end passes 860 s, an upper bound. (3) The verdicts of run 46102204274 are history now: WP-182's commit changed their inputs (tools/project.py, tests/mutants.py, tests/test_ci_workflows.py, tests/test_mutants_harness.py, verify.yml), and the records point to run 46109845296 on a9f4acc81b, where TST-M0-003 ran 82 cases, TST-M0-005 115 and the M6 gate killed 410 of 410, M563 to M570 each by TST-M0-003; a close cites that run. (4) Limits the lines left out: the mutants M563 to M570 are applied to mutants.yml's copy alone (the identity checks bind the fifteen full copies to it; the two short copies of jobs g and merge are run by ToolchainScript but carry no mutant of their own); that `-k 10` -> `-k 1` survives is a local reading of the red team, no CI evidence",
     "2026-11-28 (the manager), second corrections on the second independent audit of the close lines (nothing closed; the lines were refused again): (1) `a retried call that fails ends the step by an ::error` was still too wide: the mirror's two calls (the index update and the fetch under `retry 100`) do not end the step when they fail twice, they lead to the fallback; true is: a retried call outside the fallback's condition that fails twice ends the step by an ::error naming it. (2) The correction of this morning said the version checks at the step's end `fail by their own message`: false for four of them. Under `bash -e` with no pipefail, the checks piped into `head -1` (hb-shape, clang, the two qemu versions) cannot fail the step at all (the auditor showed a missing command piped into `head -1` leaving exit 0); rustc, cargo, python3 and the two `dpkg -s … | grep` fail it by their own message. As it was before this package and not changed by it: L-149. The acceptance no longer claims how they fail. (3) `whatever the scenario` overstated a finite set: the acceptance says `in each scenario the cases run`",
-    "2026-11-28 (the manager): the acceptance is replaced whole. Audits refused sentences the manager wrote about this package five times in a row (the close lines three times, this acceptance twice) while refuting nothing in the code or the tests: each refused sentence generalised from a summary beyond what the cases assert. The cause was the method: record text was pushed before any independent read. From this line on the acceptance is a list of case names with what each asserts, copied from the auditor's fact sheet of this day (52 numbered facts with file and line), and it is read by the auditor before the commit, not after. Added on three independent reviews of the code (a senior review, a security review, the auditor; their reports are in the session, not in the repository): two cases and one mutant, test first (a deadline of 600 s in place of 840 s passed every case: test_a_slow_day_that_fits_the_deadline_still_succeeds and M576; the stand-in sudo ran any unstubbed command for real: test_the_stand_in_sudo_runs_nothing_real, the stand-in now refuses what is not a declared function); the step's text is not changed. tests/test_ci_workflows.py 82 -> 84 cases (local run). The security review found nothing in the step that widens what the job trusts against 7a0e6e0e92"
+    "2026-11-28 (the manager): the acceptance is replaced whole. Audits refused sentences the manager wrote about this package five times in a row (the close lines three times, this acceptance twice) while refuting nothing in the code or the tests: each refused sentence generalised from a summary beyond what the cases assert. The cause was the method: record text was pushed before any independent read. From this line on the acceptance is a list of case names with what each asserts, copied from the auditor's fact sheet of this day (52 numbered facts with file and line), and it is read by the auditor before the commit, not after. Added on three independent reviews of the code (a senior review, a security review, the auditor; their reports are in the session, not in the repository): two cases and one mutant, test first (a deadline of 600 s in place of 840 s passed every case: test_a_slow_day_that_fits_the_deadline_still_succeeds and M576; the stand-in sudo ran any unstubbed command for real: test_the_stand_in_sudo_runs_nothing_real, the stand-in now refuses what is not a declared function); the step's text is not changed. tests/test_ci_workflows.py 82 -> 84 cases (local run). The security review found nothing in the step that widens what the job trusts against 7a0e6e0e92",
+    "2026-11-28 (the manager): CI evidence imported, no close. Verify run 46124512136, attempt 1, on e4e7641377 (merge commit c624212e1c2ceb6e5e258eff172e27865ec0e8a3): 198 evidence directories of that run, each verdict PASS. TST-M0-001: `Ran 48 tests` (evidence/20261128T082859Z-c624212e-001-a); TST-M0-003: `Ran 84 tests` (evidence/20261128T082901Z-c624212e-001-a); TST-M0-005: `Ran 115 tests` (evidence/20261128T082913Z-c624212e-001-a); TST-M6-MUTANTS: `OK: 411/411 valid mutants killed`, `M576: killed by TST-M0-003` (evidence/20261128T084059Z-c624212e-001-g). After the import `validate-records --strict` printed `0 error(s)`. The records' tests point to this run; the runs 46102204274 and 46109845296 are history"
    ]
   },
   {
@@ -10628,10 +10629,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051329Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a",
-    "evidence/20261128T050309Z-25fb97d5-001-b"
+    "evidence/20261128T082603Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a",
+    "evidence/20261128T081523Z-c624212e-001-b"
    ],
    "blocker": null,
    "actions": [
@@ -10709,13 +10710,13 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051329Z-25fb97d5-001-a",
-    "evidence/20261128T050309Z-25fb97d5-001-b",
-    "evidence/20261128T050405Z-25fb97d5-001-b",
-    "evidence/20261128T050621Z-25fb97d5-001-b",
-    "evidence/20261128T050337Z-25fb97d5-001-b",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082603Z-c624212e-001-a",
+    "evidence/20261128T081523Z-c624212e-001-b",
+    "evidence/20261128T081622Z-c624212e-001-b",
+    "evidence/20261128T081852Z-c624212e-001-b",
+    "evidence/20261128T081553Z-c624212e-001-b",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -10799,16 +10800,16 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051607Z-25fb97d5-001-a",
-    "evidence/20261128T051322Z-25fb97d5-001-a",
-    "evidence/20261128T051329Z-25fb97d5-001-a",
-    "evidence/20261128T051302Z-25fb97d5-001-a",
-    "evidence/20261128T051313Z-25fb97d5-001-a",
-    "evidence/20261128T051257Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a",
-    "evidence/20261128T051546Z-25fb97d5-001-a",
-    "evidence/20261128T051601Z-25fb97d5-001-a"
+    "evidence/20261128T082840Z-c624212e-001-a",
+    "evidence/20261128T082557Z-c624212e-001-a",
+    "evidence/20261128T082603Z-c624212e-001-a",
+    "evidence/20261128T082536Z-c624212e-001-a",
+    "evidence/20261128T082548Z-c624212e-001-a",
+    "evidence/20261128T082532Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a",
+    "evidence/20261128T082820Z-c624212e-001-a",
+    "evidence/20261128T082834Z-c624212e-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -10837,10 +10838,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051553Z-25fb97d5-001-a",
-    "evidence/20261128T051546Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082827Z-c624212e-001-a",
+    "evidence/20261128T082820Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "commands": [
@@ -11019,14 +11020,14 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051607Z-25fb97d5-001-a",
-    "evidence/20261128T051601Z-25fb97d5-001-a",
-    "evidence/20261128T051546Z-25fb97d5-001-a",
-    "evidence/20261128T051322Z-25fb97d5-001-a",
-    "evidence/20261128T051313Z-25fb97d5-001-a",
-    "evidence/20261128T051302Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082840Z-c624212e-001-a",
+    "evidence/20261128T082834Z-c624212e-001-a",
+    "evidence/20261128T082820Z-c624212e-001-a",
+    "evidence/20261128T082557Z-c624212e-001-a",
+    "evidence/20261128T082548Z-c624212e-001-a",
+    "evidence/20261128T082536Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -11091,10 +11092,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051612Z-25fb97d5-001-a",
-    "evidence/20261128T051607Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082845Z-c624212e-001-a",
+    "evidence/20261128T082840Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "actions": [
@@ -11172,9 +11173,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051329Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082603Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "depends_on": [
@@ -11242,9 +11243,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051553Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082827Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "depends_on": [
@@ -11319,10 +11320,10 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051553Z-25fb97d5-001-a",
-    "evidence/20261128T050217Z-25fb97d5-001-b",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082827Z-c624212e-001-a",
+    "evidence/20261128T081421Z-c624212e-001-b",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "depends_on": [
@@ -11396,12 +11397,12 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051329Z-25fb97d5-001-a",
-    "evidence/20261128T051450Z-25fb97d5-001-a",
-    "evidence/20261128T051531Z-25fb97d5-001-a",
-    "evidence/20261128T051936Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082603Z-c624212e-001-a",
+    "evidence/20261128T082724Z-c624212e-001-a",
+    "evidence/20261128T082805Z-c624212e-001-a",
+    "evidence/20261128T083205Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null,
    "depends_on": [
@@ -11594,9 +11595,9 @@
     "done"
    ],
    "evidence_refs": [
-    "evidence/20261128T051708Z-25fb97d5-001-a",
-    "evidence/20261128T053210Z-25fb97d5-001-g",
-    "evidence/20261128T051640Z-25fb97d5-001-a"
+    "evidence/20261128T082941Z-c624212e-001-a",
+    "evidence/20261128T084059Z-c624212e-001-g",
+    "evidence/20261128T082913Z-c624212e-001-a"
    ],
    "blocker": null
   },
@@ -11695,7 +11696,8 @@
     "2026-11-28 (the manager): the red team's second round (local, scratch): the blocking finding closed (every error of --strict is an error of --gate on the real records, 134 against 154, and on a scratch state with several defects; no check reads a local `strict`), nothing blocking left; three gaps of the tests closed test first in a last round: the workflow case took `--gate` named by another command of the same line for the validator's own flag; two weakenings of the gate mode survived every case (the oracle check and the import-receipt check outside the gate mode), now two cases and the SECURITY mutants M574 and M575; a plain run printing `[gate]` survived. tests/test_validate_records.py 40 -> 48 cases, tests/test_ci_workflows.py 81 -> 82, tests/test_mutants_harness.py 114 -> 115, mutants M571 to M575 (four SECURITY). No third red-team round was run on the last three test changes: the manager ran the three files and the host suite M0 himself (local), and the audit of the close reads them",
     "2026-11-28 (the manager): CI evidence imported, no close. Verify run 46109845296, attempt 1, on a9f4acc81b (merge commit 25fb97d5b8af9da50bd7a4001f626e2100ab5eee): 198 verdicts, all PASS; TST-M0-001 ran 48 cases (evidence/20261128T051626Z-25fb97d5-001-a), TST-M0-003 82 (evidence/20261128T051628Z-25fb97d5-001-a), TST-M0-005 115 (evidence/20261128T051640Z-25fb97d5-001-a), and the M6 gate killed 410 of 410 valid mutants with no survivor (evidence/20261128T053210Z-25fb97d5-001-g): M571, M573, M574 and M575 by TST-M0-001, M572 by TST-M0-003. After the import validate-records --strict reports 0 errors. Before the close: the audit of the close lines and the reviewer's reply in issue #24 (comment 7233966172), or the owner's word",
     "2026-11-28 (the manager), a correction on the independent audit of the proposed close lines (nothing closed): this record's acceptance, its commit's message and comments 7233966172 and 7235045050 of issue #24 said that a verdict recorded as NEEDS_REEVALUATION or NOT_RUN on changed inputs is no error under --gate. Only NEEDS_REEVALUATION is: the check in tools/project.py excepts that one verdict (`verdict[\"verdict\"] not in (\"NEEDS_REEVALUATION\",)`), and the pinned case covers it alone; NOT_RUN came from the red team's first report and was not checked before it was written here. The acceptance is corrected. Also left out of the earlier lines: `red first` is a local showing, no CI evidence; the two cases of the last round that pin `[gate]` in plain mode and the corrected workflow case were shown red against the code or the helper as they were, not against a mutant",
-    "2026-11-28 (the manager): the acceptance is replaced whole by a list of case names with what each asserts, copied from the auditor's fact sheet of this day (27 numbered facts) and read by him before the commit; the reason is in WP-166's line of the same day. Added: what a security review claimed by reading and the red team then showed by experiment on scratch record trees (the scratchpad's wp182-holes/results.txt; local, no evidence): of ten ways put to it the gate mode refused one (a NOT_RUN test still named by a done item) and passed nine, each of them passing --strict as well, so they are the validator's and older than this package. They are named in limit (c); eight are WP-184's, a new planned package on which WP-62 depends, and one, the changed verdict, is WP-89's, whose record already says the import receipt does not bind the verdict"
+    "2026-11-28 (the manager): the acceptance is replaced whole by a list of case names with what each asserts, copied from the auditor's fact sheet of this day (27 numbered facts) and read by him before the commit; the reason is in WP-166's line of the same day. Added: what a security review claimed by reading and the red team then showed by experiment on scratch record trees (the scratchpad's wp182-holes/results.txt; local, no evidence): of ten ways put to it the gate mode refused one (a NOT_RUN test still named by a done item) and passed nine, each of them passing --strict as well, so they are the validator's and older than this package. They are named in limit (c); eight are WP-184's, a new planned package on which WP-62 depends, and one, the changed verdict, is WP-89's, whose record already says the import receipt does not bind the verdict",
+    "2026-11-28 (the manager): CI evidence imported, no close. Verify run 46124512136, attempt 1, on e4e7641377 (merge commit c624212e1c2ceb6e5e258eff172e27865ec0e8a3): 198 evidence directories of that run, each verdict PASS. TST-M0-001: `Ran 48 tests` (evidence/20261128T082859Z-c624212e-001-a); TST-M0-003: `Ran 84 tests` (evidence/20261128T082901Z-c624212e-001-a); TST-M0-005: `Ran 115 tests` (evidence/20261128T082913Z-c624212e-001-a); TST-M6-MUTANTS: `OK: 411/411 valid mutants killed`, `M576: killed by TST-M0-003` (evidence/20261128T084059Z-c624212e-001-g). After the import `validate-records --strict` printed `0 error(s)`. this package's own code (validate-records --gate, tests/test_validate_records.py, its MergeJob case, M571..M575) is unchanged since a9f4acc81b; the commit of this run changed tools/project.py in oracle texts alone, and the records' tests point to this run"
    ],
    "acceptance": "On CI, TST-M0-001 PASS with these cases (tests/test_validate_records.py): (1) test_gate_mode_refuses_a_stale_verdict_of_an_older_mutation_gate: for each of the four ids of STALE_WARN_TESTS a stale PASS is a WARN and rc 0 under --strict (last line `[strict]`), rc 0 in plain mode (no tag), and an ERROR naming the evidence with rc 50 under --gate (last line `[gate]`). (2) test_gate_mode_and_strict_refuse_a_stale_verdict_of_an_ordinary_test: rc 50 with the ERROR under --strict and under --gate. (3) test_gate_mode_passes_with_nothing_stale: --gate rc 0, its last line ends `[gate]`. (4) test_gate_mode_refuses_a_pass_without_import_json_as_strict_does: a PASS of schema 1.1.0 without import.json is a WARN in plain mode and an ERROR with rc 50 under --strict, --gate and both. (5) test_gate_mode_limit_a_needs_reevaluation_verdict_on_changed_inputs_is_no_error: --gate rc 0, no ERROR (a stated limit, pinned). (6) test_gate_with_strict_is_the_gate: `--gate --strict` and `--strict --gate` give the same exit code and output as `--gate`. (7) Position.test_a_state_file_that_contradicts_the_records_fails_the_gate_mode: under gate alone and gate with strict, each of four contradicting state files gives one `ERROR project-state`. (8) OracleSingleSource.test_gate_a_pass_oracle_must_equal_the_one_its_evidence_ran_with: a PASS whose oracle differs from its evidence's is rc 50 under strict, gate and both. TST-M0-003 PASS with test_a_step_claiming_nothing_stale_runs_the_gate_mode_and_verify_names_the_exemption: its helper refuses ten step shapes and accepts four; job merge runs `validate-records --strict` once under the pinned name; no step of either workflow is named `nothing may be stale` today, so that part of the case asserts nothing yet. TST-M0-005 PASS registers M571 to M575, and TST-M6-MUTANTS PASS with each killed. Red first is a local showing, recorded in the action lines; it is no CI evidence. Stated limits: (a) the gate mode makes a stale verdict of any test an error, STALE_WARN_TESTS included, except one recorded NEEDS_REEVALUATION (tools/project.py, the check `verdict[\"verdict\"] not in (\"NEEDS_REEVALUATION\",)`); stricter than DEC-043's `mandatory`. (b) No workflow or script runs --gate: wiring it is WP-62's. (c) The gate mode adds to --strict only that no stale verdict is exempt; it leaves these gaps of completeness and integrity, which --strict has too: by local experiments of 2026-11-28 on scratch record trees (no CI evidence) each of these passes --gate and --strict with exit 0: a NOT_RUN test removed from a done item's test_ids while its requirement names it, and with the name removed from the requirement too; a PASS on a run of schema 1.0.0 with no import.json, made today (a WARN); a test and a done item citing a plain file as evidence; a cited older PASS beside a newer FAIL of the same test; a state file whose source_revision is not HEAD (a WARN); a stage `passed` with one of its requirement's tests NOT_RUN, and with a gate_evidence_refs path that does not exist; a verdict.json changed from FAIL to PASS after the import with its digests recomputed. The first eight are WP-184's; the last is WP-89's. (d) Under --gate the last line counts stale verdicts as errors and prints `0 stale verdict(s)`.",
    "test_ids": [
