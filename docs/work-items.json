@@ -4077,7 +4077,9 @@
     "WP-87",
     "WP-90",
     "WP-175",
-    "WP-178"
+    "WP-178",
+    "WP-89",
+    "WP-182"
    ],
    "inputs": [
     "docs/prompt/OS-EXEC-AR-v3.2.md:596-601 (M6)",
@@ -4097,7 +4099,8 @@
     "2026-11-10 (steward round D, planners' reports): depends on WP-71, WP-72 and WP-79 too: the exit conditions name TST-M6-SESSION-WATCHDOG (stages.json:301) and TST-M6-SESSION-AR (stages.json:303), and REQ-M6-006 lists TST-M6-UI-POINTER; the gate must not become ready while they are planned",
     "2026-11-10 (steward round E, audit): depends on WP-87 too: REQ-M6-006 lists TST-M6-LISTVIEW-A11Y and TST-M6-LISTVIEW-RTL, and stages.json:303 (scenario 11) names LISTVIEW-RTL; both cases are WP-87's since the WP-50 split",
     "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): depends on WP-90 too: stages.json:306 (M6 mutants >= 95% with no live security mutant) cannot be shown until the M6 gate exists (finding H2)",
-    "2026-11-21 (the manager): depends on WP-175 (the autostart's lock and sign-out paths) and WP-178 (the manager's failure ends no session into the next) on the external audit of 2026-11-21: the session path and the autostart are not accepted in M6 without them"
+    "2026-11-21 (the manager): depends on WP-175 (the autostart's lock and sign-out paths) and WP-178 (the manager's failure ends no session into the next) on the external audit of 2026-11-21: the session path and the autostart are not accepted in M6 without them",
+    "2026-11-28 (the manager, on the auditor's reading of the records of DEC-043): depends on WP-89 (the evidence published by a job that runs no candidate code) and WP-182 (the validator's gate mode: no stale mandatory verdict at the stage gate), which DEC-043, option A, answered 2026-11-27, made conditions of M6's acceptance (docs/stages.json, M6 exit_conditions); without them a condition of the gate stood outside the gate's own dependencies. Not recorded yet and owed in a records commit of its own: what DEC-043's answer fixes for after M6 (the MVP through M7, then one real device, then install, update and restore); docs/stages.json has no place for it without a new field"
    ],
    "acceptance": "M6 gate passed: every stages.json M6 exit condition met with CI evidence or a visible, recorded exception",
    "test_ids": [
@@ -5717,7 +5720,8 @@
     "2026-11-10 estimate: unmeasured, to be designed; the planners' split rule applies (team-methodology.md §2 item 0)",
     "2026-11-15 (assurance review of the external findings, by experiment on a copy): to do with this item: the import receipt does not bind the verdict: a verdict.json copied from another run of the same test into a directory with its own run.json and import.json is accepted, and so is a verdict edited after the import; a hash of verdict.json and digests.json in the receipt (a new schema version; 163 receipts today have none) closes it; the plain equality checks are WP-109's",
     "2026-11-16 inputs from the audit the owner ordered (by reading; nothing run): .github/workflows/mutants.yml gives contents: write to the whole job and the repository's own code (tests/mutants.py, build scripts) runs in it before the publish step, with none of the hardening verify's merge job has; verify publishes evidence branches with a forced push; the ruleset for ci-evidence/* and main is the owner's to set on GitHub (DEC-019)",
-    "2026-11-23 (the manager): a fact of the mutants workflow, met while the older gates were run by hand for an early warning (run 45158893604 on 5923d74857; nothing here is evidence in the records). Attempt 1 ended in the Toolchain step before any gate. Its one re-run, attempt 2, ran the four gates of M2 to M5 and each step succeeded: by the reports the job printed, TST-M2-MUTANTS 29 of 29, TST-M3-MUTANTS 20 of 20, TST-M4-MUTANTS 32 of 32 and TST-M5-MUTANTS 45 of 45 mutants killed, no survivor and no surviving SECURITY mutant. Then the job failed in two steps. (1) `validate-records --strict` counted 661 errors, all of one kind: that commit's own records pointed to the verify evidence of 2026-11-22, which the commit had made stale by changing tools/fat32.py (its own verify run was red); none named the run's own directories. A run of the gates on a commit whose verify evidence is not imported fails that step by construction: at a stage gate the order is verify, import, then the gates on the commit of the import. (2) The step that publishes the evidence was rejected: mutants.yml pushes, without force, to a branch named by the run's number alone (ci-evidence/mutants-<run>) and runs under `if: always()`, so the first attempt had made the branch and the second could not push to it (verify.yml pushes its own branch with force). A re-run of this workflow can therefore never publish, and its evidence cannot be imported (import-ci-evidence reads the branch); the attempt's artifact was uploaded and is kept seven days. To be covered with this package's per-attempt branch."
+    "2026-11-23 (the manager): a fact of the mutants workflow, met while the older gates were run by hand for an early warning (run 45158893604 on 5923d74857; nothing here is evidence in the records). Attempt 1 ended in the Toolchain step before any gate. Its one re-run, attempt 2, ran the four gates of M2 to M5 and each step succeeded: by the reports the job printed, TST-M2-MUTANTS 29 of 29, TST-M3-MUTANTS 20 of 20, TST-M4-MUTANTS 32 of 32 and TST-M5-MUTANTS 45 of 45 mutants killed, no survivor and no surviving SECURITY mutant. Then the job failed in two steps. (1) `validate-records --strict` counted 661 errors, all of one kind: that commit's own records pointed to the verify evidence of 2026-11-22, which the commit had made stale by changing tools/fat32.py (its own verify run was red); none named the run's own directories. A run of the gates on a commit whose verify evidence is not imported fails that step by construction: at a stage gate the order is verify, import, then the gates on the commit of the import. (2) The step that publishes the evidence was rejected: mutants.yml pushes, without force, to a branch named by the run's number alone (ci-evidence/mutants-<run>) and runs under `if: always()`, so the first attempt had made the branch and the second could not push to it (verify.yml pushes its own branch with force). A re-run of this workflow can therefore never publish, and its evidence cannot be imported (import-ci-evidence reads the branch); the attempt's artifact was uploaded and is kept seven days. To be covered with this package's per-attempt branch.",
+    "2026-11-27 (DEC-043, option A, answered 2026-11-27): this package moves from `exception until the M7 gate` in DEC-041's table to a condition of M6's acceptance (docs/stages.json, M6 exit_conditions: the evidence published by a job that runs no candidate code); the ruleset on ci-evidence/** (DEC-019, the branch rule) is still the owner's and still blocks its acceptance"
    ],
    "acceptance": "TST-M0-003 and TST-M0-007 PASS on CI with the per-attempt branch, the slot binding and the code-free publish job; M191 and M192 registered (executed once WP-90 exists); the ruleset on ci-evidence/** in place (owner, DEC-019)",
    "test_ids": [
@@ -11637,6 +11641,48 @@
     "python3 tools/project.py test --target host --suite M5",
     "python3 tools/project.py test --target host --suite M0",
     "python3 tools/project.py test --target host --suite M6-GATE"
+   ],
+   "status": "planned",
+   "status_history": [
+    "planned"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-182",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-002"
+   ],
+   "depends_on": [],
+   "inputs": [
+    "DEC-043, option A, answered 2026-11-27: a gate mode of the validator makes any stale mandatory verdict an error at a stage gate and at a release candidate, and the step's name in verify.yml is corrected",
+    "tools/project.py:150 (STALE_WARN_TESTS: TST-M2-MUTANTS to TST-M5-MUTANTS) and tools/project.py:349-356 (their stale verdicts accepted as warnings under --strict)",
+    ".github/workflows/verify.yml:918, the step `validate-records --strict (after fresh evidence, nothing may be stale)`, whose name says more than the check does"
+   ],
+   "files": [
+    "tools/project.py",
+    "tests/test_validate_records.py",
+    ".github/workflows/verify.yml",
+    "tests/test_ci_workflows.py",
+    "docs/tests.json",
+    "docs/work-items.json"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "وضع بوابة في المدقق: لا حكم إلزامي قديم عند بوابة المرحلة ومرشح الإصدار، وتصحيح اسم خطوة الفحص الصارم في verify.yml (من DEC-043، الخيار A، 2026-11-27)",
+    "design to decide at activation (2-3 options with trade-offs, the simplest among them): how the gate mode is asked for (a flag of validate-records, a command of its own, or the stage's gate read from docs/stages.json), where it runs (the gate's records commit, tools/pre-merge.sh, a release candidate), and what the ordinary --strict keeps (STALE_WARN_TESTS as warnings, so a push that does not run the older gates still passes)",
+    "test first, red seen locally before the change: new cases of TST-M0-001 (a stale verdict of TST-M2-MUTANTS an error in gate mode and a warning under plain --strict) and a new case of TST-M0-003 (the step's name in verify.yml claims no more than the check it runs)",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+   ],
+   "acceptance": "on CI, TST-M0-001 with new cases (to be written, each seen failing first) shows validate-records in its gate mode reporting a stale verdict of any mandatory test, TST-M2-MUTANTS to TST-M5-MUTANTS included, as an error, while plain --strict still reports the four of STALE_WARN_TESTS as warnings; TST-M0-003 with a new case (to be written) shows verify.yml's strict-check step named for what it checks, never `nothing may be stale` while STALE_WARN_TESTS lets the four older gates through",
+   "test_ids": [
+    "TST-M0-001",
+    "TST-M0-003"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
    ],
    "status": "planned",
    "status_history": [
