@@ -428,8 +428,8 @@ class ToolchainScript(unittest.TestCase):
     """WP-166 (first part): every Toolchain step's REAL run text, taken from the workflow file and
     left unmodified, executed under `bash -e` (the workflows set no `shell:` and no `defaults`, and
     GitHub runs an unspecified shell on Linux as `bash -e {0}`: no pipefail) after a prelude of
-    stand-ins: sudo, apt-get, rustup, timeout, sleep and the version commands are shell functions,
-    nothing is fetched, nothing sleeps, and SECONDS, unset and so a plain variable, is a simulated
+    stand-ins: sudo, apt-get, rustup, timeout, sleep and the version commands are shell functions
+    (sudo runs a stand-in only and refuses any other command, BAD-COMMAND), nothing is fetched, nothing sleeps, and SECONDS, unset and so a plain variable, is a simulated
     clock that only timeout and sleep advance. A scenario names, per call and source, each
     invocation's (duration, exit code[, "i"]): a duration above the try's limit is cut by the
     stand-in timeout at that limit (rc 124), "L" lasts exactly the limit and succeeds; "i" marks a
@@ -482,6 +482,7 @@ sleep() { SECONDS=$((SECONDS + $1)); __log "sleep $1"; }
 sudo() {
   if [ "$1" = sed ]; then __log "sed"; __src=archive; return 0; fi
   while [ $# -gt 0 ] && [[ "$1" == *=* ]]; do shift; done
+  if ! declare -F "$1" > /dev/null; then __log "BAD-COMMAND $*"; return 127; fi
   "$@"
 }
 apt-get() {
@@ -633,6 +634,39 @@ dpkg() { echo "Version: 0 (stand-in)"; }
             self.assertEqual(index, [last], f"{where}: the index ::error is not the last words")
             self.assertLess(end, deadline, f"{where}: the index ::error with no time left")
             self.assertEqual(running, "update", f"{where}: the index ::error after {running}")
+
+    def test_a_slow_day_that_fits_the_deadline_still_succeeds(self):
+        # The senior review of 2026-11-28 (S2): no other case fails with a deadline of 600 s in place
+        # of 840. The runner's mirror cuts the fetch twice (100 + 10 + 100 + 10), the archive's fetch
+        # and the install each take 300 s and succeed: 820 s, inside the 840 s deadline, so the step
+        # succeeds in every copy (the short copies of jobs g and merge make the same calls up to the
+        # install, which ends the step there too); a shorter deadline cuts the install and fails it.
+        scenario = {"fetch_mirror": [(self.BIG, 0), (self.BIG, 0)], "fetch_archive": [(300, 0)],
+                    "install_archive": [(300, 0)]}
+        for name, job, step in self.steps():
+            where = f"{name}: {job}"
+            rc, out, events, end = self.execute(step["run"], scenario)
+            self.assertEqual(rc, 0, f"{where}: a slow day inside the deadline failed at {end} s: {out[-2:]}")
+            self.assertEqual([e for _, e in events].count("sed"), 1, f"{where}: not one rewrite")
+            want = ["update_mirror", "fetch_mirror", "fetch_mirror", "update_archive", "fetch_archive", "install_archive"]
+            if self.full(step["run"]):
+                want += ["toolchain", "target", "run"]
+            self.assertEqual(self.started(events), want, where)
+            self.assertFalse([l for l in out if l.startswith("::error")], f"{where}: an ::error on a slow day that fits")
+            self.assertEqual(end, 820, where)
+
+    def test_the_stand_in_sudo_runs_nothing_real(self):
+        # The senior review of 2026-11-28 (S3): the stand-in sudo ran any command it was given for
+        # real, so a step line `sudo rm …` would run on the developer's machine and on the runner.
+        # It runs only the stand-ins (shell functions) and refuses anything else, logged BAD-COMMAND.
+        for name, job, step in self.steps():
+            where = f"{name}: {job}"
+            with tempfile.TemporaryDirectory() as tmp:
+                target = pathlib.Path(tmp) / "made-by-sudo"
+                rc, out, events, end = self.execute(step["run"] + f"\nsudo touch {shlex.quote(str(target))}\n")
+                self.assertFalse(target.exists(), f"{where}: the stand-in sudo ran touch for real")
+            self.assertNotEqual(rc, 0, f"{where}: a refused command did not fail the step")
+            self.assertIn(f"BAD-COMMAND touch {target}", [e for _, e in events], where)
 
     def test_a_call_failing_twice_ends_by_its_own_error(self):
         # Every call outside the `if`'s condition that fails twice for a reason other than time

@@ -2819,11 +2819,12 @@ class WorkflowShardMutants(unittest.TestCase):
         # what remains of the deadline (M566); after the red team: the deadline past the bound the
         # step's comment states (M567), no kill delay for a child ignoring TERM (M568), the spent
         # deadline returning to its caller (M569) and an install failing twice unnamed (M570);
+        # after the senior review: a deadline of 600 s that cuts a slow day fitting 840 s (M576);
         # TST-M0-003 kills them.
         by_id = {m[0]: m for m in mutants.MUTANTS}
         text = (ROOT / ".github" / "workflows" / "mutants.yml").read_text(encoding="utf-8")
         for mid in ("M305", "M306", "M307", "M308", "M563", "M564", "M565", "M566",
-                    "M567", "M568", "M569", "M570"):
+                    "M567", "M568", "M569", "M570", "M576"):
             self.assertIn(mid, by_id, f"{mid} is not registered")
             m = by_id[mid]
             self.assertEqual((m[1], m[4], mutants.stage_of(mid)), (".github/workflows/mutants.yml", ["TST-M0-003"], "M6"), mid)

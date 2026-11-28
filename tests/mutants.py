@@ -2188,6 +2188,10 @@ MUTANTS = [
      ["TST-M0-003"], "the spent deadline returns to the caller, whose own ::error (the index, a failed call) then names the wrong cause"),
     ("M570", ".github/workflows/mutants.yml", ' || { echo "::error title=Toolchain::failed twice: apt-get install -y"; exit 1; }', "",
      ["TST-M0-003"], "an install that fails twice ends the step by a retry warning, never by an ::error naming the install"),
+    # M576 (WP-166, the senior review of 2026-11-28, S2): a deadline shorter than the step needs on
+    # a slow day that fits 840 s; ToolchainScript's slow-day case kills it.
+    ("M576", ".github/workflows/mutants.yml", "end=$((SECONDS + 840))\n          retry()", "end=$((SECONDS + 600))\n          retry()",
+     ["TST-M0-003"], "the deadline 600 s: a slow day that fits 840 s (the mirror's fetch cut twice, the archive's fetch and the install 300 s each) is cut in the install and ends exit 1"),
     # M571, M572 (WP-182, DEC-043 option A): validate-records --gate keeps the STALE_WARN_TESTS
     # exemption (M571, TST-M0-001 kills it), and verify's strict step claims again that nothing may
     # be stale while the four older gates pass it stale (M572, TST-M0-003 kills it).

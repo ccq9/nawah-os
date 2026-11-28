@@ -61,7 +61,7 @@ jobs:
       - name: Toolchain
         # Verify job a's step, run text and cap (its comment there says why): the host suites this
         # workflow runs since WP-95 need its lab, fonttools and harfbuzz among it (MutationHarness).
-        # Its anchors are once here, so the step's mutants (M305-M308, M563-M566 since WP-166: the
+        # Its anchors are once here, so the step's mutants (M305-M308, M563-M570 and M576 since WP-166: the
         # index update's second source, the 840 s deadline and the step's named failures) mutate this copy.
         timeout-minutes: 15
         run: |
