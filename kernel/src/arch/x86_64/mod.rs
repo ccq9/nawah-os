@@ -26,7 +26,6 @@ pub mod tlb;
 mod trap;
 pub mod user_programs;
 
-#[cfg(feature = "ktest")]
 pub mod fwcfg;
 pub mod i8042;
 #[cfg(feature = "ktest")]

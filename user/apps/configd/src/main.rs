@@ -65,6 +65,8 @@ struct Store {
     slot_bad: [bool; 2],
     entries: [Entry; KEYS_PER_STORE],
     subs: [Handle; MAX_SUBS],
+    /// The client slot each subscription belongs to (meaningful where `subs` is not 0).
+    sub_client: [u8; MAX_SUBS],
 }
 
 const NO_STORE: Store = Store {
@@ -74,6 +76,7 @@ const NO_STORE: Store = Store {
     slot_bad: [false; 2],
     entries: [NO_ENTRY; KEYS_PER_STORE],
     subs: [0; MAX_SUBS],
+    sub_client: [0; MAX_SUBS],
 };
 
 #[derive(Clone, Copy)]
@@ -257,18 +260,44 @@ enum Access {
     Denied,
 }
 
+const REPLY_INVALID: &[u8] = b"ERR INVALID";
+const REPLY_ACCESS: &[u8] = b"ERR ACCESS";
+const REPLY_NOT_FOUND: &[u8] = b"ERR NOT_FOUND";
+
+/// The uid a `user/<uid>` store name carries, when it is one a store may have (config.md §1).
+fn user_uid(name: &[u8]) -> Option<u32> {
+    let uid = parse_u64(name.strip_prefix(b"user/")?)?;
+    (uid != 0 && uid <= u64::from(UID_MAX_PERSISTENT)).then_some(uid as u32)
+}
+
 impl State {
+    /// The store a modifying request names. A user store that is not loaded is created only
+    /// for a token that may modify it, decided from the name before any slot is taken, so a
+    /// refused request leaves no store behind (config.md v1.4, WP-157). ERR INVALID for a name
+    /// that is no store, or when no slot is free; ERR ACCESS for a token that may not modify it.
+    fn store_for_write(&mut self, name: &[u8], token: &TokenInfo) -> Result<usize, &'static [u8]> {
+        let create =
+            user_uid(name).is_some_and(|uid| token.perms & perm::ADMIN != 0 || uid == token.uid);
+        let Some(i) = self.store_index(name, create) else {
+            return Err(if create || user_uid(name).is_none() {
+                REPLY_INVALID
+            } else {
+                REPLY_ACCESS
+            });
+        };
+        match self.access(i, token) {
+            Access::Ok => Ok(i),
+            Access::Denied => Err(REPLY_ACCESS),
+        }
+    }
+
     fn store_index(&mut self, name: &[u8], create_user: bool) -> Option<usize> {
         match name {
             b"device" => Some(DEVICE),
             b"policy" => Some(POLICY),
             b"session" => Some(SESSION),
             _ => {
-                let uid = parse_u64(name.strip_prefix(b"user/")?)?;
-                if uid == 0 || uid > u64::from(UID_MAX_PERSISTENT) {
-                    return None;
-                }
-                let uid = uid as u32;
+                let uid = user_uid(name)?;
                 if let Some(i) = (3..STORES).find(|&i| self.stores[i].uid == uid) {
                     return Some(i);
                 }
@@ -284,11 +313,56 @@ impl State {
         }
     }
 
-    /// Reads both slots of a persistent store and adopts the newest intact one (config.md §2).
-    fn load(&mut self, i: usize) {
+    /// The store a GET or EXPORT names (config.md v1.6, WP-112): a user store through
+    /// `user_store_for_read`, the others as before (ERR NOT_FOUND for a name that is no store).
+    fn store_for_read(
+        &mut self,
+        name: &[u8],
+        token: Option<TokenInfo>,
+    ) -> Result<usize, &'static [u8]> {
+        match user_uid(name) {
+            Some(uid) => self.user_store_for_read(uid, token),
+            None => self.store_index(name, false).ok_or(REPLY_NOT_FOUND),
+        }
+    }
+
+    /// User store `uid` for a read (config.md v1.6, WP-112). It is read with a usable token of
+    /// that uid or with ADMIN alone: to any other reader it is not found, loaded or not, and
+    /// nothing is loaded for it, so a read tells no one else whether the store exists and takes
+    /// no slot. For an allowed reader a store that is not loaded is loaded, as for a write; one with
+    /// no intact slot on the volume is not found and leaves its slot free, and when no slot is
+    /// free the read is answered ERR INVALID, as a write is (v1.4).
+    fn user_store_for_read(
+        &mut self,
+        uid: u32,
+        token: Option<TokenInfo>,
+    ) -> Result<usize, &'static [u8]> {
+        let reader = token.filter(|t| t.usable());
+        if !reader.is_some_and(|t| t.perms & perm::ADMIN != 0 || t.uid == uid) {
+            return Err(REPLY_NOT_FOUND);
+        }
+        if let Some(i) = (3..STORES).find(|&i| self.stores[i].uid == uid) {
+            return Ok(i);
+        }
+        let i = (3..STORES)
+            .find(|&i| self.stores[i].uid == 0)
+            .ok_or(REPLY_INVALID)?;
+        self.stores[i] = NO_STORE;
+        self.stores[i].uid = uid;
+        if self.load(i) {
+            Ok(i)
+        } else {
+            self.stores[i] = NO_STORE;
+            Err(REPLY_NOT_FOUND)
+        }
+    }
+
+    /// Reads both slots of a persistent store and adopts the newest intact one (config.md §2);
+    /// whether one was adopted (the in-memory session store always is).
+    fn load(&mut self, i: usize) -> bool {
         if i == SESSION {
             self.stores[i].loaded = true;
-            return;
+            return true;
         }
         let uid = self.stores[i].uid;
         let mut best: Option<(usize, u64)> = None;
@@ -322,47 +396,49 @@ impl State {
         st.slot_gen = gens;
         st.slot_bad = bad;
         st.loaded = true;
-        if let Some((slot, _)) = best {
-            // Re-read the chosen slot into the table.
-            let mut name = [0u8; 24];
-            let path = slot_path(i, uid, slot, &mut name);
-            let Ok(f) = libnawah::open(path, libnawah::O_READ) else {
-                return;
-            };
-            let mut len = 0;
-            while len < FILE_MAX {
-                match libnawah::read(f, &mut self.file[len..]) {
-                    Ok(0) | Err(_) => break,
-                    Ok(n) => len += n,
-                }
-            }
-            libnawah::handle_close(f);
-            let mut n = 0;
-            for line in self.file[..len].split(|c| *c == b'\n').skip(1) {
-                if line.is_empty() || n == KEYS_PER_STORE {
-                    continue;
-                }
-                let mut f = Fields { s: line };
-                let (Some(key), Some(ver)) = (f.next(), f.next()) else {
-                    continue;
-                };
-                let value = f.rest();
-                let Some(ver) = parse_u64(ver) else {
-                    continue;
-                };
-                if !key_ok(key) || !value_ok(value) {
-                    continue;
-                }
-                let e = &mut self.stores[i].entries[n];
-                e.used = true;
-                e.key[..key.len()].copy_from_slice(key);
-                e.key_len = key.len() as u8;
-                e.value[..value.len()].copy_from_slice(value);
-                e.value_len = value.len() as u16;
-                e.version = ver;
-                n += 1;
+        let Some((slot, _)) = best else {
+            return false;
+        };
+        // Re-read the chosen slot into the table.
+        let mut name = [0u8; 24];
+        let path = slot_path(i, uid, slot, &mut name);
+        let Ok(f) = libnawah::open(path, libnawah::O_READ) else {
+            return false;
+        };
+        let mut len = 0;
+        while len < FILE_MAX {
+            match libnawah::read(f, &mut self.file[len..]) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => len += n,
             }
         }
+        libnawah::handle_close(f);
+        let mut n = 0;
+        for line in self.file[..len].split(|c| *c == b'\n').skip(1) {
+            if line.is_empty() || n == KEYS_PER_STORE {
+                continue;
+            }
+            let mut f = Fields { s: line };
+            let (Some(key), Some(ver)) = (f.next(), f.next()) else {
+                continue;
+            };
+            let value = f.rest();
+            let Some(ver) = parse_u64(ver) else {
+                continue;
+            };
+            if !key_ok(key) || !value_ok(value) {
+                continue;
+            }
+            let e = &mut self.stores[i].entries[n];
+            e.used = true;
+            e.key[..key.len()].copy_from_slice(key);
+            e.key_len = key.len() as u8;
+            e.value[..value.len()].copy_from_slice(value);
+            e.value_len = value.len() as u16;
+            e.version = ver;
+            n += 1;
+        }
+        true
     }
 
     /// Writes the store to the slot with the lower generation, then syncs (config.md §2).
@@ -437,6 +513,30 @@ impl State {
             Access::Ok
         } else {
             Access::Denied
+        }
+    }
+
+    /// The slot of store `i` a subscription of client `ci` takes: the one it holds there,
+    /// else a free one.
+    fn sub_slot(&self, i: usize, ci: usize) -> Option<usize> {
+        let st = &self.stores[i];
+        (0..MAX_SUBS)
+            .find(|&s| st.subs[s] != 0 && usize::from(st.sub_client[s]) == ci)
+            .or_else(|| st.subs.iter().position(|s| *s == 0))
+    }
+
+    /// A client is gone: its channel end is closed and its slot freed, and its subscriptions
+    /// go with it. The one place a client slot is freed (config.md v1.5, WP-158).
+    fn drop_client(&mut self, ci: usize) {
+        libnawah::handle_close(self.clients[ci].chan);
+        self.clients[ci].chan = 0;
+        for st in self.stores.iter_mut() {
+            for s in 0..MAX_SUBS {
+                if st.subs[s] != 0 && usize::from(st.sub_client[s]) == ci {
+                    libnawah::handle_close(st.subs[s]);
+                    st.subs[s] = 0;
+                }
+            }
         }
     }
 
@@ -558,9 +658,16 @@ impl State {
         }
     }
 
-    /// One request; `handle` is the handle it carried (token or subscriber channel). Returns
-    /// whether the reply should be cached under the request id (modifying requests).
-    fn request(&mut self, req: &[u8], handle: Option<Handle>, out: &mut Out) -> Option<u64> {
+    /// One request; `handle` is the handle it carried (token or subscriber channel): the caller
+    /// closes it after this returns unless SUBSCRIBE took it (left `None`; config.md v1.3).
+    /// Returns the request id the reply is cached under (modifying requests).
+    fn request(
+        &mut self,
+        ci: usize,
+        req: &[u8],
+        handle: &mut Option<Handle>,
+        out: &mut Out,
+    ) -> Option<u64> {
         // The first line is the request; IMPORT carries its lines after it.
         let head = match req.iter().position(|c| *c == b'\n') {
             Some(p) => &req[..p],
@@ -576,11 +683,13 @@ impl State {
                     return None;
                 };
                 // Only a usable token names whose session values are read: a revoked or
-                // expired one reads as no token (config.md v1.1).
+                // expired one reads as no token (config.md v1.1); a user store is read for its
+                // owner or ADMIN alone, and loaded on that read (v1.6).
                 let uid = token.filter(|t| t.usable()).map_or(0, |t| t.uid);
-                match self.store_index(store, false) {
-                    Some(i) if self.get(i, key, uid, out) => {}
-                    _ => out.put(b"ERR NOT_FOUND"),
+                match self.store_for_read(store, token) {
+                    Ok(i) if self.get(i, key, uid, out) => {}
+                    Ok(_) => out.put(REPLY_NOT_FOUND),
+                    Err(reply) => out.put(reply),
                 }
                 None
             }
@@ -612,14 +721,13 @@ impl State {
                     out.put(b"ERR INVALID");
                     return Some(rid);
                 }
-                let Some(i) = self.store_index(store, true) else {
-                    out.put(b"ERR INVALID");
-                    return Some(rid);
+                let i = match self.store_for_write(store, &token) {
+                    Ok(i) => i,
+                    Err(reply) => {
+                        out.put(reply);
+                        return Some(rid);
+                    }
                 };
-                if let Access::Denied = self.access(i, &token) {
-                    out.put(b"ERR ACCESS");
-                    return Some(rid);
-                }
                 self.modify(i, key, expected, value, token.uid, out);
                 Some(rid)
             }
@@ -636,7 +744,24 @@ impl State {
                     });
                     return None;
                 };
-                let user_store = (3..STORES).find(|&i| self.stores[i].uid == token.uid);
+                // The token's own user store, loaded on this read (config.md v1.6, WP-112); none
+                // for a uid no store may carry or none on the volume; no free slot: ERR INVALID.
+                let persistent = token.uid != 0 && token.uid <= UID_MAX_PERSISTENT;
+                // Policy beats every user value: a key it holds is answered without loading the
+                // token's store, so a full table does not stand in its way (WP-112's review round).
+                let load = persistent && self.find(POLICY, key, token.uid).is_none();
+                let user_store = if load {
+                    match self.user_store_for_read(token.uid, Some(token)) {
+                        Ok(i) => Some(i),
+                        Err(reply) if reply == REPLY_INVALID => {
+                            out.put(reply);
+                            return None;
+                        }
+                        Err(_) => None,
+                    }
+                } else {
+                    (3..STORES).find(|&i| persistent && self.stores[i].uid == token.uid)
+                };
                 for (i, source) in [
                     (Some(POLICY), &b"policy"[..]),
                     (user_store, b"user"),
@@ -659,19 +784,44 @@ impl State {
                 None
             }
             b"SUBSCRIBE" => {
-                let (Some(store), Some(h)) = (f.next(), handle) else {
+                let (Some(store), Some(h)) = (f.next(), *handle) else {
                     out.put(b"ERR BAD_REQUEST");
                     return None;
                 };
-                match self.store_index(store, true) {
-                    Some(i) => match self.stores[i].subs.iter().position(|s| *s == 0) {
+                // A subscriber shows no token, and session values are kept apart per user: no
+                // session subscription until a form carries the token (config.md v1.5, WP-158).
+                if store == b"session" {
+                    out.put(b"ERR ACCESS");
+                    return None;
+                }
+                // Nor a user store's (v1.6, WP-112): it is read for its owner or ADMIN alone, and
+                // a subscriber that shows no token would learn that it is loaded and its keys.
+                if user_uid(store).is_some() {
+                    out.put(REPLY_ACCESS);
+                    return None;
+                }
+                match self.store_index(store, false) {
+                    // One subscription per client and store: a second replaces the first,
+                    // whose end is closed, so no client holds a store's slots against the
+                    // others (config.md v1.5, WP-158).
+                    Some(i) => match self.sub_slot(i, ci) {
                         Some(slot) => {
+                            let old = self.stores[i].subs[slot];
+                            if old != 0 {
+                                libnawah::handle_close(old);
+                            }
+                            // The subscription takes the handle: the caller does not close it.
                             self.stores[i].subs[slot] = h;
+                            self.stores[i].sub_client[slot] = ci as u8;
+                            *handle = None;
                             out.put(b"OK");
-                            return Some(u64::MAX); // keep the handle: it is the subscription
+                            return None;
                         }
                         None => out.put(b"ERR FULL"),
                     },
+                    // A subscriber shows no token, so it never creates a user store: one that
+                    // is not loaded is not found, as for GET and EXPORT (config.md v1.4, WP-157).
+                    None if user_uid(store).is_some() => out.put(b"ERR NOT_FOUND"),
                     None => out.put(b"ERR INVALID"),
                 }
                 None
@@ -682,8 +832,8 @@ impl State {
                     return None;
                 };
                 let uid = token.filter(|t| t.usable()).map_or(0, |t| t.uid);
-                match self.store_index(store, false) {
-                    Some(i) => {
+                match self.store_for_read(store, token) {
+                    Ok(i) => {
                         out.put(b"OK");
                         for e in self.stores[i]
                             .entries
@@ -698,7 +848,7 @@ impl State {
                             out.put(&e.value[..usize::from(e.value_len)]);
                         }
                     }
-                    None => out.put(b"ERR NOT_FOUND"),
+                    Err(reply) => out.put(reply),
                 }
                 None
             }
@@ -719,14 +869,13 @@ impl State {
                     });
                     return Some(rid);
                 };
-                let Some(i) = self.store_index(store, true) else {
-                    out.put(b"ERR INVALID");
-                    return Some(rid);
+                let i = match self.store_for_write(store, &token) {
+                    Ok(i) => i,
+                    Err(reply) => {
+                        out.put(reply);
+                        return Some(rid);
+                    }
                 };
-                if let Access::Denied = self.access(i, &token) {
-                    out.put(b"ERR ACCESS");
-                    return Some(rid);
-                }
                 // Validate every line first; then apply all.
                 let body = match req.iter().position(|c| *c == b'\n') {
                     Some(p) => &req[p + 1..],
@@ -886,7 +1035,10 @@ fn main() -> u64 {
         let c = st.clients[ci].chan;
         match libnawah::channel_read(c, &mut st.msg, &mut hs, false) {
             Ok((n, nh)) => {
-                let handle = if nh == 1 { Some(hs[0]) } else { None };
+                // The handle the request carried: closed at the one exit below, whatever the
+                // request and whether its reply can be written, unless SUBSCRIBE took it
+                // (config.md v1.3, WP-107).
+                let mut handle = if nh == 1 { Some(hs[0]) } else { None };
                 // A repeated request id: the stored reply, nothing applied (config.md §3).
                 let rid_of = |req: &[u8]| -> Option<u64> {
                     let head = match req.iter().position(|c| *c == b'\n') {
@@ -908,60 +1060,50 @@ fn main() -> u64 {
                         _ => None,
                     }
                 };
-                let mut sent = 0;
+                // The reply, stored or built, is put on the stack; it is written after the close.
+                let mut out_buf = [0u8; MSG_MAX];
+                let mut reply_len = 0;
                 let mut handled = false;
                 if let Some(rid) = rid_of(&st.msg[..n]).filter(|r| *r != 0) {
                     if let Some(cached) = st.clients[ci].cache.iter().find(|e| e.rid == rid) {
-                        let reply = cached.reply;
-                        let len = usize::from(cached.len);
-                        sent = libnawah::channel_write(c, &reply[..len], &[]);
+                        reply_len = usize::from(cached.len);
+                        out_buf[..reply_len].copy_from_slice(&cached.reply[..reply_len]);
                         handled = true;
                     }
                 }
                 if !handled {
                     // The request is copied out of the state so the handler may borrow the
-                    // state mutably; the reply is built on the stack.
+                    // state mutably.
                     let mut req_copy = [0u8; MSG_MAX];
                     req_copy[..n].copy_from_slice(&st.msg[..n]);
-                    let mut out_buf = [0u8; MSG_MAX];
                     let mut out = Out::new(&mut out_buf);
-                    let keep = st.request(&req_copy[..n], handle, &mut out);
-                    let reply_len = out.len;
-                    let reply: [u8; REPLY_MAX] = {
-                        let mut r = [0u8; REPLY_MAX];
+                    let keep = st.request(ci, &req_copy[..n], &mut handle, &mut out);
+                    reply_len = out.len;
+                    if let Some(rid) = keep.filter(|r| *r != 0) {
                         let l = reply_len.min(REPLY_MAX);
-                        r[..l].copy_from_slice(&out.bytes()[..l]);
-                        r
-                    };
-                    match keep {
-                        Some(u64::MAX) => {} // subscription: the handle stays with us
-                        _ => {
-                            if let Some(h) = handle {
-                                libnawah::handle_close(h);
-                            }
-                        }
-                    }
-                    if let Some(rid) = keep.filter(|r| *r != 0 && *r != u64::MAX) {
+                        let mut reply = [0u8; REPLY_MAX];
+                        reply[..l].copy_from_slice(&out_buf[..l]);
                         let cl = &mut st.clients[ci];
                         let slot = cl.next % RID_CACHE;
                         cl.cache[slot] = Cached {
                             rid,
                             reply,
-                            len: reply_len.min(REPLY_MAX) as u8,
+                            len: l as u8,
                         };
                         cl.next += 1;
                     }
-                    sent = libnawah::channel_write(c, &out_buf[..reply_len], &[]);
                 }
+                // The one exit for the handle the request carried (WP-107): a replay, a refusal
+                // and a reply that cannot be written all leave it closed.
+                if let Some(h) = handle.take() {
+                    libnawah::handle_close(h);
+                }
+                let sent = libnawah::channel_write(c, &out_buf[..reply_len], &[]);
                 if sent == ERR_PEER_CLOSED {
-                    libnawah::handle_close(c);
-                    st.clients[ci].chan = 0;
+                    st.drop_client(ci);
                 }
             }
-            Err(ERR_PEER_CLOSED) => {
-                libnawah::handle_close(c);
-                st.clients[ci].chan = 0;
-            }
+            Err(ERR_PEER_CLOSED) => st.drop_client(ci),
             // Larger than any request, or carrying handles no request takes: discarded and
             // refused, so this client's next request is read and the clients after it are not
             // starved behind a message that never fits (review 2026-10-19, as svcmgr does).

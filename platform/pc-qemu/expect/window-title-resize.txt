@@ -1,0 +1,4 @@
+# TST-M5-WINDOW-TITLE-RESIZE (WP-97, display.md v1.14 and v1.7): the title is named in the
+# compositor's resize line as in its focus line; Alt+Shift+Right widens 32x32 to 48x32.
+window "x[U+0022] resized 9x9 role=[U+0022]button" focused
+window "x[U+0022] resized 9x9 role=[U+0022]button" resized 48x32

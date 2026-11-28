@@ -1,0 +1,5 @@
+# TST-M6-SESSION-JOB (WP-102): the vouched session's applications run in one session job, which END_SESSION from the session alone ends;
+# `desktop` and `sessions` start once the session is READY, after its first two launches, and are refused
+session /SYSTEM/LABSES.ELF - 3000 never 0 0 ender
+desktop /SYSTEM/SVC.ELF session 3000 never 0 0 ask END_SESSION=ERR ACCESS
+sessions /SYSTEM/SVC.ELF session 3000 never 0 0 ask END_SESSION=ERR ACCESS

@@ -1,0 +1,2 @@
+# TST-M6-JOB-BOUND (WP-164): the vouched session launches peer, hog (fills its own job) and clock; the lab role `bounder` is its side
+session /SYSTEM/LABSES.ELF - 3000 never 0 0 bounder

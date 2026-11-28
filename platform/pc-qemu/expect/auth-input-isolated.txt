@@ -1,8 +1,10 @@
 # TST-M5-AUTH-INPUT-ISOLATED (session.md §9): the session's, the spy's and the narrator's
 # traces, each stream exact and in order; the password field is announced without a value
+# (session.md v1.10) the manifest names no config: the sign-in's autostart is unavailable, ERR UNKNOWN
 session|state=no_session|window=510,336,260,128
 session|state=unlocked|user=admin|uid=1000|token=usable
 session|focus=display|n=1
+session|autostart=unavailable|answer=ERR UNKNOWN
 session|state=locked|user=admin|window=510,336,260,128
 session|state=unlocked|user=admin|uid=1000|token=usable
 session|focus=display|n=2

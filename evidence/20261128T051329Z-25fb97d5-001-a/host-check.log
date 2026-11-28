@@ -1,0 +1,4 @@
+$ python3 -I tools/transcript.py streams /home/runner/work/nawah-os/nawah-os/evidence/20261128T051329Z-25fb97d5-001-a platform/pc-qemu/expect/logout-kills.txt
+serial.log: session: 54 lines as expected
+
+[exit 0]

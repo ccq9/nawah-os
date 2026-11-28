@@ -19,7 +19,7 @@
  "properties": {
   "schema_version": {
    "type": "string",
-   "pattern": "^1\\.0\\.0$"
+   "pattern": "^1\\.(0|1)\\.0$"
   },
   "run_id": {
    "type": "string",
@@ -49,7 +49,11 @@
   },
   "worker": {
    "type": "string",
-   "minLength": 1
+   "enum": [
+    "verification-runner",
+    "interactive-agent",
+    "test"
+   ]
   },
   "purpose": {
    "type": "string",
@@ -68,6 +72,90 @@
   "notes": {
    "type": "string",
    "minLength": 1
+  },
+  "dirty_paths": {
+   "type": "array",
+   "maxItems": 50,
+   "items": {
+    "type": "string",
+    "minLength": 1
+   }
+  },
+  "ci": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "run_id",
+    "run_attempt",
+    "workflow",
+    "event",
+    "sha",
+    "head_sha",
+    "ref"
+   ],
+   "properties": {
+    "run_id": {
+     "type": "string"
+    },
+    "run_attempt": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "workflow": {
+     "type": "string"
+    },
+    "event": {
+     "type": "string"
+    },
+    "sha": {
+     "type": "string"
+    },
+    "head_sha": {
+     "type": "string"
+    },
+    "ref": {
+     "type": "string"
+    }
+   }
   }
- }
+ },
+ "$comment": "evidence/<run>/run.json (ADR-0026). A verification-runner run carries its CI identity in ci; a 1.0.0 run has none.",
+ "allOf": [
+  {
+   "if": {
+    "properties": {
+     "worker": {
+      "const": "verification-runner"
+     }
+    },
+    "required": [
+     "worker"
+    ]
+   },
+   "then": {
+    "required": [
+     "ci"
+    ]
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "schema_version": {
+      "const": "1.0.0"
+     }
+    },
+    "required": [
+     "schema_version"
+    ]
+   },
+   "then": {
+    "not": {
+     "required": [
+      "ci"
+     ]
+    }
+   }
+  }
+ ]
 }

@@ -20,9 +20,19 @@
 //! wider than its row on the prompt is refused before anything is asked: what runs is only
 //! ever what was shown in full.
 //!
-//! Initial handle: the boot channel. Dependencies: `auth`, `input`, `display`, and the services
-//! elevations may reach (declared in the manifest). Clients ask `STATE`, `AUTH`, `ELEVATION`
-//! and `ELEVATE`.
+//! (v1.10, WP-168) After a sign-in, once the keyboard is the desktop's, the session reads
+//! `session.autostart` from the user's store at `config` with the user's token and launches the
+//! first eight ids in order through the manager, one at a time; each answer is traced and a
+//! refused, unknown or malformed id passed over. A lock pauses it, Sign out ends it. (v1.11,
+//! WP-175) It asks only while the desktop holds the keyboard, so the elevation prompt pauses it
+//! too; config's answer that comes after a lock is dropped (`session|autostart=stale`) and the
+//! GET asked again once the keyboard is the desktop's. (v1.12, WP-178) No sign-in is taken
+//! while the end of the last signed-out session's job is unconfirmed: only the manager's `ENDED`
+//! confirms it (`session|login=held|end=…`, `ENDING`, `session|manager=gone|end=…`).
+//!
+//! Initial handle: the boot channel. Dependencies: `auth`, `input`, `display`, `config` for the
+//! autostart, and the services elevations may reach (declared in the manifest). Clients ask
+//! `STATE`, `AUTH`, `ELEVATION` and `ELEVATE`.
 
 #![no_std]
 #![no_main]
@@ -58,6 +68,12 @@ const DISPLAY: usize = 2;
 const DEPS: [&[u8]; 3] = [b"auth", b"input", b"display"];
 /// `asked` while the manager's answer to an elevation's `CONNECT <service>` is awaited.
 const ELEV: usize = 3;
+/// `asked` while the manager's answer to the autostart's `CONNECT config` is awaited (v1.10).
+const CONFIG: usize = 4;
+/// The ids of `session.autostart` the session takes, in order (v1.10); those past it are counted.
+const AUTOSTART_MAX: usize = 8;
+/// The longest value config keeps (config.md §1).
+const VALUE_MAX: usize = 256;
 /// The longest request an elevation carries (v1.3): it must fit the prompt in full.
 const ELEVATE_REQUEST_MAX: usize = 32;
 /// The administrator permission (auth.md §1, `PERM_ADMIN`).
@@ -82,6 +98,115 @@ enum AuthOp {
     Elevate {
         n: u64,
     },
+}
+
+/// A request on the boot channel whose answer has not come yet (session.md v1.8): the manager
+/// answers each request in the order it read them, so the answers match these front to back.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BootOp {
+    /// `CONNECT <name>`: `OK` with a handle, or `ERR …`.
+    Connect,
+    /// `END_SESSION`: `ENDED <n>`, or `ERR …`.
+    End,
+    /// `BEGIN_SESSION` (v1.9): `BEGUN`, or `ERR …`.
+    Begin,
+    /// `LAUNCH <id>` of the autostart (v1.10): `OK app:<id>#<n>`, or `ERR …`.
+    Launch,
+}
+
+/// Where the end of the last signed-out session's job is (session.md v1.12): the manager's
+/// `ENDED` alone confirms it, and no sign-in is taken until it does.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum EndState {
+    /// Nothing to wait for: no session ended since the start, or the manager answered `ENDED`.
+    Confirmed,
+    /// `END_SESSION` is on the boot channel and its answer has not come.
+    Sent,
+    /// `END_SESSION` could not be written (`session|jobs=unsent`).
+    Unsent,
+    /// The manager answered `END_SESSION` with `ERR …` (`session|jobs=refused`).
+    Refused,
+}
+
+impl EndState {
+    fn name(self) -> &'static [u8] {
+        match self {
+            EndState::Confirmed => b"none",
+            EndState::Sent => b"sent",
+            EndState::Unsent => b"unsent",
+            EndState::Refused => b"refused",
+        }
+    }
+}
+
+/// Boot-channel requests that may wait for their answers at once: one `CONNECT` (they go one at
+/// a time), the `END_SESSION`s of Sign outs, the `BEGIN_SESSION`s of sign-ins (v1.9) and one
+/// `LAUNCH` of the autostart (v1.10).
+const BOOT_OPS: usize = 6;
+
+/// Where the autostart of a sign-in is (session.md v1.10).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AutoStep {
+    /// A channel to `config` is to be asked of the manager.
+    Connect,
+    /// `CONNECT config` was asked; the manager's answer is awaited.
+    Connecting,
+    /// `GET user/<uid> session.autostart` is to be sent.
+    Get,
+    /// The GET was sent after `at` transitions (`changes`); config's answer is awaited. A lock
+    /// since then makes it stale: the token it carried may be locked, so it is asked again.
+    Getting { at: i64 },
+    /// The next id is to be taken.
+    Launch,
+    /// The `LAUNCH` of the id at `id` in the value was sent; the manager's answer is awaited.
+    Launching,
+}
+
+/// The autostart of a sign-in (session.md v1.10): the ids of `session.autostart` in the user's
+/// store, launched one at a time in order.
+#[derive(Clone, Copy)]
+struct Autostart {
+    step: AutoStep,
+    /// The value of `session.autostart`, once read: ids separated by spaces.
+    value: [u8; VALUE_MAX],
+    value_len: usize,
+    /// Where the next id starts in `value`.
+    next: usize,
+    /// The id being launched (`start..end` of `value`).
+    id: (usize, usize),
+    /// Ids taken so far (asked, refused here or not sent).
+    taken: usize,
+    launched: i64,
+    passed: i64,
+}
+
+const NEW_AUTOSTART: Autostart = Autostart {
+    step: AutoStep::Connect,
+    value: [0; VALUE_MAX],
+    value_len: 0,
+    next: 0,
+    id: (0, 0),
+    taken: 0,
+    launched: 0,
+    passed: 0,
+};
+
+/// An application id as apps.md §2 shapes it, `[a-z][a-z0-9]{0,7}`: what the autostart asks the
+/// manager for, checked before it is asked (v1.10).
+fn app_id_ok(id: &[u8]) -> bool {
+    id.len() <= 8
+        && id.first().is_some_and(u8::is_ascii_lowercase)
+        && id
+            .iter()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+}
+
+/// The ids left in `value` from `at` (space-separated words).
+fn ids_from(value: &[u8], at: usize) -> i64 {
+    value[at.min(value.len())..]
+        .split(|&c| c == b' ')
+        .filter(|w| !w.is_empty())
+        .count() as i64
 }
 
 /// An elevation a client asked for (session.md v1.3).
@@ -446,6 +571,8 @@ struct Session {
     connected: [bool; 3],
     conn_n: [i64; 3],
     asked: Option<usize>,
+    /// The boot channel's requests waiting for their answers, oldest first (v1.8).
+    boot_ops: [Option<BootOp>; BOOT_OPS],
     retry: [u64; 3],
     format: u32,
     screen_w: i64,
@@ -474,6 +601,14 @@ struct Session {
     elevations: i64,
     /// Elevations asked so far; numbers the next one.
     elevate_seq: u64,
+    /// The channel to `config` while the autostart reads the user's store (v1.10), or 0.
+    config: Handle,
+    /// The autostart of the current sign-in, until it ends (v1.10).
+    autostart: Option<Autostart>,
+    /// The end of the last signed-out session's job (v1.12).
+    end: EndState,
+    /// Sign-ins refused since the start because that end was unconfirmed (v1.12).
+    logins_held: i64,
 }
 
 impl Session {
@@ -536,7 +671,15 @@ impl Session {
                 Some(t) if answer.starts_with(b"OK ") => {
                     self.user[..len].copy_from_slice(&name[..len]);
                     self.user_len = len;
+                    // v1.9: the manager opens its gate for LAUNCH at a sign-in (not at an unlock:
+                    // the session is open already); its answer is traced only when it refuses.
+                    if !self.boot_send(b"BEGIN_SESSION", BootOp::Begin) {
+                        libnawah::trace(b"session|begin=unsent");
+                    }
                     self.opened(answer, t, now);
+                    // v1.10: the autostart of this sign-in (not of an unlock); it begins once the
+                    // keyboard is the desktop's (`autostart_step`).
+                    self.autostart = Some(NEW_AUTOSTART);
                 }
                 other => {
                     if let Some(t) = other {
@@ -680,7 +823,7 @@ impl Session {
             e.connect = false;
             let mut req = Out::new();
             req.put(b"CONNECT ").put(&e.service[..e.service_len]);
-            if libnawah::channel_write(self.boot, req.bytes(), &[]) == 0 {
+            if self.boot_send(req.bytes(), BootOp::Connect) {
                 self.asked = Some(ELEV);
             } else {
                 self.elevate_end(b"ERR UNAVAILABLE", now);
@@ -691,7 +834,7 @@ impl Session {
             if !self.connected[i] && now >= self.retry[i] {
                 let mut req = Out::new();
                 req.put(b"CONNECT ").put(dep);
-                if libnawah::channel_write(self.boot, req.bytes(), &[]) == 0 {
+                if self.boot_send(req.bytes(), BootOp::Connect) {
                     self.asked = Some(i);
                 } else {
                     self.retry[i] = now + RECONNECT;
@@ -699,11 +842,67 @@ impl Session {
                 return;
             }
         }
+        // v1.10: the autostart's channel to config, once it may run (`autostart_runs`).
+        if self.autostart_runs() && self.autostart.is_some_and(|a| a.step == AutoStep::Connect) {
+            if self.boot_send(b"CONNECT config", BootOp::Connect) {
+                self.asked = Some(CONFIG);
+                self.autostart_to(AutoStep::Connecting);
+            } else {
+                self.autostart_unavailable(b"ERR UNAVAILABLE");
+            }
+        }
     }
 
-    /// The manager's answer to the asked `CONNECT`: a channel, or a refusal to retry later
-    /// (`ERR NOT_READY` while the service restarts).
-    fn answer(&mut self, chan: Option<Handle>, now: u64) {
+    /// Writes `req` on the boot channel and queues what answers it (v1.8); false when it could not
+    /// be written or BOOT_OPS answers are already awaited.
+    fn boot_send(&mut self, req: &[u8], op: BootOp) -> bool {
+        let Some(k) = self.boot_ops.iter().position(Option::is_none) else {
+            return false;
+        };
+        if libnawah::channel_write(self.boot, req, &[]) != 0 {
+            return false;
+        }
+        self.boot_ops[k] = Some(op);
+        if op == BootOp::End {
+            self.end = EndState::Sent;
+        }
+        true
+    }
+
+    /// The oldest request on the boot channel still unanswered, taken off the queue.
+    fn boot_take(&mut self) -> Option<BootOp> {
+        let op = self.boot_ops[0];
+        self.boot_ops.copy_within(1.., 0);
+        self.boot_ops[BOOT_OPS - 1] = None;
+        op
+    }
+
+    /// The manager's answer to END_SESSION (v1.8), traced: `session|jobs=ended|apps=<n>`, or
+    /// `session|jobs=refused|answer=<reply>`.
+    fn ended(&mut self, msg: &[u8]) {
+        // v1.12: the answer is `ENDED <n>` in the manager's own form and nothing else
+        // (nawah_apps::ended_count): a reply that only begins like it is a refusal.
+        let count = nawah_apps::ended_count(msg);
+        let mut t = Out::new();
+        match (count, msg.strip_prefix(b"ENDED ")) {
+            (Some(_), Some(n)) => t.put(b"session|jobs=ended|apps=").put(n),
+            _ => t.put(b"session|jobs=refused|answer=").put(msg),
+        };
+        libnawah::trace(t.bytes());
+        // v1.12: ENDED alone confirms the end (and only once no other END_SESSION waits); a
+        // refusal leaves it unconfirmed, asked again at the next sign-in.
+        self.end = if self.boot_ops.contains(&Some(BootOp::End)) {
+            EndState::Sent
+        } else if count.is_some() {
+            EndState::Confirmed
+        } else {
+            EndState::Refused
+        };
+    }
+
+    /// The manager's answer `msg` to the asked `CONNECT`: a channel, or a refusal to retry later
+    /// (`ERR NOT_READY` while the service restarts; since v1.8 an `OK` without a handle too).
+    fn answer(&mut self, chan: Option<Handle>, msg: &[u8], now: u64) {
         let Some(i) = self.asked.take() else {
             if let Some(h) = chan {
                 libnawah::handle_close(h);
@@ -712,6 +911,10 @@ impl Session {
         };
         if i == ELEV {
             self.elevate_connected(chan, now);
+            return;
+        }
+        if i == CONFIG {
+            self.autostart_connected(chan, msg);
             return;
         }
         let Some(h) = chan else {
@@ -798,7 +1001,14 @@ impl Session {
                 self.display_call(b"LOCKED", &[], &mut r);
                 self.show(Screen::Lock, None);
             }
-            State::NoSession => self.show(Screen::Login, None),
+            State::NoSession => {
+                // (v1.7) A restarted session first ends what the lost one left on the screen;
+                // if that fails there is no sign-in screen (main exits 0xE4 before READY).
+                if self.conn_n[DISPLAY] == 1 && !self.purge_restarted() {
+                    return;
+                }
+                self.show(Screen::Login, None)
+            }
         }
         if self.conn_n[DISPLAY] > 1 {
             let mut t = Out::new();
@@ -809,6 +1019,35 @@ impl Session {
             self.put_window(&mut t);
             libnawah::trace(t.bytes());
         }
+    }
+
+    /// (v1.7) Before the first sign-in screen: a session the manager restarted — or one that
+    /// cannot tell (its `LIST` failed or did not parse) — ends what the lost one left on the
+    /// screen: `LOGOUT` to the compositor removes every other client's windows and surfaces and
+    /// tells each `LOGGED_OUT`. Traced only when it purges. False when the compositor refused
+    /// or failed the `LOGOUT`: then no sign-in screen is shown (fail-closed).
+    fn purge_restarted(&mut self) -> bool {
+        let (restarts, reason): (Option<u64>, &[u8]) = match manager_restarts(self.boot) {
+            Some(0) => return true,
+            Some(n) => (Some(n), b"restarted"),
+            None => (None, b"list_failure"),
+        };
+        let mut r = [0u8; 64];
+        if !self
+            .display_call(b"LOGOUT", &[], &mut r)
+            .is_some_and(|n| &r[..n] == b"OK")
+        {
+            return false;
+        }
+        let mut t = Out::new();
+        t.put(b"session|purge=logout|restarts=");
+        match restarts {
+            Some(n) => t.num(n as i64),
+            None => t.put(b"-"),
+        };
+        t.put(b"|reason=").put(reason);
+        libnawah::trace(t.bytes());
+        true
     }
 
     /// The keyboard to the session itself (sign-in and lock screens).
@@ -1175,6 +1414,11 @@ impl Session {
         if self.auth_waiting() {
             return;
         }
+        // v1.12: no sign-in before the manager confirmed the end of the session before it.
+        if self.end != EndState::Confirmed {
+            self.login_held();
+            return;
+        }
         let mut name = [0u8; NAME_MAX];
         let nn = self.dialog.value(self.ids.user, &mut name);
         let mut pw = [0u8; 4 * TEXT_MAX];
@@ -1190,6 +1434,22 @@ impl Session {
         if !sent {
             self.auth_reply(op, b"ERR UNAVAILABLE", None, now);
         }
+    }
+
+    /// A sign-in while the end of the last session's job is unconfirmed (v1.12): refused before
+    /// anything reaches auth (the password leaves its element, never copied) and traced; an
+    /// END_SESSION not waiting for its answer (unsent or refused) is asked again, once for each
+    /// refused sign-in, while one that waits is not.
+    fn login_held(&mut self) {
+        self.dialog.clear_value(self.ids.password);
+        self.logins_held += 1;
+        let mut t = Out::new();
+        t.put(b"session|login=held|end=").put(self.end.name());
+        libnawah::trace(t.bytes());
+        if self.end != EndState::Sent && !self.boot_send(b"END_SESSION", BootOp::End) {
+            libnawah::trace(b"session|jobs=unsent");
+        }
+        self.show(Screen::Login, Some(refusal(b"ERR UNAVAILABLE", false)));
     }
 
     fn submit_unlock(&mut self, now: u64) {
@@ -1231,6 +1491,11 @@ impl Session {
     /// Ends the session: auth forgets the token, the display removes every other client's
     /// windows and surfaces, and the sign-in screen comes back.
     fn sign_out(&mut self, _now: u64) {
+        // v1.10: what is left of the autostart is not asked; answers still to come find none.
+        if self.autostart.is_some() {
+            libnawah::trace(b"session|autostart=cancelled");
+        }
+        self.autostart_end();
         if self.token != 0 {
             // auth forgets the token; not waited on (v1.2): a hung auth never holds the sign-out.
             let _ = self.auth_send(b"LOGOUT", true, AuthOp::Logout);
@@ -1238,6 +1503,15 @@ impl Session {
             self.token = 0;
         }
         self.lock_unsent = false;
+        // v1.12: unconfirmed until the manager answers ENDED; `boot_send` marks it sent.
+        self.end = EndState::Unsent;
+        // v1.8: the manager is asked to end the session's job, with every application and what it
+        // started, before the display is asked for LOGOUT. Neither waits for the other, so an
+        // application may still hear LOGGED_OUT before it is killed. The answer comes on the boot
+        // channel and is traced when it does.
+        if !self.boot_send(b"END_SESSION", BootOp::End) {
+            libnawah::trace(b"session|jobs=unsent");
+        }
         let mut r = [0u8; 64];
         self.display_call(b"LOGOUT", &[], &mut r);
         let mut t = Out::new();
@@ -1251,6 +1525,244 @@ impl Session {
         self.uid = 0;
         self.show(Screen::Login, None);
         self.trace_state(true);
+    }
+
+    // ---- the autostart (v1.10) --------------------------------------------------------
+
+    /// Whether the autostart may ask its next request: the session is unlocked and the keyboard
+    /// went to the desktop (a lock pauses it; the unlock's handover resumes it). (v1.11) The
+    /// desktop holds it: the elevation prompt, which takes the keyboard, pauses it too, and
+    /// the handover at its end resumes it.
+    fn autostart_runs(&self) -> bool {
+        self.state == State::Unlocked && self.owner == Owner::Display && !self.want_display
+    }
+
+    fn autostart_to(&mut self, step: AutoStep) {
+        if let Some(a) = self.autostart.as_mut() {
+            a.step = step;
+        }
+    }
+
+    /// The autostart is over (or there is none): its channel to config goes.
+    fn autostart_end(&mut self) {
+        self.autostart = None;
+        if self.config != 0 {
+            libnawah::handle_close(self.config);
+            self.config = 0;
+        }
+    }
+
+    /// The user's store could not be read: `session|autostart=unavailable|answer=<reply>`.
+    fn autostart_unavailable(&mut self, answer: &[u8]) {
+        let mut t = Out::new();
+        t.put(b"session|autostart=unavailable|answer=")
+            .ascii(answer);
+        libnawah::trace(t.bytes());
+        self.autostart_end();
+    }
+
+    /// The manager's answer to `CONNECT config`: the channel the GET goes on, or a refusal (the
+    /// manifest names no config for the session, or it is not ready), which ends the autostart.
+    /// A channel no autostart waits for (signed out meanwhile) is closed.
+    fn autostart_connected(&mut self, chan: Option<Handle>, msg: &[u8]) {
+        let waiting = self
+            .autostart
+            .is_some_and(|a| a.step == AutoStep::Connecting);
+        match chan {
+            Some(h) if waiting => {
+                self.config = h;
+                self.autostart_to(AutoStep::Get);
+            }
+            Some(h) => {
+                libnawah::handle_close(h);
+            }
+            None if waiting => self.autostart_unavailable(msg),
+            None => {}
+        }
+    }
+
+    /// The autostart's next request, if it may ask one (`autostart_runs`); one at a time. One
+    /// with no id left is done even while locked.
+    fn autostart_step(&mut self, now: u64) {
+        let Some(a) = self.autostart else {
+            return;
+        };
+        let runs = self.autostart_runs();
+        match a.step {
+            AutoStep::Connect if runs => self.ask(now),
+            AutoStep::Get if runs => self.autostart_get(),
+            AutoStep::Launch => self.autostart_launch(runs),
+            _ => {}
+        }
+    }
+
+    /// `GET user/<uid> session.autostart` to config with a copy of the user's token (config.md
+    /// v1.6: the store is read for its owner's usable token, and loaded on that read); the uid is
+    /// the token's own.
+    fn autostart_get(&mut self) {
+        let uid = libnawah::token_info(self.token)
+            .ok()
+            .filter(|i| i.usable())
+            .map(|i| i.uid);
+        let copy = u32::try_from(libnawah::handle_rights(self.token))
+            .ok()
+            .and_then(|r| libnawah::handle_duplicate(self.token, r).ok());
+        let (Some(uid), Some(copy)) = (uid, copy) else {
+            if let Some(c) = copy {
+                libnawah::handle_close(c);
+            }
+            self.autostart_unavailable(b"ERR UNAVAILABLE");
+            return;
+        };
+        let mut req = Out::new();
+        req.put(b"GET user/")
+            .num(i64::from(uid))
+            .put(b" session.autostart");
+        if libnawah::channel_write(self.config, req.bytes(), &[copy]) != 0 {
+            libnawah::handle_close(copy);
+            self.autostart_unavailable(b"ERR UNAVAILABLE");
+            return;
+        }
+        let at = self.changes;
+        self.autostart_to(AutoStep::Getting { at });
+    }
+
+    /// config's answer to the GET: `OK <version> <ids>`, then the launches; `ERR NOT_FOUND` (no
+    /// such key, no store, or a token config does not take) is `session|autostart=none`; any other
+    /// answer ends it as unavailable. A lock since the GET makes it stale: dropped, traced
+    /// `session|autostart=stale` (v1.11), and asked again.
+    fn autostart_answer(&mut self, answer: &[u8]) {
+        let Some(a) = self.autostart.as_mut() else {
+            return;
+        };
+        let AutoStep::Getting { at } = a.step else {
+            return;
+        };
+        if at != self.changes {
+            a.step = AutoStep::Get;
+            libnawah::trace(b"session|autostart=stale");
+            return;
+        }
+        if answer == b"ERR NOT_FOUND" {
+            libnawah::trace(b"session|autostart=none");
+            self.autostart_end();
+            return;
+        }
+        let Some(rest) = answer.strip_prefix(b"OK ") else {
+            self.autostart_unavailable(answer);
+            return;
+        };
+        let value = match rest.iter().position(|&c| c == b' ') {
+            Some(sp) => &rest[sp + 1..],
+            None => &[][..],
+        };
+        let n = value.len().min(VALUE_MAX);
+        a.value[..n].copy_from_slice(&value[..n]);
+        a.value_len = n;
+        a.step = AutoStep::Launch;
+        // The store is read: the channel to config goes now.
+        if self.config != 0 {
+            libnawah::handle_close(self.config);
+            self.config = 0;
+        }
+    }
+
+    /// The next id: past the eighth, or past the last, the autostart is done; otherwise, when it
+    /// may ask (`asking`), an id that is not one is traced `session|autostart|invalid=<position>`
+    /// and passed over, never asked, and one the boot channel cannot take is traced `=unsent` and
+    /// passed over. One `LAUNCH` at a time.
+    fn autostart_launch(&mut self, asking: bool) {
+        while let Some(mut a) = self.autostart.filter(|a| a.step == AutoStep::Launch) {
+            let v = &a.value[..a.value_len];
+            let start = a.next
+                + v[a.next..]
+                    .iter()
+                    .position(|&c| c != b' ')
+                    .unwrap_or(v.len() - a.next);
+            if start == v.len() || a.taken == AUTOSTART_MAX {
+                let over = ids_from(v, start);
+                let mut t = Out::new();
+                t.put(b"session|autostart=done|launched=")
+                    .num(a.launched)
+                    .put(b"|passed=")
+                    .num(a.passed)
+                    .put(b"|over=")
+                    .num(over);
+                libnawah::trace(t.bytes());
+                self.autostart_end();
+                return;
+            }
+            if !asking {
+                return;
+            }
+            let end = start
+                + v[start..]
+                    .iter()
+                    .position(|&c| c == b' ')
+                    .unwrap_or(v.len() - start);
+            a.next = end;
+            a.taken += 1;
+            let id = &v[start..end];
+            let mut t = Out::new();
+            if !app_id_ok(id) {
+                t.put(b"session|autostart|invalid=").num(a.taken as i64);
+                libnawah::trace(t.bytes());
+                a.passed += 1;
+                self.autostart = Some(a);
+                continue;
+            }
+            let mut req = Out::new();
+            req.put(b"LAUNCH ").put(id);
+            if self.boot_send(req.bytes(), BootOp::Launch) {
+                a.id = (start, end);
+                a.step = AutoStep::Launching;
+                self.autostart = Some(a);
+                return;
+            }
+            t.put(b"session|autostart|").put(id).put(b"=unsent");
+            libnawah::trace(t.bytes());
+            a.passed += 1;
+            self.autostart = Some(a);
+        }
+    }
+
+    /// The manager's answer to the autostart's `LAUNCH`: `session|autostart|<id>=<answer>`; an
+    /// `OK app:<id>#<n>` counts as launched, any other answer as passed over. An answer no
+    /// autostart waits for (signed out since) is dropped.
+    fn autostart_launched(&mut self, msg: &[u8]) {
+        let Some(mut a) = self.autostart.filter(|a| a.step == AutoStep::Launching) else {
+            return;
+        };
+        let mut t = Out::new();
+        t.put(b"session|autostart|")
+            .put(&a.value[a.id.0..a.id.1])
+            .put(b"=")
+            .ascii(msg);
+        libnawah::trace(t.bytes());
+        if msg.starts_with(b"OK app:") {
+            a.launched += 1;
+        } else {
+            a.passed += 1;
+        }
+        a.step = AutoStep::Launch;
+        self.autostart = Some(a);
+    }
+
+    /// One message from config: the answer to the GET. A lost channel ends the autostart as
+    /// unavailable.
+    fn read_config(&mut self) {
+        let mut buf = [0u8; MSG_MAX];
+        let mut hs = [0u32; 1];
+        match libnawah::channel_read(self.config, &mut buf, &mut hs, false) {
+            Ok((n, nh)) => {
+                if nh == 1 {
+                    libnawah::handle_close(hs[0]);
+                }
+                self.autostart_answer(&buf[..n]);
+            }
+            Err(ERR_SHOULD_WAIT) => {}
+            Err(_) => self.autostart_unavailable(b"ERR UNAVAILABLE"),
+        }
     }
 
     // ---- elevation (v1.3) -------------------------------------------------------------
@@ -1762,6 +2274,13 @@ impl Session {
                         .num(waiting as i64)
                         .put(b" lock_unsent=")
                         .num(i64::from(self.lock_unsent));
+                } else if &buf[..n] == b"ENDING" {
+                    // v1.12: where the end of the last session's job is, and how many sign-ins
+                    // were held while it was unconfirmed.
+                    out.put(b"OK end=")
+                        .put(self.end.name())
+                        .put(b" held=")
+                        .num(self.logins_held);
                 } else if &buf[..n] == b"ELEVATION" {
                     // v1.3: where the elevation in progress is.
                     out.put(b"OK ").put(match self.elevation {
@@ -1825,19 +2344,67 @@ impl Session {
                     }
                 } else if msg == b"STOP" {
                     return false;
-                } else if self.asked.is_some() && msg == b"OK" && nh == 1 {
-                    self.answer(Some(hs[0]), now);
-                } else if self.asked.is_some() && msg.starts_with(b"ERR") {
-                    if nh == 1 {
-                        libnawah::handle_close(hs[0]);
+                } else if msg == b"OK"
+                    || msg == b"BEGUN"
+                    || msg.starts_with(b"ERR")
+                    || msg.starts_with(b"ENDED ")
+                    || msg.starts_with(b"OK app:")
+                {
+                    // An answer: to the oldest request still waiting (v1.8); a LAUNCH's is
+                    // `OK app:<id>#<n>` (v1.10).
+                    let chan = (nh == 1).then_some(hs[0]);
+                    match self.boot_take() {
+                        Some(BootOp::Connect) if msg == b"OK" => self.answer(chan, msg, now),
+                        Some(BootOp::Connect) => {
+                            if let Some(h) = chan {
+                                libnawah::handle_close(h);
+                            }
+                            self.answer(None, msg, now);
+                        }
+                        Some(BootOp::Launch) => {
+                            if let Some(h) = chan {
+                                libnawah::handle_close(h);
+                            }
+                            self.autostart_launched(msg);
+                        }
+                        Some(BootOp::End) => {
+                            if let Some(h) = chan {
+                                libnawah::handle_close(h);
+                            }
+                            self.ended(msg);
+                        }
+                        Some(BootOp::Begin) => {
+                            if let Some(h) = chan {
+                                libnawah::handle_close(h);
+                            }
+                            if msg != b"BEGUN" {
+                                let mut t = Out::new();
+                                t.put(b"session|begin=refused|answer=").put(msg);
+                                libnawah::trace(t.bytes());
+                            }
+                        }
+                        None => {
+                            if let Some(h) = chan {
+                                libnawah::handle_close(h);
+                            }
+                        }
                     }
-                    self.answer(None, now);
                 } else if nh == 1 {
                     libnawah::handle_close(hs[0]);
                 }
                 true
             }
-            Err(ERR_PEER_CLOSED) => false,
+            Err(ERR_PEER_CLOSED) => {
+                // v1.12: the manager is gone (killed, crashed or stopped) while the end of the
+                // last session's job is unconfirmed: nothing can confirm it now, so no sign-in
+                // is taken again; the session ends, traced.
+                if self.end != EndState::Confirmed {
+                    let mut t = Out::new();
+                    t.put(b"session|manager=gone|end=").put(self.end.name());
+                    libnawah::trace(t.bytes());
+                }
+                false
+            }
             Err(_) => true,
         }
     }
@@ -1977,6 +2544,37 @@ fn manager_connect(boot: Handle, name: &[u8]) -> Option<Handle> {
     }
 }
 
+/// (v1.7) This service's restart count from the manager's `LIST` (services.md §4 v1.3), asked
+/// before READY so the first message back is the answer. `None` when the listing cannot be had
+/// or read: no `session` line or a count that is not a number (`ERR …` among them), a closed
+/// channel, an answer longer than the 1024-byte buffer (removed from the head of the queue, as
+/// display.md v1.12 does, so the boot channel is not jammed behind it), any other error.
+fn manager_restarts(boot: Handle) -> Option<u64> {
+    if libnawah::channel_write(boot, b"LIST", &[]) != 0 {
+        return None;
+    }
+    let mut reply = [0u8; 1024];
+    let mut hs = [0u32; 1];
+    match libnawah::channel_read(boot, &mut reply, &mut hs, true) {
+        Ok((n, nh)) => {
+            if nh == 1 {
+                libnawah::handle_close(hs[0]);
+            }
+            reply[..n]
+                .split(|&c| c == b'\n')
+                .find_map(|l| l.strip_prefix(b"session "))
+                .and_then(|rest| rest.split(|&c| c == b' ').nth(1))
+                .and_then(parse_i64)
+                .and_then(|v| u64::try_from(v).ok())
+        }
+        Err(ERR_BUFFER_TOO_SMALL) => {
+            libnawah::channel_discard(boot);
+            None
+        }
+        Err(_) => None,
+    }
+}
+
 /// `session|<who>=timed_out|waited=<ticks>` (session.md v1.1 §7): a request to `who` got no
 /// reply within REQUEST_DEADLINE.
 fn timed_out(who: &[u8], sent: u64) {
@@ -2033,6 +2631,7 @@ fn main() -> u64 {
         connected: [true, true, true],
         conn_n: [1, 0, 0],
         asked: None,
+        boot_ops: [None; BOOT_OPS],
         retry: [0; 3],
         format: 1,
         screen_w: 0,
@@ -2063,6 +2662,10 @@ fn main() -> u64 {
         elevation: None,
         elevations: 0,
         elevate_seq: 0,
+        config: 0,
+        autostart: None,
+        end: EndState::Confirmed,
+        logins_held: 0,
     };
     let now = libnawah::clock_ticks();
     // The keyboard first (nobody gets a key before the sign-in screen exists), then the
@@ -2083,12 +2686,13 @@ fn main() -> u64 {
         s.drain(now);
         s.ask(now);
         s.try_handover(now);
+        s.autostart_step(now);
         s.drain(now);
         let mut entries = [WaitEntry {
             handle: 0,
             signals: 0,
-        }; 4 + MAX_CLIENTS];
-        let mut kind = [0usize; 4 + MAX_CLIENTS];
+        }; 5 + MAX_CLIENTS];
+        let mut kind = [0usize; 5 + MAX_CLIENTS];
         let mut k = 0;
         let mut push = |entries: &mut [WaitEntry], kind: &mut [usize], h: Handle, what: usize| {
             entries[k] = WaitEntry {
@@ -2108,6 +2712,9 @@ fn main() -> u64 {
         if let Some(c) = s.display.as_ref() {
             push(&mut entries, &mut kind, c.chan, 100 + DISPLAY + 1);
         }
+        if s.config != 0 {
+            push(&mut entries, &mut kind, s.config, 100 + CONFIG);
+        }
         for (j, &c) in s.clients.iter().enumerate() {
             if c != 0 {
                 push(&mut entries, &mut kind, c, j);
@@ -2126,6 +2733,7 @@ fn main() -> u64 {
                 101 => s.read_auth(now),
                 102 => s.read_input(now),
                 103 => s.read_display(now),
+                104 => s.read_config(),
                 j => s.on_client(j, now),
             },
             Err(ERR_TIMED_OUT) => {}

@@ -8,6 +8,7 @@
 pub mod bytes;
 pub mod channel;
 pub mod handle;
+pub mod job;
 pub mod nic;
 pub mod process;
 pub mod token;
@@ -72,6 +73,10 @@ impl Rights {
     /// it; copies for services drop what they do not need.
     pub const SYSFILES_DEFAULT: Rights =
         Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
+    /// Rights of a fresh job handle (WP-46, syscall.md v1.13 §5): WRITE kills the job,
+    /// creates a child job in it and spawns into it; READ is reserved for listing it (WP-69).
+    pub const JOB_DEFAULT: Rights =
+        Rights(Self::READ.0 | Self::WRITE.0 | Self::DUPLICATE.0 | Self::TRANSFER.0);
 
     pub const fn contains(self, other: Rights) -> bool {
         self.0 & other.0 == other.0
@@ -110,6 +115,8 @@ pub enum Object {
     /// The system-files authority (WP-44, files.md v1.3): held, never read; its rights gate
     /// the file calls under /SYSTEM.
     SystemFiles(#[allow(dead_code)] Arc<token::SystemFiles>),
+    /// A job (WP-46, syscall.md v1.13 §5): a group of processes and of child jobs.
+    Job(Arc<job::Job>),
 }
 
 impl Object {
@@ -128,6 +135,7 @@ impl Object {
             Object::Display(_) => 10,
             Object::Mouse(_) => 11,
             Object::SystemFiles(_) => 12,
+            Object::Job(_) => 13,
         }
     }
 }
@@ -143,11 +151,54 @@ pub struct Vmo {
     /// Over the display's frame (`display_map`): the last one gone clears the frame
     /// (display.md v1.5).
     frame: bool,
+    /// The pages charged to the job that made it (`vmo_create`, syscall.md v1.16), given back
+    /// after the frames are freed; none for the kernel's own.
+    charge: Option<job::Charge>,
 }
 
 impl Vmo {
-    /// Allocates `size` bytes (a page multiple, at most `VMO_MAX_BYTES`) of zeroed frames.
+    /// Allocates `size` bytes (a page multiple, at most `VMO_MAX_BYTES`) of zeroed frames, the
+    /// kernel's own: charged to no job.
     pub fn new(size: u64) -> Option<Arc<Vmo>> {
+        Self::alloc(size, None)
+    }
+
+    /// `new` for `vmo_create` (syscall.md v1.16): the pages are charged to `job` before any frame
+    /// is taken, so a job at its quota, or a system at its limit, gets None and nothing else.
+    pub fn new_in(size: u64, job: &Arc<job::Job>) -> Option<Arc<Vmo>> {
+        if size == 0 || !size.is_multiple_of(4096) || size > VMO_MAX_BYTES {
+            return None;
+        }
+        let charge = job.charge(size / 4096)?;
+        Self::alloc(size, Some(charge))
+    }
+
+    /// Test-only (WP-177): a kernel VMO of `pages` zeroed frames past `VMO_MAX_BYTES`, charged
+    /// to no job, so the test kernel maps one wider than a 2 MiB slot of the mapping region (in
+    /// the system only the display's frame is).
+    #[cfg(feature = "ktest")]
+    pub fn new_wide(pages: u64) -> Option<Arc<Vmo>> {
+        let mut frames = Vec::new();
+        for _ in 0..pages {
+            let Some(f) = pmm::alloc_frame() else {
+                for f in frames {
+                    let _ = pmm::free_frame(f);
+                }
+                return None;
+            };
+            crate::mm::addrspace::zero_frame(f.0);
+            frames.push(f);
+        }
+        LIVE_VMOS.fetch_add(1, Ordering::Relaxed);
+        Some(Arc::new(Vmo {
+            frames,
+            owned: true,
+            frame: false,
+            charge: None,
+        }))
+    }
+
+    fn alloc(size: u64, charge: Option<job::Charge>) -> Option<Arc<Vmo>> {
         if size == 0 || !size.is_multiple_of(4096) || size > VMO_MAX_BYTES {
             return None;
         }
@@ -172,6 +223,7 @@ impl Vmo {
             frames,
             owned: true,
             frame: false,
+            charge,
         }))
     }
 
@@ -189,6 +241,7 @@ impl Vmo {
             frames,
             owned: false,
             frame: true,
+            charge: None,
         }))
     }
 
@@ -216,6 +269,8 @@ impl Drop for Vmo {
         if self.frame {
             crate::display::frame_released();
         }
+        // The pages come back to the job once the frames are free (v1.16).
+        drop(self.charge.take());
         LIVE_VMOS.fetch_sub(1, Ordering::Relaxed);
     }
 }
@@ -235,6 +290,8 @@ pub struct Stats {
     pub authorities: u32,
     /// System-files authorities (WP-44).
     pub system_files: u32,
+    /// Live jobs other than the root (WP-46).
+    pub jobs: u32,
 }
 
 pub fn stats() -> Stats {
@@ -248,5 +305,6 @@ pub fn stats() -> Stats {
         tokens: token::live_tokens(),
         authorities: token::live_authorities(),
         system_files: token::live_system_files(),
+        jobs: job::live(),
     }
 }

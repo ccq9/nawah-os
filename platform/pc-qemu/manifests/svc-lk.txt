@@ -1,0 +1,8 @@
+# TST-M6-LOGOUT-KILLS (WP-167, WP-168): the real auth, config, input, display and session, the session reading
+# its autostart from the user's store; the lab image as the vouched `desktop`, relaying the test kernel's LAUNCH
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+config /SYSTEM/CONFIGD.ELF - 5000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 never 0 0
+session /SYSTEM/SESSIOND.ELF auth,input,display,config 5000 never 0 0
+desktop /SYSTEM/SVC.ELF session 3000 never 0 0 relay

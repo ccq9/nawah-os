@@ -565,6 +565,89 @@ user_prog_isolation:
     syscall
     ud2
 user_prog_isolation_end:
+
+    # vmo_map rights (WP-149, K-3): a 4 KiB VMO; a MAP|READ|WRITE duplicate is mapped for
+    # writing (prot 2) and a pattern written through it; a MAP|WRITE duplicate (no READ) is
+    # mapped for writing (prot 2), then for reading (prot 1), and through each mapping granted
+    # the first qword is compared with the pattern (leak). Each answer's low byte (0 mapped,
+    # else the error) goes into the exit code: 0xA5 << 32 | leak << 24 | read_noread << 16 |
+    # write_noread << 8 | write_read. A failed setup step exits with its number.
+    .balign 16
+    .global user_prog_vmo_map_rights
+    .global user_prog_vmo_map_rights_end
+user_prog_vmo_map_rights:
+    STEP 1
+    mov edi, 4096
+    mov eax, 11                    # vmo_create
+    syscall
+    test rax, rax
+    js 9f
+    mov ebx, eax
+    STEP 2
+    mov esi, 0x13                  # READ|WRITE|MAP
+    mov edi, ebx
+    mov eax, 10                    # handle_duplicate
+    syscall
+    test rax, rax
+    js 9f
+    mov r12d, eax
+    STEP 3
+    mov esi, 0x12                  # WRITE|MAP, no READ
+    mov edi, ebx
+    mov eax, 10
+    syscall
+    test rax, rax
+    js 9f
+    mov r13d, eax
+    xor ebp, ebp
+    movabs r14, 0x4B33C0DEF00DFACE # the pattern
+    mov esi, 2                     # write_read
+    mov edi, r12d
+    mov eax, 38                    # vmo_map
+    syscall
+    test rax, rax
+    js 1f
+    mov qword ptr [rax], r14
+    xor eax, eax
+1:  movzx eax, al
+    or rbp, rax
+    mov esi, 2                     # write_noread
+    mov edi, r13d
+    mov eax, 38
+    syscall
+    test rax, rax
+    js 2f
+    cmp qword ptr [rax], r14
+    jne 3f
+    or rbp, 0x1000000
+3:  xor eax, eax
+2:  movzx eax, al
+    shl eax, 8
+    or rbp, rax
+    mov esi, 1                     # read_noread
+    mov edi, r13d
+    mov eax, 38
+    syscall
+    test rax, rax
+    js 4f
+    cmp qword ptr [rax], r14
+    jne 5f
+    or rbp, 0x1000000
+5:  xor eax, eax
+4:  movzx eax, al
+    shl eax, 16
+    or rbp, rax
+    movabs rax, 0xA500000000
+    or rbp, rax
+    mov rdi, rbp
+    mov eax, 0
+    syscall
+    ud2
+9:  mov edi, r15d
+    mov eax, 0
+    syscall
+    ud2
+user_prog_vmo_map_rights_end:
 "#
 );
 
@@ -597,6 +680,8 @@ extern "C" {
     static user_prog_oversize_end: u8;
     static user_prog_ipc_no_leak: u8;
     static user_prog_ipc_no_leak_end: u8;
+    static user_prog_vmo_map_rights: u8;
+    static user_prog_vmo_map_rights_end: u8;
 }
 
 fn bytes(start: *const u8, end: *const u8) -> &'static [u8] {
@@ -701,5 +786,14 @@ pub fn ipc_no_leak() -> &'static [u8] {
     bytes(
         &raw const user_prog_ipc_no_leak,
         &raw const user_prog_ipc_no_leak_end,
+    )
+}
+
+/// vmo_map's rights for a mapping for writing (WP-149); the answers packed in the exit code.
+#[cfg(feature = "ktest")]
+pub fn vmo_map_rights() -> &'static [u8] {
+    bytes(
+        &raw const user_prog_vmo_map_rights,
+        &raw const user_prog_vmo_map_rights_end,
     )
 }

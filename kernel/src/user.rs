@@ -84,7 +84,14 @@ pub fn spawn_elf_with(
     initial: alloc::vec::Vec<crate::object::handle::Entry>,
     object: alloc::sync::Arc<crate::object::process::ProcessObject>,
 ) -> Result<u32, ElfError> {
+    // v1.16 (WP-170): the image's pages are charged to the job before anything is built, and
+    // held by the space until `destroy` has freed them.
+    let charge = object
+        .job()
+        .charge(elf::pages_needed(image)?)
+        .ok_or(ElfError::Space(AsError::Quota))?;
     let mut us = UserSpace::new().map_err(ElfError::Space)?;
+    us.hold(charge);
     let loaded = match elf::load(&mut us, image) {
         Ok(l) => l,
         Err(e) => {

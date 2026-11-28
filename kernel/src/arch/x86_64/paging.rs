@@ -233,6 +233,59 @@ impl AddressSpace {
         next_table(pd, idx(virt, 1), false).map(|_| ())
     }
 
+    /// How many of the tables above the page table that maps `virt` are absent — its
+    /// page-directory-pointer table and its page directory, 0 to 2: what a first 4 KiB mapping
+    /// there takes besides that page table (WP-177, charged before it is taken).
+    pub fn missing_upper(&self, virt: u64) -> u64 {
+        let e3 = read_entry(self.pml4, idx(virt, 3));
+        if e3 & PRESENT == 0 {
+            return 2;
+        }
+        u64::from(read_entry(e3 & ADDR_MASK, idx(virt, 2)) & PRESENT == 0)
+    }
+
+    /// Unhooks the page table that maps the 2 MiB region holding `virt` from its page directory
+    /// and returns its frame; None when there is none (or a 2 MiB page sits there). The caller
+    /// invalidates the space's translations before it frees the frame (WP-177).
+    pub fn take_pt(&self, virt: u64) -> Option<u64> {
+        let e3 = read_entry(self.pml4, idx(virt, 3));
+        if e3 & PRESENT == 0 {
+            return None;
+        }
+        let e2 = read_entry(e3 & ADDR_MASK, idx(virt, 2));
+        if e2 & PRESENT == 0 || e2 & HUGE != 0 {
+            return None;
+        }
+        let pd = e2 & ADDR_MASK;
+        let e1 = read_entry(pd, idx(virt, 1));
+        if e1 & PRESENT == 0 || e1 & HUGE != 0 {
+            return None;
+        }
+        write_entry(pd, idx(virt, 1), 0);
+        Some(e1 & ADDR_MASK)
+    }
+
+    /// Test-only (WP-177): the tables of the 1 GiB region holding `virt` — its page directory
+    /// (1 when present) and the page tables that directory holds.
+    #[cfg(feature = "ktest")]
+    pub fn tables_under(&self, virt: u64) -> u64 {
+        let e3 = read_entry(self.pml4, idx(virt, 3));
+        if e3 & PRESENT == 0 {
+            return 0;
+        }
+        let e2 = read_entry(e3 & ADDR_MASK, idx(virt, 2));
+        if e2 & PRESENT == 0 || e2 & HUGE != 0 {
+            return 0;
+        }
+        let pd = e2 & ADDR_MASK;
+        1 + (0..512)
+            .filter(|&i| {
+                let e = read_entry(pd, i);
+                e & PRESENT != 0 && e & HUGE == 0
+            })
+            .count() as u64
+    }
+
     /// Reads one PML4 entry (for sharing the kernel half with user spaces).
     pub fn pml4_entry(&self, index: u64) -> u64 {
         read_entry(self.pml4, index & 0x1FF)

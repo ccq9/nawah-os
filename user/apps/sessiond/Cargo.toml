@@ -13,5 +13,6 @@ bench = false
 
 [dependencies]
 libnawah = { path = "../../libnawah" }
+nawah-apps = { path = "../../nawah-apps" }
 libui = { path = "../../libui" }
 nawah-text = { path = "../../libnawah-text" }

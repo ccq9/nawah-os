@@ -1,0 +1,7 @@
+# TST-M5-WINDOW-TITLE / TST-M5-WINDOW-TITLE-RESIZE (WP-97): auth, input, the compositor and the
+# narrator, and no other client of the compositor, so the only narrator lines are the
+# compositor's own `window "<title>" …` lines for the windows the test kernel opens
+auth /SYSTEM/AUTHD.ELF - 60000 never 0 0
+input /SYSTEM/INPUTD.ELF - 5000 never 0 0
+display /SYSTEM/DISPLAYD.ELF input 5000 never 0 0
+narrator /SYSTEM/NARRATOR.ELF display 5000 never 0 0

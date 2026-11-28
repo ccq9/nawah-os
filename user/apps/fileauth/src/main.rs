@@ -3,7 +3,10 @@
 //! is refused with ERR_ACCESS — whatever the spelling of the path — the fonts stay readable but
 //! not writable, a non-program under /SYSTEM cannot be started, and the rest of the volume
 //! works as before: exit 0x44. Given a read-only SystemFiles handle (its bootstrap handle) it
-//! reads /SYSTEM but still changes nothing there: exit 0x45. Else the failing step.
+//! reads /SYSTEM but still changes nothing there: exit 0x45. Given config's copy, READ|WRITE|
+//! TRANSFER (WP-78, TST-M6-CONFIG-WRITE-SCOPE), every change under /SYSTEM outside config's
+//! stores is still refused, however the path is spelled, and a store name of its own
+//! (/SYSTEM/CFG<x>.A) is created, written and removed: exit 0x46. Else the failing step.
 
 #![no_std]
 #![no_main]
@@ -39,9 +42,59 @@ fn changes_refused() -> Option<u64> {
     None
 }
 
+/// WRITE on the authority reaches config's stores only (files.md v1.4, WP-78): directly in
+/// /SYSTEM, an 8.3 base starting with CFG, extension A or B. The refusals come first and none
+/// truncates, so a kernel without the rule fails at step 40 having changed nothing on disk.
+fn writer() -> u64 {
+    let w = O_WRITE;
+    let cases: [(&[u8], u64, u64); 8] = [
+        (b"/SYSTEM/SERVICES.TXT", w, 40),
+        (b"/system/services.txt", w, 41),
+        (b"/SYSTEM./SERVICES.TXT", w, 42),
+        (b"/SYSTEM/USERS.DB", O_READ | w, 43),
+        (b"/SYSTEM/INPUTD.ELF", w, 44),
+        (b"/SYSTEM/NEW.TXT", O_READ | w | O_CREATE, 45),
+        (b"/SYSTEM/AUTHD.A", w | O_CREATE, 46),
+        (b"/SYSTEM/CFGPRB.C", w | O_CREATE, 47),
+    ];
+    for (path, flags, step) in cases {
+        if !refused(open(path, flags)) {
+            return step;
+        }
+    }
+    if unlink(b"/SYSTEM/SVC-AUTH.TXT") != ERR_ACCESS {
+        return 48;
+    }
+    // The fonts directory is no store, a CFG name in it included.
+    if !refused(open(b"/SYSTEM/FONTS/NOTOSANS.TTF", w))
+        || !refused(open(b"/SYSTEM/FONTS/CFGPRB.A", w | O_CREATE))
+    {
+        return 49;
+    }
+    // The positive control: a store name of config's own form.
+    match open(b"/SYSTEM/CFGPRB.A", O_READ | w | O_CREATE) {
+        Ok(f) => {
+            let n = write(f, b"x");
+            handle_close(f);
+            if n != Ok(1) {
+                return 51;
+            }
+        }
+        Err(_) => return 50,
+    }
+    if unlink(b"/SYSTEM/CFGPRB.A") != 0 {
+        return 52;
+    }
+    0x46
+}
+
 fn main() -> u64 {
     let h = bootstrap_handle();
     let reader = h != 0 && handle_type(h) == object_type::SYSTEM_FILES;
+    let held = if reader { handle_rights(h) } else { 0 };
+    if held > 0 && held & i64::from(rights::WRITE) != 0 {
+        return writer();
+    }
     if let Some(step) = changes_refused() {
         return step;
     }
