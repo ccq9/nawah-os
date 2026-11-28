@@ -1,0 +1,10 @@
+test_bootinfo_has_no_function_pointers (__main__.NoBootServicesAfterEBS.test_bootinfo_has_no_function_pointers) ... ok
+test_kernel_entry_takes_bootinfo_only (__main__.NoBootServicesAfterEBS.test_kernel_entry_takes_bootinfo_only) ... ok
+test_kernel_has_sources (__main__.NoBootServicesAfterEBS.test_kernel_has_sources) ... ok
+test_kernel_never_names_firmware (__main__.NoBootServicesAfterEBS.test_kernel_never_names_firmware) ... ok
+test_stub_drops_table_pointers_before_kernel (__main__.NoBootServicesAfterEBS.test_stub_drops_table_pointers_before_kernel) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.002s
+
+OK

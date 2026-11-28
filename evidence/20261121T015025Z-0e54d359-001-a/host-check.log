@@ -1,0 +1,15 @@
+$ python3 -I tools/fat32.py check --faulted --expect-lost 3 --expect-lost-second 3 --expect-lost-both 3 /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img
+check: clusters=128992 used=3432 free=125560 label='NAWAHLAB' fstype='FAT32   ' problems=[] faulted: lost=3 longer=0 mirror_diff=0 fsinfo=ok longer_files=- second: lost=3 lost_both=3 longer_files=-
+
+[exit 0]
+$ python3 -I tools/fat32.py fsck-faulted /home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img
+fsck.fat 4.2 (2021-01-31)
+Reclaimed 3 unused clusters (1536 bytes).
+Free cluster summary wrong (125560 vs. really 125563)
+  Auto-correcting.
+
+Leaving filesystem unchanged.
+/home/runner/work/nawah-os/nawah-os/build/pc-qemu/disk.img: 75 files, 3429/128992 clusters
+fsck: exit=1 allowed={'lost': 1, 'free_count': 1} failing=[] unnamed=[]
+
+[exit 0]
