@@ -337,6 +337,156 @@ class ValidateRecords(unittest.TestCase):
             self.assertEqual(self.cli("--gate", "--strict"), self.cli("--gate"), test_id)
             self.assertEqual(self.cli("--strict", "--gate"), self.cli("--gate"), test_id)
 
+    # WP-184 (first part): the gate checks the completeness of the verdicts and the form of the
+    # evidence, not staleness alone (the red team's experiments of 2026-11-28: b1, b2, i, i2, d).
+    # b1, b2, i and i2's verdict are errors under --strict (so --gate) and warnings in the plain
+    # mode: a new test is committed NOT_RUN before any suite gives it a verdict (commit
+    # 9d7e3da862 added TST-M0-007 NOT_RUN under REQ-M0-006 with M0 passed), and a re-run
+    # re-points a passed stage's gate refs to its new run, FAIL included (replace_evidence_ref).
+    NOT_GIVEN = ("NOT_RUN", "FAIL", "NEEDS_REEVALUATION", "ERROR", "BLOCKED")  # the schema refuses any other string
+
+    def second_test(self, r, verdict, req_names_it=True):
+        t2 = copy.deepcopy(r["tests"][0]); t2.update(id="TST-M0-002", verdict=verdict, evidence_refs=[])
+        r["tests"].append(t2)
+        if req_names_it:
+            r["requirements"][0]["test_ids"].append("TST-M0-002")
+        return t2
+
+    def passing_first_test(self, r):
+        write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]
+        return ev
+
+    def assert_modes(self, expect, error_line, modes=("--gate", "--strict", None)):
+        for mode in modes:
+            rc, out = self.cli(*([mode] if mode else []))
+            self.assertEqual(rc, expect, f"{mode}\n{out}")
+            if error_line:
+                self.assertIn(error_line, out.splitlines(), f"{mode}\n{out}")
+            else:
+                self.assertFalse([l for l in out.splitlines() if l.startswith("ERROR")], f"{mode}\n{out}")
+
+    def assert_strict_error_plain_warning(self, text):
+        self.assert_modes(50, "ERROR " + text, modes=("--gate", "--strict"))
+        rc, out = self.cli()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("WARN " + text, out.splitlines(), out)
+        self.assertNotIn("ERROR " + text, out.splitlines(), out)
+
+    def verified(self, r, ev):
+        q = r["requirements"][0]; q["implementation_status"] = "verified_in_scope"; q["evidence_refs"] = [ev]
+
+    def test_gate_refuses_a_verified_requirement_naming_a_not_run_test(self):
+        # b1: TST-M0-002 is off every work item, but its verified_in_scope requirement names it.
+        for verdict in self.NOT_GIVEN:
+            with self.subTest(verdict=verdict):
+                r = base_records(); ev = self.passing_first_test(r)
+                t2 = self.second_test(r, "N/A"); self.verified(r, ev)
+                write_all(r)
+                self.assert_modes(0, None)  # control: N/A is a verdict
+                t2["verdict"] = verdict; write_all(r)
+                self.assert_strict_error_plain_warning(f"requirements/REQ-M0-001: verified_in_scope but test TST-M0-002 verdict is {verdict}")
+
+    def test_gate_refuses_a_not_run_test_naming_a_verified_requirement(self):
+        # b2: the requirement no longer names TST-M0-002; the test still names it, as its second
+        # requirement after a planned one.
+        for verdict in self.NOT_GIVEN:
+            with self.subTest(verdict=verdict):
+                r = base_records(); ev = self.passing_first_test(r)
+                q2 = copy.deepcopy(r["requirements"][0]); q2["id"] = "REQ-M0-002"; r["requirements"].append(q2)
+                t2 = self.second_test(r, "N/A", req_names_it=False); t2["requirement_ids"] = ["REQ-M0-002", "REQ-M0-001"]
+                self.verified(r, ev)
+                write_all(r)
+                self.assert_modes(0, None)
+                t2["verdict"] = verdict; write_all(r)
+                self.assert_strict_error_plain_warning(f"tests/TST-M0-002: verdict {verdict} but it names REQ-M0-001, which is verified_in_scope")
+
+    def test_gate_refuses_a_passed_stage_with_a_not_run_test_of_its_requirement(self):
+        # i: a passed stage, its requirement still planned; both directions of the naming; the
+        # passed stage is the second of two.
+        for req_names_it in (True, False):
+            for verdict in self.NOT_GIVEN:
+                with self.subTest(req_names_it=req_names_it, verdict=verdict):
+                    r = base_records(); ev = self.passing_first_test(r)
+                    t2 = self.second_test(r, "N/A", req_names_it=req_names_it)
+                    first = copy.deepcopy(r["stages"][0]); first["id"] = "M1"; r["stages"].insert(0, first)
+                    r["stages"][1]["gate_status"] = "passed"; r["stages"][1]["gate_evidence_refs"] = [ev]
+                    write_all(r)
+                    self.assert_modes(0, None)
+                    t2["verdict"] = verdict; write_all(r)
+                    self.assert_strict_error_plain_warning(f"stages/M0: passed but test TST-M0-002 of REQ-M0-001 verdict is {verdict}")
+
+    def test_plain_mode_warns_of_a_new_not_run_test_of_a_verified_requirement_in_a_passed_stage(self):
+        # A new test, NOT_RUN, added under a verified requirement of a passed stage (commit 9d7e3da862
+        # added one under a planned requirement of the passed stage M0): verify's `validate-records (committed state)` step, plain mode, passes it
+        # with warnings; --strict and --gate refuse it.
+        r = base_records(); ev = self.passing_first_test(r)
+        self.second_test(r, "NOT_RUN"); self.verified(r, ev)
+        r["stages"][0]["gate_status"] = "passed"; r["stages"][0]["gate_evidence_refs"] = [ev]
+        write_all(r)
+        lines = ("requirements/REQ-M0-001: verified_in_scope but test TST-M0-002 verdict is NOT_RUN",
+                 "tests/TST-M0-002: verdict NOT_RUN but it names REQ-M0-001, which is verified_in_scope",
+                 "stages/M0: passed but test TST-M0-002 of REQ-M0-001 verdict is NOT_RUN")
+        rc, out = self.cli()
+        self.assertEqual(rc, 0, out)
+        for text in lines:
+            self.assertIn("WARN " + text, out.splitlines(), out)
+        for mode in ("--strict", "--gate"):
+            rc, out = self.cli(mode)
+            self.assertEqual(rc, 50, f"{mode}\n{out}")
+            for text in lines:
+                self.assertIn("ERROR " + text, out.splitlines(), f"{mode}\n{out}")
+
+    def test_gate_refuses_a_passed_stage_citing_missing_evidence(self):
+        # i2: every gate_evidence_refs entry gets the check a test's evidence ref gets (a missing
+        # path is an error in every mode, as for any ref), and is a PASS run (--strict, --gate).
+        r = base_records(); ev = self.passing_first_test(r)
+        r["stages"][0]["gate_status"] = "passed"; r["stages"][0]["gate_evidence_refs"] = [ev]
+        write_all(r)
+        self.assert_modes(0, None)
+        r["stages"][0]["gate_evidence_refs"] = [ev, "evidence/does-not-exist"]; write_all(r)
+        self.assert_modes(50, "ERROR stages/M0: evidence missing: evidence/does-not-exist")
+        # a FAIL run no test cites (a run cited by a FAIL test would also be the case i)
+        failed = make_evidence(None, "TST-M0-001", verdict="FAIL")
+        moved = TMP / "evidence" / "20260102T000000Z-deadbeef-001"
+        if moved.exists(): shutil.rmtree(moved)
+        (TMP / failed).rename(moved)
+        ev = self.passing_first_test(r)  # make_evidence reuses one directory name: write the PASS again
+        r["stages"][0]["gate_evidence_refs"] = [ev, f"evidence/{moved.name}"]; write_all(r)
+        self.assert_strict_error_plain_warning(f"stages/M0: gate evidence evidence/{moved.name} verdict is FAIL, not PASS")
+        shutil.rmtree(moved)
+        with self.subTest("a FAIL run a FAIL test of the open stage M1 cites"):
+            # a ref some test already cites is checked with that test; its verdict still counts here
+            r = base_records(); ev = self.passing_first_test(r)
+            r["stages"].append(dict(copy.deepcopy(r["stages"][0]), id="M1"))
+            q1 = dict(copy.deepcopy(r["requirements"][0]), id="REQ-M1-001", stage="M1", test_ids=["TST-M1-001"])
+            t1 = dict(copy.deepcopy(r["tests"][0]), id="TST-M1-001", requirement_ids=["REQ-M1-001"], verdict="FAIL")
+            r["requirements"].append(q1); r["tests"].append(t1)
+            failed = make_evidence(None, "TST-M1-001", verdict="FAIL")
+            moved = TMP / "evidence" / "20260102T000000Z-deadbeef-001"
+            if moved.exists(): shutil.rmtree(moved)
+            (TMP / failed).rename(moved)
+            ev = self.passing_first_test(r)
+            t1["evidence_refs"] = [f"evidence/{moved.name}"]
+            r["stages"][0]["gate_status"] = "passed"; r["stages"][0]["gate_evidence_refs"] = [ev]
+            write_all(r)
+            self.assert_modes(0, None)  # control: the stage cites the PASS run alone
+            r["stages"][0]["gate_evidence_refs"] = [ev, f"evidence/{moved.name}"]; write_all(r)
+            self.assert_strict_error_plain_warning(f"stages/M0: gate evidence evidence/{moved.name} verdict is FAIL, not PASS")
+            shutil.rmtree(moved)
+
+    def test_gate_refuses_a_plain_file_as_evidence(self):
+        # d: under --gate alone (the real records hold one such ref, WP-05's jobs.json: the owner's
+        # decision); --strict and the plain mode keep today's behaviour, exit 0.
+        r = base_records(); self.passing_first_test(r); write_all(r)
+        self.assert_modes(0, None)  # control: a run directory
+        (TMP / "evidence" / "note.txt").write_text("trust me\n")
+        r["tests"][0]["evidence_refs"] = ["evidence/note.txt"]; write_all(r)
+        self.assert_modes(50, "ERROR tests/TST-M0-001: evidence evidence/note.txt is a file, not a run directory", modes=("--gate",))
+        self.assert_modes(0, None, modes=("--strict", None))
+        (TMP / "evidence" / "note.txt").unlink()
+
     def test_stale_input_requires_reevaluation(self):
         r = base_records(); write_all(r)
         ev = make_evidence(r, "TST-M0-001")

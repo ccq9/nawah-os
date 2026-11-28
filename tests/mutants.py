@@ -2219,6 +2219,35 @@ MUTANTS = [
      "            if pb.strict:\n                pb.err(where, msg)",
      "            if pb.strict and not pb.gate:\n                pb.err(where, msg)",
      ["TST-M0-001"], "SECURITY: under --gate alone a 1.1.0 PASS not adopted through the checked import is a warning, so the stage gate's check accepts evidence of unverified provenance"),
+    # M577..M581 (WP-184, first part; the red team's experiments of 2026-11-28): the validator
+    # checks the completeness of the verdicts and the form of the evidence; TST-M0-001 kills each.
+    ("M577", "tools/project.py",
+     '(pb.err if pb.strict else pb.warn)(w, f"verified_in_scope but test {t} verdict is {tv}")',
+     'None',
+     ["TST-M0-001"], "SECURITY: a verified_in_scope requirement names a NOT_RUN test (dropped from its done item's test_ids) and the gate passes it (b1)"),
+    ("M578", "tools/project.py",
+     '(pb.err if pb.strict else pb.warn)(w, f"verdict {t[\'verdict\']} but it names {q}, which is verified_in_scope")',
+     'None',
+     ["TST-M0-001"], "SECURITY: a NOT_RUN test names a verified_in_scope requirement that no longer names it and the gate passes it (b2)"),
+    ("M579", "tools/project.py",
+     '        for r in recs.get("requirements", []):\n            if r["stage"] != s["id"]:',
+     '        for r in []:\n            if r["stage"] != s["id"]:',
+     ["TST-M0-001"], "SECURITY: a passed stage stands while a test of one of its requirements is NOT_RUN (i)"),
+    ("M580", "tools/project.py",
+     '        for e in s.get("gate_evidence_refs") or []:',
+     '        for e in []:',
+     ["TST-M0-001"], "SECURITY: a passed stage's gate_evidence_refs may name a path that does not exist or a run that is not a PASS (i2)"),
+    ("M581", "tools/project.py",
+     '        if pb.gate:\n            pb.err(where, f"evidence {rel} is a file, not a run directory")',
+     '        if False:\n            pb.err(where, f"evidence {rel} is a file, not a run directory")',
+     ["TST-M0-001"], "SECURITY: under --gate a plain file cited as evidence counts as a run, with no verdict, test id or digests checked (d)"),
+    # M582 (WP-184, the red team's regression): b1 an error in the plain mode again, so verify's
+    # committed-state step refuses a new test committed NOT_RUN under a verified requirement
+    # before any suite can run it; TST-M0-001 kills it.
+    ("M582", "tools/project.py",
+     '(pb.err if pb.strict else pb.warn)(w, f"verified_in_scope but test',
+     'pb.err(w, f"verified_in_scope but test',
+     ["TST-M0-001"], "b1 an error in the plain mode: a new NOT_RUN test of a verified requirement fails verify's committed-state step before its first run"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -2860,7 +2889,9 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # check included (M573).
             "M571", "M573",
             # and the oracle and provenance checks under --gate alone (M574, M575; red team, round 2).
-            "M574", "M575"}
+            "M574", "M575",
+            # WP-184 (first part): completeness of the verdicts and form of the evidence (b1, b2, i, i2, d).
+            "M577", "M578", "M579", "M580", "M581"}
 
 
 def security_of(mid: str) -> bool:

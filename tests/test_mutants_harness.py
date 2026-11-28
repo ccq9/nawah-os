@@ -2859,6 +2859,30 @@ class WorkflowShardMutants(unittest.TestCase):
         self.assertNotIn("M572", mutants.SECURITY)
         self.assertIn("nothing may be stale", by_id["M572"][3])
 
+    def test_the_gate_completeness_mutants_are_registered(self):
+        # WP-184 (first part): the checks of a verified requirement's tests (M577, b1), of a test
+        # naming a verified requirement (M578, b2), of a passed stage's tests (M579, i) and gate
+        # evidence (M580, i2), and of a plain file cited under --gate (M581, d); each SECURITY,
+        # tools/project.py, TST-M0-001 kills it, anchor once.
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        for mid in ("M577", "M578", "M579", "M580", "M581"):
+            self.assertIn(mid, by_id, f"{mid} is not registered")
+            m = by_id[mid]
+            self.assertEqual((m[1], m[4], mutants.stage_of(mid)), ("tools/project.py", ["TST-M0-001"], "M6"), mid)
+            self.assertTrue(mutants.is_tooling(m[1]), mid)
+            self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1, f"{mid}: its anchor is not once in {m[1]}")
+            self.assertNotEqual(m[2], m[3], mid)
+            self.assertIn(mid, mutants.SECURITY)
+            self.assertTrue(m[5].startswith("SECURITY: "), mid)
+        # and b1 an error again in the plain mode (M582, not SECURITY: it refuses a committed new
+        # NOT_RUN test of a verified requirement); TST-M0-001 kills it.
+        m = by_id.get("M582")
+        self.assertIsNotNone(m, "M582 is not registered")
+        self.assertEqual((m[1], m[4], mutants.stage_of("M582")), ("tools/project.py", ["TST-M0-001"], "M6"))
+        self.assertEqual((ROOT / m[1]).read_text(encoding="utf-8").count(m[2]), 1)
+        self.assertNotIn("M582", mutants.SECURITY)
+        self.assertIn("pb.err(w", m[3])
+
     def test_the_run_json_record_of_the_shard_count_is_mutated(self):
         # L-023 (WP-152): M304 drops the note write_run adds under NAWAH_GATE_SHARDS, so job g's
         # run.json of TST-M6-MUTANTS would read as a whole run of the gate; TST-M0-007 kills it.

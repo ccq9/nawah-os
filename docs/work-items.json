@@ -4080,7 +4080,8 @@
     "WP-178",
     "WP-89",
     "WP-182",
-    "WP-184"
+    "WP-184",
+    "WP-185"
    ],
    "inputs": [
     "docs/prompt/OS-EXEC-AR-v3.2.md:596-601 (M6)",
@@ -4102,7 +4103,8 @@
     "2026-11-10 (steward round G, security assurance review of WP-82/WP-83; manager's decisions): depends on WP-90 too: stages.json:306 (M6 mutants >= 95% with no live security mutant) cannot be shown until the M6 gate exists (finding H2)",
     "2026-11-21 (the manager): depends on WP-175 (the autostart's lock and sign-out paths) and WP-178 (the manager's failure ends no session into the next) on the external audit of 2026-11-21: the session path and the autostart are not accepted in M6 without them",
     "2026-11-28 (the manager, on the auditor's reading of the records of DEC-043): depends on WP-89 (the evidence published by a job that runs no candidate code) and WP-182 (the validator's gate mode: no stale mandatory verdict at the stage gate), which DEC-043, option A, answered 2026-11-27, made conditions of M6's acceptance (docs/stages.json, M6 exit_conditions); without them a condition of the gate stood outside the gate's own dependencies. Not recorded yet and owed in a records commit of its own: what DEC-043's answer fixes for after M6 (the MVP through M7, then one real device, then install, update and restore); docs/stages.json has no place for it without a new field",
-    "2026-11-28 (the manager): depends on WP-184 (the gate mode checks completeness and the form of evidence): the red team showed by local experiment that `validate-records --gate`, which this gate's procedure is to run, passes a `passed` stage with a test of its requirement NOT_RUN and seven other gaps of completeness or of the form of evidence; a gate run on it as it is would not show that the stage's mandatory tests passed"
+    "2026-11-28 (the manager): depends on WP-184 (the gate mode checks completeness and the form of evidence): the red team showed by local experiment that `validate-records --gate`, which this gate's procedure is to run, passes a `passed` stage with a test of its requirement NOT_RUN and seven other gaps of completeness or of the form of evidence; a gate run on it as it is would not show that the stage's mandatory tests passed",
+    "2026-11-28 (the manager): depends on WP-185 too, the second part of WP-184 split at its activation"
    ],
    "acceptance": "M6 gate passed: every stages.json M6 exit condition met with CI evidence or a visible, recorded exception",
    "test_ids": [
@@ -11807,9 +11809,59 @@
     "المدقق في وضع البوابة يفحص اكتمال الأحكام وشكل الأدلة، لا تقادمها فقط (من تجارب الفريق الأحمر بتاريخ 2026-11-28)",
     "design to decide at activation (2-3 options with trade-offs, the simplest among them): whether the gate mode takes a stage (`--gate M6`) and derives the tests that stage's requirements name, or checks every requirement marked verified; which of the eight cases become errors in gate mode alone and which under --strict too (a push between checkpoints must still pass --strict); how runs of schema 1.0.0 already committed are listed so that a new one is refused",
     "test first, red seen locally before the change: one case of TST-M0-001 for each of the eight ways (a NOT_RUN test removed from a done item's test_ids, with and without the requirement naming it; a new PASS on schema 1.0.0 with no import.json; a plain file cited as evidence; a cited older PASS beside a newer FAIL; a state file not at HEAD; a `passed` stage with a NOT_RUN test of its requirement; a gate_evidence_refs path that does not exist), each refused under --gate; SECURITY mutants for each check",
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-28 (the manager): activated after WP-182, its one dependency, closed; outside the owner's stated order, in which the next step is WP-181: it is a dependency of that order's last item, WP-62. Design, three options (the release engineer's note of this day, by reading and by a script that wrote nothing): the checks under `--gate` with no new argument (taken, the simplest); `--gate <stage>` deriving the tests a stage's requirements name (a readiness query, which leaves passed stages unchecked unless combined with the first); a committed list of the runs of schema 1.0.0 (a large file for a gap with no cited instance). Split at activation, as the budget line requires: this package keeps the five gaps of the records' shape (no git history, no scan of evidence/); the other three and `the test still cites it` are WP-185, planned. Built test first by the release engineer (local runs, scratch): tests/test_validate_records.py 48 -> 53 cases, tests/test_mutants_harness.py 115 -> 116, mutants M577 to M581 (SECURITY), each killed by its own new case alone in his local matrix over the 35 cases of class ValidateRecords (not the whole of TST-M0-001). For case (4) the red log stopped at the missing path, so the FAIL step was not seen red on its own. Where this record's inputs and its line on test first say `eight ways`, they stand for the package before the split: five are this part's, three and one half of a fourth are WP-185's",
+    "2026-11-28 (the manager): what the team's readings changed before the commit (local runs, scratch). The red team, by experiment: BLOCKING, closed test first: the first build made the checks of cases (1) to (3) errors in plain mode too, which would have failed verify's plain-mode step on a commit that adds a new test under a verified requirement or a passed stage, before any suite could run it (the specification had left plain mode to `what the neighbouring checks do`: the manager's error); they are warnings in plain mode now, case (4) pins it, mutant M582. Five sabotages survived the cases (each check refusing NOT_RUN alone; the second direction checking the first requirement alone; the stage check the first stage alone): the cases now run five verdicts, a second requirement and a second stage. A gate_evidence_refs run of a test the stage's requirements do not name passes: measured on the real records and left as limit (e). The auditor, before the commit: six clauses replaced by his own: four in this record, one in WP-185's inputs, one in TST-M0-001's oracle. tests/test_validate_records.py 48 -> 54 cases, tests/test_mutants_harness.py 115 -> 116, mutants M577 to M582 (five SECURITY, M582 not), each run by the engineer against the whole of tests/test_validate_records.py",
+    "2026-11-28 (the manager): the red team's second round (local, scratch). By the red team's report (scratch, not in the repository): nothing blocking; its blocking scenario and variants give exit 0 in plain mode and 50 under --strict and --gate; the five sabotages of the first round and that round's list are killed; one new sabotage survived the 54 cases (the verdict check dropped for a gate_evidence_refs entry that a test already cites). It is closed by a subTest of case (5), shown red against it (the engineer's log red3-i2-cited.log: `0 != 50 : --gate`). Its notes, stated here: a missing gate evidence path is an error in plain mode now, where it was none before; under --strict a new test of a verified requirement or of a passed stage's requirement whose first run fails is refused (intended), and so would be such a test that verify does not run and that stays NOT_RUN (by the red team's reading, unverified by the auditor: today verify runs every test but the four of STALE_WARN_TESTS). One sentence of the auditor's for TST-M0-001's oracle held the word `planned`, which the validator refuses in the oracle of a PASS test; it reads `a requirement, not verified_in_scope` instead"
+   ],
+   "acceptance": "first part of two (the second is WP-185). On CI, TST-M0-001 PASS with these cases (tests/test_validate_records.py); `refused` below means rc 50 with the quoted text as an ERROR line under --gate and under --strict, and rc 0 with the same text as a WARN line in plain mode: (1) test_gate_refuses_a_verified_requirement_naming_a_not_run_test: for each of the verdicts NOT_RUN, FAIL, NEEDS_REEVALUATION, ERROR and BLOCKED of TST-M0-002, refused with `requirements/REQ-M0-001: verified_in_scope but test TST-M0-002 verdict is <verdict>`; with that test N/A, rc 0 and no ERROR in the three modes. (2) test_gate_refuses_a_not_run_test_naming_a_verified_requirement: the requirement does not name the test, the test names it as the second of two requirements; for each of the same verdicts, refused with `tests/TST-M0-002: verdict <verdict> but it names REQ-M0-001, which is verified_in_scope`. (3) test_gate_refuses_a_passed_stage_with_a_not_run_test_of_its_requirement: the passed stage is the second of two, the requirement naming the test and not naming it; for each of the same verdicts, refused with `stages/M0: passed but test TST-M0-002 of REQ-M0-001 verdict is <verdict>`. (4) test_plain_mode_warns_of_a_new_not_run_test_of_a_verified_requirement_in_a_passed_stage: a new NOT_RUN test under a verified requirement of a passed stage: plain mode rc 0 with the three texts of (1), (2) and (3) as WARN lines; --strict and --gate rc 50 with them as ERROR lines. (5) test_gate_refuses_a_passed_stage_citing_missing_evidence: a gate_evidence_refs entry that does not exist: rc 50 with `ERROR stages/M0: evidence missing: evidence/does-not-exist` in the three modes; an entry that is a FAIL run no test cites, and one that a FAIL test of the open stage M1 cites: each refused with `stages/M0: gate evidence evidence/20260102T000000Z-deadbeef-001 verdict is FAIL, not PASS`. (6) test_gate_refuses_a_plain_file_as_evidence: under --gate alone rc 50 with `ERROR tests/TST-M0-001: evidence evidence/note.txt is a file, not a run directory`; under --strict and plain mode rc 0, as before this package. TST-M0-005 PASS with test_the_gate_completeness_mutants_are_registered (M577 to M582 registered), and TST-M6-MUTANTS PASS with each of the six killed. Red first is a local showing, recorded in the action lines; it is no CI evidence. Stated limits: (a) on the real records `validate-records --gate` then reports one error more than before, by a local run: `ERROR work-items/WP-05: evidence evidence/ci/39090532071/jobs.json is a file, not a run directory`; what is done with that reference is the owner's decision for the gate, not this package's. (b) In plain mode the checks of cases (1) to (3) and the FAIL part of (5) are warnings: verify's step `validate-records (committed state)` runs plain mode, and a new test enters the records NOT_RUN before its first run (commit 9d7e3da862 did so under a planned requirement of the passed stage M0). (c) Not here, WP-185's: a cited run of schema 1.0.0 with no import.json, a cited PASS beside a newer run of its test under evidence/, a state file behind HEAD by a change outside evidence/ and the record files, and that the test of a gate_evidence_refs entry still cites it. (d) A test that names no requirement and that no requirement names is not refused by these checks. (e) Not checked: that the test of a gate_evidence_refs run is a test of that stage's requirements. By the release engineer's reading of the real records (local, nothing written): of 148 such entries of passed stages, 143 are, none is of a test the records do not hold, and 5 are not (the run of TST-M1-BOOT cited by M3 and by M4, and three runs of TST-M2-MUTANTS, TST-M3-MUTANTS and TST-M4-MUTANTS cited by M5); not yet in any package's scope: the manager's to place. (f) No workflow or script runs --gate: WP-62's. A verdict changed after its import is WP-89's",
+   "test_ids": [
+    "TST-M0-001",
+    "TST-M0-005",
+    "TST-M6-MUTANTS"
+   ],
+   "commands": [
+    "python3 tools/project.py test --target host --suite M0"
+   ],
+   "status": "active",
+   "status_history": [
+    "planned",
+    "active"
+   ],
+   "evidence_refs": [],
+   "blocker": null
+  },
+  {
+   "id": "WP-185",
+   "stage": "M6",
+   "requirement_ids": [
+    "REQ-M0-002"
+   ],
+   "depends_on": [
+    "WP-184"
+   ],
+   "inputs": [
+    "WP-184's record and the release engineer's design note of 2026-11-28: the three gaps of provenance, of a scan of evidence/ and of git history (c, e, f), and the part of i2 that its test still cites it",
+    "the red team's experiments of 2026-11-28 on scratch record trees (local, no evidence), named in WP-182's stated limit (c)"
+   ],
+   "files": [
+    "tools/project.py",
+    "tests/test_validate_records.py",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "docs/tests.json",
+    "docs/work-items.json",
+    "docs/PLAN-REVERSE.md"
+   ],
+   "contract_refs": [],
+   "actions": [
+    "المدقق في وضع البوابة: مصدر الدليل وحداثته وموضع ملف الحالة (الجزء الثاني من WP-184)",
+    "2026-11-28 (the manager): split off WP-184 at its activation. Scope, each refused under --gate: a cited run of schema 1.0.0 with no import.json; a cited PASS of a test beside a newer run of that test under evidence/; a state file whose source_revision is behind HEAD by a change outside evidence/ and the record files; a gate_evidence_refs entry that its test no longer cites",
+    "design to decide at activation (2-3 options with trade-offs, the simplest among them): how the newest run of a test is found (a scan of evidence/*/verdict.json, measured at 1.4 s by the design note, against an index); what the state-file check does on a shallow clone (the note: an error, fail closed); whether the existing gate cases move to a helper that writes runs of schema 1.1.0 with a receipt",
+    "test first, red seen locally before the change: one case of TST-M0-001 per gap; SECURITY mutants for each check",
     "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
    ],
-   "acceptance": "on CI, TST-M0-001 with new cases (to be written) shows `validate-records --gate` exiting non-zero with an ERROR for each of the eight ways named in this record's inputs, and plain --strict still passing a push between checkpoints; the mutants of each check are killed, the SECURITY ones among them (TST-M6-MUTANTS). A verdict changed after its import is not this package's: WP-89",
+   "acceptance": "on CI, TST-M0-001 with new cases (to be written) shows `validate-records --gate` exiting non-zero with an ERROR for each of the four ways named in this record's scope, and plain --strict still passing a push between checkpoints; the mutants of each check are killed, the SECURITY ones among them (TST-M6-MUTANTS)",
    "test_ids": [
     "TST-M0-001",
     "TST-M0-005",
