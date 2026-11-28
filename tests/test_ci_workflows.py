@@ -864,6 +864,61 @@ class MergeJob(unittest.TestCase):
         self.assertIn("!cancelled()", str(last.get("if", "")))
         self.assertIn("exit 1", run(last))
 
+    # WP-182 (DEC-043 option A): --strict lets the four older mutation gates of STALE_WARN_TESTS
+    # through stale as warnings, so a step running it may not say that nothing may be stale; that
+    # is the gate mode's claim (validate-records --gate, the stage gate's and the release
+    # candidate's check). verify's strict step names the exemption.
+    STRICT_STEP = ("validate-records --strict (after fresh evidence; the four older mutation gates of "
+                   "STALE_WARN_TESTS may stay stale as warnings; --gate, the stage gate's check, exempts none of them)")
+
+    @staticmethod
+    def runs_gate(run):
+        """True when a simple command of the step's script (split on newlines, `;`, `&&`, `||`,
+        `|` and `&`, shell comments dropped) runs the validator itself with --gate among its own
+        arguments: an echo, a comment or another command carrying the flag does not count."""
+        for line in str(run).splitlines():
+            lex = shlex.shlex(line, posix=True, punctuation_chars=True)
+            lex.whitespace_split = True
+            try:
+                tokens = list(lex)
+            except ValueError:
+                continue
+            words = []
+            for tok in tokens + [";"]:
+                if tok and set(tok) <= set(";&|"):
+                    if words[:3] == ["python3", "tools/project.py", "validate-records"] and "--gate" in words[3:]:
+                        return True
+                    words = []
+                else:
+                    words.append(tok)
+        return False
+
+    def test_a_step_claiming_nothing_stale_runs_the_gate_mode_and_verify_names_the_exemption(self):
+        for run, ok in (("python3 tools/project.py validate-records --gate", True),
+                        ("python3 tools/project.py validate-records --strict --gate", True),
+                        ("set -e\npython3 tools/project.py validate-records --gate\n", True),
+                        ("python3 tools/project.py validate-records --strict", False),
+                        ("echo python3 tools/project.py validate-records --gate", False),
+                        ("echo validate-records --gate; python3 tools/project.py validate-records --strict", False),
+                        ("python3 tools/project.py validate-records --strict  # --gate", False),
+                        ("python3 tools/project.py status --gate", False),
+                        ("python3 tools/project.py validate-records --strict; echo --gate", False),
+                        ("python3 tools/project.py validate-records --strict && python3 tools/project.py status --gate", False),
+                        ("python3 tools/project.py validate-records --strict || echo --gate", False),
+                        ("python3 tools/project.py validate-records --strict | grep -- --gate", False),
+                        ("echo x && python3 tools/project.py validate-records --gate", True),
+                        ("", False)):
+            self.assertEqual(self.runs_gate(run), ok, run)
+        for wf in ("verify.yml", "mutants.yml"):
+            for job, spec in load(wf)["jobs"].items():
+                for s in spec.get("steps", []):
+                    if "nothing may be stale" in str(s.get("name", "")).lower():
+                        self.assertTrue(self.runs_gate(s.get("run", "")), f"{wf} {job}: {s.get('name')}")
+        steps = self.merge()["steps"]
+        strict = [s for s in steps if str(s.get("run", "")).strip() == "python3 tools/project.py validate-records --strict"]
+        self.assertEqual(len(strict), 1, "verify's merge job runs the strict check once")
+        self.assertEqual(strict[0].get("name"), self.STRICT_STEP)
+
     def test_no_test_job_validates_strictly_or_publishes(self):
         for name, job in self.jobs().items():
             if name == "merge":

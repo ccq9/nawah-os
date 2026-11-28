@@ -1540,7 +1540,7 @@ MUTANTS = [
      "        pass\n",
      ["TST-M0-001"], "a checkpoint leaves the list of waiting decisions as it was written by hand"),
     ("M365", "tools/project.py",
-     "            (pb.err if strict else pb.warn)(\"project-state\", msg + \" (checkpoint pending)\")\n",
+     "            (pb.err if pb.strict else pb.warn)(\"project-state\", msg + \" (checkpoint pending)\")\n",
      "            pb.warn(\"project-state\", msg + \" (checkpoint pending)\")\n",
      ["TST-M0-001"], "a state file that contradicts the records passes the strict check"),
     ("M366", "tools/project.py",
@@ -2188,6 +2188,33 @@ MUTANTS = [
      ["TST-M0-003"], "the spent deadline returns to the caller, whose own ::error (the index, a failed call) then names the wrong cause"),
     ("M570", ".github/workflows/mutants.yml", ' || { echo "::error title=Toolchain::failed twice: apt-get install -y"; exit 1; }', "",
      ["TST-M0-003"], "an install that fails twice ends the step by a retry warning, never by an ::error naming the install"),
+    # M571, M572 (WP-182, DEC-043 option A): validate-records --gate keeps the STALE_WARN_TESTS
+    # exemption (M571, TST-M0-001 kills it), and verify's strict step claims again that nothing may
+    # be stale while the four older gates pass it stale (M572, TST-M0-003 kills it).
+    ("M571", "tools/project.py",
+     'if pb.strict and (pb.gate or verdict.get("test_id") not in pb.warn_only_tests):',
+     'if pb.strict and verdict.get("test_id") not in pb.warn_only_tests:',
+     ["TST-M0-001"], "SECURITY: the stage gate's and the release candidate's check accepts a stale verdict of TST-M2-MUTANTS to TST-M5-MUTANTS as a warning, so a gate passes on mandatory evidence its inputs no longer match"),
+    ("M572", ".github/workflows/verify.yml",
+     "validate-records --strict (after fresh evidence; the four older mutation gates of STALE_WARN_TESTS may stay stale as warnings; --gate, the stage gate's check, exempts none of them)",
+     "validate-records --strict (after fresh evidence, nothing may be stale)",
+     ["TST-M0-003"], "verify's strict step claims again that nothing may be stale while it lets the four older mutation gates through stale"),
+    # M573 (WP-182 red team): the project-state check reads the parameter strict again, so --gate
+    # alone is weaker than --strict; TST-M0-001 kills it.
+    ("M573", "tools/project.py",
+     '(pb.err if pb.strict else pb.warn)("project-state", msg + " (checkpoint pending)")',
+     '(pb.err if strict else pb.warn)("project-state", msg + " (checkpoint pending)")',
+     ["TST-M0-001"], "SECURITY: under --gate alone a project-state file that contradicts the records (another next step, other waiting decisions) is a warning, so the stage gate's check passes what --strict refuses"),
+    # M574, M575 (WP-182 red team, round 2): --gate alone weaker than --strict in the oracle check
+    # (the parameter strict read again) and in the provenance check (gate exempted); TST-M0-001.
+    ("M574", "tools/project.py",
+     'if pb.strict and v and t["verdict"] == "PASS" and v.get("oracle") != t["oracle"]:',
+     'if strict and v and t["verdict"] == "PASS" and v.get("oracle") != t["oracle"]:',
+     ["TST-M0-001"], "SECURITY: under --gate alone a PASS whose oracle changed since its run stands, so the stage gate's check passes what --strict refuses"),
+    ("M575", "tools/project.py",
+     "            if pb.strict:\n                pb.err(where, msg)",
+     "            if pb.strict and not pb.gate:\n                pb.err(where, msg)",
+     ["TST-M0-001"], "SECURITY: under --gate alone a 1.1.0 PASS not adopted through the checked import is a warning, so the stage gate's check accepts evidence of unverified provenance"),
     # M214..M218 (SECURITY, WP-121, files.md v1.7, ADR-0014 item 8): a write the volume cannot
     # hold whole changes nothing. M214: the write no longer asks for the clusters it needs.
     ("M214", "kernel/src/fs/fat32.rs",
@@ -2823,7 +2850,13 @@ SECURITY = {"M82", "M83", "M84", "M85", "M86", "M87", "M88", "M89", "M90", "M91"
             # before it (session.md v1.12).
             "M480", "M481", "M488",
             # WP-178 (REQ-M6-004): the manager's stop ends the session's job (services.md v1.21).
-            "M485"}
+            "M485",
+            # WP-182 (DEC-043 option A): the gate mode admits no stale verdict, the four older
+            # mutation gates included (M571), and is everything --strict checks, the project-state
+            # check included (M573).
+            "M571", "M573",
+            # and the oracle and provenance checks under --gate alone (M574, M575; red team, round 2).
+            "M574", "M575"}
 
 
 def security_of(mid: str) -> bool:

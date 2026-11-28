@@ -925,7 +925,7 @@ jobs:
           for slot in a b g; do
             if [ -d "incoming/evidence-$slot/build" ]; then cp -r "incoming/evidence-$slot/build/." build/; fi
           done
-      - name: "validate-records --strict (after fresh evidence, nothing may be stale)"
+      - name: "validate-records --strict (after fresh evidence; the four older mutation gates of STALE_WARN_TESTS may stay stale as warnings; --gate, the stage gate's check, exempts none of them)"
         run: python3 tools/project.py validate-records --strict
       - name: "pre-merge gate (tools/pre-merge.sh: the same strict check through the script a records commit must pass)"
         run: tools/pre-merge.sh

@@ -231,6 +231,112 @@ class ValidateRecords(unittest.TestCase):
         real = json.loads((REPO / "docs" / "tests.json").read_text(encoding="utf-8"))["records"]
         self.assertEqual(sorted(t["id"] for t in real if "stale_policy" in t), sorted(project.STALE_WARN_TESTS))
 
+    # WP-182 (DEC-043 option A, the owner, 2026-11-27): `validate-records --gate`, the stage gate's
+    # and the release candidate's check, is --strict without the STALE_WARN_TESTS exemption: a
+    # stale verdict of any test is an error there, the four older mutation gates included, while
+    # the per-push --strict keeps them warnings.
+    def stale_records(self, test_id):
+        r = base_records()
+        if test_id != "TST-M0-001":
+            t = copy.deepcopy(r["tests"][0]); t["id"] = test_id; t["stale_policy"] = "warn"
+            r["tests"].append(t)
+        write_all(r)
+        ev = make_evidence(r, test_id)
+        t = next(t for t in r["tests"] if t["id"] == test_id)
+        t["verdict"] = "PASS"; t["evidence_refs"] = [ev]
+        write_all(r)
+        (TMP / "docs" / "ENVIRONMENT.md").write_text("changed")
+        return ev
+
+    @staticmethod
+    def cli(*args):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = project.main(["validate-records", *args])
+        return rc, out.getvalue()
+
+    def test_gate_mode_refuses_a_stale_verdict_of_an_older_mutation_gate(self):
+        # Every test of STALE_WARN_TESTS, so a gate mode exempting one of the four still fails.
+        self.assertEqual(len(project.STALE_WARN_TESTS), 4)
+        for test_id in project.STALE_WARN_TESTS:
+            with self.subTest(test_id=test_id):
+                self.stale_older_gate_is_a_gate_error(test_id)
+
+    def stale_older_gate_is_a_gate_error(self, test_id):
+        ev = self.stale_records(test_id)
+        rc, out = self.cli("--strict")
+        self.assertEqual(rc, 0, out)
+        self.assertTrue(any(l.startswith("WARN") and ev in l and "inputs changed since verdict" in l for l in out.splitlines()), out)
+        self.assertTrue(out.splitlines()[-1].endswith("[strict]"), out)
+        self.assertNotIn("[gate]", out.splitlines()[-1], out)
+        rc, out = self.cli()
+        self.assertEqual(rc, 0, out)
+        self.assertNotIn("[gate]", out.splitlines()[-1], out); self.assertNotIn("[strict]", out.splitlines()[-1], out)
+        rc, out = self.cli("--gate")
+        self.assertEqual(rc, 50, out)
+        errors = [l for l in out.splitlines() if l.startswith("ERROR")]
+        self.assertTrue(any(ev in l and "inputs changed since verdict" in l for l in errors),
+                        f"the gate mode names the stale evidence of {test_id}'s run as an error:\n" + out)
+        self.assertTrue(out.splitlines()[-1].endswith("[gate]"), out)
+
+    def test_gate_mode_and_strict_refuse_a_stale_verdict_of_an_ordinary_test(self):
+        ev = self.stale_records("TST-M0-001")
+        for mode in ("--strict", "--gate"):
+            rc, out = self.cli(mode)
+            self.assertEqual(rc, 50, mode + "\n" + out)
+            self.assertTrue(any(l.startswith("ERROR") and ev in l and "inputs changed since verdict" in l for l in out.splitlines()), mode + "\n" + out)
+
+    def test_gate_mode_passes_with_nothing_stale(self):
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]
+        write_all(r)
+        rc, out = self.cli("--gate")
+        self.assertEqual(rc, 0, out)
+        self.assertTrue(out.splitlines()[-1].endswith("[gate]"), out)
+        self.assertEqual(self.cli("--strict")[1].splitlines()[-1], out.splitlines()[-1][:-len("[gate]")] + "[strict]")
+        plain = self.cli()[1].splitlines()[-1]
+        self.assertNotIn("[gate]", plain); self.assertNotIn("[strict]", plain)
+        self.assertEqual(plain, out.splitlines()[-1][:-len(" [gate]")])
+
+    def test_gate_mode_refuses_a_pass_without_import_json_as_strict_does(self):
+        # WP-182 red team, round 2: the provenance check (ADR-0026: a 1.1.0 PASS not adopted
+        # through the checked import) is everything --strict refuses, so --gate refuses it too.
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001")
+        run_p = TMP / ev / "run.json"
+        run = json.loads(run_p.read_text()); run["schema_version"] = "1.1.0"; run_p.write_text(json.dumps(run))
+        r["tests"][0]["verdict"] = "PASS"; r["tests"][0]["evidence_refs"] = [ev]
+        write_all(r)
+        with unittest.mock.patch.dict(os.environ, {"GITHUB_ACTIONS": ""}):
+            rc, out = self.cli()
+            self.assertEqual(rc, 0, out)
+            self.assertTrue(any(l.startswith("WARN") and "without import.json" in l for l in out.splitlines()), out)
+            for mode in (("--strict",), ("--gate",), ("--gate", "--strict")):
+                rc, out = self.cli(*mode)
+                self.assertEqual(rc, 50, f"{mode}\n{out}")
+                self.assertTrue(any(l.startswith("ERROR") and ev in l and "without import.json" in l for l in out.splitlines()), f"{mode}\n{out}")
+
+    def test_gate_mode_limit_a_needs_reevaluation_verdict_on_changed_inputs_is_no_error(self):
+        # A stated limit of the gate mode, pinned as it is today (WP-182 red team): a verdict
+        # recorded as NEEDS_REEVALUATION on evidence whose inputs changed is not reported stale,
+        # under --strict nor under --gate. Whether such a verdict may stand at a stage gate is for
+        # WP-62's procedure to decide; this package does not change it.
+        r = base_records(); write_all(r)
+        ev = make_evidence(r, "TST-M0-001", verdict="NEEDS_REEVALUATION")
+        r["tests"][0]["verdict"] = "NEEDS_REEVALUATION"; r["tests"][0]["evidence_refs"] = [ev]
+        write_all(r)
+        (TMP / "docs" / "ENVIRONMENT.md").write_text("changed")
+        rc, out = self.cli("--gate")
+        self.assertEqual(rc, 0, out)
+        self.assertFalse([l for l in out.splitlines() if l.startswith("ERROR")], out)
+
+    def test_gate_with_strict_is_the_gate(self):
+        for test_id in ("TST-M2-MUTANTS", "TST-M0-001"):
+            self.stale_records(test_id)
+            self.assertEqual(self.cli("--gate", "--strict"), self.cli("--gate"), test_id)
+            self.assertEqual(self.cli("--strict", "--gate"), self.cli("--gate"), test_id)
+
     def test_stale_input_requires_reevaluation(self):
         r = base_records(); write_all(r)
         ev = make_evidence(r, "TST-M0-001")
@@ -537,13 +643,23 @@ class Position(unittest.TestCase):
         self.assertTrue(st["next_action"].startswith("no next step"), st["next_action"])
 
     def test_a_state_file_that_contradicts_the_records_fails_the_strict_check(self):
+        self.contradicting_state_fails(strict=True)
+
+    def test_a_state_file_that_contradicts_the_records_fails_the_gate_mode(self):
+        # WP-182 red team: the gate mode is everything --strict checks; the project-state check
+        # read the parameter strict, so under --gate alone a contradicting state file was a warning.
+        for mode in (dict(gate=True), dict(gate=True, strict=True)):
+            with self.subTest(**mode):
+                self.contradicting_state_fails(**mode)
+
+    def contradicting_state_fails(self, **mode):
         r, item = self.items()
         r["work-items"] = [item("WP-69"), item("WP-00")]
         r["decisions-pending"] = [decision("DEC-001", "answered"), decision("DEC-002", "open")]
         write_all(r); policy("5. **الترتيب:** WP-00.")
         good = dict(current_task="WP-00", next_action="WP-00: title of WP-00", pending_decision_ids=["DEC-002"])
         state_file(**good)
-        self.assertEqual(project.validate_records(verbose=False, strict=True), 0)
+        self.assertEqual(project.validate_records(verbose=False, **mode), 0)
         for bad, word in ((dict(current_task="WP-69", next_action="WP-69: title of WP-69"), "current_task WP-69"),
                           (dict(next_action="WP-00: an older title"), "an older title"),
                           (dict(pending_decision_ids=["DEC-001", "DEC-002"]), "DEC-001"),
@@ -551,7 +667,7 @@ class Position(unittest.TestCase):
             state_file(**{**good, **bad})
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                self.assertNotEqual(project.validate_records(verbose=True, strict=True), 0, bad)
+                self.assertNotEqual(project.validate_records(verbose=True, **mode), 0, bad)
             lines = [l for l in out.getvalue().splitlines() if l.startswith("ERROR project-state")]
             self.assertEqual(len(lines), 1, out.getvalue())
             self.assertIn(word, lines[0]); self.assertIn("checkpoint pending", lines[0])
@@ -723,6 +839,29 @@ class OracleSingleSource(unittest.TestCase):
                 with contextlib.redirect_stdout(out):
                     rc = project.validate_records(verbose=True, strict=True)
                 self.assertEqual(rc, 50, policy); self.assertIn("tests/TST-M0-001", out.getvalue())
+
+    def test_gate_a_pass_oracle_must_equal_the_one_its_evidence_ran_with(self):
+        # WP-182 red team, round 2: what --strict refuses of a PASS whose oracle changed since its
+        # run, --gate alone refuses too, stale_policy warn included.
+        for policy in (None, "warn"):
+            with self.subTest(policy=policy):
+                tests = self.records()
+                ev = make_evidence(None, "TST-M0-001", oracle="exit 0")
+                r = project.load_json(tests); r["records"][0].update(verdict="PASS", evidence_refs=[ev])
+                if policy: r["records"][0]["stale_policy"] = policy
+                project.write_json(tests, r)
+                with unittest.mock.patch.object(project, "STALE_WARN_TESTS", ("TST-M0-001",)):
+                    self.assertEqual(project.validate_records(verbose=False, gate=True), 0)
+                    weaker = {"M0": [dict(project.HOST_SUITES["M0"][0], oracle="exit 0 (says less)")]}
+                    with unittest.mock.patch.object(project, "HOST_SUITES", weaker):
+                        self.assertEqual(self.sync()[0], 0)
+                        for mode in (dict(strict=True), dict(gate=True), dict(gate=True, strict=True)):
+                            out = io.StringIO()
+                            with contextlib.redirect_stdout(out):
+                                rc = project.validate_records(verbose=True, **mode)
+                            self.assertEqual(rc, 50, f"{policy} {mode}\n{out.getvalue()}")
+                            self.assertTrue(any(l.startswith("ERROR tests/TST-M0-001") and "oracle differs" in l
+                                                for l in out.getvalue().splitlines()), f"{policy} {mode}\n{out.getvalue()}")
 
     def test_two_sources_with_different_texts_for_one_id_are_an_error(self):
         # A host case and a guest case (or two guest cases) that both run under one id must

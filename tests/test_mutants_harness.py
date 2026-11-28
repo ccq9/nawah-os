@@ -2833,6 +2833,31 @@ class WorkflowShardMutants(unittest.TestCase):
             self.assertNotIn(mid, mutants.SECURITY)
         self.assertIn("azure", by_id["M305"][3])
 
+    def test_the_gate_mode_mutants_are_registered(self):
+        # WP-182 (DEC-043 option A): the gate mode keeping the STALE_WARN_TESTS exemption (M571,
+        # SECURITY, tools/project.py, TST-M0-001 kills it) and verify's strict step named again
+        # `nothing may be stale` (M572, verify.yml, TST-M0-003 kills it); after the red team, the
+        # project-state check reading the parameter strict again, so --gate alone lets a state file
+        # that contradicts the records through as a warning (M573, SECURITY, TST-M0-001); each
+        # anchor once.
+        by_id = {m[0]: m for m in mutants.MUTANTS}
+        for mid, rel, killer in (("M571", "tools/project.py", "TST-M0-001"), ("M572", ".github/workflows/verify.yml", "TST-M0-003"),
+                                 ("M573", "tools/project.py", "TST-M0-001"), ("M574", "tools/project.py", "TST-M0-001"),
+                                 ("M575", "tools/project.py", "TST-M0-001")):
+            self.assertIn(mid, by_id, f"{mid} is not registered")
+            m = by_id[mid]
+            self.assertEqual((m[1], m[4], mutants.stage_of(mid)), (rel, [killer], "M6"), mid)
+            self.assertTrue(mutants.is_tooling(m[1]), mid)
+            self.assertEqual((ROOT / rel).read_text(encoding="utf-8").count(m[2]), 1, f"{mid}: its anchor is not once in {rel}")
+            self.assertNotEqual(m[2], m[3], mid)
+        self.assertIn("M571", mutants.SECURITY)
+        self.assertTrue(by_id["M571"][5].startswith("SECURITY: "))
+        for mid in ("M573", "M574", "M575"):
+            self.assertIn(mid, mutants.SECURITY)
+            self.assertTrue(by_id[mid][5].startswith("SECURITY: "), mid)
+        self.assertNotIn("M572", mutants.SECURITY)
+        self.assertIn("nothing may be stale", by_id["M572"][3])
+
     def test_the_run_json_record_of_the_shard_count_is_mutated(self):
         # L-023 (WP-152): M304 drops the note write_run adds under NAWAH_GATE_SHARDS, so job g's
         # run.json of TST-M6-MUTANTS would read as a whole run of the gate; TST-M0-007 kills it.

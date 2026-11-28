@@ -11673,26 +11673,35 @@
     ".github/workflows/verify.yml",
     "tests/test_ci_workflows.py",
     "docs/tests.json",
-    "docs/work-items.json"
+    "docs/work-items.json",
+    "tests/mutants.py",
+    "tests/test_mutants_harness.py",
+    "docs/PLAN-REVERSE.md"
    ],
    "contract_refs": [],
    "actions": [
     "وضع بوابة في المدقق: لا حكم إلزامي قديم عند بوابة المرحلة ومرشح الإصدار، وتصحيح اسم خطوة الفحص الصارم في verify.yml (من DEC-043، الخيار A، 2026-11-27)",
     "design to decide at activation (2-3 options with trade-offs, the simplest among them): how the gate mode is asked for (a flag of validate-records, a command of its own, or the stage's gate read from docs/stages.json), where it runs (the gate's records commit, tools/pre-merge.sh, a release candidate), and what the ordinary --strict keeps (STALE_WARN_TESTS as warnings, so a push that does not run the older gates still passes)",
     "test first, red seen locally before the change: new cases of TST-M0-001 (a stale verdict of TST-M2-MUTANTS an error in gate mode and a warning under plain --strict) and a new case of TST-M0-003 (the step's name in verify.yml claims no more than the check it runs)",
-    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating"
+    "Budget (OS-EXEC-AR §2.3, line 44): 90 min or 120 tool calls; if the estimate at activation exceeds it, split before activating",
+    "2026-11-28 (the manager): activated beside WP-166, which is built, green on CI and waits for the reviewer's reply before its close: this package depends on nothing open with him, the owner objected on this day to work stopping for replies, and DEC-043, option A, makes it a condition of M6's gate. Outside the owner's stated order, in which it is a dependency of the last item (WP-62): said to the owner in the session, and to the reviewer with the design before any commit (issue #24, comment 7233966172). Design, three options: a flag of validate-records (taken, the simplest: one command, the mode visible in its last line `[gate]`); a command of its own (clearer separation, a second path to keep equal); the stage's gate read from docs/stages.json (automatic, but the same command would then check differently as a status changes, and who runs it cannot tell which). `--gate` is --strict with no exemption of STALE_WARN_TESTS; plain and --strict are unchanged; no workflow runs it, since verify runs per push, where the four older gates are stale by construction; the strict step of verify.yml is renamed for what it checks, and runs what it ran",
+    "2026-11-28 (the manager): what the team's readings changed before the commit (local runs, scratch). The red team's first round found the gate mode weaker than --strict in one place: the project-state check read the function's parameter `strict`, not the mode, so `--gate` alone left a state file that contradicts the records a warning (exit 0 where --strict exits 50): fixed test first, with the SECURITY mutant M573. It also found the stale-verdict cases covering one of the four older gates (a gate mode exempting M3, M4 or M5 alone survived): the case now runs over all of STALE_WARN_TESTS. The step's name said `allows none`, untrue for a verdict recorded as NEEDS_REEVALUATION: reworded to `exempts none of them`, the behaviour left as it is and pinned as a stated limit. The auditor: fit to commit with the record's files, tests and acceptance corrected, done here. An existing mutant (M365) was anchored on the corrected line: its anchor follows the line, its mutation is unchanged",
+    "2026-11-28 (the manager): the red team's second round (local, scratch): the blocking finding closed (every error of --strict is an error of --gate on the real records, 134 against 154, and on a scratch state with several defects; no check reads a local `strict`), nothing blocking left; three gaps of the tests closed test first in a last round: the workflow case took `--gate` named by another command of the same line for the validator's own flag; two weakenings of the gate mode survived every case (the oracle check and the import-receipt check outside the gate mode), now two cases and the SECURITY mutants M574 and M575; a plain run printing `[gate]` survived. tests/test_validate_records.py 40 -> 48 cases, tests/test_ci_workflows.py 81 -> 82, tests/test_mutants_harness.py 114 -> 115, mutants M571 to M575 (four SECURITY). No third red-team round was run on the last three test changes: the manager ran the three files and the host suite M0 himself (local), and the audit of the close reads them"
    ],
-   "acceptance": "on CI, TST-M0-001 with new cases (to be written, each seen failing first) shows validate-records in its gate mode reporting a stale verdict of any mandatory test, TST-M2-MUTANTS to TST-M5-MUTANTS included, as an error, while plain --strict still reports the four of STALE_WARN_TESTS as warnings; TST-M0-003 with a new case (to be written) shows verify.yml's strict-check step named for what it checks, never `nothing may be stale` while STALE_WARN_TESTS lets the four older gates through",
+   "acceptance": "on CI, TST-M0-001 with eight new cases (40 -> 48) shows validate-records in its gate mode (`--gate`) reporting a stale verdict of each of TST-M2-MUTANTS to TST-M5-MUTANTS as an error where plain --strict reports a warning, a stale verdict of an ordinary test as an error under both, a project-state file that contradicts the records, a PASS record whose oracle differs from its evidence's and a PASS of the current schema with no import receipt each as an error under `--gate` alone as under --strict, and its last line ending `[gate]` where plain's carries no tag and --strict's `[strict]`; TST-M0-003 with a new case (81 -> 82) shows verify.yml's strict-check step named for what it checks, and that a step whose name says `nothing may be stale` must run the validator with `--gate` among that command's own arguments; TST-M0-005 registers M571 to M575 and the M6 gate kills them (TST-M6-MUTANTS). Red first, as it was: the first four validator cases errored on the old validator by the command's absence (`--gate` refused), the project-state case and the workflow case failed for their own reason, and that the stale-verdict cases bite is shown by the mutants. Stated limits: the gate mode refuses every stale verdict, which is stricter than DEC-043's `mandatory`; a verdict recorded as NEEDS_REEVALUATION or NOT_RUN on evidence whose inputs changed is no error under `--gate` (pinned by a case as today's behaviour; whether such a verdict may stand at a stage gate is for WP-62's procedure); no workflow or script runs `--gate` yet: wiring it into the stage gate's procedure is WP-62's",
    "test_ids": [
     "TST-M0-001",
-    "TST-M0-003"
+    "TST-M0-003",
+    "TST-M0-005",
+    "TST-M6-MUTANTS"
    ],
    "commands": [
     "python3 tools/project.py test --target host --suite M0"
    ],
-   "status": "planned",
+   "status": "active",
    "status_history": [
-    "planned"
+    "planned",
+    "active"
    ],
    "evidence_refs": [],
    "blocker": null
